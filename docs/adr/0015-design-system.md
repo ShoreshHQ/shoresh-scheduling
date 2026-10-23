@@ -336,6 +336,23 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
       under a moving mouse and is the same picture again four seconds later, still under the
       mouse with reduced motion emulated, no Shoresh errors in the console).
 
+14. **Import last year (2026-10-23).** Design source: Greg's approved mock-ups
+    `design-research/screens-r1` (`import.html`: `#pick`, review A, `#done`) and wiki decision 56. The screen takes the rail grammar of Bring in choices: **‹ Roots**, a rail line, the
+    screen's name as a value (its `h2`), the file's name quiet, and on the right **Start
+    again** and the one filled control (Add, then Done). Under the hairline: the drop well (the
+    drawer step with the well's inset shade, a 40 px stroked upload glyph, a raised **Choose
+    files**), then sections headed in the title size with a quiet count. Questions are rows of
+    the shared table pattern (raised, fine gap, the needs-a-look corner and its 30% text edge
+    while open); their answers are rail items, the chosen one raised and pressed. Counts are
+    tiles one tile height tall (the number at 20 px, tabular; the kind in secondary words),
+    raised, a button each; the open one carries the 2 px highlight outline. Last year's
+    schedule is drawn small in the grid's own steps (primary-500 for set times, the drawer
+    step for activities, the grid step for empty, a dashed text outline for noted). Noted
+    items are chips with the dashed outline (1.5 px of the text at 45%), as the mock-up's
+    proposed rows. No new colour. Behaviour and words: ADR 0006 choice 22. Checked by
+    `shoreshImport.test.js` and the real-browser check (`--shots` saves `import-pick.png` and
+    `import-review.png` for `docs/design/screens/`).
+
 ## Not done here
 
 - The setup screens. Manual Build's and Generated Schedule's rail, Edit and counter are built

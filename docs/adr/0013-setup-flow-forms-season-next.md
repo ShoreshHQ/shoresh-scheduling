@@ -135,7 +135,8 @@ real-browser behaviour is still to be checked by hand (Known limits).
     shows only while a row needs it, ADR 0015 choice 12_); the group-move column
     "What changes", not "Moving". "Early in the week" groups its two fields ("How many", "By").
     "remembered" is "Remembered" everywhere; Import last year's last button is "Back to Roots"
-    (as at the top) and Import a list's is "Close" (as at the top). Import last year's
+    (as at the top; _since ADR 0006 choice 22 it is **Done**, with "‹ Roots" on the rail_) and
+    Import a list's is "Close" (as at the top). Import last year's
     placements not in last year's version are a small table (in the file, how many, why, for
     example).
 16. **Schedules**: the strip reads "Imported · saved Oct 3, 2:00 PM · view only"; the chosen day

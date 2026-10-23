@@ -390,42 +390,41 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 1. Choose **New season** from **Season actions** (the **▾** in the menu's camp row), name it
    _Import test_ (any dates), and click
    **Create season**. You land on Roots.
-2. Click **Import last year** at the bottom of Roots. The import screen shows a dashed box:
-   _Drop schedule here_, a **Choose files** button, and _.xlsx · .xls · .csv — several at
-   once_.
+2. Click **Import last year** at the bottom of Roots. The import screen is one large shaded
+   well: an upload arrow, _Drop last year's files_, _.xlsx · .xls · .csv_, and a **Choose
+   files** button. Along the top: **‹ Roots** (the way back) and _Import last year_.
 3. Click **Choose files**, go to the project folder, then `docs`, `samples`, `import`, and
-   pick `maple-grove-2026-all-camp.xlsx`. (Or drag the file onto the box.)
-4. The screen now says _Found in the file. Nothing added yet._ and shows:
-   - **Files**: the file, _5 pages_, and its **Layout**: _All camp: a page per day, groups
-     across_. (If Shoresh ever reads a file the wrong way round, change it here.)
-   - **Check these first**: _Are “Music” and “Musik” the same activity?_ (Musik is a planted
-     typo.) Click **Same: call it “Music”**. The card folds to _✓ Same: call it “Music”_;
-     **Change** takes it back.
-   - **Programs for these bunks**: _Program for Bunk 1, Bunk 2, …_ with _A new program_
-     chosen (this season has none yet). **Unit for each new bunk**: each bunk with its unit
-     from the file (_Juniors_ or _Seniors_) already chosen; any can be changed. (When a file
-     does not say a bunk's unit and the program already has units, nothing is chosen and
-     **Review** waits until you choose.)
-   - What was found, kind by kind, each marked _new_: the new program, named _Main_ (Monday to Friday),
-     seven **Time blocks** with their times, the six bunks with their units (_Juniors_,
-     _Seniors_, from the row above the bunk names in the file), **Fixed activities**: _Lunch_,
-     **Recurring activities**: _Morning meeting_ (Period 1 on Monday, everyone), and the
-     **Activities** with how often each bunk had it (for example _Boating: 1 a week · 2 time
-     blocks long · Seniors only_).
-   - **Not set up yet**: _Chugim_ (an elective), _Field day_ (a special day), and _Zoo trip_
-     (a trip). Shoresh notes them but does not create them.
+   pick `maple-grove-2026-all-camp.xlsx`. (Or drag the file onto the well. You can pick
+   several files at once.)
+4. One page now shows what Shoresh found. Nothing is added yet. The file's name is at the top,
+   and on the right **Start again** and a green button, _2 questions left_, greyed out.
+   - **Check these first 2**: one row per question, each with a small dark corner at its top
+     right until it is answered. _Are “Music” and “Musik” the same activity?_ (Musik is a
+     planted typo.) Click **Same: call it “Music”**: it stays, raised, and the corner goes.
+     Clicking another answer in the row changes it. The other question: _Is “Library time”
+     at a set time, or an activity?_ (Juniors had it at Period 4 on Wednesday, in one week
+     only, so Shoresh cannot be sure.) Click **A recurring activity**. Point at an answer to
+     see what it means.
+   - **Comes in**: a tile per kind with how many will be added: 6 bunks, 2 units, 7 time
+     blocks, 7 activities, 1 fixed activity, 2 recurring activities, 1 program. Click a tile
+     to see its names under the tiles (click it again to close them).
+   - **Programs for these bunks**: _A new program_ (this season has none yet). **Unit for
+     each new bunk**: each bunk with its unit from the file (_Juniors_ or _Seniors_). Shoresh
+     chose these itself, so they are not questions, but any can be changed here. (When a file
+     does not say a bunk's unit and the program already has units, nothing is chosen: the
+     bunk's dropdown is then a question in **Check these first**.)
+   - **Not set up yet 3**: _Chugim_ (an elective), _Field day_ (a special day), and _Zoo trip_
+     (a trip), each in a dashed outline. Shoresh notes them but does not create them.
+   - **Files**: the file, _5 pages_, and how it was read: _All camp: a page per day, bunks
+     across_. (If Shoresh ever reads a file the wrong way round, change it here. A file it was
+     unsure about has the dark corner.)
    - **Good to know**: outdoors, rain plans, and priority are not in a schedule file; set
      them on the Activities screen.
-5. Click **Review** (it is greyed out until every choice above is made). The next screen says _Reconciling maple-grove-2026-all-camp.xlsx_ and
-   _0 of 1 questions answered_. The one question: _Is “Library time” at a set time, or an
-   activity?_ (Juniors had it at Period 4 on Wednesday, in one week only, so Shoresh cannot be
-   sure.) The answers: **A recurring activity**, **An activity**, or **Leave it out for now**.
-   Click **A recurring activity**.
-6. The button at the bottom now says **Use this setup**. (While a question is unanswered it
-   says how many are left, and cannot be clicked.) Click it.
-7. The summary: _Imported from maple-grove-2026-all-camp.xlsx._, what was **Added** (1
-   program, 7 time blocks, 2 units, 6 bunks, 7 activities, 1 fixed activity, 2 recurring
-   activities), **Not set up yet**, and **Good to know**. Click **Back to Roots**.
+5. With both questions answered, the green button says exactly what will happen: **Add 26**.
+   (While a question is unanswered it says how many are left, and cannot be clicked.)
+6. Click **Add 26**.
+7. The same page now shows what was **Added 26** as tiles, **Not set up yet**, and **Good to
+   know**. Along the top: **Undo this import** and **Done**. Click **Done** to go back to Roots.
 8. Roots now shows the cards filled in. Open **Fixed activities** (Lunch, at Lunch) and
    **Recurring activities** (Morning meeting on Mondays for everyone; Library time on
    Wednesdays for Juniors), and **Activities** (Boating two blocks long, for Seniors only).
@@ -435,28 +434,33 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 9. Back on Roots, click **Re-import last year** (the season has setup now, so it is a quiet
    link at the bottom). This time pick **all eight files** at
    once (the workbook, the six bunk CSVs, and the by-activity CSV).
-10. Each file shows its layout: _All camp_, _By group_ (each bunk's file, named after the file:
-    _Bunk 1_ …), and _By activity_. Everything is marked _already set up_: Shoresh matched it
-    by name and time and adds nothing twice. The similar-name card now reads _Are “Musik” and
-    “Music” the same activity?_ with **Same: use “Music”** (Music is already set up). Click it.
-11. Click **Review**. One question: _The files disagree about Bunk 3, Tuesday, Period 2.
-    Which is right?_ (the Bunk 3 file says Soccer; the all-camp and by-activity files say Art).
-    Click **Leave it out for now**, then **Use this setup**. The summary lists it under **Left
-    out for now**: not added; the next import asks again.
+10. The top says _maple-grove-2026-all-camp.xlsx + 7_. **Files** shows each file's layout:
+    _All camp_, _By group_ (each bunk's file, named after the file: _Bunk 1_ …), and _By
+    activity_. **Comes in** has nothing to count: Shoresh matched everything by name and time
+    and adds nothing twice. The similar-name question now reads _Are “Musik” and “Music” the
+    same activity?_ with **Same: use “Music”** (Music is already set up). Click it.
+11. One more question: _The files disagree about Bunk 3, Tuesday, Period 2. Which is right?_
+    (the Bunk 3 file says Soccer; the all-camp and by-activity files say Art). Click **Leave
+    it out for now**, then the green button. The page afterwards lists it under **Left out for
+    now**: not added; the next import asks again.
 
 **Last year's week as a version, and undoing an import**
 
 12. Start a fresh season for this: **Season actions** → **New season**, _Import test 2_, first day Jun 28, 2027,
     last day Jul 9, 2027, **Create season**. Don't add weeks: from Roots, import
     `maple-grove-2026-all-camp.xlsx` again. The answers you gave last time are filled in
-    already and marked _remembered_ (the review says how many); any can be changed.
+    already, each row marked _Remembered_; click another answer in a row to change it.
 13. The season has no weeks yet, so Shoresh adds them from its dates, as **Fill in weeks**
     would (two weeks), and asks only which one last year's schedule is: _Which week is last
     year's schedule?_ with _Week 1 (starts Jun 28)_ and _Week 2 (starts Jul 5)_. Pick
-    _Week 1_. **Good to know** says the season's 2 weeks are added from its dates, and the
-    summary's **Added** includes 2 weeks. (Undo in step 15 removes them too.)
-14. The summary now has **Last year's schedule**: _Imported from maple-grove-2026-all-camp.xlsx,
-    for Week 1 (Main): open it on Schedules._ Click **Back to Roots**, then **Schedules**: the version
+    _Week 1_. **Good to know** says the season's 2 weeks are added from its dates, and
+    **Comes in** has a _2 Weeks_ tile. (Undo in step 15 removes them too.) **Last year's
+    schedule** shows a small picture of the week beside _Week 1 (Main)_ and _Kept as a version,
+    Imported from maple-grove-2026-all-camp.xlsx_.
+14. After the green button, **Last year's schedule** shows _Imported from
+    maple-grove-2026-all-camp.xlsx_, _Week 1 (Main)_ and _Open it on Schedules_. (**Undo this
+    import** at the top would take the whole import back now; step 15 does it from Roots
+    instead.) Click **Done**, then **Schedules**: the version
     opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
     trip, and Field day marked _not set up yet_.
 15. Back on Roots, under **Import last year**: _Last import: maple-grove-2026-all-camp.xlsx,
@@ -467,8 +471,8 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 
 **Try it yourself**: a CSV or Excel file of your own invented camp. Days across with one file
 per bunk, bunks across with one sheet per day, or activities across with the bunks in the
-cells. Anything Shoresh is not sure about becomes a question; nothing is saved until **Use this
-setup**.
+cells. Anything Shoresh is not sure about becomes a question; nothing is saved until the green
+**Add** button.
 
 ## 15. Import a list on a screen
 
