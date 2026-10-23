@@ -178,6 +178,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
   typed = {};
   // A control that takes the cursor at the next render (a selector).
   focusAfter = null;
+  // Periods pressed while these details are open ("choiceId|weekday|blockId"): each keeps its
+  // button, even unticked where the set doesn't sit, so the cursor stays on it and it can be
+  // ticked again. Forgotten when the details close or show another offering.
+  pressed = new Set();
 
   /** The season setup from SeasonSetupController (electives, activities, programs). */
   @api
@@ -219,6 +223,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
     if (offeringId !== this.offeringId) {
       this.draft = null;
       this.error = null;
+      this.pressed = new Set();
     }
     this.offeringId = offeringId;
     this.focusHeadingNext = true;
@@ -277,6 +282,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
     const offeringId = this.offeringId;
     this.offeringId = null;
     this.draft = null;
+    this.pressed = new Set();
     this.dispatchEvent(new CustomEvent("close", { detail: { offeringId } }));
   }
 
@@ -441,8 +447,11 @@ export default class ShoreshElectiveDetails extends LightningElement {
     const places = this.placeMap;
     const blocks = blocksOf(this._setup);
     const allDivisions = divisionsOf(this._setup).map((d) => d.id);
-    // Rows: every time block where the set sits or this choice has a period.
-    const keys = new Set([...places.keys(), ...choice.periods]);
+    // Rows: every time block where the set sits, this choice has a period, or one was pressed.
+    const pressed = [...this.pressed]
+      .filter((p) => p.startsWith(`${key}|`))
+      .map((p) => p.slice(key.length + 1));
+    const keys = new Set([...places.keys(), ...choice.periods, ...pressed]);
     const blockIds = [...new Set([...keys].map((k) => k.split("|")[1]))]
       .filter((id) => blocks.has(id))
       .sort(
@@ -471,7 +480,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
             id: `${key}|${k}`,
             weekday: day,
             blockId,
-            shown: sits || ticked,
+            shown: sits || ticked || this.pressed.has(`${key}|${k}`),
             ticked,
             pressed: ticked ? "true" : "false",
             disabled: !!sending,
@@ -635,6 +644,9 @@ export default class ShoreshElectiveDetails extends LightningElement {
     const shown = this.shownChoices.find((c) => c.id === key);
     if (!shown) return;
     const on = !shown.periods.has(periodKey(weekday, block));
+    this.pressed = new Set(this.pressed).add(
+      `${key}|${periodKey(weekday, block)}`
+    );
     this.send(key, {
       id: key,
       periodsOn: on ? [period] : [],
@@ -745,7 +757,17 @@ export default class ShoreshElectiveDetails extends LightningElement {
           recordId: view.key,
           name: view.name,
           onDeleted: () => {
-            this.focusAfter = '[data-id="add-linked-choice"]';
+            // The page calls this once the season is read again, after the details have
+            // redrawn without the deleted one: the cursor goes to the add button now. Only if it
+            // isn't drawn yet does the next render take it there.
+            const add = this.template.querySelector(
+              '[data-id="add-linked-choice"]'
+            );
+            if (add) {
+              add.focus();
+            } else {
+              this.focusAfter = '[data-id="add-linked-choice"]';
+            }
           }
         }
       })

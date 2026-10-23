@@ -262,6 +262,56 @@ describe("c-shoresh-elective-details", () => {
     ).toBe("false");
   });
 
+  it("a period unticked where the set isn't keeps its button, so it can be ticked again", async () => {
+    // A brand-new set no schedule holds yet: every period shown is one the choice has.
+    linkedChoicePlaces.mockResolvedValue({ complete: true, cells: [] });
+    const element = await opened();
+    const sent = saves(element);
+    const id = "lc1|Tuesday|t1";
+    cell(choiceAt(element, 0), id).focus();
+    cell(choiceAt(element, 0), id).click();
+    await flush();
+    expect(sent[0].edit).toEqual({
+      id: "lc1",
+      periodsOn: [],
+      periodsOff: [{ weekday: "Tuesday", blockId: "t1" }]
+    });
+    const unticked = cell(choiceAt(element, 0), id);
+    expect(unticked).not.toBeNull();
+    expect(unticked.getAttribute("aria-pressed")).toBe("false");
+    expect(element.shadowRoot.activeElement).toBe(unticked);
+    // Still there once the save is in and the season read again without it.
+    sent[0].onSaved("lc1");
+    const linked = SETUP.electives.linkedChoices;
+    element.setup = nsRecord(
+      withChoices([
+        { ...linked[0], Times__r: [linked[0].Times__r[0]] },
+        linked[1]
+      ])
+    );
+    await flush();
+    cell(choiceAt(element, 0), id).click();
+    await flush();
+    expect(sent[1].edit).toEqual({
+      id: "lc1",
+      periodsOn: [{ weekday: "Tuesday", blockId: "t1" }],
+      periodsOff: []
+    });
+    // That one refused; closed and opened again, only the periods it has are shown.
+    sent[1].onFailure("Linked choice not saved.");
+    q(element, '[data-id="close"]').click();
+    await flush();
+    element.setup = nsRecord(
+      withChoices([
+        { ...linked[0], Times__r: [linked[0].Times__r[0]] },
+        linked[1]
+      ])
+    );
+    element.open("o1");
+    await flush();
+    expect(cell(choiceAt(element, 0), id)).toBeNull();
+  });
+
   it("a refused save takes its change back and says why", async () => {
     const element = await opened();
     const sent = saves(element);
@@ -474,8 +524,10 @@ describe("c-shoresh-elective-details", () => {
     expect(detail.recordId).toBe("lc1");
     expect(detail.name).toBe("Pottery double");
     const focus = jest.spyOn(HTMLElement.prototype, "focus");
-    detail.onDeleted();
+    // As the page does it: the season read again (and drawn), then onDeleted.
     element.setup = nsRecord(withChoices([SETUP.electives.linkedChoices[1]]));
+    await flush();
+    detail.onDeleted();
     await flush();
     expect(focus.mock.instances).toContain(
       q(element, '[data-id="add-linked-choice"]')

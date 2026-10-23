@@ -498,7 +498,9 @@ division's time, and the server allows its other bunks' campers in it.
     authoring): a period also held by another linked choice of the set for a division both apply
     to carries the corner ('Also in "Drama double", so neither is placed as a set; their periods
     are filled one at a time'), and a period where the set no longer sits on any schedule stays
-    shown, pressed, with the corner ("Chugim isn't here on any schedule now"). The desktop warns
+    shown, pressed, with the corner ("Chugim isn't here on any schedule now"). Unticked, it keeps
+    its button (and the cursor) while the details stay open, so it can be ticked back; the next
+    time they open it is gone, as the set isn't there. The desktop warns
     only for two bundles of one activity; the seat engine refuses any two linked choices sharing a
     time, whatever their activity, so the mark does too. Nothing is resolved for the director.
 43. **Deleting** is the setup screens' delete (`SeasonSetupController.deleteRecord`, now allowing
