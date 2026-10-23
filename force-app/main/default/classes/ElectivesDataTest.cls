@@ -208,25 +208,27 @@ private class ElectivesDataTest {
   static void seatsAreZeroOrMoreAndAMinimumIsOneOrMore() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp();
-      camp.archery.Seats__c = -1;
+      // Only the changed fields are saved, as a screen does: the set it belongs to is fixed.
+      Offering__c archery = new Offering__c(
+        Id = camp.archery.Id,
+        Seats__c = -1
+      );
       Assert.areEqual(
         'Must be 0 or more, or tick No limit.',
-        Database.update(camp.archery, false, AccessLevel.USER_MODE)
-            .getErrors()[0]
+        Database.update(archery, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );
-      camp.archery.Seats__c = 0; // closed this summer
-      camp.archery.MinimumToRun__c = 0;
+      archery.Seats__c = 0; // closed this summer
+      archery.MinimumToRun__c = 0;
       Assert.areEqual(
         'Must be 1 or more, or blank for no minimum.',
-        Database.update(camp.archery, false, AccessLevel.USER_MODE)
-            .getErrors()[0]
+        Database.update(archery, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );
-      camp.archery.MinimumToRun__c = null;
-      camp.archery.Seats__c = null; // not filled in yet
+      archery.MinimumToRun__c = null;
+      archery.Seats__c = null; // not filled in yet
       Assert.isTrue(
-        Database.update(camp.archery, false, AccessLevel.USER_MODE).isSuccess()
+        Database.update(archery, false, AccessLevel.USER_MODE).isSuccess()
       );
     }
   }
@@ -366,10 +368,13 @@ private class ElectivesDataTest {
   static void aRunsScheduleIsOfItsWeek() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp().withRun();
-      camp.run.Week__c = camp.ids.get('Week 2');
+      ElectiveRun__c run = new ElectiveRun__c(
+        Id = camp.run.Id,
+        Week__c = camp.ids.get('Week 2')
+      );
       Assert.areEqual(
         'This schedule is not for the run\'s week.',
-        Database.update(camp.run, false, AccessLevel.USER_MODE).getErrors()[0]
+        Database.update(run, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );
     }
