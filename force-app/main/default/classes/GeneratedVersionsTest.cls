@@ -579,18 +579,22 @@ private class GeneratedVersionsTest {
         copyId,
         revisionNow(draftId)
       );
+      // Read before stopTest: publishing above (with the week's special days, ADR 0014 slice 5)
+      // leaves the setup's own limits too little room.
+      Decimal option = version(copyId).EngineOption__c;
+      GeneratedInputs.Inputs after = GeneratedTestData.inputs();
+      String period2 = GeneratedTestData.slots(
+        draftId,
+        GeneratedTestData.at(0, 0)
+      )[
+        GeneratedTestData.PERIOD_2
+      ];
       Test.stopTest();
       Assert.isTrue(restored);
-      Assert.areEqual(1, version(copyId).EngineOption__c);
+      Assert.areEqual(1, option);
       // The week takes the copy's option back with its cells (ADR 0010 §49, §50).
-      GeneratedInputs.Inputs after = GeneratedTestData.inputs();
       Assert.areEqual(1, after.option);
-      Assert.areEqual(
-        GeneratedTestData.a('Gym games'),
-        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
-          GeneratedTestData.PERIOD_2
-        ]
-      );
+      Assert.areEqual(GeneratedTestData.a('Gym games'), period2);
     }
   }
 

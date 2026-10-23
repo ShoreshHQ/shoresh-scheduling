@@ -81,6 +81,33 @@ describe("c-shoresh-schedule-print", () => {
     );
   });
 
+  it("prints a special day's notes under its schedule, and says when it has none yet (ADR 0014 slice 5)", async () => {
+    const element = createElement("c-shoresh-schedule-print", {
+      is: ShoreshSchedulePrint
+    });
+    element.pages = [
+      {
+        key: "day-0",
+        title: "Tuesday, Jun 30 · Field Day",
+        table: null,
+        notes: "Wear blue",
+        empty: "Field Day has no schedule yet."
+      }
+    ];
+    element.week = "Week 1";
+    element.version = "Published schedule";
+    element.corner = "Time block";
+    document.body.appendChild(element);
+    const page = qa(element, "section.page")[0];
+    expect(page.querySelector(".problem").textContent).toBe(
+      "Field Day has no schedule yet."
+    );
+    expect(page.querySelector('[data-id="print-notes"]').textContent).toBe(
+      "Wear blue"
+    );
+    await expect(element).toBeAccessible();
+  });
+
   it("prints a page per bunk from Group View", () => {
     const element = render("group");
     expect(

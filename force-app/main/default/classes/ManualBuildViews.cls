@@ -264,7 +264,9 @@ public with sharing class ManualBuildViews {
       new Schedule__c(
         Id = read.scheduleId,
         Program__c = read.program.Id,
-        Week__c = read.week.Id
+        Week__c = read.week.Id,
+        // Read with its special days, when it has any, so they aren't read again.
+        Week__r = read.weekHasSpecialDays ? read.week : null
       ),
       names
     );

@@ -14,9 +14,13 @@ import {
   activityGrid,
   dailyGrid,
   days,
+  eventPlans,
+  eventsOn,
   groupGrid,
-  groups
+  groups,
+  withSpecials
 } from "c/shoreshScheduleViews";
+import { noScheduleYet } from "c/shoreshScheduleExport";
 
 const ORIGINS = {
   Manual: "Manual Build",
@@ -32,6 +36,14 @@ const ORIGINS = {
  * and moving things comes with Manual Build. Export to Excel and Print, beside Versions, take out
  * the version on screen (ADR 0005 part 2): the version open is the choice, so nothing asks which.
  *
+ * Special days and events (ADR 0014 slice 5): a day a special day replaces shows that special day's
+ * own schedule, its pill and Group View column carrying its name, and under the grid its line (its
+ * name, the camp's word for it, its notes). A day with special events placed on it lists them under
+ * the grid, each with "Open <name>", which shows that event's own schedule, read-only, in the
+ * grid's place; "← <day>" goes back (focus on the way back, then on that Open again, as Activity
+ * View's drilldown). A version that is or was published shows them as it carried them when it was
+ * published; any other, the week's as they are now (SchedulesController.openSchedule).
+ *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
 export default class ShoreshSchedules extends LightningElement {
@@ -46,7 +58,12 @@ export default class ShoreshSchedules extends LightningElement {
   dayIndex = 0;
   groupKey;
   activityId;
-  // Where the cursor goes at the next render: { back } or { card: activity Id }.
+  // The special event whose own schedule is shown in Daily View's place, or null.
+  eventId = null;
+  // The opened version with its special days in their days' places, worked out once per open.
+  shownMemo = { of: null, view: null };
+  // Where the cursor goes at the next render: { back }, { card: activity Id }, { eventBack } or
+  // { event: event Id }.
   focusAfter = null;
   pending = 0;
   // From choosing a week until its newest version is open (or it has none).
@@ -189,6 +206,7 @@ export default class ShoreshSchedules extends LightningElement {
       const all = groups(opened);
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
+      this.eventId = null;
     }, "Couldn't open that schedule. Nothing was changed.");
   }
 
@@ -259,9 +277,18 @@ export default class ShoreshSchedules extends LightningElement {
   }
   handleView(event) {
     this.view = event.currentTarget.dataset.view;
+    this.eventId = null;
     if (this.view !== "activity") {
       this.activityId = null;
     }
+  }
+
+  /** The opened version as the views show it: each day a special day replaces is its schedule. */
+  get shown() {
+    if (this.shownMemo.of !== this.opened) {
+      this.shownMemo = { of: this.opened, view: withSpecials(this.opened) };
+    }
+    return this.shownMemo.view;
   }
 
   get corner() {
@@ -270,15 +297,18 @@ export default class ShoreshSchedules extends LightningElement {
 
   // Daily View
   get dayPills() {
-    return days(this.opened).map((day) => ({
+    return days(this.shown).map((day) => ({
       ...day,
+      // A day a special day replaces carries its name: "Friday Jul 3 · Visiting Day".
+      sub: day.special ? `${day.sub} · ${day.special}` : day.sub,
+      specialText: day.special ? ` · ${day.special}` : "",
       className: day.index === this.dayIndex ? "pill pill_on" : "pill",
       // Chosen is said to screen readers, and shown by more than colour (CSS: underline).
       pressed: String(day.index === this.dayIndex)
     }));
   }
   get selectedDay() {
-    return this.opened.days[this.dayIndex];
+    return this.shown.days[this.dayIndex];
   }
   get dayProblem() {
     const day = this.selectedDay;
@@ -287,26 +317,92 @@ export default class ShoreshSchedules extends LightningElement {
       : null;
   }
   get dailyGrid() {
-    return dailyGrid(this.opened, this.dayIndex, this.t);
+    return dailyGrid(this.shown, this.dayIndex, this.t);
   }
   get dailyGridLabel() {
     const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
-    return day ? day.label : null;
+    return day ? `${day.label}${day.specialText}` : null;
   }
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
+    this.eventId = null;
+  }
+
+  // ---------- special days and events (ADR 0014 slice 5) ----------
+
+  /** The special day replacing the day shown: its line under the grid, or null. */
+  get specialLine() {
+    const day = this.selectedDay;
+    if (!day || !day.special) {
+      return null;
+    }
+    return {
+      name: day.special.name,
+      kind: this.t.s("SpecialDay"),
+      notes: day.special.notes || ""
+    };
+  }
+  /** A special day with no time blocks yet says so in its grid's place. */
+  get noSpecialSchedule() {
+    const day = this.selectedDay;
+    return day && day.special && !day.problem && !day.blocks.length
+      ? noScheduleYet(day.special.name)
+      : null;
+  }
+  get showDailyGrid() {
+    return !this.dayProblem && !this.noSpecialSchedule;
+  }
+
+  /** The special events on the day shown that have a schedule of their own, to open. */
+  get dayEvents() {
+    const plans = new Map(eventPlans(this.shown).map((e) => [e.eventId, e]));
+    return eventsOn(this.selectedDay)
+      .filter((item) => plans.has(item.id))
+      .map((item) => {
+        const name = plans.get(item.id).name;
+        return { id: item.id, name, open: `Open ${name}` };
+      });
+  }
+  get hasDayEvents() {
+    return this.dayEvents.length > 0;
+  }
+  get eventWord() {
+    return this.t.s("SpecialEvent");
+  }
+  get openedEvent() {
+    if (!this.eventId || !this.isDaily) {
+      return null;
+    }
+    return eventPlans(this.shown).find((e) => e.eventId === this.eventId);
+  }
+  get eventGrid() {
+    const event = this.openedEvent;
+    return event ? dailyGrid({ days: [event.plan] }, 0, this.t) : null;
+  }
+  get eventBackLabel() {
+    const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
+    return `← ${day ? day.label : ""}`;
+  }
+  /** Opening an event puts the cursor on the way back; going back, on its Open (WCAG 2.4.3). */
+  handleOpenEvent(event) {
+    this.eventId = event.currentTarget.dataset.event;
+    this.focusAfter = { eventBack: true };
+  }
+  handleEventBack() {
+    this.focusAfter = { event: this.eventId };
+    this.eventId = null;
   }
 
   // Group View
   get groupPills() {
-    return groups(this.opened).map((grp) => ({
+    return groups(this.shown).map((grp) => ({
       ...grp,
       className: grp.key === this.groupKey ? "pill pill_on" : "pill",
       pressed: String(grp.key === this.groupKey)
     }));
   }
   get groupGrid() {
-    return this.groupKey ? groupGrid(this.opened, this.groupKey, this.t) : null;
+    return this.groupKey ? groupGrid(this.shown, this.groupKey, this.t) : null;
   }
   get groupGridLabel() {
     const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
@@ -330,7 +426,7 @@ export default class ShoreshSchedules extends LightningElement {
     return location ? location.Name : null;
   }
   get activityCards() {
-    return activityCards(this.opened, this.catalogue, this.t).map((card) => ({
+    return activityCards(this.shown, this.catalogue, this.t).map((card) => ({
       ...card,
       location: this.locationName(card.key)
     }));
@@ -339,7 +435,7 @@ export default class ShoreshSchedules extends LightningElement {
     return this.activityCards.find((card) => card.key === this.activityId);
   }
   get activityGrid() {
-    return activityGrid(this.opened, this.activityId);
+    return activityGrid(this.shown, this.activityId, this.t);
   }
   get activityGridLabel() {
     const activity = this.selectedActivity;
@@ -389,7 +485,7 @@ export default class ShoreshSchedules extends LightningElement {
     try {
       await downloadWorkbook(
         this,
-        scheduleSheets(this.opened, this.catalogue, this.t),
+        scheduleSheets(this.shown, this.catalogue, this.t),
         fileNameOf(`${this.weekName} - ${this.openedName}`)
       );
     } catch (e) {
@@ -415,7 +511,7 @@ export default class ShoreshSchedules extends LightningElement {
         // Without it the paper also shows the page around the printout; it still prints.
       }
     }
-    this.printout = printPages(this.opened, this.view, this.catalogue, this.t);
+    this.printout = printPages(this.shown, this.view, this.catalogue, this.t);
     this.printPending = true;
   }
   get printWeek() {
@@ -453,13 +549,22 @@ export default class ShoreshSchedules extends LightningElement {
     if (!this.focusAfter) {
       return;
     }
-    const { back, card } = this.focusAfter;
+    const { back, card, eventBack, event } = this.focusAfter;
     this.focusAfter = null;
-    const target = back
-      ? this.template.querySelector('[data-id="all-activities"]')
-      : [...this.template.querySelectorAll(".card[data-key]")].find(
-          (el) => el.dataset.key === card
-        );
+    let target;
+    if (back) {
+      target = this.template.querySelector('[data-id="all-activities"]');
+    } else if (eventBack) {
+      target = this.template.querySelector('[data-id="event-back"]');
+    } else if (event) {
+      target = [...this.template.querySelectorAll("[data-event]")].find(
+        (el) => el.dataset.event === event
+      );
+    } else {
+      target = [...this.template.querySelectorAll(".card[data-key]")].find(
+        (el) => el.dataset.key === card
+      );
+    }
     if (target) {
       target.focus();
     }

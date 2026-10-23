@@ -8,6 +8,11 @@
  *
  * A day's rows are the stored format's: cells separated by commas, one per time block; a cell is
  * empty, an item number (from 1), or ^ (the item above carries on). Names are as saved.
+ *
+ * A day a special day replaces (ADR 0014 slice 5; withSpecials) is that special day's own schedule,
+ * with its own time blocks, and says so (`special`): its pill and Group View column carry its name,
+ * Group View lays it on its own time blocks (one with the same times as the week's shares its
+ * row), and Activity View counts nothing there, as the desktop's activity drilldown ignores it.
  */
 
 const CARRIES_ON = "^";
@@ -97,14 +102,75 @@ function readable(view) {
   return ((view && view.days) || []).filter((day) => !day.problem);
 }
 
+const NO_PLAN = { blocks: [], groups: [], items: [], rows: [] };
+
+/**
+ * The opened schedule with each day a special day replaces swapped for that special day's own
+ * schedule (view.specials.days, SchedulesController.openSchedule), marked `special` ({ id, name,
+ * notes }); the schedule's own cells for that day are out of sight. The same view when nothing is
+ * replaced.
+ */
+export function withSpecials(view) {
+  const replaced = (view && view.specials && view.specials.days) || [];
+  if (!replaced.length) {
+    return view;
+  }
+  const byDate = new Map(replaced.map((day) => [day.dateValue, day]));
+  return {
+    ...view,
+    days: view.days.map((day) => {
+      const special = byDate.get(day.dateValue);
+      if (!special) {
+        return day;
+      }
+      return {
+        ...NO_PLAN,
+        ...(special.plan || {}),
+        locks: [],
+        dateValue: day.dateValue,
+        special: {
+          id: special.specialDayId,
+          name: special.name,
+          notes: special.notes || null
+        }
+      };
+    })
+  };
+}
+
+/** A special event's own schedule as a schedule of one day, for dailyGrid ({ days: [plan] }). */
+export function eventPlans(view) {
+  return ((view && view.specials && view.specials.events) || []).filter(
+    (event) =>
+      event.plan && !event.plan.problem && (event.plan.blocks || []).length
+  );
+}
+
 /** The week's days, for the day pills and Group and Activity View columns. */
 export function days(view) {
   return ((view && view.days) || []).map((day, index) => ({
     key: String(index),
     index,
     problem: day.problem,
+    special: day.special ? day.special.name : null,
     ...dayLabel(day.dateValue)
   }));
+}
+
+/** The special events placed on a day (records only), in the order first placed. */
+export function eventsOn(day) {
+  if (!day || day.problem || day.special) {
+    return [];
+  }
+  const seen = new Map();
+  day.groups.forEach((grp, g) =>
+    groupCells(day, g).forEach((c) => {
+      if (isEventItem(c.item) && !seen.has(c.item.id)) {
+        seen.set(c.item.id, c.item);
+      }
+    })
+  );
+  return [...seen.values()];
 }
 
 /**
@@ -128,19 +194,61 @@ export function groups(view) {
   return [...seen.values()];
 }
 
-/** Every time block in the week, in the order of the day (a block may be on some days only). */
-function weekBlocks(view) {
+/**
+ * Every time block in the week, in the order of the day (a block may be on some days only), and
+ * the row each day's block is in. A special day's own time block shares the row of the week's
+ * block at the same times; one at other times has a row of its own (shared by special days at
+ * those times), in time order.
+ */
+function weekRows(view) {
   const seen = new Map();
-  readable(view).forEach((day) =>
+  const regular = readable(view).filter((day) => !day.special);
+  regular.forEach((day) =>
     day.blocks.forEach((block) => {
       if (!seen.has(refKey(block))) {
         seen.set(refKey(block), block);
       }
     })
   );
-  return [...seen.values()].sort((a, b) =>
-    (a.startTime || "").localeCompare(b.startTime || "")
-  );
+  const timeOf = (block) => {
+    return block.startTime ? `${block.startTime}|${block.endTime}` : null;
+  };
+  const atTime = new Map();
+  seen.forEach((block, key) => {
+    const time = timeOf(block);
+    if (time && !atTime.has(time)) {
+      atTime.set(time, key);
+    }
+  });
+  const ownKey = new Map();
+  readable(view)
+    .filter((day) => day.special)
+    .forEach((day) =>
+      day.blocks.forEach((block) => {
+        const time = timeOf(block);
+        let key = time && atTime.get(time);
+        if (!key) {
+          key = time ? `at:${time}` : `${day.dateValue}:${refKey(block)}`;
+          if (!seen.has(key)) {
+            seen.set(key, block);
+          }
+        }
+        ownKey.set(`${day.dateValue}|${refKey(block)}`, key);
+      })
+    );
+  const blocks = [...seen.entries()]
+    .map(([rowKey, block]) => ({ ...block, rowKey }))
+    .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+  const index = new Map(blocks.map((block, i) => [block.rowKey, i]));
+  const keyOf = (day, block) => {
+    return day.special
+      ? ownKey.get(`${day.dateValue}|${refKey(block)}`)
+      : refKey(block);
+  };
+  return {
+    blocks,
+    rowOf: (day, blockIndex) => index.get(keyOf(day, day.blocks[blockIndex]))
+  };
 }
 
 /**
@@ -185,7 +293,7 @@ function blockRows(blocks) {
       ? `${clock(block.startTime)} – ${clock(block.endTime)}`
       : null;
     return {
-      key: refKey(block),
+      key: block.rowKey || refKey(block),
       name: block.name,
       // The time column shows times only (wiki decision 36, docs/design round 13): "9:00–9:45".
       // A block saved without times shows its name instead.
@@ -331,15 +439,47 @@ export function dailyGrid(view, dayIndex, t) {
   };
 }
 
+/**
+ * A day a special day replaces where its own schedule isn't drawn (Activity View, or one with no
+ * time blocks yet): its whole column is one quiet cell named for it.
+ */
+function specialCell(dayIndex, rowCount, special, t) {
+  const length = Math.max(rowCount, 1);
+  return {
+    key: `${dayIndex}-special`,
+    row: 0,
+    column: dayIndex,
+    length,
+    style: place(0, dayIndex, length),
+    text: special.name,
+    className: "cell cell_plan",
+    note: null,
+    title: t ? `${special.name}: ${t.s("SpecialDay")}` : special.name
+  };
+}
+
+/** A day's column heading: a day a special day replaces carries its name ("Friday · Field Day"). */
+function dayColumn(d) {
+  return column(
+    d.key,
+    d.special ? `${d.label} · ${d.special}` : d.label,
+    d.sub,
+    false
+  );
+}
+
 /** Group View: one group's week, a column per day. */
 export function groupGrid(view, groupKey, t) {
-  const blocks = weekBlocks(view);
-  const rowOf = new Map(blocks.map((block, i) => [refKey(block), i]));
+  const { blocks, rowOf } = weekRows(view);
   const cells = [];
-  const columns = days(view).map((d) => column(d.key, d.label, d.sub, false));
+  const columns = days(view).map(dayColumn);
   (view.days || []).forEach((day, dayIndex) => {
     if (day.problem) {
       cells.push(problemCell(dayIndex, blocks.length));
+      return;
+    }
+    if (day.special && !day.blocks.length) {
+      cells.push(specialCell(dayIndex, blocks.length, day.special, t));
       return;
     }
     const g = day.groups.findIndex((grp) => refKey(grp) === groupKey);
@@ -347,8 +487,8 @@ export function groupGrid(view, groupKey, t) {
       return;
     }
     groupCells(day, g).forEach((c) => {
-      const first = rowOf.get(refKey(day.blocks[c.blockIndex]));
-      const last = rowOf.get(refKey(day.blocks[c.blockIndex + c.length - 1]));
+      const first = rowOf(day, c.blockIndex);
+      const last = rowOf(day, c.blockIndex + c.length - 1);
       cells.push(
         cell(
           `${dayIndex}-${first}`,
@@ -374,23 +514,26 @@ export function groupGrid(view, groupKey, t) {
  */
 export function activityCards(view, catalogue, t) {
   const counts = new Map();
-  readable(view).forEach((day) =>
-    day.groups.forEach((grp, g) =>
-      groupCells(day, g).forEach((c) => {
-        if (c.item && c.item.kind === "A") {
-          const entry = counts.get(c.item.id) || {
-            groups: new Set(),
-            times: 0,
-            name: c.item.name,
-            gone: !!c.item.gone
-          };
-          entry.groups.add(refKey(grp));
-          entry.times += 1;
-          counts.set(c.item.id, entry);
-        }
-      })
-    )
-  );
+  // A day a special day replaces counts nothing (desktop: the activity drilldown ignores it).
+  readable(view)
+    .filter((day) => !day.special)
+    .forEach((day) =>
+      day.groups.forEach((grp, g) =>
+        groupCells(day, g).forEach((c) => {
+          if (c.item && c.item.kind === "A") {
+            const entry = counts.get(c.item.id) || {
+              groups: new Set(),
+              times: 0,
+              name: c.item.name,
+              gone: !!c.item.gone
+            };
+            entry.groups.add(refKey(grp));
+            entry.times += 1;
+            counts.set(c.item.id, entry);
+          }
+        })
+      )
+    );
   const cards = (catalogue || []).map((a) => ({ key: a.Id, name: a.Name }));
   const known = new Set(cards.map((card) => card.key));
   counts.forEach((entry, id) => {
@@ -409,14 +552,20 @@ export function activityCards(view, catalogue, t) {
   });
 }
 
-/** Activity View, opened on one activity: in each block of each day, the groups doing it. */
-export function activityGrid(view, activityId) {
-  const blocks = weekBlocks(view);
-  const rowOf = new Map(blocks.map((block, i) => [refKey(block), i]));
+/**
+ * Activity View, opened on one activity: in each block of each day, the groups doing it. A day a
+ * special day replaces is one cell named for it (nothing there is counted).
+ */
+export function activityGrid(view, activityId, t) {
+  const { blocks, rowOf } = weekRows(view);
   const cells = [];
   (view.days || []).forEach((day, dayIndex) => {
     if (day.problem) {
       cells.push(problemCell(dayIndex, blocks.length));
+      return;
+    }
+    if (day.special) {
+      cells.push(specialCell(dayIndex, blocks.length, day.special, t));
       return;
     }
     const names = new Map();
@@ -424,7 +573,7 @@ export function activityGrid(view, activityId) {
       groupCells(day, g).forEach((c) => {
         if (c.item && c.item.kind === "A" && c.item.id === activityId) {
           for (let b = c.blockIndex; b < c.blockIndex + c.length; b++) {
-            const row = rowOf.get(refKey(day.blocks[b]));
+            const row = rowOf(day, b);
             names.set(row, [...(names.get(row) || []), grp.name]);
           }
         }
@@ -447,7 +596,7 @@ export function activityGrid(view, activityId) {
     });
   });
   return {
-    columns: days(view).map((d) => column(d.key, d.label, d.sub, false)),
+    columns: days(view).map(dayColumn),
     rows: blockRows(blocks),
     cells
   };

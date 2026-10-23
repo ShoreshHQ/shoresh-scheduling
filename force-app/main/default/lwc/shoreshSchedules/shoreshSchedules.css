@@ -191,3 +191,85 @@
   cursor: default;
   opacity: 0.55;
 }
+
+/* A special day's line and the day's special events under the grid (ADR 0014 slice 5), in the
+   week editor's look for the same line (mockup placed-day.png). */
+.day-events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.special-line {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-cell-gap);
+  min-height: var(--shoresh-tile-h);
+  padding: var(--shoresh-space-pad);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.special-name {
+  flex: none;
+  width: var(--shoresh-head-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  padding-left: var(--shoresh-space-control-x);
+}
+
+.special-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  font-weight: 500;
+}
+
+.special-kind {
+  color: var(--shoresh-text-2);
+}
+
+.special-notes {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  white-space: pre-line;
+}
+
+.special-actions {
+  flex: none;
+  display: flex;
+  margin-left: auto;
+  gap: var(--shoresh-space-in-group);
+}
+
+.special-open {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+}
+
+.special-arrow,
+.flag {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.special-arrow {
+  width: 14px;
+  height: 14px;
+  margin-left: var(--shoresh-s1);
+}
+
+.flag {
+  width: 12px;
+  height: 12px;
+  stroke: var(--shoresh-text-2);
+}

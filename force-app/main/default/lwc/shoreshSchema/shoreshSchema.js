@@ -104,6 +104,16 @@ import programSortOrder from "@salesforce/schema/Program__c.SortOrder__c";
 import programThursday from "@salesforce/schema/Program__c.Thursday__c";
 import programTuesday from "@salesforce/schema/Program__c.Tuesday__c";
 import programWednesday from "@salesforce/schema/Program__c.Wednesday__c";
+import publishedPlanObject from "@salesforce/schema/PublishedPlan__c";
+import publishedPlanDate from "@salesforce/schema/PublishedPlan__c.Date__c";
+import publishedPlanGridFormatVersion from "@salesforce/schema/PublishedPlan__c.GridFormatVersion__c";
+import publishedPlanItem from "@salesforce/schema/PublishedPlan__c.Item__c";
+import publishedPlanKind from "@salesforce/schema/PublishedPlan__c.Kind__c";
+import publishedPlanNotes from "@salesforce/schema/PublishedPlan__c.Notes__c";
+import publishedPlanPart from "@salesforce/schema/PublishedPlan__c.Part__c";
+import publishedPlanPlan from "@salesforce/schema/PublishedPlan__c.Plan__c";
+import publishedPlanRevision from "@salesforce/schema/PublishedPlan__c.Revision__c";
+import publishedPlanSchedule from "@salesforce/schema/PublishedPlan__c.Schedule__c";
 import recurringActivityObject from "@salesforce/schema/RecurringActivity__c";
 import recurringActivityCopiedFrom from "@salesforce/schema/RecurringActivity__c.CopiedFrom__c";
 import recurringActivityFriday from "@salesforce/schema/RecurringActivity__c.Friday__c";
@@ -212,6 +222,7 @@ export const OBJECT = Object.freeze({
   Location: locationObject.objectApiName,
   PlanPart: planPartObject.objectApiName,
   Program: programObject.objectApiName,
+  PublishedPlan: publishedPlanObject.objectApiName,
   RecurringActivity: recurringActivityObject.objectApiName,
   ScheduleDay: scheduleDayObject.objectApiName,
   Schedule: scheduleObject.objectApiName,
@@ -332,6 +343,17 @@ export const FIELD = Object.freeze({
     Thursday: programThursday.fieldApiName,
     Tuesday: programTuesday.fieldApiName,
     Wednesday: programWednesday.fieldApiName
+  }),
+  PublishedPlan: Object.freeze({
+    Date: publishedPlanDate.fieldApiName,
+    GridFormatVersion: publishedPlanGridFormatVersion.fieldApiName,
+    Item: publishedPlanItem.fieldApiName,
+    Kind: publishedPlanKind.fieldApiName,
+    Notes: publishedPlanNotes.fieldApiName,
+    Part: publishedPlanPart.fieldApiName,
+    Plan: publishedPlanPlan.fieldApiName,
+    Revision: publishedPlanRevision.fieldApiName,
+    Schedule: publishedPlanSchedule.fieldApiName
   }),
   RecurringActivity: Object.freeze({
     CopiedFrom: recurringActivityCopiedFrom.fieldApiName,
@@ -481,6 +503,9 @@ export const PARENT = Object.freeze({
     CopiedFrom: FIELD.Program.CopiedFrom.replace(/__c$/, "__r"),
     Season: FIELD.Program.Season.replace(/__c$/, "__r")
   }),
+  PublishedPlan: Object.freeze({
+    Schedule: FIELD.PublishedPlan.Schedule.replace(/__c$/, "__r")
+  }),
   RecurringActivity: Object.freeze({
     CopiedFrom: FIELD.RecurringActivity.CopiedFrom.replace(/__c$/, "__r"),
     LastTimeBlock: FIELD.RecurringActivity.LastTimeBlock.replace(/__c$/, "__r"),
@@ -590,7 +615,8 @@ export const CHILDREN = Object.freeze({
   }),
   Schedule: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
-    Days: `${NAMESPACE_PREFIX}Days__r`
+    Days: `${NAMESPACE_PREFIX}Days__r`,
+    PublishedPlans: `${NAMESPACE_PREFIX}PublishedPlans__r`
   }),
   Season: Object.freeze({
     Activities: `${NAMESPACE_PREFIX}Activities__r`,

@@ -21,9 +21,28 @@ public with sharing class PublishedChanges {
     // (PublishedRenames), so the screen can say them apart from cells.
     public Integer renames = 0;
     public Integer retimes = 0;
+    // Of count: the special days and the special events whose own schedules change, said apart
+    // from the week's cells (ScheduleSpecials, ADR 0014 slice 5).
+    public Integer specialDays = 0;
+    public Integer events = 0;
     // The lines past mostLines, not listed ("…and N more.").
     public Integer moreLines = 0;
+    // The days a special day replaces (on either side), whose own cells are out of sight and not
+    // compared (SpecialChanges says what changes there).
+    public Set<Date> hidden = new Set<Date>();
     private Integer mostLines;
+
+    // A special day changed, one line.
+    public void addSpecialDay(String line) {
+      specialDays++;
+      add(line, 1);
+    }
+
+    // A special event's own schedule changed, one line.
+    public void addEvent(String line) {
+      events++;
+      add(line, 1);
+    }
 
     // A line, and how many cells (or renames) it covers.
     public void add(String line, Integer cells) {
@@ -42,14 +61,31 @@ public with sharing class PublishedChanges {
     List<ScheduleDays.DayGrid> draft,
     Integer mostLines
   ) {
+    Changes result = none(mostLines);
+    addBetween(result, published, draft);
+    return result;
+  }
+
+  /** No changes yet, to list at most mostLines of them. */
+  public static Changes none(Integer mostLines) {
+    Changes result = new Changes();
+    result.mostLines = mostLines;
+    return result;
+  }
+
+  /** Adds the changes from published to draft to result, leaving out its hidden days. */
+  public static void addBetween(
+    Changes result,
+    List<ScheduleDays.DayGrid> published,
+    List<ScheduleDays.DayGrid> draft
+  ) {
     Map<Date, ScheduleDays.DayGrid> wasDays = byDay(published);
     Map<Date, ScheduleDays.DayGrid> nowDays = byDay(draft);
     Set<Date> dateSet = new Set<Date>(wasDays.keySet());
     dateSet.addAll(nowDays.keySet());
+    dateSet.removeAll(result.hidden);
     List<Date> dates = new List<Date>(dateSet);
     dates.sort();
-    Changes result = new Changes();
-    result.mostLines = mostLines;
     PublishedRenames.addTo(result, published, draft);
     for (Date day : dates) {
       new DayCompare(
@@ -59,7 +95,6 @@ public with sharing class PublishedChanges {
         )
         .addTo(result);
     }
-    return result;
   }
 
   private static Map<Date, ScheduleDays.DayGrid> byDay(
@@ -72,8 +107,12 @@ public with sharing class PublishedChanges {
     return result;
   }
 
-  /** One day, published (was) against draft (now); either is null when that side has no such day. */
-  private class DayCompare {
+  /**
+   * One day, published (was) against draft (now); either is null when that side has no such day.
+   * dayName names it in each line ("Monday", or a special day's or event's own schedule: "Friday ·
+   * Visiting Day", SpecialChanges).
+   */
+  public class DayCompare {
     private String dayName;
     private ScheduleDays.DayGrid was;
     // Groups and time blocks in the draft's order, then any only the published day had.
@@ -84,7 +123,7 @@ public with sharing class PublishedChanges {
     private Map<String, PublishedCells.Item> wasCells;
     private Map<String, PublishedCells.Item> nowCells;
 
-    private DayCompare(
+    public DayCompare(
       String dayName,
       ScheduleDays.DayGrid was,
       ScheduleDays.DayGrid now
@@ -117,7 +156,7 @@ public with sharing class PublishedChanges {
       }
     }
 
-    private void addTo(Changes result) {
+    public void addTo(Changes result) {
       if (was != null && was.grid == null) {
         // Nothing to compare against: the whole day is replaced, and said once. Every cell of
         // the day being published counts (at least one: the day changes even when it is empty).

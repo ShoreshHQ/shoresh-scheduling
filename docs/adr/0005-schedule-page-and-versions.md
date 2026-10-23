@@ -27,6 +27,14 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      this week"; a card opens the week's grid listing the groups doing it in each block, with
      "← All Activities" back.
 
+   _Since 2026-10-22 (ADR 0014 choices 28 and 29): a day a special day replaces shows that
+   special day's own schedule in Daily View (its pill "Tuesday Jun 30 · Field Day", its line with
+   its notes under the grid) and in Group View (its column on the special day's own time blocks,
+   sharing a row with a week's time block at the same times); Activity View counts nothing there.
+   A special event placed on a day can be opened from under that day's grid to show its own
+   schedule, read-only. A version that is or was published shows them as it carried them when it
+   was published (`PublishedPlan__c`); any other, the week's as they are now._
+
    A cell that runs several blocks spans their rows (desktop `gridGeometry`/`gridTracks`:
    140px block column, equal columns, rows at least 48px). Nothing placed shows **Open**, as
    the desktop's empty cell does. Fixed and recurring activities have the desktop's anchor
@@ -68,6 +76,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      `Grid__c` (long text, 131,072), `GridFormatVersion__c`, `Revision__c`. Auto-numbered
      (`SD-000000`), not reportable or searchable (the grid is not meant for reports).
    - `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c` came with Publish (ADR 0008 part 5).
+   - `PublishedPlan__c`, detail of `Schedule__c`, came with special days on Publish (ADR 0014
+     choice 26): the special days' and events' own schedules a published schedule carries.
    - Not built yet: the engine fields,
      `Assignments__c`, `RainyDay__c`, `ScheduleEntry__c`, `Assignment__c`.
 6. **The compact grid format, version 1** (`ScheduleGrid`, checked by `ScheduleGridRules` and `ScheduleGridFrameRules`).
@@ -186,6 +196,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       with `aria-disabled`, not `disabled`, and a press does nothing: the director just pressed
       it, and a focused button that turns disabled drops the cursor to the top of the page (WCAG
       2.4.3), as ADR 0008's counters. The cursor is still on it when the print dialog closes.
+    - _Since 2026-10-22 (ADR 0014 choice 29): a replaced day's sheet and printed page are the
+      special day's own schedule with its name and notes; it is left out of All Activities; each
+      special event with a schedule of its own gets a sheet, and in Daily View a page, after the
+      days._
     - Checked by `shoreshScheduleExport.test.js` (the sheets, the formula guard, the same file
       every time, the pages per view), `shoreshSchedulePrint.test.js` (the table, the page style
       reaching only a page with a printout), `shoreshSchedules.test.js` ("Export to Excel and
