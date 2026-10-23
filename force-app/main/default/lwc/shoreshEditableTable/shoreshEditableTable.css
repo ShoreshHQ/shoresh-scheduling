@@ -183,6 +183,24 @@
   border-right-style: dashed;
 }
 
+/* An offering an import proposed and no one has confirmed (repo ADR 0018): the missing shows by
+   its outline, a dashed edge on a row that is otherwise like the rest. */
+.row_proposed > td,
+.row_proposed:hover > td,
+.row_proposed:focus-within > td {
+  border-color: rgba(38, 35, 27, 0.4);
+  border-top-style: dashed;
+  border-bottom-style: dashed;
+}
+
+.row_proposed > td:first-child {
+  border-left-style: dashed;
+}
+
+.row_proposed > td:last-child {
+  border-right-style: dashed;
+}
+
 /* A refused change still on the row: a mark at its start until it is saved or put back. */
 .not-saved > td:first-child {
   box-shadow: inset 3px 0 0 var(--shoresh-color-text);
@@ -322,6 +340,68 @@
   display: none;
 }
 
+/* ---------- seats: words at rest, the number and No limit in their place on hover or edit ---------- */
+
+.seats {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.seats-text {
+  display: block;
+  padding: 0 var(--shoresh-space-control-x);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seats-fields {
+  display: none;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  min-width: 0;
+}
+
+.seats-fields lightning-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.no-limit {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  color: var(--shoresh-text-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Room round the small tick so it is a fair target beside the number (WCAG 2.5.8, 24px). */
+.no-limit-box {
+  margin: 0 2px 0 6px;
+  accent-color: var(--shoresh-color-highlight);
+}
+
+.no-limit-box:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.row:hover .seats-fields,
+.row:focus-within .seats-fields,
+.seats_open .seats-fields {
+  display: flex;
+}
+
+.row:hover .seats-text,
+.row:focus-within .seats-text,
+.seats_open .seats-text {
+  display: none;
+}
+
 /* "Needs a look": the dot (c/shoreshDot), its words on hover, focus, or tap. */
 .flag {
   display: inline-block;
@@ -445,6 +525,21 @@
   padding-right: var(--shoresh-s1);
   text-align: right;
   white-space: nowrap;
+}
+
+/* A change offered at the row's end in words (a proposed offering's Confirm): under the pointer,
+   as the approved mock-up draws it, and with the keyboard in the row. Like the tools it only
+   fades, so Tab still reaches it (repo ADR 0018 choice 15). */
+.end-action {
+  height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+  vertical-align: middle;
+  opacity: 0;
+}
+
+.row:hover .end-action,
+.row:focus-within .end-action,
+.row_selected .end-action {
+  opacity: 1;
 }
 
 .tools {

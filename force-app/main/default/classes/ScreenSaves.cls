@@ -105,6 +105,17 @@ public with sharing class ScreenSaves {
       SpecialEvent__c.SortOrder__c,
       SpecialEvent__c.Location__c,
       SpecialEvent__c.Notes__c
+    },
+    // The Electives screen (repo ADR 0018, slice E4); linked choices are edited in slice E8.
+    ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
+      ElectiveSet__c.Name
+    },
+    Offering__c.SObjectType => new Set<Schema.SObjectField>{
+      Offering__c.Activity__c,
+      Offering__c.Seats__c,
+      Offering__c.NoSeatLimit__c,
+      Offering__c.MinimumToRun__c,
+      Offering__c.Proposed__c
     }
   };
   // The parent each kind is created under: set when a row is added, never changed after (except
@@ -122,7 +133,9 @@ public with sharing class ScreenSaves {
     FixedActivity__c.SObjectType => FixedActivity__c.Program__c,
     RecurringActivity__c.SObjectType => RecurringActivity__c.Program__c,
     SpecialDay__c.SObjectType => SpecialDay__c.Season__c,
-    SpecialEvent__c.SObjectType => SpecialEvent__c.Season__c
+    SpecialEvent__c.SObjectType => SpecialEvent__c.Season__c,
+    ElectiveSet__c.SObjectType => ElectiveSet__c.Season__c,
+    Offering__c.SObjectType => Offering__c.ElectiveSet__c
   };
 
   /** What a table sends with its rows: week ticks, and who each recurring activity covers. */

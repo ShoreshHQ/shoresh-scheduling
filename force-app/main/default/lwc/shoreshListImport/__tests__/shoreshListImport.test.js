@@ -729,4 +729,121 @@ describe("Import worksheet (Roots)", () => {
     ]);
     expect($(element, '[data-id="saved"]')).not.toBeNull();
   });
+
+  describe("the Electives list (plan §6.2)", () => {
+    const ELECTIVES = {
+      ...SETUP,
+      electives: {
+        sets: [{ Id: "es1", Name: "Chugim" }],
+        offerings: [
+          {
+            Id: "o1",
+            ElectiveSet__c: "es1",
+            Activity__c: "a1",
+            Seats__c: 12,
+            NoSeatLimit__c: false,
+            MinimumToRun__c: null,
+            Proposed__c: false
+          }
+        ],
+        linkedChoices: []
+      }
+    };
+
+    it("offerings of activities the season doesn't have: the activities are added with them, proposed", async () => {
+      const element = await openWith(
+        ["Activity,Seats", "Archery,12", "Woodworking,10"].join("\n"),
+        { screenKey: "electives", setup: ELECTIVES }
+      );
+      expect(
+        $$(element, '[data-id="also-add"] lightning-input').map((box) => [
+          box.label,
+          box.checked,
+          box.disabled
+        ])
+      ).toEqual([["Woodworking · activity", true, true]]);
+      expect($(element, '[data-id="new"]').textContent).toContain(
+        "Woodworking"
+      );
+      $(element, 'lightning-button[data-id="save"]').click();
+      await flush();
+      const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+      expect(plan.screen).toBe("electives");
+      expect(plan.records.map((r) => [r.kind, r.key])).toEqual([
+        ["Activity", "Activity:Woodworking"],
+        ["Offering", "Offering:es1:Woodworking"]
+      ]);
+      expect(plan.records[1].fields).toEqual({
+        NoSeatLimit__c: false,
+        Seats__c: 10,
+        MinimumToRun__c: null,
+        Proposed__c: true
+      });
+    });
+
+    it("a file of camper choices is not read as offerings: it says so and offers Bring in choices", async () => {
+      const element = await openWith(
+        [
+          "Camper ID,Child's name,Chug choice 1,Chug choice 2",
+          "SYN-1,Maya Fernwood,Archery,Drama",
+          "SYN-2,Eli Marblecrest,Drama,Archery"
+        ].join("\n"),
+        { screenKey: "electives", setup: ELECTIVES }
+      );
+      const note = $(element, '[data-id="choices-file"]');
+      expect(note.textContent).toContain(
+        "activities.csv: that file is camper choices, not offerings. Nothing was saved."
+      );
+      expect($(element, '[data-id="new"]')).toBeNull();
+      const button = $(element, 'lightning-button[data-id="bring-in-choices"]');
+      expect(button.label).toBe("Bring in choices");
+      const heard = jest.fn();
+      element.addEventListener("bringinchoices", heard);
+      button.click();
+      await flush();
+      expect(heard).toHaveBeenCalledTimes(1);
+      expect(saveList).not.toHaveBeenCalled();
+      expect($(element, '[data-id="list-import"]')).toBeNull();
+    });
+
+    it("its own download is not taken for camper choices", async () => {
+      const element = await openWith(
+        [
+          "Elective set,Activity,Seats,Minimum,Proposed",
+          "Chugim,Archery,12,,No"
+        ].join("\n"),
+        { screenKey: "electives", setup: ELECTIVES }
+      );
+      expect($(element, '[data-id="choices-file"]')).toBeNull();
+      expect($(element, 'lightning-button[data-id="save"]')).not.toBeNull();
+    });
+
+    it("downloads as Electives - <season>", async () => {
+      window.XLSX = require("xlsx");
+      URL.createObjectURL = () => "blob:test";
+      URL.revokeObjectURL = () => undefined;
+      const saved = [];
+      const spy = jest
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(function click() {
+          saved.push(this);
+        });
+      const element = createElement("c-shoresh-list-import", {
+        is: ShoreshListImport
+      });
+      element.screenKey = "electives";
+      element.setup = nsRecord(ELECTIVES);
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      $(element, 'lightning-button[data-id="download"]').click();
+      await flush();
+      expect(saved.map((a) => a.download)).toEqual([
+        "Electives - Summer 2027.xlsx"
+      ]);
+      spy.mockRestore();
+      delete window.XLSX;
+      delete URL.createObjectURL;
+      delete URL.revokeObjectURL;
+    });
+  });
 });

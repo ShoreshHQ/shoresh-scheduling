@@ -1,6 +1,6 @@
 /**
- * Why a week, program, division, group, time block or activity cannot be deleted from the setup
- * screens because electives use it, naming what uses it; null when nothing is in the way. The
+ * Why a week, program, division, group, time block, activity, elective set or offering cannot be
+ * deleted from the setup screens because electives use it, naming what uses it; null when nothing is in the way. The
  * restrict-delete lookups on the elective objects are the backstop (repo ADR 0018). A week with
  * elective runs is refused as on the desktop (DeleteWeekDialog: "Delete its elective runs first").
  */
@@ -156,9 +156,24 @@ public with sharing class ElectivesInUse {
 
   /** The names of the elective runs that use the record, or would lose something with it. */
   private static List<String> runsUsing(Id recordId, Schema.SObjectType kind) {
-    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+    List<ElectiveRun__c> runs = runsOfSetup(recordId, kind);
+    runs.addAll(runsOfSeats(recordId, kind));
+    Map<Id, String> names = new Map<Id, String>();
+    for (ElectiveRun__c run : runs) {
+      names.put(run.Id, run.Name);
+    }
+    List<String> result = names.values();
+    result.sort();
+    return result;
+  }
+
+  /** Runs that name the record itself: its week, its schedule's program, its elective set. */
+  private static List<ElectiveRun__c> runsOfSetup(
+    Id recordId,
+    Schema.SObjectType kind
+  ) {
     if (kind == Week__c.SObjectType) {
-      runs = [
+      return [
         SELECT Name
         FROM ElectiveRun__c
         WHERE Week__c = :recordId
@@ -166,8 +181,9 @@ public with sharing class ElectivesInUse {
         ORDER BY Name, Id
         LIMIT :MAX_ROWS
       ];
-    } else if (kind == Program__c.SObjectType) {
-      runs = [
+    }
+    if (kind == Program__c.SObjectType) {
+      return [
         SELECT Name
         FROM ElectiveRun__c
         WHERE
@@ -177,24 +193,52 @@ public with sharing class ElectivesInUse {
         ORDER BY Name, Id
         LIMIT :MAX_ROWS
       ];
-    } else if (
-      kind == Division__c.SObjectType ||
-      kind == Group__c.SObjectType
-    ) {
-      // Choices and seats name the camper's group that week.
-      runs = [
+    }
+    if (kind == ElectiveSet__c.SObjectType) {
+      return [
         SELECT Name
         FROM ElectiveRun__c
-        WHERE
-          Id IN (
-            SELECT ElectiveRun__c
-            FROM Preference__c
-            WHERE Group__c = :recordId OR Group__r.Division__c = :recordId
-          )
+        WHERE ElectiveSet__c = :recordId
         WITH USER_MODE
         ORDER BY Name, Id
         LIMIT :MAX_ROWS
       ];
+    }
+    return new List<ElectiveRun__c>();
+  }
+
+  /**
+   * Runs whose choices or seats name the record: a camper's group that week (or its division), a
+   * seat's time block or offering. A run's choices are text and name no offering.
+   */
+  private static List<ElectiveRun__c> runsOfSeats(
+    Id recordId,
+    Schema.SObjectType kind
+  ) {
+    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+    if (kind == Division__c.SObjectType || kind == Group__c.SObjectType) {
+      runs.addAll(
+        [
+          SELECT Name
+          FROM ElectiveRun__c
+          WHERE
+            Id IN (
+              SELECT ElectiveRun__c
+              FROM Preference__c
+              WHERE Group__c = :recordId OR Group__r.Division__c = :recordId
+            )
+          WITH USER_MODE
+          ORDER BY Name, Id
+          LIMIT :MAX_ROWS
+        ]
+      );
+    }
+    if (
+      kind == Division__c.SObjectType ||
+      kind == Group__c.SObjectType ||
+      kind == TimeBlock__c.SObjectType ||
+      kind == Offering__c.SObjectType
+    ) {
       runs.addAll(
         [
           SELECT Name
@@ -203,34 +247,18 @@ public with sharing class ElectivesInUse {
             Id IN (
               SELECT ElectiveRun__c
               FROM Assignment__c
-              WHERE Group__c = :recordId OR Group__r.Division__c = :recordId
+              WHERE
+                Group__c = :recordId
+                OR Group__r.Division__c = :recordId
+                OR TimeBlock__c = :recordId
+                OR Offering__c = :recordId
             )
           WITH USER_MODE
           ORDER BY Name, Id
           LIMIT :MAX_ROWS
         ]
       );
-    } else if (kind == TimeBlock__c.SObjectType) {
-      runs = [
-        SELECT Name
-        FROM ElectiveRun__c
-        WHERE
-          Id IN (
-            SELECT ElectiveRun__c
-            FROM Assignment__c
-            WHERE TimeBlock__c = :recordId
-          )
-        WITH USER_MODE
-        ORDER BY Name, Id
-        LIMIT :MAX_ROWS
-      ];
     }
-    Map<Id, String> names = new Map<Id, String>();
-    for (ElectiveRun__c run : runs) {
-      names.put(run.Id, run.Name);
-    }
-    List<String> result = names.values();
-    result.sort();
-    return result;
+    return runs;
   }
 }

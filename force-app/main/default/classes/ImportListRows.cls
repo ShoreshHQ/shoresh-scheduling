@@ -11,7 +11,8 @@ public with sharing class ImportListRows {
     'Program' => Program__c.Season__c,
     'LocationType' => LocationType__c.Season__c,
     'Location' => Location__c.Season__c,
-    'Activity' => Activity__c.Season__c
+    'Activity' => Activity__c.Season__c,
+    'ElectiveSet' => ElectiveSet__c.Season__c
   };
   // What a list may write, per kind: plain fields...
   private static final Map<String, Set<Schema.SObjectField>> PLAIN_FIELDS = new Map<String, Set<Schema.SObjectField>>{
@@ -74,6 +75,15 @@ public with sharing class ImportListRows {
       Activity__c.EarlyWeekCount__c,
       Activity__c.EarlyWeekByDay__c,
       Activity__c.Notes__c
+    },
+    // The Electives screen's list (plan §6.2): a set is only ever added, by its name; an
+    // offering is named by its activity, so it has no name of its own to write.
+    'ElectiveSet' => new Set<Schema.SObjectField>{ ElectiveSet__c.Name },
+    'Offering' => new Set<Schema.SObjectField>{
+      Offering__c.Seats__c,
+      Offering__c.NoSeatLimit__c,
+      Offering__c.MinimumToRun__c,
+      Offering__c.Proposed__c
     }
   };
   // ...and fields naming another record.
@@ -106,6 +116,11 @@ public with sharing class ImportListRows {
     'Activity' => new Set<Schema.SObjectField>{
       Activity__c.Location__c,
       Activity__c.RainPlan__c
+    },
+    'ElectiveSet' => new Set<Schema.SObjectField>(),
+    'Offering' => new Set<Schema.SObjectField>{
+      Offering__c.ElectiveSet__c,
+      Offering__c.Activity__c
     }
   };
   // Kinds a list can change once set up (divisions and location types it only adds).
@@ -117,15 +132,18 @@ public with sharing class ImportListRows {
     'TimeBlock',
     'Activity',
     'FixedActivity',
-    'RecurringActivity'
+    'RecurringActivity',
+    'Offering'
   };
   // Links set only on a new record: what program it is in (a group moves with its division
-  // field, within its program: GroupMoves).
+  // field, within its program: GroupMoves); an offering's set and activity, which are what it is.
   private static final Set<Schema.SObjectField> NEW_ONLY_LINKS = new Set<Schema.SObjectField>{
     TimeBlock__c.Program__c,
     FixedActivity__c.Program__c,
     RecurringActivity__c.Program__c,
-    Division__c.Program__c
+    Division__c.Program__c,
+    Offering__c.ElectiveSet__c,
+    Offering__c.Activity__c
   };
   private static final Set<String> WORKBOOK_ONLY = new Set<String>{
     'Week',

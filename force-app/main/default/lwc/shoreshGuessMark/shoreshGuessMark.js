@@ -13,11 +13,16 @@ import { LightningElement, api } from "lwc";
  *
  * Opening puts the cursor on Looks right; Escape, or leaving the pop, closes it, Escape putting
  * the cursor back on the mark.
+ *
+ * wordsOnly: the same corner for a problem the director fixes in the cell itself (an offering's
+ * seats not filled in yet, repo ADR 0018): its words only, no Looks right; the cursor stays on
+ * the mark.
  */
 export default class ShoreshGuessMark extends LightningElement {
   @api label;
   @api name;
   @api busy = false;
+  @api wordsOnly = false;
 
   open = false;
   focusLooksRight = false;
@@ -45,11 +50,15 @@ export default class ShoreshGuessMark extends LightningElement {
     }
   }
 
+  get canConfirm() {
+    return !this.wordsOnly;
+  }
+
   handleToggle(event) {
     // Not a click on the row (its details, its save).
     event.stopPropagation();
     this.open = !this.open;
-    this.focusLooksRight = this.open;
+    this.focusLooksRight = this.open && this.canConfirm;
   }
 
   handleKey(event) {

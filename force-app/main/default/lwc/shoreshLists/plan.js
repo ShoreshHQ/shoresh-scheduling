@@ -10,7 +10,8 @@ import { answeredTimes } from "./adds";
 import { answeredDays } from "./scope";
 import { NONE } from "./cells";
 import { CHANGE, newValueOf } from "./proposal";
-import { cellText } from "./screens";
+import { cellText, listScreen } from "./screens";
+import { buildTerms } from "c/shoreshTerms";
 
 function quoted(name) {
   return `“${name}”`;
@@ -25,6 +26,7 @@ function kindWord(kind, t) {
     division: t.sIn("Division"),
     group: t.sIn("Group"),
     timeBlock: t.sIn("TimeBlock"),
+    electiveSet: t.sIn("ElectiveSet"),
     fixed: t.sIn("FixedActivity"),
     recurring: t.sIn("RecurringActivity")
   }[kind];
@@ -316,6 +318,30 @@ export function listPlan(proposal, answers, seasonId, fileName) {
           : { [FIELD.Division.Program]: add.parentId }
     });
   });
+  ((proposal.alsoAdd || {}).electiveSet || []).forEach((add) => {
+    records.push({
+      kind: "ElectiveSet",
+      key: `ElectiveSet:${add.name}`,
+      fields: { Name: add.name }
+    });
+  });
+  // Activities the Electives list's new offerings name: as an activity added by hand starts.
+  const activities = listScreen("activities", buildTerms([]));
+  ((proposal.alsoAdd || {}).offeredActivity || []).forEach((name) => {
+    const values = { name };
+    activities.columns.forEach((column) => {
+      if (!(column.key in values)) {
+        values[column.key] = newValueOf(column, { values });
+      }
+    });
+    records.push(
+      recordFor(
+        activities,
+        { name, values },
+        activities.columns.map((c) => c.key)
+      )
+    );
+  });
   ((proposal.alsoAdd || {}).activity || [])
     .filter((add) => !add.skipped)
     .forEach((add) => {
@@ -395,7 +421,8 @@ const PROGRAM_KIND = { division: "Division", timeBlock: "TimeBlock" };
 const ADDED_KIND = {
   location: "Location",
   locationType: "LocationType",
-  activity: "Activity"
+  activity: "Activity",
+  offeredActivity: "Activity"
 };
 
 /** Where a resolved name points (refs.js): an item set up, a row saved, or one added with it. */
@@ -455,13 +482,13 @@ function programRecords(proposal) {
   });
 }
 
-/** A new record's key: its kind and name, and its program for a program's list. */
+/** A new record's key: its kind and name, and its program (or set) for a scoped list. */
 export function newKey(screen, row) {
   if (screen.kind === "Group") {
     // Two new groups of one name in two divisions are two groups.
     return `Group:${row.programId}:${row.values.division}:${row.name}`;
   }
-  return screen.scope === "program"
+  return screen.scope
     ? `${screen.kind}:${row.programId}:${row.name}`
     : `${screen.kind}:${row.name}`;
 }
@@ -475,10 +502,12 @@ function recordFor(screen, row, columnKeys) {
         fields: {},
         refs: {}
       };
-  if (!row.id && screen.scope === "program" && screen.kind !== "Group") {
-    // A group is in its division; everything else of a program's list is in the program.
-    // Each kind's own link to its program (FIELD keys objects by their kind's name).
-    record.refs[FIELD[screen.kind].Program] = row.programId;
+  if (!row.id && screen.scope && screen.kind !== "Group") {
+    // A group is in its division; everything else of a program's list is in the program, and
+    // an offering in its elective set. Each kind's own link to it (FIELD keys objects by their
+    // kind's name).
+    const parent = screen.scope === "set" ? "ElectiveSet" : "Program";
+    record.refs[FIELD[screen.kind][parent]] = row.programId;
   }
   columnKeys.forEach((key) => {
     const column = screen.columns.find((c) => c.key === key);

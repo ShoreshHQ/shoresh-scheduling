@@ -206,3 +206,92 @@ export function resolveProgramDays(read, answers) {
     });
   return result;
 }
+
+/**
+ * Which elective set each row of the Electives list is in (plan §6.2). A camp with one set can
+ * leave the set column out; with several, a row must say. A set the season doesn't have is
+ * added with the list (shown, ticked, before the save), and a name like one it has is asked
+ * about, as a program's is. A set the camp deleted on its screen (decision 45) is not added
+ * again: its rows are left out until it is brought back, and it is in deleted.
+ *
+ * Gives each readable row r.program = { id (an Id, or "ElectiveSet:<name>"), name, isNew }:
+ * the item a scoped list's row is in, as for a program's lists. Returns { pairs, adds: [{ name
+ * }], deleted }.
+ */
+export function resolveSets(read, screen, setup, answers, t, deletions) {
+  const result = { pairs: [], adds: [], deleted: [] };
+  if (screen.scope !== "set") {
+    return result;
+  }
+  const sets = ((setup && setup.electives) || {}).sets || [];
+  const rows = read.filter((r) => !r.problems.length);
+  rows.forEach((r) => {
+    if (!r.values.set && sets.length === 1) {
+      r.values.set = sets[0].Name;
+    } else if (!r.values.set) {
+      r.problems.push(`${t.s("ElectiveSet")} is blank`);
+    }
+  });
+  const named = rows.filter((r) => r.values.set);
+  const counts = new Map();
+  named.forEach((r) => {
+    counts.set(r.values.set, (counts.get(r.values.set) || 0) + 1);
+  });
+  result.pairs = similarPairs(
+    "electiveSet",
+    [...counts.entries()].map(([name, count]) => ({ name, count })),
+    sets.map((s) => s.Name)
+  );
+  const merged = mergesFrom(result.pairs, answers);
+  const open = new Set();
+  const leftOut = new Set();
+  result.pairs.forEach((pair) => {
+    const answer = answers[pair.id];
+    const names = pair.existing ? [pair.a] : [pair.a, pair.b];
+    if (answer === LEAVE_OUT) {
+      names.forEach((n) => leftOut.add(n));
+    } else if (!["a", "b", "different"].includes(answer)) {
+      names.forEach((n) => open.add(n));
+    }
+  });
+  const byName = new Map(sets.map((s) => [s.Name, s]));
+  const added = new Set();
+  named.forEach((r) => {
+    const written = r.values.set;
+    const name = merged.get(written) || written;
+    r.values.set = name;
+    if (leftOut.has(written)) {
+      r.leftOut = true;
+      return;
+    }
+    if (open.has(written)) {
+      r.open = true;
+      return;
+    }
+    const existing = byName.get(name);
+    if (existing) {
+      r.program = { id: existing.Id, name, isNew: false };
+      return;
+    }
+    const gone = deletedAs(deletions, "ElectiveSet", "", name);
+    if (gone) {
+      r.leftOut = true;
+      r.reason = `its ${t.sIn("ElectiveSet")} was deleted before; not brought back`;
+      if (!result.deleted.some((d) => d.key === gone)) {
+        result.deleted.push({
+          key: gone,
+          kind: "ElectiveSet",
+          name,
+          program: ""
+        });
+      }
+      return;
+    }
+    r.program = { id: `ElectiveSet:${name}`, name, isNew: true };
+    added.add(name);
+  });
+  result.adds = [...added]
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({ name }));
+  return result;
+}

@@ -1,0 +1,220 @@
+@import "c/shoreshTokens";
+
+/*
+ * One offering's linked choices beside the Electives list (design-research electives-r1
+ * setup-a), in the same zone as the Activities and Special events details: one hairline from the
+ * list, 288 wide at 1440, sliding in from the row's side. Words at rest are secondary; values
+ * are the text colour; a linked period is the grid's filled state (ADR 0015 choices 2, 11, 12).
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s4);
+  width: calc(var(--shoresh-u) * 72);
+  max-width: 100%;
+  min-height: 100%;
+  padding: var(--shoresh-space-pad);
+  border-left: 1px solid var(--shoresh-rule);
+  animation: slide-in 160ms ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--shoresh-s4));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding-left: var(--shoresh-space-control-x);
+}
+
+.panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panel-close {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--shoresh-control-h);
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-color-highlight);
+}
+
+.panel-close:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+  color: var(--shoresh-color-highlight);
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.field-label {
+  color: var(--shoresh-text-2);
+}
+
+.field-value {
+  color: var(--shoresh-text-1);
+  overflow-wrap: anywhere;
+}
+
+/* The periods: a small week, a linked period filled, the others empty wells. */
+.periods {
+  border-collapse: separate;
+  border-spacing: var(--shoresh-s1);
+  margin-left: calc(var(--shoresh-s1) * -1);
+}
+
+.day {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  text-align: center;
+}
+
+.clock {
+  padding-right: var(--shoresh-s1);
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.period {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--shoresh-u) * 10);
+  height: calc(var(--shoresh-u) * 6);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-300);
+}
+
+.period_on {
+  background: var(--shoresh-color-highlight);
+  color: #fff;
+}
+
+.tick {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Applies to: All, Only these, All except; the one that applies is raised (decision 34). */
+.segments {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-shelf);
+}
+
+.segment {
+  flex: 1;
+  padding: var(--shoresh-s1) var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.segment_on {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+/* The place for adding a linked choice (slice E8): the blank row's dashed edge, waiting. */
+.add-choice {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  width: 100%;
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  border: 1px dashed rgba(38, 35, 27, 0.28);
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.plus {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.coming {
+  margin-left: auto;
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

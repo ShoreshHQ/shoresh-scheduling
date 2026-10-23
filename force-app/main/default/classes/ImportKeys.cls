@@ -53,7 +53,19 @@ public with sharing class ImportKeys {
         WHERE Program__r.Season__c = :seasonId
         WITH USER_MODE
       ],
-      [SELECT Id FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE]
+      [SELECT Id FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE],
+      [
+        SELECT Id
+        FROM ElectiveSet__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ],
+      [
+        SELECT Id
+        FROM Offering__c
+        WHERE ElectiveSet__r.Season__c = :seasonId
+        WITH USER_MODE
+      ]
     };
     for (List<SObject> records : lists) {
       for (SObject record : records) {

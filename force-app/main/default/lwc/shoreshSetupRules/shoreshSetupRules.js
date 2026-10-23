@@ -26,7 +26,8 @@ export function setupProblems(setup, terms) {
     ...structureProblems(setup, terms),
     ...activityProblems(setup, terms),
     ...setTimeProblems(setup, terms),
-    ...specialDayProblems(setup, terms)
+    ...specialDayProblems(setup, terms),
+    ...electiveProblems(setup)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -96,6 +97,45 @@ function clockOf(minutes) {
 /** A name compared as setup compares names: spaces and capitals aside. */
 function nameKey(name) {
   return (name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Elective offerings (repo ADR 0018, slice E4; plan section 4.6), for Roots' Needs attention: one
+ * an import proposed and no one has confirmed (it gets no campers until then), and a limited one
+ * whose seats are not filled in yet (seats are not assigned until they are; desktop "Fill blank
+ * capacities first."). On the Electives screen they are marked in their rows (a dashed edge, the
+ * needs-a-look corner), so the screen's own list leaves them out (markedInPlace).
+ */
+function electiveProblems(setup) {
+  const electives = setup.electives || {};
+  const OFFER = FIELD.Offering;
+  const sets = new Map((electives.sets || []).map((s) => [s.Id, s.Name]));
+  const activities = new Map(
+    (setup.activities || []).map((a) => [a.Id, a.Name])
+  );
+  const problems = [];
+  (electives.offerings || []).forEach((offering) => {
+    const name = activities.get(offering[OFFER.Activity]) || "";
+    const set = sets.get(offering[OFFER.ElectiveSet]) || "";
+    const add = (why) =>
+      problems.push({
+        screen: "electives",
+        name,
+        why: `In "${set}": ${why}`,
+        markedInPlace: true
+      });
+    if (offering[OFFER.Proposed]) {
+      add("proposed, not confirmed yet.");
+    }
+    const seats = offering[OFFER.Seats];
+    if (
+      !offering[OFFER.NoSeatLimit] &&
+      (seats === null || seats === undefined || seats === "")
+    ) {
+      add("seats not filled in yet.");
+    }
+  });
+  return problems;
 }
 
 /**
