@@ -1907,8 +1907,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       return this.marked(options);
     }
     // The season's elective sets first, as in the drawer (mock-up electives-r1 grid-a; desktop
-    // CellInlineEditor offers them), each with its mark.
-    this.electives
+    // CellInlineEditor offers them), each with its mark; a week's, not a special day's or
+    // event's own schedule.
+    (this.ownPlan ? [] : this.electives)
       .filter((e) => !typed || loose(e.name).includes(typed))
       .forEach((e) =>
         options.push({
@@ -1947,7 +1948,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (
       name &&
       !this.events.some((e) => loose(e.name) === typed) &&
-      !this.electives.some((e) => loose(e.name) === typed) &&
+      (this.ownPlan || !this.electives.some((e) => loose(e.name) === typed)) &&
       !((this.draft && this.draft.activities) || []).some(
         (a) => loose(a.name) === typed
       )
