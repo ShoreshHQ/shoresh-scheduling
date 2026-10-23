@@ -55,6 +55,11 @@ public with sharing class ChoicesImportChoices {
         'A camper\'s group is not in this schedule\'s program. Reload the page.'
       );
     }
+    refuseOtherDivisions(ofProgram);
+  }
+
+  /** A camper whose group is not in the division the sheet names for the row. */
+  private void refuseOtherDivisions(Map<Id, Group__c> ofProgram) {
     for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
       if (
         sheetCamper.groupId != null &&
