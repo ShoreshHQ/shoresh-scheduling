@@ -244,13 +244,14 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       plan was full (`RainyDay__c`), not the switched ones, and a version or a published
       schedule starts without marks (ADR 0019 choice 9), so this page has nothing to draw it
       from. Showing it needs the switched cells kept and carried through Publish, a data change
-      for its own PR.
+      for its own PR (issue #129); deferring it there is Greg's call.
     - Checked by `shoreshSchedules.test.js` ("is laid out as Manual Build"; the views, the
       bunk and activity choices, Excel and Print), `specials.test.js` (the flagged day),
       `shoreshVersions.test.js` (the button naming the version), `shoreshCampSetup.test.js`
       (the page flush in the frame, its heading read out) and in the test org by
       `scripts/a11y-browser-check.mjs` (the rail's end in Tab order with Print filled, Group
       View's bunk on the rail, a card's grid with focus on the rail's choice, axe on each view;
+      all passed on 2026-10-23, `docs/a11y-browser-check-2026-10-23-schedules-rail.md`;
       screenshots in `docs/design/screens/schedules-*.png`).
 
 ## Choices that are hard to undo after release
