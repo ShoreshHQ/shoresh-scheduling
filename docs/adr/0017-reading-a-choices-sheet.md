@@ -138,7 +138,9 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     ("This sheet can't be brought in yet", the rows, and the fix: a camper number in the sheet;
     desktop `ParseSummary.jsx`), and a final run ("Chugim · Week 3" is final, so it can't take new
     choices; Start a new version is slice E7's).
-14. **The save is one transaction** (`ChoicesImport.bringIn`, user mode): names added as
+14. **The save is one transaction** (`ChoicesImport.bringIn`, user mode; its parts in
+    `ChoicesImportPlace`, `ChoicesImportActivities`, `ChoicesImportCampers` and
+    `ChoicesImportChoices`, each small enough for Code Analyzer's complexity rules): names added as
     activities, each offered in the set as **proposed** (confirmed on the Electives screen before
     it gets campers, plan §2); the campers; the run; the choices; the remembered answers. A
     camper is found by its key (`ElectiveRunTriggers.camperKey`: camper number, else a hash of the

@@ -65,17 +65,29 @@ private class ChoicesImportTest {
   private static ChoicesImport.SheetCamper camper(
     Integer row,
     String name,
-    String num,
-    Id groupId,
-    List<ChoicesImport.SheetChoice> choices
+    String num
   ) {
     ChoicesImport.SheetCamper result = new ChoicesImport.SheetCamper();
     result.row = row;
     result.name = name;
     result.camperNumber = num;
-    result.groupId = groupId;
-    result.choices = choices;
     return result;
+  }
+
+  private static ChoicesImport.SheetCamper withChoices(
+    ChoicesImport.SheetCamper sheetCamper,
+    List<ChoicesImport.SheetChoice> choices
+  ) {
+    sheetCamper.choices = choices;
+    return sheetCamper;
+  }
+
+  private static ChoicesImport.SheetCamper inGroup(
+    ChoicesImport.SheetCamper sheetCamper,
+    Id groupId
+  ) {
+    sheetCamper.groupId = groupId;
+    return sheetCamper;
   }
 
   private static ChoicesImport.SheetChoice ranked(
@@ -119,14 +131,18 @@ private class ChoicesImportTest {
       ChoicesImport.Request request = camp.request();
       for (Integer i = 1; i <= 260; i++) {
         request.campers.add(
-          camper(
-            i + 1,
-            'Synthetic Camper ' + i,
-            'SYN-' + String.valueOf(i).leftPad(4, '0'),
+          inGroup(
+            withChoices(
+              camper(
+                i + 1,
+                'Synthetic Camper ' + i,
+                'SYN-' + String.valueOf(i).leftPad(4, '0')
+              ),
+              archeryThenDrama(camp)
+            ),
             Math.mod(i, 2) == 0
               ? camp.ids.get('Group A')
-              : camp.ids.get('Group B'),
-            archeryThenDrama(camp)
+              : camp.ids.get('Group B')
           )
         );
       }
@@ -148,56 +164,61 @@ private class ChoicesImportTest {
       Assert.isTrue(checkQueries <= 8, 'A check reads little: ' + checkQueries);
       Assert.isTrue(saveQueries <= 30, 'A save stays bounded: ' + saveQueries);
 
-      Assert.areEqual(260, done.campers);
-      Assert.areEqual(260, done.added);
-      Assert.areEqual('Chugim · Week 1', done.runName);
-      ElectiveRun__c run = [
-        SELECT
-          Status__c,
-          SourceFile__c,
-          SourceFingerprint__c,
-          Revision__c,
-          Schedule__c
-        FROM ElectiveRun__c
-        WHERE Id = :done.runId
-      ];
-      Assert.areEqual('Committed', run.Status__c);
-      Assert.areEqual('chugim-week1.xlsx', run.SourceFile__c);
-      Assert.areEqual('a1b2c3', run.SourceFingerprint__c);
-      Assert.areEqual(1, run.Revision__c);
-      Assert.areEqual(camp.schedule.Id, run.Schedule__c);
-      Assert.areEqual(
-        260,
-        [SELECT COUNT() FROM Camper__c WHERE Season__c = :camp.season.Id]
-      );
-      List<Preference__c> prefs = [
-        SELECT
-          Choices__c,
-          ImportedChoices__c,
-          Group__c,
-          Camper__r.ParentComments__c,
-          Camper__r.CamperNumber__c
-        FROM Preference__c
-        WHERE ElectiveRun__c = :done.runId
-        ORDER BY Camper__r.CamperNumber__c
-      ];
-      Assert.areEqual(260, prefs.size());
-      Assert.areEqual(prefs[0].Choices__c, prefs[0].ImportedChoices__c);
-      Assert.areEqual(
-        'Prefers mornings.',
-        prefs[0].Camper__r.ParentComments__c
-      );
-      Assert.areEqual(camp.ids.get('Group B'), prefs[0].Group__c);
-      List<Object> choices = (List<Object>) JSON.deserializeUntyped(
-        prefs[0].Choices__c
-      );
-      Map<String, Object> first = (Map<String, Object>) choices[0];
-      Assert.areEqual('Archery', first.get('n'));
-      Assert.areEqual(String.valueOf(camp.ids.get('Archery')), first.get('a'));
-      Assert.areEqual(1, first.get('r'));
-      Assert.areEqual('ranked', first.get('k'));
-      Assert.isFalse(first.containsKey('d'), 'No blank keys stored');
+      assertSavedRun(camp, done);
     }
+  }
+
+  /** The run, campers and choices the 260-camper sheet saved. */
+  private static void assertSavedRun(
+    ChoicesCamp camp,
+    ChoicesImport.Done done
+  ) {
+    Assert.areEqual(260, done.campers);
+    Assert.areEqual(260, done.added);
+    Assert.areEqual('Chugim · Week 1', done.runName);
+    ElectiveRun__c run = [
+      SELECT
+        Status__c,
+        SourceFile__c,
+        SourceFingerprint__c,
+        Revision__c,
+        Schedule__c
+      FROM ElectiveRun__c
+      WHERE Id = :done.runId
+    ];
+    Assert.areEqual('Committed', run.Status__c);
+    Assert.areEqual('chugim-week1.xlsx', run.SourceFile__c);
+    Assert.areEqual('a1b2c3', run.SourceFingerprint__c);
+    Assert.areEqual(1, run.Revision__c);
+    Assert.areEqual(camp.schedule.Id, run.Schedule__c);
+    Assert.areEqual(
+      260,
+      [SELECT COUNT() FROM Camper__c WHERE Season__c = :camp.season.Id]
+    );
+    List<Preference__c> prefs = [
+      SELECT
+        Choices__c,
+        ImportedChoices__c,
+        Group__c,
+        Camper__r.ParentComments__c,
+        Camper__r.CamperNumber__c
+      FROM Preference__c
+      WHERE ElectiveRun__c = :done.runId
+      ORDER BY Camper__r.CamperNumber__c
+    ];
+    Assert.areEqual(260, prefs.size());
+    Assert.areEqual(prefs[0].Choices__c, prefs[0].ImportedChoices__c);
+    Assert.areEqual('Prefers mornings.', prefs[0].Camper__r.ParentComments__c);
+    Assert.areEqual(camp.ids.get('Group B'), prefs[0].Group__c);
+    List<Object> choices = (List<Object>) JSON.deserializeUntyped(
+      prefs[0].Choices__c
+    );
+    Map<String, Object> first = (Map<String, Object>) choices[0];
+    Assert.areEqual('Archery', first.get('n'));
+    Assert.areEqual(String.valueOf(camp.ids.get('Archery')), first.get('a'));
+    Assert.areEqual(1, first.get('r'));
+    Assert.areEqual('ranked', first.get('k'));
+    Assert.isFalse(first.containsKey('d'), 'No blank keys stored');
   }
 
   @IsTest
@@ -206,7 +227,7 @@ private class ChoicesImportTest {
       ChoicesCamp camp = new ChoicesCamp();
       ChoicesImport.Request request = camp.request();
       request.campers.add(
-        camper(2, 'Maya Fernwood', '1001', null, archeryThenDrama(camp))
+        withChoices(camper(2, 'Maya Fernwood', '1001'), archeryThenDrama(camp))
       );
       request.remember.put('choiceName|potterywheel', 'same|Pottery');
       request.remember.put('notMine|x', 'y');
@@ -237,11 +258,8 @@ private class ChoicesImportTest {
       photo.add = 'Photo club';
       request.addActivities.add('Photo club');
       request.campers.add(
-        camper(
-          2,
-          'Talia Brightwater',
-          '1017',
-          null,
+        withChoices(
+          camper(2, 'Talia Brightwater', '1017'),
           new List<ChoicesImport.SheetChoice>{
             photo,
             ranked('Pottery Wheel', camp.ids.get('Pottery'), 2)
@@ -292,25 +310,25 @@ private class ChoicesImportTest {
       ChoicesCamp camp = new ChoicesCamp();
       ChoicesImport.Request first = camp.request();
       first.campers.add(
-        camper(
-          2,
-          'Maya Fernwood',
-          '1001',
-          camp.ids.get('Group A'),
-          archeryThenDrama(camp)
+        inGroup(
+          withChoices(
+            camper(2, 'Maya Fernwood', '1001'),
+            archeryThenDrama(camp)
+          ),
+          camp.ids.get('Group A')
         )
       );
       first.campers.add(
-        camper(
-          3,
-          'Eli Marblecrest',
-          '1002',
-          camp.ids.get('Group A'),
-          archeryThenDrama(camp)
+        inGroup(
+          withChoices(
+            camper(3, 'Eli Marblecrest', '1002'),
+            archeryThenDrama(camp)
+          ),
+          camp.ids.get('Group A')
         )
       );
       first.campers.add(
-        camper(4, 'Ari Quillfield', null, null, archeryThenDrama(camp))
+        withChoices(camper(4, 'Ari Quillfield', null), archeryThenDrama(camp))
       );
       first.campers[0].comment = 'Prefers mornings.';
       ChoicesImport.Done done = ChoicesImportController.bringInChoices(
@@ -335,18 +353,18 @@ private class ChoicesImportTest {
       ChoicesImport.Request second = camp.request();
       second.runRevision = 1;
       second.campers.add(
-        camper(2, 'Maya Fernwod', '1001', null, archeryThenDrama(camp))
+        withChoices(camper(2, 'Maya Fernwod', '1001'), archeryThenDrama(camp))
       );
       second.campers.add(
-        camper(3, 'ari  QUILLFIELD', null, null, archeryThenDrama(camp))
+        withChoices(camper(3, 'ari  QUILLFIELD', null), archeryThenDrama(camp))
       );
       second.campers.add(
-        camper(
-          4,
-          'Noa Oakhollow',
-          '1050',
-          camp.ids.get('Group B'),
-          archeryThenDrama(camp)
+        inGroup(
+          withChoices(
+            camper(4, 'Noa Oakhollow', '1050'),
+            archeryThenDrama(camp)
+          ),
+          camp.ids.get('Group B')
         )
       );
       second.campers[0].comment = 'Loves the outdoors.';
@@ -371,54 +389,58 @@ private class ChoicesImportTest {
 
       Assert.areEqual(done.runId, again.runId);
       Assert.areEqual(1, again.handKept);
-      Preference__c kept = [
-        SELECT
-          Choices__c,
-          ImportedChoices__c,
-          Group__c,
-          Camper__r.Name,
-          Camper__r.ParentComments__c
-        FROM Preference__c
-        WHERE Id = :maya.Id
-      ];
-      Assert.isTrue(
-        kept.Choices__c.startsWith('[{"n":"Drama"'),
-        'Hand change kept'
-      );
-      Assert.isTrue(
-        kept.ImportedChoices__c.contains('Archery'),
-        'What the sheet says'
-      );
-      Assert.areEqual(
-        camp.ids.get('Group A'),
-        kept.Group__c,
-        'No bunk on the sheet: kept'
-      );
-      Assert.areEqual(
-        'Maya Fernwood',
-        kept.Camper__r.Name,
-        'Shoresh\'s name is kept'
-      );
-      Assert.areEqual(
-        'Prefers mornings.\nLoves the outdoors.',
-        kept.Camper__r.ParentComments__c
-      );
-      Assert.areEqual(
-        4,
-        [SELECT COUNT() FROM Preference__c WHERE ElectiveRun__c = :done.runId],
-        'Eli keeps his choices'
-      );
-      Assert.areEqual(
-        4,
-        [SELECT COUNT() FROM Camper__c WHERE Season__c = :camp.season.Id],
-        'Ari is matched by name'
-      );
-      Assert.areEqual(
-        2,
-        [SELECT Revision__c FROM ElectiveRun__c WHERE Id = :done.runId]
-        .Revision__c
-      );
+      assertKept(camp, done.runId, maya.Id);
     }
+  }
+
+  /** After the second sheet: the hand change, Shoresh's name and both comments kept. */
+  private static void assertKept(ChoicesCamp camp, Id runId, Id mayaId) {
+    Preference__c kept = [
+      SELECT
+        Choices__c,
+        ImportedChoices__c,
+        Group__c,
+        Camper__r.Name,
+        Camper__r.ParentComments__c
+      FROM Preference__c
+      WHERE Id = :mayaId
+    ];
+    Assert.isTrue(
+      kept.Choices__c.startsWith('[{"n":"Drama"'),
+      'Hand change kept'
+    );
+    Assert.isTrue(
+      kept.ImportedChoices__c.contains('Archery'),
+      'What the sheet says'
+    );
+    Assert.areEqual(
+      camp.ids.get('Group A'),
+      kept.Group__c,
+      'No bunk on the sheet: kept'
+    );
+    Assert.areEqual(
+      'Maya Fernwood',
+      kept.Camper__r.Name,
+      'Shoresh\'s name is kept'
+    );
+    Assert.areEqual(
+      'Prefers mornings.\nLoves the outdoors.',
+      kept.Camper__r.ParentComments__c
+    );
+    Assert.areEqual(
+      4,
+      [SELECT COUNT() FROM Preference__c WHERE ElectiveRun__c = :runId],
+      'Eli keeps his choices'
+    );
+    Assert.areEqual(
+      4,
+      [SELECT COUNT() FROM Camper__c WHERE Season__c = :camp.season.Id],
+      'Ari is matched by name'
+    );
+    Assert.areEqual(
+      2,
+      [SELECT Revision__c FROM ElectiveRun__c WHERE Id = :runId].Revision__c
+    );
   }
 
   @IsTest
@@ -427,7 +449,7 @@ private class ChoicesImportTest {
       ChoicesCamp camp = new ChoicesCamp();
       ChoicesImport.Request request = camp.request();
       request.campers.add(
-        camper(2, 'Maya Fernwood', '1001', null, archeryThenDrama(camp))
+        withChoices(camper(2, 'Maya Fernwood', '1001'), archeryThenDrama(camp))
       );
       ChoicesImportController.bringInChoices(JSON.serialize(request));
 
@@ -451,7 +473,7 @@ private class ChoicesImportTest {
       ChoicesCamp camp = new ChoicesCamp();
       ChoicesImport.Request request = camp.request();
       request.campers.add(
-        camper(2, 'Maya Fernwood', '1001', null, archeryThenDrama(camp))
+        withChoices(camper(2, 'Maya Fernwood', '1001'), archeryThenDrama(camp))
       );
       ChoicesImport.Done done = ChoicesImportController.bringInChoices(
         JSON.serialize(request)
@@ -483,10 +505,10 @@ private class ChoicesImportTest {
       ChoicesCamp camp = new ChoicesCamp();
       ChoicesImport.Request request = camp.request();
       request.campers.add(
-        camper(2, 'Maya Fernwood', 'SYN 1', null, archeryThenDrama(camp))
+        withChoices(camper(2, 'Maya Fernwood', 'SYN 1'), archeryThenDrama(camp))
       );
       request.campers.add(
-        camper(9, 'Maya Fernwood', 'syn1', null, archeryThenDrama(camp))
+        withChoices(camper(9, 'Maya Fernwood', 'syn1'), archeryThenDrama(camp))
       );
 
       Test.startTest();
@@ -514,17 +536,20 @@ private class ChoicesImportTest {
       Group__c cedar = ShoreshTestData.groupIn(seniors.Id, 'Cedar');
       ChoicesImport.Request request = camp.request();
       request.campers.add(
-        camper(2, 'Maya Fernwood', '1001', cedar.Id, archeryThenDrama(camp))
+        inGroup(
+          withChoices(
+            camper(2, 'Maya Fernwood', '1001'),
+            archeryThenDrama(camp)
+          ),
+          cedar.Id
+        )
       );
       ChoicesImport.Request unreadable = camp.request();
       ChoicesImport.SheetChoice odd = ranked('Archery', null, 1);
       odd.k = 'favourite';
       unreadable.campers.add(
-        camper(
-          3,
-          'Eli Marblecrest',
-          '1002',
-          null,
+        withChoices(
+          camper(3, 'Eli Marblecrest', '1002'),
           new List<ChoicesImport.SheetChoice>{ odd }
         )
       );
@@ -558,7 +583,7 @@ private class ChoicesImportTest {
     }
     ChoicesImport.Request request = camp.request();
     request.campers.add(
-      camper(2, 'Maya Fernwood', '1001', null, archeryThenDrama(camp))
+      withChoices(camper(2, 'Maya Fernwood', '1001'), archeryThenDrama(camp))
     );
     System.runAs(ShoreshTestData.outsider()) {
       Test.startTest();
@@ -573,23 +598,26 @@ private class ChoicesImportTest {
 
   @IsTest
   static void commentsAddUpAndChoicesCompareByWhatTheyAre() {
-    Assert.areEqual('A', ChoicesImport.commentWith(null, ' A '));
-    Assert.areEqual('A', ChoicesImport.commentWith('A', ''));
-    Assert.areEqual('A and B', ChoicesImport.commentWith('A and B', 'B'));
-    Assert.areEqual('A\nC', ChoicesImport.commentWith('A', 'C'));
+    Assert.areEqual('A', ChoicesImportCampers.commentWith(null, ' A '));
+    Assert.areEqual('A', ChoicesImportCampers.commentWith('A', ''));
     Assert.areEqual(
-      ChoicesImport.signature(
+      'A and B',
+      ChoicesImportCampers.commentWith('A and B', 'B')
+    );
+    Assert.areEqual('A\nC', ChoicesImportCampers.commentWith('A', 'C'));
+    Assert.areEqual(
+      ChoicesImportChoices.signature(
         '[{"n":"Archery","r":1,"k":"ranked"},{"n":"Drama","r":2,"k":"ranked"}]'
       ),
-      ChoicesImport.signature(
+      ChoicesImportChoices.signature(
         '[{"n":"drama","r":2,"k":"ranked"},{"n":"ARCHERY","r":1,"k":"ranked"}]'
       )
     );
     Assert.areNotEqual(
-      ChoicesImport.signature('[{"n":"Archery","r":1,"k":"ranked"}]'),
-      ChoicesImport.signature('[{"n":"Archery","r":2,"k":"ranked"}]')
+      ChoicesImportChoices.signature('[{"n":"Archery","r":1,"k":"ranked"}]'),
+      ChoicesImportChoices.signature('[{"n":"Archery","r":2,"k":"ranked"}]')
     );
-    Assert.areEqual('not json', ChoicesImport.signature('not json'));
+    Assert.areEqual('not json', ChoicesImportChoices.signature('not json'));
     Assert.areEqual('potterywheel', ChoicesImport.fold('Pottery-Wheel '));
   }
 }

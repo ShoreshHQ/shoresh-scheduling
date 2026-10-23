@@ -19,8 +19,11 @@ import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActiv
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
-import { CurrentPageReference } from "lightning/navigation";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+
+/** The page's address as Lightning hands it to the page (its wire), with this state. */
+const pageAddress = (state) =>
+  require("lightning/navigation").CurrentPageReference.emit({ state });
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
@@ -2219,10 +2222,10 @@ describe("c-shoresh-camp-setup", () => {
       )
     ).toBeNull();
     // Another screen in the address is not opened this way.
-    CurrentPageReference.emit({ state: { c__screen: "weeks" } });
+    pageAddress({ c__screen: "weeks" });
     await flush();
     expect(shownScreens(element)).toEqual(["roots"]);
-    CurrentPageReference.emit({ state: { c__screen: "bringInChoices" } });
+    pageAddress({ c__screen: "bringInChoices" });
     await flush();
     expect(shownScreens(element)).toEqual(["bringInChoices"]);
     expect(q(element, "c-shoresh-choices-import")).not.toBeNull();
@@ -2240,7 +2243,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
     const element = await render();
-    CurrentPageReference.emit({ state: { c__screen: "bringInChoices" } });
+    pageAddress({ c__screen: "bringInChoices" });
     await flush();
     answer(nsRecord(setupWith()));
     await flush();
