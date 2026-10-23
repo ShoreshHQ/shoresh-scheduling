@@ -57,6 +57,14 @@ export function guessPlural(word, standardSingular, standardPlural) {
     // The standard word, perhaps in other capitals: its own plural, starting as the word does.
     return text.charAt(0) + standardPlural.slice(1);
   }
+  if (
+    standardSingular &&
+    standardPlural &&
+    standardSingular.toLowerCase() === standardPlural.toLowerCase()
+  ) {
+    // The standard word is the same in the plural, so the camp's word is too.
+    return text;
+  }
   if (/[^aeiou]y$/i.test(text)) {
     return `${text.slice(0, -1)}ies`;
   }

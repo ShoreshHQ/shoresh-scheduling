@@ -361,8 +361,9 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     - **Camp words is one box per word** (B): the standard word, then the camp's word in a box
       where the standard word sits quietly until one is typed, then, for a word of the camp's
       own, its plural, guessed and shown as words (`guessPlural` in `c/shoreshTerms`: the
-      standard word's own plural for the standard word, else +s, +es after s, x, z, ch and sh,
-      y to ies after a consonant; the desktop has no camp words and no rule of its own). The
+      standard word's own plural for the standard word, the word unchanged where the standard
+      word is the same in the plural (Seats, Times per week: Spots, Per week), else +s, +es
+      after s, x, z, ch and sh, y to ies after a consonant; the desktop has no camp words and no rule of its own). The
       plural becomes a box under the pointer or the cursor and is typed over where the guess is
       wrong (Chug, Chugim); a plural typed stays when the word changes after, and clearing the
       word puts the standard word back with its plural. A plural the guess would give is shown
