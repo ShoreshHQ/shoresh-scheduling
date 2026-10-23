@@ -177,7 +177,7 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     while the next is on its way; the table already says each save ("Cedar saved"), so the
     rail's mark is silent (`c-shoresh-saved-mark` `silent`), and it is never shown for a save
     someone else's change stopped. Import a list, opened, takes the rail's width under its
-    items. _Changed 2026-10-23 (choice 14): opened, it takes the rail's place, and while a file
+    items. _Changed 2026-10-23 (choice 16): opened, it takes the rail's place, and while a file
     is reviewed the table's, with the file's rows laid into the table language._ Locations' old **Show** list is the rail's type choices (All, each type, and "No
     location type" while a place has none), centred, the chosen one raised and pressed; the
     types themselves are a section of their own under the places.
@@ -401,7 +401,23 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
       added from the blank row by keyboard and deleted from its trash can, said, axe; Camp
       words: a word typed, its plural guessed, saved and said, then put back, axe; Copy this
       season: focus on its heading, the weeks drawn twice, Cancel back to Season actions, axe).
-15. **Import a list in the table language (2026-10-23).** Design source: Greg's decision 56
+15. **Import last year (2026-10-23).** Design source: Greg's approved mock-ups
+    `design-research/screens-r1` (`import.html`: `#pick`, review A, `#done`) and wiki decision 56. The screen takes the rail grammar of Bring in choices: **‹ Roots**, a rail line, the
+    screen's name as a value (its `h2`), the file's name quiet, and on the right **Start
+    again** and the one filled control (Add, then Done). Under the hairline: the drop well (the
+    drawer step with the well's inset shade, a 40 px stroked upload glyph, a raised **Choose
+    files**), then sections headed in the title size with a quiet count. Questions are rows of
+    the shared table pattern (raised, fine gap, the needs-a-look corner and its 30% text edge
+    while open); their answers are rail items, the chosen one raised and pressed. Counts are
+    tiles one tile height tall (the number at 20 px, tabular; the kind in secondary words),
+    raised, a button each; the open one carries the 2 px highlight outline. Last year's
+    schedule is drawn small in the grid's own steps (primary-500 for set times, the drawer
+    step for activities, the grid step for empty, a dashed text outline for noted). Noted
+    items are chips with the dashed outline (1.5 px of the text at 45%), as the mock-up's
+    proposed rows. No new colour. Behaviour and words: ADR 0006 choice 22. Checked by
+    `shoreshImport.test.js` and the real-browser check (`--shots` saves `import-pick.png` and
+    `import-review.png` for `docs/design/screens/`).
+16. **Import a list in the table language (2026-10-23).** Design source: Greg's decision 56
     and the approved mock-up `design-research/screens-r1/list-import-a.png` (repo ADR 0007 choice
     33 has the behaviour). Opened on a setup screen's rail it is the rail (Import a list in the
     value style, the file, Cancel, and the one filled item, `shoresh-item_primary`, that says

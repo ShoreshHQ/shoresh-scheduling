@@ -65,6 +65,11 @@
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
+ * - Import last year (ADR 0006, redesigned in ADR 0015 choice 15): opened from Roots with focus on
+ *   its heading; two made-up files chosen, the cursor on the one page's first question; a choice
+ *   pressed keeps the cursor; a Comes in count opens into its names; Start again puts the cursor
+ *   on the heading and Back to Roots on Roots'; axe on the drop well and the page. Add is never
+ *   pressed, so nothing is imported;
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
  *   still lists it as coming (?c__preview=electives), then from the menu: focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
@@ -1661,6 +1666,162 @@ async function dotField() {
   }
 }
 
+// ---------- Import last year (ADR 0006; ADR 0015 choice 15; wiki decision 56) ----------
+
+/**
+ * Last year's schedule as a camp keeps it: made-up names (two days, all camp). "Musik" beside
+ * "Music" is asked about as similar names, so the page always has a question to answer.
+ */
+function lastYearSheet() {
+  return [
+    "Time,Check bunk A,Check bunk B",
+    "9:00-9:45,Music,Check pottery",
+    "10:00-10:45,Check pottery,Musik",
+    "12:00-12:45,Lunch,Lunch"
+  ].join("\n");
+}
+
+/** An attribute of the element with focus, through shadow roots; null when there is none. */
+async function focusedAttr(attr) {
+  return page.evaluate((name) => {
+    let el = document.activeElement;
+    while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+      el = el.shadowRoot.activeElement;
+    }
+    return el ? el.getAttribute(name) : null;
+  }, attr);
+}
+
+/**
+ * Import last year from Roots, by keyboard: the drop well, files chosen, the one page (its first
+ * question takes the cursor; a choice keeps it, pressed; a Comes in count opens into its names),
+ * then Start again back to the drop well and Roots again. Nothing is added: Add is never pressed.
+ * With --shots it saves the drop well and the one page, for docs/design/screens/.
+ */
+async function importLastYear() {
+  const S = "Import last year";
+  const link =
+    (await tabTo(named(/^(Re-)?[Ii]mport last year$/, { tag: "button" }), {
+      max: 80
+    })) ||
+    (await tabTo(named(/^(Re-)?[Ii]mport last year$/, { tag: "button" }), {
+      max: 80,
+      back: true
+    }));
+  if (!link)
+    throw new Error("Import last year was not reached from Roots with Tab.");
+  await press("Enter", 1500);
+  await expectFocus(S, "Opened from Roots: focus on its heading", {
+    tag: /^h2$/,
+    name: /^Import last year$/
+  });
+  await axe(`${S}: the drop well`);
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.mouse.move(2, 2);
+    await page.screenshot({ path: join(shotsDir, "import-pick.png") });
+  }
+  await page
+    .locator(APP)
+    .locator('c-shoresh-import input[data-id="files"]')
+    .setInputFiles([
+      {
+        name: "check-last-year-monday.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(lastYearSheet(), "utf8")
+      },
+      {
+        name: "check-last-year-tuesday.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(lastYearSheet(), "utf8")
+      }
+    ]);
+  await pause(2000);
+  const first = await expectFocus(
+    S,
+    "Files read: focus on the first question's first choice",
+    { tag: "button" }
+  );
+  if (!first || !/^Same\b/.test(first.name || "")) {
+    // The similar names come first: "Same: call it …" is their first choice.
+    results.fail(
+      S,
+      "The first question is the similar names",
+      `Focus on ${formatFocus(first)}.`
+    );
+  }
+  await axe(`${S}: the one page`);
+  if (args.includes("--shots")) {
+    await page.mouse.move(2, 2);
+    await page.screenshot({ path: join(shotsDir, "import-review.png") });
+  }
+  await press("Enter", 800);
+  if ((await focusedAttr("aria-pressed")) === "true")
+    results.pass(
+      S,
+      "A choice pressed keeps the cursor, pressed",
+      "aria-pressed true."
+    );
+  else {
+    await shot(S, "choice pressed");
+    results.fail(
+      S,
+      "A choice pressed keeps the cursor, pressed",
+      `Focus on ${formatFocus(await focus())}.`
+    );
+  }
+  const tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
+  if (!tile) throw new Error("No Comes in count was reached with Tab.");
+  await press("Enter", 500);
+  if ((await focusedAttr("aria-expanded")) === "true")
+    results.pass(
+      S,
+      "A count opens into its names, the cursor kept",
+      "aria-expanded true."
+    );
+  else {
+    await shot(S, "count opened");
+    results.fail(
+      S,
+      "A count opens into its names, the cursor kept",
+      `Focus on ${formatFocus(await focus())}.`
+    );
+  }
+  const names = await shown('c-shoresh-import [data-id="names"] li').count();
+  if (names > 0)
+    results.pass(S, "The count's names are listed", `${names} names.`);
+  else results.fail(S, "The count's names are listed", "No names shown.");
+  await axe(`${S}: a count opened`);
+  if (
+    !(await tabTo(named(/^Start again$/, { tag: "button" }), {
+      max: 80,
+      back: true
+    }))
+  )
+    throw new Error("Start again was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(
+    S,
+    "Start again: focus on its heading, the drop well back",
+    {
+      tag: /^h2$/,
+      name: /^Import last year$/
+    }
+  );
+  if (
+    !(await tabTo(named(/^Back to Roots$/, { tag: "button" }), {
+      max: 10,
+      back: true
+    }))
+  )
+    throw new Error("Back to Roots was not reached with Tab.");
+  await press("Enter", 1500);
+  await expectFocus(S, "Back to Roots: focus on Roots' heading", {
+    tag: /^h[1-3]$/,
+    name: /^Roots$/
+  });
+}
+
 async function campSetup() {
   const S = "Camp setup";
   await step(S, "Menu reachable by Tab from the top of the page", async () => {
@@ -1682,6 +1843,7 @@ async function campSetup() {
     await axe("Roots");
   });
   await step(S, "Roots: the living dot field", dotField);
+  await step(S, "Import last year: the one page, by keyboard", importLastYear);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {
     await openFromMenu("Weeks", /^Weeks\b/);

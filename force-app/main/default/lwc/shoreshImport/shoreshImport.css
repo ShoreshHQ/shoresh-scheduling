@@ -1,298 +1,431 @@
 @import "c/shoreshTokens";
 
-/* Shoresh desktop's import and review screens (ImportScreen.jsx, ReconciliationScreen.jsx,
-   reconciliationCards.jsx), in Salesforce's design tokens. */
-.import {
-  max-width: 1000px;
-  padding-bottom: 5rem;
+/*
+ * Import last year, as Greg's approved mock-ups draw it (design-research/screens-r1/import.html:
+ * #pick, review A, #done; wiki decision 56): the rail, a hairline, then one page of sections.
+ * Only the design system's tokens and classes (ADR 0015): three colours, the one raised
+ * treatment, the needs-a-look corner, the dashed outline for "noted, not set up yet".
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
 }
 
-.import-header {
+.import {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ---------- the rail ---------- */
+
+.rail {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
 }
 
-.import-weak {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-size: 0.8125rem;
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: 0;
 }
 
-.import-error {
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--slds-g-color-error-base-50, #ea001e);
-  border-radius: 0.25rem;
-  background: var(--slds-g-color-error-base-90, #fef1ee);
-  color: var(--slds-g-color-error-base-40, #ba0517);
+.side_left {
+  flex: 1 1 0;
 }
 
-.import-panel {
-  padding: 1rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 0.5rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
+.side_right {
+  flex: none;
+  justify-content: flex-end;
 }
 
-/* The drop area: dashed, tinted while a file is dragged over it. */
-.import-drop {
+/* The screen's name sits on the rail as a value, not a page heading. */
+.title {
+  margin: 0;
+  cursor: default;
+}
+
+.title:hover {
+  background: transparent;
+}
+
+.title:focus-visible,
+.section-head:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.file-name:hover {
+  background: transparent;
+}
+
+.more {
+  color: var(--shoresh-text-2);
+}
+
+/* ---------- the page ---------- */
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-s5) var(--shoresh-s6);
+  min-width: 0;
+}
+
+.message {
+  margin: 0;
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+/* The start: a well to drop the files on, filling the page. */
+.drop {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 2rem 1rem;
-  border: 2px dashed var(--slds-g-color-border-base-1, #c9c9c9);
-  border-radius: 0.5rem;
-  text-align: center;
+  justify-content: center;
+  gap: var(--shoresh-s4);
+  min-height: calc(var(--shoresh-u) * 150);
+  border-radius: var(--shoresh-radius-piece);
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
 }
 
-.import-drop_over {
-  border-color: var(--slds-g-color-accent-2, #0176d3);
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
+.drop_over {
+  box-shadow:
+    var(--shoresh-well-in),
+    inset 0 0 0 2px var(--shoresh-color-highlight);
 }
 
-.import-drop-title {
-  font-size: 1rem;
-  font-weight: 600;
+.drop-glyph {
+  width: 40px;
+  height: 40px;
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.import-drop-hint {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-size: 0.75rem;
+.drop-title {
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 500;
 }
 
-/* "Found in the file. Nothing added yet." */
-.import-banner {
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 3px solid var(--slds-g-color-accent-2, #0176d3);
-  border-radius: 0.25rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  font-weight: 600;
+.drop-hint {
+  color: var(--shoresh-text-2);
 }
 
-.import-banner_done {
-  border-left-color: var(--shoresh-success);
+.choose {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
 }
 
-.import-section {
-  margin-bottom: 1.25rem;
-}
+/* ---------- sections and rows (the shared table pattern) ---------- */
 
-.import-section-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  margin-bottom: 0.5rem;
-}
-
-.import-file {
+.section {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.import-file-name {
-  font-weight: 600;
-  min-width: 16rem;
-}
-
-.import-layout {
-  min-width: 26rem;
-}
-
-/* Read-only chips, as the desktop's preview shows what was found. */
-.import-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.import-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 1rem;
-  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
-}
-
-.import-chip-name {
-  font-weight: 600;
-}
-
-.import-tag {
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.import-place {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* New: the success dot, with the tag in ordinary text. */
-.import-tag_new::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 0.25rem;
-  border-radius: 50%;
-  background: var(--shoresh-success);
-  vertical-align: middle;
-}
-
-.import-tag_changes {
-  color: var(--shoresh-primary);
-}
-
-/* Left out: the bronze caution dot, with the tag in ordinary text. */
-.import-tag_left-out::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 0.25rem;
-  border-radius: 50%;
-  background: var(--shoresh-caution);
-  vertical-align: middle;
-}
-
-/* Question cards: the desktop's lanes. Hold cards (bronze border) come first. */
-.import-card {
-  margin-bottom: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 4px solid var(--slds-g-color-border-base-1, #c9c9c9);
-  border-radius: 0.25rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-}
-
-.import-card_hold {
-  padding: 1rem;
-  border-left-color: var(--shoresh-caution);
-}
-
-.import-card_answered {
-  opacity: 0.7;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-.import-card-title {
-  font-weight: 700;
-  font-size: 0.875rem;
-}
-
-.import-card_hold .import-card-title {
-  font-size: 0.9375rem;
-}
-
-.import-card-subtitle {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-size: 0.8125rem;
-  margin-top: 0.25rem;
-}
-
-.import-card-done {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.import-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.625rem;
-}
-
-.import-option {
-  display: inline-flex;
   flex-direction: column;
-  max-width: 18rem;
+  gap: var(--shoresh-s1);
+  margin: 0;
 }
 
-.import-option-why {
-  font-size: 0.75rem;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  margin-top: 0.125rem;
-}
-
-.import-review-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+.section-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 0;
-  margin-bottom: 0.75rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
-.import-progress {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-}
-
-.import-progress-bar {
-  display: inline-block;
-  width: 8rem;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--slds-g-color-border-base-1, #e5e5e5);
-  overflow: hidden;
-}
-
-.import-progress-bar span {
-  display: block;
-  height: 100%;
-  background: var(--shoresh-secondary);
-}
-
-/* The bottom bar stays in view while the list scrolls, as on the desktop. */
-.import-footer {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0.75rem 0;
-  margin-top: 1rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
-.import-footer .import-weak {
-  margin-right: auto;
-}
-
-/* A program or division choice: the name, then the dropdown (the desktop's per-group row). */
-.import-choice {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.375rem;
-}
-
-.import-choice-name {
-  min-width: 14rem;
+  gap: var(--shoresh-s2);
+  min-height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
   font-weight: 600;
+}
+
+.section-head span {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  align-items: center;
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-s1) var(--shoresh-s5) var(--shoresh-s1) 0;
+}
+
+.row > span {
+  padding: 0 var(--shoresh-space-control-x);
+  min-width: 0;
+}
+
+.n {
+  font-weight: 500;
+}
+
+.d {
+  color: var(--shoresh-text-2);
+}
+
+.options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2);
+}
+
+.choice {
+  height: 26px;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
+.pick {
+  min-width: calc(var(--shoresh-u) * 48);
+}
+
+.pick_layout {
+  flex: 1;
+}
+
+.tag {
+  color: var(--shoresh-text-2);
+}
+
+/* The needs-a-look corner: top right, as on a grid cell, until the row is answered. */
+.corner {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  padding: 0 !important;
+}
+
+.row_look {
+  box-shadow:
+    inset 0 0 0 1px rgba(38, 35, 27, 0.3),
+    var(--shoresh-raise);
+}
+
+/* ---------- Comes in: quiet counts, each opening into its names ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(calc(var(--shoresh-u) * 36), 1fr)
+  );
+  gap: var(--shoresh-space-cell-gap);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  height: var(--shoresh-tile-h);
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border: 0;
+  margin: 0;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  text-align: left;
+}
+
+.tile b {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tile span {
+  color: var(--shoresh-text-2);
+}
+
+.tile_button {
+  cursor: pointer;
+}
+
+.tile_button:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.tile_button:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-raise), var(--shoresh-focus-ring);
+}
+
+.tile_open {
+  outline: 2px solid var(--shoresh-color-highlight);
+  outline-offset: 1px;
+}
+
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1);
+  margin: var(--shoresh-s2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  height: calc(var(--shoresh-control-h) - 4px);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* ---------- last year's schedule ---------- */
+
+.version {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-s3) var(--shoresh-space-control-x);
+}
+
+.mini {
+  display: grid;
+  gap: 2px;
+  flex: none;
+  width: 220px;
+  height: 64px;
+}
+
+.mini-cell {
+  display: block;
+  border-radius: 2px;
+  background: var(--shoresh-surface-drawer);
+}
+
+.mini-cell_set {
+  background: var(--shoresh-color-primary-500);
+}
+
+.mini-cell_noted {
+  background: transparent;
+  outline: 1px dashed rgba(38, 35, 27, 0.45);
+  outline-offset: -1px;
+}
+
+.mini-cell_empty {
+  background: var(--shoresh-surface-grid);
+}
+
+.version-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  min-width: 0;
+}
+
+.version-words b {
+  font-weight: 500;
+}
+
+.version-words span,
+.version-where {
+  color: var(--shoresh-text-2);
+}
+
+.version-where {
+  margin-left: auto;
+}
+
+/* ---------- chips: noted (dashed), deleted, left out ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--shoresh-control-h) - 4px);
+  padding: 0 var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  color: var(--shoresh-text-1);
+}
+
+.chip_dashed {
+  outline: 1.5px dashed rgba(38, 35, 27, 0.45);
+  outline-offset: -1.5px;
+}
+
+.chip-detail {
+  color: var(--shoresh-text-2);
+}
+
+.bring-back {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+}
+
+/* ---------- placements not in the version, and notes ---------- */
+
+.unplaced {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 var(--shoresh-s1);
+}
+
+.unplaced th,
+.unplaced td {
+  padding: var(--shoresh-s1) var(--shoresh-space-control-x);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.unplaced thead th {
+  color: var(--shoresh-text-2);
+}
+
+.unplaced tbody th,
+.unplaced tbody td {
+  background: var(--shoresh-color-primary-50);
+}
+
+.unplaced tbody th {
+  font-weight: 500;
+  border-radius: var(--shoresh-radius) 0 0 var(--shoresh-radius);
+}
+
+.unplaced tbody td:last-child {
+  border-radius: 0 var(--shoresh-radius) var(--shoresh-radius) 0;
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  list-style: none;
+}
+
+.line {
+  color: var(--shoresh-text-2);
 }

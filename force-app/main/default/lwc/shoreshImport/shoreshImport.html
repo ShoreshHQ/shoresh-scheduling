@@ -1,29 +1,99 @@
 <template>
   <div class="import" data-id="import">
-    <div class="import-header">
-      <h2 class="slds-text-heading_medium" tabindex="-1" data-heading>
-        Import last year
-      </h2>
-      <lightning-button
-        variant="base"
-        label="Back to Roots"
-        onclick={handleClose}
-        data-id="close"
-      ></lightning-button>
+    <!-- The rail (the design's grammar): the way back, what this is and which files, then
+         Start again and the one main action. design-research/screens-r1/import.html -->
+    <div class="rail" data-id="rail">
+      <div class="side side_left">
+        <button
+          type="button"
+          class="shoresh-item"
+          aria-label="Back to Roots"
+          onclick={handleClose}
+          data-id="close"
+        >
+          <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M10 4 6 8l4 4"></path>
+          </svg>
+          Roots
+        </button>
+        <span class="shoresh-rail-line" role="presentation"></span>
+        <h2
+          class="shoresh-item shoresh-item_value title"
+          tabindex="-1"
+          data-heading
+        >
+          Import last year
+        </h2>
+        <template lwc:if={hasFiles}>
+          <span
+            class="shoresh-item file-name"
+            title={fileNames}
+            data-id="file-name"
+            >{firstFileName}<template lwc:if={moreFiles}
+              ><span class="more shoresh-num"
+                >&nbsp;+ {moreFiles}</span
+              ></template
+            ></span
+          >
+        </template>
+      </div>
+      <div class="side side_right">
+        <template lwc:if={isReview}>
+          <button
+            type="button"
+            class="shoresh-item"
+            onclick={handleStartAgain}
+            disabled={isSaving}
+            data-id="start-again"
+          >
+            Start again
+          </button>
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_primary"
+            onclick={handleSave}
+            disabled={saveDisabled}
+            data-id="save"
+          >
+            {saveLabel}
+          </button>
+        </template>
+        <template lwc:if={isDone}>
+          <template lwc:if={canUndo}>
+            <button
+              type="button"
+              class="shoresh-item"
+              onclick={handleUndo}
+              data-id="undo"
+            >
+              Undo this import
+            </button>
+          </template>
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_primary"
+            onclick={handleClose}
+            data-id="continue"
+          >
+            Done
+          </button>
+        </template>
+      </div>
     </div>
+    <div class="shoresh-hairline" role="presentation"></div>
 
     <!-- Reading, saving, imported and undone, read out as they happen (WCAG 4.1.3). -->
     <div class="slds-assistive-text" role="status" data-id="status">
       {statusText}
     </div>
 
-    <template lwc:if={error}>
-      <div class="import-error" role="alert" data-id="error">{error}</div>
-    </template>
+    <div class="page">
+      <template lwc:if={error}>
+        <div class="message" role="alert" data-id="error">{error}</div>
+      </template>
 
-    <!-- 1. Choose the files -->
-    <template lwc:if={isPick}>
-      <div class="import-panel">
+      <!-- 1. Drop the files -->
+      <template lwc:if={isPick}>
         <div
           class={dropClass}
           data-id="drop"
@@ -36,15 +106,23 @@
               alternative-text="Reading the files"
               size="small"
             ></lightning-spinner>
-            <div class="import-drop-title">Reading…</div>
           </template>
           <template lwc:else>
-            <div class="import-drop-title">Drop schedule here</div>
-            <lightning-button
-              label="Choose files"
+            <svg class="drop-glyph" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 10.5V2.5"></path>
+              <path d="M5 5.5l3-3 3 3"></path>
+              <path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"></path>
+            </svg>
+            <div class="drop-title">Drop last year's files</div>
+            <div class="drop-hint">.xlsx · .xls · .csv</div>
+            <button
+              type="button"
+              class="shoresh-item shoresh-raised choose"
               onclick={handleChoose}
               data-id="choose"
-            ></lightning-button>
+            >
+              Choose files
+            </button>
             <!-- Opened by "Choose files": named, and out of the tab order. -->
             <input
               class="slds-assistive-text"
@@ -56,415 +134,432 @@
               data-id="files"
               onchange={handleFileInput}
             />
-            <div class="import-drop-hint">
-              .xlsx · .xls · .csv — several at once
-            </div>
           </template>
         </div>
-      </div>
-    </template>
+      </template>
 
-    <!-- 2. What was found -->
-    <template lwc:if={isPreview}>
-      <div class="import-banner" data-id="found">
-        Found in the file. Nothing added yet.
-      </div>
+      <!-- 2. One page: what needs an answer first, then what comes in, as quiet counts -->
+      <template lwc:if={isReview}>
+        <template lwc:if={isSaving}>
+          <lightning-spinner
+            alternative-text="Saving"
+            size="small"
+          ></lightning-spinner>
+        </template>
 
-      <section class="import-section">
-        <div class="import-section-label">Files</div>
-        <template for:each={fileRows} for:item="row">
-          <div key={row.file} class="import-file" data-file={row.file}>
-            <div class="import-file-name">
-              {row.file} <span class="import-weak">· {row.pageCount}</span>
-            </div>
-            <lightning-combobox
-              class="import-layout"
-              label="Layout"
-              variant="label-inline"
-              value={row.layout}
-              options={row.options}
-              data-file={row.file}
-              onchange={handleLayout}
-            ></lightning-combobox>
-            <template lwc:if={row.unsure}>
-              <div class="import-weak">
-                Layout unclear — check the lists below.
+        <template lwc:if={hasQuestions}>
+          <section class="section" data-id="questions">
+            <h3 class="section-head">
+              Check these first
+              <span class="shoresh-num">{questionCount}</span>
+            </h3>
+            <template for:each={questionRows} for:item="card">
+              <div key={card.id} class={card.className} data-card={card.id}>
+                <span class="n">{card.title}</span>
+                <span class="d"
+                  >{card.subtitle}<template lwc:if={card.detail}
+                    >&nbsp;{card.detail}</template
+                  ></span
+                >
+                <span class="options">
+                  <template lwc:if={card.select}>
+                    <lightning-combobox
+                      class="pick"
+                      label={card.title}
+                      variant="label-hidden"
+                      placeholder={card.placeholder}
+                      value={card.value}
+                      options={card.comboOptions}
+                      data-id={card.id}
+                      onchange={handleChoice}
+                    ></lightning-combobox>
+                  </template>
+                  <template lwc:else>
+                    <template for:each={card.options} for:item="option">
+                      <button
+                        key={option.key}
+                        type="button"
+                        class={option.className}
+                        aria-pressed={option.pressed}
+                        title={option.description}
+                        data-key={option.key}
+                        onclick={handleAnswer}
+                      >
+                        {option.label}<template lwc:if={option.description}
+                          ><span class="slds-assistive-text"
+                            >. {option.description}</span
+                          ></template
+                        >
+                      </button>
+                    </template>
+                  </template>
+                  <template lwc:if={card.fromMemory}>
+                    <span class="tag">Remembered</span>
+                  </template>
+                </span>
+                <template lwc:if={card.open}>
+                  <span class="corner" role="img" aria-label="Needs an answer"
+                    ><i class="shoresh-look-mark"></i
+                  ></span>
+                </template>
               </div>
             </template>
-          </div>
+          </section>
         </template>
-      </section>
 
-      <template lwc:if={hasProgramChoices}>
-        <section class="import-section" data-id="program-choices">
-          <div class="import-section-label">{labels.programs}</div>
-          <template for:each={programChoices} for:item="choice">
-            <div key={choice.id} class="import-choice" data-choice={choice.id}>
-              <span class="import-choice-name">{choice.title}</span>
-              <lightning-combobox
-                label={choice.title}
-                variant="label-hidden"
-                placeholder={choice.placeholder}
-                value={choice.value}
-                options={choice.comboOptions}
-                data-id={choice.id}
-                onchange={handleChoice}
-              ></lightning-combobox>
-            </div>
-          </template>
-        </section>
-      </template>
-
-      <template lwc:if={hasUnitChoices}>
-        <section class="import-section" data-id="unit-choices">
-          <div class="import-section-label">{labels.units}</div>
-          <template for:each={unitChoices} for:item="choice">
-            <div key={choice.id} class="import-choice" data-choice={choice.id}>
-              <span class="import-choice-name">{choice.title}</span>
-              <lightning-combobox
-                label={choice.title}
-                variant="label-hidden"
-                placeholder={choice.placeholder}
-                value={choice.value}
-                options={choice.comboOptions}
-                data-id={choice.id}
-                onchange={handleChoice}
-              ></lightning-combobox>
-            </div>
-          </template>
-        </section>
-      </template>
-
-      <template lwc:if={hasPreviewCards}>
-        <section class="import-section" data-id="similar">
-          <div class="import-section-label">Check these first</div>
-          <template for:each={previewCards} for:item="card">
-            <div key={card.id} class={card.className} data-card={card.id}>
-              <template lwc:if={card.answered}>
-                <div class="import-card-done">
-                  <span>✓ {card.answerLabel}</span>
-                  <template lwc:if={card.fromMemory}>
-                    <span class="import-tag">Remembered</span>
-                  </template>
-                  <span class="import-weak">{card.title}</span>
-                  <lightning-button
-                    variant="base"
-                    label="Change"
-                    data-id={card.id}
-                    onclick={handleChangeAnswer}
-                  ></lightning-button>
-                </div>
-              </template>
-              <template lwc:else>
-                <div class="import-card-title">{card.title}</div>
-                <div class="import-card-subtitle">{card.subtitle}</div>
-                <div class="import-card-subtitle">{card.detail}</div>
-                <div class="import-options">
-                  <template for:each={card.options} for:item="option">
-                    <lightning-button
-                      key={option.key}
-                      label={option.label}
-                      title={option.description}
-                      variant={option.variant}
-                      data-key={option.key}
-                      onclick={handleAnswer}
-                    ></lightning-button>
-                  </template>
-                </div>
+        <template lwc:if={hasComingIn}>
+          <section class="section" data-id="coming-in">
+            <h3 class="section-head">Comes in</h3>
+            <div class="tiles">
+              <template for:each={comingInTiles} for:item="tile">
+                <button
+                  key={tile.key}
+                  type="button"
+                  class={tile.className}
+                  aria-expanded={tile.expanded}
+                  aria-controls="coming-in-names"
+                  data-tile={tile.key}
+                  onclick={handleTile}
+                >
+                  <span class="slds-assistive-text">{tile.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
+                  <span aria-hidden="true">{tile.label}</span>
+                </button>
               </template>
             </div>
-          </template>
-        </section>
-      </template>
-
-      <template lwc:if={hasPlaces}>
-        <section class="import-section" data-id="places">
-          <div class="import-section-label">{labels.locations}</div>
-          <template for:each={places} for:item="place">
-            <div key={place.id} class="import-place" data-place={place.id}>
-              <lightning-input
-                type="checkbox"
-                label={place.name}
-                checked={place.ticked}
-                data-id={place.id}
-                onchange={handlePlace}
-              ></lightning-input>
-              <span class="import-weak">{place.usedByText}</span>
-              <template lwc:if={place.fromMemory}>
-                <span class="import-tag">Remembered</span>
-              </template>
-            </div>
-          </template>
-        </section>
-      </template>
-
-      <template lwc:if={hasDeleted}>
-        <section class="import-section" data-id="deleted">
-          <div class="import-section-label">
-            Deleted before; not brought back
-          </div>
-          <template for:each={deletedItems} for:item="item">
-            <div key={item.key} class="import-place" data-deleted={item.key}>
-              <span class="import-chip-name">{item.name}</span>
-              <span class="import-weak">{item.detail}</span>
-              <button
-                type="button"
-                class="slds-button slds-button_neutral"
-                aria-label={item.bringBackLabel}
-                data-key={item.key}
-                data-place-answer={item.place}
-                onclick={handleBringBack}
+            <template lwc:if={openTile}>
+              <ul
+                class="names"
+                id="coming-in-names"
+                aria-label={openTile.label}
+                data-id="names"
               >
-                Bring back
-              </button>
-            </div>
-          </template>
-        </section>
-      </template>
-
-      <template for:each={lists} for:item="list">
-        <section key={list.key} class="import-section" data-list={list.key}>
-          <div class="import-section-label">{list.title}</div>
-          <div class="import-chips">
-            <template for:each={list.items} for:item="item">
-              <span key={item.key} class="import-chip" data-item={item.key}>
-                <span class="import-chip-name">{item.name}</span>
-                <span class="import-weak">{item.detail}</span>
-                <span class={item.tagClass}>{item.tag}</span>
-              </span>
+                <template for:each={openTile.nameItems} for:item="item">
+                  <li key={item.key} class="name shoresh-raised">
+                    {item.name}
+                  </li>
+                </template>
+              </ul>
             </template>
-          </div>
-        </section>
-      </template>
+          </section>
+        </template>
 
-      <template lwc:if={hasNotes}>
-        <section class="import-section" data-id="notes">
-          <div class="import-section-label">Good to know</div>
-          <ul class="slds-list_dotted">
-            <template for:each={notes} for:item="note">
-              <li key={note.key}>{note.text}</li>
+        <template lwc:if={hasProgramChoices}>
+          <section class="section" data-id="program-choices">
+            <h3 class="section-head">{labels.programs}</h3>
+            <template for:each={programChoices} for:item="card">
+              <div key={card.id} class={card.className} data-card={card.id}>
+                <span class="n">{card.subject}</span>
+                <span class="d"></span>
+                <span class="options">
+                  <lightning-combobox
+                    class="pick"
+                    label={card.title}
+                    variant="label-hidden"
+                    placeholder={card.placeholder}
+                    value={card.value}
+                    options={card.comboOptions}
+                    data-id={card.id}
+                    onchange={handleChoice}
+                  ></lightning-combobox>
+                </span>
+              </div>
             </template>
-          </ul>
-        </section>
-      </template>
+          </section>
+        </template>
 
-      <div class="import-footer">
-        <lightning-button
-          label="Start again"
-          onclick={handleStartAgain}
-        ></lightning-button>
-        <lightning-button
-          variant="brand"
-          label={reviewLabel}
-          disabled={reviewDisabled}
-          onclick={handleReview}
-          data-id="review"
-        ></lightning-button>
-      </div>
-    </template>
+        <template lwc:if={hasUnitChoices}>
+          <section class="section" data-id="unit-choices">
+            <h3 class="section-head">{labels.units}</h3>
+            <template for:each={unitChoices} for:item="card">
+              <div key={card.id} class={card.className} data-card={card.id}>
+                <span class="n">{card.subject}</span>
+                <span class="d"></span>
+                <span class="options">
+                  <lightning-combobox
+                    class="pick"
+                    label={card.title}
+                    variant="label-hidden"
+                    placeholder={card.placeholder}
+                    value={card.value}
+                    options={card.comboOptions}
+                    data-id={card.id}
+                    onchange={handleChoice}
+                  ></lightning-combobox>
+                </span>
+              </div>
+            </template>
+          </section>
+        </template>
 
-    <!-- 3. Questions -->
-    <template lwc:if={isReview}>
-      <div class="import-review-header">
-        <div>Reconciling <strong>{fileNames}</strong></div>
-        <div class="import-progress" data-id="progress">
-          <span>{progressText}</span>
-          <span class="import-progress-bar"
-            ><span style={progressStyle}></span
-          ></span>
-        </div>
-      </div>
+        <template lwc:if={hasPlaces}>
+          <section class="section" data-id="places">
+            <h3 class="section-head">{labels.locations}</h3>
+            <template for:each={places} for:item="place">
+              <div
+                key={place.id}
+                class="row row_place shoresh-raised"
+                data-place={place.id}
+              >
+                <span class="n">
+                  <lightning-input
+                    type="checkbox"
+                    label={place.name}
+                    checked={place.ticked}
+                    data-id={place.id}
+                    onchange={handlePlace}
+                  ></lightning-input>
+                </span>
+                <span class="d">{place.usedByText}</span>
+                <span class="options">
+                  <template lwc:if={place.fromMemory}>
+                    <span class="tag">Remembered</span>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </section>
+        </template>
 
-      <template lwc:if={rememberedCount}>
-        <p class="import-weak slds-m-bottom_small" data-id="remembered">
-          {rememberedText}
-        </p>
-      </template>
+        <template lwc:if={hasVersions}>
+          <section class="section" data-id="version">
+            <h3 class="section-head">Last year's schedule</h3>
+            <template for:each={versionRows} for:item="version">
+              <div key={version.key} class="version shoresh-raised">
+                <div class="mini" style={version.miniStyle} aria-hidden="true">
+                  <template for:each={version.mini} for:item="cell">
+                    <i key={cell.key} class={cell.className}></i>
+                  </template>
+                </div>
+                <div class="version-words">
+                  <b>{version.weekName}</b>
+                  <span>{version.reviewLine}</span>
+                </div>
+              </div>
+            </template>
+          </section>
+        </template>
 
-      <template for:each={reviewCards} for:item="card">
-        <div key={card.id} class={card.className} data-card={card.id}>
-          <template lwc:if={card.answered}>
-            <div class="import-card-done">
-              <span>✓ {card.answerLabel}</span>
-              <template lwc:if={card.fromMemory}>
-                <span class="import-tag">Remembered</span>
+        <template lwc:if={hasNotSetUp}>
+          <section class="section" data-id="not-set-up">
+            <h3 class="section-head">
+              Not set up yet
+              <span class="shoresh-num">{notSetUpCount}</span>
+            </h3>
+            <div class="chips">
+              <template for:each={notedList} for:item="item">
+                <span
+                  key={item.key}
+                  class="chip chip_dashed"
+                  data-noted={item.key}
+                  >{item.name}<span class="chip-detail"
+                    >&nbsp;· {item.detail}</span
+                  ></span
+                >
               </template>
-              <span class="import-weak">{card.title}</span>
-              <lightning-button
-                variant="base"
-                label="Change"
-                data-id={card.id}
-                onclick={handleChangeAnswer}
-              ></lightning-button>
-            </div>
-          </template>
-          <template lwc:else>
-            <div class="import-card-title">{card.title}</div>
-            <div class="import-card-subtitle">{card.subtitle}</div>
-            <div class="import-options">
-              <template for:each={card.options} for:item="option">
-                <span key={option.key} class="import-option">
-                  <lightning-button
-                    label={option.label}
-                    variant={option.variant}
-                    data-key={option.key}
-                    onclick={handleAnswer}
-                  ></lightning-button>
-                  <span class="import-option-why">{option.description}</span>
+              <template for:each={deletedItems} for:item="item">
+                <span key={item.key} class="chip" data-deleted={item.key}>
+                  <span class="chip-detail"
+                    >Deleted before: {item.name} · {item.detail}</span
+                  >
+                  <button
+                    type="button"
+                    class="shoresh-item bring-back"
+                    aria-label={item.bringBackLabel}
+                    data-key={item.key}
+                    data-place-answer={item.place}
+                    onclick={handleBringBack}
+                  >
+                    Bring back
+                  </button>
                 </span>
               </template>
             </div>
-          </template>
-        </div>
-      </template>
-      <template lwc:if={isSaving}>
-        <lightning-spinner
-          alternative-text="Saving"
-          size="small"
-        ></lightning-spinner>
-      </template>
-
-      <div class="import-footer">
-        <span class="import-weak">{saveHint}</span>
-        <lightning-button
-          label="Back"
-          onclick={handleBackToPreview}
-        ></lightning-button>
-        <lightning-button
-          variant="brand"
-          label={saveLabel}
-          disabled={saveDisabled}
-          onclick={handleSave}
-          data-id="save"
-        ></lightning-button>
-      </div>
-    </template>
-
-    <!-- 4. Done -->
-    <template lwc:if={isDone}>
-      <div
-        class="import-banner import-banner_done"
-        tabindex="-1"
-        data-id="done"
-      >
-        Imported from {fileNames}.
-      </div>
-      <section class="import-section" data-id="added">
-        <div class="import-section-label">Added</div>
-        <ul class="slds-list_dotted">
-          <template for:each={addedLines} for:item="line">
-            <li key={line.key}>{line.text}</li>
-          </template>
-        </ul>
-      </section>
-      <template lwc:if={hasChanged}>
-        <section class="import-section" data-id="changed">
-          <div class="import-section-label">Changed, as you chose</div>
-          <ul class="slds-list_dotted">
-            <template for:each={changedLines} for:item="line">
-              <li key={line.key}>{line.text}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={hasVersions}>
-        <section class="import-section" data-id="version">
-          <div class="import-section-label">Last year's schedule</div>
-          <ul class="slds-list_dotted">
-            <template for:each={versionLines} for:item="line">
-              <li key={line.key}>{line.text}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={hasUnplaced}>
-        <section class="import-section" data-id="unplaced">
-          <div class="import-section-label">{unplacedTitle}</div>
-          <table
-            class="slds-table slds-table_cell-buffer slds-table_bordered"
-            aria-label={unplacedTitle}
-          >
-            <thead>
-              <tr>
-                <th scope="col">In the file</th>
-                <th scope="col">How many</th>
-                <th scope="col">Why</th>
-                <th scope="col">For example</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template for:each={unplaced} for:item="line">
-                <tr key={line.key} data-unplaced={line.key}>
-                  <th scope="row">{line.name}</th>
-                  <td>{line.count}</td>
-                  <td class="slds-cell-wrap">{line.why}</td>
-                  <td class="slds-cell-wrap">{line.whereText}</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </section>
-      </template>
-      <template lwc:if={hasLeftOut}>
-        <section class="import-section" data-id="left-out">
-          <div class="import-section-label">Left out for now</div>
-          <ul class="slds-list_dotted">
-            <template for:each={leftOutLines} for:item="line">
-              <li key={line.key}>{line.text}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={hasDeleted}>
-        <section class="import-section" data-id="deleted-summary">
-          <div class="import-section-label">
-            Deleted before; not brought back
-          </div>
-          <ul class="slds-list_dotted">
-            <template for:each={deletedItems} for:item="item">
-              <li key={item.key}>{item.name} · {item.detail}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={hasNoted}>
-        <section class="import-section" data-id="noted">
-          <div class="import-section-label">Not set up yet</div>
-          <ul class="slds-list_dotted">
-            <template for:each={notedList} for:item="item">
-              <li key={item.key}>{item.name}: {item.detail}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={hasNotes}>
-        <section class="import-section">
-          <div class="import-section-label">Good to know</div>
-          <ul class="slds-list_dotted">
-            <template for:each={notes} for:item="note">
-              <li key={note.key}>{note.text}</li>
-            </template>
-          </ul>
-        </section>
-      </template>
-      <template lwc:if={undone}>
-        <div class="import-banner" data-id="undone">{undone}</div>
-      </template>
-      <div class="import-footer">
-        <template lwc:if={canUndo}>
-          <lightning-button
-            label="Undo this import"
-            onclick={handleUndo}
-            data-id="undo"
-          ></lightning-button>
+          </section>
         </template>
-        <lightning-button
-          variant="brand"
-          label="Back to Roots"
-          onclick={handleClose}
-          data-id="continue"
-        ></lightning-button>
-      </div>
-    </template>
+
+        <section class="section" data-id="files">
+          <h3 class="section-head">
+            Files <span class="shoresh-num">{fileRows.length}</span>
+          </h3>
+          <template for:each={fileRows} for:item="row">
+            <div key={row.file} class={row.className} data-file={row.file}>
+              <span class="n">{row.file}</span>
+              <span class="d shoresh-num">{row.pageCount}</span>
+              <span class="options">
+                <lightning-combobox
+                  class="pick pick_layout"
+                  label={row.layoutLabel}
+                  variant="label-hidden"
+                  value={row.layout}
+                  options={row.options}
+                  data-file={row.file}
+                  onchange={handleLayout}
+                ></lightning-combobox>
+              </span>
+              <template lwc:if={row.unsure}>
+                <span class="corner" role="img" aria-label="Layout unclear"
+                  ><i class="shoresh-look-mark"></i
+                ></span>
+              </template>
+            </div>
+          </template>
+        </section>
+
+        <template lwc:if={hasNotes}>
+          <section class="section" data-id="notes">
+            <h3 class="section-head">Good to know</h3>
+            <ul class="lines">
+              <template for:each={notes} for:item="note">
+                <li key={note.key} class="line">{note.text}</li>
+              </template>
+            </ul>
+          </section>
+        </template>
+      </template>
+
+      <!-- 3. Done: what was added, last year's schedule, and Undo on the rail -->
+      <template lwc:if={isDone}>
+        <template lwc:if={undone}>
+          <p class="message" data-id="undone">{undone}</p>
+        </template>
+        <section class="section" data-id="added">
+          <h3 class="section-head" tabindex="-1" data-id="done">
+            Added <span class="shoresh-num">{addedTotal}</span>
+          </h3>
+          <div class="tiles">
+            <template for:each={addedTiles} for:item="tile">
+              <div
+                key={tile.key}
+                class="tile shoresh-raised"
+                data-tile={tile.key}
+              >
+                <span class="slds-assistive-text">{tile.spoken}</span>
+                <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
+                <span aria-hidden="true">{tile.label}</span>
+              </div>
+            </template>
+          </div>
+        </section>
+        <template lwc:if={hasChanged}>
+          <section class="section" data-id="changed">
+            <h3 class="section-head">
+              Changed, as you chose
+              <span class="shoresh-num">{changedTotal}</span>
+            </h3>
+            <div class="tiles">
+              <template for:each={changedTiles} for:item="tile">
+                <div key={tile.key} class="tile shoresh-raised">
+                  <span class="slds-assistive-text">{tile.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
+                  <span aria-hidden="true">{tile.label}</span>
+                </div>
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasVersions}>
+          <section class="section" data-id="version">
+            <h3 class="section-head">Last year's schedule</h3>
+            <template for:each={versionRows} for:item="version">
+              <div key={version.key} class="version shoresh-raised">
+                <div class="mini" style={version.miniStyle} aria-hidden="true">
+                  <template for:each={version.mini} for:item="cell">
+                    <i key={cell.key} class={cell.className}></i>
+                  </template>
+                </div>
+                <div class="version-words">
+                  <b>{version.name}</b>
+                  <span>{version.doneLine}</span>
+                </div>
+                <span class="version-where">Open it on Schedules</span>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasUnplaced}>
+          <section class="section" data-id="unplaced">
+            <h3 class="section-head">{unplacedTitle}</h3>
+            <table class="unplaced" aria-label={unplacedTitle}>
+              <thead>
+                <tr>
+                  <th scope="col">In the file</th>
+                  <th scope="col">How many</th>
+                  <th scope="col">Why</th>
+                  <th scope="col">For example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={unplaced} for:item="line">
+                  <tr key={line.key} data-unplaced={line.key}>
+                    <th scope="row">{line.name}</th>
+                    <td class="shoresh-num">{line.count}</td>
+                    <td>{line.why}</td>
+                    <td>{line.whereText}</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </section>
+        </template>
+        <template lwc:if={hasLeftOut}>
+          <section class="section" data-id="left-out">
+            <h3 class="section-head">
+              Left out for now
+              <span class="shoresh-num">{leftOutLines.length}</span>
+            </h3>
+            <div class="chips">
+              <template for:each={leftOutLines} for:item="line">
+                <span key={line.key} class="chip">{line.text}</span>
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasDeleted}>
+          <section class="section" data-id="deleted-summary">
+            <h3 class="section-head">
+              Deleted before; not brought back
+              <span class="shoresh-num">{deletedItems.length}</span>
+            </h3>
+            <div class="chips">
+              <template for:each={deletedItems} for:item="item">
+                <span key={item.key} class="chip"
+                  >{item.name}<span class="chip-detail"
+                    >&nbsp;· {item.detail}</span
+                  ></span
+                >
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasNoted}>
+          <section class="section" data-id="noted">
+            <h3 class="section-head">
+              Not set up yet
+              <span class="shoresh-num">{notedList.length}</span>
+            </h3>
+            <div class="chips">
+              <template for:each={notedList} for:item="item">
+                <span key={item.key} class="chip chip_dashed"
+                  >{item.name}<span class="chip-detail"
+                    >&nbsp;· {item.detail}</span
+                  ></span
+                >
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasNotes}>
+          <section class="section" data-id="notes">
+            <h3 class="section-head">Good to know</h3>
+            <ul class="lines">
+              <template for:each={notes} for:item="note">
+                <li key={note.key} class="line">{note.text}</li>
+              </template>
+            </ul>
+          </section>
+        </template>
+      </template>
+    </div>
   </div>
 </template>
