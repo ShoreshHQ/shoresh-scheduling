@@ -169,7 +169,7 @@ function setUpRow(p, record, row, columns, setup) {
   };
 }
 
-function fileRow(p, row, columns) {
+function fileRow(p, row, columns, canLeaveOut) {
   const name = row.name || row.existingName || `Row ${row.rowNumber}`;
   const base = { key: `row-${row.rowNumber}`, name };
   if (row.status === "new" || row.skipped) {
@@ -182,13 +182,14 @@ function fileRow(p, row, columns) {
         p.targets,
         row.startingValues || []
       ),
-      leaveOut: row.skipKey
-        ? {
-            key: row.skipKey,
-            pressed: String(!!row.skipped),
-            label: `Leave out ${name}`
-          }
-        : null
+      leaveOut:
+        row.skipKey && canLeaveOut
+          ? {
+              key: row.skipKey,
+              pressed: String(!!row.skipped),
+              label: `Leave out ${name}`
+            }
+          : null
     };
   }
   if (row.status === "changed" || row.status === "unchanged") {
@@ -250,9 +251,10 @@ function finish(row) {
 /**
  * One list's table: { columns, sections: [{ key, label, count, rows }], same } where same is
  * how many items set up the file leaves as they are, when they are counted, not shown.
- * options: { setup, showSame (draw every item set up; a camp workbook counts them) }.
+ * options: { setup, showSame (draw every item set up; a camp workbook counts them), leaveOut
+ * (a new row's Leave out; not in a camp workbook, where a later sheet may name the item) }.
  */
-export function importTable(p, { setup, showSame = true }) {
+export function importTable(p, { setup, showSame = true, leaveOut = true }) {
   const section = sectionMaker(p, setup || {});
   const sectionKey = p.screen ? SECTION_COLUMN[p.screen.key] : null;
   const columns = shownColumns(p, sectionKey);
@@ -292,15 +294,16 @@ export function importTable(p, { setup, showSame = true }) {
         same += 1;
         return;
       }
-      const drawn = fileRow(p, r, columns);
+      const drawn = fileRow(p, r, columns, leaveOut);
       const home = section.ofRow(r);
       // A new row starts its own section if need be (a division added with the list); a row
-      // that won't be saved goes where it says only when that section is there.
-      const placed =
-        home !== null &&
-        (drawn.kind === "new" ||
-          drawn.kind === "skipped" ||
-          sections.has(keyOf(home)));
+      // that won't be saved goes where it says only when that section is there. A sheet with
+      // no screen of its own (Weeks, Camp words) draws its Keep or Change rows like new ones.
+      const usable =
+        drawn.kind === "new" ||
+        drawn.kind === "skipped" ||
+        (!p.screen && (drawn.kind === "changed" || drawn.kind === "same"));
+      const placed = home !== null && (usable || sections.has(keyOf(home)));
       if (placed) {
         into(home, drawn);
       } else {

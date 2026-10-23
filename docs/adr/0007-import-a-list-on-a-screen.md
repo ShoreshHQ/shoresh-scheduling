@@ -313,14 +313,19 @@ Every question, answer and refusal above stays; what moves is said here.
       "clears" still marks a change that empties a value, and **Change all from this file**
       stays above the table;
     - a row it **can't use** carries the needs-a-look corner and says why at its end ("Row 14 ·
-      Unit is blank"), in its section when that section is there, else under **Review here**; a
+      Unit is blank"), in its section when that section is there, else under **Review here**
+      (only such rows: a workbook sheet with no screen of its own, Weeks, Camp words or Runs
+      in, draws its Keep or Change rows with its new ones, without a heading); a
       row waiting on a question says "Asked above"; a row left out (a repeat, a place deleted
       before) is faded with why;
     - **Leave out** on a new row (the mock-up's, new here): pressed, the row stays where it
       would go, faded and crossed out, and is not saved, nor what only it would add (its new
       location); pressed again, it is back. It keeps the cursor. It is an answer for this import
       only (`skip|…` in `shoreshLists` `skipKey`), never remembered: it is neither a question
-      nor a similar name, so `listPlan` neither remembers nor forgets it;
+      nor a similar name, so `listPlan` neither remembers nor forgets it. A camp workbook
+      (Roots) has no Leave out: its sheets are read in order, each against what the ones before
+      add, so a place left out of Locations would come back as Also adding through an activity
+      on the Activities sheet that names it, and be saved anyway (the desktop has no Leave out);
     - under the table, **Also adding** (choice 5, ticks as before), and **Deleted before, not
       brought back** with each name and its **Bring back** (decision 45, #101) on one line.
 
@@ -337,7 +342,8 @@ Every question, answer and refusal above stays; what moves is said here.
     ("laid into the screen's own table": sections, counts, kinds, crossed-out values and what is
     read, the corner, Leave out and its cursor, what the page is told, the Columns button, axe),
     `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered),
-    `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back),
+    `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back,
+    also when another season or camp is picked while a file is reviewed),
     and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Groups by keyboard:
     the table in the rail's and table's place, Leave out, Cancel bringing the screen back;
     Electives' change saved and said, as before).

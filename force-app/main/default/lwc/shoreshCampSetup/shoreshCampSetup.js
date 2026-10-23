@@ -352,13 +352,17 @@ export default class ShoreshCampSetup extends LightningElement {
       // No season: any read still on its way is out of date.
       this.loadTicket += 1;
       this.setup = null;
+      // The screens go with it, and any Import a list open on them.
+      this.importing = {};
       return;
     }
     if (this.setup && this.setup.season.Id !== this.seasonId) {
       // Another season: start its tables fresh rather than carrying unsaved rows across,
-      // and forget the old season's "setup changed".
+      // and forget the old season's "setup changed". The screens are rebuilt with Import a
+      // list closed, so no screen keeps its rail and table put away for it.
       this.setup = null;
       this.setupStates = {};
+      this.importing = {};
     }
     const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
@@ -1669,6 +1673,7 @@ export default class ShoreshCampSetup extends LightningElement {
   async handleCampChange(event) {
     this.campId = event.detail.value;
     this.seasonId = null;
+    this.importing = {};
     await this.run(() => this.loadCamp(), this.openFailed);
   }
 

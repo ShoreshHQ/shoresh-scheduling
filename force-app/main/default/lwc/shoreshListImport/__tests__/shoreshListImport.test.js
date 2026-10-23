@@ -926,6 +926,15 @@ describe("Import worksheet (Roots)", () => {
     );
     const weeks = $(element, '[data-section="section-weeks"]');
     expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
+    // A plain rename is not a problem: no "Review here" part for it.
+    expect(
+      [...weeks.querySelectorAll(".part")].map((part) => [
+        part.dataset.partLabel,
+        [...part.querySelectorAll("tr[data-kind]")].map(
+          (tr) => `${tr.dataset.row}:${tr.dataset.kind}`
+        )
+      ])
+    ).toEqual([["", ["Opening week:changed"]]]);
     // The rest of the camp, as it is, is counted rather than drawn.
     expect(
       $(element, '[data-section="section-groups"] [data-id="unchanged"]')
@@ -935,11 +944,7 @@ describe("Import worksheet (Roots)", () => {
     expect(choice("Change", weeks).getAttribute("aria-label")).toBe(
       "Change, Opening week: Name: Week 1 → Opening week"
     );
-    // Under the sheet's title (h4), its own headings are one level down.
     expect(weeks.querySelector("h4").textContent).toBe("Weeks");
-    expect(
-      weeks.querySelector('[role="heading"]').getAttribute("aria-level")
-    ).toBe("5");
     choice("Change", weeks).click();
     await flush();
     expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("true");
@@ -962,6 +967,50 @@ describe("Import worksheet (Roots)", () => {
       { kind: "Week", id: "w1", fields: { Name: "Opening week" } }
     ]);
     expect($(element, '[data-id="saved"]')).not.toBeNull();
+  });
+
+  it("has no Leave out: a new place another sheet names is added once, with nothing to contradict", async () => {
+    const setup = camp();
+    const element = await openWorkbook(
+      setup,
+      workbookBytes(setup, (name, rows) => {
+        if (name === "Locations") {
+          rows.push(["Probe Lake", "", 1, ""]);
+        }
+        if (name === "Activities") {
+          rows.push([
+            "Probe Canoe",
+            "Probe Lake",
+            1,
+            0,
+            "No maximum",
+            "Low",
+            "No",
+            "",
+            "No limit",
+            "No",
+            "",
+            "Everyone",
+            ""
+          ]);
+        }
+      })
+    );
+    const locations = $(element, '[data-section="section-locations"]');
+    expect(
+      locations.querySelector('[data-row="Probe Lake"]').dataset.kind
+    ).toBe("new");
+    // Under the sheet's title (h4), its own headings are one level down.
+    expect(locations.querySelector("h4").textContent).toBe("Locations");
+    const part = locations.querySelector('[role="heading"]');
+    expect(part.getAttribute("aria-level")).toBe("5");
+    expect(part.querySelector(".slds-assistive-text").textContent).toBe(
+      "No location type, 1"
+    );
+    // Leaving the place out here would not hold: the Activities sheet would add it back.
+    expect($$(element, "button[data-leave]")).toEqual([]);
+    expect($(element, '[data-id="also-add"]')).toBeNull();
+    expect(textOf(saveOf(element))).toBe("Add 2");
   });
 
   describe("the Electives list (plan §6.2)", () => {

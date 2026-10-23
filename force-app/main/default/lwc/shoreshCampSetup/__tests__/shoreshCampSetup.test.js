@@ -477,6 +477,31 @@ describe("c-shoresh-camp-setup", () => {
       expect(screen.className).not.toContain("screen_importing");
     });
 
+    it("picking another season while a file is reviewed brings the screen's rail and table back", async () => {
+      const element = await renderWith();
+      await openScreen(element, "groups");
+      q(element, '[data-screen="groups"] c-shoresh-list-import').dispatchEvent(
+        new CustomEvent("listopen", { detail: { open: true, review: true } })
+      );
+      await flush();
+      expect(q(element, '[data-screen="groups"]').className).toContain(
+        "screen_import-review"
+      );
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({ season: { ...SEASON, Id: "s2", Name: "Summer 2027" } })
+        )
+      );
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      // The screens were rebuilt with Import a list closed: nothing still hides the table.
+      expect(q(element, '[data-screen="groups"]').className).not.toContain(
+        "screen_importing"
+      );
+    });
+
     it("the rail's quiet Saved shows once a row is saved, and goes while the next is on its way", async () => {
       const element = await renderWith();
       await openScreen(element, "weeks");

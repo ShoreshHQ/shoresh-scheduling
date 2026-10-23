@@ -512,7 +512,10 @@ export default class ShoreshListImport extends LightningElement {
     const table = importTable(p, {
       setup: this.setup,
       // A camp workbook holds the whole camp: what it leaves as it is is counted, not drawn.
-      showSame: !this.workbook
+      showSame: !this.workbook,
+      // A camp workbook's sheets lean on each other (an activity's new location is a row of
+      // Locations), so a row left out of one would come back through the next: no Leave out.
+      leaveOut: !this.workbook
     });
     const headings = p.mapping ? this.headingsOf(p) : [];
     // The columns open by themselves only when one needs a look (or one is missing).
