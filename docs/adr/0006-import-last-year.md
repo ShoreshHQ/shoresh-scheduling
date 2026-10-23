@@ -138,7 +138,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     disagreement questions first with an amber edge, as the desktop's hold lane; answered cards
     fold to "✓ answer" with **Change**); **Use this setup**; then the summary (added, changed as
     chosen, left out for now, not set up yet, good to know) and **Continue** to Roots.
-    _Redrawn in the design system (2026-10-23, wiki decision 56, ADR 0015 choice 14): the
+    _Redrawn in the design system (2026-10-23, wiki decision 56, ADR 0015 choice 15): the
     preview and the review are now one page, and the summary is the same page after Add. Every
     question, answer, refusal and save above is unchanged; see choice 22._
 
@@ -406,7 +406,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
 
 22. **One page, in the design system** (Greg, wiki decision 56, 2026-10-23: the approved
     mock-ups `design-research/screens-r1` import-pick, import-review-a, chosen over one question
-    at a time, and import-done; ADR 0015 choice 14 has the look). Every behaviour above stays:
+    at a time, and import-done; ADR 0015 choice 15 has the look). Every behaviour above stays:
     the questions and their answers (including Leave it out for now), remembered answers,
     guessed marks (choice 21), things deleted stay deleted with Bring back (choice 20), the
     version, the all-or-none save and Undo. What moves:

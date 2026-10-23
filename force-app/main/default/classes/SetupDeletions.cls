@@ -8,7 +8,8 @@
  * import and a season's delete take records away without remembering them.
  *
  * The question key is built from names, never record Ids, so it still holds in a copied season:
- * "deleted|<kind>|<program, for a program's own items>|<name>". The kinds are the import's own
+ * "deleted|<kind>|<program, for a program's own items; an offering's set>|<name>" (an offering
+ * is named by its activity). The kinds are the import's own
  * words for what it makes (c/shoreshLists screen kinds), not object names.
  */
 public with sharing class SetupDeletions {
@@ -133,6 +134,15 @@ public with sharing class SetupDeletions {
     return null;
   }
 
+  /** An elective set or an offering (SetupDeletionElectives), as an item (with no camp for anything else). */
+  private static Item electiveItemOf(Id recordId) {
+    // Nothing found has no camp: remember() leaves it.
+    SetupDeletionElectives.Found found = SetupDeletionElectives.of(recordId);
+    Item item = new Item(found.kind, found.name, found.campId);
+    item.scope = found.scope;
+    return item;
+  }
+
   /** A program's own item: its division, group, time block, fixed or recurring activity. */
   private static Item programItemOf(Id recordId, Schema.SObjectType type) {
     if (type == Division__c.SObjectType) {
@@ -150,7 +160,8 @@ public with sharing class SetupDeletions {
     if (type == RecurringActivity__c.SObjectType) {
       return recurringOf(recordId);
     }
-    return null;
+    // Else an elective set or an offering, or nothing remembered.
+    return electiveItemOf(recordId);
   }
 
   /** An item named with its program, in the program's camp. */

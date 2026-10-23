@@ -20,15 +20,17 @@
         onkeydown={handleKey}
       >
         <span class="words" data-id="guess-words">{label}</span>
-        <button
-          type="button"
-          class="shoresh-pop-row looks-right"
-          data-id="looks-right"
-          disabled={busy}
-          onclick={handleConfirm}
-        >
-          Looks right
-        </button>
+        <template lwc:if={canConfirm}>
+          <button
+            type="button"
+            class="shoresh-pop-row looks-right"
+            data-id="looks-right"
+            disabled={busy}
+            onclick={handleConfirm}
+          >
+            Looks right
+          </button>
+        </template>
       </span>
     </template>
   </span>

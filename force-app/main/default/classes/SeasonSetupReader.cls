@@ -3,7 +3,8 @@
  * the season, its weeks, each program with its time blocks, divisions, groups, and fixed and
  * recurring activities (with who each recurring one covers), and the
  * season's location types, locations, and activities (with who can do each), which weeks
- * and programs have saved schedules, and its special days and events (SpecialItems).
+ * and programs have saved schedules, its special days and events (SpecialItems), and its
+ * elective sets (ElectiveMenus).
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
@@ -100,6 +101,8 @@ public with sharing class SeasonSetupReader {
       : imports[0];
     // The Special events screen's items, plans in brief and days (ADR 0014 choice 11).
     result.special = SpecialItems.forSeason(seasonId);
+    // The Electives screen's sets, offerings and linked choices (repo ADR 0018, slice E4).
+    result.electives = ElectiveMenus.forSeason(seasonId);
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
     // What an import guessed and no one has looked at or changed since (ADR 0006 §21).
     result.guesses = SetupGuesses.forSetup(result);
@@ -291,6 +294,8 @@ public with sharing class SeasonSetupReader {
     public List<SetupGuesses.Guess> guesses;
     @AuraEnabled
     public SpecialItems.Setup special;
+    @AuraEnabled
+    public ElectiveMenus.Setup electives;
   }
 
   public class ProgramSetup {

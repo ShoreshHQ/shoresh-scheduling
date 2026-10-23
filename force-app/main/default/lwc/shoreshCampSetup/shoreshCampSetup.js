@@ -39,13 +39,22 @@ import {
   seededLines,
   specialOf
 } from "c/shoreshSpecialDetails";
+import {
+  electivesOf,
+  hasBlankSeats,
+  linkedNames,
+  openCount
+} from "c/shoreshElectiveDetails";
 import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
+// The days a program can run on (its fields, Monday to Friday).
+const PROGRAM_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
+const OFFER = FIELD.Offering;
 // The season forms' inputs (their data-field) and the season fields they hold. A season's Status
 // stays in the data but is not shown: it changed nothing a director could see (decision 26 (5)).
 const SEASON_INPUTS = {
@@ -61,6 +70,8 @@ const FLUSH_SCREENS = new Set([
   "manualBuild",
   "generatedSchedule",
   "weeks",
+  "programs",
+  "campWords",
   "divisions",
   "groups",
   "timeBlocks",
@@ -69,11 +80,13 @@ const FLUSH_SCREENS = new Set([
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
+  "electives",
   "bringInChoices"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
   weeks: "Week",
+  programs: "Program",
   divisions: "Division",
   groups: "Group",
   timeBlocks: "TimeBlock",
@@ -96,6 +109,7 @@ const SCREENS = [
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
+  "electives",
   "generatedSchedule",
   "manualBuild",
   "schedules",
@@ -228,8 +242,11 @@ export default class ShoreshCampSetup extends LightningElement {
   specialScheduleChanged = false;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
-  // The screen the page's address asks for (?c__preview=bringInChoices, repo ADR 0017 choice 19),
-  // and whether it has been opened once (after that the menu leads, as for any screen).
+  // The offering whose linked choices are open beside the Electives list, or null.
+  electiveDetailsFor = null;
+  // The screen the page's address asks for (?c__preview=electives, repo ADR 0018;
+  // ?c__preview=bringInChoices, ADR 0017 choice 19), and whether it has been opened once (after
+  // that the menu leads, as for any screen).
   preview = null;
   previewOpened = false;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
@@ -238,12 +255,6 @@ export default class ShoreshCampSetup extends LightningElement {
   merging = false;
   // A delete's question is open, or the delete is under way.
   deleting = false;
-  // A program card just deleted: its place in the list, so the cursor goes to its neighbour once
-  // the card is gone and the page is no longer busy (null when none).
-  focusAfterProgramDelete = null;
-  // The Programs screen's live region: "Deleted Main" after a card's delete.
-  programsAnnouncement = "";
-  programsAnnounced = false;
   // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
   setupStates = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
@@ -262,9 +273,10 @@ export default class ShoreshCampSetup extends LightningElement {
     );
 
   /**
-   * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
-   * menu until electives are finished (decision 44), so it can be tried and checked before then
-   * (repo ADR 0017 choice 19). Any other value is ignored.
+   * The page's address. ?c__preview=electives opens the Electives screen, which the menu still
+   * lists as coming, and ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu until electives are finished (decision 44); so both can be tried and checked before then
+   * (repo ADRs 0018 and 0017 choice 19). Any other value is ignored.
    */
   @wire(CurrentPageReference)
   wiredPageReference(reference) {
@@ -375,7 +387,6 @@ export default class ShoreshCampSetup extends LightningElement {
 
   renderedCallback() {
     this.showNewError();
-    this.focusProgramNeighbour();
     if (this.focusAfter) {
       const target = this.template.querySelector(this.focusAfter);
       this.focusAfter = null;
@@ -443,7 +454,12 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- menu and screens ----------
 
   get menu() {
-    return menuSections(this.terms, !!this.setup, menuMarks(this.setup));
+    return menuSections(
+      this.terms,
+      !!this.setup,
+      menuMarks(this.setup),
+      this.preview
+    );
   }
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;
@@ -455,7 +471,8 @@ export default class ShoreshCampSetup extends LightningElement {
    * them running edge to edge (docs/design/manual-build.html).
    */
   get bodyClass() {
-    return FLUSH_SCREENS.has(this.currentScreen)
+    // Copy season draws its own rail and inset, as a setup screen does.
+    return FLUSH_SCREENS.has(this.currentScreen) || this.isCopy
       ? "zone body body_flush"
       : "zone body";
   }
@@ -482,7 +499,7 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   handleNavigate(event) {
     const screen = event.detail.screen;
-    if (!canOpen(screen, !!this.setup)) {
+    if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
     this.openScreen(screen);
@@ -499,6 +516,16 @@ export default class ShoreshCampSetup extends LightningElement {
           this.specialScheduleFor = itemId;
         }
       });
+    }
+  }
+
+  /**
+   * The Electives list was given a file of camper choices, and the director chose to bring them
+   * in (plan §6.2): Bring in choices, with the cursor on its heading.
+   */
+  handleBringInChoices() {
+    if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+      this.openScreen("bringInChoices");
     }
   }
 
@@ -581,7 +608,7 @@ export default class ShoreshCampSetup extends LightningElement {
   /** A screen's "next" button: that screen, with the cursor on its heading (WCAG 2.4.3). */
   handleNext(event) {
     const screen = event.currentTarget.dataset.next;
-    if (!canOpen(screen, !!this.setup)) {
+    if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
     this.openScreen(screen);
@@ -610,13 +637,22 @@ export default class ShoreshCampSetup extends LightningElement {
   get seasonOptions() {
     return this.seasons.map((s) => ({ label: s.Name, value: s.Id }));
   }
+  /** What needs attention, on screens that can be opened (a coming screen's wait with it). */
   get problems() {
-    return setupProblems(this.setup, this.terms);
+    return setupProblems(this.setup, this.terms).filter((problem) =>
+      canOpen(problem.screen, true, this.preview)
+    );
   }
-  /** What needs attention on the screen shown (Roots lists everything in its own way). */
+  /**
+   * What needs attention on the screen shown (Roots lists everything in its own way); what the
+   * screen marks in its own rows (markedInPlace) is not listed again above them.
+   */
   get screenProblems() {
     return this.problems
-      .filter((problem) => problem.screen === this.currentScreen)
+      .filter(
+        (problem) =>
+          problem.screen === this.currentScreen && !problem.markedInPlace
+      )
       .map((problem) => ({ ...problem, actions: problem.actions || [] }));
   }
 
@@ -655,6 +691,11 @@ export default class ShoreshCampSetup extends LightningElement {
   /** Object and field names for the template's tables, as the package has them. */
   get objects() {
     return OBJECT;
+  }
+
+  /** The field that puts an offering in its set's section. */
+  get offeringSetField() {
+    return OFFER.ElectiveSet;
   }
 
   get locationTypeField() {
@@ -711,6 +752,103 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get hasNoPrograms() {
     return this.programs.length === 0;
+  }
+
+  /**
+   * The programs as the shared table's rows: one list per season read, so a redraw while a row
+   * is saving doesn't look like fresh rows to the table (and wipe what was typed there).
+   */
+  get programRecords() {
+    const setup = this.setup;
+    if (this._programRecordsFor !== setup) {
+      this._programRecordsFor = setup;
+      this._programRecords = ((setup && setup.programs) || []).map(
+        (entry) => entry.program
+      );
+    }
+    return this._programRecords;
+  }
+
+  /**
+   * A program's row (programs.png, wiki decision 56): its name, the days it runs as a strip of
+   * ticks, then how many divisions, groups and time blocks it has, worked out and never edited
+   * here. A program with no time blocks can't be scheduled: the zero is a value and the cell
+   * carries the needs-a-look corner.
+   */
+  get programColumns() {
+    const t = this.terms;
+    const entries = new Map(
+      ((this.setup && this.setup.programs) || []).map((entry) => [
+        entry.program.Id,
+        entry
+      ])
+    );
+    const count = (pick) => (saved) => {
+      const entry = entries.get(saved.Id);
+      return entry ? String(pick(entry)) : "";
+    };
+    const divisions = (entry) => (entry.divisions || []).length;
+    const groups = (entry) =>
+      (entry.divisions || []).reduce(
+        (sum, d) => sum + (d.groups || []).length,
+        0
+      );
+    const blocks = (entry) => (entry.timeBlocks || []).length;
+    const noBlocks = (saved) => {
+      const entry = entries.get(saved.Id);
+      return !!entry && blocks(entry) === 0;
+    };
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "days",
+        label: "Runs on",
+        type: "days",
+        strip: true,
+        width: 13,
+        days: PROGRAM_DAYS.map((day) => ({
+          fieldName: FIELD.Program[day],
+          label: day
+        }))
+      },
+      {
+        fieldName: "divisionCount",
+        label: t.p("Division"),
+        type: "readonly",
+        width: 8,
+        textFor: count(divisions)
+      },
+      {
+        fieldName: "groupCount",
+        label: t.p("Group"),
+        type: "readonly",
+        width: 8,
+        textFor: count(groups)
+      },
+      {
+        fieldName: "timeBlockCount",
+        label: t.p("TimeBlock"),
+        type: "readonly",
+        width: 8,
+        textFor: count(blocks),
+        exceptionFor: noBlocks,
+        problemFor: (saved) => {
+          return noBlocks(saved) ? `No ${t.pIn("TimeBlock")} yet` : null;
+        }
+      }
+    ];
+  }
+
+  /** A new program: in this season, last in order, running every day (the fields' default). */
+  get programDefaults() {
+    const defaults = {
+      [FIELD.Program.Season]: this.seasonId,
+      [FIELD.Program.SortOrder]: this.programs.length + 1
+    };
+    PROGRAM_DAYS.forEach((day) => {
+      defaults[FIELD.Program[day]] = true;
+    });
+    return defaults;
   }
 
   get locationTypeColumns() {
@@ -1234,6 +1372,248 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.specialScheduleFor ? "slds-hide" : "";
   }
 
+  // ---------- electives (repo ADR 0018, slice E4) ----------
+
+  get electives() {
+    return electivesOf(this.setup);
+  }
+
+  /** The rail: "2 elective sets", in the camp's word. */
+  get electiveCount() {
+    const t = this.terms;
+    const count = this.electives.sets.length;
+    return {
+      count,
+      noun: ` ${count === 1 ? t.sIn("ElectiveSet") : t.pIn("ElectiveSet")}`
+    };
+  }
+
+  /** An activity's name, by Id. */
+  get activityNames() {
+    return new Map(
+      ((this.setup && this.setup.activities) || []).map((a) => [a.Id, a.Name])
+    );
+  }
+
+  /** An offering's name: its activity's (its own Name is a number that means nothing). */
+  get offeringName() {
+    const names = this.activityNames;
+    return (values) => names.get(values[OFFER.Activity]) || "";
+  }
+
+  /**
+   * One section per elective set (design-research electives-r1 setup-a, decision 53): its name
+   * and its count of confirmed, open offerings ("Chugim 4"), a row per offering, and a blank row
+   * "Add to Chugim". Each section is its own table over every offering, showing its set's.
+   */
+  get electiveSections() {
+    const electives = this.electives;
+    return electives.sets.map((set, index) => {
+      const mine = electives.offerings.filter(
+        (o) => o[OFFER.ElectiveSet] === set.Id
+      );
+      return {
+        key: set.Id,
+        setId: set.Id,
+        heading: set.Name,
+        first: index === 0,
+        count: openCount(mine),
+        title: `${set.Name}: ${this.terms.p("Offering")}`,
+        addLabel: `Add to ${set.Name}`,
+        columns: this.offeringColumns(set.Id),
+        defaults: { [OFFER.ElectiveSet]: set.Id }
+      };
+    });
+  }
+
+  /**
+   * An offering's row, as the approved mock-up draws it (setup-a; desktop ElectiveSetDetail.jsx):
+   * the activity, its seats (a number, "No limit", or "Closed" for 0), its minimum ("No minimum"
+   * quiet), who can take it and where it happens (the activity's, read only, never typed twice),
+   * and its linked choices. An activity is offered once in a set: the choice leaves out those
+   * already offered there.
+   */
+  offeringColumns(setId) {
+    const t = this.terms;
+    const setup = this.setup || {};
+    const activities = setup.activities || [];
+    const byId = new Map(activities.map((a) => [a.Id, a]));
+    const offered = new Set(
+      this.electives.offerings
+        .filter((o) => o[OFFER.ElectiveSet] === setId)
+        .map((o) => o[OFFER.Activity])
+    );
+    const options = activities.map((a) => ({ label: a.Name, value: a.Id }));
+    const locations = new Map(
+      (setup.locations || []).map((l) => [l.Id, l.Name])
+    );
+    const who = this.whoNames;
+    const whoIds = (activity) =>
+      ((activity && activity[CHILDREN.Activity.Eligibilities]) || []).map(
+        (row) =>
+          row[FIELD.ActivityEligibility.Division] ||
+          row[FIELD.ActivityEligibility.Group]
+      );
+    const activityOf = (saved) => byId.get(saved[OFFER.Activity]);
+    // The camp's own word for a minimum, else the mock-up's short "Minimum".
+    const minimum =
+      t.s("MinimumToRun") === "Minimum to run"
+        ? "Minimum"
+        : t.s("MinimumToRun");
+    return [
+      {
+        fieldName: OFFER.Activity,
+        label: t.s("Offering"),
+        type: "picklist",
+        required: true,
+        width: 14,
+        options,
+        optionsFor: (saved) =>
+          options.filter(
+            (o) => o.value === saved[OFFER.Activity] || !offered.has(o.value)
+          )
+      },
+      {
+        fieldName: OFFER.Seats,
+        label: t.s("Seats"),
+        type: "seats",
+        noLimitField: OFFER.NoSeatLimit,
+        noLimitLabel: "No limit",
+        min: 0,
+        width: 10
+      },
+      {
+        fieldName: OFFER.MinimumToRun,
+        label: minimum,
+        type: "number",
+        min: 1,
+        placeholder: "No minimum",
+        width: 8.5
+      },
+      {
+        fieldName: "who",
+        label: "Who",
+        type: "readonly",
+        minWidth: 7,
+        textFor: (saved) => {
+          if (!saved.Id) return "";
+          const ids = whoIds(activityOf(saved));
+          return ids.length
+            ? ids
+                .map((id) => who.get(id))
+                .filter((name) => name)
+                .join(", ")
+            : "Everyone";
+        },
+        exceptionFor: (saved) =>
+          !!saved.Id && whoIds(activityOf(saved)).length > 0
+      },
+      {
+        fieldName: "where",
+        label: "Where",
+        type: "readonly",
+        width: 10,
+        textFor: (saved) => {
+          const activity = saved.Id && activityOf(saved);
+          return (activity && locations.get(activity[ACTIVITY.Location])) || "";
+        },
+        exceptionFor: () => true
+      },
+      {
+        fieldName: "linked",
+        label: "Linked",
+        type: "readonly",
+        width: 10,
+        textFor: (saved) => {
+          return saved.Id ? linkedNames(this.setup, saved.Id).join(", ") : "";
+        },
+        exceptionFor: () => true
+      }
+    ];
+  }
+
+  /** A proposed offering's row: a dashed edge until it is confirmed (plan section 4.1). */
+  get offeringRowClasses() {
+    const result = {};
+    this.electives.offerings
+      .filter((o) => o[OFFER.Proposed])
+      .forEach((o) => {
+        result[o.Id] = "row_proposed";
+      });
+    return result;
+  }
+
+  /** A proposed offering's Confirm: saved at once, as the row's change. */
+  get offeringActions() {
+    const result = {};
+    this.electives.offerings
+      .filter((o) => o[OFFER.Proposed])
+      .forEach((o) => {
+        result[o.Id] = [
+          {
+            key: "confirm",
+            label: "Confirm",
+            changes: { [OFFER.Proposed]: false }
+          }
+        ];
+      });
+    return result;
+  }
+
+  /**
+   * A limited offering with no seats yet carries the needs-a-look corner on its seats, its
+   * words only (seats are not assigned until they are filled in; desktop "Fill blank capacities
+   * first.").
+   */
+  get offeringMarks() {
+    const t = this.terms;
+    const names = this.activityNames;
+    const words = "Seats not filled in yet";
+    const result = {};
+    this.electives.offerings.filter(hasBlankSeats).forEach((o) => {
+      result[o.Id] = {
+        [OFFER.Seats]: {
+          field: "seats",
+          words,
+          name: `${t.s("Seats")} for ${names.get(o[OFFER.Activity]) || ""}: ${words.toLowerCase()}`,
+          wordsOnly: true
+        }
+      };
+    });
+    return result;
+  }
+
+  get electiveSetColumns() {
+    return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
+  }
+
+  get electiveSetDefaults() {
+    return { [FIELD.ElectiveSet.Season]: this.seasonId };
+  }
+
+  /** An offering's chevron: its linked choices open beside the list (setup-a). */
+  handleOpenElectiveDetails(event) {
+    const { recordId } = event.detail;
+    const details = this.template.querySelector("c-shoresh-elective-details");
+    if (details && details.open(recordId)) {
+      this.electiveDetailsFor = recordId;
+    }
+  }
+
+  /** Closed: the cursor goes back to that row's chevron. */
+  handleCloseElectiveDetails(event) {
+    const { offeringId } = event.detail;
+    this.electiveDetailsFor = null;
+    const table = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="offerings"]'
+      )
+    ].find((list) => list.showsRow(offeringId));
+    if (table) {
+      table.focusDetailsOf(offeringId);
+    }
+  }
+
   /** Each counted screen's rail: how many, in the camp's word ("10 groups", "1 week"). */
   get counts() {
     const setup = this.setup || {};
@@ -1242,6 +1622,7 @@ export default class ShoreshCampSetup extends LightningElement {
       programs.reduce((sum, entry) => sum + pick(entry), 0);
     const n = {
       weeks: (setup.weeks || []).length,
+      programs: programs.length,
       divisions: inPrograms((e) => (e.divisions || []).length),
       groups: inPrograms((e) =>
         (e.divisions || []).reduce((sum, d) => sum + (d.groups || []).length, 0)
@@ -1330,7 +1711,11 @@ export default class ShoreshCampSetup extends LightningElement {
       noSpecialDays: `No ${t.pIn("SpecialDay")} yet`,
       specialEvents: this.eventWords.p,
       addSpecialEvent: `Add ${this.eventWords.s}`,
-      noSpecialEvents: `No ${this.eventWords.pIn} yet`
+      noSpecialEvents: `No ${this.eventWords.pIn} yet`,
+      electiveSets: t.p("ElectiveSet"),
+      addElectiveSet: `Add ${t.s("ElectiveSet")}`,
+      noElectiveSets: `No ${t.pIn("ElectiveSet")} yet`,
+      noOfferings: `No ${t.pIn("Offering")} yet`
     };
   }
 
@@ -1671,23 +2056,6 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
 
-  async handleAddProgram() {
-    const count = this.programs.length;
-    const records = [
-      {
-        sobjectType: OBJECT.Program,
-        [FIELD.Program.Season]: this.seasonId,
-        Name: count ? `${this.terms.s("Program")} ${count + 1}` : "Main",
-        [FIELD.Program.SortOrder]: count + 1
-      }
-    ];
-    await this.saveAndReload(
-      () => saveRecords({ records }),
-      null,
-      `${this.terms.s("Program")} not added. Nothing was saved.`
-    );
-  }
-
   /** An activity row's Details: its details open below the table (desktop's row Edit). */
   async handleOpenActivityDetails(event) {
     const { recordId } = event.detail;
@@ -1732,22 +2100,9 @@ export default class ShoreshCampSetup extends LightningElement {
     });
   }
 
-  /**
-   * A save from a table (one row, as the director leaves it: SetupTablesController.saveRow,
-   * ADR 0011) or from a program's own form (a field, as the director leaves it).
-   */
+  /** A save from a table: one row, as the director leaves it (SetupTablesController.saveRow, ADR 0011). */
   async handleSaveRecords(event) {
-    const detail = event.detail;
-    if (detail.record) {
-      await this.saveTableRow(detail);
-      return;
-    }
-    await this.saveForm({
-      records: detail.records,
-      what: this.notSaved(detail.records),
-      onSaved: detail.onSaved,
-      onFailure: detail.onFailure
-    });
+    await this.saveTableRow(event.detail);
   }
 
   /**
@@ -2031,8 +2386,6 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!ok) {
       return;
     }
-    // A whole program card (not a table row): where it was in the list, before it goes.
-    const programIndex = this.programs.findIndex((p) => p.key === recordId);
     await this.run(async () => {
       await deleteRecord({ recordId });
       this.changedOnServer = true;
@@ -2041,46 +2394,8 @@ export default class ShoreshCampSetup extends LightningElement {
       // The table says so in its live region and moves the cursor off the gone row.
       if (onDeleted) {
         onDeleted();
-      } else if (programIndex >= 0) {
-        this.programDeleted(programIndex, name);
       }
     }, `"${name}" not deleted. Nothing was removed.`);
-  }
-
-  /**
-   * A program card was deleted and the season read again: it is said, and the cursor goes to
-   * the name of the card that took its place, else the card above, else Add program, as a
-   * table's row delete does (ADR 0013 choice 25).
-   */
-  programDeleted(index, name) {
-    this.programsAnnounced = !this.programsAnnounced;
-    const text = `Deleted ${name || ""}`.trim();
-    // Every other time with a trailing non-breaking space, so the same words are read again.
-    this.programsAnnouncement = this.programsAnnounced ? text : `${text}\u00a0`;
-    this.focusAfterProgramDelete = index;
-  }
-
-  focusProgramNeighbour() {
-    // Add program is disabled while the page is busy, and a disabled button can't take focus.
-    if (this.focusAfterProgramDelete === null || this.busy) {
-      return;
-    }
-    const index = this.focusAfterProgramDelete;
-    this.focusAfterProgramDelete = null;
-    const cards = [
-      ...this.template.querySelectorAll(
-        '[data-screen="programs"] c-shoresh-program'
-      )
-    ];
-    const card = cards[index] || cards[index - 1];
-    if (card) {
-      card.focusName();
-      return;
-    }
-    const add = this.template.querySelector('[data-id="add-program"]');
-    if (add) {
-      add.focus();
-    }
   }
 
   /**
@@ -2089,6 +2404,20 @@ export default class ShoreshCampSetup extends LightningElement {
    * bring it back, and the schedules keep its name.
    */
   async deleteQuestion(recordId, name) {
+    // An offering: taken off its set, the activity kept (desktop "Remove …? The activity is
+    // kept."); its linked choices go with it.
+    const offering = this.electives.offerings.find((o) => o.Id === recordId);
+    if (offering) {
+      const set = this.electives.sets.find(
+        (s) => s.Id === offering[OFFER.ElectiveSet]
+      );
+      return {
+        label: "Delete",
+        message: `Take "${name}" off "${set ? set.Name : ""}"? The ${this.terms.sIn("Activity")} is kept.`,
+        variant: "header",
+        theme: "warning"
+      };
+    }
     // A count that couldn't be made is said so, never left out quietly.
     const count = (await Promise.resolve()
       .then(() => scheduleUses({ recordId }))

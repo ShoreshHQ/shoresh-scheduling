@@ -63,9 +63,8 @@ describe("c-shoresh-download", () => {
     expect(clicked).toHaveLength(1);
     expect(clicked[0].download).toBe("Activities - Summer 2027.xlsx");
     const { wb, type } = await workbookAt(clicked[0].href);
-    expect(type).toBe(
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    // Lightning Web Security refuses a link of Excel's own type: plain bytes, named .xlsx.
+    expect(type).toBe("application/octet-stream");
     // Kept while the browser takes the file; let go at the next download.
     expect(revoked).toEqual([]);
     await downloadWorkbook({}, [{ name: "Two", rows: [["A"]] }], "two.xlsx");

@@ -33,6 +33,10 @@ public with sharing class ImportUndoLog {
   ) {
     // Name too, so Undo can say which record was deleted since.
     Set<String> columns = new Set<String>{ 'Name' };
+    // An offering by its activity's (its own name is a number).
+    if (kind == Offering__c.SObjectType) {
+      columns.add(ImportFields.offeringNameColumn());
+    }
     for (Map<String, Schema.SObjectField> fields : fieldsById.values()) {
       for (Schema.SObjectField field : fields.values()) {
         columns.add(ShoreshSchema.queryName(field));
@@ -60,7 +64,9 @@ public with sharing class ImportUndoLog {
         new Map<String, Object>{
           'id' => record.Id,
           'type' => ShoreshSchema.localName(kind),
-          'name' => record.get('Name'),
+          'name' => kind == Offering__c.SObjectType
+            ? ImportFields.nameOf(record)
+            : record.get('Name'),
           'before' => values
         }
       );

@@ -237,12 +237,50 @@
                         </template>
                       </span>
                     </template>
+                    <template lwc:elseif={cell.isSeats}>
+                      <!-- Seats: words at rest ("No limit", "Closed", 12); the number and the
+                           No limit tick in their place under the pointer or while the row is
+                           edited (repo ADR 0018). -->
+                      <div class={cell.seatsClass}>
+                        <span class={cell.seatsTextClass} data-id="seats-text"
+                          >{cell.seatsText}</span
+                        >
+                        <span class="seats-fields">
+                          <lightning-input
+                            type="number"
+                            label={cell.label}
+                            variant="label-hidden"
+                            value={cell.value}
+                            min={cell.min}
+                            step="1"
+                            data-row-key={row.key}
+                            data-field={cell.fieldName}
+                            disabled={cell.disabled}
+                            onchange={handleChange}
+                          ></lightning-input>
+                          <label class="no-limit">
+                            <input
+                              type="checkbox"
+                              class="no-limit-box"
+                              aria-label={cell.noLimitLabel}
+                              checked={cell.noLimit}
+                              data-row-key={row.key}
+                              data-field={cell.noLimitField}
+                              disabled={cell.noLimitDisabled}
+                              onchange={handleChange}
+                            />
+                            <span aria-hidden="true">{cell.noLimitText}</span>
+                          </label>
+                        </span>
+                      </div>
+                    </template>
                     <template lwc:elseif={cell.isNumber}>
                       <lightning-input
                         type="number"
                         label={cell.label}
                         variant="label-hidden"
                         value={cell.value}
+                        placeholder={cell.placeholder}
                         required={cell.required}
                         min={cell.min}
                         step="1"
@@ -337,11 +375,21 @@
                         title={cell.fixedText}
                         >{cell.fixedText}</span
                       >
+                      <template lwc:if={cell.problem}>
+                        <c-shoresh-dot
+                          class="problem"
+                          data-id="problem"
+                          shape="corner"
+                          label={cell.problem}
+                          focusable
+                        ></c-shoresh-dot>
+                      </template>
                     </template>
                     <template lwc:if={cell.guess}>
                       <c-shoresh-guess-mark
                         label={cell.guess}
                         name={cell.guessName}
+                        words-only={cell.guessWordsOnly}
                         busy={busy}
                         data-id="guess"
                         data-guess-row={row.key}
@@ -423,6 +471,22 @@
                       <span class="slds-assistive-text" data-id="not-saved"
                         >Not saved</span
                       >
+                    </template>
+                    <template for:each={row.endActions} for:item="action">
+                      <button
+                        key={action.key}
+                        type="button"
+                        class="shoresh-item shoresh-item_value end-action"
+                        aria-label={action.title}
+                        data-row-key={row.key}
+                        data-action={action.name}
+                        data-end="true"
+                        data-id="end-action"
+                        onclick={handleRowAction}
+                        disabled={busy}
+                      >
+                        {action.label}
+                      </button>
                     </template>
                     <span class="tools">
                       <button

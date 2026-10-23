@@ -6,8 +6,15 @@ import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 
 /**
- * "Copy last season": pick a name and a new start date, see exactly where every week lands,
- * then copy. The original season is never changed.
+ * Copy season, a page of its own (wiki decision 56, copy-season-a): the new season's name and
+ * first day; the weeks drawn twice, last season's faint over the new ones, so the dates can be
+ * seen to move; then what comes along and what stays behind. A first day on another weekday is
+ * marked and said ("2027 started on a Sunday"), never refused. The button names the result
+ * ("Copy to 2028"). The original season is never changed.
+ *
+ * What comes along is what SeasonCopier copies (setup belongs to a season, ADR 0018 choice 10
+ * for electives); what stays behind belongs to the summer it happened in (ADR 0014 choice 2,
+ * ADR 0018 choice 10, decision 56).
  * Fires: copied { seasonId }, cancel.
  */
 export default class ShoreshCopySeason extends LightningElement {
@@ -41,26 +48,68 @@ export default class ShoreshCopySeason extends LightningElement {
     }
   }
 
+  get trimmedName() {
+    return (this.newName || "").trim();
+  }
+
   get labels() {
     const t = this.terms;
     return {
-      title: `Copy ${t.sIn("Season")} "${this.season.Name}"`,
-      // What is copied shows in the preview below; this only says the original is safe.
-      intro: `"${this.season.Name}" stays as it is.`,
-      name: `New ${t.sIn("Season")} name`,
-      start: "New start date",
-      weeks: `${t.p("Week")} in the new ${t.sIn("Season")}`,
-      week: t.s("Week"),
-      copy: `Copy ${t.sIn("Season")}`
+      title: `Copy ${t.sIn("Season")}`,
+      // Read as one: the page draws the two apart.
+      titleName: `Copy ${t.sIn("Season")} ${this.season.Name}`,
+      name: `New ${t.sIn("Season")}`,
+      start: "First day",
+      weeks: `${t.p("Week")} in ${this.season.Name} and in the new ${t.sIn("Season")}`,
+      // The button names the result.
+      copy: this.trimmedName
+        ? `Copy to ${this.trimmedName}`
+        : `Copy ${t.sIn("Season")}`,
+      comesAlong: "Comes along",
+      staysBehind: `Stays in ${this.season.Name}`
     };
   }
 
-  get weekdayWarning() {
+  /** What the copy brings, in the camp's words (SeasonCopier, ElectiveCopier). */
+  get comesAlong() {
+    const t = this.terms;
+    return [
+      t.p("Week"),
+      t.p("Program"),
+      t.p("Division"),
+      t.p("Group"),
+      t.p("TimeBlock"),
+      t.p("Location"),
+      "Camp words",
+      t.p("Activity"),
+      t.p("FixedActivity"),
+      t.p("RecurringActivity"),
+      t.p("ElectiveSet")
+    ].map((label) => ({ key: label, label }));
+  }
+
+  /**
+   * What stays with this season: its schedules and saved versions, its special days and events
+   * (ADR 0014 choice 2), its elective seats and the campers' choices (ADR 0018 choice 10).
+   */
+  get staysBehind() {
+    const t = this.terms;
+    return [
+      "Schedules",
+      t.p("Version"),
+      t.p("SpecialDay"),
+      t.p("SpecialEvent"),
+      "Elective seats",
+      `${t.s("Camper")} choices`
+    ].map((label) => ({ key: label, label }));
+  }
+
+  /** "2027 started on a Sunday": only when the new first day is another weekday. */
+  get weekdayNote() {
     if (!this.preview || !this.preview.weekdaysChange) {
       return null;
     }
-    // One line; the dates below show each week's new days.
-    return `${this.terms.p("Week")} move from ${this.preview.oldWeekday}s to ${this.preview.newWeekday}s.`;
+    return `${this.season.Name} started on a ${this.preview.oldWeekday}`;
   }
 
   get previewWeeks() {
@@ -74,8 +123,22 @@ export default class ShoreshCopySeason extends LightningElement {
     return this.previewWeeks.length > 0;
   }
 
+  /** A season without weeks: its new dates in words instead. */
+  get showDates() {
+    return !!this.preview && !this.hasPreviewWeeks;
+  }
+
+  /** One column per week, each as wide as the page allows. */
+  get weeksStyle() {
+    return `--weeks: ${Math.max(this.previewWeeks.length, 1)}`;
+  }
+
+  get newSeasonLabel() {
+    return this.trimmedName || `New ${this.terms.sIn("Season")}`;
+  }
+
   get copyDisabled() {
-    return this.busy || !this.preview || !this.newName || !this.newName.trim();
+    return this.busy || !this.preview || !this.trimmedName;
   }
 
   handleName(event) {

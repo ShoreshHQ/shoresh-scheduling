@@ -744,3 +744,57 @@ describe("special days", () => {
     expect(special(setup)).toEqual([]);
   });
 });
+
+// Repo ADR 0018 (slice E4; plan section 4.6): elective offerings for Roots' Needs attention.
+// Marked in their rows on the Electives screen, so that screen doesn't list them again.
+describe("elective offerings", () => {
+  const electiveSetup = (offerings) => ({
+    season,
+    weeks: [week("Session 1", "2026-06-29", "2026-07-03")],
+    programs: [fullProgram],
+    activities: [
+      swim,
+      { Id: "a2", Name: "Woodworking", Eligibilities__r: [] },
+      { Id: "a3", Name: "Photography", Eligibilities__r: [] }
+    ],
+    electives: {
+      sets: [{ Id: "es1", Name: "Chugim" }],
+      offerings,
+      linkedChoices: []
+    }
+  });
+  const electives = (setup) =>
+    setupProblems(setup, terms).filter((p) => p.screen === "electives");
+
+  it("a proposed offering and one with blank seats need a look; closed and no limit don't", () => {
+    const problems = electives(
+      electiveSetup([
+        { Id: "o1", ElectiveSet__c: "es1", Activity__c: "a1", Seats__c: 0 },
+        {
+          Id: "o2",
+          ElectiveSet__c: "es1",
+          Activity__c: "a2",
+          Seats__c: 10,
+          Proposed__c: true
+        },
+        { Id: "o3", ElectiveSet__c: "es1", Activity__c: "a3" },
+        {
+          Id: "o4",
+          ElectiveSet__c: "es1",
+          Activity__c: "a1",
+          NoSeatLimit__c: true
+        }
+      ])
+    );
+    expect(problems.map((p) => [p.name, p.why, p.markedInPlace])).toEqual([
+      ["Woodworking", 'In "Chugim": proposed, not confirmed yet.', true],
+      ["Photography", 'In "Chugim": seats not filled in yet.', true]
+    ]);
+  });
+
+  it("a season without electives has none", () => {
+    expect(electives({ ...electiveSetup([]), electives: undefined })).toEqual(
+      []
+    );
+  });
+});

@@ -33,7 +33,8 @@ const WIDTHS = {
   checkbox: 5,
   who: 14,
   often: 9,
-  days: 11
+  days: 11,
+  seats: 9
 };
 // A shared column's least room (rem), unless the column says (minWidth).
 const SHARED_MIN = 12;
@@ -112,8 +113,10 @@ const SHORT_DAYS = {
  *   maxField: at most, noMaxField, minLabel, maxLabel, scale): bars at rest, scaled to scale (the
  *   camp's highest weekly count), the two numbers in their place on hover or edit. type "days"
  *   (days: [{ fieldName, label }], every, none): "Every day" quiet, "Mon Wed Fri" or "Off Fri" a
- *   value, a tick per day on hover or edit, saved with the row. A readonly column's
- *   exceptionFor(saved) makes its words a value rather than quiet. rowFilter / whoRule /
+ *   value, a tick per day on hover or edit, saved with the row; with strip: true the ticks
+ *   always show, in place of the words (Programs). A readonly column's
+ *   exceptionFor(saved) makes its words a value rather than quiet, and its problemFor(saved)
+ *   (words, or null) puts the needs-a-look corner on the cell, its words on hover or focus. rowFilter / whoRule /
  *   newRowWho: sections a field can't name (a recurring activity's division, from who it covers).
  *   With detailsLabel, the row's end holds a chevron that asks the page to open its details
  *   beside the table; the row whose details are open carries the 2 px selection line.
@@ -141,7 +144,24 @@ const SHORT_DAYS = {
  *
  * guesses: what an import guessed and no one has looked at since (ADR 0006 §21), record Id ->
  *   { [column fieldName]: { field, words, name } }: that cell carries the needs-a-look corner
- *   (c/shoreshGuessMark), which opens its words and Looks right.
+ *   (c/shoreshGuessMark), which opens its words and Looks right. With wordsOnly: true the corner
+ *   only says its words (a problem to fix in the cell, such as seats not filled in yet).
+ *
+ * Electives setup (repo ADR 0018, slice E4) adds:
+ *   type "seats" (fieldName: the number, noLimitField: the tick, noLimitLabel): words at rest,
+ *     "No limit", "Closed" for 0, the number, or nothing while it is blank; the number and the
+ *     tick in their place on hover or edit. The number waits while No limit is ticked.
+ *   placeholder on a number column: what a blank reads as, quietly ("No minimum").
+ *   nameFor(values): a row's name for its buttons and what is said, for records whose own Name
+ *     means nothing to a camp (an offering's is a number; its activity names it). The blank row's
+ *     first field says what it adds even when it is a choice, not a text field.
+ *   rowClasses: record Id -> extra row classes ("row_proposed": a dashed edge, not confirmed).
+ *   endActions: record Id -> [{ key, label, changes }]: a change offered at the row's end, in
+ *     words, saved at once (a proposed offering's Confirm), shown like the tools: under the
+ *     pointer or with the keyboard in the row, never hidden from Tab. Given at all, the row's end is wider
+ *     in every section alike, so the columns of a screen's sections line up.
+ *   headingCount: the number beside the heading, when it is not how many rows show (a set's
+ *     count is its confirmed, open offerings only, decision 53).
  */
 export default class ShoreshEditableTable extends LightningElement {
   @api title;
@@ -203,6 +223,14 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weeksMax = 20;
   /** What an import guessed, marked in its cell (see above). */
   @api guesses = {};
+  /** A row's name from its values (see above); without it, the record's Name. */
+  @api nameFor;
+  /** Extra classes for saved rows: record Id -> "row_proposed" (see above). */
+  @api rowClasses = {};
+  /** The heading's number, when it isn't the rows shown (see above). */
+  @api headingCount;
+  /** Changes offered at a row's end: record Id -> [{ key, label, changes }] (see above). */
+  @api endActions;
 
   drafts = [];
   addRow = this.blankRow();
@@ -218,6 +246,9 @@ export default class ShoreshEditableTable extends LightningElement {
   focusAddRow = false;
   // Where the cursor goes once it is on the page (takeFocus): { key, field }.
   focusTaken = null;
+  // The row whose action button (a note's fix, Confirm at its end) was pressed: its button may
+  // be gone once the save reloads the screen, and the cursor then stays in the row.
+  focusAfterAction = null;
   _rows = [];
   _columns = [];
   _weeks = [];
@@ -427,6 +458,14 @@ export default class ShoreshEditableTable extends LightningElement {
     return key === ADD ? this.addRow : this.drafts.find((d) => d.key === key);
   }
 
+  /** A row's name, as the camp reads it: nameFor(values), else its Name. */
+  nameOf(values) {
+    if (typeof this.nameFor === "function") {
+      return this.nameFor(values || {}) || "";
+    }
+    return (values && values.Name) || "";
+  }
+
   /** Redraws after a row's values changed in place. */
   touch(draft) {
     if (draft.key === ADD) {
@@ -463,6 +502,16 @@ export default class ShoreshEditableTable extends LightningElement {
           label: day.label,
           type: "checkbox"
         }));
+      }
+      if (col.type === "seats") {
+        return [
+          { ...col, type: "number" },
+          {
+            fieldName: col.noLimitField,
+            label: col.noLimitLabel || "No limit",
+            type: "checkbox"
+          }
+        ];
       }
       return [col];
     });
@@ -523,9 +572,12 @@ export default class ShoreshEditableTable extends LightningElement {
       : "section";
   }
 
-  /** How many rows the section shows (its heading's count). */
+  /** The heading's count: how many rows the section shows, unless headingCount says. */
   get shownCount() {
-    return this.visibleDrafts.length;
+    const given = this.headingCount;
+    return given === undefined || given === null || given === ""
+      ? this.visibleDrafts.length
+      : given;
   }
 
   /** Each column's width in rem, or null for the name and words columns (they share the rest). */
@@ -549,7 +601,8 @@ export default class ShoreshEditableTable extends LightningElement {
     if (this.hasNotes) {
       widths.push({ key: "col-notes", rem: 14 });
     }
-    widths.push({ key: "col-end", rem: 5.5 });
+    // Room for an action in words ("Confirm") beside the tools, when the screen offers any.
+    widths.push({ key: "col-end", rem: this.endActions ? 10 : 5.5 });
     return widths;
   }
 
@@ -754,6 +807,7 @@ export default class ShoreshEditableTable extends LightningElement {
         keep.focus();
       }
     }
+    this.keepFocusAfterAction();
     this.applyTakenFocus();
     this.reportMoves();
     this.announceDraftNotes();
@@ -780,6 +834,45 @@ export default class ShoreshEditableTable extends LightningElement {
     if (fresh) {
       this.announce(fresh[1]);
     }
+  }
+
+  /**
+   * After a row's action button is pressed, when the cursor has fallen to the page: once the
+   * button is gone (Confirm, once confirmed) it goes to the row's first field, or the blank row's
+   * if the row is gone (WCAG 2.4.3); while the button is still drawn, back on it. Waits while the
+   * cursor is still on the button; lets go once the director has moved it elsewhere.
+   */
+  keepFocusAfterAction() {
+    const pending = this.focusAfterAction;
+    if (!pending) {
+      return;
+    }
+    const active = this.template.activeElement;
+    if (active) {
+      if (!(active.dataset && active.dataset.id === pending.id)) {
+        this.focusAfterAction = null;
+      }
+      return;
+    }
+    const page = document.activeElement;
+    if (page && page !== document.body && page !== document.documentElement) {
+      // Somewhere else on the page: not lost, so left there.
+      this.focusAfterAction = null;
+      return;
+    }
+    const button = this.template.querySelector(
+      `[data-id="${pending.id}"][data-row-key="${pending.key}"]`
+    );
+    if (button) {
+      // Still drawn: back on it once it can be pressed again (a browser drops the cursor from a
+      // button disabled while the save is sent), still watching in case the reload removes it.
+      if (!button.disabled) {
+        button.focus();
+      }
+      return;
+    }
+    this.focusAfterAction = null;
+    this.focusRow(this.rowFor(pending.key) ? pending.key : ADD);
   }
 
   focusRow(key) {
@@ -1063,14 +1156,18 @@ export default class ShoreshEditableTable extends LightningElement {
       !draft.isNew &&
       sameNames.has(draft.key) &&
       matches.has(looseKey(draft.original.Name));
-    const firstText = (this.columns.find((c) => this.isTextColumn(c)) || {})
-      .fieldName;
+    // The blank row says what it adds in its first text field, else its first field.
+    const firstText = (
+      this.columns.find((c) => this.isTextColumn(c)) ||
+      this.mainColumns[0] ||
+      {}
+    ).fieldName;
     // A refused change still on screen, until it is saved or put back.
     const notSaved =
       !draft.isNew && !!draft.refused && this.hasChanges(draft, offWeeks);
     const hasMore = !draft.isNew && this.moreColumns.length > 0;
     const moreOpen = hasMore && !!draft.moreOpen;
-    const name = draft.values.Name || "";
+    const name = this.nameOf(draft.values);
     // A field's name for screen readers: what the blank row adds, or that a refused row's
     // change isn't saved, read as the director tabs through.
     const named = (label) => {
@@ -1088,13 +1185,17 @@ export default class ShoreshEditableTable extends LightningElement {
         const saved = draft.isNew ? {} : draft.original || {};
         // The rule reads quietly; an exception (exceptionFor) is a value.
         const exception = !!col.exceptionFor && !!col.exceptionFor(saved);
+        // A problem the row has (problemFor): the needs-a-look corner on this cell.
+        const problem =
+          !draft.isNew && col.problemFor ? col.problemFor(saved) || null : null;
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
-          className,
+          className: problem ? `${className} has-guess` : className,
           isReadonly: true,
           fixedClass: exception ? "fixed exception" : "fixed",
-          fixedText: col.textFor ? col.textFor(saved) || "" : ""
+          fixedText: col.textFor ? col.textFor(saved) || "" : "",
+          problem
         };
       }
       if (col.type === "often") {
@@ -1102,6 +1203,9 @@ export default class ShoreshEditableTable extends LightningElement {
       }
       if (col.type === "days") {
         return this.daysCell(col, draft, className, named);
+      }
+      if (col.type === "seats") {
+        return this.seatsCell(col, draft, className, named);
       }
       if (col.savedOnly && draft.isNew) {
         const shown = (col.options || []).find((o) => o.value === value);
@@ -1122,22 +1226,29 @@ export default class ShoreshEditableTable extends LightningElement {
         // The blank row's fields say what they add ("Add Bunk: Name"); a refused row's
         // fields say they aren't saved, read as the director tabs through them.
         label: named(col.label),
-        // The blank row says what it is for in its first text field.
+        // The blank row says what it is for in its first field; a number column may say what
+        // its blank means ("No minimum").
         placeholder:
-          draft.isNew && col.fieldName === firstText ? this.addLabel : "",
+          draft.isNew && col.fieldName === firstText
+            ? this.addLabel
+            : col.placeholder || "",
         isAddName: draft.isNew && col.fieldName === firstText,
         // The blank row never shows "Complete this field": its + stays greyed out instead.
         required: !!col.required && !draft.isNew,
         disabled: draft.isNew && !!draft.adding,
         options: this.rowOptions(col, draft),
-        // A choice not made reads as the column's name, quietly, never "Select an Option".
-        pickPlaceholder: col.label,
+        // A choice not made reads as the column's name, quietly, never "Select an Option"; the
+        // blank row's first choice says what it adds ("Add to Chugim").
+        pickPlaceholder:
+          draft.isNew && col.fieldName === firstText
+            ? this.addLabel
+            : col.label,
         isText: this.isTextColumn(col),
         sameName: col.fieldName === "Name" && sameNames.has(draft.key),
         canMerge: col.fieldName === "Name" && mergeable,
         mergeLabel: this.mergeLabel,
         // Named for its row, so a screen reader can tell the buttons apart.
-        mergeName: `${this.mergeLabel} ${draft.original.Name || ""}`.trim(),
+        mergeName: `${this.mergeLabel} ${this.nameOf(draft.original)}`.trim(),
         overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
         overlapLabel: this.overlapLabel,
         isNumber: col.type === "number",
@@ -1200,10 +1311,21 @@ export default class ShoreshEditableTable extends LightningElement {
             key: `${draft.key}-${action.key}`,
             name: action.key
           })),
+      endActions: draft.isNew
+        ? []
+        : ((this.endActions || {})[draft.original.Id] || []).map((action) => ({
+            key: `${draft.key}-end-${action.key}`,
+            name: action.key,
+            label: action.label,
+            // Named for its row, so a screen reader can tell the buttons apart.
+            title: `${action.label} ${name}`.trim()
+          })),
       isNew: draft.isNew,
       rowClass: [
         "row shoresh-row",
-        draft.isNew ? "add-row" : "",
+        draft.isNew
+          ? "add-row"
+          : (this.rowClasses || {})[draft.original.Id] || "",
         notSaved ? "not-saved" : "",
         moreOpen ? "row_open" : "",
         // Its details are open beside the table: the 2 px selection line (activities.html).
@@ -1243,7 +1365,8 @@ export default class ShoreshEditableTable extends LightningElement {
       className: `${built.className} has-guess`,
       guess: guess.words,
       guessName: guess.name,
-      guessField: guess.field
+      guessField: guess.field,
+      guessWordsOnly: !!guess.wordsOnly
     };
   }
 
@@ -1254,7 +1377,7 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!draft || draft.isNew) {
       return;
     }
-    const name = draft.values.Name || "";
+    const name = this.nameOf(draft.values);
     // The cursor goes to the cell's field now, while the row still holds it (a field shown only
     // while the row is edited, such as how often's numbers, can't take it once the mark is gone).
     this.focusTaken = { key: guessRow, field: guessColumn };
@@ -1279,7 +1402,7 @@ export default class ShoreshEditableTable extends LightningElement {
       return [];
     }
     const saved = this.savedOff(draft, offWeeks);
-    const name = draft.values.Name || this.addLabel;
+    const name = this.nameOf(draft.values) || this.addLabel;
     return this._weeks.map((week, index) => ({
       key: `${draft.key}-week-${week.Id}`,
       weekId: week.Id,
@@ -1390,11 +1513,12 @@ export default class ShoreshEditableTable extends LightningElement {
     } else {
       text = on.map(short).join(" ");
     }
-    const name = draft.values.Name || this.addLabel;
+    const name = this.nameOf(draft.values) || this.addLabel;
     return {
       key: `${draft.key}-${col.fieldName}`,
       fieldName: col.fieldName,
-      className,
+      // strip: the ticks always show, never the words (Programs' "Runs on", programs.png).
+      className: col.strip ? `${className} days_strip` : className,
       isDays: true,
       daysText: text,
       // The blank row's days are still to choose: quiet, not an exception.
@@ -1411,6 +1535,46 @@ export default class ShoreshEditableTable extends LightningElement {
         checked: !!draft.values[day.fieldName],
         disabled: draft.isNew && !!draft.adding
       }))
+    };
+  }
+
+  /**
+   * Seats (repo ADR 0018; desktop D3: "No limit" and closed are unmistakable): words at rest,
+   * "No limit" when ticked, "Closed" for 0, the number, or nothing while it is blank (the cell's
+   * needs-a-look corner says so); the number and the No limit tick in their place under the
+   * pointer or while the row is edited. The number waits while No limit is ticked.
+   */
+  seatsCell(col, draft, className, named) {
+    const seats = draft.values[col.fieldName];
+    const noLimit = !!draft.values[col.noLimitField];
+    let words = "";
+    if (noLimit) {
+      words = col.noLimitLabel || "No limit";
+    } else if (!isBlank(seats) && Number(seats) === 0) {
+      words = "Closed";
+    } else if (!isBlank(seats)) {
+      words = String(seats);
+    }
+    const locked = draft.isNew && !!draft.adding;
+    return {
+      key: `${draft.key}-${col.fieldName}`,
+      fieldName: col.fieldName,
+      className,
+      isSeats: true,
+      // The blank row is typed in, so it shows its fields, not words.
+      seatsClass: draft.isNew ? "seats seats_open" : "seats",
+      seatsText: words,
+      // "Closed" and "No limit" are what the director chose: values, never quiet.
+      seatsTextClass: "rest seats-text",
+      value: noLimit ? null : seats,
+      label: named(col.label),
+      min: col.min,
+      disabled: locked || noLimit,
+      noLimitField: col.noLimitField,
+      noLimitLabel: named(col.noLimitLabel || "No limit"),
+      noLimitText: col.noLimitLabel || "No limit",
+      noLimit,
+      noLimitDisabled: locked
     };
   }
 
@@ -1483,16 +1647,21 @@ export default class ShoreshEditableTable extends LightningElement {
     this.touch(draft);
   }
 
-  /** A fix from the row's note: a change to that row, saved at once. */
+  /** A fix from the row's note, or an action at its end: a change to that row, saved at once. */
   handleRowAction(event) {
-    const { rowKey, action } = event.currentTarget.dataset;
+    const { rowKey, action, end } = event.currentTarget.dataset;
     const draft = this.rowFor(rowKey);
-    const chosen = (this.rowActions[draft.original.Id] || []).find(
+    const offered = end ? this.endActions || {} : this.rowActions || {};
+    const chosen = (offered[draft.original.Id] || []).find(
       (a) => a.key === action
     );
     Object.keys(chosen.changes).forEach((field) => {
       this.setValue(draft, field, chosen.changes[field]);
     });
+    this.focusAfterAction = {
+      key: draft.key,
+      id: event.currentTarget.dataset.id
+    };
     this.touch(draft);
     this.commit(draft.key, false);
   }
@@ -1513,7 +1682,7 @@ export default class ShoreshEditableTable extends LightningElement {
       try {
         go = await this.beforeWeekOff({
           recordId: draft.original.Id,
-          name: draft.values.Name,
+          name: this.nameOf(draft.values),
           weekId: week,
           weekName
         });
@@ -1638,7 +1807,7 @@ export default class ShoreshEditableTable extends LightningElement {
   handleDelete(event) {
     const key = event.currentTarget.dataset.rowKey;
     const draft = this.rowFor(key);
-    const name = draft.original.Name;
+    const name = this.nameOf(draft.original);
     const index = this.visibleDrafts.findIndex((d) => d.key === key);
     this.dispatchEvent(
       new CustomEvent("delete", {
@@ -1744,9 +1913,13 @@ export default class ShoreshEditableTable extends LightningElement {
     let seenWho = null;
     const who = [];
     if (draft.isNew) {
+      // Kinds with no order of their own (an offering) are sent without one.
+      const order = this.sortField
+        ? { [this.sortField]: this.nextSortOrder }
+        : {};
       record = toRecord(
         this.objectApiName,
-        { [this.sortField]: this.nextSortOrder, ...draft.values },
+        { ...order, ...draft.values },
         timeFields
       );
       if (draft.who.length > 0) {
@@ -1808,6 +1981,9 @@ export default class ShoreshEditableTable extends LightningElement {
 
   /** After the last row: one more than the highest saved, so rows keep their order. */
   get nextSortOrder() {
+    if (!this.sortField) {
+      return null;
+    }
     const orders = this.drafts
       .map((d) => d.original[this.sortField])
       .filter((n) => typeof n === "number");
@@ -1835,7 +2011,7 @@ export default class ShoreshEditableTable extends LightningElement {
       added.savedWho = [...draft.who];
       added.who = [...draft.who];
       this.drafts = [...this.drafts, added];
-      this.announce(`${draft.values.Name || ""} added`.trim());
+      this.announce(`${this.nameOf(draft.values)} added`.trim());
       // Its fields were locked while it was added, so nothing typed since is lost.
       this.addRow = this.blankRow();
       this.focusAddRow = !!draft.pressed;
@@ -1853,7 +2029,7 @@ export default class ShoreshEditableTable extends LightningElement {
         draft.seenWho = sent.who;
       }
     }
-    this.announce(`${(draft && draft.values.Name) || ""} saved`.trim());
+    this.announce(`${draft ? this.nameOf(draft.values) : ""} saved`.trim());
   }
 
   /** Said again even when it is the same words as last time, so screen readers repeat it. */
@@ -1898,7 +2074,7 @@ export default class ShoreshEditableTable extends LightningElement {
   askAbout(key, answer) {
     const draft = this.rowFor(key);
     const theirs = answer.theirs || {};
-    const name = draft.values.Name || draft.original.Name || "";
+    const name = this.nameOf(draft.values) || this.nameOf(draft.original);
     const rows = (answer.changed || []).map((field) => {
       const column = this.fieldColumn(field) || {
         fieldName: field,

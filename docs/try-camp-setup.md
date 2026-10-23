@@ -30,14 +30,15 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## 3. Use your camp's own words
 
-1. In the menu, click **Camp words**. A table lists every glossary term ("Standard word") with
-   two empty boxes.
-2. On the **Group / Groups** row type _Bunk_ and _Bunks_. On **Division / Divisions** type
-   _Unit_ and _Units_.
+1. In the menu, click **Camp words**. One row per word, in sections (Camp, Activities,
+   Electives, Schedules): the standard word, then a box with the standard word in grey.
+2. In the **Group** row's box type _Bunk_. _Bunks_ appears beside it: Shoresh guessed the
+   plural. In the **Division** row type _Unit_ (it guesses _Units_). In the **Elective set** row
+   type _Chug_: it guesses _Chugs_; click the guess and type _Chugim_ over it.
 3. There is no Save button: each word is saved when you leave its box (click elsewhere, press
-   **Tab** or **Enter**). A small grey **✓ Saved** shows beside the heading. The menu now says
-   **Bunks** and **Units**, and so does everything below. If Shoresh refuses a word, why shows
-   in red under that box and your typing stays.
+   **Tab** or **Enter**). At the top, **3 changed** and a small grey **✓ Saved**. The menu now
+   says **Bunks** and **Units**, and so does everything below. If Shoresh refuses a word, why
+   shows in red under that box and your typing stays. Clearing a box puts the standard word back.
 4. At the bottom right, **Activities →** would take you to the next screen; every setup screen
    ends with one, in menu order, so you can walk through setup with it. (Before there is a
    season, camp words has none.)
@@ -71,7 +72,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 ## 5. Weeks with real dates
 
 **How every table saves** (like the desktop): there is no Save button. The same goes for the
-program's name and days, the season's name and dates, camp words, and Activity details: a
+season's name and dates, camp words, and Activity details: a
 field is saved when you leave it (a tick or a dropdown the moment you choose it), a quiet
 **✓ Saved** appears, and a refusal shows in red next to the field with your typing kept. The last row of each
 table is always blank, tinted, with the table's add word in it in grey (_Add Week_). Type
@@ -110,8 +111,11 @@ it or press **Escape**.
 
 ## 6. A program, its time blocks, units, and bunks
 
-1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
-   (it runs Monday to Thursday): it is saved at once (**✓ Saved**).
+1. **Programs**: in the table's blank row (_Add Program_) type _Main_ and press **Enter**. It
+   runs every day: **Runs on** shows Mon to Fri, each ticked. Click **Fri** to untick it (it runs
+   Monday to Thursday) and leave the row: it is saved (**✓ Saved**). Its **Time blocks** count
+   is a dark _0_ with a small black corner: point at the corner for _No time blocks yet_. It
+   goes once the next step adds one.
 2. **Time blocks**: the table is called _Time blocks in Main_. In its blank row type
    _Period 1_, start 9:00 AM, end 9:45 AM, leave **Part of day** as **From start time**, and
    press **Enter**. It saves as Morning. Add _Period 2_ 10:00 AM – 10:45 AM and _Lunch_
@@ -280,11 +284,14 @@ Does this work the way you think in practice? Note anything that feels awkward.
 ## 11. Copy the season to next summer
 
 1. In the menu, click the **▾** beside the season's name (**Season actions**) and choose **Copy
-   this season**. Shoresh suggests _Summer 2027_ starting Monday
-   Jun 28, 2027, and lists every week with where it was and where it will be.
-2. Change the start date to Jun 29, 2027 (a Tuesday). A yellow warning explains that every
-   week would move to different weekdays. Change it back to Jun 28, 2027.
-3. Click **Copy season**. You land on Roots for _Summer 2027_. On **Weeks** it says
+   this season**. A page opens: Shoresh suggests _Summer 2027_ starting Monday Jun 28, 2027.
+   Every week is drawn twice: _Summer 2026_'s in a faint outline, _Summer 2027_'s raised
+   under it, so you see each one move. Below, **Comes along** lists what is copied and
+   **Stays in Summer 2026** (crossed out) what is not: schedules, versions, special days and
+   events, elective seats and camper choices.
+2. Change the first day to Jun 29, 2027 (a Tuesday). A small black corner and _Summer 2026
+   started on a Monday_ appear under it; you can still copy. Change it back to Jun 28, 2027.
+3. Click **Copy to Summer 2027** (top right). You land on Roots for _Summer 2027_. On **Weeks** it says
    _Copied from "Summer 2026"_; the weeks (a year later), program, time blocks, unit, bunks,
    locations, activities (Soccer's rain plan, who can swim), fixed and recurring activities
    (with who each covers), and unticked weeks (Bunk 2 in Week 3, the Pool in Week 2, Bunk 1
