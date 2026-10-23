@@ -1,5 +1,5 @@
 /**
- * Rainy day (repo docs/adr/0018; desktop src/utils/rainyDay.js planRainyDay): one day's outdoor
+ * Rainy day (repo docs/adr/0019; desktop src/utils/rainyDay.js planRainyDay): one day's outdoor
  * activities switched to their rain plans. Pure: the editor saves the result as one edit.
  *
  * On the day, each activity cell (not a fixed or recurring activity, an event, an elective, or

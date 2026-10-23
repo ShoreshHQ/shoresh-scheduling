@@ -1,4 +1,4 @@
-// Rainy day in the week editor (repo docs/adr/0018): what it never touches (a day a special day
+// Rainy day in the week editor (repo docs/adr/0019): what it never touches (a day a special day
 // replaces, an event, a fixed activity, a locked cell) and what happens when someone else
 // changed a cell first. Synthetic data only: draftFixture's Bunk 1 and Bunk 2, Period 1, Period
 // 2, Lunch; Soccer is outdoors with Gym games as its rain plan (no limits); Tuesday is Visiting

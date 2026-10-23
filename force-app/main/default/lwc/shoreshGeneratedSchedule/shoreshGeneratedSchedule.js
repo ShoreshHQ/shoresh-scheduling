@@ -1439,7 +1439,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       // The season's special events and the week's special days (ADR 0014 slice 4).
       specials: input.specials || null,
       // What a rainy day reads (outdoors, rain plans, places and other programs), under the names
-      // Manual Build's draft gives them (repo docs/adr/0018).
+      // Manual Build's draft gives them (repo docs/adr/0019).
       activityRecords: input.activities || [],
       locationRecords: input.locations || [],
       fixedActivityRecords: input.fixedActivities || [],
@@ -1449,7 +1449,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   /**
-   * Rainy day (repo docs/adr/0018): the week editor switches the day; first the week, locks and
+   * Rainy day (repo docs/adr/0019): the week editor switches the day; first the week, locks and
    * option too, is kept as an automatic version under the name it gives ("Before rainy Monday").
    */
   rainyWith = async (name) => {

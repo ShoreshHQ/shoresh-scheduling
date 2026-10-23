@@ -208,7 +208,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   // Sets up what a cell noted from a file names (ADR 0014 slice 4): ({ kind, name }) => Promise
   // of the words to say. Left out, no "Set it up" is offered.
   @api setUpWith;
-  // Rainy day (repo docs/adr/0018): keeps the week as a version under the name given ("Before
+  // Rainy day (repo docs/adr/0019): keeps the week as a version under the name given ("Before
   // rainy Monday") before a day is switched: (name) => Promise. Left out, no "Rainy day…" in Edit.
   @api rainyWith;
   // The version before a rainy day is being kept.
@@ -1423,7 +1423,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * "Rain plan full: choose another" on a cell a rainy day left outdoors (repo docs/adr/0018),
+   * "Rain plan full: choose another" on a cell a rainy day left outdoors (repo docs/adr/0019),
    * while it still holds that activity, as on the desktop.
    */
   rainDotFor(slot) {
@@ -3026,7 +3026,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     };
   }
 
-  // ---------- rainy day (repo docs/adr/0018; desktop ScheduleScreen.jsx Rainy day…) ----------
+  // ---------- rainy day (repo docs/adr/0019; desktop ScheduleScreen.jsx Rainy day…) ----------
 
   /**
    * "Rainy day…" in Edit, with the week's days under it (a day that can't be read, or that a

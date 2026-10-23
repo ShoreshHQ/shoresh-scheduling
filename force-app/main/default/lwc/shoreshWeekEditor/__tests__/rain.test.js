@@ -10,7 +10,7 @@ import {
 import { replan, toolRuns } from "../tools";
 import { slots } from "../slotEdits";
 
-// Rainy day (repo docs/adr/0018; desktop src/utils/rainyDay.js) on a made-up day: Period 1,
+// Rainy day (repo docs/adr/0019; desktop src/utils/rainyDay.js) on a made-up day: Period 1,
 // Period 2, Lunch; Bunk 1 to Bunk 4. Soccer and Hiking and Boating are outdoors; Soccer's rain
 // plan is Gym games (the Gym fits 2 bunks), Boating's is Crafts (2 blocks long, so left as it
 // is), Hiking has none, and Canoeing's rain plan is outdoors too. Synthetic data only.

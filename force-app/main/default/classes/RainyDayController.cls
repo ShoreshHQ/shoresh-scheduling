@@ -1,5 +1,5 @@
 /**
- * Rainy day (repo docs/adr/0018; desktop ScheduleScreen.jsx "Rainy day…"): before a day is
+ * Rainy day (repo docs/adr/0019; desktop ScheduleScreen.jsx "Rainy day…"): before a day is
  * switched to rain plans, the week is kept as an automatic version under the name the screen
  * gives ("Before rainy Monday"), so the dry day is there after Undo has gone. The switch itself
  * saves through the screen's own slot saves (SlotSaves), as one edit. Runs in user mode.

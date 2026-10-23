@@ -1,4 +1,4 @@
-# 0018: Rainy day
+# 0019: Rainy day
 
 Status: proposed (2026-10-22). Design source: the desktop, which is the spec here:
 `src/utils/rainyDay.js` (`planRainyDay`, `rainyReceiptText`, `RAIN_PLAN_FULL_TEXT`),

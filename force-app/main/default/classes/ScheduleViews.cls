@@ -61,7 +61,7 @@ public with sharing class ScheduleViews {
     @AuraEnabled
     public List<String> locks = new List<String>();
     // A rainy day's cells whose rain plan had no room ("group Id|time block Id|activity Id"),
-    // each only while it still holds that activity (RainMarks, repo docs/adr/0018).
+    // each only while it still holds that activity (RainMarks, repo docs/adr/0019).
     @AuraEnabled
     public List<String> rainFull = new List<String>();
   }

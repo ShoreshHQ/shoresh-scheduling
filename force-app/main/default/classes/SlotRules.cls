@@ -50,7 +50,7 @@ public with sharing class SlotRules {
   /**
    * The activities a Manual Build save's edits place; refuses an edit that can't be read. An edit
    * changes at least one cell, or (a rainy day whose cells are all full) only names the "Rain
-   * plan full" marks its day keeps (repo docs/adr/0018).
+   * plan full" marks its day keeps (repo docs/adr/0019).
    */
   public static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
     Set<Id> result = new Set<Id>();

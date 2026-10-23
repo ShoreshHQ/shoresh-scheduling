@@ -767,7 +767,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /**
-   * Rainy day (repo docs/adr/0018): the week editor switches the day; first the week is kept as
+   * Rainy day (repo docs/adr/0019): the week editor switches the day; first the week is kept as
    * an automatic version under the name it gives ("Before rainy Monday"), as on the desktop.
    */
   rainyWith = async (name) => {

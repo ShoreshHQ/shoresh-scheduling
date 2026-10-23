@@ -155,7 +155,7 @@ public with sharing class GeneratedInputs {
   }
 
   private static void readSeason(Inputs inputs, Id seasonId) {
-    // Outdoor and Rain plan: the week editor's Rainy day switches from them (ADR 0018).
+    // Outdoor and Rain plan: the week editor's Rainy day switches from them (ADR 0019).
     inputs.activities = [
       SELECT
         Id,

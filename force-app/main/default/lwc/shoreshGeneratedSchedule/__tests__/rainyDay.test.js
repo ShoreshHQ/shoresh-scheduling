@@ -1,5 +1,5 @@
 /**
- * Rainy day on the Generated Schedule screen (repo docs/adr/0018; desktop: "Rainy day…" on either
+ * Rainy day on the Generated Schedule screen (repo docs/adr/0019; desktop: "Rainy day…" on either
  * schedule): Edit has it, the week is kept through this screen's own controller as "Before rainy
  * Monday", and the switch saves through this screen's saver like any hand edit. The editor's own
  * tests cover the rest. Synthetic data only: SMALL, where Soccer is outdoors with Art as its rain

@@ -12,7 +12,7 @@ import {
   draft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
-// Rainy day on Manual Build (repo docs/adr/0018; desktop ScheduleScreen.jsx "Rainy day…",
+// Rainy day on Manual Build (repo docs/adr/0019; desktop ScheduleScreen.jsx "Rainy day…",
 // rainyDay.js): Edit > Rainy day… > a day keeps the week as "Before rainy Monday", then switches
 // that day's outdoor activities to their rain plans as one Undo step, says what it did with Undo,
 // and marks a cell whose rain plan had no room. Synthetic camp: draftFixture (Bunk 1, Bunk 2;

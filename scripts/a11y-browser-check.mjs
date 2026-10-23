@@ -256,7 +256,7 @@ if (weeks.size() > 1) {
   week = new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
   insert week;
 }
-// Rainy day (ADR 0018): Soccer is outdoors with Gym games as its rain plan.
+// Rainy day (ADR 0019): Soccer is outdoors with Gym games as its rain plan.
 Map<String, Activity__c> byName = new Map<String, Activity__c>();
 for (Activity__c a : [SELECT Id, Name FROM Activity__c WHERE Season__c = :season.Id AND Name IN ('Soccer', 'Gym games')]) {
   byName.put(a.Name, a);
@@ -3047,7 +3047,7 @@ async function generated(openGenerated) {
 }
 
 /**
- * Rainy day (ADR 0018): Edit > Rainy day… opens the week's days one step in; a day keeps the week
+ * Rainy day (ADR 0019): Edit > Rainy day… opens the week's days one step in; a day keeps the week
  * as "Before rainy <day>" and switches its outdoor activities (the check's camp has Soccer
  * outdoors with Gym games as its rain plan, seedCamp), the receipt is said, focus goes to its
  * Undo, and Undo is said. A day with nothing outdoors switches nothing, so the next day is tried;

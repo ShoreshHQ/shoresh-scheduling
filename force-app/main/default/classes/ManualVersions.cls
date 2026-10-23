@@ -89,7 +89,7 @@ public with sharing class ManualVersions {
           revisions.get(day.day)
         );
         // The version's cells come back without the week's "Rain plan full" marks: restoring
-        // "Before rainy Monday" is the way back from a rainy day (repo docs/adr/0018).
+        // "Before rainy Monday" is the way back from a rainy day (repo docs/adr/0019).
         save.rain = new List<String>();
         saves.add(save);
         restoredDays.add(day.day);

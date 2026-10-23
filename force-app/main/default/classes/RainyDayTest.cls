@@ -1,5 +1,5 @@
 /**
- * Rainy day (repo docs/adr/0018), as a scheduler with the Shoresh Scheduler permission set: the
+ * Rainy day (repo docs/adr/0019), as a scheduler with the Shoresh Scheduler permission set: the
  * version kept first ("Before rainy Monday", Auto-saved), the switch saved as one edit with its
  * "Rain plan full" marks, a mark going when its cell changes, Undo taking the marks away, and
  * Restore of the version bringing the day back without them. Synthetic camp (SetTimeTestData):

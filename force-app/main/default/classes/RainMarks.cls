@@ -1,5 +1,5 @@
 /**
- * The "Rain plan full: choose another" marks of a rainy day (repo docs/adr/0018; desktop
+ * The "Rain plan full: choose another" marks of a rainy day (repo docs/adr/0019; desktop
  * src/utils/rainyDay.js): the cells a rainy-day switch left outdoors because their rain plan had
  * no room. Stored in ScheduleDay__c.RainyDay__c (the day's first part) as one line per cell,
  * "group Id|time block Id|activity Id", sorted, so the same marks always give the same text.
