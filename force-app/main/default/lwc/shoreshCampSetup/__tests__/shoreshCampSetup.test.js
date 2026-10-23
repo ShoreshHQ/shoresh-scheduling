@@ -455,6 +455,53 @@ describe("c-shoresh-camp-setup", () => {
       await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
     });
 
+    it("Import a list, opened, is the rail; reviewing a file it is the table too; closed, both are back", async () => {
+      const element = await renderWith();
+      await openScreen(element, "groups");
+      const screen = q(element, '[data-screen="groups"]');
+      const list = screen.querySelector("c-shoresh-list-import");
+      const tell = async (detail) => {
+        list.dispatchEvent(new CustomEvent("listopen", { detail }));
+        await flush();
+      };
+      await tell({ open: true, review: false });
+      expect(screen.className).toContain("screen_importing");
+      expect(screen.className).not.toContain("screen_import-review");
+      await tell({ open: true, review: true });
+      expect(screen.className).toContain("screen_import-review");
+      // Only this screen: another screen's rail and table stay.
+      expect(q(element, '[data-screen="divisions"]').className).not.toContain(
+        "screen_importing"
+      );
+      await tell({ open: false, review: false });
+      expect(screen.className).not.toContain("screen_importing");
+    });
+
+    it("picking another season while a file is reviewed brings the screen's rail and table back", async () => {
+      const element = await renderWith();
+      await openScreen(element, "groups");
+      q(element, '[data-screen="groups"] c-shoresh-list-import').dispatchEvent(
+        new CustomEvent("listopen", { detail: { open: true, review: true } })
+      );
+      await flush();
+      expect(q(element, '[data-screen="groups"]').className).toContain(
+        "screen_import-review"
+      );
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({ season: { ...SEASON, Id: "s2", Name: "Summer 2027" } })
+        )
+      );
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      // The screens were rebuilt with Import a list closed: nothing still hides the table.
+      expect(q(element, '[data-screen="groups"]').className).not.toContain(
+        "screen_importing"
+      );
+    });
+
     it("the rail's quiet Saved shows once a row is saved, and goes while the next is on its way", async () => {
       const element = await renderWith();
       await openScreen(element, "weeks");
@@ -1397,6 +1444,31 @@ describe("c-shoresh-camp-setup", () => {
     beforeEach(() => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    });
+
+    it("Import a list on the Programs rail is the rail, then the table while a file is reviewed", async () => {
+      getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
+      const element = await render();
+      await openScreen(element, "programs");
+      const screen = q(element, '[data-screen="programs"]');
+      const list = screen.querySelector(
+        '.setup-rail c-shoresh-list-import[data-id="programs-list-import"]'
+      );
+      expect(list.variant).toBe("rail");
+      const tell = async (detail) => {
+        list.dispatchEvent(new CustomEvent("listopen", { detail }));
+        await flush();
+      };
+      await tell({ open: true, review: false });
+      expect(screen.className).toContain("screen_importing");
+      expect(screen.className).not.toContain("screen_import-review");
+      await tell({ open: true, review: true });
+      expect(screen.className).toContain("screen_import-review");
+      expect(q(element, '[data-screen="groups"]').className).not.toContain(
+        "screen_importing"
+      );
+      await tell({ open: false, review: false });
+      expect(screen.className).not.toContain("screen_importing");
     });
 
     it("lists each program with the days it runs as a strip, then its counts", async () => {

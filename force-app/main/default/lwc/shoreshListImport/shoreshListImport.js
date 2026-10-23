@@ -8,6 +8,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import {
   BRING_BACK,
+  LEAVE_OUT,
   csvFile,
   isCsv,
   isReadable,
@@ -25,7 +26,6 @@ import {
   listProposal,
   questionCards,
   rainAddKey,
-  shownValue,
   waitingFor,
   listRows,
   workbookCards,
@@ -39,6 +39,7 @@ import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import { importTable } from "./table";
 
 // What a camp workbook saves that has no camp word of its own (part D), in the camp's words.
 const OWN_WORDS = {
@@ -57,6 +58,11 @@ function timeText(minutes) {
  * which, answer the questions, Keep or Change each difference, then save it all at once. Nothing
  * is saved before "Save". Every answer runs the list again (c/shoreshLists), so what is shown is
  * always what will be saved.
+ *
+ * Opened on a setup screen's rail, it takes the rail's place ("Import a list", the file, Cancel
+ * and the button that says what saving does) and, while the file is reviewed, the table's: the
+ * file's rows laid into the screen's own table (./table.js; Greg's decision 56). It tells the
+ * page with listopen { open, review }, so the page puts its own rail and table away.
  *
  * With workbook (Roots, slice 4c part D) it imports the camp workbook instead: every sheet, in
  * one review, one save, and one Undo, each sheet's list shown as its own section.
@@ -126,8 +132,13 @@ export default class ShoreshListImport extends LightningElement {
   readingName = null;
   // On the Electives list, the name of a file chosen that is camper choices, else null.
   choicesFile = null;
+  // Columns opened or closed by the director, per list; otherwise open only when one needs a look.
+  columnsToggled = {};
+  // What the page was last told (listopen), so it is told once per change.
+  told = "closed";
 
   renderedCallback() {
+    this.tellPage();
     if (!this.focusNext) {
       return;
     }
@@ -136,6 +147,10 @@ export default class ShoreshListImport extends LightningElement {
     let target = null;
     if (next.selector) {
       target = this.template.querySelector(next.selector);
+    } else if (next.leaveOut) {
+      target = [...this.template.querySelectorAll("button[data-leave]")].find(
+        (el) => el.dataset.leave === next.leaveOut
+      );
     } else if (next.bringBack !== undefined) {
       target = next.bringBack
         ? [...this.template.querySelectorAll("[data-deleted] button")].find(
@@ -167,6 +182,23 @@ export default class ShoreshListImport extends LightningElement {
     if (target && typeof target.focus === "function") {
       target.focus();
     }
+  }
+
+  /**
+   * The page puts its rail away while this is open, and its table while a file is reviewed
+   * (listopen { open, review }); told once per change.
+   */
+  tellPage() {
+    const now = !this.open ? "closed" : this.isReview ? "review" : "open";
+    if (now === this.told) {
+      return;
+    }
+    this.told = now;
+    this.dispatchEvent(
+      new CustomEvent("listopen", {
+        detail: { open: now !== "closed", review: now === "review" }
+      })
+    );
   }
 
   /** What is happening, for the status line screen readers hear. */
@@ -201,6 +233,10 @@ export default class ShoreshListImport extends LightningElement {
 
   get isRail() {
     return this.variant === "rail";
+  }
+  /** On a rail it lines up with the rail it replaces; elsewhere it is its own piece. */
+  get panelClass() {
+    return this.isRail ? "list-import list-import_rail" : "list-import";
   }
 
   /** Opened: the cursor goes to its heading; closed: back to the button that opened it. */
@@ -265,6 +301,7 @@ export default class ShoreshListImport extends LightningElement {
 
   reset() {
     this.stage = "pick";
+    this.columnsToggled = {};
     this.choicesFile = null;
     this.file = null;
     this.sheet = null;
@@ -445,12 +482,13 @@ export default class ShoreshListImport extends LightningElement {
     if (this.proposal.unused.length) {
       sections.push({
         ...this.sectionOf("unused", "Not read", { rows: [] }),
-        unreadableRows: this.proposal.unused.map(({ name, why }) => ({
+        unusedRows: this.proposal.unused.map(({ name, why }) => ({
           key: `unused-${name}`,
           text: why ? `“${name}” · ${why}` : `“${name}”`
         })),
-        hasUnreadable: true,
-        unreadableHeading: `Sheets not read (${this.proposal.unused.length})`
+        hasUnused: true,
+        unusedHeading: `Sheets not read (${this.proposal.unused.length})`,
+        hasTable: false
       });
     }
     return sections;
@@ -470,41 +508,71 @@ export default class ShoreshListImport extends LightningElement {
 
   sectionOf(key, label, p) {
     const alsoAdd = this.alsoAddOf(p);
-    const newRows = this.newRowsOf(p);
-    const changedRows = this.changedRowsOf(p);
-    const unreadableRows = this.rowsOf(p, "unreadable").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
-    }));
-    const leftOutRows = this.leftOutRowsOf(p);
     const deletedRows = this.deletedRowsOf(p);
+    const table = importTable(p, {
+      setup: this.setup,
+      // A camp workbook holds the whole camp: what it leaves as it is is counted, not drawn.
+      showSame: !this.workbook,
+      // A camp workbook's sheets lean on each other (an activity's new location is a row of
+      // Locations), so a row left out of one would come back through the next: no Leave out.
+      leaveOut: !this.workbook
+    });
+    const headings = p.mapping ? this.headingsOf(p) : [];
+    // The columns open by themselves only when one needs a look (or one is missing).
+    const needsLook =
+      headings.some((h) => h.attention) ||
+      !!(p.mapping && (p.mapping.missing.length || p.mapping.doubled.length));
+    const toggled = this.columnsToggled[key];
+    const columnsOpen = toggled === undefined ? needsLook : toggled;
     return {
       key: `section-${key}`,
+      listKey: key,
       label,
       showLabel: !!label,
       // Under a workbook's sheet title (h4), a sheet's own headings are one level down.
       level: label ? "5" : "4",
       hasMapping: !!p.mapping,
-      headings: p.mapping ? this.headingsOf(p) : [],
+      headings,
       columnOptions: p.mapping ? this.columnOptionsOf(p) : [],
+      columnsOpen,
+      columnsExpanded: String(columnsOpen),
+      columnsMark: needsLook,
       alsoAdd,
       hasAlsoAdd: alsoAdd.length > 0,
-      newRows,
-      hasNew: newRows.length > 0,
-      newHeading: `New (${newRows.length})`,
-      changedRows,
-      hasChanges: changedRows.length > 0,
-      unchangedCount: this.rowsOf(p, "unchanged").length,
-      unreadableRows,
-      hasUnreadable: unreadableRows.length > 0,
-      unreadableHeading: `Review here (${unreadableRows.length})`,
-      leftOutRows,
-      hasLeftOut: leftOutRows.length > 0,
-      leftOutHeading: `Left out (${leftOutRows.length})`,
+      table,
+      hasTable: table.sections.length > 0,
+      sameText: table.same ? `${table.same} the same as here` : "",
+      unusedRows: [],
+      hasUnused: false,
       deletedRows,
       hasDeleted: deletedRows.length > 0,
       lists: []
     };
+  }
+
+  /** The file's columns, shown or put away (a needs-a-look heading opens them by itself). */
+  handleColumnsToggle(event) {
+    const key = event.currentTarget.dataset.list;
+    const section = this.sections.find((s) => s.listKey === key);
+    this.columnsToggled = {
+      ...this.columnsToggled,
+      [key]: !(section && section.columnsOpen)
+    };
+  }
+
+  /** A new row's Leave out: pressed, it is left out of this import; again, it comes back. */
+  handleLeaveOut(event) {
+    const key = event.currentTarget.dataset.leave;
+    const answers = { ...this.answers };
+    if (answers[key] === LEAVE_OUT) {
+      delete answers[key];
+    } else {
+      answers[key] = LEAVE_OUT;
+    }
+    this.answers = answers;
+    this.recompute();
+    // The same button, now pressed or not (WCAG 2.4.3).
+    this.focusNext = { leaveOut: key };
   }
 
   columnOptionsOf(p) {
@@ -530,19 +598,17 @@ export default class ShoreshListImport extends LightningElement {
       } else if (remembered) {
         note = "Remembered";
       }
+      const attention = h.how === "unknown" || h.how === "clash";
       return {
         key: h.key,
         text: h.text,
-        tagClass:
-          h.how === "unknown" || h.how === "clash"
-            ? "list-tag list-tag_attention"
-            : "list-tag",
+        attention,
+        tagClass: attention ? "list-tag list-tag_attention" : "list-tag",
         value: h.column || UNUSED,
         note,
-        className:
-          h.how === "unknown" || h.how === "clash"
-            ? "list-heading list-heading_attention"
-            : "list-heading"
+        className: attention
+          ? "list-heading list-heading_attention"
+          : "list-heading"
       };
     });
   }
@@ -802,28 +868,6 @@ export default class ShoreshListImport extends LightningElement {
     return this.proposals.flatMap((p) => this.rowsOf(p, status));
   }
 
-  newRowsOf(p) {
-    return this.rowsOf(p, "new").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      name: r.name,
-      // Blank cells it can't be without start as when added by hand.
-      starting: (r.startingValues || []).length
-        ? `starting value: ${r.startingValues.join(", ")}`
-        : ""
-    }));
-  }
-  leftOutRowsOf(p) {
-    return this.rowsOf(p, "leftOut").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      text: r.reason
-        ? `Row ${r.rowNumber} · ${r.name} · ${r.reason}`
-        : r.usedRow
-          ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
-          : r.sameAs
-            ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
-            : `Row ${r.rowNumber} · ${r.name}`
-    }));
-  }
   /**
    * What the camp deleted before and this list leaves out (Greg, decision 45), each with Bring
    * back: rows of the list, and places or kinds of place its rows name.
@@ -867,43 +911,6 @@ export default class ShoreshListImport extends LightningElement {
 
   get askedCount() {
     return this.rowsWith("asked").length;
-  }
-
-  /**
-   * Each difference: "times a week: at least 3 → 2", with Keep or Change; clears stand out. A
-   * workbook's extra sheets give their own words (camp words, weeks, Runs in).
-   */
-  changedRowsOf(p) {
-    const button = (on) => {
-      return on
-        ? "slds-button slds-button_brand"
-        : "slds-button slds-button_neutral";
-    };
-    return this.rowsOf(p, "changed").map((r) => {
-      const name = r.existingName || r.name;
-      return {
-        key: `row-${r.rowNumber}`,
-        name,
-        differences: r.differences.map((d) => {
-          const text = p.screen
-            ? `${d.heading}: ${shownValue(p, d.column, d.from)} → ${shownValue(p, d.column, d.to)}`
-            : d.text || `${d.heading}: ${d.from} → ${d.to}`;
-          // Each Keep and Change names its item and difference, and says which is chosen.
-          return {
-            id: d.id,
-            text,
-            clears: d.clears,
-            keepClass: button(d.answer === KEEP),
-            changeClass: button(d.answer === CHANGE),
-            keepPressed: String(d.answer === KEEP),
-            changePressed: String(d.answer === CHANGE),
-            keepLabel: `Keep, ${name}: ${text}`,
-            changeLabel: `Change, ${name}: ${text}`,
-            className: d.clears ? "list-diff list-diff_clears" : "list-diff"
-          };
-        })
-      };
-    });
   }
 
   /** Every difference not yet answered, across the whole file. */
@@ -1085,6 +1092,14 @@ export default class ShoreshListImport extends LightningElement {
     return this.openCount
       ? `Questions for you (${this.openCount})`
       : "Questions for you";
+  }
+
+  /** Cancel while choosing or reviewing (nothing is saved); Close once saved. */
+  get closeLabel() {
+    return this.isDone ? "Close" : "Cancel";
+  }
+  get closeId() {
+    return this.isDone ? "done" : "close";
   }
 
   get canUndo() {

@@ -13,6 +13,7 @@ import {
   listProposal,
   sanitizeCell,
   similarCards,
+  skipKey,
   questionCards,
   rainAddKey,
   unescapeCell,
@@ -229,6 +230,29 @@ describe("rows", () => {
       // Row 6 repeats row 2, which can't be read (review round 3: never saved as new).
       [6, "unreadable", ["Same as row 2, which can't be read"]]
     ]);
+  });
+
+  it("a new row left out (Leave out) is not saved, nor what only it would add, nor remembered", () => {
+    const rows = [
+      ["Activity", "Location"],
+      ["Canoeing", "Lake"],
+      ["Hiking", "Gym"]
+    ];
+    const before = read("activities", rows);
+    const canoeing = rowNamed(before, "Canoeing");
+    expect(canoeing.status).toBe("new");
+    expect(canoeing.skipKey).toBe(skipKey("activities", canoeing));
+    const answers = { [canoeing.skipKey]: LEAVE_OUT };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Canoeing")).toEqual(
+      expect.objectContaining({ status: "leftOut", skipped: true })
+    );
+    // The lake only Canoeing names is not added either.
+    expect(p.alsoAdd.location).toEqual([]);
+    const plan = listPlan(p, answers, "se1", "list.csv");
+    expect(plan.records.map((r) => r.key)).toEqual(["Activity:Hiking"]);
+    expect(plan.remember).toEqual([]);
+    expect(plan.forget).toEqual([]);
   });
 
   it("a name written twice with the same details: the second says so", () => {
@@ -1160,6 +1184,71 @@ describe("PR 19 review, round 3", () => {
       status: "asked",
       problems: []
     });
+  });
+
+  it("G: a rain plan naming a new row left out (Leave out) adds the activity as by hand", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Pottery", ""],
+      ["Swim", "Pottery"]
+    ];
+    const pottery = rowNamed(read("activities", rows), "Pottery");
+    const answers = { [pottery.skipKey]: LEAVE_OUT };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Pottery")).toMatchObject({
+      status: "leftOut",
+      skipped: true,
+      skipKey: pottery.skipKey
+    });
+    expect(rowNamed(p, "Swim")).toMatchObject({
+      status: "new",
+      targets: { rainPlan: { add: "Pottery", name: "Pottery" } }
+    });
+    expect(p.alsoAdd.activity).toEqual([{ name: "Pottery", skipped: false }]);
+    expect(waitingFor(p, terms, answers)).toEqual([]);
+    const plan = listPlan(p, answers, "s1", "f");
+    linksResolve(plan);
+    expect(plan.records.filter((r) => r.key === "Activity:Pottery")).toEqual([
+      expect.objectContaining({ kind: "Activity" })
+    ]);
+  });
+
+  it("H: a rain plan changed to a new row left out links to the activity added as by hand", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Pottery", ""],
+      ["Archery", "Pottery"]
+    ];
+    const pottery = rowNamed(read("activities", rows), "Pottery");
+    const skipped = { [pottery.skipKey]: LEAVE_OUT };
+    const [rainPlan] = rowNamed(
+      read("activities", rows, skipped),
+      "Archery"
+    ).differences;
+    const answers = { ...skipped, [rainPlan.id]: CHANGE };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Pottery").status).toBe("leftOut");
+    expect(rowNamed(p, "Archery").status).toBe("changed");
+    const plan = listPlan(p, answers, "s1", "f");
+    linksResolve(plan);
+    expect(plan.records.find((r) => r.id === "a1").refs).toEqual({
+      RainPlan__c: "Activity:Pottery"
+    });
+  });
+
+  it("I: a new row left out takes its repeats with it, and a rain plan naming them adds it", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Pottery", ""],
+      ["pottery", ""],
+      ["Swim", "pottery"]
+    ];
+    const [pottery] = read("activities", rows).rows;
+    const answers = { [pottery.skipKey]: LEAVE_OUT };
+    const p = read("activities", rows, answers);
+    expect(p.rows.map((r) => r.status)).toEqual(["leftOut", "leftOut", "new"]);
+    expect(p.rows[1].sameAs).toBe(p.rows[0].name);
+    linksResolve(listPlan(p, answers, "s1", "f"));
   });
 });
 

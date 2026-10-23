@@ -313,3 +313,82 @@ describe("a list naming a program, division or time block the camp deleted", () 
     expect(plan.forget).toEqual([period]);
   });
 });
+
+describe("a rain plan naming an activity the camp deleted (PR 127 review)", () => {
+  const swim = deletedKey("Activity", "", "Swim");
+  const answers = { [swim]: DELETED };
+  // Every link between records of the save is to a record the save adds.
+  const linksResolve = (plan) => {
+    const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+    plan.records.forEach((r) =>
+      Object.values(r.refs || {})
+        .filter((v) => v && v.includes(":"))
+        .forEach((v) => expect([r.key, keys.has(v)]).toEqual([r.key, true]))
+    );
+  };
+
+  it("a row of the list deleted before: the row naming it is saved without its rain plan", () => {
+    const p = read(
+      "activities",
+      [
+        ["Activity", "Rain plan"],
+        ["Swim", ""],
+        ["Canoeing", "Swim"]
+      ],
+      answers
+    );
+    expect(row(p, "Swim").status).toBe("deleted");
+    expect(row(p, "Canoeing")).toMatchObject({
+      status: "new",
+      droppedPlan: "Swim"
+    });
+    expect(p.deleted).toEqual([
+      { key: swim, kind: "Activity", name: "Swim", program: "" }
+    ]);
+    expect(p.alsoAdd.activity).toEqual([]);
+    const plan = listPlan(p, answers, "s1", "f");
+    linksResolve(plan);
+    expect(plan.records.map((r) => r.fields.Name)).toEqual(["Canoeing"]);
+  });
+
+  it("not in the list: it is not added again as by hand, and is listed with Bring back", () => {
+    const p = read(
+      "activities",
+      [
+        ["Activity", "Rain plan"],
+        ["Canoeing", "Swim"]
+      ],
+      answers
+    );
+    expect(row(p, "Canoeing")).toMatchObject({
+      status: "new",
+      droppedPlan: "Swim"
+    });
+    expect(p.alsoAdd.activity).toEqual([]);
+    expect(p.deleted).toEqual([
+      { key: swim, kind: "Activity", name: "Swim", program: "" }
+    ]);
+    const plan = listPlan(p, answers, "s1", "f");
+    linksResolve(plan);
+    expect(plan.records.map((r) => r.fields.Name)).toEqual(["Canoeing"]);
+  });
+
+  it("brought back: the row and the rain plan naming it are saved, linked", () => {
+    const back = { [swim]: BRING_BACK };
+    const p = read(
+      "activities",
+      [
+        ["Activity", "Rain plan"],
+        ["Swim", ""],
+        ["Canoeing", "Swim"]
+      ],
+      back
+    );
+    expect(row(p, "Swim").status).toBe("new");
+    const plan = listPlan(p, back, "s1", "f");
+    linksResolve(plan);
+    expect(plan.records.find((r) => r.fields.Name === "Canoeing").refs).toEqual(
+      expect.objectContaining({ RainPlan__c: "Activity:Swim" })
+    );
+  });
+});

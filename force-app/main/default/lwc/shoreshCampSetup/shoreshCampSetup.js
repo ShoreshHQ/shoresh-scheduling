@@ -257,6 +257,8 @@ export default class ShoreshCampSetup extends LightningElement {
   deleting = false;
   // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
   setupStates = {};
+  // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
+  importing = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -349,13 +351,17 @@ export default class ShoreshCampSetup extends LightningElement {
       // No season: any read still on its way is out of date.
       this.loadTicket += 1;
       this.setup = null;
+      // The screens go with it, and any Import a list open on them.
+      this.importing = {};
       return;
     }
     if (this.setup && this.setup.season.Id !== this.seasonId) {
       // Another season: start its tables fresh rather than carrying unsaved rows across,
-      // and forget the old season's "setup changed".
+      // and forget the old season's "setup changed". The screens are rebuilt with Import a
+      // list closed, so no screen keeps its rail and table put away for it.
       this.setup = null;
       this.setupStates = {};
+      this.importing = {};
     }
     const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
@@ -486,8 +492,28 @@ export default class ShoreshCampSetup extends LightningElement {
     const result = {};
     SCREENS.forEach((screen) => {
       result[screen] = screen === this.currentScreen ? "" : "slds-hide";
+      // Import a list open on its rail: it takes the rail's place, and the table's while a
+      // file is reviewed (Greg's decision 56; ADR 0007 choice 33).
+      const importing = this.importing[screen];
+      if (importing) {
+        result[screen] +=
+          ` screen_importing${importing === "review" ? " screen_import-review" : ""}`;
+      }
     });
     return result;
+  }
+
+  /** Import a list opened, reviewing a file, or closed, on a screen's rail. */
+  handleListOpen(event) {
+    const { open, review } = event.detail;
+    this.importing = {
+      ...this.importing,
+      [event.currentTarget.screenKey]: open
+        ? review
+          ? "review"
+          : "open"
+        : null
+    };
   }
   /** One camp words editor per camp: choosing another camp starts it afresh. */
   get campKeys() {
@@ -1744,6 +1770,7 @@ export default class ShoreshCampSetup extends LightningElement {
   async handleCampChange(event) {
     this.campId = event.detail.value;
     this.seasonId = null;
+    this.importing = {};
     await this.run(() => this.loadCamp(), this.openFailed);
   }
 
