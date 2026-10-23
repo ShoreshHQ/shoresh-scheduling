@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ImportedChoices__c</fullName>
+    <description
+  >The choices exactly as brought in, kept beside any hand correction so a later import that disagrees can be shown rather than overwrite it.</description>
+    <label>Imported Choices</label>
+    <length>131072</length>
+    <securityClassification>Confidential</securityClassification>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

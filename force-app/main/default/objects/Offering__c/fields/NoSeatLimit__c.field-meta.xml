@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NoSeatLimit__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Any number of campers can take it. A choice the scheduler makes and can see; a blank seat count never means no limit.</description>
+    <label>No Seat Limit</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

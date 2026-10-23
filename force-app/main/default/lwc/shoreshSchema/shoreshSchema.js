@@ -33,6 +33,20 @@ import activitySeason from "@salesforce/schema/Activity__c.Season__c";
 import activitySortOrder from "@salesforce/schema/Activity__c.SortOrder__c";
 import activityTimesPerWeekMax from "@salesforce/schema/Activity__c.TimesPerWeekMax__c";
 import activityTimesPerWeekMin from "@salesforce/schema/Activity__c.TimesPerWeekMin__c";
+import assignmentObject from "@salesforce/schema/Assignment__c";
+import assignmentActivityName from "@salesforce/schema/Assignment__c.ActivityName__c";
+import assignmentByHand from "@salesforce/schema/Assignment__c.ByHand__c";
+import assignmentCamper from "@salesforce/schema/Assignment__c.Camper__c";
+import assignmentDate from "@salesforce/schema/Assignment__c.Date__c";
+import assignmentElectiveRun from "@salesforce/schema/Assignment__c.ElectiveRun__c";
+import assignmentGroupName from "@salesforce/schema/Assignment__c.GroupName__c";
+import assignmentGroup from "@salesforce/schema/Assignment__c.Group__c";
+import assignmentKey from "@salesforce/schema/Assignment__c.Key__c";
+import assignmentLinkedChoice from "@salesforce/schema/Assignment__c.LinkedChoice__c";
+import assignmentLocationName from "@salesforce/schema/Assignment__c.LocationName__c";
+import assignmentLocked from "@salesforce/schema/Assignment__c.Locked__c";
+import assignmentOffering from "@salesforce/schema/Assignment__c.Offering__c";
+import assignmentTimeBlock from "@salesforce/schema/Assignment__c.TimeBlock__c";
 import campLabelObject from "@salesforce/schema/CampLabel__c";
 import campLabelCamp from "@salesforce/schema/CampLabel__c.Camp__c";
 import campLabelKey from "@salesforce/schema/CampLabel__c.Key__c";
@@ -41,15 +55,40 @@ import campLabelPlural from "@salesforce/schema/CampLabel__c.Plural__c";
 import campLabelSingular from "@salesforce/schema/CampLabel__c.Singular__c";
 import campObject from "@salesforce/schema/Camp__c";
 import campTimeZone from "@salesforce/schema/Camp__c.TimeZone__c";
+import camperObject from "@salesforce/schema/Camper__c";
+import camperCamperNumber from "@salesforce/schema/Camper__c.CamperNumber__c";
+import camperKey from "@salesforce/schema/Camper__c.Key__c";
+import camperParentComments from "@salesforce/schema/Camper__c.ParentComments__c";
+import camperSeason from "@salesforce/schema/Camper__c.Season__c";
 import coverageObject from "@salesforce/schema/Coverage__c";
 import coverageDivision from "@salesforce/schema/Coverage__c.Division__c";
 import coverageGroup from "@salesforce/schema/Coverage__c.Group__c";
+import coverageLinkedChoice from "@salesforce/schema/Coverage__c.LinkedChoice__c";
 import coverageRecurringActivity from "@salesforce/schema/Coverage__c.RecurringActivity__c";
 import coverageSeason from "@salesforce/schema/Coverage__c.Season__c";
 import divisionObject from "@salesforce/schema/Division__c";
 import divisionCopiedFrom from "@salesforce/schema/Division__c.CopiedFrom__c";
 import divisionProgram from "@salesforce/schema/Division__c.Program__c";
 import divisionSortOrder from "@salesforce/schema/Division__c.SortOrder__c";
+import electiveRunObject from "@salesforce/schema/ElectiveRun__c";
+import electiveRunElectiveSet from "@salesforce/schema/ElectiveRun__c.ElectiveSet__c";
+import electiveRunEngineVersion from "@salesforce/schema/ElectiveRun__c.EngineVersion__c";
+import electiveRunFinalSchedule from "@salesforce/schema/ElectiveRun__c.FinalSchedule__c";
+import electiveRunFinalizedAt from "@salesforce/schema/ElectiveRun__c.FinalizedAt__c";
+import electiveRunFinalizedBy from "@salesforce/schema/ElectiveRun__c.FinalizedBy__c";
+import electiveRunNewVersionOf from "@salesforce/schema/ElectiveRun__c.NewVersionOf__c";
+import electiveRunRevision from "@salesforce/schema/ElectiveRun__c.Revision__c";
+import electiveRunSchedule from "@salesforce/schema/ElectiveRun__c.Schedule__c";
+import electiveRunSeason from "@salesforce/schema/ElectiveRun__c.Season__c";
+import electiveRunSourceFile from "@salesforce/schema/ElectiveRun__c.SourceFile__c";
+import electiveRunSourceFingerprint from "@salesforce/schema/ElectiveRun__c.SourceFingerprint__c";
+import electiveRunStatus from "@salesforce/schema/ElectiveRun__c.Status__c";
+import electiveRunTimesFingerprint from "@salesforce/schema/ElectiveRun__c.TimesFingerprint__c";
+import electiveRunWeek from "@salesforce/schema/ElectiveRun__c.Week__c";
+import electiveSetObject from "@salesforce/schema/ElectiveSet__c";
+import electiveSetCopiedFrom from "@salesforce/schema/ElectiveSet__c.CopiedFrom__c";
+import electiveSetKey from "@salesforce/schema/ElectiveSet__c.Key__c";
+import electiveSetSeason from "@salesforce/schema/ElectiveSet__c.Season__c";
 import fixedActivityObject from "@salesforce/schema/FixedActivity__c";
 import fixedActivityCopiedFrom from "@salesforce/schema/FixedActivity__c.CopiedFrom__c";
 import fixedActivityLastTimeBlock from "@salesforce/schema/FixedActivity__c.LastTimeBlock__c";
@@ -74,6 +113,16 @@ import importCreated from "@salesforce/schema/Import__c.Created__c";
 import importFiles from "@salesforce/schema/Import__c.Files__c";
 import importSeason from "@salesforce/schema/Import__c.Season__c";
 import importUndoneAt from "@salesforce/schema/Import__c.UndoneAt__c";
+import linkedChoiceTimeObject from "@salesforce/schema/LinkedChoiceTime__c";
+import linkedChoiceTimeLinkedChoice from "@salesforce/schema/LinkedChoiceTime__c.LinkedChoice__c";
+import linkedChoiceTimeTimeBlock from "@salesforce/schema/LinkedChoiceTime__c.TimeBlock__c";
+import linkedChoiceTimeWeekday from "@salesforce/schema/LinkedChoiceTime__c.Weekday__c";
+import linkedChoiceObject from "@salesforce/schema/LinkedChoice__c";
+import linkedChoiceAppliesTo from "@salesforce/schema/LinkedChoice__c.AppliesTo__c";
+import linkedChoiceCopiedFrom from "@salesforce/schema/LinkedChoice__c.CopiedFrom__c";
+import linkedChoiceElectiveSet from "@salesforce/schema/LinkedChoice__c.ElectiveSet__c";
+import linkedChoiceOffering from "@salesforce/schema/LinkedChoice__c.Offering__c";
+import linkedChoiceSortOrder from "@salesforce/schema/LinkedChoice__c.SortOrder__c";
 import locationTypeObject from "@salesforce/schema/LocationType__c";
 import locationTypeCopiedFrom from "@salesforce/schema/LocationType__c.CopiedFrom__c";
 import locationTypeKey from "@salesforce/schema/LocationType__c.Key__c";
@@ -86,6 +135,15 @@ import locationLocationType from "@salesforce/schema/Location__c.LocationType__c
 import locationNotes from "@salesforce/schema/Location__c.Notes__c";
 import locationSeason from "@salesforce/schema/Location__c.Season__c";
 import locationSortOrder from "@salesforce/schema/Location__c.SortOrder__c";
+import offeringObject from "@salesforce/schema/Offering__c";
+import offeringActivity from "@salesforce/schema/Offering__c.Activity__c";
+import offeringCopiedFrom from "@salesforce/schema/Offering__c.CopiedFrom__c";
+import offeringElectiveSet from "@salesforce/schema/Offering__c.ElectiveSet__c";
+import offeringKey from "@salesforce/schema/Offering__c.Key__c";
+import offeringMinimumToRun from "@salesforce/schema/Offering__c.MinimumToRun__c";
+import offeringNoSeatLimit from "@salesforce/schema/Offering__c.NoSeatLimit__c";
+import offeringProposed from "@salesforce/schema/Offering__c.Proposed__c";
+import offeringSeats from "@salesforce/schema/Offering__c.Seats__c";
 import planPartObject from "@salesforce/schema/PlanPart__c";
 import planPartGridFormatVersion from "@salesforce/schema/PlanPart__c.GridFormatVersion__c";
 import planPartKey from "@salesforce/schema/PlanPart__c.Key__c";
@@ -95,6 +153,14 @@ import planPartRevision from "@salesforce/schema/PlanPart__c.Revision__c";
 import planPartSeason from "@salesforce/schema/PlanPart__c.Season__c";
 import planPartSpecialDay from "@salesforce/schema/PlanPart__c.SpecialDay__c";
 import planPartSpecialEvent from "@salesforce/schema/PlanPart__c.SpecialEvent__c";
+import preferenceObject from "@salesforce/schema/Preference__c";
+import preferenceCamper from "@salesforce/schema/Preference__c.Camper__c";
+import preferenceChoices from "@salesforce/schema/Preference__c.Choices__c";
+import preferenceElectiveRun from "@salesforce/schema/Preference__c.ElectiveRun__c";
+import preferenceGroup from "@salesforce/schema/Preference__c.Group__c";
+import preferenceImportedChoices from "@salesforce/schema/Preference__c.ImportedChoices__c";
+import preferenceKey from "@salesforce/schema/Preference__c.Key__c";
+import preferenceManualChange from "@salesforce/schema/Preference__c.ManualChange__c";
 import programObject from "@salesforce/schema/Program__c";
 import programCopiedFrom from "@salesforce/schema/Program__c.CopiedFrom__c";
 import programFriday from "@salesforce/schema/Program__c.Friday__c";
@@ -210,17 +276,25 @@ export function localName(name) {
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
   Activity: activityObject.objectApiName,
+  Assignment: assignmentObject.objectApiName,
   CampLabel: campLabelObject.objectApiName,
   Camp: campObject.objectApiName,
+  Camper: camperObject.objectApiName,
   Coverage: coverageObject.objectApiName,
   Division: divisionObject.objectApiName,
+  ElectiveRun: electiveRunObject.objectApiName,
+  ElectiveSet: electiveSetObject.objectApiName,
   FixedActivity: fixedActivityObject.objectApiName,
   Group: groupObject.objectApiName,
   ImportAnswer: importAnswerObject.objectApiName,
   Import: importObject.objectApiName,
+  LinkedChoiceTime: linkedChoiceTimeObject.objectApiName,
+  LinkedChoice: linkedChoiceObject.objectApiName,
   LocationType: locationTypeObject.objectApiName,
   Location: locationObject.objectApiName,
+  Offering: offeringObject.objectApiName,
   PlanPart: planPartObject.objectApiName,
+  Preference: preferenceObject.objectApiName,
   Program: programObject.objectApiName,
   PublishedPlan: publishedPlanObject.objectApiName,
   RecurringActivity: recurringActivityObject.objectApiName,
@@ -261,6 +335,21 @@ export const FIELD = Object.freeze({
     TimesPerWeekMax: activityTimesPerWeekMax.fieldApiName,
     TimesPerWeekMin: activityTimesPerWeekMin.fieldApiName
   }),
+  Assignment: Object.freeze({
+    ActivityName: assignmentActivityName.fieldApiName,
+    ByHand: assignmentByHand.fieldApiName,
+    Camper: assignmentCamper.fieldApiName,
+    Date: assignmentDate.fieldApiName,
+    ElectiveRun: assignmentElectiveRun.fieldApiName,
+    GroupName: assignmentGroupName.fieldApiName,
+    Group: assignmentGroup.fieldApiName,
+    Key: assignmentKey.fieldApiName,
+    LinkedChoice: assignmentLinkedChoice.fieldApiName,
+    LocationName: assignmentLocationName.fieldApiName,
+    Locked: assignmentLocked.fieldApiName,
+    Offering: assignmentOffering.fieldApiName,
+    TimeBlock: assignmentTimeBlock.fieldApiName
+  }),
   CampLabel: Object.freeze({
     Camp: campLabelCamp.fieldApiName,
     Key: campLabelKey.fieldApiName,
@@ -271,9 +360,16 @@ export const FIELD = Object.freeze({
   Camp: Object.freeze({
     TimeZone: campTimeZone.fieldApiName
   }),
+  Camper: Object.freeze({
+    CamperNumber: camperCamperNumber.fieldApiName,
+    Key: camperKey.fieldApiName,
+    ParentComments: camperParentComments.fieldApiName,
+    Season: camperSeason.fieldApiName
+  }),
   Coverage: Object.freeze({
     Division: coverageDivision.fieldApiName,
     Group: coverageGroup.fieldApiName,
+    LinkedChoice: coverageLinkedChoice.fieldApiName,
     RecurringActivity: coverageRecurringActivity.fieldApiName,
     Season: coverageSeason.fieldApiName
   }),
@@ -281,6 +377,27 @@ export const FIELD = Object.freeze({
     CopiedFrom: divisionCopiedFrom.fieldApiName,
     Program: divisionProgram.fieldApiName,
     SortOrder: divisionSortOrder.fieldApiName
+  }),
+  ElectiveRun: Object.freeze({
+    ElectiveSet: electiveRunElectiveSet.fieldApiName,
+    EngineVersion: electiveRunEngineVersion.fieldApiName,
+    FinalSchedule: electiveRunFinalSchedule.fieldApiName,
+    FinalizedAt: electiveRunFinalizedAt.fieldApiName,
+    FinalizedBy: electiveRunFinalizedBy.fieldApiName,
+    NewVersionOf: electiveRunNewVersionOf.fieldApiName,
+    Revision: electiveRunRevision.fieldApiName,
+    Schedule: electiveRunSchedule.fieldApiName,
+    Season: electiveRunSeason.fieldApiName,
+    SourceFile: electiveRunSourceFile.fieldApiName,
+    SourceFingerprint: electiveRunSourceFingerprint.fieldApiName,
+    Status: electiveRunStatus.fieldApiName,
+    TimesFingerprint: electiveRunTimesFingerprint.fieldApiName,
+    Week: electiveRunWeek.fieldApiName
+  }),
+  ElectiveSet: Object.freeze({
+    CopiedFrom: electiveSetCopiedFrom.fieldApiName,
+    Key: electiveSetKey.fieldApiName,
+    Season: electiveSetSeason.fieldApiName
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: fixedActivityCopiedFrom.fieldApiName,
@@ -310,6 +427,18 @@ export const FIELD = Object.freeze({
     Season: importSeason.fieldApiName,
     UndoneAt: importUndoneAt.fieldApiName
   }),
+  LinkedChoiceTime: Object.freeze({
+    LinkedChoice: linkedChoiceTimeLinkedChoice.fieldApiName,
+    TimeBlock: linkedChoiceTimeTimeBlock.fieldApiName,
+    Weekday: linkedChoiceTimeWeekday.fieldApiName
+  }),
+  LinkedChoice: Object.freeze({
+    AppliesTo: linkedChoiceAppliesTo.fieldApiName,
+    CopiedFrom: linkedChoiceCopiedFrom.fieldApiName,
+    ElectiveSet: linkedChoiceElectiveSet.fieldApiName,
+    Offering: linkedChoiceOffering.fieldApiName,
+    SortOrder: linkedChoiceSortOrder.fieldApiName
+  }),
   LocationType: Object.freeze({
     CopiedFrom: locationTypeCopiedFrom.fieldApiName,
     Key: locationTypeKey.fieldApiName,
@@ -324,6 +453,16 @@ export const FIELD = Object.freeze({
     Season: locationSeason.fieldApiName,
     SortOrder: locationSortOrder.fieldApiName
   }),
+  Offering: Object.freeze({
+    Activity: offeringActivity.fieldApiName,
+    CopiedFrom: offeringCopiedFrom.fieldApiName,
+    ElectiveSet: offeringElectiveSet.fieldApiName,
+    Key: offeringKey.fieldApiName,
+    MinimumToRun: offeringMinimumToRun.fieldApiName,
+    NoSeatLimit: offeringNoSeatLimit.fieldApiName,
+    Proposed: offeringProposed.fieldApiName,
+    Seats: offeringSeats.fieldApiName
+  }),
   PlanPart: Object.freeze({
     GridFormatVersion: planPartGridFormatVersion.fieldApiName,
     Key: planPartKey.fieldApiName,
@@ -333,6 +472,15 @@ export const FIELD = Object.freeze({
     Season: planPartSeason.fieldApiName,
     SpecialDay: planPartSpecialDay.fieldApiName,
     SpecialEvent: planPartSpecialEvent.fieldApiName
+  }),
+  Preference: Object.freeze({
+    Camper: preferenceCamper.fieldApiName,
+    Choices: preferenceChoices.fieldApiName,
+    ElectiveRun: preferenceElectiveRun.fieldApiName,
+    Group: preferenceGroup.fieldApiName,
+    ImportedChoices: preferenceImportedChoices.fieldApiName,
+    Key: preferenceKey.fieldApiName,
+    ManualChange: preferenceManualChange.fieldApiName
   }),
   Program: Object.freeze({
     CopiedFrom: programCopiedFrom.fieldApiName,
@@ -455,18 +603,43 @@ export const PARENT = Object.freeze({
     RainPlan: FIELD.Activity.RainPlan.replace(/__c$/, "__r"),
     Season: FIELD.Activity.Season.replace(/__c$/, "__r")
   }),
+  Assignment: Object.freeze({
+    Camper: FIELD.Assignment.Camper.replace(/__c$/, "__r"),
+    ElectiveRun: FIELD.Assignment.ElectiveRun.replace(/__c$/, "__r"),
+    Group: FIELD.Assignment.Group.replace(/__c$/, "__r"),
+    LinkedChoice: FIELD.Assignment.LinkedChoice.replace(/__c$/, "__r"),
+    Offering: FIELD.Assignment.Offering.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.Assignment.TimeBlock.replace(/__c$/, "__r")
+  }),
   CampLabel: Object.freeze({
     Camp: FIELD.CampLabel.Camp.replace(/__c$/, "__r")
+  }),
+  Camper: Object.freeze({
+    Season: FIELD.Camper.Season.replace(/__c$/, "__r")
   }),
   Coverage: Object.freeze({
     Division: FIELD.Coverage.Division.replace(/__c$/, "__r"),
     Group: FIELD.Coverage.Group.replace(/__c$/, "__r"),
+    LinkedChoice: FIELD.Coverage.LinkedChoice.replace(/__c$/, "__r"),
     RecurringActivity: FIELD.Coverage.RecurringActivity.replace(/__c$/, "__r"),
     Season: FIELD.Coverage.Season.replace(/__c$/, "__r")
   }),
   Division: Object.freeze({
     CopiedFrom: FIELD.Division.CopiedFrom.replace(/__c$/, "__r"),
     Program: FIELD.Division.Program.replace(/__c$/, "__r")
+  }),
+  ElectiveRun: Object.freeze({
+    ElectiveSet: FIELD.ElectiveRun.ElectiveSet.replace(/__c$/, "__r"),
+    FinalSchedule: FIELD.ElectiveRun.FinalSchedule.replace(/__c$/, "__r"),
+    FinalizedBy: FIELD.ElectiveRun.FinalizedBy.replace(/__c$/, "__r"),
+    NewVersionOf: FIELD.ElectiveRun.NewVersionOf.replace(/__c$/, "__r"),
+    Schedule: FIELD.ElectiveRun.Schedule.replace(/__c$/, "__r"),
+    Season: FIELD.ElectiveRun.Season.replace(/__c$/, "__r"),
+    Week: FIELD.ElectiveRun.Week.replace(/__c$/, "__r")
+  }),
+  ElectiveSet: Object.freeze({
+    CopiedFrom: FIELD.ElectiveSet.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r")
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: FIELD.FixedActivity.CopiedFrom.replace(/__c$/, "__r"),
@@ -485,6 +658,15 @@ export const PARENT = Object.freeze({
   Import: Object.freeze({
     Season: FIELD.Import.Season.replace(/__c$/, "__r")
   }),
+  LinkedChoiceTime: Object.freeze({
+    LinkedChoice: FIELD.LinkedChoiceTime.LinkedChoice.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.LinkedChoiceTime.TimeBlock.replace(/__c$/, "__r")
+  }),
+  LinkedChoice: Object.freeze({
+    CopiedFrom: FIELD.LinkedChoice.CopiedFrom.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.LinkedChoice.ElectiveSet.replace(/__c$/, "__r"),
+    Offering: FIELD.LinkedChoice.Offering.replace(/__c$/, "__r")
+  }),
   LocationType: Object.freeze({
     CopiedFrom: FIELD.LocationType.CopiedFrom.replace(/__c$/, "__r"),
     Season: FIELD.LocationType.Season.replace(/__c$/, "__r")
@@ -494,10 +676,20 @@ export const PARENT = Object.freeze({
     LocationType: FIELD.Location.LocationType.replace(/__c$/, "__r"),
     Season: FIELD.Location.Season.replace(/__c$/, "__r")
   }),
+  Offering: Object.freeze({
+    Activity: FIELD.Offering.Activity.replace(/__c$/, "__r"),
+    CopiedFrom: FIELD.Offering.CopiedFrom.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.Offering.ElectiveSet.replace(/__c$/, "__r")
+  }),
   PlanPart: Object.freeze({
     Season: FIELD.PlanPart.Season.replace(/__c$/, "__r"),
     SpecialDay: FIELD.PlanPart.SpecialDay.replace(/__c$/, "__r"),
     SpecialEvent: FIELD.PlanPart.SpecialEvent.replace(/__c$/, "__r")
+  }),
+  Preference: Object.freeze({
+    Camper: FIELD.Preference.Camper.replace(/__c$/, "__r"),
+    ElectiveRun: FIELD.Preference.ElectiveRun.replace(/__c$/, "__r"),
+    Group: FIELD.Preference.Group.replace(/__c$/, "__r")
   }),
   Program: Object.freeze({
     CopiedFrom: FIELD.Program.CopiedFrom.replace(/__c$/, "__r"),
@@ -564,6 +756,7 @@ export const CHILDREN = Object.freeze({
   Activity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Eligibilities: `${NAMESPACE_PREFIX}Eligibilities__r`,
+    Offerings: `${NAMESPACE_PREFIX}Offerings__r`,
     RainPlanFor: `${NAMESPACE_PREFIX}RainPlanFor__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
   }),
@@ -572,11 +765,26 @@ export const CHILDREN = Object.freeze({
     ImportAnswers: `${NAMESPACE_PREFIX}ImportAnswers__r`,
     Seasons: `${NAMESPACE_PREFIX}Seasons__r`
   }),
+  Camper: Object.freeze({
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
+    Preferences: `${NAMESPACE_PREFIX}Preferences__r`
+  }),
   Division: Object.freeze({
     ActivityEligibilities: `${NAMESPACE_PREFIX}ActivityEligibilities__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
     Groups: `${NAMESPACE_PREFIX}Groups__r`
+  }),
+  ElectiveRun: Object.freeze({
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
+    NewVersions: `${NAMESPACE_PREFIX}NewVersions__r`,
+    Preferences: `${NAMESPACE_PREFIX}Preferences__r`
+  }),
+  ElectiveSet: Object.freeze({
+    Copies: `${NAMESPACE_PREFIX}Copies__r`,
+    ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
+    LinkedChoices: `${NAMESPACE_PREFIX}LinkedChoices__r`,
+    Offerings: `${NAMESPACE_PREFIX}Offerings__r`
   }),
   FixedActivity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
@@ -584,9 +792,17 @@ export const CHILDREN = Object.freeze({
   }),
   Group: Object.freeze({
     ActivityEligibilities: `${NAMESPACE_PREFIX}ActivityEligibilities__r`,
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
+    Preferences: `${NAMESPACE_PREFIX}Preferences__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
+  }),
+  LinkedChoice: Object.freeze({
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
+    Copies: `${NAMESPACE_PREFIX}Copies__r`,
+    Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
+    Times: `${NAMESPACE_PREFIX}Times__r`
   }),
   LocationType: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
@@ -599,6 +815,11 @@ export const CHILDREN = Object.freeze({
     RecurringActivities: `${NAMESPACE_PREFIX}RecurringActivities__r`,
     SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
+  }),
+  Offering: Object.freeze({
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
+    Copies: `${NAMESPACE_PREFIX}Copies__r`,
+    LinkedChoices: `${NAMESPACE_PREFIX}LinkedChoices__r`
   }),
   Program: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
@@ -616,12 +837,17 @@ export const CHILDREN = Object.freeze({
   Schedule: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Days: `${NAMESPACE_PREFIX}Days__r`,
+    ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
+    FinalElectiveRuns: `${NAMESPACE_PREFIX}FinalElectiveRuns__r`,
     PublishedPlans: `${NAMESPACE_PREFIX}PublishedPlans__r`
   }),
   Season: Object.freeze({
     Activities: `${NAMESPACE_PREFIX}Activities__r`,
+    Campers: `${NAMESPACE_PREFIX}Campers__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
+    ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
+    ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,
     Imports: `${NAMESPACE_PREFIX}Imports__r`,
     LocationTypes: `${NAMESPACE_PREFIX}LocationTypes__r`,
     Locations: `${NAMESPACE_PREFIX}Locations__r`,
@@ -641,16 +867,20 @@ export const CHILDREN = Object.freeze({
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
   }),
   TimeBlock: Object.freeze({
+    Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     EndingFixedActivities: `${NAMESPACE_PREFIX}EndingFixedActivities__r`,
     EndingRecurringActivities: `${NAMESPACE_PREFIX}EndingRecurringActivities__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,
+    LinkedChoiceTimes: `${NAMESPACE_PREFIX}LinkedChoiceTimes__r`,
     RecurringActivities: `${NAMESPACE_PREFIX}RecurringActivities__r`
   }),
   User: Object.freeze({
+    FinalizedElectiveRuns: `${NAMESPACE_PREFIX}FinalizedElectiveRuns__r`,
     PublishedSchedules: `${NAMESPACE_PREFIX}PublishedSchedules__r`
   }),
   Week: Object.freeze({
+    ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
     Schedules: `${NAMESPACE_PREFIX}Schedules__r`,
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LinkedChoice__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The linked choice this seat is part of, if any: all its seats are placed or none.</description>
+    <label>Linked Choice</label>
+    <referenceTo>LinkedChoice__c</referenceTo>
+    <relationshipLabel>Assignments</relationshipLabel>
+    <relationshipName>Assignments</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

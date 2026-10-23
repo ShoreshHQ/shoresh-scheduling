@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Group__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The camper's group that week, when the sheet names one. A group named here cannot be deleted until this is removed.</description>
+    <label>Group</label>
+    <referenceTo>Group__c</referenceTo>
+    <relationshipLabel>Preferences</relationshipLabel>
+    <relationshipName>Preferences</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>
