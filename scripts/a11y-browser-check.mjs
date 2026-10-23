@@ -78,7 +78,8 @@
  *   those screens;
  * - an elective set on Manual Build's grid (repo ADR 0018 slice E5), keyboard only: the drawer's
  *   first tile is the check's set; Enter picks it up, focus to the grid; Space on an Open cell
- *   puts it down, said; the cell reads "<set> (2)" with the set's mark; axe; Ctrl/Cmd+Z takes it
+ *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
+ *   Ctrl/Cmd+Z takes it
  *   back. The set is made by Apex first and deleted after;
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
@@ -4069,9 +4070,11 @@ async function electives() {
  * An elective set on the week grid (repo ADR 0018 slice E5; decision 53.2), on Manual Build,
  * keyboard only: with the check's set seeded fresh (the page read again so it is in the season),
  * the drawer's first tile is the set; Enter picks it up with focus going to the grid; Space on an
- * Open cell puts it down, said; the cell reads "<set> (2)" (its confirmed, open offerings: one
- * with seats, one with seats not filled in; the proposed one is not counted) with the set's mark;
- * axe; Ctrl/Cmd+Z takes it back, said. The set is deleted after.
+ * Open cell puts it down, focus staying on that cell, which now reads "<set> (2)" (its
+ * confirmed, open offerings: one with seats, one with seats not filled in; the proposed one is
+ * not counted) with the set's mark (putting down is not said on its own, for a set as for any
+ * activity: the focused cell's new name is what a screen reader reads); axe; Ctrl/Cmd+Z takes it
+ * back, said. The set is deleted after.
  */
 async function electivesOnGrid(openManual) {
   const S = "Manual Build";
@@ -4118,18 +4121,31 @@ async function electivesOnGrid(openManual) {
       const open = (await gridCells()).find(isFreeOpen);
       if (!open) throw new Error("No Open cell to put the set in.");
       await focusCell(open.key);
-      await expectLive(
-        S,
-        "Space puts the set down: it is said",
-        new RegExp(CHECK_SET),
-        () => press(" ")
-      );
+      await press(" ");
       const label = `${CHECK_SET} (2)`;
       const end = Date.now() + 15000;
       let cell = null;
       while (!cell && Date.now() < end) {
         cell = (await gridCells()).find((c) => c.name === label);
         if (!cell) await pause(200);
+      }
+      // Putting down is not said (as for any activity): focus stays on the cell, which reads it.
+      const focused = await focusedCellKey();
+      if (cell && focused === cell.key) {
+        results.pass(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          `Focus on ${cell.key}.`
+        );
+      } else {
+        await shot(S, "Space puts the set down");
+        results.fail(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          cell
+            ? `Focus on ${focused || "no cell"}; the set is in ${cell.key}.`
+            : `No cell reads "${label}".`
+        );
       }
       const marked =
         cell &&
