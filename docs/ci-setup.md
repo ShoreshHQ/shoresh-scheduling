@@ -150,7 +150,7 @@ first (published schedules are kept history and stay), so the camp gains no more
 deletes and adds again a fixed activity _Assembly_ there so that week stops matching setup, and
 adds a program card and deletes it again. It opens Electives from the page's address
 (`?c__preview=electives`, repo ADR 0018) with an elective set of its own, _Check chugim_, made by
-Apex and deleted after; `--only electives` runs just that step, and `--only lists` just Import a list on Groups and on Electives. `--headed` shows the browser; screenshots of failures go to a temporary folder
+Apex and deleted after; `--only electives` runs just that step, and `--only lists` just Import a list on Groups, Programs and Electives. `--headed` shows the browser; screenshots of failures go to a temporary folder
 (`--shots <dir>` to choose).
 
 ## Running Apex tests: one class at a time
