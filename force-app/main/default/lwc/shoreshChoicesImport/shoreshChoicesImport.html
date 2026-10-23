@@ -1,0 +1,480 @@
+<template>
+  <div class="choices" data-id="choices">
+    <!-- The rail (the design's grammar): what this is, then where the cards are, then the
+         way out and the one main action. design-research/electives-r1/import.html -->
+    <div class="rail" data-id="rail">
+      <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+        Bring in choices
+      </h2>
+      <div class="side side_left">
+        <span class="shoresh-item shoresh-item_value" aria-hidden="true"
+          >Bring in choices</span
+        >
+        <template lwc:if={isCards}>
+          <span class="shoresh-item file-name" data-id="file-name"
+            >{fileName}</span
+          >
+        </template>
+        <template lwc:elseif={showsPickers}>
+          <span class="shoresh-rail-line" role="presentation"></span>
+          <c-shoresh-rail-picker
+            data-id="set"
+            label={setWord}
+            value={setId}
+            options={setOptions}
+            disabled={isReading}
+            onchange={handleSet}
+          ></c-shoresh-rail-picker>
+          <c-shoresh-rail-picker
+            data-id="week"
+            label={weekWord}
+            value={weekId}
+            options={weekOptions}
+            disabled={isReading}
+            arrows
+            onchange={handleWeek}
+          ></c-shoresh-rail-picker>
+          <template lwc:if={asksSchedule}>
+            <c-shoresh-rail-picker
+              data-id="schedule"
+              label="Assign against"
+              value={scheduleId}
+              options={scheduleOptions}
+              disabled={isReading}
+              onchange={handleSchedule}
+            ></c-shoresh-rail-picker>
+          </template>
+        </template>
+      </div>
+      <template lwc:if={isCards}>
+        <div class="side side_middle" role="group" aria-label="Cards">
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_icon"
+            aria-label="Back a card"
+            disabled={noBack}
+            onclick={handleBack}
+            data-id="back"
+          >
+            <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M10 4 6 8l4 4"></path>
+            </svg>
+          </button>
+          <span
+            class="shoresh-item shoresh-item_value shoresh-num"
+            data-id="step"
+            >{stepText}</span
+          >
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_icon"
+            aria-label="Next card"
+            disabled={noForward}
+            onclick={handleForward}
+            data-id="forward"
+          >
+            <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="m6 4 4 4-4 4"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="side side_right">
+          <button
+            type="button"
+            class="shoresh-item"
+            onclick={handleCancel}
+            disabled={isBusy}
+            data-id="cancel"
+          >
+            Cancel
+          </button>
+          <template lwc:if={showsPrimary}>
+            <button
+              type="button"
+              class="shoresh-item shoresh-item_primary"
+              onclick={handlePrimary}
+              disabled={primaryDisabled}
+              data-id="primary"
+            >
+              {primaryLabel}
+            </button>
+          </template>
+        </div>
+      </template>
+      <template lwc:if={isDone}>
+        <div class="side side_right">
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_primary"
+            onclick={handleAnother}
+            data-id="another"
+          >
+            Choose another file
+          </button>
+        </div>
+      </template>
+    </div>
+    <div class="shoresh-hairline" role="presentation"></div>
+
+    <!-- What is happening, read out as it happens (WCAG 4.1.3). -->
+    <div class="slds-assistive-text" role="status" data-id="status">
+      {statusText}
+    </div>
+
+    <div class="card">
+      <template lwc:if={error}>
+        <div class="message" role="alert" data-id="error">{error}</div>
+      </template>
+
+      <!-- The start: the file, for the set and week on the rail -->
+      <template lwc:if={isPick}>
+        <template lwc:if={hasNoSets}>
+          <c-shoresh-empty-state
+            title={noSetsText}
+            data-id="no-sets"
+          ></c-shoresh-empty-state>
+        </template>
+        <template lwc:elseif={hasNoSchedule}>
+          <c-shoresh-empty-state
+            title={noScheduleText}
+            data-id="no-schedule"
+          ></c-shoresh-empty-state>
+        </template>
+        <template lwc:elseif={showsDrop}>
+          <div
+            class={dropClass}
+            data-id="drop"
+            ondragover={handleDragOver}
+            ondragleave={handleDragLeave}
+            ondrop={handleDrop}
+          >
+            <template lwc:if={isReading}>
+              <lightning-spinner
+                alternative-text="Reading the file"
+                size="small"
+              ></lightning-spinner>
+            </template>
+            <template lwc:else>
+              <div class="drop-title">Drop the choices sheet here</div>
+              <button
+                type="button"
+                class="shoresh-item shoresh-raised"
+                onclick={handleChoose}
+                data-id="choose"
+              >
+                Choose a file
+              </button>
+              <!-- Opened by "Choose a file": named, and out of the tab order. -->
+              <input
+                class="slds-assistive-text"
+                type="file"
+                tabindex="-1"
+                aria-label="Choose a file"
+                accept=".xlsx,.xlsm,.xls,.csv"
+                data-id="file"
+                onchange={handleFileInput}
+              />
+              <div class="drop-hint">.xlsx · .xls · .csv</div>
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <!-- 1 of 3: how the sheet was read -->
+      <template lwc:if={isStep1}>
+        <h3 class="slds-assistive-text" tabindex="-1" data-card="1">
+          How the sheet was read
+        </h3>
+        <div class="shape" data-id="shape">
+          <span class="shape-label">Choices are</span>
+          <span class="shape-value">{shape}</span>
+        </div>
+        <template lwc:if={preview}>
+          <div class="sheet" data-id="sheet">
+            <table aria-label={preview.sheet}>
+              <thead>
+                <tr class="tags">
+                  <td class="rn" aria-hidden="true"></td>
+                  <template for:each={preview.columns} for:item="col">
+                    <th
+                      key={col.key}
+                      scope="col"
+                      class="tag-cell"
+                      data-column={col.letter}
+                    >
+                      <span class={col.kind} data-tag={col.kind}
+                        >{col.label}</span
+                      >
+                    </th>
+                  </template>
+                </tr>
+                <tr class="headings">
+                  <td class="rn shoresh-num">{preview.headingNumber}</td>
+                  <template for:each={preview.columns} for:item="col">
+                    <td key={col.key}>{col.heading}</td>
+                  </template>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={preview.rows} for:item="row">
+                  <tr key={row.key} data-mine={row.mine}>
+                    <td class="rn shoresh-num">{row.number}</td>
+                    <template for:each={row.cells} for:item="cell">
+                      <td key={cell.key} data-not-read={cell.notRead}>
+                        {cell.text}
+                      </td>
+                    </template>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+        <div class="readbacks" data-id="readbacks">
+          <template for:each={readBackRows} for:item="camper">
+            <div key={camper.key} class="readback" data-readback={camper.key}>
+              <b>{camper.name}</b>
+              <span class="place">{camper.place}</span>
+              <span class="readback-choices">
+                <template for:each={camper.choices} for:item="choice">
+                  <span key={choice.key} class="readback-choice">
+                    <span class="slds-assistive-text">{choice.spoken}</span>
+                    <template lwc:if={choice.unordered}>
+                      <i class="mark mark_none" aria-hidden="true"></i>
+                    </template>
+                    <template lwc:else>
+                      <i class="mark" aria-hidden="true">{choice.mark}</i>
+                    </template>
+                    <template lwc:if={choice.when}>
+                      <span class="when" aria-hidden="true">{choice.when}</span>
+                    </template>
+                    {choice.label}
+                  </span>
+                </template>
+              </span>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- 2 of 3: only what needs a person -->
+      <template lwc:if={isStep2}>
+        <h3 class="slds-assistive-text" tabindex="-1" data-card="2">
+          What needs a look
+        </h3>
+        <template lwc:if={nothingOnCard2}>
+          <p class="quiet" data-id="nothing">Nothing needs a look.</p>
+        </template>
+        <template lwc:if={hasSettle}>
+          <section class="section" data-section="settle">
+            <h4 class="section-head">
+              Names to settle <span class="shoresh-num">{settleCount}</span>
+            </h4>
+            <template for:each={settleRows} for:item="row">
+              <div key={row.key} class={row.className} data-settle={row.key}>
+                <span class="n">{row.name}</span>
+                <span class="d shoresh-num">{row.count}</span>
+                <span class="options">
+                  <template lwc:if={row.proposal}>
+                    <button
+                      type="button"
+                      class={row.proposalClass}
+                      aria-pressed={row.proposalPressed}
+                      data-key={row.key}
+                      data-activity={row.proposal.id}
+                      data-answer="proposal"
+                      onclick={handleProposal}
+                    >
+                      {row.proposalLabel}
+                    </button>
+                  </template>
+                  <template lwc:if={row.hasOptions}>
+                    <lightning-combobox
+                      class="same-as"
+                      label={row.sameLabel}
+                      variant="label-hidden"
+                      placeholder="Same as…"
+                      value={row.sameValue}
+                      options={row.options}
+                      data-key={row.key}
+                      data-answer="same"
+                      onchange={handleSameAs}
+                    ></lightning-combobox>
+                  </template>
+                  <button
+                    type="button"
+                    class={row.addClass}
+                    aria-pressed={row.addPressed}
+                    aria-label={row.addLabel}
+                    data-key={row.key}
+                    data-answer="add"
+                    onclick={handleAdd}
+                  >
+                    Add as an activity
+                  </button>
+                  <button
+                    type="button"
+                    class={row.leaveClass}
+                    aria-pressed={row.leavePressed}
+                    aria-label={row.leaveLabel}
+                    data-key={row.key}
+                    data-answer="leave"
+                    onclick={handleLeave}
+                  >
+                    Leave out
+                  </button>
+                  <template lwc:if={row.remembered}>
+                    <span class="tag" data-id="remembered">Remembered</span>
+                  </template>
+                </span>
+                <template lwc:if={row.unsettled}>
+                  <span class="corner" role="img" aria-label="Needs an answer"
+                    ><i class="shoresh-look-mark"></i
+                  ></span>
+                </template>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasApart}>
+          <section class="section" data-section="apart">
+            <h4 class="section-head">
+              Can't tell apart
+              <span class="shoresh-num">{apartCount}</span>
+            </h4>
+            <template for:each={apartRows} for:item="row">
+              <div
+                key={row.key}
+                class="row row_look shoresh-raised"
+                data-apart={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">{row.where}</span>
+                <span class="text">{row.why}</span>
+                <span class="corner" role="img" aria-label="Needs a look"
+                  ><i class="shoresh-look-mark"></i
+                ></span>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasCheck}>
+          <section class="section" data-section="check">
+            <h4 class="section-head">
+              To check <span class="shoresh-num">{checkCount}</span>
+            </h4>
+            <template for:each={checkList} for:item="row">
+              <div
+                key={row.key}
+                class="row shoresh-raised"
+                data-check={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">{row.where}</span>
+                <span class="text">{row.why}</span>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasNotRead}>
+          <section class="section" data-section="not-read">
+            <h4 class="section-head">
+              Not read <span class="shoresh-num">{notReadCount}</span>
+            </h4>
+            <template for:each={notReadList} for:item="row">
+              <div
+                key={row.key}
+                class="row shoresh-raised"
+                data-not-read={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">{row.where}</span>
+                <span class="text">{row.why}</span>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasKept}>
+          <section class="section" data-section="kept">
+            <h4 class="section-head">
+              Kept with the camper
+              <span class="shoresh-num">{keptCount}</span>
+            </h4>
+            <template for:each={keptList} for:item="row">
+              <div
+                key={row.key}
+                class="row row_tall shoresh-raised"
+                data-kept={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">Comment</span>
+                <span class="text text_wrap">{row.text}</span>
+              </div>
+            </template>
+          </section>
+        </template>
+      </template>
+
+      <!-- 3 of 3: the count, and Bring in -->
+      <template lwc:if={isStep3}>
+        <h3 class="slds-assistive-text" tabindex="-1" data-card="3">
+          What comes in
+        </h3>
+        <template lwc:if={refused}>
+          <div class="refusal" data-id="refusal">
+            <p class="refusal-title">This sheet can't be brought in yet</p>
+            <template for:each={refusalLines} for:item="line">
+              <p key={line.key} class="line line_look">
+                {line.text}
+                <span class="corner" role="img" aria-label="Needs a look"
+                  ><i class="shoresh-look-mark"></i
+                ></span>
+              </p>
+            </template>
+            <p class="quiet">
+              Give each a camper number in the sheet, or fix the duplicate, then
+              choose the file again.
+            </p>
+          </div>
+        </template>
+        <template lwc:elseif={isBusy}>
+          <lightning-spinner
+            alternative-text="Counting"
+            size="small"
+          ></lightning-spinner>
+        </template>
+        <template lwc:elseif={isFinal}>
+          <div class="refusal" data-id="final">
+            <p class="refusal-title">
+              "{check.runName}" is final, so it can't take new choices.
+            </p>
+          </div>
+        </template>
+        <template lwc:else>
+          <div class="lines" data-id="lines">
+            <template for:each={lines} for:item="line">
+              <p key={line.key} class={line.className} data-line={line.key}>
+                {line.text}
+                <template lwc:if={line.look}>
+                  <span class="corner" role="img" aria-label="Needs a look"
+                    ><i class="shoresh-look-mark"></i
+                  ></span>
+                </template>
+              </p>
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <!-- Done -->
+      <template lwc:if={isDone}>
+        <p class="done" tabindex="-1" data-id="done">{doneText}</p>
+        <div class="lines">
+          <template for:each={doneLines} for:item="line">
+            <p key={line.key} class="line">{line.text}</p>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+</template>

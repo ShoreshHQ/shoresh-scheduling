@@ -60,6 +60,10 @@ public with sharing class ScheduleViews {
     // no rows when nothing is locked.
     @AuraEnabled
     public List<String> locks = new List<String>();
+    // A rainy day's cells whose rain plan had no room ("group Id|time block Id|activity Id"),
+    // each only while it still holds that activity (RainMarks, repo docs/adr/0019).
+    @AuraEnabled
+    public List<String> rainFull = new List<String>();
   }
 
   /** A time block, group, or item as saved, and whether it has been deleted since. */
@@ -219,6 +223,7 @@ public with sharing class ScheduleViews {
         view.locks.add(String.join(cells, ','));
       }
     }
+    view.rainFull = RainMarks.keptOn(day.grid, day.rain);
     return view;
   }
 

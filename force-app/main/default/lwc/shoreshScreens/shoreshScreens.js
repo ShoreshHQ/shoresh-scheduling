@@ -10,9 +10,10 @@
 // Built in a later slice: listed, not reachable from the menu yet. Electives stay coming until
 // slice E11 passes (decision 44), though their setup screen is built (repo ADR 0018, slice E4).
 const COMING = new Set(["electives"]);
-// A coming screen that can be opened anyway from the page's address, for the checks that look
-// at it before it is in the menu (repo ADR 0018: ?c__preview=electives). Nothing else reaches it.
-const PREVIEWABLE = new Set(["electives"]);
+// A screen that can be opened from the page's address before it is in the menu, for the checks
+// that look at it (repo ADR 0018: ?c__preview=electives; ADR 0017 choice 19:
+// ?c__preview=bringInChoices). Nothing else reaches them.
+const PREVIEWABLE = new Set(["electives", "bringInChoices"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -85,7 +86,7 @@ export function canOpen(screen, hasSeason, preview = null) {
   return built && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
-/** The coming screen a page address may open ("electives"), else null. */
+/** The screen a page address may open ("electives", "bringInChoices"), else null. */
 export function previewScreen(name) {
   return PREVIEWABLE.has(name) ? name : null;
 }

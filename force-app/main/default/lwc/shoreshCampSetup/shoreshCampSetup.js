@@ -76,7 +76,8 @@ const FLUSH_SCREENS = new Set([
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
-  "electives"
+  "electives",
+  "bringInChoices"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -107,7 +108,8 @@ const SCREENS = [
   "generatedSchedule",
   "manualBuild",
   "schedules",
-  "import"
+  "import",
+  "bringInChoices"
 ];
 
 /**
@@ -237,8 +239,9 @@ export default class ShoreshCampSetup extends LightningElement {
   seededNote = "";
   // The offering whose linked choices are open beside the Electives list, or null.
   electiveDetailsFor = null;
-  // The coming screen the page's address asks for (?c__preview=electives, repo ADR 0018), and
-  // whether it has been opened once (after that the menu leads, as for any screen).
+  // The screen the page's address asks for (?c__preview=electives, repo ADR 0018;
+  // ?c__preview=bringInChoices, ADR 0017 choice 19), and whether it has been opened once (after
+  // that the menu leads, as for any screen).
   preview = null;
   previewOpened = false;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
@@ -272,8 +275,9 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /**
    * The page's address. ?c__preview=electives opens the Electives screen, which the menu still
-   * lists as coming (decision 44), so the browser check can reach it before it is in the menu
-   * (repo ADR 0018). Any other value is ignored.
+   * lists as coming, and ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu until electives are finished (decision 44); so both can be tried and checked before then
+   * (repo ADRs 0018 and 0017 choice 19). Any other value is ignored.
    */
   @wire(CurrentPageReference)
   wiredPageReference(reference) {
@@ -472,6 +476,11 @@ export default class ShoreshCampSetup extends LightningElement {
     return FLUSH_SCREENS.has(this.currentScreen)
       ? "zone body body_flush"
       : "zone body";
+  }
+
+  /** Drawn only while it is shown: its start reads the season's elective sets. */
+  get showsBringInChoices() {
+    return this.currentScreen === "bringInChoices";
   }
 
   get shown() {

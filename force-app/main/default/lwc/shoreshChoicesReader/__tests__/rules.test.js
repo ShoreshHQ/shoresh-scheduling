@@ -1,6 +1,10 @@
 // The reader's rules one at a time, on small made-up sheets (docs/adr/0017-reading-a-choices-sheet.md).
 import { csvFile } from "c/shoreshImportEngine";
-import { headingMeaning, readChoices } from "c/shoreshChoicesReader";
+import {
+  headingMeaning,
+  readChoices,
+  sheetLayout
+} from "c/shoreshChoicesReader";
 import { corpusFrom } from "./data/corpus";
 
 const { sheetFile } = corpusFrom(__dirname);
@@ -39,7 +43,10 @@ describe("what a heading means", () => {
     ["Rank", { use: "rankValue" }],
     ["Day", { use: "dayValue" }],
     ["Period", { use: "periodValue" }],
-    ["Comments", { use: "comment" }]
+    ["Comments", { use: "comment" }],
+    ["Child's name", { use: "name" }],
+    ["Camper’s Name", { use: "name" }],
+    ["Anything we should know?", { use: "comment" }]
   ])("%s", (heading, meaning) => {
     expect(headingMeaning(heading)).toEqual(meaning);
   });
@@ -373,5 +380,63 @@ describe("reading", () => {
     expect(reading.toCheck).toEqual([
       expect.objectContaining({ kind: "nameFromSheet", sheet: "My week" })
     ]);
+  });
+});
+
+describe("how a sheet was read, column by column (slice E6's first card)", () => {
+  const layoutOf = (text) =>
+    sheetLayout(csvFile("choices.csv", text).sheets[0]);
+
+  it("names each column's use the way the reading uses it", () => {
+    const layout = layoutOf(
+      lines(
+        "Chugim week 3",
+        "Timestamp,Camper ID,Child's name,Cabin,Chug choice 1,Chug choice 2,Anything we should know?,Parent email",
+        "6/2 9:14,1001,Maya Fernwood,Aspen,Archery,Drama,,parent@example.com"
+      )
+    );
+    expect(layout.headingRow).toBe(1);
+    expect(layout.columns.map((c) => c.read && c.read.use)).toEqual([
+      null,
+      "number",
+      "name",
+      "bunk",
+      "choice",
+      "choice",
+      "comment",
+      null
+    ]);
+    expect(layout.columns[4].read).toEqual({
+      use: "choice",
+      rank: 1,
+      day: null,
+      period: null,
+      kind: "ranked"
+    });
+    expect(layout.columns[7]).toMatchObject({
+      letter: "H",
+      heading: "Parent email",
+      read: null
+    });
+  });
+
+  it("marks two columns of one rank as choices in no order, and a second name column not read", () => {
+    const layout = layoutOf(
+      lines("Name,Name,#1,#1", "Maya Fernwood,Maya,Archery,Drama")
+    );
+    expect(layout.columns.map((c) => c.read && c.read.kind)).toEqual([
+      null,
+      null,
+      "unordered",
+      "unordered"
+    ]);
+    expect(layout.columns[1].read).toBeNull();
+  });
+
+  it("is null for a sheet with no table of campers (a planner, a menu)", () => {
+    expect(
+      layoutOf(lines(",Monday,Tuesday", "Period 1,Archery,Drama"))
+    ).toBeNull();
+    expect(sheetLayout({ name: "Empty", rows: [] })).toBeNull();
   });
 });

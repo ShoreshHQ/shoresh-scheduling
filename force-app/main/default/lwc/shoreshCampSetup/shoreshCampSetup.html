@@ -1310,6 +1310,18 @@
                 ></c-shoresh-schedules>
               </div>
 
+              <!-- Bring in choices (electives slice E6): not in the menu until electives are
+                   finished (decision 44); opened from the page's address (ADR 0017). -->
+              <div class={shown.bringInChoices} data-screen="bringInChoices">
+                <template lwc:if={showsBringInChoices}>
+                  <c-shoresh-choices-import
+                    setup={setup}
+                    terms={terms}
+                    onseasonchanged={handleSeasonChanged}
+                  ></c-shoresh-choices-import>
+                </template>
+              </div>
+
               <!-- Import last year, opened from Roots -->
               <div class={shown.import} data-screen="import">
                 <c-shoresh-import

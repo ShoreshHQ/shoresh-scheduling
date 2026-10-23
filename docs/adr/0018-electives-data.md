@@ -1,6 +1,8 @@
 # 0018: Electives, the data
 
-Status: proposed (2026-10-22), electives slice E1 (plan: wiki `projects/shoresh-sf-electives-plan`,
+Status: proposed (2026-10-22), electives slice E1; slice E6 (ADR 0017 choices 10 to 21) writes
+campers, committed runs and their choices, and is reached from the page's address until the
+Electives menu opens (ADR 0017 choice 19) (plan: wiki `projects/shoresh-sf-electives-plan`,
 §3 and §8). Design source: the plan's §3 data model, which replaces the Electives section of the
 wiki data model (draft 4) and amends wiki decision `0007-scheduling-data-model-shape`; Greg's
 decision 48 (wiki `projects/shoresh-scheduling-sf`, 2026-10-21, point 3 amended 2026-10-22); the
@@ -36,7 +38,8 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
      `SourceFingerprint__c`, `TimesFingerprint__c`, `EngineVersion__c`, `FinalizedAt__c`,
      `FinalizedBy__c`, `FinalSchedule__c`, `NewVersionOf__c`, `Revision__c`.
    - `Preference__c` (detail of ElectiveRun): `Camper__c` (required), `Group__c`, `Choices__c`,
-     `ImportedChoices__c` (long text, compact; their format is slice E6's), `ManualChange__c`.
+     `ImportedChoices__c` (long text, compact; their format is slice E6's: ADR 0017 choice 16),
+     `ManualChange__c`.
    - `Assignment__c` (detail of ElectiveRun): `Camper__c`, `TimeBlock__c`, `Offering__c` (all
      required), `Group__c`, `LinkedChoice__c`, `Date__c` (required by a validation rule),
      `Locked__c`, `ByHand__c`, and `ActivityName__c`, `LocationName__c`, `GroupName__c` (copied at
@@ -57,7 +60,8 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
 3. **Parent comments are saved with the camper** (decision 48.3, Greg chose (a)):
    `Camper__c.ParentComments__c`, long text, word for word, so they are there when seats are
    placed. Never read as choices (desktop ETL §4.3) and, as on the desktop, never put in a
-   download (a rule for slice E10). How a second sheet's different comment is kept is slice E6's.
+   download (a rule for slice E10). How a second sheet's different comment is kept is slice E6's:
+   added after what was saved, on a line of its own, never erasing it (ADR 0017 choice 15).
    **No opt-outs** (decision 48.3, amended 2026-10-22): a camper who opted out is placed by the
    camp outside Shoresh, so nothing stores one; the Jest test fails on any field named for one.
 4. **Only what is needed about a child, and classified.** A camper holds a display name, an

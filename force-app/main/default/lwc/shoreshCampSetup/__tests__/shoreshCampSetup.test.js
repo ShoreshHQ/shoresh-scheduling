@@ -18,12 +18,22 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
+import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+
+/** The page's address as Lightning hands it to the page (its wire), with this state. */
+const pageAddress = (state) =>
+  require("lightning/navigation").CurrentPageReference.emit({ state });
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
+jest.mock(
+  "@salesforce/apex/ChoicesImportController.choicesSetup",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
   virtual: true
 });
@@ -2196,6 +2206,66 @@ describe("c-shoresh-camp-setup", () => {
     await openScreen(element, "weeks");
     await openScreen(element, "roots");
     expect(roots.focusHeading).toHaveBeenCalled();
+  });
+
+  it("opens Bring in choices only from the page's address, never from the menu (electives stay Coming)", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
+    const element = await render();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    expect(q(element, "c-shoresh-choices-import")).toBeNull();
+    expect(
+      q(element, "c-shoresh-menu").shadowRoot.querySelector(
+        'a[data-screen="bringInChoices"]'
+      )
+    ).toBeNull();
+    // Another screen in the address is not opened this way.
+    pageAddress({ c__preview: "weeks" });
+    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    pageAddress({ c__preview: "bringInChoices" });
+    await flush();
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
+    expect(q(element, "c-shoresh-choices-import")).not.toBeNull();
+    expect(choicesSetup).toHaveBeenCalledWith({ seasonId: "s1" });
+  });
+
+  it("reads the season again when Bring in choices adds to it, so every screen has the new activity", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
+    const element = await render();
+    pageAddress({ c__preview: "bringInChoices" });
+    await flush();
+    const reads = getSeasonSetup.mock.calls.length;
+    q(element, "c-shoresh-choices-import").dispatchEvent(
+      new CustomEvent("seasonchanged")
+    );
+    await flush();
+    expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
+  });
+
+  it("an address asking for Bring in choices before the season is read opens it once it is", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    let answer;
+    getSeasonSetup.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
+    const element = await render();
+    pageAddress({ c__preview: "bringInChoices" });
+    await flush();
+    answer(nsRecord(setupWith()));
+    await flush();
+    await flush();
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
   });
 
   it("a new message at the top is brought into view", async () => {

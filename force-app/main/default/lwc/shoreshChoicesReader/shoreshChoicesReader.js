@@ -411,6 +411,59 @@ function campersFrom(rows, out) {
   return campers.filter((c) => c.choices.length > 0);
 }
 
+// ---------- how a sheet was read, column by column (for the review screen) ----------
+
+/**
+ * What each column of one sheet was read as, by the same plan the reading uses (slice E6's first
+ * card draws the sheet with these over it). Null for a sheet with no table of campers (a
+ * planner, a menu, or nothing readable).
+ *
+ * Returns { headingRow, firstRow, columns: [{ index, letter, heading, read }] }: headingRow and
+ * firstRow are 0-based (the heading row, and the first row of a two-row heading). read is null
+ * for a column not read (its contents are never needed), else { use, rank, day, period, kind }:
+ * use is one of the heading meanings ("name", "number", "bunk", "comment", "choice", ...); for a
+ * choice column, kind is the choice's kind (two columns of one rank are both unordered).
+ */
+export function sheetLayout(sheet) {
+  const rows = (sheet && sheet.rows) || [];
+  if (rows.every(isBlankRow)) return null;
+  const table = findTable({ ...sheet, rows });
+  if (!table) return null;
+  const { fields, choiceRules, notes } = plan(table.columns);
+  const used = new Map();
+  for (const [use, index] of Object.entries(fields)) {
+    used.set(index, { use, rank: null, day: null, period: null, kind: null });
+  }
+  for (const col of notes) {
+    used.set(col.index, {
+      use: col.meaning.use,
+      rank: null,
+      day: null,
+      period: null,
+      kind: null
+    });
+  }
+  for (const { col, rule } of choiceRules) {
+    used.set(col.index, {
+      use: "choice",
+      rank: rule.rank,
+      day: rule.day,
+      period: rule.period,
+      kind: rule.kind
+    });
+  }
+  return {
+    headingRow: table.row,
+    firstRow: table.firstRow,
+    columns: table.columns.map((col) => ({
+      index: col.index,
+      letter: columnLetter(col.index),
+      heading: col.heading,
+      read: (col.heading && used.get(col.index)) || null
+    }))
+  };
+}
+
 // ---------- names the camp has no activity for ----------
 
 function newNames(campers, activities) {
@@ -444,8 +497,9 @@ function newNames(campers, activities) {
  *   period, sheet, row, column }] }], in the order the file first names them. A camper is one
  *   camper number, or with none, one name. Division and bunk are as the sheet writes them.
  * - notKept: parents' comments ({ camper, name, kind: "comment", heading, text,
- *   sheet, row, column }). Shown to the director; saving them with the camper comes
- *   later (Greg, 2026-10-21, plan question 3). They are kept apart from the campers so a save of the campers cannot carry them.
+ *   sheet, row, column }). Kept apart from the campers, so only a save that means to can carry
+ *   them: the review screen (slice E6) shows them and saves each one with its camper (Greg's
+ *   decision 48.3); a comment whose camper is not brought in (camper null) is shown, not saved.
  * - cantTellApart: campers sharing a name with no camper number ({ name, rows }); not in campers.
  *   On a sheet with one row per camper, any name on two rows without a number is here.
  * - notRead: what was not read ({ kind, sheet, row?, column?, ... }): aboveTable, column (a

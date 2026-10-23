@@ -1134,6 +1134,26 @@ say).
     **+ Station** and name it _Blue_, then **+ Time block**: the grid appears with Blue across.
 11. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
 
+## 30. Both schedules: a rainy day
+
+This uses section 8's Soccer (outdoors, with _Gym games_ as its rain plan) and a week with Soccer
+in it on Monday (Generated Schedule fills one; on Manual Build, type _Soccer_ into a few bunks'
+cells on Monday).
+
+1. Open **Edit**. Under its other rows, past a thin line, is **Rainy day…**. Click it: the week's
+   days open under it (a day a special day replaces is not there).
+2. Click **Monday**. Every Soccer on Monday becomes _Gym games_, and those cells pulse once. The
+   line under the rail says what happened, for example _Rainy Monday: 3 switched to rain plans, 1
+   full · Undo_.
+3. A cell still showing Soccer has the corner mark: point at it (or tab to it) and it says _Rain
+   plan full: choose another_. The Gym had no room then. Put something else there by hand and the
+   mark goes.
+4. Open **Versions**: _Before rainy Monday_ (Auto-saved) is at the top: the week from just before.
+5. Click **Undo** on the line: every Soccer is back and the marks are gone, in one step.
+6. On a day with nothing outdoors, **Rainy day…** only says _Rainy Tuesday: nothing outdoors to
+   switch_ and changes nothing. A bunk locked on Generated Schedule keeps its Soccer, and the line
+   says _1 locked, left as is_.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
