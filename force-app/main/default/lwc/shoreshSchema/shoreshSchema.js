@@ -132,6 +132,7 @@ import scheduleDayDate from "@salesforce/schema/ScheduleDay__c.Date__c";
 import scheduleDayGridFormatVersion from "@salesforce/schema/ScheduleDay__c.GridFormatVersion__c";
 import scheduleDayGrid from "@salesforce/schema/ScheduleDay__c.Grid__c";
 import scheduleDayPart from "@salesforce/schema/ScheduleDay__c.Part__c";
+import scheduleDayRainyDay from "@salesforce/schema/ScheduleDay__c.RainyDay__c";
 import scheduleDayRevision from "@salesforce/schema/ScheduleDay__c.Revision__c";
 import scheduleDaySchedule from "@salesforce/schema/ScheduleDay__c.Schedule__c";
 import scheduleObject from "@salesforce/schema/Schedule__c";
@@ -374,6 +375,7 @@ export const FIELD = Object.freeze({
     GridFormatVersion: scheduleDayGridFormatVersion.fieldApiName,
     Grid: scheduleDayGrid.fieldApiName,
     Part: scheduleDayPart.fieldApiName,
+    RainyDay: scheduleDayRainyDay.fieldApiName,
     Revision: scheduleDayRevision.fieldApiName,
     Schedule: scheduleDaySchedule.fieldApiName
   }),

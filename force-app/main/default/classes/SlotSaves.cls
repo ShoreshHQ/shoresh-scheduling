@@ -18,6 +18,8 @@ public with sharing class SlotSaves {
   private SlotRules.Setup setup;
   private Map<Date, ScheduleDays.DayGrid> days = new Map<Date, ScheduleDays.DayGrid>();
   private Set<Date> changed = new Set<Date>();
+  // The "Rain plan full" marks an edit made leaves on a day (a rainy day, or its Undo).
+  private Map<Date, List<String>> rain = new Map<Date, List<String>>();
   // Generated Schedule: what an edit fills is locked.
   private Boolean lockEdits = false;
 
@@ -127,7 +129,14 @@ public with sharing class SlotSaves {
       ScheduleDays.DayGrid read = days.get(day);
       read.grid.dropUnusedItems();
       ScheduleGridLocks.tidy(read.grid);
-      toSave.add(new ScheduleDaySaves.DaySave(day, read.grid, read.revision));
+      ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
+        day,
+        read.grid,
+        read.revision
+      );
+      // The marks an edit left on the day; none named, the day keeps its own.
+      save.rain = rain.get(day);
+      toSave.add(save);
     }
     if (!toSave.isEmpty()) {
       ScheduleDaySaves.write(scheduleId, toSave);
@@ -147,10 +156,14 @@ public with sharing class SlotSaves {
         return false;
       }
     }
+    // The "Rain plan full" marks it leaves (a rainy day, or its Undo), on days that can be read.
+    Map<Date, List<String>> marks = RainMarks.ofEdit(edit, days);
     for (Date day : working.keySet()) {
       days.get(day).grid = working.get(day);
       changed.add(day);
     }
+    rain.putAll(marks);
+    changed.addAll(marks.keySet());
     return true;
   }
 

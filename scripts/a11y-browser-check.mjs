@@ -256,6 +256,14 @@ if (weeks.size() > 1) {
   week = new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
   insert week;
 }
+// Rainy day (ADR 0018): Soccer is outdoors with Gym games as its rain plan.
+Map<String, Activity__c> byName = new Map<String, Activity__c>();
+for (Activity__c a : [SELECT Id, Name FROM Activity__c WHERE Season__c = :season.Id AND Name IN ('Soccer', 'Gym games')]) {
+  byName.put(a.Name, a);
+}
+if (byName.size() == 2) {
+  update new Activity__c(Id = byName.get('Soccer').Id, Outdoor__c = true, RainPlan__c = byName.get('Gym games').Id);
+}
 System.debug('A11Y_WEEK[' + week.Name + ']');
 `);
   // The log also echoes the code above, quote marks and all: only the debug line matches.
@@ -3012,6 +3020,48 @@ async function generated(openGenerated) {
       await pause(3000);
     }
   });
+  await step(S, "Rainy day…, then its Undo", () => rainyDay(S));
+}
+
+/**
+ * Rainy day (ADR 0018): Edit > Rainy day… opens the week's days one step in; the first day keeps
+ * the week as "Before rainy <day>" and switches its outdoor activities (the check's camp has
+ * Soccer outdoors with Gym games as its rain plan, seedCamp), the receipt is said, focus goes to
+ * its Undo, and Undo is said.
+ */
+async function rainyDay(S) {
+  if (!(await openRailMenu(/^Edit$/))) throw new Error("Edit not reached.");
+  if (!(await arrowTo(/^Rainy day/))) {
+    throw new Error("Rainy day… not reached with the arrows in Edit.");
+  }
+  await press("Enter", 400);
+  await press("ArrowDown", 200);
+  await expectFocus(S, "Rainy day… opens: Down reaches its first day", {
+    role: "menuitem",
+    name: /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/
+  });
+  await expectLive(
+    S,
+    "Choosing a day: the receipt is said",
+    /^Rainy /,
+    () => press("Enter"),
+    20000
+  );
+  const f = await focus();
+  if (f && f.dataId === "tool-undo") {
+    results.pass(S, "After the switch: focus on the line's Undo", f.name);
+    await expectLive(S, "Its Undo: it is said", /^Undone/, () =>
+      press("Enter")
+    );
+    await expectFocusKept(S, "Its Undo: focus not lost");
+  } else {
+    // Nothing outdoors that day: only the receipt, no Undo (the desktop's note).
+    results.pass(
+      S,
+      "After the switch: focus on the line's Undo",
+      "Nothing to switch that day, so no Undo."
+    );
+  }
 }
 
 /**

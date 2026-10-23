@@ -4,6 +4,7 @@ import previewPublish from "@salesforce/apex/GeneratedScheduleController.preview
 import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
+import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepGeneratedWeek";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
 import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
@@ -1415,14 +1416,31 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /** The week as the editor shows it: the days checked, the activities to place, where groups are away. */
   get editorDraft() {
     const week = this.week;
+    const input = this.loaded.input;
     return {
       schedule: { schedule: { id: this.loaded.scheduleId }, days: week.days },
-      activities: activityOptions(this.loaded.input, week.days),
+      activities: activityOptions(input, week.days),
       away: awayRows(week.days, week.isAway),
       // The season's special events and the week's special days (ADR 0014 slice 4).
-      specials: this.loaded.input.specials || null
+      specials: input.specials || null,
+      // What a rainy day reads (outdoors, rain plans, places and other programs), under the names
+      // Manual Build's draft gives them (repo docs/adr/0018).
+      activityRecords: input.activities || [],
+      locationRecords: input.locations || [],
+      fixedActivityRecords: input.fixedActivities || [],
+      recurringActivityRecords: input.recurringActivities || [],
+      otherPrograms: input.otherPrograms || []
     };
   }
+
+  /**
+   * Rainy day (repo docs/adr/0018): the week editor switches the day; first the week, locks and
+   * option too, is kept as an automatic version under the name it gives ("Before rainy Monday").
+   */
+  rainyWith = async (name) => {
+    await keepWeekBeforeRain({ scheduleId: this.loaded.scheduleId, name });
+    this.loadVersions();
+  };
 
   /** The editor is told of a week from this screen (a read, a build, a Lock) once it is drawn. */
   showInEditor(how) {

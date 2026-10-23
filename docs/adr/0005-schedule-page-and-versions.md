@@ -79,7 +79,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    - `PublishedPlan__c`, detail of `Schedule__c`, came with special days on Publish (ADR 0014
      choice 26): the special days' and events' own schedules a published schedule carries.
    - Not built yet: the engine fields,
-     `Assignments__c`, `RainyDay__c`, `ScheduleEntry__c`, `Assignment__c`.
+     `Assignments__c`, `ScheduleEntry__c`, `Assignment__c`. _`RainyDay__c` came with the rainy
+     day (ADR 0018 choice 9): a day's "Rain plan full" cells._
 6. **The compact grid format, version 1** (`ScheduleGrid`, checked by `ScheduleGridRules` and `ScheduleGridFrameRules`).
    JSON with four lists, written in a fixed order so the same day always gives the same text:
 

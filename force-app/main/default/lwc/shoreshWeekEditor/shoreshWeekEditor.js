@@ -31,7 +31,14 @@ import {
   specialsOf
 } from "./specials";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
-import { LEFT_OUT, replan, toolRuns } from "./tools";
+import { LEFT_OUT, cellKey as toolCellKey, replan, toolRuns } from "./tools";
+import {
+  RAIN_PLAN_FULL,
+  isMarked,
+  rainCounts,
+  rainModel,
+  rainReceipt
+} from "./rain";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
@@ -201,6 +208,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   // Sets up what a cell noted from a file names (ADR 0014 slice 4): ({ kind, name }) => Promise
   // of the words to say. Left out, no "Set it up" is offered.
   @api setUpWith;
+  // Rainy day (repo docs/adr/0018): keeps the week as a version under the name given ("Before
+  // rainy Monday") before a day is switched: (name) => Promise. Left out, no "Rainy day…" in Edit.
+  @api rainyWith;
+  // The version before a rainy day is being kept.
+  rainyWorking = false;
+  // For each rainy-day Undo step: { date, before, after }, the day's "Rain plan full" marks
+  // before and after it (what its Undo and Redo leave).
+  stepRain = new Map();
   // "Set it up" is under way.
   settingUp = false;
   // The Edit menu's row that has its rows open under it (Copy day to…), or null.
@@ -1276,7 +1291,8 @@ export default class ShoreshWeekEditor extends LightningElement {
           this.dotFor(cell.slot) ||
             (cell.open && this.openReasonFor(cell.slot)) ||
             null,
-          this.setupDotFor(cell.slot)
+          this.setupDotFor(cell.slot),
+          this.rainDotFor(cell.slot)
         )
       };
       if (cell.event) {
@@ -1364,6 +1380,29 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
     });
     return words.length ? words.join(" · ") : null;
+  }
+
+  /**
+   * "Rain plan full: choose another" on a cell a rainy day left outdoors (repo docs/adr/0018),
+   * while it still holds that activity, as on the desktop.
+   */
+  rainDotFor(slot) {
+    const day = this.dayOf(slot);
+    if (!day || !day.rainFull || !day.rainFull.length) {
+      return null;
+    }
+    const at = placement(day, slot.group, slot.block);
+    if (!at.slot.startsWith("A:") || at.length !== 1) {
+      return null;
+    }
+    return isMarked(
+      day,
+      day.groups[slot.group].id,
+      day.blocks[at.first].id,
+      at.slot.slice(2)
+    )
+      ? RAIN_PLAN_FULL
+      : null;
   }
 
   /** The words of a placement's dot, if it has one (keyed by where it starts). */
@@ -1908,7 +1947,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    * A new change ({ day, group, first, before, after } runs): saved, and one Undo step. False
    * when it was refused (edits wait while the host restores or publishes): nothing was made.
    */
-  commit(runs, label, key) {
+  commit(runs, label, key, rain = null) {
     if (this.refuseWhileRestoring()) {
       return false;
     }
@@ -1918,6 +1957,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.history.record(step);
     this.historyVersion += 1;
     this.recordLocks(step.id, serverRuns);
+    if (rain) {
+      // A rainy day's marks go with its step: its Undo puts back the ones from before.
+      this.stepRain.set(step.id, rain);
+    }
     this.send(serverRuns, label, key, step.id, runs[0]);
     return true;
   }
@@ -1982,8 +2025,29 @@ export default class ShoreshWeekEditor extends LightningElement {
     return target;
   }
 
+  /**
+   * The "Rain plan full" marks an edit, Undo or Redo of a rainy day leaves on its day (the marks
+   * after it, or for its Undo the ones before), as the server takes them; null for any other step.
+   */
+  rainFor(stepId, kind) {
+    const record = this.stepRain.get(stepId);
+    if (!record) {
+      return null;
+    }
+    return [
+      {
+        day: record.date,
+        cells: kind === "undo" ? record.before : record.after
+      }
+    ];
+  }
+
   /** Where an edit starts, for the "saving" shade: from its own run, or found from the server's. */
   slotKeyOf(firstRun, serverRun) {
+    if (!firstRun && !serverRun) {
+      // A rainy day with only "Rain plan full" marks changes no cell.
+      return null;
+    }
     if (firstRun) {
       return slotKey({
         day: firstRun.day,
@@ -2029,7 +2093,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     // A reload already on its way is older than this edit: its answer must not replace it. The
     // week is no longer the version just restored, and a refused Restore is behind it.
     this.edited();
-    const edit = { runs: serverRuns };
+    const rain = this.rainFor(stepId, kind);
+    const edit = rain ? { runs: serverRuns, rain } : { runs: serverRuns };
     const before = this.checked;
     const entry = {
       edit,
@@ -2108,8 +2173,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** The draft with an edit made, as the grid shows it until the server answers. */
   applyLocally(edit) {
     const schedule = this.schedule;
+    const rainMarks = new Map((edit.rain || []).map((r) => [r.day, r.cells]));
     const daysNow = schedule.days.map((day) => {
-      let result = day;
+      let result = rainMarks.has(day.dateValue)
+        ? { ...day, rainFull: rainMarks.get(day.dateValue) }
+        : day;
       edit.runs
         .filter((run) => run.day === day.dateValue)
         .forEach((run) => {
@@ -2384,7 +2452,14 @@ export default class ShoreshWeekEditor extends LightningElement {
    * it, one step in.
    */
   get editRows() {
-    const items = this.editItems || [];
+    const items = [...(this.editItems || [])];
+    const rainy = this.rainyItem;
+    if (rainy) {
+      if (items.length) {
+        items.push({ divider: true });
+      }
+      items.push(rainy);
+    }
     if (!items.length) {
       return [];
     }
@@ -2448,9 +2523,14 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
   }
 
-  /** One of the host's rows was chosen: the host does it. */
+  /** One of the host's rows was chosen: the host does it (a rainy day the editor does). */
   handleEditSelect(event) {
     this.openEditGroup = null;
+    const value = String(event.detail.value);
+    if (value.startsWith("rainy:")) {
+      this.runRainyDay(value.slice("rainy:".length));
+      return;
+    }
     this.dispatchEvent(
       new CustomEvent("editselect", { detail: { value: event.detail.value } })
     );
@@ -2601,6 +2681,9 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** A tool's words for what stayed or was left out, from its result (tools.js toolRuns). */
   toolWords(tool, result) {
+    if (tool.kind === "rain") {
+      return rainCounts(result.rain);
+    }
     if (tool.kind === "clear") {
       return this.stayedText(result.week, result.stayed);
     }
@@ -2625,6 +2708,9 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** "Cleared Monday", "Copied Monday to Tuesday": a tool's words for Undo and the line. */
   toolLabel(tool) {
+    if (tool.kind === "rain") {
+      return tool.label;
+    }
     if (tool.kind === "paste") {
       return `Pasted ${tool.what} · ${tool.where}`;
     }
@@ -2635,6 +2721,9 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** What a tool says when it changes nothing. */
   toolNothing(tool, said) {
+    if (tool.kind === "rain") {
+      return `${tool.label}: ${said || rainCounts({ switches: [], full: [], noPlan: [], spans: [], locked: [] })}`;
+    }
     if (tool.kind === "paste") {
       return said
         ? `Nothing pasted. ${said}`
@@ -2800,11 +2889,14 @@ export default class ShoreshWeekEditor extends LightningElement {
         .filter(Boolean)
         .join(" ") || null;
     const label = this.toolLabel(tool);
-    if (!result.runs.length) {
+    const rain = tool.kind === "rain";
+    // A rainy day whose cells are all full still leaves its marks (one Undo step).
+    if (!result.runs.length && !(rain && result.marks.length)) {
       this.say(this.toolNothing(tool, said));
       return;
     }
-    if (!this.commit(result.runs, label, null)) {
+    const rainMarks = rain ? this.rainStep(tool, seen, result) : null;
+    if (!this.commit(result.runs, label, null, rainMarks)) {
       // Refused: nothing is said as done, and no Undo is offered for it.
       return;
     }
@@ -2817,7 +2909,14 @@ export default class ShoreshWeekEditor extends LightningElement {
       // What stayed or was left out is said with the save too.
       entry.extra = said;
     }
-    this.showToolNotice(label, said, this.stepSeq);
+    if (rain) {
+      // What changed shows on the grid: each cell switched to its rain plan pulses once.
+      const day = result.week.find((d) => d.dateValue === tool.dates[0]);
+      this.pulseKeys = result.rain.switches.map((x) =>
+        toolCellKey(day, x.g, x.b)
+      );
+    }
+    this.showToolNotice(label, said, this.stepSeq, rain ? ": " : ". ");
     // Its Undo is the most useful next stop, and the menu or button that ran it may be held
     // while it saves (which drops focus). A shortcut on the grid keeps focus where it is.
     this.focusToolUndoAfterRender = !keepFocus;
@@ -2865,12 +2964,109 @@ export default class ShoreshWeekEditor extends LightningElement {
     return { tool: empty ? null : next, replacedNote: note };
   }
 
-  showToolNotice(label, said, stepId) {
+  showToolNotice(label, said, stepId, joiner = ". ") {
     this.toolNotice = {
       label,
-      text: said ? `${label}. ${said}` : label,
+      text: said ? `${label}${joiner}${said}` : label,
       stepId
     };
+  }
+
+  /**
+   * A rainy day's marks before and after its step ({ date, before, after }): the day's "Rain plan
+   * full" cells as the director saw it, and the ones this switch leaves.
+   */
+  rainStep(tool, seen, result) {
+    const date = tool.dates[0];
+    const day = seen.find((d) => d.dateValue === date);
+    return {
+      date,
+      before: (day && day.rainFull) || [],
+      after: result.marks
+    };
+  }
+
+  // ---------- rainy day (repo docs/adr/0018; desktop ScheduleScreen.jsx Rainy day…) ----------
+
+  /**
+   * "Rainy day…" in Edit, with the week's days under it (a day that can't be read, or that a
+   * special day replaces, left out, as on the desktop). Not in Activity View, which is read-only,
+   * nor on a special day's own schedule. Held while the version is kept, an edit saves, or the
+   * host restores.
+   */
+  get rainyItem() {
+    if (
+      !this.rainyWith ||
+      !this.schedule ||
+      this.hasNoDays ||
+      this.isActivity ||
+      this.planName
+    ) {
+      return null;
+    }
+    const replaced = this.replaced;
+    const children = this.schedule.days
+      .filter((day) => !day.problem && !replaced.has(day.dateValue))
+      .map((day) => ({
+        value: `rainy:${day.dateValue}`,
+        label: dayLabel(day.dateValue).label,
+        dataId: `rainy-day-${day.dateValue}`
+      }));
+    return {
+      value: "rainy",
+      label: "Rainy day…",
+      dataId: "rainy-day",
+      disabled: !!this.restoring || this.rainyWorking || this.busy,
+      children
+    };
+  }
+
+  /** The rainy day for a date, on the week as it is now. */
+  rainyTool(date) {
+    const name = this.dayNameOf(date);
+    return {
+      kind: "rain",
+      dates: [date],
+      name,
+      label: `Rainy ${name}`,
+      model: rainModel(this.draft, this.schedule.days),
+      // A Lock beats a switch (Generated): the cells locked now are left as they are.
+      locks: this.liveLocks ? new Set(this.liveLocks) : null
+    };
+  }
+
+  /**
+   * Rainy day (desktop applyRainyDay): with nothing to switch or mark, only the receipt is said.
+   * Otherwise the week is first kept as a version, "Before rainy Monday" (so the dry day is there
+   * after Undo has gone), then the day is worked out again on the week as it is now and switched
+   * as one Undo step, with the receipt and its Undo on the line.
+   */
+  async runRainyDay(date) {
+    if (this.rainyWorking || this.refuseWhileRestoring() || !this.schedule) {
+      return;
+    }
+    const isAway = (week, d, g, b) => this.isAwayOn(week, d, g, b);
+    const first = this.rainyTool(date);
+    const planned = toolRuns(first, this.schedule.days, { isAway });
+    if (!planned.rain.switches.length && !planned.rain.full.length) {
+      this.say(rainReceipt(first.label, planned.rain));
+      return;
+    }
+    this.rainyWorking = true;
+    try {
+      await this.rainyWith(`Before rainy ${first.name}`);
+    } catch (e) {
+      this.reportError(
+        `${failed("The rainy day could not be applied.", e)} Nothing was changed.`
+      );
+      return;
+    } finally {
+      this.rainyWorking = false;
+    }
+    if (!this.schedule) {
+      return;
+    }
+    this.runTool(this.rainyTool(date));
   }
 
   /**
@@ -2901,7 +3097,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       locked
     );
     const label = this.toolLabel(tool);
-    if (!result.runs.length) {
+    const rain = tool.kind === "rain";
+    if (!result.runs.length && !(rain && result.marks.length)) {
       this.history.forget(stepId);
       this.historyVersion += 1;
       this.showServerAndWaiting();
@@ -2916,6 +3113,15 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     const serverRuns = this.toServerRuns(result.runs, saved);
     const step = { id: stepId, runs: serverRuns, label };
+    if (rain) {
+      // The marks this switch now leaves; its Undo still puts back the ones from before.
+      const record = this.stepRain.get(stepId);
+      this.stepRain.set(stepId, {
+        date: tool.dates[0],
+        before: record ? record.before : [],
+        after: result.marks
+      });
+    }
     if (!this.history.replace(stepId, step)) {
       this.history.ensure(step);
     }
@@ -2940,9 +3146,12 @@ export default class ShoreshWeekEditor extends LightningElement {
     ]
       .filter(Boolean)
       .join(" ");
+    const rainMarks = this.rainFor(stepId, "edit");
     this.queue = [
       {
-        edit: { runs: serverRuns },
+        edit: rainMarks
+          ? { runs: serverRuns, rain: rainMarks }
+          : { runs: serverRuns },
         key: null,
         label: except,
         stepId,
@@ -2963,7 +3172,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       ...this.queue
     ];
     this.showServerAndWaiting();
-    this.showToolNotice(except, said, stepId);
+    this.showToolNotice(except, said, stepId, rain ? ": " : ". ");
     this.saveNext();
   }
 
@@ -4006,7 +4215,8 @@ export default class ShoreshWeekEditor extends LightningElement {
         // Sent again after each answer that was still a conflict (askAboutConflict stops it).
         resent: (entry.resent || 0) + 1,
         intent: withSeen(entry.intent, made.rows),
-        edit: { runs }
+        // A rainy day's marks go with it, as they were.
+        edit: { ...entry.edit, runs }
       },
       ...this.queue
     ];

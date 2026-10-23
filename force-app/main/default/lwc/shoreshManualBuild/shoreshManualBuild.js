@@ -4,6 +4,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import saveVersion from "@salesforce/apex/ManualBuildController.saveVersion";
+import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepManualWeek";
 import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersion";
 import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
@@ -749,6 +750,15 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     onDone(saved);
   }
+
+  /**
+   * Rainy day (repo docs/adr/0018): the week editor switches the day; first the week is kept as
+   * an automatic version under the name it gives ("Before rainy Monday"), as on the desktop.
+   */
+  rainyWith = async (name) => {
+    await keepWeekBeforeRain({ scheduleId: this.schedule.schedule.id, name });
+    this.loadVersions();
+  };
 
   /**
    * Restore: the version is copied into the week being built, after the week as it was is kept
