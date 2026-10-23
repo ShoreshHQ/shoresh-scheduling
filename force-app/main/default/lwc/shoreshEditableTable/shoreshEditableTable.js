@@ -155,7 +155,8 @@ const SHORT_DAYS = {
  *     first field says what it adds even when it is a choice, not a text field.
  *   rowClasses: record Id -> extra row classes ("row_proposed": a dashed edge, not confirmed).
  *   endActions: record Id -> [{ key, label, changes }]: a change offered at the row's end, in
- *     words, saved at once (a proposed offering's Confirm). Given at all, the row's end is wider
+ *     words, saved at once (a proposed offering's Confirm), shown like the tools: under the
+ *     pointer or with the keyboard in the row, never hidden from Tab. Given at all, the row's end is wider
  *     in every section alike, so the columns of a screen's sections line up.
  *   headingCount: the number beside the heading, when it is not how many rows show (a set's
  *     count is its confirmed, open offerings only, decision 53).

@@ -65,7 +65,8 @@
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
  *   still lists it as coming (?c__preview=electives): focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
- *   putting focus back on the chevron; a proposed offering's Confirm is saved and said, the
+ *   putting focus back on the chevron; a proposed offering's Confirm is not shown at rest and is
+ *   shown once Tab reaches it, then saved and said, the
  *   cursor then on the row's offering (Confirm is gone); the
  *   needs-a-look corner on seats not filled in opens its words with the cursor kept on it, and
  *   Escape closes it. The check's own elective set is made by Apex first and deleted after.
@@ -3795,7 +3796,8 @@ System.debug('A11Y_OFFERINGS[' + activities[0].Name + '|' + activities[1].Name +
 /**
  * The Electives screen (repo ADR 0018, slice E4), opened from the page's address: focus on its
  * heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
- * heading (axe), Close back on the chevron; Confirm on a proposed offering is saved and said, the
+ * heading (axe), Close back on the chevron; Confirm on a proposed offering, not shown at rest and
+ * shown once Tab reaches it, is saved and said, the
  * cursor kept in its row on its offering; the seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
  * set is deleted.
  */
@@ -3868,6 +3870,25 @@ async function electives() {
             name: new RegExp(`^${names.linked} details$`)
           }
         );
+        // Confirm as the mock-up draws it: faded out at rest, shown under the pointer or with
+        // the keyboard in its row (repo ADR 0018 choice 15).
+        const confirmShown = () =>
+          page
+            .locator(APP)
+            .locator('button[data-id="end-action"]')
+            .first()
+            .evaluate((b) => Number(getComputedStyle(b).opacity));
+        await page.mouse.move(2, 2);
+        await pause(300);
+        const atRest = await confirmShown();
+        if (atRest === 0)
+          results.pass(E, "Confirm at rest: not shown", "Opacity 0.");
+        else
+          results.fail(
+            E,
+            "Confirm at rest: not shown",
+            `Opacity ${atRest}; expected 0.`
+          );
         if (
           !(await tabTo(named(new RegExp(`^Confirm ${names.proposed}$`)), {
             max: 30
@@ -3875,6 +3896,20 @@ async function electives() {
         )
           throw new Error(
             `Confirm on ${names.proposed} was not reached with Tab.`
+          );
+        await pause(300);
+        const focused = await confirmShown();
+        if (focused === 1)
+          results.pass(
+            E,
+            "Confirm with the keyboard on it: shown",
+            "Opacity 1."
+          );
+        else
+          results.fail(
+            E,
+            "Confirm with the keyboard on it: shown",
+            `Opacity ${focused}; expected 1.`
           );
         await expectLive(
           E,

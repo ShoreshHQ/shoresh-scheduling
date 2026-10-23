@@ -289,6 +289,31 @@ describe("c-shoresh-editable-table: an elective set's offerings", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("Confirm shows under the pointer or with the keyboard in the row, as the mock-up draws it, never hidden from Tab", () => {
+    // jsdom draws no styles, so the stylesheet itself is read: Confirm fades out at rest (it is
+    // never display: none or hidden, which would take it out of Tab) and back in on hover or
+    // focus anywhere in its row. The real browser check confirms both in the org.
+    const fs = require("fs");
+    const path = require("path");
+    const css = fs
+      .readFileSync(path.join(__dirname, "../shoreshEditableTable.css"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)].map((m) => ({
+      selectors: m[1].trim().split(/\s*,\s*/),
+      body: m[2]
+    }));
+    const body = (selector) =>
+      rules
+        .filter((r) => r.selectors.includes(selector))
+        .map((r) => r.body)
+        .join(";");
+    const atRest = body(".end-action");
+    expect(atRest).toMatch(/opacity:\s*0\b/);
+    expect(atRest).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    expect(body(".row:hover .end-action")).toMatch(/opacity:\s*1\b/);
+    expect(body(".row:focus-within .end-action")).toMatch(/opacity:\s*1\b/);
+  });
+
   describe("the cursor after Confirm (WCAG 2.4.3)", () => {
     const CONFIRM = nsRecord({
       o4: [

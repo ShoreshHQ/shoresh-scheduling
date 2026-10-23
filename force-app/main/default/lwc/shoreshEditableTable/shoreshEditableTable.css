@@ -526,10 +526,19 @@
   white-space: nowrap;
 }
 
-/* A change offered at the row's end in words (a proposed offering's Confirm): shown at rest. */
+/* A change offered at the row's end in words (a proposed offering's Confirm): under the pointer,
+   as the approved mock-up draws it, and with the keyboard in the row. Like the tools it only
+   fades, so Tab still reaches it (repo ADR 0018 choice 15). */
 .end-action {
   height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
   vertical-align: middle;
+  opacity: 0;
+}
+
+.row:hover .end-action,
+.row:focus-within .end-action,
+.row_selected .end-action {
+  opacity: 1;
 }
 
 .tools {

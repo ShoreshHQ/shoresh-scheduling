@@ -150,7 +150,10 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
     minimum is a number, "No minimum" quiet while blank; 0 is refused by the rule ("Must be 1 or
     more, or blank for no minimum.").
 15. **A proposed offering is marked by its outline**: its row has a dashed edge and **Confirm** at
-    its end, which saves `Proposed__c` false at once, as the row's change (compared and set like
+    its end, shown as the approved mock-up draws it ("under the pointer it offers Confirm"; plan
+    §4.1, "hover shows Confirm") and also while the keyboard is anywhere in the row, as the row's
+    tools and the seats fields are. At rest it only fades out, so Tab still reaches it and a
+    keyboard user can confirm without a mouse (WCAG 2.1.1). Confirm saves `Proposed__c` false at once, as the row's change (compared and set like
     any field). Confirm is gone once saved, so the cursor stays in the row, on its offering
     (WCAG 2.4.3; the same for a note's fix button). A limited offering with blank seats carries the needs-a-look corner on its seats,
     its words only ("Seats not filled in yet"): the fix is typing in the cell, so there is no
@@ -179,8 +182,16 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
     read, the row saves (and someone else's change asked about) and the deletes, as a scheduler
     with its records made inside the same `System.runAs`, with query bounds.
 
-**Not in this slice:** Import a list and Download this list for offerings (plan §6.2: the list
-import names each item by its own name and has no set scope yet, so offerings need their own
-layout, scope and save; a follow-up), adding a new activity from the offering choice (the
+**Not in this slice, waiting on Greg's decision:** Import a list and Download this list for
+offerings. The plan's slice table puts Import a list in E4 and the approved mock-up shows both on
+the Electives rail, so leaving them out is a scope change that needs Greg's sign-off before this
+slice merges; until then it is proposed, not decided. The reason is size: the list import (ADR 0007) names each item by its own name and is scoped to the season or a program, while an offering
+is named by its activity, belongs to one set, starts as proposed, and a file that turns out to be
+camper choices must say so (plan §6.2), so offerings need their own layout, set scope and save.
+Proposed follow-up: **slice E4b, Offerings: Import a list and Download this list**, before E6.
+Until it lands nothing a camp can do creates a proposed offering, so the dashed outline and
+Confirm are reached only through records made by Apex (the tests and the browser check). If Greg
+approves, the plan's slice table and the build log record E4b; if not, this slice builds it.
+Also not in this slice: adding a new activity from the offering choice (the
 desktop's picker can; here an activity is added on Activities first), the linked choices editor
 (E8), electives on the grid and the "not set up yet" Roots item (E5, E9).
