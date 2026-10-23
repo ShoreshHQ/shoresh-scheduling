@@ -750,8 +750,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
    wiring Generated is a controller method pair and the same toolbar button. Wired since (ADR
    0010 "Choices (Publish)").
-7. Reads: preview at most 6 queries, publish at most 15, unpublish at most 8 (asserted in
-   `SchedulePublishTest`); opening Manual Build adds one query (three when the week is published).
+7. Reads: preview at most 6 queries (7 since ADR 0014 slice 5: the week's special days), publish
+   at most 15, unpublish at most 8 (asserted in `SchedulePublishTest`); opening Manual Build adds
+   one query (three when the week is published).
 8. **Unpublish** (Greg, 2026-10-18). **Unpublish** (neutral button) sits beside **Publish**, shown
    only while the week has a published schedule. It asks first (c-shoresh-ask, _Unpublish Week
    1?_ / _Nothing will be published for this week._, **Unpublish**/Cancel, Cancel focused); then

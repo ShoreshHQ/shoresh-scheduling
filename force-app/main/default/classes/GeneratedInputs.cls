@@ -93,7 +93,7 @@ public with sharing class GeneratedInputs {
         : draft.EngineOption__c.intValue();
       inputs.published = SchedulePublish.stateOf(
         setup.program.Id,
-        setup.week.Id,
+        setup.week,
         days
       );
     }

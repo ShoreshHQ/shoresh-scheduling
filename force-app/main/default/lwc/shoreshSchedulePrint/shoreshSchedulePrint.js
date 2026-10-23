@@ -8,6 +8,8 @@ import { CANT_BE_SHOWN } from "c/shoreshScheduleExport";
  * page renders it just before it asks the browser to print, and loads the ShoreshPrint style,
  * which leaves only this on the paper while it is on the page.
  *
+ * A day a special day replaces prints its own schedule with its notes under it (ADR 0014 slice 5).
+ *
  * pages: printPages(...). week: the week's name. version: the version's name. corner: the
  * time-block column's heading, in the camp's word.
  */

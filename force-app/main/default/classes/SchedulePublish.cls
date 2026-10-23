@@ -12,6 +12,11 @@
  * revisions and the published schedule it was shown (preview), so a week someone changed since,
  * or a schedule someone else published since, is never published or replaced unseen. Runs in
  * user mode.
+ *
+ * The published copy also carries the week's special days and events as they are when it is
+ * published (ScheduleSpecials, ADR 0014 slice 5): each day a special day replaces, with its own
+ * schedule, and the schedule inside each special event placed on the week. What changes in them
+ * is part of what a preview shows and of whether the week is already published as it is.
  */
 public with sharing class SchedulePublish {
   public static final String PUBLISHED = 'Published';
@@ -60,6 +65,13 @@ public with sharing class SchedulePublish {
     public Integer renameCount = 0;
     @AuraEnabled
     public Integer retimeCount = 0;
+    // Of changeCount: the special days, and the special events, whose own schedules change
+    // (ADR 0014 slice 5): a day replaced or no longer, a special day's notes, an event's time
+    // blocks; each changed cell inside them counts as a cell.
+    @AuraEnabled
+    public Integer specialDayCount = 0;
+    @AuraEnabled
+    public Integer eventCount = 0;
   }
 
   /** A publish done, or refused because the week or its published schedule changed since. */
@@ -92,28 +104,35 @@ public with sharing class SchedulePublish {
     }
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     shownBy.applyTo(days);
-    return stateBeside(published, days);
+    // Manual Build may have the week read with its special days (Week__r).
+    return stateBeside(
+      published,
+      new WeekNow(days, ScheduleSpecials.nowFor(draft, days))
+    );
   }
 
   /**
    * The week's published schedule beside the draft's days as the caller already has them (a
-   * screen that has just read or saved them), or null when the week has none.
+   * screen that has just read or saved them), or null when the week has none. week: read with
+   * its special days (ProgramReads.weekWithSpecialDays), so they aren't read again.
    */
   public static PublishState stateOf(
     Id programId,
-    Id weekId,
+    Week__c week,
     List<ScheduleDays.DayGrid> draftDays
   ) {
-    Schedule__c published = publishedOf(programId, weekId);
-    return published == null ? null : stateBeside(published, draftDays);
+    Schedule__c published = publishedOf(programId, week.Id);
+    return published == null
+      ? null
+      : stateBeside(
+          published,
+          new WeekNow(draftDays, SpecialsNow.ofWeek(week, draftDays))
+        );
   }
 
-  private static PublishState stateBeside(
-    Schedule__c published,
-    List<ScheduleDays.DayGrid> draftDays
-  ) {
+  private static PublishState stateBeside(Schedule__c published, WeekNow week) {
     PublishState state = stateFor(published);
-    state.changedSince = !same(ScheduleDays.read(published.Id), draftDays);
+    state.changedSince = changesFrom(published.Id, week, null).count > 0;
     return state;
   }
 
@@ -123,21 +142,25 @@ public with sharing class SchedulePublish {
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
     ManualBuildSetupNow.asShown(draft, days);
+    WeekNow week = new WeekNow(days, ScheduleSpecials.now(draft.Week__c, days));
+    ScheduleSpecials.refuseUnreadable(week.specials);
     Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
     if (published == null) {
       return result;
     }
     result.published = stateFor(published);
-    PublishedChanges.Changes changes = PublishedChanges.between(
-      ScheduleDays.read(published.Id),
-      days,
-      MOST_LINES
+    PublishedChanges.Changes changes = changesFrom(
+      published.Id,
+      week,
+      draft.Program__r.Season__r.Camp__c
     );
     result.changes = changes.lines;
     result.changeCount = changes.count;
     result.moreLines = changes.moreLines;
     result.renameCount = changes.renames;
     result.retimeCount = changes.retimes;
+    result.specialDayCount = changes.specialDays;
+    result.eventCount = changes.events;
     result.published.changedSince = changes.count > 0;
     return result;
   }
@@ -162,6 +185,8 @@ public with sharing class SchedulePublish {
       return result;
     }
     ManualBuildSetupNow.asShown(draft, readable(days));
+    WeekNow week = new WeekNow(days, ScheduleSpecials.now(draft.Week__c, days));
+    ScheduleSpecials.refuseUnreadable(week.specials);
     List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
       draft.Week__c
@@ -171,12 +196,12 @@ public with sharing class SchedulePublish {
       result.publishedChanged = true;
       return result;
     }
-    if (replaced != null && same(ScheduleDays.read(replaced.Id), days)) {
+    if (replaced != null && changesFrom(replaced.Id, week, null).count == 0) {
       result.unchanged = true;
       result.published = stateFor(replaced);
       return result;
     }
-    if (!wroteCopy(draft, published, days)) {
+    if (!wroteCopy(draft, published, week)) {
       // Someone else published the week at the same moment: theirs stands, nothing changed.
       result.publishedChanged = true;
       return result;
@@ -222,7 +247,7 @@ public with sharing class SchedulePublish {
   private static Boolean wroteCopy(
     Schedule__c draft,
     List<Schedule__c> replaced,
-    List<ScheduleDays.DayGrid> days
+    WeekNow week
   ) {
     Savepoint beforePublish = Database.setSavepoint();
     // Published history changes only here, in Unpublish and in rename.
@@ -248,10 +273,11 @@ public with sharing class SchedulePublish {
       }
       Database.insert(copy, AccessLevel.USER_MODE);
       List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
-      for (ScheduleDays.DayGrid day : days) {
+      for (ScheduleDays.DayGrid day : week.days) {
         saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
       }
       ScheduleDaySaves.write(copy.Id, saves);
+      ScheduleSpecials.carry(copy.Id, week.specials);
       return true;
     } catch (DmlException e) {
       Database.rollback(beforePublish);
@@ -309,12 +335,47 @@ public with sharing class SchedulePublish {
     return state;
   }
 
-  /** The same cells on the same days (PublishedChanges finds none). */
-  private static Boolean same(
-    List<ScheduleDays.DayGrid> left,
-    List<ScheduleDays.DayGrid> right
+  /** The draft's days and the week's special days and events as they are now (ScheduleSpecials). */
+  private class WeekNow {
+    private List<ScheduleDays.DayGrid> days;
+    private List<ScheduleSpecials.Special> specials;
+
+    private WeekNow(
+      List<ScheduleDays.DayGrid> days,
+      List<ScheduleSpecials.Special> specials
+    ) {
+      this.days = days;
+      this.specials = specials;
+    }
+  }
+
+  /**
+   * What changes from a published schedule to the week now: its special days and events first
+   * (SpecialChanges, EventScheduleChanges), then the week's renames and cells, leaving out the cells of a day a special
+   * day replaces on either side (out of sight). campId: whose words the lines use, listing the
+   * first MOST_LINES; null when only the count matters (no lines kept).
+   */
+  private static PublishedChanges.Changes changesFrom(
+    Id publishedId,
+    WeekNow week,
+    Id campId
   ) {
-    return PublishedChanges.between(left, right, 0).count == 0;
+    List<ScheduleSpecials.Special> carried = ScheduleSpecials.carriedBy(
+      publishedId
+    );
+    PublishedChanges.Changes changes = PublishedChanges.none(
+      campId == null ? 0 : MOST_LINES
+    );
+    List<ScheduleDays.DayGrid> publishedDays = ScheduleDays.read(publishedId);
+    new SpecialChanges(changes, campId).add(carried, week.specials);
+    EventScheduleChanges.add(
+      changes,
+      new EventScheduleChanges.Side(carried, publishedDays),
+      new EventScheduleChanges.Side(week.specials, week.days)
+    );
+    changes.hidden = ScheduleSpecials.replacedDates(carried, week.specials);
+    PublishedChanges.addBetween(changes, publishedDays, week.days);
+    return changes;
   }
 
   /**

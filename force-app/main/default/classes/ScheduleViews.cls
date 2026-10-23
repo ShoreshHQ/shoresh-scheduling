@@ -35,6 +35,10 @@ public with sharing class ScheduleViews {
     // Each day's revision as read (ScheduleDays.stamp): sent back by Restore.
     @AuraEnabled
     public String revisions;
+    // The special days and events it shows (the Schedules page only, ADR 0014 slice 5): what it
+    // carried when it was published, or the week's as they are now. Null on other screens.
+    @AuraEnabled
+    public ScheduleSpecials.Shown specials;
   }
 
   public class DayView {
@@ -103,6 +107,22 @@ public with sharing class ScheduleViews {
    * setup, as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
    */
   public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
+    return open(scheduleId, stillThere, false);
+  }
+
+  /**
+   * One schedule with its days and the special days and events it shows (ScheduleSpecials), as
+   * the Schedules page shows it, or null if it is not there (or not visible).
+   */
+  public static ScheduleView openWithSpecials(Id scheduleId) {
+    return open(scheduleId, null, true);
+  }
+
+  private static ScheduleView open(
+    Id scheduleId,
+    Set<String> stillThere,
+    Boolean withSpecials
+  ) {
     List<Schedule__c> found = [
       SELECT
         Id,
@@ -111,7 +131,8 @@ public with sharing class ScheduleViews {
         Origin__c,
         VersionReason__c,
         PublishedAt__c,
-        CreatedDate
+        CreatedDate,
+        Week__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
@@ -125,6 +146,9 @@ public with sharing class ScheduleViews {
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
     view.revisions = ScheduleDays.stamp(days);
     view.days = dayViews(days, stillThere);
+    if (withSpecials) {
+      view.specials = ScheduleSpecials.shown(found[0], days);
+    }
     return view;
   }
 
