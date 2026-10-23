@@ -92,8 +92,14 @@ private class RainyDayTest {
   /** Soccer in Group A's and Group B's Monday Period 2: a wet morning's outdoor activities. */
   private static Id soccerMorning() {
     Id draftId = startWeek();
-    save(draftId, period2('Group A', '', a('Soccer')));
-    save(draftId, period2('Group B', '', a('Soccer')));
+    SlotEdits.Result result = ManualBuildController.saveSlots(
+      draftId,
+      new List<SlotEdits.Edit>{
+        period2('Group A', '', a('Soccer')),
+        period2('Group B', '', a('Soccer'))
+      }
+    );
+    Assert.isTrue(result.conflicts.isEmpty(), 'The edit was a conflict');
     return draftId;
   }
 
@@ -428,10 +434,10 @@ private class RainyDayTest {
 
   /**
    * Publishes the draft again, whose cells match the published schedule's but whose marks
-   * don't: the preview says so and the publish happens, carrying the draft's marks.
+   * don't: the preview says so and the publish happens, carrying the draft's marks. Ends the
+   * test's Test.startTest().
    */
   private static void publishesTheMarks(Id draftId, Id publishedId) {
-    Test.startTest();
     Integer before = Limits.getQueries();
     SchedulePublish.Preview preview = ManualBuildController.previewPublish(
       draftId
@@ -470,6 +476,8 @@ private class RainyDayTest {
       camp();
       Id draftId = soccerMorning();
       save(draftId, switchMonday());
+      // The camp and its week take most of a request's queries: what follows gets its own.
+      Test.startTest();
       Id publishedId = publishNow(draftId).published.id;
       groupABackToGymGames(draftId);
       Assert.areEqual(
@@ -487,10 +495,12 @@ private class RainyDayTest {
       Id draftId = soccerMorning();
       save(draftId, switchMonday());
       Id versionId = ManualBuildController.saveVersion(draftId, 'Wet Monday');
+      // The camp and its week take most of a request's queries: what follows gets its own.
+      Test.startTest();
       groupABackToGymGames(draftId);
       Id publishedId = publishNow(draftId).published.id;
-      // The same cells back, with Group A's raindrop.
-      ManualBuildController.restoreVersion(
+      // The same cells back, with Group A's raindrop (Restore without reopening the screen's view).
+      ManualVersions.restore(
         draftId,
         versionId,
         ScheduleDays.stamp(ScheduleDays.read(draftId))
