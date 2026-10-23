@@ -106,6 +106,12 @@
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
  *   count said, then Cancel: nothing brought in, said, focus on Choose a file; axe on each card.
  *   It makes the check's elective set once ("Check chugim") and brings in no campers;
+ * - Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37), opened from the page's
+ *   address since the menu lists it as coming: focus on its heading; Assign seats said; a cell's
+ *   roster opened by keyboard with focus on its heading; the padlock pressed and said; By camper;
+ *   Finalize said (or its refusal); axe on each. It makes its own set, two activities with no
+ *   place, three made-up campers and a run in the check week's Manual Build draft, and deletes them
+ *   after;
  * - Copy season, Camp words and Programs (wiki decision 56, ADR 0015 choice 14): a program added
  *   from the Programs table's blank row by keyboard is said, its no-time-blocks corner shows, and
  *   its trash can deletes it after the question, said; on Camp words the Group row's word typed
@@ -5267,6 +5273,199 @@ async function bringInChoices() {
   });
 }
 
+// ---------- Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37) ----------
+
+const SEATS_SET = "Check seats";
+const SEATS_ACTIVITIES = ["Check seats archery", "Check seats drama"];
+
+/** The seats check's set, run, campers and activities gone, and its cells taken off the draft. */
+function clearSeats() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+List<ElectiveRun__c> runs = [SELECT Id, FinalSchedule__c FROM ElectiveRun__c WHERE ElectiveSet__r.Name = '${SEATS_SET}' AND Season__r.Camp__c = :camp.Id];
+Set<Id> versions = new Set<Id>();
+for (ElectiveRun__c run : runs) {
+  if (run.FinalSchedule__c != null) versions.add(run.FinalSchedule__c);
+}
+delete runs;
+delete [SELECT Id FROM Schedule__c WHERE Id IN :versions];
+delete [SELECT Id FROM Camper__c WHERE Season__r.Camp__c = :camp.Id AND CamperNumber__c LIKE 'SYN-91%'];
+for (ElectiveSet__c item : [SELECT Id FROM ElectiveSet__c WHERE Name = '${SEATS_SET}' AND Season__r.Camp__c = :camp.Id]) {
+  for (Schedule__c draft : [SELECT Id FROM Schedule__c WHERE Program__r.Season__r.Camp__c = :camp.Id AND Status__c = 'Draft']) {
+    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+    for (ScheduleDays.DayGrid day : ScheduleDays.read(draft.Id)) {
+      if (day.grid == null) continue;
+      Boolean changed = false;
+      for (Integer i = 0; i < day.grid.items.size(); i++) {
+        if (day.grid.items[i].id != String.valueOf(item.Id)) continue;
+        for (List<String> row : day.grid.rows) {
+          for (Integer b = 0; b < row.size(); b++) {
+            if (row[b] == String.valueOf(i + 1)) { row[b] = ''; changed = true; }
+          }
+        }
+      }
+      if (changed) {
+        day.grid.dropUnusedItems();
+        saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, day.revision));
+      }
+    }
+    if (!saves.isEmpty()) ScheduleDaySaves.write(draft.Id, saves);
+  }
+  delete item;
+}
+delete [SELECT Id FROM Activity__c WHERE Season__r.Camp__c = :camp.Id AND Name IN ('${SEATS_ACTIVITIES.join("','")}')];
+`);
+}
+
+/**
+ * The seats check's camp: two activities with no place (so Finalize finds nothing double-booked
+ * of theirs), "Check seats" offering both (no limit, and 1 seat), placed in the last time block of
+ * the first day of the check week's Manual Build draft for its first bunk, and a committed run of
+ * three made-up campers in that bunk, each choosing both. Returns the first activity's name.
+ */
+function seedSeats() {
+  clearSeats();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Season__c season = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY CreatedDate LIMIT 1];
+Week__c week = [SELECT Id, Name FROM Week__c WHERE Season__c = :season.Id AND Name = '${week}' LIMIT 1];
+Schedule__c draft = [SELECT Id FROM Schedule__c WHERE Week__c = :week.Id AND Status__c = 'Draft' AND Origin__c = 'Manual' LIMIT 1];
+List<Activity__c> activities = new List<Activity__c>();
+for (String name : new List<String>{ '${SEATS_ACTIVITIES.join("', '")}' }) {
+  activities.add(new Activity__c(Season__c = season.Id, Name = name, Length__c = 1, TimesPerWeekMin__c = 0, TimesPerWeekMax__c = 1, Priority__c = 'Low', GroupsAtOnce__c = 1));
+}
+insert activities;
+ElectiveSet__c item = new ElectiveSet__c(Season__c = season.Id, Name = '${SEATS_SET}');
+insert item;
+insert new List<Offering__c>{
+  new Offering__c(ElectiveSet__c = item.Id, Activity__c = activities[0].Id, NoSeatLimit__c = true),
+  new Offering__c(ElectiveSet__c = item.Id, Activity__c = activities[1].Id, Seats__c = 1)
+};
+ScheduleDays.DayGrid day = ScheduleDays.read(draft.Id)[0];
+day.grid.items.add(new ScheduleGrid.Item('E', item.Id, '${SEATS_SET}'));
+Integer last = day.grid.blocks.size() - 1;
+day.grid.rows[0][last] = String.valueOf(day.grid.items.size());
+ScheduleDaySaves.write(draft.Id, new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(day.day, day.grid, day.revision) });
+Id groupId = Id.valueOf(day.grid.groups[0].id);
+List<Camper__c> campers = new List<Camper__c>{
+  new Camper__c(Season__c = season.Id, Name = 'Maya Fernwood', CamperNumber__c = 'SYN-9101'),
+  new Camper__c(Season__c = season.Id, Name = 'Eli Marblecrest', CamperNumber__c = 'SYN-9102', ParentComments__c = 'Prefers mornings.'),
+  new Camper__c(Season__c = season.Id, Name = 'Ruby Pebblestone', CamperNumber__c = 'SYN-9103')
+};
+insert campers;
+ElectiveRun__c run = new ElectiveRun__c(Season__c = season.Id, Name = '${SEATS_SET} · ' + week.Name, ElectiveSet__c = item.Id, Week__c = week.Id, Schedule__c = draft.Id, Status__c = 'Committed', Revision__c = 1);
+insert run;
+String choices = '[{"n":"A","a":"' + activities[1].Id + '","r":1,"k":"ranked"},{"n":"B","a":"' + activities[0].Id + '","r":2,"k":"ranked"}]';
+List<Preference__c> prefs = new List<Preference__c>();
+for (Camper__c camper : campers) {
+  prefs.add(new Preference__c(ElectiveRun__c = run.Id, Camper__c = camper.Id, Group__c = groupId, Choices__c = choices));
+}
+insert prefs;
+`);
+  return SEATS_ACTIVITIES[0];
+}
+
+/**
+ * Elective seats (electives slice E7), opened from the page's address (the menu lists it as
+ * coming): focus on its heading; the check's set and week chosen by keyboard (axe); Assign seats
+ * said, then the counter and Finalize there (axe); a cell's roster opened with Enter, focus on its
+ * heading (axe); the padlock pressed with Space, said; By camper (axe); Finalize said (or, if the
+ * camp's own week is double-booked at that time, its refusal said). Everything it made is deleted
+ * after.
+ */
+async function electiveSeats() {
+  const S = "Elective seats";
+  await step(
+    S,
+    "Assign, the roster, the padlock and Finalize, by keyboard",
+    async () => {
+      const first = seedSeats();
+      try {
+        const address = new URL(
+          `${TAB_PATH}?c__preview=electiveSeats`,
+          page.url()
+        ).href;
+        await page.goto(address, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
+        });
+        await page
+          .locator(APP)
+          .locator("c-shoresh-elective-seats")
+          .waitFor({ timeout: 60000 });
+        await pause(3000);
+        await expectFocus(S, "Opened from its address: focus on its heading", {
+          tag: /^h2$/,
+          name: /^Elective seats$/
+        });
+        await pickWeek();
+        if (
+          !(await tabTo(named(/, Elective set$/, { tag: "button" }), {
+            max: 20
+          }))
+        )
+          throw new Error("The set picker was not reached with Tab.");
+        await chooseOption(new RegExp(`^${SEATS_SET}$`));
+        await pause(2500);
+        await axe(`${S}: the start`);
+        if (
+          !(await tabTo(named(/^Assign seats$/, { tag: "button" }), {
+            max: 40
+          }))
+        )
+          throw new Error("Assign seats was not reached with Tab.");
+        await expectLive(
+          S,
+          "Assign seats: how it went is said",
+          /^Seats assigned: /,
+          () => press("Enter")
+        );
+        await axe(`${S}: By offering`);
+        if (
+          !(await tabTo(named(new RegExp(`^${first}, `), { tag: "button" }), {
+            max: 60,
+            back: true
+          }))
+        )
+          throw new Error("A cell was not reached with Tab.");
+        await press("Enter", 800);
+        await expectFocus(S, "A cell opened: focus on its roster's heading", {
+          tag: /^h3$/,
+          name: new RegExp(`^${first} · `)
+        });
+        await axe(`${S}: the roster beside`);
+        if (!(await tabTo(named(/^Lock /, { tag: "button" }), { max: 20 })))
+          throw new Error("The padlock was not reached with Tab.");
+        await expectLive(
+          S,
+          "The padlock locks a seat: it is said",
+          /^Locked /,
+          () => press(" ")
+        );
+        if (
+          !(await tabTo(named(/^By camper$/, { tag: "button" }), {
+            max: 60,
+            back: true
+          }))
+        )
+          throw new Error("By camper was not reached with Tab.");
+        await press("Enter", 800);
+        await axe(`${S}: By camper`);
+        if (!(await tabTo(named(/^Finalize$/, { tag: "button" }), { max: 40 })))
+          throw new Error("Finalize was not reached with Tab.");
+        await expectLive(
+          S,
+          "Finalize: done, or why not, is said",
+          /^Finalized: |^Not finalized\. /,
+          () => press("Enter")
+        );
+      } finally {
+        clearSeats();
+      }
+    }
+  );
+}
+
 async function main() {
   refuseInCi();
   refuseWhileCiRuns();
@@ -5359,7 +5558,10 @@ async function main() {
       await electives();
       await electivesOnGrid(openManual);
     }
-    if (!only) await bringInChoices();
+    if (!only) {
+      await bringInChoices();
+      await electiveSeats();
+    }
   } finally {
     const version = browser.version();
     await browser.close();

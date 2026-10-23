@@ -105,3 +105,30 @@ needed (plan §2, "Desktop machinery not carried over").
   one division at every time, measured by hand at about 3 s on a laptop (both cases together took
   about 13 s on CI); it is not run in CI, to keep the suite quick, since CI's Jest runs already
   brush against their 5 s per-test limit. E7 decides whether the screen needs a progress state.
+
+## Slice E7: the engine on the seats screen (2026-10-23)
+
+The engine is unchanged; Elective seats (repo ADR 0018 choices 28 to 37) is its first caller.
+
+- **Its input from a run** (`c/shoreshElectiveSeats` `seats.js` `engineInput`): campers are the
+  run's; times are the server's elective times (`ElectiveTimes`: day, time block and division,
+  keyed `day|block|division`), ordered by day, block order and division order; each time's
+  offerings are the set's confirmed ones open to it, keyed by their **activity's Id**, which is
+  what a saved choice names (ADR 0017 choice 16), so an offering confirmed after the sheet came in
+  still counts; a choice for a day and period is matched to that time, others count for the week;
+  **choices in no order go in as a tie, rank 1 each**, with the unordered kind, so the engine
+  never prefers one of them and never marks one as "not their top choice"; attendance is each
+  camper's bunk's times (one time per day and block for a camper with no bunk), less any day and
+  block where the camper holds a locked seat that no longer fits (its offering set back to
+  proposed, or no longer open to that division): that lock still holds the camper there, so the
+  engine never places them over it and Assign seats is never refused for it (the desktop skips
+  locked seats the same way); locks are the locked seats that still fit. No linked choices yet (slice E8): `linkedChoices` and
+  `linkedChoiceTimes` are passed empty, in their shape.
+- **Its output, saved and checked** by the server (`ElectiveSeatSaves`; plan §5): the seats that
+  are not locks, mapped back from activity to offering; and what did not run (`BELOW_MINIMUM`),
+  kept on the run (`Dropped__c`) so the screen still says "Dropped had 4 of 6" after a reload. The
+  other findings are worked out from the saved seats each time the screen draws them (unplaced,
+  kept below minimum, over seats), so they always match what is saved.
+- **The refusal for blank seats** is shown with the offerings' names before anything is sent.
+- **No progress state** (choice 6's open question): 500 campers take under a second in the
+  browser, so the main button simply waits while it works.

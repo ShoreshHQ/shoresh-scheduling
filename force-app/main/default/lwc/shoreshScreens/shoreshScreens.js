@@ -9,11 +9,12 @@
 
 // Built in a later slice: listed, not reachable from the menu yet. Electives stay coming until
 // slice E11 passes (decision 44), though their setup screen is built (repo ADR 0018, slice E4).
-const COMING = new Set(["electives"]);
+const COMING = new Set(["electives", "electiveSeats"]);
 // A screen that can be opened from the page's address before it is in the menu, for the checks
 // that look at it (repo ADR 0018: ?c__preview=electives; ADR 0017 choice 19:
-// ?c__preview=bringInChoices). Nothing else reaches them.
-const PREVIEWABLE = new Set(["electives", "bringInChoices"]);
+// ?c__preview=bringInChoices; ADR 0018 choice 28: ?c__preview=electiveSeats). Nothing else
+// reaches them.
+const PREVIEWABLE = new Set(["electives", "bringInChoices", "electiveSeats"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -33,6 +34,7 @@ export function screenLabels(t) {
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
     electives: "Electives",
+    electiveSeats: "Elective seats",
     manualBuild: "Manual Build",
     generatedSchedule: "Generated Schedule",
     schedules: "Schedules",
@@ -69,7 +71,7 @@ const SECTIONS = [
   {
     key: "schedules",
     title: () => "Schedules",
-    screens: ["generatedSchedule", "manualBuild", "schedules"]
+    screens: ["generatedSchedule", "manualBuild", "electiveSeats", "schedules"]
   }
 ];
 
@@ -86,7 +88,7 @@ export function canOpen(screen, hasSeason, preview = null) {
   return built && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
-/** The screen a page address may open ("electives", "bringInChoices"), else null. */
+/** The screen a page address may open ("electives", "bringInChoices", "electiveSeats"), else null. */
 export function previewScreen(name) {
   return PREVIEWABLE.has(name) ? name : null;
 }

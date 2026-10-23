@@ -71,6 +71,7 @@ import divisionCopiedFrom from "@salesforce/schema/Division__c.CopiedFrom__c";
 import divisionProgram from "@salesforce/schema/Division__c.Program__c";
 import divisionSortOrder from "@salesforce/schema/Division__c.SortOrder__c";
 import electiveRunObject from "@salesforce/schema/ElectiveRun__c";
+import electiveRunDropped from "@salesforce/schema/ElectiveRun__c.Dropped__c";
 import electiveRunElectiveSet from "@salesforce/schema/ElectiveRun__c.ElectiveSet__c";
 import electiveRunEngineVersion from "@salesforce/schema/ElectiveRun__c.EngineVersion__c";
 import electiveRunFinalSchedule from "@salesforce/schema/ElectiveRun__c.FinalSchedule__c";
@@ -380,6 +381,7 @@ export const FIELD = Object.freeze({
     SortOrder: divisionSortOrder.fieldApiName
   }),
   ElectiveRun: Object.freeze({
+    Dropped: electiveRunDropped.fieldApiName,
     ElectiveSet: electiveRunElectiveSet.fieldApiName,
     EngineVersion: electiveRunEngineVersion.fieldApiName,
     FinalSchedule: electiveRunFinalSchedule.fieldApiName,

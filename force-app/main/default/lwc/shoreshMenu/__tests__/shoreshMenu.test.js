@@ -93,6 +93,7 @@ describe("c-shoresh-menu", () => {
       "Electives (Coming)",
       "Generated Schedule",
       "Manual Build",
+      "Elective seats (Coming)",
       "Schedules"
     ]);
   });
