@@ -420,6 +420,21 @@ describe("Assign seats", () => {
     expect([counter.count, counter.label]).toEqual(["3", "of 4 placed"]);
     expect(text($(element, '[data-id="assign-again"]'))).toBe("Assign again");
     expect(text($(element, '[data-id="primary"]'))).toBe("Finalize");
+    // The main button was held while saving: the cursor is back on it, not lost.
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="primary"]')
+    );
+  });
+
+  it("Assign again puts the cursor back on Assign again once saved", async () => {
+    const element = await render({ view: assignedView() });
+    assignSeats.mockResolvedValue(assignedView({ revision: 3 }));
+    $(element, '[data-id="assign-again"]').click();
+    await flush();
+    expect(assignSeats).toHaveBeenCalled();
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="assign-again"]')
+    );
   });
 
   it("stops before sending when an offering's seats aren't filled in", async () => {
@@ -484,6 +499,10 @@ describe("Finalize, Final, and a new version", () => {
     expect(text($(element, '[data-id="primary"]'))).toBe("Download · Coming");
     expect($(element, '[data-id="assign-again"]')).toBeNull();
     expect($(element, '[data-id="bring-in"]')).toBeNull();
+    // The main button is held for good: the cursor goes to the run's menu, not lost.
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, 'c-shoresh-rail-pop[data-id="state"]')
+    );
     // A final run's roster can be read, not changed.
     $(element, 'button[data-cell="2027-07-05|b1|d1|o1"]').click();
     await flush();
@@ -508,6 +527,10 @@ describe("Finalize, Final, and a new version", () => {
       "Not finalized. Schedule changed. Assign again first."
     );
     expect(text($(element, '[data-id="error-action"]'))).toBe("Assign again");
+    // Refused: the cursor is back on Finalize.
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="primary"]')
+    );
     assignSeats.mockResolvedValue(assignedView({ revision: 3 }));
     $(element, '[data-id="error-action"]').click();
     await flush();
@@ -558,6 +581,8 @@ describe("Finalize, Final, and a new version", () => {
       "A new version started, with the choices, locks and moves made by hand."
     );
     expect(text($(element, '[data-id="primary"]'))).toBe("Assign seats");
+    // The menu it was chosen from was held while saving: the cursor is back on it.
+    expect(element.shadowRoot.activeElement).toBe(state);
     // Both are in the run's menu: the new one chosen.
     const rows = [...state.querySelectorAll(".run-row")];
     expect(rows.map((r) => r.getAttribute("aria-checked"))).toEqual([

@@ -25,6 +25,10 @@ const COMMITTED = "Committed";
 const FINAL = "Final";
 const ROSTER_HEADING = '[data-id="roster-heading"]';
 const PRIMARY = '[data-id="primary"]';
+const ASSIGN_AGAIN = '[data-id="assign-again"]';
+// The run's menu: where the cursor goes after Finalize (the main button is then held for good)
+// and after Start a new version (the menu it was chosen from).
+const STATE_MENU = '[data-id="state"]';
 
 /**
  * Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37): who sits in which offering
@@ -449,7 +453,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
   }
   async handleAssignAgain() {
-    await this.assign();
+    await this.assign([ASSIGN_AGAIN, PRIMARY]);
   }
   async handleErrorAction() {
     if (this.errorAction === "assign") {
@@ -461,8 +465,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
   /**
    * Assign seats: the engine places everyone it can around the locks, in the browser, and the
    * server checks and saves the seats. The blank-seats refusal stops it before anything is sent.
+   * The button that started it is held while saving, so the cursor goes back to it once done
+   * (WCAG 2.4.3): focusAfter, the main button unless said otherwise.
    */
-  async assign(focusAfter) {
+  async assign(focusAfter = PRIMARY) {
     if (this.busy || !this.view) return;
     this.busy = true;
     this.error = null;
@@ -488,7 +494,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.error = failed("Seats weren't assigned.", e);
       this.status = "";
     } finally {
-      if (focusAfter) this.focusAfter = focusAfter;
+      this.focusAfter = focusAfter;
       this.busy = false;
     }
   }
@@ -509,6 +515,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.error = failed("Not finalized.", e);
       if (/Assign again first/.test(this.error)) this.errorAction = "assign";
     } finally {
+      // Final holds the main button for good, so the cursor goes to the run's menu; refused,
+      // back to Finalize.
+      this.focusAfter = [PRIMARY, STATE_MENU];
       this.busy = false;
     }
   }
@@ -526,6 +535,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     } catch (e) {
       this.error = failed("No new version was started.", e);
     } finally {
+      this.focusAfter = STATE_MENU;
       this.busy = false;
     }
   }
