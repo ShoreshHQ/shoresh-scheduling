@@ -407,7 +407,7 @@ describe("Assign seats", () => {
     await flush();
     expect(assignSeats).not.toHaveBeenCalled();
     expect(text($(element, '[data-id="error"]'))).toBe(
-      "Fill blank capacities first. Archery"
+      "Fill blank capacities first: Archery."
     );
   });
 

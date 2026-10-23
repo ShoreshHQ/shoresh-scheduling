@@ -487,6 +487,8 @@ private class ElectiveSeatsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      // Each change by hand is its own request: they get their own limits here.
+      Test.startTest();
       for (Integer i = 0; i < 3; i++) {
         view = camp.move(view.revision, i, 'Archery');
       }
@@ -507,6 +509,7 @@ private class ElectiveSeatsTest {
       Assert.isFalse(seat.Locked__c, 'Unlocked');
       Assert.isTrue(seat.ByHand__c, 'Still the move made by hand');
       Assert.areEqual(camp.ids.get('o:Archery'), seat.Offering__c);
+      Test.stopTest();
     }
   }
 
@@ -648,6 +651,7 @@ private class ElectiveSeatsTest {
       SeatsCamp camp = new SeatsCamp(3);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
       view = camp.move(view.revision, 0, 'Archery');
+      Test.startTest();
       view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
 
       ElectiveSeats.RunView copy = ElectiveSeatsController.startNewVersion(
@@ -676,6 +680,7 @@ private class ElectiveSeatsTest {
         'A new version of "Chugim · Week 1" is already being worked on. Choose Committed in the run\'s menu.',
         refusal
       );
+      Test.stopTest();
     }
   }
 

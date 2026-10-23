@@ -463,8 +463,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       const { input } = engineInput(run, this.t);
       const result = runEngine(input);
       if (!result.ok) {
-        this.error =
-          `${result.error} ${(result.blank || []).join(", ")}`.trim();
+        this.error = blankWords(result);
         this.status = "";
         return;
       }
@@ -816,6 +815,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get statusText() {
     return this.status;
   }
+}
+
+/** "Fill blank capacities first: Archery, Pottery." (the desktop's words, with the names). */
+function blankWords(result) {
+  const names = (result.blank || []).join(", ");
+  return names ? `${result.error.replace(/\.$/, "")}: ${names}.` : result.error;
 }
 
 function cellClass(cell, open) {
