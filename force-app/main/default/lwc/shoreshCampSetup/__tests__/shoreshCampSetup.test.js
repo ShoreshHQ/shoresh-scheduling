@@ -2222,10 +2222,10 @@ describe("c-shoresh-camp-setup", () => {
       )
     ).toBeNull();
     // Another screen in the address is not opened this way.
-    pageAddress({ c__screen: "weeks" });
+    pageAddress({ c__preview: "weeks" });
     await flush();
     expect(shownScreens(element)).toEqual(["roots"]);
-    pageAddress({ c__screen: "bringInChoices" });
+    pageAddress({ c__preview: "bringInChoices" });
     await flush();
     expect(shownScreens(element)).toEqual(["bringInChoices"]);
     expect(q(element, "c-shoresh-choices-import")).not.toBeNull();
@@ -2243,7 +2243,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
     const element = await render();
-    pageAddress({ c__screen: "bringInChoices" });
+    pageAddress({ c__preview: "bringInChoices" });
     await flush();
     answer(nsRecord(setupWith()));
     await flush();

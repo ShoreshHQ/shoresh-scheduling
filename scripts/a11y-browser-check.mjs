@@ -3857,7 +3857,7 @@ async function bringInChoices() {
   const S = "Bring in choices";
   await step(S, "The cards, by keyboard", async () => {
     const offered = seedElectives();
-    const address = new URL(`${TAB_PATH}?c__screen=bringInChoices`, page.url())
+    const address = new URL(`${TAB_PATH}?c__preview=bringInChoices`, page.url())
       .href;
     await page.goto(address, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page

@@ -492,6 +492,7 @@ private class ChoicesImportTest {
       Test.stopTest();
 
       Assert.isTrue(check.isFinal);
+      Assert.areEqual('Chugim · Week 1', check.runName);
       Assert.areEqual(
         '"Chugim · Week 1" is final, so it can\'t take new choices.',
         message

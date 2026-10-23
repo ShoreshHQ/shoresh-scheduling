@@ -353,6 +353,7 @@ describe("c-shoresh-choices-import", () => {
   });
 
   it("says a final run takes no new choices, with no Bring in", async () => {
+    // As the server sends it: no run to bring into (runId null), the final one's name.
     checkChoices.mockResolvedValue({
       ...CHECK,
       isFinal: true,

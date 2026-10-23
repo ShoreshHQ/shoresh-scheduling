@@ -210,6 +210,9 @@ public with sharing class ChoicesImport {
       result.runId = place.run.Id;
       result.runName = place.run.Name;
       result.runRevision = place.run.Revision__c;
+    } else if (place.isFinal) {
+      // The final run is named in the refusal ('"Chugim · Week 1" is final, ...').
+      result.runName = place.finalRunName;
     }
     ChoicesImportCampers campers = new ChoicesImportCampers(request);
     ChoicesImportChoices choices = new ChoicesImportChoices(request, place);

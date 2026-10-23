@@ -175,11 +175,13 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
 19. **How it is reached until electives are finished.** The Electives menu entries stay "Coming"
     until slice E11 (decision 44), and the seats screen it hangs from in the mock-up is slice E7.
     Until then Bring in choices is a screen of the Shoresh page kept out of the menu and opened
-    only from the page's address: `/lightning/n/Shoresh_Camp_Setup?c__screen=bringInChoices`
-    (`ADDRESS_ONLY` in `c/shoreshCampSetup`; no other screen opens this way). It is drawn only
-    while shown, so other screens make no extra server call. E7 moves its start onto the seats
-    screen ("Bring in choices" on its rail); the Electives setup screen (slice E4, its own PR)
-    did not exist when this was built, so nothing here follows a route of its.
+    only from the page's address: `/lightning/n/Shoresh_Camp_Setup?c__preview=bringInChoices`.
+    It uses the one address route the Electives setup screen uses (slice E4, PR #122, repo ADR 0018
+    choice 12: `?c__preview=electives`): `previewScreen` in `c/shoreshScreens` names the screens an
+    address may open, and `c/shoreshCampSetup` opens it once, when the season is read. No other
+    value opens anything. When both are merged, `previewScreen` lists both screens and there is
+    still one route. It is drawn only while shown, so other screens make no extra server call. E7
+    moves its start onto the seats screen ("Bring in choices" on its rail).
 20. **Reader additions for E6.** `sheetLayout(sheet)`, and two heading forms the mock-up's own
     sheet uses: a possessive keeps its s ("Child's name" is the name), and "Anything we should
     know?" is a comment. The corpus readings are unchanged.

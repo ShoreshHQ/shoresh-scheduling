@@ -28,6 +28,7 @@ import {
   canOpen,
   menuSections,
   nextScreen,
+  previewScreen,
   screenLabels
 } from "c/shoreshScreens";
 import { leftField } from "c/shoreshSavedMark";
@@ -101,11 +102,6 @@ const SCREENS = [
   "import",
   "bringInChoices"
 ];
-// Screens kept out of the menu while their piece of work is unfinished, opened only from the
-// page's address (?c__screen=bringInChoices), so they can be tried in the test org and checked in
-// a real browser. Electives stay "Coming" in the menu until slice E11 (decision 44); repo ADR 0017
-// says how Bring in choices is reached until then.
-const ADDRESS_ONLY = new Set(["bringInChoices"]);
 
 /**
  * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
@@ -232,6 +228,10 @@ export default class ShoreshCampSetup extends LightningElement {
   specialScheduleChanged = false;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
+  // The screen the page's address asks for (?c__preview=bringInChoices, repo ADR 0017 choice 19),
+  // and whether it has been opened once (after that the menu leads, as for any screen).
+  preview = null;
+  previewOpened = false;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
   sameLocationError = null;
   // Merging: the question's buttons wait.
@@ -261,24 +261,29 @@ export default class ShoreshCampSetup extends LightningElement {
       "Not turned off. The week is ticked again."
     );
 
-  // A screen asked for in the page's address (ADDRESS_ONLY), opened once the season is read.
-  requestedScreen = null;
-
+  /**
+   * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu until electives are finished (decision 44), so it can be tried and checked before then
+   * (repo ADR 0017 choice 19). Any other value is ignored.
+   */
   @wire(CurrentPageReference)
-  pageReference(reference) {
-    const asked = reference && reference.state && reference.state.c__screen;
-    this.requestedScreen = ADDRESS_ONLY.has(asked) ? asked : null;
-    this.openRequested();
+  wiredPageReference(reference) {
+    const state = (reference && reference.state) || {};
+    this.preview = previewScreen(state.c__preview);
+    this.openPreview();
   }
 
-  /** The screen the address asks for, once there is a season to show it with. */
-  openRequested() {
-    if (!this.requestedScreen || this.mode !== "screens" || !this.setup) {
-      return;
+  /** The screen the address asked for, once the season is on screen. */
+  openPreview() {
+    if (
+      this.preview &&
+      !this.previewOpened &&
+      this.mode === "screens" &&
+      this.setup
+    ) {
+      this.previewOpened = true;
+      this.openScreen(this.preview);
     }
-    const screen = this.requestedScreen;
-    this.requestedScreen = null;
-    this.openScreen(screen);
   }
 
   connectedCallback() {
@@ -324,6 +329,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.newSeason = {};
     }
     await this.loadSeason();
+    this.openPreview();
   }
 
   async loadSeason() {
@@ -365,7 +371,6 @@ export default class ShoreshCampSetup extends LightningElement {
     this.setup = setup;
     this.termLabels = setup.labels;
     this.seasonForm = form;
-    this.openRequested();
   }
 
   renderedCallback() {
