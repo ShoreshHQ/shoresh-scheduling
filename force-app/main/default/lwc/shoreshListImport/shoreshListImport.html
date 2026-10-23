@@ -40,6 +40,16 @@
           disabled={isReading}
         ></lightning-button>
         <span class="list-weak slds-m-left_small">.xlsx · .xls · .csv</span>
+        <template lwc:if={choicesFile}>
+          <div class="list-choices" data-id="choices-file">
+            <span role="alert">{choicesFileText}</span>
+            <lightning-button
+              data-id="bring-in-choices"
+              label="Bring in choices"
+              onclick={handleBringInChoices}
+            ></lightning-button>
+          </div>
+        </template>
         <template lwc:if={isReading}>
           <lightning-spinner
             alternative-text="Reading"

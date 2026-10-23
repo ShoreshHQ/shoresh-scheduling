@@ -364,6 +364,91 @@ private class ElectivesDataTest {
     }
   }
 
+  /**
+   * A camp's whole week of campers, choices and seats saved at once, as Shoresh's own saves will
+   * (plan section 5): 251 of each, past one trigger batch of 200, in user mode. The camper key
+   * check reads once per batch; choices and seats read nothing (repo ADR 0018 choice 5).
+   */
+  @IsTest
+  static void aWeeksCampersChoicesAndSeatsSaveInBulkInAFixedNumberOfQueries() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveCamp camp = new ElectiveCamp().withRun();
+      final Integer howMany = 251;
+      List<Camper__c> campers = new List<Camper__c>();
+      for (Integer i = 0; i < howMany; i++) {
+        Camper__c camper = new Camper__c(
+          Season__c = camp.season.Id,
+          Name = 'Synthetic Camper ' + i
+        );
+        // Half with a camper number, half told apart by name alone.
+        if (Math.mod(i, 2) == 0) {
+          camper.CamperNumber__c = 'SYN-B' + String.valueOf(i).leftPad(4, '0');
+        }
+        campers.add(camper);
+      }
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      Database.insert(campers, AccessLevel.USER_MODE);
+      Integer forCampers = Limits.getQueries() - before;
+
+      List<Preference__c> choices = new List<Preference__c>();
+      List<Assignment__c> seats = new List<Assignment__c>();
+      for (Camper__c camper : campers) {
+        choices.add(
+          new Preference__c(
+            ElectiveRun__c = camp.run.Id,
+            Camper__c = camper.Id,
+            Group__c = camp.ids.get('Group B'),
+            Choices__c = '[]'
+          )
+        );
+        seats.add(
+          new Assignment__c(
+            ElectiveRun__c = camp.run.Id,
+            Camper__c = camper.Id,
+            Group__c = camp.ids.get('Group B'),
+            TimeBlock__c = camp.ids.get('Period 1'),
+            Offering__c = camp.drama.Id,
+            Date__c = Date.newInstance(2026, 6, 30)
+          )
+        );
+      }
+      before = Limits.getQueries();
+      Database.insert(choices, AccessLevel.USER_MODE);
+      Integer forChoices = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      Database.insert(seats, AccessLevel.USER_MODE);
+      Integer forSeats = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.areEqual(2, forCampers, 'Queries to save 251 campers');
+      Assert.areEqual(0, forChoices, 'Queries to save 251 sets of choices');
+      Assert.areEqual(0, forSeats, 'Queries to save 251 seats');
+      Assert.areEqual(
+        howMany + 1,
+        [SELECT COUNT() FROM Camper__c WITH USER_MODE]
+      );
+      Assert.areEqual(
+        howMany + 1,
+        [
+          SELECT COUNT()
+          FROM Preference__c
+          WHERE ElectiveRun__c = :camp.run.Id
+          WITH USER_MODE
+        ]
+      );
+      Assert.areEqual(
+        howMany,
+        [
+          SELECT COUNT()
+          FROM Assignment__c
+          WHERE Offering__c = :camp.drama.Id
+          WITH USER_MODE
+        ]
+      );
+    }
+  }
+
   @IsTest
   static void aRunsScheduleIsOfItsWeek() {
     System.runAs(ShoreshTestData.scheduler()) {

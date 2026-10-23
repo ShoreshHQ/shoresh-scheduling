@@ -1175,6 +1175,98 @@
                 </div>
               </div>
 
+              <!-- Electives (design-research electives-r1 setup-a, decision 53; desktop
+                   ElectivesScreen.jsx and ElectiveSetDetail.jsx; repo ADR 0018 slice E4): a
+                   section per elective set with a row per offering, the sets themselves named,
+                   added and deleted below them, and one offering's linked choices beside the
+                   list, opened from its row's chevron. The menu lists it as coming until slice
+                   E11; the page's address opens it (?c__preview=electives). -->
+              <div class={shown.electives} data-screen="electives">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.electives}
+                  </h2>
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num">{electiveCount.count}</b
+                    >{electiveCount.noun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="electives-list-import"
+                    variant="rail"
+                    screen-key="electives"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onbringinchoices={handleBringInChoices}
+                  ></c-shoresh-list-import>
+                </div>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-split">
+                  <div class="setup-list setup-main">
+                    <template for:each={electiveSections} for:item="section">
+                      <c-shoresh-editable-table
+                        key={section.key}
+                        data-id="offerings"
+                        data-set={section.setId}
+                        heading={section.heading}
+                        heading-count={section.count}
+                        show-columns={section.first}
+                        filter-field={offeringSetField}
+                        filter-value={section.setId}
+                        title={section.title}
+                        object-api-name={objects.Offering}
+                        columns={section.columns}
+                        rows={electives.offerings}
+                        add-label={section.addLabel}
+                        empty-message={labels.noOfferings}
+                        new-row-defaults={section.defaults}
+                        name-for={offeringName}
+                        row-classes={offeringRowClasses}
+                        end-actions={offeringActions}
+                        guesses={offeringMarks}
+                        busy={busy}
+                        details-label="Details"
+                        details-open-for={electiveDetailsFor}
+                        onsave={handleSaveRecords}
+                        ondelete={handleDeleteRecord}
+                        ondetails={handleOpenElectiveDetails}
+                      ></c-shoresh-editable-table>
+                    </template>
+                    <!-- The sets, the sections above: named, added and deleted here. -->
+                    <c-shoresh-editable-table
+                      class="types"
+                      data-id="elective-sets"
+                      heading={labels.electiveSets}
+                      title={labels.electiveSets}
+                      object-api-name={objects.ElectiveSet}
+                      flag-same-names
+                      columns={electiveSetColumns}
+                      rows={electives.sets}
+                      add-label={labels.addElectiveSet}
+                      empty-message={labels.noElectiveSets}
+                      new-row-defaults={electiveSetDefaults}
+                      busy={busy}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                    ></c-shoresh-editable-table>
+                  </div>
+                  <c-shoresh-elective-details
+                    class="setup-side"
+                    setup={setup}
+                    terms={terms}
+                    onclose={handleCloseElectiveDetails}
+                  ></c-shoresh-elective-details>
+                </div>
+              </div>
+
               <!-- Generated Schedule: a program's week built by Shoresh -->
               <div
                 class={shown.generatedSchedule}

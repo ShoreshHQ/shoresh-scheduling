@@ -3,7 +3,8 @@
  * the hidden keys so a set's name is used once in a season and an activity is offered once in a
  * set, with messages in the camp's words; keeps offerings inside their season; and prepares a
  * set's delete: a set a run uses is refused, naming the runs, and otherwise takes its linked
- * choices with it.
+ * choices with it. An offering's delete takes its linked choices too (the desktop's
+ * deleteBundleRows when an offering is removed); seats that name it still refuse it.
  */
 public with sharing class ElectiveSetupTriggers {
   /** The elective set trigger: before insert, update and delete. */
@@ -139,6 +140,46 @@ public with sharing class ElectiveSetupTriggers {
   }
 
   // ---------------------------------------------------------------- offerings
+
+  /** The offering trigger: before insert, update and delete. */
+  public static void handleOfferings(
+    System.TriggerOperation operation,
+    List<Offering__c> offerings,
+    Map<Id, Offering__c> oldOfferings
+  ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      offeringsDeleting(oldOfferings.keySet());
+    } else {
+      offeringsSaving(offerings);
+    }
+  }
+
+  /**
+   * An offering's linked choices go with it, and their Coverage rows (their periods are their
+   * details): they point at it through a restrict-delete lookup, which would block its delete.
+   * Seats in a run that name it still refuse the delete (the restrict lookup on Assignment__c;
+   * the screens say so first, ElectivesInUse).
+   */
+  public static void offeringsDeleting(Set<Id> offeringIds) {
+    // System mode on purpose, as for a set: they go with the offering, and someone allowed to
+    // delete it must not be stopped by a row they cannot see.
+    clear(
+      [
+        SELECT Id
+        FROM Coverage__c
+        WHERE LinkedChoice__r.Offering__c IN :offeringIds
+        WITH SYSTEM_MODE
+      ]
+    );
+    clear(
+      [
+        SELECT Id
+        FROM LinkedChoice__c
+        WHERE Offering__c IN :offeringIds
+        WITH SYSTEM_MODE
+      ]
+    );
+  }
 
   public static void offeringsSaving(List<Offering__c> offerings) {
     Set<Id> setIds = new Set<Id>();

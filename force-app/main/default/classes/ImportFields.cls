@@ -25,7 +25,9 @@ public with sharing class ImportFields {
     'Schedule' => Schedule__c.SObjectType,
     'Week' => Week__c.SObjectType,
     'WeekException' => WeekException__c.SObjectType,
-    'CampLabel' => CampLabel__c.SObjectType
+    'CampLabel' => CampLabel__c.SObjectType,
+    'ElectiveSet' => ElectiveSet__c.SObjectType,
+    'Offering' => Offering__c.SObjectType
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
   // ImportStructureWrites, ImportVersionWrites, ImportWhoKinds, and the workbook's kinds).
@@ -147,6 +149,18 @@ public with sharing class ImportFields {
       CampLabel__c.ModelTerm__c,
       CampLabel__c.Singular__c,
       CampLabel__c.Plural__c
+    },
+    ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
+      ElectiveSet__c.Name,
+      ElectiveSet__c.Season__c
+    },
+    Offering__c.SObjectType => new Set<Schema.SObjectField>{
+      Offering__c.ElectiveSet__c,
+      Offering__c.Activity__c,
+      Offering__c.Seats__c,
+      Offering__c.NoSeatLimit__c,
+      Offering__c.MinimumToRun__c,
+      Offering__c.Proposed__c
     }
   };
 
@@ -210,11 +224,25 @@ public with sharing class ImportFields {
     }
   }
 
-  /** How Undo names a record it kept: a camp word by the word, anything else by its name. */
+  /**
+   * How Undo names a record it kept: a camp word by the word, an offering by its activity (its
+   * own name is a number; ImportUndoValues.read reads the activity's), anything else by its name.
+   */
   public static String nameOf(SObject record) {
-    return record.getSObjectType() == CampLabel__c.SObjectType
-      ? (String) record.get(CampLabel__c.Singular__c)
-      : (String) record.get('Name');
+    if (record.getSObjectType() == CampLabel__c.SObjectType) {
+      return (String) record.get(CampLabel__c.Singular__c);
+    }
+    if (record.getSObjectType() == Offering__c.SObjectType) {
+      SObject activity = record.getSObject(Offering__c.Activity__c);
+      return activity == null ? null : (String) activity.get('Name');
+    }
+    return (String) record.get('Name');
+  }
+
+  /** The activity's name, as an offering is named (nameOf), for a query of offerings. */
+  public static String offeringNameColumn() {
+    return Offering__c.Activity__c.getDescribe().getRelationshipName() +
+      '.Name';
   }
 
   public static ShoreshException unreadableLog() {

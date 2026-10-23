@@ -66,9 +66,12 @@ public with sharing class ImportUndoValues {
         columns.add(ShoreshSchema.queryName(ImportFields.field(type, name)));
       }
     }
-    // A camp word is named by the word itself.
+    // A camp word is named by the word itself, an offering by its activity.
     if (type == CampLabel__c.SObjectType) {
       columns.add(ShoreshSchema.queryName(CampLabel__c.Singular__c));
+    }
+    if (type == Offering__c.SObjectType) {
+      columns.add(ImportFields.offeringNameColumn());
     }
     return new Map<Id, SObject>(
       Database.queryWithBinds(

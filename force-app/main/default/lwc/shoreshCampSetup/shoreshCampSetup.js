@@ -39,6 +39,12 @@ import {
   seededLines,
   specialOf
 } from "c/shoreshSpecialDetails";
+import {
+  electivesOf,
+  hasBlankSeats,
+  linkedNames,
+  openCount
+} from "c/shoreshElectiveDetails";
 import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
@@ -46,6 +52,7 @@ const SEASON = FIELD.Season;
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
+const OFFER = FIELD.Offering;
 // The season forms' inputs (their data-field) and the season fields they hold. A season's Status
 // stays in the data but is not shown: it changed nothing a director could see (decision 26 (5)).
 const SEASON_INPUTS = {
@@ -69,6 +76,7 @@ const FLUSH_SCREENS = new Set([
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
+  "electives",
   "bringInChoices",
   "schedules"
 ]);
@@ -97,6 +105,7 @@ const SCREENS = [
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
+  "electives",
   "generatedSchedule",
   "manualBuild",
   "schedules",
@@ -229,8 +238,11 @@ export default class ShoreshCampSetup extends LightningElement {
   specialScheduleChanged = false;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
-  // The screen the page's address asks for (?c__preview=bringInChoices, repo ADR 0017 choice 19),
-  // and whether it has been opened once (after that the menu leads, as for any screen).
+  // The offering whose linked choices are open beside the Electives list, or null.
+  electiveDetailsFor = null;
+  // The screen the page's address asks for (?c__preview=electives, repo ADR 0018;
+  // ?c__preview=bringInChoices, ADR 0017 choice 19), and whether it has been opened once (after
+  // that the menu leads, as for any screen).
   preview = null;
   previewOpened = false;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
@@ -263,9 +275,10 @@ export default class ShoreshCampSetup extends LightningElement {
     );
 
   /**
-   * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
-   * menu until electives are finished (decision 44), so it can be tried and checked before then
-   * (repo ADR 0017 choice 19). Any other value is ignored.
+   * The page's address. ?c__preview=electives opens the Electives screen, which the menu still
+   * lists as coming, and ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu until electives are finished (decision 44); so both can be tried and checked before then
+   * (repo ADRs 0018 and 0017 choice 19). Any other value is ignored.
    */
   @wire(CurrentPageReference)
   wiredPageReference(reference) {
@@ -444,7 +457,12 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- menu and screens ----------
 
   get menu() {
-    return menuSections(this.terms, !!this.setup, menuMarks(this.setup));
+    return menuSections(
+      this.terms,
+      !!this.setup,
+      menuMarks(this.setup),
+      this.preview
+    );
   }
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;
@@ -483,7 +501,7 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   handleNavigate(event) {
     const screen = event.detail.screen;
-    if (!canOpen(screen, !!this.setup)) {
+    if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
     this.openScreen(screen);
@@ -500,6 +518,16 @@ export default class ShoreshCampSetup extends LightningElement {
           this.specialScheduleFor = itemId;
         }
       });
+    }
+  }
+
+  /**
+   * The Electives list was given a file of camper choices, and the director chose to bring them
+   * in (plan §6.2): Bring in choices, with the cursor on its heading.
+   */
+  handleBringInChoices() {
+    if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+      this.openScreen("bringInChoices");
     }
   }
 
@@ -582,7 +610,7 @@ export default class ShoreshCampSetup extends LightningElement {
   /** A screen's "next" button: that screen, with the cursor on its heading (WCAG 2.4.3). */
   handleNext(event) {
     const screen = event.currentTarget.dataset.next;
-    if (!canOpen(screen, !!this.setup)) {
+    if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
     this.openScreen(screen);
@@ -611,13 +639,22 @@ export default class ShoreshCampSetup extends LightningElement {
   get seasonOptions() {
     return this.seasons.map((s) => ({ label: s.Name, value: s.Id }));
   }
+  /** What needs attention, on screens that can be opened (a coming screen's wait with it). */
   get problems() {
-    return setupProblems(this.setup, this.terms);
+    return setupProblems(this.setup, this.terms).filter((problem) =>
+      canOpen(problem.screen, true, this.preview)
+    );
   }
-  /** What needs attention on the screen shown (Roots lists everything in its own way). */
+  /**
+   * What needs attention on the screen shown (Roots lists everything in its own way); what the
+   * screen marks in its own rows (markedInPlace) is not listed again above them.
+   */
   get screenProblems() {
     return this.problems
-      .filter((problem) => problem.screen === this.currentScreen)
+      .filter(
+        (problem) =>
+          problem.screen === this.currentScreen && !problem.markedInPlace
+      )
       .map((problem) => ({ ...problem, actions: problem.actions || [] }));
   }
 
@@ -656,6 +693,11 @@ export default class ShoreshCampSetup extends LightningElement {
   /** Object and field names for the template's tables, as the package has them. */
   get objects() {
     return OBJECT;
+  }
+
+  /** The field that puts an offering in its set's section. */
+  get offeringSetField() {
+    return OFFER.ElectiveSet;
   }
 
   get locationTypeField() {
@@ -1235,6 +1277,248 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.specialScheduleFor ? "slds-hide" : "";
   }
 
+  // ---------- electives (repo ADR 0018, slice E4) ----------
+
+  get electives() {
+    return electivesOf(this.setup);
+  }
+
+  /** The rail: "2 elective sets", in the camp's word. */
+  get electiveCount() {
+    const t = this.terms;
+    const count = this.electives.sets.length;
+    return {
+      count,
+      noun: ` ${count === 1 ? t.sIn("ElectiveSet") : t.pIn("ElectiveSet")}`
+    };
+  }
+
+  /** An activity's name, by Id. */
+  get activityNames() {
+    return new Map(
+      ((this.setup && this.setup.activities) || []).map((a) => [a.Id, a.Name])
+    );
+  }
+
+  /** An offering's name: its activity's (its own Name is a number that means nothing). */
+  get offeringName() {
+    const names = this.activityNames;
+    return (values) => names.get(values[OFFER.Activity]) || "";
+  }
+
+  /**
+   * One section per elective set (design-research electives-r1 setup-a, decision 53): its name
+   * and its count of confirmed, open offerings ("Chugim 4"), a row per offering, and a blank row
+   * "Add to Chugim". Each section is its own table over every offering, showing its set's.
+   */
+  get electiveSections() {
+    const electives = this.electives;
+    return electives.sets.map((set, index) => {
+      const mine = electives.offerings.filter(
+        (o) => o[OFFER.ElectiveSet] === set.Id
+      );
+      return {
+        key: set.Id,
+        setId: set.Id,
+        heading: set.Name,
+        first: index === 0,
+        count: openCount(mine),
+        title: `${set.Name}: ${this.terms.p("Offering")}`,
+        addLabel: `Add to ${set.Name}`,
+        columns: this.offeringColumns(set.Id),
+        defaults: { [OFFER.ElectiveSet]: set.Id }
+      };
+    });
+  }
+
+  /**
+   * An offering's row, as the approved mock-up draws it (setup-a; desktop ElectiveSetDetail.jsx):
+   * the activity, its seats (a number, "No limit", or "Closed" for 0), its minimum ("No minimum"
+   * quiet), who can take it and where it happens (the activity's, read only, never typed twice),
+   * and its linked choices. An activity is offered once in a set: the choice leaves out those
+   * already offered there.
+   */
+  offeringColumns(setId) {
+    const t = this.terms;
+    const setup = this.setup || {};
+    const activities = setup.activities || [];
+    const byId = new Map(activities.map((a) => [a.Id, a]));
+    const offered = new Set(
+      this.electives.offerings
+        .filter((o) => o[OFFER.ElectiveSet] === setId)
+        .map((o) => o[OFFER.Activity])
+    );
+    const options = activities.map((a) => ({ label: a.Name, value: a.Id }));
+    const locations = new Map(
+      (setup.locations || []).map((l) => [l.Id, l.Name])
+    );
+    const who = this.whoNames;
+    const whoIds = (activity) =>
+      ((activity && activity[CHILDREN.Activity.Eligibilities]) || []).map(
+        (row) =>
+          row[FIELD.ActivityEligibility.Division] ||
+          row[FIELD.ActivityEligibility.Group]
+      );
+    const activityOf = (saved) => byId.get(saved[OFFER.Activity]);
+    // The camp's own word for a minimum, else the mock-up's short "Minimum".
+    const minimum =
+      t.s("MinimumToRun") === "Minimum to run"
+        ? "Minimum"
+        : t.s("MinimumToRun");
+    return [
+      {
+        fieldName: OFFER.Activity,
+        label: t.s("Offering"),
+        type: "picklist",
+        required: true,
+        width: 14,
+        options,
+        optionsFor: (saved) =>
+          options.filter(
+            (o) => o.value === saved[OFFER.Activity] || !offered.has(o.value)
+          )
+      },
+      {
+        fieldName: OFFER.Seats,
+        label: t.s("Seats"),
+        type: "seats",
+        noLimitField: OFFER.NoSeatLimit,
+        noLimitLabel: "No limit",
+        min: 0,
+        width: 10
+      },
+      {
+        fieldName: OFFER.MinimumToRun,
+        label: minimum,
+        type: "number",
+        min: 1,
+        placeholder: "No minimum",
+        width: 8.5
+      },
+      {
+        fieldName: "who",
+        label: "Who",
+        type: "readonly",
+        minWidth: 7,
+        textFor: (saved) => {
+          if (!saved.Id) return "";
+          const ids = whoIds(activityOf(saved));
+          return ids.length
+            ? ids
+                .map((id) => who.get(id))
+                .filter((name) => name)
+                .join(", ")
+            : "Everyone";
+        },
+        exceptionFor: (saved) =>
+          !!saved.Id && whoIds(activityOf(saved)).length > 0
+      },
+      {
+        fieldName: "where",
+        label: "Where",
+        type: "readonly",
+        width: 10,
+        textFor: (saved) => {
+          const activity = saved.Id && activityOf(saved);
+          return (activity && locations.get(activity[ACTIVITY.Location])) || "";
+        },
+        exceptionFor: () => true
+      },
+      {
+        fieldName: "linked",
+        label: "Linked",
+        type: "readonly",
+        width: 10,
+        textFor: (saved) => {
+          return saved.Id ? linkedNames(this.setup, saved.Id).join(", ") : "";
+        },
+        exceptionFor: () => true
+      }
+    ];
+  }
+
+  /** A proposed offering's row: a dashed edge until it is confirmed (plan section 4.1). */
+  get offeringRowClasses() {
+    const result = {};
+    this.electives.offerings
+      .filter((o) => o[OFFER.Proposed])
+      .forEach((o) => {
+        result[o.Id] = "row_proposed";
+      });
+    return result;
+  }
+
+  /** A proposed offering's Confirm: saved at once, as the row's change. */
+  get offeringActions() {
+    const result = {};
+    this.electives.offerings
+      .filter((o) => o[OFFER.Proposed])
+      .forEach((o) => {
+        result[o.Id] = [
+          {
+            key: "confirm",
+            label: "Confirm",
+            changes: { [OFFER.Proposed]: false }
+          }
+        ];
+      });
+    return result;
+  }
+
+  /**
+   * A limited offering with no seats yet carries the needs-a-look corner on its seats, its
+   * words only (seats are not assigned until they are filled in; desktop "Fill blank capacities
+   * first.").
+   */
+  get offeringMarks() {
+    const t = this.terms;
+    const names = this.activityNames;
+    const words = "Seats not filled in yet";
+    const result = {};
+    this.electives.offerings.filter(hasBlankSeats).forEach((o) => {
+      result[o.Id] = {
+        [OFFER.Seats]: {
+          field: "seats",
+          words,
+          name: `${t.s("Seats")} for ${names.get(o[OFFER.Activity]) || ""}: ${words.toLowerCase()}`,
+          wordsOnly: true
+        }
+      };
+    });
+    return result;
+  }
+
+  get electiveSetColumns() {
+    return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
+  }
+
+  get electiveSetDefaults() {
+    return { [FIELD.ElectiveSet.Season]: this.seasonId };
+  }
+
+  /** An offering's chevron: its linked choices open beside the list (setup-a). */
+  handleOpenElectiveDetails(event) {
+    const { recordId } = event.detail;
+    const details = this.template.querySelector("c-shoresh-elective-details");
+    if (details && details.open(recordId)) {
+      this.electiveDetailsFor = recordId;
+    }
+  }
+
+  /** Closed: the cursor goes back to that row's chevron. */
+  handleCloseElectiveDetails(event) {
+    const { offeringId } = event.detail;
+    this.electiveDetailsFor = null;
+    const table = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="offerings"]'
+      )
+    ].find((list) => list.showsRow(offeringId));
+    if (table) {
+      table.focusDetailsOf(offeringId);
+    }
+  }
+
   /** Each counted screen's rail: how many, in the camp's word ("10 groups", "1 week"). */
   get counts() {
     const setup = this.setup || {};
@@ -1331,7 +1615,11 @@ export default class ShoreshCampSetup extends LightningElement {
       noSpecialDays: `No ${t.pIn("SpecialDay")} yet`,
       specialEvents: this.eventWords.p,
       addSpecialEvent: `Add ${this.eventWords.s}`,
-      noSpecialEvents: `No ${this.eventWords.pIn} yet`
+      noSpecialEvents: `No ${this.eventWords.pIn} yet`,
+      electiveSets: t.p("ElectiveSet"),
+      addElectiveSet: `Add ${t.s("ElectiveSet")}`,
+      noElectiveSets: `No ${t.pIn("ElectiveSet")} yet`,
+      noOfferings: `No ${t.pIn("Offering")} yet`
     };
   }
 
@@ -2090,6 +2378,20 @@ export default class ShoreshCampSetup extends LightningElement {
    * bring it back, and the schedules keep its name.
    */
   async deleteQuestion(recordId, name) {
+    // An offering: taken off its set, the activity kept (desktop "Remove …? The activity is
+    // kept."); its linked choices go with it.
+    const offering = this.electives.offerings.find((o) => o.Id === recordId);
+    if (offering) {
+      const set = this.electives.sets.find(
+        (s) => s.Id === offering[OFFER.ElectiveSet]
+      );
+      return {
+        label: "Delete",
+        message: `Take "${name}" off "${set ? set.Name : ""}"? The ${this.terms.sIn("Activity")} is kept.`,
+        variant: "header",
+        theme: "warning"
+      };
+    }
     // A count that couldn't be made is said so, never left out quietly.
     const count = (await Promise.resolve()
       .then(() => scheduleUses({ recordId }))

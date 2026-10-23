@@ -34,6 +34,7 @@ import {
   workbookWaiting
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
+import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
@@ -60,9 +61,26 @@ function timeText(minutes) {
  * With workbook (Roots, slice 4c part D) it imports the camp workbook instead: every sheet, in
  * one review, one save, and one Undo, each sheet's list shown as its own section.
  *
- * screenKey: which list (activities, locations, ...); setup: the season setup; terms: the
- * camp's words. Fires: imported (after a save or an Undo, so the page reloads the season).
+ * screenKey: which list (activities, locations, electives, ...); setup: the season setup;
+ * terms: the camp's words. Fires: imported (after a save or an Undo, so the page reloads the
+ * season); bringinchoices (on the Electives list, after a file of camper choices: the director
+ * chose to go to Bring in choices, where the set, week and schedule are chosen before the file).
  */
+/**
+ * Whether a file is camper choices (one or more campers with choices read from it), which the
+ * Electives list doesn't read: that file is brought in on Bring in choices (plan §6.2; desktop
+ * ElectiveSetDetail.jsx runImport, "That file is camper preferences, not offerings."). A file
+ * the reader can't make sense of is not, so the list reads it as usual.
+ */
+function isChoicesFile(file) {
+  try {
+    const reading = readChoices(file);
+    return reading.campers.length > 0 || reading.cantTellApart.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
  * one before it; null when none is left.
@@ -106,6 +124,8 @@ export default class ShoreshListImport extends LightningElement {
   focusNext = null;
   // The file being read, named in the status line.
   readingName = null;
+  // On the Electives list, the name of a file chosen that is camper choices, else null.
+  choicesFile = null;
 
   renderedCallback() {
     if (!this.focusNext) {
@@ -221,6 +241,21 @@ export default class ShoreshListImport extends LightningElement {
     }
   }
 
+  get choicesFileText() {
+    return `${this.choicesFile}: that file is camper choices, not offerings. Nothing was saved.`;
+  }
+
+  /**
+   * On to Bring in choices (plan §6.2), which asks for the set, week and schedule before the
+   * file: the director chooses the file there.
+   */
+  handleBringInChoices() {
+    this.handleClose();
+    // The page puts the cursor on Bring in choices' heading, not back on Import a list.
+    this.focusNext = null;
+    this.dispatchEvent(new CustomEvent("bringinchoices"));
+  }
+
   handleClose() {
     this.open = false;
     this.classList.remove("list-open");
@@ -230,6 +265,7 @@ export default class ShoreshListImport extends LightningElement {
 
   reset() {
     this.stage = "pick";
+    this.choicesFile = null;
     this.file = null;
     this.sheet = null;
     this.proposal = null;
@@ -265,6 +301,7 @@ export default class ShoreshListImport extends LightningElement {
       return;
     }
     this.error = null;
+    this.choicesFile = null;
     this.readingName = chosen.name;
     this.stage = "reading";
     try {
@@ -275,6 +312,14 @@ export default class ShoreshListImport extends LightningElement {
             chosen.name,
             new Uint8Array(await chosen.arrayBuffer())
           );
+      if (this.screenKey === "electives" && isChoicesFile(this.file)) {
+        // Not read as offerings, and nothing saved: the director chooses where it goes.
+        this.file = null;
+        this.choicesFile = chosen.name;
+        this.stage = "pick";
+        this.focusNext = { selector: '[data-id="bring-in-choices"]' };
+        return;
+      }
       this.answers = await this.rememberedAnswers();
       this.sheet = null;
       this.recompute();
@@ -617,6 +662,23 @@ export default class ShoreshListImport extends LightningElement {
       lines.push({
         key: item.key,
         label: `${item.name} · ${t.sIn(item.kind)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    // The Electives list: sets and activities its new offerings are in and name.
+    (add.electiveSet || []).forEach((item) => {
+      lines.push({
+        key: `electiveSet:${item.name}`,
+        label: `${item.name} · ${t.sIn("ElectiveSet")}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.offeredActivity || []).forEach((name) => {
+      lines.push({
+        key: `offeredActivity:${name}`,
+        label: `${name} · ${t.sIn("Activity")}`,
         checked: true,
         canUntick: false
       });

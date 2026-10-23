@@ -7,13 +7,13 @@
  * are listed as coming, not hidden.
  */
 
-// Built in a later slice: listed, not reachable yet (none just now; Special events came in ADR
-// 0014 slice 2).
-const COMING = new Set([]);
+// Built in a later slice: listed, not reachable from the menu yet. Electives stay coming until
+// slice E11 passes (decision 44), though their setup screen is built (repo ADR 0018, slice E4).
+const COMING = new Set(["electives"]);
 // A screen that can be opened from the page's address before it is in the menu, for the checks
-// that look at it (?c__preview=bringInChoices; repo ADR 0017 choice 19, the route of ADR 0018).
-// Nothing else reaches it.
-const PREVIEWABLE = new Set(["bringInChoices"]);
+// that look at it (repo ADR 0018: ?c__preview=electives; ADR 0017 choice 19:
+// ?c__preview=bringInChoices). Nothing else reaches them.
+const PREVIEWABLE = new Set(["electives", "bringInChoices"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -32,6 +32,7 @@ export function screenLabels(t) {
     fixedActivities: t.p("FixedActivity"),
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
+    electives: "Electives",
     manualBuild: "Manual Build",
     generatedSchedule: "Generated Schedule",
     schedules: "Schedules",
@@ -61,7 +62,8 @@ const SECTIONS = [
       "activities",
       "fixedActivities",
       "recurringActivities",
-      "specialEvents"
+      "specialEvents",
+      "electives"
     ]
   },
   {
@@ -75,12 +77,16 @@ export function isComing(screen) {
   return COMING.has(screen);
 }
 
-/** Whether the screen can be opened now: built, and (except camp words) a season exists. */
-export function canOpen(screen, hasSeason) {
-  return !COMING.has(screen) && (hasSeason || WITHOUT_SEASON.has(screen));
+/**
+ * Whether the screen can be opened now: built, and (except camp words) a season exists. preview:
+ * the coming screen the page's address names (previewScreen), which opens like a built one.
+ */
+export function canOpen(screen, hasSeason, preview = null) {
+  const built = !COMING.has(screen) || preview === screen;
+  return built && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
-/** The screen a page address may open ("bringInChoices"), else null. */
+/** The screen a page address may open ("electives", "bringInChoices"), else null. */
 export function previewScreen(name) {
   return PREVIEWABLE.has(name) ? name : null;
 }
@@ -116,16 +122,17 @@ const MARKS = {
 /**
  * The menu: sections, each with its items ({ key, label, coming, disabled, reason, mark }). marks:
  * screen -> "needed" | "done" (shoreshSetupRules.menuMarks); mark is { kind, symbol, label }.
+ * preview: the coming screen the page's address opened (previewScreen), listed as built.
  */
-export function menuSections(t, hasSeason, marks = {}) {
+export function menuSections(t, hasSeason, marks = {}, preview = null) {
   const labels = screenLabels(t);
   return SECTIONS.map((section) => ({
     key: section.key,
     title: section.title ? section.title(t) : null,
     items: section.screens.map((screen) => {
-      const disabled = !canOpen(screen, hasSeason);
+      const disabled = !canOpen(screen, hasSeason, preview);
       const kind = disabled ? null : marks[screen];
-      const coming = COMING.has(screen);
+      const coming = COMING.has(screen) && preview !== screen;
       return {
         key: screen,
         label: labels[screen],

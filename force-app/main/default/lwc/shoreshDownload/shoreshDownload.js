@@ -10,8 +10,10 @@ import { sheetName } from "c/shoreshLists";
 
 let lastUrl = null;
 
-const XLSX_TYPE =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+// Lightning Web Security refuses a Blob link of Excel's own type ("Unsupported MIME type", seen
+// in the test org on 2026-10-23: no download happened, on every screen); a plain stream of bytes
+// is allowed, and the .xlsx file name tells the computer what it is.
+const FILE_TYPE = "application/octet-stream";
 
 export async function downloadWorkbook(component, sheets, fileName) {
   await loadScript(component, SHEETJS);
@@ -27,7 +29,7 @@ export async function downloadWorkbook(component, sheets, fileName) {
   });
   // A Blob, not a data: link, so a large camp's file isn't cut off by the browser's link limit.
   const data = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  const url = URL.createObjectURL(new Blob([data], { type: XLSX_TYPE }));
+  const url = URL.createObjectURL(new Blob([data], { type: FILE_TYPE }));
   const link = document.createElement("a");
   link.href = url;
   link.download = fileName;
