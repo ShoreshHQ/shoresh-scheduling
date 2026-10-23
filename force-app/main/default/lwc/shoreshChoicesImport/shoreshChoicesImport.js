@@ -639,6 +639,9 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.phase = "done";
       this.status = this.doneText;
       this.focusAfter = '[data-id="done"]';
+      // An activity added here is in the season now: Camp Setup reads it again, so the
+      // Activities screen, the "Same as" lists and the next sheet all know it.
+      this.dispatchEvent(new CustomEvent("seasonchanged"));
       await this.loadSituation();
     } catch (e) {
       this.phase = "card";

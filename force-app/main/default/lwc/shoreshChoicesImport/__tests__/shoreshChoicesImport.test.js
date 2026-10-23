@@ -335,6 +335,39 @@ describe("c-shoresh-choices-import", () => {
     });
   });
 
+  it("an activity added while bringing in is read again by the page, so the next sheet doesn't ask about it", async () => {
+    bringInChoices.mockResolvedValue({
+      runId: "r1",
+      runName: "Chugim · Week 1",
+      campers: 3,
+      added: 3,
+      handKept: 0,
+      activitiesAdded: 1
+    });
+    const element = await render();
+    const seasonChanged = jest.fn();
+    element.addEventListener("seasonchanged", seasonChanged);
+    await choose(element, "chugim-week1.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-settle="potterywheel"] [data-answer="add"]');
+    await click(element, '[data-id="primary"]');
+    expect(seasonChanged).not.toHaveBeenCalled();
+    await click(element, '[data-id="primary"]');
+    expect(seasonChanged).toHaveBeenCalledTimes(1);
+
+    // Camp Setup reads the season again and hands down the new activity.
+    element.setup = nsRecord({
+      ...SETUP,
+      activities: [...SETUP.activities, { Id: "a4", Name: "Pottery Wheel" }]
+    });
+    await flush();
+    expect($(element, '[data-id="done"]')).not.toBeNull();
+    await click(element, '[data-id="another"]');
+    await choose(element, "chugim-week2.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-settle="potterywheel"]')).toBeNull();
+  });
+
   it("refuses a sheet with two campers it can't tell apart, naming the rows and bunks, with no Bring in", async () => {
     const element = await render();
     await choose(element, "same.csv", SAME_NAME);
@@ -404,6 +437,8 @@ describe("c-shoresh-choices-import", () => {
       }
     });
     const element = await render();
+    const seasonChanged = jest.fn();
+    element.addEventListener("seasonchanged", seasonChanged);
     await choose(element, "chugim-week1.csv", SHEET);
     await click(element, '[data-id="primary"]');
     await click(element, '[data-settle="potterywheel"] [data-answer="leave"]');
@@ -416,5 +451,7 @@ describe("c-shoresh-choices-import", () => {
       "Someone else brought in choices"
     );
     expect($(element, '[data-id="step"]').textContent).toBe("3 of 3");
+    // Nothing changed in the season, so the page isn't asked to read it again.
+    expect(seasonChanged).not.toHaveBeenCalled();
   });
 });

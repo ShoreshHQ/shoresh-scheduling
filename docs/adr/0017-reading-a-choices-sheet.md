@@ -119,7 +119,9 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
       offered, never chosen. An unanswered name carries the needs-a-look corner and Next waits for
       it. Answers are remembered for the camp (`ImportAnswer__c`, question `choiceName|<name>`,
       by name, never an Id) and come back next time **already answered, marked Remembered, and
-      changeable**: never applied unseen. "Add" is not remembered (the activity then exists).
+      changeable**: never applied unseen. "Add" is not remembered (the activity then exists:
+      once a sheet is brought in, the season is read again, so the new activity is on the
+      Activities screen, in every "Same as" list and known to the next sheet, with no reload).
     - _Can't tell apart_: two rows with one name and no camper number, with their rows and what
       tells them apart ("No camper number. Willow and Oak."), with the corner.
     - _To check_: what the reader marked (a list read in no order, a second choice for a rank, a

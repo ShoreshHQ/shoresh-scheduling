@@ -2232,6 +2232,23 @@ describe("c-shoresh-camp-setup", () => {
     expect(choicesSetup).toHaveBeenCalledWith({ seasonId: "s1" });
   });
 
+  it("reads the season again when Bring in choices adds to it, so every screen has the new activity", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    choicesSetup.mockResolvedValue({ sets: [], runs: [], answers: [] });
+    const element = await render();
+    pageAddress({ c__preview: "bringInChoices" });
+    await flush();
+    const reads = getSeasonSetup.mock.calls.length;
+    q(element, "c-shoresh-choices-import").dispatchEvent(
+      new CustomEvent("seasonchanged")
+    );
+    await flush();
+    expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
+  });
+
   it("an address asking for Bring in choices before the season is read opens it once it is", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
