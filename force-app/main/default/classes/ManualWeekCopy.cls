@@ -44,29 +44,9 @@ public with sharing class ManualWeekCopy {
         for (Integer sg = 0; sg < source.grid.groups.size(); sg++) {
           copyGroup(source.grid, sg, target);
         }
-        carryRain(source, target);
       }
     }
     listUnmatched(byWeekday);
-  }
-
-  /**
-   * The source day's rainy-day marks go with its cells, as the desktop's Duplicate week copies
-   * each cell's flags (duplicateWeek.js; repo docs/adr/0019 choice 9). Only the ones whose cell
-   * was copied stay once saved (RainMarks.keptOn): the same group and time block Ids.
-   */
-  private void carryRain(
-    ScheduleDays.DayGrid source,
-    ScheduleDays.DayGrid target
-  ) {
-    SlotEdits.Edit edit = editByDay.get(target.day);
-    if (edit == null || source.rain.isEmpty()) {
-      return;
-    }
-    SlotEdits.RainDay marks = new SlotEdits.RainDay();
-    marks.day = target.day;
-    marks.cells = source.rain;
-    edit.rain = new List<SlotEdits.RainDay>{ marks };
   }
 
   /** The source's days by place in the week; one that can't be read is listed, never skipped. */

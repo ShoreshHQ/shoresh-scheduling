@@ -1,0 +1,341 @@
+# Real-browser accessibility check, 2026-10-23
+
+Made by `scripts/a11y-browser-check.mjs` (how to run it: `docs/ci-setup.md`). It drives the
+Shoresh tab in the test org with the keyboard only, in a real browser, and checks where focus
+lands after each menu, dialog and tool closes, what the live regions say after saves, builds
+and publishing, that every toolbar action is reachable with Tab, and runs axe-core on each
+screen. It fixes nothing in the app and changes only its own made-up camp; failures are
+listed for follow-up.
+
+- Code checked: `3ac4da2`
+- Browser: Google Chrome 155.0.8059.85 (headless)
+- axe-core 4.13.0, rules: WCAG 2.0, 2.1 and 2.2, levels A and AA
+- Data: the made-up camp "Keyboard check camp (made up)" (the walkthrough's seed, `scripts/apex/sample-version.apex`, under its own name), on Week 30, the check's own week, made fresh for this run
+
+**298 passed, 4 failed, 1 not run.**
+
+## Failed
+
+| Screen | Step | What happened |
+| ------ | ---- | ------------- |
+| Schedules | A rainy day: its pill is named for it | No Monday pill named "…, rainy day" was reached with Tab. |
+| Schedules | Daily View: the switched cell's raindrop, said after its name | Raindrops on the grid: none. |
+| Schedules | Group View: the first bunk's week shows the raindrop | Raindrops on the grid: none. |
+| Schedules | Activity View: the raindrop before the bunk the switch put there | Raindrops on the grid: none. |
+
+## Not run
+
+| Screen | Step | What happened |
+| ------ | ---- | ------------- |
+| Bring in choices | The cards, by keyboard | The check's offerings were not reported back. |
+
+## Passed
+
+| Screen | Step | What happened |
+| ------ | ---- | ------------- |
+| Camp setup | Menu reachable by Tab from the top of the page | Reached Roots. |
+| Roots | Open from the menu: focus on the heading | Focus on h2 "Roots". |
+| Roots | axe | No violations (17 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (4), color-contrast (1). |
+| Roots | The dot field is drawn, for the eye only | Dots drawn; the canvas is hidden from screen readers. |
+| Roots | The dot field glows under the mouse, then settles | Changed while the mouse moved; the same as at rest four seconds later. |
+| Roots | The dot field is still with reduced motion | Reduced motion asked for: the same picture while the mouse moved. |
+| Roots | The dot field logs no errors | No Shoresh errors in the console (0 from Salesforce's own page). |
+| Season details | Blank name: the error reads at 4.5:1 | "Season nameComplete this field." rgb(182, 5, 84) on rgb(243, 245, 242), 6.1:1; "Format: Dec 31, 2024" rgb(92, 92, 92) on rgb(243, 245, 242), 6.1:1; "Format: Dec 31, 2024" rgb(92, 92, 92) on rgb(243, 245, 242), 6.1:1 |
+| Season details, blank name | axe | No violations (20 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
+| Weeks | Open from the menu: focus on the heading | Focus on h2 "Weeks". |
+| Weeks | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (96), color-contrast (1). |
+| Groups | Open from the menu: focus on the heading | Focus on h2 "Groups". |
+| Groups | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (19), color-contrast (1). |
+| Groups | While a row is edited, its week ticks show and Tab reaches them | Reached "Bunk 1 runs in Week 1". |
+| Groups | Unticking a week with placements: the question, then focus back on the tick | Focus on input "Bunk 1 runs in Week 1". |
+| Groups | Cancel keeps the week ticked | Still ticked. |
+| Groups | Opening a row's details: focus stays on its chevron | Focus on button "Bunk 1 details". |
+| Groups | The chevron says its details are open | aria-expanded true. |
+| Groups, a row's details open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (20), color-contrast (1). |
+| Groups | Open from the menu: focus on the heading | Focus on h2 "Groups". |
+| Groups | Bunk 1 to Seniors: "What changes" says so before it is saved | Said: "Moves to Seniors: Bunk 1 is no longer in Library time (for Juniors).". |
+| Groups | Bunk 1 to Seniors: the move is said | Said: "Bunk 1 moved to Seniors". |
+| Groups | Bunk 1 to Seniors: the cursor goes with it to its name in Seniors | Name, in Seniors. |
+| Groups | Bunk 1 to Juniors: "What changes" says so before it is saved | Said: "Moves to Juniors: Bunk 1 is now in Library time (for Juniors).". |
+| Groups | Bunk 1 to Juniors: the move is said | Said: "Bunk 1 moved to Juniors". |
+| Groups | Bunk 1 to Juniors: the cursor goes with it to its name in Juniors | Name, in Juniors. |
+| Weeks | Open from the menu: focus on the heading | Focus on h2 "Weeks". |
+| Divisions | Open from the menu: focus on the heading | Focus on h2 "Divisions". |
+| Time blocks | Open from the menu: focus on the heading | Focus on h2 "Time blocks". |
+| Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
+| Activities | Open from the menu: focus on the heading | Focus on h2 "Activities". |
+| Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
+| Recurring activities | Open from the menu: focus on the heading | Focus on h2 "Recurring activities". |
+| Groups | Open from the menu: focus on the heading | Focus on h2 "Groups". |
+| Programs | Open from the menu: focus on the heading | Focus on h2 "Programs". |
+| Programs | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Programs | A program added from the blank row: it is said | Said: "Check program added". |
+| Programs | No time blocks: the needs-a-look corner | 1 shown. |
+| Programs, a program without time blocks | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
+| Programs | Deleting Check program: it is said | Said: "Deleted Check program". |
+| Programs | After the delete: focus stays in the table | Focus on input "*Name". |
+| Camp words | Open from the menu: focus on the heading | Focus on h2 "Camp words". |
+| Camp words | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (3), color-contrast (1). |
+| Camp words | The plural is guessed as the word is typed | "Cabins". |
+| Camp words, a word of the camp's own | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (3), color-contrast (1). |
+| Camp words | Leaving a changed word: Saved is said | Said: "✓ Saved". |
+| Camp words | Putting the word back: Saved is said again | Said: "✓ Saved". |
+| Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
+| Locations | Same location? opens: focus inside the question | Focus on input "Pool · Groups that fit: 3 · 1 activity here" in a dialog. |
+| Same location? | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (27), color-contrast (1). |
+| Locations | Merge: one Pool is left | Places now: Art room, Dining hall, Field, Gym, Lake, Library, Pool. |
+| Locations | After merging: focus on the kept place's row | Focus on input "*Name". |
+| Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
+| Locations | Pool to Check type from its details: the move is said | Said: "Pool moved to Check type". |
+| Locations | Pool to Check type: the cursor goes with it to its notes in the new section | Notes, in the section for type "a0ARL00000IuOy92AF". |
+| Locations | Pool to No location type from its details: the move is said | Said: "Pool moved to No location type". |
+| Locations | Pool to No location type: the cursor goes with it to its notes in the new section | Notes, in the section for type "none". |
+| New season | Opening it: focus on its heading | Focus on h2 "Start a new season". |
+| New season | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
+| New season | Cancel: focus back on Season actions | Focus on button "Season actions". |
+| Copy this season | Opening it: focus on its heading | Focus on h2 "Copy season Sample summer". |
+| Copy this season | axe | No violations (23 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Copy this season | The weeks drawn twice | 30 weeks, last season's above the new ones. |
+| Copy this season | Cancel: focus back on Season actions | Focus on button "Season actions". |
+| Season details | Opening it: focus stays on the pencil | Focus on button "Edit Sample summer". |
+| Season details | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (25), color-contrast (1). |
+| Season details | Closing it: focus stays on the pencil | Focus on button "Edit Sample summer". |
+| Activities | Open from the menu: focus on the heading | Focus on h2 "Activities". |
+| Activities | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (17), color-contrast (1). |
+| Activities | While a row is edited, how often's numbers show and Tab reaches them | Reached "*Times per week: at least". |
+| Activities | Opening a row's details: focus on their heading | Focus on h2 "Art details". |
+| Activities, a row's details open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (39), color-contrast (1). |
+| Activities | Closing the details: focus back on the row's chevron | Focus on button "Art details". |
+| Activities | Open from the menu: focus on the heading | Focus on h2 "Activities". |
+| Activities | Art to High: its row moves to the High section, still marked open | In the High section, its chevron expanded. |
+| Activities | Art to High: the cursor stays on Priority | Focus on button "Priority". |
+| Activities | Art to Low: its row moves to the Low section, still marked open | In the Low section, its chevron expanded. |
+| Activities | Art to Low: the cursor stays on Priority | Focus on button "Priority". |
+| Activities | Art to High: its row moves to the High section, still marked open | In the High section, its chevron expanded. |
+| Activities | Art to High: the cursor stays on Priority | Focus on button "Priority". |
+| Activities | Closing the details: focus on Art's chevron in the High section | Focus on button "Art details". |
+| Activities | Art to Low: its row moves to the Low section, still marked open | In the Low section, its chevron expanded. |
+| Activities | Art to Low: the cursor stays on Priority | Focus on button "Priority". |
+| Activities | Open from the menu: focus on the heading | Focus on h2 "Activities". |
+| Activities | A guessed how often: Tab reaches its mark | How often for Art: guessed from your file |
+| Activities | Opening the mark: the cursor on Looks right | Focus on button "Looks right". |
+| Activities, a guessed mark open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (19), color-contrast (1). |
+| Activities | Escape: the cursor back on the mark | Focus on button "How often for Art: guessed from your file". |
+| Activities | Looks right: said | Said: "Art: looks right". |
+| Activities | Looks right: the cursor on the row's at least box | Focus on input "*Times per week: at least". |
+| Activities | Looks right: the mark is gone | None left. |
+| Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
+| Fixed activities | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (9), color-contrast (1). |
+| Recurring activities | Open from the menu: focus on the heading | Focus on h2 "Recurring activities". |
+| Recurring activities | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (13), color-contrast (1). |
+| Recurring activities | While a row is edited, its day ticks show and Tab reaches them | Reached "Monday". |
+| Special events | Open from the menu: focus on the heading | Focus on h2 "Special events". |
+| Special events | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (8), color-contrast (1). |
+| Special events | A special day added: what it started from is said | Said: ""Check day" starts from Main's 7 time blocks, with Assembly and Lunch brought in. Not brought in, since they don't run every day: Library time and Morning meeting.". |
+| Special events | Opening an item's details: focus on their heading | Focus on h2 "Check day details". |
+| Special events, an item's details open | axe | No violations (24 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (11), color-contrast (1). |
+| Special events | Open schedule: focus on the schedule's name | Focus on h2 "Check day". |
+| Special events, a special day's schedule | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Special events | Enter on a special day's cell: focus in the typing box | Focus on input "Bunk 1 · Check day · Period 1" in a dialog. |
+| Special events | A name typed into a special day's cell: its save is said | Said: "Placed Swim · Bunk 1 · Check day · Period 1". |
+| Special events | Back to Special events: focus on Open schedule | Focus on button "Open schedule". |
+| Special events | Put on a day: focus on the week | Focus on select "WeekWeek 1Week 2Week 3Week 4Week 5Week 6Week 7Week 8Week 9Week 10Week 11Week 12W". |
+| Special events, putting a special day on a day | axe | No violations (25 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (11), color-contrast (1). |
+| Special events | Put on a day: what was done is said | Said: ""Check day" is on Monday of "Week 1".". |
+| Special events | Put on: focus back on Put on a day | Focus on button "Put on a day". |
+| Special events | Take off: what comes back is said | Said: "Monday of "Week 1" has its regular schedule again. "Check day" stays saved.". |
+| Special events | Take off: focus on Put back | Focus on button "Put back Check day on Monday". |
+| Special events, a special day just taken off a day | axe | No violations (24 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (11), color-contrast (1). |
+| Special events | Closing the details: focus back on the row's chevron | Focus on button "Check day details". |
+| Manual Build | Open from the menu: focus on the heading | Focus on h2 "Manual Build". |
+| Manual Build | Week arrows: at the last week, focus on the week | Focus on button "Week 30, Week". |
+| Manual Build | Start a blank week: it is said | Said: "Started Week 30.". |
+| Manual Build | Start a blank week: focus not lost when the button goes | Focus on div "Morning meeting: Recurring activity" in the grid. |
+| Manual Build | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
+| Manual Build | Rail: every action reachable by Tab | All 14 reached: Previous: Week 29, Week 30, Week, Edit, Daily, Group, Activity, Monday, Jan 17, Tuesday, Jan 18, Wednesday, Jan 19, Thursday, Jan 20, Friday, Jan 21, 0 of 141 placed, needs a look, Versions, Publish. |
+| Manual Build | The counter: Enter opens it | aria-expanded is true. |
+| Manual Build: the counter open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
+| Manual Build | The counter: Escape closes it, focus on the counter | Focus on button "0 of 141 placed, needs a look". |
+| Manual Build | Accept: it is said | Said: "Accepted for this visit: Art, 0 of 6.". |
+| Manual Build | Accept: the line goes | Hidden: Art, 0 of 6. |
+| Manual Build | Accept: focus on the next line or the counter | Focus on button "Boating: 0 of 6". |
+| Manual Build | Accept: focus stays in the counter | Focus on button "Boating: 0 of 6". |
+| Manual Build | Enter on a cell: focus in the typing box | Focus on input "Bunk 1 · Monday · Period 2" in a dialog. |
+| Manual Build | Return places Swim: it is said | Said: "Placed Swim · Bunk 1 · Monday · Period 2". |
+| Manual Build | After placing: focus back on the cell | Focus on div "Swim" in the grid. |
+| Manual Build | Escape in the typing box: focus back on the cell | Focus on div "Swim" in the grid. |
+| Manual Build | Ctrl+Z on the grid: Undone is said | Said: "Undone: Placed Swim · Bunk 1 · Monday · Period 2". |
+| Manual Build | Ctrl+Shift+Z with nothing focused: Redone is said | Said: "Redone: Placed Swim · Bunk 1 · Monday · Period 2". |
+| Manual Build | Ctrl+Z in the Filter box: no schedule Undo | Nothing undone. |
+| Manual Build | Stretch: the cell grows live under the pointer | It spans 2 blocks while held. |
+| Manual Build | Stretch: the slot that stops it shows a ghost | Ghost of Swim on the fixed activity. |
+| Manual Build | Stretch: letting go keeps it longer, and it is said | Said: "Swim runs 2 time blocks · Bunk 1 · Monday · Period 2". |
+| Manual Build | Stretch: the placement runs 2 blocks after letting go | aria-rowspan 2. |
+| Manual Build | Stretch: Ctrl+Z puts it back | Said: "Undone: Swim runs 2 time blocks · Bunk 1 · Monday · Period 2". |
+| Manual Build | Holding a tile: focus goes to the grid | Focus on div "Swim" in the grid. |
+| Manual Build | Holding a tile: its cells outlined, fits here only on Open cells | Art: 0 outlined, 23 fit. |
+| Manual Build | Holding a tile: the tile says it is held | aria-pressed. |
+| Manual Build: a tile held | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
+| Manual Build | Escape lets go: it is said | Said: "Put back.". |
+| Manual Build | Escape: the outlines go | None left. |
+| Manual Build | Pointing at a cell outlines its activity | Swim: the other 1 outlined. |
+| Manual Build | Edit opens: focus on its first row | Focus on button "Undo: Placed Swim · Bunk 1 · Monday · Period 2". |
+| Manual Build | Clear day: it is said | Said: "Cleared Monday". |
+| Manual Build | Clear day: focus on the line's Undo | Focus on button "Undo Cleared Monday". |
+| Manual Build | Its Undo: it is said | Said: "Undone: Cleared Monday". |
+| Manual Build | Its Undo: focus not lost | Focus on button "Edit". |
+| Manual Build | Copy day to… opens: Down reaches its first day | Focus on button "Tuesday". |
+| Manual Build | Escape: focus back on Edit | Focus on button "Edit". |
+| Manual Build | Choosing a day: it is said | Said: "Copied Monday to Tuesday". |
+| Manual Build | After copying: focus on the line's Undo | Focus on button "Undo Copied Monday to Tuesday". |
+| Manual Build | Shift+Right: two cells chosen, said | Said: "2 selected". |
+| Manual Build | Shift+Right: two cells marked chosen | 2 marked. |
+| Manual Build | Ctrl+C: Copied is said | Said: "Copied 2 activities.". |
+| Manual Build | Ctrl+V on an Open block: it is said | Said: "Pasted 2 activities · Bunk 1 · Monday · Period 3. Swim · Bunk 1: Twice in a day, and 3 more". |
+| Manual Build | After pasting: focus stays on the grid | Focus on div "Swim" in the grid. |
+| Manual Build | Copy and paste: the pasted cells hold the copied activities | 0-2, 1-2 now hold Swim, Art. |
+| Manual Build | Ctrl+Z: the paste is undone in one step | Said: "Undone: Pasted 2 activities · Bunk 1 · Monday · Period 3. Swim · Bunk 1: fine now, and 1 more". |
+| Manual Build | One Undo: both pasted cells are Open again | 0-2, 1-2 Open. |
+| Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
+| Generated Schedule | Week arrows: at the last week, focus on the week | Focus on button "Week 30, Week". |
+| Generated Schedule | Generate: it is said when it ends | Said: "Week 30 generated. Filled 141 of 141.". |
+| Generated Schedule | Generate: focus not lost when the button goes | Focus on button "Build". |
+| Generated Schedule | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
+| Generated Schedule | Rail: every action reachable by Tab | All 15 reached: Previous: Week 29, Week 30, Week, Edit, Build, Daily, Group, Activity, Monday, Jan 17, Tuesday, Jan 18, Wednesday, Jan 19, Thursday, Jan 20, Friday, Jan 21, 141 of 141 placed, needs a look, Versions, Publish. |
+| Generated Schedule | The counter: Enter opens it | aria-expanded is true. |
+| Generated Schedule: the counter open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (8), color-contrast (1). |
+| Generated Schedule | The counter: Escape closes it, focus on the counter | Focus on button "141 of 141 placed, needs a look". |
+| Generated Schedule | Accept: it is said | Said: "Accepted for this visit: Art, 27 of 18.". |
+| Generated Schedule | Accept: the line goes | Hidden: Art, 27 of 18, over. |
+| Generated Schedule | Accept: focus on the next line or the counter | Focus on button "Gym games: 28 of 18, over". |
+| Generated Schedule | Accept: focus stays in the counter | Focus on button "Gym games: 28 of 18, over". |
+| Generated Schedule | Pointing at a cell outlines its activity | Soccer: the other 3 outlined. |
+| Generated Schedule | Build opens: focus on Rebuild | Focus on button "Rebuild". |
+| Generated Schedule: Build open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
+| Generated Schedule | Rebuild asks: focus on Cancel | Focus on button "Cancel" in a dialog. |
+| Generated Schedule: Rebuild question | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (8), color-contrast (1). |
+| Generated Schedule | Escape: focus back on Build | Focus on button "Build". |
+| Generated Schedule | Rebuild it: it is said when it ends | Said: "Week 30 rebuilt. Filled 141 of 141.". |
+| Generated Schedule | After Rebuild: focus not lost | Focus on button "Build". |
+| Generated Schedule | Edit opens: focus on its first row | Focus on button "Copy ⌘C". |
+| Generated Schedule | Escape: focus back on Edit | Focus on button "Edit". |
+| Generated Schedule | Choosing Lock/Unlock: it is said | Said: "Locked Bunk 1, Monday, Period 2.". |
+| Generated Schedule | After locking: focus not lost | Focus on button "Edit". |
+| Generated Schedule | Locked cells: the padlock bottom right, no edge, clear of the mark | 2 locked cell(s), 1 with the corner mark as well. |
+| Generated Schedule | A locked cell with the corner mark: padlock and mark both shown, apart | 1-2: padlock at 687,416, mark at 691,384, no overlap. |
+| Generated Schedule | Start over: it is said when it ends | Said: "Started Week 30 over. Filled 0 of 141.". |
+| Generated Schedule | After Start over: focus on its line's Undo | Focus on button "Undo Started Week 30 over". |
+| Generated Schedule | Its Undo: focus back on Build | Focus on button "Build". |
+| Generated Schedule | Rainy day… opens: Down reaches its first day | Focus on button "Monday". |
+| Generated Schedule | Choosing Monday: the receipt is said | Said: "Rainy Monday. 3 switched to rain plans, 1 locked, left as is. Gym games · Bunk 2: Over its weekly limit, and 6 more". |
+| Generated Schedule | After the switch: focus on the line's Undo | Focus on button "Undo Rainy Monday". |
+| Generated Schedule | Its Undo: it is said | Said: "Undone: Rainy Monday. Soccer · Bunk 2: Over its weekly limit, and 3 more". |
+| Generated Schedule | Its Undo: focus not lost | Focus on button "Edit". |
+| Manual Build | Open from the menu: focus on the heading | Focus on h2 "Manual Build". |
+| Manual Build | Versions: Enter opens the list | aria-expanded is true. |
+| Manual Build: Versions open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
+| Manual Build | Versions: Escape closes it, focus on Versions | Focus on button "Versions". |
+| Manual Build | Save version: it is said | Said: "Saved Keyboard check 16:31:52.". |
+| Manual Build | Save version: focus not lost | Focus on input "Name current version…". |
+| Manual Build | rename: focus in the name box | Focus on input "New name". |
+| Manual Build | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 16:31:52". |
+| Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
+| Generated Schedule | Versions: Enter opens the list | aria-expanded is true. |
+| Generated Schedule: Versions open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
+| Generated Schedule | Versions: Escape closes it, focus on Versions | Focus on button "Versions". |
+| Generated Schedule | Save version: it is said | Said: "Saved Keyboard check 16:32:26.". |
+| Generated Schedule | Save version: focus not lost | Focus on input "Name current version…". |
+| Generated Schedule | rename: focus in the name box | Focus on input "New name". |
+| Generated Schedule | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 16:32:26". |
+| Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
+| Fixed activities | Delete Assembly asks: focus in the question | Focus on h1 "Delete" in a dialog, in Salesforce's own confirm box (lightning-confirm), not c-shoresh-ask. |
+| Fixed activities | Deleting Assembly: it is said | Said: "Deleted Assembly". |
+| Fixed activities | After deleting Assembly: focus not lost | Focus on input "*Name". |
+| Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
+| Fixed activities | Adding Assembly with Enter: it is said | Said: "Assembly added". |
+| Fixed activities | After adding: focus back in the blank row's first box | Focus on input "Add Fixed activity: Name". |
+| Manual Build | Open from the menu: focus on the heading | Focus on h2 "Manual Build". |
+| Manual Build | It opens: focus on Cancel | Focus on button "Cancel" in a dialog. |
+| Manual Build: Update to match setup | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (8), color-contrast (1). |
+| Manual Build | Escape: focus back on Update to match setup | Focus on button "Update to match setup". |
+| Manual Build | One row's Update: it is said | Said: "Updated to match setup.". |
+| Manual Build | One row's Update: focus stays in the dialog | Focus on button "Update Bunk 2 · Monday · Period 6" in a dialog. |
+| Manual Build | Update all: it is said | Said: "Updated to match setup.". |
+| Manual Build | Update all leaves nothing: focus on the grid | Focus on div "Swim" in the grid. |
+| Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
+| Generated Schedule | It opens: focus on Cancel | Focus on button "Cancel" in a dialog. |
+| Generated Schedule: Update to match setup | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (9), color-contrast (1). |
+| Generated Schedule | Escape: focus back on Update to match setup | Focus on button "Update to match setup". |
+| Generated Schedule | One row's Update: it is said | Said: "Updated to match setup.". |
+| Generated Schedule | One row's Update: focus stays in the dialog | Focus on button "Update Bunk 2 · Monday · Period 6" in a dialog. |
+| Generated Schedule | Update all: it is said | Said: "Updated to match setup.". |
+| Generated Schedule | Update all leaves nothing: focus on the grid | Focus on div "Art" in the grid. |
+| Manual Build | Open from the menu: focus on the heading | Focus on h2 "Manual Build". |
+| Manual Build | Publish asks first: focus in the question | Focus on button "Cancel" in a dialog. |
+| Manual Build: Publish question | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (8), color-contrast (1). |
+| Manual Build | Escape: focus back on Publish | Focus on button "Publish". |
+| Manual Build | Publish: it is said | Said: "Published Week 30.". |
+| Manual Build | After Publish: focus not lost | Focus on button "Publish". |
+| Manual Build | Unpublish asks: focus on Cancel | Focus on button "Cancel" in a dialog. |
+| Manual Build | Escape: focus back on Published | Focus on button "Published". |
+| Manual Build | Unpublish: it is said | Said: "Unpublished Week 30.". |
+| Manual Build | After Unpublish (its button goes): focus not lost | Focus on button "Publish". |
+| Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
+| Generated Schedule | Publish asks first: focus in the question | Focus on button "Cancel" in a dialog. |
+| Generated Schedule: Publish question | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (9), color-contrast (1). |
+| Generated Schedule | Escape: focus back on Publish | Focus on button "Publish". |
+| Generated Schedule | Publish: it is said | Said: "Published Week 30.". |
+| Generated Schedule | After Publish: focus not lost | Focus on button "Publish". |
+| Generated Schedule | Unpublish asks: focus on Cancel | Focus on button "Cancel" in a dialog. |
+| Generated Schedule | Escape: focus back on Published | Focus on button "Published". |
+| Generated Schedule | Unpublish: it is said | Said: "Unpublished Week 30.". |
+| Generated Schedule | After Unpublish (its button goes): focus not lost | Focus on button "Publish". |
+| Schedules | Open from the menu: focus on the heading | Focus on h2 "Schedules". |
+| Schedules | A replaced day: its pill names the special day, its line is under the grid | "Check visit day" on Tuesday. |
+| Schedules, a day a special day replaces | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (4), color-contrast (1). |
+| Schedules | Open an event's own schedule: focus on the way back | Focus on button "← Monday". |
+| Schedules, an event's own schedule | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (4), color-contrast (1). |
+| Schedules | Back from the event: focus on its Open again | Focus on button "Open Check event". |
+| Schedules | Open from the menu: focus on the heading | Focus on h2 "Schedules". |
+| Schedules | The rail's end: Versions names the version, then Excel, then Print (filled) | Check specials (made up), Versions → Export to Excel → Print |
+| Schedules | Group View: the bunk chosen on the rail, its week shown | The rail's bunk choice and the bunk's week are there. |
+| Schedules, Group View | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Schedules, Activity View's cards | axe | No violations (16 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Schedules | Activity View: a card opens its grid, focus on the rail's choice | Focus on button "Art, Activity". |
+| Schedules, an activity's week | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Schedules | Open from the menu: focus on the heading | Focus on h2 "Schedules". |
+| Schedules, a rainy day in Daily View | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Schedules, a rainy day in Group View | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Schedules, a rainy day in Activity View | axe | No violations (19 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (5), color-contrast (1). |
+| Electives | Opened from the page's address | The Electives table is on screen. |
+| Electives | Open from the menu: focus on the heading | Focus on h2 "Electives". |
+| Electives | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (14), color-contrast (1). |
+| Electives | An offering's chevron: focus on its details' heading | Focus on h2 "Art details". |
+| Electives, an offering's linked choices open | axe | No violations (23 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (15), color-contrast (1). |
+| Electives | Closing the details: focus back on the row's chevron | Focus on button "Art details". |
+| Electives | Confirm at rest: not shown | Opacity 0. |
+| Electives | Confirm with the keyboard on it: shown | Opacity 1. |
+| Electives | Confirm on a proposed offering: its save is said | Said: "Boating saved". |
+| Electives | Confirm on a proposed offering: the cursor on the offering's first field | Focus on button "Offering". |
+| Electives | The seats corner opened: the cursor stays on it | Focus on button "Seats for Gym games: seats not filled in yet". |
+| Electives, the seats corner open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (15), color-contrast (1). |
+| Electives | Escape: the cursor back on the corner | Focus on button "Seats for Gym games: seats not filled in yet". |
+| Electives | Open from the menu: focus on the heading | Focus on h2 "Electives". |
+| Electives | Download this list: the offerings in the list's layout | Electives - Sample summer.xlsx: 3 offerings; Art with 12 seats. |
+| Electives | Import a list: focus on its heading | Focus on h3 "Import Electives". |
+| Electives, Import a list open | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (14), color-contrast (1). |
+| Electives | Import a list: Change 1 saved and said | Said: "Saved". |
+| Electives | Import a list: the change is in the org | Art: 14 seats. |
+| Electives | Close: focus back on Import a list | Focus on button "Import a list". |
+| Electives | A choices file: focus on Bring in choices | Focus on button "Bring in choices". |
+| Electives | A choices file: said, nothing saved | check-choices.csv: that file is camper choices, not offerings. Nothing was saved.Bring in choices |
+| Electives, a choices file given to Import a list | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (14), color-contrast (1). |
+| Electives | Bring in choices: that screen, focus on its heading | Focus on h2 "Bring in choices". |
+
+## Not checked here
+
+- A screen reader itself (VoiceOver, NVDA): the check reads the live regions' text, not what
+  is spoken.
+- Pointer-only actions (drag and drop) and touch.
+- axe-core finds about a third of WCAG problems; colour contrast it can only judge where the
+  colours are plain.

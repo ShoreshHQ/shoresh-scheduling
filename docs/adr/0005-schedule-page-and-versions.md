@@ -247,8 +247,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       mark draws nothing here (it is Manual Build's corner). **Built in this PR** (Greg,
       2026-10-23: #124 held until the raindrop is built into it; issue #129): a switch now
       keeps its switched cells beside the full ones in `RainyDay__c`, each only while its cell
-      holds that activity, and Publish, Save version, Restore and Start from another week carry
-      them (ADR 0019 choice 9, the desktop's way). **Print** shows the raindrop too, as the
+      holds that activity, and Publish, Save version and Restore carry them (ADR 0019 choice 9, the desktop's way); a week started from another starts dry (Greg, 2026-10-23: the director makes a day rainy when it rains). **Print** shows the raindrop too, as the
       desktop prints what its screen shows; **Excel** doesn't, as the desktop's workbook carries
       no marks (`src/utils/exportWorkbook.js`). Manual Build and Generated Schedule draw no
       raindrop (the grids draw it only for a view marked `withRaindrops`).

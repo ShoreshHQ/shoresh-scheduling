@@ -3,8 +3,8 @@
  * version kept first ("Before rainy Monday", Auto-saved), the switch saved as one edit with its
  * marks ("Rain plan full", and the switched cells the Schedules page draws a raindrop on), a mark
  * going when its cell changes, Undo taking the marks away, Restore of the version bringing the
- * day back without them, and the marks carried by Publish, Save version and Restore, and Start
- * from another week (issue #129). Synthetic camp (SetTimeTestData):
+ * day back without them, the marks carried by Publish, Save version and Restore, and a week started
+ * from another starting dry (issue #129). Synthetic camp (SetTimeTestData):
  * Group A and Group B (Juniors), Group C (Seniors); Period 1, Period 2, Lunch; Soccer is outdoors
  * with Gym games as its rain plan.
  */
@@ -447,7 +447,7 @@ private class RainyDayTest {
   }
 
   @IsTest
-  static void startingFromAnotherWeekCarriesTheMarksOfTheCellsCopied() {
+  static void startingFromAnotherWeekCopiesTheCellsButStartsDry() {
     System.runAs(ShoreshTestData.scheduler()) {
       camp();
       Id draftId = soccerMorning();
@@ -464,7 +464,8 @@ private class RainyDayTest {
       Assert.isTrue(used <= FEW, 'Starting the week used ' + used + ' queries');
       ScheduleViews.DayView monday = view.schedule.days[0];
       Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
-      Assert.areEqual(mondayMarks(), asSet(monday.rain));
+      // A copied week starts dry (Greg, 2026-10-23): no raindrop, no "Rain plan full".
+      Assert.isTrue(monday.rain.isEmpty(), 'The copied week has marks');
     }
   }
 }

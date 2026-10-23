@@ -92,21 +92,20 @@ step, sees what changed and what couldn't, and can undo it.
    setup, a Rebuild where the cell stays). A second rainy day on the same day keeps the marks the
    day had and adds its own (a mark whose cell it changes is dropped by the same rule).
 
-   **The marks travel with the cells (issue #129), as the desktop's do.** The desktop keeps each
-   cell's flags on the cell (`template_slots.flags`), so they go wherever the cell goes: a version
-   keeps them and Restore writes them back (`src/utils/snapshotSlot.js` `toSnapshotSlot`,
-   `useSnapshots.js`), and Duplicate week copies them (`electron/ops/duplicateWeek.js`, `flags` in
-   `BULK_REPLACE_ENTITIES.template_slots`). The desktop has no Publish; Salesforce's published
-   schedule is a copy of the draft, so it carries them the same way. So **Publish**
-   (`SchedulePublish`), **Save version** and every automatic version (`ManualVersions.writeDays`),
-   **Restore** (the version's marks come back with its cells, where before it cleared them) and
-   **Start from another week** (`ManualWeekCopy`, the marks of the cells it copied) all carry them,
-   each kept only where its cell still holds that activity. Restoring "Before rainy Monday" is
-   still the way back from a rainy Monday: that version was kept before the switch, so it has none
-   of Monday's marks. A copied week shows the source week's raindrops on the cells it copied, as the
-   desktop's duplicated week does; the director changes those cells or the week is started fresh.
-   Publish's "already published as it is" still compares cells only: a switch always changes cells,
-   so a rainy day's marks never wait on a publish that is refused as unchanged.
+   **The marks travel with a week's own copies (issue #129), as the desktop's do.** The desktop
+   keeps each cell's flags on the cell (`template_slots.flags`), so a version keeps them and
+   Restore writes them back (`src/utils/snapshotSlot.js` `toSnapshotSlot`, `useSnapshots.js`). The
+   desktop has no Publish; Salesforce's published schedule is a copy of the draft, so it carries
+   them the same way. So **Publish** (`SchedulePublish`), **Save version** and every automatic
+   version (`ManualVersions.writeDays`) and **Restore** (the version's marks come back with its
+   cells, where before it cleared them) carry them, each kept only where its cell still holds that
+   activity. Restoring "Before rainy Monday" is still the way back from a rainy Monday: that
+   version was kept before the switch, so it has none of Monday's marks. **Start from another week
+   starts dry**, with neither switched nor full marks (Greg, 2026-10-23), unlike the desktop's
+   Duplicate week, which copies the flags: rain belongs to that day, its activities and their
+   places; the rain plan stays with the activities, and the director makes a day rainy when it
+   rains. Publish's "already published as it is" still compares cells only: a switch always
+   changes cells, so a rainy day's marks never wait on a publish refused as unchanged.
 
 10. **Not counted.** The counter and Publish's question don't count the marks: a full cell isn't
     a broken rule but a choice still to make by hand, and the corner on the cell is where it is
@@ -135,7 +134,7 @@ step, sees what changed and what couldn't, and can undo it.
   part other than "switched") refused with nothing saved; Restore of "Before rainy Monday" without
   marks; a Lock on Generated keeping them; Publish carrying them to the published schedule as the
   Schedules page opens it; Save version keeping them and Restore bringing them back; Start from
-  another week carrying the marks of the cells it copied; Generated's week read carrying each
+  another week copying the cells but no marks; Generated's week read carrying each
   activity's Outdoor and Rain plan (the switch works them out from that read).
 - Jest for the marks themselves: `rain.test.js` also checks the switched cells marked with the
   full ones, a switched mark told apart from a full one, and a second rainy day keeping the day's

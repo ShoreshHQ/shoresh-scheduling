@@ -3876,6 +3876,20 @@ async function schedulesRain() {
   await step(S, "A rainy day's raindrop", async () => {
     seedRain();
     try {
+      // The page keeps the week's versions as it read them: load it again, so the version just
+      // made is in Versions and opens as the newest.
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+      await page
+        .locator(APP)
+        .locator("c-shoresh-menu")
+        .waitFor({ timeout: 60000 });
+      await pause(3000);
+      if (await exists('lightning-combobox[data-id="camp"]')) {
+        if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
+          throw new Error("The Camp picker was not reached with Tab.");
+        await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
+        await pause(4000);
+      }
       await openFromMenu(S, /^Schedules$/);
       await pickWeek();
       const monday = await tabTo(

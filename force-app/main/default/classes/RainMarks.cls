@@ -42,8 +42,8 @@ public with sharing class RainMarks {
     Set<String> found = new Set<String>();
     for (String mark : marks == null ? new List<String>() : marks) {
       List<String> ids = String.valueOf(mark).split('\\|', -1);
-      Boolean switched = ids.size() == 4 && ids[3] == SWITCHED;
-      if (ids.size() != 3 && !switched) {
+      Boolean isSwitched = ids.size() == 4 && ids[3] == SWITCHED;
+      if (ids.size() != 3 && !isSwitched) {
         throw unreadable();
       }
       List<String> written = new List<String>();
@@ -54,7 +54,7 @@ public with sharing class RainMarks {
           throw unreadable();
         }
       }
-      if (switched) {
+      if (isSwitched) {
         written.add(SWITCHED);
       }
       found.add(String.join(written, SEPARATOR));
