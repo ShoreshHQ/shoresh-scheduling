@@ -47,6 +47,8 @@ public with sharing class ChoicesImport {
     public String camperNumber;
     public String comment;
     public Id groupId;
+    // The division the sheet names for the row, when the program has it (null: none given).
+    public Id divisionId;
     public List<SheetChoice> choices = new List<SheetChoice>();
   }
 

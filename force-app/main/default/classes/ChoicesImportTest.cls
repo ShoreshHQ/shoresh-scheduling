@@ -577,6 +577,44 @@ private class ChoicesImportTest {
   }
 
   @IsTest
+  static void aGroupOfAnotherDivisionThanTheRowsIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      Division__c boys = ShoreshTestData.division(camp.ids.get('Main'), 'Boys');
+      Division__c girls = ShoreshTestData.division(
+        camp.ids.get('Main'),
+        'Girls'
+      );
+      Group__c boysBunk = ShoreshTestData.groupIn(boys.Id, 'Bunk 1');
+      ShoreshTestData.groupIn(girls.Id, 'Bunk 1');
+      ChoicesImport.Request request = camp.request();
+      ChoicesImport.SheetCamper dana = inGroup(
+        withChoices(
+          camper(2, 'Dana Brookfield', '2001'),
+          archeryThenDrama(camp)
+        ),
+        boysBunk.Id
+      );
+      dana.divisionId = girls.Id;
+      request.campers.add(dana);
+
+      Test.startTest();
+      String wrongDivision = refusal(request);
+      Test.stopTest();
+
+      Assert.areEqual(
+        'Row 2: the group is not in the row\'s division. Reload the page.',
+        wrongDivision
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM ElectiveRun__c WHERE Season__c = :camp.season.Id],
+        'Nothing saved'
+      );
+    }
+  }
+
+  @IsTest
   static void anOutsiderCannotReadOrBringIn() {
     ChoicesCamp camp;
     System.runAs(ShoreshTestData.scheduler()) {

@@ -244,6 +244,77 @@ describe("card 2: what needs a person", () => {
   });
 });
 
+describe("a bunk name used in two divisions", () => {
+  const SHARED = {
+    programs: [
+      {
+        program: { Id: "p1", Name: "Main" },
+        divisions: [
+          {
+            division: { Id: "dB", Name: "Boys" },
+            groups: [{ Id: "gB1", Name: "Bunk 1" }]
+          },
+          {
+            division: { Id: "dG", Name: "Girls" },
+            groups: [
+              { Id: "gG1", Name: "Bunk 1" },
+              { Id: "gG2", Name: "Bunk 2" }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+  const sharedReading = () =>
+    readChoices(
+      csvFile(
+        "shared.csv",
+        lines(
+          "Camper ID,Name,Division,Bunk,Choice 1,Choice 2",
+          "2001,Dana Brookfield,Girls,Bunk 1,Archery,Drama",
+          "2002,Tal Ridgeway,,Bunk 1,Archery,Drama",
+          "2003,Lior Stonebank,Middlers,Bunk 1,Archery,Drama",
+          "2004,Shai Fernhill,,Bunk 2,Archery,Drama",
+          "2005,Gil Thornmoor,Boys,Bunk 1,Archery,Drama"
+        )
+      ),
+      { activities: ACTIVITIES.map((a) => a.Name) }
+    );
+  const request = () =>
+    buildRequest({
+      reading: sharedReading(),
+      activities: ACTIVITIES,
+      answers: {},
+      groups: groupsOfProgram(SHARED, "p1"),
+      place: { seasonId: "s1", setId: "e1", weekId: "w1", scheduleId: "c1" },
+      fileName: "shared.csv",
+      fingerprint: "abc",
+      runRevision: null
+    });
+
+  it("goes by the sheet's division to pick the bunk", () => {
+    const byName = Object.fromEntries(
+      request().campers.map((c) => [c.name, [c.groupId, c.divisionId]])
+    );
+    expect(byName["Dana Brookfield"]).toEqual(["gG1", "dG"]);
+    expect(byName["Gil Thornmoor"]).toEqual(["gB1", "dB"]);
+    expect(byName["Shai Fernhill"]).toEqual(["gG2", null]);
+  });
+
+  it("never guesses: no division, or one the program doesn't have, is shown on card 2", () => {
+    const byName = Object.fromEntries(
+      request().campers.map((c) => [c.name, c.groupId])
+    );
+    expect(byName["Tal Ridgeway"]).toBeNull();
+    expect(byName["Lior Stonebank"]).toBeNull();
+    const rows = notReadRows(sharedReading(), groupsOfProgram(SHARED, "p1"), t);
+    expect(rows.map((r) => [r.name, r.where, r.why])).toEqual([
+      ["Tal Ridgeway", "Row 3", 'More than one Bunk "Bunk 1"'],
+      ["Lior Stonebank", "Row 4", 'More than one Bunk "Bunk 1"']
+    ]);
+  });
+});
+
 describe("the request: what the director confirmed", () => {
   const place = { seasonId: "s1", setId: "e1", weekId: "w1", scheduleId: "c1" };
   const build = (answers) =>

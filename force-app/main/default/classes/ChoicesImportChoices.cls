@@ -25,7 +25,10 @@ public with sharing class ChoicesImportChoices {
 
   // ---------------------------------------------------------------- checks
 
-  /** Each choice has a kind Shoresh knows and a name; each camper's group is of the program. */
+  /**
+   * Each choice has a kind Shoresh knows and a name; each camper's group is of the program, and
+   * of the row's division when the sheet names one.
+   */
   public void checkChoices() {
     Set<Id> groupIds = new Set<Id>();
     for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
@@ -37,18 +40,32 @@ public with sharing class ChoicesImportChoices {
     if (groupIds.isEmpty()) {
       return;
     }
-    Integer ofProgram = [
-      SELECT COUNT()
-      FROM Group__c
-      WHERE
-        Id IN :groupIds
-        AND Division__r.Program__c = :place.schedule.Program__c
-      WITH USER_MODE
-    ];
-    if (ofProgram != groupIds.size()) {
+    Map<Id, Group__c> ofProgram = new Map<Id, Group__c>(
+      [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE
+          Id IN :groupIds
+          AND Division__r.Program__c = :place.schedule.Program__c
+        WITH USER_MODE
+      ]
+    );
+    if (ofProgram.size() != groupIds.size()) {
       throw new ShoreshException(
         'A camper\'s group is not in this schedule\'s program. Reload the page.'
       );
+    }
+    for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
+      if (
+        sheetCamper.groupId != null &&
+        sheetCamper.divisionId != null &&
+        ofProgram.get(sheetCamper.groupId).Division__c != sheetCamper.divisionId
+      ) {
+        throw new ShoreshException(
+          ChoicesImport.rowWords(sheetCamper) +
+          'the group is not in the row\'s division. Reload the page.'
+        );
+      }
     }
   }
 

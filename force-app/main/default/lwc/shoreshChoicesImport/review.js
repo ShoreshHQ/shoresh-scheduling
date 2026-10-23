@@ -301,28 +301,52 @@ export function rememberedAnswers(newNames, answers, activities) {
   return result;
 }
 
-/** The program's groups by folded name, for the sheet's bunks. */
+/**
+ * The program's groups by folded name, each with its division ({ group, division }), and its
+ * divisions by folded name, for the sheet's bunks. A name can be used in more than one division.
+ */
 export function groupsOfProgram(setup, programId) {
-  const result = new Map();
+  const byName = new Map();
+  const divisions = new Map();
   for (const entry of (setup && setup.programs) || []) {
     if (entry.program.Id !== programId) continue;
     for (const d of entry.divisions || []) {
+      const divisionKey = foldName(d.division && d.division.Name);
+      if (divisionKey && !divisions.has(divisionKey)) {
+        divisions.set(divisionKey, d.division);
+      }
       for (const g of d.groups || []) {
         const key = foldName(g.Name);
-        if (key && !result.has(key)) result.set(key, g);
+        if (!key) continue;
+        if (!byName.has(key)) byName.set(key, []);
+        byName.get(key).push({ group: g, division: d.division });
       }
     }
   }
-  return result;
+  return { byName, divisions };
 }
 
-/** The group the sheet names for a camper, or why there is none ("none" or "unknown"). */
+/**
+ * The group the sheet names for a camper, and the sheet's division when the program has it; or
+ * why there is no group ("none", "unknown", or "ambiguous": the name is in more than one division
+ * and the sheet's division doesn't say which). Never guesses.
+ */
 export function bunkOf(camper, groups) {
-  if (!camper.bunk) return { groupId: null, problem: "none" };
-  const group = groups.get(foldName(camper.bunk));
-  return group
-    ? { groupId: group.Id, problem: null }
-    : { groupId: null, problem: "unknown" };
+  const division = camper.division
+    ? groups.divisions.get(foldName(camper.division)) || null
+    : null;
+  const divisionId = division ? division.Id : null;
+  if (!camper.bunk) return { groupId: null, divisionId, problem: "none" };
+  let found = groups.byName.get(foldName(camper.bunk)) || [];
+  if (found.length > 1) {
+    found = division ? found.filter((f) => f.division.Id === division.Id) : [];
+    if (found.length !== 1) {
+      return { groupId: null, divisionId, problem: "ambiguous" };
+    }
+  }
+  return found.length === 1
+    ? { groupId: found[0].group.Id, divisionId, problem: null }
+    : { groupId: null, divisionId, problem: "unknown" };
 }
 
 function rowsText(rows) {
@@ -412,7 +436,9 @@ export function notReadRows(reading, groups, t) {
       why:
         problem === "none"
           ? `No ${t.sIn("Group")}`
-          : `No ${t.sIn("Group")} "${camper.bunk}"`
+          : problem === "ambiguous"
+            ? `More than one ${t.sIn("Group")} "${camper.bunk}"`
+            : `No ${t.sIn("Group")} "${camper.bunk}"`
     });
   });
   (reading.notKept || [])
@@ -586,12 +612,14 @@ export function buildRequest({
       if (settled === null) return null;
       if (settled) choices.push(settled);
     }
+    const bunk = bunkOf(camper, groups);
     campers.push({
       row: camper.rows[0] ? camper.rows[0].row : null,
       name: camper.name || camper.number,
       camperNumber: camper.number || null,
       comment: comments.get(camper.key) || null,
-      groupId: bunkOf(camper, groups).groupId,
+      groupId: bunk.groupId,
+      divisionId: bunk.divisionId,
       choices
     });
   }
