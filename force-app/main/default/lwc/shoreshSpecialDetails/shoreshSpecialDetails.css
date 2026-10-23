@@ -276,3 +276,45 @@
 .place-said:empty {
   display: none;
 }
+
+/* A special day's days under Placed on, each with its Take off (ADR 0014 slice 6; desktop's
+   "Placed on" chips with their x). */
+.placed-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1) var(--shoresh-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.placed-day {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s1);
+}
+
+.placed-off {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+}
+
+.placed-off:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-text-1);
+}
+
+.placed-off:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}

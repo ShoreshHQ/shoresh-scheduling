@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
+import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 
@@ -66,16 +67,30 @@ export function briefOf(setup, itemId) {
  * season ("Wk 5 Thu, Wk 6 Tue"; a camp with its own word, "Session 5 Thu"); "" when on none.
  */
 export function placedOnText(brief, weeks, weekWords) {
+  return placedDays(brief, weeks, weekWords)
+    .map((placed) => placed.text)
+    .join(", ");
+}
+
+/**
+ * Each day an item is on, as placedOnText names it ("Wk 5 Thu"), with its week and weekday:
+ * { weekId, weekName, day, text }. Days of a week no longer in the season are left out.
+ */
+export function placedDays(brief, weeks, weekWords) {
   const one = (weekWords && weekWords.one) || "Wk";
   return (brief.days || [])
     .map((onDay) => {
       const at = (weeks || []).findIndex((w) => w.Id === onDay.weekId);
       return at < 0
         ? null
-        : `${one} ${at + 1} ${SHORT_DAYS[onDay.day] || onDay.day}`;
+        : {
+            weekId: onDay.weekId,
+            weekName: weeks[at].Name,
+            day: onDay.day,
+            text: `${one} ${at + 1} ${SHORT_DAYS[onDay.day] || onDay.day}`
+          };
     })
-    .filter((text) => text)
-    .join(", ");
+    .filter((placed) => placed);
 }
 
 /**
@@ -152,11 +167,16 @@ function clock(value) {
  * A special day is put on a day here (ADR 0014 slice 4; desktop "+ Place on a day"): "Put on a
  * day" picks the week and the weekday; one that already has another special day asks first
  * ("Use this one instead? … stays saved"), as the desktop does. Its days then show it on Manual
- * Build and Generated Schedule. (Taking one off a day comes later, slice 6.)
+ * Build and Generated Schedule.
+ *
+ * Taken off a day (slice 6; desktop "Placed on" chips' x, "Remove from this day"): each day under
+ * Placed on has its own Take off. That day has its regular schedule again and the special day
+ * stays saved; it is said, and **Put back** puts it on that day again (the week's own cells for
+ * that day were kept all along, so the day is as it was).
  *
  * Fires: close { itemId } (Close pressed: the page puts the cursor back on the row's chevron),
- * openschedule { itemId } (Open schedule pressed), placed { itemId } (it was put on a day: the
- * page reads the season again).
+ * openschedule { itemId } (Open schedule pressed), placed { itemId } (it was put on or taken off a
+ * day: the page reads the season again).
  */
 export default class ShoreshSpecialDetails extends LightningElement {
   @api terms;
@@ -169,6 +189,10 @@ export default class ShoreshSpecialDetails extends LightningElement {
   placing = null;
   // What the last put said (role=status), until the details close or another item opens.
   placedSaid = null;
+  // The day it was just taken off ({ weekId, day }), for Put back; null otherwise.
+  takenOff = null;
+  // A Take off under way.
+  takingOff = false;
 
   /** The season setup from SeasonSetupController (special, weeks, locations). */
   @api
@@ -202,6 +226,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     if (this.itemId !== itemId) {
       this.placing = null;
       this.placedSaid = null;
+      this.takenOff = null;
     }
     this.itemId = itemId;
     this.focusHeadingNext = true;
@@ -242,6 +267,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     this.itemId = null;
     this.placing = null;
     this.placedSaid = null;
+    this.takenOff = null;
     this.dispatchEvent(new CustomEvent("close", { detail: { itemId } }));
   }
 
@@ -300,6 +326,22 @@ export default class ShoreshSpecialDetails extends LightningElement {
 
   get placedOnClass() {
     return this.brief.days.length ? "value" : "value quiet";
+  }
+
+  /** A special day's days, each with its Take off (named for screen readers). */
+  get daysToTakeOff() {
+    if (this.isEvent) {
+      return [];
+    }
+    return placedDays(this.brief, this.weeks, this.weekWords).map((placed) => ({
+      ...placed,
+      key: `${placed.weekId}|${placed.day}`,
+      offLabel: `Take ${this.name} off ${placed.day} of ${placed.weekName}`
+    }));
+  }
+
+  get hasDaysToTakeOff() {
+    return this.daysToTakeOff.length > 0;
   }
 
   get notes() {
@@ -392,6 +434,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     const week = this.weeks[0];
     const days = weekdaysOf(week);
     this.placedSaid = null;
+    this.takenOff = null;
     this.placing = {
       weekId: week ? week.Id : null,
       day: days.length ? days[0] : null,
@@ -448,6 +491,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     const itemId = this.itemId;
     const asked = this.placing;
     this.placing = { ...asked, working: true };
+    this.takenOff = null;
     try {
       const result = await putOnDay({
         request: {
@@ -492,6 +536,76 @@ export default class ShoreshSpecialDetails extends LightningElement {
         e
       );
     }
+  }
+
+  // ---------- take off a day (special days, slice 6) ----------
+
+  /**
+   * Takes the special day off one of its days. The cursor goes to Put back, the way to undo it;
+   * a refusal is said and nothing changes.
+   */
+  async handleTakeOff(event) {
+    const placed = this.daysToTakeOff.find(
+      (d) => d.key === event.currentTarget.dataset.key
+    );
+    if (!placed || this.takingOff) {
+      return;
+    }
+    const itemId = this.itemId;
+    this.takingOff = true;
+    this.placing = null;
+    try {
+      const result = await takeOffDay({
+        request: {
+          specialDayId: itemId,
+          weekId: placed.weekId,
+          day: placed.day,
+          answer: null
+        }
+      });
+      if (this.itemId !== itemId) {
+        return;
+      }
+      this.placedSaid = result.said;
+      this.takenOff = { weekId: placed.weekId, day: placed.day };
+      this.dispatchEvent(new CustomEvent("placed", { detail: { itemId } }));
+      Promise.resolve().then(() => {
+        const back = this.template.querySelector('[data-id="put-back"]');
+        if (back) {
+          back.focus();
+        }
+      });
+    } catch (e) {
+      this.placedSaid = failed(
+        `${this.name} wasn't taken off ${placed.day} of ${placed.weekName}. Nothing was changed.`,
+        e
+      );
+    } finally {
+      this.takingOff = false;
+    }
+  }
+
+  get putBackLabel() {
+    return this.takenOff ? `Put back ${this.name} on ${this.takenOff.day}` : "";
+  }
+
+  /**
+   * Put back: the day it was just taken off, as Put on does it (another special day put there
+   * since asks first).
+   */
+  handlePutBack() {
+    const back = this.takenOff;
+    if (!back) {
+      return;
+    }
+    this.takenOff = null;
+    this.placing = {
+      weekId: back.weekId,
+      day: back.day,
+      asks: null,
+      working: false
+    };
+    this.put(false);
   }
 
   /** An event's schedule in brief, or none yet. */

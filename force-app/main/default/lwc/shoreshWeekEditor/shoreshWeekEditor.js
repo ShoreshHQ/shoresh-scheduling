@@ -159,8 +159,8 @@ function slotKey(slot) {
  * WeekSpecials) and the season setup's special events. A day a special day replaces shows its own schedule, read-only, in Daily View
  * (its name on the day's pill, "Fri · Visiting Day"), one named cell in Group View, and nothing in
  * Activity View; it is left out of the checks and counts, the counter (the host's checks slot) is
- * not shown on it, and the drawer's place has the special day's line: its name, notes and "Open
- * <name>" ("openspecial" { itemId }). The season's special events are placed from the drawer's
+ * not shown on it, and the drawer's place has the special day's line: its name, notes, "Take off
+ * <day>" when the host gives takeOffWith (slice 6) and "Open <name>" ("openspecial" { itemId }). The season's special events are placed from the drawer's
  * Events section or by typing a name, over one cell or the cells chosen together; bunks side by
  * side holding one over the same blocks are one cell. A cell noted from a file as a special event
  * or day "not set up yet" offers "Set it up" while it has focus: the host's setUpWith({ kind, name
@@ -218,6 +218,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   stepRain = new Map();
   // "Set it up" is under way.
   settingUp = false;
+  // Takes a special day off the day it replaces (ADR 0014 slice 6): ({ specialDayId, day }) =>
+  // Promise of the words to say. Left out, no "Take off <day>" is offered.
+  @api takeOffWith;
+  // "Take off <day>" is under way.
+  takingOff = false;
   // The Edit menu's row that has its rows open under it (Copy day to…), or null.
   openEditGroup = null;
   // Cells chosen together (Shift or Cmd/Ctrl with a click, a Shift-drag, Shift with Left or
@@ -263,6 +268,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusAfterRender = null;
   // "Set it up" done: { key } of its cell, focused once drawn ("Open <name>" if the day is replaced).
   focusAfterSetUp = null;
+  // "Take off <day>" done: { index } of that day's pill, focused once drawn.
+  focusPillAfterRender = null;
   // focusCell asked before the grid was drawn (a week just started): { key }, kept until it is.
   focusCellWhenDrawn = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -914,8 +921,41 @@ export default class ShoreshWeekEditor extends LightningElement {
       name: shown.name,
       kind: this.t.s("SpecialDay"),
       notes: shown.notes || "",
-      open: `Open ${shown.name}`
+      open: `Open ${shown.name}`,
+      // The mock-up's "Take off Friday" (placed-day.png), when the host can.
+      takeOff: this.takeOffWith ? `Take off ${shown.day}` : null
     };
+  }
+
+  /**
+   * "Take off <day>" (ADR 0014 slice 6; desktop "Remove from this day"): the host takes the
+   * special day off and reads the week again, so the day's own cells, kept all along, are back.
+   * What it says is said here; the cursor goes to that day's pill, which stays chosen.
+   */
+  async handleTakeOffSpecial() {
+    const shown = this.replacedShown;
+    if (!shown || !this.takeOffWith || this.takingOff) {
+      return;
+    }
+    const index = this.dayIndex;
+    this.takingOff = true;
+    try {
+      const said = await this.takeOffWith({
+        specialDayId: shown.specialDayId,
+        day: shown.day
+      });
+      this.sayOnce(said || `${shown.name} is off ${shown.day}.`);
+      this.focusPillAfterRender = { index };
+    } catch (e) {
+      this.reportError(
+        failed(
+          `${shown.name} wasn't taken off ${shown.day}. Nothing was changed.`,
+          e
+        )
+      );
+    } finally {
+      this.takingOff = false;
+    }
   }
 
   /** The counter is the week's: not shown on a day a special day replaces (decision 47.4). */
@@ -4269,6 +4309,16 @@ export default class ShoreshWeekEditor extends LightningElement {
         open.focus();
       } else if (grid) {
         grid.focusCell(key);
+      }
+    }
+    if (this.focusPillAfterRender) {
+      const { index } = this.focusPillAfterRender;
+      this.focusPillAfterRender = null;
+      const pill = this.template.querySelector(
+        `[data-id="day-pills"] button[data-index="${index}"]`
+      );
+      if (pill) {
+        pill.focus();
       }
     }
     if (this.focusCellWhenDrawn) {

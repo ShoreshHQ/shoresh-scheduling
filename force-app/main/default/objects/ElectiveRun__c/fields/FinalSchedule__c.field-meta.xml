@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FinalSchedule__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The saved version of the schedule taken when it was finalized; its downloads read this version.</description>
+    <label>Final Schedule</label>
+    <referenceTo>Schedule__c</referenceTo>
+    <relationshipLabel>Final Elective Runs</relationshipLabel>
+    <relationshipName>FinalElectiveRuns</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

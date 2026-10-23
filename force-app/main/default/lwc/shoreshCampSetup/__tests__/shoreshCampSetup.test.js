@@ -1690,6 +1690,52 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
+  it("deleting a week names the special days and events it takes off its days", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          special: {
+            specialDays: [{ Id: "sd1", Name: "Field Day" }],
+            specialEvents: [{ Id: "se1", Name: "Carnival" }],
+            briefs: [
+              {
+                itemId: "sd1",
+                planned: false,
+                rows: 0,
+                periods: [],
+                days: [
+                  { weekId: "w1", day: "Tuesday" },
+                  { weekId: "w2", day: "Friday" }
+                ]
+              },
+              {
+                itemId: "se1",
+                planned: false,
+                rows: 0,
+                periods: [],
+                days: [
+                  { weekId: "w1", day: "Wednesday" },
+                  { weekId: "w1", day: "Thursday" }
+                ]
+              }
+            ]
+          }
+        })
+      )
+    );
+    const element = await render();
+    LightningConfirm.open.mockResolvedValue(nsRecord(false));
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[0][0].message).toBe(
+      'Delete "Week 1"? Anything inside it is deleted too. It takes "Field Day" off Tuesday and "Carnival" off Wednesday and Thursday.'
+    );
+  });
+
   describe("the season, beside its picker", () => {
     async function renderSeason(setup = setupWith()) {
       getCamps.mockResolvedValue(nsRecord([CAMP]));

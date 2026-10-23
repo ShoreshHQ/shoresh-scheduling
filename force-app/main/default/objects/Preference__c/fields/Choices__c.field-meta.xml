@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Choices__c</fullName>
+    <description
+  >The camper's choices as Shoresh uses them, in its compact format: each as written, what it was read as, an optional day and time block, its rank or none, and its kind. Written and read by Shoresh only.</description>
+    <label>Choices</label>
+    <length>131072</length>
+    <securityClassification>Confidential</securityClassification>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

@@ -44,9 +44,9 @@
  *   started from; its details open from its chevron with focus on their heading; its schedule
  *   opens from Open schedule with focus on its name, a name typed into a cell is saved and said,
  *   and the way back puts focus on Open schedule (choices 14 and 15); "Put on a day" puts it on
- *   a week's day by keyboard, what was done said and focus back on Put on a day (slice 4); Close
- *   puts focus back on the chevron; taken off that day (by Apex: Take off comes in slice 6), it
- *   is deleted again;
+ *   a week's day by keyboard, what was done said and focus back on Put on a day (slice 4); its
+ *   Take off under Placed on takes it off that day by keyboard, what comes back said and focus on
+ *   Put back (slice 6); Close puts focus back on the chevron; then it is deleted again;
  * - rules Shoresh guessed (ADR 0006 §21): an activity's how often, marked as an import would
  *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
  *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
@@ -1668,7 +1668,7 @@ async function campSetup() {
   );
   await step(
     S,
-    "Special events: a special day added, its details and schedule, put on a day, then deleted",
+    "Special events: a special day added, its details and schedule, put on a day, taken off, then deleted",
     specialEvents
   );
 }
@@ -1723,6 +1723,7 @@ async function specialEvents() {
   await axe("Special events, an item's details open");
   await specialSchedule(E, DAY);
   await putOnADay(E, DAY);
+  await takeOffADay(E, DAY);
   if (
     !(await tabTo(
       named(new RegExp(`^Close ${DAY} details$`), { tag: "button" }),
@@ -1738,11 +1739,7 @@ async function specialEvents() {
     tag: "button",
     name: new RegExp(`^${DAY} details$`)
   });
-  // On a day, it can't be deleted (ADR 0014 choice 8): taken off first. Take off comes with
-  // slice 6, so here it is Apex, and only this step's special day in the check's camp.
-  apex(`
-delete [SELECT Id FROM SpecialDate__c WHERE SpecialDay__r.Name = '${DAY}' AND Season__r.Camp__r.Name = '${CAMP}'];
-`);
+  // On a day, it can't be deleted (ADR 0014 choice 8): takeOffADay took it off.
   await inputs.nth(at).focus();
   if (!(await tabTo(named(new RegExp(`^Delete ${DAY}$`)), { max: 20 })))
     throw new Error(`"${DAY}"'s delete not reached with Tab.`);
@@ -1836,6 +1833,32 @@ async function putOnADay(E, DAY) {
     tag: "button",
     name: /^Put on a day$/
   });
+}
+
+/**
+ * Take off (ADR 0014 slice 6), in the special day's details: from "Put on a day", Shift+Tab
+ * reaches the Take off of the day it was just put on (under Placed on); Enter takes it off, what
+ * comes back is said (role status) and focus goes to Put back, the way to undo it (axe looks).
+ */
+async function takeOffADay(E, DAY) {
+  if (
+    !(await tabTo(
+      named(new RegExp(`^Take ${DAY} off \\w+day of `), { tag: "button" }),
+      { max: 6, back: true }
+    ))
+  )
+    throw new Error("Take off was not reached with Tab.");
+  await expectLive(
+    E,
+    "Take off: what comes back is said",
+    new RegExp(`has its regular schedule again\\. "${DAY}" stays saved\\.$`),
+    () => press("Enter", 3000)
+  );
+  await expectFocus(E, "Take off: focus on Put back", {
+    tag: "button",
+    name: new RegExp(`^Put back ${DAY} on \\w+day$`)
+  });
+  await axe("Special events, a special day just taken off a day");
 }
 
 /** The first saved row's name box in the screen's tables, reached with Tab. */

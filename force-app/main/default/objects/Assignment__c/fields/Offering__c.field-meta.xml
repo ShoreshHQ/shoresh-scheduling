@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offering__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The offering the camper has a seat in, from the run's elective set.</description>
+    <label>Offering</label>
+    <referenceTo>Offering__c</referenceTo>
+    <relationshipLabel>Assignments</relationshipLabel>
+    <relationshipName>Assignments</relationshipName>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

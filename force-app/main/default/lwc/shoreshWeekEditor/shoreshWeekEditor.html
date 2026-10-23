@@ -423,6 +423,17 @@
             {specialLine.notes}
           </p>
           <div class="special-actions">
+            <template lwc:if={specialLine.takeOff}>
+              <button
+                type="button"
+                class="shoresh-item special-off"
+                data-id="take-off-special"
+                aria-disabled={takingOff}
+                onclick={handleTakeOffSpecial}
+              >
+                {specialLine.takeOff}
+              </button>
+            </template>
             <button
               type="button"
               class="shoresh-item special-open"

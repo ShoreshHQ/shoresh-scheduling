@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
+import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
@@ -497,6 +498,20 @@ export default class ShoreshManualBuild extends LightningElement {
       return null;
     }
     const done = await setUpItem({ scheduleId, kind, name });
+    this.dispatchEvent(new CustomEvent("seasonchanged"));
+    this.load(true);
+    return done && done.said;
+  };
+
+  /**
+   * "Take off <day>" on a day a special day replaces (ADR 0014 slice 6): taken off on the server,
+   * then the week and the season are read again, so the day's own cells are back. Resolves to
+   * what to say.
+   */
+  takeOffWith = async ({ specialDayId, day }) => {
+    const done = await takeOffDay({
+      request: { specialDayId, weekId: this.weekId, day, answer: null }
+    });
     this.dispatchEvent(new CustomEvent("seasonchanged"));
     this.load(true);
     return done && done.said;

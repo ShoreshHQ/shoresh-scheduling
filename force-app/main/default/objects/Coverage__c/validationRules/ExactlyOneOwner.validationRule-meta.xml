@@ -3,7 +3,8 @@
     <fullName>ExactlyOneOwner</fullName>
     <active>true</active>
     <description
-  >Exactly one owner: so far only a recurring activity.</description>
-    <errorConditionFormula>ISBLANK(RecurringActivity__c)</errorConditionFormula>
+  >Exactly one owner: a recurring activity or a linked choice.</description>
+    <errorConditionFormula
+  >IF(ISBLANK(RecurringActivity__c), 0, 1) + IF(ISBLANK(LinkedChoice__c), 0, 1) &lt;&gt; 1</errorConditionFormula>
     <errorMessage>Choose what this row is for.</errorMessage>
 </ValidationRule>

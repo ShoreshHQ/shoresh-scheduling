@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offering__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description>The offering it links, in the same elective set.</description>
+    <label>Offering</label>
+    <referenceTo>Offering__c</referenceTo>
+    <relationshipLabel>Linked Choices</relationshipLabel>
+    <relationshipName>LinkedChoices</relationshipName>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>
