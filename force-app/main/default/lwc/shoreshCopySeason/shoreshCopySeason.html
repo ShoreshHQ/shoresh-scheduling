@@ -74,7 +74,14 @@
     </template>
     <template lwc:if={hasPreviewWeeks}>
       <!-- Last season's weeks, faint, over the new ones: each column is one week. -->
-      <div class="weeks-scroll">
+      <!-- A long season scrolls sideways: the keyboard can reach and scroll it too. -->
+      <div
+        class="weeks-scroll"
+        tabindex="0"
+        role="region"
+        aria-label={labels.weeks}
+        data-id="weeks-scroll"
+      >
         <table class="weeks" aria-label={labels.weeks} style={weeksStyle}>
           <tbody>
             <tr class="weeks-old" data-id="old-weeks">

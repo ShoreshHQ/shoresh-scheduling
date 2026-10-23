@@ -370,7 +370,10 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
       screens (Camp, Activities, Electives, Schedules). The rail says how many words are the
       camp's own ("4 changed") and "Saved"; it saves as you go (ADR 0013 choice 1), with no
       Save button, and a guessed plural is sent as guessed, so the server still gets both
-      words (`CampLabels.TermLabel`). Its boxes are plain inputs, each named for screen readers
+      words (`CampLabels.TermLabel`). After each save it reads back which words have a saved
+      record, so a word typed for the first time and put back straight away is removed (before,
+      the screen still thought it had none and the camp's word stayed; found by the browser
+      check). Its boxes are plain inputs, each named for screen readers
       ("Group"; "Group, more than one").
     - **Programs is the shared setup table** (ADR 0011, choice 11): one row per program, its name,
       **Runs on** as a strip of day ticks always shown (a `days` column with `strip: true`; the

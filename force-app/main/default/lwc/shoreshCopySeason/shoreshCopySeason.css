@@ -78,6 +78,15 @@
 /* The weeks: one column each, last season's above in a faint outline, the new ones raised. */
 .weeks-scroll {
   overflow-x: auto;
+  border-radius: var(--shoresh-radius);
+}
+
+.weeks-scroll:focus {
+  outline: none;
+}
+
+.weeks-scroll:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
 }
 
 .weeks {

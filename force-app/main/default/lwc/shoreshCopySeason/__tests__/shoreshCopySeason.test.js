@@ -105,6 +105,10 @@ describe("c-shoresh-copy-season", () => {
     expect(
       element.shadowRoot.querySelector("table").getAttribute("aria-label")
     ).toBe("Sessions in Summer 2026 and in the new season");
+    // A long season scrolls sideways, and the keyboard reaches it (axe scrollable-region-focusable).
+    const scroll = element.shadowRoot.querySelector('[data-id="weeks-scroll"]');
+    expect(scroll.getAttribute("tabindex")).toBe("0");
+    expect(scroll.getAttribute("role")).toBe("region");
     expect(
       element.shadowRoot.querySelector('[data-id="weekday-warning"]')
     ).toBeNull();

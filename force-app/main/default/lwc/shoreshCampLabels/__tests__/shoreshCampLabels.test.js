@@ -363,6 +363,44 @@ describe("c-shoresh-camp-labels", () => {
     expect(saveCampLabels).not.toHaveBeenCalled();
   });
 
+  it("a word typed for the first time and then put back is removed: its new record is sent", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    // Saved, the server now holds Unit as Division's record a03.
+    getLabels.mockResolvedValue(
+      LABELS.map((row) => {
+        if (row.term !== "Division") {
+          return row;
+        }
+        return {
+          ...row,
+          singular: "Unit",
+          plural: "Units",
+          isCustom: true,
+          labelId: "a03"
+        };
+      })
+    );
+    await type(element, "Division", "singular", "Unit");
+    leave(element, "Division", "singular");
+    await flush();
+    await type(element, "Division", "singular", "");
+    leave(element, "Division", "singular");
+    await flush();
+    const division = (call) =>
+      saveCampLabels.mock.calls[call][0].labels.find(
+        (r) => r.term === "Division"
+      );
+    expect(division(0)).toMatchObject({ singular: "Unit", labelId: null });
+    expect(division(1)).toMatchObject({
+      singular: "",
+      plural: "",
+      labelId: "a03"
+    });
+    // What is on screen stays as typed.
+    expect(input(element, "Division", "singular").value).toBe("");
+  });
+
   it("is accessible", async () => {
     const element = await render();
     await expect(element).toBeAccessible();
