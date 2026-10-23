@@ -1,7 +1,8 @@
 /**
  * Putting a special day on a day (SpecialDayPlacing: asked first before replacing another), and
  * "Set it up" on a cell an import noted as not set up yet (SpecialSetUp: the event's cells point
- * at it; the special day goes on the weekdays the file had it). ADR 0014 slice 4. As a scheduler,
+ * at it; the special day goes on the weekdays the file had it). ADR 0014 slice 4. Taking a
+ * special day off a day (slice 6): the day's regular schedule back as it was, the special day kept. As a scheduler,
  * with records made inside the same System.runAs; each request's queries are bounded.
  */
 @IsTest
@@ -102,6 +103,122 @@ private class SpecialPlacingTest {
         '"Visiting Day" is already on Tuesday of "Week 1".',
         again.said
       );
+    }
+  }
+
+  /** The text and revision of each day of a schedule, by date: what it holds, kept or not. */
+  private static Map<Date, String> daysHeld(Id scheduleId) {
+    Map<Date, String> held = new Map<Date, String>();
+    for (ScheduleDays.DayGrid read : ScheduleDays.read(scheduleId)) {
+      held.put(read.day, JSON.serialize(read.grid) + '@' + read.revision);
+    }
+    return held;
+  }
+
+  @IsTest
+  static void takingASpecialDayOffGivesTheDayBackAsItWas() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id week = ids.get('Week 1');
+      ManualBuildViews.DraftView started = ManualBuildController.startBlankWeek(
+        ids.get('Main'),
+        week
+      );
+      Id draftId = started.schedule.schedule.id;
+      SpecialDates.place(ids.get('Field Day'), week, 'Tuesday');
+      Map<Date, String> heldBefore = daysHeld(draftId);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialDayPlacing.Placed off = SpecialPlacingController.takeOffDay(
+        request(ids.get('Field Day'), week, 'Tuesday')
+      );
+      Integer used = Limits.getQueries() - before;
+      SpecialDayPlacing.Placed again = SpecialPlacingController.takeOffDay(
+        request(ids.get('Field Day'), week, 'Tuesday')
+      );
+      Test.stopTest();
+
+      Assert.isTrue(used <= 10, 'Queries to take a special day off: ' + used);
+      Assert.areEqual(
+        'Tuesday of "Week 1" has its regular schedule again. "Field Day" stays saved.',
+        off.said
+      );
+      Assert.areEqual(0, daysOf(week).size(), 'Off that day');
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM SpecialDay__c
+          WHERE Id = :ids.get('Field Day')
+          WITH USER_MODE
+        ],
+        'The special day stays saved'
+      );
+      Assert.isTrue(
+        [
+          SELECT COUNT()
+          FROM PlanPart__c
+          WHERE SpecialDay__c = :ids.get('Field Day')
+          WITH USER_MODE
+        ] > 0,
+        'Its plan stays saved'
+      );
+      Assert.areEqual(
+        heldBefore,
+        daysHeld(draftId),
+        'The week\'s own days are as they were, Tuesday too'
+      );
+      Assert.areEqual(
+        0,
+        WeekSpecials.read(
+            [
+              SELECT Id, StartDate__c, EndDate__c
+              FROM Week__c
+              WHERE Id = :week
+              WITH USER_MODE
+            ],
+            new List<Group__c>()
+          )
+          .days.size(),
+        'Nothing replaces Tuesday now'
+      );
+      Assert.areEqual('"Field Day" is not on Tuesday of "Week 1".', again.said);
+    }
+  }
+
+  @IsTest
+  static void takingOffLeavesAnotherSpecialDayWhereItIs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id visiting = SpecialScheduleTestData.addDay(
+        ids.get('Season'),
+        'Visiting Day'
+      );
+      Id carnival = SpecialScheduleTestData.addEvent(
+        ids.get('Season'),
+        'Carnival'
+      );
+      Id week = ids.get('Week 1');
+      SpecialDates.place(visiting, week, 'Tuesday');
+
+      Test.startTest();
+      SpecialDayPlacing.Placed off = SpecialPlacingController.takeOffDay(
+        request(ids.get('Field Day'), week, 'Tuesday')
+      );
+      String refusal;
+      try {
+        SpecialPlacingController.takeOffDay(request(carnival, week, 'Tuesday'));
+      } catch (AuraHandledException e) {
+        refusal = e.getMessage();
+      }
+      Test.stopTest();
+
+      Assert.areEqual('"Field Day" is not on Tuesday of "Week 1".', off.said);
+      List<SpecialDate__c> now = daysOf(week);
+      Assert.areEqual(1, now.size());
+      Assert.areEqual('Visiting Day', now[0].SpecialDay__r.Name);
+      Assert.areEqual('That can\'t be taken off a day.', refusal);
     }
   }
 

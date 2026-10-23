@@ -1,6 +1,7 @@
 /**
- * Server side of putting special days and events on the week (ADR 0014 slice 4): Put on a day
- * from a special day's details on the Special events screen (SpecialDayPlacing), and "Set it up"
+ * Server side of putting special days and events on the week (ADR 0014 slices 4 and 6): Put on a
+ * day and Take off from a special day's details on the Special events screen, or from the day it
+ * replaces on Manual Build and Generated Schedule (SpecialDayPlacing), and "Set it up"
  * on a cell an import noted as not set up yet, from Manual Build or Generated Schedule
  * (SpecialSetUp). In user mode.
  */
@@ -15,6 +16,21 @@ public with sharing class SpecialPlacingController {
   ) {
     try {
       return SpecialDayPlacing.putOn(request);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Takes the special day off the week's weekday: that day has its regular schedule again, and
+   * the special day stays saved (ADR 0014 slice 6).
+   */
+  @AuraEnabled
+  public static SpecialDayPlacing.Placed takeOffDay(
+    SpecialDayPlacing.Request request
+  ) {
+    try {
+      return SpecialDayPlacing.takeOff(request);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

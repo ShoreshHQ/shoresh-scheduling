@@ -5,7 +5,7 @@
  * holds one special day, so putting one where another is asks first (desktop D11.4: "Week 2
  * Tuesday already uses Color War. Use Visiting Day instead?"); the one replaced stays saved. The
  * week's own cells for that day are kept as they are, out of sight, and come back when the day is
- * taken off (desktop D4.6: non-destructive). Runs in user mode.
+ * taken off (desktop D4.6: non-destructive; ADR 0014 slice 6). Runs in user mode.
  */
 public with sharing class SpecialDayPlacing {
   // The director's answer to "Use this one instead?": yes, replace the special day there.
@@ -102,6 +102,46 @@ public with sharing class SpecialDayPlacing {
       put(request, there);
       result.said = nameOf(request.specialDayId) + ' is on ' + dayText + '.';
     }
+    return result;
+  }
+
+  /**
+   * Takes the special day off the week's weekday (desktop "Remove from this day"; Director Guide
+   * "Take it off a day"): that day has its regular schedule again, the week's own cells for it
+   * just as they were kept (desktop D4.6), and the special day stays saved, so putting it back on
+   * gives the same day again. One already off says so and changes nothing.
+   */
+  public static Placed takeOff(Request request) {
+    if (request?.specialDayId?.getSObjectType() != SpecialDay__c.SObjectType) {
+      throw new ShoreshException('That can\'t be taken off a day.');
+    }
+    Week__c week = weekOf(request.weekId);
+    String dayText = SpecialDates.onDay(request.day, week.Name);
+    List<SpecialDate__c> there = [
+      SELECT Id, SpecialDay__r.Name
+      FROM SpecialDate__c
+      WHERE
+        Week__c = :request.weekId
+        AND Day__c = :request.day
+        AND SpecialDay__c = :request.specialDayId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    Placed result = new Placed();
+    if (there.isEmpty()) {
+      result.said =
+        nameOf(request.specialDayId) +
+        ' is not on ' +
+        dayText +
+        '.';
+      return result;
+    }
+    SpecialDates.takeOff(there[0].Id);
+    result.said =
+      dayText +
+      ' has its regular schedule again. "' +
+      there[0].SpecialDay__r.Name +
+      '" stays saved.';
     return result;
   }
 

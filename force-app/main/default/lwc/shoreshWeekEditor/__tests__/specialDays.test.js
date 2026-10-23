@@ -85,6 +85,9 @@ async function render(items, rows, options = {}) {
   if (options.setUpWith) {
     element.setUpWith = options.setUpWith;
   }
+  if (options.takeOffWith) {
+    element.takeOffWith = options.takeOffWith;
+  }
   document.body.appendChild(element);
   const week = draft(items, rows);
   if (options.tuesday) {
@@ -167,6 +170,66 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(open.textContent.trim()).toBe("Open Visiting Day");
     open.click();
     expect(opened.mock.calls[0][0].detail).toEqual({ itemId: "sd1" });
+  });
+
+  it("offers Take off <day> on a replaced day's line only when the host can", async () => {
+    const { element } = await render();
+    await showTuesday(element);
+    expect(q(element, '[data-id="take-off-special"]')).toBeNull();
+    const host = await render(undefined, undefined, { takeOffWith: jest.fn() });
+    await showTuesday(host.element);
+    expect(
+      q(host.element, '[data-id="take-off-special"]').textContent.trim()
+    ).toBe("Take off Tuesday");
+  });
+
+  it("takes the special day off: the day's own cells are back, said, focus on its pill", async () => {
+    const host = {};
+    const takeOffWith = jest.fn(() => {
+      // The host reads the week again: Tuesday is no longer replaced.
+      host.element.show(
+        { ...draft([SWIM], ["1,,", "1,,"]), specials: { days: [] } },
+        false
+      );
+      return Promise.resolve(
+        'Tuesday of "Week 1" has its regular schedule again. "Visiting Day" stays saved.'
+      );
+    });
+    const { element } = await render([SWIM], ["1,,", "1,,"], { takeOffWith });
+    host.element = element;
+    await showTuesday(element);
+    q(element, '[data-id="take-off-special"]').click();
+    await flush();
+    expect(takeOffWith).toHaveBeenCalledWith({
+      specialDayId: "sd1",
+      day: "Tuesday"
+    });
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      'Tuesday of "Week 1" has its regular schedule again. "Visiting Day" stays saved.'
+    );
+    expect(q(element, '[data-id="special-line"]')).toBeNull();
+    expect(grid(element)).not.toBeNull();
+    const pills = [
+      ...q(element, '[data-id="day-pills"]').querySelectorAll("button")
+    ];
+    expect(pills[1].getAttribute("aria-pressed")).toBe("true");
+    expect(element.shadowRoot.activeElement).toBe(pills[1]);
+  });
+
+  it("says why when the special day couldn't be taken off, and keeps the day", async () => {
+    const takeOffWith = jest
+      .fn()
+      .mockRejectedValue({ body: { message: "No access." } });
+    const { element } = await render(undefined, undefined, { takeOffWith });
+    const errors = jest.fn();
+    element.addEventListener("errorchange", errors);
+    await showTuesday(element);
+    q(element, '[data-id="take-off-special"]').click();
+    await flush();
+    expect(errors.mock.calls[0][0].detail.message).toMatch(
+      /^Visiting Day wasn't taken off Tuesday\. Nothing was changed\./
+    );
+    expect(q(element, '[data-id="special-line"]')).not.toBeNull();
   });
 
   it("leaves a replaced day out of the checks and counts", async () => {

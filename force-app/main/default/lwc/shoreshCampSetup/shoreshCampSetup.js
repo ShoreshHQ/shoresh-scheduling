@@ -171,6 +171,13 @@ function focusedElement() {
  * The season's name and dates are edited next to the season picker, and saved as you go like
  * everything else in setup (decision 26 (4) and (5)).
  */
+/** "A", "A and B", "A, B and C". */
+function andList(parts) {
+  return parts.length <= 1
+    ? parts.join("")
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
   campId;
@@ -1939,6 +1946,30 @@ export default class ShoreshCampSetup extends LightningElement {
     return ` That includes ${parts.length ? `${parts.join(", ")} and ` : ""}${last}.`;
   }
 
+  /**
+   * For a week: the special days and events on its days, which a delete takes off them (ADR 0014
+   * choice 9; the items stay saved): ' It takes "Field Day" off Tuesday and "Carnival" off
+   * Wednesday and Thursday.'
+   */
+  specialDaysNote(recordId) {
+    const special = (this.setup && this.setup.special) || {};
+    const names = new Map(
+      [...(special.specialDays || []), ...(special.specialEvents || [])].map(
+        (item) => [item.Id, item.Name]
+      )
+    );
+    const off = (special.briefs || [])
+      .map((brief) => ({
+        name: names.get(brief.itemId),
+        days: (brief.days || [])
+          .filter((d) => d.weekId === recordId)
+          .map((d) => d.day)
+      }))
+      .filter((item) => item.name && item.days.length)
+      .map((item) => `"${item.name}" off ${andList(item.days)}`);
+    return off.length ? ` It takes ${andList(off)}.` : "";
+  }
+
   async handleDeleteRecord(event) {
     // A second click while the question is open (or the delete is under way) does nothing.
     if (this.deleting) {
@@ -2046,7 +2077,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     return {
       label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)}`,
+      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)}${this.specialDaysNote(recordId)}`,
       variant: "header",
       theme: "warning"
     };
