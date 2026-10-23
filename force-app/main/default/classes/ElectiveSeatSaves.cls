@@ -13,6 +13,10 @@ public with sharing class ElectiveSeatSaves {
   // What worked the seats out (ElectiveRun__c.EngineVersion__c): ADR 0016's engine.
   public static final String ENGINE_VERSION = 'shoreshElectiveEngine 1';
 
+  // Below Salesforce's 10,000 rows a request may write, with room for the run's own update.
+  @TestVisible
+  private static Integer rowBound = 9500;
+
   /** Assign seats: every seat the engine placed, and what did not run. */
   public class AssignRequest {
     public Id runId;
@@ -72,10 +76,6 @@ public with sharing class ElectiveSeatSaves {
     save(state, added, request.dropped);
     return ElectiveSeats.open(request.runId);
   }
-
-  // Below Salesforce's 10,000 rows a request may write, with room for the run's own update.
-  @TestVisible
-  private static Integer rowBound = 9500;
 
   /**
    * Writes only the difference: a seat already at a camper's day and time is kept (or its
