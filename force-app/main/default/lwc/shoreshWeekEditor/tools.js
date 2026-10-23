@@ -49,10 +49,11 @@ function gone(day, slot) {
 const isSetTime = (slot) => slot.startsWith("F:") || slot.startsWith("R:");
 
 /**
- * What a tool may clear, copy or paste: an activity, or a special event placed on the grid (its
- * record's Id after "S:", ADR 0014 slice 4); not something noted from a file by name.
+ * What a tool may clear, copy or paste: an activity, or a special event or elective set placed on
+ * the grid (its record's Id after "S:" or "E:", ADR 0014 slice 4, ADR 0018 slice E5); not
+ * something noted from a file by name.
  */
-const PLACED_EVENT = /^S:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
+const PLACED_EVENT = /^[SE]:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
 const isPlaceable = (slot) => slot.startsWith("A:") || PLACED_EVENT.test(slot);
 
 /**

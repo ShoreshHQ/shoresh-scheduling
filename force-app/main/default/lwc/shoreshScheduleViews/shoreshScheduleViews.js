@@ -26,8 +26,9 @@ const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
 /**
  * Whether an item points at something set up in Shoresh: an activity, a fixed or recurring
- * activity, or a special event (or day) with its record (ADR 0014 slice 4). An elective, trip,
- * special day or event noted from a file by name only is "not set up yet".
+ * activity, a special event (or day) with its record (ADR 0014 slice 4), or an elective set with
+ * its record (ADR 0018 slice E5). An elective, trip, special day or event noted from a file by
+ * name only is "not set up yet".
  */
 export function isSetUpItem(item) {
   return !NOT_SET_UP.has(item.kind) || Boolean(item.id);
@@ -36,6 +37,11 @@ export function isSetUpItem(item) {
 /** A special event placed on the grid (with its record), not one noted from a file. */
 export function isEventItem(item) {
   return !!item && item.kind === "S" && Boolean(item.id);
+}
+
+/** An elective set placed on the grid (with its record, ADR 0018 slice E5), not one noted from a file. */
+export function isElectiveItem(item) {
+  return !!item && item.kind === "E" && Boolean(item.id);
 }
 
 /** "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
@@ -377,7 +383,9 @@ function place(rowIndex, columnIndex, length) {
  * which activity a cell is, for the same-activity outlines. A special event placed on the grid
  * (decision 47.3) carries its quiet flag before the name (event), and eventKey says which event
  * it is: in Daily View the bunks next to each other holding it over the same blocks are drawn as
- * one cell (c-shoresh-schedule-grid; mockup design-research/special-r1 placed.html).
+ * one cell (c-shoresh-schedule-grid; mockup design-research/special-r1 placed.html). An elective
+ * set placed on the grid (ADR 0018 slice E5, decision 53.2) is drawn the same way, one cell across
+ * the bunks side by side, with its set mark before the name (elective; electiveKey says which).
  */
 function cellView(item, t) {
   if (!item) {
@@ -395,6 +403,17 @@ function cellView(item, t) {
       text: item.name,
       event: true,
       eventKey: `S:${item.id}`,
+      gone: !!item.gone,
+      className: "cell cell_event",
+      note: item.gone ? "(removed)" : null,
+      title: `${item.name}: ${kind}`
+    };
+  }
+  if (isElectiveItem(item)) {
+    return {
+      text: item.name,
+      elective: true,
+      electiveKey: `E:${item.id}`,
       gone: !!item.gone,
       className: "cell cell_event",
       note: item.gone ? "(removed)" : null,
@@ -482,9 +501,11 @@ export function dailyGrid(view, dayIndex, t) {
       if (isSwitched(switched, day, g, c.blockIndex, c.item)) {
         drawn = rainy(drawn);
       }
-      // The same event over the same blocks in bunks side by side is one cell (ADR 0014).
-      if (drawn.eventKey) {
-        drawn.mergeKey = `${drawn.eventKey}|${c.blockIndex}|${c.length}`;
+      // The same event or elective set over the same blocks in bunks side by side is one cell
+      // (ADR 0014; ADR 0018 slice E5, decision 53.2).
+      const mergeAs = drawn.eventKey || drawn.electiveKey;
+      if (mergeAs) {
+        drawn.mergeKey = `${mergeAs}|${c.blockIndex}|${c.length}`;
       }
       cells.push(drawn);
     });

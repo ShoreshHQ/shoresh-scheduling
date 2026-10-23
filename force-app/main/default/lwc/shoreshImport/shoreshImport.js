@@ -23,6 +23,7 @@ import {
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { comingIn, countTiles, miniCells, total } from "./summary";
 
 /** Each layout in the camp's words. */
 function layoutWords(t) {
@@ -33,16 +34,6 @@ function layoutWords(t) {
   };
 }
 
-/**
- * Import last year (slice 4b), following Shoresh desktop's import (ImportScreen.jsx,
- * ReconciliationScreen.jsx): choose the files, see what was found ("Nothing added yet"),
- * answer every question, then save; a summary says what was added, what was left out, and what
- * is noted but not set up yet. The files are read here, in the browser; nothing is saved until
- * "Use this setup".
- *
- * setup: the season setup (SeasonSetupController.getSeasonSetup); terms: the camp's words.
- * Fires: imported (after a save, so the page reloads the season), close.
- */
 /**
  * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
  * one before it; null when none is left.
@@ -57,11 +48,22 @@ function nextKeyOf(keysBefore, clicked, itemsAfter) {
   return order.find((k) => left.has(k)) || null;
 }
 
+/**
+ * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
+ * (design-research/screens-r1 import-pick, import-review-a, import-done; wiki decision 56): drop
+ * the files; then one page, what needs an answer first ("Check these first"), what comes in as
+ * quiet counts, last year's schedule, and what is not set up yet; the main button says what
+ * happens ("Add 61"); then the same page says what was added, with Undo. The files are read
+ * here, in the browser; nothing is saved until Add.
+ *
+ * setup: the season setup (SeasonSetupController.getSeasonSetup); terms: the camp's words.
+ * Fires: imported (after a save, so the page reloads the season), close.
+ */
 export default class ShoreshImport extends LightningElement {
   @api setup;
   @api terms;
 
-  stage = "pick"; // pick | reading | preview | review | saving | done
+  stage = "pick"; // pick | reading | review | saving | done
   files = [];
   answers = {};
   layouts = {};
@@ -73,8 +75,12 @@ export default class ShoreshImport extends LightningElement {
   remembered = {};
   dragging = false;
   sheetJsLoaded = false;
-  // Where the cursor goes at the next render: { card } (that card), { after } (the next question
-  // still open after that one), or { selector }.
+  // The plan as it stands (what Add would save), for the counts; null until it can be made.
+  plan = null;
+  // The Comes in tile opened into its names (its kind), or null.
+  openKind = null;
+  // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
+  // the next question still open after { after }), { question }, { bringBack } or { selector }.
   focusNext = null;
 
   /** The screen's heading takes the cursor (the page calls this when the screen opens). */
@@ -92,50 +98,61 @@ export default class ShoreshImport extends LightningElement {
     }
     const next = this.focusNext;
     this.focusNext = null;
-    let target = null;
-    if (next.selector) {
-      target = this.template.querySelector(next.selector);
-    } else if (next.question) {
-      // A question card's first choice, or a dropdown (a program or a division).
-      const card = [...this.template.querySelectorAll("[data-card]")].find(
-        (el) => el.dataset.card === next.question
-      );
-      target = card
-        ? card.querySelector("lightning-button")
-        : [...this.template.querySelectorAll("lightning-combobox")].find(
-            (el) => el.dataset.id === next.question
-          );
-    } else if (next.bringBack !== undefined) {
-      target = next.bringBack
-        ? [...this.template.querySelectorAll("[data-deleted] button")].find(
-            (el) => el.dataset.key === next.bringBack
-          )
-        : this.template.querySelector('[data-id="review"]');
-    } else {
-      const cards = this.isReview ? this.reviewCards : this.previewCards;
-      let id = next.card;
-      if (next.after) {
-        const at = cards.findIndex((c) => c.id === next.after);
-        const open = [...cards.slice(at + 1), ...cards.slice(0, at + 1)].find(
-          (c) => !c.answered
-        );
-        id = open ? open.id : null;
-      }
-      const card = id
-        ? [...this.template.querySelectorAll("[data-card]")].find(
-            (el) => el.dataset.card === id
-          )
-        : null;
-      // The card's first choice; with every question answered, the step's main button.
-      target = card
-        ? card.querySelector("lightning-button")
-        : this.template.querySelector(
-            this.isReview ? '[data-id="save"]' : '[data-id="review"]'
-          );
-    }
+    const target = this.focusTarget(next);
     if (target && typeof target.focus === "function") {
       target.focus();
     }
+  }
+
+  /** The element the cursor goes to after a render (WCAG 2.4.3). */
+  focusTarget(next) {
+    const find = (selector, test) =>
+      [...this.template.querySelectorAll(selector)].find(test) || null;
+    if (next.selector) {
+      return this.template.querySelector(next.selector);
+    }
+    if (next.bringBack !== undefined) {
+      return next.bringBack
+        ? find(
+            "[data-deleted] button",
+            (el) => el.dataset.key === next.bringBack
+          )
+        : this.mainButton();
+    }
+    if (next.key) {
+      // The choice clicked stays where it was, pressed now; it keeps the cursor.
+      const same = find(
+        "button[data-key]",
+        (el) => el.dataset.key === next.key
+      );
+      if (same) {
+        return same;
+      }
+    }
+    let id = next.question;
+    if (next.after !== undefined) {
+      const cards = this.cards;
+      const at = cards.findIndex((c) => c.id === next.after);
+      const open = [...cards.slice(at + 1), ...cards.slice(0, at + 1)].find(
+        (c) => !c.answered
+      );
+      id = open ? open.id : null;
+    }
+    if (!id) {
+      return this.mainButton();
+    }
+    const row = find("[data-card]", (el) => el.dataset.card === id);
+    return row
+      ? row.querySelector("button, lightning-combobox")
+      : this.mainButton();
+  }
+
+  /** Add while it can be pressed, else the heading. */
+  mainButton() {
+    const add = this.template.querySelector('[data-id="save"]');
+    return add && !add.disabled
+      ? add
+      : this.template.querySelector("[data-heading]");
   }
 
   /** What is happening, for the status line screen readers hear. */
@@ -193,13 +210,20 @@ export default class ShoreshImport extends LightningElement {
       this.files = await Promise.all(chosen.map((f) => this.readOne(f)));
       this.answers = await this.rememberedAnswers();
       this.layouts = {};
+      this.openKind = null;
       this.recompute();
-      this.stage = this.foundNothing ? "pick" : "preview";
+      this.stage = this.foundNothing ? "pick" : "review";
       if (this.foundNothing) {
+        this.files = [];
         this.error = `${chosen.map((f) => f.name).join(", ")}: no schedule found (no day columns or time rows). Nothing was imported.`;
+      } else {
+        // The page changed under the cursor: to its first question, else Add.
+        const open = this.cards.find((c) => !c.answered);
+        this.focusNext = open ? { question: open.id } : { after: null };
       }
     } catch (e) {
       this.stage = "pick";
+      this.files = [];
       this.error = failed("That file could not be read.", e);
     }
   }
@@ -256,12 +280,33 @@ export default class ShoreshImport extends LightningElement {
       answers: this.answers,
       layouts: this.layouts
     });
+    this.plan = this.planNow();
+  }
+
+  /** The plan Add would save, for the counts; null if it cannot be made yet. */
+  planNow() {
+    if (!this.proposal || this.foundNothing) {
+      return null;
+    }
+    try {
+      return planFor(this.proposal, this.setup, this.seasonId, {
+        answers: this.answers,
+        fileNames: this.files.map((f) => f.name)
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  get seasonId() {
+    return this.setup && this.setup.season ? this.setup.season.Id : null;
   }
 
   get foundNothing() {
     return !this.proposal || this.proposal.reading.placements.length === 0;
   }
 
+  /** Every question, in the engine's order (the file's names first, then held ones, the rest). */
   get cards() {
     if (!this.proposal) {
       return [];
@@ -276,14 +321,27 @@ export default class ShoreshImport extends LightningElement {
     return {
       ...card,
       answered: !!chosen,
-      answerLabel: chosen ? chosen.label : "",
-      className: `import-card import-card_${card.lane}${chosen ? " import-card_answered" : ""}`,
+      open: !chosen,
+      className: chosen ? "row shoresh-raised" : "row row_look shoresh-raised",
       fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-      options: card.options.map((o) => ({
-        ...o,
-        key: `${card.id}::${o.value}`,
-        variant: o.value === LEAVE_OUT ? "neutral" : "brand-outline"
-      }))
+      // A program or a division: a dropdown in the row.
+      value: chosen ? card.answer : null,
+      comboOptions: card.options.map((o) => ({
+        label: o.label,
+        value: o.value
+      })),
+      placeholder: card.placeholder || "Choose",
+      options: card.options.map((o) => {
+        const pressed = o.value === card.answer;
+        return {
+          ...o,
+          key: `${card.id}::${o.value}`,
+          pressed: pressed ? "true" : "false",
+          className: pressed
+            ? "shoresh-item choice shoresh-raised"
+            : "shoresh-item choice"
+        };
+      })
     };
   }
 
@@ -296,68 +354,43 @@ export default class ShoreshImport extends LightningElement {
     };
   }
 
-  /** Question cards on the preview (similar names, which group a file means). */
-  get previewCards() {
-    return this.cards.filter((c) => c.stage === "preview" && !c.select);
+  /**
+   * Check these first: every question, one raised row each, marked until it is answered. A
+   * program or division Shoresh could choose itself (preselected) is not a question: it is
+   * listed under its own heading below, where it can still be changed.
+   */
+  get questionRows() {
+    return this.cards.filter((c) => !(c.select && c.preselected));
   }
-  get hasPreviewCards() {
-    return this.previewCards.length > 0;
-  }
-  /** The program for each set of groups, and the division for each new group: dropdowns. */
   get programChoices() {
-    return this.cards
-      .filter((c) => c.select === "program")
-      .map((c) => this.choiceView(c));
+    return this.cards.filter((c) => c.select === "program" && c.preselected);
   }
   get hasProgramChoices() {
     return this.programChoices.length > 0;
   }
   get unitChoices() {
-    return this.cards
-      .filter((c) => c.select === "division")
-      .map((c) => this.choiceView(c));
+    return this.cards.filter((c) => c.select === "division" && c.preselected);
   }
   get hasUnitChoices() {
     return this.unitChoices.length > 0;
   }
-  choiceView(card) {
-    return {
-      ...card,
-      value: card.answered ? card.answer : null,
-      comboOptions: card.options.map((o) => ({
-        label: o.label,
-        value: o.value
-      })),
-      placeholder: card.placeholder || "Choose"
-    };
+  get hasQuestions() {
+    return this.questionRows.length > 0;
   }
-  get previewOpen() {
-    return this.cards.filter((c) => c.stage === "preview" && !c.answered)
-      .length;
+  get questionCount() {
+    return this.questionRows.length;
   }
-  get reviewCards() {
-    return this.cards.filter((c) => c.stage === "review");
-  }
-  get hasReviewCards() {
-    return this.reviewCards.length > 0;
-  }
-  get answeredCount() {
-    return this.reviewCards.filter((c) => c.answered).length;
-  }
-  get progressText() {
-    return `${this.answeredCount} of ${this.reviewCards.length} questions answered`;
-  }
-  get progressStyle() {
-    const total = this.reviewCards.length || 1;
-    return `width: ${Math.round((this.answeredCount * 100) / total)}%;`;
+  get openCount() {
+    return this.cards.filter((c) => !c.answered).length;
   }
 
   handleAnswer(event) {
-    const [id, value] = event.currentTarget.dataset.key.split("::");
+    const key = event.currentTarget.dataset.key;
+    const [id, value] = key.split("::");
     this.answers = { ...this.answers, [id]: value };
     this.recompute();
-    // The clicked button is gone with the answer: on to the next open question (WCAG 2.4.3).
-    this.focusNext = { after: id };
+    // The choice stays, pressed; if the answer took its row away, on to the next open question.
+    this.focusNext = { key, after: id };
   }
 
   handleChoice(event) {
@@ -368,17 +401,55 @@ export default class ShoreshImport extends LightningElement {
     this.recompute();
   }
 
-  handleChangeAnswer(event) {
-    const id = event.currentTarget.dataset.id;
-    const answers = { ...this.answers };
-    delete answers[id];
-    this.answers = answers;
-    this.recompute();
-    // The card opens again: the cursor goes to its first choice.
-    this.focusNext = { card: id };
+  // ---------- what comes in ----------
+
+  get comingInTiles() {
+    return comingIn(this.plan, this.terms).map((tile) => ({
+      ...tile,
+      expanded: tile.key === this.openKind ? "true" : "false",
+      className:
+        tile.key === this.openKind
+          ? "tile tile_button shoresh-raised tile_open"
+          : "tile tile_button shoresh-raised"
+    }));
+  }
+  get hasComingIn() {
+    return this.comingInTiles.length > 0;
+  }
+  get addCount() {
+    return total(this.comingInTiles);
   }
 
-  // ---------- what was found ----------
+  /** A tile opens into its names, and closes again (one open at a time). */
+  handleTile(event) {
+    const kind = event.currentTarget.dataset.tile;
+    this.openKind = this.openKind === kind ? null : kind;
+  }
+
+  get openTile() {
+    const tile = this.comingInTiles.find((x) => x.key === this.openKind);
+    return tile
+      ? {
+          ...tile,
+          nameItems: tile.names.map((name, i) => ({
+            key: `${i}|${name}`,
+            name
+          }))
+        }
+      : null;
+  }
+
+  // ---------- the files ----------
+
+  get hasFiles() {
+    return this.files.length > 0 && !this.isPick;
+  }
+  get firstFileName() {
+    return this.files.length ? this.files[0].name : "";
+  }
+  get moreFiles() {
+    return this.files.length > 1 ? this.files.length - 1 : 0;
+  }
 
   get fileRows() {
     const words = layoutWords(this.terms);
@@ -392,11 +463,19 @@ export default class ShoreshImport extends LightningElement {
     return [...byFile].map(([file, pages]) => {
       const layouts = new Set(pages.map((p) => p.layout));
       const layout = layouts.size === 1 ? pages[0].layout : "";
+      // Unclear until the director picks a layout for it.
+      const unsure =
+        pages.some((p) => !p.confident) &&
+        !pages.some((p) => this.layouts[p.key]);
       return {
         file,
         layout,
+        unsure,
+        className: unsure
+          ? "row row_look shoresh-raised"
+          : "row shoresh-raised",
+        layoutLabel: `Layout of ${file}`,
         pageCount: pages.length === 1 ? "1 page" : `${pages.length} pages`,
-        unsure: pages.some((p) => !p.confident),
         options: LAYOUTS.map((value) => ({ label: words[value], value }))
       };
     });
@@ -414,17 +493,7 @@ export default class ShoreshImport extends LightningElement {
     this.recompute();
   }
 
-  get lists() {
-    return this.proposal
-      ? foundLists(this.proposal, this.terms).map((list) => ({
-          ...list,
-          items: list.items.map((item) => ({
-            ...item,
-            tagClass: `import-tag import-tag_${item.tag.replace(/ /g, "-")}`
-          }))
-        }))
-      : [];
-  }
+  // ---------- places, deleted, noted, notes ----------
 
   get places() {
     return this.proposal
@@ -437,6 +506,17 @@ export default class ShoreshImport extends LightningElement {
   }
   get hasPlaces() {
     return this.places.length > 0;
+  }
+
+  handlePlace(event) {
+    const answers = { ...this.answers };
+    if (event.target.checked) {
+      answers[event.target.dataset.id] = "add";
+    } else {
+      delete answers[event.target.dataset.id];
+    }
+    this.answers = answers;
+    this.recompute();
   }
 
   /**
@@ -462,7 +542,7 @@ export default class ShoreshImport extends LightningElement {
   handleBringBack(event) {
     const { key, placeAnswer } = event.currentTarget.dataset;
     const keysBefore = this.deletedItems.map((item) => item.key);
-    const openBefore = new Set(this.openPreviewIds());
+    const openBefore = new Set(this.openIds());
     const answers = { ...this.answers, [key]: BRING_BACK };
     if (placeAnswer) {
       answers[placeAnswer] = "add";
@@ -470,29 +550,32 @@ export default class ShoreshImport extends LightningElement {
     this.answers = answers;
     this.recompute();
     // The clicked button is gone with the item (WCAG 2.4.3): to the question it opened (its
-    // division, its program), else the next Bring back, else the step's main button.
-    const opened = this.openPreviewIds().find((id) => !openBefore.has(id));
+    // division, its program, its kind), else the next Bring back, else Add.
+    const opened = this.openIds().find((id) => !openBefore.has(id));
     this.focusNext = opened
       ? { question: opened }
       : { bringBack: nextKeyOf(keysBefore, key, this.deletedItems) };
   }
 
-  /** The preview's questions still open, cards and dropdowns, in the order shown. */
-  openPreviewIds() {
-    return this.cards
-      .filter((c) => c.stage === "preview" && !c.answered)
-      .map((c) => c.id);
+  /** The questions still open, in the order shown. */
+  openIds() {
+    return this.cards.filter((c) => !c.answered).map((c) => c.id);
   }
 
-  handlePlace(event) {
-    const answers = { ...this.answers };
-    if (event.target.checked) {
-      answers[event.target.dataset.id] = "add";
-    } else {
-      delete answers[event.target.dataset.id];
-    }
-    this.answers = answers;
-    this.recompute();
+  get notedList() {
+    const list = this.proposal
+      ? foundLists(this.proposal, this.terms).find((l) => l.key === "noted")
+      : null;
+    return list ? list.items : [];
+  }
+  get hasNoted() {
+    return this.notedList.length > 0;
+  }
+  get notSetUpCount() {
+    return this.notedList.length + this.deletedItems.length;
+  }
+  get hasNotSetUp() {
+    return this.notSetUpCount > 0;
   }
 
   get notes() {
@@ -502,6 +585,27 @@ export default class ShoreshImport extends LightningElement {
     return this.notes.length > 0;
   }
 
+  // ---------- last year's schedule ----------
+
+  get versionRows() {
+    return (this.proposal ? this.proposal.versions : []).map((v) => {
+      const mini = miniCells(v);
+      const program = v.programName ? ` (${v.programName})` : "";
+      return {
+        key: v.key,
+        name: v.name,
+        weekName: `${v.weekName}${program}`,
+        reviewLine: `Kept as a version, ${v.name}`,
+        doneLine: `${v.weekName}${program}`,
+        mini: mini.cells,
+        miniStyle: `grid-template-columns: repeat(${Math.max(1, mini.columns)}, 1fr);`
+      };
+    });
+  }
+  get hasVersions() {
+    return this.versionRows.length > 0;
+  }
+
   // ---------- moving between steps ----------
 
   get isPick() {
@@ -509,9 +613,6 @@ export default class ShoreshImport extends LightningElement {
   }
   get isReading() {
     return this.stage === "reading";
-  }
-  get isPreview() {
-    return this.stage === "preview";
   }
   get isReview() {
     return this.stage === "review" || this.stage === "saving";
@@ -523,51 +624,22 @@ export default class ShoreshImport extends LightningElement {
     return this.stage === "done";
   }
   get dropClass() {
-    return this.dragging ? "import-drop import-drop_over" : "import-drop";
+    return this.dragging ? "drop drop_over" : "drop";
   }
   get fileNames() {
     return this.files.map((f) => f.name).join(", ");
   }
 
-  get reviewLabel() {
-    return this.previewOpen > 0
-      ? `Answer the ${this.previewOpen === 1 ? "choice" : `${this.previewOpen} choices`} above first`
-      : "Review";
-  }
-  get reviewDisabled() {
-    return this.previewOpen > 0;
-  }
-
+  /** The main button says what happens: "Add 61"; while a question is open, how many are. */
   get saveLabel() {
-    const open = this.reviewCards.length - this.answeredCount;
-    return open > 0
-      ? `${open} ${open === 1 ? "question" : "questions"} left`
-      : "Use this setup";
+    const open = this.openCount;
+    if (open > 0) {
+      return `${open} ${open === 1 ? "question" : "questions"} left`;
+    }
+    return this.addCount > 0 ? `Add ${this.addCount}` : "Use this setup";
   }
   get saveDisabled() {
-    return (
-      this.isSaving ||
-      this.previewOpen > 0 ||
-      this.answeredCount < this.reviewCards.length
-    );
-  }
-  get saveHint() {
-    if (!this.hasReviewCards) {
-      return "Nothing needed a decision.";
-    }
-    return this.answeredCount === this.reviewCards.length
-      ? `All ${this.reviewCards.length} decided.`
-      : "Every question needs an answer. Leave it out for now is an answer too.";
-  }
-
-  handleReview() {
-    this.stage = "review";
-    this.focusNext = { selector: "[data-heading]" };
-  }
-
-  handleBackToPreview() {
-    this.stage = "preview";
-    this.focusNext = { selector: "[data-heading]" };
+    return this.isSaving || this.openCount > 0;
   }
 
   handleStartAgain() {
@@ -576,6 +648,8 @@ export default class ShoreshImport extends LightningElement {
     this.undone = null;
     this.files = [];
     this.proposal = null;
+    this.plan = null;
+    this.openKind = null;
     this.answers = {};
     this.layouts = {};
     this.error = null;
@@ -593,7 +667,7 @@ export default class ShoreshImport extends LightningElement {
     this.stage = "saving";
     this.error = null;
     try {
-      const plan = planFor(this.proposal, this.setup, this.setup.season.Id, {
+      const plan = planFor(this.proposal, this.setup, this.seasonId, {
         answers: this.answers,
         fileNames: this.files.map((f) => f.name)
       });
@@ -610,28 +684,22 @@ export default class ShoreshImport extends LightningElement {
     }
   }
 
-  get rememberedCount() {
-    return this.reviewCards
-      .concat(this.previewCards)
-      .filter((c) => c.fromMemory).length;
-  }
-  get rememberedText() {
-    const n = this.rememberedCount;
-    return n
-      ? `${n} ${n === 1 ? "answer" : "answers"} remembered from an earlier import. Change any of them below.`
-      : "";
-  }
-
   // ---------- after saving ----------
 
-  get versionLines() {
-    return (this.proposal ? this.proposal.versions : []).map((v) => ({
-      key: v.key,
-      text: `${v.name}, for ${v.weekName}${v.programName ? ` (${v.programName})` : ""}: open it on Schedules. It is not changed by later edits.`
-    }));
+  get addedTiles() {
+    return countTiles(this.result && this.result.added, this.terms);
   }
-  get hasVersions() {
-    return this.versionLines.length > 0;
+  get addedTotal() {
+    return total(this.addedTiles);
+  }
+  get changedTiles() {
+    return countTiles(this.result && this.result.changed, this.terms);
+  }
+  get changedTotal() {
+    return total(this.changedTiles);
+  }
+  get hasChanged() {
+    return this.changedTiles.length > 0;
   }
   get unplaced() {
     return this.proposal ? unplacedLines(this.proposal, this.terms) : [];
@@ -642,6 +710,14 @@ export default class ShoreshImport extends LightningElement {
   }
   get hasUnplaced() {
     return this.unplaced.length > 0;
+  }
+  get leftOutLines() {
+    return this.cards
+      .filter((c) => c.answer === LEAVE_OUT)
+      .map((c) => ({ key: c.id, text: c.subject }));
+  }
+  get hasLeftOut() {
+    return this.leftOutLines.length > 0;
   }
   get canUndo() {
     return (
@@ -664,49 +740,13 @@ export default class ShoreshImport extends LightningElement {
     try {
       const result = await undoImport({ importId: this.result.importId });
       this.undone = undoMessage(result);
+      // Undo is gone from the rail: the cursor goes to Done.
+      this.focusNext = { selector: '[data-id="continue"]' };
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.error = failed("That import could not be undone.", e);
     } finally {
       this.undoing = false;
     }
-  }
-
-  countLines(counts) {
-    const t = this.terms;
-    return Object.keys(counts || {})
-      .sort()
-      .map((term) => {
-        const n = counts[term];
-        return {
-          key: term,
-          text: `${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`
-        };
-      });
-  }
-
-  get addedLines() {
-    return this.countLines(this.result && this.result.added);
-  }
-  get changedLines() {
-    return this.countLines(this.result && this.result.changed);
-  }
-  get hasChanged() {
-    return this.changedLines.length > 0;
-  }
-  get leftOutLines() {
-    return this.cards
-      .filter((c) => c.answer === LEAVE_OUT)
-      .map((c) => ({ key: c.id, text: c.subject }));
-  }
-  get hasLeftOut() {
-    return this.leftOutLines.length > 0;
-  }
-  get notedList() {
-    const list = this.lists.find((l) => l.key === "noted");
-    return list ? list.items : [];
-  }
-  get hasNoted() {
-    return this.notedList.length > 0;
   }
 }

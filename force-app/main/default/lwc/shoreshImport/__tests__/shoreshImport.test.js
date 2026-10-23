@@ -104,12 +104,19 @@ async function choose(element, names, texts = {}) {
 }
 
 async function answer(element, cardId, value) {
-  const button = $$(element, `[data-card="${cardId}"] lightning-button`).find(
+  const button = $$(element, `[data-card="${cardId}"] button`).find(
     (b) => b.dataset.key === `${cardId}::${value}`
   );
   button.click();
   await flush();
 }
+
+/** The first question about similar names (the file's names come first). */
+const similarId = (element) =>
+  $$(element, "[data-card]").find((c) => c.dataset.card.startsWith("similar|"))
+    .dataset.card;
+
+const add = (element) => $(element, 'button[data-id="save"]');
 
 describe("c-shoresh-import", () => {
   beforeEach(() => {
@@ -135,17 +142,26 @@ describe("c-shoresh-import", () => {
     jest.clearAllMocks();
   });
 
-  it("starts with the drop area, and says what it reads", async () => {
+  it("starts with the drop well, and says what it reads", async () => {
     const element = await render();
-    expect($(element, '[data-id="drop"]').textContent).toContain(
-      "Drop schedule here"
+    const drop = $(element, '[data-id="drop"]');
+    expect(drop.textContent).toContain("Drop last year's files");
+    expect(drop.textContent).toContain(".xlsx · .xls · .csv");
+    // The rail: the way back to Roots and the screen's name; nothing to add yet.
+    expect($(element, '[data-id="close"]').getAttribute("aria-label")).toBe(
+      "Back to Roots"
     );
-    expect($(element, '[data-id="drop"]').textContent).toContain(
-      ".xlsx · .xls · .csv"
-    ); // The hidden file input is named, and the button is its only tab stop.
+    expect($(element, "[data-heading]").textContent.trim()).toBe(
+      "Import last year"
+    );
+    expect(add(element)).toBeNull();
+    // The hidden file input is named, and Choose files is its only tab stop.
     const input = $(element, 'input[data-id="files"]');
     expect(input.getAttribute("aria-label")).toBe("Choose files");
     expect(input.getAttribute("tabindex")).toBe("-1");
+    expect($(element, 'button[data-id="choose"]').textContent.trim()).toBe(
+      "Choose files"
+    );
   });
 
   it("refuses a file it cannot read, and adds nothing", async () => {
@@ -162,53 +178,83 @@ describe("c-shoresh-import", () => {
     );
   });
 
-  it("goes from the files to what was found, to the questions, to the save and its summary", async () => {
+  it("one page: the questions first, then what comes in as counts; Add says how many, then the summary", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
 
-    // What was found: nothing added yet.
-    expect($(element, '[data-id="found"]').textContent).toContain(
-      "Found in the file. Nothing added yet."
+    // The rail names the file.
+    expect($(element, '[data-id="file-name"]').textContent).toContain(
+      "maple-grove-2026-all-camp.xlsx"
     );
+    // Check these first: every question on the one page, the file's names first, each marked
+    // until it is answered.
+    const questions = $(element, '[data-id="questions"]');
+    expect(questions.querySelector("h3").textContent).toContain(
+      "Check these first"
+    );
+    const rows = $$(element, '[data-id="questions"] [data-card]');
+    expect(rows.map((r) => r.dataset.card)).toEqual([
+      similarId(element),
+      "kind|Library time"
+    ]);
+    expect(questions.querySelector("h3").textContent).toContain("2");
+    // What Shoresh chose itself (the program, each bunk's unit) is listed below, changeable,
+    // not asked.
+    expect(
+      $(element, '[data-id="program-choices"] lightning-combobox').value
+    ).toBeTruthy();
+    expect(
+      $$(element, '[data-id="unit-choices"] lightning-combobox')
+    ).toHaveLength(6);
+    rows.forEach((row) =>
+      expect(row.querySelector(".corner .shoresh-look-mark")).not.toBeNull()
+    );
+    // The file's layout, changeable, in the Files section.
     expect(
       $(
         element,
         'lightning-combobox[data-file="maple-grove-2026-all-camp.xlsx"]'
       ).value
     ).toBe("allCamp");
-    const fixed = $(element, '[data-list="fixedActivities"]');
-    expect(fixed.textContent).toContain("Lunch");
-    expect($(element, '[data-list="noted"]').textContent).toContain("Chugim");
+    // Noted, not set up yet: dashed.
+    const noted = $(element, '[data-id="not-set-up"]');
+    expect(noted.textContent).toContain("Chugim");
+    expect(noted.querySelector(".chip_dashed")).not.toBeNull();
 
-    // The similar names must be answered before the review.
-    const review = $(element, 'lightning-button[data-id="review"]');
-    expect(review.disabled).toBe(true);
-    expect(review.label).toBe("Answer the choice above first");
-    const similar = $(element, '[data-id="similar"] [data-card]').dataset.card;
-    await answer(element, similar, "a");
-    expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
-      false
-    );
-    $(element, 'lightning-button[data-id="review"]').click();
-    await flush();
-
-    // The questions: every one needs an answer before saving.
-    expect($(element, '[data-id="progress"]').textContent).toContain(
-      "0 of 1 questions answered"
-    );
-    const save = () => $(element, 'lightning-button[data-id="save"]');
-    expect(save().disabled).toBe(true);
-    expect(save().label).toBe("1 question left");
+    // Every question needs an answer before Add.
+    expect(add(element).disabled).toBe(true);
+    expect(add(element).textContent.trim()).toBe("2 questions left");
+    await answer(element, similarId(element), "a");
+    expect(add(element).textContent.trim()).toBe("1 question left");
+    // Answered: the choice is pressed and raised, and the row loses its mark.
+    const similar = $(element, `[data-card="${similarId(element)}"]`);
+    const pressed = similar.querySelector('button[aria-pressed="true"]');
+    expect(pressed.textContent).toContain("Same: call it");
+    expect(pressed.classList).toContain("shoresh-raised");
+    expect(similar.querySelector(".corner")).toBeNull();
     await answer(element, "kind|Library time", "recurring");
-    expect($(element, '[data-id="progress"]').textContent).toContain(
-      "1 of 1 questions answered"
+
+    // Comes in: a count per kind, and Add says the total.
+    const tiles = $$(element, "[data-tile]");
+    const count = (kind) =>
+      Number(
+        tiles.find((x) => x.dataset.tile === kind).querySelector("b")
+          .textContent
+      );
+    expect(count("Group")).toBe(6);
+    expect(tiles.find((x) => x.dataset.tile === "Group").textContent).toContain(
+      "Groups"
     );
-    expect(save().disabled).toBe(false);
-    expect(save().label).toBe("Use this setup");
+    const sum = tiles.reduce(
+      (n, x) => n + Number(x.querySelector("b").textContent),
+      0
+    );
+    expect(add(element).disabled).toBe(false);
+    expect(add(element).textContent.trim()).toBe(`Add ${sum}`);
 
     const imported = jest.fn();
     element.addEventListener("imported", imported);
-    save().click();
+    add(element).click();
     await flush();
     await flush();
     const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
@@ -217,15 +263,39 @@ describe("c-shoresh-import", () => {
     expect(plan.activities.map((a) => a.name)).not.toContain("Musik");
     expect(imported).toHaveBeenCalled();
 
-    // The summary.
-    expect($(element, '[data-id="done"]').textContent).toContain(
-      "Imported from maple-grove-2026-all-camp.xlsx."
-    );
-    expect($(element, '[data-id="added"]').textContent).toContain("6 groups");
+    // Done: what was added as counts, Undo and Done on the rail.
+    const added = $(element, '[data-id="added"]');
+    expect(added.querySelector("h3").textContent).toContain("Added");
+    expect(added.querySelector("h3").textContent).toContain("26");
+    expect(
+      added.querySelector('[data-tile="Group"] .slds-assistive-text')
+        .textContent
+    ).toBe("6 groups");
     expect($(element, '[data-id="noted"]').textContent).toContain("Zoo trip");
+    expect($(element, 'button[data-id="continue"]').textContent.trim()).toBe(
+      "Done"
+    );
+    expect($(element, 'button[data-id="save"]')).toBeNull();
   });
 
-  it("keeps the cursor on the way: next question, Save, then the summary; and says what happens", async () => {
+  it("a count opens into its names, and closes again", async () => {
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    expect($(element, '[data-id="names"]')).toBeNull();
+    const groups = $(element, 'button[data-tile="Group"]');
+    expect(groups.getAttribute("aria-expanded")).toBe("false");
+    groups.click();
+    await flush();
+    expect(groups.getAttribute("aria-expanded")).toBe("true");
+    const names = $(element, '[data-id="names"]');
+    expect(names.getAttribute("aria-label")).toBe("Groups");
+    expect(names.querySelectorAll("li")).toHaveLength(6);
+    groups.click();
+    await flush();
+    expect($(element, '[data-id="names"]')).toBeNull();
+  });
+
+  it("keeps the cursor on the way: the first question, the choice pressed, Add, then the summary; and says what happens", async () => {
     const focused = [];
     const spy = jest
       .spyOn(HTMLElement.prototype, "focus")
@@ -237,37 +307,44 @@ describe("c-shoresh-import", () => {
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       const status = () => $(element, '[data-id="status"]');
       expect(status().getAttribute("role")).toBe("status");
-      const similar = $(element, '[data-id="similar"] [data-card]').dataset
-        .card;
-      await answer(element, similar, "a");
-      // The only preview question answered: on to the step's main button.
-      expect(focused.pop().dataset.id).toBe("review");
-      // Change opens the card again, with the cursor on its first choice.
-      $(
-        element,
-        `[data-card="${similar}"] lightning-button[data-id="${similar}"]`
-      ).click();
-      await flush();
-      expect(focused.pop().closest("[data-card]").dataset.card).toBe(similar);
-      await answer(element, similar, "a");
-      $(element, 'lightning-button[data-id="review"]').click();
-      await flush();
-      expect(focused.pop().hasAttribute("data-heading")).toBe(true);
+      // The files read: to the first question's first choice.
+      expect(focused.pop().closest("[data-card]").dataset.card).toBe(
+        similarId(element)
+      );
+      // A choice keeps the cursor: it stays, pressed.
+      await answer(element, similarId(element), "a");
+      const kept = focused.pop();
+      expect(kept.dataset.key).toBe(`${similarId(element)}::a`);
+      expect(kept.getAttribute("aria-pressed")).toBe("true");
+      // Another choice in the same row changes the answer.
+      await answer(element, similarId(element), "b");
+      expect(focused.pop().dataset.key).toBe(`${similarId(element)}::b`);
       await answer(element, "kind|Library time", "recurring");
-      expect(focused.pop().dataset.id).toBe("save");
-      $(element, 'lightning-button[data-id="save"]').click();
+      add(element).click();
       await flush();
       await flush();
       expect(focused.pop().dataset.id).toBe("done");
       expect(status().textContent.trim()).toBe(
         "Imported from maple-grove-2026-all-camp.xlsx."
       );
-      expect($(element, 'lightning-button[data-id="continue"]').label).toBe(
-        "Back to Roots"
-      );
     } finally {
       spy.mockRestore();
     }
+  });
+
+  it("is accessible at each step: the drop well, the one page, and done", async () => {
+    const element = await render();
+    await expect(element).toBeAccessible();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    $(element, 'button[data-tile="Group"]').click();
+    await flush();
+    await expect(element).toBeAccessible();
+    await answer(element, similarId(element), "a");
+    await answer(element, "kind|Library time", "recurring");
+    add(element).click();
+    await flush();
+    await flush();
+    await expect(element).toBeAccessible();
   });
 
   it("puts the cursor on its heading when the page opens it", async () => {
@@ -276,15 +353,22 @@ describe("c-shoresh-import", () => {
     expect(element.shadowRoot.activeElement).toBe($(element, "[data-heading]"));
   });
 
+  it("Start again goes back to the drop well, with nothing kept", async () => {
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    $(element, 'button[data-id="start-again"]').click();
+    await flush();
+    expect($(element, '[data-id="drop"]')).not.toBeNull();
+    expect($(element, "[data-card]")).toBeNull();
+    expect($(element, '[data-id="file-name"]')).toBeNull();
+  });
+
   it("lists what was left out for now after saving", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
-    const similar = $(element, '[data-id="similar"] [data-card]').dataset.card;
-    await answer(element, similar, "leaveOut");
-    $(element, 'lightning-button[data-id="review"]').click();
-    await flush();
+    await answer(element, similarId(element), "leaveOut");
     await answer(element, "kind|Library time", "leaveOut");
-    $(element, 'lightning-button[data-id="save"]').click();
+    add(element).click();
     await flush();
     await flush();
     const leftOut = $(element, '[data-id="left-out"]').textContent;
@@ -298,10 +382,7 @@ describe("c-shoresh-import", () => {
       "maple-grove-2026-all-camp.xlsx",
       "Maple Grove 2026 - Bunk 3.csv"
     ]);
-    const similar = $(element, '[data-id="similar"] [data-card]').dataset.card;
-    await answer(element, similar, "a");
-    $(element, 'lightning-button[data-id="review"]').click();
-    await flush();
+    expect($(element, '[data-id="file-name"]').textContent).toContain("+ 1");
     const card = $$(element, "[data-card]").find((c) =>
       c.dataset.card.startsWith("cross|")
     );
@@ -310,45 +391,39 @@ describe("c-shoresh-import", () => {
     );
   });
 
-  it("shows a save the server refused, and stays on the questions", async () => {
+  it("shows a save the server refused, and stays on the page", async () => {
     saveSetup.mockRejectedValue({
       body: { message: "Two things at Lunch for Bunk 1." }
     });
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
-    await answer(
-      element,
-      $(element, '[data-id="similar"] [data-card]').dataset.card,
-      "a"
-    );
-    $(element, 'lightning-button[data-id="review"]').click();
-    await flush();
+    await answer(element, similarId(element), "a");
     await answer(element, "kind|Library time", "activity");
-    $(element, 'lightning-button[data-id="save"]').click();
+    add(element).click();
     await flush();
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
       "Nothing was saved, and your answers are still here. Two things at Lunch for Bunk 1."
     );
-    expect($(element, 'lightning-button[data-id="save"]')).not.toBeNull();
+    expect(add(element)).not.toBeNull();
   });
 
-  it("a changed answer can be taken back", async () => {
+  it("a choice's reason is in its words for screen readers and its tooltip", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
-    const id = $(element, '[data-id="similar"] [data-card]').dataset.card;
-    await answer(element, id, "a");
-    expect($(element, `[data-card="${id}"]`).textContent).toContain(
-      "✓ Same: call it"
+    const leave = $(
+      element,
+      `[data-card="kind|Library time"] button[data-key="kind|Library time::leaveOut"]`
     );
-    $(element, `[data-card="${id}"] lightning-button[data-id="${id}"]`).click();
-    await flush();
-    expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
-      true
+    expect(leave.getAttribute("title")).toMatch(
+      /^.Library time. is not added this time\.$/
+    );
+    expect(leave.querySelector(".slds-assistive-text").textContent).toContain(
+      "is not added this time."
     );
   });
 
-  it("Use this setup waits for the choices on the preview too", async () => {
+  it("Add waits for the program and division choices too", async () => {
     const element = createElement("c-shoresh-import", { is: ShoreshImport });
     element.setup = nsRecord({
       ...SETUP,
@@ -379,14 +454,10 @@ describe("c-shoresh-import", () => {
     await choose(element, ["Maple Grove 2026 - Bunk 1.csv"]);
     const choice = $(element, 'lightning-combobox[data-id="division|Bunk 1"]');
     expect(choice.value).toBeNull();
-    expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
-      true
-    );
-    // Even if the review were reached, the save waits.
-    $(element, 'lightning-button[data-id="review"]').click();
-    await flush();
-    const save = $(element, 'lightning-button[data-id="save"]');
-    expect(save === null || save.disabled).toBe(true);
+    // The dropdown sits in its question's row, marked until it is chosen.
+    const row = choice.closest("[data-card]");
+    expect(row.querySelector(".corner")).not.toBeNull();
+    expect(add(element).disabled).toBe(true);
   });
 
   describe("part 2: version, remembered answers, undo", () => {
@@ -420,20 +491,16 @@ describe("c-shoresh-import", () => {
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
-      expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
-        false
-      );
-      $(element, 'lightning-button[data-id="review"]').click();
-      await flush();
-      expect($(element, '[data-id="remembered"]').textContent).toBe(
-        "2 answers remembered from an earlier import. Change any of them below."
-      );
+      const library = $(element, '[data-card="kind|Library time"]');
+      expect(library.textContent).toContain("Remembered");
+      expect(library.querySelector(".corner")).toBeNull();
+      // Changed by pressing another choice in the row: no longer the remembered one.
+      await answer(element, "kind|Library time", "activity");
       expect(
         $(element, '[data-card="kind|Library time"]').textContent
-      ).toContain("Remembered");
-      expect($(element, 'lightning-button[data-id="save"]').label).toBe(
-        "Use this setup"
-      );
+      ).not.toContain("Remembered");
+      expect(add(element).disabled).toBe(false);
+      expect(add(element).textContent.trim()).toMatch(/^Add \d+$/);
     });
 
     it("a place ticked at an earlier import is ticked again and marked remembered", async () => {
@@ -456,9 +523,7 @@ describe("c-shoresh-import", () => {
       expect(artRoom.textContent).not.toContain("Remembered");
       // Headed in the camp's word, with what it was named with in plain text: no help icon.
       const places = $(element, '[data-id="places"]');
-      expect(places.querySelector(".import-section-label").textContent).toBe(
-        "Locations"
-      );
+      expect(places.querySelector("h3").textContent.trim()).toBe("Locations");
       expect(pool.querySelector("lightning-input").fieldLevelHelp).toBeFalsy();
       expect(pool.textContent).toContain("Swim");
       expect(places.querySelector("p")).toBeNull();
@@ -481,14 +546,14 @@ describe("c-shoresh-import", () => {
         "Tuesday.csv": rows
       });
       expect($(element, '[data-place="place|Pool"]')).toBeNull();
-      const deleted = $(element, '[data-id="deleted"]');
-      expect(
-        deleted.querySelector(".import-section-label").textContent.trim()
-      ).toBe("Deleted before; not brought back");
+      const deleted = $(element, '[data-id="not-set-up"]');
+      expect(deleted.querySelector("h3").textContent).toContain(
+        "Not set up yet"
+      );
       const row = deleted.querySelector(
         '[data-deleted="deleted|Location||Pool"]'
       );
-      expect(row.textContent).toContain("Pool");
+      expect(row.textContent).toContain("Deleted before: Pool");
       expect(row.textContent).toContain("location");
       const button = row.querySelector("button");
       expect(button.getAttribute("aria-label")).toBe(
@@ -496,7 +561,7 @@ describe("c-shoresh-import", () => {
       );
       button.click();
       await flush();
-      expect($(element, '[data-id="deleted"]')).toBeNull();
+      expect($(element, "[data-deleted]")).toBeNull();
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
     });
@@ -555,7 +620,7 @@ describe("c-shoresh-import", () => {
         bringBack("deleted|Location||Pool").click();
         await flush();
         expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
-        // Art's kind is asked on the review, not here: on to the next Bring back.
+        // Art comes back as an activity, with nothing to ask: on to the next Bring back.
         bringBack("deleted|Activity||Art").click();
         await flush();
         expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
@@ -565,7 +630,7 @@ describe("c-shoresh-import", () => {
         expect(focused.pop()).toBe(
           $(element, 'lightning-combobox[data-id="division|Bunk 2"]')
         );
-        expect($(element, '[data-id="deleted"]')).toBeNull();
+        expect($(element, "[data-deleted]")).toBeNull();
       } finally {
         spy.mockRestore();
       }
@@ -593,9 +658,12 @@ describe("c-shoresh-import", () => {
       try {
         $(element, '[data-deleted="deleted|Activity||Art"] button').click();
         await flush();
-        expect($(element, '[data-id="deleted"]')).toBeNull();
-        // Nothing left to bring back and no question opened: the step's main button.
-        expect(focus.mock.contexts.pop().dataset.id).toBe("review");
+        expect($(element, "[data-deleted]")).toBeNull();
+        // Art back opens its question (set time or activity?), on the same page: the cursor
+        // goes to its first choice.
+        expect(
+          focus.mock.contexts.pop().closest("[data-card]").dataset.card
+        ).toBe("kind|Art");
       } finally {
         focus.mockRestore();
       }
@@ -620,23 +688,28 @@ describe("c-shoresh-import", () => {
       LightningConfirm.open = jest.fn().mockResolvedValue(true);
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
-      $(element, 'lightning-button[data-id="review"]').click();
-      await flush();
-      $(element, 'lightning-button[data-id="save"]').click();
+      add(element).click();
       await flush();
       const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
       expect(plan.versions).toHaveLength(1);
       expect(plan.remember.map((r) => r.key)).toContain("kind|Library time");
-      expect($(element, '[data-id="version"]').textContent).toContain(
-        "Imported from maple-grove-2026-all-camp.xlsx, for Week 1 (Main): open it on Schedules."
+      const version = $(element, '[data-id="version"]');
+      expect(version.textContent).toContain(
+        "Imported from maple-grove-2026-all-camp.xlsx"
       );
-      $(element, 'lightning-button[data-id="undo"]').click();
+      expect(version.textContent).toContain("Week 1 (Main)");
+      expect(version.textContent).toContain("Open it on Schedules");
+      // Last year's schedule drawn small beside its words, hidden from screen readers.
+      const mini = version.querySelector(".mini");
+      expect(mini.getAttribute("aria-hidden")).toBe("true");
+      expect(mini.querySelectorAll(".mini-cell").length).toBeGreaterThan(0);
+      $(element, 'button[data-id="undo"]').click();
       await flush();
       expect(undoImport).toHaveBeenCalledWith({ importId: "im1" });
       expect($(element, '[data-id="undone"]').textContent).toBe(
         "Import undone. Removed 30 things it added."
       );
-      expect($(element, 'lightning-button[data-id="undo"]')).toBeNull();
+      expect($(element, 'button[data-id="undo"]')).toBeNull();
     });
   });
 });

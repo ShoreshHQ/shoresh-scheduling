@@ -373,8 +373,9 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
       (choice 12), put on each weekday of the week where the file had it. A day that already has
       another special day keeps it and is named ("Wednesday already has "Field Day", so it isn't
       on that day."). The draft's cells for those days stay, out of sight (choice 22).
-      The screen says what was done and reads the week and the season again. Electives and trips
-      noted from a file are not set up here (they have no setup yet).
+      The screen says what was done and reads the week and the season again. Trips noted from a
+      file are not set up here (they have no setup yet); electives are, since slice E5 (ADR 0018
+      choice 27).
 
 24. **Words and looks.** "Events" is the drawer section's word (the default "Special event"
     shortened, as on the Special events screen, choice 11). The flag is the mock-up's. A special

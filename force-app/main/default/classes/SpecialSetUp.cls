@@ -1,9 +1,13 @@
 /**
  * "Set it up" on a cell an import noted as "not set up yet" (ADR 0005 §2, ADR 0006; ADR 0014
- * slice 4): one click makes the special event or special day the file named, from what the file
- * had: its name and where it was.
+ * slice 4; ADR 0018 slice E5): one click makes the special event, special day or elective set the
+ * file named, from what the file had: its name and where it was.
  * - A special event: the season's event of that name (made when there is none), and every cell
  *   of the week's draft that named it now holds that event, where it was.
+ * - An elective set (plan §6.1, "bound by name"): the season's set of that name, spaces and
+ *   capitals aside (made with no offerings yet when there is none, named as the file had it:
+ *   desktop "created set name = the header text verbatim"), and every cell of the draft that
+ *   named it now holds that set, where it was.
  * - A special day: the season's special day of that name (made when there is none, starting from
  *   the camp's regular day as one added on the Special events screen does: SpecialDaySeed), put on
  *   each weekday of the week where the file had it. A day that already has another special day
@@ -13,6 +17,9 @@
  * draft's lock.
  */
 public with sharing class SpecialSetUp {
+  // What can be set up from a noted cell: a special event, a special day, an elective set.
+  private static final Set<String> KINDS = new Set<String>{ 'S', 'D', 'E' };
+
   // The draft, its days as read, and the camp's words.
   private Schedule__c draft;
   private List<ScheduleDays.DayGrid> days;
@@ -24,18 +31,33 @@ public with sharing class SpecialSetUp {
     public String said;
   }
 
-  /** Sets up what a not-set-up cell names. kind: 'S' (special event) or 'D' (special day). */
+  /**
+   * Sets up what a not-set-up cell names. kind: 'S' (special event), 'D' (special day) or 'E'
+   * (elective set, ADR 0018 slice E5).
+   */
   public static Done setUp(Id scheduleId, String kind, String name) {
     String trimmed = name == null ? '' : name.trim();
-    if (String.isBlank(trimmed) || (kind != 'S' && kind != 'D')) {
+    if (String.isBlank(trimmed) || !KINDS.contains(kind)) {
       throw new ShoreshException('That can\'t be set up here.');
     }
     SpecialSetUp setUp = new SpecialSetUp(lockedDraft(scheduleId));
     Savepoint beforeSetUp = Database.setSavepoint();
     try {
+      if (kind == 'D') {
+        return setUp.specialDay(new NotedItems('D', trimmed), trimmed);
+      }
+      Id seasonId = setUp.draft.Program__r.Season__c;
       return kind == 'S'
-        ? setUp.event(new NotedItems('S', trimmed), trimmed)
-        : setUp.specialDay(new NotedItems('D', trimmed), trimmed);
+        ? setUp.bind(
+            new NotedItems('S', trimmed),
+            SpecialNamed.event(seasonId, trimmed),
+            'SpecialEvent'
+          )
+        : setUp.bind(
+            new NotedItems('E', trimmed),
+            SpecialNamed.electiveSet(seasonId, trimmed),
+            'ElectiveSet'
+          );
     } catch (Exception e) {
       Database.rollback(beforeSetUp);
       throw e;
@@ -61,14 +83,14 @@ public with sharing class SpecialSetUp {
       : ManualDrafts.locked(scheduleId);
   }
 
-  private Done event(NotedItems noted, String name) {
-    SpecialEvent__c event = SpecialNamed.event(
-      draft.Program__r.Season__c,
-      name
-    );
+  /**
+   * Every cell of the draft the file noted with that name now holds the record, where it was: a
+   * special event, or an elective set (term: the camp's word for what it is).
+   */
+  private Done bind(NotedItems noted, SObject record, String term) {
     List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
     for (ScheduleDays.DayGrid day : days) {
-      if (day.grid != null && noted.pointAt(day.grid, event)) {
+      if (day.grid != null && noted.pointAt(day.grid, record)) {
         saves.add(
           new ScheduleDaySaves.DaySave(day.day, day.grid, day.revision)
         );
@@ -78,7 +100,11 @@ public with sharing class SpecialSetUp {
       ScheduleDaySaves.write(draft.Id, saves);
     }
     return saying(
-      '"' + event.Name + '" is set up as ' + article('SpecialEvent') + '.'
+      '"' +
+        (String) record.get('Name') +
+        '" is set up as ' +
+        article(term) +
+        '.'
     );
   }
 

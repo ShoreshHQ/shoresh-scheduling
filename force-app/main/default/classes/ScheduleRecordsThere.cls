@@ -1,7 +1,7 @@
 /**
  * Which of some records a schedule's days point at are still there and can be seen (ScheduleRefs):
  * time blocks, groups, activities, fixed and recurring activities, special events and days (ADR
- * 0014 slice 4). Runs in user mode.
+ * 0014 slice 4), elective sets (ADR 0018 slice E5). Runs in user mode.
  */
 public with sharing class ScheduleRecordsThere {
   /**
@@ -55,6 +55,9 @@ public with sharing class ScheduleRecordsThere {
     }
     if (type == SpecialDay__c.SObjectType) {
       return [SELECT Id FROM SpecialDay__c WHERE Id IN :ids WITH USER_MODE];
+    }
+    if (type == ElectiveSet__c.SObjectType) {
+      return [SELECT Id FROM ElectiveSet__c WHERE Id IN :ids WITH USER_MODE];
     }
     return new List<SObject>();
   }
