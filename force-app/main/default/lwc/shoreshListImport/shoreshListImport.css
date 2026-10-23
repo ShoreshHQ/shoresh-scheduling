@@ -318,10 +318,21 @@
   overflow-x: auto;
 }
 
+/* Fixed widths, so every section's columns line up under the names above the first: the
+   name a third, the row's end room for Keep and Change, the file's columns share the rest. */
 .rows {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0 var(--shoresh-s1);
+}
+
+.th_name {
+  width: 32%;
+}
+
+.th_end {
+  width: calc(var(--shoresh-u) * 48);
 }
 
 .th {
@@ -415,8 +426,10 @@
 /* Needs a look: the corner mark in the row's top-right corner. */
 .cell_end {
   position: relative;
-  width: 1%;
-  white-space: nowrap;
+}
+
+.cell {
+  overflow-wrap: anywhere;
 }
 
 .row-mark {

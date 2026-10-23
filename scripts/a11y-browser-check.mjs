@@ -78,6 +78,7 @@
  *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
  *   The check's own elective set is made by Apex first and deleted after.
  *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
+ *   `--only lists` runs just the two Import a list steps (Groups and Electives);
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
@@ -92,7 +93,7 @@
  * download).
  *
  * Usage: node scripts/a11y-browser-check.mjs [--report <path>] [--headed] [--shots <dir>]
- *   [--only electives]
+ *   [--only electives|lists]
  * How to run, and the org rules it follows: docs/ci-setup.md.
  */
 import { execFileSync } from "node:child_process";
@@ -150,10 +151,11 @@ const shotsDir = resolve(
   argValue("--shots", join(tmpdir(), "a11y-browser-check"))
 );
 const headed = args.includes("--headed");
-// One step on its own (the camp is still seeded first): just "electives" for now.
+// Some steps on their own (the camp is still seeded first): "electives", or "lists" (Import a
+// list on Groups and on Electives, ADR 0007 choice 33).
 const only = argValue("--only", null);
-if (only && only !== "electives") {
-  console.log(`--only knows "electives"; not "${only}".`);
+if (only && !["electives", "lists"].includes(only)) {
+  console.log(`--only knows "electives" and "lists"; not "${only}".`);
   process.exit(1);
 }
 
@@ -1251,6 +1253,9 @@ async function listIntoTable() {
     name: /^Import a list$/
   });
   const screen = '[data-screen="groups"]';
+  // The screen itself (the menu's entries carry data-screen too): its rail's parent.
+  const screenEl = () =>
+    page.locator(APP).locator(`${screen} > [data-id="setup-rail"]`);
   await page
     .locator(APP)
     .locator(`${screen} c-shoresh-list-import input[data-id="file"]`)
@@ -1268,39 +1273,37 @@ async function listIntoTable() {
       )
     });
   await pause(1500);
-  const seen = await page
-    .locator(APP)
-    .locator(screen)
-    .evaluate((el) => {
-      const list = el.querySelector("c-shoresh-list-import");
-      const root = list && list.shadowRoot;
-      const row = (name) =>
-        root &&
-        [...root.querySelectorAll("tr[data-row]")].find(
-          (tr) => tr.dataset.row === name
-        );
-      const visible = (node) => !!node && node.getClientRects().length > 0;
-      const fresh = row("Check new bunk");
-      const changed = row("Bunk 5");
-      const part = (tr) => tr && tr.closest(".part").dataset.partLabel;
-      return {
-        tableAway: !visible(el.querySelector(".setup-list")),
-        fresh: fresh ? [fresh.dataset.kind, part(fresh)] : null,
-        dashed: fresh
-          ? getComputedStyle(fresh.querySelector("th")).borderTopStyle
-          : null,
-        changed: changed
-          ? [
-              changed.dataset.kind,
-              part(changed),
-              (changed.querySelector(".old") || {}).textContent || ""
-            ]
-          : null,
-        crossed: changed
-          ? getComputedStyle(changed.querySelector(".old")).textDecorationLine
-          : null
-      };
-    });
+  const seen = await screenEl().evaluate((rail) => {
+    const el = rail.parentElement;
+    const list = el.querySelector("c-shoresh-list-import");
+    const root = list && list.shadowRoot;
+    const row = (name) =>
+      root &&
+      [...root.querySelectorAll("tr[data-row]")].find(
+        (tr) => tr.dataset.row === name
+      );
+    const visible = (node) => !!node && node.getClientRects().length > 0;
+    const fresh = row("Check new bunk");
+    const changed = row("Bunk 5");
+    const part = (tr) => tr && tr.closest(".part").dataset.partLabel;
+    return {
+      tableAway: !visible(el.querySelector(".setup-list")),
+      fresh: fresh ? [fresh.dataset.kind, part(fresh)] : null,
+      dashed: fresh
+        ? getComputedStyle(fresh.querySelector("th")).borderTopStyle
+        : null,
+      changed: changed
+        ? [
+            changed.dataset.kind,
+            part(changed),
+            (changed.querySelector(".old") || {}).textContent || ""
+          ]
+        : null,
+      crossed: changed
+        ? getComputedStyle(changed.querySelector(".old")).textDecorationLine
+        : null
+    };
+  });
   const expected =
     seen.tableAway &&
     seen.fresh &&
@@ -1342,17 +1345,15 @@ async function listIntoTable() {
     tag: "button",
     name: new RegExp(`^Leave out ${NEW}$`)
   });
-  const pressed = await page
-    .locator(APP)
-    .locator(screen)
-    .evaluate((el) => {
-      const root = el.querySelector("c-shoresh-list-import").shadowRoot;
-      const button = root.querySelector("button[data-leave]");
-      const tr = button && button.closest("tr");
-      return button
-        ? [button.getAttribute("aria-pressed"), tr.dataset.kind]
-        : null;
-    });
+  const pressed = await screenEl().evaluate((rail) => {
+    const el = rail.parentElement;
+    const root = el.querySelector("c-shoresh-list-import").shadowRoot;
+    const button = root.querySelector("button[data-leave]");
+    const tr = button && button.closest("tr");
+    return button
+      ? [button.getAttribute("aria-pressed"), tr.dataset.kind]
+      : null;
+  });
   if (pressed && pressed[0] === "true" && pressed[1] === "skipped")
     results.pass(
       G,
@@ -1377,18 +1378,17 @@ async function listIntoTable() {
     tag: "button",
     name: /^Import a list$/
   });
-  const back = await page
-    .locator(APP)
-    .locator(screen)
-    .evaluate(
-      (el) => el.querySelector(".setup-list").getClientRects().length > 0
-    );
+  const back = await screenEl().evaluate(
+    (rail) =>
+      rail.parentElement.querySelector(".setup-list").getClientRects().length >
+      0
+  );
   const logs = apex(`
 Group__c g = [SELECT Availability__c FROM Group__c WHERE Name = 'Bunk 5' AND Division__r.Program__r.Season__r.Camp__r.Name = '${CAMP}' LIMIT 1];
 Integer added = [SELECT COUNT() FROM Group__c WHERE Name = '${NEW}'];
-System.debug('A11Y_BUNKS[' + g.Availability__c + '|' + added + ']');
+System.debug('A11Y_BUNKS[' + g.Availability__c + ':' + added + ']');
 `);
-  const org = /A11Y_BUNKS\[([^|\]]*)\|(\d+)\]/.exec(logs);
+  const org = /A11Y_BUNKS\[(\w+):(\d+)\]/.exec(logs);
   if (back && org && org[1] === "AllDay" && org[2] === "0")
     results.pass(
       G,
@@ -4594,7 +4594,25 @@ async function main() {
       await openFromMenu("Generated Schedule", /^Generated Schedule/);
       await pickWeek();
     };
-    if (only !== "electives") {
+    if (only === "lists") {
+      await step(
+        "Camp setup",
+        "Groups: Import a list laid into the table",
+        listIntoTable
+      );
+      await step(
+        "Electives",
+        "Import a list and Download this list by keyboard",
+        async () => {
+          const names = seedElectivesSetup();
+          try {
+            await electivesImport("Electives", names);
+          } finally {
+            clearElectives();
+          }
+        }
+      );
+    } else if (only !== "electives") {
       await campSetup();
       await manualBuild(openManual);
       await generated(openGenerated);
@@ -4608,8 +4626,8 @@ async function main() {
       await publish("Generated Schedule", openGenerated);
       await schedulesPage();
     }
-    await electives();
-    if (only !== "electives") await bringInChoices();
+    if (only !== "lists") await electives();
+    if (!only) await bringInChoices();
   } finally {
     const version = browser.version();
     await browser.close();
