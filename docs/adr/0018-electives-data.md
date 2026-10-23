@@ -18,6 +18,16 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
 §2 and §4.1; the desktop's `ElectivesScreen.jsx`, `elective/ElectiveSetDetail.jsx` and
 `elective/BundleEditor.jsx`._
 
+_Amended 2026-10-23, slice E5 (electives on the week grid): choices 20 to 27. Design source:
+Greg's approved mock-up (design-research `electives-r1`, `grid-a`: one wide cell across the
+bunks, decision 53.2; elective sets first in the drawer; padlock bottom-right and the look mark
+top-right, decision 51); the plan's §1 step 2, §2 "Where electives happen" and §4.2; the
+desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlotMutations.js`
+(placing, the swap refusal), `engine/electiveOccupancy.js`, `buildSchedule.js` and
+`computeOverlaps.js` (an elective set takes up its offerings' places), and its ADRs
+`2026-08-20-electives-authoring` (D1) and `2026-08-22-nested-schedules-electives-and-events`
+(§2, §4)._
+
 ## Choices
 
 1. **Eight objects**, in two master-detail chains under the season, so they share like everything
@@ -226,3 +236,78 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
 Also not in this slice: adding a new activity from the offering choice (the
 desktop's picker can; here an activity is added on Activities first), the linked choices editor
 (E8), electives on the grid and the "not set up yet" Roots item (E5, E9).
+
+## Slice E5: electives on the week grid
+
+20. **An elective set on the grid is kind `E` with the set's record** (grid format version 1
+    already has `E`; plan §3: "an elective cell set up in Salesforce carries the set's Id"). An
+    `E` without an Id is still an import's "not set up yet". `E` joins `S` and `D` as a kind that
+    points at a record once set up (`ScheduleGridRules.SET_UP_LATER_KINDS`, `isSetUp`; the
+    browser's `identity` in `slotEdits.js` and `c/shoreshEngine` `grid.js`; `SlotIds.electiveIn`),
+    so a deleted set shows as removed (`ScheduleRecordsThere`) and a saved name stays as saved.
+    It is still an item the generator keeps, never places (`NOT_SET_UP_KINDS`, ADR 0010 §3).
+21. **Each time block holds the set on its own** (desktop: a director-placed elective never
+    spans, `useSlotMutations.js` refField; plan §2: an elective time is one per day, time block and
+    division). Bunks side by side holding it in the same block are **one wide cell** across them
+    (decision 53.2; the merge ADR 0014 choice 19 made for events, `mergeKey`), so two periods of
+    Chugim are two wide cells, as `grid-a` draws them. The cell reads **"Chugim (4)"**: the set's
+    name as setup has it now and its confirmed, open offerings (decision 53, the setup screen's
+    count, `openCount`), with the set's mark before the name (the mock-up's); the padlock
+    bottom-right and the look mark top-right show with it (decision 51). On the Schedules page
+    (not changed here) it is one wide cell with the set's saved name and mark, no count.
+22. **Placed as an event is** (ADR 0014 choice 19): from the drawer, where the season's sets come
+    **first, before the activities** (the mock-up; only when the camp has any; "4 offerings" at the
+    tile's foot), picked and put down, dragged, or picked while cells are chosen together; or by
+    **typing** its name into a cell or the cells chosen (the typing box lists the sets first, as
+    "Chugim (4)", as the desktop's `CellInlineEditor` offers them). Whatever was in those cells goes
+    in full; a fixed or recurring activity, a bunk not at camp or a locked cell refuses it, saying
+    which. Delete clears it from every bunk it is drawn across, as one Undo step; Clear day and
+    Clear week clear it with the activities; Copy day to and Paste carry it. Saved as Manual
+    Build's edits are (`SlotRules` with `SlotEvents`: only the season's sets, read once per save, one
+    query only when an edit places one; another season's or a deleted one is refused: "That
+    elective set was not found. It may have been deleted.").
+23. **It never swaps** (desktop `useSlotMutations.js`: "Can't swap with an elective or an event.
+    Move it to an empty cell instead."): an activity put down on a placed set or event is refused
+    in those words (`moves.js` `NO_SWAP`; a placed event said "… stays where it is." before). It is
+    not dragged or stretched itself.
+24. **It takes up its offerings' places** (desktop `electiveOccupancy.js`, used by
+    `buildSchedule.js` and `computeOverlaps.js`; "electives are not special"): each bunk holding the
+    set is at the place of each of its confirmed, open offerings' activities (a place once per set,
+    `readElectivePlaces`). Like a fixed or recurring activity it counts toward "more groups than
+    fit" and never carries the dot itself, so an activity put at one of those places beside it is
+    dotted (`checks.js placeCapacity`), and the generator sends a bunk there only by bending that
+    rule (`week.js keepRun`). As on the desktop, each bunk in the set counts at every one of its
+    places, though its campers spread across them; a camp whose places are set up to fit one bunk
+    will see that. Other programs' published electives are not counted yet.
+25. **It is not counted as placed** (desktop: elective cells don't count toward "placed"; the
+    mock-up's counter): a placed set is no cell to fill (`checks.js filledCount`), so the counter,
+    Filled and Still to place leave it out. A set noted from a file by name counts as before.
+26. **The generator keeps it** (ADR 0010 §3, as it keeps imported ones): a full build, Try another
+    and Start over never clear, move or fill over it, and the server refuses a build that changes
+    one, naming it ("Chugim stays where it is."; the name was a record Id for a placed event
+    before, `GeneratedChecks.savedName`). Hand edits on Generated Schedule place it as on Manual
+    Build, locked like any hand edit.
+27. **"Set it up" binds a noted elective by name** (plan §6.1 "bound by name"; ADR 0014 choice 23):
+    with focus on a cell a file noted as an elective ("Chugim isn't set up yet · Set it up"), one
+    click points every cell of the draft that named it at the season's set of that name (spaces and
+    capitals aside), or at a new set named as the file had it, with no offerings yet (desktop:
+    "created set name = the header text verbatim"): '"Chugim" is set up as an elective set.'
+    (`SpecialSetUp` with `SpecialNamed.electiveSet`, from `SpecialPlacingController.setUpItem`, under
+    the draft's own lock). **Start from another week** carries a placed set where it was while the
+    season still has it (a deleted one is listed, "deleted from setup"), as the week's pattern;
+    events are still left out, placed day by day.
+
+Checked by `ElectivesOnGridTest` (as a scheduler, records made in the same `System.runAs`: placed
+by its record one block at a time, still there, in a bounded save; another season's refused; Set
+it up binding to the set of that name and making one; Start from another week carrying it; a
+Generated build never placing one and refused when it changes one), `shoreshWeekEditor`
+`electives.test.js` (the drawer first and only with sets, putting down, chosen cells, each block on
+its own, one wide cell, typing, no swap, clearing across bunks, places and the counter, Set it up,
+axe), `moves.test.js` and `tools.test.js`, `c/shoreshEngine` `electives.test.js` (the places read,
+kept, the bend, the dot and the counter), `shoreshScheduleViews` `electives.test.js` and
+`shoreshScheduleGrid` `merged.test.js`, and in the test org by `scripts/a11y-browser-check.mjs`.
+
+Not in this slice: typing "Chugim: Archery, Drama" to make a set with its offerings in the cell
+(plan §4.2, desktop D1: here a set is made on the Electives screen, or from a noted cell), a set
+noted in an imported version being set up from Roots (E9), and other programs' electives counted
+at a place.

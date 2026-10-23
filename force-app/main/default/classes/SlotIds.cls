@@ -64,14 +64,26 @@ public with sharing class SlotIds {
 
   /** The special event a slot's identity starts ('S:<Id>'), or null (one not set up yet). */
   public static Id eventIn(String slot) {
-    if (slot == null || !slot.startsWith('S:')) {
+    return recordIn(slot, 'S:', SpecialEvent__c.SObjectType);
+  }
+
+  /** The elective set a slot's identity starts ('E:<Id>', ADR 0018 slice E5), or null (one not set up yet). */
+  public static Id electiveIn(String slot) {
+    return recordIn(slot, 'E:', ElectiveSet__c.SObjectType);
+  }
+
+  /** The record of a type a slot's identity starts after its kind, or null. */
+  private static Id recordIn(
+    String slot,
+    String kind,
+    Schema.SObjectType type
+  ) {
+    if (slot == null || !slot.startsWith(kind)) {
       return null;
     }
     try {
-      Id recordId = Id.valueOf(slot.substring(2));
-      return recordId.getSObjectType() == SpecialEvent__c.SObjectType
-        ? recordId
-        : null;
+      Id recordId = Id.valueOf(slot.substring(kind.length()));
+      return recordId.getSObjectType() == type ? recordId : null;
     } catch (StringException e) {
       return null;
     }
@@ -86,8 +98,8 @@ public with sharing class SlotIds {
     String item = slot.substring(carry.length());
     String kind = item.substringBefore(':');
     if (ScheduleGridRules.SET_UP_LATER_KINDS.contains(kind)) {
-      // A special event or day by its record (written either length), or one not set up yet by
-      // name (a name is never a record Id).
+      // A special event or day, or an elective set, by its record (written either length), or
+      // one not set up yet by name (a name is never a record Id).
       try {
         return carry +
           kind +

@@ -24,9 +24,14 @@ import { LightningElement, api } from "lwc";
  * and put down on a cell or the cells chosen together. events: [{ id, name, said }];
  * eventsHeading: the section's word; pickedEventId: the event held.
  *
+ * The season's elective sets come first, before the activities (ADR 0018 slice E5; mock-up
+ * design-research/electives-r1 grid-a), and only when the camp has any: a tile per set with its
+ * mark before the name and "4 offerings" at its foot, picked or dragged as an event's is.
+ * electives: [{ id, name, words, said }]; pickedElectiveId: the set held.
+ *
  * Events: filter { value }, pickactivity { id }, activitydragstart { id }, pickevent { id },
- * eventdragstart { id }, tilehover { id } (null when the pointer or focus leaves the tile),
- * removedrop { data }.
+ * eventdragstart { id }, pickelective { id }, electivedragstart { id }, tilehover { id } (null
+ * when the pointer or focus leaves the tile), removedrop { data }.
  */
 export default class ShoreshBuildPalette extends LightningElement {
   @api tiles = [];
@@ -38,6 +43,8 @@ export default class ShoreshBuildPalette extends LightningElement {
   @api events = [];
   @api eventsHeading = "Events";
   @api pickedEventId;
+  @api electives = [];
+  @api pickedElectiveId;
 
   // The tile under the pointer or with keyboard focus: its numbers show.
   hoverId = null;
@@ -81,6 +88,38 @@ export default class ShoreshBuildPalette extends LightningElement {
     });
   }
 
+  get shownElectives() {
+    return (this.electives || []).map((tile) => {
+      const held = tile.id === this.pickedElectiveId;
+      return {
+        ...tile,
+        key: `elective-${tile.id}`,
+        pressed: String(held),
+        className: held ? "tile tile_event tile_held" : "tile tile_event"
+      };
+    });
+  }
+
+  handlePickElective(event) {
+    this.dispatchEvent(
+      new CustomEvent("pickelective", {
+        detail: { id: event.currentTarget.dataset.id }
+      })
+    );
+  }
+
+  handleElectiveDragStart(event) {
+    const { id } = event.currentTarget.dataset;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "copy";
+      const tile = (this.electives || []).find((t) => t.id === id);
+      event.dataTransfer.setData("text/plain", tile ? tile.name : "");
+    }
+    this.dispatchEvent(
+      new CustomEvent("electivedragstart", { detail: { id } })
+    );
+  }
+
   get hasEvents() {
     return (this.events || []).length > 0;
   }
@@ -105,7 +144,10 @@ export default class ShoreshBuildPalette extends LightningElement {
 
   get noMatches() {
     return (
-      !!this.filter && !(this.tiles || []).length && !(this.events || []).length
+      !!this.filter &&
+      !(this.tiles || []).length &&
+      !(this.events || []).length &&
+      !(this.electives || []).length
     );
   }
 

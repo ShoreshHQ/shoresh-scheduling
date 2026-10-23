@@ -1,7 +1,10 @@
 import { buildTerms } from "c/shoreshTerms";
 import { reasonFor } from "./words";
 import { DAY_NAMES, checkWeek, weekdayOf } from "./checks";
-import { readLocations as readLocationMap } from "./checkInputs";
+import {
+  readElectivePlaces,
+  readLocations as readLocationMap
+} from "./checkInputs";
 import { identity } from "./grid";
 import {
   atCamp,
@@ -26,7 +29,12 @@ import {
 } from "./week";
 
 export { BUSY, NO_FIT, RELAX_ORDER, RULE, reasonFor, checkWeek };
-export { readActivities, readLocations, readProgram } from "./checkInputs";
+export {
+  readActivities,
+  readElectivePlaces,
+  readLocations,
+  readProgram
+} from "./checkInputs";
 export { measureWeek } from "./measure";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
@@ -52,6 +60,9 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *   terms: the camp's words (c/shoreshTerms), for the reasons
  *   replacedDates: the days ("YYYY-MM-DD") a special day replaces (ADR 0014 slice 4; desktop ADR
  *     2026-10-09 D4): nothing is built or counted there, and they come back exactly as sent
+ *   electiveOfferings: the season's offerings (Offering__c, setup.electives.offerings): an elective
+ *     set on the grid is kept like a lock and takes up the places of its confirmed, open offerings
+ *     (readElectivePlaces; ADR 0018 slice E5, desktop electiveOccupancy.js)
  *
  * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells,
  * openCells, ruleChecks }
@@ -137,6 +148,10 @@ export function* generateWeekSteps(input) {
     ),
     locks: new Set(
       (input.locks || []).map((l) => lockKey(l.date, l.groupId, l.blockId))
+    ),
+    electivePlaces: readElectivePlaces(
+      input.electiveOfferings,
+      input.activities
     ),
     mode: input.mode === MODE.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL,
     seed: `${input.programId || ""}|${weekId || ""}|${option}`,
@@ -240,6 +255,10 @@ export function checkGeneratedWeek(input) {
     setTimeLocation: readSetTimeLocations(
       input.fixedActivities,
       input.recurringActivities
+    ),
+    electivePlaces: readElectivePlaces(
+      input.electiveOfferings,
+      input.activities
     ),
     // The locks, so a cell locked empty isn't counted as one to fill (G4).
     locks: new Set(
@@ -392,6 +411,7 @@ export function checkModel(input, model, state) {
       [...groupsInSetup.values()].map((g) => [g.id, g.division])
     ),
     setTimeLocations: model.setTimeLocation,
+    electivePlaces: model.electivePlaces,
     notFor,
     isAway: (groupId, blockId) =>
       groupsInSetup.has(groupId) &&

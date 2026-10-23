@@ -1345,6 +1345,30 @@ same week editor, Generated Schedule:
 Checked by `WeekSpecialsTest`, `SpecialPlacingTest`, `shoreshWeekEditor` `specialDays.test.js`
 and `specials.test.js`, `shoreshScheduleGrid` `merged.test.js`.
 
+## Choices (part 11: elective sets on the week, 2026-10-23)
+
+ADR 0018 choices 20 to 27 (Electives slice E5; decision 53.2; mock-up
+`design-research/electives-r1` `grid-a`), on Manual Build and, through the same week editor,
+Generated Schedule:
+
+1. **Elective sets first in the drawer**, before the activities, only when the camp has any: a
+   tile per set with its mark and "4 offerings" (`c-shoresh-build-palette` `electives`). Placed as
+   an event is (part 10): picked and put down, dragged, picked while cells are chosen together, or
+   typed (the typing box lists the sets first, "Chugim (4)"). Each time block holds the set on its
+   own; bunks side by side in the same block are one wide cell, "Chugim (4)", with the set's mark.
+   Delete clears it from all of them as one step; it is not dragged or stretched; it saves as an
+   edit does (§4), checked by `SlotRules` with `SlotEvents`.
+2. **No swap**: an activity put down on a placed set or event is refused, in the desktop's words
+   "Can't swap with an elective or an event. Move it to an empty cell instead."
+3. **The checks**: the set takes up its offerings' places (a bunk at the same place beside it can
+   get "More bunks at <place> than fit"; the set never carries the dot), and is not a cell to fill,
+   so the counter and Still to place leave it out.
+4. **Set it up** on a cell a file noted as an elective binds the draft's cells of that name to the
+   season's set (made, empty, when there is none), then the week and the season are read again.
+5. **Start from another week** carries a placed set where it was, while the season has it.
+
+Checked by `ElectivesOnGridTest` and `shoreshWeekEditor` `electives.test.js`.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's

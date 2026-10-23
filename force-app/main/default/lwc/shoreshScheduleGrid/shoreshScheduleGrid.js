@@ -70,7 +70,8 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * 47.3; a special day's own schedule doing one thing in every bunk). The first one's key stands
  * for them all. A special event's cell (`event`) has its quiet flag before the name and its
  * place (`where`) under it; with the padlock bottom-right and the look mark top-right, all three
- * show at once (decision 51).
+ * show at once (decision 51). An elective set's cell (`elective`, ADR 0018 slice E5, decision
+ * 53.2) is one cell across the bunks the same way, its set mark before the name ("Chugim (4)").
  *
  * Same-activity outlines (wiki decision 38): pointing at a cell, or keyboard focus on it, gives
  * every other cell of that activity (`activityKey`) a pale highlight outline. `held` ({
@@ -380,6 +381,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
             nameClass: cell.gone ? "cell-name cell-name_gone" : "cell-name",
             // A special event: its quiet flag before the name, its place under it.
             flag: !!cell.event,
+            // An elective set: its mark before the name (decision 53.2).
+            setMark: !!cell.elective && !cell.event,
             colIndex: cell.column + 2,
             colSpan: cell.colSpan || null,
             rowSpan: cell.length || 1

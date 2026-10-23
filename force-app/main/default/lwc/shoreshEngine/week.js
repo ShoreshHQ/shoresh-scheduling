@@ -7,7 +7,7 @@ import { atCamp } from "./setup";
  * fill are the at-camp cells that are Open after locks and fixed and recurring activities are in.
  *
  * Fill order, as the desktop's: kept cells first (locked cells, fixed and recurring activities,
- * and in "fill the open cells" every filled cell); multi-block activities first in each priority;
+ * special events and elective sets, and in "fill the open cells" every filled cell); multi-block activities first in each priority;
  * the tight-week matching of capped activities; greedy fewest-choices, high priority then low;
  * then three repair passes (a reshuffle per empty cell, raising weekly minimums, moving a blocking
  * session), each step of which is undone unless it ends whole. Then, new here, nothing is left
@@ -85,8 +85,8 @@ export function lockKey(date, groupId, blockId) {
 }
 
 /**
- * model: { days, groups, groupIds, acts, eligibility, fit, setTimeLocation, locks, mode, seed,
- *          otherPlace, otherActivity } (shoreshEngine.js builds it).
+ * model: { days, groups, groupIds, acts, eligibility, fit, setTimeLocation, electivePlaces, locks,
+ *          mode, seed, otherPlace, otherActivity } (shoreshEngine.js builds it).
  */
 export function scheduleWeek(model) {
   const steps = scheduleWeekSteps(model);
@@ -119,6 +119,8 @@ const SHARE = Object.freeze({
 export function* scheduleWeekSteps(model, notes = {}) {
   const { days, groups, acts, eligibility, fit, setTimeLocation, locks } =
     model;
+  // Each elective set's places (readElectivePlaces), for the elective cells kept.
+  const electivePlaces = model.electivePlaces || new Map();
   const fillOpenOnly = model.mode === "fillOpen";
   // The minimum repair may leave a cell for never-blank (model.strictRepair turns it off), and
   // whether any chain it kept did so.
@@ -271,6 +273,13 @@ export function* scheduleWeekSteps(model, notes = {}) {
       keptCells.set(k, { item: run.item, head: i === 0 });
       if (run.item.kind === "F" || run.item.kind === "R") {
         occupy(setTimeLocation.get(run.item.id), groupId, day.index, blockId);
+      } else if (run.item.kind === "E") {
+        // An elective set is at each place of its offerings (ADR 0018 slice E5; desktop
+        // registerOverlayOccupancy with electiveOccupancy.js), so the places it takes up are full
+        // to that many fewer groups.
+        electivePlaces
+          .get(run.item.id)
+          ?.forEach((placeId) => occupy(placeId, groupId, day.index, blockId));
       } else if (act) {
         assigned.set(k, act.id);
         if (i > 0) {

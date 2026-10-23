@@ -144,6 +144,24 @@
                         <span class="event-where">{cell.where}</span>
                       </template>
                     </template>
+                    <template lwc:elseif={cell.setMark}>
+                      <!-- An elective set (decision 53.2; mock-up electives-r1 grid-a): its mark
+                           before the name, "Chugim (4)". -->
+                      <span class="event-name"
+                        ><svg
+                          class="flag"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path d="M6 11V6.5"></path>
+                          <path d="M6 6.5 2.5 2.5"></path>
+                          <path d="M6 6.5l3.5-4"></path>
+                          <path d="M2.5 5V2.5H5"></path>
+                          <path d="M7 2.5h2.5V5"></path></svg
+                        ><span class={cell.nameClass}>{cell.text}</span></span
+                      >
+                    </template>
                     <template lwc:else>
                       <span class={cell.nameClass}>{cell.text}</span>
                     </template>
