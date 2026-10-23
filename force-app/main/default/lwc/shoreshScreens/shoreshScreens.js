@@ -10,6 +10,10 @@
 // Built in a later slice: listed, not reachable yet (none just now; Special events came in ADR
 // 0014 slice 2).
 const COMING = new Set([]);
+// A screen that can be opened from the page's address before it is in the menu, for the checks
+// that look at it (?c__preview=bringInChoices; repo ADR 0017 choice 19, the route of ADR 0018).
+// Nothing else reaches it.
+const PREVIEWABLE = new Set(["bringInChoices"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -74,6 +78,11 @@ export function isComing(screen) {
 /** Whether the screen can be opened now: built, and (except camp words) a season exists. */
 export function canOpen(screen, hasSeason) {
   return !COMING.has(screen) && (hasSeason || WITHOUT_SEASON.has(screen));
+}
+
+/** The screen a page address may open ("bringInChoices"), else null. */
+export function previewScreen(name) {
+  return PREVIEWABLE.has(name) ? name : null;
 }
 
 // The setup screens, in menu order (the Camp section, then Activities): each one's "next" button

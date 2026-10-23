@@ -1,4 +1,5 @@
-import { LightningElement } from "lwc";
+import { LightningElement, wire } from "lwc";
+import { CurrentPageReference } from "lightning/navigation";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
@@ -27,6 +28,7 @@ import {
   canOpen,
   menuSections,
   nextScreen,
+  previewScreen,
   screenLabels
 } from "c/shoreshScreens";
 import { leftField } from "c/shoreshSavedMark";
@@ -66,7 +68,8 @@ const FLUSH_SCREENS = new Set([
   "activities",
   "fixedActivities",
   "recurringActivities",
-  "specialEvents"
+  "specialEvents",
+  "bringInChoices"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -96,7 +99,8 @@ const SCREENS = [
   "generatedSchedule",
   "manualBuild",
   "schedules",
-  "import"
+  "import",
+  "bringInChoices"
 ];
 
 /**
@@ -224,6 +228,10 @@ export default class ShoreshCampSetup extends LightningElement {
   specialScheduleChanged = false;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
+  // The screen the page's address asks for (?c__preview=bringInChoices, repo ADR 0017 choice 19),
+  // and whether it has been opened once (after that the menu leads, as for any screen).
+  preview = null;
+  previewOpened = false;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
   sameLocationError = null;
   // Merging: the question's buttons wait.
@@ -252,6 +260,31 @@ export default class ShoreshCampSetup extends LightningElement {
       [{ target: recordId, week: weekId }],
       "Not turned off. The week is ticked again."
     );
+
+  /**
+   * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu until electives are finished (decision 44), so it can be tried and checked before then
+   * (repo ADR 0017 choice 19). Any other value is ignored.
+   */
+  @wire(CurrentPageReference)
+  wiredPageReference(reference) {
+    const state = (reference && reference.state) || {};
+    this.preview = previewScreen(state.c__preview);
+    this.openPreview();
+  }
+
+  /** The screen the address asked for, once the season is on screen. */
+  openPreview() {
+    if (
+      this.preview &&
+      !this.previewOpened &&
+      this.mode === "screens" &&
+      this.setup
+    ) {
+      this.previewOpened = true;
+      this.openScreen(this.preview);
+    }
+  }
 
   connectedCallback() {
     // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
@@ -296,6 +329,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.newSeason = {};
     }
     await this.loadSeason();
+    this.openPreview();
   }
 
   async loadSeason() {
@@ -424,6 +458,11 @@ export default class ShoreshCampSetup extends LightningElement {
     return FLUSH_SCREENS.has(this.currentScreen)
       ? "zone body body_flush"
       : "zone body";
+  }
+
+  /** Drawn only while it is shown: its start reads the season's elective sets. */
+  get showsBringInChoices() {
+    return this.currentScreen === "bringInChoices";
   }
 
   get shown() {

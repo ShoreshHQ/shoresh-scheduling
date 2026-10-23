@@ -62,6 +62,11 @@
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
+ * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
+ *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
+ *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
+ *   count said, then Cancel: nothing brought in, said, focus on Choose a file; axe on each card.
+ *   It makes the check's elective set once ("Check chugim") and brings in no campers;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -3801,6 +3806,141 @@ async function updateToMatch(S, openScreen) {
   });
 }
 
+// ---------- Bring in choices (electives slice E6; ADR 0017 choices 10 to 21) ----------
+
+// The check's elective set, made once in the check camp's season with two of its activities.
+const CHECK_SET = "Check chugim";
+
+/**
+ * The check's elective set (made once): two of the camp's activities offered. Returns their names,
+ * for the sheet the check brings in. Nothing about campers is made: the check brings none in.
+ */
+function seedElectives() {
+  const logs = apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Season__c season = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY CreatedDate LIMIT 1];
+List<Activity__c> activities = [SELECT Id, Name FROM Activity__c WHERE Season__c = :season.Id ORDER BY Name LIMIT 2];
+List<ElectiveSet__c> sets = [SELECT Id FROM ElectiveSet__c WHERE Season__c = :season.Id AND Name = '${CHECK_SET}'];
+if (sets.isEmpty()) {
+  ElectiveSet__c item = new ElectiveSet__c(Season__c = season.Id, Name = '${CHECK_SET}');
+  insert item;
+  List<Offering__c> offerings = new List<Offering__c>();
+  for (Activity__c activity : activities) {
+    offerings.add(new Offering__c(ElectiveSet__c = item.Id, Activity__c = activity.Id, NoSeatLimit__c = true));
+  }
+  insert offerings;
+}
+System.debug('A11Y_OFFERED[' + activities[0].Name + '|' + activities[1].Name + ']');
+`);
+  const offered = /A11Y_OFFERED\[([^|\]']+)\|([^\]']+)\]/.exec(logs);
+  if (!offered)
+    throw new Error("The check's offerings were not reported back.");
+  return [offered[1], offered[2]];
+}
+
+/** A choices sheet as a camp's form exports it: made-up names (docs/samples/choices/names.json). */
+function choicesSheet([first, second]) {
+  return [
+    "Timestamp,Camper ID,Child's name,Chug choice 1,Chug choice 2,Anything we should know?,Parent email",
+    `6/2 9:14,SYN-9001,Maya Fernwood,${first},${second},,made-up@example.com`,
+    `6/2 9:20,SYN-9002,Eli Marblecrest,Photo club,${first},Prefers mornings,`,
+    `6/3 8:31,SYN-9003,Ruby Pebblestone,"${first}, ${second}",,,`
+  ].join("\n");
+}
+
+/**
+ * Bring in choices, opened from the page's address (it is not in the menu until electives are
+ * finished): a sheet chosen, the three cards walked with the keyboard (focus on each card's
+ * heading, axe on each), an unknown name left out, the count said, then Cancel: nothing saved.
+ */
+async function bringInChoices() {
+  const S = "Bring in choices";
+  await step(S, "The cards, by keyboard", async () => {
+    const offered = seedElectives();
+    const address = new URL(`${TAB_PATH}?c__preview=bringInChoices`, page.url())
+      .href;
+    await page.goto(address, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page
+      .locator(APP)
+      .locator("c-shoresh-choices-import")
+      .waitFor({ timeout: 60000 });
+    await pause(3000);
+    await expectFocus(S, "Opened from its address: focus on its heading", {
+      tag: /^h2$/,
+      name: /^Bring in choices$/
+    });
+    // The check's set, then its week.
+    if (await tabTo(named(/, Elective set$/, { tag: "button" }), { max: 10 })) {
+      await chooseOption(new RegExp(`^${CHECK_SET}$`));
+      await pause(800);
+    }
+    await pickWeek();
+    await axe(`${S}: the start`);
+    await page
+      .locator(APP)
+      .locator('c-shoresh-choices-import input[data-id="file"]')
+      .setInputFiles({
+        name: "check-choices.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(choicesSheet(offered), "utf8")
+      });
+    await expectFocus(S, "A sheet chosen: focus on card 1's heading", {
+      tag: /^h3$/,
+      name: /^How the sheet was read$/
+    });
+    await axe(`${S}: 1 of 3`);
+    if (!(await tabTo(named(/^That's right$/, { tag: "button" }), { max: 40 })))
+      throw new Error("That's right was not reached with Tab.");
+    await press("Enter", 800);
+    await expectFocus(S, "That's right: focus on card 2's heading", {
+      tag: /^h3$/,
+      name: /^What needs a look$/
+    });
+    await axe(`${S}: 2 of 3`);
+    if (
+      !(await tabTo(named(/^Leave out Photo club$/, { tag: "button" }), {
+        max: 40
+      }))
+    )
+      throw new Error("Leave out was not reached with Tab.");
+    await press("Enter", 500);
+    if (
+      !(await tabTo(named(/^Next$/, { tag: "button" }), {
+        max: 60,
+        back: true
+      }))
+    )
+      throw new Error("Next was not reached with Tab.");
+    await expectLive(
+      S,
+      "Next: the count is ready, and said",
+      /Ready to bring in/,
+      () => press("Enter")
+    );
+    await expectFocus(S, "Next: focus on card 3's heading", {
+      tag: /^h3$/,
+      name: /^What comes in$/
+    });
+    await axe(`${S}: 3 of 3`);
+    if (
+      !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+        max: 20,
+        back: true
+      }))
+    )
+      throw new Error("Cancel was not reached with Tab.");
+    await expectLive(
+      S,
+      "Cancel: nothing brought in, and said",
+      /Nothing was brought in/,
+      () => press("Enter")
+    );
+    await expectFocus(S, "Cancel: focus on Choose a file", {
+      name: /^Choose a file$/
+    });
+  });
+}
+
 async function main() {
   refuseInCi();
   refuseWhileCiRuns();
@@ -3863,6 +4003,7 @@ async function main() {
     await publish("Manual Build", openManual);
     await publish("Generated Schedule", openGenerated);
     await schedulesPage();
+    await bringInChoices();
   } finally {
     const version = browser.version();
     await browser.close();

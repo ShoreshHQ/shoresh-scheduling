@@ -65,7 +65,7 @@ const FIELDS = [
   ["bunk", new RegExp(`^(?:${WHO} )?(?:bunk|cabin|tent|group)(?: name)?$`)],
   [
     "comment",
-    /\bcomments?\b|\bnotes?\b|\banything else\b|\bquestions?\b|\bmessage\b|\brequests?\b|\btell us\b/
+    /\bcomments?\b|\bnotes?\b|\banything else\b|\bshould know\b|\bquestions?\b|\bmessage\b|\brequests?\b|\btell us\b/
   ],
   [
     "rankValue",
@@ -93,10 +93,14 @@ const HEALTH = /\bmedic|\ballerg|\bhealth\b|\bdietary\b/;
 const OPT_OUT =
   /\bopt ?out\b|\bsit out\b|\bnot participat|\bexcused\b|\bno swim\b/;
 
-/** A heading in lower case, punctuation as spaces, a bracketed aside dropped. "#" is kept. */
+/**
+ * A heading in lower case, punctuation as spaces, a bracketed aside dropped. "#" is kept. A
+ * possessive keeps its s on the word ("Child's name" is "childs name", read as the name).
+ */
 function normal(heading) {
   return tidy(heading)
     .toLowerCase()
+    .replace(/([a-z])['’]s\b/g, "$1s")
     .replace(/\([^)]*\)/g, " ")
     .replace(/[_.:;,'’*?!/\\\-–—]+/g, " ")
     .replace(/\s+/g, " ")
