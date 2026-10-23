@@ -1,0 +1,186 @@
+@import "c/shoreshTokens";
+
+/*
+ * Copy season as copy-season-a draws it (design-research/screens-r1, wiki decision 56): the rail
+ * (what and from which season; Cancel and the one main button), the hairline, then the fields,
+ * the weeks twice (last season's faint over the new ones) and the two rows of what comes along
+ * and what stays behind. ADR 0015.
+ */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s4);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size);
+  font-weight: 500;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.title:focus-visible {
+  border-radius: var(--shoresh-radius);
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.title-season {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-s5) var(--shoresh-space-pad);
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s4) var(--shoresh-s6);
+}
+
+.field {
+  width: min(100%, calc(var(--shoresh-u) * 80));
+}
+
+.field-note {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  margin: var(--shoresh-s2) 0 0;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* The weeks: one column each, last season's above in a faint outline, the new ones raised. */
+.weeks-scroll {
+  overflow-x: auto;
+  border-radius: var(--shoresh-radius);
+}
+
+.weeks-scroll:focus {
+  outline: none;
+}
+
+.weeks-scroll:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.weeks {
+  width: 100%;
+  min-width: calc(var(--shoresh-u) * 20 + var(--weeks) * var(--shoresh-u) * 30);
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: var(--shoresh-s2);
+  margin: calc(var(--shoresh-s2) * -1);
+}
+
+.weeks-season {
+  width: calc(var(--shoresh-u) * 20);
+  padding: 0 var(--shoresh-space-control-x);
+  text-align: left;
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+}
+
+.weeks-new .weeks-season {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.weeks td {
+  padding: 0;
+}
+
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  min-width: 0;
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+}
+
+.week_old {
+  border-radius: var(--shoresh-radius);
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+  color: var(--shoresh-text-2);
+}
+
+.week-name,
+.week-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weeks-new .week-name {
+  font-weight: 500;
+}
+
+.dates {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* What comes along and what stays behind: one row of chips each. */
+.what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s3);
+}
+
+.what-head {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--shoresh-control-h) - 4px);
+  padding: 0 var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+}
+
+/* Stays behind: crossed out, quiet. */
+.chip_stays {
+  background: transparent;
+  color: var(--shoresh-text-2);
+  text-decoration: line-through;
+}

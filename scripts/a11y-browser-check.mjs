@@ -80,6 +80,11 @@
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
  *   count said, then Cancel: nothing brought in, said, focus on Choose a file; axe on each card.
  *   It makes the check's elective set once ("Check chugim") and brings in no campers;
+ * - Copy season, Camp words and Programs (wiki decision 56, ADR 0015 choice 14): a program added
+ *   from the Programs table's blank row by keyboard is said, its no-time-blocks corner shows, and
+ *   its trash can deletes it after the question, said; on Camp words the Group row's word typed
+ *   shows its plural guessed, is saved and said when left, then put back; Copy this season
+ *   draws the weeks twice, as many above as below;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -1403,94 +1408,12 @@ async function campSetup() {
   await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
   await step(S, "Groups: a bunk moved to another unit", bunkMoves);
   await step(S, "Setup screens: screenshots", setupShots);
-  await step(S, "Programs: add a card, then delete it", async () => {
-    await openFromMenu("Programs", /^Programs\b/);
-    const cards = () =>
-      shown(
-        '[data-screen="programs"] c-shoresh-program lightning-input[data-id="name"] input'
-      );
-    const before = await cards().count();
-    if (!(await tabTo(named(/^Add program$/i, { tag: "button" }), { max: 10 })))
-      throw new Error("Add program not reached with Tab.");
-    await press("Enter", 3000);
-    // Only the card this step added is deleted: never the camp's own programs.
-    const names = await cards().evaluateAll((inputs) =>
-      inputs.map((i) => i.value)
-    );
-    const added = names[names.length - 1];
-    if (names.length !== before + 1 || !/^Program \d+$/.test(added || "")) {
-      throw new Error(
-        `No new program card to delete (cards: ${names.join(", ")}).`
-      );
-    }
-    for (let i = 0; i < names.length; i++) {
-      if (!(await tabTo(named(/^Delete this program$/i), { max: 40 })))
-        throw new Error("The new card's Delete was not reached with Tab.");
-    }
-    await press("Enter", 1200);
-    const go = await tabTo(
-      (g) =>
-        g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
-      { max: 6, anywhere: true }
-    );
-    if (!go) throw new Error("The delete question's button not reached.");
-    await expectLive(
-      "Programs",
-      `Deleting the card ${added}: it is said`,
-      new RegExp(`^Deleted ${added}`),
-      () => press("Enter")
-    );
-    await expectFocus(
-      "Programs",
-      "After deleting the last card: focus on the card above's name",
-      { tag: "input", name: /program name/i }
-    );
-  });
-  await step(S, "Camp words: a word is saved and said", async () => {
-    await openFromMenu("Camp words", /^Camp words/, /^Words .* uses$/);
-    await axe("Camp words");
-    // The first row's two boxes (singular and plural): both are needed, or both cleared.
-    const box = await tabTo(
-      (f) => f.tag === "input" && f.components.includes("c-shoresh-camp-labels")
-    );
-    if (!box) throw new Error("No camp word box reached with Tab.");
-    const value = () =>
-      page.evaluate(() => {
-        let el = document.activeElement;
-        while (el && el.shadowRoot && el.shadowRoot.activeElement) {
-          el = el.shadowRoot.activeElement;
-        }
-        return el.value;
-      });
-    const replace = async (text) => {
-      await press("ControlOrMeta+a", 50);
-      if (text) await type(text);
-      else await press("Backspace");
-    };
-    const singular = await value();
-    await press("Tab", 200);
-    const plural = await value();
-    const [one, many] =
-      singular === "Cabin" ? ["Hut", "Huts"] : ["Cabin", "Cabins"];
-    await replace(many);
-    await press("Shift+Tab", 200);
-    await replace(one);
-    await expectLive(
-      "Camp words",
-      "Leaving a changed pair of words: Saved is said",
-      SAVED,
-      () => press("Tab", 200)
-    );
-    await replace(plural);
-    await press("Shift+Tab", 200);
-    await replace(singular);
-    await expectLive(
-      "Camp words",
-      "Putting the words back: Saved is said again",
-      SAVED,
-      () => press("Tab", 200)
-    );
-  });
+  await step(S, "Programs: a row added and deleted by keyboard", programRow);
+  await step(
+    S,
+    "Camp words: a word typed, its plural guessed, saved and said",
+    campWord
+  );
   await step(
     S,
     "Locations: Same location? merges a place typed twice",
@@ -1613,6 +1536,23 @@ async function campSetup() {
         }
       );
       await axe("Copy this season");
+      // Last season's weeks over the new ones (copy-season-a): as many above as below.
+      const cells = (row) =>
+        shown(`c-shoresh-copy-season [data-id="${row}-weeks"] td`).count();
+      const [old, now] = [await cells("old"), await cells("new")];
+      if (old > 0 && old === now) {
+        results.pass(
+          "Copy this season",
+          "The weeks drawn twice",
+          `${old} weeks, last season's above the new ones.`
+        );
+      } else {
+        results.fail(
+          "Copy this season",
+          "The weeks drawn twice",
+          `${old} weeks above, ${now} below.`
+        );
+      }
       if (!(await tabTo(named(/^Cancel$/), { max: 15 })))
         throw new Error("Cancel not reached.");
       await press("Enter", 800);
@@ -1887,6 +1827,115 @@ async function takeOffADay(E, DAY) {
 }
 
 /** The first saved row's name box in the screen's tables, reached with Tab. */
+/**
+ * Programs on the shared setup table (wiki decision 56, programs.png): a program typed into the
+ * blank row and Enter adds it, said; it has no time blocks, so its count carries the
+ * needs-a-look corner; then its trash can deletes it after the question, said. Only the row this
+ * step added is deleted, never the camp's own programs.
+ */
+async function programRow() {
+  const P = "Programs";
+  const NAME = "Check program";
+  await openFromMenu(P, /^Programs\b/);
+  await axe(P);
+  const table = 'c-shoresh-editable-table[data-id="programs"]';
+  const inputs = () =>
+    shown(`${table} lightning-input[data-field="Name"] input`);
+  const names = () =>
+    inputs().evaluateAll((els) => els.map((e) => e.value).filter(Boolean));
+  if ((await names()).includes(NAME)) {
+    throw new Error(
+      `"${NAME}" is already a program: a run before this one stopped part way.`
+    );
+  }
+  await shown(`${table} [data-row-key="add"][data-field="Name"] input`).focus();
+  await type(NAME);
+  await expectLive(
+    P,
+    "A program added from the blank row: it is said",
+    new RegExp(`^${NAME} added`),
+    () => press("Enter", 4000)
+  );
+  if (!(await names()).includes(NAME))
+    throw new Error(`"${NAME}" was not added.`);
+  const marks = await shown(`${table} [data-id="problem"]`).count();
+  if (marks > 0) {
+    results.pass(
+      P,
+      "No time blocks: the needs-a-look corner",
+      `${marks} shown.`
+    );
+  } else {
+    results.fail(P, "No time blocks: the needs-a-look corner", "None shown.");
+  }
+  await axe("Programs, a program without time blocks");
+  const at = (
+    await inputs().evaluateAll((els) => els.map((e) => e.value))
+  ).indexOf(NAME);
+  await inputs().nth(at).focus();
+  if (!(await tabTo(named(new RegExp(`^Delete ${NAME}$`)), { max: 20 })))
+    throw new Error(`"${NAME}"'s delete not reached with Tab.`);
+  await press("Enter", 1200);
+  const go = await tabTo(
+    (g) => g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
+    { max: 6, anywhere: true }
+  );
+  if (!go) throw new Error("The delete question's button not reached.");
+  await expectLive(
+    P,
+    `Deleting ${NAME}: it is said`,
+    new RegExp(`^Deleted ${NAME}`),
+    () => press("Enter", 3000)
+  );
+  await expectFocusKept(P, "After the delete: focus stays in the table");
+  if ((await names()).includes(NAME))
+    throw new Error(`"${NAME}" was not deleted: delete it by hand.`);
+}
+
+/**
+ * Camp words, one box per word (wiki decision 56, camp-words-b): the Group row's word typed,
+ * its plural guessed beside it, saved and said when the box is left; then put back as it was.
+ */
+async function campWord() {
+  const W = "Camp words";
+  await openFromMenu(W, /^Camp words/, /^Camp words$/);
+  await axe(W);
+  const box = (field) =>
+    shown(
+      `c-shoresh-camp-labels input[data-term="Group"][data-field="${field}"]`
+    );
+  const before = await box("singular").inputValue();
+  const word = before === "Cabin" ? "Hut" : "Cabin";
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  await type(word);
+  const guess = await box("plural").getAttribute("placeholder");
+  if (guess === `${word}s`) {
+    results.pass(
+      W,
+      "The plural is guessed as the word is typed",
+      `"${guess}".`
+    );
+  } else {
+    results.fail(
+      W,
+      "The plural is guessed as the word is typed",
+      `"${guess}", expected "${word}s".`
+    );
+  }
+  await axe("Camp words, a word of the camp's own");
+  await expectLive(W, "Leaving a changed word: Saved is said", SAVED, () =>
+    press("Tab", 200)
+  );
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  if (before) await type(before);
+  else await press("Backspace");
+  await expectLive(W, "Putting the word back: Saved is said again", SAVED, () =>
+    press("Tab", 200)
+  );
+}
+
 const rowNameBox = (max = 30) =>
   tabTo(
     (f) =>

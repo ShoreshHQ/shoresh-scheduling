@@ -20,6 +20,8 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    Recurring activities all work this way. Programs, the season form, Camp words, and Activity
    details are forms, not tables, and keep their Save buttons. _Changed 2026-10-20 (ADR 0013,
    decision 26 (4)): the forms save as you go too, one field at a time, in this queue._
+   _Changed 2026-10-23 (ADR 0015 choice 14, wiki decision 56): Programs is a table now, one row
+   per program, saved as any row is._
 2. **The blank last row** (desktop `InlineAddRow`). _Since 2026-10-21 (ADR 0015 choice 11) it
    is dashed, with no fill, at the end of each section, and the week ticks are a strip shown
    while the row is pointed at or edited, the weeks said as the exception at rest; every
