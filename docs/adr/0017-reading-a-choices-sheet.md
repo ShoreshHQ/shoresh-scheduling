@@ -144,7 +144,9 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     activities, each offered in the set as **proposed** (confirmed on the Electives screen before
     it gets campers, plan §2); the campers; the run; the choices; the remembered answers. A
     camper is found by its key (`ElectiveRunTriggers.camperKey`: camper number, else a hash of the
-    name), never by querying a name; new ones are made. Two rows of one request with one key (a
+    name), never by querying a name; new ones are made. The key is hidden (no one is granted it), so
+    it alone is matched in system mode, inside the season already read in user mode; the campers
+    found are then read in user mode by Id. Two rows of one request with one key (a
     number written two ways) are refused by row number. No refusal names a camper: they give the
     row ("Row 7: ...").
 15. **What each camper keeps.** A camper's comment is added to what was saved: a blank never
@@ -167,7 +169,7 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     save whose check saw another revision is refused ("Someone else brought in choices for this
     run since you started. Choose the file again to see them."). The file's name and its SHA-256
     (worked out in the browser) are kept on the run.
-18. **Bounded.** The start is 5 queries, a check 7, a save about 20 with its triggers, whatever
+18. **Bounded.** The start is 5 queries, a check 7 or 8, a save about 20 with its triggers, whatever
     the number of campers; `ChoicesImportTest` brings in 260 campers as a scheduler inside one
     `System.runAs` and asserts the check (≤ 8) and save (≤ 30) bounds.
 19. **How it is reached until electives are finished.** The Electives menu entries stay "Coming"

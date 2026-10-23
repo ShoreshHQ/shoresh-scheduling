@@ -13,13 +13,26 @@ public with sharing class ChoicesImportCampers {
   public ChoicesImportCampers(ChoicesImport.Request given) {
     request = given;
     readKeys();
-    for (Camper__c saved : [
-      SELECT Id, Name, Key__c, ParentComments__c
+    // The key is hidden (no one is granted it; triggers fill it), so it is matched in system
+    // mode, inside the season the scheduler was already checked to see (ChoicesImportPlace).
+    // The campers themselves are then read in user mode, by Id.
+    Map<Id, String> keyOf = new Map<Id, String>();
+    for (Camper__c match : [
+      SELECT Id, Key__c
       FROM Camper__c
       WHERE Key__c IN :keys AND Season__c = :request.seasonId
+      WITH SYSTEM_MODE
+    ]) {
+      keyOf.put(match.Id, match.Key__c);
+    }
+    Set<Id> matched = keyOf.keySet();
+    for (Camper__c saved : [
+      SELECT Id, Name, ParentComments__c
+      FROM Camper__c
+      WHERE Id IN :matched
       WITH USER_MODE
     ]) {
-      byKey.put(saved.Key__c, saved);
+      byKey.put(keyOf.get(saved.Id), saved);
     }
   }
 
