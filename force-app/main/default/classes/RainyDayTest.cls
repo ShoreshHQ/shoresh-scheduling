@@ -288,6 +288,23 @@ private class RainyDayTest {
   }
 
   @IsTest
+  static void generatedReadsWhichActivitiesAreOutdoorsAndTheirRainPlans() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ids = GeneratedTestData.camp();
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Map<Id, Activity__c> byId = new Map<Id, Activity__c>(read.activities);
+      Activity__c soccer = byId.get(ids.get('Soccer'));
+      Assert.isTrue(soccer.Outdoor__c, 'Soccer is read as outdoors');
+      Assert.areEqual(ids.get('Gym games'), soccer.RainPlan__c);
+      Activity__c gym = byId.get(ids.get('Gym games'));
+      Assert.isFalse(gym.Outdoor__c);
+      Assert.isNull(gym.RainPlan__c);
+    }
+  }
+
+  @IsTest
   static void onGeneratedTheVersionKeepsItsOriginAndALockKeepsTheMarks() {
     System.runAs(ShoreshTestData.scheduler()) {
       ids = GeneratedTestData.camp();

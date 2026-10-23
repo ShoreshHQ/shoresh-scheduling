@@ -3024,44 +3024,67 @@ async function generated(openGenerated) {
 }
 
 /**
- * Rainy day (ADR 0018): Edit > Rainy day… opens the week's days one step in; the first day keeps
- * the week as "Before rainy <day>" and switches its outdoor activities (the check's camp has
- * Soccer outdoors with Gym games as its rain plan, seedCamp), the receipt is said, focus goes to
- * its Undo, and Undo is said.
+ * Rainy day (ADR 0018): Edit > Rainy day… opens the week's days one step in; a day keeps the week
+ * as "Before rainy <day>" and switches its outdoor activities (the check's camp has Soccer
+ * outdoors with Gym games as its rain plan, seedCamp), the receipt is said, focus goes to its
+ * Undo, and Undo is said. A day with nothing outdoors switches nothing, so the next day is tried;
+ * when no day of the week switches anything (Soccer never read as outdoors), the check fails.
  */
 async function rainyDay(S) {
-  if (!(await openRailMenu(/^Edit$/))) throw new Error("Edit not reached.");
-  if (!(await arrowTo(/^Rainy day/))) {
-    throw new Error("Rainy day… not reached with the arrows in Edit.");
-  }
-  await press("Enter", 400);
-  await press("ArrowDown", 200);
-  await expectFocus(S, "Rainy day… opens: Down reaches its first day", {
-    role: "menuitem",
-    name: /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/
-  });
-  await expectLive(
-    S,
-    "Choosing a day: the receipt is said",
-    /^Rainy /,
-    () => press("Enter"),
-    20000
-  );
-  const f = await focus();
-  if (f && f.dataId === "tool-undo") {
-    results.pass(S, "After the switch: focus on the line's Undo", f.name);
-    await expectLive(S, "Its Undo: it is said", /^Undone/, () =>
-      press("Enter")
+  const DAY = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
+  const tried = [];
+  for (let i = 0; i < 7; i++) {
+    if (!(await openRailMenu(/^Edit$/))) throw new Error("Edit not reached.");
+    if (!(await arrowTo(/^Rainy day/))) {
+      throw new Error("Rainy day… not reached with the arrows in Edit.");
+    }
+    await press("Enter", 400);
+    await press("ArrowDown", 200);
+    for (let n = 0; n < i; n++) await press("ArrowDown", 200);
+    const day =
+      i === 0
+        ? await expectFocus(S, "Rainy day… opens: Down reaches its first day", {
+            role: "menuitem",
+            name: DAY
+          })
+        : await focus();
+    // Past the last day (the menu ends or wraps): every day has been tried.
+    if (!day || !DAY.test(day.name || "") || tried.includes(day.name)) {
+      await press("Escape", 300);
+      await press("Escape", 300);
+      break;
+    }
+    tried.push(day.name);
+    const said = await expectLive(
+      S,
+      `Choosing ${day.name}: the receipt is said`,
+      /^Rainy /,
+      () => press("Enter"),
+      20000
     );
-    await expectFocusKept(S, "Its Undo: focus not lost");
-  } else {
-    // Nothing outdoors that day: only the receipt, no Undo (the desktop's note).
-    results.pass(
+    if (!said) return;
+    if (/nothing outdoors to switch/.test(said)) continue;
+    const f = await expectFocus(
       S,
       "After the switch: focus on the line's Undo",
-      "Nothing to switch that day, so no Undo."
+      {
+        dataId: "tool-undo"
+      }
     );
+    if (f && f.dataId === "tool-undo") {
+      await expectLive(S, "Its Undo: it is said", /^Undone/, () =>
+        press("Enter")
+      );
+      await expectFocusKept(S, "Its Undo: focus not lost");
+    }
+    return;
   }
+  await shot(S, "Rainy day: a day switched");
+  results.fail(
+    S,
+    "Rainy day: a day switched",
+    `No day had anything outdoors to switch (tried ${tried.join(", ") || "none"}); the camp's Soccer is outdoors.`
+  );
 }
 
 /**

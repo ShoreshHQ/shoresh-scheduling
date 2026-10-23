@@ -112,10 +112,12 @@ step, sees what changed and what couldn't, and can undo it.
   one edit and read back; a mark staying when another cell changes and going when its own does,
   and not coming back with the same activity; Undo taking them away; a mark on a cell that doesn't
   hold its activity dropped; a garbled mark refused with nothing saved; Restore of "Before rainy
-  Monday" without marks; a Lock on Generated keeping them.
+  Monday" without marks; a Lock on Generated keeping them; Generated's week read carrying each
+  activity's Outdoor and Rain plan (the switch works them out from that read).
 - In the test org: `scripts/a11y-browser-check.mjs` opens Edit on Generated Schedule with the
-  keyboard, reaches **Rainy day…**, opens its days, chooses the first, checks the receipt is said
-  and focus is on its Undo, and undoes it.
+  keyboard, reaches **Rainy day…**, opens its days, chooses them in turn until one switches
+  something (the camp's Soccer is outdoors), checks the receipt is said and focus is on its Undo,
+  and undoes it. A week where no day switches anything fails the check.
 
 ## Choices that are hard to undo after release
 
