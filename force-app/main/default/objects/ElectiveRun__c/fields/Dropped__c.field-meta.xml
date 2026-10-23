@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dropped__c</fullName>
+    <description
+  >The offerings that did not run when seats were last assigned, because they had fewer campers than their minimum: for each, the elective time, the activity, how many it had and how many it needed. Written and read by Shoresh only. Holds no names.</description>
+    <label>Dropped</label>
+    <length>32768</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

@@ -18,6 +18,21 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
 §2 and §4.1; the desktop's `ElectivesScreen.jsx`, `elective/ElectiveSetDetail.jsx` and
 `elective/BundleEditor.jsx`._
 
+_Amended 2026-10-23, slice E7 (Elective seats): choices 28 to 37, and choice 1 (the run's
+`Dropped__c`, the schedule's version reason "Electives finalized"). Design source: Greg's approved
+mock-ups (design-research `electives-r1`: `seats-offering-a`, counts with the roster opening
+beside; `seats-camper`, `seats-problems`, `seats-final`, `seats-out-of-date`) and decisions 48
+(2: seats stay apart from Publish; 6: Start a new version carries choices, locks and hand moves)
+and 53 (Assign again in the top bar next to the main button; a parent's comment as a speech
+bubble); the plan's §1 steps 5 to 7, §2 "Seat assignment" and "The run", §3 "Finalize", §4.3 and
+§5; the desktop's `ScheduleElectivesScreen.jsx`, `elective/run/` (`DraftRunView.jsx`,
+`FinalRunView.jsx`, `runStateCopy.js`), `assignment/notRequestedReasons.js`,
+`assignment/resolvePreferenceCoordinates.js`, `assignment/deriveOccurrences.js`,
+`assignment/buildAttendance.js`, `electron/ops/finalizeElectiveRun.js`,
+`electron/ops/setElectiveAssignment.js` and `engine/routeConflicts.js`, and its ADRs
+`2026-09-17-individual-elective-scheduling` (D2.7, D3), `2026-09-23-elective-run-lifecycle-and-remaining-slices`
+(a, b; Q1/Q2, Q5; amendment 2026-09-24) and `2026-10-11-locked-elective-seat-survives-unmerged-regeneration`._
+
 _Amended 2026-10-23, slice E5 (electives on the week grid): choices 20 to 27. Design source:
 Greg's approved mock-up (design-research `electives-r1`, `grid-a`: one wide cell across the
 bunks, decision 53.2; elective sets first in the drawer; padlock bottom-right and the look mark
@@ -58,9 +73,9 @@ desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlo
 
    Not added, as the plan says: `ElectiveTime__c` (elective times are worked out from where the set
    sits on the grid), `ElectiveSet__c.Reusable__c`, `Camper__c.Contact__c` and `Active__c` (adding
-   a field later is safe; removing a released one is not). Also not added yet: the schedule's
-   version reason "Electives finalized", which comes with Finalize (slice E7), the first thing to
-   write it.
+   a field later is safe; removing a released one is not). _Slice E7_ adds the schedule's version
+   reason "Electives finalized" (`ElectivesFinalized`), which Finalize writes, and
+   `ElectiveRun__c.Dropped__c` (long text, no names: choice 31).
 
 2. **Permissions live in the Shoresh Scheduler permission set** (Greg, decision 48.1: only admins
    use Shoresh and they already see campers' names, so this is not a privacy issue). It reads,
@@ -311,3 +326,116 @@ Not in this slice: typing "Chugim: Archery, Drama" to make a set with its offeri
 (plan §4.2, desktop D1: here a set is made on the Electives screen, or from a noted cell), a set
 noted in an imported version being set up from Roots (E9), and other programs' electives counted
 at a place.
+
+## Slice E7: Elective seats
+
+28. **A screen, `c/shoreshElectiveSeats`, under Schedules** (plan §4.3; the mock-ups put "Elective
+    seats" between Manual Build and Schedules). The menu lists it there as **coming** until slice
+    E11 (decision 44); the page's address opens it (`?c__preview=electiveSeats`, the one route of
+    choice 12, `c/shoreshScreens` `previewScreen`). It is drawn only while shown. Its Bring in
+    choices opens that screen (ADR 0017 choice 19). Seats are separate from Publish (decision
+    48.2): Finalize, then the downloads (slice E10).
+29. **The rail** (seats-offering-a): the week (with its arrows) and the elective set on the left,
+    and **"Assign against"** only when the week has more than one working schedule (desktop D2.7,
+    as Bring in choices asks); **By offering** and **By camper** in the middle; on the right the
+    counter, **Bring in choices**, **Assign again** (in the top bar next to the main button,
+    decision 53, once seats exist), the run's state, and the one main button: **Assign seats**,
+    then **Finalize**, then **Download** (shown as "Download · Coming", disabled, until slice
+    E10). The run shown is the set's committed run for that week and schedule, else its latest
+    final one; the state's menu lists every run of them ("Final 14 Oct · Greg", "Committed 12
+    Oct") and offers **Start a new version** from a final run. The screen opens on the latest run.
+30. **Where electives happen, worked out each time** (`ElectiveTimes`; plan §2; desktop
+    `deriveOccurrences.js`): from the run's schedule's days, one elective time per day, time block
+    and division where the set sits, with the bunks there. A time offers the set's **confirmed**
+    offerings whose activity is open to it (no eligibility rows, or one for its division or one of
+    its bunks; `c/shoreshEngine` `readEligibility`'s rule, per division); a closed one (0 seats)
+    is offered and takes nobody. Each division's time has the offering's seats, as the desktop
+    gives each occurrence its capacity. A camper takes their bunk's time; a camper whose sheet gave
+    no bunk takes, at each day and block, the first division's time there (division order), and
+    is listed under "No Bunk" with the needs-a-look corner (decision 48.5; the desktop's
+    "tier-wide admission" would seat them twice at one time, which the seat key forbids). A
+    camper whose bunk has no set that week takes no time and is counted in the problems. A
+    choice for a day and period is matched to that time by the day's name and the block's name,
+    number or start ("Period 2", "2", "12:30"; desktop `resolvePreferenceCoordinates.js`); one this
+    schedule doesn't have counts for the whole week and is listed in the desktop's words ("No
+    session at Friday Period 9 on this schedule.").
+31. **Assign seats runs the engine in the browser** (ADR 0016) on the run's choices and locks, with
+    no linked choices yet (slice E8; the input keeps their shape). Choices in no order are a tie,
+    rank 1 each, never an order. A confirmed limited offering with blank seats stops it before
+    anything is sent ("Fill blank capacities first." and the names). The browser sends the seats;
+    the server (`ElectiveSeatSaves.assign`) **checks what it saves** (plan §5): the run is
+    committed and at the revision the screen read; every seat's camper is in the run, at a time
+    their bunk holds the set now, once per day and block, in an offering confirmed and open then;
+    no locked seat changes; nothing beyond its seats except what locks alone hold. Then it
+    replaces the unlocked seats, writing only the difference (a seat already at a camper's day and
+    time is kept or its offering changed in place; the rest are inserted or deleted), so Assign
+    again at 500 campers × 10 times stays well under Salesforce's 10,000 rows per save; a save that
+    would still pass 9,500 rows is refused before anything is written ("Too many seats change to
+    save at once (…). Nothing was changed."). It keeps every lock (assigning again fills only what is left), sets
+    the run's `TimesFingerprint__c` (a SHA-256 of every cell holding the set), `EngineVersion__c`
+    and `Dropped__c` (what did not run below its minimum, as time, activity, how many it had and
+    needed: the engine's finding, kept so "Dropped had 4 of 6" stays after a reload). The engine
+    takes under a second for a camp of 500 (ADR 0016's size check), so there is no progress
+    state; the main button waits while it works.
+32. **By hand** (desktop `setElectiveAssignment.js`, `DraftRunView.jsx`). In By offering a cell
+    ("13 of 15", its dots; "Dropped had 4 of 6" with the corner; "Not offered" where its activity
+    isn't open) opens its **roster beside**, with the cursor on its heading: each camper and their
+    bunk, the **padlock** (pressed when locked) and **Move to…** (the other offerings then); a
+    name can also be dragged onto another offering at the same time. A move is a hand move and
+    **locked**, as the desktop makes it; it may put an offering over its seats, which is then
+    shown as a problem, never refused. The padlock locks or unlocks a seat as it is. Each change is
+    one save (`ElectiveSeatSaves.change`), checked as Assign's are, with the run's revision. A refused
+    change puts the cursor back on what asked (the padlock, Move to…, the notice's Unlock), or the
+    roster heading when that is gone or the change was a drag, never on the page (WCAG 2.4.3).
+33. **Finalize** (`ElectiveFinalize`; desktop `finalizeElectiveRun.js`), in one transaction, is
+    refused with the reason when: there are no seats ("Assign seats first."); where the set sits
+    changed since seats were assigned ("Schedule changed. Assign again first.", with **Assign
+    again** beside it); a seat no longer fits its offering; or a place is **double-booked** at one
+    of the set's times ("Double-booked on the schedule (Range, Tuesday, Period 3). Fix it, then
+    finalize."): `ElectivePlaceClashes` counts, at those times only, each activity, fixed and
+    recurring activity at its place and each elective set at the places of its confirmed, open
+    offerings, for every bunk (as choice 24 and the desktop's `routeConflicts.js`), against the
+    place's groups that fit. Otherwise it keeps a version of the run's schedule (reason Electives
+    finalized, `ManualVersions.keepWithReason`) and points `FinalSchedule__c` at it, copies the
+    activity's, place's and bunk's names onto the seats, and makes the run **Final** with when and
+    by whom. A final run never changes: every save to it is refused ('"Chugim · Week 3" is final,
+    so its seats can't change. Start a new version first.'). It reads "Final · 14 Oct · Greg".
+34. **Out of date** (desktop ADR 09-23 amendment 2026-09-24: on the run's own screen, never a
+    banner): a final run is shown as it was finalized, its times from the version kept; when where
+    the set sits on the live schedule differs from the fingerprint, its state reads **Out of
+    date** with the corner, its menu says "Schedule changed since it was finalized" and offers
+    Start a new version. A committed run in the same case keeps reading Committed with the corner
+    ("Schedule changed since seats were assigned"), and Finalize says so.
+35. **Start a new version** (decision 48.6; desktop wording Q5): a Committed copy of a final run,
+    linked by `NewVersionOf__c`, with every camper's choices (as imported and as changed by hand),
+    and only the seats a person set (locked, or moved by hand); Assign seats fills the rest. The
+    final run stays as it was. One working version at a time: a second is refused, pointing at the
+    first. Bringing in choices goes into the new committed run (`ChoicesImportPlace`).
+36. **By camper and the counter** (seats-camper, seats-problems). By camper lists each bunk's
+    campers (bunk order, then name), then "No Bunk"; a seat shows its offering alone for a first
+    choice and otherwise "· 2nd", "· One of their choices" (unordered: never a rank) or "· Not
+    chosen"; a lock shows the padlock bottom-right; no seat is an empty slot with the corner
+    top-right. A parent's comment (decision 48.3) is a speech bubble beside the name that opens
+    "From the sheet" and the words, on pointing or pressing, Escape closing it. The counter "212 of
+    214 placed" counts campers with a seat at every time they take, and opens to the problems, in
+    the mock-up's order: who couldn't be placed (each opens their row), what was dropped below its
+    minimum, kept below its minimum, over its seats, locks that no longer apply (with Unlock, also
+    listed above the board: desktop R6/R7, never dropped), times with nothing offered, how many
+    didn't get their first choice and how ("Second choice", "One of their choices", "Not one they
+    chose"), and the rest (No Bunk, a bunk with no set this week, choices whose day and period
+    didn't match).
+37. **Bounded, and checked as a scheduler.** A run's read is 8 queries whatever its size (9 for a
+    final run); Assign, a change, Finalize and Start a new version add a fixed few. `ElectiveSeatsTest`
+    (records made inside the same `System.runAs`, as a scheduler) assigns 520 seats for 260 campers
+    and finalizes them within their query bounds, and checks every refusal above, locks kept,
+    a hand move over seats, the padlock, a final run refusing changes, Start a new version and a
+    camper with no bunk. Jest: `shoreshElectiveSeats` `seats.test.js` (the engine's input, choices
+    matched to times, what is sent, the same seats in any input order, 260 campers, the board and
+    the problems) and `shoreshElectiveSeats.test.js` (the screen, with axe), also namespaced; the
+    page (`shoreshCampSetup`: the address route, the menu's coming entry); and the real-browser
+    check (`scripts/a11y-browser-check.mjs`).
+
+Not in this slice: linked choices (E8), downloads and rosters (E10; the main button waits), a
+progress state for very large camps, and a camper's own week view. Who can take an offering is
+counted per division at a time: an activity set up for one bunk of a division is offered to that
+division's time, and the server allows its other bunks' campers in it.
