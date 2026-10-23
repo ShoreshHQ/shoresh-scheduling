@@ -183,7 +183,7 @@
 
 .field-error {
   padding: var(--shoresh-s1) var(--shoresh-space-control-x) 0;
-  color: var(--slds-g-color-error-1);
+  color: var(--slds-g-color-error-1, #b60554);
 }
 
 /* High contrast: the boxes keep an edge where backgrounds are painted over. */
