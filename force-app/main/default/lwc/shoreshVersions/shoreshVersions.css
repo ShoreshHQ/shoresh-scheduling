@@ -10,6 +10,14 @@
   position: relative;
 }
 
+/* A version's long name ("Imported from tamarack-2026-wk3.xlsx") stays one item wide; the
+   whole name is in the button's title and its accessible name. */
+.button-text {
+  max-width: calc(var(--shoresh-u) * 64);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .panel {
   right: 0;
   width: 360px;

@@ -135,10 +135,17 @@ describe("c-shoresh-schedules: special days and events", () => {
 
   it("shows a replaced day as its special day: its pill, its own time blocks, its line", async () => {
     const element = await render();
-    expect(pills(element).map((b) => b.textContent.trim())).toEqual([
-      "Monday Jun 29",
-      "Tuesday Jun 30 · Field Day",
-      "Wednesday Jul 1"
+    // "Tue" with the special day's flag, named in full.
+    expect(
+      pills(element).map((b) => [
+        b.textContent.trim(),
+        b.getAttribute("aria-label"),
+        !!b.querySelector('[data-id="special-flag"]')
+      ])
+    ).toEqual([
+      ["Mon", "Monday, Jun 29", false],
+      ["Tue", "Tuesday, Jun 30, Field Day", true],
+      ["Wed", "Wednesday, Jul 1", false]
     ]);
     expect(q(element, '[data-id="special-line"]')).toBeNull();
     pills(element)[1].click();

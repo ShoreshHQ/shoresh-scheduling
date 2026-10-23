@@ -18,6 +18,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    opens by itself when the page loads and when the week or program changes (Greg,
    2026-10-16); a week with none says so. Manual Build and Generated
    Schedule are not on the page yet; Roots' "Build or generate the schedule" door stays Coming.
+   _Since 2026-10-23 (§14): the toolbar is Manual Build's rail; the views are Daily, Group and
+   Activity, and Versions names the version on screen._
 2. **The three views are the desktop's**, read-only:
    - Daily View: day pills, a grid with time blocks down the side (name and a two-line time
      range) and a column per group;
@@ -26,6 +28,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      in the version that has been deleted since), with its location and "N groups · M times
      this week"; a card opens the week's grid listing the groups doing it in each block, with
      "← All Activities" back.
+
+   _Since 2026-10-23 (§14): the day pills read "Tue" with a flag on a day a special day
+   replaces; the bunk in Group View and the activity in Activity View are chosen on the rail,
+   "‹ Cedar ›", whose first activity choice, **All Activities**, is the cards._
 
    _Since 2026-10-22 (ADR 0014 choices 28 and 29): a day a special day replaces shows that
    special day's own schedule in Daily View (its pill "Tuesday Jun 30 · Field Day", its line with
@@ -53,7 +59,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    blue strip says which version is on screen and that it is read-only (_since 2026-10-20, ADR
    0013 choice 16: in camp words, "Imported · saved Oct 3, 2:00 PM · view only", without
    "Looking at a Version"_). **Open** in Versions
-   switches to another version.
+   switches to another version. _Since 2026-10-23 (§14) the strip is gone: Versions' button
+   names the version on screen, and its list still says how each was made, when, and "on
+   screen now"._
    On Manual Build (ADR 0008 §25) the same list's action is **Restore**, the desktop's word,
    because there it copies the version into the week being built; it also has **delete** and
    the "Name current version… · Save version" footer there. **Open** stays the Schedules
@@ -159,15 +167,16 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
     - **Where.** On the Schedules page, in the toolbar's end group with Versions ("Versions and
       export", as the desktop groups them), after one rail line: **Export to Excel** and
       **Print** as rail items (ADR 0015's `.shoresh-item`, with a glyph each), shown once a
-      version is open and held while a version with no days is open. Not on Manual Build or
+      version is open and held while a version with no days is open. _Since 2026-10-23 (§14):
+      **Excel** (named "Export to Excel") and **Print**, the page's one filled button._ Not on Manual Build or
       Generated Schedule yet: their rails belong to the week editor's own PRs, and the Schedules
       page already opens every version of every week (a published one included, from Versions),
       so nothing is out of reach meanwhile.
     - **Which schedule.** The version on screen. The desktop asks "Export which?" every time
       because its button sits on a screen that can hold two schedules, and remembering would be
       the app picking a winner. Here the director has already picked by opening one, and the
-      name on the strip above the grid says which, so there is nothing to ask and nothing is
-      remembered.
+      name on Versions' button (until 2026-10-23 the strip above the grid) says which, so there
+      is nothing to ask and nothing is remembered.
     - **The Excel file** (`c/shoreshScheduleExport` `scheduleSheets`, saved by
       `c/shoreshDownload` with SheetJS): one sheet per day as the desktop's (the time block, then
       a column per group; a cell that runs several blocks is written in each, as the desktop
@@ -206,6 +215,43 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       reaching only a page with a printout), `shoreshSchedules.test.js` ("Export to Excel and
       Print") and `shoreshDownload.test.js` (column widths). Not yet checked in a real browser in
       the test org (the paper's look in Lightning).
+
+14. **The Schedules page in the design system** (2026-10-23; Greg's decision 56 in wiki
+    `projects/shoresh-scheduling-sf.md`, approved mock-ups `design-research/screens-r1`
+    `schedules.html` and `schedules-*.png`; ADR 0015). A visual and structural change only:
+    every view, Versions, Excel and Print, the special days and events behave as before.
+    - **Laid out as Manual Build** (ADR 0008 part 7): one rail, one hairline, then the grid's
+      zone, as the frame's own zones (the page's name is read out, not shown: the menu shows
+      it). Nothing can be dragged here, so there is no drawer.
+    - **The rail.** Left: the program (only with several) and the week with its arrows
+      (`c-shoresh-rail-picker`), then **Daily**, **Group** and **Activity**, the chosen one
+      raised and pressed. Centre, over the grid's cells: in Daily View the days ("Mon"; a day
+      a special day replaces carries the event flag, "Fri ⚑", and is named in full for screen
+      readers and under the pointer, "Friday, Jul 3, Visiting Day"); in Group View the bunk,
+      "‹ Cedar ›"; in Activity View the activity, "‹ Swim ›", whose first choice, **All
+      Activities**, shows the cards as before. Right: **Versions**, its button naming the
+      version on screen ("Published Oct 18, 2:40 PM", read "…, Versions"), a rail line,
+      **Excel** and **Print**, the main button (the filled item Publish uses).
+    - **Moved, not lost.** The strip above the grid ("Imported · saved … · view only") is gone:
+      the name is on Versions, and how it was made and when are in its list. "← All Activities"
+      is now the rail's All Activities: opening a card puts the cursor on that choice, which
+      names the activity (the card it came from is gone), and its arrows step to the next
+      activity. The location is on the card, not over the grid. A special event's own schedule
+      keeps "← Monday" over its grid, with focus there and back as before.
+    - **Rainy day.** The switch stays on Manual Build and Generated Schedule (ADR 0019); this
+      page has no Rainy day button. Decision 56 draws a switched cell here with a quiet
+      raindrop before its name. That is not built: a switch records only the cells whose rain
+      plan was full (`RainyDay__c`), not the switched ones, and a version or a published
+      schedule starts without marks (ADR 0019 choice 9), so this page has nothing to draw it
+      from. Showing it needs the switched cells kept and carried through Publish, a data change
+      for its own PR.
+    - Checked by `shoreshSchedules.test.js` ("is laid out as Manual Build"; the views, the
+      bunk and activity choices, Excel and Print), `specials.test.js` (the flagged day),
+      `shoreshVersions.test.js` (the button naming the version), `shoreshCampSetup.test.js`
+      (the page flush in the frame, its heading read out) and in the test org by
+      `scripts/a11y-browser-check.mjs` (the rail's end in Tab order with Print filled, Group
+      View's bunk on the rail, a card's grid with focus on the rail's choice, axe on each view;
+      screenshots in `docs/design/screens/schedules-*.png`).
 
 ## Choices that are hard to undo after release
 

@@ -62,6 +62,11 @@
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
+ * - the Schedules page's rail (ADR 0005 §14): Versions naming the version on screen, Excel and
+ *   Print reached by Tab in that order, Print the filled button; Group View's bunk chosen on the
+ *   rail with its grid shown; an activity's card in Activity View opening its grid with focus on
+ *   the rail's choice that now names it; axe on each view (with --shots, each view and Versions
+ *   open, for docs/design/screens/);
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
@@ -3543,7 +3548,8 @@ async function schedulesPage() {
     try {
       await openFromMenu(S, /^Schedules$/);
       await pickWeek();
-      const tuesday = named(new RegExp(`^Tuesday\\b.*· ${CHECK_DAY}$`), {
+      // "Tue" and the special day's flag on the rail, named "Tuesday, Jun 30, <special day>".
+      const tuesday = named(new RegExp(`^Tuesday\\b.*, ${CHECK_DAY}$`), {
         tag: "button"
       });
       if (!(await tabTo(tuesday, { max: 40 })))
@@ -3598,6 +3604,126 @@ async function schedulesPage() {
       clearSpecials();
     }
   });
+  await step(S, "The rail: Versions, Excel, Print, and each view", async () => {
+    await openFromMenu(S, /^Schedules$/);
+    await pickWeek();
+    await schedulesShot("schedules-daily");
+    // Right of the rail, in order: Versions (naming the version on screen), Excel, then Print.
+    const versionsButton = await tabTo((f) => f.dataId === "versions-button", {
+      max: 40
+    });
+    if (!versionsButton) throw new Error("Versions was not reached with Tab.");
+    const order = [versionsButton.name];
+    for (let i = 0; i < 2; i++) {
+      await press("Tab", 200);
+      const f = await focus();
+      order.push(f ? f.name : "nowhere");
+    }
+    const named3 =
+      / Versions$/.test(order[0]) &&
+      order[0] !== "Versions" &&
+      order[1] === "Export to Excel" &&
+      /^Print$/.test(order[2]);
+    const filled = await page.evaluate(() => {
+      const find = (root) => {
+        const hit = root.querySelector('[data-id="print"]');
+        if (hit) return hit;
+        for (const el of root.querySelectorAll("*")) {
+          if (el.shadowRoot) {
+            const inner = find(el.shadowRoot);
+            if (inner) return inner;
+          }
+        }
+        return null;
+      };
+      const print = find(document);
+      return !!print && print.classList.contains("shoresh-item_primary");
+    });
+    if (named3 && filled) {
+      results.pass(
+        S,
+        "The rail's end: Versions names the version, then Excel, then Print (filled)",
+        order.join(" → ")
+      );
+    } else {
+      await shot(S, "The rail's end");
+      results.fail(
+        S,
+        "The rail's end: Versions names the version, then Excel, then Print (filled)",
+        `Tab reached ${order.join(" → ")}; Print ${filled ? "is" : "is not"} the filled button.`
+      );
+    }
+    if (args.includes("--shots")) {
+      if (await tabTo((f) => f.dataId === "versions-button", { back: true })) {
+        await press("Enter", 800);
+        await schedulesShot("schedules-versions");
+        await press("Escape", 400);
+      }
+    }
+    // Group View: the bunk on the rail, its week in the grid.
+    if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
+      throw new Error("The Group view was not reached with Tab.");
+    await press("Enter", 800);
+    if (
+      (await exists('[data-id="group-picker"]')) &&
+      (await exists('[data-id="group-grid"]'))
+    ) {
+      results.pass(
+        S,
+        "Group View: the bunk chosen on the rail, its week shown",
+        "The rail's bunk choice and the bunk's week are there."
+      );
+    } else {
+      await shot(S, "Group View");
+      results.fail(
+        S,
+        "Group View: the bunk chosen on the rail, its week shown",
+        "No bunk choice on the rail, or no grid."
+      );
+    }
+    await axe("Schedules, Group View");
+    await schedulesShot("schedules-group");
+    // Activity View: a card opens its grid, focus on the rail's choice naming it.
+    if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
+      throw new Error("The Activity view was not reached with Tab.");
+    await press("Enter", 800);
+    await axe("Schedules, Activity View's cards");
+    const card = await tabTo(named(/\btimes? this /, { tag: "button" }), {
+      max: 20
+    });
+    if (!card) throw new Error("No activity card was reached with Tab.");
+    await press("Enter", 800);
+    const f = await waitFocus({ tag: "button" });
+    if (
+      f &&
+      f.components.includes("c-shoresh-rail-picker") &&
+      (await exists('[data-id="activity-grid"]'))
+    ) {
+      results.pass(
+        S,
+        "Activity View: a card opens its grid, focus on the rail's choice",
+        `Focus on ${formatFocus(f)}.`
+      );
+    } else {
+      await shot(S, "Activity View");
+      results.fail(
+        S,
+        "Activity View: a card opens its grid, focus on the rail's choice",
+        `Focus on ${formatFocus(f)}.`
+      );
+    }
+    await axe("Schedules, an activity's week");
+    await schedulesShot("schedules-activity");
+  });
+}
+
+/** With --shots: the Schedules page as it is now, by name, for docs/design/screens/. */
+async function schedulesShot(name) {
+  if (!args.includes("--shots")) return;
+  mkdirSync(shotsDir, { recursive: true });
+  await page.mouse.move(2, 2);
+  await pause(400);
+  await page.screenshot({ path: join(shotsDir, `${name}.png`) });
 }
 
 /** Deletes the made-up fixed activity by keyboard; false when it isn't there. */

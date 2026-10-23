@@ -69,7 +69,8 @@ const FLUSH_SCREENS = new Set([
   "fixedActivities",
   "recurringActivities",
   "specialEvents",
-  "bringInChoices"
+  "bringInChoices",
+  "schedules"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {

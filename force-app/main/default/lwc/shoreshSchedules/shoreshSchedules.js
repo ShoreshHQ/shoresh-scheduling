@@ -13,6 +13,7 @@ import {
   activityCards,
   activityGrid,
   dailyGrid,
+  dayLabel,
   days,
   eventPlans,
   eventsOn,
@@ -22,19 +23,19 @@ import {
 } from "c/shoreshScheduleViews";
 import { noScheduleYet } from "c/shoreshScheduleExport";
 
-const ORIGINS = {
-  Manual: "Manual Build",
-  Generated: "Generated Schedule",
-  Copied: "Copied",
-  Imported: "Imported"
-};
+// Activity View's picker: every activity's card, before one is chosen.
+const ALL_ACTIVITIES = "all";
 
 /**
  * The schedule page (desktop: the schedule screen): pick a program and a week; its newest version
  * opens by itself, Versions switches to another, and the director looks at it in Daily View (all groups for one day), Group View (one
  * group's week), or Activity View (where one activity runs across the week). Read-only: placing
- * and moving things comes with Manual Build. Export to Excel and Print, beside Versions, take out
+ * and moving things comes with Manual Build. Excel and Print, beside Versions, take out
  * the version on screen (ADR 0005 part 2): the version open is the choice, so nothing asks which.
+ *
+ * Laid out as Manual Build is (ADR 0005 §14, design-research/screens-r1 schedules.html): one rail
+ * (the week, the views, then the days, the bunk or the activity over the grid, then Versions
+ * naming the version on screen, Excel, and Print as the main button), one hairline, the grid.
  *
  * Special days and events (ADR 0014 slice 5): a day a special day replaces shows that special day's
  * own schedule, its pill and Group View column carrying its name, and under the grid its line (its
@@ -62,7 +63,7 @@ export default class ShoreshSchedules extends LightningElement {
   eventId = null;
   // The opened version with its special days in their days' places, worked out once per open.
   shownMemo = { of: null, view: null };
-  // Where the cursor goes at the next render: { back }, { card: activity Id }, { eventBack } or
+  // Where the cursor goes at the next render: { picker } (Activity View's), { eventBack } or
   // { event: event Id }.
   focusAfter = null;
   pending = 0;
@@ -240,11 +241,9 @@ export default class ShoreshSchedules extends LightningElement {
   get openedName() {
     return this.opened.schedule.name;
   }
-  get openedOrigin() {
-    return ORIGINS[this.opened.schedule.origin] || this.opened.schedule.origin;
-  }
-  get openedSavedAt() {
-    return this.opened.schedule.savedAt;
+  /** Versions names the version on screen ("Published Oct 18, 2:40 PM"), as the mock-up's rail. */
+  get versionLabel() {
+    return this.opened ? this.openedName : null;
   }
   get noDaysMessage() {
     return `This ${this.t.sIn("Version")} has no days saved.`;
@@ -255,14 +254,17 @@ export default class ShoreshSchedules extends LightningElement {
 
   get viewButtons() {
     return [
-      ["day", "Daily View"],
-      ["group", "Group View"],
-      ["activity", "Activity View"]
+      ["day", "Daily"],
+      ["group", "Group"],
+      ["activity", "Activity"]
     ].map(([key, label]) => ({
       key,
       label,
+      // The chosen view is raised and said (aria-pressed), as on Manual Build.
       className:
-        key === this.view ? "view-button view-button_on" : "view-button",
+        key === this.view
+          ? "shoresh-item view-button shoresh-raised"
+          : "shoresh-item view-button",
       pressed: String(key === this.view)
     }));
   }
@@ -296,16 +298,32 @@ export default class ShoreshSchedules extends LightningElement {
   }
 
   // Daily View
+  /**
+   * The days on the rail: "Fri", with a flag when a special day replaces it, named in full
+   * ("Friday, Jul 3, Visiting Day") for screen readers and under the pointer.
+   */
   get dayPills() {
     return days(this.shown).map((day) => ({
       ...day,
-      // A day a special day replaces carries its name: "Friday Jul 3 · Visiting Day".
-      sub: day.special ? `${day.sub} · ${day.special}` : day.sub,
+      name: [`${day.label}, ${day.sub}`, day.special]
+        .filter(Boolean)
+        .join(", "),
       specialText: day.special ? ` · ${day.special}` : "",
-      className: day.index === this.dayIndex ? "pill pill_on" : "pill",
-      // Chosen is said to screen readers, and shown by more than colour (CSS: underline).
+      className:
+        day.index === this.dayIndex
+          ? "shoresh-item pill shoresh-raised"
+          : "shoresh-item pill",
+      // Chosen is said to screen readers, and shown by more than colour (raised, value style).
       pressed: String(day.index === this.dayIndex)
     }));
+  }
+  get dayWord() {
+    return "Day";
+  }
+  get showDayPills() {
+    return (
+      !!this.opened && !this.hasNoDays && this.isDaily && !this.openedEvent
+    );
   }
   get selectedDay() {
     return this.shown.days[this.dayIndex];
@@ -380,8 +398,8 @@ export default class ShoreshSchedules extends LightningElement {
     return event ? dailyGrid({ days: [event.plan] }, 0, this.t) : null;
   }
   get eventBackLabel() {
-    const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
-    return `← ${day ? day.label : ""}`;
+    const day = this.selectedDay;
+    return `← ${day ? dayLabel(day.dateValue).label : ""}`;
   }
   /** Opening an event puts the cursor on the way back; going back, on its Open (WCAG 2.4.3). */
   handleOpenEvent(event) {
@@ -393,23 +411,28 @@ export default class ShoreshSchedules extends LightningElement {
     this.eventId = null;
   }
 
-  // Group View
-  get groupPills() {
+  // Group View: the bunk is chosen on the rail, "‹ Cedar ›", as the week is.
+  get groupOptions() {
     return groups(this.shown).map((grp) => ({
-      ...grp,
-      className: grp.key === this.groupKey ? "pill pill_on" : "pill",
-      pressed: String(grp.key === this.groupKey)
+      label: grp.note ? `${grp.name} ${grp.note}` : grp.name,
+      value: grp.key
     }));
+  }
+  get groupLabel() {
+    return this.t.s("Group");
+  }
+  get showGroupPicker() {
+    return !!this.opened && !this.hasNoDays && this.isGroup;
   }
   get groupGrid() {
     return this.groupKey ? groupGrid(this.shown, this.groupKey, this.t) : null;
   }
   get groupGridLabel() {
-    const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
+    const grp = groups(this.shown).find((g) => g.key === this.groupKey);
     return grp ? grp.name : null;
   }
   handleGroup(event) {
-    this.groupKey = event.currentTarget.dataset.key;
+    this.groupKey = event.detail.value;
   }
 
   // Activity View
@@ -434,6 +457,25 @@ export default class ShoreshSchedules extends LightningElement {
   get selectedActivity() {
     return this.activityCards.find((card) => card.key === this.activityId);
   }
+  /** The activity is chosen on the rail, "‹ Swim ›"; its first choice is every activity's card. */
+  get activityOptions() {
+    return [
+      { label: `All ${this.t.p("Activity")}`, value: ALL_ACTIVITIES },
+      ...this.activityCards.map((card) => ({
+        label: card.gone ? `${card.name} (removed)` : card.name,
+        value: card.key
+      }))
+    ];
+  }
+  get activityValue() {
+    return this.activityId || ALL_ACTIVITIES;
+  }
+  get activityLabel() {
+    return this.t.s("Activity");
+  }
+  get showActivityPicker() {
+    return !!this.opened && !this.hasNoDays && this.isActivity;
+  }
   get activityGrid() {
     return activityGrid(this.shown, this.activityId, this.t);
   }
@@ -441,17 +483,17 @@ export default class ShoreshSchedules extends LightningElement {
     const activity = this.selectedActivity;
     return activity ? activity.name : null;
   }
-  get allActivitiesLabel() {
-    return `← All ${this.t.p("Activity")}`;
-  }
-  /** Opening an activity puts the cursor on the way back; going back, on its card (WCAG 2.4.3). */
+  /**
+   * Opening an activity from its card puts the cursor on the rail's choice that now names it,
+   * where the arrows and All activities are (WCAG 2.4.3): the card it came from is gone.
+   */
   handleActivity(event) {
     this.activityId = event.currentTarget.dataset.key;
-    this.focusAfter = { back: true };
+    this.focusAfter = { picker: true };
   }
-  handleAllActivities() {
-    this.focusAfter = { card: this.activityId };
-    this.activityId = null;
+  handleActivityPick(event) {
+    const value = event.detail.value;
+    this.activityId = value === ALL_ACTIVITIES ? null : value;
   }
 
   // ---------- getting it out: Excel and print ----------
@@ -549,20 +591,16 @@ export default class ShoreshSchedules extends LightningElement {
     if (!this.focusAfter) {
       return;
     }
-    const { back, card, eventBack, event } = this.focusAfter;
+    const { picker, eventBack, event } = this.focusAfter;
     this.focusAfter = null;
     let target;
-    if (back) {
-      target = this.template.querySelector('[data-id="all-activities"]');
+    if (picker) {
+      target = this.template.querySelector('[data-id="activity-picker"]');
     } else if (eventBack) {
       target = this.template.querySelector('[data-id="event-back"]');
     } else if (event) {
       target = [...this.template.querySelectorAll("[data-event]")].find(
         (el) => el.dataset.event === event
-      );
-    } else {
-      target = [...this.template.querySelectorAll(".card[data-key]")].find(
-        (el) => el.dataset.key === card
       );
     }
     if (target) {

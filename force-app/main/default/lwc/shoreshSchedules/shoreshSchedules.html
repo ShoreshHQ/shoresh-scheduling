@@ -1,60 +1,129 @@
 <template>
   <div class="schedules" data-id="schedules">
-    <!-- Toolbar, as on the desktop: the week, how to look at it, then Versions. -->
-    <div class="toolbar">
-      <template lwc:if={hasSeveralPrograms}>
-        <lightning-combobox
-          class="picker"
-          label={programLabel}
-          value={programId}
-          options={programOptions}
-          onchange={handleProgram}
-          data-id="program"
-        ></lightning-combobox>
-      </template>
-      <template lwc:if={canChoose}>
-        <lightning-combobox
-          class="picker"
-          label={weekLabel}
-          value={weekId}
-          options={weekOptions}
-          onchange={handleWeek}
-          data-id="week"
-        ></lightning-combobox>
-      </template>
-      <template lwc:if={opened}>
-        <div class="view-toggle" role="group" aria-label="View">
-          <template for:each={viewButtons} for:item="button">
-            <button
-              key={button.key}
-              type="button"
-              class={button.className}
-              aria-pressed={button.pressed}
-              data-view={button.key}
-              onclick={handleView}
-            >
-              {button.label}
-            </button>
-          </template>
-        </div>
-      </template>
-      <div class="spacer"></div>
-      <template lwc:if={canChoose}>
-        <!-- Getting the week out, as on the desktop: Versions, then the exports, set apart. -->
-        <div class="toolbar-end" role="group" aria-label="Versions and export">
+    <!-- The rail (design-research/screens-r1 schedules.html; ADR 0005 part 2 §14), in Manual
+         Build's grammar (ADR 0008 part 7): left, the program and the week, then how to look at
+         it; centre, the days (or the bunk, or the activity), over the grid's cells; right,
+         Versions, then Excel and Print, the main button. -->
+    <div class="rail" data-id="rail">
+      <div class="side side_left">
+        <template lwc:if={hasSeveralPrograms}>
+          <c-shoresh-rail-picker
+            label={programLabel}
+            value={programId}
+            options={programOptions}
+            onchange={handleProgram}
+            data-id="program"
+          ></c-shoresh-rail-picker>
+        </template>
+        <template lwc:if={canChoose}>
+          <c-shoresh-rail-picker
+            label={weekLabel}
+            value={weekId}
+            options={weekOptions}
+            arrows
+            onchange={handleWeek}
+            data-id="week"
+          ></c-shoresh-rail-picker>
+        </template>
+        <template lwc:if={opened}>
+          <div class="views">
+            <span class="shoresh-rail-line" role="presentation"></span>
+            <div class="group" role="group" aria-label="View">
+              <template for:each={viewButtons} for:item="button">
+                <button
+                  key={button.key}
+                  type="button"
+                  class={button.className}
+                  aria-pressed={button.pressed}
+                  data-view={button.key}
+                  onclick={handleView}
+                >
+                  {button.label}
+                </button>
+              </template>
+            </div>
+            <span class="shoresh-rail-line" role="presentation"></span>
+          </div>
+        </template>
+      </div>
+      <div class="mid">
+        <template lwc:if={showDayPills}>
+          <div
+            class="group"
+            role="group"
+            aria-label={dayWord}
+            data-id="day-pills"
+          >
+            <template for:each={dayPills} for:item="day">
+              <button
+                key={day.key}
+                type="button"
+                class={day.className}
+                aria-pressed={day.pressed}
+                aria-label={day.name}
+                title={day.name}
+                data-index={day.index}
+                onclick={handleDay}
+              >
+                {day.short}<template lwc:if={day.special}
+                  ><svg
+                    class="flag"
+                    viewBox="0 0 12 12"
+                    aria-hidden="true"
+                    focusable="false"
+                    data-id="special-flag"
+                  >
+                    <path d="M3 10.5V1.75"></path>
+                    <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
+                ></template>
+              </button>
+            </template>
+          </div>
+        </template>
+        <template lwc:if={showGroupPicker}>
+          <c-shoresh-rail-picker
+            label={groupLabel}
+            value={groupKey}
+            options={groupOptions}
+            arrows
+            onchange={handleGroup}
+            data-id="group-picker"
+          ></c-shoresh-rail-picker>
+        </template>
+        <template lwc:if={showActivityPicker}>
+          <c-shoresh-rail-picker
+            label={activityLabel}
+            value={activityValue}
+            options={activityOptions}
+            arrows
+            onchange={handleActivityPick}
+            data-id="activity-picker"
+          ></c-shoresh-rail-picker>
+        </template>
+      </div>
+      <!-- Getting the week out, as on the desktop: Versions, then the exports, set apart. -->
+      <div
+        class="side side_right"
+        role="group"
+        aria-label="Versions and export"
+      >
+        <template lwc:if={canChoose}>
           <c-shoresh-versions
             versions={versions}
             open-id={openId}
+            label={versionLabel}
             terms={terms}
             busy={busy}
             onopen={handleOpenVersion}
             onrename={handleRename}
           ></c-shoresh-versions>
           <template lwc:if={opened}>
-            <span class="shoresh-rail-line" aria-hidden="true"></span>
+            <span class="shoresh-rail-line" role="presentation"></span>
             <button
               type="button"
               class="shoresh-item"
+              aria-label="Export to Excel"
+              title="Export to Excel"
               data-id="export"
               disabled={cannotGetOut}
               aria-disabled={exportBusy}
@@ -66,11 +135,11 @@
                 <path
                   d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"
                 ></path></svg
-              >Export to Excel
+              >Excel
             </button>
             <button
               type="button"
-              class="shoresh-item"
+              class="shoresh-item shoresh-item_primary print"
               data-id="print"
               disabled={cannotGetOut}
               aria-disabled={printBusy}
@@ -85,254 +154,203 @@
               >Print
             </button>
           </template>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>
+    <div class="shoresh-hairline" role="presentation"></div>
 
-    <template lwc:if={busy}>
-      <lightning-spinner
-        alternative-text="Loading"
-        size="small"
-      ></lightning-spinner>
-    </template>
-    <template lwc:if={error}>
-      <div
-        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
-        role="alert"
-        data-id="schedules-error"
-      >
-        {error}
-      </div>
-    </template>
-
-    <template lwc:if={opened}>
-      <div class="viewing" data-id="viewing">
-        <span class="viewing-name">{openedName}</span>
-        <span class="viewing-meta">
-          {openedOrigin} · saved
-          <lightning-formatted-date-time
-            value={openedSavedAt}
-            month="short"
-            day="numeric"
-            hour="numeric"
-            minute="2-digit"
-          ></lightning-formatted-date-time>
-          · view only
-        </span>
-      </div>
-
-      <template lwc:if={hasNoDays}>
-        <c-shoresh-empty-state
-          title={noDaysMessage}
-          data-id="no-days"
-        ></c-shoresh-empty-state>
-      </template>
-      <template lwc:else>
-        <!-- Daily View: all groups for one day -->
-        <template lwc:if={isDaily}>
-          <!-- A special event's own schedule, opened from its day (ADR 0014 slice 5). -->
-          <template lwc:if={openedEvent}>
-            <div class="drill-head">
-              <button
-                type="button"
-                class="back"
-                onclick={handleEventBack}
-                data-id="event-back"
-              >
-                {eventBackLabel}
-              </button>
-              <span class="drill-name">{openedEvent.name}</span>
-              <span class="drill-place">{eventWord}</span>
-            </div>
-            <c-shoresh-schedule-grid
-              data-id="event-grid"
-              grid={eventGrid}
-              corner={corner}
-              label={openedEvent.name}
-            ></c-shoresh-schedule-grid>
-          </template>
-          <template lwc:else>
-            <div class="pills" data-id="day-pills">
-              <template for:each={dayPills} for:item="day">
-                <button
-                  key={day.key}
-                  type="button"
-                  class={day.className}
-                  aria-pressed={day.pressed}
-                  data-index={day.index}
-                  onclick={handleDay}
-                >
-                  {day.label} <span class="pill-sub">{day.sub}</span>
-                </button>
-              </template>
-            </div>
-            <template lwc:if={dayProblem}>
-              <div
-                class="slds-notify slds-notify_alert slds-alert_warning"
-                role="alert"
-              >
-                {dayProblem}
-              </div>
-            </template>
-            <template lwc:elseif={noSpecialSchedule}>
-              <c-shoresh-empty-state
-                title={noSpecialSchedule}
-                data-id="no-special-schedule"
-              ></c-shoresh-empty-state>
-            </template>
-            <template lwc:else>
-              <c-shoresh-schedule-grid
-                data-id="daily-grid"
-                grid={dailyGrid}
-                corner={corner}
-                label={dailyGridLabel}
-              ></c-shoresh-schedule-grid>
-            </template>
-            <!-- A day a special day replaces: its name, the camp's word for it, its notes. -->
-            <template lwc:if={specialLine}>
-              <div class="special-line" data-id="special-line">
-                <div class="special-name">
-                  <span class="special-title">{specialLine.name}</span>
-                  <span class="special-kind">{specialLine.kind}</span>
-                </div>
-                <p class="special-notes" data-id="special-notes">
-                  {specialLine.notes}
-                </p>
-              </div>
-            </template>
-            <!-- The special events on this day, each opening its own schedule. -->
-            <template lwc:if={hasDayEvents}>
-              <ul class="day-events" data-id="day-events">
-                <template for:each={dayEvents} for:item="event">
-                  <li key={event.id} class="special-line">
-                    <div class="special-name">
-                      <span class="special-title"
-                        ><svg
-                          class="flag"
-                          viewBox="0 0 12 12"
-                          aria-hidden="true"
-                          focusable="false"
-                        >
-                          <path d="M3 10.5V1.75"></path>
-                          <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
-                        >{event.name}</span
-                      >
-                      <span class="special-kind">{eventWord}</span>
-                    </div>
-                    <div class="special-actions">
-                      <button
-                        type="button"
-                        class="shoresh-item special-open"
-                        data-event={event.id}
-                        onclick={handleOpenEvent}
-                      >
-                        {event.open}
-                        <svg
-                          viewBox="0 0 16 16"
-                          class="special-arrow"
-                          aria-hidden="true"
-                        >
-                          <path d="M3 8h10M9 4l4 4-4 4"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                </template>
-              </ul>
-            </template>
-          </template>
+    <!-- The grid's zone. Nothing here can be dragged, so there is no drawer under it. -->
+    <div class="below">
+      <div class="work">
+        <template lwc:if={busy}>
+          <lightning-spinner
+            alternative-text="Loading"
+            size="small"
+          ></lightning-spinner>
         </template>
-
-        <!-- Group View: one group's week -->
-        <template lwc:if={isGroup}>
-          <div class="pills" data-id="group-pills">
-            <template for:each={groupPills} for:item="grp">
-              <button
-                key={grp.key}
-                type="button"
-                class={grp.className}
-                aria-pressed={grp.pressed}
-                data-key={grp.key}
-                onclick={handleGroup}
-              >
-                {grp.name} <span class="pill-sub">{grp.note}</span>
-              </button>
-            </template>
+        <template lwc:if={error}>
+          <div
+            class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+            role="alert"
+            data-id="schedules-error"
+          >
+            {error}
           </div>
-          <template lwc:if={groupGrid}>
-            <c-shoresh-schedule-grid
-              data-id="group-grid"
-              grid={groupGrid}
-              corner={corner}
-              label={groupGridLabel}
-            ></c-shoresh-schedule-grid>
-          </template>
         </template>
 
-        <!-- Activity View: where one activity runs across the week -->
-        <template lwc:if={isActivity}>
-          <template lwc:if={selectedActivity}>
-            <div class="drill-head">
-              <button
-                type="button"
-                class="back"
-                onclick={handleAllActivities}
-                data-id="all-activities"
-              >
-                {allActivitiesLabel}
-              </button>
-              <span class="drill-name">{selectedActivity.name}</span>
-              <template lwc:if={selectedActivity.location}>
-                <span class="drill-place">{selectedActivity.location}</span>
-              </template>
-            </div>
-            <c-shoresh-schedule-grid
-              data-id="activity-grid"
-              grid={activityGrid}
-              corner={corner}
-              label={activityGridLabel}
-            ></c-shoresh-schedule-grid>
+        <template lwc:if={opened}>
+          <template lwc:if={hasNoDays}>
+            <c-shoresh-empty-state
+              title={noDaysMessage}
+              data-id="no-days"
+            ></c-shoresh-empty-state>
           </template>
           <template lwc:else>
-            <div class="cards" data-id="activity-cards">
-              <template for:each={activityCards} for:item="card">
-                <button
-                  key={card.key}
-                  type="button"
-                  class="card"
-                  data-key={card.key}
-                  onclick={handleActivity}
-                >
-                  <span class="card-name">{card.name}</span>
-                  <template lwc:if={card.location}>
-                    <span class="card-place">{card.location}</span>
-                  </template>
-                  <template lwc:if={card.gone}>
-                    <span class="note">(removed)</span>
-                  </template>
-                  <span class="card-summary">{card.summary}</span>
-                </button>
+            <!-- Daily View: all groups for one day -->
+            <template lwc:if={isDaily}>
+              <!-- A special event's own schedule, opened from its day (ADR 0014 slice 5). -->
+              <template lwc:if={openedEvent}>
+                <div class="drill-head">
+                  <button
+                    type="button"
+                    class="shoresh-item"
+                    onclick={handleEventBack}
+                    data-id="event-back"
+                  >
+                    {eventBackLabel}
+                  </button>
+                  <span class="drill-name">{openedEvent.name}</span>
+                  <span class="drill-place">{eventWord}</span>
+                </div>
+                <c-shoresh-schedule-grid
+                  data-id="event-grid"
+                  grid={eventGrid}
+                  corner={corner}
+                  label={openedEvent.name}
+                ></c-shoresh-schedule-grid>
               </template>
-            </div>
+              <template lwc:else>
+                <template lwc:if={dayProblem}>
+                  <div
+                    class="slds-notify slds-notify_alert slds-alert_warning"
+                    role="alert"
+                  >
+                    {dayProblem}
+                  </div>
+                </template>
+                <template lwc:elseif={noSpecialSchedule}>
+                  <c-shoresh-empty-state
+                    title={noSpecialSchedule}
+                    data-id="no-special-schedule"
+                  ></c-shoresh-empty-state>
+                </template>
+                <template lwc:else>
+                  <c-shoresh-schedule-grid
+                    data-id="daily-grid"
+                    grid={dailyGrid}
+                    corner={corner}
+                    label={dailyGridLabel}
+                  ></c-shoresh-schedule-grid>
+                </template>
+                <!-- A day a special day replaces: its name, the camp's word for it, its notes. -->
+                <template lwc:if={specialLine}>
+                  <div class="special-line" data-id="special-line">
+                    <div class="special-name">
+                      <span class="special-title">{specialLine.name}</span>
+                      <span class="special-kind">{specialLine.kind}</span>
+                    </div>
+                    <p class="special-notes" data-id="special-notes">
+                      {specialLine.notes}
+                    </p>
+                  </div>
+                </template>
+                <!-- The special events on this day, each opening its own schedule. -->
+                <template lwc:if={hasDayEvents}>
+                  <ul class="day-events" data-id="day-events">
+                    <template for:each={dayEvents} for:item="event">
+                      <li key={event.id} class="special-line">
+                        <div class="special-name">
+                          <span class="special-title"
+                            ><svg
+                              class="flag"
+                              viewBox="0 0 12 12"
+                              aria-hidden="true"
+                              focusable="false"
+                            >
+                              <path d="M3 10.5V1.75"></path>
+                              <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
+                            >{event.name}</span
+                          >
+                          <span class="special-kind">{eventWord}</span>
+                        </div>
+                        <div class="special-actions">
+                          <button
+                            type="button"
+                            class="shoresh-item special-open"
+                            data-event={event.id}
+                            onclick={handleOpenEvent}
+                          >
+                            {event.open}
+                            <svg
+                              viewBox="0 0 16 16"
+                              class="special-arrow"
+                              aria-hidden="true"
+                            >
+                              <path d="M3 8h10M9 4l4 4-4 4"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+              </template>
+            </template>
+
+            <!-- Group View: one group's week -->
+            <template lwc:if={isGroup}>
+              <template lwc:if={groupGrid}>
+                <c-shoresh-schedule-grid
+                  data-id="group-grid"
+                  grid={groupGrid}
+                  corner={corner}
+                  label={groupGridLabel}
+                ></c-shoresh-schedule-grid>
+              </template>
+            </template>
+
+            <!-- Activity View: where one activity runs across the week, or every activity's card -->
+            <template lwc:if={isActivity}>
+              <template lwc:if={selectedActivity}>
+                <c-shoresh-schedule-grid
+                  data-id="activity-grid"
+                  grid={activityGrid}
+                  corner={corner}
+                  label={activityGridLabel}
+                ></c-shoresh-schedule-grid>
+              </template>
+              <template lwc:else>
+                <div class="cards" data-id="activity-cards">
+                  <template for:each={activityCards} for:item="card">
+                    <button
+                      key={card.key}
+                      type="button"
+                      class="card"
+                      data-key={card.key}
+                      onclick={handleActivity}
+                    >
+                      <span class="card-name">{card.name}</span>
+                      <template lwc:if={card.gone}>
+                        <span class="note">(removed)</span>
+                      </template>
+                      <template lwc:if={card.location}>
+                        <span class="card-place">{card.location}</span>
+                      </template>
+                      <span class="card-summary">{card.summary}</span>
+                    </button>
+                  </template>
+                </div>
+              </template>
+            </template>
+
+            <!-- The grid names its own marks on a quiet line under it (c-shoresh-schedule-grid). -->
           </template>
         </template>
 
-        <!-- The grid names its own marks on a quiet line under it (c-shoresh-schedule-grid). -->
-      </template>
-    </template>
-
-    <template lwc:elseif={showEmpty}>
-      <c-shoresh-empty-state
-        title={emptyMessage}
-        data-id="nothing-open"
-      ></c-shoresh-empty-state>
-    </template>
-    <template lwc:elseif={cannotChoose}>
-      <c-shoresh-empty-state
-        title={emptyMessage}
-        data-id="nothing-open"
-      ></c-shoresh-empty-state>
-    </template>
+        <template lwc:elseif={showEmpty}>
+          <c-shoresh-empty-state
+            title={emptyMessage}
+            data-id="nothing-open"
+          ></c-shoresh-empty-state>
+        </template>
+        <template lwc:elseif={cannotChoose}>
+          <c-shoresh-empty-state
+            title={emptyMessage}
+            data-id="nothing-open"
+          ></c-shoresh-empty-state>
+        </template>
+      </div>
+    </div>
     <!-- On paper only, while it prints (c-shoresh-schedule-print, ShoreshPrint). -->
     <template lwc:if={printout}>
       <c-shoresh-schedule-print

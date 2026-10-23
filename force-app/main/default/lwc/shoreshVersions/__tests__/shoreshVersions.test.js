@@ -76,6 +76,24 @@ describe("c-shoresh-versions", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("can name the version on screen on its button, still said to be Versions", async () => {
+    const element = await render();
+    const button = q(element, '[data-id="versions-button"]');
+    expect(button.hasAttribute("aria-label")).toBe(false);
+    element.label = "Published Oct 18, 2:40 PM";
+    await flush();
+    expect(button.textContent.trim()).toBe("Published Oct 18, 2:40 PM");
+    // The name starts with the words shown (WCAG 2.5.3), then says what the menu is.
+    expect(button.getAttribute("aria-label")).toBe(
+      "Published Oct 18, 2:40 PM, Versions"
+    );
+    expect(button.title).toBe("Published Oct 18, 2:40 PM, Versions");
+    await openList(element);
+    // The list itself is still headed Versions.
+    expect(q(element, ".panel-head").textContent.trim()).toBe("Versions");
+    await expect(element).toBeAccessible();
+  });
+
   it("says when there are none", async () => {
     const element = await render([]);
     await openList(element);
