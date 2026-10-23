@@ -7,8 +7,13 @@ decision 48 (wiki `projects/shoresh-scheduling-sf`, 2026-10-21, point 3 amended 
 desktop's ADRs `2026-09-17-individual-elective-scheduling`,
 `2026-09-23-elective-run-lifecycle-and-remaining-slices`, `2026-09-27-elective-preference-etl-canonical-record-and-learned-axis-binding`
 (§4.3, §4.4) and `2026-09-29-linked-elective-bundles`, and its `electron/ops/deleteWeek.js` and
-`DeleteWeekDialog.jsx` (a week with elective runs is refused). Names follow ADR 0009. No screens:
-the Electives menu entries stay "Coming" until slice E11 passes.
+`DeleteWeekDialog.jsx` (a week with elective runs is refused). Names follow ADR 0009. The Electives menu
+entries stay "Coming" until slice E11 passes.
+
+_Amended 2026-10-22, slice E4 (the Electives setup screen): choices 8 and 11, and choices 12 to 18. Design source: Greg's approved mock-up (design-research `electives-r1`, `setup-a`: linked
+choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`); the plan's §1,
+§2 and §4.1; the desktop's `ElectivesScreen.jsx`, `elective/ElectiveSetDetail.jsx` and
+`elective/BundleEditor.jsx`._
 
 ## Choices
 
@@ -94,6 +99,11 @@ the Electives menu entries stay "Coming" until slice E11 passes.
      linked choices go with it (its linked choices are cleared first, since they point at its
      offerings). Deleting a linked choice takes its Coverage rows. Deleting a run takes its choices
      and seats.
+   - _Slice E4:_ deleting an offering takes its linked choices and their Coverage rows (an
+     offering trigger, as the desktop's `deleteBundleRows` does when an offering is removed);
+     seats that name it still refuse it ("it has elective runs: "Chugim · Week 1". First delete
+     that run"). The screens say an elective set's or an offering's runs first (`ElectivesInUse`),
+     in the same words as every other refusal; the set's trigger stays the backstop.
 9. **Deleting a season** clears its elective runs first (they point at its sets, weeks,
    schedules, campers, groups and time blocks), then its linked choices and elective sets, before
    the rows it already clears; campers go with the season.
@@ -104,4 +114,72 @@ the Electives menu entries stay "Coming" until slice E11 passes.
 11. **Reads are bounded.** Copying a season's electives is five queries whatever its size; a
     refused delete is at most a few more. Tests (`ElectivesDataTest`) run as a scheduler with
     their records made inside the same `System.runAs`, and assert the query counts for a refused
-    delete, a season delete and a season copy.
+    delete, a season delete and a season copy. _Slice E4 (the bulk check PR #120's review asked
+    for):_ a week of 251 campers, their choices and their seats, saved in user mode past one
+    trigger batch of 200, takes exactly 2 queries for the campers (the key check, once per batch)
+    and none for the choices or the seats.
+
+## Slice E4: the Electives setup screen
+
+12. **Reached from the page's address until slice E11** (decision 44: no camp sees half of
+    electives). The menu lists Electives under Activities & Events as coming. The Shoresh tab
+    opened with `?c__preview=electives` (`/lightning/n/Shoresh_Camp_Setup?c__preview=electives`)
+    opens the screen once the season is read, and lists it in the menu as built on that page only
+    (`c/shoreshScreens` `previewScreen`, `canOpen(screen, hasSeason, preview)`). No other screen
+    or value opens that way. Its Needs attention items (choice 17) show only on that page too, so
+    a camp never sees an item it can't open. The browser check and the Jest tests reach it this
+    way; E11 takes Electives out of the coming list and the route then changes nothing. An address
+    was chosen over a hidden key press or a setting because it changes nothing a camp sees and
+    stores nothing.
+13. **Its layout is the approved mock-up's (setup-a).** The rail counts the season's elective
+    sets ("2 elective sets", in the camp's word) with the quiet Saved. One section per set, in name
+    order, headed with its name and its count of **confirmed, open offerings** (decision 53: not
+    proposed, not closed; blank seats still count, they are only not filled in yet), so "Chugim 4"
+    is the number the grid will show. A row per offering, in the activity's name order (the
+    desktop's): the activity (a choice of the season's activities, less those already offered in
+    that set: an activity is offered once in a set), its seats, its minimum, who can take it and
+    where it happens (the activity's own, read only, never typed twice: plan §2), and its linked
+    choices by name. The blank row reads "Add to Chugim". The sets themselves are named, added and
+    deleted in a list under the sections ("Elective sets", "Add Elective set"), as location types
+    are under the Locations sections. The desktop's set table ("Open", "Rename", "Delete") and its
+    separate set page become this one screen, as the mock-up draws it.
+14. **Seats say what they are** (desktop D3: "No limit" and closed must be unmistakable). At rest
+    a number, "No limit" (ticked), "Closed" (0), or nothing while blank; under the pointer or while
+    the row is edited, the number and a No limit tick in their place. The number waits while No
+    limit is ticked; its value is kept, and ignored, as the validation rule already says. The
+    minimum is a number, "No minimum" quiet while blank; 0 is refused by the rule ("Must be 1 or
+    more, or blank for no minimum.").
+15. **A proposed offering is marked by its outline**: its row has a dashed edge and **Confirm** at
+    its end, which saves `Proposed__c` false at once, as the row's change (compared and set like
+    any field). A limited offering with blank seats carries the needs-a-look corner on its seats,
+    its words only ("Seats not filled in yet"): the fix is typing in the cell, so there is no
+    Looks right (`c/shoreshGuessMark` `wordsOnly`).
+16. **Linked choices show beside the table, read only** (setup-a; decision 53.1). An offering's
+    chevron opens them in the details zone (`c/shoreshElectiveDetails`): each one's name on the
+    sheet, its periods ticked on a small week (Monday to Friday, its time blocks by start time),
+    and who it applies to (All, Only these, All except, the chosen one raised, with its divisions).
+    The editor is slice E8: its place is held at the foot by a disabled "Linked choice · Coming".
+    Only offerings and sets are saved from this screen; a linked choice sent here is refused
+    ("These screens can't save that.").
+17. **Saved as every setup row is** (ADR 0011): row by row, compared and set, in user mode.
+    `ScreenSaves` allows a set's name, and an offering's activity, seats, No limit, minimum and
+    Proposed; the parent (the season, the set) only on a new row, so an offering never moves to
+    another set. Offerings have no order of their own, so the table sends none. Deleting asks
+    first: an offering, 'Take "Archery" off "Chugim"? The activity is kept.' (the desktop's
+    "Remove …? The activity is kept."); a set, as every setup delete asks. A row is named by its
+    activity in its buttons and in what is said (an offering's own name is a number). **Roots'
+    Needs attention** lists a proposed offering ('In "Chugim": proposed, not confirmed yet.') and
+    one with blank seats ('In "Bechirot": seats not filled in yet.'), plan §4.6; the screen marks
+    both in their rows (choice 15), so its own list above the table leaves them out.
+18. **The season read carries the electives** (`ElectiveMenus`, in `SeasonSetupReader`): the sets,
+    their offerings, and the linked choices with their periods and divisions. Three queries for any
+    number of sets, one when the season has none, in user mode; someone who may not read elective
+    sets gets none rather than a refusal of the whole season. `ElectivesScreenTest` checks the
+    read, the row saves (and someone else's change asked about) and the deletes, as a scheduler
+    with its records made inside the same `System.runAs`, with query bounds.
+
+**Not in this slice:** Import a list and Download this list for offerings (plan §6.2: the list
+import names each item by its own name and has no set scope yet, so offerings need their own
+layout, scope and save; a follow-up), adding a new activity from the offering choice (the
+desktop's picker can; here an activity is added on Activities first), the linked choices editor
+(E8), electives on the grid and the "not set up yet" Roots item (E5, E9).

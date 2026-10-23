@@ -62,6 +62,13 @@
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
+ * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
+ *   still lists it as coming (?c__preview=electives): focus on its heading, axe; an offering's
+ *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
+ *   putting focus back on the chevron; a proposed offering's Confirm is saved and said; the
+ *   needs-a-look corner on seats not filled in opens its words with the cursor kept on it, and
+ *   Escape closes it. The check's own elective set is made by Apex first and deleted after.
+ *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -71,6 +78,7 @@
  * download).
  *
  * Usage: node scripts/a11y-browser-check.mjs [--report <path>] [--headed] [--shots <dir>]
+ *   [--only electives]
  * How to run, and the org rules it follows: docs/ci-setup.md.
  */
 import { execFileSync } from "node:child_process";
@@ -128,6 +136,12 @@ const shotsDir = resolve(
   argValue("--shots", join(tmpdir(), "a11y-browser-check"))
 );
 const headed = args.includes("--headed");
+// One step on its own (the camp is still seeded first): just "electives" for now.
+const only = argValue("--only", null);
+if (only && only !== "electives") {
+  console.log(`--only knows "electives"; not "${only}".`);
+  process.exit(1);
+}
 
 const say = (text) => console.log(scrub(text));
 const run = (cmd, cmdArgs) =>
@@ -3728,6 +3742,175 @@ async function updateToMatch(S, openScreen) {
   });
 }
 
+// ---------- Electives setup (repo ADR 0018, slice E4) ----------
+
+const CHECK_SET = "Check chugim";
+const CHECK_LINKED = "Check double";
+
+/** The check's elective set, gone (with its offerings and linked choices). */
+function clearElectives() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM ElectiveSet__c WHERE Name = '${CHECK_SET}' AND Season__r.Camp__c = :camp.Id];
+`);
+}
+
+/**
+ * In the season the page opens (the latest), an elective set with three of the camp's
+ * activities: the first with 12 seats and a linked choice on Tuesday's first two time blocks, the
+ * second proposed (10 seats), the third with its seats not filled in. Returns their names.
+ */
+function seedElectives() {
+  clearElectives();
+  const logs = apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Season__c season = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY StartDate__c DESC LIMIT 1];
+List<Activity__c> activities = [SELECT Id, Name FROM Activity__c WHERE Season__c = :season.Id ORDER BY Name LIMIT 3];
+List<TimeBlock__c> blocks = [SELECT Id FROM TimeBlock__c WHERE Program__r.Season__c = :season.Id ORDER BY Program__r.SortOrder__c NULLS LAST, Program__r.Name, StartTime__c LIMIT 2];
+ElectiveSet__c chugim = new ElectiveSet__c(Season__c = season.Id, Name = '${CHECK_SET}');
+insert chugim;
+List<Offering__c> offerings = new List<Offering__c>{
+  new Offering__c(ElectiveSet__c = chugim.Id, Activity__c = activities[0].Id, Seats__c = 12),
+  new Offering__c(ElectiveSet__c = chugim.Id, Activity__c = activities[1].Id, Seats__c = 10, Proposed__c = true),
+  new Offering__c(ElectiveSet__c = chugim.Id, Activity__c = activities[2].Id)
+};
+insert offerings;
+LinkedChoice__c linked = new LinkedChoice__c(ElectiveSet__c = chugim.Id, Name = '${CHECK_LINKED}', Offering__c = offerings[0].Id, AppliesTo__c = 'All', SortOrder__c = 1);
+insert linked;
+List<LinkedChoiceTime__c> times = new List<LinkedChoiceTime__c>();
+for (TimeBlock__c block : blocks) {
+  times.add(new LinkedChoiceTime__c(LinkedChoice__c = linked.Id, Weekday__c = 'Tuesday', TimeBlock__c = block.Id));
+}
+insert times;
+System.debug('A11Y_OFFERINGS[' + activities[0].Name + '|' + activities[1].Name + '|' + activities[2].Name + ']');
+`);
+  const found = /A11Y_OFFERINGS\[([^\]|']+)\|([^\]|']+)\|([^\]|']+)\]/.exec(
+    logs
+  );
+  if (!found) throw new Error("The check's offerings were not reported back.");
+  return { linked: found[1], proposed: found[2], blank: found[3] };
+}
+
+/**
+ * The Electives screen (repo ADR 0018, slice E4), opened from the page's address: focus on its
+ * heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
+ * heading (axe), Close back on the chevron; Confirm on a proposed offering is saved and said; the
+ * seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
+ * set is deleted.
+ */
+async function electives() {
+  const E = "Electives";
+  await step(
+    E,
+    "Linked choices, Confirm and the seats corner by keyboard",
+    async () => {
+      const names = seedElectives();
+      try {
+        const origin = new URL(page.url()).origin;
+        await page.goto(`${origin}${TAB_PATH}?c__preview=electives`, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
+        });
+        await page
+          .locator(APP)
+          .locator('[data-screen="electives"] c-shoresh-editable-table')
+          .first()
+          .waitFor({ timeout: 60000 });
+        await pause(3000);
+        await expectFocus(E, "Opened from the address: focus on the heading", {
+          tag: /^h[1-3]$/,
+          name: /^Electives$/
+        });
+        await axe(E);
+        const chevron = named(new RegExp(`^${names.linked} details$`), {
+          tag: "button"
+        });
+        if (!(await tabTo(chevron, { max: 80 })))
+          throw new Error(`${names.linked}'s details chevron not reached.`);
+        await press("Enter", 1200);
+        await expectFocus(
+          E,
+          "An offering's chevron: focus on its details' heading",
+          {
+            tag: /^h[1-3]$/,
+            name: new RegExp(`^${names.linked} details$`)
+          }
+        );
+        if (
+          !(await page
+            .locator(APP)
+            .locator("c-shoresh-elective-details")
+            .getByText(CHECK_LINKED)
+            .count())
+        )
+          results.fail(
+            E,
+            "Its linked choices shown",
+            `"${CHECK_LINKED}" not shown.`
+          );
+        await axe("Electives, an offering's linked choices open");
+        if (
+          !(await tabTo(
+            named(new RegExp(`^Close ${names.linked} details$`), {
+              tag: "button"
+            }),
+            { max: 6, back: true }
+          ))
+        )
+          throw new Error("The details' Close was not reached with Tab.");
+        await press("Enter", 800);
+        await expectFocus(
+          E,
+          "Closing the details: focus back on the row's chevron",
+          {
+            tag: "button",
+            name: new RegExp(`^${names.linked} details$`)
+          }
+        );
+        if (
+          !(await tabTo(named(new RegExp(`^Confirm ${names.proposed}$`)), {
+            max: 30
+          }))
+        )
+          throw new Error(
+            `Confirm on ${names.proposed} was not reached with Tab.`
+          );
+        await expectLive(
+          E,
+          "Confirm on a proposed offering: its save is said",
+          new RegExp(`^${names.proposed} saved`),
+          () => press("Enter", 3000)
+        );
+        const mark = named(
+          new RegExp(`^Seats for ${names.blank}: seats not filled in yet$`),
+          { tag: "button" }
+        );
+        if (!(await tabTo(mark, { max: 40 })))
+          throw new Error(
+            `The seats corner on ${names.blank} was not reached.`
+          );
+        await press("Enter", 400);
+        await expectFocus(
+          E,
+          "The seats corner opened: the cursor stays on it",
+          {
+            tag: "button",
+            name: new RegExp(`^Seats for ${names.blank}: `)
+          }
+        );
+        await axe("Electives, the seats corner open");
+        await press("Escape", 300);
+        await expectFocus(E, "Escape: the cursor back on the corner", {
+          tag: "button",
+          name: new RegExp(`^Seats for ${names.blank}: `)
+        });
+      } finally {
+        clearElectives();
+      }
+    }
+  );
+}
+
 async function main() {
   refuseInCi();
   refuseWhileCiRuns();
@@ -3778,18 +3961,21 @@ async function main() {
       await openFromMenu("Generated Schedule", /^Generated Schedule/);
       await pickWeek();
     };
-    await campSetup();
-    await manualBuild(openManual);
-    await generated(openGenerated);
-    await versions("Manual Build", openManual);
-    await versions("Generated Schedule", openGenerated);
-    // Update to match setup before Publish, so a refusal there can't come from publishing.
-    await changeSetup();
-    await updateToMatch("Manual Build", openManual);
-    await updateToMatch("Generated Schedule", openGenerated);
-    await publish("Manual Build", openManual);
-    await publish("Generated Schedule", openGenerated);
-    await schedulesPage();
+    if (only !== "electives") {
+      await campSetup();
+      await manualBuild(openManual);
+      await generated(openGenerated);
+      await versions("Manual Build", openManual);
+      await versions("Generated Schedule", openGenerated);
+      // Update to match setup before Publish, so a refusal there can't come from publishing.
+      await changeSetup();
+      await updateToMatch("Manual Build", openManual);
+      await updateToMatch("Generated Schedule", openGenerated);
+      await publish("Manual Build", openManual);
+      await publish("Generated Schedule", openGenerated);
+      await schedulesPage();
+    }
+    await electives();
   } finally {
     const version = browser.version();
     await browser.close();
