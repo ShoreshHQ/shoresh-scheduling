@@ -320,7 +320,10 @@ Every question, answer and refusal above stays; what moves is said here.
       before) is faded with why;
     - **Leave out** on a new row (the mock-up's, new here): pressed, the row stays where it
       would go, faded and crossed out, and is not saved, nor what only it would add (its new
-      location); pressed again, it is back. It keeps the cursor. It is an answer for this import
+      location); pressed again, it is back. A row whose rain plan names it, new or a Change,
+      treats it as any row not saved (§5): the activity is added as by hand (in Also adding,
+      which can be unticked), so Save never refers to a row that isn't saved; its repeats are left out
+      with it. It keeps the cursor. It is an answer for this import
       only (`skip|…` in `shoreshLists` `skipKey`), never remembered: it is neither a question
       nor a similar name, so `listPlan` neither remembers nor forgets it. A camp workbook
       (Roots) has no Leave out: its sheets are read in order, each against what the ones before
@@ -341,7 +344,8 @@ Every question, answer and refusal above stays; what moves is said here.
     there is no rail, the same panel is its own piece. Checked by `shoreshListImport.test.js`
     ("laid into the screen's own table": sections, counts, kinds, crossed-out values and what is
     read, the corner, Leave out and its cursor, what the page is told, the Columns button, axe),
-    `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered),
+    `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered; a rain plan
+    naming it, new or changed, links to the activity added instead),
     `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back,
     also when another season or camp is picked while a file is reviewed),
     and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Groups by keyboard:

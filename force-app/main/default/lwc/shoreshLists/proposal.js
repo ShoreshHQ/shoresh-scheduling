@@ -946,6 +946,28 @@ function finishRepeats(read) {
 }
 
 /**
+ * A new row the director left out (Leave out), settled before rain plans are resolved: a row
+ * whose rain plan names it then adds that activity as by hand (or waits on a question), never
+ * links to a row that won't be saved (PR 127 review).
+ */
+function leaveOutSkipped(leads, screen, answers, deletions) {
+  leads
+    .filter((r) => usable(r) && !r.open && !r.existing)
+    .filter((r) => !deletedRow(r, screen, deletions).gone)
+    .forEach((r) => {
+      const skip = skipKey(screen.key, {
+        name: r.name,
+        programName: r.program ? r.program.name : null,
+        values: r.values
+      });
+      if (answers[skip] === LEAVE_OUT) {
+        r.leftOut = true;
+        r.skipped = true;
+      }
+    });
+}
+
+/**
  * Rain plans: resolved after everything else about the rows is settled (so a plan never names
  * a row that won't be saved), and again until nothing changes (a row waiting on a question
  * makes the rows naming it wait too). A plan naming nothing is added as by hand; untick it
@@ -1213,6 +1235,7 @@ export function listProposal(input) {
   result.cards.push(...days.cards);
   settleBlanks(leads);
   checkNewLimits(leads, screen);
+  leaveOutSkipped(leads, screen, answers, deletions);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainPlans = rain
     ? resolveRainPlans(read, leads, rain.column, setup, answers)
@@ -1496,7 +1519,7 @@ function describeRow(r, used, screen, setup, answers, deletions) {
   if (r.problems.length) {
     return { ...row, status: "unreadable" };
   }
-  if (r.leftOut) {
+  if (r.leftOut && !r.skipped) {
     return {
       ...row,
       status: "leftOut",
@@ -1521,7 +1544,7 @@ function describeRow(r, used, screen, setup, answers, deletions) {
           : newValueOf(column, r);
     });
     const skip = skipKey(screen.key, { ...row, values: r.values });
-    if (answers[skip] === LEAVE_OUT) {
+    if (r.skipped) {
       // Left out by the director: shown where it would have gone, never saved.
       return {
         ...row,
