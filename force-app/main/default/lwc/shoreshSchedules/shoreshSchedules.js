@@ -19,6 +19,7 @@ import {
   eventsOn,
   groupGrid,
   groups,
+  withRaindrops,
   withSpecials
 } from "c/shoreshScheduleViews";
 import { noScheduleYet } from "c/shoreshScheduleExport";
@@ -285,10 +286,18 @@ export default class ShoreshSchedules extends LightningElement {
     }
   }
 
-  /** The opened version as the views show it: each day a special day replaces is its schedule. */
+  /**
+   * The opened version as the views show it: each day a special day replaces is its schedule, and
+   * a cell a rainy-day switch moved to its rain plan carries a raindrop before its name (issue
+   * #129; on paper too, as the desktop prints what its screen shows; not in Excel, as the
+   * desktop's workbook has no marks).
+   */
   get shown() {
     if (this.shownMemo.of !== this.opened) {
-      this.shownMemo = { of: this.opened, view: withSpecials(this.opened) };
+      this.shownMemo = {
+        of: this.opened,
+        view: withRaindrops(withSpecials(this.opened))
+      };
     }
     return this.shownMemo.view;
   }
@@ -299,13 +308,14 @@ export default class ShoreshSchedules extends LightningElement {
 
   // Daily View
   /**
-   * The days on the rail: "Fri", with a flag when a special day replaces it, named in full
-   * ("Friday, Jul 3, Visiting Day") for screen readers and under the pointer.
+   * The days on the rail: "Fri", with a flag when a special day replaces it and a raindrop when a
+   * rainy day switched cells on it, named in full ("Friday, Jul 3, Visiting Day"; "Thursday, Jul
+   * 2, rainy day") for screen readers and under the pointer.
    */
   get dayPills() {
     return days(this.shown).map((day) => ({
       ...day,
-      name: [`${day.label}, ${day.sub}`, day.special]
+      name: [`${day.label}, ${day.sub}`, day.special, day.rain && "rainy day"]
         .filter(Boolean)
         .join(", "),
       specialText: day.special ? ` · ${day.special}` : "",

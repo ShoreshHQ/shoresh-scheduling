@@ -88,9 +88,10 @@ public with sharing class ManualVersions {
           day.grid,
           revisions.get(day.day)
         );
-        // The version's cells come back without the week's "Rain plan full" marks: restoring
-        // "Before rainy Monday" is the way back from a rainy day (repo docs/adr/0019).
-        save.rain = new List<String>();
+        // The version's rainy-day marks come back with its cells, as the desktop's flags do
+        // (toSnapshotSlot); "Before rainy Monday" has none from that Monday, so it is still the
+        // way back from a rainy day (repo docs/adr/0019 choice 9).
+        save.rain = day.rain;
         saves.add(save);
         restoredDays.add(day.day);
       }
@@ -203,11 +204,20 @@ public with sharing class ManualVersions {
     return days;
   }
 
-  /** The days written into a version, as they are. */
+  /**
+   * The days written into a version, as they are, their rainy-day marks too (the desktop's
+   * versions keep each cell's flags, toSnapshotSlot; repo docs/adr/0019 choice 9).
+   */
   private static void writeDays(Id versionId, List<ScheduleDays.DayGrid> days) {
     List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
     for (ScheduleDays.DayGrid day : days) {
-      saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
+      ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
+        day.day,
+        day.grid,
+        null
+      );
+      save.rain = day.rain;
+      saves.add(save);
     }
     ScheduleDaySaves.write(versionId, saves);
   }

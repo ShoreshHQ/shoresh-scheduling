@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import { gridMinWidth } from "c/shoreshScheduleViews";
+import { RAIN_PLAN, gridMinWidth } from "c/shoreshScheduleViews";
 
 const EDIT_KEYS = new Set(["Enter", "F2"]);
 const ARROWS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
@@ -386,6 +386,11 @@ export default class ShoreshScheduleGrid extends LightningElement {
           };
         })
     }));
+  }
+
+  /** What a screen reader hears after a switched cell's name (issue #129). */
+  get rainSaid() {
+    return `, ${RAIN_PLAN}`;
   }
 
   /** The quiet line under the grid: the marks on it that don't say themselves. */

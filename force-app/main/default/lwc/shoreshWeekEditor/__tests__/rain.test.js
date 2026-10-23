@@ -2,10 +2,13 @@ import { nsRecord } from "shoresh-jest/namespace";
 import {
   RAIN_PLAN_FULL,
   isMarked,
+  isSwitched,
   markOf,
+  marksAfter,
   planRain,
   rainModel,
-  rainReceipt
+  rainReceipt,
+  switchedOf
 } from "../rain";
 import { replan, toolRuns } from "../tools";
 import { slots } from "../slotEdits";
@@ -235,11 +238,43 @@ describe("the receipt and the marks", () => {
 
   it("a mark matches its cell whichever length its Ids are written in", () => {
     const d = {
-      rainFull: [markOf("a0Ba0000001AbCdEAA", "t2", "soccer")]
+      rain: [markOf("a0Ba0000001AbCdEAA", "t2", "soccer")]
     };
     expect(isMarked(d, "a0Ba0000001AbCd", "t2", "soccer")).toBe(true);
     expect(isMarked(d, "a0Ba0000001AbCd", "t2", "gym")).toBe(false);
     expect(RAIN_PLAN_FULL).toBe("Rain plan full: choose another");
+  });
+
+  it("a switched mark is told apart from a full one (issue #129)", () => {
+    const d = {
+      rain: [
+        switchedOf("a0Ba0000001AbCdEAA", "t2", "gym"),
+        markOf("g2", "t2", "soccer")
+      ]
+    };
+    expect(isSwitched(d, "a0Ba0000001AbCd", "t2", "gym")).toBe(true);
+    expect(isMarked(d, "a0Ba0000001AbCd", "t2", "gym")).toBe(false);
+    expect(isSwitched(d, "g2", "t2", "soccer")).toBe(false);
+    expect(isMarked(d, "g2", "t2", "soccer")).toBe(true);
+    expect(isSwitched(null, "g2", "t2", "soccer")).toBe(false);
+  });
+
+  it("a second rainy day keeps the marks the day had, once each", () => {
+    const before = [
+      switchedOf("g1", "t1", "gym"),
+      markOf("g2", "t2", "soccer")
+    ];
+    expect(
+      marksAfter(before, [
+        markOf("g2", "t2", "soccer"),
+        switchedOf("g3", "t2", "gym")
+      ])
+    ).toEqual([
+      switchedOf("g1", "t1", "gym"),
+      markOf("g2", "t2", "soccer"),
+      switchedOf("g3", "t2", "gym")
+    ]);
+    expect(marksAfter(undefined, [])).toEqual([]);
   });
 });
 
@@ -264,7 +299,12 @@ describe("the rainy day as a tool", () => {
       { day: 0, group: 0, first: 1, before: ["A:soccer"], after: ["A:gym"] },
       { day: 0, group: 1, first: 1, before: ["A:soccer"], after: ["A:gym"] }
     ]);
-    expect(result.marks).toEqual([markOf("g3", "t2", "soccer")]);
+    // The switched cells are marked too, for the Schedules page's raindrop (issue #129).
+    expect(result.marks).toEqual([
+      markOf("g3", "t2", "soccer"),
+      switchedOf("g1", "t2", "gym"),
+      switchedOf("g2", "t2", "gym")
+    ]);
   });
 
   it("only the day chosen changes", () => {

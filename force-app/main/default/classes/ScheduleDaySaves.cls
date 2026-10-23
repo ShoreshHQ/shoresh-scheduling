@@ -12,7 +12,7 @@ public with sharing class ScheduleDaySaves {
     public Date day;
     public ScheduleGrid grid;
     public Integer expectedRevision;
-    // The day's "Rain plan full" marks (RainMarks) to leave; none clears them. Null keeps the
+    // The day's rainy-day marks (RainMarks) to leave; none clears them. Null keeps the
     // ones it has. Either way only the marks whose cell still holds that activity are kept.
     public List<String> rain;
 

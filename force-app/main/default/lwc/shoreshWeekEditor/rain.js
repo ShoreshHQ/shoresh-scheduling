@@ -38,12 +38,44 @@ export function markOf(groupId, blockId, activityId) {
   return `${groupId}|${blockId}|${activityId}`;
 }
 
-/** Whether a day's marks name this cell holding this activity. */
-export function isMarked(day, groupId, blockId, activityId) {
-  const wanted = [groupId, blockId, activityId].map(short).join("|");
-  return ((day && day.rainFull) || []).some(
-    (mark) => mark.split("|").map(short).join("|") === wanted
+// The last part of a switched cell's mark (RainMarks.SWITCHED).
+const SWITCHED = "switched";
+
+/**
+ * A switched cell's mark: "group Id|time block Id|rain plan Id|switched" (repo docs/adr/0019
+ * choice 9). The Schedules page draws its raindrop from it (issue #129).
+ */
+export function switchedOf(groupId, blockId, activityId) {
+  return `${markOf(groupId, blockId, activityId)}|${SWITCHED}`;
+}
+
+function hasMark(day, parts) {
+  const wanted = parts.map((part, i) => (i < 3 ? short(part) : part)).join("|");
+  return ((day && day.rain) || []).some(
+    (mark) =>
+      mark
+        .split("|")
+        .map((part, i) => (i < 3 ? short(part) : part))
+        .join("|") === wanted
   );
+}
+
+/** Whether a day's "Rain plan full" marks name this cell holding this activity. */
+export function isMarked(day, groupId, blockId, activityId) {
+  return hasMark(day, [groupId, blockId, activityId]);
+}
+
+/** Whether a rainy day switched this cell to this activity, its rain plan. */
+export function isSwitched(day, groupId, blockId, activityId) {
+  return hasMark(day, [groupId, blockId, activityId, SWITCHED]);
+}
+
+/**
+ * The marks a rainy day leaves on its day: the ones it had (a mark whose cell changes is dropped
+ * when the day is saved, RainMarks.keptOn) and this switch's own, once each.
+ */
+export function marksAfter(before, made) {
+  return [...new Set([...(before || []), ...(made || [])])];
 }
 
 /**

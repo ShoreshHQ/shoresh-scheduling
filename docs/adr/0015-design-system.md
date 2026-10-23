@@ -411,8 +411,10 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     **Excel** a rail item beside it: the second filled control in the app, one per screen. A
     special day's day carries the event flag on the rail ("Fri ⚑"), the mark before a name.
     `c-shoresh-versions` takes an optional `label`, the words on its button, still named
-    "…, Versions". No new colour, step or class. What moved and why, and the rainy-day mark
-    not built: ADR 0005 §14. Checked by the Jest tests named there and the real-browser check,
+    "…, Versions". A cell a rainy-day switch moved to its rain plan carries a quiet raindrop
+    before its name, drawn as the event flag is (`.flag`, the words' second colour), and its
+    day's pill one after the day (issue #129). No new colour, step or class. What moved and why,
+    and the raindrop: ADR 0005 §14. Checked by the Jest tests named there and the real-browser check,
     with screenshots in `docs/design/screens/schedules-*.png`.
 
 ## Not done here

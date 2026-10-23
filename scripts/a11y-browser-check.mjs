@@ -67,6 +67,12 @@
  *   rail with its grid shown; an activity's card in Activity View opening its grid with focus on
  *   the rail's choice that now names it; axe on each view (with --shots, each view and Versions
  *   open, for docs/design/screens/);
+ * - the Schedules page's raindrop (issue #129; ADR 0005 §14, ADR 0019 choice 9): on a version made
+ *   for the check (by Apex, through the server's own day save) with the first bunk's Monday first
+ *   time block switched to Gym games, the rain plan, the Monday pill is named "…, rainy day" and
+ *   carries the drop; Daily View draws one raindrop, before Gym games, said "Gym games, rain plan";
+ *   so does Group View for that bunk and Activity View for Gym games (before the bunk's name);
+ *   axe on each. The version is deleted after;
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
  *   still lists it as coming (?c__preview=electives), then from the menu: focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
@@ -3786,6 +3792,148 @@ async function schedulesPage() {
   });
 }
 
+const CHECK_RAIN_VERSION = "Check rainy Monday (made up)";
+
+/** Deletes the check's rainy version, if a run left it. */
+function clearRain() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM Schedule__c WHERE Name = '${CHECK_RAIN_VERSION}' AND Status__c = 'Version' AND PublishedAt__c = NULL AND Program__r.Season__r.Camp__c = :camp.Id];
+`);
+}
+
+/**
+ * A version of the week's Manual Build draft whose first bunk's Monday first time block holds Gym
+ * games, switched there by a rainy day (its "|switched" mark, saved by ScheduleDaySaves, which
+ * keeps it only while the cell holds Gym games): the newest version, so the Schedules page opens
+ * it by itself.
+ */
+function seedRain() {
+  clearRain();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Week__c week = [SELECT Id FROM Week__c WHERE Season__r.Camp__c = :camp.Id AND Name = '${week}' ORDER BY StartDate__c DESC LIMIT 1];
+Schedule__c draft = [SELECT Id, Program__c FROM Schedule__c WHERE Week__c = :week.Id AND Status__c = 'Draft' AND Origin__c = 'Manual' LIMIT 1];
+Activity__c gym = [SELECT Id FROM Activity__c WHERE Name = 'Gym games' AND Season__r.Camp__c = :camp.Id ORDER BY CreatedDate DESC LIMIT 1];
+List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+for (Integer i = 0; i < days.size(); i++) {
+  ScheduleGrid grid = days[i].grid;
+  ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(days[i].day, grid, null);
+  if (i == 0) {
+    grid.items.add(new ScheduleGrid.Item('A', gym.Id, 'Gym games'));
+    grid.rows[0][0] = String.valueOf(grid.items.size());
+    save.rain = new List<String>{ grid.groups[0].id + '|' + grid.blocks[0].id + '|' + gym.Id + '|switched' };
+  }
+  saves.add(save);
+}
+Schedule__c version = new Schedule__c(Program__c = draft.Program__c, Week__c = week.Id, Name = '${CHECK_RAIN_VERSION}', Status__c = 'Version', Origin__c = 'Manual', VersionReason__c = 'SavedByHand');
+insert version;
+ScheduleDaySaves.write(version.Id, saves);
+`);
+}
+
+/** Every raindrop drawn on the grid shown: what its cell says (its text, read as a reader would). */
+async function raindrops() {
+  return page.evaluate(() => {
+    const found = [];
+    const walk = (root) => {
+      root.querySelectorAll('[data-id="rain-drop"]').forEach((drop) => {
+        const cell = drop.closest("[data-cell]");
+        if (cell) found.push(cell.textContent.replace(/\s+/g, " ").trim());
+      });
+      root.querySelectorAll("*").forEach((el) => {
+        if (el.shadowRoot) walk(el.shadowRoot);
+      });
+    };
+    walk(document);
+    return found;
+  });
+}
+
+/** One check of the raindrops on the grid shown: exactly one, and it says `said`. */
+async function expectRaindrop(S, name, said) {
+  const drops = await raindrops();
+  if (drops.length === 1 && said.test(drops[0])) {
+    results.pass(S, name, `One raindrop, its cell read "${drops[0]}".`);
+  } else {
+    await shot(S, name);
+    results.fail(
+      S,
+      name,
+      `Raindrops on the grid: ${drops.length ? drops.map((d) => `"${d}"`).join(", ") : "none"}.`
+    );
+  }
+}
+
+/**
+ * The Schedules page's raindrop (issue #129), on the version seedRain makes: the Monday pill names
+ * the rainy day, and Daily, Group and Activity View each draw the one switched cell's raindrop
+ * before its name, said after it; axe on each.
+ */
+async function schedulesRain() {
+  const S = "Schedules";
+  await step(S, "A rainy day's raindrop", async () => {
+    seedRain();
+    try {
+      await openFromMenu(S, /^Schedules$/);
+      await pickWeek();
+      const monday = await tabTo(
+        named(/^Monday\b.*, rainy day$/, { tag: "button" }),
+        { max: 40 }
+      );
+      if (monday) {
+        results.pass(
+          S,
+          "A rainy day: its pill is named for it",
+          `Focus on ${formatFocus(monday)}.`
+        );
+      } else {
+        await shot(S, "A rainy day's pill");
+        results.fail(
+          S,
+          "A rainy day: its pill is named for it",
+          'No Monday pill named "…, rainy day" was reached with Tab.'
+        );
+      }
+      await expectRaindrop(
+        S,
+        "Daily View: the switched cell's raindrop, said after its name",
+        /^Gym games, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Daily View");
+      await schedulesShot("schedules-rain");
+      if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
+        throw new Error("The Group view was not reached with Tab.");
+      await press("Enter", 800);
+      await expectRaindrop(
+        S,
+        "Group View: the first bunk's week shows the raindrop",
+        /^Gym games, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Group View");
+      if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
+        throw new Error("The Activity view was not reached with Tab.");
+      await press("Enter", 800);
+      if (
+        !(await tabTo(named(/^Gym games\b.*times? this /, { tag: "button" }), {
+          max: 30
+        }))
+      )
+        throw new Error("Gym games' card was not reached with Tab.");
+      await press("Enter", 800);
+      await expectRaindrop(
+        S,
+        "Activity View: the raindrop before the bunk the switch put there",
+        /, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Activity View");
+    } finally {
+      clearRain();
+    }
+  });
+}
+
 /** With --shots: the Schedules page as it is now, by name, for docs/design/screens/. */
 async function schedulesShot(name) {
   if (!args.includes("--shots")) return;
@@ -4595,6 +4743,7 @@ async function main() {
       await publish("Manual Build", openManual);
       await publish("Generated Schedule", openGenerated);
       await schedulesPage();
+      await schedulesRain();
     }
     await electives();
     if (only !== "electives") await bringInChoices();

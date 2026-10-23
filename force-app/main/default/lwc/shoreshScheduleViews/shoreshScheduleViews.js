@@ -13,6 +13,12 @@
  * with its own time blocks, and says so (`special`): its pill and Group View column carry its name,
  * Group View lays it on its own time blocks (one with the same times as the week's shares its
  * row), and Activity View counts nothing there, as the desktop's activity drilldown ignores it.
+ *
+ * A cell a rainy-day switch moved to its rain plan (the day's `rain` marks, RainMarks: "group
+ * Id|time block Id|activity Id|switched", sent only while the cell still holds that activity;
+ * repo docs/adr/0019 choice 9, issue #129) carries `rain`: a quiet raindrop before its name. Only
+ * on a view marked `raindrops` (withRaindrops: the Schedules page, the published week); Manual
+ * Build and Generated Schedule show a switch as it happens instead.
  */
 
 const CARRIES_ON = "^";
@@ -77,6 +83,52 @@ function refKey(ref) {
   return ref.id || ref.name;
 }
 
+// What a screen reader hears, and the pointer shows, after a switched cell's name.
+export const RAIN_PLAN = "rain plan";
+
+/** An Id as the first 15 characters, so a mark matches whichever length it was written in. */
+const shortId = (id) => String(id || "").slice(0, 15);
+
+/** The view with a rainy-day switch's cells drawn with their raindrop (the Schedules page). */
+export function withRaindrops(view) {
+  return view ? { ...view, raindrops: true } : view;
+}
+
+/**
+ * The cells a rainy day switched on a day: "group|block|activity" keys, Ids at 15 characters;
+ * none unless the view draws raindrops.
+ */
+function switchedOn(view, day) {
+  if (!view || !view.raindrops) {
+    return new Set();
+  }
+  return new Set(
+    ((day && day.rain) || [])
+      .map((mark) => mark.split("|"))
+      .filter((parts) => parts.length === 4 && parts[3] === "switched")
+      .map((parts) => parts.slice(0, 3).map(shortId).join("|"))
+  );
+}
+
+/** Whether the item starting at a group's block on a day is there from a rainy-day switch. */
+function isSwitched(switched, day, groupIndex, blockIndex, item) {
+  if (!switched.size || !item || item.kind !== "A") {
+    return false;
+  }
+  const grp = day.groups[groupIndex];
+  const block = day.blocks[blockIndex];
+  return (
+    !!grp &&
+    !!block &&
+    switched.has([grp.id, block.id, item.id].map(shortId).join("|"))
+  );
+}
+
+/** A cell with its raindrop: said after the name, and under the pointer. */
+function rainy(drawn) {
+  return { ...drawn, rain: true, title: `${drawn.title}: ${RAIN_PLAN}` };
+}
+
 /**
  * One day's cells for one group: for each time block that starts something, the item (or null
  * for nothing placed) and how many blocks it runs. Blocks an item carries on into are left out.
@@ -127,6 +179,7 @@ export function withSpecials(view) {
         ...NO_PLAN,
         ...(special.plan || {}),
         locks: [],
+        rain: [],
         dateValue: day.dateValue,
         special: {
           id: special.specialDayId,
@@ -153,6 +206,8 @@ export function days(view) {
     index,
     problem: day.problem,
     special: day.special ? day.special.name : null,
+    // A rainy day switched cells here (its pill carries the raindrop, as the mock-up's "Thu").
+    rain: !day.problem && switchedOn(view, day).size > 0,
     ...dayLabel(day.dateValue)
   }));
 }
@@ -410,9 +465,10 @@ export function dailyGrid(view, dayIndex, t) {
     return null;
   }
   const cells = [];
+  const switched = switchedOn(view, day);
   day.groups.forEach((grp, g) => {
     groupCells(day, g).forEach((c) => {
-      const drawn = cell(
+      let drawn = cell(
         `${g}-${c.blockIndex}`,
         {
           row: c.blockIndex,
@@ -423,6 +479,9 @@ export function dailyGrid(view, dayIndex, t) {
         c.item,
         t
       );
+      if (isSwitched(switched, day, g, c.blockIndex, c.item)) {
+        drawn = rainy(drawn);
+      }
       // The same event over the same blocks in bunks side by side is one cell (ADR 0014).
       if (drawn.eventKey) {
         drawn.mergeKey = `${drawn.eventKey}|${c.blockIndex}|${c.length}`;
@@ -486,21 +545,25 @@ export function groupGrid(view, groupKey, t) {
     if (g < 0) {
       return;
     }
+    const switched = switchedOn(view, day);
     groupCells(day, g).forEach((c) => {
       const first = rowOf(day, c.blockIndex);
       const last = rowOf(day, c.blockIndex + c.length - 1);
+      const drawn = cell(
+        `${dayIndex}-${first}`,
+        {
+          row: first,
+          column: dayIndex,
+          length: last - first + 1,
+          slot: { day: dayIndex, group: g, block: c.blockIndex }
+        },
+        c.item,
+        t
+      );
       cells.push(
-        cell(
-          `${dayIndex}-${first}`,
-          {
-            row: first,
-            column: dayIndex,
-            length: last - first + 1,
-            slot: { day: dayIndex, group: g, block: c.blockIndex }
-          },
-          c.item,
-          t
-        )
+        isSwitched(switched, day, g, c.blockIndex, c.item)
+          ? rainy(drawn)
+          : drawn
       );
     });
   });
@@ -569,12 +632,18 @@ export function activityGrid(view, activityId, t) {
       return;
     }
     const names = new Map();
+    const switched = switchedOn(view, day);
     day.groups.forEach((grp, g) =>
       groupCells(day, g).forEach((c) => {
         if (c.item && c.item.kind === "A" && c.item.id === activityId) {
+          // A group here from a rainy-day switch: its raindrop before its name.
+          const rain = isSwitched(switched, day, g, c.blockIndex, c.item);
           for (let b = c.blockIndex; b < c.blockIndex + c.length; b++) {
             const row = rowOf(day, b);
-            names.set(row, [...(names.get(row) || []), grp.name]);
+            names.set(row, [
+              ...(names.get(row) || []),
+              { name: grp.name, rain }
+            ]);
           }
         }
       })
@@ -590,8 +659,19 @@ export function activityGrid(view, activityId, t) {
         className: here.length
           ? "cell cell_activity-here"
           : "cell cell_activity-none",
-        names: here.map((name, i) => ({ key: String(i), name })),
-        title: here.length ? here.join(", ") : "Not scheduled"
+        names: here.map((entry, i) => ({
+          key: String(i),
+          name: entry.name,
+          rain: entry.rain,
+          said: entry.rain ? `, ${RAIN_PLAN}` : null
+        })),
+        title: here.length
+          ? here
+              .map((entry) => {
+                return entry.rain ? `${entry.name} (${RAIN_PLAN})` : entry.name;
+              })
+              .join(", ")
+          : "Not scheduled"
       });
     });
   });

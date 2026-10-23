@@ -274,7 +274,15 @@ public with sharing class SchedulePublish {
       Database.insert(copy, AccessLevel.USER_MODE);
       List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
       for (ScheduleDays.DayGrid day : week.days) {
-        saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
+        // The rainy-day marks go with the cells (repo docs/adr/0019 choice 9): the Schedules page
+        // draws a switched cell's raindrop from them.
+        ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
+          day.day,
+          day.grid,
+          null
+        );
+        save.rain = day.rain;
+        saves.add(save);
       }
       ScheduleDaySaves.write(copy.Id, saves);
       ScheduleSpecials.carry(copy.Id, week.specials);

@@ -1,14 +1,18 @@
 /**
- * The "Rain plan full: choose another" marks of a rainy day (repo docs/adr/0019; desktop
- * src/utils/rainyDay.js): the cells a rainy-day switch left outdoors because their rain plan had
- * no room. Stored in ScheduleDay__c.RainyDay__c (the day's first part) as one line per cell,
- * "group Id|time block Id|activity Id", sorted, so the same marks always give the same text.
+ * The marks a rainy day leaves (repo docs/adr/0019 choice 9; desktop src/utils/rainyDay.js): the
+ * "Rain plan full: choose another" cells a switch left outdoors because their rain plan had no
+ * room, "group Id|time block Id|activity Id", and the cells it switched to their rain plan, the
+ * same with "|switched" after (the Schedules page's raindrop, issue #129). Stored in
+ * ScheduleDay__c.RainyDay__c (the day's first part), one line per cell, sorted, so the same marks
+ * always give the same text.
  *
  * A mark stays only while its cell holds that activity, starting there (keptOn): any change to
  * the cell takes it away, as on the desktop ("the mark stays until the cell is next changed").
  */
 public with sharing class RainMarks {
   private static final String SEPARATOR = '|';
+  // The last part of a switched cell's mark.
+  public static final String SWITCHED = 'switched';
 
   /**
    * The marks as stored; none for blank. A line that can't be read is left out (a mark is a
@@ -31,22 +35,27 @@ public with sharing class RainMarks {
 
   /**
    * Each mark with its record Ids written the one way (18 characters), once each, sorted.
-   * Refused when one isn't three record Ids: a screen never sends that.
+   * Refused when one isn't three record Ids, with "switched" after them or not: a screen never
+   * sends that.
    */
   public static List<String> normal(List<String> marks) {
     Set<String> found = new Set<String>();
     for (String mark : marks == null ? new List<String>() : marks) {
       List<String> ids = String.valueOf(mark).split('\\|', -1);
-      if (ids.size() != 3) {
+      Boolean switched = ids.size() == 4 && ids[3] == SWITCHED;
+      if (ids.size() != 3 && !switched) {
         throw unreadable();
       }
       List<String> written = new List<String>();
-      for (String part : ids) {
+      for (String part : new List<String>{ ids[0], ids[1], ids[2] }) {
         try {
           written.add(String.valueOf(Id.valueOf(part)));
         } catch (Exception e) {
           throw unreadable();
         }
+      }
+      if (switched) {
+        written.add(SWITCHED);
       }
       found.add(String.join(written, SEPARATOR));
     }
@@ -110,7 +119,10 @@ public with sharing class RainMarks {
     return text(keptOn(grid, marks));
   }
 
-  /** The marks whose cell, in this grid, still holds that activity starting there. */
+  /**
+   * The marks whose cell, in this grid, still holds that activity starting there (a full cell
+   * its own activity, a switched one its rain plan).
+   */
   public static List<String> keptOn(ScheduleGrid grid, List<String> marks) {
     List<String> kept = new List<String>();
     if (grid == null || marks == null || marks.isEmpty()) {

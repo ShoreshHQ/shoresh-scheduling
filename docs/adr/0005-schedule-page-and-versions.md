@@ -239,14 +239,24 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       activity. The location is on the card, not over the grid. A special event's own schedule
       keeps "← Monday" over its grid, with focus there and back as before.
     - **Rainy day.** The switch stays on Manual Build and Generated Schedule (ADR 0019); this
-      page has no Rainy day button. Decision 56 draws a switched cell here with a quiet
-      raindrop before its name. That is not built: a switch records only the cells whose rain
-      plan was full (`RainyDay__c`), not the switched ones, and a version or a published
-      schedule starts without marks (ADR 0019 choice 9), so this page has nothing to draw it
-      from. Showing it needs the switched cells kept and carried through Publish, a data change
-      for its own PR (issue #129); deferring it there is Greg's call.
+      page has no Rainy day button. A cell a switch moved to its rain plan carries a quiet
+      raindrop before its name (decision 56, mock-up `schedules-rain-a.png`), in Daily, Group
+      and Activity View (there before the bunk's name), said after the name ("Swim, rain plan")
+      and shown under the pointer ("Swim: rain plan"); its day's pill carries one too ("Thu"
+      and the drop, named "Thursday, Jul 2, rainy day"), as the mock-up's. A "Rain plan full"
+      mark draws nothing here (it is Manual Build's corner). **Built in this PR** (Greg,
+      2026-10-23: #124 held until the raindrop is built into it; issue #129): a switch now
+      keeps its switched cells beside the full ones in `RainyDay__c`, each only while its cell
+      holds that activity, and Publish, Save version, Restore and Start from another week carry
+      them (ADR 0019 choice 9, the desktop's way). **Print** shows the raindrop too, as the
+      desktop prints what its screen shows; **Excel** doesn't, as the desktop's workbook carries
+      no marks (`src/utils/exportWorkbook.js`). Manual Build and Generated Schedule draw no
+      raindrop (the grids draw it only for a view marked `withRaindrops`).
     - Checked by `shoreshSchedules.test.js` ("is laid out as Manual Build"; the views, the
-      bunk and activity choices, Excel and Print), `specials.test.js` (the flagged day),
+      bunk and activity choices, Excel and Print), `rain.test.js` (the raindrop: the rainy
+      day's pill, Daily, Group and Activity View, said and under the pointer, none for a full
+      mark, on paper, not in Excel, not on Manual Build's grids, axe), `specials.test.js` (the
+      flagged day),
       `shoreshVersions.test.js` (the button naming the version), `shoreshCampSetup.test.js`
       (the page flush in the frame, its heading read out) and in the test org by
       `scripts/a11y-browser-check.mjs` (the rail's end in Tab order with Print filled, Group

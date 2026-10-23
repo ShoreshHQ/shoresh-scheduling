@@ -9,7 +9,7 @@ public with sharing class ScheduleDays {
     public Integer revision;
     public ScheduleGrid grid;
     public String problem;
-    // The day's "Rain plan full" marks as stored (RainMarks), when it was read with them.
+    // The day's rainy-day marks as stored (RainMarks), when it was read with them.
     public List<String> rain = new List<String>();
   }
 

@@ -231,7 +231,7 @@ describe("c-shoresh-week-editor: rainy day", () => {
     expect(again.runs).toEqual([
       expect.objectContaining({ groupId: "g2", after: ["A:a4"] })
     ]);
-    expect(again.rain).toEqual([{ day: MONDAY, cells: [] }]);
+    expect(again.rain).toEqual([{ day: MONDAY, cells: ["g2|t2|a4|switched"] }]);
     expect(toolNotice(element)).toBe(
       "Rainy Monday, except 1 activity that changed: 1 switched to rain plans · Undo"
     );

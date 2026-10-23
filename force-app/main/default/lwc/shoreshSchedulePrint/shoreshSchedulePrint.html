@@ -39,7 +39,22 @@
                       class={cell.className}
                       rowspan={cell.rowspan}
                     >
-                      {cell.text}
+                      <template for:each={cell.parts} for:item="part"
+                        ><span key={part.key}
+                          ><template lwc:if={part.rain}
+                            ><svg
+                              class="drop"
+                              viewBox="0 0 12 12"
+                              aria-hidden="true"
+                              focusable="false"
+                              data-id="print-rain-drop"
+                            >
+                              <path
+                                d="M6 1.5c-1.6 2.3-2.75 3.6-2.75 5.1a2.75 2.75 0 0 0 5.5 0C8.75 5.1 7.6 3.8 6 1.5Z"
+                              ></path></svg></template
+                          >{part.text}</span
+                        ></template
+                      >
                       <template lwc:if={cell.note}>
                         <span class="note">{cell.note}</span>
                       </template>

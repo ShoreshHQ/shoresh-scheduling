@@ -35,6 +35,7 @@ import { LEFT_OUT, cellKey as toolCellKey, replan, toolRuns } from "./tools";
 import {
   RAIN_PLAN_FULL,
   isMarked,
+  marksAfter,
   rainCounts,
   rainModel,
   rainReceipt
@@ -1428,7 +1429,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    */
   rainDotFor(slot) {
     const day = this.dayOf(slot);
-    if (!day || !day.rainFull || !day.rainFull.length) {
+    if (!day || !day.rain || !day.rain.length) {
       return null;
     }
     const at = placement(day, slot.group, slot.block);
@@ -2216,7 +2217,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rainMarks = new Map((edit.rain || []).map((r) => [r.day, r.cells]));
     const daysNow = schedule.days.map((day) => {
       let result = rainMarks.has(day.dateValue)
-        ? { ...day, rainFull: rainMarks.get(day.dateValue) }
+        ? { ...day, rain: rainMarks.get(day.dateValue) }
         : day;
       edit.runs
         .filter((run) => run.day === day.dateValue)
@@ -3021,8 +3022,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     const day = seen.find((d) => d.dateValue === date);
     return {
       date,
-      before: (day && day.rainFull) || [],
-      after: result.marks
+      before: (day && day.rain) || [],
+      after: marksAfter((day && day.rain) || [], result.marks)
     };
   }
 
@@ -3159,7 +3160,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.stepRain.set(stepId, {
         date: tool.dates[0],
         before: record ? record.before : [],
-        after: result.marks
+        after: marksAfter(record ? record.before : [], result.marks)
       });
     }
     if (!this.history.replace(stepId, step)) {

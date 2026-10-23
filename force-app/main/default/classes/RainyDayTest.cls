@@ -1,8 +1,10 @@
 /**
  * Rainy day (repo docs/adr/0019), as a scheduler with the Shoresh Scheduler permission set: the
  * version kept first ("Before rainy Monday", Auto-saved), the switch saved as one edit with its
- * "Rain plan full" marks, a mark going when its cell changes, Undo taking the marks away, and
- * Restore of the version bringing the day back without them. Synthetic camp (SetTimeTestData):
+ * marks ("Rain plan full", and the switched cells the Schedules page draws a raindrop on), a mark
+ * going when its cell changes, Undo taking the marks away, Restore of the version bringing the
+ * day back without them, and the marks carried by Publish, Save version and Restore, and Start
+ * from another week (issue #129). Synthetic camp (SetTimeTestData):
  * Group A and Group B (Juniors), Group C (Seniors); Period 1, Period 2, Lunch; Soccer is outdoors
  * with Gym games as its rain plan.
  */
@@ -50,6 +52,23 @@ private class RainyDayTest {
       String.valueOf(ids.get(activity));
   }
 
+  /** A switched cell's mark: a group's Monday Period 2 switched to its rain plan. */
+  private static String switched(String grp, String activity) {
+    return mark(grp, activity) + '|' + RainMarks.SWITCHED;
+  }
+
+  /** Group A switched to Gym games, Group B's Soccer full: what switchMonday leaves. */
+  private static Set<String> mondayMarks() {
+    return new Set<String>{
+      switched('Group A', 'Gym games'),
+      mark('Group B', 'Soccer')
+    };
+  }
+
+  private static Set<String> asSet(List<String> marks) {
+    return new Set<String>(marks);
+  }
+
   private static SlotEdits.Edit withRain(
     SlotEdits.Edit edit,
     List<String> cells
@@ -92,11 +111,14 @@ private class RainyDayTest {
     return result;
   }
 
-  /** The switch, as the screen sends it: Group A to its rain plan, Group B's marked full. */
+  /**
+   * The switch, as the screen sends it: Group A to its rain plan (marked switched), Group B's
+   * marked full.
+   */
   private static SlotEdits.Edit switchMonday() {
     return withRain(
       period2('Group A', a('Soccer'), a('Gym games')),
-      new List<String>{ mark('Group B', 'Soccer') }
+      new List<String>(mondayMarks())
     );
   }
 
@@ -144,14 +166,11 @@ private class RainyDayTest {
       ScheduleViews.DayView monday = result.schedule.days[0];
       Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group B'));
+      Assert.areEqual(mondayMarks(), asSet(monday.rain));
+      // Read again as any screen would: the marks are kept with the day.
       Assert.areEqual(
-        new List<String>{ mark('Group B', 'Soccer') },
-        monday.rainFull
-      );
-      // Read again as any screen would: the mark is kept with the day.
-      Assert.areEqual(
-        new List<String>{ mark('Group B', 'Soccer') },
-        ScheduleViews.open(draftId).days[0].rainFull
+        mondayMarks(),
+        asSet(ScheduleViews.open(draftId).days[0].rain)
       );
     }
   }
@@ -170,18 +189,24 @@ private class RainyDayTest {
         draftId,
         period2('Group B', a('Soccer'), a('Swim'))
       );
-      Test.stopTest();
-      Assert.areEqual(
-        new List<String>{ mark('Group B', 'Soccer') },
-        other.schedule.days[0].rainFull
+      // The switched cell changes: its mark goes too.
+      SlotEdits.Result switchedOwn = save(
+        draftId,
+        period2('Group A', a('Gym games'), a('Swim'))
       );
-      Assert.isTrue(own.schedule.days[0].rainFull.isEmpty());
+      Test.stopTest();
+      Assert.areEqual(mondayMarks(), asSet(other.schedule.days[0].rain));
+      Assert.areEqual(
+        new List<String>{ switched('Group A', 'Gym games') },
+        own.schedule.days[0].rain
+      );
+      Assert.isTrue(switchedOwn.schedule.days[0].rain.isEmpty());
       // Soccer put back by hand later is not marked again.
       SlotEdits.Result back = save(
         draftId,
         period2('Group B', a('Swim'), a('Soccer'))
       );
-      Assert.isTrue(back.schedule.days[0].rainFull.isEmpty());
+      Assert.isTrue(back.schedule.days[0].rain.isEmpty());
     }
   }
 
@@ -203,7 +228,7 @@ private class RainyDayTest {
       ScheduleViews.DayView monday = undone.schedule.days[0];
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group A'));
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group B'));
-      Assert.isTrue(monday.rainFull.isEmpty());
+      Assert.isTrue(monday.rain.isEmpty());
     }
   }
 
@@ -230,7 +255,7 @@ private class RainyDayTest {
       // Group C's Period 2 is Open: its mark is dropped.
       Assert.areEqual(
         new List<String>{ mark('Group B', 'Soccer') },
-        result.schedule.days[0].rainFull
+        result.schedule.days[0].rain
       );
     }
   }
@@ -248,7 +273,10 @@ private class RainyDayTest {
           new List<SlotEdits.Edit>{
             withRain(
               period2('Group A', a('Soccer'), a('Gym games')),
-              new List<String>{ 'Group B|Period 2|Soccer' }
+              new List<String>{
+                'Group B|Period 2|Soccer',
+                mark('Group B', 'Soccer') + '|wet'
+              }
             )
           }
         );
@@ -259,7 +287,7 @@ private class RainyDayTest {
       Assert.isNotNull(refusal, 'A garbled mark was taken');
       ScheduleViews.DayView monday = ScheduleViews.open(draftId).days[0];
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group A'));
-      Assert.isTrue(monday.rainFull.isEmpty());
+      Assert.isTrue(monday.rain.isEmpty());
     }
   }
 
@@ -283,7 +311,7 @@ private class RainyDayTest {
       ScheduleViews.DayView monday = restored.schedule.days[0];
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group A'));
       Assert.areEqual(a('Soccer'), period2Of(monday, 'Group B'));
-      Assert.isTrue(monday.rainFull.isEmpty());
+      Assert.isTrue(monday.rain.isEmpty());
     }
   }
 
@@ -346,8 +374,97 @@ private class RainyDayTest {
       Assert.isFalse(locked.conflict);
       Assert.areEqual(
         new List<String>{ mark('Group A', 'Gym games') },
-        locked.schedule.days[0].rainFull
+        locked.schedule.days[0].rain
       );
+    }
+  }
+
+  @IsTest
+  static void publishCarriesTheMarksToTheSchedulesPage() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id draftId = soccerMorning();
+      save(draftId, switchMonday());
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        null
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used <= FEW, 'Publishing used ' + used + ' queries');
+      // As the Schedules page opens it.
+      ScheduleViews.DayView monday = SchedulesController.openSchedule(
+          result.published.id
+        )
+        .days[0];
+      Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
+      Assert.areEqual(mondayMarks(), asSet(monday.rain));
+    }
+  }
+
+  @IsTest
+  static void aVersionKeepsTheMarksAndRestoreBringsThemBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id draftId = soccerMorning();
+      save(draftId, switchMonday());
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Wet Monday');
+      Integer used = Limits.getQueries() - before;
+      Assert.areEqual(
+        mondayMarks(),
+        asSet(ScheduleViews.open(versionId).days[0].rain)
+      );
+      // Undone: the draft is dry again, without marks.
+      save(
+        draftId,
+        withRain(
+          period2('Group A', a('Gym games'), a('Soccer')),
+          new List<String>()
+        )
+      );
+      before = Limits.getQueries();
+      ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      Integer restoring = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used <= FEW, 'Save version used ' + used + ' queries');
+      Assert.isTrue(restoring <= FEW, 'Restore used ' + restoring + ' queries');
+      ScheduleViews.DayView monday = restored.schedule.days[0];
+      Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
+      Assert.areEqual(mondayMarks(), asSet(monday.rain));
+    }
+  }
+
+  @IsTest
+  static void startingFromAnotherWeekCarriesTheMarksOfTheCellsCopied() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id draftId = soccerMorning();
+      save(draftId, switchMonday());
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
+        ids.get('Main'),
+        ids.get('Week 2'),
+        draftId
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used <= FEW, 'Starting the week used ' + used + ' queries');
+      ScheduleViews.DayView monday = view.schedule.days[0];
+      Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
+      Assert.areEqual(mondayMarks(), asSet(monday.rain));
     }
   }
 }
