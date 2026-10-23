@@ -17,7 +17,9 @@ public with sharing class SeasonSetupController {
     FixedActivity__c.SObjectType,
     RecurringActivity__c.SObjectType,
     SpecialDay__c.SObjectType,
-    SpecialEvent__c.SObjectType
+    SpecialEvent__c.SObjectType,
+    ElectiveSet__c.SObjectType,
+    Offering__c.SObjectType
   };
 
   @AuraEnabled
