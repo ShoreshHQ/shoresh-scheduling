@@ -104,8 +104,12 @@ step, sees what changed and what couldn't, and can undo it.
    starts dry**, with neither switched nor full marks (Greg, 2026-10-23), unlike the desktop's
    Duplicate week, which copies the flags: rain belongs to that day, its activities and their
    places; the rain plan stays with the activities, and the director makes a day rainy when it
-   rains. Publish's "already published as it is" still compares cells only: a switch always
-   changes cells, so a rainy day's marks never wait on a publish refused as unchanged.
+   rains. Publish's "already published as it is" compares each day's kept marks as well as its
+   cells (`PublishedChanges`): an edit that puts a switched cell back, or a restored version,
+   can leave the cells as published and the marks not, and Publish then lists "Monday: rain
+   marks changed" ("1 rainy day changes") and publishes, so the Schedules page never keeps a
+   stale raindrop or misses one (`RainyDayTest` "aRaindropGoneSincePublishIsPublished",
+   "aRaindropRestoredSincePublishIsPublished").
 
 10. **Not counted.** The counter and Publish's question don't count the marks: a full cell isn't
     a broken rule but a choice still to make by hand, and the corner on the cell is where it is

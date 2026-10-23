@@ -72,6 +72,9 @@ public with sharing class SchedulePublish {
     public Integer specialDayCount = 0;
     @AuraEnabled
     public Integer eventCount = 0;
+    // Of changeCount: the days whose rainy-day marks change (PublishedChanges.rainDays).
+    @AuraEnabled
+    public Integer rainDayCount = 0;
   }
 
   /** A publish done, or refused because the week or its published schedule changed since. */
@@ -161,6 +164,7 @@ public with sharing class SchedulePublish {
     result.retimeCount = changes.retimes;
     result.specialDayCount = changes.specialDays;
     result.eventCount = changes.events;
+    result.rainDayCount = changes.rainDays;
     result.published.changedSince = changes.count > 0;
     return result;
   }
@@ -359,7 +363,7 @@ public with sharing class SchedulePublish {
 
   /**
    * What changes from a published schedule to the week now: its special days and events first
-   * (SpecialChanges, EventScheduleChanges), then the week's renames and cells, leaving out the cells of a day a special
+   * (SpecialChanges, EventScheduleChanges), then the week's renames and cells and each day's rain marks, leaving out the cells of a day a special
    * day replaces on either side (out of sight). campId: whose words the lines use, listing the
    * first MOST_LINES; null when only the count matters (no lines kept).
    */

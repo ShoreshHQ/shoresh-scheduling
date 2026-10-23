@@ -436,7 +436,7 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     (Groups and Programs), and in the test org by `scripts/a11y-browser-check.mjs` (Groups and
     Programs), with a screenshot (`--shots`) beside the mock-up.
 
-16. **The Schedules page (2026-10-23, wiki decision 56).** Design source: the approved
+17. **The Schedules page (2026-10-23, wiki decision 56).** Design source: the approved
     mock-ups `design-research/screens-r1` (`schedules.html`, `schedules-daily`, `-group`,
     `-activity`, `-versions`, `-special-day`, `-rain-a.png`). The published week takes Manual
     Build's grammar: its rail (the week and its arrows, the three views raised when chosen, the

@@ -408,6 +408,98 @@ private class RainyDayTest {
     }
   }
 
+  /** Previews and publishes, as the screen does. */
+  private static SchedulePublish.Result publishNow(Id draftId) {
+    SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+      draftId
+    );
+    return ManualBuildController.publish(
+      draftId,
+      preview.revisions,
+      preview.published == null ? null : preview.published.id
+    );
+  }
+
+  /** Group A's switched cell changed, then put back: the same cells, its raindrop gone. */
+  private static void groupABackToGymGames(Id draftId) {
+    save(draftId, period2('Group A', a('Gym games'), a('Soccer')));
+    save(draftId, period2('Group A', a('Soccer'), a('Gym games')));
+  }
+
+  /**
+   * Publishes the draft again, whose cells match the published schedule's but whose marks
+   * don't: the preview says so and the publish happens, carrying the draft's marks.
+   */
+  private static void publishesTheMarks(Id draftId, Id publishedId) {
+    Test.startTest();
+    Integer before = Limits.getQueries();
+    SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+      draftId
+    );
+    SchedulePublish.Result result = ManualBuildController.publish(
+      draftId,
+      preview.revisions,
+      preview.published.id
+    );
+    Integer used = Limits.getQueries() - before;
+    Test.stopTest();
+    Assert.isTrue(used <= FEW, 'Publishing used ' + used + ' queries');
+    Assert.areEqual(1, preview.changeCount);
+    Assert.areEqual(1, preview.rainDayCount);
+    Assert.isTrue(preview.published.changedSince);
+    Assert.areEqual(
+      new List<String>{ 'Monday: rain marks changed' },
+      preview.changes
+    );
+    Assert.isFalse(result.unchanged, 'Refused as already published');
+    Assert.areNotEqual(publishedId, result.published.id);
+    ScheduleViews.DayView monday = SchedulesController.openSchedule(
+        result.published.id
+      )
+      .days[0];
+    Assert.areEqual(a('Gym games'), period2Of(monday, 'Group A'));
+    Assert.areEqual(
+      asSet(ScheduleDays.read(draftId)[0].rain),
+      asSet(monday.rain)
+    );
+  }
+
+  @IsTest
+  static void aRaindropGoneSincePublishIsPublished() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id draftId = soccerMorning();
+      save(draftId, switchMonday());
+      Id publishedId = publishNow(draftId).published.id;
+      groupABackToGymGames(draftId);
+      Assert.areEqual(
+        new Set<String>{ mark('Group B', 'Soccer') },
+        asSet(ScheduleDays.read(draftId)[0].rain)
+      );
+      publishesTheMarks(draftId, publishedId);
+    }
+  }
+
+  @IsTest
+  static void aRaindropRestoredSincePublishIsPublished() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id draftId = soccerMorning();
+      save(draftId, switchMonday());
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Wet Monday');
+      groupABackToGymGames(draftId);
+      Id publishedId = publishNow(draftId).published.id;
+      // The same cells back, with Group A's raindrop.
+      ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      Assert.areEqual(mondayMarks(), asSet(ScheduleDays.read(draftId)[0].rain));
+      publishesTheMarks(draftId, publishedId);
+    }
+  }
+
   @IsTest
   static void aVersionKeepsTheMarksAndRestoreBringsThemBack() {
     System.runAs(ShoreshTestData.scheduler()) {

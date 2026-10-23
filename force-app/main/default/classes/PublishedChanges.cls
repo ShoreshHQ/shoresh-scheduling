@@ -25,6 +25,9 @@ public with sharing class PublishedChanges {
     // from the week's cells (ScheduleSpecials, ADR 0014 slice 5).
     public Integer specialDays = 0;
     public Integer events = 0;
+    // Of count: the days whose rainy-day marks change with their cells the same or not (a
+    // raindrop gone or come back, ADR 0019 choice 9), one each.
+    public Integer rainDays = 0;
     // The lines past mostLines, not listed ("…and N more.").
     public Integer moreLines = 0;
     // The days a special day replaces (on either side), whose own cells are out of sight and not
@@ -94,7 +97,32 @@ public with sharing class PublishedChanges {
           nowDays.get(day)
         )
         .addTo(result);
+      addRain(result, day, wasDays.get(day), nowDays.get(day));
     }
+  }
+
+  /**
+   * A day whose kept rainy-day marks (RainMarks.keptOn) differ, one line ("Monday: rain marks
+   * changed"): its cells can match while a raindrop has gone or come back (an edit put the cell
+   * back, or a version restored).
+   */
+  private static void addRain(
+    Changes result,
+    Date day,
+    ScheduleDays.DayGrid was,
+    ScheduleDays.DayGrid now
+  ) {
+    if (keptMarks(was) == keptMarks(now)) {
+      return;
+    }
+    result.rainDays++;
+    result.add(WeekCalendar.weekdayName(day) + ': rain marks changed', 1);
+  }
+
+  private static Set<String> keptMarks(ScheduleDays.DayGrid day) {
+    return day == null
+      ? new Set<String>()
+      : new Set<String>(RainMarks.keptOn(day.grid, day.rain));
   }
 
   private static Map<Date, ScheduleDays.DayGrid> byDay(

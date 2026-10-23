@@ -29,24 +29,27 @@ export function publishedWord(published) {
 /**
  * How much changes, in plain words: cells, then names (bunks and time blocks renamed), then time
  * blocks at new times, then special days and special events whose own schedules change (ADR 0014
- * slice 5), each only when above 0: "2 cells change", "1 name changes", "1 cell and 1 name
- * change", "1 special day changes". A rename is never counted as a cell.
+ * slice 5), then days whose rain marks change with their cells the same (ADR 0019 choice 9), each
+ * only when above 0: "2 cells change", "1 name changes", "1 cell and 1 name change", "1 special
+ * day changes", "1 rainy day changes". A rename is never counted as a cell.
  */
 function changeWords(preview, t) {
   const renames = preview.renameCount || 0;
   const retimes = preview.retimeCount || 0;
   const specialDays = preview.specialDayCount || 0;
   const events = preview.eventCount || 0;
+  const rainDays = preview.rainDayCount || 0;
   const parts = [
     [
-      preview.changeCount - renames - retimes - specialDays - events,
+      preview.changeCount - renames - retimes - specialDays - events - rainDays,
       "cell",
       "cells"
     ],
     [renames, "name", "names"],
     [retimes, t.sIn("TimeBlock"), t.pIn("TimeBlock")],
     [specialDays, t.sIn("SpecialDay"), t.pIn("SpecialDay")],
-    [events, t.sIn("SpecialEvent"), t.pIn("SpecialEvent")]
+    [events, t.sIn("SpecialEvent"), t.pIn("SpecialEvent")],
+    [rainDays, "rainy day", "rainy days"]
   ]
     .filter(([count]) => count > 0)
     .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
