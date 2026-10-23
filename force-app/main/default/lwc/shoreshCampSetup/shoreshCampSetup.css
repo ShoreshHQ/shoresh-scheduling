@@ -217,11 +217,21 @@
   display: block;
 }
 
-/* Import a list, opened: it takes the rail's whole width, under its items. */
+/* Import a list, opened: it is the rail (its items put away), and while a file is reviewed
+   the table too: the file's rows are laid into the screen's own table there (Greg's decision
+   56; ADR 0007 choice 33). Closed, the rail and the table are as they were. */
 .rail-import.list-open {
   flex-basis: 100%;
-  order: 10;
-  margin-top: var(--shoresh-space-pad);
+}
+
+.screen_importing > .setup-rail > :not(.rail-import):not(h2) {
+  display: none;
+}
+
+.screen_import-review > .shoresh-hairline,
+.screen_import-review > .setup-list,
+.screen_import-review > .setup-split {
+  display: none;
 }
 
 /* Activities: the list, and one activity's details in a zone beside it (activities.html). */

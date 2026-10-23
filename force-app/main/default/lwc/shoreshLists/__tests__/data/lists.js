@@ -23,6 +23,7 @@ export {
   sheetName,
   shownValue,
   similarCards,
+  skipKey,
   unescapeCell,
   waitingFor,
   workbookCards,

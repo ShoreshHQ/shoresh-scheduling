@@ -11,6 +11,7 @@ screens' `confirmImport`), adapted under Apache-2.0 (see `NOTICE`).
 **Part B:** Program days, Units, Bunks, Time blocks, Fixed and Recurring activities.
 **Part C:** "Download this list" on every screen, and the full camp workbook export.
 **Part D:** "Import camp workbook" on Roots.
+**Part E (2026-10-23):** the file laid into the screen's own table (decision 56).
 
 _Changed 2026-10-20 (Greg: the leftover wording calls follow the desktop): what the director
 sees says **worksheet**, as the desktop does (`RootsHomeScreen.jsx` and `ImportScreen.jsx`
@@ -277,6 +278,83 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     refuses the Undo.
     Camp words are the camp's, not the season's: undoing one season's workbook puts them back
     for every season of the camp (a product call left open for Greg).
+
+## Part E: the file laid into the screen's own table (2026-10-23)
+
+Design source: Greg's decision 56 in wiki `projects/shoresh-scheduling-sf.md` (remaining screens,
+round 1: "Import a list lays the file's rows into the real table (A)") and the approved mock-up
+`design-research/screens-r1/list-import-a.png` (`list-import.html`), in the design system (ADR 0015).
+Every question, answer and refusal above stays; what moves is said here.
+
+33. **Import a list takes the rail's place, then the table's** (`c/shoreshListImport`, its
+    `table.js`). Opened from a setup screen's rail, it is the rail: **Import a list**, the file's
+    name once one is chosen (and the sheet, when the file has several), then **Cancel** and the
+    one filled button that says what saving does ("Add 3, change 2", choice 11). What saving
+    still waits for sits beside them, each with the needs-a-look corner ("1 difference to Keep or
+    Change"). While a file is reviewed the screen's own table is put away and the file is laid
+    into the same table language in its place (the page hears `listopen { open, review }` and
+    marks the screen `screen_importing` / `screen_import-review`; closed, both are back):
+    - the screen's sections and columns: a bunk under its unit, a place under its type, an
+      activity under its priority, and each program (or elective set) when there are several;
+      the section's name and count ("Juniors 4", read "Juniors, 4") counts what will be there
+      once saved; the column names once, above the first section. The columns are the ones the
+      file has (the name first; what a section already says is not repeated);
+    - every item set up stays where it is, as it is, a raised row, whether the file names it or
+      not: nothing is removed by a list (choice 4). A camp workbook (Roots) holds the whole camp,
+      so there the rows it leaves as they are are counted instead ("40 the same as here");
+    - a **new** row has a dashed outline (the missing shows by its outline, as a proposed
+      offering), after the rows set up in its section; a new section appears for a unit or type
+      the list adds. A blank cell it starts with a value for shows that value, quiet (read
+      "1, starting value");
+    - a **difference** shows the old value crossed out beside the new one ("~~All day~~ Morning
+      only", read "was All day, now Morning only"), with **Keep** and **Change** at the row's
+      end, the chosen one raised and pressed; one the table has no column for (a bunk's unit, a
+      place's type, a workbook's week) is said in words there ("Unit: Juniors → Inters");
+      "clears" still marks a change that empties a value, and **Change all from this file**
+      stays above the table;
+    - a row it **can't use** carries the needs-a-look corner and says why at its end ("Row 14 ·
+      Unit is blank"), in its section when that section is there, else under **Review here**
+      (only such rows: a workbook sheet with no screen of its own, Weeks, Camp words or Runs
+      in, draws its Keep or Change rows with its new ones, without a heading); a
+      row waiting on a question says "Asked above"; a row left out (a repeat, a place deleted
+      before) is faded with why;
+    - **Leave out** on a new row (the mock-up's, new here): pressed, the row stays where it
+      would go, faded and crossed out, and is not saved, nor what only it would add (its new
+      location); pressed again, it is back. A row whose rain plan names it, new or a Change,
+      treats it as any row not saved (§5): the activity is added as by hand (in Also adding,
+      which can be unticked), so Save never refers to a row that isn't saved; its repeats are left out
+      with it. A row the camp deleted before and has not brought back is settled
+      the same way first, but its activity is not added again (decision 45): a row whose rain
+      plan names it, in the list or not, is saved without that rain plan ("no Rain plan" in the
+      summary), and the activity is listed to bring back. It keeps the cursor. It is an answer for this import
+      only (`skip|…` in `shoreshLists` `skipKey`), never remembered: it is neither a question
+      nor a similar name, so `listPlan` neither remembers nor forgets it. A camp workbook
+      (Roots) has no Leave out: its sheets are read in order, each against what the ones before
+      add, so a place left out of Locations would come back as Also adding through an activity
+      on the Activities sheet that names it, and be saved anyway (the desktop has no Leave out);
+    - under the table, **Also adding** (choice 5, ticks as before), and **Deleted before, not
+      brought back** with each name and its **Bring back** (decision 45, #101) on one line.
+
+    The questions ("Questions for you", choice 3's similar names and which-row questions, a new
+    program's days, a block's times) stay above the table, each a raised row with the corner
+    until answered, then one quiet line with ✓ and Change. The file's columns (choice 2) are
+    behind a **Columns** button (`aria-expanded`) that opens by itself, with the corner, when a
+    heading is not used, is unclear, or a needed one is missing. After **Save** the rail says
+    **Saved** and what was added and changed, with **Undo this import** and **Close**, and the
+    screen's own table comes back with the rows in it, where they live. The Electives list's
+    camper-choices file still says so and offers **Bring in choices** (plan §6.2).
+    No colour of the earlier palette (bronze) is left in the panel; on Roots, where there is no
+    rail, the same panel is its own piece (Programs has had the rail since ADR 0015 choice 14). Checked by `shoreshListImport.test.js`
+    ("laid into the screen's own table": sections, counts, kinds, crossed-out values and what is
+    read, the corner, Leave out and its cursor, what the page is told, the Columns button, axe),
+    `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered; a rain plan
+    naming it, new or changed, links to the activity added instead),
+    `deleted.test.js` (a rain plan naming a deleted activity: saved without it, nothing broken),
+    `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back,
+    also when another season or camp is picked while a file is reviewed),
+    and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Groups by keyboard:
+    the table in the rail's and table's place, Leave out, Cancel bringing the screen back;
+    Electives' change saved and said, as before).
 
 ## Choices that are hard to undo after release
 

@@ -30,7 +30,10 @@
  *   its chevron with focus kept there; that a place whose type is changed in its details moves
  *   to its new section with the cursor kept in its notes, the move said; that a bunk given
  *   another unit in its details says what changes before it is saved, and once saved moves to
- *   that unit's section with the cursor in its name, the move said; with --shots it also saves each restyled setup screen at rest and a
+ *   that unit's section with the cursor in its name, the move said; that Import a list on Groups
+ *   lays a file into the table in the screen's place (a new bunk dashed under its unit, a change
+ *   crossed out), Leave out keeps the cursor, and Cancel brings the table back with nothing
+ *   saved (ADR 0007 choice 33), and on Programs a new program the same way; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
  * - step 3b (ADR 0015 choice 12): on Activities, that a row's "how often" numbers show while it
  *   is edited, Tab reaching them, and that its chevron opens its details beside the table with
@@ -91,7 +94,8 @@
  *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
  *   The check's own elective set is made by Apex first and deleted after.
  *   `--only electives` runs just this step and the next (with the camp's seed), for a change to
- *   those screens;
+ *   those screens; `--only lists` runs just the Import a list steps (Groups, Programs and
+ *   Electives);
  * - an elective set on Manual Build's grid (repo ADR 0018 slice E5), keyboard only: the drawer's
  *   first tile is the check's set; Enter picks it up, focus to the grid; Space on an Open cell
  *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
@@ -116,7 +120,7 @@
  * download).
  *
  * Usage: node scripts/a11y-browser-check.mjs [--report <path>] [--headed] [--shots <dir>]
- *   [--only electives]
+ *   [--only electives|lists]
  * How to run, and the org rules it follows: docs/ci-setup.md.
  */
 import { execFileSync } from "node:child_process";
@@ -174,10 +178,11 @@ const shotsDir = resolve(
   argValue("--shots", join(tmpdir(), "a11y-browser-check"))
 );
 const headed = args.includes("--headed");
-// One step on its own (the camp is still seeded first): just "electives" for now.
+// Some steps on their own (the camp is still seeded first): "electives", or "lists" (Import a
+// list on Groups and on Electives, ADR 0007 choice 33).
 const only = argValue("--only", null);
-if (only && only !== "electives") {
-  console.log(`--only knows "electives"; not "${only}".`);
+if (only && !["electives", "lists"].includes(only)) {
+  console.log(`--only knows "electives" and "lists"; not "${only}".`);
   process.exit(1);
 }
 
@@ -1251,6 +1256,277 @@ async function placeChangesType() {
 }
 
 /**
+ * Import a list on Groups (Greg's decision 56; ADR 0007 choice 33), by keyboard: opened from the
+ * rail, focus on its heading; a file with a bunk as it is, a new bunk and a changed one is laid
+ * into the table in the screen's place (the screen's own table put away): the new bunk dashed
+ * under its unit, the change with the old value crossed out; axe; Leave out on the new bunk keeps
+ * the cursor, pressed; Cancel brings the screen's table back with focus on Import a list, and
+ * nothing is saved. With --shots it saves the table for docs/design/screens/.
+ */
+async function listIntoTable() {
+  const G = "Groups";
+  const NEW = "Check new bunk";
+  await openFromMenu(G, /^Groups\b/);
+  if (
+    !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+      max: 40,
+      anywhere: true
+    }))
+  )
+    throw new Error("Import a list was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(G, "Import a list: focus on its heading", {
+    tag: /^h3$/,
+    name: /^Import a list$/
+  });
+  const screen = '[data-screen="groups"]';
+  // The screen itself (the menu's entries carry data-screen too): its rail's parent.
+  const screenEl = () =>
+    page.locator(APP).locator(`${screen} > [data-id="setup-rail"]`);
+  await page
+    .locator(APP)
+    .locator(`${screen} c-shoresh-list-import input[data-id="file"]`)
+    .setInputFiles({
+      name: "check-bunks.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        [
+          "Division,Bunk,Availability",
+          "Juniors,Bunk 2,All day",
+          `Juniors,${NEW},All day`,
+          "Seniors,Bunk 5,Morning only"
+        ].join("\n"),
+        "utf8"
+      )
+    });
+  await pause(1500);
+  const seen = await screenEl().evaluate((rail) => {
+    const el = rail.parentElement;
+    const list = el.querySelector("c-shoresh-list-import");
+    const root = list && list.shadowRoot;
+    const row = (name) =>
+      root &&
+      [...root.querySelectorAll("tr[data-row]")].find(
+        (tr) => tr.dataset.row === name
+      );
+    const visible = (node) => !!node && node.getClientRects().length > 0;
+    const fresh = row("Check new bunk");
+    const changed = row("Bunk 5");
+    const part = (tr) => tr && tr.closest(".part").dataset.partLabel;
+    return {
+      tableAway: !visible(el.querySelector(".setup-list")),
+      fresh: fresh ? [fresh.dataset.kind, part(fresh)] : null,
+      dashed: fresh
+        ? getComputedStyle(fresh.querySelector("th")).borderTopStyle
+        : null,
+      changed: changed
+        ? [
+            changed.dataset.kind,
+            part(changed),
+            (changed.querySelector(".old") || {}).textContent || ""
+          ]
+        : null,
+      crossed: changed
+        ? getComputedStyle(changed.querySelector(".old")).textDecorationLine
+        : null
+    };
+  });
+  const expected =
+    seen.tableAway &&
+    seen.fresh &&
+    seen.fresh[0] === "new" &&
+    seen.fresh[1] === "Juniors" &&
+    seen.dashed === "dashed" &&
+    seen.changed &&
+    seen.changed[0] === "changed" &&
+    seen.changed[1] === "Seniors" &&
+    /All day/.test(seen.changed[2]) &&
+    /line-through/.test(seen.crossed || "");
+  if (expected)
+    results.pass(
+      G,
+      "Import a list: the file laid into the table in its place",
+      `${NEW} new and dashed under Juniors; Bunk 5's All day crossed out under Seniors; the screen's table put away.`
+    );
+  else
+    results.fail(
+      G,
+      "Import a list: the file laid into the table in its place",
+      JSON.stringify(seen)
+    );
+  await axe("Groups, Import a list with a file laid into the table");
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.mouse.move(2, 2);
+    await pause(300);
+    await page.screenshot({ path: join(shotsDir, "setup-list-import.png") });
+  }
+  if (
+    !(await tabTo(named(new RegExp(`^Leave out ${NEW}$`), { tag: "button" }), {
+      max: 40
+    }))
+  )
+    throw new Error(`Leave out ${NEW} was not reached with Tab.`);
+  await press("Space", 600);
+  await expectFocus(G, "Leave out: the cursor kept on it", {
+    tag: "button",
+    name: new RegExp(`^Leave out ${NEW}$`)
+  });
+  const pressed = await screenEl().evaluate((rail) => {
+    const el = rail.parentElement;
+    const root = el.querySelector("c-shoresh-list-import").shadowRoot;
+    const button = root.querySelector("button[data-leave]");
+    const tr = button && button.closest("tr");
+    return button
+      ? [button.getAttribute("aria-pressed"), tr.dataset.kind]
+      : null;
+  });
+  if (pressed && pressed[0] === "true" && pressed[1] === "skipped")
+    results.pass(
+      G,
+      "Leave out: pressed, the row left out",
+      `${NEW}: left out.`
+    );
+  else
+    results.fail(
+      G,
+      "Leave out: pressed, the row left out",
+      JSON.stringify(pressed)
+    );
+  if (
+    !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("Cancel was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(G, "Cancel: focus back on Import a list", {
+    tag: "button",
+    name: /^Import a list$/
+  });
+  const back = await screenEl().evaluate(
+    (rail) =>
+      rail.parentElement.querySelector(".setup-list").getClientRects().length >
+      0
+  );
+  const logs = apex(`
+Group__c g = [SELECT Availability__c FROM Group__c WHERE Name = 'Bunk 5' AND Division__r.Program__r.Season__r.Camp__r.Name = '${CAMP}' LIMIT 1];
+Integer added = [SELECT COUNT() FROM Group__c WHERE Name = '${NEW}'];
+System.debug('A11Y_BUNKS[' + g.Availability__c + ':' + added + ']');
+`);
+  const org = /A11Y_BUNKS\[(\w+):(\d+)\]/.exec(logs);
+  if (back && org && org[1] === "AllDay" && org[2] === "0")
+    results.pass(
+      G,
+      "Cancel: the screen's table back, nothing saved",
+      "Bunk 5 still All day; no new bunk."
+    );
+  else
+    results.fail(
+      G,
+      "Cancel: the screen's table back, nothing saved",
+      `Table shown: ${back}; org: ${org ? org.slice(1).join(", ") : "not read"}.`
+    );
+}
+
+/**
+ * Import a list on Programs, which has the shared setup rail (ADR 0015 choice 14), by keyboard:
+ * opened from its rail, a file's new program lays into the table in the screen's place (the
+ * screen's own table put away, not drawn underneath); Cancel brings the table back, nothing saved.
+ */
+async function programsListIntoTable() {
+  const P = "Programs";
+  const NEW = "Check import program";
+  await openFromMenu(P, /^Programs\b/);
+  if (
+    !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+      max: 40,
+      anywhere: true
+    }))
+  )
+    throw new Error("Import a list was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(P, "Import a list: focus on its heading", {
+    tag: /^h3$/,
+    name: /^Import a list$/
+  });
+  const screen = '[data-screen="programs"]';
+  const screenEl = () =>
+    page.locator(APP).locator(`${screen} > [data-id="setup-rail"]`);
+  await page
+    .locator(APP)
+    .locator(`${screen} c-shoresh-list-import input[data-id="file"]`)
+    .setInputFiles({
+      name: "check-programs.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        ["Program,Runs on", `${NEW},Mon-Fri`].join("\n"),
+        "utf8"
+      )
+    });
+  await pause(1500);
+  const seen = await screenEl().evaluate((rail, name) => {
+    const el = rail.parentElement;
+    const root = el.querySelector("c-shoresh-list-import").shadowRoot;
+    const tr = [...root.querySelectorAll("tr[data-row]")].find(
+      (row) => row.dataset.row === name
+    );
+    return {
+      review: el.classList.contains("screen_import-review"),
+      tableAway: el.querySelector(".setup-list").getClientRects().length === 0,
+      fresh: tr ? tr.dataset.kind : null
+    };
+  }, NEW);
+  if (seen.review && seen.tableAway && seen.fresh === "new")
+    results.pass(
+      P,
+      "Import a list: the file laid into the table in its place",
+      `${NEW} new; the screen's own table put away.`
+    );
+  else
+    results.fail(
+      P,
+      "Import a list: the file laid into the table in its place",
+      JSON.stringify(seen)
+    );
+  await axe("Programs, Import a list with a file laid into the table");
+  if (
+    !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("Cancel was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(P, "Cancel: focus back on Import a list", {
+    tag: "button",
+    name: /^Import a list$/
+  });
+  const back = await screenEl().evaluate(
+    (rail) =>
+      rail.parentElement.querySelector(".setup-list").getClientRects().length >
+      0
+  );
+  const logs = apex(`
+System.debug('A11Y_PROGRAMS[' + [SELECT COUNT() FROM Program__c WHERE Name = '${NEW}'] + ']');
+`);
+  const org = /A11Y_PROGRAMS\[(\d+)\]/.exec(logs);
+  if (back && org && org[1] === "0")
+    results.pass(
+      P,
+      "Cancel: the screen's table back, nothing saved",
+      "No new program."
+    );
+  else
+    results.fail(
+      P,
+      "Cancel: the screen's table back, nothing saved",
+      `Table shown: ${back}; org: ${org ? org[1] : "not read"}.`
+    );
+}
+
+/**
  * With --shots: each restyled setup screen at rest, and a group row under the pointer (the
  * mock-up's hover), saved by name for docs/design/screens/. Screenshots only; nothing is checked.
  */
@@ -1586,6 +1862,12 @@ async function campSetup() {
   });
   await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
   await step(S, "Groups: a bunk moved to another unit", bunkMoves);
+  await step(S, "Groups: Import a list laid into the table", listIntoTable);
+  await step(
+    S,
+    "Programs: Import a list laid into the table",
+    programsListIntoTable
+  );
   await step(S, "Setup screens: screenshots", setupShots);
   await step(S, "Programs: a row added and deleted by keyboard", programRow);
   await step(
@@ -4749,7 +5031,7 @@ async function electivesImport(E, names) {
   await press("Enter", 800);
   await expectFocus(E, "Import a list: focus on its heading", {
     tag: /^h3$/,
-    name: /^Import Electives$/
+    name: /^Import a list$/
   });
   await axe("Electives, Import a list open");
   const input = page
@@ -4778,8 +5060,14 @@ async function electivesImport(E, names) {
   )
     throw new Error("Change all from this file: 1 change was not reached.");
   await press("Enter", 600);
-  if (!(await tabTo(named(/^Change 1$/, { tag: "button" }), { max: 40 })))
-    throw new Error("Save (Change 1) was not reached with Tab.");
+  // The button that says what saving does is on the rail, above the table.
+  if (
+    !(await tabTo(named(/^Change 1$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("Save (Change 1) was not reached with Shift+Tab.");
   await expectLive(E, "Import a list: Change 1 saved and said", /^Saved/, () =>
     press("Enter", 3000)
   );
@@ -5029,7 +5317,30 @@ async function main() {
       await openFromMenu("Generated Schedule", /^Generated Schedule/);
       await pickWeek();
     };
-    if (only !== "electives") {
+    if (only === "lists") {
+      await step(
+        "Camp setup",
+        "Groups: Import a list laid into the table",
+        listIntoTable
+      );
+      await step(
+        "Camp setup",
+        "Programs: Import a list laid into the table",
+        programsListIntoTable
+      );
+      await step(
+        "Electives",
+        "Import a list and Download this list by keyboard",
+        async () => {
+          const names = seedElectivesSetup();
+          try {
+            await electivesImport("Electives", names);
+          } finally {
+            clearElectives();
+          }
+        }
+      );
+    } else if (only !== "electives") {
       await campSetup();
       await manualBuild(openManual);
       await generated(openGenerated);
@@ -5044,9 +5355,11 @@ async function main() {
       await schedulesPage();
       await schedulesRain();
     }
-    await electives();
-    await electivesOnGrid(openManual);
-    if (only !== "electives") await bringInChoices();
+    if (only !== "lists") {
+      await electives();
+      await electivesOnGrid(openManual);
+    }
+    if (!only) await bringInChoices();
   } finally {
     const version = browser.version();
     await browser.close();
