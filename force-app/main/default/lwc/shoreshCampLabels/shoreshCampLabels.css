@@ -1,0 +1,211 @@
+@import "c/shoreshTokens";
+
+/*
+ * Camp words as camp-words-b draws it (design-research/screens-r1, wiki decision 56): the rail,
+ * the hairline, then one raised row per word: the standard word, the camp's own in a box (the
+ * standard word quiet there until one is typed), and beside it its plural, guessed. ADR 0015.
+ */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-count {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  white-space: pre;
+}
+
+.rail-count b {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+.rail-saved {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-space-pad);
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+/* Three columns, the same in the head and every row: standard, your word, its plural. */
+.words-head,
+.row {
+  display: grid;
+  grid-template-columns:
+    calc(var(--shoresh-u) * 60) calc(var(--shoresh-u) * 68)
+    minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--shoresh-s1);
+}
+
+.words-head {
+  margin-bottom: calc(var(--shoresh-s5) * -1 + var(--shoresh-s1));
+  padding: 0 var(--shoresh-s1);
+  color: var(--shoresh-text-2);
+}
+
+.words-head span {
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.words-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+}
+
+.section-head {
+  margin: 0;
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x) 0;
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  min-height: var(--shoresh-control-h);
+  padding: 2px var(--shoresh-s1);
+}
+
+.row:hover,
+.row:focus-within {
+  background: var(--shoresh-surface-hover);
+}
+
+.standard {
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The camp's word: a well, the standard word quiet in it until one is typed. */
+.word-box,
+.plural-box {
+  box-sizing: border-box;
+  width: 100%;
+  height: calc(var(--shoresh-control-h) - 4px);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  font: inherit;
+  color: var(--shoresh-text-1);
+  outline: none;
+}
+
+.word-box {
+  background: var(--shoresh-color-primary-250);
+  box-shadow: var(--shoresh-well-in);
+}
+
+.word-box_own {
+  font-weight: 500;
+}
+
+.word-box::placeholder,
+.plural-box::placeholder {
+  color: var(--shoresh-text-2);
+  opacity: 1;
+}
+
+/* The plural reads as words beside the box; a box only under the pointer or the cursor. */
+.plural-box {
+  background: transparent;
+}
+
+.plural-box::placeholder {
+  color: var(--shoresh-text-1);
+}
+
+.plural-box_typed {
+  font-weight: 500;
+}
+
+.row:hover .plural-box,
+.plural-box:focus {
+  background: var(--shoresh-color-primary-250);
+  box-shadow: var(--shoresh-well-in);
+}
+
+.word-box:focus-visible,
+.plural-box:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.word-box:disabled,
+.plural-box:disabled {
+  cursor: default;
+}
+
+.field-error {
+  padding: var(--shoresh-s1) var(--shoresh-space-control-x) 0;
+  color: var(--slds-g-color-error-1);
+}
+
+/* High contrast: the boxes keep an edge where backgrounds are painted over. */
+@media (forced-colors: active) {
+  .word-box,
+  .plural-box:focus {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Narrow: the plural under the box. */
+@media (max-width: 47.9375em) {
+  .words-head,
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .words-head span:last-child {
+    display: none;
+  }
+
+  .row .field:last-child {
+    grid-column: 2;
+  }
+}

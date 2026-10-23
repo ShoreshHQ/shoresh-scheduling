@@ -337,6 +337,15 @@
                         title={cell.fixedText}
                         >{cell.fixedText}</span
                       >
+                      <template lwc:if={cell.problem}>
+                        <c-shoresh-dot
+                          class="problem"
+                          data-id="problem"
+                          shape="corner"
+                          label={cell.problem}
+                          focusable
+                        ></c-shoresh-dot>
+                      </template>
                     </template>
                     <template lwc:if={cell.guess}>
                       <c-shoresh-guess-mark

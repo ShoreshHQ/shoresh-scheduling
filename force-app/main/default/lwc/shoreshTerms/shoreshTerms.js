@@ -36,3 +36,32 @@ export function buildTerms(labels) {
     pIn: (term) => inSentence(term, true)
   };
 }
+
+/**
+ * The plural Camp words guesses for a camp's own word (wiki decision 56, camp-words-b): the
+ * standard word's own plural when the word is the standard one ("Times per week"), else the
+ * English rule the server uses for the standard words ("Activity" -> "Activities"), with "es"
+ * after s, x, z, ch and sh ("Chug" -> "Chugs", "Lunch" -> "Lunches"). The desktop has no camp
+ * words, so no rule of its own. Only a guess: the director types over it (Chug -> Chugim).
+ */
+export function guessPlural(word, standardSingular, standardPlural) {
+  const text = (word || "").trim();
+  if (!text) {
+    return "";
+  }
+  if (
+    standardSingular &&
+    standardPlural &&
+    text.toLowerCase() === standardSingular.toLowerCase()
+  ) {
+    // The standard word, perhaps in other capitals: its own plural, starting as the word does.
+    return text.charAt(0) + standardPlural.slice(1);
+  }
+  if (/[^aeiou]y$/i.test(text)) {
+    return `${text.slice(0, -1)}ies`;
+  }
+  if (/(s|x|z|ch|sh)$/i.test(text)) {
+    return `${text}es`;
+  }
+  return `${text}s`;
+}

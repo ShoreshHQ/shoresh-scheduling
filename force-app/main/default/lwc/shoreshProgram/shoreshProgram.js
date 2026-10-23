@@ -1,7 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
-import { leftField } from "c/shoreshSavedMark";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
 import { moveNote } from "./groupMoves";
 
@@ -21,27 +20,20 @@ const BLOCK = FIELD.TimeBlock;
 const FIXED = FIELD.FixedActivity;
 const RECURRING = FIELD.RecurringActivity;
 const GROUP = FIELD.Group;
-// The operating days, saved together (see saveProgram).
-const DAYS_KEY = "Days";
 // The section of what everyone in the program does (docs/design/setup/fixed.html).
 const WHOLE_CAMP = "Whole camp";
 
 /**
- * One part of one program, for the screen showing it (show): "program" (its name and operating
- * days), "timeBlocks", "divisions", "groups" (each division's groups, with the weeks each runs
- * in), "fixedActivities", or "recurringActivities" (with their weeks, and for recurring ones the
- * days and who each covers). Saves and deletes go up to the setup screen as events.
- *
- * The program's own name and days save as you go, like the tables (ADR 0011, decision 26 (4)): the
- * name when the director leaves it (or presses Enter), the days the moment one is ticked. The
- * name is sent alone; the days always go all together, as the screen shows them, since the server
- * refuses a program with none (one day alone could be refused while another waits unsent). "Saved" shows quietly once it is; a refusal shows next to the field, with the
- * typing kept.
+ * One part of one program, for the screen showing it (show): "timeBlocks", "divisions",
+ * "groups" (each division's groups, with the weeks each runs in), "fixedActivities", or
+ * "recurringActivities" (with their weeks, and for recurring ones the days and who each
+ * covers). Saves and deletes go up to the setup screen as events. The program's own name and
+ * days are a row of the Programs screen's table (wiki decision 56).
  */
 export default class ShoreshProgram extends LightningElement {
   @api terms;
   @api busy = false;
-  @api show = "program";
+  @api show = "timeBlocks";
   /** The season's weeks and week exceptions, for the groups' "Runs in" ticks. */
   @api weeks = [];
   @api weekExceptions = [];
@@ -61,15 +53,6 @@ export default class ShoreshProgram extends LightningElement {
   /** What an import guessed, by record (passed to the groups' tables; see the table). */
   @api guesses = {};
 
-  name;
-  days = {};
-  // Fields ("Name", or "Days" for all five) changed on screen and not sent yet, and those sent and not answered.
-  // A reload never puts back either: what the director typed stays until it is saved.
-  dirty = new Set();
-  sending = new Map(); // field -> saves under way
-
-  nameError;
-  daysError;
   divisionRecords = [];
   // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
   pendingMoves = {};
@@ -97,28 +80,8 @@ export default class ShoreshProgram extends LightningElement {
         Object.entries(this.pendingMoves).filter(([id]) => units.has(id))
       );
     }
-    this.showSaved();
   }
 
-  /** The saved name and days, except what the director changed and is not saved yet. */
-  showSaved() {
-    const program = this._entry.program;
-    const keep = (field) => this.dirty.has(field) || this.sending.has(field);
-    if (!keep("Name")) {
-      this.name = program.Name;
-    }
-    if (!keep(DAYS_KEY)) {
-      const days = {};
-      DAYS.forEach((day) => {
-        days[day] = !!program[PROGRAM[day]];
-      });
-      this.days = days;
-    }
-  }
-
-  get isProgram() {
-    return this.show === "program";
-  }
   get isTimeBlocks() {
     return this.show === "timeBlocks";
   }
@@ -157,10 +120,6 @@ export default class ShoreshProgram extends LightningElement {
 
   get groupDivisionField() {
     return GROUP.Division;
-  }
-
-  get dayOptions() {
-    return DAYS.map((day) => ({ day, label: day, checked: this.days[day] }));
   }
 
   /**
@@ -607,9 +566,6 @@ export default class ShoreshProgram extends LightningElement {
       addGroup: `Add ${t.s("Group")}`,
       noGroups: `No ${t.pIn("Group")} yet`,
       toDivisions: `${t.p("Division")} →`,
-      name: `${t.s("Program")} name`,
-      days: "Runs on",
-      deleteProgram: `Delete this ${t.sIn("Program")}`,
       fixed: `${t.p("FixedActivity")} in ${program}`,
       addFixed: `Add ${t.s("FixedActivity")}`,
       noFixed: `No ${t.pIn("FixedActivity")} yet`,
@@ -631,125 +587,6 @@ export default class ShoreshProgram extends LightningElement {
     this.dispatchEvent(
       new CustomEvent("navigate", {
         detail: { screen: event.currentTarget.dataset.screen }
-      })
-    );
-  }
-
-  handleName(event) {
-    this.name = event.detail.value;
-    this.edited("Name");
-    this.nameError = null;
-  }
-
-  handleNameLeave(event) {
-    if (leftField(event)) {
-      this.saveProgram("Name");
-    }
-  }
-
-  handleNameKey(event) {
-    if (event.key === "Enter") {
-      this.saveProgram("Name");
-    }
-  }
-
-  /** The days are saved the moment one is ticked, as the tables' ticks are. */
-  handleDay(event) {
-    const day = event.target.dataset.day;
-    this.days = { ...this.days, [day]: event.target.checked };
-    this.edited(DAYS_KEY);
-    this.daysError = null;
-    this.saveProgram(DAYS_KEY);
-  }
-
-  edited(field) {
-    this.dirty.add(field);
-    const mark = this.template.querySelector("c-shoresh-saved-mark");
-    if (mark) {
-      mark.clear();
-    }
-  }
-
-  /**
-   * Sends what changed (field: "Name", or "Days" for all five days as shown). A blank name is
-   * not sent: the field says it needs one, as any required field does.
-   */
-  saveProgram(field) {
-    if (!this.dirty.has(field)) {
-      return;
-    }
-    if (field === "Name") {
-      const input = this.template.querySelector(
-        'lightning-input[data-id="name"]'
-      );
-      if (input && !input.reportValidity()) {
-        return;
-      }
-    }
-    this.dirty.delete(field);
-    this.sending.set(field, (this.sending.get(field) || 0) + 1);
-    const record = { sobjectType: OBJECT.Program, Id: this.programId };
-    if (field === "Name") {
-      record.Name = this.name;
-    } else {
-      DAYS.forEach((day) => {
-        record[PROGRAM[day]] = !!this.days[day];
-      });
-    }
-    const done = () => {
-      const left = this.sending.get(field) - 1;
-      if (left > 0) {
-        this.sending.set(field, left);
-      } else {
-        this.sending.delete(field);
-      }
-    };
-    const onSaved = () => {
-      done();
-      if (field === DAYS_KEY) {
-        this.daysError = null;
-      }
-      const mark = this.template.querySelector("c-shoresh-saved-mark");
-      if (mark) {
-        mark.saved();
-      }
-    };
-    // Refused: the change stays on screen, still to save, with why next to it.
-    const onFailure = (message) => {
-      done();
-      if (this.sending.has(field)) {
-        // A newer save of the same field is on its way, with what the screen shows now.
-        return;
-      }
-      this.dirty.add(field);
-      if (field === "Name") {
-        this.nameError = message;
-      } else {
-        this.daysError = message;
-      }
-    };
-    this.dispatchEvent(
-      new CustomEvent("save", {
-        detail: { records: [record], onSaved, onFailure }
-      })
-    );
-  }
-
-  /** The cursor into the program's name box (after the card above it is deleted). */
-  @api
-  focusName() {
-    const input = this.template.querySelector(
-      'lightning-input[data-id="name"]'
-    );
-    if (input) {
-      input.focus();
-    }
-  }
-
-  handleDeleteProgram() {
-    this.dispatchEvent(
-      new CustomEvent("delete", {
-        detail: { recordId: this.programId, name: this.entry.program.Name }
       })
     );
   }

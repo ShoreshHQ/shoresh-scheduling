@@ -38,6 +38,24 @@ const LABELS = [
     plural: "Divisions",
     isCustom: false,
     labelId: null
+  },
+  {
+    term: "ElectiveSet",
+    modelSingular: "Elective set",
+    modelPlural: "Elective sets",
+    singular: "Chug",
+    plural: "Chugim",
+    isCustom: true,
+    labelId: "a02"
+  },
+  {
+    term: "Version",
+    modelSingular: "Version",
+    modelPlural: "Versions",
+    singular: "Version",
+    plural: "Versions",
+    isCustom: false,
+    labelId: null
   }
 ];
 
@@ -63,7 +81,7 @@ async function render(blockedReason = null) {
 
 function input(element, term, field) {
   return element.shadowRoot.querySelector(
-    `lightning-input[data-term="${term}"][data-field="${field}"]`
+    `input[data-term="${term}"][data-field="${field}"]`
   );
 }
 
@@ -75,21 +93,71 @@ describe("c-shoresh-camp-labels", () => {
     jest.clearAllMocks();
   });
 
-  it("shows the camp words already chosen and leaves the others blank", async () => {
+  it("shows one box per word: the camp's own dark, the standard one quiet in the box", async () => {
     const element = await render();
     expect(input(element, "Group", "singular").value).toBe("Bunk");
+    expect(input(element, "Group", "singular").className).toContain(
+      "word-box_own"
+    );
     expect(input(element, "Division", "singular").value).toBe("");
-    // A blank box looks blank: the standard word is in its own column, not repeated inside.
-    expect(input(element, "Division", "singular").placeholder).toBeFalsy();
-    expect(input(element, "Division", "plural").placeholder).toBeFalsy();
-    expect(element.shadowRoot.textContent).toContain("Words Camp Willow uses");
+    // The standard word shows, quietly, in the box until the camp types its own.
+    expect(input(element, "Division", "singular").placeholder).toBe("Division");
+    expect(input(element, "Division", "singular").className).not.toContain(
+      "word-box_own"
+    );
+    // A standard word has no plural beside it.
+    expect(input(element, "Division", "plural")).toBeNull();
+    // Each box is named for screen readers.
+    expect(input(element, "Group", "singular").getAttribute("aria-label")).toBe(
+      "Group"
+    );
+    expect(input(element, "Group", "plural").getAttribute("aria-label")).toBe(
+      "Group, more than one"
+    );
+    // The rail: how many words are the camp's own.
+    expect(
+      element.shadowRoot.querySelector('[data-id="count"]').textContent
+    ).toBe("2 changed");
+    expect(
+      element.shadowRoot.querySelector("[data-heading]").textContent.trim()
+    ).toBe("Camp words");
+  });
+
+  it("guesses the plural beside the camp's word, and keeps a plural typed over the guess", async () => {
+    const element = await render();
+    // Bunks is what the guess gives: shown as the guess, so it follows the word.
+    expect(input(element, "Group", "plural").value).toBe("");
+    expect(input(element, "Group", "plural").placeholder).toBe("Bunks");
+    // Chugim is not: shown as typed.
+    expect(input(element, "ElectiveSet", "plural").value).toBe("Chugim");
+    expect(input(element, "ElectiveSet", "plural").className).toContain(
+      "plural-box_typed"
+    );
+  });
+
+  it("puts the words in sections, as the menu groups the screens", async () => {
+    const element = await render();
+    const sections = [
+      ...element.shadowRoot.querySelectorAll("[data-section]")
+    ].map((section) => ({
+      title: section.querySelector("h3").textContent,
+      terms: [...section.querySelectorAll("[data-term]")]
+        .filter((el) => el.tagName === "LI")
+        .map((el) => el.dataset.term)
+    }));
+    expect(sections).toEqual([
+      { title: "Camp", terms: ["Group", "Division"] },
+      { title: "Electives", terms: ["ElectiveSet"] },
+      { title: "Schedules", terms: ["Version"] }
+    ]);
   });
 
   /** Types into a box, as a director would. */
-  function type(element, term, field, value) {
+  async function type(element, term, field, value) {
     const box = input(element, term, field);
     box.value = value;
-    box.dispatchEvent(new CustomEvent("change", { detail: { value } }));
+    box.dispatchEvent(new CustomEvent("input"));
+    await flush();
   }
   /** Leaves a box (the cursor goes elsewhere on the page). */
   function leave(element, term, field) {
@@ -102,9 +170,7 @@ describe("c-shoresh-camp-labels", () => {
 
   it("has no Save or Cancel buttons: words save as you go", async () => {
     const element = await render();
-    expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
-      0
-    );
+    expect(element.shadowRoot.querySelectorAll("button").length).toBe(0);
   });
 
   it("saves what the scheduler typed when they leave the box, and says Saved quietly", async () => {
@@ -113,11 +179,11 @@ describe("c-shoresh-camp-labels", () => {
     const saved = jest.fn();
     element.addEventListener("saved", saved);
 
-    type(element, "Division", "singular", "Unit");
+    await type(element, "Division", "singular", "Unit");
     // Moving between boxes of one word saves each time something changed.
     leave(element, "Division", "singular");
     await flush();
-    type(element, "Division", "plural", "Units");
+    await type(element, "Division", "plural", "Units");
     await flush();
     expect(savedMark(element).textContent).toBe("");
     leave(element, "Division", "plural");
@@ -147,7 +213,7 @@ describe("c-shoresh-camp-labels", () => {
     leave(element, "Group", "singular");
     await flush();
     expect(saveCampLabels).not.toHaveBeenCalled();
-    type(element, "Group", "singular", "Cabin");
+    await type(element, "Group", "singular", "Cabin");
     input(element, "Group", "singular").dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter" })
     );
@@ -165,9 +231,9 @@ describe("c-shoresh-camp-labels", () => {
     );
     saveCampLabels.mockResolvedValue();
     const element = await render();
-    type(element, "Group", "singular", "Cabin");
+    await type(element, "Group", "singular", "Cabin");
     leave(element, "Group", "singular");
-    type(element, "Group", "plural", "Cabins");
+    await type(element, "Group", "plural", "Cabinim");
     leave(element, "Group", "plural");
     await flush();
     expect(saveCampLabels).toHaveBeenCalledTimes(1);
@@ -176,8 +242,74 @@ describe("c-shoresh-camp-labels", () => {
     expect(saveCampLabels).toHaveBeenCalledTimes(2);
     const words = (call) =>
       saveCampLabels.mock.calls[call][0].labels.find((r) => r.term === "Group");
-    expect(words(0)).toMatchObject({ singular: "Cabin", plural: "Bunks" });
-    expect(words(1)).toMatchObject({ singular: "Cabin", plural: "Cabins" });
+    // The first went with the guess, the second with the plural typed over it.
+    expect(words(0)).toMatchObject({ singular: "Cabin", plural: "Cabins" });
+    expect(words(1)).toMatchObject({ singular: "Cabin", plural: "Cabinim" });
+  });
+
+  it("guesses as the word is typed, and sends the guess when no plural is typed", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    await type(element, "Division", "singular", "Unit");
+    expect(input(element, "Division", "plural").placeholder).toBe("Units");
+    expect(
+      element.shadowRoot.querySelector('[data-id="count"]').textContent
+    ).toBe("3 changed");
+    await type(element, "Division", "singular", "Edah");
+    expect(input(element, "Division", "plural").placeholder).toBe("Edahs");
+    leave(element, "Division", "singular");
+    await flush();
+    const sent = saveCampLabels.mock.calls[0][0].labels;
+    expect(sent.find((r) => r.term === "Division")).toMatchObject({
+      singular: "Edah",
+      plural: "Edahs"
+    });
+    // A word left standard goes as blank: the server keeps the standard word.
+    expect(sent.find((r) => r.term === "Version")).toMatchObject({
+      singular: "",
+      plural: ""
+    });
+    // Only what the server reads is sent.
+    expect(Object.keys(sent[0]).sort()).toEqual([
+      "labelId",
+      "modelPlural",
+      "modelSingular",
+      "plural",
+      "singular",
+      "term"
+    ]);
+  });
+
+  it("keeps a plural typed over the guess when the word changes after", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    await type(element, "ElectiveSet", "singular", "Chugi");
+    expect(input(element, "ElectiveSet", "plural").value).toBe("Chugim");
+    leave(element, "ElectiveSet", "singular");
+    await flush();
+    expect(
+      saveCampLabels.mock.calls[0][0].labels.find(
+        (r) => r.term === "ElectiveSet"
+      )
+    ).toMatchObject({ singular: "Chugi", plural: "Chugim", labelId: "a02" });
+  });
+
+  it("clearing the word puts the standard word back, its plural with it", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    await type(element, "ElectiveSet", "singular", "");
+    expect(input(element, "ElectiveSet", "plural")).toBeNull();
+    leave(element, "ElectiveSet", "singular");
+    await flush();
+    expect(
+      saveCampLabels.mock.calls[0][0].labels.find(
+        (r) => r.term === "ElectiveSet"
+      )
+    ).toMatchObject({ singular: "", plural: "", labelId: "a02" });
+    // Typed again, the plural is the guess, not the one cleared.
+    await type(element, "ElectiveSet", "singular", "Chug");
+    expect(input(element, "ElectiveSet", "plural").value).toBe("");
+    expect(input(element, "ElectiveSet", "plural").placeholder).toBe("Chugs");
   });
 
   it("a refusal shows under the box left, in camp words, and the typing stays to save again", async () => {
@@ -193,7 +325,7 @@ describe("c-shoresh-camp-labels", () => {
     const failed = jest.fn();
     element.addEventListener("saved", saved);
     element.addEventListener("failed", failed);
-    type(element, "Division", "singular", "Unit");
+    await type(element, "Division", "singular", "Unit");
     leave(element, "Division", "singular");
     await flush();
     const why = element.shadowRoot.querySelector(
@@ -210,7 +342,7 @@ describe("c-shoresh-camp-labels", () => {
     expect(input(element, "Division", "singular").value).toBe("Unit");
     expect(savedMark(element).textContent).toBe("");
     // Fixing it and leaving again sends it, and the message goes.
-    type(element, "Division", "plural", "Units");
+    await type(element, "Division", "plural", "Units");
     leave(element, "Division", "plural");
     await flush();
     expect(saveCampLabels).toHaveBeenCalledTimes(2);
@@ -229,6 +361,11 @@ describe("c-shoresh-camp-labels", () => {
     leave(element, "Group", "singular");
     await flush();
     expect(saveCampLabels).not.toHaveBeenCalled();
+  });
+
+  it("is accessible", async () => {
+    const element = await render();
+    await expect(element).toBeAccessible();
   });
 
   it("focusHeading puts the cursor on the screen's heading", async () => {

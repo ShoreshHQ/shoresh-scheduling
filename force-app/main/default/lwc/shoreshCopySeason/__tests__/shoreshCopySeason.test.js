@@ -61,11 +61,14 @@ async function render() {
   return element;
 }
 
-function button(element, label) {
-  return [...element.shadowRoot.querySelectorAll("lightning-button")].find(
-    (b) => b.label === label
-  );
+function button(element, id) {
+  return element.shadowRoot.querySelector(`button[data-id="${id}"]`);
 }
+
+const texts = (element, selector) =>
+  [...element.shadowRoot.querySelectorAll(selector)].map((el) =>
+    el.textContent.trim()
+  );
 
 describe("c-shoresh-copy-season", () => {
   afterEach(() => {
@@ -87,15 +90,86 @@ describe("c-shoresh-copy-season", () => {
     expect(date.value).toBe("2027-06-28");
     // Marked for the date box style (its calendar button at least 24 by 24).
     expect(date.classList.contains("shoresh-date")).toBe(true);
-    expect(element.shadowRoot.textContent).toContain("Session 1");
-    expect(element.shadowRoot.textContent).toContain(
-      '"Summer 2026" stays as it is.'
-    );
-    // What is copied shows in the preview, not in a sentence.
-    expect(element.shadowRoot.textContent).not.toContain("Makes a new");
+    // Last season's weeks over the new ones, each row named by its season.
+    const old = element.shadowRoot.querySelector('[data-id="old-weeks"]');
+    const now = element.shadowRoot.querySelector('[data-id="new-weeks"]');
+    expect(old.querySelector("th").textContent.trim()).toBe("Summer 2026");
+    expect(now.querySelector("th").textContent.trim()).toBe("Summer 2027");
+    expect(old.textContent).toContain("Session 1");
+    const dates = (row) =>
+      [...row.querySelectorAll("lightning-formatted-date-time")].map(
+        (d) => d.value
+      );
+    expect(dates(old)).toEqual(["2026-06-29"]);
+    expect(dates(now)).toEqual(["2027-06-28"]);
+    expect(
+      element.shadowRoot.querySelector("table").getAttribute("aria-label")
+    ).toBe("Sessions in Summer 2026 and in the new season");
     expect(
       element.shadowRoot.querySelector('[data-id="weekday-warning"]')
     ).toBeNull();
+    // The heading says what and from which season; the button names the result.
+    expect(
+      element.shadowRoot
+        .querySelector('[data-id="copy-title"]')
+        .getAttribute("aria-label")
+    ).toBe("Copy season Summer 2026");
+    expect(button(element, "copy").textContent.trim()).toBe(
+      "Copy to Summer 2027"
+    );
+  });
+
+  it("shows what comes along and what stays behind, in the camp's words", async () => {
+    previewCopy.mockResolvedValue(SAME_DAYS);
+    const element = await render();
+    expect(texts(element, '[data-id="comes-along"] li')).toEqual([
+      "Sessions",
+      "Programs",
+      "Divisions",
+      "Groups",
+      "Time blocks",
+      "Locations",
+      "Camp words",
+      "Activities",
+      "Fixed activities",
+      "Recurring activities",
+      "Elective sets"
+    ]);
+    expect(texts(element, '[data-id="stays-behind"] h3')).toEqual([
+      "Stays in Summer 2026"
+    ]);
+    // Elective seats and the campers' choices belong to the summer (decision 56, ADR 0018).
+    expect(texts(element, '[data-id="stays-behind"] li')).toEqual([
+      "Schedules",
+      "Versions",
+      "Special days",
+      "Special events",
+      "Elective seats",
+      "Camper choices"
+    ]);
+  });
+
+  it("gives the new dates in words for a season without weeks", async () => {
+    previewCopy.mockResolvedValue({ ...SAME_DAYS, weeks: [] });
+    const element = await render();
+    expect(element.shadowRoot.querySelector("table")).toBeNull();
+    const dates = element.shadowRoot.querySelector('[data-id="new-dates"]');
+    expect(
+      [...dates.querySelectorAll("lightning-formatted-date-time")].map(
+        (d) => d.value
+      )
+    ).toEqual(["2027-06-28", "2027-08-06"]);
+  });
+
+  it("is accessible", async () => {
+    previewCopy.mockResolvedValue({
+      ...SAME_DAYS,
+      oldWeekday: "Monday",
+      newWeekday: "Tuesday",
+      weekdaysChange: true
+    });
+    const element = await render();
+    await expect(element).toBeAccessible();
   });
 
   it("warns when the new start date moves weeks to other weekdays", async () => {
@@ -114,11 +188,13 @@ describe("c-shoresh-copy-season", () => {
     const warning = element.shadowRoot.querySelector(
       '[data-id="weekday-warning"]'
     );
-    expect(warning.textContent.trim()).toBe(
-      "Sessions move from Mondays to Tuesdays."
-    );
-    // A warning, not an alarm.
-    expect(warning.getAttribute("role")).toBe("status");
+    // Shown, not refused: the mark and one line.
+    expect(warning.textContent.trim()).toBe("Summer 2026 started on a Monday");
+    expect(warning.parentElement.getAttribute("role")).toBe("status");
+    expect(
+      element.shadowRoot.querySelector('[data-id="weekday-mark"]')
+    ).not.toBeNull();
+    expect(button(element, "copy").disabled).toBe(false);
   });
 
   it("copies and reports the new season", async () => {
@@ -132,7 +208,10 @@ describe("c-shoresh-copy-season", () => {
       new CustomEvent("change", { detail: { value: "Summer 27" } })
     );
     await flush();
-    button(element, "Copy season").click();
+    expect(button(element, "copy").textContent.trim()).toBe(
+      "Copy to Summer 27"
+    );
+    button(element, "copy").click();
     await flush();
     expect(copySeason).toHaveBeenCalledWith({
       seasonId: "s1",
@@ -150,7 +229,7 @@ describe("c-shoresh-copy-season", () => {
     const element = await render();
     const copied = jest.fn();
     element.addEventListener("copied", copied);
-    button(element, "Copy season").click();
+    button(element, "copy").click();
     await flush();
     expect(element.shadowRoot.textContent).toContain(
       "Give the new season a name."
@@ -163,8 +242,18 @@ describe("c-shoresh-copy-season", () => {
       body: { message: "Choose a start date for the new season." }
     });
     const element = await render();
-    expect(button(element, "Copy season").disabled).toBe(true);
+    expect(button(element, "copy").disabled).toBe(true);
     expect(element.shadowRoot.textContent).toContain("Choose a start date");
+  });
+
+  it("cannot copy without a name, and then names no result", async () => {
+    previewCopy.mockResolvedValue(SAME_DAYS);
+    const element = await render();
+    const name = element.shadowRoot.querySelectorAll("lightning-input")[0];
+    name.dispatchEvent(new CustomEvent("change", { detail: { value: "  " } }));
+    await flush();
+    expect(button(element, "copy").disabled).toBe(true);
+    expect(button(element, "copy").textContent.trim()).toBe("Copy season");
   });
 
   it("puts the cursor on its heading when it opens", async () => {
@@ -179,7 +268,7 @@ describe("c-shoresh-copy-season", () => {
     const element = await render();
     const cancel = jest.fn();
     element.addEventListener("cancel", cancel);
-    button(element, "Cancel").click();
+    button(element, "cancel").click();
     expect(cancel).toHaveBeenCalled();
   });
 

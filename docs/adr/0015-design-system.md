@@ -11,7 +11,8 @@ Build's and Generated Schedule's grids, rails and drawers, and the setup screens
 until the next PRs; nothing a director does works differently. _Step 3a (2026-10-21, choice 11)
 restyles the setup tables and five setup screens; step 3b (2026-10-21, choice 12) Activities,
 Fixed and Recurring activities, and the camp and season in the menu's camp row. Choice 13
-(2026-10-22) adds the living dot field behind Roots and around empty states._
+(2026-10-22) adds the living dot field behind Roots and around empty states. Choice 14
+(2026-10-23) restyles Copy season, Camp words and Programs._
 
 ## Choices
 
@@ -336,6 +337,66 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
       under a moving mouse and is the same picture again four seconds later, still under the
       mouse with reduced motion emulated, no Shoresh errors in the console).
 
+14. **Copy season, Camp words and Programs (wiki decision 56, 2026-10-23).** Design source:
+    the approved mock-ups in `design-research/screens-r1` (`copy-season-a.png`,
+    `camp-words-b.png`, `programs.png`). Each is a setup screen in the frame: a rail, the
+    hairline, then the screen (the frame's body is flush for all three, as for the other setup
+    screens). No new colour, no new token.
+    - **Copy season is a page** (A, not a pop-up): the rail holds "Copy season" with the season's
+      name, then Cancel and the one main button, which names the result ("Copy to Summer 2027";
+      "Copy season" while the name is blank, and then it can't be pressed). Under it the new
+      season's name and first day; when the first day is another weekday, the needs-a-look mark
+      and one line, "Summer 2026 started on a Monday", shown and never refused (it was the
+      sentence "Weeks move from Mondays to Tuesdays"). The weeks are drawn twice, one column
+      each: the season's own in a faint outline above, the new ones raised below, each row
+      named by its season (a table, read row by row). A season with no weeks shows its new
+      dates in words instead. Then two rows of chips: **Comes along** (weeks, programs,
+      divisions, groups, time blocks, locations, Camp words, activities, fixed and recurring
+      activities, elective sets: what `SeasonCopier` and `ElectiveCopier` copy, in the camp's
+      words) and **Stays in Summer 2026**, crossed out (schedules, versions, special days,
+      special events, elective seats, camper choices: ADR 0014 choice 2, ADR 0018 choice 10,
+      decision 56). The heading takes focus when the page opens and reads as one phrase ("Copy
+      season Summer 2026"). Nothing the copy does changed (no Apex change); the old line
+      "Summer 2026 stays as it is" is gone, the Stays row says it.
+    - **Camp words is one box per word** (B): the standard word, then the camp's word in a box
+      where the standard word sits quietly until one is typed, then, for a word of the camp's
+      own, its plural, guessed and shown as words (`guessPlural` in `c/shoreshTerms`: the
+      standard word's own plural for the standard word, else +s, +es after s, x, z, ch and sh,
+      y to ies after a consonant; the desktop has no camp words and no rule of its own). The
+      plural becomes a box under the pointer or the cursor and is typed over where the guess is
+      wrong (Chug, Chugim); a plural typed stays when the word changes after, and clearing the
+      word puts the standard word back with its plural. A plural the guess would give is shown
+      as the guess, so it follows the word. Words sit in sections as the menu groups the
+      screens (Camp, Activities, Electives, Schedules). The rail says how many words are the
+      camp's own ("4 changed") and "Saved"; it saves as you go (ADR 0013 choice 1), with no
+      Save button, and a guessed plural is sent as guessed, so the server still gets both
+      words (`CampLabels.TermLabel`). Its boxes are plain inputs, each named for screen readers
+      ("Group"; "Group, more than one").
+    - **Programs is the shared setup table** (ADR 0011, choice 11): one row per program, its name,
+      **Runs on** as a strip of day ticks always shown (a `days` column with `strip: true`; the
+      other days columns keep their words at rest), then how many divisions, groups and time
+      blocks it has (worked out, never edited). A program with no time blocks can't be
+      scheduled: its zero is a value and the cell carries the needs-a-look corner
+      (`c-shoresh-dot` shape `corner`, its words "No time blocks yet" on hover or focus; a
+      readonly column's `problemFor`). A program is added from the blank row ("Add Program",
+      running every day, last in order) instead of the Add program button, saved as any row
+      (its days with the row, when the director leaves it), and deleted from its trash can with
+      the same question; the rail counts programs and holds Import a list. The program card,
+      its own live region and focus handling (ADR 0013 choice 25) are gone with it.
+    - **Programs stays in the menu** for every camp, under Camp beside Camp words (ADR 0003
+      choice 2), though the desktop hides it for one program.
+    - Checked by `shoreshCopySeason.test.js` (the weeks twice, comes along and stays behind in
+      camp words, the weekday line and mark, the button's name, dates in words without weeks,
+      axe), `shoreshCampLabels.test.js` (one box, the guess as typed and as sent, a typed plural
+      kept, clearing, sections, the rail's count, axe), `shoreshTerms.test.js` (`guessPlural`),
+      `shoreshEditableTable.test.js` (the strip, the problem corner on saved rows only),
+      `shoreshCampSetup.test.js` ("Programs on the shared setup table": columns, counts, the
+      corner, the blank row's defaults, a row save, the delete, Programs in the menu with one
+      program) and in the test org by `scripts/a11y-browser-check.mjs` (Programs: a program
+      added from the blank row by keyboard and deleted from its trash can, said, axe; Camp
+      words: a word typed, its plural guessed, saved and said, then put back, axe; Copy this
+      season: focus on its heading, the weeks drawn twice, Cancel back to Season actions, axe).
+
 ## Not done here
 
 - The setup screens. Manual Build's and Generated Schedule's rail, Edit and counter are built
@@ -353,3 +414,7 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
   week" (how many, by which day), since a camp can ask for more than one early session (ADR 0013
   choice 15).
 - The earlier colour tokens are removed once no screen uses them.
+- Programs' week strip shows Monday to Friday only: a program has no Saturday or Sunday field
+  (`Program__c`), so the mock-up's weekend days need a data change first.
+- The mock-up's chevron on a program's row (its details, as on Activities) is not built: every
+  field a program has is already in its row.

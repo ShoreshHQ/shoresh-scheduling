@@ -21,13 +21,17 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    "Fixed / Recurring" + the camp's word for activities until slice 3b renames the FixedEvent
    and RecurringEvent camp words. "Roots", "Camp", "Camp words", and "Schedules" are not glossary
    terms and stay as they are. _Changed 2026-10-20 (ADR 0013 choice 21): the section titles are
-   the desktop's, Camp, Activities & Events, Schedules._
+   the desktop's, Camp, Activities & Events, Schedules._ _Confirmed 2026-10-23 (wiki decision
+   56): Programs and Camp words stay under Camp, and Programs is always in the menu, also for a
+   camp with one program. The desktop hides Programs while a camp has only "Main"; Greg chose
+   to keep it shown, so a camp can see and add its programs without a separate door._
 3. **Before the first season**, only Camp words can be opened; the rest is greyed out (each
    needs a season). _Changed 2026-10-20 (ADR 0013 choice 11): greyed entries stay in the tab
    order, marked unavailable, and say why ("Needs a season", "Coming") to screen readers._ New season and Copy season stay at the top, beside the season picker;
    Delete season moved to the Weeks screen, with the season's name, dates, and status.
    _Changed 2026-10-20 (ADR 0013): the season's name, dates and Delete season open from a pencil
-   beside the season picker; Status is no longer shown._
+   beside the season picker; Status is no longer shown._ _Changed 2026-10-23 (ADR 0015 choice
+   14): Copy this season opens a page of its own in the frame._
 4. **Roots is the desktop's Roots home**, not a redesign: the "Build or generate the schedule"
    door, "What has taken root" with the desktop's six cards in the desktop's places (large
    Activities and Groups with up to four names, small Divisions, Locations, Time blocks, and a

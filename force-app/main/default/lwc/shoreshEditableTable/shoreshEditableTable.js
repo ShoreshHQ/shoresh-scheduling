@@ -112,8 +112,10 @@ const SHORT_DAYS = {
  *   maxField: at most, noMaxField, minLabel, maxLabel, scale): bars at rest, scaled to scale (the
  *   camp's highest weekly count), the two numbers in their place on hover or edit. type "days"
  *   (days: [{ fieldName, label }], every, none): "Every day" quiet, "Mon Wed Fri" or "Off Fri" a
- *   value, a tick per day on hover or edit, saved with the row. A readonly column's
- *   exceptionFor(saved) makes its words a value rather than quiet. rowFilter / whoRule /
+ *   value, a tick per day on hover or edit, saved with the row; with strip: true the ticks
+ *   always show, in place of the words (Programs). A readonly column's
+ *   exceptionFor(saved) makes its words a value rather than quiet, and its problemFor(saved)
+ *   (words, or null) puts the needs-a-look corner on the cell, its words on hover or focus. rowFilter / whoRule /
  *   newRowWho: sections a field can't name (a recurring activity's division, from who it covers).
  *   With detailsLabel, the row's end holds a chevron that asks the page to open its details
  *   beside the table; the row whose details are open carries the 2 px selection line.
@@ -1088,13 +1090,17 @@ export default class ShoreshEditableTable extends LightningElement {
         const saved = draft.isNew ? {} : draft.original || {};
         // The rule reads quietly; an exception (exceptionFor) is a value.
         const exception = !!col.exceptionFor && !!col.exceptionFor(saved);
+        // A problem the row has (problemFor): the needs-a-look corner on this cell.
+        const problem =
+          !draft.isNew && col.problemFor ? col.problemFor(saved) || null : null;
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
-          className,
+          className: problem ? `${className} has-guess` : className,
           isReadonly: true,
           fixedClass: exception ? "fixed exception" : "fixed",
-          fixedText: col.textFor ? col.textFor(saved) || "" : ""
+          fixedText: col.textFor ? col.textFor(saved) || "" : "",
+          problem
         };
       }
       if (col.type === "often") {
@@ -1394,7 +1400,8 @@ export default class ShoreshEditableTable extends LightningElement {
     return {
       key: `${draft.key}-${col.fieldName}`,
       fieldName: col.fieldName,
-      className,
+      // strip: the ticks always show, never the words (Programs' "Runs on", programs.png).
+      className: col.strip ? `${className} days_strip` : className,
       isDays: true,
       daysText: text,
       // The blank row's days are still to choose: quiet, not an exception.

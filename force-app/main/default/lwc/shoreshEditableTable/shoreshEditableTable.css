@@ -379,6 +379,24 @@
   display: none;
 }
 
+/* Days as a strip (Programs' "Runs on"): the ticks always, never the words. */
+.days_strip .days-text {
+  display: none;
+}
+
+.days_strip .strip {
+  display: flex;
+}
+
+/* A worked-out cell with a problem (Programs: no time blocks): the needs-a-look corner in its
+   top right corner, as an import's guess sits (the cell is its containing block). */
+.problem {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+}
+
 /* A day's tick holds its short name. */
 .cell_days .strip {
   padding: 2px var(--shoresh-space-control-x);
