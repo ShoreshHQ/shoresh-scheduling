@@ -176,7 +176,8 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     while the next is on its way; the table already says each save ("Cedar saved"), so the
     rail's mark is silent (`c-shoresh-saved-mark` `silent`), and it is never shown for a save
     someone else's change stopped. Import a list, opened, takes the rail's width under its
-    items. Locations' old **Show** list is the rail's type choices (All, each type, and "No
+    items. _Changed 2026-10-23 (choice 14): opened, it takes the rail's place, and while a file
+    is reviewed the table's, with the file's rows laid into the table language._ Locations' old **Show** list is the rail's type choices (All, each type, and "No
     location type" while a place has none), centred, the chosen one raised and pressed; the
     types themselves are a section of their own under the places.
     Checked by `shoreshEditableTable.test.js` ("the shared table pattern"), `shoreshProgram`,
@@ -335,6 +336,24 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
       `scripts/a11y-browser-check.mjs` (on Roots: drawn and hidden from screen readers, glows
       under a moving mouse and is the same picture again four seconds later, still under the
       mouse with reduced motion emulated, no Shoresh errors in the console).
+
+14. **Import a list in the table language (2026-10-23).** Design source: Greg's decision 56
+    and the approved mock-up `design-research/screens-r1/list-import-a.png` (repo ADR 0007 choice
+    33 has the behaviour). Opened on a setup screen's rail it is the rail (Import a list in the
+    value style, the file, Cancel, and the one filled item, `shoresh-item_primary`, that says
+    what saving does); the screen's rail items and, while a file is reviewed, its hairline and
+    table are put away (`screen_importing`, `screen_import-review` on the screen) and the panel
+    draws its own hairline edge to edge and the table in the shared pattern of choice 11: raised
+    rows a fine gap apart, a section's name and count, the column names once. Its own marks use
+    only what the system has: a new row is the dashed outline (as the blank row and a proposed
+    offering), a row left out is faded with no raise, a changed value is the old one crossed
+    out in secondary words before the new one, a row or a question that needs a look carries
+    the needs-a-look corner (`.shoresh-look-mark`, top right), Keep, Change and Leave out are
+    rail items with the chosen one raised and pressed, and Bring back is an item in the
+    highlight. The panel's old bronze edges and tags are gone; on Programs and Roots, without a
+    rail, it is a piece (the piece corner and edge). Checked by `shoreshListImport.test.js` and
+    `shoreshCampSetup.test.js`, and in the test org by `scripts/a11y-browser-check.mjs`, with a
+    screenshot (`--shots`) beside the mock-up.
 
 ## Not done here
 

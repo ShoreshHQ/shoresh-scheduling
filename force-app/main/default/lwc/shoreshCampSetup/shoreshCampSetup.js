@@ -258,6 +258,8 @@ export default class ShoreshCampSetup extends LightningElement {
   programsAnnounced = false;
   // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
   setupStates = {};
+  // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
+  importing = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -487,8 +489,28 @@ export default class ShoreshCampSetup extends LightningElement {
     const result = {};
     SCREENS.forEach((screen) => {
       result[screen] = screen === this.currentScreen ? "" : "slds-hide";
+      // Import a list open on its rail: it takes the rail's place, and the table's while a
+      // file is reviewed (Greg's decision 56; ADR 0007 choice 33).
+      const importing = this.importing[screen];
+      if (importing) {
+        result[screen] +=
+          ` screen_importing${importing === "review" ? " screen_import-review" : ""}`;
+      }
     });
     return result;
+  }
+
+  /** Import a list opened, reviewing a file, or closed, on a screen's rail. */
+  handleListOpen(event) {
+    const { open, review } = event.detail;
+    this.importing = {
+      ...this.importing,
+      [event.currentTarget.screenKey]: open
+        ? review
+          ? "review"
+          : "open"
+        : null
+    };
   }
   /** One camp words editor per camp: choosing another camp starts it afresh. */
   get campKeys() {

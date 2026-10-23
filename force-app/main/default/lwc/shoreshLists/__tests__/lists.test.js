@@ -13,6 +13,7 @@ import {
   listProposal,
   sanitizeCell,
   similarCards,
+  skipKey,
   questionCards,
   rainAddKey,
   unescapeCell,
@@ -229,6 +230,29 @@ describe("rows", () => {
       // Row 6 repeats row 2, which can't be read (review round 3: never saved as new).
       [6, "unreadable", ["Same as row 2, which can't be read"]]
     ]);
+  });
+
+  it("a new row left out (Leave out) is not saved, nor what only it would add, nor remembered", () => {
+    const rows = [
+      ["Activity", "Location"],
+      ["Canoeing", "Lake"],
+      ["Hiking", "Gym"]
+    ];
+    const before = read("activities", rows);
+    const canoeing = rowNamed(before, "Canoeing");
+    expect(canoeing.status).toBe("new");
+    expect(canoeing.skipKey).toBe(skipKey("activities", canoeing));
+    const answers = { [canoeing.skipKey]: LEAVE_OUT };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Canoeing")).toEqual(
+      expect.objectContaining({ status: "leftOut", skipped: true })
+    );
+    // The lake only Canoeing names is not added either.
+    expect(p.alsoAdd.location).toEqual([]);
+    const plan = listPlan(p, answers, "se1", "list.csv");
+    expect(plan.records.map((r) => r.key)).toEqual(["Activity:Hiking"]);
+    expect(plan.remember).toEqual([]);
+    expect(plan.forget).toEqual([]);
   });
 
   it("a name written twice with the same details: the second says so", () => {

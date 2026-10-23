@@ -70,6 +70,16 @@ const PAIR_KIND = {
 
 const HALF_DAY = 12 * 60;
 
+/**
+ * A new row the director leaves out of this import (Leave out on the row, Greg's decision 56):
+ * its program, its division (two new groups of one name in two divisions are two rows), and its
+ * name. Never remembered: it is neither a question nor a similar name (plan.js listPlan).
+ */
+export function skipKey(screenKey, row) {
+  const values = row.values || {};
+  return `skip|${screenKey}|${looseKey(row.programName || "")}|${looseKey(values.division || "")}|${looseKey(row.name)}`;
+}
+
 /** A difference's answer key: the item, the column, and the new value (a new value asks again). */
 export function changeKey(screenKey, name, columnKey, to) {
   return `change|${screenKey}|${looseKey(name)}|${columnKey}|${JSON.stringify(to ?? null)}`;
@@ -1510,10 +1520,22 @@ function describeRow(r, used, screen, setup, answers, deletions) {
           ? column.blankNew
           : newValueOf(column, r);
     });
+    const skip = skipKey(screen.key, { ...row, values: r.values });
+    if (answers[skip] === LEAVE_OUT) {
+      // Left out by the director: shown where it would have gone, never saved.
+      return {
+        ...row,
+        status: "leftOut",
+        values,
+        skipKey: skip,
+        skipped: true
+      };
+    }
     return {
       ...row,
       status: "new",
       values,
+      skipKey: skip,
       ...(deleted.back ? { broughtBack: deleted.back } : {})
     };
   }

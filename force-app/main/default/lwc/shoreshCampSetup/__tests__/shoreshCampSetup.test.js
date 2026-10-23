@@ -455,6 +455,28 @@ describe("c-shoresh-camp-setup", () => {
       await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
     });
 
+    it("Import a list, opened, is the rail; reviewing a file it is the table too; closed, both are back", async () => {
+      const element = await renderWith();
+      await openScreen(element, "groups");
+      const screen = q(element, '[data-screen="groups"]');
+      const list = screen.querySelector("c-shoresh-list-import");
+      const tell = async (detail) => {
+        list.dispatchEvent(new CustomEvent("listopen", { detail }));
+        await flush();
+      };
+      await tell({ open: true, review: false });
+      expect(screen.className).toContain("screen_importing");
+      expect(screen.className).not.toContain("screen_import-review");
+      await tell({ open: true, review: true });
+      expect(screen.className).toContain("screen_import-review");
+      // Only this screen: another screen's rail and table stay.
+      expect(q(element, '[data-screen="divisions"]').className).not.toContain(
+        "screen_importing"
+      );
+      await tell({ open: false, review: false });
+      expect(screen.className).not.toContain("screen_importing");
+    });
+
     it("the rail's quiet Saved shows once a row is saved, and goes while the next is on its way", async () => {
       const element = await renderWith();
       await openScreen(element, "weeks");
