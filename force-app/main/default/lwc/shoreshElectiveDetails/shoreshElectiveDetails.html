@@ -1,0 +1,127 @@
+<template>
+  <template lwc:if={offering}>
+    <!-- The details zone beside the Electives list, as the Activities panel (ADR 0015 choice 12)
+         and the approved mock-up (design-research electives-r1 setup-a): one hairline from the
+         list, the offering's name, then its linked choices. -->
+    <section
+      class="panel"
+      data-id="details"
+      aria-labelledby="elective-details-title"
+    >
+      <div class="panel-head">
+        <h2
+          id="elective-details-title"
+          class="panel-title"
+          tabindex="-1"
+          data-heading
+        >
+          {name}<span class="slds-assistive-text"> details</span>
+        </h2>
+        <button
+          type="button"
+          class="panel-close"
+          data-id="close"
+          aria-label={closeLabel}
+          title={closeLabel}
+          onclick={handleClose}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M4.5 4.5l7 7 M11.5 4.5l-7 7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <h3 class="slds-assistive-text">{linkedTitle}</h3>
+      <template for:each={choices} for:item="choice">
+        <div key={choice.key} class="choice" data-id="linked-choice">
+          <div class="field">
+            <span class="field-label">Name on the sheet</span>
+            <span class="field-value" data-id="choice-name">{choice.name}</span>
+          </div>
+          <template lwc:if={choice.hasPeriods}>
+            <div class="field">
+              <span class="field-label">Periods</span>
+              <table class="periods" data-id="periods">
+                <thead>
+                  <tr>
+                    <td></td>
+                    <template for:each={choice.days} for:item="day">
+                      <th key={day.key} scope="col" class="day">{day.short}</th>
+                    </template>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template for:each={choice.rows} for:item="row">
+                    <tr key={row.key}>
+                      <th scope="row" class="clock shoresh-num">{row.clock}</th>
+                      <template for:each={row.cells} for:item="cell">
+                        <td key={cell.key}>
+                          <span
+                            class={cell.className}
+                            role="img"
+                            aria-label={cell.label}
+                            data-id="period"
+                          >
+                            <template lwc:if={cell.ticked}>
+                              <svg
+                                viewBox="0 0 16 16"
+                                aria-hidden="true"
+                                class="tick"
+                              >
+                                <path d="m4 8.5 2.5 2.5L12 5.5"></path>
+                              </svg>
+                            </template>
+                          </span>
+                        </td>
+                      </template>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <div class="field">
+            <span class="field-label" aria-hidden="true">Applies to</span>
+            <span class="slds-assistive-text" data-id="applies-to"
+              >{choice.appliesText}</span
+            >
+            <span class="segments" aria-hidden="true">
+              <template for:each={choice.appliesTo} for:item="option">
+                <span key={option.key} class={option.className}
+                  >{option.label}</span
+                >
+              </template>
+            </span>
+            <template lwc:if={choice.divisions}>
+              <span class="field-value" aria-hidden="true"
+                >{choice.divisions}</span
+              >
+            </template>
+          </div>
+        </div>
+      </template>
+      <!-- The place for adding and changing linked choices (slice E8). -->
+      <button
+        type="button"
+        class="add-choice"
+        data-id="add-linked-choice"
+        disabled
+      >
+        <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 3.5v9M3.5 8h9"></path>
+        </svg>
+        <span>{addLabel}</span>
+        <span class="coming">Coming</span>
+      </button>
+    </section>
+  </template>
+</template>

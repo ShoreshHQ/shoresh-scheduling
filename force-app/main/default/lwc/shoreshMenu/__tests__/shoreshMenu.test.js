@@ -1,6 +1,11 @@
 import { createElement } from "lwc";
 import ShoreshMenu from "c/shoreshMenu";
-import { menuSections, canOpen, nextScreen } from "c/shoreshScreens";
+import {
+  menuSections,
+  canOpen,
+  nextScreen,
+  previewScreen
+} from "c/shoreshScreens";
 import { buildTerms } from "c/shoreshTerms";
 
 const terms = buildTerms([
@@ -85,6 +90,7 @@ describe("c-shoresh-menu", () => {
       "Anchors",
       "Recurring activities",
       "Special events",
+      "Electives (Coming)",
       "Generated Schedule",
       "Manual Build",
       "Schedules"
@@ -197,19 +203,36 @@ describe("c-shoresh-menu", () => {
     expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
     expect(canOpen("weeks", true)).toBe(true);
+    // Electives are built but stay coming until slice E11 (decision 44; repo ADR 0018).
+    expect(canOpen("electives", true)).toBe(false);
+  });
+
+  it("the page's address opens Electives before the menu does, and nothing else (ADR 0018)", async () => {
+    expect(previewScreen("electives")).toBe("electives");
+    expect(previewScreen("weeks")).toBeNull();
+    expect(previewScreen(undefined)).toBeNull();
+    expect(canOpen("electives", true, "electives")).toBe(true);
+    // Still a season first.
+    expect(canOpen("electives", false, "electives")).toBe(false);
+    const listed = menuSections(terms, true, {}, "electives")
+      .flatMap((section) => section.items)
+      .find((item) => item.key === "electives");
+    expect(listed).toMatchObject({
+      label: "Electives",
+      coming: false,
+      disabled: false
+    });
+    // Without it, the entry is coming, and Special events is still the last setup screen.
+    const coming = menuSections(terms, true, {})
+      .flatMap((section) => section.items)
+      .find((item) => item.key === "electives");
+    expect(coming).toMatchObject({ coming: true, reason: "Coming" });
+    expect(nextScreen("specialEvents", terms, true)).toBeNull();
   });
 
   it("an entry that can't open stays in the tab order, unavailable, and says why", async () => {
     const element = await render(false, null);
-    // No screen is coming just now: one is marked so, as menuSections marks a screen not built.
-    element.sections = element.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => {
-        if (item.key !== "specialEvents") return item;
-        return { ...item, coming: true, disabled: true, reason: "Coming" };
-      })
-    }));
-    await flush();
+    // Electives are coming (decision 44): menuSections marks them so.
     const weeks = element.shadowRoot.querySelector('[data-item="weeks"]');
     expect(weeks.tagName).toBe("A");
     expect(weeks.getAttribute("href")).toBe("#");
@@ -217,9 +240,7 @@ describe("c-shoresh-menu", () => {
     expect(weeks.querySelector("[data-reason]").textContent).toBe(
       "Needs a season"
     );
-    const coming = element.shadowRoot.querySelector(
-      '[data-item="specialEvents"]'
-    );
+    const coming = element.shadowRoot.querySelector('[data-item="electives"]');
     expect(coming.querySelector("[data-reason]").textContent).toBe("Coming");
     // The visible badge isn't read twice.
     expect(
