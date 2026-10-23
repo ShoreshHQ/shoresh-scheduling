@@ -653,7 +653,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
         blockId: roster.blockId,
         locked: !person.locked
       },
-      `${person.locked ? "Unlocked" : "Locked"} ${person.name}.`
+      `${person.locked ? "Unlocked" : "Locked"} ${person.name}.`,
+      ROSTER_HEADING,
+      `.lock-button[data-camper="${cssEscape(camperId)}"]`
     );
   }
 
@@ -666,7 +668,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
     if (!target) return;
     await this.change(
       { camperId, day: roster.day, blockId: roster.blockId, offeringId },
-      `Moved ${person.name} to ${target.label}, locked.`
+      `Moved ${person.name} to ${target.label}, locked.`,
+      ROSTER_HEADING,
+      `c-shoresh-rail-pop.move[data-camper="${cssEscape(camperId)}"]`
     );
   }
 
@@ -687,8 +691,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
   async handleDrop(event) {
     const cellKey = event.currentTarget.dataset.cell;
     const dragging = this.dragging;
+    const allowed = this.canDropOn(cellKey);
     this.dragging = null;
-    if (!dragging || !this.canDropOn(cellKey)) return;
+    if (!dragging || !allowed) return;
     event.preventDefault();
     const board = this.board;
     const cell = board.offeringRows
@@ -721,12 +726,15 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   /**
    * One seat by hand; the run comes back as it now is, and what changed is said. The cursor then
-   * goes to the roster, or to focusAfter when the change came from elsewhere.
+   * goes to the roster, or to focusAfter when the change came from elsewhere. Refused, it goes
+   * back to the control that asked (from), or the roster heading when that is gone, never to the
+   * page (the controls were off while it was sent; WCAG 2.4.3).
    */
-  async change(fields, said, focusAfter = ROSTER_HEADING) {
+  async change(fields, said, focusAfter = ROSTER_HEADING, from = null) {
     if (!this.canChange) return;
     this.busy = true;
     this.error = null;
+    let done = false;
     try {
       this.view = await changeSeat({
         request: JSON.stringify({
@@ -736,10 +744,13 @@ export default class ShoreshElectiveSeats extends LightningElement {
         })
       });
       this.status = said;
-      this.focusAfter = focusAfter;
+      done = true;
     } catch (e) {
       this.error = failed("That seat wasn't changed.", e);
     } finally {
+      this.focusAfter = done
+        ? focusAfter
+        : [from, ROSTER_HEADING, PRIMARY].filter(Boolean);
       this.busy = false;
     }
   }
@@ -778,7 +789,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
       },
       `Unlocked ${camper ? camper.name : ""}.`,
       // The notice goes once unlocked: the next one's Unlock, or the main button.
-      ['[data-id="stray"] button', PRIMARY]
+      ['[data-id="stray"] button', PRIMARY],
+      `[data-id="stray"] button[data-seat="${cssEscape(seatId)}"]`
     );
   }
   get strayRows() {

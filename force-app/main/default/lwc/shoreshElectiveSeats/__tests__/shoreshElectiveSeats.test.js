@@ -309,6 +309,79 @@ describe("By offering", () => {
       "That seat wasn't changed. Someone else changed these seats since you opened them. Reload the page to see them."
     );
   });
+  describe("a refused change keeps the cursor on what asked, never the page", () => {
+    const refuse = () =>
+      changeSeat.mockRejectedValue({
+        body: {
+          message: "Someone else changed these seats since you opened them."
+        }
+      });
+    const openArchery = async (element) => {
+      $(element, 'button[data-cell="2027-07-05|b1|d1|o1"]').click();
+      await flush();
+    };
+
+    it("the padlock", async () => {
+      const element = await render({ view: assignedView() });
+      await openArchery(element);
+      refuse();
+      $$(element, ".lock-button")[1].click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        $(element, '.lock-button[data-camper="c1"]')
+      );
+    });
+
+    it("Move to…", async () => {
+      const element = await render({ view: assignedView() });
+      await openArchery(element);
+      refuse();
+      const move = $$(element, "c-shoresh-rail-pop.move")[1];
+      move.dispatchEvent(
+        new CustomEvent("select", { detail: { value: "o2" } })
+      );
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(move);
+    });
+
+    it("a dragged name: the roster heading", async () => {
+      const element = await render({ view: assignedView() });
+      await openArchery(element);
+      refuse();
+      const dataTransfer = {
+        setData: jest.fn(),
+        effectAllowed: "",
+        dropEffect: ""
+      };
+      const start = new CustomEvent("dragstart");
+      start.dataTransfer = dataTransfer;
+      $(element, 'li.person[data-camper="c1"]').dispatchEvent(start);
+      const drop = new CustomEvent("drop", { cancelable: true });
+      drop.dataTransfer = dataTransfer;
+      $(element, 'td[data-cell="2027-07-05|b1|d1|o2"]').dispatchEvent(drop);
+      await flush();
+      expect(changeSeat).toHaveBeenCalled();
+      expect(element.shadowRoot.activeElement).toBe(
+        $(element, '[data-id="roster-heading"]')
+      );
+    });
+
+    it("Unlock on a lock that no longer applies", async () => {
+      const base = assignedView().seats.filter((s) => s.day === MONDAY);
+      const c3 = seat("x9", "c3", TUESDAY, "o4", { locked: true });
+      const c4 = seat("x10", "c4", TUESDAY, "o4", { locked: true });
+      const element = await render({
+        view: assignedView({ seats: [...base, c3, c4] })
+      });
+      refuse();
+      $$(element, '[data-id="stray"] button')[1].click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        $(element, '[data-id="stray"] button[data-seat="x10"]')
+      );
+    });
+  });
+
   it("Unlock on a lock that no longer applies keeps the cursor: the next notice, then the main button", async () => {
     const base = assignedView().seats.filter((s) => s.day === MONDAY);
     // Ceramics is not confirmed: both locks no longer apply.

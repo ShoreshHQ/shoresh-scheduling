@@ -367,7 +367,11 @@ at a place.
     committed and at the revision the screen read; every seat's camper is in the run, at a time
     their bunk holds the set now, once per day and block, in an offering confirmed and open then;
     no locked seat changes; nothing beyond its seats except what locks alone hold. Then it
-    replaces the unlocked seats, keeps every lock (assigning again fills only what is left), sets
+    replaces the unlocked seats, writing only the difference (a seat already at a camper's day and
+    time is kept or its offering changed in place; the rest are inserted or deleted), so Assign
+    again at 500 campers × 10 times stays well under Salesforce's 10,000 rows per save; a save that
+    would still pass 9,500 rows is refused before anything is written ("Too many seats change to
+    save at once (…). Nothing was changed."). It keeps every lock (assigning again fills only what is left), sets
     the run's `TimesFingerprint__c` (a SHA-256 of every cell holding the set), `EngineVersion__c`
     and `Dropped__c` (what did not run below its minimum, as time, activity, how many it had and
     needed: the engine's finding, kept so "Dropped had 4 of 6" stays after a reload). The engine
@@ -380,7 +384,9 @@ at a place.
     name can also be dragged onto another offering at the same time. A move is a hand move and
     **locked**, as the desktop makes it; it may put an offering over its seats, which is then
     shown as a problem, never refused. The padlock locks or unlocks a seat as it is. Each change is
-    one save (`ElectiveSeatSaves.change`), checked as Assign's are, with the run's revision.
+    one save (`ElectiveSeatSaves.change`), checked as Assign's are, with the run's revision. A refused
+    change puts the cursor back on what asked (the padlock, Move to…, the notice's Unlock), or the
+    roster heading when that is gone or the change was a drag, never on the page (WCAG 2.4.3).
 33. **Finalize** (`ElectiveFinalize`; desktop `finalizeElectiveRun.js`), in one transaction, is
     refused with the reason when: there are no seats ("Assign seats first."); where the set sits
     changed since seats were assigned ("Schedule changed. Assign again first.", with **Assign

@@ -37,7 +37,7 @@ public with sharing class ElectiveSeatSaves {
     public Integer m;
   }
 
-  /** Replaces every unlocked seat with the ones sent, after checking them. */
+  /** Replaces the unlocked seats with the ones sent, after checking them, writing only what differs. */
   public static ElectiveSeats.RunView assign(AssignRequest request) {
     if (request == null || request.runId == null || request.seats == null) {
       throw new ShoreshException('The seats could not be sent. Try again.');
@@ -73,21 +73,64 @@ public with sharing class ElectiveSeatSaves {
     return ElectiveSeats.open(request.runId);
   }
 
+  // Below Salesforce's 10,000 rows a request may write, with room for the run's own update.
+  @TestVisible
+  private static Integer rowBound = 9500;
+
+  /**
+   * Writes only the difference: a seat already at a camper's day and time is kept (or its
+   * offering changed in place), the rest inserted, and unlocked seats nothing was sent for deleted.
+   * Refused before any write when even that is more rows than one save can take.
+   */
   private static void save(
     ElectiveRunState state,
     List<Assignment__c> added,
     List<DroppedIn> dropped
   ) {
-    List<Assignment__c> unlocked = new List<Assignment__c>();
+    Map<String, Assignment__c> unlocked = new Map<String, Assignment__c>();
     for (Assignment__c seat : state.seats) {
       if (seat.Locked__c != true) {
-        unlocked.add(seat);
+        unlocked.put(
+          ElectiveSeatChecks.seatKey(
+            seat.Camper__c,
+            seat.Date__c,
+            seat.TimeBlock__c
+          ),
+          seat
+        );
       }
     }
+    List<Assignment__c> inserts = new List<Assignment__c>();
+    List<Assignment__c> updates = new List<Assignment__c>();
+    for (Assignment__c seat : added) {
+      Assignment__c held = unlocked.remove(
+        ElectiveSeatChecks.seatKey(
+          seat.Camper__c,
+          seat.Date__c,
+          seat.TimeBlock__c
+        )
+      );
+      if (held == null) {
+        inserts.add(seat);
+      } else if (changes(held, seat)) {
+        updates.add(
+          new Assignment__c(
+            Id = held.Id,
+            Offering__c = seat.Offering__c,
+            Group__c = seat.Group__c,
+            LinkedChoice__c = null,
+            ByHand__c = false
+          )
+        );
+      }
+    }
+    List<Assignment__c> deletes = unlocked.values();
+    refuseTooMany(inserts.size() + updates.size() + deletes.size() + 1);
     Savepoint before = Database.setSavepoint();
     try {
-      Database.delete(unlocked, true, AccessLevel.USER_MODE);
-      Database.insert(added, true, AccessLevel.USER_MODE);
+      Database.delete(deletes, true, AccessLevel.USER_MODE);
+      Database.update(updates, true, AccessLevel.USER_MODE);
+      Database.insert(inserts, true, AccessLevel.USER_MODE);
       state.bump(
         new ElectiveRun__c(
           TimesFingerprint__c = state.live.fingerprint(),
@@ -98,6 +141,25 @@ public with sharing class ElectiveSeatSaves {
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
+    }
+  }
+
+  private static Boolean changes(Assignment__c held, Assignment__c seat) {
+    return held.Offering__c != seat.Offering__c ||
+      held.Group__c != seat.Group__c ||
+      held.LinkedChoice__c != null ||
+      held.ByHand__c == true;
+  }
+
+  private static void refuseTooMany(Integer rows) {
+    if (rows > rowBound) {
+      throw new ShoreshException(
+        'Too many seats change to save at once (' +
+          rows +
+          '; the most is ' +
+          rowBound +
+          '). Nothing was changed.'
+      );
     }
   }
 

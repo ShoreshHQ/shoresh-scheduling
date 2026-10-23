@@ -422,6 +422,60 @@ private class ElectiveSeatsTest {
   }
 
   @IsTest
+  static void assignAgainAtSizeWritesOnlyWhatChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      // 500 campers, two times each: 1,000 seats.
+      SeatsCamp camp = new SeatsCamp(500);
+      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      Assert.areEqual(1000, view.seats.size());
+      ElectiveSeatSaves.AssignRequest again = camp.everyoneInDrama(
+        view.revision
+      );
+      // Three campers move to Pottery on Monday; everyone else stays where they are.
+      for (Integer i = 0; i < 3; i++) {
+        again.seats[i * 2].offeringId = camp.ids.get('o:Pottery');
+      }
+
+      Test.startTest();
+      Integer rowsBefore = Limits.getDmlRows();
+      Integer queriesBefore = Limits.getQueries();
+      view = camp.assign(again);
+      Integer rows = Limits.getDmlRows() - rowsBefore;
+      Integer queries = Limits.getQueries() - queriesBefore;
+      Test.stopTest();
+
+      Assert.isTrue(rows <= 4, 'Three seats and the run: ' + rows);
+      Assert.isTrue(queries <= 20, 'Assign again is bounded: ' + queries);
+      Assert.areEqual(1000, view.seats.size());
+      Assert.areEqual(
+        camp.ids.get('o:Pottery'),
+        camp.mondaySeat(2).Offering__c
+      );
+      Assert.areEqual(camp.ids.get('o:Drama'), camp.mondaySeat(3).Offering__c);
+    }
+  }
+
+  @IsTest
+  static void assignRefusesCalmlyWhenTooManyRowsWouldChange() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(4);
+      ElectiveSeatSaves.rowBound = 5;
+      Test.startTest();
+      // Eight new seats and the run: nine rows, past the bound.
+      String refusal = refusalOf(new Assigning(camp, camp.everyoneInDrama(1)));
+      Test.stopTest();
+      Assert.areEqual(
+        'Too many seats change to save at once (9; the most is 5). Nothing was changed.',
+        refusal
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId]
+      );
+    }
+  }
+
+  @IsTest
   static void assignAgainKeepsEveryLock() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
