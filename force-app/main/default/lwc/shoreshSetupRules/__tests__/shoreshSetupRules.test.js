@@ -642,3 +642,105 @@ describe("fixed and recurring activities", () => {
     });
   });
 });
+
+// ADR 0014 slice 6: a special day on a weekday its week no longer has, and one whose time blocks
+// no longer match the regular day's. Shown, never fixed.
+describe("special days", () => {
+  const ms = (h, m) => (h * 60 + m) * 60000;
+  // The Special events screen's items (the Evening program's own "No time blocks yet" aside).
+  const special = (setup) =>
+    found(setup).filter(([screen]) => screen === "specialEvents");
+  const specialSetup = (periods, days = []) => ({
+    season,
+    weeks: [
+      { Id: "w1", ...week("Session 1", "2026-06-29", "2026-07-03") },
+      // Wednesday to Friday only.
+      { Id: "w2", ...week("Short session", "2026-07-08", "2026-07-10") }
+    ],
+    programs: [
+      // A program with no time blocks yet is passed over: the next one is the regular day.
+      { ...fullProgram, program: { Name: "Evening" }, timeBlocks: [] },
+      {
+        ...fullProgram,
+        timeBlocks: [
+          { Name: "Period 1", StartTime__c: ms(9, 0), EndTime__c: ms(10, 0) },
+          { Name: "Lunch", StartTime__c: ms(12, 30), EndTime__c: ms(13, 15) }
+        ]
+      }
+    ],
+    activities: [swim],
+    special: {
+      specialDays: [{ Id: "sd1", Name: "Field Day" }],
+      specialEvents: [{ Id: "se1", Name: "Carnival" }],
+      briefs: [
+        { itemId: "sd1", planned: true, rows: 1, periods, days },
+        {
+          itemId: "se1",
+          planned: true,
+          rows: 1,
+          periods: [{ name: "Lunch", startTime: "11:00", endTime: "11:30" }],
+          days: [{ weekId: "w2", day: "Monday" }]
+        }
+      ]
+    }
+  });
+
+  it("finds nothing when its time blocks are the regular day's or its own", () => {
+    const setup = specialSetup(
+      [
+        { name: "Period 1", startTime: "09:00", endTime: "10:00" },
+        { name: " lunch ", startTime: "12:30", endTime: "13:15" },
+        { name: "Families arrive", startTime: "10:30", endTime: "11:25" },
+        { name: "", startTime: "14:00", endTime: "15:00" }
+      ],
+      [{ weekId: "w1", day: "Monday" }]
+    );
+    expect(special(setup)).toEqual([]);
+  });
+
+  it("shows a time block whose times no longer match the regular day's, without changing it", () => {
+    const periods = [
+      { name: "Period 1", startTime: "09:00", endTime: "10:00" },
+      { name: "Lunch", startTime: "12:00", endTime: "12:45" }
+    ];
+    const setup = specialSetup(periods);
+    expect(special(setup)).toEqual([
+      [
+        "specialEvents",
+        "Field Day",
+        "Its time blocks no longer match Main's: Lunch is 12:00–12:45 here and 12:30–13:15 there."
+      ]
+    ]);
+    expect(periods[1].startTime).toBe("12:00");
+  });
+
+  it("shows a special day on a weekday its week no longer has", () => {
+    const setup = specialSetup(
+      [],
+      [
+        { weekId: "w2", day: "Monday" },
+        { weekId: "w2", day: "Friday" }
+      ]
+    );
+    expect(special(setup)).toEqual([
+      [
+        "specialEvents",
+        "Field Day",
+        'On Monday of "Short session", which that Session no longer has. Take it off that day.'
+      ]
+    ]);
+  });
+
+  it("says nothing about a plan that can't be read beyond its days", () => {
+    const setup = specialSetup([]);
+    setup.special.briefs[0] = {
+      itemId: "sd1",
+      planned: true,
+      problem: "broken",
+      rows: 0,
+      periods: [],
+      days: []
+    };
+    expect(special(setup)).toEqual([]);
+  });
+});
