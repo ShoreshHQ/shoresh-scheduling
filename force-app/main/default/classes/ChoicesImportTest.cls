@@ -659,4 +659,103 @@ private class ChoicesImportTest {
     Assert.areEqual('not json', ChoicesImportChoices.signature('not json'));
     Assert.areEqual('potterywheel', ChoicesImport.fold('Pottery-Wheel '));
   }
+
+  // ---------------------------------------------------------------- linked choices (slice E8)
+
+  @IsTest
+  static void aChoiceNamingALinkedChoiceKeepsItWithItsOfferingsActivity() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      Offering__c drama = [
+        SELECT Id
+        FROM Offering__c
+        WHERE
+          ElectiveSet__c = :camp.chugim.Id
+          AND Activity__c = :camp.ids.get('Drama')
+      ];
+      LinkedChoice__c both = new LinkedChoice__c(
+        ElectiveSet__c = camp.chugim.Id,
+        Name = 'Drama both days',
+        Offering__c = drama.Id,
+        AppliesTo__c = 'All'
+      );
+      ElectiveSet__c bechirot = new ElectiveSet__c(
+        Season__c = camp.season.Id,
+        Name = 'Bechirot'
+      );
+      Database.insert(bechirot, AccessLevel.USER_MODE);
+      Offering__c elsewhere = new Offering__c(
+        ElectiveSet__c = bechirot.Id,
+        Activity__c = camp.ids.get('Pottery'),
+        NoSeatLimit__c = true
+      );
+      Database.insert(elsewhere, AccessLevel.USER_MODE);
+      LinkedChoice__c otherSet = new LinkedChoice__c(
+        ElectiveSet__c = bechirot.Id,
+        Name = 'Pottery double',
+        Offering__c = elsewhere.Id,
+        AppliesTo__c = 'All'
+      );
+      Database.insert(
+        new List<LinkedChoice__c>{ both, otherSet },
+        AccessLevel.USER_MODE
+      );
+      ChoicesImport.Request request = camp.request();
+      // The screen named the wrong activity: the server goes by the linked choice.
+      ChoicesImport.SheetChoice linked = ranked(
+        'Drama both days',
+        camp.ids.get('Archery'),
+        1
+      );
+      linked.l = both.Id;
+      request.campers.add(
+        withChoices(
+          camper(2, 'Synthetic Camper 1', 'SYN-0001'),
+          new List<ChoicesImport.SheetChoice>{
+            linked,
+            ranked('Archery', camp.ids.get('Archery'), 2)
+          }
+        )
+      );
+
+      Test.startTest();
+      ChoicesImport.Done done = ChoicesImportController.bringInChoices(
+        JSON.serialize(request)
+      );
+      ChoicesImport.Request wrongSet = camp.request();
+      // Into the run just made, at its revision.
+      wrongSet.runRevision = 1;
+      ChoicesImport.SheetChoice notOurs = ranked(
+        'Pottery double',
+        camp.ids.get('Pottery'),
+        1
+      );
+      notOurs.l = otherSet.Id;
+      wrongSet.campers.add(
+        withChoices(
+          camper(2, 'Synthetic Camper 2', 'SYN-0002'),
+          new List<ChoicesImport.SheetChoice>{ notOurs }
+        )
+      );
+      String refused = refusal(wrongSet);
+      Test.stopTest();
+
+      List<ChoicesImport.SheetChoice> kept = (List<ChoicesImport.SheetChoice>) JSON.deserialize(
+        [
+          SELECT Choices__c
+          FROM Preference__c
+          WHERE ElectiveRun__c = :done.runId
+        ]
+        .Choices__c,
+        List<ChoicesImport.SheetChoice>.class
+      );
+      Assert.areEqual(both.Id, kept[0].l);
+      Assert.areEqual(camp.ids.get('Drama'), kept[0].a);
+      Assert.isNull(kept[1].l);
+      Assert.areEqual(
+        'Row 2: a choice names a linked choice that is no longer in this set. Reload the page.',
+        refused
+      );
+    }
+  }
 }

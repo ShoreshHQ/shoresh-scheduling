@@ -5,6 +5,7 @@
  * setup-a), in the same zone as the Activities and Special events details: one hairline from the
  * list, 288 wide at 1440, sliding in from the row's side. Words at rest are secondary; values
  * are the text colour; a linked period is the grid's filled state (ADR 0015 choices 2, 11, 12).
+ * Electives slice E8 makes it the linked choices editor.
  */
 :host {
   display: block;
@@ -95,6 +96,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--shoresh-s3);
+  padding-bottom: var(--shoresh-s4);
+  border-bottom: 1px solid var(--shoresh-rule);
+}
+
+/* A linked choice being made: missing shows by its outline, as a proposed offering's row. */
+.choice_draft {
+  padding: var(--shoresh-s3) 0;
+  border: 1px dashed rgba(38, 35, 27, 0.28);
+  border-radius: var(--shoresh-radius);
 }
 
 .field {
@@ -104,16 +114,16 @@
   padding: 0 var(--shoresh-space-control-x);
 }
 
+/* A field with a needs-a-look corner (ADR 0015 choice 6): the corner's containing block. */
+.field_mark {
+  position: relative;
+}
+
 .field-label {
   color: var(--shoresh-text-2);
 }
 
-.field-value {
-  color: var(--shoresh-text-1);
-  overflow-wrap: anywhere;
-}
-
-/* The periods: a small week, a linked period filled, the others empty wells. */
+/* The periods: a small week of where the set sits, a linked period filled, the others wells. */
 .periods {
   border-collapse: separate;
   border-spacing: var(--shoresh-s1);
@@ -126,12 +136,21 @@
   text-align: center;
 }
 
+.day abbr {
+  text-decoration: none;
+}
+
 .clock {
   padding-right: var(--shoresh-s1);
   color: var(--shoresh-text-2);
   font-weight: 400;
   text-align: left;
   white-space: nowrap;
+}
+
+.cell {
+  position: relative;
+  padding: 0;
 }
 
 .period {
@@ -141,11 +160,30 @@
   justify-content: center;
   width: calc(var(--shoresh-u) * 10);
   height: calc(var(--shoresh-u) * 6);
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: var(--shoresh-radius);
   background: var(--shoresh-color-primary-300);
+  color: inherit;
+  cursor: pointer;
 }
 
-.period_on {
+.period:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.period:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.period:disabled {
+  cursor: default;
+}
+
+.period_on,
+.period_on:hover {
   background: var(--shoresh-color-highlight);
   color: #fff;
 }
@@ -160,29 +198,50 @@
   stroke-linejoin: round;
 }
 
-/* Applies to: All, Only these, All except; the one that applies is raised (decision 34). */
-.segments {
+/* Applies to: All, Only these, All except, as one set with the chosen one raised. */
+.set {
+  display: block;
+}
+
+.choice-foot {
   display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--shoresh-radius);
-  background: var(--shoresh-surface-shelf);
+  justify-content: flex-end;
+  padding: 0 var(--shoresh-space-control-x);
 }
 
-.segment {
-  flex: 1;
+.choice-delete {
+  margin: 0;
   padding: var(--shoresh-s1) var(--shoresh-s2);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
   color: var(--shoresh-text-2);
-  text-align: center;
-  white-space: nowrap;
+  font: inherit;
+  cursor: pointer;
 }
 
-.segment_on {
+.choice-delete:hover {
+  background: var(--shoresh-surface-hover);
   color: var(--shoresh-text-1);
-  font-weight: 500;
 }
 
-/* The place for adding a linked choice (slice E8): the blank row's dashed edge, waiting. */
+.choice-delete:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.problem {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+/* Add a linked choice: the blank row's dashed edge. */
 .add-choice {
   box-sizing: border-box;
   display: flex;
@@ -198,7 +257,22 @@
   color: var(--shoresh-text-2);
   font: inherit;
   text-align: left;
+  cursor: pointer;
+}
+
+.add-choice:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-text-1);
+}
+
+.add-choice:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.add-choice:disabled {
   cursor: default;
+  opacity: 0.6;
 }
 
 .plus {
@@ -209,12 +283,4 @@
   stroke: currentColor;
   stroke-width: 1.5;
   stroke-linecap: round;
-}
-
-.coming {
-  margin-left: auto;
-  font-family: var(--shoresh-font-mono);
-  font-size: var(--shoresh-font-size-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }

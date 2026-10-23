@@ -2,7 +2,7 @@
   <template lwc:if={offering}>
     <!-- The details zone beside the Electives list, as the Activities panel (ADR 0015 choice 12)
          and the approved mock-up (design-research electives-r1 setup-a): one hairline from the
-         list, the offering's name, then its linked choices. -->
+         list, the offering's name, then its linked choices, each edited where it is. -->
     <section
       class="panel"
       data-id="details"
@@ -42,12 +42,35 @@
 
       <h3 class="slds-assistive-text">{linkedTitle}</h3>
       <template for:each={choices} for:item="choice">
-        <div key={choice.key} class="choice" data-id="linked-choice">
-          <div class="field">
-            <span class="field-label">Name on the sheet</span>
-            <span class="field-value" data-id="choice-name">{choice.name}</span>
+        <div
+          key={choice.key}
+          class={choice.className}
+          data-id="linked-choice"
+          data-key={choice.key}
+        >
+          <div class="field field_mark">
+            <lightning-input
+              data-id="choice-name"
+              data-choice={choice.key}
+              label={choice.nameLabel}
+              value={choice.name}
+              placeholder={choice.namePlaceholder}
+              disabled={choice.disabled}
+              max-length="80"
+              onchange={handleNameInput}
+              onkeydown={handleNameKey}
+              onfocusout={handleNameLeave}
+            ></lightning-input>
+            <template lwc:if={choice.nameLook}>
+              <c-shoresh-guess-mark
+                words-only
+                label={choice.nameLook}
+                name={choice.nameLook}
+                data-id="name-look"
+              ></c-shoresh-guess-mark>
+            </template>
           </div>
-          <template lwc:if={choice.hasPeriods}>
+          <template lwc:if={choice.hasRows}>
             <div class="field">
               <span class="field-label">Periods</span>
               <table class="periods" data-id="periods">
@@ -55,7 +78,9 @@
                   <tr>
                     <td></td>
                     <template for:each={choice.days} for:item="day">
-                      <th key={day.key} scope="col" class="day">{day.short}</th>
+                      <th key={day.key} scope="col" class="day">
+                        <abbr title={day.label}>{day.short}</abbr>
+                      </th>
                     </template>
                   </tr>
                 </thead>
@@ -64,23 +89,41 @@
                     <tr key={row.key}>
                       <th scope="row" class="clock shoresh-num">{row.clock}</th>
                       <template for:each={row.cells} for:item="cell">
-                        <td key={cell.key}>
-                          <span
-                            class={cell.className}
-                            role="img"
-                            aria-label={cell.label}
-                            data-id="period"
-                          >
-                            <template lwc:if={cell.ticked}>
-                              <svg
-                                viewBox="0 0 16 16"
-                                aria-hidden="true"
-                                class="tick"
-                              >
-                                <path d="m4 8.5 2.5 2.5L12 5.5"></path>
-                              </svg>
+                        <td key={cell.key} class="cell">
+                          <template lwc:if={cell.shown}>
+                            <button
+                              type="button"
+                              class={cell.className}
+                              aria-pressed={cell.pressed}
+                              aria-label={cell.label}
+                              title={cell.label}
+                              disabled={cell.disabled}
+                              data-id="period"
+                              data-cell={cell.id}
+                              data-choice={choice.key}
+                              data-weekday={cell.weekday}
+                              data-block={cell.blockId}
+                              onclick={handlePeriod}
+                            >
+                              <template lwc:if={cell.ticked}>
+                                <svg
+                                  viewBox="0 0 16 16"
+                                  aria-hidden="true"
+                                  class="tick"
+                                >
+                                  <path d="m4 8.5 2.5 2.5L12 5.5"></path>
+                                </svg>
+                              </template>
+                            </button>
+                            <template lwc:if={cell.look}>
+                              <c-shoresh-guess-mark
+                                words-only
+                                label={cell.look}
+                                name={cell.lookName}
+                                data-id="period-look"
+                              ></c-shoresh-guess-mark>
                             </template>
-                          </span>
+                          </template>
                         </td>
                       </template>
                     </tr>
@@ -90,37 +133,68 @@
             </div>
           </template>
           <div class="field">
-            <span class="field-label" aria-hidden="true">Applies to</span>
-            <span class="slds-assistive-text" data-id="applies-to"
-              >{choice.appliesText}</span
+            <lightning-radio-group
+              class="set"
+              type="button"
+              data-id="applies-to"
+              data-choice={choice.key}
+              label="Applies to"
+              options={choice.appliesOptions}
+              value={choice.appliesTo}
+              disabled={choice.disabled}
+              onchange={handleAppliesTo}
+            ></lightning-radio-group>
+          </div>
+          <template lwc:if={choice.showDivisions}>
+            <div class="field">
+              <lightning-checkbox-group
+                data-id="divisions"
+                data-choice={choice.key}
+                label={choice.divisionsLabel}
+                options={choice.divisionOptions}
+                value={choice.divisionValue}
+                disabled={choice.disabled}
+                onchange={handleDivisions}
+              ></lightning-checkbox-group>
+            </div>
+          </template>
+          <div class="choice-foot">
+            <button
+              type="button"
+              class="choice-delete"
+              data-id="delete-linked-choice"
+              data-choice={choice.key}
+              aria-label={choice.deleteLabel}
+              title={choice.deleteLabel}
+              onclick={handleDelete}
             >
-            <span class="segments" aria-hidden="true">
-              <template for:each={choice.appliesTo} for:item="option">
-                <span key={option.key} class={option.className}
-                  >{option.label}</span
-                >
-              </template>
-            </span>
-            <template lwc:if={choice.divisions}>
-              <span class="field-value" aria-hidden="true"
-                >{choice.divisions}</span
-              >
-            </template>
+              {choice.deleteText}
+            </button>
           </div>
         </div>
       </template>
-      <!-- The place for adding and changing linked choices (slice E8). -->
+      <template lwc:if={error}>
+        <p class="problem slds-text-color_error" role="alert" data-id="problem">
+          {error}
+        </p>
+      </template>
+      <template lwc:if={hasNote}>
+        <p class="note" data-id="note">
+          <template lwc:if={sitsNowhere}>{nowhereText}</template>
+          <template lwc:else>{incompleteText}</template>
+        </p>
+      </template>
       <button
         type="button"
         class="add-choice"
         data-id="add-linked-choice"
-        disabled
+        disabled={addDisabled}
+        onclick={handleAdd}
       >
         <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M8 3.5v9M3.5 8h9"></path>
         </svg>
         <span>{addLabel}</span>
-        <span class="coming">Coming</span>
       </button>
     </section>
   </template>

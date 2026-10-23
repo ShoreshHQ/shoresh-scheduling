@@ -15,6 +15,7 @@ import {
 } from "c/shoreshElectiveEngine";
 import { foldName } from "c/shoreshImportEngine";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
+import { linkedIdOf, linkedOf, linkedRows } from "./linked";
 
 // The choices' kinds as Bring in choices saves them (ADR 0017 choice 16).
 const KIND = {
@@ -172,7 +173,7 @@ export function timeOfChoice(run, camper, choice) {
  * match ({ camperId, text }). Unordered choices are a tie among equals (rank 1, never an order:
  * desktop owner ruling 2026-09-29); a choice "left out" was never saved.
  */
-export function choicesOf(run) {
+export function choicesOf(run, linked = linkedOf(run)) {
   const choices = [];
   const unmatched = [];
   run.campers.forEach((camper) => {
@@ -181,13 +182,15 @@ export function choicesOf(run) {
       if (where.unmatched) {
         unmatched.push({ camperId: camper.id, text: where.unmatched });
       }
-      choices.push({
+      const base = {
         camperId: camper.id,
         key: c.a,
         timeId: where.timeKey,
         rank: c.k === "unordered" || c.r == null ? 1 : Number(c.r),
         rankKind: KIND[c.k] || null
-      });
+      };
+      // A linked choice named on the sheet (slice E8), or the activity it was saved as.
+      choices.push(...(linkedRows(run, linked, camper, c, base) || [base]));
     });
   });
   return { choices, unmatched };
@@ -236,12 +239,13 @@ function ordinal(n) {
 /**
  * The seat engine's input for this run (ADR 0016 choice 3): campers by Id, the times, each time's
  * offerings (keyed by their activity, as choices name them), choices, who takes which time, and
- * the locked seats that still fit. Linked choices come with slice E8: none yet, in the shape the
- * engine takes them. Also the locks that no longer fit (shown, never sent); the camper is not
- * placed at their day and block, which they still hold.
+ * the locked seats that still fit, and the set's linked choices (slice E8, ./linked.js). Also the
+ * locks that no longer fit (shown, never sent); the camper is not placed at their day and block,
+ * which they still hold.
  */
 export function engineInput(run, terms) {
-  const { choices, unmatched } = choicesOf(run);
+  const linked = linkedOf(run);
+  const { choices, unmatched } = choicesOf(run, linked);
   const offerings = [];
   run.times.forEach((t) => {
     (t.offeringIds || []).forEach((id) => {
@@ -287,8 +291,8 @@ export function engineInput(run, terms) {
       choices,
       attendance,
       locks,
-      linkedChoices: [],
-      linkedChoiceTimes: [],
+      linkedChoices: linked.linkedChoices,
+      linkedChoiceTimes: linked.linkedChoiceTimes,
       terms
     },
     unmatched,
@@ -333,7 +337,8 @@ export function assignRequest(run, result) {
       camperId: s.camperId,
       day: time.day,
       blockId: time.blockId,
-      offeringId: offering.id
+      offeringId: offering.id,
+      linkedChoiceId: linkedIdOf(s.linkedChoiceId)
     });
   });
   const dropped = result.findings
@@ -392,7 +397,8 @@ function dotsFor(count, seats) {
  */
 export function buildBoard(run, t) {
   const view = run.view;
-  const { choices, unmatched } = choicesOf(run);
+  const linked = linkedOf(run);
+  const { choices, unmatched } = choicesOf(run, linked);
   const { stray } = locksOf(run);
   const strayIds = new Set(stray.map((s) => s.id));
   const dropped = droppedOf(view);
@@ -445,7 +451,8 @@ export function buildBoard(run, t) {
     noBunk: 0,
     notOnSchedule: 0,
     unmatched,
-    noOfferings: []
+    noOfferings: [],
+    linked: linked.problems
   };
 
   const offeringRows = run.offerings
@@ -669,6 +676,17 @@ export function problemSections(board, t) {
       stray: s
     }))
   );
+  // Linked choices that can't be placed as a set: their periods are filled one at a time.
+  add(
+    "linked",
+    `${p.linked.length} ${p.linked.length === 1 ? t.sIn("LinkedChoice") : t.pIn("LinkedChoice")} filled one period at a time`,
+    p.linked.map((l) => ({
+      key: `k|${l.key}`,
+      text: l.name,
+      aside: l.text,
+      target: null
+    }))
+  );
   add(
     "nothing",
     `${p.noOfferings.length} with nothing offered`,
@@ -749,6 +767,7 @@ export function needsLook(board) {
       p.overSeats.length +
       p.stray.length +
       p.noOfferings.length +
+      p.linked.length +
       p.noBunk +
       p.notOnSchedule +
       p.unmatched.length >

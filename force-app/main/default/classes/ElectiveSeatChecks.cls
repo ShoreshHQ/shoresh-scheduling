@@ -50,7 +50,8 @@ public with sharing class ElectiveSeatChecks {
       Group__c = state.groupOf(seat.camperId),
       Date__c = at.day,
       TimeBlock__c = Id.valueOf(at.blockId),
-      Offering__c = seat.offeringId
+      Offering__c = seat.offeringId,
+      LinkedChoice__c = seat.linkedChoiceId
     );
   }
 }

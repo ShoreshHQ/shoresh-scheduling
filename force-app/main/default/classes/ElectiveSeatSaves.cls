@@ -5,8 +5,10 @@
  * (ElectiveSeatChecks): the run is committed and at the revision the screen read; every seat's
  * camper is in the run, at a time their bunk holds the set on the run's schedule now, once per
  * camper per time, in an offering the set has confirmed and that is open then; no locked seat
- * changes (Assign keeps every one and fills only what is left); and no offering gets more campers
- * than its seats beyond what locks alone hold (ElectiveSeatTally). In user mode. No message names
+ * changes (Assign keeps every one and fills only what is left); no offering gets more campers
+ * than its seats beyond what locks alone hold (ElectiveSeatTally); and a seat of a linked choice
+ * is at one of its periods, for a division it applies to, with every other period of it
+ * (ElectiveLinkedSeats, slice E8). In user mode. No message names
  * a camper.
  */
 public with sharing class ElectiveSeatSaves {
@@ -25,12 +27,13 @@ public with sharing class ElectiveSeatSaves {
     public List<DroppedIn> dropped = new List<DroppedIn>();
   }
 
-  /** One seat: a camper, a day and time block, and an offering. */
+  /** One seat: a camper, a day and time block, an offering, and the linked choice it is part of. */
   public class SeatIn {
     public Id camperId;
     public Date day;
     public Id blockId;
     public Id offeringId;
+    public Id linkedChoiceId;
   }
 
   /** An offering that did not run at a time (t): its activity (a), had (h) and needed (m). */
@@ -52,6 +55,7 @@ public with sharing class ElectiveSeatSaves {
     ElectiveSeatTally tally = new ElectiveSeatTally(state);
     Map<String, Assignment__c> locked = tally.addLocks();
     List<Assignment__c> added = new List<Assignment__c>();
+    ElectiveLinkedSeats linked = new ElectiveLinkedSeats(state);
     Set<String> seen = new Set<String>();
     for (SeatIn seat : request.seats) {
       String key = ElectiveSeatChecks.seatKey(
@@ -71,7 +75,9 @@ public with sharing class ElectiveSeatSaves {
       ElectivePeriod at = ElectiveSeatChecks.offeredAt(state, seat);
       tally.add(at, seat.offeringId);
       added.add(ElectiveSeatChecks.newSeat(state, seat, at));
+      linked.add(seat, at);
     }
+    linked.refuseIncomplete();
     tally.refuseOver();
     save(state, added, request.dropped);
     return ElectiveSeats.open(request.runId);
@@ -118,7 +124,7 @@ public with sharing class ElectiveSeatSaves {
             Id = held.Id,
             Offering__c = seat.Offering__c,
             Group__c = seat.Group__c,
-            LinkedChoice__c = null,
+            LinkedChoice__c = seat.LinkedChoice__c,
             ByHand__c = false
           )
         );
@@ -147,7 +153,7 @@ public with sharing class ElectiveSeatSaves {
   private static Boolean changes(Assignment__c held, Assignment__c seat) {
     return held.Offering__c != seat.Offering__c ||
       held.Group__c != seat.Group__c ||
-      held.LinkedChoice__c != null ||
+      held.LinkedChoice__c != seat.LinkedChoice__c ||
       held.ByHand__c == true;
   }
 

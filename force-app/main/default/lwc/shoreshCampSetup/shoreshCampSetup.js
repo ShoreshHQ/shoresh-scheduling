@@ -18,6 +18,7 @@ import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
+import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import { undoMessage } from "c/shoreshImportEngine";
@@ -2134,6 +2135,20 @@ export default class ShoreshCampSetup extends LightningElement {
     });
   }
 
+  /**
+   * One gesture of the linked choices editor beside the Electives list (slice E8, repo ADR 0018
+   * choice 40): saved in turn with the rows, then the season is read again.
+   */
+  handleSaveLinkedChoice(event) {
+    const { edit, onSaved, onFailure } = event.detail;
+    return this.saveForm({
+      save: () => saveLinkedChoice({ edit: JSON.stringify(edit) }),
+      what: `${this.terms.s("LinkedChoice")} not saved.`,
+      onSaved,
+      onFailure
+    });
+  }
+
   /** A save from a table: one row, as the director leaves it (SetupTablesController.saveRow, ADR 0011). */
   async handleSaveRecords(event) {
     await this.saveTableRow(event.detail);
@@ -2448,6 +2463,24 @@ export default class ShoreshCampSetup extends LightningElement {
       return {
         label: "Delete",
         message: `Take "${name}" off "${set ? set.Name : ""}"? The ${this.terms.sIn("Activity")} is kept.`,
+        variant: "header",
+        theme: "warning"
+      };
+    }
+    // A linked choice: a sheet that names it then counts as its offering's activity (slice E8).
+    const linked = this.electives.linkedChoices.find((c) => c.Id === recordId);
+    if (linked) {
+      const linkedOffering = this.electives.offerings.find(
+        (o) => o.Id === linked[FIELD.LinkedChoice.Offering]
+      );
+      const activity = linkedOffering
+        ? ((this.setup && this.setup.activities) || []).find(
+            (a) => a.Id === linkedOffering[OFFER.Activity]
+          )
+        : null;
+      return {
+        label: "Delete",
+        message: `Delete "${name}"?${activity ? ` A sheet that names it then counts as ${activity.Name}.` : ""}`,
         variant: "header",
         theme: "warning"
       };

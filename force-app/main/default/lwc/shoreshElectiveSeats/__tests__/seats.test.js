@@ -135,7 +135,7 @@ describe("choices", () => {
 });
 
 describe("the engine's input, and what Assign seats sends", () => {
-  it("offers each time its confirmed offerings, keyed by activity, and sends no linked choices yet", () => {
+  it("offers each time its confirmed offerings, keyed by activity; a set with no linked choices sends none", () => {
     const { input } = engineInput(readRun(runView()), t);
     expect(input.campers.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4"]);
     expect(input.times.map((x) => x.id)).toEqual([

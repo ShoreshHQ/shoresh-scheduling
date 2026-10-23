@@ -188,9 +188,11 @@ public with sharing class ChoicesImportChoices {
       parts.add(
         String.join(
           new List<String>{
-            choice.a != null
-              ? String.valueOf(choice.a)
-              : ChoicesImport.fold(choice.n),
+            choice.l != null
+              ? String.valueOf(choice.l)
+              : choice.a != null
+                  ? String.valueOf(choice.a)
+                  : ChoicesImport.fold(choice.n),
             String.valueOf(choice.r),
             String.valueOf(choice.k),
             ChoicesImport.fold(choice.d),

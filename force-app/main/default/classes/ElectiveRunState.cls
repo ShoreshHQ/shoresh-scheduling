@@ -1,6 +1,6 @@
 /**
  * One elective run as it is now (electives slice E7; repo ADR 0018 choices 28 to 37): the run, its
- * set's offerings and who can take them, the program's bunks, where the set sits on the run's
+ * set's offerings and who can take them, its linked choices (slice E8), the program's bunks, where the set sits on the run's
  * schedule (ElectiveTimes), the campers' choices and the seats. Read once per request, in user
  * mode, in a fixed number of queries whatever the number of campers: the seats screen's read, and
  * every save's checks, start here.
@@ -20,6 +20,9 @@ public with sharing class ElectiveRunState {
   public List<Offering__c> offerings = new List<Offering__c>();
   public Map<Id, Offering__c> offeringsById = new Map<Id, Offering__c>();
   public ElectiveOpenness openness;
+  // The set's linked choices (slice E8), with their periods and divisions; and by Id.
+  public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
+  public Map<Id, LinkedChoice__c> linkedChoicesById = new Map<Id, LinkedChoice__c>();
   // Where the set sits on the run's schedule now, and (for a final run) as it was finalized.
   public List<ScheduleDays.DayGrid> liveDays;
   public ElectiveTimes live;
@@ -34,6 +37,7 @@ public with sharing class ElectiveRunState {
     run = readRun(runId);
     readGroups();
     readOfferings();
+    readLinkedChoices();
     liveDays = ScheduleDays.read(run.Schedule__c);
     live = new ElectiveTimes(liveDays, run.ElectiveSet__c, groups);
     live.offer(offerings, openness);
@@ -169,6 +173,24 @@ public with sharing class ElectiveRunState {
             WITH USER_MODE
           ]
     );
+  }
+
+  /** The set's linked choices: one query, their periods and divisions with them. */
+  private void readLinkedChoices() {
+    linkedChoices = [
+      SELECT
+        Id,
+        Name,
+        Offering__c,
+        AppliesTo__c,
+        (SELECT Weekday__c, TimeBlock__c FROM Times__r ORDER BY Id),
+        (SELECT Division__c FROM Coverages__r ORDER BY Id)
+      FROM LinkedChoice__c
+      WHERE ElectiveSet__c = :run.ElectiveSet__c
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ];
+    linkedChoicesById = new Map<Id, LinkedChoice__c>(linkedChoices);
   }
 
   private void readChoices() {

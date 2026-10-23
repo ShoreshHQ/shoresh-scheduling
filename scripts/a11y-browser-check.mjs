@@ -72,7 +72,9 @@
  *   pressed, so nothing is imported;
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
  *   still lists it as coming (?c__preview=electives), then from the menu: focus on its heading, axe; an offering's
- *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
+ *   chevron opens its linked choices beside the list with focus on their heading (axe); the
+ *   linked choices editor (slice E8) by keyboard: the name typed and left is saved, Space on a
+ *   linked period unticks it with focus kept and ticks it back, each in the org (axe); Close
  *   putting focus back on the chevron; a proposed offering's Confirm is not shown at rest and is
  *   shown once Tab reaches it, then saved and said, the
  *   cursor then on the row's offering (Confirm is gone); the
@@ -4388,6 +4390,65 @@ for (Integer i = 0; i < 3; i++) {
   return { linked: names[0], proposed: names[1], blank: names[2] };
 }
 
+/** The check's linked choice as saved: its name and how many periods it has. */
+function linkedChoiceSaved() {
+  const logs = apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+LinkedChoice__c linked = [SELECT Name, (SELECT Id FROM Times__r) FROM LinkedChoice__c WHERE ElectiveSet__r.Name = '${CHECK_SET}' AND ElectiveSet__r.Season__r.Camp__c = :camp.Id LIMIT 1];
+System.debug('A11Y_LINKED[' + linked.Name + '::' + linked.Times__r.size() + ']');
+`);
+  const found = /A11Y_LINKED\[(.+?)::(\d+)\]/.exec(logs);
+  return found ? { name: found[1], periods: Number(found[2]) } : null;
+}
+
+/**
+ * The linked choices editor (repo ADR 0018 slice E8), keyboard only, from the details' heading:
+ * the name typed and left is saved; Space on a linked period unticks it with the cursor kept on
+ * it, and again ticks it back; each change is in the org.
+ */
+async function editLinkedChoice(E) {
+  if (
+    !(await tabTo(named(/^Name on the sheet$/, { tag: "input" }), { max: 10 }))
+  )
+    throw new Error("The linked choice's name was not reached with Tab.");
+  await press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+  await type(`${CHECK_LINKED} 2`);
+  await press("Tab", 3000);
+  const renamed = linkedChoiceSaved();
+  if (renamed && renamed.name === `${CHECK_LINKED} 2`)
+    results.pass(E, "A linked choice's name saved when left", renamed.name);
+  else
+    results.fail(
+      E,
+      "A linked choice's name saved when left",
+      `In the org: ${JSON.stringify(renamed)}.`
+    );
+  const period = await tabTo(named(/^Tuesday /, { tag: "button" }), {
+    max: 10
+  });
+  if (!period) throw new Error("A linked period was not reached with Tab.");
+  await press("Space", 3000);
+  await expectFocus(E, "A period unticked: focus kept on it", {
+    tag: "button",
+    name: new RegExp(`^${period.name.replace(/[()]/g, "\\$&")}$`)
+  });
+  const unticked = linkedChoiceSaved();
+  await press("Space", 3000);
+  const ticked = linkedChoiceSaved();
+  if (unticked && ticked && unticked.periods === 1 && ticked.periods === 2)
+    results.pass(
+      E,
+      "A period unticked and ticked again, each saved",
+      "1, then 2 periods in the org."
+    );
+  else
+    results.fail(
+      E,
+      "A period unticked and ticked again, each saved",
+      `In the org: ${JSON.stringify(unticked)}, then ${JSON.stringify(ticked)}.`
+    );
+}
+
 /**
  * The Electives screen (repo ADR 0018, slice E4), opened from the page's address and then from
  * the menu (which lists it on that page): focus on its heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
@@ -4439,25 +4500,27 @@ async function electives() {
             name: new RegExp(`^${names.linked} details$`)
           }
         );
-        if (
-          !(await page
-            .locator(APP)
-            .locator("c-shoresh-elective-details")
-            .getByText(CHECK_LINKED)
-            .count())
-        )
+        const shownName = await page
+          .locator(APP)
+          .locator('c-shoresh-elective-details [data-id="choice-name"] input')
+          .first()
+          .inputValue()
+          .catch(() => "");
+        if (shownName !== CHECK_LINKED)
           results.fail(
             E,
             "Its linked choices shown",
-            `"${CHECK_LINKED}" not shown.`
+            `"${CHECK_LINKED}" not shown (the name field holds "${shownName}").`
           );
         await axe("Electives, an offering's linked choices open");
+        await editLinkedChoice(E);
+        await axe("Electives, a linked choice edited");
         if (
           !(await tabTo(
             named(new RegExp(`^Close ${names.linked} details$`), {
               tag: "button"
             }),
-            { max: 6 }
+            { max: 60, back: true }
           ))
         )
           throw new Error("The details' Close was not reached with Tab.");

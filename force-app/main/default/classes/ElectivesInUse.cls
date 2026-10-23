@@ -1,6 +1,7 @@
 /**
- * Why a week, program, division, group, time block, activity, elective set or offering cannot be
- * deleted from the setup screens because electives use it, naming what uses it; null when nothing is in the way. The
+ * Why a week, program, division, group, time block, activity, elective set, offering or linked
+ * choice cannot be deleted from the setup screens because electives use it, naming what uses it;
+ * null when nothing is in the way. The
  * restrict-delete lookups on the elective objects are the backstop (repo ADR 0018). A week with
  * elective runs is refused as on the desktop (DeleteWeekDialog: "Delete its elective runs first").
  */
@@ -209,7 +210,7 @@ public with sharing class ElectivesInUse {
 
   /**
    * Runs whose choices or seats name the record: a camper's group that week (or its division), a
-   * seat's time block or offering. A run's choices are text and name no offering.
+   * seat's time block, offering or linked choice. A run's choices are text and name no offering.
    */
   private static List<ElectiveRun__c> runsOfSeats(
     Id recordId,
@@ -237,7 +238,8 @@ public with sharing class ElectivesInUse {
       kind == Division__c.SObjectType ||
       kind == Group__c.SObjectType ||
       kind == TimeBlock__c.SObjectType ||
-      kind == Offering__c.SObjectType
+      kind == Offering__c.SObjectType ||
+      kind == LinkedChoice__c.SObjectType
     ) {
       runs.addAll(
         [
@@ -252,6 +254,7 @@ public with sharing class ElectivesInUse {
                 OR Group__r.Division__c = :recordId
                 OR TimeBlock__c = :recordId
                 OR Offering__c = :recordId
+                OR LinkedChoice__c = :recordId
             )
           WITH USER_MODE
           ORDER BY Name, Id
