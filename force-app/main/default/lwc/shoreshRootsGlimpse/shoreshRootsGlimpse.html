@@ -1,0 +1,47 @@
+<template>
+  <!-- One card's glimpse (c/shoreshRootsFaces): a picture for the eye; the card's name says
+       what it is, so the picture is hidden from screen readers. -->
+  <svg
+    class={svgClass}
+    viewBox={viewBox}
+    preserveAspectRatio={align}
+    aria-hidden="true"
+    focusable="false"
+    data-id="glimpse"
+  >
+    <template for:each={shapes} for:item="s">
+      <template lwc:if={s.rect}>
+        <rect
+          key={s.key}
+          x={s.x}
+          y={s.y}
+          width={s.w}
+          height={s.h}
+          rx={s.rx}
+          class={s.cls}
+        ></rect>
+      </template>
+      <template lwc:elseif={s.text}>
+        <text
+          key={s.key}
+          x={s.x}
+          y={s.y}
+          class={s.cls}
+          text-anchor={s.anchor}
+          style={s.style}
+        >
+          {s.value}
+        </text>
+      </template>
+      <template lwc:else>
+        <path
+          key={s.key}
+          d={s.d}
+          class={s.cls}
+          transform={s.transform}
+          style={s.style}
+        ></path>
+      </template>
+    </template>
+  </svg>
+</template>

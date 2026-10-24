@@ -55,6 +55,31 @@
   padding: 0;
 }
 
+/* A screen growing out of its Roots card, or shrinking home into it (repo ADR 0020): Roots lies
+   behind, at the body's top, and the screen is drawn over it, clipped to the sheet. Roots takes
+   the pointer again while the screen goes home (a card can be chosen mid-way). */
+.body {
+  position: relative;
+}
+
+.screen_behind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.screen_behind_live {
+  pointer-events: auto;
+}
+
+.screen_travel {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- the camp row in the menu (step 3b, ADR 0015 choice 12) ---------- */
 
 /* The camp, then the season, each one item tall; the season's details open under them. */

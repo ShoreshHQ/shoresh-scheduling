@@ -39,6 +39,18 @@ export function edgeFade(x, y, w, h) {
   return Math.max(0, 1 - Math.min(ex, ey) * 5);
 }
 
+/**
+ * The same for a field whose content covers it (Roots' table, ADR 0020): dots across the whole
+ * field, fainter in the middle (45% of their strength) and full at the edges, so the empty table
+ * between the cards reacts to the cursor too.
+ */
+export function tableFade(x, y, w, h) {
+  if (w <= 0 || h <= 0) return 0;
+  const ex = Math.min(x, w - x) / w;
+  const ey = Math.min(y, h - y) / h;
+  return 0.45 + 0.55 * Math.max(0, 1 - Math.min(ex, ey) * 4);
+}
+
 const inside = (x, y, r) =>
   x >= r.left - CLEAR &&
   x <= r.right + CLEAR &&
@@ -48,9 +60,10 @@ const inside = (x, y, r) =>
 /**
  * The dots of a w by h field: every GAP, fading in from the edges, none within CLEAR of a
  * rectangle in `clear` (words and controls, in the field's own coordinates), so a dot is never
- * under words. Returns parallel arrays: x, y, and fade (0 to 1).
+ * under words. fadeOf: how strongly a dot shows where it is (edgeFade, or tableFade). Returns
+ * parallel arrays: x, y, and fade (0 to 1).
  */
-export function layoutDots(w, h, clear = []) {
+export function layoutDots(w, h, clear = [], fadeOf = edgeFade) {
   const xs = [];
   const ys = [];
   const fades = [];
@@ -60,7 +73,7 @@ export function layoutDots(w, h, clear = []) {
     for (let i = 0; i < cols; i++) {
       const x = i * GAP;
       const y = j * GAP;
-      const fade = edgeFade(x, y, w, h);
+      const fade = fadeOf(x, y, w, h);
       if (fade > 0 && !clear.some((r) => inside(x, y, r))) {
         xs.push(x);
         ys.push(y);

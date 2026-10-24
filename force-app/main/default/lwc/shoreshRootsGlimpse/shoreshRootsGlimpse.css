@@ -1,0 +1,160 @@
+@import "c/shoreshTokens";
+
+/* A card's glimpse (repo ADR 0020; a mask takes only the alpha of its colour): every fill and stroke from the design system's tokens
+   (ADR 0015). The shade's transparent steps are the primary's deepest step, lighter. */
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.glimpse {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.glimpse_fade-right {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    var(--shoresh-color-text) 78%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    var(--shoresh-color-text) 78%,
+    transparent
+  );
+}
+
+.glimpse_fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    var(--shoresh-color-text) 80%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    var(--shoresh-color-text) 80%,
+    transparent
+  );
+}
+
+/* fills */
+.f50 {
+  fill: var(--shoresh-color-primary-50);
+}
+.f300 {
+  fill: var(--shoresh-color-primary-300);
+}
+.f400 {
+  fill: var(--shoresh-color-primary-400);
+}
+.f500 {
+  fill: var(--shoresh-color-primary-500);
+}
+.fhl {
+  fill: var(--shoresh-color-highlight);
+}
+.fshade {
+  fill: var(--shoresh-shade);
+  fill-opacity: 0.18;
+}
+.fnone {
+  fill: none;
+}
+
+/* strokes */
+.sedge {
+  stroke: var(--shoresh-shade);
+  stroke-opacity: 0.38;
+}
+.s400 {
+  stroke: var(--shoresh-color-primary-400);
+}
+.s500 {
+  stroke: var(--shoresh-color-primary-500);
+}
+.s700 {
+  stroke: var(--shoresh-shade);
+}
+.snone {
+  stroke: none;
+}
+.dash {
+  stroke-dasharray: 3 2.5;
+}
+
+/* words: 11 px in the glimpse's units, as the grid's (g-t), the secondary words (g-t2), the
+   mono numbers and times (g-m), this week's number in the highlight (g-mb); the picture-only
+   faces' key words (g-p*) take their size from the shape. */
+.g-t,
+.g-tb,
+.g-t2,
+.g-p,
+.g-p2 {
+  font-family: var(--shoresh-font-sans);
+  font-size: 11px;
+}
+.g-m,
+.g-mb,
+.g-pm,
+.g-pmb {
+  font-family: var(--shoresh-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.g-t,
+.g-tb,
+.g-p {
+  fill: var(--shoresh-text-1);
+}
+.g-tb,
+.g-p,
+.g-mb,
+.g-pmb {
+  font-weight: 500;
+}
+.g-t2,
+.g-p2,
+.g-m,
+.g-pm {
+  fill: var(--shoresh-text-2);
+}
+.g-mb,
+.g-pmb {
+  fill: var(--shoresh-color-highlight);
+}
+
+/* the padlock, the link mark and the published check */
+.g-lock,
+.g-link {
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.g-flag,
+.g-flag-open {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.g-flag {
+  stroke: var(--shoresh-text-1);
+}
+.g-flag-open {
+  stroke: var(--shoresh-shade);
+}
+.g-check {
+  fill: none;
+  stroke: var(--shoresh-color-highlight);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.g-check_big {
+  stroke-width: 2;
+}

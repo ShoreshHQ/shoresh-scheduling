@@ -1,273 +1,351 @@
 @import "c/shoreshTokens";
 
-/* Shoresh desktop's Roots layout (RootsHomeScreen.jsx), in Salesforce's design tokens. */
-.roots {
-  max-width: 1180px;
-}
-
-.roots-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0 0 1rem;
-}
-
-/* The forward door to the schedule, tinted apart from the cards. */
-.roots-door {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--slds-g-color-accent-2, #0176d3);
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-/* Its two ways in, equal: the same look, side by side. */
-.roots-door-ways {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.roots-door-way {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--slds-g-color-accent-2, #0176d3);
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  font: inherit;
-  cursor: pointer;
-  color: var(--slds-g-color-brand-base-30, #014486);
-}
-
-.roots-door-way:hover {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
-}
-
-.roots-door-way:focus-visible {
-  outline: 2px solid var(--slds-g-color-brand-base-50, #0176d3);
-  outline-offset: 2px;
-}
-
-/* Cards beside the attention list; stacked (attention first) on a narrow screen. */
-.roots-layout {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-}
-
-.roots-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.roots-rail {
-  flex: 0 0 300px;
-  position: sticky;
-  top: 1.5rem;
-}
-
-@media (max-width: 1280px) {
-  .roots-layout {
-    flex-direction: column;
-  }
-  .roots-rail {
-    order: -1;
-    position: static;
-    width: 100%;
-    flex: none;
-  }
-  .roots-main {
-    width: 100%;
-  }
-}
-
-.roots-section-label {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  margin-bottom: 0.625rem;
-}
-
-/* Explicit places, as on the desktop, so the grid never shifts cards around. */
-.roots-bento {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-}
-
-.roots-card {
+/*
+ * Roots: the canasta table (repo ADR 0020; the approved mock-up
+ * design-research/roots-approved/table.css). Every colour, shadow and step is a design-system
+ * token (ADR 0015). Cards are placed and moved from script (c/shoreshMotion); only their lift
+ * under the pointer or the cursor is a CSS transition.
+ */
+:host {
   display: block;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 0.5rem;
-  padding: 1rem;
 }
 
-button.roots-card {
-  cursor: pointer;
-}
-
-button.roots-card:hover,
-button.roots-card:focus {
-  border-color: var(--slds-g-color-accent-2, #0176d3);
-}
-
-.roots-card_activities {
-  grid-column: 1 / span 2;
-  grid-row: 1 / span 2;
-}
-.roots-card_groups {
-  grid-column: 1 / span 2;
-  grid-row: 3 / span 2;
-}
-.roots-card_divisions {
-  grid-column: 3;
-  grid-row: 1;
-}
-.roots-card_locations {
-  grid-column: 3;
-  grid-row: 2;
-}
-.roots-card_timeBlocks {
-  grid-column: 3;
-  grid-row: 3;
-}
-.roots-card_weeks {
-  grid-column: 3;
-  grid-row: 4;
-}
-.roots-card_fixedActivities {
-  grid-column: 1 / span 3;
-  grid-row: 5;
-}
-
-.roots-card-header {
+.roots {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  min-height: 520px;
+}
+
+.roots-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  transform-origin: 50% 50%;
+}
+
+/* ---------- the table ---------- */
+
+.table-field {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  margin: var(--shoresh-space-pad) var(--shoresh-space-pad) 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-grid);
+  box-shadow: var(--shoresh-well-in);
+  overflow: hidden;
+}
+
+.table {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.meld {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spread {
+  position: absolute;
+  pointer-events: none;
+}
+
+.meld[data-open] .spread {
+  pointer-events: auto;
+}
+
+/* A meld's name: the menu section's title, in its small mono capitals. On the table's own
+   colour, so no dot is ever under its words (ADR 0015 choice 13). */
+.mlabel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 24px;
+  display: flex;
   align-items: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.roots-card_large .roots-card-header,
-.roots-card_wide .roots-card-header {
-  font-size: 0.9375rem;
-}
-
-.roots-count {
-  font-family: var(--slds-g-font-family-monospace, monospace);
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.roots-card_large .roots-count {
-  font-size: 1.125rem;
-}
-
-/* Something has taken root here. */
-.roots-count_rooted {
-  color: var(--slds-g-color-success-base-40, #2e844a);
-}
-
-.roots-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.roots-chip {
-  padding: 3px 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--slds-g-color-neutral-base-30, #444);
-}
-
-.roots-chip_more {
-  background: transparent;
-  border-style: dashed;
-}
-
-.roots-attention-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.5rem;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 2px solid transparent;
-  border-radius: 0.25rem;
-}
-
-.roots-attention-row:hover,
-.roots-attention-row:focus {
-  border-left-color: var(--shoresh-caution);
-}
-
-.roots-attention-name {
-  font-weight: 600;
-  font-size: 0.8125rem;
-  overflow-wrap: break-word;
-}
-
-.roots-attention-why {
-  flex-basis: 100%;
-  font-size: 0.75rem;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  overflow-wrap: break-word;
-}
-
-.roots-tag {
-  padding: 2px 0.75rem;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  background: var(--shoresh-caution-tint);
+  padding: 0 var(--shoresh-s2);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-grid);
+  color: var(--shoresh-text-2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
+  pointer-events: auto;
+  transform-origin: 50% 50%;
 }
 
-.roots-all-clear {
-  padding: 1rem 0.5rem;
-  text-align: center;
-  font-size: 0.8125rem;
-  color: var(--slds-g-color-neutral-base-50, #747474);
+.mlabel_door {
+  cursor: pointer;
 }
 
-.roots-bottom {
+.mlabel_door:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-text-1);
+}
+
+.mlabel_door:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+/* A card: a button the size of the card, placed by script; its face lifts. */
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--cw);
+  height: var(--ch);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  border-radius: var(--shoresh-radius-piece);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.card[data-gone] {
+  pointer-events: none;
+}
+
+.card:focus-visible {
+  outline: none;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: center;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-card-rest);
+  transition:
+    transform var(--shoresh-t-lift) var(--shoresh-flow),
+    box-shadow var(--shoresh-t-lift) var(--shoresh-flow);
 }
 
-/* Last import, with Undo (desktop LastImportUndo.jsx). */
-.roots-last-import {
+.meld[data-open] .card:hover .face,
+.card:focus-visible .face {
+  transform: translateY(-6px);
+  box-shadow: var(--shoresh-card-lift);
+}
+
+.meld:not([data-open]) .card[data-front]:hover .face {
+  transform: translateY(-3px);
+  box-shadow: var(--shoresh-card-lift);
+}
+
+.card:active .face {
+  transform: translateY(-2px);
+}
+
+.card:focus-visible .face {
+  box-shadow: var(--shoresh-card-lift), var(--shoresh-focus-ring);
+}
+
+.name {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--nfs, 13px);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: var(--shoresh-text-1);
+}
+
+.name small {
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--shoresh-text-2);
+}
+
+.card[data-pic] .name small {
+  display: none;
+}
+
+.glimpse {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ---------- where the hand will lie (slice R2): what needs attention ---------- */
+
+.hand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--shoresh-s2);
+  padding: var(--shoresh-s4) var(--shoresh-space-pad);
+}
+
+.hand:empty {
+  display: none;
+}
+
+.hand-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: calc(var(--shoresh-u) * 80);
+  padding: var(--shoresh-s2) var(--shoresh-s5) var(--shoresh-s2)
+    var(--shoresh-s3);
+  border: 0;
+  border-radius: var(--shoresh-radius-piece);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-card-rest);
+  color: var(--shoresh-text-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--shoresh-t-lift) var(--shoresh-flow),
+    box-shadow var(--shoresh-t-lift) var(--shoresh-flow);
+}
+
+.hand-item:hover,
+.hand-item:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: var(--shoresh-card-lift);
+  outline: none;
+}
+
+.hand-item:focus-visible {
+  box-shadow: var(--shoresh-card-lift), var(--shoresh-focus-ring);
+}
+
+.hand-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--shoresh-s2);
+  font-weight: 500;
+}
+
+.hand-tag {
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--shoresh-text-2);
+}
+
+.hand-why {
+  color: var(--shoresh-text-2);
+}
+
+.hand-mark {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+}
+
+/* ---------- the workbook's bar ---------- */
+
+.tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
-  margin-top: 0.75rem;
+  gap: var(--shoresh-s2);
+  padding: var(--shoresh-space-pad);
 }
 
-.roots-weak {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-size: 0.8125rem;
+.last-import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s2);
+}
+
+.weak {
+  color: var(--shoresh-text-2);
+}
+
+/* ---------- the sheet a screen grows out of ---------- */
+
+.sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--shoresh-color-primary-50);
+  transform-origin: 50% 50%;
+}
+
+.sheet[hidden],
+.sheet-shade[hidden] {
+  display: none;
+}
+
+.sheet-shade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 29;
+  pointer-events: none;
+  box-shadow: var(--shoresh-card-lift);
+  transform-origin: 50% 50%;
+}
+
+.sheet-shelf {
+  position: absolute;
+  inset: 0;
+  background: var(--shoresh-surface-shelf);
+  opacity: 0;
+}
+
+/* The card's face, riding on the sheet at the card's own size, scaled with it. */
+.ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.ghost .face {
+  box-shadow: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face,
+  .hand-item {
+    transition: none;
+  }
+
+  .meld[data-open] .card:hover .face,
+  .meld:not([data-open]) .card[data-front]:hover .face,
+  .card:focus-visible .face,
+  .card:active .face,
+  .hand-item:hover,
+  .hand-item:focus-visible {
+    transform: none;
+  }
 }

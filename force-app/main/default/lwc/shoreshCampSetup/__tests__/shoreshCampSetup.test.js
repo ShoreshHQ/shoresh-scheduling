@@ -2454,16 +2454,131 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
-  it("Roots and Camp words, drawn by their own components, focus their own headings", async () => {
+  it("Roots takes the cursor on the card of the screen left, else on its own heading (ADR 0020)", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
     const roots = q(element, "c-shoresh-roots");
     roots.focusHeading = jest.fn();
+    roots.focusCard = jest.fn(() => true);
+    // Back from Weeks: its card on Roots has the cursor, as after the travel home.
     await openScreen(element, "weeks");
     await openScreen(element, "roots");
+    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    expect(roots.focusCard).toHaveBeenCalledWith("weeks");
+    expect(roots.focusHeading).not.toHaveBeenCalled();
+    // Back from the Schedules doorway, which has no card: Roots' own heading.
+    q(element, "c-shoresh-menu")
+      .shadowRoot.querySelector('[data-door="scheduleWeeks"]')
+      .click();
+    await flush();
+    await openScreen(element, "roots");
     expect(roots.focusHeading).toHaveBeenCalled();
+  });
+
+  describe("a card's screen grows out of it and goes home into it (ADR 0020)", () => {
+    const realMatchMedia = window.matchMedia;
+    let frames;
+    let time;
+
+    beforeEach(() => {
+      frames = [];
+      time = 1000;
+      window.matchMedia = jest.fn(() => ({
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }));
+      window.requestAnimationFrame = jest.fn((fn) => frames.push(fn));
+      window.cancelAnimationFrame = jest.fn();
+      jest.spyOn(performance, "now").mockImplementation(() => time);
+    });
+
+    afterEach(() => {
+      window.matchMedia = realMatchMedia;
+      delete window.requestAnimationFrame;
+      delete window.cancelAnimationFrame;
+      jest.restoreAllMocks();
+    });
+
+    const run = (ms) => {
+      for (let t = 0; t < ms; t += 16) {
+        time += 16;
+        const due = frames;
+        frames = [];
+        const now = time;
+        due.forEach((fn) => fn(now));
+      }
+    };
+    const classOf = (element, screen) =>
+      q(element, `[data-screen="${screen}"]`).className;
+
+    it("out from the card, Roots lying behind; home again, the cursor on the card", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      roots.shadowRoot.querySelector('[data-card="activities"]').click();
+      await flush();
+      expect(classOf(element, "roots")).toBe("screen_behind");
+      expect(classOf(element, "activities")).toBe("screen_travel");
+      expect(q(element, '[data-screen="activities"]').style.clipPath).toContain(
+        "inset("
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["activities"]);
+      expect(q(element, '[data-screen="activities"]').style.clipPath).toBe("");
+      // The menu's Roots: home into the Activities card.
+      await openScreen(element, "roots");
+      expect(classOf(element, "roots")).toBe(
+        "screen_behind screen_behind_live"
+      );
+      expect(classOf(element, "activities")).toBe("screen_travel");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="activities"]')
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+    });
+
+    it("another screen chosen mid-way ends the journey where it is", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector('[data-card="groups"]')
+        .click();
+      await flush();
+      run(100);
+      await openScreen(element, "weeks");
+      await flush();
+      expect(shownScreens(element)).toEqual(["weeks"]);
+      expect(q(element, '[data-screen="groups"]').style.clipPath).toBe("");
+    });
+
+    it("with reduced motion, a card simply opens its screen", async () => {
+      window.matchMedia = jest.fn((query) => ({
+        matches: query.includes("reduced-motion"),
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }));
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector('[data-card="groups"]')
+        .click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+      expect(frames).toHaveLength(0);
+    });
   });
 
   it("opens Bring in choices from the page's address, never from the menu (it hangs from Elective seats)", async () => {

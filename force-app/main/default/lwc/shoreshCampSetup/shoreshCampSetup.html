@@ -252,7 +252,7 @@
           </c-shoresh-menu>
         </div>
         <div class="piece frame">
-          <div class={bodyClass}>
+          <div class={bodyClass} data-id="frame-body">
             <!-- New season -->
             <template lwc:if={isNewSeason}>
               <h2
@@ -390,6 +390,7 @@
                   setup={setup}
                   terms={terms}
                   problems={problems}
+                  active={rootsActive}
                   onnavigate={handleNavigate}
                   onundoimport={handleUndoImport}
                   onimported={handleImported}

@@ -27,6 +27,15 @@ module.exports = defineConfig([
     }
   },
 
+  // Shoresh's one model of motion (Roots' table, ADR 0020) draws its frames, and counts its short
+  // waits, with requestAnimationFrame. One file, one rule; the same in code-analyzer.yml.
+  {
+    files: ["**/lwc/shoreshMotion/shoreshMotion.js"],
+    rules: {
+      "@lwc/lwc/no-async-operation": "off"
+    }
+  },
+
   // LWC configuration with override for LWC test files
   {
     files: ["**/lwc/**/*.test.js"],

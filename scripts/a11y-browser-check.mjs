@@ -57,6 +57,11 @@
  * - the living dot field on Roots (ADR 0015 choice 13): it is drawn, hidden from screen readers,
  *   glows when the mouse moves near it and settles back to rest, logs no errors, and with reduced
  *   motion asked for (emulated) it stays still while the mouse moves;
+ * - Roots' table (ADR 0020): Tab into a meld fans it (axe with it open), an arrow moves to the
+ *   next card, Escape closes it with the cursor on its front card; Enter grows Weeks out of its
+ *   card with focus on Weeks' heading, and the menu's Roots shrinks it home with the cursor on the
+ *   Weeks card; the pointer resting on a meld opens it and leaving closes it; with reduced motion
+ *   emulated a card opens its screen at once;
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
@@ -1694,6 +1699,150 @@ async function dotField() {
   }
 }
 
+// ---------- Roots: the canasta table (ADR 0020, wiki decisions 60 to 68) ----------
+
+const isCard = (re) => (f) =>
+  f.tag === "button" &&
+  f.components.includes("c-shoresh-roots") &&
+  re.test(f.name);
+const meldOpen = (key) =>
+  shown(`c-shoresh-roots [data-meld="${key}"]`)
+    .first()
+    .evaluate((m) => m.hasAttribute("data-open"));
+const clipOf = (screen) =>
+  page
+    .locator(APP)
+    .locator(`[data-screen="${screen}"]`)
+    .first()
+    .evaluate((w) => w.style.clipPath || "");
+
+/**
+ * Roots' table (ADR 0020): Tab into the first meld fans it; an arrow moves to its next card;
+ * Escape closes it with the cursor on its front card; Enter grows Weeks out of its card (the
+ * screen clipped to the growing sheet), with focus on Weeks' heading; the menu's Roots shrinks it
+ * home with the cursor back on the Weeks card. The pointer resting on a meld opens it and leaving
+ * closes it. With reduced motion emulated a card opens its screen at once. axe on the open table.
+ */
+async function rootsTable() {
+  const S = "Roots";
+  const weeksCard = await tabTo(isCard(/^Weeks$/), { max: 20 });
+  if (!weeksCard) throw new Error("The Weeks card was not reached with Tab.");
+  await pause(900);
+  if (await meldOpen("camp")) {
+    results.pass(S, "Tab into a meld fans it", "The Camp meld opened.");
+  } else {
+    await shot(S, "Tab into a meld");
+    results.fail(S, "Tab into a meld fans it", "The Camp meld stayed closed.");
+  }
+  await axe("Roots (a meld open)");
+  await press("ArrowRight", 300);
+  await expectFocus(S, "An arrow moves to the next card", {
+    tag: "button",
+    name: /^Programs$/
+  });
+  await press("Escape", 900);
+  const closed = !(await meldOpen("camp"));
+  const back = await focus();
+  if (closed && back && /^Weeks$/.test(back.name)) {
+    results.pass(
+      S,
+      "Escape closes the meld, the cursor on its front card",
+      "Closed; focus on the Weeks card."
+    );
+  } else {
+    await shot(S, "Escape closes the meld");
+    results.fail(
+      S,
+      "Escape closes the meld, the cursor on its front card",
+      `${closed ? "closed" : "still open"}; focus on ${formatFocus(back)}.`
+    );
+  }
+  await press("Enter", 60);
+  const midway = await clipOf("weeks");
+  await pause(1800);
+  if (/inset\(/.test(midway) && !(await clipOf("weeks"))) {
+    results.pass(
+      S,
+      "A card grows into its screen",
+      "Weeks was clipped to the growing card, then shown whole."
+    );
+  } else {
+    await shot(S, "A card grows into its screen");
+    results.fail(
+      S,
+      "A card grows into its screen",
+      `clip mid-way "${midway}", after "${await clipOf("weeks")}".`
+    );
+  }
+  await expectFocus(S, "Opened from its card: focus on the heading", {
+    tag: /^h[1-3]$/,
+    name: /^Weeks$/
+  });
+  const roots =
+    (await tabTo(isMenuLink(/^Roots/), { back: true })) ||
+    (await tabTo(isMenuLink(/^Roots/), { max: 280 }));
+  if (!roots) throw new Error("The menu's Roots was not reached with Tab.");
+  await press("Enter", 1800);
+  await expectFocus(S, "Back on Roots: the cursor on the card it came from", {
+    tag: "button",
+    name: /^Weeks$/
+  });
+  // The pointer: resting on Activities & Events opens it; leaving closes it.
+  await press("Escape", 600);
+  const front = shown(
+    'c-shoresh-roots [data-meld="activities"] [data-front]'
+  ).first();
+  await front.hover();
+  await pause(900);
+  const opened = await meldOpen("activities");
+  await page.mouse.move(2, 2);
+  await pause(1200);
+  const shut = !(await meldOpen("activities"));
+  if (opened && shut) {
+    results.pass(
+      S,
+      "The pointer resting on a meld opens it; leaving closes it",
+      "Opened under the pointer, closed after it left."
+    );
+  } else {
+    await shot(S, "Pointer on a meld");
+    results.fail(
+      S,
+      "The pointer resting on a meld opens it; leaving closes it",
+      `${opened ? "opened" : "did not open"}; ${shut ? "closed" : "stayed open"}.`
+    );
+  }
+  // Reduced motion: no travel, the screen at once.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  try {
+    if (!(await tabTo(isCard(/^Weeks$/), { max: 40 }))) {
+      throw new Error("The Weeks card was not reached with Tab.");
+    }
+    await press("Enter", 60);
+    const still = await clipOf("weeks");
+    if (!still && (await exists('[data-screen="weeks"] [data-heading]'))) {
+      results.pass(
+        S,
+        "With reduced motion a card opens its screen at once",
+        "No clip, no travel."
+      );
+    } else {
+      results.fail(
+        S,
+        "With reduced motion a card opens its screen at once",
+        `clip "${still}".`
+      );
+    }
+    await openFromMenu("Weeks", /^Weeks/);
+    const home =
+      (await tabTo(isMenuLink(/^Roots/), { back: true })) ||
+      (await tabTo(isMenuLink(/^Roots/), { max: 280 }));
+    if (home) await press("Enter", 800);
+  } finally {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+  }
+}
+
 // ---------- Import last year (ADR 0006; ADR 0015 choice 15; wiki decision 56) ----------
 
 /**
@@ -1895,6 +2044,7 @@ async function campSetup() {
     await axe("Roots");
   });
   await step(S, "Roots: the living dot field", dotField);
+  await step(S, "Roots: the table by keyboard and mouse", rootsTable);
   await step(S, "Import last year: the one page, by keyboard", importLastYear);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {

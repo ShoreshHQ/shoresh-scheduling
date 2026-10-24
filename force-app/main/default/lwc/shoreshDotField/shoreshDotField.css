@@ -10,6 +10,12 @@
   isolation: isolate;
 }
 
+/* A solid field fills the box its page gives it (positioned there), as Roots' table does. */
+.field_solid {
+  position: absolute;
+  inset: 0;
+}
+
 /* Behind the content, never in the way: no clicks, no focus, nothing read out. */
 .dots {
   position: absolute;

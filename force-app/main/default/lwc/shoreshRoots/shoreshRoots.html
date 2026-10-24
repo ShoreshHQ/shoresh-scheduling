@@ -1,170 +1,188 @@
 <template>
-  <!-- The living dot field behind Roots (ADR 0015 choice 13): decoration only. -->
-  <c-shoresh-dot-field>
-    <div class="roots" data-id="roots">
-      <h2 class="roots-title" tabindex="-1" data-heading>Roots</h2>
+  <div class="roots" data-id="roots">
+    <h2 class="slds-assistive-text" tabindex="-1" data-heading>Roots</h2>
 
-      <!-- The door to the schedules: both, side by side, never one picked for the director. -->
-      <div
-        class="roots-door"
-        role="group"
-        aria-labelledby="schedule-door-title"
-        data-id="schedule-door"
-      >
-        <span id="schedule-door-title">Build or generate the schedule</span>
-        <span class="roots-door-ways">
-          <template for:each={scheduleDoors} for:item="door">
-            <button
-              key={door.screen}
-              type="button"
-              class="roots-door-way"
-              data-screen={door.screen}
-              onclick={handleOpen}
+    <div class="roots-body" data-id="body">
+      <!-- The table: the three melds on the living dot field (ADR 0015 choice 13, ADR 0020).
+           The cards and labels cover the dots with their own surfaces. -->
+      <c-shoresh-dot-field class="table-field" solid>
+        <div class="table" data-id="table">
+          <template for:each={melds} for:item="meld">
+            <div
+              key={meld.key}
+              class="meld"
+              role="group"
+              aria-label={meld.title}
+              data-meld={meld.key}
+              onpointerover={handleMeldOver}
+              onpointerout={handleMeldOut}
+              onfocusin={handleMeldFocusIn}
+              onfocusout={handleMeldFocusOut}
+              onkeydown={handleMeldKeydown}
             >
-              <span>{door.label}</span>
-              <span aria-hidden="true">→</span>
-            </button>
-          </template>
-        </span>
-      </div>
-
-      <div class="roots-layout">
-        <div class="roots-main">
-          <section class="slds-m-top_large">
-            <div class="roots-section-label">What has taken root</div>
-            <div class="roots-bento">
-              <template for:each={cards} for:item="card">
-                <template lwc:if={card.coming}>
-                  <div
-                    key={card.key}
-                    class={card.className}
-                    data-card={card.key}
-                  >
-                    <div class="roots-card-header">
-                      <span>{card.label}</span>
-                      <span class="slds-badge">Coming</span>
-                    </div>
-                  </div>
-                </template>
-                <template lwc:else>
-                  <button
-                    key={card.key}
-                    type="button"
-                    class={card.className}
-                    data-card={card.key}
-                    data-screen={card.key}
-                    onclick={handleOpen}
-                  >
-                    <span class="roots-card-header">
-                      <span>{card.label}</span>
-                      <span class={card.countClass} data-count={card.key}
-                        >{card.count}</span
-                      >
+              <div class="spread" data-spread></div>
+              <template lwc:if={meld.door}>
+                <!-- The Schedules title is a doorway, as in the menu (wiki decision 61). -->
+                <button
+                  type="button"
+                  class="mlabel mlabel_door"
+                  data-label
+                  data-screen={meld.door}
+                  onclick={handleOpen}
+                >
+                  {meld.title}
+                </button>
+              </template>
+              <template lwc:else>
+                <div class="mlabel" data-label aria-hidden="true">
+                  {meld.title}
+                </div>
+              </template>
+              <template for:each={meld.cards} for:item="card">
+                <button
+                  key={card.key}
+                  type="button"
+                  class="card"
+                  data-card={card.key}
+                  aria-label={card.label}
+                  onclick={handleCardClick}
+                >
+                  <span class="face" data-id="face">
+                    <span class="name"
+                      ><span class="name-text">{card.label}</span
+                      ><template lwc:if={card.small}
+                        ><small class="shoresh-num"
+                          >{card.small}</small
+                        ></template
+                      ></span
+                    >
+                    <span class="glimpse">
+                      <c-shoresh-roots-glimpse
+                        glimpse={card.glimpse}
+                      ></c-shoresh-roots-glimpse>
                     </span>
-                    <template lwc:if={card.hasChips}>
-                      <span class="roots-chips">
-                        <template for:each={card.chips} for:item="chip">
-                          <span key={chip.key} class="roots-chip"
-                            >{chip.name}</span
-                          >
-                        </template>
-                        <template lwc:if={card.more}>
-                          <span class="roots-chip roots-chip_more"
-                            >{card.more}</span
-                          >
-                        </template>
-                      </span>
-                    </template>
-                  </button>
-                </template>
+                  </span>
+                </button>
               </template>
             </div>
-          </section>
-
-          <div class="roots-bottom">
-            <template lwc:if={campIsEmpty}>
-              <lightning-button
-                data-id="import"
-                data-screen="import"
-                label="Import last year"
-                variant="brand"
-                onclick={handleOpen}
-              ></lightning-button>
-            </template>
-            <lightning-button
-              data-id="download-workbook"
-              label="Download worksheet"
-              icon-name="utility:download"
-              disabled={downloading}
-              onclick={handleDownloadWorkbook}
-            ></lightning-button>
-            <c-shoresh-list-import
-              data-id="workbook-import"
-              workbook
-              setup={setup}
-              terms={terms}
-              onimported={handleImported}
-            ></c-shoresh-list-import>
-            <template lwc:if={campHasData}>
-              <lightning-button
-                data-id="import"
-                data-screen="import"
-                label="Re-import last year"
-                variant="base"
-                onclick={handleOpen}
-              ></lightning-button>
-            </template>
-            <template lwc:if={lastImport}>
-              <div class="roots-last-import" data-id="last-import">
-                <span>{lastImport.line}</span>
-                <span class="roots-weak"
-                  >Undo removes what this import added and puts back what it
-                  changed. Anything you have edited since stays as it is.</span
-                >
-                <lightning-button
-                  data-id="undo-import"
-                  label="Undo last import"
-                  onclick={handleUndoImport}
-                ></lightning-button>
-              </div>
-            </template>
-          </div>
+          </template>
         </div>
+      </c-shoresh-dot-field>
 
-        <aside class="roots-rail" aria-label="Needs your attention">
-          <div class="roots-section-label slds-m-top_large">
-            Needs your attention
-          </div>
-          <template lwc:if={hasAttention}>
-            <template for:each={attention} for:item="row">
-              <button
-                key={row.key}
-                type="button"
-                class="roots-attention-row"
-                data-screen={row.screen}
-                data-attention={row.key}
-                aria-label={row.ariaLabel}
-                onclick={handleOpen}
+      <!-- Where the hand will lie (slice R2): until then, what needs attention, each item opening
+           the screen that fixes it. Nothing shows while all is calm. -->
+      <div
+        class="hand"
+        role="group"
+        aria-label="Needs your attention"
+        data-id="attention"
+      >
+        <template lwc:if={hasAttention}>
+          <template for:each={attention} for:item="row">
+            <button
+              key={row.key}
+              type="button"
+              class="hand-item"
+              data-screen={row.screen}
+              data-attention={row.key}
+              aria-label={row.ariaLabel}
+              onclick={handleOpen}
+            >
+              <span class="hand-name"
+                >{row.name}<span class="hand-tag">{row.tag}</span></span
               >
-                <span class="roots-attention-name">{row.name}</span>
-                <span class="roots-tag">{row.tag}</span>
-                <span class="roots-attention-why">{row.why}</span>
-              </button>
-            </template>
+              <span class="hand-why">{row.why}</span>
+              <span
+                class="shoresh-look-mark hand-mark"
+                aria-hidden="true"
+              ></span>
+            </button>
           </template>
-          <template lwc:else>
-            <div class="roots-all-clear" data-id="all-clear">
-              <lightning-icon
-                icon-name="utility:success"
-                size="small"
-                variant="success"
-                alternative-text=""
-              ></lightning-icon>
-              <div class="slds-m-top_x-small">All clear</div>
-            </div>
-          </template>
-        </aside>
+        </template>
+        <template lwc:else>
+          <span class="slds-assistive-text" data-id="all-clear">All clear</span>
+        </template>
+      </div>
+
+      <!-- The camp's workbook: secondary actions in a bar along the bottom (decision 28C). -->
+      <div class="shoresh-hairline" role="presentation"></div>
+      <div class="tools" data-id="tools">
+        <template lwc:if={campIsEmpty}>
+          <lightning-button
+            data-id="import"
+            data-screen="import"
+            label="Import last year"
+            variant="brand"
+            onclick={handleOpen}
+          ></lightning-button>
+        </template>
+        <lightning-button
+          data-id="download-workbook"
+          label="Download worksheet"
+          icon-name="utility:download"
+          disabled={downloading}
+          onclick={handleDownloadWorkbook}
+        ></lightning-button>
+        <c-shoresh-list-import
+          data-id="workbook-import"
+          workbook
+          setup={setup}
+          terms={terms}
+          onimported={handleImported}
+        ></c-shoresh-list-import>
+        <template lwc:if={campHasData}>
+          <lightning-button
+            data-id="import"
+            data-screen="import"
+            label="Re-import last year"
+            variant="base"
+            onclick={handleOpen}
+          ></lightning-button>
+        </template>
+        <template lwc:if={lastImport}>
+          <div class="last-import" data-id="last-import">
+            <span>{lastImport.line}</span>
+            <span class="weak"
+              >Undo removes what this import added and puts back what it
+              changed. Anything you have edited since stays as it is.</span
+            >
+            <lightning-button
+              data-id="undo-import"
+              label="Undo last import"
+              onclick={handleUndoImport}
+            ></lightning-button>
+          </div>
+        </template>
       </div>
     </div>
-  </c-shoresh-dot-field>
+
+    <!-- The sheet a screen grows out of (the page drives it): it wears the card's face, which
+         gives way to the screen as it grows. For the eye only. -->
+    <div
+      class="sheet-shade"
+      data-id="sheet-shade"
+      aria-hidden="true"
+      hidden
+    ></div>
+    <div class="sheet" data-id="sheet" aria-hidden="true" hidden>
+      <div class="sheet-shelf" data-id="sheet-shelf"></div>
+      <template lwc:if={travelCard}>
+        <div class="ghost card" data-id="ghost" data-pic={travelPic}>
+          <span class="face">
+            <span class="name"
+              ><span class="name-text">{travelCard.label}</span
+              ><template lwc:if={travelCard.small}
+                ><small class="shoresh-num">{travelCard.small}</small></template
+              ></span
+            >
+            <span class="glimpse">
+              <c-shoresh-roots-glimpse
+                glimpse={travelCard.glimpse}
+              ></c-shoresh-roots-glimpse>
+            </span>
+          </span>
+        </div>
+      </template>
+    </div>
+  </div>
 </template>
