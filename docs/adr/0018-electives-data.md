@@ -610,9 +610,11 @@ linked choices (E9).
     linked choice (slice E8). A camper with no choices is left out (bringing in writes nothing for them). Brought
     back into a new version of the run (a final run doesn't change: Start a new version), campers
     are found by number, else by name. The reader gained one rule for it (`findTable`): a sheet
-    with one row per choice (an Activity column) has its headings on one row, so its first camper
-    with no camper number is never read as a second heading row ("Rank" over "1"); a Jest test
-    reads the file back and finds the same campers and choices.
+    with one row per choice (an Activity column beside a Rank, Day or Period column) has its
+    headings on one row, so its first camper with no camper number is never read as a second
+    heading row ("Rank" over "1"); a lone "Choice" or "Elective" heading over 1, 2, 3 (merged, or
+    a label with blanks to its right) is still a two-row heading of ranked choices. Jest tests
+    read the file back and find the same campers and choices, and read both two-row forms.
 49. **End-of-season Clear** (decisions 48.4 and 59; desktop `purgeElectiveSeason.js`): the runs
     go with their choices and seats, and so does every camper no remaining run uses; elective
     sets, offerings and linked choices stay. The whole season, or the week on screen. Deleted for
