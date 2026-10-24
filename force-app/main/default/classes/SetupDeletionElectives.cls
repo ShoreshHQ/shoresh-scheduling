@@ -108,10 +108,11 @@ public with sharing class SetupDeletionElectives {
           blocks.add(blockByStart.get(start));
         }
       }
-      List<String> weekdays = new List<String>();
+      // Apex ignores case: a local named like WEEKDAYS would hide it.
+      List<String> daysInOrder = new List<String>();
       for (String day : WEEKDAYS) {
         if (days.contains(day)) {
-          weekdays.add(day);
+          daysInOrder.add(day);
         }
       }
       found.kind = 'LinkedChoice';
@@ -119,7 +120,7 @@ public with sharing class SetupDeletionElectives {
       found.name =
         row.Offering__r.Activity__r.Name +
         '|' +
-        String.join(weekdays, '+') +
+        String.join(daysInOrder, '+') +
         '|' +
         String.join(blocks, '+');
       found.campId = row.ElectiveSet__r.Season__r.Camp__c;
