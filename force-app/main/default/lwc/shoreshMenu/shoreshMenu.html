@@ -19,7 +19,30 @@
     </template>
     <template for:each={view} for:item="section">
       <div key={section.key} class={section.sectionClass}>
-        <template lwc:if={section.title}>
+        <template lwc:if={section.door}>
+          <!-- A title that is a doorway (Schedules, wiki decision 61): a real button, in the
+               title's look; the screen it opens is shown as the menu's other screens are. -->
+          <h2 class="section-title section-title_door">
+            <button
+              type="button"
+              class={section.doorClass}
+              aria-current={section.doorCurrent}
+              aria-disabled={section.doorDisabled}
+              data-door={section.door.key}
+              onclick={handleDoorClick}
+            >
+              <span class="door-label">{section.title}</span
+              ><template lwc:if={section.door.reason}
+                ><span
+                  class="slds-assistive-text"
+                  data-reason={section.door.key}
+                  >{section.door.reason}</span
+                ></template
+              >
+            </button>
+          </h2>
+        </template>
+        <template lwc:elseif={section.title}>
           <h2 class="section-title">{section.title}</h2>
         </template>
         <ul>

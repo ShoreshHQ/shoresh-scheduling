@@ -473,7 +473,7 @@ function weekCard(ask, t) {
       ? `Which ${t.sIn("Week")} is ${ask.label} of the files?`
       : `Which ${t.sIn("Week")} is last year's schedule?`,
     subject: `Last year's schedule${ask.label ? ` (${ask.label})` : ""} as a version`,
-    subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Schedules.`,
+    subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Saved versions.`,
     options: [
       ...ask.options.map((name, i) => {
         const start = monthDay((ask.starts || [])[i]);

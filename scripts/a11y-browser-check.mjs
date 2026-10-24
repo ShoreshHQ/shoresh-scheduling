@@ -60,22 +60,26 @@
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
- * - the Schedules page with special days and events (ADR 0014 slice 5): on a version made for the
+ * - the Saved versions page with special days and events (ADR 0014 slice 5): on a version made for the
  *   check (by Apex) with a special day on Tuesday and an event on Monday, the Tuesday pill names
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
- * - the Schedules page's rail (ADR 0005 §14): Versions naming the version on screen, Excel and
+ * - the Saved versions page's rail (ADR 0005 §14): Versions naming the version on screen, Excel and
  *   Print reached by Tab in that order, Print the filled button; Group View's bunk chosen on the
  *   rail with its grid shown; an activity's card in Activity View opening its grid with focus on
  *   the rail's choice that now names it; axe on each view (with --shots, each view and Versions
  *   open, for docs/design/screens/);
- * - the Schedules page's raindrop (issue #129; ADR 0005 §14, ADR 0019 choice 9): on a version made
+ * - the Saved versions page's raindrop (issue #129; ADR 0005 §14, ADR 0019 choice 9): on a version made
  *   for the check (by Apex, through the server's own day save) with the first bunk's Monday first
  *   time block switched to Gym games, the rain plan, the Monday pill is named "…, rainy day" and
  *   carries the drop; Daily View draws one raindrop, before Gym games, said "Gym games, rain plan";
  *   so does Group View for that bunk and Activity View for Gym games (before the bunk's name);
  *   axe on each. The version is deleted after;
+ * - the menu's Schedules title as a doorway (wiki decision 61): reached with Tab as a button in
+ *   the menu, Enter opens the season's weeks with focus on their heading (axe); a week's
+ *   "Manual Build, <week>" (another week than the check's, when the camp has one) opens Manual
+ *   Build with focus on its heading and its Week picker on that week;
  * - Import last year (ADR 0006, redesigned in ADR 0015 choice 15): opened from Roots with focus on
  *   its heading; two made-up files chosen, the cursor on the one page's first question; a choice
  *   pressed keeps the cursor; a Comes in count opens into its names; Chugim read as an elective
@@ -4065,7 +4069,7 @@ delete [SELECT Id FROM SpecialEvent__c WHERE Name = '${CHECK_EVENT}' AND Season_
  * A special day on Tuesday of the check's week (starting from the regular day, as one added on
  * the Special events screen does), an event with one time block and one station, and a version
  * of the week's Manual Build draft with the event in the first bunk's first time block on Monday:
- * the newest version, so the Schedules page opens it by itself.
+ * the newest version, so the Saved versions page opens it by itself.
  */
 function seedSpecials() {
   clearSpecials();
@@ -4104,17 +4108,17 @@ ScheduleDaySaves.write(version.Id, saves);
 }
 
 /**
- * The Schedules page (ADR 0014 slice 5), on the version seedSpecials makes: the Tuesday pill
+ * The Saved versions page (ADR 0014 slice 5), on the version seedSpecials makes: the Tuesday pill
  * names the special day, and chosen, its line shows under the grid (axe); Monday's event is
  * listed under its grid, its Open reached by Tab shows the event's own schedule with focus on
  * "← Monday" (axe), and Enter there goes back with focus on that Open.
  */
 async function schedulesPage() {
-  const S = "Schedules";
+  const S = "Saved versions";
   await step(S, "A special day and an event's own schedule", async () => {
     seedSpecials();
     try {
-      await openFromMenu(S, /^Schedules$/);
+      await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       // "Tue" and the special day's flag on the rail, named "Tuesday, Jun 30, <special day>".
       const tuesday = named(new RegExp(`^Tuesday\\b.*, ${CHECK_DAY}$`), {
@@ -4139,7 +4143,7 @@ async function schedulesPage() {
           "No special day's line under Tuesday's grid."
         );
       }
-      await axe("Schedules, a day a special day replaces");
+      await axe("Saved versions, a day a special day replaces");
       if (
         !(await tabTo(named(/^Monday\b/, { tag: "button" }), {
           max: 10,
@@ -4162,7 +4166,7 @@ async function schedulesPage() {
           name: /^← Monday$/
         }
       );
-      await axe("Schedules, an event's own schedule");
+      await axe("Saved versions, an event's own schedule");
       await press("Enter", 800);
       await expectFocus(S, "Back from the event: focus on its Open again", {
         tag: "button",
@@ -4173,7 +4177,7 @@ async function schedulesPage() {
     }
   });
   await step(S, "The rail: Versions, Excel, Print, and each view", async () => {
-    await openFromMenu(S, /^Schedules$/);
+    await openFromMenu(S, /^Saved versions$/);
     await pickWeek();
     await schedulesShot("schedules-daily");
     // Right of the rail, in order: Versions (naming the version on screen), Excel, then Print.
@@ -4249,13 +4253,13 @@ async function schedulesPage() {
         "No bunk choice on the rail, or no grid."
       );
     }
-    await axe("Schedules, Group View");
+    await axe("Saved versions, Group View");
     await schedulesShot("schedules-group");
     // Activity View: a card opens its grid, focus on the rail's choice naming it.
     if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
       throw new Error("The Activity view was not reached with Tab.");
     await press("Enter", 800);
-    await axe("Schedules, Activity View's cards");
+    await axe("Saved versions, Activity View's cards");
     const card = await tabTo(named(/\btimes? this /, { tag: "button" }), {
       max: 20
     });
@@ -4280,7 +4284,7 @@ async function schedulesPage() {
         `Focus on ${formatFocus(f)}.`
       );
     }
-    await axe("Schedules, an activity's week");
+    await axe("Saved versions, an activity's week");
     await schedulesShot("schedules-activity");
   });
 }
@@ -4298,7 +4302,7 @@ delete [SELECT Id FROM Schedule__c WHERE Name = '${CHECK_RAIN_VERSION}' AND Stat
 /**
  * A version of the week's Manual Build draft whose first bunk's Monday first time block holds Gym
  * games, switched there by a rainy day (its "|switched" mark, saved by ScheduleDaySaves, which
- * keeps it only while the cell holds Gym games): the newest version, so the Schedules page opens
+ * keeps it only while the cell holds Gym games): the newest version, so the Saved versions page opens
  * it by itself.
  */
 function seedRain() {
@@ -4360,12 +4364,12 @@ async function expectRaindrop(S, name, said) {
 }
 
 /**
- * The Schedules page's raindrop (issue #129), on the version seedRain makes: the Monday pill names
+ * The Saved versions page's raindrop (issue #129), on the version seedRain makes: the Monday pill names
  * the rainy day, and Daily, Group and Activity View each draw the one switched cell's raindrop
  * before its name, said after it; axe on each.
  */
 async function schedulesRain() {
-  const S = "Schedules";
+  const S = "Saved versions";
   await step(S, "A rainy day's raindrop", async () => {
     seedRain();
     try {
@@ -4383,7 +4387,7 @@ async function schedulesRain() {
         await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
         await pause(4000);
       }
-      await openFromMenu(S, /^Schedules$/);
+      await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       const monday = await tabTo(
         named(/^Monday\b.*, rainy day$/, { tag: "button" }),
@@ -4408,7 +4412,7 @@ async function schedulesRain() {
         "Daily View: the switched cell's raindrop, said after its name",
         /^Gym games, rain plan$/
       );
-      await axe("Schedules, a rainy day in Daily View");
+      await axe("Saved versions, a rainy day in Daily View");
       await schedulesShot("schedules-rain");
       if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
         throw new Error("The Group view was not reached with Tab.");
@@ -4418,7 +4422,7 @@ async function schedulesRain() {
         "Group View: the first bunk's week shows the raindrop",
         /^Gym games, rain plan$/
       );
-      await axe("Schedules, a rainy day in Group View");
+      await axe("Saved versions, a rainy day in Group View");
       if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
         throw new Error("The Activity view was not reached with Tab.");
       await press("Enter", 800);
@@ -4434,14 +4438,83 @@ async function schedulesRain() {
         "Activity View: the raindrop before the bunk the switch put there",
         /, rain plan$/
       );
-      await axe("Schedules, a rainy day in Activity View");
+      await axe("Saved versions, a rainy day in Activity View");
     } finally {
       clearRain();
     }
   });
 }
 
-/** With --shots: the Schedules page as it is now, by name, for docs/design/screens/. */
+/**
+ * The menu's Schedules title is a doorway (wiki decision 61): a button in the menu (the other
+ * section titles are plain headings) that opens the season's weeks; a week's Manual Build opens
+ * that screen on that week. Picks a week other than the check's when there is one, so the
+ * picker shows the doorway moved it.
+ */
+async function scheduleDoor() {
+  const S = "Schedules";
+  await step(S, "The menu's Schedules title opens the weeks", async () => {
+    const door = (f) =>
+      f.tag === "button" &&
+      f.components.includes("c-shoresh-menu") &&
+      /^Schedules$/.test(f.name);
+    const found =
+      (await tabTo(door, { back: true })) || (await tabTo(door, { max: 280 }));
+    if (!found)
+      throw new Error("The menu's Schedules title was not reached with Tab.");
+    results.pass(
+      S,
+      "The Schedules title is a button in the menu",
+      `Focus on ${formatFocus(found)}.`
+    );
+    await press("Enter", 1500);
+    await expectFocus(S, "Open from the title: focus on the heading", {
+      tag: /^h[1-3]$/,
+      name: /^Schedules$/
+    });
+    await axe("Schedules, the weeks");
+    const toManual = (f) =>
+      f.tag === "button" && /^Manual Build, /.test(f.name);
+    const other = await tabTo(
+      (f) => toManual(f) && f.name !== `Manual Build, ${week}`,
+      { max: 80 }
+    );
+    const chosen = other ? other.name.replace(/^Manual Build, /, "") : week;
+    if (
+      !other &&
+      !(await tabTo((f) => toManual(f) && f.name === `Manual Build, ${week}`, {
+        back: true,
+        max: 80
+      }))
+    )
+      throw new Error(`"Manual Build, ${week}" was not reached with Tab.`);
+    await press("Enter", 2500);
+    await expectFocus(S, "A week's Manual Build: focus on its heading", {
+      tag: /^h[1-3]$/,
+      name: /^Manual Build$/
+    });
+    const picker = await tabTo(
+      (f) => f.tag === "button" && f.name === `${chosen}, Week`,
+      { max: 20 }
+    );
+    if (picker) {
+      results.pass(
+        S,
+        "A week's Manual Build opens on that week",
+        `The Week picker shows ${chosen}.`
+      );
+    } else {
+      await shot(S, "Manual Build on the chosen week");
+      results.fail(
+        S,
+        "A week's Manual Build opens on that week",
+        `No Week picker showing ${chosen} was reached with Tab.`
+      );
+    }
+  });
+}
+
+/** With --shots: the Saved versions page as it is now, by name, for docs/design/screens/. */
 async function schedulesShot(name) {
   if (!args.includes("--shots")) return;
   mkdirSync(shotsDir, { recursive: true });
@@ -5755,6 +5828,7 @@ async function main() {
       await publish("Generated Schedule", openGenerated);
       await schedulesPage();
       await schedulesRain();
+      await scheduleDoor();
     }
     if (only !== "lists") {
       await electives();

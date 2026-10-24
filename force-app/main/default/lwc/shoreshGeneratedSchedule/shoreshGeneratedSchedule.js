@@ -369,6 +369,27 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   /**
+   * Opens this screen on a week of the season, as choosing it in the week picker does (the
+   * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
+   * week shown stays, and the picker says which it is. True when that week is the one shown.
+   */
+  @api
+  openWeek(weekId) {
+    if (!this.weekOptions.some((o) => o.value === weekId)) {
+      return false;
+    }
+    if (weekId === this.weekId) {
+      return true;
+    }
+    if (this.pickerDisabled) {
+      return false;
+    }
+    this.weekId = weekId;
+    this.load();
+    return true;
+  }
+
+  /**
    * Reads the chosen week: the Generated draft if there is one, else the blank week it would
    * start from. again: the same week read again (after a save or a conflict, or coming back to
    * the window), keeping the view; otherwise a week shown fresh. True once the week read is

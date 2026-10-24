@@ -1,0 +1,52 @@
+@import "c/shoreshTokens";
+
+/*
+ * The season's weeks, one row each (ADR 0015): the week's name in the value style, its two
+ * schedules on the right, a hairline between rows, in the setup lists' narrow column.
+ */
+:host {
+  display: block;
+}
+
+.weeks {
+  width: min(100%, calc(var(--shoresh-u) * 220));
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.week {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  min-height: calc(var(--shoresh-control-h) + var(--shoresh-s4));
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border-bottom: 1px solid var(--shoresh-rule);
+}
+
+.week:last-child {
+  border-bottom: 0;
+}
+
+.week-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--shoresh-text-1);
+}
+
+.week-routes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-space-in-group);
+}
+
+.route {
+  margin: 0;
+}
+
+.to-weeks {
+  display: flex;
+  justify-content: center;
+}

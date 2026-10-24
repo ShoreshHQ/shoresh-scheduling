@@ -1216,6 +1216,36 @@ describe("c-shoresh-generated-schedule", () => {
       await settle(element);
       expect(q(element, '[data-id="week"]').disabled).toBe(false);
     });
+
+    it("opens on the week the Schedules doorway names, as the week picker would (wiki decision 61)", async () => {
+      const element = await render();
+      getInputs.mockClear();
+      expect(element.openWeek(WEEK_2)).toBe(true);
+      await flush();
+      expect(q(element, '[data-id="week"]').value).toBe(WEEK_2);
+      expect(getInputs).toHaveBeenLastCalledWith({
+        programId: PROGRAM,
+        weekId: WEEK_2
+      });
+      // The week already shown: nothing read again. A week not in the season: nothing changes.
+      getInputs.mockClear();
+      expect(element.openWeek(WEEK_2)).toBe(true);
+      expect(element.openWeek("a0W00000000000XAAA")).toBe(false);
+      await flush();
+      expect(getInputs).not.toHaveBeenCalled();
+      expect(q(element, '[data-id="week"]').value).toBe(WEEK_2);
+    });
+
+    it("while building, the doorway leaves the week shown, as the waiting picker does", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      expect(element.openWeek(WEEK_2)).toBe(false);
+      expect(q(element, '[data-id="week"]').value).toBe(WEEK);
+      await settle(element);
+      expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("focus and keys", () => {

@@ -2,9 +2,14 @@
  * The screens of the Shoresh page and the left-hand menu that reaches them, following Shoresh
  * desktop's sidebar (navSections.js): Roots (home), then Camp, then Activities & Events, then
  * Schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
- * are equal and the order means nothing), and Schedules (saved versions). Section titles are the
- * desktop's NAV_SECTIONS titles. Every label is in the camp's own words. Screens not built yet
- * are listed as coming, not hidden.
+ * are equal and the order means nothing), Elective seats, and Saved versions (key "schedules").
+ * Section titles are the desktop's NAV_SECTIONS titles. Every label is in the camp's own words.
+ * Screens not built yet are listed as coming, not hidden.
+ *
+ * The Schedules title is itself a doorway (wiki decision 61): it opens the season's weeks
+ * (screen "scheduleWeeks"), each with Generated Schedule and Manual Build. The desktop draws that
+ * title as a plain label (Sidebar.jsx, the pinned section); its nearest door is App.jsx's neutral
+ * "schedule" entry, which picks neither route and offers both. The other titles stay plain.
  */
 
 // Built in a later slice: listed, not reachable from the menu yet. None just now: Electives and
@@ -37,7 +42,8 @@ export function screenLabels(t) {
     electiveSeats: "Elective seats",
     manualBuild: "Manual Build",
     generatedSchedule: "Generated Schedule",
-    schedules: "Schedules",
+    schedules: "Saved versions",
+    scheduleWeeks: "Schedules",
     import: "Import last year"
   };
 }
@@ -71,6 +77,7 @@ const SECTIONS = [
   {
     key: "schedules",
     title: () => "Schedules",
+    door: "scheduleWeeks",
     screens: ["generatedSchedule", "manualBuild", "electiveSeats", "schedules"]
   }
 ];
@@ -121,16 +128,34 @@ const MARKS = {
   done: { symbol: "✓", label: "Done" }
 };
 
+/** Why a screen can't open now, read with it ("Coming", "Needs a Season"), or null. */
+function whyClosed(screen, t, hasSeason, preview) {
+  if (canOpen(screen, hasSeason, preview)) {
+    return null;
+  }
+  return COMING.has(screen) && preview !== screen
+    ? "Coming"
+    : `Needs a ${t.sIn("Season")}`;
+}
+
 /**
  * The menu: sections, each with its items ({ key, label, coming, disabled, reason, mark }). marks:
  * screen -> "needed" | "done" (shoreshSetupRules.menuMarks); mark is { kind, symbol, label }.
  * preview: the coming screen the page's address opened (previewScreen), listed as built.
+ * door: the screen a section's title opens ({ key, disabled, reason }), or null (a plain title).
  */
 export function menuSections(t, hasSeason, marks = {}, preview = null) {
   const labels = screenLabels(t);
   return SECTIONS.map((section) => ({
     key: section.key,
     title: section.title ? section.title(t) : null,
+    door: section.door
+      ? {
+          key: section.door,
+          disabled: !canOpen(section.door, hasSeason, preview),
+          reason: whyClosed(section.door, t, hasSeason, preview)
+        }
+      : null,
     items: section.screens.map((screen) => {
       const disabled = !canOpen(screen, hasSeason, preview);
       const kind = disabled ? null : marks[screen];
@@ -141,11 +166,7 @@ export function menuSections(t, hasSeason, marks = {}, preview = null) {
         coming,
         disabled,
         // Why it can't open, read with it (it stays in the tab order, so keyboard users hear it).
-        reason: !disabled
-          ? null
-          : coming
-            ? "Coming"
-            : `Needs a ${t.sIn("Season")}`,
+        reason: whyClosed(screen, t, hasSeason, preview),
         mark: kind ? { kind, ...MARKS[kind] } : null
       };
     })

@@ -13,6 +13,8 @@ import { LightningElement, api } from "lwc";
  * sections: from shoreshScreens.menuSections. current: the screen shown. campName, seasonName:
  * the camp row (or controls: the page's own, in the slot "camp"). setupChanged: the schedule shown can be updated to match setup. setupBusy: that
  * schedule is busy (an edit saving, a build), so its Update waits, as the one on the screen does.
+ * The Schedules title is a doorway (wiki decision 61; section.door): a button that opens the
+ * season's weeks. The other titles are plain headings.
  * Fires: navigate { screen }, updatetomatch
  */
 export default class ShoreshMenu extends LightningElement {
@@ -34,6 +36,9 @@ export default class ShoreshMenu extends LightningElement {
       ...section,
       // Entries under a section title sit indented under it; Roots sits on its own.
       sectionClass: section.title ? "section section_titled" : "section",
+      // A title that opens a screen (section.door): raised while its screen is shown, quieter
+      // and saying why while it can't open, as an entry is.
+      ...this.doorView(section.door),
       items: section.items.map((item) => {
         const active = item.key === this.current;
         return {
@@ -50,6 +55,36 @@ export default class ShoreshMenu extends LightningElement {
         };
       })
     }));
+  }
+
+  doorView(door) {
+    if (!door) {
+      return {};
+    }
+    const active = !door.disabled && door.key === this.current;
+    let doorClass = "door";
+    if (door.disabled) {
+      doorClass += " door_disabled";
+    } else if (active) {
+      doorClass += " shoresh-raised";
+    }
+    return {
+      doorClass,
+      doorCurrent: active ? "page" : null,
+      // Still in the tab order while it can't open, so a keyboard user hears that it is there.
+      doorDisabled: door.disabled ? "true" : null
+    };
+  }
+
+  /** A section title that is a doorway: its screen, unless it can't open yet. */
+  handleDoorClick(event) {
+    const door = event.currentTarget;
+    if (door.getAttribute("aria-disabled") === "true") {
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: door.dataset.door } })
+    );
   }
 
   /** An entry that can't open yet: the click does nothing (its words say why). */

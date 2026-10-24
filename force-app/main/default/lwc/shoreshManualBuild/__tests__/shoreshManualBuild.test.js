@@ -895,6 +895,30 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
   });
 
+  it("opens on the week the Schedules doorway names, as the week picker would (wiki decision 61)", async () => {
+    const twoWeeks = {
+      ...SETUP,
+      weeks: [
+        { Id: "w1", Name: "Week 1" },
+        { Id: "w2", Name: "Week 2" }
+      ]
+    };
+    getDraft.mockResolvedValue(draft());
+    const element = await render(twoWeeks);
+    getDraft.mockClear();
+    expect(element.openWeek("w2")).toBe(true);
+    await flush();
+    expect(q(element, '[data-id="week"]').value).toBe("w2");
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    expect(getDraft.mock.calls[0][0].weekId).toBe("w2");
+    // The week already shown: nothing read again. A week not in the season: nothing changes.
+    expect(element.openWeek("w2")).toBe(true);
+    expect(element.openWeek("w9")).toBe(false);
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="week"]').value).toBe("w2");
+  });
+
   it("Group View edits one bunk's week the same way", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,,"]));

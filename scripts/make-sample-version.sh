@@ -13,7 +13,7 @@ if ! sf org display --target-org "$ALIAS" >/dev/null 2>&1; then
 fi
 out=$(sf apex run --file scripts/apex/sample-version.apex --target-org "$ALIAS" --json 2>&1 || true)
 if grep -q '"success": true' <<< "$out" && grep -q 'SAMPLE_VERSION' <<< "$out"; then
-  echo "Done. In the Shoresh tab, pick the camp \"Sample Camp (made up)\", then open Schedules."
+  echo "Done. In the Shoresh tab, pick the camp \"Sample Camp (made up)\", then open Saved versions."
 else
   echo "Could not make the sample version:"
   echo "$out" | grep -E '"(message|compileProblem|exceptionMessage|exceptionStackTrace)"' || echo "$out"

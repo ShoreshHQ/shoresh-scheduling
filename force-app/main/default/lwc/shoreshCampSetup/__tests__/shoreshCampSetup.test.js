@@ -2282,6 +2282,81 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, ".body_flush")).not.toBeNull();
   });
 
+  describe("the menu's Schedules title is a doorway (wiki decision 61)", () => {
+    const twoWeeks = () =>
+      setupWith({
+        weeks: [
+          { Id: "w1", Name: "Week 1" },
+          { Id: "w2", Name: "Week 2" }
+        ]
+      });
+    const door = (element) =>
+      q(element, "c-shoresh-menu").shadowRoot.querySelector(
+        'button[data-door="scheduleWeeks"]'
+      );
+    const weekButton = (element, weekId, screen) =>
+      q(element, "c-shoresh-schedule-weeks").shadowRoot.querySelector(
+        `button[data-week="${weekId}"][data-screen="${screen}"]`
+      );
+
+    it("opens the season's weeks, with the cursor on the page's heading", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
+      const element = await render();
+      door(element).click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["scheduleWeeks"]);
+      expect(q(element, "c-shoresh-menu").current).toBe("scheduleWeeks");
+      const heading = q(
+        element,
+        '[data-screen="scheduleWeeks"] [data-heading]'
+      );
+      expect(heading.textContent.trim()).toBe("Schedules");
+      expect(element.shadowRoot.activeElement).toBe(heading);
+      expect(
+        [
+          ...q(element, "c-shoresh-schedule-weeks").shadowRoot.querySelectorAll(
+            ".week-name"
+          )
+        ].map((n) => n.textContent)
+      ).toEqual(["Week 1", "Week 2"]);
+    });
+
+    it("a week's Manual Build or Generated Schedule opens that screen on that week, the cursor on its heading", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
+      const element = await render();
+      const manual = q(element, "c-shoresh-manual-build");
+      const generated = q(element, "c-shoresh-generated-schedule");
+      manual.openWeek = jest.fn(() => true);
+      generated.openWeek = jest.fn(() => true);
+      door(element).click();
+      await flush();
+      weekButton(element, "w2", "manualBuild").click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["manualBuild"]);
+      expect(manual.openWeek).toHaveBeenCalledWith("w2");
+      expect(generated.openWeek).not.toHaveBeenCalled();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-screen="manualBuild"] [data-heading]')
+      );
+      door(element).click();
+      await flush();
+      weekButton(element, "w1", "generatedSchedule").click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["generatedSchedule"]);
+      expect(generated.openWeek).toHaveBeenCalledWith("w1");
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-screen="generatedSchedule"] [data-heading]')
+      );
+      // The menu's own entries open a schedule on the week it already shows.
+      await openScreen(element, "manualBuild");
+      expect(manual.openWeek).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("picking the screen already open puts the cursor on its heading now, not at a later redraw", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
@@ -3758,7 +3833,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(items).toContainEqual(["Fixed activities", false]);
       expect(items).toContainEqual(["Recurring activities", false]);
       expect(items).toContainEqual(["Special events", false]);
-      expect(items).toContainEqual(["Schedules", false]);
+      expect(items).toContainEqual(["Saved versions", false]);
     });
 
     it("opens the screen a Roots card or attention item points to", async () => {

@@ -116,10 +116,16 @@ const SCREENS = [
   "generatedSchedule",
   "manualBuild",
   "schedules",
+  "scheduleWeeks",
   "import",
   "bringInChoices",
   "electiveSeats"
 ];
+// The schedule screens a week can be opened on (the Schedules doorway, wiki decision 61).
+const WEEK_SCREENS = {
+  generatedSchedule: "c-shoresh-generated-schedule",
+  manualBuild: "c-shoresh-manual-build"
+};
 
 /**
  * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
@@ -543,6 +549,14 @@ export default class ShoreshCampSetup extends LightningElement {
     this.choicesOpening =
       screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
+    // A week chosen on the Schedules doorway: that schedule opens on it.
+    const weekId = event.detail.weekId;
+    if (weekId && WEEK_SCREENS[screen]) {
+      const target = this.template.querySelector(WEEK_SCREENS[screen]);
+      if (target) {
+        target.openWeek(weekId);
+      }
+    }
     const itemId = event.detail.specialItemId;
     if (itemId) {
       // "Open <special day>" from a day it replaces (ADR 0014 slice 4): its details, then its

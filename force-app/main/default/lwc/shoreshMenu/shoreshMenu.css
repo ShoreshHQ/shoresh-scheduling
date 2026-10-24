@@ -88,6 +88,66 @@ ul {
   color: var(--shoresh-text-2);
 }
 
+/*
+ * A title that is a doorway (Schedules, wiki decision 61): the same small mono capitals, now a
+ * button as wide as the menu. Under the pointer and the highlight ring it reads as an entry
+ * does; while its screen is shown it wears the one raised treatment.
+ */
+.section-title_door {
+  padding: 0;
+}
+
+.door {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.door:hover {
+  background: var(--shoresh-surface-grid);
+  color: var(--shoresh-text-1);
+}
+
+.door.shoresh-raised,
+.door.shoresh-raised:hover {
+  background: var(--shoresh-color-primary-50);
+  color: var(--shoresh-text-1);
+}
+
+.door:focus-visible {
+  outline: 2px solid var(--shoresh-color-highlight);
+  outline-offset: 2px;
+}
+
+.door_disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.door_disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.door-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Every entry: one item tall, words at rest in the secondary colour. */
 .menu-action {
   position: relative;

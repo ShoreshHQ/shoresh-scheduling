@@ -20,6 +20,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    Schedule are not on the page yet; Roots' "Build or generate the schedule" door stays Coming.
    _Since 2026-10-23 (§14): the toolbar is Manual Build's rail; the views are Daily, Group and
    Activity, and Versions names the version on screen._
+   _Since 2026-10-24 (wiki decision 61, ADR 0003 choice 10): the page is named **Saved
+   versions** in the menu and wherever it is mentioned; its key stays `schedules`. The
+   **Schedules** title above it opens the season's weeks instead._
 2. **The three views are the desktop's**, read-only:
    - Daily View: day pills, a grid with time blocks down the side (name and a two-line time
      range) and a column per group;
