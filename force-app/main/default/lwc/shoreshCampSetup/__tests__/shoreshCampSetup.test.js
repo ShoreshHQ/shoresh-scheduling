@@ -2589,6 +2589,35 @@ describe("c-shoresh-camp-setup", () => {
       expect(shownScreens(element)).toEqual(["roots"]);
     });
 
+    it("a change of screen hands the hidden screens what they had, so none is redrawn and the card moves at once", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const handed = () => {
+        const tables = [
+          ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+        ];
+        return [
+          q(element, "c-shoresh-manual-build").terms,
+          q(element, "c-shoresh-generated-schedule").terms,
+          q(element, "c-shoresh-roots").terms,
+          ...tables.flatMap((t) => [t.columns, t.newRowDefaults, t.rows])
+        ];
+      };
+      const before = handed();
+      expect(before.length).toBeGreaterThan(10);
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector('[data-card="activities"]')
+        .click();
+      await flush();
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["activities"]);
+      const after = handed();
+      after.forEach((value, i) => expect(value).toBe(before[i]));
+    });
+
     it("the rail's ‹ Roots goes home into the card, as the menu's Roots does (decision 68)", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));

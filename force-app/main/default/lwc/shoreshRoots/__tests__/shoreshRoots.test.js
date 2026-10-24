@@ -588,6 +588,42 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(card(element, "manualBuild").hasAttribute("data-front")).toBe(true);
   });
 
+  it("on a short screen every meld's name stays on the table, clear of the cards above it", async () => {
+    const element = await render();
+    const H = 330;
+    await sized(element, 1200, H);
+    const yOf = (el) => {
+      const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(
+        el.style.transform
+      );
+      return m ? Number(m[2]) : null;
+    };
+    const labelTop = (key) =>
+      yOf(meld(element, key).querySelector("[data-label]"));
+    const cardsBottom = (key) =>
+      Math.max(
+        ...[...meld(element, key).querySelectorAll("[data-card]")]
+          .filter((c) => !c.hasAttribute("data-gone"))
+          .map((c) => {
+            const s = scaleOf(c);
+            const ch = parseFloat(
+              $(element, '[data-id="table"]').style.getPropertyValue("--ch")
+            );
+            return yOf(c) + ch / 2 + (ch * s) / 2;
+          })
+      );
+    // At rest, and with Camp open (the other two step aside, stacked on the right).
+    ["camp", "activities", "schedules"].forEach((key) => {
+      expect(labelTop(key)).toBeGreaterThanOrEqual(0);
+    });
+    card(element, "weeks").focus();
+    run(2000);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    expect(labelTop("activities")).toBeGreaterThanOrEqual(0);
+    // The lower stack's name (24 px tall) lies below the upper stack's cards.
+    expect(labelTop("schedules")).toBeGreaterThan(cardsBottom("activities"));
+  });
+
   it("tabbing into a meld fans it; the others ease aside, smaller", async () => {
     const element = await render();
     await sized(element);

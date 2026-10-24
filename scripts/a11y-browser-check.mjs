@@ -61,7 +61,11 @@
  *   next card, Escape closes it with the cursor on its front card and Tab opens it again on the
  *   next card; Enter grows Weeks out of its card with focus on Weeks' heading, and the rail's Back
  *   to Roots shrinks it home with the cursor on the Weeks card (the menu's Roots too); the pointer resting on a meld opens it and leaving closes it; with reduced motion
- *   emulated a card opens its screen at once;
+ *   emulated a card opens its screen at once; a card starts to grow within 250 ms of Enter and
+ *   going home too, with no frame held over 120 ms; the Weeks card's bars (at most twelve) read
+ *   on the check camp's long season; Manual Build's and Recurring activities' faces cut no name
+ *   short; in a 560 px tall window every meld's name stays on the table, the lower side stack's
+ *   below the upper one's cards (ADR 0020, R1.1);
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
@@ -1889,6 +1893,223 @@ async function rootsTable() {
   }
 }
 
+/**
+ * Records the page's frames from the next key press: each frame's time and the clip of a screen's
+ * wrapper (the journey draws the screen through it), for up to 3.5 s.
+ */
+async function recordFrames(screen) {
+  await page.evaluate((key) => {
+    const deep = (root) => {
+      for (const el of root.querySelectorAll("*")) {
+        if (el.matches(`[data-id="frame-body"] [data-screen="${key}"]`))
+          return el;
+        if (el.shadowRoot) {
+          const found = deep(el.shadowRoot);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const wrap = deep(document);
+    const rec = { start: null, frames: [] };
+    window.__shoreshFrames = rec;
+    const onKey = (e) => {
+      if (rec.start == null) rec.start = e.timeStamp;
+    };
+    window.addEventListener("keydown", onKey, true);
+    const end = performance.now() + 3500;
+    const loop = (t) => {
+      rec.frames.push([t, wrap ? wrap.style.clipPath : ""]);
+      if (t < end) requestAnimationFrame(loop);
+      else window.removeEventListener("keydown", onKey, true);
+    };
+    requestAnimationFrame(loop);
+  }, screen);
+}
+
+/** From the key press: when the clip first changed shape, and the longest wait between frames. */
+async function framesSince() {
+  await pause(3600);
+  const rec = await page.evaluate(() => window.__shoreshFrames);
+  const after = rec.frames.filter(([t]) => t >= rec.start);
+  const first = after.find(([, clip]) => clip);
+  const moved =
+    first &&
+    after.find(([t, clip]) => t > first[0] && clip && clip !== first[1]);
+  let gap = 0;
+  let prev = rec.start;
+  after
+    .filter(([t]) => t <= rec.start + 2500)
+    .forEach(([t]) => {
+      gap = Math.max(gap, t - prev);
+      prev = t;
+    });
+  return {
+    moves: moved ? Math.round(moved[0] - rec.start) : null,
+    gap: Math.round(gap)
+  };
+}
+
+/**
+ * Roots R1.1 (ADR 0020 choices 2, 4 and 6): a card starts to grow on the frames right after it is
+ * pressed and no frame is held up on the way out or home (a page-wide redraw once held the first
+ * frame half a second); the Weeks card on the check camp's long season draws bars that read; the
+ * Manual Build and Recurring activities faces cut no name short; and in a short window every
+ * meld's name stays on the table, clear of the cards above it.
+ */
+async function rootsPolish() {
+  const S = "Roots";
+  // The Weeks card's bars: at most twelve, each wide enough to read as a week.
+  const bars = await page
+    .locator(APP)
+    .locator('c-shoresh-roots [data-card="weeks"] svg rect')
+    .evaluateAll((rects) =>
+      rects
+        .filter((r) => Number(r.getAttribute("height")) > 30)
+        .map((r) => r.getBoundingClientRect().width)
+    );
+  const thinnest = bars.length ? Math.min(...bars) : 0;
+  if (bars.length >= 1 && bars.length <= 12 && thinnest >= 10) {
+    results.pass(
+      S,
+      "The Weeks card's bars read on a long season",
+      `${bars.length} bars, the thinnest ${thinnest.toFixed(1)} px wide.`
+    );
+  } else {
+    await shot(S, "Weeks card bars");
+    results.fail(
+      S,
+      "The Weeks card's bars read on a long season",
+      `${bars.length} bars, the thinnest ${thinnest.toFixed(1)} px wide.`
+    );
+  }
+  for (const key of ["manualBuild", "recurringActivities"]) {
+    const cut = (
+      await page
+        .locator(APP)
+        .locator(`c-shoresh-roots [data-card="${key}"] svg text`)
+        .allTextContents()
+    )
+      .map((t) => t.trim())
+      .filter((t) => t.endsWith("…"));
+    if (cut.length) {
+      await shot(S, `${key} face`);
+      results.fail(S, `No name cut short on the ${key} card`, cut.join(", "));
+    } else {
+      results.pass(
+        S,
+        `No name cut short on the ${key} card`,
+        "Every name whole."
+      );
+    }
+  }
+  // Out and home: the card starts to grow at once, and no frame waits long.
+  if (!(await tabTo(isCard(/^Weeks$/), { max: 280 }))) {
+    throw new Error("The Weeks card was not reached with Tab.");
+  }
+  await pause(900);
+  await recordFrames("weeks");
+  await page.keyboard.press("Enter");
+  const out = await framesSince();
+  if (out.moves != null && out.moves <= 250 && out.gap <= 120) {
+    results.pass(
+      S,
+      "A card starts to grow at once, with no frame held up",
+      `Growing ${out.moves} ms after Enter; the longest frame ${out.gap} ms.`
+    );
+  } else {
+    await shot(S, "Card grows at once");
+    results.fail(
+      S,
+      "A card starts to grow at once, with no frame held up",
+      `Growing after ${out.moves == null ? "never" : `${out.moves} ms`}; the longest frame ${out.gap} ms (at most 250 and 120).`
+    );
+  }
+  await press("Tab", 200);
+  await expectFocus(S, "Back to Roots after the heading", {
+    tag: "button",
+    name: /^Back to Roots$/
+  });
+  await recordFrames("weeks");
+  await page.keyboard.press("Enter");
+  const home = await framesSince();
+  if (home.moves != null && home.moves <= 250 && home.gap <= 120) {
+    results.pass(
+      S,
+      "Going home starts at once, with no frame held up",
+      `Shrinking ${home.moves} ms after Enter; the longest frame ${home.gap} ms.`
+    );
+  } else {
+    await shot(S, "Home at once");
+    results.fail(
+      S,
+      "Going home starts at once, with no frame held up",
+      `Shrinking after ${home.moves == null ? "never" : `${home.moves} ms`}; the longest frame ${home.gap} ms (at most 250 and 120).`
+    );
+  }
+  // A short window: each meld's name on the table; with Camp open the other two stack on the
+  // right, the lower one's name below the upper one's cards.
+  const size = page.viewportSize();
+  await page.setViewportSize({ width: size.width, height: 560 });
+  try {
+    await pause(1500);
+    await press("Escape", 300);
+    await page.mouse.move(2, 2);
+    await pause(1200);
+    const camp = shown(
+      'c-shoresh-roots [data-meld="camp"] [data-front]'
+    ).first();
+    await camp.hover();
+    await pause(1500);
+    const geometry = await page
+      .locator(APP)
+      .locator("c-shoresh-roots")
+      .first()
+      .evaluate((roots) => {
+        const root = roots.shadowRoot || roots;
+        const table = root
+          .querySelector('[data-id="table"]')
+          .getBoundingClientRect();
+        const melds = {};
+        root.querySelectorAll("[data-meld]").forEach((m) => {
+          const label = m.querySelector("[data-label]").getBoundingClientRect();
+          const cards = [
+            ...m.querySelectorAll("[data-card]:not([data-gone])")
+          ].map((c) => c.getBoundingClientRect().bottom);
+          melds[m.dataset.meld] = {
+            open: m.hasAttribute("data-open"),
+            labelTop: label.top - table.top,
+            labelBottom: label.bottom - table.top,
+            cardsBottom: Math.max(...cards) - table.top
+          };
+        });
+        return melds;
+      });
+    const { camp: c, activities: a, schedules: z } = geometry;
+    const onTable = [c, a, z].every((m) => m.labelTop >= -1);
+    // Cards are tilted a little: their box reaches a few px past the card itself.
+    const clear = z.labelTop >= a.cardsBottom - 6;
+    if (c.open && onTable && clear) {
+      results.pass(
+        S,
+        "In a short window every meld's name stays on the table, clear of the cards above",
+        `Names from ${Math.round(Math.min(c.labelTop, a.labelTop, z.labelTop))} px; the lower stack's name ${Math.round(z.labelTop - a.cardsBottom)} px below the upper stack's cards.`
+      );
+    } else {
+      await shot(S, "Short window");
+      results.fail(
+        S,
+        "In a short window every meld's name stays on the table, clear of the cards above",
+        `${c.open ? "Camp open" : "Camp not open"}; names at ${Math.round(c.labelTop)}, ${Math.round(a.labelTop)}, ${Math.round(z.labelTop)} px; upper stack's cards to ${Math.round(a.cardsBottom)} px.`
+      );
+    }
+  } finally {
+    await page.mouse.move(2, 2);
+    await page.setViewportSize(size);
+    await pause(1500);
+  }
+}
+
 // ---------- Import last year (ADR 0006; ADR 0015 choice 15; wiki decision 56) ----------
 
 /**
@@ -2091,6 +2312,11 @@ async function campSetup() {
   });
   await step(S, "Roots: the living dot field", dotField);
   await step(S, "Roots: the table by keyboard and mouse", rootsTable);
+  await step(
+    S,
+    "Roots: faces, the journey's first frames, a short window",
+    rootsPolish
+  );
   await step(S, "Import last year: the one page, by keyboard", importLastYear);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {

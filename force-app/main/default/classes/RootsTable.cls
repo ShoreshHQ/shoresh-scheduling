@@ -5,8 +5,8 @@
  * (weeks, programs, divisions, groups, time blocks, places, camp words, activities, fixed and
  * recurring activities, special events, electives) is drawn from the setup the page has already
  * read, so the whole table costs this one request (RootsGlimpses draws the drafts, RootsSeats the
- * seats). A fixed number of queries, whatever the size of the camp. Runs in user mode; names on the glimpses are the ones the schedule saved, so the request
- * reads no camp words.
+ * seats). A fixed number of queries, whatever the size of the camp. Runs in user mode; names on
+ * the glimpses are the ones the schedule saved, so the request reads no camp words.
  */
 public with sharing class RootsTable {
   public static final String DRAFT = 'Draft';
