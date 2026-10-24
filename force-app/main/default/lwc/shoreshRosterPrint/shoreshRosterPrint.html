@@ -1,0 +1,31 @@
+<template>
+  <div class="shoresh-print" data-id="roster-print">
+    <template for:each={shown} for:item="page">
+      <section key={page.key} class="roster-page" data-page={page.key}>
+        <header class="head">
+          <h2 class="title">{page.title}</h2>
+          <p class="sub">{header}</p>
+        </header>
+        <div class="times">
+          <template for:each={page.columns} for:item="column">
+            <div key={column.key} class="time">
+              <h3 class="time-head">
+                <span class="time-name">{column.label}</span>
+                <span class="time-count">{column.count}</span>
+              </h3>
+              <ul class="names">
+                <template for:each={column.people} for:item="person">
+                  <li key={person.key} class="name">
+                    <span>{person.name}</span>
+                    <span class="bunk">{person.bunk}</span>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </template>
+        </div>
+        <p class="foot">{page.foot}</p>
+      </section>
+    </template>
+  </div>
+</template>

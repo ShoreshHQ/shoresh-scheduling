@@ -26,6 +26,8 @@ public with sharing class ElectiveRunState {
   public List<ScheduleDays.DayGrid> liveDays;
   public ElectiveTimes live;
   public ElectiveTimes shown;
+  // The days the run is shown from: the live ones, or the version kept at Finalize.
+  public List<ScheduleDays.DayGrid> shownDays;
   // The campers' choices, by camper.
   public List<Preference__c> preferences = new List<Preference__c>();
   public Map<Id, Preference__c> byCamper = new Map<Id, Preference__c>();
@@ -41,12 +43,10 @@ public with sharing class ElectiveRunState {
     live = new ElectiveTimes(liveDays, run.ElectiveSet__c, groups);
     live.offer(offerings, openness);
     shown = live;
+    shownDays = liveDays;
     if (isFinal() && run.FinalSchedule__c != null) {
-      shown = new ElectiveTimes(
-        ScheduleDays.read(run.FinalSchedule__c),
-        run.ElectiveSet__c,
-        groups
-      );
+      shownDays = ScheduleDays.read(run.FinalSchedule__c);
+      shown = new ElectiveTimes(shownDays, run.ElectiveSet__c, groups);
       shown.offer(offerings, openness);
     }
     readChoices();
@@ -224,7 +224,10 @@ public with sharing class ElectiveRunState {
         Offering__c,
         LinkedChoice__c,
         Locked__c,
-        ByHand__c
+        ByHand__c,
+        ActivityName__c,
+        LocationName__c,
+        GroupName__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :run.Id
       WITH USER_MODE

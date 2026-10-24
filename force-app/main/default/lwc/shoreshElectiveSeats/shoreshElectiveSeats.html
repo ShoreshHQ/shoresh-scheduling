@@ -2,194 +2,348 @@
   <div class="seats" data-id="seats">
     <!-- The rail (the design's grammar): where, then the view, then the counter, the run's
          actions and its state, and the one main button. design-research/electives-r1/seats.html -->
-    <div class="rail" data-id="rail">
-      <h2 class="slds-assistive-text" tabindex="-1" data-heading>
-        Elective seats
-      </h2>
-      <div class="side side_left">
-        <template lwc:if={showsPickers}>
-          <c-shoresh-rail-picker
-            data-id="week"
-            label={weekWord}
-            value={weekId}
-            options={weekOptions}
-            disabled={busy}
-            arrows
-            onchange={handleWeek}
-          ></c-shoresh-rail-picker>
-          <span class="shoresh-rail-line" role="presentation"></span>
-          <c-shoresh-rail-picker
-            data-id="set"
-            label={setWord}
-            value={setId}
-            options={setOptions}
-            disabled={busy}
-            onchange={handleSet}
-          ></c-shoresh-rail-picker>
-          <template lwc:if={asksSchedule}>
-            <c-shoresh-rail-picker
-              data-id="schedule"
-              label="Assign against"
-              value={scheduleId}
-              options={scheduleOptions}
-              disabled={busy}
-              onchange={handleSchedule}
-            ></c-shoresh-rail-picker>
-          </template>
-        </template>
-      </div>
-      <template lwc:if={showsBoard}>
-        <div class="side side_middle" role="group" aria-label="View">
-          <template for:each={viewButtons} for:item="button">
+    <!-- End-of-season Clear takes over the screen (decision 59, clear-b): the summer drawn,
+         what goes dashed and struck, what stays solid with its padlock. -->
+    <template lwc:if={clearing}>
+      <div class="rail" data-id="clear-rail" onkeydown={handleClearKey}>
+        <div class="side side_left">
+          <h2 class="clear-title" tabindex="-1" data-id="clear-heading">
+            {clearTitle}
+          </h2>
+        </div>
+        <div class="side side_middle" role="group" aria-label="What to clear">
+          <template for:each={clearScopes} for:item="scope">
             <button
-              key={button.key}
+              key={scope.key}
               type="button"
-              class={button.className}
-              aria-pressed={button.pressed}
-              data-view={button.key}
-              onclick={handleView}
+              class={scope.className}
+              aria-pressed={scope.pressed}
+              data-scope={scope.key}
+              disabled={busy}
+              onclick={handleClearScope}
             >
-              {button.label}
+              {scope.label}
             </button>
           </template>
         </div>
-      </template>
-      <div class="side side_right">
-        <template lwc:if={showsCounter}>
-          <c-shoresh-rail-pop
-            data-id="counter"
-            label={counter.label}
-            count={counter.count}
-            mark={counter.mark}
-            alternative-text={counter.name}
-            align="right"
-          >
-            <div class="problems" data-id="problems">
-              <template lwc:if={hasProblems}>
-                <template for:each={problemList} for:item="section">
-                  <div
-                    key={section.key}
-                    class="problem-section"
-                    data-section={section.key}
-                  >
-                    <div class="shoresh-pop-head">{section.head}</div>
-                    <template for:each={section.rows} for:item="row">
-                      <button
-                        key={row.key}
-                        type="button"
-                        class="shoresh-pop-row problem-row"
-                        data-pop-row
-                        data-key={row.key}
-                        onclick={handleProblem}
-                      >
-                        <span class="problem-text">{row.text}</span>
-                        <span class="aside shoresh-num">{row.aside}</span>
-                      </button>
-                    </template>
-                  </div>
-                </template>
-              </template>
-              <template lwc:else>
-                <div class="shoresh-pop-head" data-pop-row tabindex="-1">
-                  Everyone has a seat.
-                </div>
-              </template>
-            </div>
-          </c-shoresh-rail-pop>
-          <span class="shoresh-rail-line" role="presentation"></span>
-        </template>
-        <template lwc:if={showsPickers}>
-          <template lwc:if={showsBringIn}>
-            <button
-              type="button"
-              class="shoresh-item"
-              onclick={handleBringIn}
-              disabled={busy}
-              data-id="bring-in"
-            >
-              <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M8 11V3M5 6l3-3 3 3M3 13h10"></path>
-              </svg>
-              <span>Bring in choices</span>
-            </button>
-          </template>
-        </template>
-        <template lwc:if={showsAssignAgain}>
+        <div class="side side_right clear-actions">
+          <span class="no-undo" data-id="no-undo">
+            <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M5 6.5H10a3 3 0 0 1 0 6H7M7 4 4.5 6.5 7 9M2.5 2.5l11 11"
+              ></path>
+            </svg>
+            <span>Can't be undone</span>
+          </span>
           <button
             type="button"
-            class="shoresh-item"
-            onclick={handleAssignAgain}
-            disabled={busy}
-            data-id="assign-again"
+            class="shoresh-item shoresh-raised"
+            onclick={handleClearCancel}
+            data-id="clear-cancel"
           >
-            Assign again
+            Cancel
           </button>
-        </template>
-        <template lwc:if={showsBoard}>
-          <span class="shoresh-rail-line" role="presentation"></span>
-          <c-shoresh-rail-pop
-            data-id="state"
-            label={stateLabel}
-            mark={stateMark}
-            alternative-text={stateName}
-            menu
-            align="right"
-            disabled={busy}
-            onselect={handleRunMenu}
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_primary"
+            onclick={handleClearGo}
+            disabled={clearDisabled}
+            data-id="clear-go"
           >
-            <template lwc:if={stateNote}>
-              <div class="shoresh-pop-head" role="none" data-id="state-note">
-                {stateNote}
-              </div>
+            <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+              <path d={trashIcon}></path>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+    </template>
+    <template lwc:else>
+      <div class="rail" data-id="rail">
+        <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+          Elective seats
+        </h2>
+        <div class="side side_left">
+          <template lwc:if={showsPickers}>
+            <c-shoresh-rail-picker
+              data-id="week"
+              label={weekWord}
+              value={weekId}
+              options={weekOptions}
+              disabled={busy}
+              arrows
+              onchange={handleWeek}
+            ></c-shoresh-rail-picker>
+            <span class="shoresh-rail-line" role="presentation"></span>
+            <c-shoresh-rail-picker
+              data-id="set"
+              label={setWord}
+              value={setId}
+              options={setOptions}
+              disabled={busy}
+              onchange={handleSet}
+            ></c-shoresh-rail-picker>
+            <template lwc:if={asksSchedule}>
+              <c-shoresh-rail-picker
+                data-id="schedule"
+                label="Assign against"
+                value={scheduleId}
+                options={scheduleOptions}
+                disabled={busy}
+                onchange={handleSchedule}
+              ></c-shoresh-rail-picker>
             </template>
-            <template for:each={runRows} for:item="row">
+          </template>
+        </div>
+        <template lwc:if={showsBoard}>
+          <div class="side side_middle" role="group" aria-label="View">
+            <template for:each={viewButtons} for:item="button">
               <button
-                key={row.key}
+                key={button.key}
                 type="button"
-                class="shoresh-pop-row run-row"
-                role="menuitemradio"
-                aria-checked={row.checked}
-                data-value={row.value}
+                class={button.className}
+                aria-pressed={button.pressed}
+                data-view={button.key}
+                onclick={handleView}
               >
-                <template lwc:if={row.locked}>
-                  <c-shoresh-lock></c-shoresh-lock>
-                </template>
-                <span>{row.label}</span>
-                <span class="aside shoresh-num">{row.aside}</span>
+                {button.label}
               </button>
             </template>
-            <template lwc:if={offersNewVersion}>
-              <div class="shoresh-pop-divider" role="separator"></div>
+          </div>
+        </template>
+        <div class="side side_right">
+          <template lwc:if={showsCounter}>
+            <c-shoresh-rail-pop
+              data-id="counter"
+              label={counter.label}
+              count={counter.count}
+              mark={counter.mark}
+              alternative-text={counter.name}
+              align="right"
+            >
+              <div class="problems" data-id="problems">
+                <template lwc:if={hasProblems}>
+                  <template for:each={problemList} for:item="section">
+                    <div
+                      key={section.key}
+                      class="problem-section"
+                      data-section={section.key}
+                    >
+                      <div class="shoresh-pop-head">{section.head}</div>
+                      <template for:each={section.rows} for:item="row">
+                        <button
+                          key={row.key}
+                          type="button"
+                          class="shoresh-pop-row problem-row"
+                          data-pop-row
+                          data-key={row.key}
+                          onclick={handleProblem}
+                        >
+                          <span class="problem-text">{row.text}</span>
+                          <span class="aside shoresh-num">{row.aside}</span>
+                        </button>
+                      </template>
+                    </div>
+                  </template>
+                </template>
+                <template lwc:else>
+                  <div class="shoresh-pop-head" data-pop-row tabindex="-1">
+                    Everyone has a seat.
+                  </div>
+                </template>
+              </div>
+            </c-shoresh-rail-pop>
+            <span class="shoresh-rail-line" role="presentation"></span>
+          </template>
+          <template lwc:if={showsPickers}>
+            <template lwc:if={showsBringIn}>
               <button
                 type="button"
-                class="shoresh-pop-row"
-                role="menuitem"
-                data-value="new"
-                data-id="new-version"
+                class="shoresh-item"
+                onclick={handleBringIn}
+                disabled={busy}
+                data-id="bring-in"
               >
                 <svg
                   class="shoresh-glyph"
                   viewBox="0 0 16 16"
                   aria-hidden="true"
                 >
-                  <path d="M8 3v10M3 8h10"></path>
+                  <path d="M8 11V3M5 6l3-3 3 3M3 13h10"></path>
                 </svg>
-                <span>Start a new version</span>
+                <span>Bring in choices</span>
               </button>
             </template>
-          </c-shoresh-rail-pop>
-          <button
-            type="button"
-            class="shoresh-item shoresh-item_primary"
-            onclick={handlePrimary}
-            disabled={primaryDisabled}
-            data-id="primary"
-          >
-            {primaryLabel}
-          </button>
-        </template>
+          </template>
+          <template lwc:if={showsAssignAgain}>
+            <button
+              type="button"
+              class="shoresh-item"
+              onclick={handleAssignAgain}
+              disabled={busy}
+              data-id="assign-again"
+            >
+              Assign again
+            </button>
+          </template>
+          <template lwc:if={showsBoard}>
+            <span class="shoresh-rail-line" role="presentation"></span>
+            <c-shoresh-rail-pop
+              data-id="state"
+              label={stateLabel}
+              mark={stateMark}
+              alternative-text={stateName}
+              menu
+              align="right"
+              disabled={busy}
+              onselect={handleRunMenu}
+            >
+              <template lwc:if={stateNote}>
+                <div class="shoresh-pop-head" role="none" data-id="state-note">
+                  {stateNote}
+                </div>
+              </template>
+              <template for:each={runRows} for:item="row">
+                <button
+                  key={row.key}
+                  type="button"
+                  class="shoresh-pop-row run-row"
+                  role="menuitemradio"
+                  aria-checked={row.checked}
+                  data-value={row.value}
+                >
+                  <template lwc:if={row.locked}>
+                    <c-shoresh-lock></c-shoresh-lock>
+                  </template>
+                  <span>{row.label}</span>
+                  <span class="aside shoresh-num">{row.aside}</span>
+                </button>
+              </template>
+              <template lwc:if={offersNewVersion}>
+                <div class="shoresh-pop-divider" role="separator"></div>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  role="menuitem"
+                  data-value="new"
+                  data-id="new-version"
+                >
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 3v10M3 8h10"></path>
+                  </svg>
+                  <span>Start a new version</span>
+                </button>
+              </template>
+              <!-- Committed: the downloads wait for Finalize, and say so; Clear is here too. -->
+              <template lwc:if={isCommitted}>
+                <div class="shoresh-pop-divider" role="separator"></div>
+                <div
+                  class="shoresh-pop-row download-wait"
+                  role="menuitem"
+                  aria-disabled="true"
+                  aria-label="Download, after Finalize"
+                  data-id="download-wait"
+                >
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d={downloadIcon}></path>
+                  </svg>
+                  <span>Download</span>
+                  <span class="aside">after Finalize</span>
+                </div>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  role="menuitem"
+                  data-value="clear"
+                  data-id="clear-open"
+                >
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d={trashIcon}></path>
+                  </svg>
+                  <span>Clear at season end…</span>
+                </button>
+              </template>
+            </c-shoresh-rail-pop>
+            <!-- Final: Download, the main button, a menu (seats-final, downloads). -->
+            <template lwc:if={isFinal}>
+              <c-shoresh-rail-pop
+                data-id="download"
+                label="Download"
+                primary
+                menu
+                align="right"
+                disabled={busy}
+                onselect={handleDownloadMenu}
+              >
+                <template for:each={downloadRows} for:item="row">
+                  <button
+                    key={row.value}
+                    type="button"
+                    class="shoresh-pop-row download-row"
+                    role="menuitem"
+                    data-value={row.value}
+                    data-id={row.dataId}
+                    aria-label={row.name}
+                  >
+                    <svg
+                      class="shoresh-glyph"
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                    >
+                      <path d={row.icon}></path>
+                    </svg>
+                    <span>{row.label}</span>
+                    <template lwc:if={row.aside}>
+                      <span class="aside">{row.aside}</span>
+                    </template>
+                  </button>
+                </template>
+                <div class="shoresh-pop-divider" role="separator"></div>
+                <button
+                  type="button"
+                  class="shoresh-pop-row download-row"
+                  role="menuitem"
+                  data-value="clear"
+                  data-id="clear-open"
+                >
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d={trashIcon}></path>
+                  </svg>
+                  <span>Clear at season end…</span>
+                </button>
+              </c-shoresh-rail-pop>
+            </template>
+            <template lwc:else>
+              <button
+                type="button"
+                class="shoresh-item shoresh-item_primary"
+                onclick={handlePrimary}
+                disabled={primaryDisabled}
+                data-id="primary"
+              >
+                {primaryLabel}
+              </button>
+            </template>
+          </template>
+        </div>
       </div>
-    </div>
+    </template>
     <div class="shoresh-hairline" role="presentation"></div>
 
     <!-- What happened, read out as it happens (WCAG 4.1.3). -->
@@ -197,330 +351,492 @@
       {statusText}
     </div>
 
-    <div class="below">
-      <div class="work">
-        <template lwc:if={error}>
-          <div class="message" role="alert" data-id="error">
-            <span>{error}</span>
-            <template lwc:if={errorAction}>
-              <button
-                type="button"
-                class="shoresh-item shoresh-raised"
-                onclick={handleErrorAction}
-                disabled={busy}
-                data-id="error-action"
-              >
-                Assign again
-              </button>
-            </template>
+    <template lwc:if={clearing}>
+      <div class="clear-body" data-id="clear" onkeydown={handleClearKey}>
+        <template lwc:if={clearError}>
+          <div class="message" role="alert" data-id="clear-error">
+            <span>{clearError}</span>
           </div>
         </template>
-
-        <template lwc:if={hasNoSets}>
-          <c-shoresh-empty-state
-            title={noSetsText}
-            data-id="no-sets"
-          ></c-shoresh-empty-state>
-        </template>
-        <template lwc:elseif={hasNoRun}>
-          <c-shoresh-empty-state
-            title={noRunText}
-            data-id="no-run"
-          ></c-shoresh-empty-state>
-        </template>
-        <template lwc:elseif={showsBoard}>
-          <!-- Locks that no longer fit: shown, never dropped (desktop R6/R7). -->
-          <template for:each={strayRows} for:item="stray">
-            <p key={stray.key} class="notice" data-id="stray">
-              <span class="shoresh-look-mark" aria-hidden="true"></span>
-              <span>{stray.text}</span>
-              <button
-                type="button"
-                class="shoresh-item"
-                aria-label={stray.label}
-                data-seat={stray.seatId}
-                disabled={busy}
-                onclick={handleUnlockStray}
-              >
-                Unlock
-              </button>
-            </p>
-          </template>
-
-          <!-- By offering: offerings down, elective times across, each cell "13 of 15". -->
-          <template lwc:if={isByOffering}>
-            <table class="offer-table" data-id="by-offering">
-              <thead>
-                <tr>
-                  <td class="corner"></td>
-                  <template for:each={columns} for:item="column">
-                    <th key={column.key} scope="col" class="time-head">
-                      {column.label}
-                    </th>
-                  </template>
-                </tr>
-              </thead>
-              <tbody>
-                <template for:each={offeringRows} for:item="row">
-                  <tr key={row.key} data-offering={row.key}>
-                    <th scope="row" class="offer-head">
-                      <span class="offer-name">{row.name}</span>
-                      <template for:each={row.subs} for:item="sub">
-                        <span key={sub.key} class="offer-sub">{sub.text}</span>
-                      </template>
-                    </th>
-                    <template for:each={row.cells} for:item="cell">
-                      <td
-                        key={cell.key}
-                        data-cell={cell.key}
-                        ondragover={handleDragOver}
-                        ondrop={handleDrop}
-                      >
-                        <button
-                          type="button"
-                          class={cell.className}
-                          aria-label={cell.name}
-                          aria-pressed={cell.pressed}
-                          data-cell={cell.key}
-                          disabled={cell.offeredNot}
-                          onclick={handleCell}
-                        >
-                          <template lwc:if={cell.look}>
-                            <span
-                              class="shoresh-look-mark corner-mark"
-                              aria-hidden="true"
-                            ></span>
-                          </template>
-                          <template lwc:if={cell.offered}>
-                            <span class="count">
-                              <b class="shoresh-num">{cell.countText}</b>
-                              <template lwc:if={cell.dropped}>
-                                <span class="of"> {cell.droppedText}</span>
-                              </template>
-                              <template lwc:elseif={cell.of}>
-                                <span class="of shoresh-num"> {cell.of}</span>
-                              </template>
-                            </span>
-                            <span class="dots" aria-hidden="true">
-                              <template for:each={cell.dots} for:item="dot">
-                                <span
-                                  key={dot.key}
-                                  class={dot.className}
-                                ></span>
-                              </template>
-                            </span>
-                          </template>
-                          <template lwc:else>
-                            <span class="off-words">{cell.text}</span>
-                          </template>
-                        </button>
-                      </td>
-                    </template>
-                  </tr>
+        <template lwc:if={clearView}>
+          <table class="clear-table" data-id="clear-table">
+            <caption class="slds-assistive-text">
+              {clearTitle}
+            </caption>
+            <thead>
+              <tr>
+                <td class="corner"></td>
+                <template for:each={clearView.columns} for:item="column">
+                  <th key={column.key} scope="col" class={column.headClass}>
+                    {column.name}
+                  </th>
                 </template>
-              </tbody>
-            </table>
-          </template>
-
-          <!-- By camper: each bunk's campers, their offering at each time and how it ranked. -->
-          <template lwc:if={isByCamper}>
-            <table class="camper-table" data-id="by-camper">
-              <thead>
-                <tr>
-                  <th scope="col" class="camper-head">Camper</th>
-                  <template for:each={columns} for:item="column">
-                    <th key={column.key} scope="col" class="time-head">
-                      {column.label}
-                    </th>
-                  </template>
-                </tr>
-              </thead>
-              <template for:each={camperSections} for:item="section">
-                <tbody key={section.key} data-section={section.key}>
-                  <tr class="section-row">
-                    <th
-                      scope="rowgroup"
-                      colspan={columnSpan}
-                      class="section-head"
-                      tabindex="-1"
-                      data-id={section.dataId}
+              </tr>
+            </thead>
+            <tbody>
+              <template for:each={clearRows} for:item="row">
+                <tr key={row.key} data-row={row.key}>
+                  <th scope="row" class="clear-head">
+                    <svg
+                      class="shoresh-glyph"
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
                     >
-                      <span>{section.name}</span>
-                      <span class="section-count shoresh-num"
-                        >{section.count}</span
+                      <path d={row.icon}></path>
+                    </svg>
+                    <span class="clear-label">{row.label}</span>
+                    <template lwc:if={row.total}>
+                      <span class="clear-total" data-id="clear-total"
+                        ><s class="shoresh-num">{row.total}</s
+                        ><span class="slds-assistive-text">, go</span></span
                       >
-                      <template lwc:if={section.noBunk}>
-                        <span
-                          class="shoresh-look-mark"
-                          aria-hidden="true"
-                        ></span>
-                      </template>
-                    </th>
-                  </tr>
-                  <template for:each={section.rows} for:item="row">
-                    <tr key={row.key} class="camper-row">
-                      <th
-                        scope="row"
-                        class="camper-name"
-                        tabindex="-1"
-                        data-camper-row={row.camperId}
-                      >
-                        <span>{row.name}</span>
-                        <template lwc:if={row.hasComment}>
-                          <span
-                            class="comment"
-                            data-camper={row.camperId}
-                            onmouseenter={handleCommentEnter}
-                            onmouseleave={handleCommentLeave}
-                          >
-                            <button
-                              type="button"
-                              class="comment-button"
-                              aria-label={row.commentName}
-                              aria-expanded={row.commentExpanded}
-                              data-camper={row.camperId}
-                              onclick={handleComment}
-                              onkeydown={handleCommentKey}
+                    </template>
+                  </th>
+                  <template for:each={row.cells} for:item="cell">
+                    <td
+                      key={cell.key}
+                      class="clear-cell-holder"
+                      data-week={cell.week}
+                    >
+                      <template lwc:if={cell.has}>
+                        <div class={cell.className} data-going={cell.going}>
+                          <span class="slds-assistive-text">{cell.words}</span>
+                          <div class="clear-top" aria-hidden="true">
+                            <span class="clear-count shoresh-num"
+                              >{cell.count}</span
                             >
-                              <svg
-                                class="shoresh-glyph"
-                                viewBox="0 0 16 16"
-                                aria-hidden="true"
-                              >
-                                <path d="M3 3.5h10v7H7l-3 2.5v-2.5H3z"></path>
-                              </svg>
-                            </button>
-                            <template lwc:if={row.commentOpen}>
-                              <span
-                                class="shoresh-pop comment-pop"
-                                data-id="comment"
-                              >
-                                <span class="comment-head">From the sheet</span>
-                                <span class="comment-text">{row.comment}</span>
+                            <template lwc:if={cell.stay}>
+                              <span class="clear-stay shoresh-num">
+                                <c-shoresh-lock></c-shoresh-lock>{cell.stay}
                               </span>
                             </template>
-                          </span>
+                            <template lwc:if={cell.look}>
+                              <span
+                                class="shoresh-look-mark corner-mark"
+                              ></span>
+                            </template>
+                          </div>
+                          <div class="clear-vis" aria-hidden="true">
+                            <template lwc:if={cell.isCampers}>
+                              <span class="clear-name">{cell.name}</span>…
+                            </template>
+                            <template lwc:if={cell.isChoices}>
+                              <template
+                                for:each={clearView.choiceMarks}
+                                for:item="mark"
+                              >
+                                <span key={mark.key} class="clear-rank"
+                                  >{mark.mark}</span
+                                >
+                              </template>
+                            </template>
+                            <template lwc:if={cell.isSeats}>
+                              <template
+                                for:each={clearView.seatDots}
+                                for:item="dot"
+                              >
+                                <span key={dot.key} class="clear-dot"></span>
+                              </template>
+                            </template>
+                            <template lwc:if={cell.isRuns}>
+                              <template lwc:if={cell.final}>
+                                <c-shoresh-lock></c-shoresh-lock>
+                              </template>
+                              <span>{cell.state}</span>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div class="shoresh-hairline clear-line" role="presentation"></div>
+          <ul class="stays" data-id="stays">
+            <template for:each={clearStays} for:item="stay">
+              <li key={stay.key} class="stay" data-stay={stay.key}>
+                <span class="clear-head">
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d={stay.icon}></path>
+                  </svg>
+                  <span class="clear-label">{stay.label}</span>
+                </span>
+                <span class="stay-bar">
+                  <span class="slds-assistive-text">{stay.words}</span>
+                  <span class="stay-shown" aria-hidden="true">
+                    <c-shoresh-lock></c-shoresh-lock>
+                    <b class="shoresh-num">{stay.count}</b>
+                    <template for:each={stay.chips} for:item="chip">
+                      <span key={chip.key} class="chip">{chip.name}</span>
+                    </template>
+                    <template lwc:if={stay.more}>…</template>
+                  </span>
+                </span>
+              </li>
+            </template>
+          </ul>
+        </template>
+      </div>
+    </template>
+    <template lwc:else>
+      <div class="below">
+        <div class="work">
+          <template lwc:if={error}>
+            <div class="message" role="alert" data-id="error">
+              <span>{error}</span>
+              <template lwc:if={errorAction}>
+                <button
+                  type="button"
+                  class="shoresh-item shoresh-raised"
+                  onclick={handleErrorAction}
+                  disabled={busy}
+                  data-id="error-action"
+                >
+                  Assign again
+                </button>
+              </template>
+            </div>
+          </template>
+
+          <template lwc:if={hasNoSets}>
+            <c-shoresh-empty-state
+              title={noSetsText}
+              data-id="no-sets"
+            ></c-shoresh-empty-state>
+          </template>
+          <template lwc:elseif={hasNoRun}>
+            <c-shoresh-empty-state
+              title={noRunText}
+              data-id="no-run"
+            ></c-shoresh-empty-state>
+          </template>
+          <template lwc:elseif={showsBoard}>
+            <!-- Locks that no longer fit: shown, never dropped (desktop R6/R7). -->
+            <template for:each={strayRows} for:item="stray">
+              <p key={stray.key} class="notice" data-id="stray">
+                <span class="shoresh-look-mark" aria-hidden="true"></span>
+                <span>{stray.text}</span>
+                <button
+                  type="button"
+                  class="shoresh-item"
+                  aria-label={stray.label}
+                  data-seat={stray.seatId}
+                  disabled={busy}
+                  onclick={handleUnlockStray}
+                >
+                  Unlock
+                </button>
+              </p>
+            </template>
+
+            <!-- By offering: offerings down, elective times across, each cell "13 of 15". -->
+            <template lwc:if={isByOffering}>
+              <table class="offer-table" data-id="by-offering">
+                <thead>
+                  <tr>
+                    <td class="corner"></td>
+                    <template for:each={columns} for:item="column">
+                      <th key={column.key} scope="col" class="time-head">
+                        {column.label}
+                      </th>
+                    </template>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template for:each={offeringRows} for:item="row">
+                    <tr key={row.key} data-offering={row.key}>
+                      <th scope="row" class="offer-head">
+                        <span class="offer-name">{row.name}</span>
+                        <template for:each={row.subs} for:item="sub">
+                          <span key={sub.key} class="offer-sub"
+                            >{sub.text}</span
+                          >
                         </template>
                       </th>
                       <template for:each={row.cells} for:item="cell">
-                        <td key={cell.key} class={cell.className}>
-                          <template lwc:if={cell.unplaced}>
-                            <span class="empty-slot">
-                              <span class="slds-assistive-text"
-                                >{cell.unplacedName}</span
-                              >
-                            </span>
-                            <span
-                              class="shoresh-look-mark corner-mark"
-                              aria-hidden="true"
-                            ></span>
-                          </template>
-                          <template lwc:else>
-                            <span>{cell.text}</span
-                            ><span class="rank">{cell.words}</span>
-                            <template lwc:if={cell.locked}>
-                              <span class="cell-lock">
-                                <c-shoresh-lock label="Locked"></c-shoresh-lock>
+                        <td
+                          key={cell.key}
+                          data-cell={cell.key}
+                          ondragover={handleDragOver}
+                          ondrop={handleDrop}
+                        >
+                          <button
+                            type="button"
+                            class={cell.className}
+                            aria-label={cell.name}
+                            aria-pressed={cell.pressed}
+                            data-cell={cell.key}
+                            disabled={cell.offeredNot}
+                            onclick={handleCell}
+                          >
+                            <template lwc:if={cell.look}>
+                              <span
+                                class="shoresh-look-mark corner-mark"
+                                aria-hidden="true"
+                              ></span>
+                            </template>
+                            <template lwc:if={cell.offered}>
+                              <span class="count">
+                                <b class="shoresh-num">{cell.countText}</b>
+                                <template lwc:if={cell.dropped}>
+                                  <span class="of"> {cell.droppedText}</span>
+                                </template>
+                                <template lwc:elseif={cell.of}>
+                                  <span class="of shoresh-num"> {cell.of}</span>
+                                </template>
+                              </span>
+                              <span class="dots" aria-hidden="true">
+                                <template for:each={cell.dots} for:item="dot">
+                                  <span
+                                    key={dot.key}
+                                    class={dot.className}
+                                  ></span>
+                                </template>
                               </span>
                             </template>
-                          </template>
+                            <template lwc:else>
+                              <span class="off-words">{cell.text}</span>
+                            </template>
+                          </button>
                         </td>
                       </template>
                     </tr>
                   </template>
                 </tbody>
-              </template>
-            </table>
+              </table>
+            </template>
+
+            <!-- By camper: each bunk's campers, their offering at each time and how it ranked. -->
+            <template lwc:if={isByCamper}>
+              <table class="camper-table" data-id="by-camper">
+                <thead>
+                  <tr>
+                    <th scope="col" class="camper-head">Camper</th>
+                    <template for:each={columns} for:item="column">
+                      <th key={column.key} scope="col" class="time-head">
+                        {column.label}
+                      </th>
+                    </template>
+                  </tr>
+                </thead>
+                <template for:each={camperSections} for:item="section">
+                  <tbody key={section.key} data-section={section.key}>
+                    <tr class="section-row">
+                      <th
+                        scope="rowgroup"
+                        colspan={columnSpan}
+                        class="section-head"
+                        tabindex="-1"
+                        data-id={section.dataId}
+                      >
+                        <span>{section.name}</span>
+                        <span class="section-count shoresh-num"
+                          >{section.count}</span
+                        >
+                        <template lwc:if={section.noBunk}>
+                          <span
+                            class="shoresh-look-mark"
+                            aria-hidden="true"
+                          ></span>
+                        </template>
+                      </th>
+                    </tr>
+                    <template for:each={section.rows} for:item="row">
+                      <tr key={row.key} class="camper-row">
+                        <th
+                          scope="row"
+                          class="camper-name"
+                          tabindex="-1"
+                          data-camper-row={row.camperId}
+                        >
+                          <span>{row.name}</span>
+                          <template lwc:if={row.hasComment}>
+                            <span
+                              class="comment"
+                              data-camper={row.camperId}
+                              onmouseenter={handleCommentEnter}
+                              onmouseleave={handleCommentLeave}
+                            >
+                              <button
+                                type="button"
+                                class="comment-button"
+                                aria-label={row.commentName}
+                                aria-expanded={row.commentExpanded}
+                                data-camper={row.camperId}
+                                onclick={handleComment}
+                                onkeydown={handleCommentKey}
+                              >
+                                <svg
+                                  class="shoresh-glyph"
+                                  viewBox="0 0 16 16"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M3 3.5h10v7H7l-3 2.5v-2.5H3z"></path>
+                                </svg>
+                              </button>
+                              <template lwc:if={row.commentOpen}>
+                                <span
+                                  class="shoresh-pop comment-pop"
+                                  data-id="comment"
+                                >
+                                  <span class="comment-head"
+                                    >From the sheet</span
+                                  >
+                                  <span class="comment-text"
+                                    >{row.comment}</span
+                                  >
+                                </span>
+                              </template>
+                            </span>
+                          </template>
+                        </th>
+                        <template for:each={row.cells} for:item="cell">
+                          <td key={cell.key} class={cell.className}>
+                            <template lwc:if={cell.unplaced}>
+                              <span class="empty-slot">
+                                <span class="slds-assistive-text"
+                                  >{cell.unplacedName}</span
+                                >
+                              </span>
+                              <span
+                                class="shoresh-look-mark corner-mark"
+                                aria-hidden="true"
+                              ></span>
+                            </template>
+                            <template lwc:else>
+                              <span>{cell.text}</span
+                              ><span class="rank">{cell.words}</span>
+                              <template lwc:if={cell.locked}>
+                                <span class="cell-lock">
+                                  <c-shoresh-lock
+                                    label="Locked"
+                                  ></c-shoresh-lock>
+                                </span>
+                              </template>
+                            </template>
+                          </td>
+                        </template>
+                      </tr>
+                    </template>
+                  </tbody>
+                </template>
+              </table>
+            </template>
           </template>
+        </div>
+
+        <!-- The roster beside (seats-offering-a): who is in the cell chosen, to move or lock. -->
+        <template lwc:if={roster}>
+          <aside
+            class="roster"
+            aria-labelledby="roster-heading"
+            data-id="roster"
+          >
+            <div class="roster-top">
+              <h3
+                id="roster-heading"
+                class="roster-heading"
+                tabindex="-1"
+                data-id="roster-heading"
+              >
+                {roster.heading}
+              </h3>
+              <button
+                type="button"
+                class="shoresh-item shoresh-item_icon"
+                aria-label="Close"
+                onclick={handleCloseRoster}
+                data-id="roster-close"
+              >
+                <svg
+                  class="shoresh-glyph"
+                  viewBox="0 0 16 16"
+                  aria-hidden="true"
+                >
+                  <path d="m4 4 8 8M12 4l-8 8"></path>
+                </svg>
+              </button>
+            </div>
+            <ul class="people" data-id="people">
+              <template for:each={roster.people} for:item="person">
+                <li
+                  key={person.key}
+                  class="person"
+                  draggable={person.draggable}
+                  data-camper={person.camperId}
+                  ondragstart={handleDragStart}
+                >
+                  <span class="person-name">{person.name}</span>
+                  <template lwc:if={isCommitted}>
+                    <button
+                      type="button"
+                      class="lock-button"
+                      aria-label={person.lockName}
+                      aria-pressed={person.lockedText}
+                      data-camper={person.camperId}
+                      disabled={cannotChange}
+                      onclick={handleLock}
+                    >
+                      <c-shoresh-lock></c-shoresh-lock>
+                    </button>
+                  </template>
+                  <template lwc:elseif={person.locked}>
+                    <c-shoresh-lock label="Locked"></c-shoresh-lock>
+                  </template>
+                  <span class="person-group">{person.group}</span>
+                  <template lwc:if={person.canMove}>
+                    <c-shoresh-rail-pop
+                      class="move"
+                      label="Move to…"
+                      alternative-text={person.moveName}
+                      menu
+                      align="right"
+                      disabled={cannotChange}
+                      data-camper={person.camperId}
+                      onselect={handleMove}
+                    >
+                      <template for:each={person.targets} for:item="target">
+                        <button
+                          key={target.value}
+                          type="button"
+                          class="shoresh-pop-row"
+                          role="menuitem"
+                          data-value={target.value}
+                        >
+                          {target.label}
+                        </button>
+                      </template>
+                    </c-shoresh-rail-pop>
+                  </template>
+                </li>
+              </template>
+            </ul>
+            <template lwc:if={roster.empty}>
+              <p class="roster-foot">Nobody here.</p>
+            </template>
+            <template lwc:if={roster.free}>
+              <p class="roster-foot shoresh-num" data-id="free">
+                {roster.free}
+              </p>
+            </template>
+          </aside>
         </template>
       </div>
+    </template>
 
-      <!-- The roster beside (seats-offering-a): who is in the cell chosen, to move or lock. -->
-      <template lwc:if={roster}>
-        <aside class="roster" aria-labelledby="roster-heading" data-id="roster">
-          <div class="roster-top">
-            <h3
-              id="roster-heading"
-              class="roster-heading"
-              tabindex="-1"
-              data-id="roster-heading"
-            >
-              {roster.heading}
-            </h3>
-            <button
-              type="button"
-              class="shoresh-item shoresh-item_icon"
-              aria-label="Close"
-              onclick={handleCloseRoster}
-              data-id="roster-close"
-            >
-              <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="m4 4 8 8M12 4l-8 8"></path>
-              </svg>
-            </button>
-          </div>
-          <ul class="people" data-id="people">
-            <template for:each={roster.people} for:item="person">
-              <li
-                key={person.key}
-                class="person"
-                draggable={person.draggable}
-                data-camper={person.camperId}
-                ondragstart={handleDragStart}
-              >
-                <span class="person-name">{person.name}</span>
-                <template lwc:if={isCommitted}>
-                  <button
-                    type="button"
-                    class="lock-button"
-                    aria-label={person.lockName}
-                    aria-pressed={person.lockedText}
-                    data-camper={person.camperId}
-                    disabled={cannotChange}
-                    onclick={handleLock}
-                  >
-                    <c-shoresh-lock></c-shoresh-lock>
-                  </button>
-                </template>
-                <template lwc:elseif={person.locked}>
-                  <c-shoresh-lock label="Locked"></c-shoresh-lock>
-                </template>
-                <span class="person-group">{person.group}</span>
-                <template lwc:if={person.canMove}>
-                  <c-shoresh-rail-pop
-                    class="move"
-                    label="Move to…"
-                    alternative-text={person.moveName}
-                    menu
-                    align="right"
-                    disabled={cannotChange}
-                    data-camper={person.camperId}
-                    onselect={handleMove}
-                  >
-                    <template for:each={person.targets} for:item="target">
-                      <button
-                        key={target.value}
-                        type="button"
-                        class="shoresh-pop-row"
-                        role="menuitem"
-                        data-value={target.value}
-                      >
-                        {target.label}
-                      </button>
-                    </template>
-                  </c-shoresh-rail-pop>
-                </template>
-              </li>
-            </template>
-          </ul>
-          <template lwc:if={roster.empty}>
-            <p class="roster-foot">Nobody here.</p>
-          </template>
-          <template lwc:if={roster.free}>
-            <p class="roster-foot shoresh-num" data-id="free">{roster.free}</p>
-          </template>
-        </aside>
-      </template>
-    </div>
+    <!-- On paper only, while it prints (c-shoresh-roster-print, ShoreshPrint). -->
+    <template lwc:if={printout}>
+      <c-shoresh-roster-print
+        pages={printout.pages}
+        header={printout.header}
+        file={printout.file}
+      ></c-shoresh-roster-print>
+    </template>
   </div>
 </template>

@@ -111,9 +111,11 @@
  * - Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37), opened from the page's
  *   address since the menu lists it as coming: focus on its heading; Assign seats said; a cell's
  *   roster opened by keyboard with focus on its heading; the padlock pressed and said; By camper;
- *   Finalize said (or its refusal); axe on each. It makes its own set, two activities with no
- *   place, three made-up campers and a run in the check week's Manual Build draft, and deletes them
- *   after;
+ *   Finalize said (or its refusal); axe on each. Then (slice E10) the Download menu (or the run's
+ *   menu before Finalize) and Clear at season end opened by keyboard, focus on its heading, a week
+ *   picked, axe on each, and Escape back to the menu; Clear is never pressed. It makes its own
+ *   set, two activities with no place, three made-up campers and a run in the check week's Manual
+ *   Build draft, and deletes them after;
  * - Copy season, Camp words and Programs (wiki decision 56, ADR 0015 choice 14): a program added
  *   from the Programs table's blank row by keyboard is said, its no-time-blocks corner shows, and
  *   its trash can deletes it after the question, said; on Camp words the Group row's word typed
@@ -5522,11 +5524,47 @@ async function electiveSeats() {
           /^Finalized: |^Not finalized\. /,
           () => press("Enter")
         );
+        await seatsDownloadsAndClear(S);
       } finally {
         clearSeats();
       }
     }
   );
+}
+
+/**
+ * The downloads and end-of-season Clear (electives slice E10; ADR 0018 choices 45 to 52), after
+ * Finalize: the Download menu opened by keyboard (axe), or, if Finalize was refused, the run's
+ * menu saying Download comes after Finalize; Clear at season end opened from it, focus on its
+ * heading (axe), one week picked, axe, and Escape back to the menu it came from. It never presses
+ * Clear and downloads nothing.
+ */
+async function seatsDownloadsAndClear(S) {
+  await pause(1500);
+  const final = await exists('c-shoresh-rail-pop[data-id="download"]');
+  const menu = final
+    ? await openRailMenu(/^Download$/, { max: 20 })
+    : await openRailMenu(/^Committed/, { max: 20 });
+  if (!menu)
+    throw new Error("The Download or run menu was not reached with Tab.");
+  await axe(final ? `${S}: the Download menu` : `${S}: the run's menu`);
+  if (!(await arrowTo(/^Clear at season end/)))
+    throw new Error("Clear at season end was not reached with the arrow keys.");
+  await press("Enter", 2500);
+  await expectFocus(S, "Clear at season end: focus on its heading", {
+    tag: /^h2$/,
+    name: /^Clear /
+  });
+  await axe(`${S}: Clear, the whole season`);
+  if (!(await tabTo(named(/^Week /, { tag: "button" }), { max: 10 })))
+    throw new Error("The week was not reached with Tab.");
+  await press("Enter", 500);
+  await axe(`${S}: Clear, one week`);
+  await press("Escape", 800);
+  await expectFocus(S, "Escape: back on the menu Clear came from", {
+    tag: /^button$/,
+    name: final ? /^Download$/ : /^Committed/
+  });
 }
 
 async function main() {

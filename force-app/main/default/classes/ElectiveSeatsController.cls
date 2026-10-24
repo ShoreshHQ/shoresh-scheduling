@@ -75,6 +75,41 @@ public with sharing class ElectiveSeatsController {
     }
   }
 
+  /** A final run and its bunks' week, for the downloads (refused before Finalize). */
+  @AuraEnabled
+  public static ElectiveDownloads.Download runDownload(Id runId) {
+    try {
+      return ElectiveDownloads.forRun(runId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** The season's elective runs, choices, seats and campers week by week, and what stays. */
+  @AuraEnabled
+  public static ElectiveClear.Picture clearPicture(Id seasonId) {
+    try {
+      return ElectiveClear.picture(seasonId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** End-of-season Clear: the whole season or one week, exactly as the picture showed. */
+  @AuraEnabled
+  public static ElectiveClear.Result clearElectives(String request) {
+    try {
+      return ElectiveClear.clear(
+        (ElectiveClear.ClearRequest) parse(
+          request,
+          ElectiveClear.ClearRequest.class
+        )
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   private static Object parse(String request, System.Type kind) {
     try {
       return JSON.deserialize(request, kind);

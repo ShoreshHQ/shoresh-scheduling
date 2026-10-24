@@ -1,0 +1,100 @@
+/*
+ * A roster on paper (rosters-a): black words on white, one fine rule under the heading, the
+ * elective times side by side, one page per offering. On screen it takes no room.
+ */
+.shoresh-print {
+  display: none;
+}
+
+@media print {
+  .shoresh-print {
+    display: block;
+    color: #000;
+    background: #fff;
+    font-family: var(--shoresh-font-sans, sans-serif);
+    font-size: 10pt;
+  }
+
+  .roster-page {
+    position: relative;
+    min-height: 100%;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .roster-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12pt;
+    margin: 0 0 12pt;
+    padding-bottom: 6pt;
+    border-bottom: 0.75pt solid #000;
+  }
+
+  .title {
+    margin: 0;
+    font-size: 16pt;
+    font-weight: 600;
+  }
+
+  .sub {
+    margin: 0;
+    font-size: 9pt;
+  }
+
+  .times {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14pt 12pt;
+  }
+
+  .time {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .time-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 6pt;
+    margin: 0 0 4pt;
+    padding-bottom: 3pt;
+    border-bottom: 0.5pt solid #000;
+    font-size: 10pt;
+    font-weight: 600;
+  }
+
+  .time-count {
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .names {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .name {
+    display: flex;
+    justify-content: space-between;
+    gap: 6pt;
+    padding: 1.5pt 0;
+  }
+
+  .bunk {
+    flex: none;
+  }
+
+  .foot {
+    margin: 18pt 0 0;
+    font-family: var(--shoresh-font-mono, monospace);
+    font-size: 8pt;
+  }
+}

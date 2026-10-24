@@ -440,3 +440,38 @@ describe("how a sheet was read, column by column (slice E6's first card)", () =>
     expect(sheetLayout({ name: "Empty", rows: [] })).toBeNull();
   });
 });
+
+describe("one row per choice, headings on one row (ADR 0018 choice 48)", () => {
+  it("reads the first camper's row as a camper, even with no camper number, never as a second heading", () => {
+    const result = read(
+      lines(
+        "Camper number,Camper name,Division,Bunk,Day,Period,Rank,Activity",
+        ",Ada Quillfield,Juniors,Aspen,,,1,Archery",
+        ",Ada Quillfield,Juniors,Aspen,Tuesday,Period 1,1,Drama",
+        "SYN-1001,Gabe Ravenford,Juniors,Willow,,,,Pottery"
+      )
+    );
+    expect(
+      result.campers.map((c) => [
+        c.name,
+        c.number,
+        c.choices.map((x) => [x.name, x.rank, x.kind, x.day, x.period])
+      ])
+    ).toEqual([
+      [
+        "Ada Quillfield",
+        null,
+        [
+          ["Archery", 1, "ranked", null, null],
+          ["Drama", 1, "ranked", "Tuesday", "Period 1"]
+        ]
+      ],
+      [
+        "Gabe Ravenford",
+        "SYN-1001",
+        [["Pottery", null, "unordered", null, null]]
+      ]
+    ]);
+    expect(result.notRead).toEqual([]);
+  });
+});
