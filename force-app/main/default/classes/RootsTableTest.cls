@@ -305,7 +305,6 @@ private class RootsTableTest {
         Assert.areEqual(1, lunch);
       }
 
-      Assert.areEqual(20, table.versionCount);
       Assert.isNotNull(table.latestVersion);
       Assert.areEqual(camp.ids.get('Week 2'), table.latestVersion.weekId);
 
@@ -316,6 +315,25 @@ private class RootsTableTest {
       Assert.areEqual(10, table.seats[0].taken);
       Assert.areEqual(6, table.seats[1].minimum);
       Assert.areEqual(5, table.seats[1].taken);
+    }
+  }
+
+  @IsTest
+  static void anotherWeeksRunNeverShowsAsTheShownWeeksSeats() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      Id generatedId = camp.draft('Generated');
+      camp.electives(generatedId);
+      // The only run is Week 1's; the cards show Week 2.
+      Database.update(
+        new ElectiveRun__c(Id = camp.runId, Week__c = camp.ids.get('Week 1')),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Test.stopTest();
+      Assert.areEqual(camp.ids.get('Week 2'), table.shownWeekId);
+      Assert.isTrue(table.seats.isEmpty());
     }
   }
 
@@ -335,7 +353,6 @@ private class RootsTableTest {
       Assert.isNull(table.generated);
       Assert.isNull(table.manual);
       Assert.isTrue(table.seats.isEmpty());
-      Assert.areEqual(0, table.versionCount);
       Assert.isNull(table.latestVersion);
     }
   }

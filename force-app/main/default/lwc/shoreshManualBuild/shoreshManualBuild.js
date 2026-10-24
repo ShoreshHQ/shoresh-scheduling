@@ -360,6 +360,12 @@ export default class ShoreshManualBuild extends LightningElement {
   get weekLabel() {
     return this.t.s("Week");
   }
+  // No program or week picker beside ‹ Roots: the editor's own separator before Edit is the
+  // only divider it needs.
+  get backStandsAlone() {
+    return !this.hasSeveralPrograms && !this.canChoose;
+  }
+
   get hasSeveralPrograms() {
     return this.programOptions.length > 1;
   }

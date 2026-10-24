@@ -1,6 +1,6 @@
 /**
- * Roots' elective seats (repo ADR 0020): the offerings of the shown week's latest run (else the
- * season's latest), each with its seats and the most campers it holds at any one time. Nothing when
+ * Roots' elective seats (repo ADR 0020): the offerings of the shown week's latest run (none when
+ * that week has no run, so another week's seats never pass as this week's), each with its seats and the most campers it holds at any one time. Nothing when
  * electives can't be read. Three queries. Runs in user mode.
  */
 public with sharing class RootsSeats {
@@ -32,16 +32,11 @@ public with sharing class RootsSeats {
     List<ElectiveRun__c> runs = [
       SELECT Id, ElectiveSet__c, Week__c
       FROM ElectiveRun__c
-      WHERE Season__c = :seasonId
+      WHERE Season__c = :seasonId AND Week__c = :weekId AND Week__c != NULL
       WITH USER_MODE
       ORDER BY CreatedDate DESC, Id DESC
-      LIMIT 50
+      LIMIT 1
     ];
-    for (ElectiveRun__c run : runs) {
-      if (run.Week__c == weekId) {
-        return run;
-      }
-    }
     return runs.isEmpty() ? null : runs[0];
   }
 

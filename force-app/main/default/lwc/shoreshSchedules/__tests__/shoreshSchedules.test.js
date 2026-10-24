@@ -113,6 +113,26 @@ describe("c-shoresh-schedules", () => {
     jest.clearAllMocks();
   });
 
+  it("‹ Roots leads the rail and says back to Roots to the page (decision 68)", async () => {
+    getVersions.mockResolvedValue(VERSIONS);
+    openSchedule.mockImplementation(answerFor);
+    const element = await render();
+    const back = q(element, '[data-id="rail"] c-shoresh-roots-back');
+    expect(back.parentElement.firstElementChild).toBe(back);
+    expect(back.shadowRoot.querySelector(".shoresh-rail-line")).not.toBeNull();
+    const heard = jest.fn();
+    element.addEventListener("backtoroots", heard);
+    back.shadowRoot.querySelector('[data-id="back"]').click();
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it("‹ Roots alone draws no divider of its own", async () => {
+    getVersions.mockResolvedValue([]);
+    const element = await render({ ...SETUP, weeks: [] });
+    const back = q(element, "c-shoresh-roots-back");
+    expect(back.shadowRoot.querySelector(".shoresh-rail-line")).toBeNull();
+  });
+
   it("lists the first week's versions and opens the newest by itself", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockImplementation(answerFor);

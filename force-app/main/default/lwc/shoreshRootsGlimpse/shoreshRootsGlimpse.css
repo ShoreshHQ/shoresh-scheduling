@@ -61,6 +61,9 @@
   fill: var(--shoresh-shade);
   fill-opacity: 0.18;
 }
+.fcaution {
+  fill: var(--shoresh-caution);
+}
 .fnone {
   fill: none;
 }

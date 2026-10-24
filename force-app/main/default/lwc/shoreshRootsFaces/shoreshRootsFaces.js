@@ -180,7 +180,6 @@ export function readCamp(setup, table) {
     manual: tb.manual || null,
     seats: tb.seats || [],
     versions: {
-      count: tb.versionCount || 0,
       latest: version
         ? {
             name: version.name || "",
@@ -805,18 +804,33 @@ const G = {
   }
 };
 
-/** Seats as a row of boxes: taken filled, the rest of the minimum dashed, free seats an outline. */
+/**
+ * Seats as a row of boxes: taken filled, the rest of the minimum dashed, free seats an outline.
+ * Campers past the limit are more boxes in the caution colour, never hidden in a full row; an
+ * offering with no limit is its taken boxes and an open end (∞), never a count of empty seats.
+ */
 function seatBoxes(seat, x0, y, width, h) {
   const out = [];
-  const limit = seat.seats == null ? Math.max(seat.taken + 3, 8) : seat.seats;
-  const boxes = Math.max(1, Math.min(limit, 20));
-  const scale = boxes / Math.max(limit, 1);
-  const taken = Math.round(seat.taken * scale);
+  if (seat.seats == null) {
+    const w = width / 12;
+    const taken = Math.min(seat.taken || 0, 10);
+    for (let s = 0; s < taken; s++)
+      out.push(rect(x0 + s * w, y, w - 2.5, h, 2.5, "f500"));
+    out.push(txt(x0 + taken * w + 1, y + h - 3, "\u221e", "g-m"));
+    return out;
+  }
+  const limit = seat.seats;
+  const all = Math.max(limit, seat.taken || 0);
+  const boxes = Math.max(1, Math.min(all, 20));
+  const scale = boxes / Math.max(all, 1);
+  const taken = Math.round((seat.taken || 0) * scale);
+  const cap = Math.round(limit * scale);
   const min = seat.minimum ? Math.round(seat.minimum * scale) : 0;
   const w = width / boxes;
   for (let s = 0; s < boxes; s++) {
     const x = x0 + s * w;
-    if (s < taken) out.push(rect(x, y, w - 2.5, h, 2.5, "f500"));
+    if (s < taken)
+      out.push(rect(x, y, w - 2.5, h, 2.5, s < cap ? "f500" : "fcaution"));
     else if (s < min)
       out.push(rect(x + 0.5, y + 0.5, w - 3.5, h - 1, 2.5, "fnone s700 dash"));
     else out.push(rect(x + 0.5, y + 0.5, w - 3.5, h - 1, 2.5, "fnone s400"));

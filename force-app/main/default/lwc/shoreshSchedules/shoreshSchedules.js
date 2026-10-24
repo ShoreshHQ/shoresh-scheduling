@@ -119,6 +119,11 @@ export default class ShoreshSchedules extends LightningElement {
   get weekLabel() {
     return this.terms.s("Week");
   }
+  // No picker beside ‹ Roots: its own divider would stand doubled or alone.
+  get backStandsAlone() {
+    return !this.hasSeveralPrograms && !this.canChoose;
+  }
+
   get hasSeveralPrograms() {
     return this.programOptions.length > 1;
   }

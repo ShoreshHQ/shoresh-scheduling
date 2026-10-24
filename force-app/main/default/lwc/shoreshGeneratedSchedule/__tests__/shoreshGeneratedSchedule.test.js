@@ -160,6 +160,26 @@ describe("c-shoresh-generated-schedule", () => {
     jest.resetAllMocks();
   });
 
+  it("‹ Roots leads the rail and says back to Roots to the page (decision 68)", async () => {
+    const element = await render();
+    const back = element.shadowRoot.querySelector("c-shoresh-roots-back");
+    expect(back.getAttribute("slot")).toBe("pickers");
+    expect(back.nextElementSibling.dataset.id).toBe("week");
+    // A picker follows: its own divider separates them.
+    expect(back.shadowRoot.querySelector(".shoresh-rail-line")).not.toBeNull();
+    const heard = jest.fn();
+    element.addEventListener("backtoroots", heard);
+    back.shadowRoot.querySelector('[data-id="back"]').click();
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it("‹ Roots alone draws no divider of its own, so none is doubled before Edit", async () => {
+    const element = await render(camp(SMALL), { ...SETUP, weeks: [] });
+    const back = element.shadowRoot.querySelector("c-shoresh-roots-back");
+    expect(back.lineless).toBe(true);
+    expect(back.shadowRoot.querySelector(".shoresh-rail-line")).toBeNull();
+  });
+
   it("offers Generate a schedule for a week not generated yet, and nothing else", async () => {
     const element = await render();
     expect(getInputs).toHaveBeenCalledWith({

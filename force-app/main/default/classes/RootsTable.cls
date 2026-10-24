@@ -33,8 +33,6 @@ public with sharing class RootsTable {
     @AuraEnabled
     public List<Seat> seats = new List<Seat>();
     @AuraEnabled
-    public Integer versionCount = 0;
-    @AuraEnabled
     public Version latestVersion;
   }
 
@@ -151,12 +149,6 @@ public with sharing class RootsTable {
   }
 
   private static void readVersions(Table result, Id seasonId) {
-    result.versionCount = [
-      SELECT COUNT()
-      FROM Schedule__c
-      WHERE Week__r.Season__c = :seasonId AND Status__c = :VERSION
-      WITH USER_MODE
-    ];
     List<Schedule__c> latest = [
       SELECT Name, Week__c, Status__c, CreatedDate
       FROM Schedule__c

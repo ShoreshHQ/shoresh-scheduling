@@ -313,6 +313,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get hasNoSets() {
     return this.isLoaded && this.sets.length === 0;
   }
+  // No picker beside ‹ Roots: its own divider would stand doubled or alone.
+  get backStandsAlone() {
+    return !this.showsPickers;
+  }
+
   get showsPickers() {
     return this.isLoaded && this.sets.length > 0;
   }

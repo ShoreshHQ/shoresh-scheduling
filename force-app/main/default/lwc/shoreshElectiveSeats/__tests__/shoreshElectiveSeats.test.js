@@ -122,6 +122,18 @@ afterEach(() => {
 });
 
 describe("the start", () => {
+  it("‹ Roots leads the rail and says back to Roots to the page (decision 68)", async () => {
+    const element = await render();
+    const back = $(element, "c-shoresh-roots-back");
+    expect(back.parentElement.firstElementChild).toBe(back);
+    expect(back.nextElementSibling.dataset.id).toBe("week");
+    expect(back.shadowRoot.querySelector(".shoresh-rail-line")).not.toBeNull();
+    const heard = jest.fn();
+    element.addEventListener("backtoroots", heard);
+    back.shadowRoot.querySelector('[data-id="back"]').click();
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the latest run of the week and set, with Assign seats as the main button", async () => {
     const element = await render();
     expect(seatsSetup).toHaveBeenCalledWith({ seasonId: "se1" });

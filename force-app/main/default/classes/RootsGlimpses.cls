@@ -51,6 +51,17 @@ public with sharing class RootsGlimpses {
     Set<Id> scheduleIds
   ) {
     Map<Id, Map<Date, List<ScheduleDay__c>>> result = new Map<Id, Map<Date, List<ScheduleDay__c>>>();
+    // Only each schedule's first date is drawn: find it first, so no other day's grid is read.
+    Map<Id, Date> firstDate = new Map<Id, Date>();
+    for (AggregateResult row : [
+      SELECT Schedule__c schedule, MIN(Date__c) firstDay
+      FROM ScheduleDay__c
+      WHERE Schedule__c IN :scheduleIds
+      WITH USER_MODE
+      GROUP BY Schedule__c
+    ]) {
+      firstDate.put((Id) row.get('schedule'), (Date) row.get('firstDay'));
+    }
     for (ScheduleDay__c part : [
       SELECT
         Schedule__c,
@@ -60,10 +71,14 @@ public with sharing class RootsGlimpses {
         GridFormatVersion__c,
         Revision__c
       FROM ScheduleDay__c
-      WHERE Schedule__c IN :scheduleIds
+      WHERE Schedule__c IN :scheduleIds AND Date__c IN :firstDate.values()
       WITH USER_MODE
       ORDER BY Date__c, Part__c
     ]) {
+      // Another schedule's first date can be this one's later day: skip it.
+      if (part.Date__c != firstDate.get(part.Schedule__c)) {
+        continue;
+      }
       if (!result.containsKey(part.Schedule__c)) {
         result.put(
           part.Schedule__c,

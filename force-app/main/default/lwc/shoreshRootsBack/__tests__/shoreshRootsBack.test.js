@@ -36,4 +36,14 @@ describe("c-shoresh-roots-back", () => {
     element.shadowRoot.querySelector('[data-id="back"]').click();
     expect(heard).toHaveBeenCalledTimes(1);
   });
+
+  it("draws no divider of its own when told it stands alone", async () => {
+    const element = await render();
+    expect(
+      element.shadowRoot.querySelector(".shoresh-rail-line")
+    ).not.toBeNull();
+    element.lineless = true;
+    await Promise.resolve();
+    expect(element.shadowRoot.querySelector(".shoresh-rail-line")).toBeNull();
+  });
 });

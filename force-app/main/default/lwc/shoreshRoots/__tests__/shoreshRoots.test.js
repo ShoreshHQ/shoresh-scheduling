@@ -127,7 +127,6 @@ const TABLE = {
   },
   generated: null,
   seats: [{ name: "Archery", seats: 12, taken: 9, minimum: null }],
-  versionCount: 3,
   latestVersion: {
     name: "Friday swap",
     weekId: "w2",

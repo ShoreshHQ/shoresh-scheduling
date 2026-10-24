@@ -14,5 +14,7 @@
     </svg>
     <span>Roots</span>
   </button>
-  <span class="shoresh-rail-line" role="presentation"></span>
+  <template lwc:if={showsLine}>
+    <span class="shoresh-rail-line" role="presentation"></span>
+  </template>
 </template>

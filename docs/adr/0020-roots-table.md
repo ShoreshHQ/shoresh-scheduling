@@ -51,9 +51,10 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      else the first week with a draft, else the first): placed cells raised, empty ones wells, a
      fixed activity's block one locked bar, the director's locks; Manual Build with the groups'
      and the things' names. The week beside the name.
-   - **Elective seats**: the latest run's offerings (the shown week's, else the season's latest),
-     seats as boxes, taken filled, a minimum's missing seats dashed. Taken is the most it holds at
-     any one time.
+   - **Elective seats**: the offerings of the shown week's latest run (none when that week has no
+     run, so another week's seats never pass as its own), seats as boxes, taken filled, a
+     minimum's missing seats dashed, campers past the limit as more boxes in the caution colour;
+     no limit is the taken boxes and an open end (∞). Taken is the most it holds at any one time.
    - **Saved versions**: the latest version, its week, name and day, a check when it is the
      published one.
      An empty area draws its outline (what is missing shows by its shape, decision 29); nothing is

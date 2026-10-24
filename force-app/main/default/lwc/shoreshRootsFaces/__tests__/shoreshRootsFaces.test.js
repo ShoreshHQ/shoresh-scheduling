@@ -107,7 +107,6 @@ const TABLE = {
     ]
   },
   seats: [{ name: "Kayak", seats: 10, taken: 4, minimum: 6 }],
-  versionCount: 1,
   latestVersion: { name: "As published", weekId: "w1", published: true }
 };
 
@@ -161,7 +160,7 @@ describe("c/shoreshRootsFaces", () => {
           expect(s.key).toBeTruthy();
           (s.cls || "").split(" ").forEach((c) => {
             expect(c).toMatch(
-              /^(f50|f300|f400|f500|fhl|fshade|fnone|sedge|s400|s500|s700|snone|dash|g-[a-z0-9_-]+)?$/
+              /^(f50|f300|f400|f500|fhl|fshade|fcaution|fnone|sedge|s400|s500|s700|snone|dash|g-[a-z0-9_-]+)?$/
             );
           });
         });
@@ -197,6 +196,20 @@ describe("c/shoreshRootsFaces", () => {
         (s.cls || "").includes("s700 dash")
       )
     ).toHaveLength(2);
+  });
+
+  it("an overfilled offering shows its campers past the limit; one with no limit counts no empty seats", () => {
+    const seatsOf = (seat) =>
+      glimpseOf("electiveSeats", readCamp(SETUP, { ...TABLE, seats: [seat] }))
+        .shapes;
+    const over = seatsOf({ name: "Kayak", seats: 10, taken: 13 });
+    expect(over.filter((s) => s.cls === "f500")).toHaveLength(10);
+    expect(over.filter((s) => s.cls === "fcaution")).toHaveLength(3);
+    expect(over.filter((s) => (s.cls || "").includes("s400"))).toHaveLength(0);
+    const open = seatsOf({ name: "Kayak", seats: null, taken: 4 });
+    expect(open.filter((s) => s.cls === "f500")).toHaveLength(4);
+    expect(open.filter((s) => (s.cls || "").includes("fnone"))).toHaveLength(0);
+    expect(words({ shapes: open })).toContain("\u221e");
   });
 
   it("draws the schedules as they stand: placed cells, the fixed row locked across, the director's locks", () => {
