@@ -6,6 +6,11 @@
  * Preferences and seats are written hundreds at a time by Shoresh's own saves, which check what
  * they save; their triggers only fill keys and read nothing, so a big save stays within its query
  * budget. No message here names a camper: names stay out of errors and logs.
+ *
+ * Its reads are in system mode on purpose (repo ADR 0018 choice 60): they read only hidden keys
+ * (no one is granted Key__c; these triggers fill it) and the season of the set, week and
+ * schedule a run names, to refuse a duplicate or a run outside its season whoever saves it. They
+ * return no name to anyone, and sharing still applies (the class is with sharing).
  */
 public with sharing class ElectiveRunTriggers {
   // ---------------------------------------------------------------- campers

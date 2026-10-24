@@ -1156,6 +1156,17 @@
                         ondelete={handleDeleteRecord}
                         ondetails={handleOpenSpecialDetails}
                       ></c-shoresh-editable-table>
+                      <template lwc:if={next.specialEvents}>
+                        <div class="next">
+                          <lightning-button
+                            variant="brand"
+                            label={next.specialEvents.label}
+                            data-id="next"
+                            data-next={next.specialEvents.key}
+                            onclick={handleNext}
+                          ></lightning-button>
+                        </div>
+                      </template>
                     </div>
                     <c-shoresh-special-details
                       class="setup-side"
@@ -1174,8 +1185,8 @@
                    ElectivesScreen.jsx and ElectiveSetDetail.jsx; repo ADR 0018 slice E4): a
                    section per elective set with a row per offering, the sets themselves named,
                    added and deleted below them, and one offering's linked choices beside the
-                   list, opened from its row's chevron. The menu lists it as coming until slice
-                   E11; the page's address opens it (?c__preview=electives). -->
+                   list, opened from its row's chevron. In the menu since slice E11 (ADR 0018
+                   choice 59). -->
               <div class={shown.electives} data-screen="electives">
                 <div class="setup-rail" data-id="setup-rail">
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
@@ -1305,8 +1316,8 @@
                 ></c-shoresh-manual-build>
               </div>
 
-              <!-- Elective seats (electives slice E7): coming in the menu until electives are
-                   finished (decision 44); opened from the page's address (repo ADR 0018). -->
+              <!-- Elective seats (electives slice E7; in the menu since slice E11, repo ADR 0018
+                   choice 59). -->
               <div class={shown.electiveSeats} data-screen="electiveSeats">
                 <template lwc:if={showsElectiveSeats}>
                   <c-shoresh-elective-seats
@@ -1337,6 +1348,7 @@
                   <c-shoresh-choices-import
                     setup={setup}
                     terms={terms}
+                    opening={choicesOpening}
                     onseasonchanged={handleSeasonChanged}
                   ></c-shoresh-choices-import>
                 </template>

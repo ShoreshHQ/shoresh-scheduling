@@ -183,7 +183,10 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     address may open, and `c/shoreshCampSetup` opens it once, when the season is read. No other
     value opens anything. When both are merged, `previewScreen` lists both screens and there is
     still one route. It is drawn only while shown, so other screens make no extra server call. E7
-    moves its start onto the seats screen ("Bring in choices" on its rail).
+    moves its start onto the seats screen ("Bring in choices" on its rail). _Slice E11 (ADR 0018
+    choice 59): the Electives entries are in the menu; Bring in choices is still not a menu entry
+    (it is opened from Elective seats and from the Electives list), and the address still opens
+    it, for the real-browser check._
 20. **Reader additions for E6.** `sheetLayout(sheet)`, and two heading forms the mock-up's own
     sheet uses: a possessive keeps its s ("Child's name" is the name), and "Anything we should
     know?" is a comment. The corpus readings are unchanged.

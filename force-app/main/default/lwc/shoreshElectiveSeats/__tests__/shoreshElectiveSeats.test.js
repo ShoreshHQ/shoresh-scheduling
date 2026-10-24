@@ -179,12 +179,20 @@ describe("the start", () => {
     );
   });
 
-  it("Bring in choices opens that screen", async () => {
+  it("Bring in choices opens that screen, for the set, week and schedule on screen", async () => {
     const element = await render();
     const go = jest.fn();
     element.addEventListener("navigate", go);
     $(element, '[data-id="bring-in"]').click();
-    expect(go.mock.calls[0][0].detail).toEqual({ screen: "bringInChoices" });
+    const detail = go.mock.calls[0][0].detail;
+    expect(detail.screen).toBe("bringInChoices");
+    expect(detail.choices).toEqual({
+      setId: $(element, '[data-id="set"]').value,
+      weekId: $(element, '[data-id="week"]').value,
+      scheduleId: expect.any(String)
+    });
+    expect(detail.choices.weekId).toBeTruthy();
+    expect(detail.choices.setId).toBeTruthy();
   });
 });
 

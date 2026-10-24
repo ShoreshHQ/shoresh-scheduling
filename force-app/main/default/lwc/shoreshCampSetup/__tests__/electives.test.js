@@ -1,7 +1,7 @@
 /*
  * The Electives setup screen on the Shoresh page (repo ADR 0018, slice E4; design-research
- * electives-r1 setup-a; decision 53). The menu lists it as coming until slice E11 (decision 44);
- * the page's address opens it (?c__preview=electives).
+ * electives-r1 setup-a; decision 53). In the menu since slice E11 (ADR 0018 choice 59); the
+ * page's address (?c__preview=electives) opens it too, which these tests use.
  */
 import { createElement } from "lwc";
 import ShoreshCampSetup from "c/shoreshCampSetup";
@@ -263,16 +263,23 @@ describe("c-shoresh-camp-setup: Electives", () => {
     jest.clearAllMocks();
   });
 
-  it("without the address, Electives stay coming: not openable, and nothing of theirs on Roots", async () => {
+  it("without the address, the menu opens Electives, and Roots lists what needs a look there", async () => {
     const element = await render({});
     expect(shownScreens(element)).toEqual(["roots"]);
     expect(menuItem(element, "electives")).toMatchObject({
       label: "Electives",
-      coming: true,
-      disabled: true
+      coming: false,
+      disabled: false
     });
     const roots = q(element, "c-shoresh-roots");
-    expect(roots.problems.filter((p) => p.screen === "electives")).toEqual([]);
+    expect(
+      roots.problems.filter((p) => p.screen === "electives").map((p) => p.name)
+    ).toEqual(["Photography", "Woodworking"]);
+    q(element, "c-shoresh-menu")
+      .shadowRoot.querySelector('a[data-screen="electives"]')
+      .click();
+    await flush();
+    expect(shownScreens(element)).toEqual(["electives"]);
   });
 
   it("the address opens Electives: the rail counts the sets, a section per set counts its open offerings", async () => {

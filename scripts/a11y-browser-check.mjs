@@ -82,8 +82,8 @@
  *   set (electives slice E9) and Not electives pressed by keyboard keeps the cursor; Start again puts the cursor
  *   on the heading and Back to Roots on Roots'; axe on the drop well and the page. Add is never
  *   pressed, so nothing is imported;
- * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
- *   still lists it as coming (?c__preview=electives), then from the menu: focus on its heading, axe; an offering's
+ * - Electives setup (repo ADR 0018, slice E4), opened from the menu with no page address, both
+ *   electives entries listed as built, not Coming (slice E11): focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe); the
  *   linked choices editor (slice E8) by keyboard: the name typed and left is saved, Space on a
  *   linked period unticks it with focus kept and ticks it back, each in the org (axe); Close
@@ -104,13 +104,13 @@
  *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
  *   Ctrl/Cmd+Z takes it
  *   back. The set is made by Apex first and deleted after;
- * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
- *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
+ * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from Elective seats
+ *   (it is not a menu entry), starting on the set and week chosen there: a made-up choices sheet chosen, focus on each
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
  *   count said, then Cancel: nothing brought in, said, focus on Choose a file; axe on each card.
  *   It makes the check's elective set once ("Check chugim") and brings in no campers;
- * - Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37), opened from the page's
- *   address since the menu lists it as coming: focus on its heading; Assign seats said; a cell's
+ * - Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37), opened from the menu
+ *   (slice E11): focus on its heading; Assign seats said; a cell's
  *   roster opened by keyboard with focus on its heading; the padlock pressed and said; By camper;
  *   Finalize said (or its refusal); axe on each. Then (slice E10) the Download menu (or the run's
  *   menu before Finalize) and Clear at season end opened by keyboard, focus on its heading, a week
@@ -1816,8 +1816,11 @@ async function importLastYear() {
     results.pass(S, "The count's names are listed", `${names} names.`);
   else results.fail(S, "The count's names are listed", "No names shown.");
   await axe(`${S}: a count opened`);
-  // Electives read from the file (slice E9): Not electives, by keyboard, keeps the cursor.
-  if (!(await tabTo(named(/^Not electives\b/, { tag: "button" }), { max: 60 })))
+  // Electives read from the file (slice E9): Not electives, by keyboard, keeps the cursor. It
+  // comes after every question's answers. The focus helper names a button by its title before
+  // its text, and this one's title is its description, so either is matched.
+  const notElectives = /^(Not electives|Set up as what its cells show)\b/;
+  if (!(await tabTo(named(notElectives, { tag: "button" }), { max: 160 })))
     throw new Error("Not electives was not reached with Tab.");
   await press("Enter", 800);
   if ((await focusedAttr("aria-pressed")) === "true")
@@ -2884,18 +2887,23 @@ async function manualBuild(openManual) {
   );
 }
 
-/** The drawer's activity names, in its order. */
-async function drawerNames() {
+/** The drawer's activity names, in its order (with its elective sets first, withSets). */
+async function drawerNames(withSets = false) {
   return shown("c-shoresh-build-palette")
     .first()
-    .evaluate((d) =>
-      [
-        ...(d.shadowRoot || d).querySelectorAll(
-          "[data-id='drawer-tiles'] .tile-name"
-        )
-      ]
-        .map((n) => n.textContent.trim())
-        .filter(Boolean)
+    .evaluate(
+      (d, sets) =>
+        [
+          ...(d.shadowRoot || d).querySelectorAll(
+            "[data-id='drawer-tiles'] .tile-name"
+          )
+        ]
+          // Activities only: an elective set's tile (first in the drawer when the camp has one)
+          // places the set, whose cell reads "<set> (2)", not its name.
+          .filter((n) => sets || !n.closest("[data-kind='elective']"))
+          .map((n) => n.textContent.trim())
+          .filter(Boolean),
+      withSets
     );
 }
 
@@ -4735,9 +4743,16 @@ async function editLinkedChoice(E) {
       "A linked choice's name saved when left",
       `In the org: ${JSON.stringify(renamed)}.`
     );
-  const period = await tabTo(named(/^Tuesday /, { tag: "button" }), {
-    max: 10
-  });
+  // The period's own button (data-id "period"), not its needs-a-look mark, whose name starts
+  // the same way; leaving the name may already have put the cursor on it.
+  const isPeriod = (f) =>
+    !!f && f.dataId === "period" && /^Tuesday /.test(f.name);
+  const here = await focus();
+  const period = isPeriod(here)
+    ? here
+    : await tabTo(isPeriod, {
+        max: 10
+      });
   if (!period) throw new Error("A linked period was not reached with Tab.");
   await press("Space", 3000);
   await expectFocus(E, "A period unticked: focus kept on it", {
@@ -4762,8 +4777,8 @@ async function editLinkedChoice(E) {
 }
 
 /**
- * The Electives screen (repo ADR 0018, slice E4), opened from the page's address and then from
- * the menu (which lists it on that page): focus on its heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
+ * The Electives screen (repo ADR 0018, slice E4), opened from the menu with no page address
+ * (slice E11: both electives entries built, not Coming): focus on its heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
  * heading (axe), Close back on the chevron; Confirm on a proposed offering, not shown at rest and
  * shown once Tab reaches it, is saved and said, the
  * cursor kept in its row on its offering; the seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
@@ -4778,25 +4793,47 @@ async function electives() {
       const names = seedElectivesSetup();
       try {
         const origin = new URL(page.url()).origin;
-        await page.goto(`${origin}${TAB_PATH}?c__preview=electives`, {
+        // Since slice E11 the menu opens Electives (ADR 0018 choice 59): the page is loaded
+        // with no address, and both electives entries must be listed as built, not Coming.
+        await page.goto(`${origin}${TAB_PATH}`, {
           waitUntil: "domcontentloaded",
           timeout: 60000
         });
         await page
           .locator(APP)
+          .locator("c-shoresh-menu")
+          .waitFor({ timeout: 60000 });
+        await pause(3000);
+        const menu = page.locator(APP).locator("c-shoresh-menu");
+        const coming = [];
+        for (const key of ["electives", "electiveSeats"]) {
+          const entry = menu.locator(`[data-item="${key}"]`);
+          if (
+            (await entry.count()) !== 1 ||
+            (await entry.getAttribute("aria-disabled")) === "true" ||
+            (await entry.locator(".menu-coming").count()) > 0
+          )
+            coming.push(key);
+        }
+        if (coming.length)
+          results.fail(
+            E,
+            "In the menu, not Coming",
+            `Still coming or not openable: ${coming.join(", ")}.`
+          );
+        else
+          results.pass(
+            E,
+            "In the menu, not Coming",
+            "Electives and Elective seats are listed as built."
+          );
+        // The heading is checked the way a director arrives: the menu.
+        await openFromMenu(E, /^Electives\b/);
+        await page
+          .locator(APP)
           .locator('[data-screen="electives"] c-shoresh-editable-table')
           .first()
           .waitFor({ timeout: 60000 });
-        await pause(3000);
-        results.pass(
-          E,
-          "Opened from the page's address",
-          "The Electives table is on screen."
-        );
-        // A fresh page load leaves focus on the page (Salesforce takes it back after the load,
-        // on every screen), so the heading is checked the way a director arrives: the menu,
-        // which lists Electives as built on this page.
-        await openFromMenu(E, /^Electives\b/);
         await axe(E);
         const chevron = named(new RegExp(`^${names.linked} details$`), {
           tag: "button"
@@ -4973,7 +5010,7 @@ async function electivesOnGrid(openManual) {
           press("Enter")
         );
       }
-      const first = (await drawerNames())[0];
+      const first = (await drawerNames(true))[0];
       if (first === CHECK_SET) {
         results.pass(S, "The drawer: elective sets first", `${first}.`);
       } else {
@@ -5249,9 +5286,10 @@ if (sets.isEmpty()) {
   }
   insert offerings;
 }
-System.debug('A11Y_OFFERED[' + activities[0].Name + '|' + activities[1].Name + ']');
+System.debug('A11Y_OFFERED[' + activities[0].Name + '::' + activities[1].Name + ']');
 `);
-  const offered = /A11Y_OFFERED\[([^|\]']+)\|([^\]']+)\]/.exec(logs);
+  // "::", not "|": the debug log writes a "|" inside a message as "&#124;".
+  const offered = /A11Y_OFFERED\[([^\]']+?)::([^\]']+)\]/.exec(logs);
   if (!offered)
     throw new Error("The check's offerings were not reported back.");
   return [offered[1], offered[2]];
@@ -5268,32 +5306,74 @@ function choicesSheet([first, second]) {
 }
 
 /**
- * Bring in choices, opened from the page's address (it is not in the menu until electives are
- * finished): a sheet chosen, the three cards walked with the keyboard (focus on each card's
- * heading, axe on each), an unknown name left out, the count said, then Cancel: nothing saved.
+ * Bring in choices, opened as a director does (slice E11): Elective seats from the menu, the
+ * check's set and week chosen there, then its Bring in choices, focus on that screen's heading,
+ * which starts on the same set and week (ADR 0018 choice 61). Then a sheet chosen, the three
+ * cards walked with the keyboard (focus on each card's heading, axe on each), an unknown name
+ * left out, the count said, then Cancel: nothing saved.
  */
 async function bringInChoices() {
   const S = "Bring in choices";
   await step(S, "The cards, by keyboard", async () => {
     const offered = seedElectives();
-    const address = new URL(`${TAB_PATH}?c__preview=bringInChoices`, page.url())
-      .href;
-    await page.goto(address, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(new URL(TAB_PATH, page.url()).href, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000
+    });
     await page
       .locator(APP)
-      .locator("c-shoresh-choices-import")
+      .locator("c-shoresh-menu")
       .waitFor({ timeout: 60000 });
     await pause(3000);
-    await expectFocus(S, "Opened from its address: focus on its heading", {
+    await openFromMenu("Elective seats", /^Elective seats\b/);
+    await page
+      .locator(APP)
+      .locator("c-shoresh-elective-seats")
+      .waitFor({ timeout: 60000 });
+    await pause(1500);
+    // The check's week, then its set, on Elective seats.
+    await pickWeek();
+    if (await tabTo(named(/, Elective set$/, { tag: "button" }), { max: 10 })) {
+      await chooseOption(new RegExp(`^${CHECK_SET}$`));
+      await pause(1500);
+    }
+    if (
+      !(await tabTo(named(/^Bring in choices$/, { tag: "button" }), {
+        max: 20
+      }))
+    )
+      throw new Error("Bring in choices was not reached with Tab.");
+    await press("Enter", 3000);
+    await expectFocus(S, "Opened from Elective seats: focus on its heading", {
       tag: /^h2$/,
       name: /^Bring in choices$/
     });
-    // The check's set, then its week.
-    if (await tabTo(named(/, Elective set$/, { tag: "button" }), { max: 10 })) {
-      await chooseOption(new RegExp(`^${CHECK_SET}$`));
-      await pause(800);
-    }
-    await pickWeek();
+    const setsShown = await page
+      .locator(APP)
+      .locator('c-shoresh-choices-import [data-id="set"]')
+      .first()
+      .evaluate(
+        (p) => ((p.options || []).find((o) => o.value === p.value) || {}).label
+      );
+    const weekShown = await page
+      .locator(APP)
+      .locator('c-shoresh-choices-import [data-id="week"]')
+      .first()
+      .evaluate(
+        (p) => ((p.options || []).find((o) => o.value === p.value) || {}).label
+      );
+    if (setsShown === CHECK_SET && weekShown === week)
+      results.pass(
+        S,
+        "Opened from Elective seats: on the same set and week",
+        `${setsShown}, ${weekShown}.`
+      );
+    else
+      results.fail(
+        S,
+        "Opened from Elective seats: on the same set and week",
+        `Set ${setsShown}, week ${weekShown}; expected ${CHECK_SET}, ${week}.`
+      );
     await axe(`${S}: the start`);
     await page
       .locator(APP)
@@ -5453,8 +5533,7 @@ insert prefs;
 }
 
 /**
- * Elective seats (electives slice E7), opened from the page's address (the menu lists it as
- * coming): focus on its heading; the check's set and week chosen by keyboard (axe); Assign seats
+ * Elective seats (electives slice E7), opened from the menu (slice E11): focus on its heading; the check's set and week chosen by keyboard (axe); Assign seats
  * said, then the counter and Finalize there (axe); a cell's roster opened with Enter, focus on its
  * heading (axe); the padlock pressed with Space, said; By camper (axe); Finalize said (or, if the
  * camp's own week is double-booked at that time, its refusal said). Everything it made is deleted
@@ -5468,23 +5547,23 @@ async function electiveSeats() {
     async () => {
       const first = seedSeats();
       try {
-        const address = new URL(
-          `${TAB_PATH}?c__preview=electiveSeats`,
-          page.url()
-        ).href;
+        // From the menu since slice E11 (ADR 0018 choice 59), as a director arrives.
+        const address = new URL(TAB_PATH, page.url()).href;
         await page.goto(address, {
           waitUntil: "domcontentloaded",
           timeout: 60000
         });
         await page
           .locator(APP)
-          .locator("c-shoresh-elective-seats")
+          .locator("c-shoresh-menu")
           .waitFor({ timeout: 60000 });
         await pause(3000);
-        await expectFocus(S, "Opened from its address: focus on its heading", {
-          tag: /^h2$/,
-          name: /^Elective seats$/
-        });
+        await openFromMenu(S, /^Elective seats\b/);
+        await page
+          .locator(APP)
+          .locator("c-shoresh-elective-seats")
+          .waitFor({ timeout: 60000 });
+        await pause(1500);
         await pickWeek();
         if (
           !(await tabTo(named(/, Elective set$/, { tag: "button" }), {
