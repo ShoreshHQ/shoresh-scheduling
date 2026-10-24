@@ -1417,7 +1417,8 @@ async function listIntoTable() {
     );
   if (
     !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
-      max: 40,
+      // Round the page backwards: the page's chrome, the menu, ‹ Roots and the rail.
+      max: 90,
       back: true
     }))
   )
@@ -1515,7 +1516,8 @@ async function programsListIntoTable() {
   await axe("Programs, Import a list with a file laid into the table");
   if (
     !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
-      max: 40,
+      // Round the page backwards: the page's chrome, the menu, ‹ Roots and the rail.
+      max: 90,
       back: true
     }))
   )
@@ -1712,7 +1714,8 @@ const meldOpen = (key) =>
 const clipOf = (screen) =>
   page
     .locator(APP)
-    .locator(`[data-screen="${screen}"]`)
+    // The screen's own wrapper in the frame (the menu's links carry data-screen too).
+    .locator(`[data-id="frame-body"] [data-screen="${screen}"]`)
     .first()
     .evaluate((w) => w.style.clipPath || "");
 
@@ -1782,9 +1785,15 @@ async function rootsTable() {
     tag: "button",
     name: /^Weeks$/
   });
-  await press("Enter", 60);
-  const midway = await clipOf("weeks");
-  await pause(1800);
+  await press("Enter", 30);
+  // The first frame waits for the screen to be drawn; watch for the clip for up to 1.5 s.
+  let midway = "";
+  for (let i = 0; i < 50 && !/inset\(/.test(midway); i++) {
+    midway = await clipOf("weeks");
+    if (!/inset\(/.test(midway)) await pause(30);
+  }
+  // The journey takes about 1.8 s once it starts; then the screen is itself, unclipped.
+  for (let i = 0; i < 30 && (await clipOf("weeks")); i++) await pause(100);
   if (/inset\(/.test(midway) && !(await clipOf("weeks"))) {
     results.pass(
       S,
@@ -1842,7 +1851,8 @@ async function rootsTable() {
   // Reduced motion: no travel, the screen at once.
   await page.emulateMedia({ reducedMotion: "reduce" });
   try {
-    if (!(await tabTo(isCard(/^Weeks$/), { max: 40 }))) {
+    // From the Weeks card itself: Tab goes round the page back to it.
+    if (!(await tabTo(isCard(/^Weeks$/)))) {
       throw new Error("The Weeks card was not reached with Tab.");
     }
     await press("Enter", 60);
@@ -4700,7 +4710,8 @@ async function scheduleDoor() {
     const door = (f) =>
       f.tag === "button" &&
       f.components.includes("c-shoresh-menu") &&
-      /^Schedules$/.test(f.name);
+      // Its words are set in capitals (innerText reads them so); the name is "Schedules".
+      /^Schedules$/i.test(f.name);
     const found =
       (await tabTo(door, { back: true })) || (await tabTo(door, { max: 280 }));
     if (!found)
@@ -4716,19 +4727,24 @@ async function scheduleDoor() {
       name: /^Schedules$/
     });
     await axe("Schedules, the weeks");
+    // innerText reads the hidden ", Week n" after the label with a space before its comma.
+    const nameOf = (f) => f.name.replace(/\s+,/g, ",");
     const toManual = (f) =>
-      f.tag === "button" && /^Manual Build, /.test(f.name);
+      f.tag === "button" && /^Manual Build, /.test(nameOf(f));
     const other = await tabTo(
-      (f) => toManual(f) && f.name !== `Manual Build, ${week}`,
+      (f) => toManual(f) && nameOf(f) !== `Manual Build, ${week}`,
       { max: 80 }
     );
-    const chosen = other ? other.name.replace(/^Manual Build, /, "") : week;
+    const chosen = other ? nameOf(other).replace(/^Manual Build, /, "") : week;
     if (
       !other &&
-      !(await tabTo((f) => toManual(f) && f.name === `Manual Build, ${week}`, {
-        back: true,
-        max: 80
-      }))
+      !(await tabTo(
+        (f) => toManual(f) && nameOf(f) === `Manual Build, ${week}`,
+        {
+          back: true,
+          max: 80
+        }
+      ))
     )
       throw new Error(`"Manual Build, ${week}" was not reached with Tab.`);
     await press("Enter", 2500);
@@ -5704,7 +5720,7 @@ async function bringInChoices() {
       name: /^How the sheet was read$/
     });
     await axe(`${S}: 1 of 3`);
-    if (!(await tabTo(named(/^That's right$/, { tag: "button" }), { max: 40 })))
+    if (!(await tabTo(named(/^That's right$/, { tag: "button" }), { max: 90 })))
       throw new Error("That's right was not reached with Tab.");
     await press("Enter", 800);
     await expectFocus(S, "That's right: focus on card 2's heading", {

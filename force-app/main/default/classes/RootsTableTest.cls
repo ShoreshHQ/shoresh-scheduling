@@ -324,9 +324,21 @@ private class RootsTableTest {
       Camp camp = new Camp();
       Id generatedId = camp.draft('Generated');
       camp.electives(generatedId);
-      // The only run is Week 1's; the cards show Week 2.
+      // The only run is Week 1's (against a saved version of Week 1); the cards show Week 2.
+      Schedule__c week1 = new Schedule__c(
+        Program__c = camp.ids.get('Main'),
+        Week__c = camp.ids.get('Week 1'),
+        Name = 'Week 1 version',
+        Status__c = 'Version',
+        Origin__c = 'Manual'
+      );
+      Database.insert(week1, AccessLevel.USER_MODE);
       Database.update(
-        new ElectiveRun__c(Id = camp.runId, Week__c = camp.ids.get('Week 1')),
+        new ElectiveRun__c(
+          Id = camp.runId,
+          Week__c = camp.ids.get('Week 1'),
+          Schedule__c = week1.Id
+        ),
         AccessLevel.USER_MODE
       );
       Test.startTest();

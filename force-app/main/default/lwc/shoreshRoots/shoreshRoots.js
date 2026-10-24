@@ -30,6 +30,8 @@ const REST_FAN = [
   [3, -2, 0.9]
 ];
 const GAP = 14;
+// The least a card behind the front one shows of itself at rest (px).
+const MIN_STRIP = 25;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
 const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
 
@@ -706,7 +708,10 @@ export default class ShoreshRoots extends LightningElement {
   }
 
   rest(meld, cx, cy, s, fan) {
-    const lift = s < 0.6 ? 1.5 : 1; // room for a far meld's larger names
+    // Room for a far meld's larger names; and each card behind shows at least a 24 px strip,
+    // so it stays a target a finger or pointer can hit (WCAG 2.5.8).
+    const strip = fan * s;
+    const lift = Math.max(s < 0.6 ? 1.5 : 1, strip > 0 ? MIN_STRIP / strip : 1);
     this.restOrder(meld).forEach((ci, d) => {
       const card = meld.cards[ci];
       const [dx, dy, rot] = REST_FAN[Math.min(d, 2)];
