@@ -24,9 +24,9 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. On the left is the Shoresh menu. At its top is the camp row: the camp name, and under it a
    small **▾** (**Season actions**, which holds **New season**). Below it is the menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
    Camp words; **Activities & Events**: Activities, Fixed activities, Recurring activities, and
-   Special events marked **Coming**; **Schedules**: **Generated Schedule**, **Manual Build** and
-   **Schedules**). Until there is a season, only
-   **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
+   Special events marked **Coming**; **Schedules**: **Generated Schedule**, **Manual Build**,
+   **Elective seats** and **Saved versions**). Until there is a season, only
+   **Camp words** can be opened; the rest is greyed out (the **Schedules** title too). The middle shows **Start a new season**.
 
 ## 3. Use your camp's own words
 
@@ -337,14 +337,14 @@ save one), so first add a made-up one.
    ```
 
    It prints _Done. In the Shoresh tab, pick the camp "Sample Camp (made up)", then open
-   Schedules._ The first time, it also sets up that invented camp: one week (28 June 2027),
+   Saved versions._ The first time, it also sets up that invented camp: one week (28 June 2027),
    one program, six bunks, seven time blocks, five activities, Lunch as a fixed activity,
    and two recurring activities (Morning meeting on Mondays, Library time for Juniors on
    Wednesdays). Your own camp is not touched. Running it again adds another version (and puts
    Week 1 back if it was deleted).
 
 2. Reload the Shoresh tab. A **Camp** picker appears at the top: choose _Sample Camp (made
-   up)_. Click **Schedules** in the menu.
+   up)_. Click **Saved versions** in the menu.
 3. The newest version opens by itself. The toolbar shows **Week** (_Week 1_), the **Daily View
    / Group View / Activity View** toggle (as on the desktop), and, on the right after a
    divider, **Versions**. A blue strip says _Imported from sample-week.xlsx (made up) · Imported ·
@@ -471,9 +471,9 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
     schedule** shows a small picture of the week beside _Week 1 (Main)_ and _Kept as a version,
     Imported from maple-grove-2026-all-camp.xlsx_.
 14. After the green button, **Last year's schedule** shows _Imported from
-    maple-grove-2026-all-camp.xlsx_, _Week 1 (Main)_ and _Open it on Schedules_. (**Undo this
+    maple-grove-2026-all-camp.xlsx_, _Week 1 (Main)_ and _Open it on Saved versions_. (**Undo this
     import** at the top would take the whole import back now; step 15 does it from Roots
-    instead.) Click **Done**, then **Schedules**: the version
+    instead.) Click **Done**, then **Saved versions**: the version
     opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim as the
     elective set (one wide cell across the bunks), and the Zoo trip and Field day marked _not
     set up yet_.
@@ -615,7 +615,8 @@ in the _Import test_ season, in this order).
 This uses the made-up camp from section 13. If you haven't run that script yet, run it first.
 
 1. Reload the Shoresh tab and choose _Sample Camp (made up)_ in the **Camp** picker. The menu's
-   last section reads **Generated Schedule**, **Manual Build** and **Schedules**. On Roots,
+   last section reads **Generated Schedule**, **Manual Build**, **Elective seats** and **Saved
+   versions**. On Roots,
    **Build or generate the schedule** holds two buttons, one for each schedule.
 2. Click **Manual Build →** on Roots (or **Manual Build** in the menu). The **Week** picker
    shows _Week 1_, and there is one button: **Start a blank week**. Click it.
@@ -627,7 +628,7 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
 3. The week opens in **Daily View** on Monday, as on the desktop. Lunch is in every bunk's Lunch
    row, and Morning meeting is in every bunk's Period 1. Both have the grey bar down the left.
    Every other cell says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
-   to 3 only. Nothing appears under **Versions** on the Schedules page: the week you build is
+   to 3 only. Nothing appears under **Versions** on the Saved versions page: the week you build is
    not a saved version.
 4. **Type a name into a cell.** Double-click Bunk 1's Period 2. A small box opens under it,
    headed _Bunk 1 · Monday · Period 2_. Type `sw`: the list shows _Swim_. Press Return. Swim
@@ -824,7 +825,7 @@ separate schedule for the same week: nothing here changes Manual Build, and Manu
 doesn't change this one.
 
 1. **The menu and Roots.** Reload the Shoresh tab. The menu's last section, **Schedules**, reads
-   **Generated Schedule**, **Manual Build**, **Schedules**, with no _Coming_ (the two schedules are listed by
+   **Generated Schedule**, **Manual Build**, **Elective seats**, **Saved versions**, with no _Coming_ (the two schedules are listed by
    name, as on the desktop: the order means nothing). On Roots, **Build or generate the
    schedule** now holds two buttons side by side, **Generated Schedule →** and **Manual
    Build →**. Click **Generated Schedule →**.
@@ -918,7 +919,7 @@ doesn't change this one.
 19. **While a change saves**, Rebuild, Try another, Lock and the pickers are greyed out for a
     moment; they come back on their own.
 20. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
-    version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
+    version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Saved versions page,
     **Versions**). Fill the open cells keeps none: it only adds.
 
 ## 24. Both schedules: another program at the same place
@@ -1178,7 +1179,7 @@ This uses the season from sections 4 to 8 (Juniors with Bunk 1 and Bunk 2) and a
 The campers are made up: `docs/samples/electives/chugim-choices.csv` in the project folder.
 
 1. **The menu.** Under **Activities & Events**, **Electives** is the last entry; under
-   **Schedules**, **Elective seats** sits between Manual Build and Schedules. Neither is marked
+   **Schedules**, **Elective seats** sits between Manual Build and Saved versions. Neither is marked
    Coming any more. On **Special events** the button at the bottom is now **Electives →**.
 2. **Activities first.** On **Activities** add _Archery_, _Drama_ and _Pottery_ (no location is
    fine) with **at least 0** times a week, so Generated Schedule doesn't place them by
@@ -1232,6 +1233,27 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
     **Clear**: _Cleared: 1 run, 6 campers._ The menu (Chugim and its three offerings) is still
     there for next summer. **Cancel** or Escape instead goes back with nothing done. A run
     that is not final yet is named and stops Clear until it is finalized.
+
+## 32. The Schedules title: open a week
+
+This uses the made-up camp from section 13 (one week is enough; two show it better: add _Week 2_
+on **Weeks** first).
+
+1. **The title is a door.** In the menu, the **Schedules** title (above Generated Schedule) is
+   now something you can click; **Camp** and **Activities & Events** are still plain titles.
+   Under the pointer it lights up like a menu entry. Click it.
+2. **Your weeks.** The screen lists the season's weeks, one row each: the week's name, then
+   **Generated Schedule** and **Manual Build**. No other words. The **Schedules** title is shown
+   as the screen you are on.
+3. **Open a week.** On _Week 2_ click **Manual Build**. Manual Build opens with its **Week**
+   picker on _Week 2_. Click the **Schedules** title again, and on _Week 1_ click **Generated
+   Schedule**: Generated Schedule opens on _Week 1_.
+4. **With the keyboard.** Press Tab until the **Schedules** title has the green ring, then
+   Enter: the weeks open, and Tab moves through each week's two buttons. A screen reader hears
+   each one with its week, for example _Manual Build, Week 2_.
+5. **Before a season** (or in a camp with none yet) the title is greyed out like the entries
+   under it and does nothing. In a season with no weeks yet, the screen says _No Weeks yet_
+   with a **Weeks →** button.
 
 ## What is not here yet
 

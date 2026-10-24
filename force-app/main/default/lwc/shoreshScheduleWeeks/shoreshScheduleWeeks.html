@@ -1,0 +1,40 @@
+<template>
+  <template lwc:if={hasWeeks}>
+    <ul class="weeks" data-id="weeks">
+      <template for:each={weeks} for:item="week">
+        <li key={week.id} class="week" data-week={week.id}>
+          <span class="week-name">{week.name}</span>
+          <span class="week-routes">
+            <template for:each={week.routes} for:item="route">
+              <button
+                key={route.key}
+                type="button"
+                class="slds-button slds-button_neutral route"
+                data-screen={route.screen}
+                data-week={week.id}
+                onclick={handleRoute}
+              >
+                {route.label}<span class="slds-assistive-text"
+                  >, {week.name}</span
+                >
+              </button>
+            </template>
+          </span>
+        </li>
+      </template>
+    </ul>
+  </template>
+  <template lwc:else>
+    <c-shoresh-empty-state title={noWeeks}></c-shoresh-empty-state>
+    <div class="to-weeks">
+      <button
+        type="button"
+        class="slds-button slds-button_brand"
+        data-id="to-weeks"
+        onclick={handleWeeks}
+      >
+        {weeksLabel}
+      </button>
+    </div>
+  </template>
+</template>

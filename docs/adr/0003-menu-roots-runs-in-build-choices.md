@@ -83,3 +83,30 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
 9. **Camp words' Cancel** now puts back the saved words ("Cancel changes", like the tables)
    instead of leaving the screen, since Camp words is now a screen of its own.
    _Changed 2026-10-20 (ADR 0013): Camp words saves as you go; there is no Save or Cancel._
+10. **Saved versions, and the Schedules title as a doorway** (Greg, 2026-10-24, wiki decision
+    61). The Schedules section's last entry, the page of a week's versions (ADR 0005), is named
+    **Saved versions** wherever it shows (the menu, its read-out heading, Import last year's
+    _Open it on Saved versions_); its key stays `schedules`, so stored state and addresses are
+    unchanged. The **Schedules** title itself is a doorway: a real button inside the section's
+    heading (`h2 > button`, named "Schedules", keyboard reachable, the highlight ring on focus),
+    in the title's small mono capitals, lit like an entry under the pointer, raised and
+    `aria-current="page"` while its page is shown, and greyed out with "Needs a season" read
+    out before there is a season (still in the tab order, as an entry, choice 3). It opens
+    **Schedules** (`scheduleWeeks`, `c-shoresh-schedule-weeks`): the season's weeks in the week
+    pickers' order, one row each, the week's name and two buttons, **Generated Schedule** and
+    **Manual Build** (the menu's order, read out with the week: "Manual Build, Week 2"). Each
+    opens that screen on that week, as choosing it in the screen's Week picker does
+    (`openWeek`), with the cursor on that screen's heading; the program shown stays the one
+    that screen had. While that screen's picker waits on work under way (a build, a save, a
+    publish), the doorway leaves the week shown, as the picker would refuse. No weeks yet: the
+    empty state _No Weeks yet_ and **Weeks →**. No sentence explains the page. The **Camp** and
+    **Activities & Events** titles stay plain headings.
+    Desktop: the sidebar draws the Schedules title as a plain label, never a click target
+    (`Sidebar.jsx`, the pinned section, "a click target would lie"); the nearest it has is the
+    neutral `schedule` entry (`App.jsx` SCREENS, `ScheduleScreen.jsx`), which designates neither
+    route and offers both. Greg chose the doorway; it keeps the desktop's rule that neither
+    schedule is picked for the director. Checked by `shoreshMenu.test.js` (the button, the plain
+    titles, the click, current and unavailable states, axe), `shoreshScheduleWeeks.test.js`,
+    `shoreshCampSetup.test.js` (the page opens with focus on its heading; a week's button opens
+    that screen on that week with focus on its heading), both screens' `openWeek` tests, and a
+    step in the real-browser check (`scheduleDoor`).

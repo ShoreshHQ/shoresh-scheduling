@@ -94,7 +94,7 @@ describe("c-shoresh-menu", () => {
       "Generated Schedule",
       "Manual Build",
       "Elective seats",
-      "Schedules"
+      "Saved versions"
     ]);
   });
 
@@ -180,6 +180,82 @@ describe("c-shoresh-menu", () => {
     element.setupBusy = true;
     await flush();
     expect(go.disabled).toBe(true);
+  });
+
+  describe("the Schedules title is a doorway (wiki decision 61)", () => {
+    const door = (element) =>
+      element.shadowRoot.querySelector('button[data-door="scheduleWeeks"]');
+
+    it("is a real button inside the Schedules heading, named Schedules; the other titles stay plain", async () => {
+      const element = await render();
+      const button = door(element);
+      expect(button).not.toBeNull();
+      expect(button.getAttribute("type")).toBe("button");
+      expect(button.closest("h2").textContent.trim()).toBe("Schedules");
+      expect(button.textContent.trim()).toBe("Schedules");
+      // Camp and Activities & Events: headings with no button.
+      const plain = [...element.shadowRoot.querySelectorAll("h2")].filter(
+        (h) => !h.querySelector("button")
+      );
+      expect(plain.map((h) => h.textContent.trim())).toEqual([
+        "Camp",
+        "Periods & Events"
+      ]);
+      expect(element.shadowRoot.querySelectorAll("h2 button").length).toBe(1);
+      await expect(element).toBeAccessible();
+    });
+
+    it("opens the season's weeks when clicked, or from the keyboard (a button takes Enter and Space)", async () => {
+      const element = await render();
+      const handler = jest.fn();
+      element.addEventListener("navigate", handler);
+      door(element).click();
+      expect(handler.mock.calls[0][0].detail).toEqual({
+        screen: "scheduleWeeks"
+      });
+      // A native button: in the tab order, and Enter or Space clicks it.
+      expect(door(element).tabIndex).toBe(0);
+      expect(door(element).disabled).toBe(false);
+      door(element).focus();
+      expect(element.shadowRoot.activeElement).toBe(door(element));
+    });
+
+    it("while its page is shown it is the screen shown (raised, the current page); not otherwise", async () => {
+      const element = await render(true, "scheduleWeeks");
+      expect(door(element).getAttribute("aria-current")).toBe("page");
+      expect(door(element).classList.contains("shoresh-raised")).toBe(true);
+      expect(
+        [...element.shadowRoot.querySelectorAll(".shoresh-raised")].length
+      ).toBe(1);
+      element.current = "manualBuild";
+      await flush();
+      expect(door(element).getAttribute("aria-current")).toBeNull();
+      expect(door(element).classList.contains("shoresh-raised")).toBe(false);
+    });
+
+    it("before a season it stays in the tab order, unavailable, says why, and opens nothing", async () => {
+      const element = await render(false, null);
+      const button = door(element);
+      expect(button.disabled).toBe(false);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.querySelector("[data-reason]").textContent).toBe(
+        "Needs a season"
+      );
+      const handler = jest.fn();
+      element.addEventListener("navigate", handler);
+      button.click();
+      expect(handler).not.toHaveBeenCalled();
+      expect(canOpen("scheduleWeeks", true)).toBe(true);
+      expect(canOpen("scheduleWeeks", false)).toBe(false);
+      await expect(element).toBeAccessible();
+    });
+
+    it("only the Schedules section has a door", () => {
+      const doors = menuSections(terms, true).map(
+        (section) => section.door && section.door.key
+      );
+      expect(doors).toEqual([null, null, null, "scheduleWeeks"]);
+    });
   });
 
   it("asks to open a screen when one is clicked", async () => {

@@ -403,6 +403,27 @@ export default class ShoreshManualBuild extends LightningElement {
     this.load();
   }
 
+  /**
+   * Opens this screen on a week of the season, as choosing it in the week picker does (the
+   * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
+   * week shown stays, and the picker says which it is. True when that week is the one shown.
+   */
+  @api
+  openWeek(weekId) {
+    if (!this.weekOptions.some((o) => o.value === weekId)) {
+      return false;
+    }
+    if (weekId === this.weekId) {
+      return true;
+    }
+    if (this.pickersLocked) {
+      return false;
+    }
+    this.weekId = weekId;
+    this.load();
+    return true;
+  }
+
   /** Opens the chosen week's draft, or finds there is none yet. */
   async load(again = false) {
     const key = `${this.programId}|${this.weekId}`;
