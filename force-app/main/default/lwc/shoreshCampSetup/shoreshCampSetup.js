@@ -248,6 +248,8 @@ export default class ShoreshCampSetup extends LightningElement {
   seededNote = "";
   // The offering whose linked choices are open beside the Electives list, or null.
   electiveDetailsFor = null;
+  // Where Bring in choices starts when Elective seats opened it ({ setId, weekId, scheduleId }).
+  choicesOpening = null;
   // The screen the page's address asks for (?c__preview=electives, repo ADR 0018;
   // ?c__preview=bringInChoices, ADR 0017 choice 19), and whether it has been opened once (after
   // that the menu leads, as for any screen).
@@ -279,10 +281,10 @@ export default class ShoreshCampSetup extends LightningElement {
     );
 
   /**
-   * The page's address. ?c__preview=electives opens the Electives screen, which the menu still
-   * lists as coming, and ?c__preview=bringInChoices opens Bring in choices, which is not in the
-   * menu until electives are finished (decision 44); so both can be tried and checked before then
-   * (repo ADRs 0018 and 0017 choice 19). Any other value is ignored.
+   * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
+   * menu (it is reached from Elective seats), so the checks can open it directly (repo ADR 0017
+   * choice 19); ?c__preview=electives and ?c__preview=electiveSeats open those screens, as the
+   * menu does since slice E11 (ADR 0018 choice 59). Any other value is ignored.
    */
   @wire(CurrentPageReference)
   wiredPageReference(reference) {
@@ -537,6 +539,9 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // Bring in choices from Elective seats starts on the set, week and schedule shown there.
+    this.choicesOpening =
+      screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
     const itemId = event.detail.specialItemId;
     if (itemId) {
@@ -560,6 +565,7 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   handleBringInChoices() {
     if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+      this.choicesOpening = null;
       this.openScreen("bringInChoices");
     }
   }

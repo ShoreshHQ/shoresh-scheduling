@@ -190,6 +190,40 @@ describe("c-shoresh-choices-import", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("opened from Elective seats, starts on its set, week and schedule (slice E11)", async () => {
+    choicesSetup.mockResolvedValue({
+      ...SITUATION,
+      sets: [
+        { id: "e1", name: "Chugim", activityIds: ["a1", "a2"] },
+        { id: "e2", name: "Bechirot", activityIds: ["a3"] }
+      ]
+    });
+    const element = createElement("c-shoresh-choices-import", {
+      is: ShoreshChoicesImport
+    });
+    element.terms = buildTerms([]);
+    element.setup = nsRecord({
+      ...SETUP,
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "c2",
+          Program__c: "p1",
+          Week__c: "w2",
+          Status__c: "Draft",
+          Origin__c: "Manual"
+        }
+      ]
+    });
+    element.opening = { setId: "e2", weekId: "w2", scheduleId: "c2" };
+    document.body.appendChild(element);
+    await flush();
+    expect($(element, '[data-id="set"]').value).toBe("e2");
+    expect($(element, '[data-id="week"]').value).toBe("w2");
+    // Week 2 has its own schedule, so the sheet can be dropped there.
+    expect($(element, '[data-id="drop"]')).not.toBeNull();
+  });
+
   it("says when there are no elective sets, or no schedule that week", async () => {
     const none = await render({ sets: [], runs: [], answers: [] });
     expect($(none, '[data-id="no-sets"]').title).toBe("No elective sets yet");

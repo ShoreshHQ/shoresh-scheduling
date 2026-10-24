@@ -90,10 +90,10 @@ describe("c-shoresh-menu", () => {
       "Anchors",
       "Recurring activities",
       "Special events",
-      "Electives (Coming)",
+      "Electives",
       "Generated Schedule",
       "Manual Build",
-      "Elective seats (Coming)",
+      "Elective seats",
       "Schedules"
     ]);
   });
@@ -204,11 +204,14 @@ describe("c-shoresh-menu", () => {
     expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
     expect(canOpen("weeks", true)).toBe(true);
-    // Electives are built but stay coming until slice E11 (decision 44; repo ADR 0018).
-    expect(canOpen("electives", true)).toBe(false);
+    // Electives are in the menu since slice E11 (decision 44; repo ADR 0018 choice 59).
+    expect(canOpen("electives", true)).toBe(true);
+    expect(canOpen("electiveSeats", true)).toBe(true);
+    expect(canOpen("electives", false)).toBe(false);
+    expect(canOpen("electiveSeats", false)).toBe(false);
   });
 
-  it("the page's address opens Electives before the menu does, and nothing else (ADR 0018)", async () => {
+  it("the page's address opens Electives, Elective seats and Bring in choices, and nothing else (ADR 0018)", async () => {
     expect(previewScreen("electives")).toBe("electives");
     expect(previewScreen("weeks")).toBeNull();
     expect(previewScreen(undefined)).toBeNull();
@@ -223,17 +226,23 @@ describe("c-shoresh-menu", () => {
       coming: false,
       disabled: false
     });
-    // Without it, the entry is coming, and Special events is still the last setup screen.
-    const coming = menuSections(terms, true, {})
-      .flatMap((section) => section.items)
-      .find((item) => item.key === "electives");
-    expect(coming).toMatchObject({ coming: true, reason: "Coming" });
-    expect(nextScreen("specialEvents", terms, true)).toBeNull();
+    expect(previewScreen("electiveSeats")).toBe("electiveSeats");
+    expect(previewScreen("bringInChoices")).toBe("bringInChoices");
+    // Without it, the menu lists both electives screens as built (slice E11, ADR 0018 choice 59).
+    const items = menuSections(terms, true, {}).flatMap(
+      (section) => section.items
+    );
+    for (const key of ["electives", "electiveSeats"]) {
+      expect(items.find((item) => item.key === key)).toMatchObject({
+        coming: false,
+        disabled: false,
+        reason: null
+      });
+    }
   });
 
   it("an entry that can't open stays in the tab order, unavailable, and says why", async () => {
     const element = await render(false, null);
-    // Electives are coming (decision 44): menuSections marks them so.
     const weeks = element.shadowRoot.querySelector('[data-item="weeks"]');
     expect(weeks.tagName).toBe("A");
     expect(weeks.getAttribute("href")).toBe("#");
@@ -241,18 +250,47 @@ describe("c-shoresh-menu", () => {
     expect(weeks.querySelector("[data-reason]").textContent).toBe(
       "Needs a season"
     );
-    const coming = element.shadowRoot.querySelector('[data-item="electives"]');
-    expect(coming.querySelector("[data-reason]").textContent).toBe("Coming");
-    // The visible badge isn't read twice.
-    expect(
-      coming.querySelector(".slds-badge").getAttribute("aria-hidden")
-    ).toBe("true");
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
     const click = new CustomEvent("click", { bubbles: true, cancelable: true });
     weeks.dispatchEvent(click);
     expect(handler).not.toHaveBeenCalled();
     expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("a coming entry says so once: the badge is seen, the reason is read", async () => {
+    // Nothing is coming just now (slice E11 opened Electives), so the entry is the menu's own
+    // shape for a screen built later (menuSections marks one coming: true, reason "Coming").
+    const element = await render(
+      true,
+      "roots",
+      {},
+      {
+        sections: [
+          {
+            key: "later",
+            title: "Later",
+            items: [
+              {
+                key: "later",
+                label: "Later",
+                coming: true,
+                disabled: true,
+                reason: "Coming",
+                mark: null
+              }
+            ]
+          }
+        ]
+      }
+    );
+    const coming = element.shadowRoot.querySelector('[data-item="later"]');
+    expect(coming.getAttribute("aria-disabled")).toBe("true");
+    expect(coming.querySelector("[data-reason]").textContent).toBe("Coming");
+    // The visible badge isn't read twice.
+    expect(
+      coming.querySelector(".slds-badge").getAttribute("aria-hidden")
+    ).toBe("true");
   });
 
   it("shows the desktop's marks: ! (Needed) and ✓ (Done), read out as words", async () => {
@@ -298,8 +336,12 @@ describe("c-shoresh-menu", () => {
       key: "specialEvents",
       label: "Special events →"
     });
-    // The last setup screen has no next.
-    expect(nextScreen("specialEvents", terms, true)).toBeNull();
+    // Electives follow Special events (slice E11), and the last setup screen has no next.
+    expect(nextScreen("specialEvents", terms, true)).toEqual({
+      key: "electives",
+      label: "Electives →"
+    });
+    expect(nextScreen("electives", terms, true)).toBeNull();
     // Not setup screens.
     expect(nextScreen("roots", terms, true)).toBeNull();
     expect(nextScreen("generatedSchedule", terms, true)).toBeNull();

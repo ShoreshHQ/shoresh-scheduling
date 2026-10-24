@@ -1172,11 +1172,74 @@ cells on Monday).
    switch_ and changes nothing. A bunk locked on Generated Schedule keeps its Soccer, and the line
    says _1 locked, left as is_.
 
+## 31. Electives, start to finish
+
+This uses the season from sections 4 to 8 (Juniors with Bunk 1 and Bunk 2) and a week of it.
+The campers are made up: `docs/samples/electives/chugim-choices.csv` in the project folder.
+
+1. **The menu.** Under **Activities & Events**, **Electives** is the last entry; under
+   **Schedules**, **Elective seats** sits between Manual Build and Schedules. Neither is marked
+   Coming any more. On **Special events** the button at the bottom is now **Electives →**.
+2. **Activities first.** On **Activities** add _Archery_, _Drama_ and _Pottery_ (no location is
+   fine) with **at least 0** times a week, so Generated Schedule doesn't place them by
+   themselves.
+3. **The menu of electives.** Open **Electives**. Under the sections, in **Elective sets**, type
+   _Chugim_ in the blank row (_Add Elective set_) and press **Enter**. A section _Chugim 0_
+   appears with its own blank row, _Add to Chugim_. Add **Archery** with **Seats** 3,
+   **Drama** with 3, and **Pottery** with **No limit** ticked. The section now reads _Chugim
+   3_ and the rail _1 elective set_. Type 0 in an offering's seats and it reads _Closed_, and the
+   count drops by one; put it back.
+4. **On the week.** Open **Manual Build** and pick the week (**Start a blank week** if it has
+   not started). In the drawer, _Chugim_ is the first tile, above the activities. Drag it onto
+   Tuesday's Period 2 for Bunk 1, then for Bunk 2: the two cells join into one wide cell,
+   _Chugim (3)_, with the set's mark.
+5. **Bring in the campers' choices.** Open **Elective seats**, pick the same week and _Chugim_
+   (if the week has more than one schedule with Chugim on it, **Assign against** asks which).
+   Click **Bring in choices** (it opens on that week and set), then **Choose a file** and pick
+   `docs/samples/electives/chugim-choices.csv`. Three cards follow, _1 of 3_ to _3 of 3_:
+   - **How the sheet was read**: which column is the name, the number, the bunk and the
+     choices, and one camper read back (_Maya Fernwood: 1 Archery, 2 Drama, 3 Pottery_). Click
+     **That's right**.
+   - **What needs a look**: anything Shoresh couldn't place (nothing here), and Eli's
+     parent comment. Click **Next**.
+   - **What comes in**: _6 campers: 6 new, 0 already here_. Click **Bring in**: _Brought
+     in 6 campers to "Chugim · Week 1"_. Nothing was saved before this click; **Cancel** at any
+     card brings in nothing.
+6. **Seats.** Back on **Elective seats** (the menu), the main button reads **Assign seats**.
+   Click it: _Seats assigned: 6 of 6 placed._ The counter on the rail says how it went, and
+   **By offering** shows each offering at each time with how full it is (Archery _3 of 3_).
+   Click a cell to see who is there. **By camper** shows each camper's seat; the speech bubble
+   beside Eli is the parent's comment.
+7. **By hand.** In a roster, **Move to…** moves a camper to another offering: the move is
+   locked (the padlock). **Assign again** keeps every lock.
+8. **Finalize.** The main button now reads **Finalize**. Click it: the week's seats are fixed,
+   the state reads _Final ·_ with the date and your name, and the main button becomes
+   **Download**. (If the
+   schedule changed under the seats, or two things are booked into one place, Shoresh says so
+   and doesn't finalize until it's fixed. A final run doesn't change; **Start a new version**
+   in its menu starts again from its choices, locks and moves.)
+9. **Downloads.** **Download** opens a menu: **Rosters** (an Excel file, a sheet per offering:
+   who is in it at each time, by bunk), **Print rosters** (the same, one page per offering, for
+   paper), **Camper schedules** (each camper's week: their bunk's schedule with their seat in
+   it), **Full report** (schedules, rosters, exceptions and a summary) and **Campers** (to edit
+   and bring back with Bring in choices). File names carry the set and the week, for example
+   _Chugim Week 1 rosters.xlsx_, never a child's name, and no file has a parent's comment.
+10. **End of season.** In the **Download** menu, under a line, **Clear at season end…** takes
+    over the screen: _Clear Summer 2026_, **Whole season** or the week on screen, _Can't be
+    undone_, **Cancel** and **Clear**. Below, the summer drawn week by week: campers, choices,
+    seats and runs; what goes is dashed and struck through, and the sets, offerings and linked
+    choices stay, solid with a padlock. Pick the week: only that week is struck. Click
+    **Clear**: _Cleared: 1 run, 6 campers._ The menu (Chugim and its three offerings) is still
+    there for next summer. **Cancel** or Escape instead goes back with nothing done. A run
+    that is not final yet is named and stops Clear until it is finalized.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events: putting a special day or event on a day, and Import a list / Download this
   list on the Special events list, come in later slices.
+- Electives: one roster for a linked choice across its periods, and a camper's week on screen,
+  come later (each camper's week is in the Camper schedules download now).
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

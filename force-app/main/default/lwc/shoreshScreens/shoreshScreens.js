@@ -7,13 +7,13 @@
  * are listed as coming, not hidden.
  */
 
-// Built in a later slice: listed, not reachable from the menu yet. Electives stay coming until
-// slice E11 passes (decision 44), though their setup screen is built (repo ADR 0018, slice E4).
-const COMING = new Set(["electives", "electiveSeats"]);
-// A screen that can be opened from the page's address before it is in the menu, for the checks
-// that look at it (repo ADR 0018: ?c__preview=electives; ADR 0017 choice 19:
-// ?c__preview=bringInChoices; ADR 0018 choice 28: ?c__preview=electiveSeats). Nothing else
-// reaches them.
+// Built in a later slice: listed, not reachable from the menu yet. None just now: Electives and
+// Elective seats opened with slice E11 (decision 44; repo ADR 0018 choice 59).
+const COMING = new Set();
+// A screen the page's address may open (repo ADR 0018 choices 12 and 59: ?c__preview=electives,
+// ?c__preview=electiveSeats; ADR 0017 choice 19: ?c__preview=bringInChoices). The checks reach
+// Bring in choices this way; Electives and Elective seats are in the menu now, so their address
+// opens what the menu does. Nothing else is opened from the address.
 const PREVIEWABLE = new Set(["electives", "bringInChoices", "electiveSeats"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);

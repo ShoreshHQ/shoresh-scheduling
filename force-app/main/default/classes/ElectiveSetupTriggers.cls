@@ -5,6 +5,12 @@
  * set's delete: a set a run uses is refused, naming the runs, and otherwise takes its linked
  * choices with it. An offering's delete takes its linked choices too (the desktop's
  * deleteBundleRows when an offering is removed); seats that name it still refuse it.
+ *
+ * System mode on purpose (repo ADR 0018 choice 60): the key checks read only hidden keys (no one
+ * is granted Key__c; these triggers fill it), the season checks only seasons, and a refused
+ * set's delete names its runs, which its own season's scheduler can read anyway; the rows
+ * cleared with a set or an offering go with it (see each delete). Sharing still applies (the
+ * class is with sharing).
  */
 public with sharing class ElectiveSetupTriggers {
   /** The elective set trigger: before insert, update and delete. */

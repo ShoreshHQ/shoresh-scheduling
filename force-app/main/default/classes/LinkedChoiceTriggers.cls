@@ -2,6 +2,10 @@
  * Linked choices, their periods and who they are for (repo ADR 0018). A linked choice links an
  * offering of its own set; its periods are time blocks of its season; its Coverage rows name
  * whole divisions of its season. Deleting a linked choice takes its Coverage rows with it.
+ *
+ * Its reads are in system mode on purpose (repo ADR 0018 choice 60): they read only the set and
+ * season of what a linked choice names, to keep it inside its season whoever saves it, and return
+ * no name to anyone. Sharing still applies (the class is with sharing).
  */
 public with sharing class LinkedChoiceTriggers {
   /** The linked choice trigger: before insert, update and delete. */

@@ -610,9 +610,19 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
 
   /** Bring in choices, for this set and week (its own screen). */
+  /** Bring in choices, for the set, week and schedule on screen (not the season's first). */
   handleBringIn() {
     this.dispatchEvent(
-      new CustomEvent("navigate", { detail: { screen: "bringInChoices" } })
+      new CustomEvent("navigate", {
+        detail: {
+          screen: "bringInChoices",
+          choices: {
+            setId: this.setId,
+            weekId: this.weekId,
+            scheduleId: this.scheduleId
+          }
+        }
+      })
     );
   }
 

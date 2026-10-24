@@ -2313,7 +2313,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(roots.focusHeading).toHaveBeenCalled();
   });
 
-  it("opens Bring in choices only from the page's address, never from the menu (electives stay Coming)", async () => {
+  it("opens Bring in choices from the page's address, never from the menu (it hangs from Elective seats)", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
@@ -2373,7 +2373,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(shownScreens(element)).toEqual(["bringInChoices"]);
   });
 
-  it("opens Elective seats only from the page's address; the menu lists it as coming (decision 44)", async () => {
+  it("opens Elective seats from the menu (slice E11) and from the page's address", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
@@ -2384,21 +2384,30 @@ describe("c-shoresh-camp-setup", () => {
       .find((entry) => entry.key === "electiveSeats");
     expect(item).toMatchObject({
       label: "Elective seats",
-      coming: true,
-      disabled: true
+      coming: false,
+      disabled: false
     });
+    expect(q(element, "c-shoresh-elective-seats")).toBeNull();
+    await openScreen(element, "electiveSeats");
+    expect(shownScreens(element)).toEqual(["electiveSeats"]);
+    expect(q(element, "c-shoresh-elective-seats")).not.toBeNull();
+    await openScreen(element, "roots");
     expect(q(element, "c-shoresh-elective-seats")).toBeNull();
     pageAddress({ c__preview: "electiveSeats" });
     await flush();
     expect(shownScreens(element)).toEqual(["electiveSeats"]);
     expect(q(element, "c-shoresh-elective-seats")).not.toBeNull();
     expect(seatsSetup).toHaveBeenCalledWith({ seasonId: "s1" });
-    // Its Bring in choices opens that screen.
+    // Its Bring in choices opens that screen, on the set, week and schedule it showed.
+    const where = { setId: "es1", weekId: "w2", scheduleId: "sc2" };
     q(element, "c-shoresh-elective-seats").dispatchEvent(
-      new CustomEvent("navigate", { detail: { screen: "bringInChoices" } })
+      new CustomEvent("navigate", {
+        detail: { screen: "bringInChoices", choices: where }
+      })
     );
     await flush();
     expect(shownScreens(element)).toEqual(["bringInChoices"]);
+    expect(q(element, "c-shoresh-choices-import").opening).toEqual(where);
   });
 
   it("a new message at the top is brought into view", async () => {
@@ -3643,7 +3652,8 @@ describe("c-shoresh-camp-setup", () => {
         "activities",
         "fixedActivities",
         "recurringActivities",
-        "specialEvents"
+        "specialEvents",
+        "electives"
       ].map((screen) => {
         const next = nextOn(element, screen);
         return [screen, next ? next.label : null];
@@ -3659,9 +3669,11 @@ describe("c-shoresh-camp-setup", () => {
         ["activities", "Fixed activities →"],
         ["fixedActivities", "Recurring activities →"],
         ["recurringActivities", "Special events →"],
+        // Electives follow Special events since slice E11 (ADR 0018 choice 59).
+        ["specialEvents", "Electives →"],
         // The last setup screen: Generated Schedule and Manual Build are equal, so neither is
         // picked.
-        ["specialEvents", null]
+        ["electives", null]
       ]);
       expect(nextOn(element, "roots")).toBeNull();
       expect(nextOn(element, "schedules")).toBeNull();

@@ -69,6 +69,12 @@ desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlo
 `2026-08-20-electives-authoring` (D1) and `2026-08-22-nested-schedules-electives-and-events`
 (§2, §4)._
 
+_Amended 2026-10-23, slice E11 (end to end, the security pass, go live): choices 59 to 61, and
+choices 12 and 28 (the menu now opens both screens). Design source: the plan's slice E11 and
+decision 44 (the Electives entries stay "Coming" until E11 passes); the desktop's
+`navSections.js` (Electives is a setup screen, so the next buttons reach it) and ADR 0014
+choice 11 (when a screen leaves "Coming", the screen before it gains its next button)._
+
 ## Choices
 
 1. **Eight objects**, in two master-detail chains under the season, so they share like everything
@@ -184,7 +190,8 @@ desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlo
     (`c/shoreshScreens` `previewScreen`, `canOpen(screen, hasSeason, preview)`). No other screen
     or value opens that way. Its Needs attention items (choice 17) show only on that page too, so
     a camp never sees an item it can't open. The browser check and the Jest tests reach it this
-    way; E11 takes Electives out of the coming list and the route then changes nothing. An address
+    way; E11 takes Electives out of the coming list and the route then changes nothing (done:
+    choice 59). An address
     was chosen over a hidden key press or a setting because it changes nothing a camp sees and
     stores nothing.
 13. **Its layout is the approved mock-up's (setup-a).** The rail counts the season's elective
@@ -715,3 +722,67 @@ real-browser check `scripts/a11y-browser-check.mjs` (added, not run in this slic
 
 Not in this slice: a linked choice as one roster across its periods, a camper's week on
 screen, and other programs' electives.
+
+## Slice E11: go live, and the security pass
+
+59. **Electives are in the menu** (decision 44: E11 is the slice that opens them). `c/shoreshScreens`
+    lists nothing as coming now: **Electives** under Activities & Events and **Elective seats**
+    under Schedules open like every other screen, with a season. Their Needs attention items
+    (choice 17) show on Roots and on the Electives screen for every camp, not only on the
+    address's page. Electives is now the last setup screen: Special events gains the next button
+    "Electives →" (as Recurring activities gained "Special events →" when Special events opened,
+    ADR 0014 choice 11), and Electives has none (ADR 0013, last setup screen). The desktop lists
+    Electives before Special Events (`navSections.js`); here the menu order stays as it was built
+    (ADR 0003 choice 2), and the next buttons follow the menu, as the desktop's follow its
+    sidebar. The address route stays (choice 12): `?c__preview=bringInChoices` still opens Bring
+    in choices, which is not a menu entry, and `?c__preview=electives` and
+    `?c__preview=electiveSeats` open what the menu opens. The menu keeps its way of drawing a
+    coming entry (the badge, "Coming" read out) for a later screen; its Jest test draws one by
+    hand. The real-browser check now opens Electives and Elective seats from the menu with no
+    address, and fails if either is still listed as Coming.
+60. **The security pass** (plan slice E11: CRUD/FLS, sharing, the "no copies" list), over every
+    electives class, trigger and screen (the classes named in choices 1 to 58, `ChoicesImport*`,
+    `LinkedChoice*`, `ElectiveSeatsController`, and `c/shoreshElectiveSeats`,
+    `c/shoreshElectiveDetails`, `c/shoreshElectiveEngine`, `c/shoreshChoicesImport`,
+    `c/shoreshChoicesReader`, `c/shoreshRosterPrint`). What it found:
+    - **Sharing.** Every class is `with sharing`; every elective object is controlled by its
+      season (choice 1), and `WITH SYSTEM_MODE` keeps the class's sharing, so no read, system
+      mode included, reaches a season the person can't see: one camp's campers, choices and
+      seats never reach another camp's people.
+    - **User mode.** Every query the screens' requests make is `WITH USER_MODE` and every write is
+      `AccessLevel.USER_MODE`, so object and field permissions (the Shoresh Scheduler permission
+      set, choice 2) apply. The only system-mode uses, each with its reason written beside it:
+      the triggers' key and season checks (`ElectiveRunTriggers`, `ElectiveSetupTriggers`,
+      `LinkedChoiceTriggers`, which also checks a linked choice's periods and divisions), which
+      read hidden keys no one is granted, and seasons, and return no name; the rows that go with a
+      deleted set, offering or linked choice (choice 8), which mean nothing without it; and
+      `ChoicesImportCampers` matching campers by their hidden key, which returns only Ids (the
+      campers are then read in user mode). Clear empties from the Recycle Bin only the rows it has
+      just deleted in user mode (choice 55).
+    - **Found and fixed:** the three elective trigger classes gave no reason for their
+      system-mode reads at the top of the class (only their deletes did); each now says why.
+    - **Checked, nothing to fix:** the hidden keys (`Key__c`) are granted to no one; a camper's
+      key holds the number or a SHA-256 of the name, never the name (choice 5); no message or
+      error names a camper (refusals say "this number", "this name", the sheet's row); no field
+      or object name is written as text (`npm run check:namespace`, ADR 0009); downloads carry no
+      parent comment and their file names carry the set and week only (choices 3 and 51); every
+      text cell of a download goes through the spreadsheet-formula guard; the server checks every
+      seat, linked choice and bunk the browser sends (`ElectiveSeatChecks`, `ElectiveLinkedSeats`,
+      `ChoicesImportChoices`); and the screens use no `innerHTML`, `lwc:inner-html`, `eval`,
+      browser storage or console output. Field history is off on every elective object.
+    - **Noted, not changed:** when two saves race past Shoresh's own duplicate check, the
+      platform's refusal is logged (`ScreenErrors`) with its own message, which may hold the key's
+      value (the season and a camper number, or the name's hash; never a name). Debug logs are kept
+      only when an admin turns them on. Code Analyzer runs on the pull request in CI, as on every
+      pull request.
+61. **The end-to-end walk** (plan §1, in the test org with a made-up camp: an elective set made and
+    placed on two weeks, a choices sheet brought in for each, seats assigned and finalized, every
+    download read back, then Clear for one week and for the whole season). It found one thing,
+    fixed here: **Bring in choices opened from Elective seats started on the season's first set
+    and week**, not the ones on screen, so a director on Week 2 who didn't look at the rail
+    would bring Week 2's sheet into Week 1 (or be told Week 1 is final). Now Elective seats sends
+    its set, week and schedule with the move (`navigate` detail `choices`), the page passes them
+    on (`c/shoreshChoicesImport` `opening`), and Bring in choices starts there (its own pickers
+    still change them). Opened from the Electives list (a choices file
+    given to Import a list), it still starts on the first. Jest: `shoreshElectiveSeats`,
+    `shoreshChoicesImport` and `shoreshCampSetup` (also namespaced).

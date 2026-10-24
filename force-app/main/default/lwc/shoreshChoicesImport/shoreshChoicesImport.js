@@ -54,6 +54,24 @@ const SCHEDULE = FIELD.Schedule;
 export default class ShoreshChoicesImport extends LightningElement {
   @api terms;
 
+  /**
+   * Where to start when Elective seats opened this screen: its set, week and schedule
+   * ({ setId, weekId, scheduleId }), kept when the season has them; else the first of each.
+   */
+  @api
+  get opening() {
+    return this._opening;
+  }
+  set opening(value) {
+    this._opening = value;
+    if (value) {
+      this.setId = value.setId || this.setId;
+      this.weekId = value.weekId || this.weekId;
+      this.scheduleId = value.scheduleId || this.scheduleId;
+    }
+  }
+  _opening = null;
+
   _setup;
   @api
   get setup() {
