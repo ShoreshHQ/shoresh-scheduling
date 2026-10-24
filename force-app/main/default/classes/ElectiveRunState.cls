@@ -119,7 +119,8 @@ public with sharing class ElectiveRunState {
 
   public static ShoreshException notThere() {
     return new ShoreshException(
-      'Those elective seats are no longer there. Reload the page.'
+      // Word-free: with the run gone, Shoresh no longer knows whose camp words to use.
+      'This run is no longer there. Reload the page.'
     );
   }
 

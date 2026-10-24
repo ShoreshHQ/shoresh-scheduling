@@ -196,6 +196,38 @@ private class ElectivesOnGridTest {
     }
   }
 
+  /** Setting up a noted set says what it is set up as in the camp's word for sets. */
+  @IsTest
+  static void aNotedSetIsSetUpInTheCampsWord() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = ids.get('Camp'),
+          ModelTerm__c = 'ElectiveSet',
+          Singular__c = 'Option block',
+          Plural__c = 'Option blocks'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Id draftId = draftNoting(ids, new ScheduleGrid.Item('E', '', 'Bechirot'));
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
+        draftId,
+        'E',
+        'Bechirot'
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      // "an": the article follows the camp's word, not the standard one.
+      Assert.areEqual('"Bechirot" is set up as an Option block.', done.said);
+      Assert.isTrue(used <= 30, 'Queries to set up a set: ' + used);
+    }
+  }
+
   /** The message a Manual Build save is refused with, or null when it is saved. */
   private static String refusalOf(
     ManualBuildViews.DraftView view,

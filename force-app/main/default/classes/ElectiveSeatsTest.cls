@@ -975,4 +975,28 @@ private class ElectiveSeatsTest {
       );
     }
   }
+
+  /** A run that is gone is refused without any fixed word for electives. */
+  @IsTest
+  static void aGoneRunIsRefusedWithoutAFixedWord() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id gone = Id.valueOf(
+        ElectiveRun__c.SObjectType.getDescribe().getKeyPrefix() + '000000000000'
+      );
+      String message;
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      try {
+        ElectiveSeatsController.openRun(gone);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      }
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.areEqual('This run is no longer there. Reload the page.', message);
+      Assert.isTrue(used <= 3, 'Queries for one refusal: ' + used);
+    }
+  }
 }

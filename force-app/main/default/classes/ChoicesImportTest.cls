@@ -758,4 +758,47 @@ private class ChoicesImportTest {
       );
     }
   }
+
+  /** A request missing its set, week or schedule is refused in the camp's words for them. */
+  @IsTest
+  static void anIncompleteRequestIsRefusedInTheCampsWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = camp.season.Camp__c,
+            ModelTerm__c = 'ElectiveSet',
+            Singular__c = 'Chug block',
+            Plural__c = 'Chug blocks'
+          ),
+          new CampLabel__c(
+            Camp__c = camp.season.Camp__c,
+            ModelTerm__c = 'Week',
+            Singular__c = 'Session',
+            Plural__c = 'Sessions'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      ChoicesImport.Request noSet = camp.request();
+      noSet.electiveSetId = null;
+      ChoicesImport.Request noSeason = camp.request();
+      noSeason.seasonId = null;
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      String refused = refusal(noSet);
+      Integer used = Limits.getQueries() - before;
+      String noSeasonRefused = refusal(noSeason);
+      Test.stopTest();
+
+      Assert.areEqual(
+        'Choose the Chug block, the Session and the schedule first.',
+        refused
+      );
+      Assert.areEqual('Choose the season first.', noSeasonRefused);
+      Assert.isTrue(used <= 5, 'Queries for one refusal: ' + used);
+    }
+  }
 }

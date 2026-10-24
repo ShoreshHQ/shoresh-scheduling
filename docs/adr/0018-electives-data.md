@@ -815,17 +815,21 @@ screen, and other programs' electives.
       vocabulary spec leaves a per-camp relabel layer to a later workstream
       (`docs/work/specs/2026-08-21-vocabulary-unification-design.md`, "W1b"). So this follows
       Greg's decision 66 and the repo's existing camp words, not the desktop.
-    - **Left in the standard word:** refusals that come before Shoresh knows the camp ("Those
-      elective seats are no longer there." when the run is gone; "Choose the elective set, the
-      week and the schedule first.", which the screens never send). "That elective set, week or
-      schedule is no longer there." now reads the camp's words for the set and the week. Manual
-      Build's "That elective set was not found. It may have been deleted." (and its special-event
-      twin, `SlotEvents`) always names the set or event in the camp's words ("That Chug block was
-      not found."), with no fixed-word fallback left in the code. Camp
+    - **No fixed elective or special-event word is left** in a message. Where Shoresh knows the
+      camp it uses the camp's words, read once per request: "Choose the Chug block, the Session
+      and the schedule first." (Bring in choices, a request missing its set, week or schedule;
+      the screens never send one); "That Chug block, Session or schedule is no longer there.";
+      Manual Build's "That Chug block was not found. It may have been deleted." (and its
+      special-event twin, `SlotEvents`); Set it up's '"Bechirot" is set up as an Option block.'
+      (`SpecialSetUp`, the article following the camp's word); and the set's delete refusal
+      ("This Chug block can't be deleted yet: ..."). Where Shoresh can't know the camp, the
+      message names no term: "This run is no longer there. Reload the page." (the run is gone;
+      it was "Those elective seats are no longer there.") and "Choose the season first." (no
+      season sent). Camp
       words' own section titles (Camp, Activities, Electives, Schedules) stay standard, as they
       label the standard words a camp is renaming.
     - Tests: Jest `shoreshMenu`, `shoreshCampLabels`, `shoreshElectiveSeats`, `shoreshCopySeason`,
       `shoreshImportEngine` (electives) and `shoreshWeekEditor` (electives); Apex `CampLabelsTest`,
       `ElectivesDataTest.refusalsNameRunsInTheCampsWordForElectives` (with a query bound),
-      `ElectivesOnGridTest.aSetOrEventNotFoundIsNamedInTheCampsWords` (with a query bound) and
+      `ElectivesOnGridTest.aSetOrEventNotFoundIsNamedInTheCampsWords` and `aNotedSetIsSetUpInTheCampsWord`, `ChoicesImportTest.anIncompleteRequestIsRefusedInTheCampsWords`, `ElectiveSeatsTest.aGoneRunIsRefusedWithoutAFixedWord` (each with a query bound) and
       `ElectiveSeatsTest.finalizeFixesTheSeatsWithAVersionAndNames`.
