@@ -1254,6 +1254,10 @@ on **Weeks** first).
 5. **Before a season** (or in a camp with none yet) the title is greyed out like the entries
    under it and does nothing. In a season with no weeks yet, the screen says _No Weeks yet_
    with a **Weeks →** button.
+6. **While a schedule is busy.** On Generated Schedule, on _Week 1_, build the week and, while
+   it is building, click the **Schedules** title. _Week 2_'s **Generated Schedule** button is
+   greyed out, as the Week picker there is, until the build is done; _Week 1_'s still opens, and
+   **Manual Build** is not held. No message: the button simply waits.
 
 ## What is not here yet
 

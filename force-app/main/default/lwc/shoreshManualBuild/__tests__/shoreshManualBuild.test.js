@@ -919,6 +919,43 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="week"]').value).toBe("w2");
   });
 
+  it("while a start is on its way, the doorway leaves the week shown and the page hears the picker waits", async () => {
+    getDraft.mockResolvedValue(null);
+    const started = later();
+    startBlankWeek.mockReturnValue(started.promise);
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    const told = [];
+    element.addEventListener("weekstate", (e) => told.push(e.detail));
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord({
+      ...READY,
+      weeks: [
+        { Id: "w1", Name: "Week 1" },
+        { Id: "w2", Name: "Week 2" }
+      ]
+    });
+    document.body.appendChild(element);
+    await flush();
+    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    q(element, '[data-id="start-week"]').click();
+    await flush();
+    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: true });
+    getDraft.mockClear();
+    expect(element.openWeek("w2")).toBe(false);
+    // The week shown is still the one to open: nothing waits for it.
+    expect(element.openWeek("w1")).toBe(true);
+    await flush();
+    expect(getDraft).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="week"]').value).toBe("w1");
+    started.answer(draft());
+    await flush();
+    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    // Told once per change, not at every redraw.
+    expect(told).toHaveLength(3);
+  });
+
   it("Group View edits one bunk's week the same way", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,,"]));

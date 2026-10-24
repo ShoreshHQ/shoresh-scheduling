@@ -1238,13 +1238,18 @@ describe("c-shoresh-generated-schedule", () => {
 
     it("while building, the doorway leaves the week shown, as the waiting picker does", async () => {
       const element = await render(camp(BIG));
+      const told = [];
+      element.addEventListener("weekstate", (e) => told.push(e.detail));
       saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
       q(element, '[data-id="generate"]').click();
       await flush();
+      // The page hears the picker waits, so the doorway holds this screen's other weeks.
+      expect(told[told.length - 1]).toEqual({ weekId: WEEK, locked: true });
       expect(element.openWeek(WEEK_2)).toBe(false);
       expect(q(element, '[data-id="week"]').value).toBe(WEEK);
       await settle(element);
       expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+      expect(told[told.length - 1]).toEqual({ weekId: WEEK, locked: false });
     });
   });
 

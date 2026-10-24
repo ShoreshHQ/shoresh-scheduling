@@ -261,6 +261,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   renderedCallback() {
     this.tellSetupState();
+    this.tellWeekState();
     // The editor is drawn from the start (so the pickers never move); with no week to show any
     // more (another week being read, one not generated yet) it lets the last one go.
     if (this.editorHasWeek && !this.showWeek && this.weekEditor) {
@@ -1778,6 +1779,24 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.setupStateTold = { changed, busy };
     this.dispatchEvent(
       new CustomEvent("setupstate", { detail: { changed, busy } })
+    );
+  }
+
+  /**
+   * Tells the page the week shown and whether the week picker waits on work under way, when
+   * either changes: the Schedules doorway holds its other weeks for this screen meanwhile, as
+   * the picker does (openWeek). Fires: weekstate { weekId, locked }.
+   */
+  tellWeekState() {
+    const weekId = this.weekId || null;
+    const locked = !!this.pickerDisabled;
+    const told = this.weekStateTold;
+    if (told && told.weekId === weekId && told.locked === locked) {
+      return;
+    }
+    this.weekStateTold = { weekId, locked };
+    this.dispatchEvent(
+      new CustomEvent("weekstate", { detail: { weekId, locked } })
     );
   }
 

@@ -98,7 +98,8 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
     opens that screen on that week, as choosing it in the screen's Week picker does
     (`openWeek`), with the cursor on that screen's heading; the program shown stays the one
     that screen had. While that screen's picker waits on work under way (a build, a save, a
-    publish), the doorway leaves the week shown, as the picker would refuse. No weeks yet: the
+    publish), the doorway leaves the week shown, as the picker would refuse (see the change
+    below for how that shows). No weeks yet: the
     empty state _No Weeks yet_ and **Weeks →**. No sentence explains the page. The **Camp** and
     **Activities & Events** titles stay plain headings.
     Desktop: the sidebar draws the Schedules title as a plain label, never a click target
@@ -110,3 +111,18 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
     `shoreshCampSetup.test.js` (the page opens with focus on its heading; a week's button opens
     that screen on that week with focus on its heading), both screens' `openWeek` tests, and a
     step in the real-browser check (`scheduleDoor`).
+    _Changed 2026-10-24 (follow-up to #135): the refusal shows, it is never silent._ Before,
+    a week chosen while that screen was busy opened the screen still on its old week, and
+    nothing said the change had been refused. Now each schedule screen tells the page the week
+    it shows and whether its week picker waits (`weekstate { weekId, locked }`, sent only when
+    either changes), and while it waits the doorway greys out (`disabled`) that screen's button
+    on every other week, the same held look as the waiting picker and the menu's Update held
+    while busy (ADR 0015). The week it already shows stays open, and the other schedule is not
+    held. No sentence explains it, as the desktop greys a waiting button without words
+    (`TrashScreen.jsx`, `ActivitiesScreen.jsx`: `disabled={busy}`). Should a choice still
+    arrive while the screen is busy (a click landing as the work began), `openWeek` refuses it
+    and the doorway stays on screen with that button now greyed, rather than opening the screen
+    on another week. Checked by `shoreshScheduleWeeks.test.js` (held buttons, axe),
+    `shoreshCampSetup.test.js` (a real Manual Build start holds Week 2's button and a refused
+    choice leaves the page put; the cursor stays on the screen's heading through the real
+    week read, no stand-in `openWeek`), and both screens' `weekstate` tests.

@@ -162,6 +162,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   renderedCallback() {
     this.tellSetupState();
+    this.tellWeekState();
     if (this.waiting && this.weekEditor) {
       const { draft, fresh } = this.waiting;
       this.waiting = null;
@@ -1280,6 +1281,24 @@ export default class ShoreshManualBuild extends LightningElement {
     this.setupStateTold = { changed, busy };
     this.dispatchEvent(
       new CustomEvent("setupstate", { detail: { changed, busy } })
+    );
+  }
+
+  /**
+   * Tells the page the week shown and whether the week picker waits on work under way, when
+   * either changes: the Schedules doorway holds its other weeks for this screen meanwhile, as
+   * the picker does (openWeek). Fires: weekstate { weekId, locked }.
+   */
+  tellWeekState() {
+    const weekId = this.weekId || null;
+    const locked = !!this.pickersLocked;
+    const told = this.weekStateTold;
+    if (told && told.weekId === weekId && told.locked === locked) {
+      return;
+    }
+    this.weekStateTold = { weekId, locked };
+    this.dispatchEvent(
+      new CustomEvent("weekstate", { detail: { weekId, locked } })
     );
   }
 

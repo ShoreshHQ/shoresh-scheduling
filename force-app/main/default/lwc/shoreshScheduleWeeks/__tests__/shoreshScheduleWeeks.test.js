@@ -85,6 +85,41 @@ describe("c-shoresh-schedule-weeks (the Schedules doorway, wiki decision 61)", (
     ]);
   });
 
+  it("while a schedule's week picker waits, its button is held on every other week, as the picker is", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const held = () =>
+      rows(element).map((row) => buttons(row).map((b) => b.disabled));
+    expect(held()).toEqual([
+      [false, false],
+      [false, false]
+    ]);
+    // Manual Build is busy on Session 1: Session 2's Manual Build waits; Session 1's still opens
+    // the week shown, and Generated Schedule is not held.
+    element.held = {
+      manualBuild: { weekId: "w1", locked: true },
+      generatedSchedule: { weekId: "w2", locked: false }
+    };
+    await Promise.resolve();
+    expect(held()).toEqual([
+      [false, false],
+      [false, true]
+    ]);
+    buttons(rows(element)[1])[1].click();
+    expect(handler).not.toHaveBeenCalled();
+    // No explaining sentences: the held button looks like any button waiting.
+    expect(element.shadowRoot.querySelectorAll("p").length).toBe(0);
+    await expect(element).toBeAccessible();
+    // The work done: every button opens again.
+    element.held = { manualBuild: { weekId: "w1", locked: false } };
+    await Promise.resolve();
+    expect(held()).toEqual([
+      [false, false],
+      [false, false]
+    ]);
+  });
+
   it("with no weeks yet, says so in the camp's words and leads to the weeks screen", async () => {
     const element = await render([]);
     expect(rows(element).length).toBe(0);
