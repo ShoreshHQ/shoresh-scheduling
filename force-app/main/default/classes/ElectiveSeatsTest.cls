@@ -981,7 +981,8 @@ private class ElectiveSeatsTest {
   static void aGoneRunIsRefusedWithoutAFixedWord() {
     System.runAs(ShoreshTestData.scheduler()) {
       Id gone = Id.valueOf(
-        ElectiveRun__c.SObjectType.getDescribe().getKeyPrefix() + '000000000000'
+        ElectiveRun__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+          .getKeyPrefix() + '000000000000'
       );
       String message;
 
