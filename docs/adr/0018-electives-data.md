@@ -649,12 +649,13 @@ linked choices (E9).
     bound, the whole season and one week (runs, choices, seats and the campers only it had gone;
     the other week's run, choices, seats and campers, and the set, its offerings, its linked
     choice and its periods, and the activities, all still there), each within a query bound and a
-    row bound, a stale picture and a run being worked on refused with nothing removed, nothing to
+    row bound (that the Recycle Bin is emptied can't be seen inside a test, where emptied rows
+    still read as deleted, so it is not checked there), a stale picture and a run being worked on refused with nothing removed, nothing to
     clear, the download read refusing a committed run, and a final run's bunk week (a two-block
     activity once, the set's cell marked). Jest: `downloads.test.js`, `clear.test.js` and
     `downloadsAndClear.test.js` in `shoreshElectiveSeats` (also namespaced, with axe), and
     `shoreshRosterPrint`. The real-browser check opens the Download menu and Clear by keyboard
     and cancels it (`scripts/a11y-browser-check.mjs`); it never clears.
 
-Not in this slice: linked choices in the files (E8), a camper's week on screen, and other
-programs' electives.
+Not in this slice: a linked choice as one roster across its periods, a camper's week on
+screen, and other programs' electives.
