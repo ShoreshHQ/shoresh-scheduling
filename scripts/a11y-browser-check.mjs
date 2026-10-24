@@ -1817,10 +1817,10 @@ async function importLastYear() {
   else results.fail(S, "The count's names are listed", "No names shown.");
   await axe(`${S}: a count opened`);
   // Electives read from the file (slice E9): Not electives, by keyboard, keeps the cursor. It
-  // comes after every question's answers (eleven questions on the check's camp: about 50 stops).
-  if (
-    !(await tabTo(named(/^Not electives\b/, { tag: "button" }), { max: 160 }))
-  )
+  // comes after every question's answers. The focus helper names a button by its title before
+  // its text, and this one's title is its description, so either is matched.
+  const notElectives = /^(Not electives|Set up as what its cells show)\b/;
+  if (!(await tabTo(named(notElectives, { tag: "button" }), { max: 160 })))
     throw new Error("Not electives was not reached with Tab.");
   await press("Enter", 800);
   if ((await focusedAttr("aria-pressed")) === "true")
