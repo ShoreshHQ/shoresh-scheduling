@@ -1,4 +1,4 @@
-// End-of-season Clear as a picture (electives slice E10; repo ADR 0018 choices 49 to 52; Greg's
+// End-of-season Clear as a picture (electives slice E10; repo ADR 0018 choices 55 to 58; Greg's
 // decision 59): what goes is what Clear removes, the whole season or one week. Names made up.
 import { buildTerms } from "c/shoreshTerms";
 import { clearBoard, shortName } from "../clear";

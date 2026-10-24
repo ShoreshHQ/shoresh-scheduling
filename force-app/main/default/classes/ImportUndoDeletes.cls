@@ -10,7 +10,9 @@ public with sharing class ImportUndoDeletes {
     'WeekException',
     'Schedule',
     'Coverage',
-    // The Electives list's offerings, then their sets, before the activities they name.
+    // Linked choices a double period made (their periods go with them), then the offerings
+    // (the Electives list's, or Import last year's), then their sets, before the activities.
+    'LinkedChoice',
     'Offering',
     'ElectiveSet',
     'RecurringActivity',
@@ -75,6 +77,13 @@ public with sharing class ImportUndoDeletes {
       Offering__c.ElectiveSet__c,
       LinkedChoice__c.ElectiveSet__c,
       ElectiveRun__c.ElectiveSet__c
+    },
+    // A linked choice's periods go with it (master-detail): a period added by hand keeps it, as
+    // do who it is for and seats given in it.
+    'LinkedChoice' => new List<Schema.SObjectField>{
+      LinkedChoiceTime__c.LinkedChoice__c,
+      Coverage__c.LinkedChoice__c,
+      Assignment__c.LinkedChoice__c
     },
     // An offering's linked choices go with it (ElectiveSetupTriggers): one keeps it, as do
     // seats given in it.

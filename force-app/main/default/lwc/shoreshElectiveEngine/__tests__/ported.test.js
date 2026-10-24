@@ -1,6 +1,9 @@
 // Ported from the desktop's src/engine/buildElectiveAssignments.test.js
-// (Scheduling-Project- 69dbd34, Apache-2.0) with the test bodies unchanged. Only the imports and
-// the formatting differ: Jest's globals replace vitest's, and the engine is reached through
+// (Scheduling-Project- 69dbd34, Apache-2.0) with the test bodies unchanged but one: "refuses two
+// linked choices that share a member occurrence" shares the occurrence in one activity (C2's o2
+// member is archery, not gaga), as the port refuses only that (repo ADR 0016, electives slice E9:
+// two activities' linked choices at one time each take their own seats). Only the imports and
+// the formatting differ otherwise: Jest's globals replace vitest's, and the engine is reached through
 // ./data/desktopShape.js, which renames the desktop's fields to assignSeats's.
 // T196 — the elective assignment engine.
 //
@@ -1057,7 +1060,7 @@ describe("buildElectiveAssignments", () => {
       choiceOfferings: [
         member("C1", "o1", "a-arch"),
         member("C1", "o2", "a-arch"),
-        member("C2", "o2", "a-gaga"),
+        member("C2", "o2", "a-arch"),
         member("C2", "o3", "a-gaga")
       ]
     });

@@ -1,4 +1,4 @@
-// The elective downloads (electives slice E10; repo ADR 0018 choices 45 to 48): rosters one page
+// The elective downloads (electives slice E10; repo ADR 0018 choices 51 to 54): rosters one page
 // per offering, each camper's week, the full report, and the campers file that Bring in choices
 // reads back as it was. Every name is made up.
 import { readChoices } from "c/shoreshChoicesReader";

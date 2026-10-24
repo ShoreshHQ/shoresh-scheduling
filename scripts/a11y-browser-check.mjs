@@ -78,7 +78,8 @@
  *   axe on each. The version is deleted after;
  * - Import last year (ADR 0006, redesigned in ADR 0015 choice 15): opened from Roots with focus on
  *   its heading; two made-up files chosen, the cursor on the one page's first question; a choice
- *   pressed keeps the cursor; a Comes in count opens into its names; Start again puts the cursor
+ *   pressed keeps the cursor; a Comes in count opens into its names; Chugim read as an elective
+ *   set (electives slice E9) and Not electives pressed by keyboard keeps the cursor; Start again puts the cursor
  *   on the heading and Back to Roots on Roots'; axe on the drop well and the page. Add is never
  *   pressed, so nothing is imported;
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
@@ -1691,14 +1692,16 @@ async function dotField() {
 
 /**
  * Last year's schedule as a camp keeps it: made-up names (two days, all camp). "Musik" beside
- * "Music" is asked about as similar names, so the page always has a question to answer.
+ * "Music" is asked about as similar names, so the page always has a question to answer. Chugim
+ * is read as an elective set (electives slice E9), said with its one escape, Not electives.
  */
 function lastYearSheet() {
   return [
     "Time,Check bunk A,Check bunk B",
     "9:00-9:45,Music,Check pottery",
     "10:00-10:45,Check pottery,Musik",
-    "12:00-12:45,Lunch,Lunch"
+    "12:00-12:45,Lunch,Lunch",
+    "1:00-1:45,Chugim,Chugim"
   ].join("\n");
 }
 
@@ -1813,6 +1816,25 @@ async function importLastYear() {
     results.pass(S, "The count's names are listed", `${names} names.`);
   else results.fail(S, "The count's names are listed", "No names shown.");
   await axe(`${S}: a count opened`);
+  // Electives read from the file (slice E9): Not electives, by keyboard, keeps the cursor.
+  if (!(await tabTo(named(/^Not electives\b/, { tag: "button" }), { max: 60 })))
+    throw new Error("Not electives was not reached with Tab.");
+  await press("Enter", 800);
+  if ((await focusedAttr("aria-pressed")) === "true")
+    results.pass(
+      S,
+      "Not electives pressed keeps the cursor, pressed",
+      "aria-pressed true."
+    );
+  else {
+    await shot(S, "not electives pressed");
+    results.fail(
+      S,
+      "Not electives pressed keeps the cursor, pressed",
+      `Focus on ${formatFocus(await focus())}.`
+    );
+  }
+  await axe(`${S}: electives read from the file`);
   if (
     !(await tabTo(named(/^Start again$/, { tag: "button" }), {
       max: 80,
@@ -5533,7 +5555,7 @@ async function electiveSeats() {
 }
 
 /**
- * The downloads and end-of-season Clear (electives slice E10; ADR 0018 choices 45 to 52), after
+ * The downloads and end-of-season Clear (electives slice E10; ADR 0018 choices 51 to 58), after
  * Finalize: the Download menu opened by keyboard (axe), or, if Finalize was refused, the run's
  * menu saying Download comes after Finalize; Clear at season end opened from it, focus on its
  * heading (axe), one week picked, axe, and Escape back to the menu it came from. It never presses

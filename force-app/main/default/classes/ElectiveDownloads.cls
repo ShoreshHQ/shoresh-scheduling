@@ -1,5 +1,5 @@
 /**
- * What the elective downloads are made from (electives slice E10; repo ADR 0018 choices 45 to 48;
+ * What the elective downloads are made from (electives slice E10; repo ADR 0018 choices 51 to 54;
  * plan §7): a final run as the seats screen shows it, and each bunk's week from the schedule it
  * was finalized against, so a camper's week has their bunk's activities with their electives in
  * place. Downloads come once seats are final (decision 48.2: Finalize, then downloads); a

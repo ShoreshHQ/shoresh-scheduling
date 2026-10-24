@@ -1,4 +1,4 @@
-// Elective rosters on paper (electives slice E10; ADR 0018 choice 46): a page per offering, its
+// Elective rosters on paper (electives slice E10; ADR 0018 choice 52): a page per offering, its
 // times side by side with who is there, and each page's foot. Made-up names.
 import { createElement } from "lwc";
 import ShoreshRosterPrint from "c/shoreshRosterPrint";

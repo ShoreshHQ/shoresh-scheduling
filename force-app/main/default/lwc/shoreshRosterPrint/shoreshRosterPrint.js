@@ -1,7 +1,7 @@
 import { LightningElement, api } from "lwc";
 
 /**
- * Elective rosters on paper (electives slice E10; repo ADR 0018 choice 46; Greg's decision 53.4,
+ * Elective rosters on paper (electives slice E10; repo ADR 0018 choice 52; Greg's decision 53.4,
  * design-research/electives-r1 rosters-a): one page per offering, its whole week, each elective
  * time a column with "12 of 12" and who is there, sorted by bunk with the bunk beside each name.
  * What a counsellor running the activity carries. Shown only on paper: on screen it takes no

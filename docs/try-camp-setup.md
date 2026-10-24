@@ -413,24 +413,30 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
      only, so Shoresh cannot be sure.) Click **A recurring activity**. Point at an answer to
      see what it means.
    - **Comes in**: a tile per kind with how many will be added: 6 bunks, 2 units, 7 time
-     blocks, 7 activities, 1 fixed activity, 2 recurring activities, 1 program. Click a tile
-     to see its names under the tiles (click it again to close them).
+     blocks, 7 activities, 1 fixed activity, 2 recurring activities, 1 elective set, 1 program.
+     Click a tile to see its names under the tiles (click it again to close them).
    - **Programs for these bunks**: _A new program_ (this season has none yet). **Unit for
      each new bunk**: each bunk with its unit from the file (_Juniors_ or _Seniors_). Shoresh
      chose these itself, so they are not questions, but any can be changed here. (When a file
      does not say a bunk's unit and the program already has units, nothing is chosen: the
      bunk's dropdown is then a question in **Check these first**.)
-   - **Not set up yet 3**: _Chugim_ (an elective), _Field day_ (a special day), and _Zoo trip_
-     (a trip), each in a dashed outline. Shoresh notes them but does not create them.
+   - **Elective sets** (or your camp's word for them): _Chugim_, _Read as electives: Tuesday,
+     Period 6, every bunk. No choices in the file: add them later._ **Electives** is pressed;
+     **Not electives** beside it would set Chugim up as what its cells show instead. Shoresh
+     read it from the word, so it is not a question. (A cell listing choices, such as _Hiking,
+     Fishing, Kayaking_, would also propose those as its offerings, and a set held in two
+     periods back to back links each choice across both.)
+   - **Not set up yet 2**: _Field day_ (a special day) and _Zoo trip_ (a trip), each in a
+     dashed outline. Shoresh notes them but does not create them.
    - **Files**: the file, _5 pages_, and how it was read: _All camp: a page per day, bunks
      across_. (If Shoresh ever reads a file the wrong way round, change it here. A file it was
      unsure about has the dark corner.)
    - **Good to know**: outdoors, rain plans, and priority are not in a schedule file; set
      them on the Activities screen.
-5. With both questions answered, the green button says exactly what will happen: **Add 26**.
+5. With both questions answered, the green button says exactly what will happen: **Add 27**.
    (While a question is unanswered it says how many are left, and cannot be clicked.)
-6. Click **Add 26**.
-7. The same page now shows what was **Added 26** as tiles, **Not set up yet**, and **Good to
+6. Click **Add 27**.
+7. The same page now shows what was **Added 27** as tiles, **Not set up yet**, and **Good to
    know**. Along the top: **Undo this import** and **Done**. Click **Done** to go back to Roots.
 8. Roots now shows the cards filled in. Open **Fixed activities** (Lunch, at Lunch) and
    **Recurring activities** (Morning meeting on Mondays for everyone; Library time on
@@ -468,8 +474,9 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
     maple-grove-2026-all-camp.xlsx_, _Week 1 (Main)_ and _Open it on Schedules_. (**Undo this
     import** at the top would take the whole import back now; step 15 does it from Roots
     instead.) Click **Done**, then **Schedules**: the version
-    opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
-    trip, and Field day marked _not set up yet_.
+    opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim as the
+    elective set (one wide cell across the bunks), and the Zoo trip and Field day marked _not
+    set up yet_.
 15. Back on Roots, under **Import last year**: _Last import: maple-grove-2026-all-camp.xlsx,
     <date and time>_ and **Undo last import**. Change something the import added first (for
     example, on **Activities**, make _Swim_ two blocks long and save). Then click **Undo last

@@ -540,13 +540,13 @@ describe("c-shoresh-elective-details", () => {
     const element = await opened(
       "o1",
       withChoices([
-        // Two linked choices holding Tuesday 12:30 for the same divisions.
+        // Two linked choices of Pottery holding Tuesday 12:30 for the same divisions.
         linked[0],
         {
           Id: "lc3",
           Name: "Pottery double",
           ElectiveSet__c: "es1",
-          Offering__c: "o2",
+          Offering__c: "o1",
           AppliesTo__c: "OnlyThese",
           Times__r: [
             { Id: "y1", Weekday__c: "Tuesday", TimeBlock__c: "t1" },
@@ -566,9 +566,7 @@ describe("c-shoresh-elective-details", () => {
       "Another linked choice in Chugim is called this, so a sheet can't tell them apart."
     );
     // A period where the set doesn't sit any more (Wednesday) is still shown, marked.
-    element.open("o2");
-    await flush();
-    const other = choiceAt(element, 0);
+    const other = choiceAt(element, 1);
     expect(cell(other, "lc3|Wednesday|t1").getAttribute("aria-pressed")).toBe(
       "true"
     );
@@ -578,6 +576,58 @@ describe("c-shoresh-elective-details", () => {
       'Also in "Pottery double", so neither is placed as a set; their periods are filled one at a time',
       "Chugim isn't here on any schedule now"
     ]);
+    await expect(element).toBeAccessible();
+  });
+
+  it("two offerings' linked choices sharing a period are not marked: each has its own seats (slice E9)", async () => {
+    const element = await opened(
+      "o1",
+      withChoices([
+        SETUP.electives.linkedChoices[0],
+        {
+          Id: "lc3",
+          Name: "Archery",
+          ElectiveSet__c: "es1",
+          Offering__c: "o2",
+          AppliesTo__c: "All",
+          Times__r: [
+            { Id: "y1", Weekday__c: "Tuesday", TimeBlock__c: "t1" },
+            { Id: "y2", Weekday__c: "Tuesday", TimeBlock__c: "t2" }
+          ]
+        }
+      ])
+    );
+    expect(
+      choiceAt(element, 0).querySelectorAll('[data-id="period-look"]')
+    ).toHaveLength(0);
+  });
+
+  it("periods read from last year's file carry the guessed mark, and Looks right asks the page", async () => {
+    const element = await opened("o1", {
+      ...withChoices([SETUP.electives.linkedChoices[0]]),
+      guesses: [{ recordId: "lc1", field: "periods" }]
+    });
+    const mark = choiceAt(element, 0).querySelector(
+      '[data-id="periods-guess"]'
+    );
+    expect(mark.name).toBe(
+      "Periods for Pottery double: guessed from your file"
+    );
+    expect(mark.label).toBe("Guessed from your file");
+    const confirms = jest.fn();
+    element.addEventListener("confirmguess", confirms);
+    mark.dispatchEvent(new CustomEvent("confirm"));
+    const detail = confirms.mock.calls[0][0].detail;
+    expect(detail).toMatchObject({ recordId: "lc1", field: "periods" });
+    // Done: said, and the cursor on the linked choice's first period.
+    const focus = jest.spyOn(HTMLElement.prototype, "focus");
+    detail.onDone();
+    await flush();
+    expect(q(element, '[data-id="status"]').textContent).toBe(
+      "Pottery double: looks right"
+    );
+    expect(focus.mock.instances[0].dataset.choice).toBe("lc1");
+    focus.mockRestore();
     await expect(element).toBeAccessible();
   });
 

@@ -26,7 +26,16 @@ no objects: nothing uses the module yet, so nothing a director sees changes.
    their time; a whole-week choice counts at every time without its own; the best rank wins when
    rows repeat. Repeats are allowed and each time is scored on its own (owner ruling Q3). Two
    linked choices sharing a time are refused and placed one time at a time, a known limit (D8);
-   linked choices first, then everything else, is accepted (Q6).
+   linked choices first, then everything else, is accepted (Q6). _Amended 2026-10-23, electives
+   slice E9:_ only two linked choices of **one activity** sharing a time are refused. Two
+   activities' linked choices at the same times (Pottery and Archery each linked across a double
+   period) take their own seats there, and a camper is given one linked choice at most, so
+   nothing can be double-counted; they are placed as sets. The desktop refuses any two sharing an
+   occurrence (`buildElectiveAssignments.js` case (c)), which makes its own double-period import
+   (T219, one bundle per choice across the span) refuse every bundle it makes, against its
+   Director Guide's promise ("a camper who gets Archery gets it for the whole span"). The one
+   ported desktop test of that case now shares the occurrence in one activity; `assignSeats.test.js`
+   checks both rules.
 3. **Input shape, in Salesforce's words.** The desktop's fields renamed: occurrence → elective
    time (`times`), preference → camper's choice (`choices`), the desktop's linked
    `elective_choices` → `linkedChoices` and `linkedChoiceTimes`, locked assignment → `locks`,

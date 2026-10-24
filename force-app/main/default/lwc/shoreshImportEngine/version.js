@@ -4,8 +4,9 @@
  * (repo docs/adr/0005), saved with the setup and never changed by later edits.
  *
  * Each placement goes in the cell of its group and time block: a fixed, recurring, or activity
- * item set up by this import (or already in the camp), or, for an elective, special day,
- * special event, or trip, the name as it was in the file, marked "not set up yet". Placements
+ * item set up by this import (or already in the camp), an elective set by its record (slice E9),
+ * or, for a special day, special event, or trip, the name as it was in the file, marked "not set
+ * up yet". Placements
  * that cannot be placed (their group, time block, day, or name left out, a weekend, a week not
  * in the season, two things in one cell) are listed with the reason, never silently dropped.
  *
@@ -121,7 +122,17 @@ function itemKeyFinder(proposal) {
     proposal.decisions.map((d) => [`${d.timetable.index}|${d.name}`, d])
   );
   const recurring = [...proposal.recurring];
+  const electives = proposal.electives.texts;
   return (p, t) => {
+    // An elective set by its record (slice E9); one deleted before, or a list not answered, is not
+    // placed.
+    const elective = electives.get(p.text);
+    if (elective) {
+      if (elective.set) {
+        return { kind: "E", key: elective.set.key, name: elective.set.name };
+      }
+      return elective.deleted ? { deleted: true } : null;
+    }
     const noted = proposal.notedKinds.get(p.text);
     if (noted) {
       return { kind: noted, key: "" };
@@ -180,11 +191,14 @@ function dayGrid(t, groups, placements, context) {
     } else if (start === undefined || rows[g][start] !== "") {
       context.unmatched.push({ ...p, why: "twoAtOnce" });
     } else {
-      rows[g][start] = items.number(item.kind, item.key, p.text);
+      const number = items.number(item.kind, item.key, item.name || p.text);
+      rows[g][start] = number;
       for (let k = 1; k < p.span && column.has(p.blockIndex + k); k++) {
         const c = column.get(p.blockIndex + k);
         if (rows[g][c] === "") {
-          rows[g][c] = "^";
+          // An elective set holds each time block on its own (ADR 0018 choice 21), so a double
+          // period is the set in both blocks, not one cell carried on.
+          rows[g][c] = item.kind === "E" ? number : "^";
         }
       }
     }

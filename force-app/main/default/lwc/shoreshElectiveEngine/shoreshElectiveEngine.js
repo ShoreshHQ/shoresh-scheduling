@@ -566,19 +566,27 @@ export function assignSeats({
       });
     }
 
-    // Two linked choices sharing a time: a limit of this way of solving, not a data problem
-    // (desktop ADR 2026-09-29 D8). Only among those not already refused above.
+    // Two linked choices sharing a time in one offering: a limit of this way of solving, not a
+    // data problem (desktop ADR 2026-09-29 D8): each set's seats there are counted on their own,
+    // so they could hold more than the offering has. Two offerings' linked choices at one time
+    // never share seats (each column's seats are its own offering's, and a camper takes one
+    // column), so they are placed as sets (repo ADR 0016, electives slice E9: a double period
+    // links every choice across it). Only among those not already refused above.
     const byTime = new Map();
     for (const id of linked.filter((x) => !refused.has(x))) {
-      for (const timeId of timesOf(id).sort(compareText)) {
-        if (!byTime.has(timeId)) {
-          byTime.set(timeId, []);
+      const held = new Set(
+        membersOf(id).map((m) => `${m.timeId}\u0000${m.activityId}`)
+      );
+      for (const key of [...held].sort(compareText)) {
+        if (!byTime.has(key)) {
+          byTime.set(key, []);
         }
-        byTime.get(timeId).push(id);
+        byTime.get(key).push(id);
       }
     }
-    for (const timeId of [...byTime.keys()].sort(compareText)) {
-      const sharing = [...byTime.get(timeId)].sort(compareText);
+    for (const key of [...byTime.keys()].sort(compareText)) {
+      const timeId = key.split("\u0000")[0];
+      const sharing = [...byTime.get(key)].sort(compareText);
       if (sharing.length < 2) {
         continue;
       }

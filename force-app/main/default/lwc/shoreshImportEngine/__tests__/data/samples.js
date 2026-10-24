@@ -72,7 +72,8 @@ export function existingSetup({
   programs = [],
   activities = [],
   locations = [],
-  weeks = []
+  weeks = [],
+  electives = { sets: [], offerings: [], linkedChoices: [] }
 } = {}) {
   return {
     season: { Id: "a00000000000001AAA", Name: "Summer" },
@@ -83,7 +84,8 @@ export function existingSetup({
     locations,
     locationTypes: [],
     schedules: [],
-    labels: []
+    labels: [],
+    electives
   };
 }
 

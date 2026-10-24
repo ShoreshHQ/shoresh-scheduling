@@ -1,6 +1,6 @@
 /**
- * The season read once for end-of-season Clear (electives slice E10; repo ADR 0018 choices 49 to
- * 52): its weeks, runs, campers, choices and seats as ElectiveClear's picture, what the whole
+ * The season read once for end-of-season Clear (electives slice E10; repo ADR 0018 choices 55 to
+ * 58): its weeks, runs, campers, choices and seats as ElectiveClear's picture, what the whole
  * season's or one week's Clear removes, and the stamp Clear checks. In user mode, in a fixed
  * number of queries whatever the season's size; never sorted or filtered on a camper's name.
  */

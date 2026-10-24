@@ -49,12 +49,17 @@ export function usablePlacements(reading, timetables, groups) {
 
 // ---------- noted, not set up ----------
 
-/** Names noted but not set up, with their kind, and the special days to leave out of "every day". */
-function notedNames(usable, timetables, terms) {
+/**
+ * Names noted but not set up, with their kind, and the special days to leave out of "every day".
+ * Electives (electives.js) are "E" here too, so nothing else decides them; an elective word that is
+ * not one after all (the camp has it, or "Not electives") goes the usual way.
+ */
+function notedNames(usable, timetables, terms, electiveTexts) {
   const kinds = new Map();
   const specialDays = new Map();
   for (const p of usable) {
-    const kind = notedKindByWords(p.text, terms);
+    const word = notedKindByWords(p.text, terms);
+    const kind = electiveTexts.has(p.text) ? "E" : word === "E" ? null : word;
     if (kind) {
       kinds.set(p.text, kind);
     }

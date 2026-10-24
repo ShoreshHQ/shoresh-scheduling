@@ -1,5 +1,5 @@
 /**
- * End-of-season Clear (electives slice E10; repo ADR 0018 choices 49 to 52; Greg's decisions
+ * End-of-season Clear (electives slice E10; repo ADR 0018 choices 55 to 58; Greg's decisions
  * 48.4 and 59; desktop purgeElectiveSeason.js and the Director Guide §11): the season's elective
  * runs go, with their choices and seats, and so does every camper no remaining run uses. Elective
  * sets, offerings and linked choices stay for next summer. The whole season, or one week.

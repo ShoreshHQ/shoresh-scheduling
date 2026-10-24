@@ -1,5 +1,5 @@
 // Elective seats, the downloads and end-of-season Clear on the screen (electives slice E10; repo
-// ADR 0018 choices 45 to 52): Download only once final, and why before; each download made and
+// ADR 0018 choices 51 to 58): Download only once final, and why before; each download made and
 // said; the rosters printed; Clear taking over the screen, the whole season or one week, exactly
 // what it drew, refused with the reason, and Cancel. With axe. Names are made up.
 import { createElement } from "lwc";

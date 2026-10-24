@@ -441,7 +441,7 @@ describe("how a sheet was read, column by column (slice E6's first card)", () =>
   });
 });
 
-describe("one row per choice, headings on one row (ADR 0018 choice 48)", () => {
+describe("one row per choice, headings on one row (ADR 0018 choice 54)", () => {
   it("reads the first camper's row as a camper, even with no camper number, never as a second heading", () => {
     const result = read(
       lines(
@@ -476,7 +476,7 @@ describe("one row per choice, headings on one row (ADR 0018 choice 48)", () => {
   });
 });
 
-describe("a lone choice heading over ranks is still a two-row heading (ADR 0018 choice 48)", () => {
+describe("a lone choice heading over ranks is still a two-row heading (ADR 0018 choice 54)", () => {
   const ranked = (result) =>
     result.campers.map((c) => [c.name, c.choices.map((x) => [x.name, x.rank])]);
 

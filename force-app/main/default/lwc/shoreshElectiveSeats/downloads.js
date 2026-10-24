@@ -1,5 +1,5 @@
 /**
- * The elective downloads (electives slice E10; repo ADR 0018 choices 45 to 48; plan §7): Rosters
+ * The elective downloads (electives slice E10; repo ADR 0018 choices 51 to 54; plan §7): Rosters
  * (printed one page per offering, Greg's decision 53.4, option A; and as a file), Camper
  * schedules, the Full report and Campers (to edit and bring back). Made in the browser from a
  * final run as ElectiveDownloads.forRun reads it (ElectiveSeatsController.runDownload): the same

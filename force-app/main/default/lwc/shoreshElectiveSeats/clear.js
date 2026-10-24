@@ -1,5 +1,5 @@
 /**
- * End-of-season Clear, as a picture (electives slice E10; repo ADR 0018 choices 49 to 52; Greg's
+ * End-of-season Clear, as a picture (electives slice E10; repo ADR 0018 choices 55 to 58; Greg's
  * decision 59, design-research/electives-r1 clear-b and clear-b-week): the whole summer drawn,
  * weeks across, with rows for Campers, Choices, Seats and Runs; what goes is dashed, faded and its
  * number struck through; Sets, Offerings and Linked stay as solid bars with a padlock. Picking one

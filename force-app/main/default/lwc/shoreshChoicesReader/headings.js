@@ -282,7 +282,7 @@ export function findTable(sheet) {
     // A sheet with one row per choice (an Activity column beside a Rank, Day or Period column) has
     // its headings on one row: the row under them is its first camper ("Rank" over "1" is a rank,
     // not a heading "Rank 1"), as in the campers file the seats screen downloads to be brought
-    // back (ADR 0018 choice 48). A lone "Choice" or "Elective" over 1, 2, 3 is still a two-row
+    // back (ADR 0018 choice 54). A lone "Choice" or "Elective" over 1, 2, 3 is still a two-row
     // heading of ranked choices.
     const has = (use) =>
       here.columns.some((c) => c.meaning && c.meaning.use === use);

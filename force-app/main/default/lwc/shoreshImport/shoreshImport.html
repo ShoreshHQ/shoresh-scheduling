@@ -292,6 +292,45 @@
           </section>
         </template>
 
+        <template lwc:if={hasElectiveRows}>
+          <!-- Electives read from the file (slice E9): what was read, and "Not electives". -->
+          <section class="section" data-id="electives">
+            <h3 class="section-head">{labels.electives}</h3>
+            <template for:each={electiveRows} for:item="card">
+              <div key={card.id} class={card.className} data-card={card.id}>
+                <span class="n">{card.title}</span>
+                <span class="d"
+                  >{card.subtitle}<template lwc:if={card.detail}
+                    >&nbsp;{card.detail}</template
+                  ></span
+                >
+                <span class="options">
+                  <template for:each={card.options} for:item="option">
+                    <button
+                      key={option.key}
+                      type="button"
+                      class={option.className}
+                      aria-pressed={option.pressed}
+                      title={option.description}
+                      data-key={option.key}
+                      onclick={handleAnswer}
+                    >
+                      {option.label}<template lwc:if={option.description}
+                        ><span class="slds-assistive-text"
+                          >. {option.description}</span
+                        ></template
+                      >
+                    </button>
+                  </template>
+                  <template lwc:if={card.fromMemory}>
+                    <span class="tag">Remembered</span>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </section>
+        </template>
+
         <template lwc:if={hasPlaces}>
           <section class="section" data-id="places">
             <h3 class="section-head">{labels.locations}</h3>
