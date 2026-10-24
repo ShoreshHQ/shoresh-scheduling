@@ -360,6 +360,12 @@ export default class ShoreshManualBuild extends LightningElement {
   get weekLabel() {
     return this.t.s("Week");
   }
+  // No program or week picker beside ‹ Roots: the editor's own separator before Edit is the
+  // only divider it needs.
+  get backStandsAlone() {
+    return !this.hasSeveralPrograms && !this.canChoose;
+  }
+
   get hasSeveralPrograms() {
     return this.programOptions.length > 1;
   }
@@ -1638,5 +1644,11 @@ export default class ShoreshManualBuild extends LightningElement {
       fromName: this.dayNameAt(this.dayIndex),
       toName: value === "all" ? "all other days" : this.dayNameAt(targets[0])
     });
+  }
+
+  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
   }
 }

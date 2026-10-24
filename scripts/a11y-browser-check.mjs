@@ -57,6 +57,11 @@
  * - the living dot field on Roots (ADR 0015 choice 13): it is drawn, hidden from screen readers,
  *   glows when the mouse moves near it and settles back to rest, logs no errors, and with reduced
  *   motion asked for (emulated) it stays still while the mouse moves;
+ * - Roots' table (ADR 0020): Tab into a meld fans it (axe with it open), an arrow moves to the
+ *   next card, Escape closes it with the cursor on its front card and Tab opens it again on the
+ *   next card; Enter grows Weeks out of its card with focus on Weeks' heading, and the rail's Back
+ *   to Roots shrinks it home with the cursor on the Weeks card (the menu's Roots too); the pointer resting on a meld opens it and leaving closes it; with reduced motion
+ *   emulated a card opens its screen at once;
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
@@ -1412,7 +1417,8 @@ async function listIntoTable() {
     );
   if (
     !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
-      max: 40,
+      // Round the page backwards: the page's chrome, the menu, ‹ Roots and the rail.
+      max: 90,
       back: true
     }))
   )
@@ -1510,7 +1516,8 @@ async function programsListIntoTable() {
   await axe("Programs, Import a list with a file laid into the table");
   if (
     !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
-      max: 40,
+      // Round the page backwards: the page's chrome, the menu, ‹ Roots and the rail.
+      max: 90,
       back: true
     }))
   )
@@ -1691,6 +1698,194 @@ async function dotField() {
       "The dot field logs no errors",
       `No Shoresh errors in the console (${errors.length} from Salesforce's own page).`
     );
+  }
+}
+
+// ---------- Roots: the canasta table (ADR 0020, wiki decisions 60 to 68) ----------
+
+const isCard = (re) => (f) =>
+  f.tag === "button" &&
+  f.components.includes("c-shoresh-roots") &&
+  re.test(f.name);
+const meldOpen = (key) =>
+  shown(`c-shoresh-roots [data-meld="${key}"]`)
+    .first()
+    .evaluate((m) => m.hasAttribute("data-open"));
+const clipOf = (screen) =>
+  page
+    .locator(APP)
+    // The screen's own wrapper in the frame (the menu's links carry data-screen too).
+    .locator(`[data-id="frame-body"] [data-screen="${screen}"]`)
+    .first()
+    .evaluate((w) => w.style.clipPath || "");
+
+/**
+ * Roots' table (ADR 0020): Tab into the first meld fans it; an arrow moves to its next card;
+ * Escape closes it with the cursor on its front card, and Tab then opens it again on the next
+ * card; Enter grows Weeks out of its card (the screen clipped to the growing sheet), with focus
+ * on Weeks' heading; the rail's Back to Roots shrinks it home with the cursor back on the Weeks
+ * card (and, with reduced motion, so does the menu's Roots, at once). The pointer resting on a meld opens it and leaving
+ * closes it. With reduced motion emulated a card opens its screen at once. axe on the open table.
+ */
+async function rootsTable() {
+  const S = "Roots";
+  const weeksCard = await tabTo(isCard(/^Weeks$/), { max: 20 });
+  if (!weeksCard) throw new Error("The Weeks card was not reached with Tab.");
+  await pause(900);
+  if (await meldOpen("camp")) {
+    results.pass(S, "Tab into a meld fans it", "The Camp meld opened.");
+  } else {
+    await shot(S, "Tab into a meld");
+    results.fail(S, "Tab into a meld fans it", "The Camp meld stayed closed.");
+  }
+  await axe("Roots (a meld open)");
+  await press("ArrowRight", 300);
+  await expectFocus(S, "An arrow moves to the next card", {
+    tag: "button",
+    name: /^Programs$/
+  });
+  await press("Escape", 900);
+  const closed = !(await meldOpen("camp"));
+  const back = await focus();
+  if (closed && back && /^Weeks$/.test(back.name)) {
+    results.pass(
+      S,
+      "Escape closes the meld, the cursor on its front card",
+      "Closed; focus on the Weeks card."
+    );
+  } else {
+    await shot(S, "Escape closes the meld");
+    results.fail(
+      S,
+      "Escape closes the meld, the cursor on its front card",
+      `${closed ? "closed" : "still open"}; focus on ${formatFocus(back)}.`
+    );
+  }
+  // Tab after Escape moves the cursor on, so the meld opens again and the card it lands on
+  // shows (at rest the cards past the third are out of sight).
+  await press("Tab", 900);
+  const onNext = await focus();
+  const reopened = await meldOpen("camp");
+  if (reopened && onNext && /^Programs$/.test(onNext.name)) {
+    results.pass(
+      S,
+      "Tab after Escape opens the meld again on the next card",
+      "Open; focus on the Programs card."
+    );
+  } else {
+    await shot(S, "Tab after Escape");
+    results.fail(
+      S,
+      "Tab after Escape opens the meld again on the next card",
+      `${reopened ? "open" : "still closed"}; focus on ${formatFocus(onNext)}.`
+    );
+  }
+  await press("Shift+Tab", 300);
+  await expectFocus(S, "Shift+Tab back to the Weeks card", {
+    tag: "button",
+    name: /^Weeks$/
+  });
+  await press("Enter", 30);
+  // The first frame waits for the screen to be drawn; watch for the clip for up to 1.5 s.
+  let midway = "";
+  for (let i = 0; i < 50 && !/inset\(/.test(midway); i++) {
+    midway = await clipOf("weeks");
+    if (!/inset\(/.test(midway)) await pause(30);
+  }
+  // The journey takes about 1.8 s once it starts; then the screen is itself, unclipped.
+  for (let i = 0; i < 30 && (await clipOf("weeks")); i++) await pause(100);
+  if (/inset\(/.test(midway) && !(await clipOf("weeks"))) {
+    results.pass(
+      S,
+      "A card grows into its screen",
+      "Weeks was clipped to the growing card, then shown whole."
+    );
+  } else {
+    await shot(S, "A card grows into its screen");
+    results.fail(
+      S,
+      "A card grows into its screen",
+      `clip mid-way "${midway}", after "${await clipOf("weeks")}".`
+    );
+  }
+  await expectFocus(S, "Opened from its card: focus on the heading", {
+    tag: /^h[1-3]$/,
+    name: /^Weeks$/
+  });
+  // The rail's ‹ Roots (decision 68), right after the heading: home into the card.
+  await press("Tab", 200);
+  await expectFocus(S, "Next on the rail: Back to Roots", {
+    tag: "button",
+    name: /^Back to Roots$/
+  });
+  await press("Enter", 1800);
+  await expectFocus(S, "Back on Roots: the cursor on the card it came from", {
+    tag: "button",
+    name: /^Weeks$/
+  });
+  // The pointer: resting on Activities & Events opens it; leaving closes it.
+  await press("Escape", 600);
+  const front = shown(
+    'c-shoresh-roots [data-meld="activities"] [data-front]'
+  ).first();
+  await front.hover();
+  await pause(900);
+  const opened = await meldOpen("activities");
+  await page.mouse.move(2, 2);
+  await pause(1200);
+  const shut = !(await meldOpen("activities"));
+  if (opened && shut) {
+    results.pass(
+      S,
+      "The pointer resting on a meld opens it; leaving closes it",
+      "Opened under the pointer, closed after it left."
+    );
+  } else {
+    await shot(S, "Pointer on a meld");
+    results.fail(
+      S,
+      "The pointer resting on a meld opens it; leaving closes it",
+      `${opened ? "opened" : "did not open"}; ${shut ? "closed" : "stayed open"}.`
+    );
+  }
+  // Reduced motion: no travel, the screen at once.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  try {
+    // From the Weeks card itself: Tab goes round the page back to it.
+    if (!(await tabTo(isCard(/^Weeks$/)))) {
+      throw new Error("The Weeks card was not reached with Tab.");
+    }
+    await press("Enter", 60);
+    const still = await clipOf("weeks");
+    if (!still && (await exists('[data-screen="weeks"] [data-heading]'))) {
+      results.pass(
+        S,
+        "With reduced motion a card opens its screen at once",
+        "No clip, no travel."
+      );
+    } else {
+      results.fail(
+        S,
+        "With reduced motion a card opens its screen at once",
+        `clip "${still}".`
+      );
+    }
+    await openFromMenu("Weeks", /^Weeks/);
+    const home =
+      (await tabTo(isMenuLink(/^Roots/), { back: true })) ||
+      (await tabTo(isMenuLink(/^Roots/), { max: 280 }));
+    if (!home) throw new Error("The menu's Roots was not reached with Tab.");
+    await press("Enter", 800);
+    await expectFocus(
+      S,
+      "The menu's Roots: the cursor on the card it came from",
+      {
+        tag: "button",
+        name: /^Weeks$/
+      }
+    );
+  } finally {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
   }
 }
 
@@ -1895,6 +2090,7 @@ async function campSetup() {
     await axe("Roots");
   });
   await step(S, "Roots: the living dot field", dotField);
+  await step(S, "Roots: the table by keyboard and mouse", rootsTable);
   await step(S, "Import last year: the one page, by keyboard", importLastYear);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {
@@ -4514,7 +4710,8 @@ async function scheduleDoor() {
     const door = (f) =>
       f.tag === "button" &&
       f.components.includes("c-shoresh-menu") &&
-      /^Schedules$/.test(f.name);
+      // Its words are set in capitals (innerText reads them so); the name is "Schedules".
+      /^Schedules$/i.test(f.name);
     const found =
       (await tabTo(door, { back: true })) || (await tabTo(door, { max: 280 }));
     if (!found)
@@ -4530,19 +4727,24 @@ async function scheduleDoor() {
       name: /^Schedules$/
     });
     await axe("Schedules, the weeks");
+    // innerText reads the hidden ", Week n" after the label with a space before its comma.
+    const nameOf = (f) => f.name.replace(/\s+,/g, ",");
     const toManual = (f) =>
-      f.tag === "button" && /^Manual Build, /.test(f.name);
+      f.tag === "button" && /^Manual Build, /.test(nameOf(f));
     const other = await tabTo(
-      (f) => toManual(f) && f.name !== `Manual Build, ${week}`,
+      (f) => toManual(f) && nameOf(f) !== `Manual Build, ${week}`,
       { max: 80 }
     );
-    const chosen = other ? other.name.replace(/^Manual Build, /, "") : week;
+    const chosen = other ? nameOf(other).replace(/^Manual Build, /, "") : week;
     if (
       !other &&
-      !(await tabTo((f) => toManual(f) && f.name === `Manual Build, ${week}`, {
-        back: true,
-        max: 80
-      }))
+      !(await tabTo(
+        (f) => toManual(f) && nameOf(f) === `Manual Build, ${week}`,
+        {
+          back: true,
+          max: 80
+        }
+      ))
     )
       throw new Error(`"Manual Build, ${week}" was not reached with Tab.`);
     await press("Enter", 2500);
@@ -5518,7 +5720,7 @@ async function bringInChoices() {
       name: /^How the sheet was read$/
     });
     await axe(`${S}: 1 of 3`);
-    if (!(await tabTo(named(/^That's right$/, { tag: "button" }), { max: 40 })))
+    if (!(await tabTo(named(/^That's right$/, { tag: "button" }), { max: 90 })))
       throw new Error("That's right was not reached with Tab.");
     await press("Enter", 800);
     await expectFocus(S, "That's right: focus on card 2's heading", {

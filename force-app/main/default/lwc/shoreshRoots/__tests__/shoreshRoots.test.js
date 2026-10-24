@@ -3,10 +3,18 @@ import ShoreshRoots from "c/shoreshRoots";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { nsRecord } from "shoresh-jest/namespace";
+import getTable from "@salesforce/apex/RootsController.getTable";
 
-const terms = buildTerms([
+jest.mock(
+  "@salesforce/apex/RootsController.getTable",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+
+const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   { term: "Division", singular: "Unit", plural: "Units", isCustom: true },
+  { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true },
   {
     term: "Activity",
     singular: "Activity",
@@ -39,23 +47,53 @@ const terms = buildTerms([
     plural: "Rain plans",
     isCustom: false
   }
-]);
+];
+const terms = buildTerms(LABELS);
 
 const bunks = (n) =>
   [...Array(n)].map((_, i) => ({ Id: `g${i}`, Name: `Bunk ${i + 1}` }));
 
+// A made-up camp: no real campers or staff.
 const SETUP = {
   season: {
+    Id: "s1",
     Name: "Summer 2026",
     StartDate__c: "2026-06-29",
     EndDate__c: "2026-08-07"
   },
-  weeks: [{ Name: "Week 1" }, { Name: "Week 2" }],
+  labels: LABELS,
+  weeks: [
+    {
+      Id: "w1",
+      Name: "Week 1",
+      StartDate__c: "2026-06-29",
+      EndDate__c: "2026-07-03"
+    },
+    {
+      Id: "w2",
+      Name: "Week 2",
+      StartDate__c: "2026-07-06",
+      EndDate__c: "2026-07-10"
+    }
+  ],
   programs: [
     {
-      program: { Name: "Main" },
-      timeBlocks: [{ Name: "Period 1" }, { Name: "Period 2" }],
-      fixedActivities: [{ Name: "Flagpole" }, { Name: "Carpool" }],
+      program: { Name: "Main", Monday__c: true, Friday__c: false },
+      timeBlocks: [
+        {
+          Id: "b1",
+          Name: "Period 1",
+          StartTime__c: 32400000,
+          EndTime__c: 35100000
+        },
+        {
+          Id: "b2",
+          Name: "Lunch",
+          StartTime__c: 43200000,
+          EndTime__c: 45900000
+        }
+      ],
+      fixedActivities: [{ Name: "Flagpole", TimeBlock__c: "b2" }],
       divisions: [
         { division: { Id: "d1", Name: "Juniors" }, groups: bunks(6) },
         { division: { Id: "d2", Name: "Seniors" }, groups: [] }
@@ -64,216 +102,328 @@ const SETUP = {
   ],
   locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 1 }],
   activities: [
-    { Name: "Swim", Location__c: "l1", GroupsAtOnce__c: 1 },
-    { Name: "Soccer", Outdoor__c: true }
+    { Id: "a1", Name: "Swim", Location__c: "l1", GroupsAtOnce__c: 1 },
+    { Id: "a2", Name: "Soccer", Outdoor__c: true }
   ]
 };
 
-const flush = () => Promise.resolve();
+const TABLE = {
+  thisWeekId: "w2",
+  shownWeekId: "w2",
+  builtWeekIds: ["w1", "w2"],
+  manual: {
+    groups: ["Bunk 1", "Bunk 2", "Bunk 3"],
+    rows: [
+      {
+        startTime: "09:00",
+        cells: [
+          { name: "Swim", locked: true },
+          { name: "Soccer", locked: false },
+          { name: "", locked: false }
+        ]
+      },
+      { startTime: "12:00", fixed: "Flagpole", cells: [] }
+    ]
+  },
+  generated: null,
+  seats: [{ name: "Archery", seats: 12, taken: 9, minimum: null }],
+  latestVersion: {
+    name: "Friday swap",
+    weekId: "w2",
+    savedAt: "2026-07-09T14:15:00.000Z",
+    published: false
+  }
+};
 
-async function render(setup = SETUP) {
+const flush = () => Promise.resolve();
+// A few turns of the microtask queue: the request, its answer, and the redraws after it.
+const settle = () => flush().then(flush).then(flush).then(flush).then(flush);
+
+async function render(setup = SETUP, { active = true } = {}) {
   const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
   element.setup = nsRecord(setup);
   element.terms = terms;
   element.problems = setupProblems(nsRecord(setup), terms);
+  element.active = active;
   document.body.appendChild(element);
-  await flush();
+  await settle();
   return element;
 }
 
-const card = (element, key) =>
-  element.shadowRoot.querySelector(`[data-card="${key}"]`);
+const $ = (element, selector) => element.shadowRoot.querySelector(selector);
+const $$ = (element, selector) => [
+  ...element.shadowRoot.querySelectorAll(selector)
+];
+const card = (element, key) => $(element, `[data-card="${key}"]`);
+const glimpseOf = (element, key) =>
+  card(element, key).querySelector("c-shoresh-roots-glimpse");
+const wordsOf = (element, key) =>
+  [...glimpseOf(element, key).shadowRoot.querySelectorAll("text")].map((t) =>
+    t.textContent.trim()
+  );
 
-describe("c-shoresh-roots", () => {
-  afterEach(() => {
-    while (document.body.firstChild) {
-      document.body.removeChild(document.body.firstChild);
-    }
-  });
+beforeEach(() => {
+  getTable.mockReset();
+  getTable.mockResolvedValue(TABLE);
+});
 
+afterEach(() => {
+  while (document.body.firstChild) {
+    document.body.removeChild(document.body.firstChild);
+  }
+});
+
+describe("c-shoresh-roots: the table", () => {
   it("puts the cursor on its heading when the page opens it", async () => {
     const element = await render();
     element.focusHeading();
-    expect(element.shadowRoot.activeElement).toBe(
-      element.shadowRoot.querySelector("[data-heading]")
-    );
+    expect(element.shadowRoot.activeElement).toBe($(element, "[data-heading]"));
   });
 
-  it("sits on the living dot field (wiki decision 49), all of it inside", async () => {
+  it("lies on the living dot field (wiki decision 49), its cards covering the dots", async () => {
     const element = await render();
-    const fields = element.shadowRoot.querySelectorAll("c-shoresh-dot-field");
-    expect(fields.length).toBe(1);
-    expect(fields[0].querySelector('[data-id="roots"]')).not.toBeNull();
+    const fields = $$(element, "c-shoresh-dot-field");
+    expect(fields).toHaveLength(1);
+    expect(fields[0].solid).toBe(true);
+    expect(fields[0].querySelector('[data-id="table"]')).not.toBeNull();
   });
 
-  it("shows the desktop's cards, in their places, in the camp's words", async () => {
+  it("holds the menu's three sections as melds, in its order, every card in the camp's words", async () => {
     const element = await render();
-    const cards = [...element.shadowRoot.querySelectorAll("[data-card]")].map(
-      (c) => [
-        c.dataset.card,
-        c.querySelector(".roots-card-header span").textContent
-      ]
-    );
-    expect(cards).toEqual([
-      ["activities", "Activities"],
-      ["groups", "Bunks"],
-      ["divisions", "Units"],
-      ["locations", "Locations"],
-      ["timeBlocks", "Time blocks"],
-      ["weeks", "Weeks"],
-      ["fixedActivities", "Fixed activities"]
+    const melds = $$(element, "[data-meld]");
+    expect(melds.map((m) => m.getAttribute("aria-label"))).toEqual([
+      "Camp",
+      "Activities & Events",
+      "Schedules"
     ]);
-    expect(card(element, "activities").className).toContain("roots-card_large");
-    expect(card(element, "divisions").className).toContain("roots-card_small");
-    expect(card(element, "fixedActivities").className).toContain(
-      "roots-card_wide"
-    );
+    expect(
+      melds.map((m) =>
+        [...m.querySelectorAll("[data-card]")].map((c) =>
+          c.getAttribute("aria-label")
+        )
+      )
+    ).toEqual([
+      [
+        "Weeks",
+        "Programs",
+        "Units",
+        "Bunks",
+        "Time blocks",
+        "Locations",
+        "Camp words"
+      ],
+      [
+        "Activities",
+        "Fixed activities",
+        "Recurring activities",
+        "Special events",
+        "Chugim"
+      ],
+      ["Generated Schedule", "Manual Build", "Chug seats", "Saved versions"]
+    ]);
   });
 
-  it("counts what each card's screen lists, in green once something is there", async () => {
+  it("the Schedules title is a doorway to the season's weeks; the others are plain names", async () => {
     const element = await render();
-    const count = (key) =>
-      element.shadowRoot.querySelector(`[data-count="${key}"]`);
-    expect(count("activities").textContent).toBe("2");
-    expect(count("groups").textContent).toBe("6");
-    expect(count("divisions").textContent).toBe("2");
-    expect(count("locations").textContent).toBe("1");
-    expect(count("timeBlocks").textContent).toBe("2");
-    expect(count("weeks").textContent).toBe("2");
-    expect(count("fixedActivities").textContent).toBe("2");
-    expect(card(element, "weeks").className).toContain("roots-card_small");
-    expect(count("groups").className).toContain("roots-count_rooted");
-
-    const empty = await render({ ...SETUP, locations: [] });
-    const zero = empty.shadowRoot.querySelector('[data-count="locations"]');
-    expect(zero.textContent).toBe("0");
-    expect(zero.className).not.toContain("roots-count_rooted");
+    const doors = $$(element, "button.mlabel");
+    expect(doors.map((d) => d.textContent.trim())).toEqual(["Schedules"]);
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    doors[0].click();
+    expect(handler.mock.calls[0][0].detail).toEqual({
+      screen: "scheduleWeeks"
+    });
   });
 
-  it("names up to four on the large cards, then how many more", async () => {
-    const element = await render();
-    const chips = [
-      ...card(element, "groups").querySelectorAll(".roots-chip")
-    ].map((c) => c.textContent);
-    expect(chips).toEqual(["Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4", "+2 more"]);
-    expect(card(element, "divisions").querySelector(".roots-chip")).toBeNull();
-  });
-
-  it("names up to six fixed activities on the wide card", async () => {
-    const element = await render();
-    const chips = [
-      ...card(element, "fixedActivities").querySelectorAll(".roots-chip")
-    ].map((c) => c.textContent);
-    expect(chips).toEqual(["Flagpole", "Carpool"]);
-    expect(card(element, "fixedActivities").textContent).not.toContain(
-      "Coming"
-    );
-  });
-
-  it("the schedule door offers both schedules, side by side, by name", async () => {
+  it("each card opens its real screen, from the card", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
-    const door = element.shadowRoot.querySelector('[data-id="schedule-door"]');
-    expect(door.textContent).toContain("Build or generate the schedule");
-    expect(door.textContent).not.toContain("Coming");
-    const ways = [...door.querySelectorAll("button")];
-    expect(ways.map((b) => b.textContent.replace("→", "").trim())).toEqual([
-      "Generated Schedule",
-      "Manual Build"
-    ]);
-    ways.forEach((b) => b.click());
-    expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
-      "generatedSchedule",
-      "manualBuild"
-    ]);
-  });
-
-  it("a camp with setup: the import recedes to Re-import last year, and still opens", async () => {
-    const element = await render();
-    const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    const button = element.shadowRoot.querySelector(
-      'lightning-button[data-id="import"]'
+    ["groups", "manualBuild", "electives"].forEach((key) =>
+      card(element, key).click()
     );
-    expect(button.label).toBe("Re-import last year");
-    expect(button.variant).toBe("base");
-    button.click();
-    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
+    expect(handler.mock.calls.map((c) => c[0].detail)).toEqual([
+      { screen: "groups", fromCard: "groups" },
+      { screen: "manualBuild", fromCard: "manualBuild" },
+      { screen: "electives", fromCard: "electives" }
+    ]);
   });
 
-  it("an empty camp: Import last year is the first thing to do", async () => {
+  it("reads its table in one request each time it is shown, never while hidden", async () => {
+    const element = await render(SETUP, { active: false });
+    expect(getTable).not.toHaveBeenCalled();
+    element.active = true;
+    await settle();
+    expect(getTable).toHaveBeenCalledTimes(1);
+    expect(getTable).toHaveBeenCalledWith({ seasonId: "s1" });
+    element.active = false;
+    element.active = true;
+    await settle();
+    expect(getTable).toHaveBeenCalledTimes(2);
+  });
+
+  it("says so when its table can't be read, and still draws what the setup holds", async () => {
+    getTable.mockRejectedValue({ body: { message: "No access." } });
+    const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
+    const toasts = jest.fn();
+    element.addEventListener("lightning__showtoast", toasts);
+    element.setup = nsRecord(SETUP);
+    element.terms = terms;
+    element.problems = [];
+    element.active = true;
+    document.body.appendChild(element);
+    await settle();
+    expect(toasts).toHaveBeenCalledTimes(1);
+    expect(toasts.mock.calls[0][0].detail).toMatchObject({
+      title: "Roots could not read your schedules",
+      variant: "error"
+    });
+    expect(wordsOf(element, "activities")).toEqual(["Swim", "Soccer"]);
+  });
+
+  it("draws every face from the camp's own data", async () => {
+    const element = await render();
+    // Weeks: the season's first and last days, the season's year beside the name.
+    expect(wordsOf(element, "weeks")).toEqual(
+      expect.arrayContaining(["JUN 29", "JUL 10", "1", "2"])
+    );
+    expect(card(element, "weeks").querySelector("small").textContent).toBe(
+      "2026"
+    );
+    // This week (the table's) wears the highlight.
+    const bars = [
+      ...glimpseOf(element, "weeks").shadowRoot.querySelectorAll("rect.fhl")
+    ];
+    expect(bars).toHaveLength(1);
+    // Activities by name; one with no place is an outline.
+    expect(wordsOf(element, "activities")).toEqual(["Swim", "Soccer"]);
+    expect(
+      glimpseOf(element, "activities").shadowRoot.querySelectorAll("rect.dash")
+    ).toHaveLength(1);
+    // Locations: Pool and what is held there, then what waits for a place.
+    expect(wordsOf(element, "locations")).toEqual(["Pool", "Swim", "Soccer"]);
+    // Camp words: the standard word, then the camp's own.
+    expect(wordsOf(element, "campWords")).toEqual(
+      expect.arrayContaining([
+        "Group",
+        "Bunk",
+        "Division",
+        "Unit",
+        "Elective",
+        "Chug"
+      ])
+    );
+    // Manual Build: the shown week's day, by bunk, with Flagpole across.
+    expect(
+      card(element, "manualBuild").querySelector("small").textContent
+    ).toBe("WEEK 2");
+    expect(wordsOf(element, "manualBuild")).toEqual(
+      expect.arrayContaining(["Bunk 1", "9:00", "Swim", "Soccer", "Flagpole"])
+    );
+    // Seats and the latest saved version.
+    expect(wordsOf(element, "electiveSeats")).toEqual(["Archery"]);
+    expect(wordsOf(element, "schedules")).toEqual([
+      "Week 2 · Friday swap",
+      "JUL 9"
+    ]);
+  });
+
+  it("an empty camp's cards show what is missing by its outline, with no words", async () => {
+    getTable.mockResolvedValue({});
     const element = await render({
-      season: SETUP.season,
-      weeks: SETUP.weeks,
-      programs: [{ program: { Name: "Main" } }],
+      season: { Id: "s1", Name: "Summer 2026" },
+      labels: [],
+      weeks: [],
+      programs: [],
       locations: [],
       activities: []
     });
-    const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    const buttons = element.shadowRoot.querySelectorAll(
-      'lightning-button[data-id="import"]'
-    );
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0].label).toBe("Import last year");
-    expect(buttons[0].variant).toBe("brand");
-    buttons[0].click();
-    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
-  });
-
-  it("each card opens its screen", async () => {
-    const element = await render();
-    const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    card(element, "groups").click();
-    card(element, "timeBlocks").click();
-    card(element, "weeks").click();
-    card(element, "fixedActivities").click();
-    expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
-      "groups",
-      "timeBlocks",
+    [
       "weeks",
-      "fixedActivities"
-    ]);
+      "activities",
+      "manualBuild",
+      "generatedSchedule",
+      "electiveSeats"
+    ].forEach((key) => {
+      expect(wordsOf(element, key)).toEqual([]);
+      expect(
+        glimpseOf(element, key).shadowRoot.querySelectorAll("rect.dash").length
+      ).toBeGreaterThan(0);
+    });
   });
 
-  it("lists what needs attention alphabetically, each opening the screen that fixes it", async () => {
+  it("is accessible", async () => {
+    const element = await render();
+    await expect(element).toBeAccessible();
+  });
+});
+
+describe("c-shoresh-roots: what needs attention (where the hand will lie)", () => {
+  it("lists it alphabetically, each opening the screen that fixes it", async () => {
     const element = await render({ ...SETUP, weeks: [] });
-    const rows = [...element.shadowRoot.querySelectorAll("[data-attention]")];
+    const rows = $$(element, "[data-attention]");
     expect(
       rows.map((r) => [
-        r.querySelector(".roots-attention-name").textContent,
-        r.querySelector(".roots-tag").textContent
+        r.querySelector(".hand-name").firstChild.textContent,
+        r.querySelector(".hand-tag").textContent
       ])
     ).toEqual([
+      ["Flagpole", "Fixed activities"],
       ["Seniors", "Bunks"],
       ["Soccer", "Activities"],
       ["Summer 2026", "Weeks"]
     ]);
-    expect(rows[1].querySelector(".roots-attention-why").textContent).toBe(
+    expect(rows[2].querySelector(".hand-why").textContent).toBe(
       "Outdoors and has no rain plan."
+    );
+    expect(rows[2].getAttribute("aria-label")).toBe(
+      "Soccer: Outdoors and has no rain plan."
     );
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
     rows.forEach((row) => row.click());
     expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
+      "fixedActivities",
       "groups",
       "activities",
       "weeks"
     ]);
   });
 
-  it("says all clear when nothing needs attention", async () => {
+  it("is calm when nothing needs a look: nothing shows, and that is said", async () => {
     const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
     element.setup = nsRecord(SETUP);
     element.terms = terms;
     element.problems = [];
     document.body.appendChild(element);
-    await flush();
-    expect(
-      element.shadowRoot.querySelector('[data-id="all-clear"]').textContent
-    ).toContain("All clear");
+    await settle();
+    expect($$(element, "[data-attention]")).toHaveLength(0);
+    expect($(element, '[data-id="all-clear"]').textContent).toContain(
+      "All clear"
+    );
+  });
+});
+
+describe("c-shoresh-roots: the camp's workbook", () => {
+  it("a camp with setup: the import recedes to Re-import last year, and still opens", async () => {
+    const element = await render();
+    const imports = $$(element, 'lightning-button[data-id="import"]');
+    expect(imports.map((b) => b.label)).toEqual(["Re-import last year"]);
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    imports[0].click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
+  });
+
+  it("an empty camp: Import last year is the first thing to do", async () => {
+    const element = await render({
+      ...SETUP,
+      programs: [{ program: { Name: "Main" }, timeBlocks: [], divisions: [] }]
+    });
+    const imports = $$(element, 'lightning-button[data-id="import"]');
+    expect(imports.map((b) => [b.label, b.variant])).toEqual([
+      ["Import last year", "brand"]
+    ]);
   });
 
   it("shows the last import with Undo last import, which asks the page to undo it", async () => {
@@ -285,16 +435,14 @@ describe("c-shoresh-roots", () => {
         CreatedDate: "2027-06-20T14:00:00.000Z"
       }
     });
-    const line = element.shadowRoot.querySelector('[data-id="last-import"]');
+    const line = $(element, '[data-id="last-import"]');
     expect(line.textContent).toContain("Last import: maple-grove.xlsx");
     expect(line.textContent).toContain(
       "Anything you have edited since stays as it is."
     );
     const handler = jest.fn();
     element.addEventListener("undoimport", handler);
-    element.shadowRoot
-      .querySelector('lightning-button[data-id="undo-import"]')
-      .click();
+    $(element, 'lightning-button[data-id="undo-import"]').click();
     expect(handler.mock.calls[0][0].detail).toEqual({
       importId: "im1",
       files: "maple-grove.xlsx"
@@ -303,14 +451,10 @@ describe("c-shoresh-roots", () => {
 
   it("shows no last import when there is none", async () => {
     const element = await render();
-    expect(
-      element.shadowRoot.querySelector('[data-id="last-import"]')
-    ).toBeNull();
+    expect($(element, '[data-id="last-import"]')).toBeNull();
   });
-});
 
-describe("Download worksheet", () => {
-  it("saves every list and the extra sheets in one file", async () => {
+  it("Download worksheet saves every list and the extra sheets in one file", async () => {
     const XLSX = require("xlsx");
     window.XLSX = XLSX;
     const blobs = new Map();
@@ -329,15 +473,11 @@ describe("Download worksheet", () => {
       ...SETUP,
       season: { Id: "s1", Name: "Summer 2027" }
     });
-    const button = element.shadowRoot.querySelector(
-      'lightning-button[data-id="download-workbook"]'
-    );
+    const button = $(element, 'lightning-button[data-id="download-workbook"]');
     // The desktop's word (RootsHomeScreen.jsx, ImportScreen.jsx: "Download worksheet").
     expect(button.label).toBe("Download worksheet");
     button.click();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
     expect(saved).toHaveLength(1);
     expect(saved[0].download).toBe("Summer 2027 - worksheet.xlsx");
     const bytes = await new Promise((resolve) => {
@@ -351,5 +491,236 @@ describe("Download worksheet", () => {
     delete window.XLSX;
     delete URL.createObjectURL;
     delete URL.revokeObjectURL;
+  });
+});
+
+// ---------- motion: the browser's clock and size, made up ----------
+
+describe("c-shoresh-roots: the melds move", () => {
+  const realMatchMedia = window.matchMedia;
+  let media;
+  let frames;
+  let nextFrame;
+  let time;
+
+  beforeEach(() => {
+    media = { reduce: false, coarse: false };
+    frames = new Map();
+    nextFrame = 1;
+    time = 1000;
+    window.matchMedia = jest.fn((query) => ({
+      get matches() {
+        return query.includes("reduced-motion") ? media.reduce : media.coarse;
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }));
+    window.requestAnimationFrame = jest.fn((fn) => {
+      const id = nextFrame++;
+      frames.set(id, fn);
+      return id;
+    });
+    window.cancelAnimationFrame = jest.fn((id) => frames.delete(id));
+    jest.spyOn(performance, "now").mockImplementation(() => time);
+  });
+
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+    delete window.requestAnimationFrame;
+    delete window.cancelAnimationFrame;
+    jest.restoreAllMocks();
+  });
+
+  /** Runs the frames asked for, 16 ms apart, for ms. */
+  function run(ms) {
+    for (let t = 0; t < ms; t += 16) {
+      time += 16;
+      const due = [...frames.entries()];
+      frames.clear();
+      const now = time;
+      due.forEach(([, fn]) => fn(now));
+    }
+  }
+
+  /** Gives the table a size (jsdom has no layout) and lays it out. */
+  async function sized(element, w = 1200, h = 640) {
+    const table = $(element, '[data-id="table"]');
+    Object.defineProperty(table, "clientWidth", {
+      value: w,
+      configurable: true
+    });
+    Object.defineProperty(table, "clientHeight", {
+      value: h,
+      configurable: true
+    });
+    window.dispatchEvent(new CustomEvent("resize"));
+    run(2000);
+    await settle();
+    return table;
+  }
+
+  const scaleOf = (b) => {
+    const m = /scale\(([\d.]+)\)/.exec(b.style.transform);
+    return m ? Number(m[1]) : null;
+  };
+  const xOf = (b) => {
+    const m = /translate\((-?[\d.]+)px/.exec(b.style.transform);
+    return m ? Number(m[1]) : null;
+  };
+  const meld = (element, key) => $(element, `[data-meld="${key}"]`);
+
+  it("at rest, each meld lies slightly fanned: three cards show, the rest wait behind", async () => {
+    const element = await render();
+    await sized(element);
+    ["camp", "activities", "schedules"].forEach((key) => {
+      const cards = [...meld(element, key).querySelectorAll("[data-card]")];
+      expect(cards.filter((c) => !c.hasAttribute("data-gone"))).toHaveLength(3);
+      expect(cards.filter((c) => c.hasAttribute("data-front"))).toHaveLength(1);
+    });
+    // The menu's order left to right: Camp, Activities & Events, Schedules.
+    expect(xOf(card(element, "weeks"))).toBeLessThan(
+      xOf(card(element, "activities"))
+    );
+    expect(xOf(card(element, "activities"))).toBeLessThan(
+      xOf(card(element, "manualBuild"))
+    );
+    expect(card(element, "weeks").hasAttribute("data-front")).toBe(true);
+    expect(card(element, "manualBuild").hasAttribute("data-front")).toBe(true);
+  });
+
+  it("tabbing into a meld fans it; the others ease aside, smaller", async () => {
+    const element = await render();
+    await sized(element);
+    const before = scaleOf(card(element, "activities"));
+    card(element, "weeks").focus();
+    run(2000);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    // Every card of the open meld shows; the others are smaller than at rest.
+    const camp = [...meld(element, "camp").querySelectorAll("[data-card]")];
+    expect(camp.every((c) => !c.hasAttribute("data-gone"))).toBe(true);
+    expect(scaleOf(card(element, "activities"))).toBeLessThan(before);
+  });
+
+  it("arrows move between a meld's cards, Escape closes it with the cursor on its front card", async () => {
+    const element = await render();
+    await sized(element);
+    card(element, "weeks").focus();
+    run(500);
+    const press = (key) =>
+      element.shadowRoot.activeElement.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true })
+      );
+    press("ArrowRight");
+    expect(element.shadowRoot.activeElement).toBe(card(element, "programs"));
+    press("ArrowLeft");
+    press("ArrowLeft");
+    expect(element.shadowRoot.activeElement).toBe(card(element, "campWords"));
+    press("Escape");
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(card(element, "weeks"));
+    press("ArrowDown");
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+  });
+
+  it("Tab after Escape opens the meld again, so the card the cursor lands on shows", async () => {
+    const element = await render();
+    await sized(element);
+    card(element, "weeks").focus();
+    run(500);
+    element.shadowRoot.activeElement.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(false);
+    // At rest the fourth card is gone from sight; Tab lands there next.
+    expect(card(element, "groups").hasAttribute("data-gone")).toBe(true);
+    card(element, "programs").focus();
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    card(element, "groups").focus();
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    expect(card(element, "groups").hasAttribute("data-gone")).toBe(false);
+  });
+
+  it("opens on hover intent and closes a moment after the pointer leaves", async () => {
+    const element = await render();
+    await sized(element);
+    const m = meld(element, "activities");
+    card(element, "activities").dispatchEvent(
+      new CustomEvent("pointerover", { bubbles: true })
+    );
+    run(100);
+    expect(m.hasAttribute("data-open")).toBe(false);
+    run(200);
+    expect(m.hasAttribute("data-open")).toBe(true);
+    card(element, "activities").dispatchEvent(
+      new CustomEvent("pointerout", { bubbles: true })
+    );
+    run(200);
+    expect(m.hasAttribute("data-open")).toBe(true);
+    run(300);
+    expect(m.hasAttribute("data-open")).toBe(false);
+  });
+
+  it("moves continuously: a meld changing its mind bends from where its cards are", async () => {
+    const element = await render();
+    await sized(element);
+    const b = card(element, "activities");
+    const rest = xOf(b);
+    card(element, "weeks").focus();
+    run(120);
+    const midway = xOf(b);
+    // Part of the way toward the side; not snapped there.
+    expect(midway).not.toBe(rest);
+    card(element, "manualBuild").focus();
+    run(16);
+    // The next frame starts from where it was, not from its rest or its last target.
+    expect(Math.abs(xOf(b) - midway)).toBeLessThan(40);
+  });
+
+  it("with reduced motion, nothing moves: every change is drawn at once, with no frames", async () => {
+    media.reduce = true;
+    const element = await render();
+    await sized(element);
+    frames.clear();
+    card(element, "weeks").focus();
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    expect(frames.size).toBe(0);
+  });
+
+  it("a card a screen grows out of hands its face to the sheet, and takes it back after", async () => {
+    const element = await render();
+    await sized(element);
+    expect(element.hasCard("activities")).toBe(true);
+    expect(element.hasCard("scheduleWeeks")).toBe(false);
+    const pose = element.cardPose("activities");
+    expect(pose.w).toBeGreaterThan(0);
+    element.travel({ ...pose, p: 0.1 }, "activities");
+    await settle();
+    const face = card(element, "activities").querySelector('[data-id="face"]');
+    expect(face.style.opacity).toBe("0");
+    const sheet = $(element, '[data-id="sheet"]');
+    expect(sheet.hidden).toBe(false);
+    expect(sheet.getAttribute("aria-hidden")).toBe("true");
+    expect(
+      sheet.querySelector('[data-id="ghost"] .name-text').textContent
+    ).toBe("Activities");
+    element.endTravel();
+    await settle();
+    expect(face.style.opacity).toBe("");
+    expect(sheet.hidden).toBe(true);
+  });
+
+  it("coming home opens the card's meld and puts the cursor on it", async () => {
+    const element = await render();
+    await sized(element);
+    const pose = element.prepareHome("electiveSeats");
+    expect(pose).not.toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      card(element, "electiveSeats")
+    );
+    expect(meld(element, "schedules").hasAttribute("data-open")).toBe(true);
   });
 });

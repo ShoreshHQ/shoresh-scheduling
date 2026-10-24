@@ -2454,16 +2454,198 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
-  it("Roots and Camp words, drawn by their own components, focus their own headings", async () => {
+  it("Roots takes the cursor on the card of the screen left, else on its own heading (ADR 0020)", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
     const roots = q(element, "c-shoresh-roots");
     roots.focusHeading = jest.fn();
+    roots.focusCard = jest.fn(() => true);
+    // Back from Weeks: its card on Roots has the cursor, as after the travel home.
     await openScreen(element, "weeks");
     await openScreen(element, "roots");
+    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    expect(roots.focusCard).toHaveBeenCalledWith("weeks");
+    expect(roots.focusHeading).not.toHaveBeenCalled();
+    // Back from the Schedules doorway, which has no card: Roots' own heading.
+    q(element, "c-shoresh-menu")
+      .shadowRoot.querySelector('[data-door="scheduleWeeks"]')
+      .click();
+    await flush();
+    await openScreen(element, "roots");
     expect(roots.focusHeading).toHaveBeenCalled();
+  });
+
+  it("every setup screen's rail starts with ‹ Roots, named Back to Roots (decision 68)", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    [
+      "weeks",
+      "programs",
+      "divisions",
+      "groups",
+      "timeBlocks",
+      "locations",
+      "activities",
+      "fixedActivities",
+      "recurringActivities",
+      "specialEvents",
+      "electives"
+    ].forEach((screen) => {
+      const rail = q(
+        element,
+        `[data-screen="${screen}"] [data-id="setup-rail"]`
+      );
+      const back = rail.querySelector("c-shoresh-roots-back");
+      expect(back).not.toBeNull();
+      expect(
+        back.shadowRoot
+          .querySelector('[data-id="back"]')
+          .getAttribute("aria-label")
+      ).toBe("Back to Roots");
+      // Right after the screen's (unseen) name, before everything else on the rail.
+      expect(back.previousElementSibling.matches("[data-heading]")).toBe(true);
+    });
+    // On Camp words too, inside its own rail, and it goes home from there.
+    await openScreen(element, "campWords");
+    const labels = q(element, "c-shoresh-camp-labels");
+    labels.shadowRoot
+      .querySelector('[data-id="rail"] c-shoresh-roots-back')
+      .shadowRoot.querySelector('[data-id="back"]')
+      .click();
+    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
+  });
+
+  describe("a card's screen grows out of it and goes home into it (ADR 0020)", () => {
+    const realMatchMedia = window.matchMedia;
+    let frames;
+    let time;
+
+    beforeEach(() => {
+      frames = [];
+      time = 1000;
+      window.matchMedia = jest.fn(() => ({
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }));
+      window.requestAnimationFrame = jest.fn((fn) => frames.push(fn));
+      window.cancelAnimationFrame = jest.fn();
+      jest.spyOn(performance, "now").mockImplementation(() => time);
+    });
+
+    afterEach(() => {
+      window.matchMedia = realMatchMedia;
+      delete window.requestAnimationFrame;
+      delete window.cancelAnimationFrame;
+      jest.restoreAllMocks();
+    });
+
+    const run = (ms) => {
+      for (let t = 0; t < ms; t += 16) {
+        time += 16;
+        const due = frames;
+        frames = [];
+        const now = time;
+        due.forEach((fn) => fn(now));
+      }
+    };
+    const classOf = (element, screen) =>
+      q(element, `[data-screen="${screen}"]`).className;
+
+    it("out from the card, Roots lying behind; home again, the cursor on the card", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      roots.shadowRoot.querySelector('[data-card="activities"]').click();
+      await flush();
+      expect(classOf(element, "roots")).toBe("screen_behind");
+      expect(classOf(element, "activities")).toBe("screen_travel");
+      expect(q(element, '[data-screen="activities"]').style.clipPath).toContain(
+        "inset("
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["activities"]);
+      expect(q(element, '[data-screen="activities"]').style.clipPath).toBe("");
+      // The menu's Roots: home into the Activities card.
+      await openScreen(element, "roots");
+      expect(classOf(element, "roots")).toBe(
+        "screen_behind screen_behind_live"
+      );
+      expect(classOf(element, "activities")).toBe("screen_travel");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="activities"]')
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+    });
+
+    it("the rail's ‹ Roots goes home into the card, as the menu's Roots does (decision 68)", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      roots.shadowRoot.querySelector('[data-card="weeks"]').click();
+      await flush();
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["weeks"]);
+      q(element, '[data-screen="weeks"] c-shoresh-roots-back')
+        .shadowRoot.querySelector('[data-id="back"]')
+        .click();
+      await flush();
+      expect(classOf(element, "weeks")).toBe("screen_travel");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="weeks"]')
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+    });
+
+    it("another screen chosen mid-way ends the journey where it is", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector('[data-card="groups"]')
+        .click();
+      await flush();
+      run(100);
+      await openScreen(element, "weeks");
+      await flush();
+      expect(shownScreens(element)).toEqual(["weeks"]);
+      expect(q(element, '[data-screen="groups"]').style.clipPath).toBe("");
+    });
+
+    it("with reduced motion, a card simply opens its screen", async () => {
+      window.matchMedia = jest.fn((query) => ({
+        matches: query.includes("reduced-motion"),
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }));
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector('[data-card="groups"]')
+        .click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+      expect(frames).toHaveLength(0);
+    });
   });
 
   it("opens Bring in choices from the page's address, never from the menu (it hangs from Elective seats)", async () => {
@@ -4352,7 +4534,9 @@ describe("c-shoresh-camp-setup", () => {
       expect(
         details.shadowRoot.querySelector('[data-id="where"]').textContent
       ).toBe("Main field");
-      await expect(element).toBeAccessible();
+      // The open details, checked on their own: the whole page (Roots' table and every screen)
+      // is checked elsewhere, and axe over all of it outruns CI's time limit.
+      await expect(details).toBeAccessible();
       details.shadowRoot.querySelector('[data-id="close"]').click();
       await flush();
       expect(details.openItemId).toBeNull();

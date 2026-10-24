@@ -252,7 +252,11 @@
           </c-shoresh-menu>
         </div>
         <div class="piece frame">
-          <div class={bodyClass}>
+          <div
+            class={bodyClass}
+            data-id="frame-body"
+            onbacktoroots={handleBackToRoots}
+          >
             <!-- New season -->
             <template lwc:if={isNewSeason}>
               <h2
@@ -390,6 +394,7 @@
                   setup={setup}
                   terms={terms}
                   problems={problems}
+                  active={rootsActive}
                   onnavigate={handleNavigate}
                   onundoimport={handleUndoImport}
                   onimported={handleImported}
@@ -404,6 +409,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.weeks}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.weeks.count}</b
                     >{counts.weeks.noun}</span
@@ -462,6 +468,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.programs}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.programs.count}</b
                     >{counts.programs.noun}</span
@@ -523,6 +530,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.divisions}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.divisions.count}</b
                     >{counts.divisions.noun}</span
@@ -588,6 +596,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.groups}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.groups.count}</b
                     >{counts.groups.noun}</span
@@ -659,6 +668,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.timeBlocks}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.timeBlocks.count}</b
                     >{counts.timeBlocks.noun}</span
@@ -722,6 +732,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.locations}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.locations.count}</b
                     >{counts.locations.noun}</span
@@ -849,6 +860,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.activities}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.activities.count}</b
                     >{counts.activities.noun}</span
@@ -937,6 +949,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.fixedActivities}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{counts.fixedActivities.count}</b
                     >{counts.fixedActivities.noun}</span
@@ -1008,6 +1021,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.recurringActivities}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num"
                       >{counts.recurringActivities.count}</b
@@ -1092,6 +1106,7 @@
                     <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                       {labels.screens.specialEvents}
                     </h2>
+                    <c-shoresh-roots-back></c-shoresh-roots-back>
                     <span class="rail-count" data-id="count"
                       ><b class="shoresh-num">{specialCounts.days}</b
                       >{specialCounts.daysNoun}</span
@@ -1192,6 +1207,7 @@
                   <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.electives}
                   </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
                   <span class="rail-count" data-id="count"
                     ><b class="shoresh-num">{electiveCount.count}</b
                     >{electiveCount.noun}</span

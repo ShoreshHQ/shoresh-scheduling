@@ -11,6 +11,7 @@ import {
   GAP,
   edgeFade,
   layoutDots,
+  tableFade,
   rgb,
   settle,
   warm,
@@ -323,6 +324,36 @@ describe("c-shoresh-dot-field", () => {
     expect(ctx.arcs.filter(under(rect(300, 150, 40, 40)))).toEqual([]);
     // Elsewhere along the edges the field is there.
     expect(ctx.arcs.some((a) => a.y > 100)).toBe(true);
+  });
+});
+
+describe("a solid field (Roots' table, ADR 0020)", () => {
+  it("fills its whole box, the middle too, and measures nothing it holds", async () => {
+    const spy = jest.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    const element = createElement("c-shoresh-dot-field", {
+      is: ShoreshDotField
+    });
+    element.solid = true;
+    document.body.appendChild(element);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(field(element).className).toBe("field field_solid");
+    // Dots in the middle of the field, where an ordinary field has none.
+    expect(
+      ctx.arcs.some((a) => a.x > 150 && a.x < 250 && a.y > 70 && a.y < 130)
+    ).toBe(true);
+    // The field did not look for words to keep clear of: what it holds covers it.
+    expect(spy).not.toHaveBeenCalled();
+    // And it still follows the mouse.
+    moveMouse(200, 100);
+    runFrames(1);
+    expect(warmArcs().length).toBeGreaterThan(0);
+  });
+
+  it("is fainter in the middle than at its edges", () => {
+    expect(tableFade(0, 100, 400, 200)).toBe(1);
+    expect(tableFade(200, 100, 400, 200)).toBeCloseTo(0.45);
+    expect(tableFade(10, 10, 0, 0)).toBe(0);
   });
 });
 

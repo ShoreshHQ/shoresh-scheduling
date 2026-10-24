@@ -47,6 +47,10 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    lower half of Groups (Greg, 2026-10-16). _Changed 2026-10-20: the camp's whole setup now
    downloads as **Download worksheet** (the desktop's words, ADR 0007 choice 18), and Import
    last year recedes to **Re-import last year** once the camp has setup (ADR 0013 choice 20)._
+   _Changed 2026-10-24 (wiki decision 68, ADR 0020): Roots is the canasta table, three melds of
+   the menu's sections with faces drawn from the camp's data; the cards, counts and schedule door
+   above are gone. "Needs your attention" and the workbook tools stay, along the bottom, until the
+   hand (slice R2)._
 5. **Needs attention items know which screen fixes them.** `setupProblems` returns
    `{ screen, name, why }`; Roots lists all of them and each opens its screen, and each screen
    shows its own at the top. Two checks come from the desktop's Roots: a season with no

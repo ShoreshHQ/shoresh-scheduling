@@ -1,0 +1,8 @@
+@import "c/shoreshTokens";
+
+/* Laid in the rail like its own items: the button, then the group separator. */
+:host {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}

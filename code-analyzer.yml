@@ -98,6 +98,13 @@ suppressions:
     - rule_selector: "eslint:@lwc/lwc/no-async-operation"
       max_suppressed_violations: 1
       reason: "requestAnimationFrame for the dot field's frames, one call."
+  # Roots' motion (ADR 0020) animates with requestAnimationFrame too, and counts hover intent's short
+  # waits on those frames rather than with timers: one file, its two calls (ask for a frame, call one
+  # off).
+  "main/default/lwc/shoreshMotion/shoreshMotion.js":
+    - rule_selector: "eslint:@lwc/lwc/no-async-operation"
+      max_suppressed_violations: 2
+      reason: "requestAnimationFrame and cancelAnimationFrame for the motion engine's frames."
   # Jest tests fake real browser keyboard and mouse events, which are bubbling and composed in a
   # browser; components themselves never fire composed events.
   "main/default/lwc/shoreshAsk/__tests__":

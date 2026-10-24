@@ -12,7 +12,9 @@ until the next PRs; nothing a director does works differently. _Step 3a (2026-10
 restyles the setup tables and five setup screens; step 3b (2026-10-21, choice 12) Activities,
 Fixed and Recurring activities, and the camp and season in the menu's camp row. Choice 13
 (2026-10-22) adds the living dot field behind Roots and around empty states. Choice 14
-(2026-10-23) restyles Copy season, Camp words and Programs._
+(2026-10-23) restyles Copy season, Camp words and Programs. ADR 0020 (2026-10-24) adds Roots'
+card shadows and motion tokens, a header column never under 92 px, menu entries that wrap rather
+than cut off, and a solid dot field for Roots' table._
 
 ## Choices
 
@@ -301,7 +303,9 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row. 
     in, drawn on one canvas behind its content. Dots within 90 px of a moving mouse glow: they
     grow and take on up to 60% of the highlight (forest), then settle back to rest (their glow
     falls by e every half second). Both colours are read from `c/shoreshTokens` on the page.
-    - **Where:** behind Roots, and around every empty state (`c-shoresh-empty-state`, so every
+    - **Where:** behind Roots' table (made _solid_ there since ADR 0020: what it holds covers it,
+      so dots fill the whole table, fainter in the middle, and nothing is measured), and around
+      every empty state (`c-shoresh-empty-state`, so every
       screen that has nothing to show yet). Never behind a schedule grid: an empty state takes
       the grid's place, it is never shown with it. Salesforce's sign-in page is its own and a
       package cannot change it, so the field is not there (decision 49).

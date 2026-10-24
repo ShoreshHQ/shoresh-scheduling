@@ -126,6 +126,19 @@ describe("c-shoresh-manual-build", () => {
     jest.clearAllMocks();
   });
 
+  it("‹ Roots leads the rail and says back to Roots to the page (decision 68)", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render(READY);
+    const back = element.shadowRoot.querySelector("c-shoresh-roots-back");
+    // Slotted first into the editor's rail, before the week.
+    expect(back.getAttribute("slot")).toBe("pickers");
+    expect(back.nextElementSibling.dataset.id).toBe("week");
+    const heard = jest.fn();
+    element.addEventListener("backtoroots", heard);
+    back.shadowRoot.querySelector('[data-id="back"]').click();
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
   it("a week not started offers Start a blank week, which opens it", async () => {
     getDraft.mockResolvedValue(null);
     startBlankWeek.mockResolvedValue(draft());

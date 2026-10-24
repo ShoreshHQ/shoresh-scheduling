@@ -47,6 +47,7 @@ import {
   openCount
 } from "c/shoreshElectiveDetails";
 import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
+import { RootsTravel } from "c/shoreshRootsTravel";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
@@ -68,6 +69,7 @@ const SEASON_DATES = ["start", "end"];
 // The schedules: their rail, grid and drawer are the frame's zones (each with its own inset); and
 // the setup screens in the shared table pattern: their rail, then their list (ADR 0015 choice 11).
 const FLUSH_SCREENS = new Set([
+  "roots",
   "manualBuild",
   "generatedSchedule",
   "weeks",
@@ -274,6 +276,13 @@ export default class ShoreshCampSetup extends LightningElement {
   weekStates = {};
   // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
   importing = {};
+  // A screen growing out of a Roots card, or shrinking home into it (repo ADR 0020):
+  // { screen, card, dir: "out" | "home" } while it travels; and the step to start once drawn.
+  travel = null;
+  travelNext = null;
+  traveller = null;
+  // The Roots card that takes the cursor at the next render (coming home without motion).
+  focusCardOf = null;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -313,6 +322,11 @@ export default class ShoreshCampSetup extends LightningElement {
       this.previewOpened = true;
       this.openScreen(this.preview);
     }
+  }
+
+  disconnectedCallback() {
+    this.traveller?.stop();
+    this.traveller = null;
   }
 
   connectedCallback() {
@@ -408,6 +422,7 @@ export default class ShoreshCampSetup extends LightningElement {
 
   renderedCallback() {
     this.showNewError();
+    this.startTravel();
     if (this.focusAfter) {
       const target = this.template.querySelector(this.focusAfter);
       this.focusAfter = null;
@@ -493,9 +508,15 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   get bodyClass() {
     // Copy season draws its own rail and inset, as a setup screen does.
-    return FLUSH_SCREENS.has(this.currentScreen) || this.isCopy
+    const screen = this.travel ? this.travel.screen : this.currentScreen;
+    return FLUSH_SCREENS.has(screen) || this.isCopy
       ? "zone body body_flush"
       : "zone body";
+  }
+
+  /** Roots reads its table each time it is shown (repo ADR 0020). */
+  get rootsActive() {
+    return this.currentScreen === "roots";
   }
 
   /** Drawn only while it is shown: its start reads the season's elective sets. */
@@ -510,8 +531,19 @@ export default class ShoreshCampSetup extends LightningElement {
 
   get shown() {
     const result = {};
+    const travel = this.travel;
     SCREENS.forEach((screen) => {
       result[screen] = screen === this.currentScreen ? "" : "slds-hide";
+      // While a screen travels to or from its Roots card, Roots lies behind it and the screen
+      // is drawn over it (repo ADR 0020).
+      if (travel && screen === "roots") {
+        result[screen] =
+          travel.dir === "home"
+            ? "screen_behind screen_behind_live"
+            : "screen_behind";
+      } else if (travel && screen === travel.screen) {
+        result[screen] = "screen_travel";
+      }
       // Import a list open on its rail: it takes the rail's place, and the table's while a
       // file is reviewed (Greg's decision 56; ADR 0007 choice 33).
       const importing = this.importing[screen];
@@ -548,6 +580,11 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // A Roots card: its screen grows out of it; and back to Roots: home into the same card
+    // (repo ADR 0020). Without motion, the screen simply shows.
+    if (this.travelFrom(screen, event.detail.fromCard)) {
+      return;
+    }
     // A week chosen on the Schedules doorway: that schedule opens on it. Refused while its week
     // picker waits on work under way: the doorway stays, that week's button held (weekStates),
     // rather than opening the screen on another week.
@@ -579,6 +616,15 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
+   * ‹ Roots on a screen's rail (wiki decision 68): what the menu's Roots does, so the screen
+   * shrinks home into its card (repo ADR 0020 choice 6).
+   */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.handleNavigate({ detail: { screen: "roots" } });
+  }
+
+  /**
    * The Electives list was given a file of camper choices, and the director chose to bring them
    * in (plan §6.2): Bring in choices, with the cursor on its heading.
    */
@@ -602,6 +648,12 @@ export default class ShoreshCampSetup extends LightningElement {
    * page may not redraw, and a cursor move left waiting would jump at the next unrelated redraw.
    */
   openScreen(screen) {
+    // Another screen chosen mid-journey: the journey ends where it is.
+    if (this.travel) {
+      this.traveller?.finish();
+      this.travel = null;
+      this.travelNext = null;
+    }
     const already = this.currentScreen === screen;
     this.screen = screen;
     this.mode = "screens";
@@ -613,6 +665,112 @@ export default class ShoreshCampSetup extends LightningElement {
     } else {
       this.focusHeadingOf = screen;
     }
+  }
+
+  // ---------- travel: a screen out of its Roots card, and home again (repo ADR 0020) ----------
+
+  /** Whether the browser can say motion is wanted, and it is (no travel otherwise). */
+  get moves() {
+    if (typeof window.matchMedia !== "function") {
+      return false;
+    }
+    if (typeof requestAnimationFrame !== "function") {
+      return false;
+    }
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  get rootsElement() {
+    return this.template.querySelector("c-shoresh-roots");
+  }
+
+  /**
+   * Starts a journey for this navigation, or turns one round; true when it did (the screen is
+   * then shown by the journey). Out: a card was clicked on Roots. Home: Roots was chosen while a
+   * screen with a card on Roots (or the one the journey left from) is shown. With reduced motion,
+   * coming home still puts the cursor on that card.
+   */
+  travelFrom(screen, fromCard) {
+    const roots = this.rootsElement;
+    if (!roots || this.mode !== "screens" || !this.setup) {
+      return false;
+    }
+    if (fromCard && screen !== "roots") {
+      if (!this.moves || !roots.hasCard(fromCard)) {
+        return false;
+      }
+      this.error = null;
+      this.screen = screen;
+      this.travel = { screen, card: fromCard, dir: "out" };
+      this.travelNext = "out";
+      this.focusHeadingOf = screen;
+      return true;
+    }
+    if (screen !== "roots") {
+      return false;
+    }
+    const leaving = this.travel ? this.travel.screen : this.currentScreen;
+    const card =
+      leaving && roots.hasCard(leaving)
+        ? leaving
+        : this.travel
+          ? this.travel.card
+          : null;
+    if (!leaving || leaving === "roots" || !card) {
+      return false;
+    }
+    this.error = null;
+    this.screen = "roots";
+    this.focusHeadingOf = null;
+    if (!this.moves) {
+      this.travel = null;
+      this.travelNext = null;
+      this.focusCardOf = card;
+      return true;
+    }
+    this.travel = { screen: leaving, card, dir: "home" };
+    this.travelNext = "home";
+    return true;
+  }
+
+  /** The journey's first frame, once the screens it joins are drawn (renderedCallback). */
+  startTravel() {
+    if (this.focusCardOf) {
+      const card = this.focusCardOf;
+      this.focusCardOf = null;
+      this.rootsElement?.focusCard(card);
+    }
+    if (!this.travelNext || !this.travel) {
+      return;
+    }
+    const step = this.travelNext;
+    this.travelNext = null;
+    if (!this.traveller) {
+      this.traveller = new RootsTravel({
+        roots: () => this.rootsElement,
+        screen: (key) => this.template.querySelector(`[data-screen="${key}"]`),
+        body: () => this.template.querySelector('[data-id="frame-body"]'),
+        done: (dir) => this.handleTravelled(dir)
+      });
+    }
+    const { screen, card } = this.travel;
+    const started =
+      step === "out"
+        ? this.traveller.out(screen, card)
+        : this.traveller.home(screen, card);
+    if (!started) {
+      // Nothing to travel from: the screen simply shows.
+      this.traveller.finish();
+      this.travel = null;
+      if (step === "home") {
+        this.rootsElement?.focusCard(card);
+      }
+    }
+  }
+
+  /** The journey settled: the screen (or Roots) is simply itself again. */
+  handleTravelled() {
+    this.travel = null;
   }
 
   // ---------- setup changed, at the menu's foot ----------

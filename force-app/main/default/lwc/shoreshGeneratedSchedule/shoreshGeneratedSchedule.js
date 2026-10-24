@@ -336,6 +336,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get weekLabel() {
     return this.t.s("Week");
   }
+  // No program or week picker beside ‹ Roots: the editor's own separator before Edit is the
+  // only divider it needs.
+  get backStandsAlone() {
+    return !this.hasSeveralPrograms && !this.canChoose;
+  }
+
   get hasSeveralPrograms() {
     return this.programOptions.length > 1;
   }
@@ -2536,5 +2542,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       () => renameSchedule({ scheduleId: id, name })
     );
     onDone(renamed);
+  }
+
+  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
   }
 }

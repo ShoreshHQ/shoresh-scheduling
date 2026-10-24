@@ -1,4 +1,4 @@
-import { LightningElement } from "lwc";
+import { LightningElement, api } from "lwc";
 import {
   DOT,
   GLOW_FALLBACK,
@@ -9,6 +9,7 @@ import {
   layoutDots,
   rgb,
   settle,
+  tableFade,
   warm
 } from "./field";
 
@@ -32,6 +33,13 @@ const SIX_FRAMES = 0.1;
  * it behind a schedule grid.
  */
 export default class ShoreshDotField extends LightningElement {
+  /**
+   * Its content covers it with solid surfaces of their own (Roots' table, ADR 0020: cards, and
+   * labels on the table's colour): dots fill the whole field, fainter in the middle, and the
+   * field measures nothing, since nothing it holds shows words over the dots.
+   */
+  @api solid = false;
+
   live = false;
 
   canvas;
@@ -51,6 +59,11 @@ export default class ShoreshDotField extends LightningElement {
   mediaFine;
   resizer;
   watcher;
+
+  /** A solid field fills the box it is given (Roots' table is as tall as its frame). */
+  get fieldClass() {
+    return this.solid ? "field field_solid" : "field";
+  }
 
   /** "live" when the field follows the cursor, "still" when it is drawn once. */
   get motion() {
@@ -241,7 +254,9 @@ export default class ShoreshDotField extends LightningElement {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.width = width;
     this.height = height;
-    this.dots = layoutDots(width, height, this.clearOf(box));
+    this.dots = this.solid
+      ? layoutDots(width, height, [], tableFade)
+      : layoutDots(width, height, this.clearOf(box));
     this.heat = new Float32Array(this.dots.count);
   }
 
