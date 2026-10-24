@@ -440,3 +440,90 @@ describe("how a sheet was read, column by column (slice E6's first card)", () =>
     expect(sheetLayout({ name: "Empty", rows: [] })).toBeNull();
   });
 });
+
+describe("one row per choice, headings on one row (ADR 0018 choice 54)", () => {
+  it("reads the first camper's row as a camper, even with no camper number, never as a second heading", () => {
+    const result = read(
+      lines(
+        "Camper number,Camper name,Division,Bunk,Day,Period,Rank,Activity",
+        ",Ada Quillfield,Juniors,Aspen,,,1,Archery",
+        ",Ada Quillfield,Juniors,Aspen,Tuesday,Period 1,1,Drama",
+        "SYN-1001,Gabe Ravenford,Juniors,Willow,,,,Pottery"
+      )
+    );
+    expect(
+      result.campers.map((c) => [
+        c.name,
+        c.number,
+        c.choices.map((x) => [x.name, x.rank, x.kind, x.day, x.period])
+      ])
+    ).toEqual([
+      [
+        "Ada Quillfield",
+        null,
+        [
+          ["Archery", 1, "ranked", null, null],
+          ["Drama", 1, "ranked", "Tuesday", "Period 1"]
+        ]
+      ],
+      [
+        "Gabe Ravenford",
+        "SYN-1001",
+        [["Pottery", null, "unordered", null, null]]
+      ]
+    ]);
+    expect(result.notRead).toEqual([]);
+  });
+});
+
+describe("a lone choice heading over ranks is still a two-row heading (ADR 0018 choice 54)", () => {
+  const ranked = (result) =>
+    result.campers.map((c) => [c.name, c.choices.map((x) => [x.name, x.rank])]);
+
+  it("reads a label with blanks to its right over 1st, 2nd, 3rd as ranked choices", () => {
+    const result = read(
+      lines(
+        "Name,Elective,,",
+        ",1st,2nd,3rd",
+        "Eli Kestrelby,Archery,Pottery,Swim"
+      )
+    );
+    expect(ranked(result)).toEqual([
+      [
+        "Eli Kestrelby",
+        [
+          ["Archery", 1],
+          ["Pottery", 2],
+          ["Swim", 3]
+        ]
+      ]
+    ]);
+  });
+
+  it("reads a cell merged across 1, 2, 3 as ranked choices", () => {
+    const result = readChoices({
+      name: "Choices",
+      sheets: [
+        {
+          name: "Sheet1",
+          rows: [
+            ["Camper Name", "Choice", "", ""],
+            ["", "1", "2", "3"],
+            ["Eli Kestrelby", "Archery", "Pottery", "Swim"]
+          ],
+          merges: [{ s: { r: 0, c: 1 }, e: { r: 0, c: 3 } }]
+        }
+      ]
+    });
+    expect(ranked(result)).toEqual([
+      [
+        "Eli Kestrelby",
+        [
+          ["Archery", 1],
+          ["Pottery", 2],
+          ["Swim", 3]
+        ]
+      ]
+    ]);
+  });
+});

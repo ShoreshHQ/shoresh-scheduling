@@ -224,7 +224,10 @@ public with sharing class ElectiveRunState {
         Offering__c,
         LinkedChoice__c,
         Locked__c,
-        ByHand__c
+        ByHand__c,
+        ActivityName__c,
+        LocationName__c,
+        GroupName__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :run.Id
       WITH USER_MODE

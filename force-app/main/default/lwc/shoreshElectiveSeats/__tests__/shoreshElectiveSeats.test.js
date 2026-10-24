@@ -549,7 +549,7 @@ describe("Assign seats", () => {
 });
 
 describe("Finalize, Final, and a new version", () => {
-  it("finalizes; the run then reads Final with when and by whom, and Download waits for its slice", async () => {
+  it("finalizes; the run then reads Final with when and by whom, and the main button is Download", async () => {
     const element = await render({ view: assignedView() });
     finalizeRun.mockResolvedValue(
       assignedView({
@@ -568,13 +568,13 @@ describe("Finalize, Final, and a new version", () => {
     expect(
       popButton(element, "state").textContent.replace(/\s+/g, " ").trim()
     ).toBe("Final · 14 Oct · Greg");
-    expect($(element, '[data-id="primary"]').disabled).toBe(true);
-    expect(text($(element, '[data-id="primary"]'))).toBe("Download · Coming");
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    expect(text(popButton(element, "download"))).toBe("Download");
     expect($(element, '[data-id="assign-again"]')).toBeNull();
     expect($(element, '[data-id="bring-in"]')).toBeNull();
-    // The main button is held for good: the cursor goes to the run's menu, not lost.
+    // The main button is now Download: the cursor goes to it, not lost.
     expect(element.shadowRoot.activeElement).toBe(
-      $(element, 'c-shoresh-rail-pop[data-id="state"]')
+      $(element, 'c-shoresh-rail-pop[data-id="download"]')
     );
     // A final run's roster can be read, not changed.
     $(element, 'button[data-cell="2027-07-05|b1|d1|o1"]').click();

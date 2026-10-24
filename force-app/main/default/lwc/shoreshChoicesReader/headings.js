@@ -279,7 +279,18 @@ export function findTable(sheet) {
   for (let r = 0; r < limit; r++) {
     const here = headingsAt(sheet, r);
     if (!isTable(here.columns)) continue;
-    const next = r + 1 < sheet.rows.length ? headingsAt(sheet, r + 1) : null;
+    // A sheet with one row per choice (an Activity column beside a Rank, Day or Period column) has
+    // its headings on one row: the row under them is its first camper ("Rank" over "1" is a rank,
+    // not a heading "Rank 1"), as in the campers file the seats screen downloads to be brought
+    // back (ADR 0018 choice 54). A lone "Choice" or "Elective" over 1, 2, 3 is still a two-row
+    // heading of ranked choices.
+    const has = (use) =>
+      here.columns.some((c) => c.meaning && c.meaning.use === use);
+    const perChoice =
+      has("choiceValue") &&
+      (has("rankValue") || has("dayValue") || has("periodValue"));
+    const next =
+      !perChoice && r + 1 < sheet.rows.length ? headingsAt(sheet, r + 1) : null;
     if (next && next.usesRowAbove && isTable(next.columns)) {
       return { row: r + 1, firstRow: r, columns: next.columns };
     }

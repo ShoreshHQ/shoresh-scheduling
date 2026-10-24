@@ -398,3 +398,230 @@ table {
   margin-top: var(--shoresh-s3);
   color: var(--shoresh-text-2);
 }
+
+/* ---------- Download: the main button's menu ---------- */
+
+.download-row,
+.download-wait {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+}
+
+.download-row .aside,
+.download-wait .aside {
+  margin-left: auto;
+  padding-left: var(--shoresh-s4);
+}
+
+.download-wait {
+  color: var(--shoresh-text-2);
+  cursor: default;
+}
+
+/* ---------- End-of-season Clear (decision 59, clear-b) ---------- */
+
+.clear-title {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size);
+  font-weight: 500;
+}
+
+.clear-title:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+  border-radius: var(--shoresh-radius);
+}
+
+.clear-actions {
+  gap: var(--shoresh-s2);
+}
+
+.no-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  margin-right: var(--shoresh-s3);
+  font-weight: 500;
+}
+
+.clear-body {
+  flex: 1 1 auto;
+  padding: var(--shoresh-space-pad);
+  overflow: auto;
+}
+
+.clear-week {
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+  text-align: center;
+  padding-bottom: var(--shoresh-s1);
+}
+
+.clear-week_going {
+  font-weight: 600;
+  color: var(--shoresh-text-1);
+}
+
+.clear-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  width: var(--shoresh-head-w);
+  font-weight: 400;
+  text-align: left;
+}
+
+.clear-total {
+  margin-left: auto;
+  color: var(--shoresh-text-2);
+}
+
+.clear-cell-holder {
+  padding: 0;
+  vertical-align: top;
+}
+
+/* What stays: a resting tile, raised as everywhere. */
+.clear-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+  box-sizing: border-box;
+  min-height: calc(var(--shoresh-u) * 15);
+  padding: var(--shoresh-s2);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
+/* What goes: the dashed "missing" outline (a proposed offering's), faded, its number struck. */
+.clear-cell_going {
+  background: transparent;
+  box-shadow: none;
+  outline: 1.5px dashed var(--shoresh-text-2);
+  outline-offset: -1.5px;
+}
+
+.clear-top {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+}
+
+.clear-count {
+  font-weight: 600;
+  font-size: var(--shoresh-font-size-title);
+}
+
+.clear-cell_going .clear-count {
+  color: var(--shoresh-text-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.clear-stay {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  color: var(--shoresh-text-1);
+}
+
+.clear-vis {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size-label);
+}
+
+/* Faded without losing the words' contrast: the marks lose their fill, the dots fade. */
+.clear-cell_going .clear-name {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+}
+
+.clear-cell_going .clear-rank {
+  background: transparent;
+  color: var(--shoresh-text-2);
+  box-shadow: inset 0 0 0 1px var(--shoresh-text-2);
+}
+
+.clear-cell_going .clear-dot {
+  opacity: 0.4;
+}
+
+.clear-name {
+  padding: 1px var(--shoresh-s1);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-drawer);
+}
+
+.clear-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--shoresh-color-highlight);
+  color: var(--shoresh-color-primary-50);
+  font-weight: 600;
+}
+
+.clear-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--shoresh-color-highlight);
+}
+
+.clear-line {
+  margin: var(--shoresh-s2) 0;
+}
+
+/* What stays: solid bars across the whole summer, each with its padlock. */
+.stays {
+  margin: 0;
+  padding: 0 var(--shoresh-space-cell-gap);
+  list-style: none;
+}
+
+.stay {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-cell-gap);
+  margin-bottom: var(--shoresh-space-cell-gap);
+}
+
+.stay-bar {
+  flex: 1 1 auto;
+  min-height: calc(var(--shoresh-u) * 13);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
+.stay-shown {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.chip {
+  padding: 1px var(--shoresh-s2);
+  border-radius: var(--shoresh-radius);
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+  font-size: var(--shoresh-font-size-label);
+}

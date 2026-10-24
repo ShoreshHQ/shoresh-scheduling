@@ -17,6 +17,7 @@ const ROWS =
  * menuitems, it closes when one is chosen); without it a plain dropdown whose rows are marked
  * data-pop-row. align: "right" opens it to the left from the item's right edge. disabled.
  * raised and noChevron: for a picker whose word is the current choice (c-shoresh-rail-picker).
+ * primary: the screen's one main button when it opens a menu (Elective seats' Download).
  *
  * Keys, as a menu button (WAI-ARIA APG): Enter, Space or Down opens it on the first row, Up on
  * the last; Up, Down, Home and End move; Escape closes it with focus back on the word; Tab
@@ -37,6 +38,7 @@ export default class ShoreshRailPop extends LightningElement {
   // closed, as every current choice on the rail is; its chevron can be left off.
   @api raised = false;
   @api noChevron = false;
+  @api primary = false;
 
   isOpen = false;
   // Where focus goes once the rows are drawn: "first" or "last".
@@ -96,6 +98,9 @@ export default class ShoreshRailPop extends LightningElement {
     return this.menu ? this.label : null;
   }
   get buttonClass() {
+    if (this.primary) {
+      return "shoresh-item shoresh-item_primary";
+    }
     if (this.raised) {
       return "shoresh-item shoresh-item_value shoresh-raised";
     }

@@ -5,6 +5,12 @@ import assignSeats from "@salesforce/apex/ElectiveSeatsController.assignSeats";
 import changeSeat from "@salesforce/apex/ElectiveSeatsController.changeSeat";
 import finalizeRun from "@salesforce/apex/ElectiveSeatsController.finalizeRun";
 import startNewVersion from "@salesforce/apex/ElectiveSeatsController.startNewVersion";
+import runDownload from "@salesforce/apex/ElectiveSeatsController.runDownload";
+import clearPicture from "@salesforce/apex/ElectiveSeatsController.clearPicture";
+import clearElectives from "@salesforce/apex/ElectiveSeatsController.clearElectives";
+import { loadStyle } from "lightning/platformResourceLoader";
+import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
+import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { assignSeats as runEngine } from "c/shoreshElectiveEngine";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
@@ -18,6 +24,16 @@ import {
   problemSections,
   readRun
 } from "./seats";
+import {
+  camperScheduleSheets,
+  campersSheets,
+  downloadTitle,
+  fullReportSheets,
+  readDownload,
+  rosterPages,
+  rosterSheets
+} from "./downloads";
+import { clearBoard } from "./clear";
 
 const SCHEDULE = FIELD.Schedule;
 const MEMO = new WeakMap();
@@ -29,6 +45,27 @@ const ASSIGN_AGAIN = '[data-id="assign-again"]';
 // The run's menu: where the cursor goes after Finalize (the main button is then held for good)
 // and after Start a new version (the menu it was chosen from).
 const STATE_MENU = '[data-id="state"]';
+const DOWNLOAD_MENU = '[data-id="download"]';
+const CLEAR_HEADING = '[data-id="clear-heading"]';
+
+// The menus' glyphs (the mock-ups' icons), one path each.
+const ICONS = {
+  rosters: "M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01",
+  print: "M4.5 6V2.5h7V6M4.5 11.5h-2v-5h11v5h-2M4.5 9.5h7v4h-7Z",
+  person:
+    "M5.5 5.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M3 13.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4",
+  sheet: "M2.5 2.5h11v11h-11ZM2.5 6.5h11M6.5 6.5v7",
+  edit: "M10.5 3 13 5.5 6 12.5H3.5V10Z",
+  trash: "M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5",
+  download:
+    "M8 2.5v8M5 7.5l3 3 3-3M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2",
+  choices: "M3 4h10M3 8h7M3 12h4",
+  seats: "M3 3h4v4H3ZM9 3h4v4H9ZM3 9h4v4H3ZM9 9h4v4H9Z",
+  runs: "M4 2.5h5.5L12 5v8.5H4ZM6 8h4M6 10.5h4",
+  sets: "M2.5 3h11v10h-11ZM2.5 6.5h11",
+  linked:
+    "M7 9a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5L8.5 4M9 7a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 7 12.5l.5-.5"
+};
 
 /**
  * Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37): who sits in which offering
@@ -77,6 +114,19 @@ export default class ShoreshElectiveSeats extends LightningElement {
   loadTicket = 0;
   // The name being dragged to another offering: { camperId, cell }.
   dragging = null;
+  // Downloads: the final run as they read it (one read per run and revision), and the rosters
+  // on paper while they print.
+  downloadHeld = null;
+  printout = null;
+  printPending = false;
+  printStyleLoaded = false;
+  // End-of-season Clear: open, its picture, which week (null: the whole season), why refused,
+  // and where the cursor goes back to.
+  clearing = false;
+  clearData = null;
+  clearWeekId = null;
+  clearError = null;
+  clearFrom = null;
 
   /** The screen's heading takes the cursor when it opens (the page asks). */
   @api
@@ -90,6 +140,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
    * in order of preference, the first that is on the screen and can take it.
    */
   renderedCallback() {
+    if (
+      this.printPending &&
+      this.template.querySelector("c-shoresh-roster-print")
+    ) {
+      this.startPrint();
+    }
     if (!this.focusAfter) return;
     const selectors = [].concat(this.focusAfter);
     this.focusAfter = null;
@@ -292,6 +348,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
       await this.newVersion();
       return;
     }
+    if (value === "clear") {
+      await this.openClear(STATE_MENU);
+      return;
+    }
     if (value && value !== this.runId) {
       this.runId = value;
       this.error = null;
@@ -430,12 +490,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   // ---------- the main button and Assign again ----------
 
+  /** Before Finalize: Assign seats, then Finalize. A final run's main button is Download. */
   get primaryLabel() {
-    if (this.isFinal) return "Download · Coming";
     return this.isAssigned ? "Finalize" : "Assign seats";
   }
   get primaryDisabled() {
-    return this.busy || this.isFinal;
+    return this.busy;
   }
   get showsAssignAgain() {
     return this.isCommitted && this.isAssigned;
@@ -515,9 +575,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.error = failed("Not finalized.", e);
       if (/Assign again first/.test(this.error)) this.errorAction = "assign";
     } finally {
-      // Final holds the main button for good, so the cursor goes to the run's menu; refused,
-      // back to Finalize.
-      this.focusAfter = [PRIMARY, STATE_MENU];
+      // Final: the main button becomes Download, and the cursor goes to it; refused, back to
+      // Finalize.
+      this.focusAfter = [PRIMARY, DOWNLOAD_MENU, STATE_MENU];
       this.busy = false;
     }
   }
@@ -852,6 +912,312 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   get statusText() {
     return this.status;
+  }
+
+  // ---------- Download (a final run's main button) ----------
+
+  get downloadIcon() {
+    return ICONS.download;
+  }
+  get trashIcon() {
+    return ICONS.trash;
+  }
+  /** The mock-up's menu (downloads.png), and the rosters on paper (decision 53.4). */
+  get downloadRows() {
+    return [
+      ["rosters", "Rosters", ICONS.rosters, ""],
+      ["print", "Print rosters", ICONS.print, ""],
+      ["schedules", "Camper schedules", ICONS.person, ""],
+      ["report", "Full report", ICONS.sheet, ""],
+      ["campers", this.t.p("Camper"), ICONS.edit, "to edit and bring back"]
+    ].map(([value, label, icon, aside]) => ({
+      value,
+      label,
+      icon,
+      aside,
+      dataId: `download-${value}`,
+      name: aside ? `${label}, ${aside}` : label
+    }));
+  }
+
+  async handleDownloadMenu(event) {
+    const value = event.detail.value;
+    if (value === "clear") {
+      await this.openClear(DOWNLOAD_MENU);
+    } else if (value === "print") {
+      await this.printRosters();
+    } else if (value) {
+      await this.download(value);
+    }
+  }
+
+  /** The final run as the downloads read it: read once per run and revision. */
+  async downloadData() {
+    const view = this.view;
+    const held = this.downloadHeld;
+    if (
+      held &&
+      held.runId === view.run.id &&
+      held.revision === view.revision &&
+      held.terms === this.terms
+    ) {
+      return held.reading;
+    }
+    const data = await runDownload({ runId: view.run.id });
+    const reading = readDownload(data, this.t);
+    this.downloadHeld = {
+      runId: view.run.id,
+      revision: view.revision,
+      terms: this.terms,
+      reading
+    };
+    return reading;
+  }
+
+  /** The season's activities by Id: names for choices of activities the set doesn't offer. */
+  get activityNames() {
+    const list = (this._setup && this._setup.activities) || [];
+    return new Map(list.map((a) => [a.Id, a.Name]));
+  }
+
+  async download(kind) {
+    if (this.busy || !this.isFinal) return;
+    this.busy = true;
+    this.error = null;
+    try {
+      const d = await this.downloadData();
+      const made = {
+        rosters: () => [rosterSheets(d), "rosters"],
+        schedules: () => [camperScheduleSheets(d), "camper schedules"],
+        report: () => [fullReportSheets(d), "full report"],
+        campers: () => [
+          campersSheets(d, this.activityNames),
+          this.t.pIn("Camper")
+        ]
+      }[kind];
+      if (!made) return;
+      const [sheets, what] = made();
+      const file = fileNameOf(downloadTitle(d, what));
+      await downloadWorkbook(this, sheets, file);
+      this.status = `Downloaded ${file}.`;
+    } catch (e) {
+      this.error = failed("Nothing was downloaded.", e);
+    } finally {
+      this.focusAfter = DOWNLOAD_MENU;
+      this.busy = false;
+    }
+  }
+
+  /** The rosters on paper: a page per offering, put on the page, printed, then taken off. */
+  async printRosters() {
+    if (this.busy || !this.isFinal) return;
+    this.busy = true;
+    this.error = null;
+    try {
+      const d = await this.downloadData();
+      if (!this.printStyleLoaded) {
+        try {
+          await loadStyle(this, PRINT_STYLE);
+          this.printStyleLoaded = true;
+        } catch {
+          // Without it the paper also shows the page around the rosters; they still print.
+        }
+      }
+      this.printout = {
+        pages: rosterPages(d),
+        header: d.header,
+        file: downloadTitle(d, "rosters")
+      };
+      this.printPending = true;
+    } catch (e) {
+      this.error = failed("The rosters weren't printed.", e);
+    } finally {
+      this.focusAfter = DOWNLOAD_MENU;
+      this.busy = false;
+    }
+  }
+
+  startPrint() {
+    this.printPending = false;
+    this.afterPrint = () => this.endPrint();
+    window.addEventListener("afterprint", this.afterPrint);
+    window.print();
+  }
+  endPrint() {
+    if (this.afterPrint) {
+      window.removeEventListener("afterprint", this.afterPrint);
+      this.afterPrint = null;
+    }
+    this.printout = null;
+  }
+  disconnectedCallback() {
+    this.endPrint();
+  }
+
+  // ---------- End-of-season Clear (decision 59, clear-b) ----------
+
+  /** Clear takes over the screen: the summer is read and drawn, the whole season picked. */
+  async openClear(from) {
+    if (this.busy) return;
+    this.clearFrom = from;
+    this.clearWeekId = null;
+    this.clearError = null;
+    this.clearData = null;
+    this.clearing = true;
+    this.focusAfter = CLEAR_HEADING;
+    await this.readClear();
+  }
+
+  async readClear() {
+    try {
+      this.clearData = await clearPicture({ seasonId: this._setup.season.Id });
+    } catch (e) {
+      this.clearError = failed("Couldn't draw the season.", e);
+    }
+  }
+
+  get clearTitle() {
+    const season = this._setup && this._setup.season;
+    return `Clear ${season ? season.Name : ""}`.trim();
+  }
+  /** Whole season · 7 weeks, or the week on screen. */
+  get clearScopes() {
+    const weeks = this.clearData ? this.clearData.weeks.length : 0;
+    const week = this.weeks.find((w) => w.Id === this.weekId);
+    const scopes = [
+      [
+        "season",
+        `Whole season · ${weeks} ${weeks === 1 ? this.t.sIn("Week") : this.t.pIn("Week")}`
+      ]
+    ];
+    if (week) scopes.push([week.Id, week.Name]);
+    return scopes.map(([key, label]) => {
+      const on = key === (this.clearWeekId || "season");
+      return {
+        key,
+        label,
+        pressed: String(on),
+        className: on
+          ? "shoresh-item view-button shoresh-raised"
+          : "shoresh-item view-button"
+      };
+    });
+  }
+  get clearView() {
+    return this.clearData
+      ? clearBoard(this.clearData, this.clearWeekId, this.t)
+      : null;
+  }
+  /** The four rows that go, a cell per week. */
+  get clearRows() {
+    const view = this.clearView;
+    if (!view) return [];
+    const rows = [
+      ["campers", this.t.p("Camper"), ICONS.person, view.totals.campers],
+      ["choices", "Choices", ICONS.choices, view.totals.choices],
+      ["seats", this.t.s("Seats"), ICONS.seats, view.totals.seats],
+      ["runs", "Runs", ICONS.runs, view.totals.runs]
+    ];
+    return rows.map(([key, label, icon, total]) => ({
+      key,
+      label,
+      icon,
+      total: total ? total.toLocaleString("en-US") : "",
+      cells: view.columns.map((column) => {
+        const part = column[key];
+        return {
+          key: `${key}|${column.key}`,
+          week: column.key,
+          has: column.has,
+          going: String(column.going),
+          className: column.going
+            ? "clear-cell clear-cell_going"
+            : "clear-cell",
+          count: Number(part.count || 0).toLocaleString("en-US"),
+          stay: part.stay == null ? null : part.stay.toLocaleString("en-US"),
+          words: part.words,
+          name: part.name,
+          final: part.final,
+          state: part.state,
+          look: key === "runs" && !part.final,
+          isCampers: key === "campers",
+          isChoices: key === "choices",
+          isSeats: key === "seats",
+          isRuns: key === "runs"
+        };
+      })
+    }));
+  }
+  get clearStays() {
+    const view = this.clearView;
+    if (!view) return [];
+    const icons = {
+      sets: ICONS.sets,
+      offerings: ICONS.rosters,
+      linked: ICONS.linked
+    };
+    return view.stays.map((stay) => ({ ...stay, icon: icons[stay.key] }));
+  }
+  get clearDisabled() {
+    return this.busy || !this.clearView || this.clearView.nothing;
+  }
+
+  handleClearScope(event) {
+    const key = event.currentTarget.dataset.scope;
+    this.clearWeekId = key === "season" ? null : key;
+    this.clearError = null;
+  }
+
+  handleClearKey(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      this.handleClearCancel();
+    }
+  }
+
+  handleClearCancel() {
+    this.clearing = false;
+    this.clearData = null;
+    this.clearError = null;
+    this.focusAfter = [this.clearFrom, PRIMARY, STATE_MENU].filter(Boolean);
+  }
+
+  /**
+   * Clear: exactly what the picture shows (its stamp goes with it). Refused, the reason is said
+   * and the season drawn again as it now is; done, the screen is read again and says what went.
+   */
+  async handleClearGo() {
+    if (this.clearDisabled) return;
+    this.busy = true;
+    this.clearError = null;
+    let focusAfter;
+    try {
+      const result = await clearElectives({
+        request: JSON.stringify({
+          seasonId: this._setup.season.Id,
+          weekId: this.clearWeekId,
+          stamp: this.clearData.stamp
+        })
+      });
+      this.clearing = false;
+      this.clearData = null;
+      this.status = `Cleared: ${result.runs} ${result.runs === 1 ? "run" : "runs"}, ${result.campers} ${
+        result.campers === 1 ? this.t.sIn("Camper") : this.t.pIn("Camper")
+      }.`;
+      this.runId = null;
+      this.view = null;
+      this.downloadHeld = null;
+      focusAfter = "[data-heading]";
+      await this.loadSituation();
+    } catch (e) {
+      this.clearError = failed("Nothing was cleared.", e);
+      focusAfter = ['[data-id="clear-go"]', '[data-id="clear-cancel"]'];
+      await this.readClear();
+    } finally {
+      // Set once the buttons are free again, so the cursor can land on them.
+      this.busy = false;
+      this.focusAfter = focusAfter;
+    }
   }
 }
 

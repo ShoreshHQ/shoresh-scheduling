@@ -42,6 +42,17 @@ choices), §4.1 and §5; the desktop's `elective/BundleEditor.jsx`, `ElectiveSet
 `assignment/deriveChoices.js`, `assignment/solvableBundles.js` and its ADR
 `2026-09-29-linked-elective-bundles` (D2 to D8)._
 
+_Amended 2026-10-23, slice E10 (rosters and downloads, the campers round trip, end-of-season
+Clear): choices 51 to 58, and choice 29 (the main button of a final run is Download). Design
+source: Greg's approved mock-ups (design-research `electives-r1`: `downloads`, `rosters` option A,
+`clear-b` and `clear-b-week`) and decisions 48 (2: Finalize, then downloads; 4: Clear removes the
+runs and the campers no longer used, sets stay), 53 (4: printed rosters one page per offering) and
+59 (Clear drawn as the season itself, no explaining sentences); the plan's §1 steps 8 and 9, §2
+"Rosters and downloads" and §7; the desktop's `elective/export/` (`exportActivityRoster.js`,
+`exportChildSchedule.js`, `exportRunExceptions.js`, `exportRunSummary.js`,
+`exportElectiveRunWorkbook.js`), `utils/exportCamperWorkbook.js`, `ops/purgeElectiveSeason.js`,
+`ElectivesScreen.jsx` (Clear's scope and words) and the Director Guide §11._
+
 _Amended 2026-10-23, slice E9 (electives in last year's file): choices 45 to 50, and choice 42
 (two offerings' linked choices may share a period). Design source: the plan's §6.1 and slice E9;
 the desktop's ADR `2026-10-11-import-electives-keep-their-shape`, Director Guide §6
@@ -357,8 +368,7 @@ at a place.
     as Bring in choices asks); **By offering** and **By camper** in the middle; on the right the
     counter, **Bring in choices**, **Assign again** (in the top bar next to the main button,
     decision 53, once seats exist), the run's state, and the one main button: **Assign seats**,
-    then **Finalize**, then **Download** (shown as "Download · Coming", disabled, until slice
-    E10). The run shown is the set's committed run for that week and schedule, else its latest
+    then **Finalize**, then **Download** (a menu, slice E10: choice 51). The run shown is the set's committed run for that week and schedule, else its latest
     final one; the state's menu lists every run of them ("Final 14 Oct · Greg", "Committed 12
     Oct") and offers **Start a new version** from a final run. The screen opens on the latest run.
 30. **Where electives happen, worked out each time** (`ElectiveTimes`; plan §2; desktop
@@ -452,7 +462,7 @@ at a place.
     page (`shoreshCampSetup`: the address route, the menu's coming entry); and the real-browser
     check (`scripts/a11y-browser-check.mjs`).
 
-Not in this slice: linked choices (E8, choices 38 to 44), downloads and rosters (E10; the main button waits), a
+Not in this slice: linked choices (E8, choices 38 to 44), downloads and rosters (E10, choices 51 to 58), a
 progress state for very large camps, and a camper's own week view. Who can take an offering is
 counted per division at a time: an activity set up for one bunk of a division is offered to that
 division's time, and the server allows its other bunks' campers in it.
@@ -601,3 +611,107 @@ choice remembered by what it links; an entry naming a record refused), Jest
 (the guessed mark, two offerings sharing a period), `shoreshElectiveEngine` `assignSeats.test.js`
 and the amended ported case, `shoreshElectiveSeats` `linked.test.js`; also namespaced), and the
 real-browser check `scripts/a11y-browser-check.mjs` (added, not run in this slice).
+
+## Slice E10: rosters, downloads and end-of-season Clear
+
+51. **Download, once seats are final** (decision 48.2; the desktop offers its exports only on a
+    final run, `FinalRunView.jsx`). A final run's main button is **Download**, a menu (the
+    mock-up's): **Rosters**, **Print rosters**, **Camper schedules**, **Full report**, **Campers**
+    ("to edit and bring back"), and under a line **Clear at season end…**. Before Finalize the
+    run's own menu says why there is none ("Download · after Finalize", not a button) and offers
+    Clear. The server refuses a download's read of a committed run too
+    (`ElectiveDownloads.forRun`: "Downloads come once seats are final. Finalize first."). After
+    Finalize the cursor goes to Download. The files are made in the browser with SheetJS
+    (`c/shoreshDownload`) from what the director can already read, so no file is stored in the
+    org; each read of a run is used for every download until it changes. File names carry the set
+    and the week ("Chugim Week 3 rosters.xlsx"), never a child's name, and every text cell goes
+    through the spreadsheet-formula guard. **A parent's comment is never in a download** (choice 3).
+52. **What a final run's files read** (plan §3, "a final run's downloads never change"): the seats
+    with the activity, place and bunk names copied at Finalize (sent with each seat now), the
+    elective times and each bunk's week from the version of the schedule kept at Finalize
+    (`ElectiveDownloads` reads that version's days and sends each bunk's cells from them,
+    once per thing however many blocks it takes, and marks the cells holding this set), and the
+    same reading as the seats screen (`readRun`, `buildBoard`), so the files and the screen can't
+    disagree. The read is the run's own queries and one more for those days, whatever the size.
+    - **Rosters** (decision 53.4, option A, the counsellor's page): one page per offering that runs
+      this week, its elective times side by side, each "12 of 12" (the count alone with no limit;
+      "Dropped, had 4 of 6") and who is there, sorted by bunk then name with the bunk beside each.
+      **Print rosters** puts those pages on paper (`c-shoresh-roster-print`, the ShoreshPrint
+      style, as the Schedules page prints); **Rosters** is the same as a workbook, a sheet per
+      offering laid out as its page.
+    - **Camper schedules** (desktop `exportChildSchedule.js`): each camper's week, bunk order then
+      name: their bunk's schedule with their seat where the set sits ("Couldn't be placed" where
+      they have none), something that takes several blocks once with how many. A camper with no
+      bunk has only their electives.
+    - **Full report** (desktop `exportElectiveRunWorkbook.js`): Camper schedules; Rosters (a row
+      per camper, the count once per time, the desktop's organizer ruling); Exceptions in the
+      counter's words (couldn't be placed, dropped or kept below minimum, over seats, a lock that
+      no longer applies, nothing offered, not one they chose, no bunk on the sheet, a bunk with no
+      set this week, no choices, a choice not matched, out of date); and Summary (the run, Final
+      with when and by whom, set, week, source file, campers, placed, seats by first, second …
+      choice, "One of their choices" for a choice in no order, never a rank, desktop T318; not one
+      they chose; couldn't be placed; and how many campers were in one offering more than once,
+      the repeat count the plan asks for).
+53. **Not in a file**: parent comments, linked choices as one unit (slice E8 counts a linked choice in its offering at
+    each period, as the seats screen does; one roster across its periods is for later), and other programs' runs.
+54. **Campers, to edit and bring back** (desktop `exportCamperWorkbook.js`, Director Guide §11:
+    "no camper is added twice and none is removed"): the run's campers, a row per choice, laid out
+    as Bring in choices reads a sheet: Camper number, Camper name, Division, Bunk (the camp's own
+    words when the reader knows them, else these), Day, Period, Rank, Activity. A choice for the
+    whole week leaves Day and Period blank; one in no order leaves Rank blank, so it comes back in
+    no order; a camper's one choice for a period comes back as rank 1 for that period, which seats
+    the same; a linked choice is written by its name on the sheet, which reads back as that
+    linked choice (slice E8). A camper with no choices is left out (bringing in writes nothing for them). Brought
+    back into a new version of the run (a final run doesn't change: Start a new version), campers
+    are found by number, else by name. The reader gained one rule for it (`findTable`): a sheet
+    with one row per choice (an Activity column beside a Rank, Day or Period column) has its
+    headings on one row, so its first camper with no camper number is never read as a second
+    heading row ("Rank" over "1"); a lone "Choice" or "Elective" heading over 1, 2, 3 (merged, or
+    a label with blanks to its right) is still a two-row heading of ranked choices. Jest tests
+    read the file back and find the same campers and choices, and read both two-row forms.
+55. **End-of-season Clear** (decisions 48.4 and 59; desktop `purgeElectiveSeason.js`): the runs
+    go with their choices and seats, and so does every camper no remaining run uses; elective
+    sets, offerings and linked choices stay. The whole season, or the week on screen. Deleted for
+    good, out of the Recycle Bin too (plan §3, "Real deletion"). The desktop kept campers (a limit
+    of its sync); decision 48.4 removes them.
+56. **It looks like clear-b** (decision 59): Clear takes over the screen. The rail: "Clear Summer
+    2027", **Whole season · 7 weeks** or the week on screen (the one raised), a crossed-out undo
+    arrow with "Can't be undone", Cancel and Clear. Below, the summer: weeks across, rows for
+    Campers, Choices, Seats and Runs, each week's count with the mock-up's marks (a camper's short
+    name, the 1-2-3 marks, the seat dots, Final · 14 Oct with its padlock). What goes is dashed,
+    its marks faded and its number struck through; under a line, Sets, Offerings and Linked are
+    solid bars with a padlock. Picking one week dashes only that week. No explaining sentences;
+    what each cell means is said to screen readers only ("Week 3, campers: 6, goes; 42 stay").
+    Escape or Cancel goes back with nothing done, the cursor on the menu Clear came from.
+57. **Exact: only what the picture shows goes** (`ElectiveClear`; the season read by
+    `ElectiveClearReading`). The picture is the season read once (nine queries, any size): each week's campers (and of them, those in no other week's
+    run), choices (counted from the saved choices), seats and runs, and what stays. Where one
+    week's Clear leaves some of its campers (they are in other weeks), its Campers cell shows the
+    struck number that goes and, solid with a padlock, the number that stays; each row's head
+    carries the struck total that goes (the whole season's campers include any in no run). The
+    picture carries a stamp (a SHA-256 of every run's revision and status and the season's camper
+    count). Clear holds the season's runs (`FOR UPDATE`), reads the picture again, and refuses if
+    the stamp moved ("Something changed since this was drawn. Look again, then clear."), then
+    draws the season again; nothing is removed. **It refuses while anything in it is in
+    progress**: a run still Committed in what it would clear is named ('"Chugim · Week 2" is still
+    being worked on. Finalize first, then clear.'), and its Runs cell is drawn Committed with the
+    needs-a-look corner. A week with nothing has nothing to clear (Clear is off; the server says
+    "Nothing to clear.", the desktop's words). Done, the screen says what went ("Cleared: 2 runs,
+    48 campers.") and reads the season again.
+58. **Bounded, and checked as a scheduler.** A run's choices and seats go with it (master-detail),
+    so the rows written are the runs and the campers (deleted, then emptied from the Recycle
+    Bin). `ElectiveClearTest` (records made inside the same `System.runAs`, as a scheduler, 270
+    campers over two weeks with 400 choices and seats) checks the picture's counts and query
+    bound, the whole season and one week (runs, choices, seats and the campers only it had gone;
+    the other week's run, choices, seats and campers, and the set, its offerings, its linked
+    choice and its periods, and the activities, all still there), each within a query bound and a
+    row bound (that the Recycle Bin is emptied can't be seen inside a test, where emptied rows
+    still read as deleted, so it is not checked there), a stale picture and a run being worked on refused with nothing removed, nothing to
+    clear, the download read refusing a committed run, and a final run's bunk week (a two-block
+    activity once, the set's cell marked). Jest: `downloads.test.js`, `clear.test.js` and
+    `downloadsAndClear.test.js` in `shoreshElectiveSeats` (also namespaced, with axe), and
+    `shoreshRosterPrint`. The real-browser check opens the Download menu and Clear by keyboard
+    and cancels it (`scripts/a11y-browser-check.mjs`); it never clears.
+
+Not in this slice: a linked choice as one roster across its periods, a camper's week on
+screen, and other programs' electives.

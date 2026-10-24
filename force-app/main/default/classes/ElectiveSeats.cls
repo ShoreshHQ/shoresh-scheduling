@@ -156,6 +156,13 @@ public with sharing class ElectiveSeats {
     public Boolean locked = false;
     @AuraEnabled
     public Boolean byHand = false;
+    // The names copied at Finalize (blank before): a final run's downloads read these.
+    @AuraEnabled
+    public String activityName;
+    @AuraEnabled
+    public String locationName;
+    @AuraEnabled
+    public String groupName;
   }
 
   // ---------------------------------------------------------------- reads
@@ -297,6 +304,9 @@ public with sharing class ElectiveSeats {
     made.linkedChoiceId = seat.LinkedChoice__c;
     made.locked = seat.Locked__c == true;
     made.byHand = seat.ByHand__c == true;
+    made.activityName = seat.ActivityName__c;
+    made.locationName = seat.LocationName__c;
+    made.groupName = seat.GroupName__c;
     return made;
   }
 }
