@@ -19,25 +19,28 @@ public with sharing class ChoicesImportPlace {
 
   public ChoicesImportPlace(ChoicesImport.Request given) {
     request = given;
-    refuseIncomplete(given);
+    if (given == null || given.seasonId == null) {
+      throw new ShoreshException('Choose the season first.');
+    }
     campId = ChoicesImport.seasonOf(given.seasonId).Camp__c;
+    refuseIncomplete(given, campId);
     readPlace();
     readRuns();
   }
 
-  private static void refuseIncomplete(ChoicesImport.Request given) {
+  /** The camp's words are read only for the refusal (the screens always send all four). */
+  private static void refuseIncomplete(ChoicesImport.Request given, Id campId) {
     if (
-      given == null ||
-      new List<Id>{
-          given.seasonId,
-          given.electiveSetId,
-          given.weekId,
-          given.scheduleId
-        }
+      new List<Id>{ given.electiveSetId, given.weekId, given.scheduleId }
         .contains(null)
     ) {
+      CampLabels labels = CampLabels.forCamp(campId);
       throw new ShoreshException(
-        'Choose the elective set, the week and the schedule first.'
+        'Choose the ' +
+          labels.singularInSentence('ElectiveSet') +
+          ', the ' +
+          labels.singularInSentence('Week') +
+          ' and the schedule first.'
       );
     }
     if (given.campers == null || given.campers.isEmpty()) {

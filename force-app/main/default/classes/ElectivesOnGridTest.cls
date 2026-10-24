@@ -137,6 +137,110 @@ private class ElectivesOnGridTest {
     }
   }
 
+  /** The refusal of a set or event that isn't the season's names it in the camp's words. */
+  @IsTest
+  static void aSetOrEventNotFoundIsNamedInTheCampsWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      ManualBuildViews.DraftView view = blankWeek(ids, 'Week 1');
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = ids.get('Camp'),
+            ModelTerm__c = 'ElectiveSet',
+            Singular__c = 'Chug block',
+            Plural__c = 'Chug blocks'
+          ),
+          new CampLabel__c(
+            Camp__c = ids.get('Camp'),
+            ModelTerm__c = 'SpecialEvent',
+            Singular__c = 'Big Day',
+            Plural__c = 'Big Days'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Summer 2027');
+      ElectiveSet__c elsewhere = new ElectiveSet__c(
+        Season__c = other.Id,
+        Name = 'Chugim'
+      );
+      Database.insert(elsewhere, AccessLevel.USER_MODE);
+      Id eventElsewhere = SpecialScheduleTestData.addEvent(
+        other.Id,
+        'Carnival'
+      );
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      String setRefusal = refusalOf(
+        view,
+        placing(view, ids.get('Group B'), 'E:' + elsewhere.Id)
+      );
+      Integer used = Limits.getQueries() - before;
+      String eventRefusal = refusalOf(
+        view,
+        placing(view, ids.get('Group B'), 'S:' + eventElsewhere)
+      );
+      Test.stopTest();
+
+      Assert.areEqual(
+        'That Chug block was not found. It may have been deleted.',
+        setRefusal
+      );
+      Assert.areEqual(
+        'That Big Day was not found. It may have been deleted.',
+        eventRefusal
+      );
+      Assert.isTrue(used <= 40, 'Queries for one refused save: ' + used);
+    }
+  }
+
+  /** Setting up a noted set says what it is set up as in the camp's word for sets. */
+  @IsTest
+  static void aNotedSetIsSetUpInTheCampsWord() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = ids.get('Camp'),
+          ModelTerm__c = 'ElectiveSet',
+          Singular__c = 'Option block',
+          Plural__c = 'Option blocks'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Id draftId = draftNoting(ids, new ScheduleGrid.Item('E', '', 'Bechirot'));
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
+        draftId,
+        'E',
+        'Bechirot'
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      // "an": the article follows the camp's word, not the standard one.
+      Assert.areEqual('"Bechirot" is set up as an Option block.', done.said);
+      Assert.isTrue(used <= 30, 'Queries to set up a set: ' + used);
+    }
+  }
+
+  /** The message a Manual Build save is refused with, or null when it is saved. */
+  private static String refusalOf(
+    ManualBuildViews.DraftView view,
+    List<SlotEdits.Edit> edits
+  ) {
+    try {
+      ManualBuildController.saveSlots(view.schedule.schedule.id, edits);
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
   /** The Manual Build draft of Week 1, Monday's Period 1 of every group holding a noted item. */
   private static Id draftNoting(Map<String, Id> ids, ScheduleGrid.Item noted) {
     Id draftId = blankWeek(ids, 'Week 1').schedule.schedule.id;

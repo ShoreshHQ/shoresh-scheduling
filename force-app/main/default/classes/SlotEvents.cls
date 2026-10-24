@@ -5,7 +5,9 @@
  */
 public with sharing class SlotEvents {
   private Map<Id, SObject> placed = new Map<Id, SObject>();
-  private CampLabels labels;
+  // The camp's words, for a refusal naming an event or a set; the model terms until read() is
+  // given the camp's.
+  private CampLabels labels = CampLabels.modelTermsOnly();
 
   /** Whether a slot starts a special event or an elective set, by its record. */
   public static Boolean isPlaced(String slot) {
@@ -24,7 +26,7 @@ public with sharing class SlotEvents {
     List<SlotEdits.Edit> edits
   ) {
     SlotEvents result = new SlotEvents();
-    result.labels = labels;
+    result.labels = labels ?? result.labels;
     Set<Id> eventIds = new Set<Id>();
     Set<Id> setIds = new Set<Id>();
     for (String slot : placedIn(edits)) {
@@ -92,12 +94,8 @@ public with sharing class SlotEvents {
     return String.valueOf(grid.items.size());
   }
 
-  /** "special event" or "elective set", in the camp's words when they are known. */
+  /** "special event" or "elective set", or the camp's own word for one (one: singular). */
   private String word(Boolean isEvent) {
-    String term = isEvent ? 'SpecialEvent' : 'ElectiveSet';
-    if (labels == null) {
-      return isEvent ? 'special event' : 'elective set';
-    }
-    return labels.singularInSentence(term);
+    return labels.singularInSentence(isEvent ? 'SpecialEvent' : 'ElectiveSet');
   }
 }
