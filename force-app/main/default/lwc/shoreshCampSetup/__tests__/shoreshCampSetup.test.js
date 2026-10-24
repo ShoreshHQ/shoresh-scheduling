@@ -4534,7 +4534,9 @@ describe("c-shoresh-camp-setup", () => {
       expect(
         details.shadowRoot.querySelector('[data-id="where"]').textContent
       ).toBe("Main field");
-      await expect(element).toBeAccessible();
+      // The open details, checked on their own: the whole page (Roots' table and every screen)
+      // is checked elsewhere, and axe over all of it outruns CI's time limit.
+      await expect(details).toBeAccessible();
       details.shadowRoot.querySelector('[data-id="close"]').click();
       await flush();
       expect(details.openItemId).toBeNull();
