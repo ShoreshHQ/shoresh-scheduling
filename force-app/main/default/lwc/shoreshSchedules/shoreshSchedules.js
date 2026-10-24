@@ -658,4 +658,10 @@ export default class ShoreshSchedules extends LightningElement {
       this.pending -= 1;
     }
   }
+
+  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
+  }
 }

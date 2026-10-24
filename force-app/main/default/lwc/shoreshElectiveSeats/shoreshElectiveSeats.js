@@ -1236,6 +1236,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.focusAfter = focusAfter;
     }
   }
+
+  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
+  }
 }
 
 /** "Fill blank capacities first: Archery, Pottery." (the desktop's words, with the names). */

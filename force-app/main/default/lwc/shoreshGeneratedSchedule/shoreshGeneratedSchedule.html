@@ -213,7 +213,10 @@
 
       <!-- The rail's left: the program (when there are several) and the week, as on Manual
            Build, before Edit, Build and how to look at the week. -->
-      <c-shoresh-roots-back slot="pickers"></c-shoresh-roots-back>
+      <c-shoresh-roots-back
+        slot="pickers"
+        onbacktoroots={handleBackToRoots}
+      ></c-shoresh-roots-back>
       <template lwc:if={hasSeveralPrograms}>
         <c-shoresh-rail-picker
           slot="pickers"

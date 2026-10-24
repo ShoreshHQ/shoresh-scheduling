@@ -64,7 +64,9 @@
           {screenTitle}
         </h2>
         <div class="side side_left">
-          <c-shoresh-roots-back></c-shoresh-roots-back>
+          <c-shoresh-roots-back
+            onbacktoroots={handleBackToRoots}
+          ></c-shoresh-roots-back>
           <template lwc:if={showsPickers}>
             <c-shoresh-rail-picker
               data-id="week"

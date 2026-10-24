@@ -2510,11 +2510,15 @@ describe("c-shoresh-camp-setup", () => {
       // Right after the screen's (unseen) name, before everything else on the rail.
       expect(back.previousElementSibling.matches("[data-heading]")).toBe(true);
     });
-    // On Camp words too, inside its own rail.
+    // On Camp words too, inside its own rail, and it goes home from there.
+    await openScreen(element, "campWords");
     const labels = q(element, "c-shoresh-camp-labels");
-    expect(
-      labels.shadowRoot.querySelector('[data-id="rail"] c-shoresh-roots-back')
-    ).not.toBeNull();
+    labels.shadowRoot
+      .querySelector('[data-id="rail"] c-shoresh-roots-back')
+      .shadowRoot.querySelector('[data-id="back"]')
+      .click();
+    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
   });
 
   describe("a card's screen grows out of it and goes home into it (ADR 0020)", () => {

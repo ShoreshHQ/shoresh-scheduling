@@ -2537,4 +2537,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     );
     onDone(renamed);
   }
+
+  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
+  }
 }
