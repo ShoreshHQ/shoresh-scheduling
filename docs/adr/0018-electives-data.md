@@ -797,8 +797,9 @@ screen, and other programs' electives.
     sees its word in: the menu and the next buttons ("Chugim", "Chug seats", "Chugim →"); the
     Elective seats screen's heading and its messages ("Couldn't open Chug seats.", "Make one on
     Chugim first."); Copy season's "Stays in" list ("Chug seats"); the Manual Build swap refusal
-    ("Can’t swap with Chugim or events.", plural so no article is built from a camp word; the
-    desktop's `useSlotMutations.js` says "an elective or an event"); the delete refusals that name
+    ("Can’t swap with Chugim or events.", plural so no article is built from a camp word; with
+    the standard word it keeps the desktop's `useSlotMutations.js` sentence, "an elective or an
+    event"); the delete refusals that name
     runs ("it has Chug runs: ..."; `ElectivesInUse`, which now reads the camp's words once per
     refusal instead of once per reason, and `ElectiveSetupTriggers`); the version Finalize keeps
     ("Chugim finalized: Chugim · Week 1", choice 33); and Import last year (choice 45): a cell

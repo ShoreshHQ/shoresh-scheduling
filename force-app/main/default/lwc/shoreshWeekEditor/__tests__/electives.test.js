@@ -84,7 +84,7 @@ async function render(items, rows, options = {}) {
   const element = createElement("c-shoresh-week-editor", {
     is: ShoreshWeekEditor
   });
-  element.terms = buildTerms(LABELS);
+  element.terms = buildTerms(options.labels || LABELS);
   element.setup = nsRecord(options.setup || SETUP);
   element.weekName = "Week 1";
   element.programName = "Main";
@@ -261,7 +261,31 @@ describe("c-shoresh-week-editor: elective sets", () => {
     await fromGrid(element, "cellspace", { key: "1-1" });
     expect(saveRuns).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Can’t swap with electives or events. Move it to an empty cell instead."
+      "Can’t swap with an elective or an event. Move it to an empty cell instead."
+    );
+  });
+
+  it("says the camp's own word for electives when it refuses a swap", async () => {
+    const { element, saveRuns } = await render(
+      [FLAGPOLE, SWIM, CHUGIM],
+      ["1,2,", "1,3,"],
+      {
+        labels: [
+          ...LABELS,
+          {
+            term: "Elective",
+            singular: "Chug",
+            plural: "Chugim",
+            isCustom: true
+          }
+        ]
+      }
+    );
+    await fromGrid(element, "cellspace", { key: "0-1" });
+    await fromGrid(element, "cellspace", { key: "1-1" });
+    expect(saveRuns).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Can’t swap with Chugim or events. Move it to an empty cell instead."
     );
   });
 
