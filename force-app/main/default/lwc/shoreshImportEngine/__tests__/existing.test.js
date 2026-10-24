@@ -397,7 +397,6 @@ describe("what the save sends", () => {
     ]);
     const noted = lists.find((l) => l.key === "noted");
     expect(noted.items.map((i) => i.detail)).toEqual([
-      "Elective, Tuesday, 6 groups",
       "Special day, Friday, 6 groups",
       "Trip, Thursday, 3 groups"
     ]);

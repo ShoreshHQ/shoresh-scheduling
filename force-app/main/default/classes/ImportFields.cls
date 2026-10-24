@@ -27,10 +27,14 @@ public with sharing class ImportFields {
     'WeekException' => WeekException__c.SObjectType,
     'CampLabel' => CampLabel__c.SObjectType,
     'ElectiveSet' => ElectiveSet__c.SObjectType,
-    'Offering' => Offering__c.SObjectType
+    'Offering' => Offering__c.SObjectType,
+    // Import last year's double periods (slice E9).
+    'LinkedChoice' => LinkedChoice__c.SObjectType,
+    'LinkedChoiceTime' => LinkedChoiceTime__c.SObjectType
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
-  // ImportStructureWrites, ImportVersionWrites, ImportWhoKinds, and the workbook's kinds).
+  // ImportStructureWrites, ImportElectiveWrites, ImportVersionWrites, ImportWhoKinds, and the
+  // workbook's kinds).
   private static final Map<Schema.SObjectType, Set<Schema.SObjectField>> WRITTEN = new Map<Schema.SObjectType, Set<Schema.SObjectField>>{
     Program__c.SObjectType => new Set<Schema.SObjectField>{
       Program__c.Name,
@@ -161,6 +165,18 @@ public with sharing class ImportFields {
       Offering__c.NoSeatLimit__c,
       Offering__c.MinimumToRun__c,
       Offering__c.Proposed__c
+    },
+    LinkedChoice__c.SObjectType => new Set<Schema.SObjectField>{
+      LinkedChoice__c.Name,
+      LinkedChoice__c.ElectiveSet__c,
+      LinkedChoice__c.Offering__c,
+      LinkedChoice__c.AppliesTo__c,
+      LinkedChoice__c.SortOrder__c
+    },
+    LinkedChoiceTime__c.SObjectType => new Set<Schema.SObjectField>{
+      LinkedChoiceTime__c.LinkedChoice__c,
+      LinkedChoiceTime__c.Weekday__c,
+      LinkedChoiceTime__c.TimeBlock__c
     }
   };
 

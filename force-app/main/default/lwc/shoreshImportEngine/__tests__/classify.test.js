@@ -209,9 +209,9 @@ describe("fixed, then recurring, then activities", () => {
       },
       answers: {}
     });
-    expect(own.noted.map((n) => [n.name, n.kind])).toEqual([
-      ["Chug time", "E"]
-    ]);
+    // An elective is set up now (slice E9), not noted.
+    expect(own.noted).toEqual([]);
+    expect(own.electives.sets.map((s) => s.name)).toEqual(["Chug time"]);
     const trip = propose((g, d, b) => {
       return d === 3 && g >= 2 && b >= 2 ? "Museum Trip" : rotation(g, d, b);
     });

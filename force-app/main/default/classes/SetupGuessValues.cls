@@ -1,7 +1,8 @@
 /**
  * Keys and values for what an import guessed (SetupGuesses, ADR 0006 §21). A key names the
  * season by its Id, so a guess in one season never marks, or is cleared by, another season of the
- * camp, and the rest by names: "guessed|<season Id>|<kind>|<program, for a group>|<name>|<field>".
+ * camp, and the rest by names: "guessed|<season Id>|<kind>|<program, for a group; set, for a
+ * linked choice>|<name>|<field>".
  * A value is what the field holds, written the same way when the import saves it and when a setup
  * screen reads it, so a change anywhere shows as a different value.
  */
@@ -11,13 +12,16 @@ public with sharing class SetupGuessValues {
   public static final String WHO = 'who';
   public static final String FITS = 'fits';
   public static final String DIVISION = 'division';
+  public static final String PERIODS = 'periods';
   // A who list longer than an answer holds is kept as its digest.
   private static final Integer ANSWER_ROOM = 255;
   // The fields an import can guess, by kind.
   private static final Map<Schema.SObjectType, Set<String>> FIELDS_OF = new Map<Schema.SObjectType, Set<String>>{
     Activity__c.SObjectType => new Set<String>{ OFTEN, WHO },
     Location__c.SObjectType => new Set<String>{ FITS },
-    Group__c.SObjectType => new Set<String>{ DIVISION }
+    Group__c.SObjectType => new Set<String>{ DIVISION },
+    // A double period read as a linked choice (electives slice E9).
+    LinkedChoice__c.SObjectType => new Set<String>{ PERIODS }
   };
 
   /** The fields this record's kind can have guessed; empty for any other kind. */
@@ -41,6 +45,34 @@ public with sharing class SetupGuessValues {
       (program == null ? '' : program) +
       '|' +
       name;
+  }
+
+  /** A linked choice a key names, by its set: "guessed|<season Id>|LinkedChoice|<set>|<name>". */
+  public static String linkedChoice(Id seasonId, String setName, String name) {
+    return PREFIX +
+      seasonId +
+      '|LinkedChoice|' +
+      (setName == null ? '' : setName) +
+      '|' +
+      name;
+  }
+
+  /** A linked choice's periods: each "<weekday>/<time block>", lower case, in order. */
+  public static String periods(
+    List<LinkedChoiceTime__c> times,
+    Map<Id, String> blockNames
+  ) {
+    List<String> parts = new List<String>();
+    for (LinkedChoiceTime__c row : times) {
+      parts.add(
+        ((row.Weekday__c == null ? '' : row.Weekday__c) +
+          '/' +
+          blockNames.get(row.TimeBlock__c))
+          .toLowerCase()
+      );
+    }
+    parts.sort();
+    return String.join(parts, '|');
   }
 
   /** One field of an item. */

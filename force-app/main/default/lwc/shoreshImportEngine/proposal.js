@@ -14,6 +14,7 @@ import {
   usablePlacements
 } from "./items";
 import { deletedAs, deletionsIn } from "./deleted";
+import { electiveRecords, readElectives } from "./electives";
 import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
@@ -378,7 +379,8 @@ function notedList(usable, kinds) {
   const result = new Map();
   for (const p of usable) {
     const kind = kinds.get(p.text);
-    if (kind) {
+    // Electives are set up (electives.js), not noted.
+    if (kind && kind !== "E") {
       const entry = result.get(p.text) || {
         name: p.text,
         kind,
@@ -419,12 +421,28 @@ export function buildProposal(input) {
     programs.timetables,
     people.groups
   );
-  const noted = notedNames(usable, programs.timetables, input.terms);
+  const camp = campItems(input.existing);
+  const deletions = deletionsIn(answers);
+  // Electives first (slice E9): an elective set is not a fixed, recurring or activity name.
+  const electives = readElectives(usable, {
+    timetables: programs.timetables,
+    terms: input.terms,
+    answers,
+    existing: input.existing,
+    deletions,
+    camp
+  });
+  const noted = notedNames(
+    usable,
+    programs.timetables,
+    input.terms,
+    electives.texts
+  );
   const ctx = {
-    camp: campItems(input.existing),
+    camp,
     timetables: programs.timetables,
     answers,
-    deletions: deletionsIn(answers),
+    deletions,
     asks: [],
     notes: [...people.notes],
     updates: { fixed: [], recurring: [], activities: [] },
@@ -442,6 +460,18 @@ export function buildProposal(input) {
     ctx,
     keyOf
   );
+  // The offerings the sets read need, their activities, and the double periods linked.
+  const electiveAdds = electiveRecords(electives, {
+    timetables: programs.timetables,
+    groups: people.groups,
+    deletions,
+    existing: input.existing,
+    keyOf,
+    divisionOf: new Map(people.groups.map((g) => [g.name, g.division])),
+    activities,
+    activityRecord
+  });
+  activities.push(...electiveAdds.activities);
   const places = placesFor(
     [...setTime, ...activities],
     input.existing,
@@ -463,16 +493,16 @@ export function buildProposal(input) {
     offeredPlaces: places.offered,
     updates: ctx.updates,
     noted: notedList(usable, noted.kinds),
+    electives,
     leftOutNames: leftOutNames(decisions),
-    deleted: deletedItems(
-      decisions,
-      people.groups,
-      programs.timetables,
-      places.deleted
-    ),
+    deleted: deletedItems(decisions, people.groups, programs.timetables, [
+      ...places.deleted,
+      ...electives.deleted,
+      ...electiveAdds.deleted
+    ]),
     leftOutCells: leftOut,
     notes: ctx.notes,
-    asks: [...programs.asks, ...people.asks, ...ctx.asks],
+    asks: [...programs.asks, ...people.asks, ...electives.asks, ...ctx.asks],
     decisions
   };
   const last = versionsFor(proposal, input);

@@ -5,14 +5,15 @@
 public with sharing class SetupGuessRecords {
   /**
    * Remembers, for the camp, that these fields of these records were guessed, with the values
-   * they hold now. Four queries at most, whatever the number: activities, places, groups, then
-   * the answers already there.
+   * they hold now. Five queries at most, whatever the number: activities, places, groups, linked
+   * choices, then the answers already there.
    */
   public static void remember(Id campId, Map<Id, Set<String>> fieldsOf) {
     Map<String, String> answerOf = new Map<String, String>();
     answerOf.putAll(activitiesNow(fieldsOf));
     answerOf.putAll(locationsNow(fieldsOf.keySet()));
     answerOf.putAll(groupsNow(fieldsOf.keySet()));
+    answerOf.putAll(linkedChoicesNow(fieldsOf.keySet()));
     ImportAnswers.rememberEach(campId, answerOf);
   }
 
@@ -131,6 +132,42 @@ public with sharing class SetupGuessRecords {
           SetupGuessValues.DIVISION
         ),
         row.Division__r.Name
+      );
+    }
+    return result;
+  }
+
+  private static Map<String, String> linkedChoicesNow(Set<Id> recordIds) {
+    Map<String, String> result = new Map<String, String>();
+    Set<Id> ids = idsOf(recordIds, LinkedChoice__c.SObjectType);
+    if (ids.isEmpty()) {
+      return result;
+    }
+    for (LinkedChoice__c row : [
+      SELECT
+        Id,
+        Name,
+        ElectiveSet__r.Name,
+        ElectiveSet__r.Season__c,
+        (SELECT Weekday__c, TimeBlock__c, TimeBlock__r.Name FROM Times__r)
+      FROM LinkedChoice__c
+      WHERE Id IN :ids
+      WITH USER_MODE
+    ]) {
+      Map<Id, String> blockNames = new Map<Id, String>();
+      for (LinkedChoiceTime__c period : row.Times__r) {
+        blockNames.put(period.TimeBlock__c, period.TimeBlock__r.Name);
+      }
+      result.put(
+        SetupGuessValues.question(
+          SetupGuessValues.linkedChoice(
+            row.ElectiveSet__r.Season__c,
+            row.ElectiveSet__r.Name,
+            row.Name
+          ),
+          SetupGuessValues.PERIODS
+        ),
+        SetupGuessValues.periods(row.Times__r, blockNames)
       );
     }
     return result;

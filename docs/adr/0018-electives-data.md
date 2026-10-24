@@ -42,6 +42,12 @@ choices), §4.1 and §5; the desktop's `elective/BundleEditor.jsx`, `ElectiveSet
 `assignment/deriveChoices.js`, `assignment/solvableBundles.js` and its ADR
 `2026-09-29-linked-elective-bundles` (D2 to D8)._
 
+_Amended 2026-10-23, slice E9 (electives in last year's file): choices 45 to 50, and choice 42
+(two offerings' linked choices may share a period). Design source: the plan's §6.1 and slice E9;
+the desktop's ADR `2026-10-11-import-electives-keep-their-shape`, Director Guide §6
+"Double-period electives" and `electron/ops/materializeImportedVersion.js` (`writeSpanBundles`,
+T219, T375); ADR 0006 choice 23 for how the file is read._
+
 _Amended 2026-10-23, slice E5 (electives on the week grid): choices 20 to 27. Design source:
 Greg's approved mock-up (design-research `electives-r1`, `grid-a`: one wide cell across the
 bunks, decision 53.2; elective sets first in the drawer; padlock bottom-right and the look mark
@@ -495,14 +501,18 @@ division's time, and the server allows its other bunks' campers in it.
     can't tell them apart.").
 42. **What would keep it from being placed as a set is marked where it is** (plan §2: "Two bundles
     that share a period are refused, a known limit"; desktop D8 recommends warning while
-    authoring): a period also held by another linked choice of the set for a division both apply
-    to carries the corner ('Also in "Drama double", so neither is placed as a set; their periods
+    authoring): a period also held by another linked choice of the same offering for a division
+    both apply to carries the corner ('Also in "Drama double", so neither is placed as a set; their periods
     are filled one at a time'), and a period where the set no longer sits on any schedule stays
     shown, pressed, with the corner ("Chugim isn't here on any schedule now"). Unticked, it keeps
     its button (and the cursor) while the details stay open, so it can be ticked back; the next
     time they open it is gone, as the set isn't there. The desktop warns
-    only for two bundles of one activity; the seat engine refuses any two linked choices sharing a
-    time, whatever their activity, so the mark does too. Nothing is resolved for the director.
+    only for two bundles of one activity; the seat engine refused any two linked choices sharing a
+    time, whatever their activity, so the mark did too. _Slice E9:_ only two of one offering
+    (activity) are refused now (ADR 0016 choice 2): two offerings' linked choices take their own
+    seats at a shared time, and a double period read from last year's file links every choice
+    across it. The mark and the seats screen's problems (`linked.js`) follow. Nothing is resolved
+    for the director.
 43. **Deleting** is the setup screens' delete (`SeasonSetupController.deleteRecord`, now allowing
     `LinkedChoice__c`): asked first ('Delete "Pottery double"? A sheet that names it then counts as
     Pottery.'), its periods (master-detail) and divisions (its trigger) go with it, and it is
@@ -547,3 +557,47 @@ offering (the mock-up's "Pottery double is a single cell"; today each period is 
 offering), "Same as" on Bring in choices offering a linked choice (a name that is not exactly a
 linked choice's is settled as an activity), and double periods in last year's file becoming
 linked choices (E9).
+
+## Slice E9: electives in last year's file
+
+45. **Import last year saves what it read** (ADR 0006 choice 23; `ImportElectiveWrites`, after the
+    activities and before the versions, in the import's one all-or-none save, user mode): new
+    elective sets (Name, season); the offerings it adds, **proposed** and with seats not filled
+    in (the desktop's import writes its choices `potential` with no capacity: only confirmed
+    offerings get campers, and blank seats stop Assign seats until filled, choice 15); and the
+    linked choices a double period makes (Name, set, offering, Applies to All, after the set's
+    others in `SortOrder__c`), with their periods (`LinkedChoiceTime__c`). Everything is only
+    added: an entry naming a record is refused ("The import could not be read."), a set the camp
+    has keeps its offerings, and only the offerings this import adds are linked.
+46. **The version's elective cells point at the set** (choice 20): the screen sends the set's key,
+    the server puts in its Id with the rest (`ImportVersionWrites`), so the imported version
+    shows the set it is, and Start from another week carries it as choice 27 says.
+47. **Undo last import** removes the linked choices it made (their periods go with them), then the
+    offerings, then the sets, before the activities (`ImportUndoDeletes`). A linked choice with a
+    period, a division or a seat someone added since is kept and named, and keeps its offering
+    and set. `ImportFields` lists the two new kinds and the fields the import writes.
+48. **A linked choice's periods read from the file are marked as guessed** (ADR 0006 choice 21):
+    `guessed|<season Id>|LinkedChoice|<set>|<name>|periods`, answered with its periods
+    ("tuesday/period 1|tuesday/period 2"). The linked choices editor shows the needs-a-look corner
+    beside **Periods** ("Periods for Fishing: guessed from your file") with **Looks right**, which
+    forgets it, puts the cursor on its first period and says "Fishing: looks right"
+    (`SetupGuessConfirm` now takes a linked choice). Any change to its periods or its name clears
+    the mark (`SetupGuesses` reads them from the season's electives; `ElectiveMenus` now reads
+    `CreatedDate`; the save takes one more query, `SetupGuessRecords`).
+49. **A linked choice the director deletes stays deleted** (decision 45): it is remembered by what
+    it links, not by its name (which can change, and need not be unique, choice 41):
+    `deleted|LinkedChoice|<set>|<activity>|<weekdays>|<time blocks>`, weekdays Monday to Friday
+    and time blocks by start, joined with "+" (`SetupDeletionElectives`, one query). The next
+    import leaves that linked choice out and lists it with Bring back.
+50. **Two offerings' linked choices may share a period** (choice 42 as amended; ADR 0016 choice
+    2): a double period links every choice across it, so they always do.
+
+Checked by `ImportElectivesTest` (as a scheduler, records made inside the same `System.runAs`:
+the sets, proposed offerings and linked choices saved within a query bound, the version's cell
+pointing at the set; the guessed periods shown, Looks right and a changed period clearing them;
+Undo removing everything, and keeping a linked choice given a period by hand; a deleted linked
+choice remembered by what it links; an entry naming a record refused), Jest
+(`shoreshImportEngine` `electives.test.js`, `shoreshImport.test.js`, `shoreshElectiveDetails`
+(the guessed mark, two offerings sharing a period), `shoreshElectiveEngine` `assignSeats.test.js`
+and the amended ported case, `shoreshElectiveSeats` `linked.test.js`; also namespaced), and the
+real-browser check `scripts/a11y-browser-check.mjs` (added, not run in this slice).

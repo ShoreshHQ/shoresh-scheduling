@@ -7,7 +7,8 @@
  * director says it looks right (SetupGuessConfirm) or changes it. As on the desktop, that is:
  * - a new activity's times a week ("often") and who can do it ("who");
  * - a new place's groups that fit ("fits");
- * - a new group's division ("division"), when only its file's name gave it.
+ * - a new group's division ("division"), when only its file's name gave it;
+ * - the periods of a linked choice a double period made ("periods", electives slice E9).
  *
  * The answer is the value saved, so a change anywhere (this screen, Salesforce's record page, a
  * list import) clears the mark. A guess marks only a record that was there when it was made: one
@@ -64,7 +65,11 @@ public with sharing class SetupGuesses {
     }
     // Who can do an activity, by division or group Id: "<program>/<name>".
     Map<Id, String> targets = new Map<Id, String>();
+    Map<Id, String> blockNames = new Map<Id, String>();
     for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
+      for (TimeBlock__c block : entry.timeBlocks) {
+        blockNames.put(block.Id, block.Name);
+      }
       for (SeasonSetupReader.DivisionSetup d : entry.divisions) {
         targets.put(
           d.division.Id,
@@ -114,6 +119,37 @@ public with sharing class SetupGuesses {
         }
       );
     }
+    checkLinkedChoices(standing, setup, blockNames);
     return standing.result;
+  }
+
+  private static void checkLinkedChoices(
+    SetupGuessStanding standing,
+    SeasonSetupReader.SeasonSetup setup,
+    Map<Id, String> blockNames
+  ) {
+    if (setup.electives == null) {
+      return;
+    }
+    Map<Id, String> setNames = new Map<Id, String>();
+    for (ElectiveSet__c row : setup.electives.sets) {
+      setNames.put(row.Id, row.Name);
+    }
+    for (LinkedChoice__c row : setup.electives.linkedChoices) {
+      standing.check(
+        row,
+        SetupGuessValues.linkedChoice(
+          setup.season.Id,
+          setNames.get(row.ElectiveSet__c),
+          row.Name
+        ),
+        new Map<String, String>{
+          SetupGuessValues.PERIODS => SetupGuessValues.periods(
+            row.Times__r,
+            blockNames
+          )
+        }
+      );
+    }
   }
 }

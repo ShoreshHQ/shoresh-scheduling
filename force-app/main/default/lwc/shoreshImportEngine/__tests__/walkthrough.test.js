@@ -70,7 +70,12 @@ function afterSave(plan) {
       Id: a.key,
       Name: a.name,
       Length__c: a.length
-    }))
+    })),
+    electives: {
+      sets: plan.electiveSets.map((x) => ({ Id: x.key, Name: x.name })),
+      offerings: [],
+      linkedChoices: []
+    }
   });
 }
 
@@ -114,14 +119,12 @@ describe("Import last year, as the walkthrough tells it", () => {
     expect(lists.activities.find((i) => i.name === "Boating").detail).toBe(
       "1 a week · 2 time blocks long · Seniors only"
     );
-    expect(lists.noted.map((i) => i.name)).toEqual([
-      "Chugim",
-      "Field day",
-      "Zoo trip"
-    ]);
+    expect(lists.noted.map((i) => i.name)).toEqual(["Field day", "Zoo trip"]);
+    // Chugim is an elective set now (slice E9), read without a question.
+    expect(proposal.electives.sets.map((s) => s.name)).toEqual(["Chugim"]);
 
     const review = questionCards(proposal, terms, answers).filter(
-      (c) => c.stage === "review"
+      (c) => c.stage === "review" && !c.flag
     );
     expect(review.map((c) => c.title)).toEqual([
       "Is “Library time” at a set time, or an activity?"
@@ -144,6 +147,9 @@ describe("Import last year, as the walkthrough tells it", () => {
     expect(firstPlan.groups).toHaveLength(6);
     expect(firstPlan.activities).toHaveLength(7);
     expect(firstPlan.fixedActivities).toHaveLength(1);
+    expect(firstPlan.electiveSets).toEqual([
+      { key: "ES|Chugim", id: null, name: "Chugim" }
+    ]);
     expect(firstPlan.recurringActivities.map((r) => r.name)).toEqual([
       "Library time",
       "Morning meeting"
@@ -185,7 +191,7 @@ describe("Import last year, as the walkthrough tells it", () => {
     );
     expect([...tags]).toEqual(["already set up"]);
     const review = questionCards(proposal, terms, answers).filter(
-      (c) => c.stage === "review"
+      (c) => c.stage === "review" && !c.flag
     );
     expect(review.map((c) => c.title)).toEqual([
       "The files disagree about Bunk 3, Tuesday, Period 2. Which is right?"
@@ -205,7 +211,10 @@ describe("Import last year, as the walkthrough tells it", () => {
       "locations",
       "activities",
       "fixedActivities",
-      "recurringActivities"
+      "recurringActivities",
+      "electiveSets",
+      "offerings",
+      "linkedChoices"
     ];
     const added = setupLists.flatMap((key) => plan[key]);
     expect(added).toEqual([]);

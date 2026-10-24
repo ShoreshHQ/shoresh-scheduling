@@ -174,6 +174,8 @@ export default class ShoreshElectiveDetails extends LightningElement {
   pending = [];
   seq = 0;
   error = null;
+  // What a screen reader hears after Looks right.
+  status = "";
   // Names being typed, by linked choice, until the field is left.
   typed = {};
   // A control that takes the cursor at the next render (a selector).
@@ -514,6 +516,14 @@ export default class ShoreshElectiveDetails extends LightningElement {
       name: choice.name,
       namePlaceholder: isDraft ? this.proposedName(null) : "",
       nameLabel: "Name on the sheet",
+      // Its periods read from a double period in last year's file (slice E9): marked for a look.
+      periodsGuess:
+        !isDraft &&
+        ((this._setup && this._setup.guesses) || []).some(
+          (g) => g.recordId === choice.id && g.field === "periods"
+        )
+          ? `Periods for ${choice.name}: guessed from your file`
+          : null,
       nameLook: sameName
         ? `Another ${this.term("sIn", "LinkedChoice", "linked choice")} in ${this.setName} is called this, so a sheet can't tell them apart.`
         : null,
@@ -553,8 +563,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
   }
 
   /**
-   * Another linked choice holding this period for a division this one is for too: neither is
-   * placed as a set (the seat engine's known limit, desktop ADR 2026-09-29 D8), so it is said.
+   * Another linked choice of the same offering holding this period for a division this one is for
+   * too: neither is placed as a set (the seat engine's known limit, desktop ADR 2026-09-29 D8), so
+   * it is said. Two offerings' linked choices may share a period (slice E9: a double period links
+   * every choice across it): each takes its own offering's seats there.
    */
   sharedWith(choice, k, others, allDivisions) {
     const present = this.placeMap.get(k) || allDivisions;
@@ -563,6 +575,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
     );
     const clash = others.find(
       (other) =>
+        other.offeringId === choice.offeringId &&
         other.periods.has(k) &&
         divisionsCovered(other.appliesTo, [...other.divisionIds], present).some(
           (d) => mine.has(d)
@@ -571,6 +584,29 @@ export default class ShoreshElectiveDetails extends LightningElement {
     return clash
       ? `Also in "${clash.name}", so neither is placed as a set; their periods are filled one at a time`
       : null;
+  }
+
+  /**
+   * Looks right on periods an import guessed (ADR 0006 choice 21): the page forgets the guess;
+   * the cursor goes to the linked choice's first period, and it is said.
+   */
+  handleConfirmGuess(event) {
+    const choiceId = event.currentTarget.dataset.choice;
+    const choice = this.savedChoices.find((c) => c.id === choiceId);
+    const name = choice ? choice.name : "";
+    this.focusAfter = `button[data-choice="${choiceId}"][data-id="period"]`;
+    this.dispatchEvent(
+      new CustomEvent("confirmguess", {
+        detail: {
+          recordId: choiceId,
+          field: "periods",
+          onDone: () => {
+            this.status = `${name}: looks right`.trim();
+            this.focusAfter = `button[data-choice="${choiceId}"][data-id="period"]`;
+          }
+        }
+      })
+    );
   }
 
   /** The desktop's name for a new linked choice: the activity's, then the activity and a period. */

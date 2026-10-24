@@ -214,8 +214,49 @@ function guessedRecords(proposal) {
       .map((l) => ({ kind: "Location", key: l.key, fields: ["fits"] })),
     ...proposal.groups
       .filter((g) => !g.leftOut && g.isNew && g.divisionGuessed)
-      .map((g) => ({ kind: "Group", key: g.key, fields: ["division"] }))
+      .map((g) => ({ kind: "Group", key: g.key, fields: ["division"] })),
+    // A double period read as a linked choice (slice E9): its periods are the guess.
+    ...linkedChoices(proposal).map((c) => ({
+      kind: "LinkedChoice",
+      key: c.key,
+      fields: ["periods"]
+    }))
   ];
+}
+
+function linkedChoices(proposal) {
+  return proposal.electives.sets.flatMap((s) => s.linked);
+}
+
+/**
+ * The electives the file printed (slice E9): new sets, the offerings this import adds (proposed,
+ * seats not filled in), and the linked choices its double periods make.
+ */
+function electiveLists(proposal) {
+  const sets = proposal.electives.sets;
+  return {
+    electiveSets: sets
+      .filter((x) => x.isNew)
+      .map((x) => ({ key: x.key, id: null, name: x.name })),
+    offerings: sets.flatMap((x) =>
+      x.offerings.map((o) => ({
+        key: o.key,
+        id: null,
+        name: o.activityName,
+        setKey: o.setKey,
+        activityKey: o.activityKey
+      }))
+    ),
+    linkedChoices: linkedChoices(proposal).map((c) => ({
+      key: c.key,
+      id: null,
+      name: c.name,
+      setKey: c.setKey,
+      offeringKey: c.offeringKey,
+      sortOrder: c.sortOrder,
+      times: c.times
+    }))
+  };
 }
 
 /**
@@ -262,6 +303,7 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       proposal.updates.recurring,
       true
     ),
+    ...electiveLists(proposal),
     guessed: guessedRecords(proposal)
   };
 }
@@ -559,6 +601,14 @@ export function importNotes(proposal, t) {
         text: `${n.name} is ${n.places.map((x) => `${article(kindWords[x.kind])} in ${x.program}`).join(" and ")}. Each is set up where it is.`
       })
     );
+  for (const set of proposal.electives.sets) {
+    set.unlinked.forEach((u) =>
+      notes.push({
+        key: `unlinked|${set.name}|${u.program}|${u.day}`,
+        text: `${set.name} on ${u.day}: different ${t.pIn("Group")} hold it across different ${t.pIn("TimeBlock")}, so Shoresh can't link them. Each period is chosen separately.`
+      })
+    );
+  }
   const filled = proposal.fillWeeks || [];
   if (filled.length) {
     const count =

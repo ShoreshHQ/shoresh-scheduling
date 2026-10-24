@@ -218,8 +218,22 @@ describe("c-shoresh-import", () => {
     ).toBe("allCamp");
     // Noted, not set up yet: dashed.
     const noted = $(element, '[data-id="not-set-up"]');
-    expect(noted.textContent).toContain("Chugim");
+    expect(noted.textContent).toContain("Field day");
+    expect(noted.textContent).not.toContain("Chugim");
     expect(noted.querySelector(".chip_dashed")).not.toBeNull();
+    // Chugim is read as an elective set (slice E9): said, not asked, with its one escape.
+    const electives = $(element, '[data-id="electives"]');
+    const chugim = electives.querySelector('[data-card="elective|Chugim"]');
+    expect(chugim.textContent).toContain(
+      "Read as electives: Tuesday, Period 6, every group."
+    );
+    expect(chugim.textContent).toContain(
+      "No choices in the file: add them later."
+    );
+    expect(
+      chugim.querySelector('button[aria-pressed="true"]').textContent.trim()
+    ).toBe("Electives");
+    expect(chugim.querySelector(".corner")).toBeNull();
 
     // Every question needs an answer before Add.
     expect(add(element).disabled).toBe(true);
@@ -276,6 +290,50 @@ describe("c-shoresh-import", () => {
       "Done"
     );
     expect($(element, 'button[data-id="save"]')).toBeNull();
+  });
+
+  it("electives read from the file: counted in Comes in, and Not electives takes the set away", async () => {
+    // One bunk's week, CSV, with a list of choices held on Tuesday Periods 1 and 2.
+    const rows = [
+      "Time,Monday,Tuesday,Wednesday,Thursday,Friday",
+      'Period 1 9:00-9:45,Swim,"Hiking, Fishing, Kayaking",Art,Swim,Art',
+      'Period 2 9:50-10:35,Art,"Hiking, Fishing, Kayaking",Swim,Art,Swim'
+    ].join("\n");
+    const element = await render();
+    await choose(element, ["Camp - Bunk 1.csv"], { "Camp - Bunk 1.csv": rows });
+    const name = "Electives (Fishing, Hiking, Kayaking)";
+    const row = $(
+      element,
+      `[data-id="electives"] [data-card="elective|${name}"]`
+    );
+    expect(row.textContent).toContain(
+      "Read as electives: Tuesday, Period 1 and Period 2, every group."
+    );
+    expect(row.textContent).toContain(
+      "3 choices proposed: Fishing, Hiking, and Kayaking. Each choice taken as a set across Period 1 and Period 2 on Tuesday."
+    );
+    // Not a question: nothing in Check these first is about it.
+    expect(
+      $$(element, '[data-id="questions"] [data-card]').some((r) =>
+        r.dataset.card.startsWith("elective|")
+      )
+    ).toBe(false);
+    const tile = (kind) =>
+      $$(element, "[data-tile]").find((x) => x.dataset.tile === kind);
+    expect(tile("ElectiveSet").textContent).toContain("1");
+    expect(tile("Offering").textContent).toContain("3");
+    expect(tile("LinkedChoice").textContent).toContain("3");
+
+    await answer(element, `elective|${name}`, "not");
+    const pressed = $(
+      element,
+      `[data-card="elective|${name}"] button[aria-pressed="true"]`
+    );
+    expect(pressed.textContent).toContain("Not electives");
+    // The cursor stays on the choice pressed.
+    expect(element.shadowRoot.activeElement).toBe(pressed);
+    expect(tile("ElectiveSet")).toBeUndefined();
+    expect(tile("LinkedChoice")).toBeUndefined();
   });
 
   it("a count opens into its names, and closes again", async () => {

@@ -38,6 +38,9 @@ public with sharing class SetupGuessConfirm {
     if (type == Location__c.SObjectType) {
       return location(recordId);
     }
+    if (type == LinkedChoice__c.SObjectType) {
+      return linkedChoice(recordId);
+    }
     return bunk(recordId);
   }
 
@@ -66,6 +69,29 @@ public with sharing class SetupGuessConfirm {
       return new Found(
         row.Season__r.Camp__c,
         SetupGuessValues.item(row.Season__c, 'Location', row.Name)
+      );
+    }
+    return null;
+  }
+
+  private static Found linkedChoice(Id recordId) {
+    for (LinkedChoice__c row : [
+      SELECT
+        Name,
+        ElectiveSet__r.Name,
+        ElectiveSet__r.Season__c,
+        ElectiveSet__r.Season__r.Camp__c
+      FROM LinkedChoice__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return new Found(
+        row.ElectiveSet__r.Season__r.Camp__c,
+        SetupGuessValues.linkedChoice(
+          row.ElectiveSet__r.Season__c,
+          row.ElectiveSet__r.Name,
+          row.Name
+        )
       );
     }
     return null;
