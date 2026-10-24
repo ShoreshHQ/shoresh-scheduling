@@ -19,7 +19,8 @@ public with sharing class SeasonSetupController {
     SpecialDay__c.SObjectType,
     SpecialEvent__c.SObjectType,
     ElectiveSet__c.SObjectType,
-    Offering__c.SObjectType
+    Offering__c.SObjectType,
+    LinkedChoice__c.SObjectType
   };
 
   @AuraEnabled

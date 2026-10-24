@@ -46,6 +46,7 @@ public with sharing class ChoicesImportActivities {
       added.put(ChoicesImport.fold(activity.Name), activity.Id);
       seasonIds.put(ChoicesImport.fold(activity.Name), activity.Id);
     }
+    new ChoicesImportLinked(request, place).pointAt();
     pointAtActivities(added, new Set<Id>(seasonIds.values()));
     offerProposed(new Set<Id>(added.values()));
     return made.size();

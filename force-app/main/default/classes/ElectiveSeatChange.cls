@@ -78,6 +78,8 @@ public with sharing class ElectiveSeatChange {
       ? ElectiveSeatChecks.newSeat(state, wanted, at)
       : seat;
     result.Offering__c = request.offeringId;
+    // Moved by hand, it is no longer one period of a linked choice taken as a set.
+    result.LinkedChoice__c = null;
     result.ByHand__c = true;
     result.Locked__c = true;
     return result;

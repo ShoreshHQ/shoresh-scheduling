@@ -194,11 +194,28 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     real-browser check (`scripts/a11y-browser-check.mjs`: the screen opened from its address,
     a sheet chosen, the cards walked with the keyboard, axe on each; nothing saved).
 
+## Slice E8: a sheet naming a linked choice (2026-10-23)
+
+22. **A linked choice's name is a name Shoresh knows** (desktop ADR `2026-09-29-linked-elective-bundles`
+    D6: its name is what a camper's sheet must match). Bring in choices reads the sheet with the
+    chosen set's linked choices' names beside the camp's activities, so "Pottery double" is never
+    a name to settle and a cell naming it is never split. A choice whose name is a linked choice's
+    (capitals, spacing and punctuation aside) is saved with **`l`, the linked choice's Id**, and
+    `a`, its offering's activity, **before an activity of the same name** (D6: the linked choice
+    supersedes; a first linked choice is named as its activity, ADR 0018 choice 41). Two linked
+    choices of one name: the first, in the set's order. The server takes `a` from the linked
+    choice, never from what the screen sent, and refuses an `l` that is not one of the set's
+    ("Row 7: a choice names a linked choice that is no longer in this set. Reload the page.";
+    `ChoicesImportActivities`). Choices compared for a hand change go by `l` first. Keyed by the
+    Id, not the name, so renaming a linked choice keeps what was brought in (desktop D3).
+
 ## Not done here
 
 - Start a new version of a final run, assigning seats, and showing a camper's choices or comments
   on the seats screen (E7).
-- Linked choices' names on a sheet (a bundle named as a choice) (E8).
+- Linked choices' names on a sheet (a bundle named as a choice): done in E8, choice 22. "Same as"
+  still offers activities only, so a sheet's other spelling of a linked choice is settled as an
+  activity.
 - Remembering how a sheet was read for next time: nothing about the shape is asked, so there is
   nothing to remember; only names' answers are.
 - An undo for a choices import (`Import__c` keeps setup imports' undo; choices have none yet).

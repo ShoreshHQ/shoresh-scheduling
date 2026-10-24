@@ -33,6 +33,15 @@ bubble); the plan's §1 steps 5 to 7, §2 "Seat assignment" and "The run", §3 "
 `2026-09-17-individual-elective-scheduling` (D2.7, D3), `2026-09-23-elective-run-lifecycle-and-remaining-slices`
 (a, b; Q1/Q2, Q5; amendment 2026-09-24) and `2026-10-11-locked-elective-seat-survives-unmerged-regeneration`._
 
+_Amended 2026-10-23, slice E8 (linked choices): choices 38 to 44, and choice 16 (the editor's
+place is now the editor). Design source: Greg's approved mock-up (design-research `electives-r1`,
+`setup-a`: "Pottery double" with a small week strip and All / Only these / All except) and
+decision 53.1 (beside the table); the plan's §1 step 3, §2 "Where electives happen" (linked
+choices), §4.1 and §5; the desktop's `elective/BundleEditor.jsx`, `ElectiveSetDetail.jsx`
+(`proposeBundleName`, the bundle writes), `bundleOverlap.js`, `assignment/deriveBundlePickerCells.js`,
+`assignment/deriveChoices.js`, `assignment/solvableBundles.js` and its ADR
+`2026-09-29-linked-elective-bundles` (D2 to D8)._
+
 _Amended 2026-10-23, slice E5 (electives on the week grid): choices 20 to 27. Design source:
 Greg's approved mock-up (design-research `electives-r1`, `grid-a`: one wide cell across the
 bunks, decision 53.2; elective sets first in the drawer; padlock bottom-right and the look mark
@@ -194,7 +203,9 @@ desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlo
     and who it applies to (All, Only these, All except, the chosen one raised, with its divisions).
     The editor is slice E8: its place is held at the foot by a disabled "Linked choice · Coming".
     Only offerings and sets are saved from this screen; a linked choice sent here is refused
-    ("These screens can't save that.").
+    ("These screens can't save that."). _Slice E8:_ the details are now the editor (choices 38 to
+    44); a linked choice is still never saved through the setup tables' save, only through its
+    own (`LinkedChoicesController`).
 17. **Saved as every setup row is** (ADR 0011): row by row, compared and set, in user mode.
     `ScreenSaves` allows a set's name, and an offering's activity, seats, No limit, minimum and
     Proposed; the parent (the season, the set) only on a new row, so an offering never moves to
@@ -250,7 +261,7 @@ desktop's `SlotCell.jsx`, `ActivityPalette.jsx`, `CellInlineEditor.jsx`, `useSlo
 
 Also not in this slice: adding a new activity from the offering choice (the
 desktop's picker can; here an activity is added on Activities first), the linked choices editor
-(E8), electives on the grid and the "not set up yet" Roots item (E5, E9).
+(E8, choices 38 to 44), electives on the grid and the "not set up yet" Roots item (E5, E9).
 
 ## Slice E5: electives on the week grid
 
@@ -435,7 +446,104 @@ at a place.
     page (`shoreshCampSetup`: the address route, the menu's coming entry); and the real-browser
     check (`scripts/a11y-browser-check.mjs`).
 
-Not in this slice: linked choices (E8), downloads and rosters (E10; the main button waits), a
+Not in this slice: linked choices (E8, choices 38 to 44), downloads and rosters (E10; the main button waits), a
 progress state for very large camps, and a camper's own week view. Who can take an offering is
 counted per division at a time: an activity set up for one bunk of a division is offered to that
 division's time, and the server allows its other bunks' campers in it.
+
+## Slice E8: linked choices
+
+38. **The details beside the Electives list are the linked choices editor** (`c/shoreshElectiveDetails`;
+    setup-a; desktop `BundleEditor.jsx`). For the offering whose chevron opened them, each linked
+    choice shows **Name on the sheet** (a field), **Periods** (the small week) and **Applies to**
+    (All, Only these, All except, the chosen one raised), with its divisions to tick under Only
+    these or All except, and **Delete**. "+ Linked choice" at the foot adds one. The Electives
+    menu entries stay "Coming" (decision 44); the screen is still reached from the page's
+    address (choice 12).
+39. **The small week is where the set sits** (desktop `deriveBundlePickerCells.js`: the cells the
+    set is placed in, never a grid of every period). A linked choice's periods are a weekday and a
+    time block, the same every week (`LinkedChoiceTime__c`), so the week shown is every week's at
+    once: every weekday and time block where some working schedule of the season (Manual Build,
+    Generated, Published; never a saved version, as Bring in choices offers them) holds the set,
+    with the divisions there (`LinkedChoicePlaces`, read when the details open). Rows are the time
+    blocks by start time, columns Monday to Friday; a cell where the set sits is a button, pressed
+    when it is one of the linked choice's periods. Reading the days follows `ScheduleUses`: the
+    day parts are listed first, their text read 25 at a time, and only a day that names the set
+    is read as a grid; past 40 such reads the week says "Not every schedule could be read, so some
+    places Chugim sits may be missing." A set placed nowhere says "Place Chugim on a schedule
+    first" (the desktop's words) and offers no "+ Linked choice".
+40. **Each gesture is one save, as the desktop writes each click** (`LinkedChoiceSaves`, through
+    `LinkedChoicesController.saveLinkedChoice`, in user mode, all or none): a name (saved when the
+    field is left or Enter pressed, as every setup field), Applies to, a period ticked or
+    unticked, a division ticked or unticked. A change says only what it changes (`periodsOn`,
+    `periodsOff`, `divisionsOn`, `divisionsOff`), so ticking twice is the same as once and two
+    people ticking different periods never undo each other; what one person last named or chose
+    for Applies to is what is kept, as the activity details are (ADR 0011's compare and set is for
+    a row's fields; a linked choice is edited a click at a time). The change shows at once and
+    stays until the season is read again; a refused one is taken back and said in the panel
+    (`role="alert"`). Saves wait their turn with the setup tables' rows (`saveForm`).
+41. **A linked choice is made by picking its first period** (desktop: the first period click mints
+    the bundle). "+ Linked choice" opens one with a dashed outline, the cursor in its name; Applies
+    to and divisions chosen before a period go with it; the first period saves it. Its name is
+    what was typed, or the desktop's proposal (D7): **the activity's name** for an offering's
+    first linked choice, and for a later one **the activity and that period** ("Pottery · Thu
+    12:30"), never the bare name twice. Once saved, the cursor stays on the period picked. Cancel
+    drops one not yet saved. A new linked choice goes after the set's others (`SortOrder__c`). A
+    blank name is refused ("Give the linked choice a name: it is what a sheet says to choose it.").
+    Two linked choices may share a name (desktop D7: no uniqueness), and the name field then
+    carries the needs-a-look corner ("Another linked choice in Chugim is called this, so a sheet
+    can't tell them apart.").
+42. **What would keep it from being placed as a set is marked where it is** (plan §2: "Two bundles
+    that share a period are refused, a known limit"; desktop D8 recommends warning while
+    authoring): a period also held by another linked choice of the set for a division both apply
+    to carries the corner ('Also in "Drama double", so neither is placed as a set; their periods
+    are filled one at a time'), and a period where the set no longer sits on any schedule stays
+    shown, pressed, with the corner ("Chugim isn't here on any schedule now"). Unticked, it keeps
+    its button (and the cursor) while the details stay open, so it can be ticked back; the next
+    time they open it is gone, as the set isn't there. The desktop warns
+    only for two bundles of one activity; the seat engine refuses any two linked choices sharing a
+    time, whatever their activity, so the mark does too. Nothing is resolved for the director.
+43. **Deleting** is the setup screens' delete (`SeasonSetupController.deleteRecord`, now allowing
+    `LinkedChoice__c`): asked first ('Delete "Pottery double"? A sheet that names it then counts as
+    Pottery.'), its periods (master-detail) and divisions (its trigger) go with it, and it is
+    refused while a run's seats are part of it ("it has elective runs: …", `ElectivesInUse`).
+44. **Seats and sheets** (ADR 0016 "Slice E8"; ADR 0017 choice 22): Elective seats reads the set's
+    linked choices with the run (one more query; a run's read is 9 queries); Assign seats places
+    them as sets and saves each such seat's `LinkedChoice__c`, which the server checks
+    (`ElectiveLinkedSeats`: a linked choice of the set, in its own offering, at one of its periods,
+    for a division it applies to, and a camper placed in it has a seat at every one of its
+    periods); a seat moved by hand is no longer part of it (`LinkedChoice__c` cleared; a lock alone
+    keeps it); Assign again changes it in place. The counter lists what keeps a linked choice from
+    being placed as a set ("1 linked choice filled one period at a time": a period this schedule
+    doesn't have for a division it applies to, an activity not offered at a period, two sharing a
+    time; the count is of linked choices, not of the rows under it), worked out from the run each
+    time, as the other problems are (choice 31). It also names each camper the engine fills one
+    period at a time although the set is placed (the engine's `UNSUPPORTED_LINKED_CHOICE` for
+    campers, by its own rule: "2 given their linked choice one period at a time", 'Asked for
+    "Pottery double" but doesn't attend every period it covers' or '... but has a locked seat in
+    one of its periods'), and each camper who asked for a linked choice that doesn't cover them
+    (their division left out by Only these or All except, or holding none of its periods): their
+    choice is never dropped but counts as its activity, as it was saved, and is said ("1 asked for
+    a linked choice not for their division", '"Pottery" doesn't cover Seniors, so it counts as
+    Pottery'; desktop D6 amendment 2026-09-30, `BUNDLE_TIER_NOT_COVERED`: "treated as
+    ordinary"). This matters most for an offering's first linked choice, which is named as its
+    activity (choice 41), so a sheet's plain "Pottery" is its choice.
+
+Checked by `LinkedChoicesTest` (as a scheduler, records made inside the same `System.runAs`: the
+week read from working schedules only, bounded, and incomplete past its budget; a linked choice
+made by its first period and changed gesture by gesture, bounded; untick, a second one's order;
+every refusal with nothing written; delete with its rows), `ElectiveSeatsTest` (a linked choice
+read with the run within 9 queries, its seats saved as a set, Assign again, every refusal, a hand
+move, the refused delete), `ChoicesImportTest` (a sheet's choice of a linked choice), Jest
+(`shoreshElectiveDetails`: the editor's every gesture, the draft, the marks, the notes, axe;
+`shoreshCampSetup` `electives.test.js`: a save in turn and the delete question;
+`shoreshElectiveSeats` `linked.test.js`, including the campers named against the engine's own
+findings, an uncovered camper's choice kept, and the count of linked choices; `shoreshChoicesImport` `review.test.js`; also
+namespaced), and in the test org by `scripts/a11y-browser-check.mjs` (the name and a period by
+keyboard, each saved, axe).
+
+Not in this slice: a linked choice shown as one cell across its periods on the seats screen's By
+offering (the mock-up's "Pottery double is a single cell"; today each period is counted in its
+offering), "Same as" on Bring in choices offering a linked choice (a name that is not exactly a
+linked choice's is settled as an activity), and double periods in last year's file becoming
+linked choices (E9).

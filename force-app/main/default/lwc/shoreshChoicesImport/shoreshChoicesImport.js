@@ -18,6 +18,7 @@ import { FIELD } from "c/shoreshSchema";
 import {
   allSettled,
   buildRequest,
+  linkedByFold,
   cantTellApartRows,
   countLines,
   groupsOfProgram,
@@ -83,6 +84,8 @@ export default class ShoreshChoicesImport extends LightningElement {
   fingerprint = null;
   file = null;
   reading = null;
+  // The set's linked choices by name when the file was read (slice E8): a sheet may name one.
+  linked = new Map();
   answers = {};
   check = null;
   done = null;
@@ -282,8 +285,14 @@ export default class ShoreshChoicesImport extends LightningElement {
         ? csvFile(chosen.name, await chosen.text())
         : workbookFile(await this.ensureSheetJs(), chosen.name, bytes);
       const activities = this.activities;
+      // A linked choice's name is what a sheet says to choose it (desktop ADR 2026-09-29 D6),
+      // so it is a name Shoresh knows, never one to settle.
+      const linked = linkedByFold(this._setup, this.setId);
       const reading = readChoices(file, {
-        activities: activities.map((a) => a.Name)
+        activities: [
+          ...activities.map((a) => a.Name),
+          ...[...linked.values()].map((l) => l.name)
+        ]
       });
       if (reading.campers.length === 0 && reading.cantTellApart.length === 0) {
         this.phase = "pick";
@@ -292,6 +301,7 @@ export default class ShoreshChoicesImport extends LightningElement {
         return;
       }
       this.fingerprint = await this.fingerprintOf(bytes);
+      this.linked = linked;
       this.file = file;
       this.fileName = chosen.name;
       this.reading = reading;
@@ -513,6 +523,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     return buildRequest({
       reading: this.reading,
       activities: this.activities,
+      linked: this.linked,
       answers: this.answers,
       groups: this.groups,
       place: {

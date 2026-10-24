@@ -122,8 +122,8 @@ The engine is unchanged; Elective seats (repo ADR 0018 choices 28 to 37) is its 
   block where the camper holds a locked seat that no longer fits (its offering set back to
   proposed, or no longer open to that division): that lock still holds the camper there, so the
   engine never places them over it and Assign seats is never refused for it (the desktop skips
-  locked seats the same way); locks are the locked seats that still fit. No linked choices yet (slice E8): `linkedChoices` and
-  `linkedChoiceTimes` are passed empty, in their shape.
+  locked seats the same way); locks are the locked seats that still fit. No linked choices yet (slice E8, below): `linkedChoices` and
+  `linkedChoiceTimes` were passed empty, in their shape.
 - **Its output, saved and checked** by the server (`ElectiveSeatSaves`; plan §5): the seats that
   are not locks, mapped back from activity to offering; and what did not run (`BELOW_MINIMUM`),
   kept on the run (`Dropped__c`) so the screen still says "Dropped had 4 of 6" after a reload. The
@@ -132,3 +132,51 @@ The engine is unchanged; Elective seats (repo ADR 0018 choices 28 to 37) is its 
 - **The refusal for blank seats** is shown with the offerings' names before anything is sent.
 - **No progress state** (choice 6's open question): 500 campers take under a second in the
   browser, so the main button simply waits while it works.
+
+## Slice E8: linked choices in the engine's input (2026-10-23)
+
+The engine is unchanged. Elective seats now passes the set's linked choices (repo ADR 0018
+choices 38 to 44), built in the browser (`c/shoreshElectiveSeats` `linked.js`) as the desktop's
+`deriveChoices.js` and `solvableBundles.js` build them (desktop ADR `2026-09-29-linked-elective-bundles`):
+
+- **Only a linked choice whose offering is confirmed** is passed (`solvableBundles.js`), and only
+  one with periods.
+- **One linked choice per division it applies to** (D2, D4): a time is one division's, so "Drama
+  both days" for Juniors and Seniors is two, `<Id>|<division>`, each with that division's times.
+  The divisions are those holding at least one of its periods in this run, filtered by All, Only
+  these or All except. This is one step tighter than the desktop's D2 (every division the set
+  sits in this run): a division that never has any of its periods gets no copy, so it isn't
+  reported as "a period that is not part of this run" for a time it was never going to have.
+- **A period this run doesn't have** for a division it applies to is still passed (D5), as a time
+  id the run doesn't have (`missing|Wednesday|<block>|<division>`), so the engine's own refusal
+  fills it one period at a time and says so; the screen says it in words.
+- **Every copy shares one key**, `linked|<Id>`, never the activity's Id, so a choice of the
+  linked choice reaches the copy for the camper's division (the engine's D4 broadcast) and a
+  choice of the plain activity never reaches a linked choice. Its `name` is the linked choice's.
+- **A camper's choice of a linked choice** (a saved choice with `l`, ADR 0017 choice 22) goes in
+  as the linked choice (its rank and kind, for the week or its one day and period), and also as
+  its activity at each of its periods the camper takes. The second is what "filled one period at
+  a time instead" means: when the set can't be given (refused, or the camper doesn't attend every
+  period, or holds a lock at one), the camper still has that activity ranked at those periods.
+  When the set is given, those periods are already taken, so the rows change nothing. A choice of
+  a linked choice that can't be used (deleted, its offering not confirmed) counts as the activity
+  it was saved with. So does a choice of one that **doesn't cover the camper** (no copy of it
+  holds any time they take: their division is left out, or holds none of its periods), and the
+  counter names them (desktop D6 amendment 2026-09-30, `BUNDLE_TIER_NOT_COVERED`): the engine
+  alone would skip them without a word ("attends none of its times"), dropping a written answer.
+- **A camper the engine fills one period at a time** although the set is placed (they take some
+  of its times but not all, or hold a lock at one: `UNSUPPORTED_LINKED_CHOICE` with `camperIds`)
+  is worked out on the screen by the same rule (`linked.js` `splitOf`, checked against the
+  engine's findings) and named in the counter, so it shows whenever the run is read, not only
+  just after Assign seats.
+- **What comes back**: a seat placed as part of a linked choice carries `linkedChoiceId`
+  (`<Id>|<division>`); Assign seats sends the linked choice's Id with it, and the server checks
+  and saves it (`ElectiveLinkedSeats`, `Assignment__c.LinkedChoice__c`).
+- **Same inputs, same seats**: the linked choices, their times and the campers are put in order
+  by the engine (choice 5); `linked.test.js` checks the same seats with every list reversed.
+
+Tests: `shoreshElectiveSeats` `linked.test.js` (the input per division, Only these and All
+except, an unconfirmed offering, a sheet's choice of one, the seats placed as a set and what
+Assign sends, a missing period and two sharing a time with the engine's refusal, the same seats
+in any order, an uncovered camper's choice kept as its activity, the campers split from a set
+matching the engine's findings).

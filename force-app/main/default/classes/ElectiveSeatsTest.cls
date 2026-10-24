@@ -1,9 +1,9 @@
 /**
  * Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37): the run as the screen reads
  * it, Assign seats and what its save checks, a seat moved or locked by hand, Finalize and its
- * refusals, and Start a new version. Every test acts as a scheduler with only the Shoresh
- * Scheduler permission set and makes its records inside the same runAs; requests are bounded in
- * queries for a camp of 260 campers. Names and numbers are made up.
+ * refusals, Start a new version, and linked choices' seats (slice E8). Every test acts as a
+ * scheduler with only the Shoresh Scheduler permission set and makes its records inside the same
+ * runAs; requests are bounded in queries for a camp of 260 campers. Names and numbers are made up.
  */
 @IsTest
 private class ElectiveSeatsTest {
@@ -236,9 +236,58 @@ private class ElectiveSeatsTest {
       return request;
     }
 
+    /** "Drama both days": Drama on Monday and Tuesday's Period 1, as a set (slice E8). */
+    LinkedChoice__c dramaBothDays(String appliesTo, Id divisionId) {
+      LinkedChoice__c choice = new LinkedChoice__c(
+        ElectiveSet__c = setId,
+        Name = 'Drama both days',
+        Offering__c = ids.get('o:Drama'),
+        AppliesTo__c = appliesTo,
+        SortOrder__c = 1
+      );
+      Database.insert(choice, AccessLevel.USER_MODE);
+      List<SObject> rows = new List<SObject>{
+        new LinkedChoiceTime__c(
+          LinkedChoice__c = choice.Id,
+          Weekday__c = 'Monday',
+          TimeBlock__c = ids.get('Period 1')
+        ),
+        new LinkedChoiceTime__c(
+          LinkedChoice__c = choice.Id,
+          Weekday__c = 'Tuesday',
+          TimeBlock__c = ids.get('Period 1')
+        )
+      };
+      if (divisionId != null) {
+        rows.add(
+          new Coverage__c(
+            Season__c = ids.get('Season'),
+            LinkedChoice__c = choice.Id,
+            Division__c = divisionId
+          )
+        );
+      }
+      Database.insert(rows, AccessLevel.USER_MODE);
+      return choice;
+    }
+
+    /** Every camper in Drama on both days, the first camper's two seats as the linked choice. */
+    ElectiveSeatSaves.AssignRequest firstAsSet(Decimal revision, Id choiceId) {
+      ElectiveSeatSaves.AssignRequest request = everyoneInDrama(revision);
+      request.seats[0].linkedChoiceId = choiceId;
+      request.seats[1].linkedChoiceId = choiceId;
+      return request;
+    }
+
     Assignment__c mondaySeat(Integer camper) {
       return [
-        SELECT Offering__c, Locked__c, ByHand__c, ActivityName__c, GroupName__c
+        SELECT
+          Offering__c,
+          LinkedChoice__c,
+          Locked__c,
+          ByHand__c,
+          ActivityName__c,
+          GroupName__c
         FROM Assignment__c
         WHERE
           ElectiveRun__c = :runId
@@ -694,6 +743,141 @@ private class ElectiveSeatsTest {
         refusal = e.getMessage();
       }
       Assert.areEqual('Assign seats first.', refusal);
+    }
+  }
+
+  // ---------------------------------------------------------------- linked choices (slice E8)
+
+  @IsTest
+  static void aLinkedChoiceIsReadAndItsSeatsSavedAsASet() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
+      Integer readQueries = Limits.getQueries() - before;
+      view = camp.assign(camp.firstAsSet(view.revision, both.Id));
+      Test.stopTest();
+
+      Assert.isTrue(readQueries <= 9, 'The read is bounded: ' + readQueries);
+      Assert.areEqual(1, view.linkedChoices.size());
+      ElectiveSeats.LinkedChoiceInfo info = view.linkedChoices[0];
+      Assert.areEqual('Drama both days', info.name);
+      Assert.areEqual(camp.ids.get('o:Drama'), info.offeringId);
+      Assert.areEqual('All', info.appliesTo);
+      Assert.areEqual(2, info.periods.size());
+      Assert.areEqual(both.Id, camp.mondaySeat(0).LinkedChoice__c);
+      Assert.isNull(camp.mondaySeat(1).LinkedChoice__c);
+      Integer linkedSeats = 0;
+      for (ElectiveSeats.SeatInfo seat : view.seats) {
+        if (seat.linkedChoiceId == both.Id) {
+          linkedSeats++;
+        }
+      }
+      Assert.areEqual(2, linkedSeats, 'Both of its periods');
+    }
+  }
+
+  @IsTest
+  static void assignAgainChangesWhetherASeatIsPartOfALinkedChoice() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      ElectiveSeats.RunView view = camp.assign(camp.firstAsSet(1, both.Id));
+
+      Test.startTest();
+      Integer rowsBefore = Limits.getDmlRows();
+      view = camp.assign(camp.everyoneInDrama(view.revision));
+      Integer rows = Limits.getDmlRows() - rowsBefore;
+      Test.stopTest();
+
+      // The same offering, no longer as a set: changed in place.
+      Assert.isNull(camp.mondaySeat(0).LinkedChoice__c);
+      Assert.isTrue(rows <= 3, 'Two seats and the run: ' + rows);
+    }
+  }
+
+  @IsTest
+  static void aLinkedChoicesSeatsAreChecked() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      Division__c seniors = ShoreshTestData.division(
+        camp.ids.get('Main'),
+        'Seniors'
+      );
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      String mismatch = 'A seat sent as part of a linked choice doesn\'t match it. Reload the page and assign again.';
+
+      Test.startTest();
+      // Only one of its periods.
+      ElectiveSeatSaves.AssignRequest half = camp.everyoneInDrama(1);
+      half.seats[0].linkedChoiceId = both.Id;
+      Assert.areEqual(mismatch, refusalOf(new Assigning(camp, half)));
+      // In another offering than its own.
+      ElectiveSeatSaves.AssignRequest other = camp.firstAsSet(1, both.Id);
+      other.seats[0].offeringId = camp.ids.get('o:Archery');
+      other.seats[1].offeringId = camp.ids.get('o:Archery');
+      Assert.areEqual(mismatch, refusalOf(new Assigning(camp, other)));
+      // For a division it doesn't apply to.
+      Database.update(
+        new LinkedChoice__c(Id = both.Id, AppliesTo__c = 'OnlyThese'),
+        AccessLevel.USER_MODE
+      );
+      Database.insert(
+        new Coverage__c(
+          Season__c = camp.ids.get('Season'),
+          LinkedChoice__c = both.Id,
+          Division__c = seniors.Id
+        ),
+        AccessLevel.USER_MODE
+      );
+      Assert.areEqual(
+        mismatch,
+        refusalOf(new Assigning(camp, camp.firstAsSet(1, both.Id)))
+      );
+      Test.stopTest();
+
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId],
+        'Nothing saved'
+      );
+    }
+  }
+
+  @IsTest
+  static void aSeatMovedByHandIsNoLongerPartOfItsLinkedChoice() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      ElectiveSeats.RunView view = camp.assign(camp.firstAsSet(1, both.Id));
+
+      Test.startTest();
+      view = camp.lock(view.revision, 0, true);
+      Assert.areEqual(
+        both.Id,
+        camp.mondaySeat(0).LinkedChoice__c,
+        'A lock keeps it'
+      );
+      view = camp.move(view.revision, 0, 'Archery');
+      Test.stopTest();
+
+      Assignment__c moved = camp.mondaySeat(0);
+      Assert.isNull(moved.LinkedChoice__c);
+      Assert.isTrue(moved.ByHand__c && moved.Locked__c);
+      // A linked choice its seats use can't be deleted.
+      String refusal;
+      try {
+        SeasonSetupController.deleteRecord(both.Id);
+      } catch (AuraHandledException e) {
+        refusal = e.getMessage();
+      }
+      Assert.isTrue(
+        refusal.contains('it has elective runs: "Chugim · Week 1"'),
+        refusal
+      );
     }
   }
 

@@ -15,6 +15,8 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
+import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 const apex = () => ({ default: jest.fn() });
@@ -41,6 +43,16 @@ jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
 jest.mock("@salesforce/apex/SetupTablesController.scheduleUses", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/LinkedChoicesController.saveLinkedChoice",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock(
   "lightning/confirm",
   () => ({ __esModule: true, default: { open: jest.fn() } }),
@@ -484,13 +496,80 @@ describe("c-shoresh-camp-setup: Electives", () => {
     expect(details.openOfferingId).toBe("o4");
     expect(chugim.detailsOpenFor).toBe("o4");
     expect(
-      details.shadowRoot.querySelector('[data-id="choice-name"]').textContent
+      details.shadowRoot.querySelector('[data-id="choice-name"]').value
     ).toBe("Pottery double");
     const back = jest.spyOn(chugim, "focusDetailsOf");
     details.shadowRoot.querySelector('[data-id="close"]').click();
     await flush();
     expect(back).toHaveBeenCalledWith("o4");
     expect(chugim.detailsOpenFor).toBeNull();
+  });
+
+  it("a linked choice's change is saved in turn, then the season is read again (slice E8)", async () => {
+    linkedChoicePlaces.mockResolvedValue({
+      complete: true,
+      cells: [{ weekday: "Tuesday", blockId: "t2", divisionIds: ["d1"] }]
+    });
+    saveLinkedChoice.mockResolvedValue("lc1");
+    const element = await render();
+    section(element, "es1").dispatchEvent(
+      new CustomEvent("details", { detail: { recordId: "o4" } })
+    );
+    await flush();
+    const details = q(element, "c-shoresh-elective-details");
+    expect(linkedChoicePlaces).toHaveBeenCalledWith({ electiveSetId: "es1" });
+    const onSaved = jest.fn();
+    const onFailure = jest.fn();
+    const edit = { id: "lc1", appliesTo: "AllExcept" };
+    details.dispatchEvent(
+      new CustomEvent("save", { detail: { edit, onSaved, onFailure } })
+    );
+    await flush();
+    expect(saveLinkedChoice).toHaveBeenCalledWith({
+      edit: JSON.stringify(edit)
+    });
+    expect(onSaved).toHaveBeenCalledWith("lc1");
+    expect(onFailure).not.toHaveBeenCalled();
+    expect(getSeasonSetup.mock.calls.length).toBe(2);
+
+    // Refused: the editor hears why, in the camp's words.
+    saveLinkedChoice.mockRejectedValue({
+      body: {
+        message: "That linked choice is no longer there. Reload the page."
+      }
+    });
+    details.dispatchEvent(
+      new CustomEvent("save", { detail: { edit, onSaved, onFailure } })
+    );
+    await flush();
+    expect(onFailure.mock.calls[0][0]).toContain(
+      "That linked choice is no longer there. Reload the page."
+    );
+  });
+
+  it("deleting a linked choice asks first, saying what a sheet that names it then counts as", async () => {
+    const element = await render();
+    LightningConfirm.open.mockResolvedValue(true);
+    deleteRecord.mockResolvedValue();
+    section(element, "es1").dispatchEvent(
+      new CustomEvent("details", { detail: { recordId: "o4" } })
+    );
+    await flush();
+    const onDeleted = jest.fn();
+    q(element, "c-shoresh-elective-details").dispatchEvent(
+      new CustomEvent("delete", {
+        detail: { recordId: "lc1", name: "Pottery double", onDeleted }
+      })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
+      label: "Delete",
+      message:
+        'Delete "Pottery double"? A sheet that names it then counts as Pottery.'
+    });
+    expect(scheduleUses).not.toHaveBeenCalled();
+    expect(deleteRecord).toHaveBeenCalledWith({ recordId: "lc1" });
+    expect(onDeleted).toHaveBeenCalled();
   });
 
   it("a season with no elective sets yet shows the sets list, ready for the first", async () => {

@@ -60,6 +60,8 @@ public with sharing class ChoicesImport {
   public class SheetChoice {
     public String n;
     public Id a;
+    // The set's linked choice the name is (slice E8); a is then its offering's activity.
+    public Id l;
     public String add;
     public Integer r;
     public String k;

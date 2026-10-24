@@ -54,6 +54,9 @@ public with sharing class ElectiveSeats {
     public List<ElectivePeriod> times = new List<ElectivePeriod>();
     @AuraEnabled
     public List<OfferingInfo> offerings = new List<OfferingInfo>();
+    // The set's linked choices (slice E8): placed as a set before anything else.
+    @AuraEnabled
+    public List<LinkedChoiceInfo> linkedChoices = new List<LinkedChoiceInfo>();
     @AuraEnabled
     public List<GroupInfo> groups = new List<GroupInfo>();
     @AuraEnabled
@@ -83,6 +86,29 @@ public with sharing class ElectiveSeats {
     public Decimal minimum;
     @AuraEnabled
     public Boolean proposed = false;
+  }
+
+  /** A linked choice: its offering, its periods (weekday and time block), who it applies to. */
+  public class LinkedChoiceInfo {
+    @AuraEnabled
+    public Id id;
+    @AuraEnabled
+    public String name;
+    @AuraEnabled
+    public Id offeringId;
+    @AuraEnabled
+    public String appliesTo;
+    @AuraEnabled
+    public List<Id> divisionIds = new List<Id>();
+    @AuraEnabled
+    public List<PeriodInfo> periods = new List<PeriodInfo>();
+  }
+
+  public class PeriodInfo {
+    @AuraEnabled
+    public String weekday;
+    @AuraEnabled
+    public Id blockId;
   }
 
   public class GroupInfo {
@@ -124,6 +150,8 @@ public with sharing class ElectiveSeats {
     public Id blockId;
     @AuraEnabled
     public Id offeringId;
+    @AuraEnabled
+    public Id linkedChoiceId;
     @AuraEnabled
     public Boolean locked = false;
     @AuraEnabled
@@ -193,6 +221,9 @@ public with sharing class ElectiveSeats {
     for (Offering__c offering : state.offerings) {
       view.offerings.add(offeringInfo(offering));
     }
+    for (LinkedChoice__c choice : state.linkedChoices) {
+      view.linkedChoices.add(linkedChoiceInfo(choice));
+    }
     for (Group__c grp : state.groups.values()) {
       view.groups.add(groupInfo(grp));
     }
@@ -214,6 +245,24 @@ public with sharing class ElectiveSeats {
     made.noLimit = offering.NoSeatLimit__c == true;
     made.minimum = offering.MinimumToRun__c;
     made.proposed = offering.Proposed__c == true;
+    return made;
+  }
+
+  private static LinkedChoiceInfo linkedChoiceInfo(LinkedChoice__c choice) {
+    LinkedChoiceInfo made = new LinkedChoiceInfo();
+    made.id = choice.Id;
+    made.name = choice.Name;
+    made.offeringId = choice.Offering__c;
+    made.appliesTo = choice.AppliesTo__c;
+    for (Coverage__c row : choice.Coverages__r) {
+      made.divisionIds.add(row.Division__c);
+    }
+    for (LinkedChoiceTime__c row : choice.Times__r) {
+      PeriodInfo period = new PeriodInfo();
+      period.weekday = row.Weekday__c;
+      period.blockId = row.TimeBlock__c;
+      made.periods.add(period);
+    }
     return made;
   }
 
@@ -245,6 +294,7 @@ public with sharing class ElectiveSeats {
     made.day = seat.Date__c;
     made.blockId = seat.TimeBlock__c;
     made.offeringId = seat.Offering__c;
+    made.linkedChoiceId = seat.LinkedChoice__c;
     made.locked = seat.Locked__c == true;
     made.byHand = seat.ByHand__c == true;
     return made;

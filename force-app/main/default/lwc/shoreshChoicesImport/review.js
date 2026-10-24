@@ -10,6 +10,7 @@
  */
 import { foldName } from "c/shoreshImportEngine";
 import { CHOICE_KINDS, sheetLayout } from "c/shoreshChoicesReader";
+import { FIELD } from "c/shoreshSchema";
 
 const { RANKED, UNORDERED } = CHOICE_KINDS;
 
@@ -240,6 +241,31 @@ export function activitiesByFold(activities) {
   for (const a of activities || []) {
     const key = foldName(a.Name);
     if (key && !result.has(key)) result.set(key, { id: a.Id, name: a.Name });
+  }
+  return result;
+}
+
+/**
+ * The set's linked choices by folded name (slice E8): { id, name, activityId }. A sheet names a
+ * linked choice by its name; two of one name keep the first (in the set's order), and the
+ * Electives screen marks the two.
+ */
+export function linkedByFold(setup, setId) {
+  const electives = (setup && setup.electives) || {};
+  const activityOf = new Map(
+    (electives.offerings || []).map((o) => [o.Id, o[FIELD.Offering.Activity]])
+  );
+  const result = new Map();
+  for (const choice of electives.linkedChoices || []) {
+    if (choice[FIELD.LinkedChoice.ElectiveSet] !== setId) continue;
+    const key = foldName(choice.Name);
+    if (key && !result.has(key)) {
+      result.set(key, {
+        id: choice.Id,
+        name: choice.Name,
+        activityId: activityOf.get(choice[FIELD.LinkedChoice.Offering]) || null
+      });
+    }
   }
   return result;
 }
@@ -558,15 +584,22 @@ export function keptCommentRows(reading) {
 // ---------- the choices, settled ----------
 
 /**
- * A camper's choices with every name settled: { n, a, add, r, k, d, p } with blank keys left out.
- * A name the camp has is that activity; Same as is the chosen one; Add carries the name to add;
- * Leave out drops that one choice (decision 53). Returns null for a name not answered yet.
+ * A camper's choices with every name settled: { n, a, l, add, r, k, d, p } with blank keys left
+ * out. A linked choice's name is that linked choice (l) and its offering's activity (a), before
+ * an activity of the same name (desktop ADR 2026-09-29 D6: the linked choice's name is what a
+ * sheet must match); a name the camp has is that activity; Same as is the chosen one; Add carries
+ * the name to add; Leave out drops that one choice (decision 53). Returns null for a name not
+ * answered yet.
  */
-function settledChoice(c, known, answers) {
+function settledChoice(c, known, answers, linked) {
   const key = foldName(c.name);
   const base = { n: c.name };
+  const choice = linked && linked.get(key);
   const activity = known.get(key);
-  if (activity) {
+  if (choice && choice.activityId) {
+    base.a = choice.activityId;
+    base.l = choice.id;
+  } else if (activity) {
     base.a = activity.id;
   } else {
     const answer = answers[key];
@@ -594,6 +627,7 @@ export function allSettled(newNames, answers) {
 export function buildRequest({
   reading,
   activities,
+  linked,
   answers,
   groups,
   place,
@@ -608,7 +642,7 @@ export function buildRequest({
   for (const camper of reading.campers) {
     const choices = [];
     for (const c of camper.choices) {
-      const settled = settledChoice(c, known, answers);
+      const settled = settledChoice(c, known, answers, linked);
       if (settled === null) return null;
       if (settled) choices.push(settled);
     }

@@ -1,5 +1,8 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD } from "c/shoreshSchema";
+import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
+import { foldName } from "c/shoreshImportEngine";
+import { failed } from "c/shoreshErrors";
 
 const OFFER = FIELD.Offering;
 const CHOICE = FIELD.LinkedChoice;
@@ -21,6 +24,7 @@ const APPLIES_TO = [
   { value: "OnlyThese", label: "Only these" },
   { value: "AllExcept", label: "All except" }
 ];
+const DRAFT = "draft";
 
 /** The season's elective sets (ElectiveMenus.Setup), or an empty one. */
 export function electivesOf(setup) {
@@ -81,15 +85,15 @@ function blocksOf(setup) {
   return blocks;
 }
 
-/** Every division of the season, by Id. */
+/** Every division of the season, in the season's order: [{ id, name }]. */
 function divisionsOf(setup) {
-  const names = new Map();
+  const result = [];
   ((setup && setup.programs) || []).forEach((entry) => {
     (entry.divisions || []).forEach((d) =>
-      names.set(d.division.Id, d.division.Name)
+      result.push({ id: d.division.Id, name: d.division.Name })
     );
   });
-  return names;
+  return result;
 }
 
 /** "12:30" from a time block's start (milliseconds after midnight). */
@@ -103,14 +107,57 @@ function clockOf(value) {
   return `${hour}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+const periodKey = (weekday, blockId) => `${weekday}|${blockId}`;
+
+/** The divisions a linked choice is for, among those given (desktop bundleOverlap.js resolveScope). */
+export function divisionsCovered(appliesTo, named, present) {
+  const chosen = new Set(named || []);
+  if (appliesTo === "OnlyThese") return present.filter((d) => chosen.has(d));
+  if (appliesTo === "AllExcept") return present.filter((d) => !chosen.has(d));
+  return [...present];
+}
+
+/**
+ * A linked choice as saved, with the gestures still on their way laid over it (they are shown at
+ * once, and the season read after each save replaces them).
+ */
+export function withPending(choice, edits) {
+  const result = {
+    id: choice.id,
+    name: choice.name,
+    appliesTo: choice.appliesTo,
+    periods: new Set(choice.periods),
+    divisionIds: new Set(choice.divisionIds)
+  };
+  edits.forEach((edit) => {
+    if (edit.name != null) result.name = edit.name;
+    if (edit.appliesTo != null) result.appliesTo = edit.appliesTo;
+    (edit.periodsOff || []).forEach((p) =>
+      result.periods.delete(periodKey(p.weekday, p.blockId))
+    );
+    (edit.periodsOn || []).forEach((p) =>
+      result.periods.add(periodKey(p.weekday, p.blockId))
+    );
+    (edit.divisionsOff || []).forEach((d) => result.divisionIds.delete(d));
+    (edit.divisionsOn || []).forEach((d) => result.divisionIds.add(d));
+  });
+  return result;
+}
+
 /**
  * One offering's linked choices, beside the Electives list (design-research electives-r1
- * setup-a: linked choices beside the table, decision 53.1). Opened from the offering's row
- * (open(id)): each linked choice's name on the sheet, its periods ticked on a small week, and who
- * it applies to (the desktop's BundleEditor.jsx). Read only: the editor is slice E8, and its place
- * is held at the foot ("Linked choice", coming).
+ * setup-a, decision 53.1; electives slice E8, repo ADR 0018 choices 38 to 44): each linked
+ * choice's name on the sheet, its periods picked on a small week of where the set sits, and who
+ * it applies to (All, Only these, All except), as the desktop's BundleEditor.jsx edits them.
+ * Opened from the offering's row (open(id)). Each gesture is saved as it is made; a linked choice
+ * is made by picking its first period, named as the desktop proposes (the activity's name, then
+ * the activity and that period). What would keep it from being placed as a set is marked where
+ * it is: a period the set no longer sits in, two linked choices sharing a period, two with one
+ * name.
  *
- * Fires: close { offeringId } (Close pressed: the page puts the cursor back on the row's chevron).
+ * Fires: close { offeringId } (Close pressed: the page puts the cursor back on the row's chevron);
+ * save { edit, onSaved(id), onFailure(message) } (one gesture, LinkedChoicesController's Edit);
+ * delete { recordId, name, onDeleted } (the page asks first, as every setup delete).
  */
 export default class ShoreshElectiveDetails extends LightningElement {
   @api terms;
@@ -118,6 +165,23 @@ export default class ShoreshElectiveDetails extends LightningElement {
   offeringId = null;
   _setup;
   focusHeadingNext = false;
+  // Where the set sits: { setId, cells, complete } once read, null while reading.
+  places = null;
+  placesError = null;
+  // The linked choice being made: { name, appliesTo, divisionIds, sending, createdId } or null.
+  draft = null;
+  // Gestures on their way: [{ seq, choiceId, edit, saved }].
+  pending = [];
+  seq = 0;
+  error = null;
+  // Names being typed, by linked choice, until the field is left.
+  typed = {};
+  // A control that takes the cursor at the next render (a selector).
+  focusAfter = null;
+  // Periods pressed while these details are open ("choiceId|weekday|blockId"): each keeps its
+  // button, even unticked where the set doesn't sit, so the cursor stays on it and it can be
+  // ticked again. Forgotten when the details close or show another offering.
+  pressed = new Set();
 
   /** The season setup from SeasonSetupController (electives, activities, programs). */
   @api
@@ -126,6 +190,15 @@ export default class ShoreshElectiveDetails extends LightningElement {
   }
   set setup(value) {
     this._setup = value;
+    // The season read after a save shows it: what was laid over it goes.
+    this.pending = this.pending.filter((p) => !p.saved);
+    if (
+      this.draft &&
+      this.draft.createdId &&
+      this.savedChoices.some((c) => c.id === this.draft.createdId)
+    ) {
+      this.draft = null;
+    }
     if (this.offeringId && !this.offering) {
       // Gone (deleted, or another season): its details close.
       this.offeringId = null;
@@ -147,14 +220,53 @@ export default class ShoreshElectiveDetails extends LightningElement {
     if (!known) {
       return false;
     }
+    if (offeringId !== this.offeringId) {
+      this.draft = null;
+      this.error = null;
+      this.pressed = new Set();
+    }
     this.offeringId = offeringId;
     this.focusHeadingNext = true;
     this.focusHeading();
+    this.readPlaces();
     return true;
+  }
+
+  /** Where the set sits, read each time the details open (the grid may have changed since). */
+  async readPlaces() {
+    const setId = this.setId;
+    if (!setId) return;
+    this.places = null;
+    this.placesError = null;
+    try {
+      const read = await linkedChoicePlaces({ electiveSetId: setId });
+      if (this.setId === setId) {
+        this.places = {
+          setId,
+          cells: (read && read.cells) || [],
+          complete: !read || read.complete !== false
+        };
+      }
+    } catch (e) {
+      if (this.setId === setId) {
+        this.places = { setId, cells: [], complete: false };
+        this.placesError = failed(
+          `Where ${this.setName} sits could not be read.`,
+          e
+        );
+      }
+    }
   }
 
   renderedCallback() {
     this.focusHeading();
+    if (this.focusAfter) {
+      const target = this.template.querySelector(this.focusAfter);
+      if (target) {
+        this.focusAfter = null;
+        target.focus();
+      }
+    }
   }
 
   focusHeading() {
@@ -169,8 +281,12 @@ export default class ShoreshElectiveDetails extends LightningElement {
   handleClose() {
     const offeringId = this.offeringId;
     this.offeringId = null;
+    this.draft = null;
+    this.pressed = new Set();
     this.dispatchEvent(new CustomEvent("close", { detail: { offeringId } }));
   }
+
+  // ---------- what is shown ----------
 
   get offering() {
     return (
@@ -178,6 +294,16 @@ export default class ShoreshElectiveDetails extends LightningElement {
         (o) => o.Id === this.offeringId
       ) || null
     );
+  }
+
+  get setId() {
+    const offering = this.offering;
+    return offering ? offering[OFFER.ElectiveSet] : null;
+  }
+
+  get setName() {
+    const set = electivesOf(this._setup).sets.find((s) => s.Id === this.setId);
+    return (set && set.Name) || "";
   }
 
   get name() {
@@ -195,87 +321,456 @@ export default class ShoreshElectiveDetails extends LightningElement {
   }
 
   get linkedTitle() {
-    return this.terms ? this.terms.p("LinkedChoice") : "Linked choices";
+    return this.term("p", "LinkedChoice", "Linked choices");
   }
 
   get addLabel() {
-    return this.terms ? this.terms.s("LinkedChoice") : "Linked choice";
+    return this.term("s", "LinkedChoice", "Linked choice");
   }
 
-  get hasChoices() {
-    return this.choices.length > 0;
+  /** A camp word (s, p, sIn, pIn), or the model's when the words aren't read yet. */
+  term(kind, term, fallback) {
+    return this.terms ? this.terms[kind](term) : fallback;
   }
 
-  /** Each linked choice: its name, its periods on a small week, and who it applies to. */
+  /** The set's linked choices as saved: { id, name, offeringId, appliesTo, periods, divisionIds }. */
+  get savedChoices() {
+    const setId = this.setId;
+    return electivesOf(this._setup)
+      .linkedChoices.filter((c) => !setId || c[CHOICE.ElectiveSet] === setId)
+      .map((c) => ({
+        id: c.Id,
+        name: c.Name,
+        offeringId: c[CHOICE.Offering],
+        appliesTo: c[CHOICE.AppliesTo] || "All",
+        periods: (c[CHILDREN.LinkedChoice.Times] || []).map((t) =>
+          periodKey(t[TIME.Weekday], t[TIME.TimeBlock])
+        ),
+        divisionIds: (c[CHILDREN.LinkedChoice.Coverages] || []).map(
+          (row) => row[COVERS.Division]
+        )
+      }));
+  }
+
+  /** The set's linked choices as shown: saved, with the gestures on their way laid over them. */
+  get shownChoices() {
+    return this.savedChoices.map((c) => ({
+      ...withPending(
+        c,
+        this.pending.filter((p) => p.choiceId === c.id).map((p) => p.edit)
+      ),
+      offeringId: c.offeringId
+    }));
+  }
+
+  /** Where the set sits: "Tuesday|<block>" -> the division Ids there. */
+  get placeMap() {
+    const map = new Map();
+    ((this.places && this.places.cells) || []).forEach((cell) => {
+      map.set(periodKey(cell.weekday, cell.blockId), cell.divisionIds || []);
+    });
+    return map;
+  }
+
+  get placesRead() {
+    return !!this.places && this.places.setId === this.setId;
+  }
+
+  get sitsNowhere() {
+    return (
+      this.placesRead && this.places.complete && this.places.cells.length === 0
+    );
+  }
+
+  get placesIncomplete() {
+    return this.placesRead && !this.places.complete;
+  }
+
+  get nowhereText() {
+    return `Place ${this.setName || "this set"} on a schedule first`;
+  }
+
+  get incompleteText() {
+    return (
+      this.placesError ||
+      `Not every schedule could be read, so some places ${this.setName} sits may be missing.`
+    );
+  }
+
+  /** The divisions the chips offer: where the set sits, else every division of the season. */
+  get divisionChoices() {
+    const all = divisionsOf(this._setup);
+    const there = new Set();
+    this.placeMap.forEach((ids) => ids.forEach((id) => there.add(id)));
+    const shown = there.size ? all.filter((d) => there.has(d.id)) : all;
+    return shown.map((d) => ({ label: d.name, value: d.id }));
+  }
+
+  get canAdd() {
+    return this.placesRead && this.places.cells.length > 0 && !this.draft;
+  }
+
+  get addDisabled() {
+    return !this.canAdd;
+  }
+
+  get hasNote() {
+    return this.sitsNowhere || this.placesIncomplete;
+  }
+
+  /** Each linked choice of the offering (and the one being made), as the template draws it. */
   get choices() {
-    const setup = this._setup;
-    const blocks = blocksOf(setup);
-    const divisions = divisionsOf(setup);
-    return electivesOf(setup)
-      .linkedChoices.filter((c) => c[CHOICE.Offering] === this.offeringId)
-      .map((choice) => {
-        const times = choice[CHILDREN.LinkedChoice.Times] || [];
-        const picked = new Set(
-          times.map((t) => `${t[TIME.Weekday]}|${t[TIME.TimeBlock]}`)
-        );
-        const days = WEEKDAYS.filter((day) =>
-          times.some((t) => t[TIME.Weekday] === day)
-        );
-        const shownDays = days.length ? WEEKDAYS : [];
-        const blockIds = [...new Set(times.map((t) => t[TIME.TimeBlock]))]
-          .filter((id) => blocks.has(id))
-          .sort((a, b) => blocks.get(a).order - blocks.get(b).order);
-        const rows = blockIds.map((id) => {
-          const block = blocks.get(id).block;
-          const clock = clockOf(block[BLOCK.StartTime]) || block.Name;
-          return {
-            key: `${choice.Id}-${id}`,
-            clock,
-            cells: shownDays.map((day) => {
-              const ticked = picked.has(`${day}|${id}`);
-              return {
-                key: `${choice.Id}-${id}-${day}`,
-                className: ticked ? "period period_on" : "period",
-                ticked,
-                label: `${day}, ${block.Name}${clock !== block.Name ? ` (${clock})` : ""}: ${
-                  ticked ? "linked" : "not linked"
-                }`
-              };
-            })
+    const shown = this.shownChoices;
+    const mine = shown.filter((c) => c.offeringId === this.offeringId);
+    const views = mine.map((c) => this.viewOf(c, shown, false));
+    if (
+      this.draft &&
+      !(
+        this.draft.createdId && shown.some((c) => c.id === this.draft.createdId)
+      )
+    ) {
+      const draft = {
+        id: DRAFT,
+        name: this.draft.name,
+        appliesTo: this.draft.appliesTo,
+        periods: new Set(),
+        divisionIds: new Set(this.draft.divisionIds),
+        offeringId: this.offeringId
+      };
+      views.push(this.viewOf(draft, shown, true));
+    }
+    return views;
+  }
+
+  viewOf(choice, shown, isDraft) {
+    const key = choice.id;
+    const places = this.placeMap;
+    const blocks = blocksOf(this._setup);
+    const allDivisions = divisionsOf(this._setup).map((d) => d.id);
+    // Rows: every time block where the set sits, this choice has a period, or one was pressed.
+    const pressed = [...this.pressed]
+      .filter((p) => p.startsWith(`${key}|`))
+      .map((p) => p.slice(key.length + 1));
+    const keys = new Set([...places.keys(), ...choice.periods, ...pressed]);
+    const blockIds = [...new Set([...keys].map((k) => k.split("|")[1]))]
+      .filter((id) => blocks.has(id))
+      .sort(
+        (a, b) =>
+          (blocks.get(a).block[BLOCK.StartTime] ?? 0) -
+            (blocks.get(b).block[BLOCK.StartTime] ?? 0) ||
+          blocks.get(a).order - blocks.get(b).order
+      );
+    const others = shown.filter(
+      (c) => c.id !== choice.id && c.periods.size > 1
+    );
+    const sending = isDraft && this.draft && this.draft.sending;
+    const rows = blockIds.map((blockId) => {
+      const block = blocks.get(blockId).block;
+      const clock = clockOf(block[BLOCK.StartTime]) || block.Name;
+      return {
+        key: `${key}-${blockId}`,
+        clock,
+        cells: WEEKDAYS.map((day) => {
+          const k = periodKey(day, blockId);
+          const sits = places.has(k);
+          const ticked = choice.periods.has(k);
+          const words = `${day} ${clock}${clock !== block.Name ? ` (${block.Name})` : ""}`;
+          const cell = {
+            key: `${key}-${k}`,
+            id: `${key}|${k}`,
+            weekday: day,
+            blockId,
+            shown: sits || ticked || this.pressed.has(`${key}|${k}`),
+            ticked,
+            pressed: ticked ? "true" : "false",
+            disabled: !!sending,
+            className: ticked ? "period period_on" : "period",
+            label: words,
+            look: null
           };
-        });
-        const applies = choice[CHOICE.AppliesTo] || "All";
-        const named = (choice[CHILDREN.LinkedChoice.Coverages] || [])
-          .map((row) => divisions.get(row[COVERS.Division]))
-          .filter((n) => n);
-        const chosen =
-          APPLIES_TO.find((a) => a.value === applies) || APPLIES_TO[0];
-        return {
-          key: choice.Id,
-          name: choice.Name,
-          days: shownDays.map((day) => ({
-            key: `${choice.Id}-${day}`,
-            short: SHORT_DAYS[day]
-          })),
-          rows,
-          hasPeriods: rows.length > 0,
-          appliesTo: APPLIES_TO.map((option) => ({
-            key: `${choice.Id}-${option.value}`,
-            label: option.label,
-            className:
-              option.value === chosen.value
-                ? "segment shoresh-raised segment_on"
-                : "segment"
-          })),
-          // Read out once, in words: "Applies to: Only these: Juniors".
-          appliesText: `Applies to: ${chosen.label}${
-            chosen.value !== "All" && named.length
-              ? `: ${named.join(", ")}`
-              : ""
-          }`,
-          divisions:
-            chosen.value !== "All" && named.length ? named.join(", ") : ""
-        };
-      });
+          if (ticked && this.placesRead && !sits) {
+            cell.look = `${this.setName} isn't here on any schedule now`;
+          } else if (ticked && choice.periods.size > 1) {
+            cell.look = this.sharedWith(choice, k, others, allDivisions);
+          }
+          cell.lookName = cell.look ? `${words}: ${cell.look}` : null;
+          return cell;
+        })
+      };
+    });
+    const appliesTo = choice.appliesTo || "All";
+    const names = new Map(divisionsOf(this._setup).map((d) => [d.id, d.name]));
+    const named = [...choice.divisionIds].filter((id) => names.has(id));
+    const sameName = shown.some(
+      (c) =>
+        c.id !== choice.id &&
+        foldName(c.name) &&
+        foldName(c.name) === foldName(choice.name)
+    );
+    return {
+      key,
+      isDraft,
+      className: isDraft ? "choice choice_draft" : "choice",
+      name: choice.name,
+      namePlaceholder: isDraft ? this.proposedName(null) : "",
+      nameLabel: "Name on the sheet",
+      nameLook: sameName
+        ? `Another ${this.term("sIn", "LinkedChoice", "linked choice")} in ${this.setName} is called this, so a sheet can't tell them apart.`
+        : null,
+      days: WEEKDAYS.map((day) => ({
+        key: `${key}-${day}`,
+        short: SHORT_DAYS[day],
+        label: day
+      })),
+      rows,
+      hasRows: rows.length > 0,
+      appliesTo,
+      appliesOptions: APPLIES_TO,
+      showDivisions: appliesTo !== "All",
+      divisionsLabel:
+        appliesTo === "AllExcept"
+          ? `All ${this.term("pIn", "Division", "divisions")} except`
+          : `Only these ${this.term("pIn", "Division", "divisions")}`,
+      divisionOptions: this.divisionOptionsFor(named, names),
+      divisionValue: named,
+      disabled: !!sending,
+      deleteText: isDraft ? "Cancel" : "Delete",
+      deleteLabel: isDraft
+        ? `Don't add this ${this.term("sIn", "LinkedChoice", "linked choice")}`
+        : `Delete "${choice.name}"`
+    };
+  }
+
+  /** The chips: where the set sits, and any division the choice already names. */
+  divisionOptionsFor(named, names) {
+    const options = [...this.divisionChoices];
+    named.forEach((id) => {
+      if (!options.some((o) => o.value === id)) {
+        options.push({ label: names.get(id), value: id });
+      }
+    });
+    return options;
+  }
+
+  /**
+   * Another linked choice holding this period for a division this one is for too: neither is
+   * placed as a set (the seat engine's known limit, desktop ADR 2026-09-29 D8), so it is said.
+   */
+  sharedWith(choice, k, others, allDivisions) {
+    const present = this.placeMap.get(k) || allDivisions;
+    const mine = new Set(
+      divisionsCovered(choice.appliesTo, [...choice.divisionIds], present)
+    );
+    const clash = others.find(
+      (other) =>
+        other.periods.has(k) &&
+        divisionsCovered(other.appliesTo, [...other.divisionIds], present).some(
+          (d) => mine.has(d)
+        )
+    );
+    return clash
+      ? `Also in "${clash.name}", so neither is placed as a set; their periods are filled one at a time`
+      : null;
+  }
+
+  /** The desktop's name for a new linked choice: the activity's, then the activity and a period. */
+  proposedName(firstPeriod) {
+    const activity = this.name;
+    const hasOne = this.savedChoices.some(
+      (c) => c.offeringId === this.offeringId
+    );
+    if (!hasOne || !firstPeriod) {
+      return activity;
+    }
+    const block = blocksOf(this._setup).get(firstPeriod.blockId);
+    const clock = block
+      ? clockOf(block.block[BLOCK.StartTime]) || block.block.Name
+      : "";
+    return `${activity} · ${SHORT_DAYS[firstPeriod.weekday]} ${clock}`.trim();
+  }
+
+  // ---------- gestures ----------
+
+  /** Sends one gesture; it shows at once and stays until the season is read again. */
+  send(choiceId, edit, { onSaved, onFailure } = {}) {
+    const entry = { seq: ++this.seq, choiceId, edit, saved: false };
+    if (choiceId !== DRAFT) {
+      this.pending = [...this.pending, entry];
+    }
+    this.error = null;
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          edit,
+          onSaved: (id) => {
+            entry.saved = true;
+            this.pending = [...this.pending];
+            if (onSaved) onSaved(id);
+          },
+          onFailure: (message) => {
+            this.pending = this.pending.filter((p) => p !== entry);
+            this.error = message;
+            if (onFailure) onFailure(message);
+          }
+        }
+      })
+    );
+  }
+
+  choiceOf(event) {
+    const key = event.currentTarget.dataset.choice;
+    return this.choices.find((c) => c.key === key) || null;
+  }
+
+  handleAdd() {
+    if (!this.canAdd) return;
+    this.draft = {
+      name: "",
+      appliesTo: "All",
+      divisionIds: [],
+      sending: false,
+      createdId: null
+    };
+    this.focusAfter = '[data-choice="draft"][data-id="choice-name"]';
+  }
+
+  handlePeriod(event) {
+    const { choice: key, weekday, block } = event.currentTarget.dataset;
+    const period = { weekday, blockId: block };
+    if (key === DRAFT) {
+      this.makeDraft(period);
+      return;
+    }
+    const shown = this.shownChoices.find((c) => c.id === key);
+    if (!shown) return;
+    const on = !shown.periods.has(periodKey(weekday, block));
+    this.pressed = new Set(this.pressed).add(
+      `${key}|${periodKey(weekday, block)}`
+    );
+    this.send(key, {
+      id: key,
+      periodsOn: on ? [period] : [],
+      periodsOff: on ? [] : [period]
+    });
+  }
+
+  /** The first period picked makes the linked choice, with what was typed or chosen so far. */
+  makeDraft(period) {
+    const draft = this.draft;
+    if (!draft || draft.sending) return;
+    const name = (draft.name || "").trim() || this.proposedName(period);
+    this.draft = { ...draft, sending: true };
+    this.send(
+      DRAFT,
+      {
+        offeringId: this.offeringId,
+        name,
+        appliesTo: draft.appliesTo,
+        periodsOn: [period],
+        divisionsOn: draft.appliesTo === "All" ? [] : draft.divisionIds
+      },
+      {
+        onSaved: (id) => {
+          this.draft = { ...this.draft, createdId: id };
+          // The cursor stays on the period picked, now in the saved linked choice.
+          this.focusAfter = `[data-cell="${id}|${periodKey(period.weekday, period.blockId)}"]`;
+        },
+        onFailure: () => {
+          this.draft = { ...this.draft, sending: false };
+        }
+      }
+    );
+  }
+
+  /** Typing: kept until the field is left (or Enter), then saved, as every setup field is. */
+  handleNameInput(event) {
+    const key = event.currentTarget.dataset.choice;
+    const value = event.detail ? event.detail.value : event.target.value;
+    if (key === DRAFT) {
+      this.draft = { ...this.draft, name: value };
+      return;
+    }
+    this.typed = { ...this.typed, [key]: value };
+  }
+
+  handleNameKey(event) {
+    if (event.key === "Enter") {
+      this.commitName(event.currentTarget.dataset.choice);
+    }
+  }
+
+  handleNameLeave(event) {
+    this.commitName(event.currentTarget.dataset.choice);
+  }
+
+  commitName(key) {
+    if (key === DRAFT || !(key in this.typed)) return;
+    const value = (this.typed[key] || "").trim();
+    const rest = { ...this.typed };
+    delete rest[key];
+    this.typed = rest;
+    const shown = this.shownChoices.find((c) => c.id === key);
+    if (!shown || value === shown.name) return;
+    if (!value) {
+      this.error = `Give the ${this.term("sIn", "LinkedChoice", "linked choice")} a name: it is what a sheet says to choose it.`;
+      return;
+    }
+    this.send(key, { id: key, name: value });
+  }
+
+  handleAppliesTo(event) {
+    const key = event.currentTarget.dataset.choice;
+    const value = event.detail.value;
+    if (key === DRAFT) {
+      this.draft = { ...this.draft, appliesTo: value };
+      return;
+    }
+    this.send(key, { id: key, appliesTo: value });
+  }
+
+  handleDivisions(event) {
+    const key = event.currentTarget.dataset.choice;
+    const wanted = new Set(event.detail.value || []);
+    if (key === DRAFT) {
+      this.draft = { ...this.draft, divisionIds: [...wanted] };
+      return;
+    }
+    const shown = this.shownChoices.find((c) => c.id === key);
+    if (!shown) return;
+    const on = [...wanted].filter((id) => !shown.divisionIds.has(id));
+    const off = [...shown.divisionIds].filter((id) => !wanted.has(id));
+    if (!on.length && !off.length) return;
+    this.send(key, { id: key, divisionsOn: on, divisionsOff: off });
+  }
+
+  handleDelete(event) {
+    const view = this.choiceOf(event);
+    if (!view) return;
+    if (view.isDraft) {
+      this.draft = null;
+      this.focusAfter = '[data-id="add-linked-choice"]';
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("delete", {
+        detail: {
+          recordId: view.key,
+          name: view.name,
+          onDeleted: () => {
+            // The page calls this once the season is read again, after the details have
+            // redrawn without the deleted one: the cursor goes to the add button now. Only if it
+            // isn't drawn yet does the next render take it there.
+            const add = this.template.querySelector(
+              '[data-id="add-linked-choice"]'
+            );
+            if (add) {
+              add.focus();
+            } else {
+              this.focusAfter = '[data-id="add-linked-choice"]';
+            }
+          }
+        }
+      })
+    );
   }
 }

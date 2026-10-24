@@ -15,6 +15,7 @@ import {
 } from "c/shoreshElectiveEngine";
 import { foldName } from "c/shoreshImportEngine";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
+import { linkedIdOf, linkedOf, linkedRows, splitOf } from "./linked";
 
 // The choices' kinds as Bring in choices saves them (ADR 0017 choice 16).
 const KIND = {
@@ -168,29 +169,43 @@ export function timeOfChoice(run, camper, choice) {
 }
 
 /**
- * Each camper's choices as the engine takes them, and the choices whose day and period didn't
- * match ({ camperId, text }). Unordered choices are a tie among equals (rank 1, never an order:
- * desktop owner ruling 2026-09-29); a choice "left out" was never saved.
+ * Each camper's choices as the engine takes them, the choices whose day and period didn't
+ * match ({ camperId, text }), and the choices of a linked choice that doesn't cover the camper,
+ * counted as its activity ({ camperId, linkedChoiceId }, once each). Unordered choices are a tie
+ * among equals (rank 1, never an order: desktop owner ruling 2026-09-29); a choice "left out" was
+ * never saved.
  */
-export function choicesOf(run) {
+export function choicesOf(run, linked = linkedOf(run)) {
   const choices = [];
   const unmatched = [];
+  const uncovered = [];
+  const saidUncovered = new Set();
   run.campers.forEach((camper) => {
     parseChoices(camper.choices).forEach((c) => {
       const where = timeOfChoice(run, camper, c);
       if (where.unmatched) {
         unmatched.push({ camperId: camper.id, text: where.unmatched });
       }
-      choices.push({
+      const base = {
         camperId: camper.id,
         key: c.a,
         timeId: where.timeKey,
         rank: c.k === "unordered" || c.r == null ? 1 : Number(c.r),
         rankKind: KIND[c.k] || null
-      });
+      };
+      // A linked choice named on the sheet (slice E8), or the activity it was saved as.
+      const fromLinked = linkedRows(run, linked, camper, c, base);
+      if (fromLinked && fromLinked.uncovered) {
+        const once = `${camper.id}|${c.l}`;
+        if (!saidUncovered.has(once)) {
+          saidUncovered.add(once);
+          uncovered.push({ camperId: camper.id, linkedChoiceId: c.l });
+        }
+      }
+      choices.push(...(fromLinked ? fromLinked.rows : [base]));
     });
   });
-  return { choices, unmatched };
+  return { choices, unmatched, uncovered };
 }
 
 /**
@@ -236,12 +251,13 @@ function ordinal(n) {
 /**
  * The seat engine's input for this run (ADR 0016 choice 3): campers by Id, the times, each time's
  * offerings (keyed by their activity, as choices name them), choices, who takes which time, and
- * the locked seats that still fit. Linked choices come with slice E8: none yet, in the shape the
- * engine takes them. Also the locks that no longer fit (shown, never sent); the camper is not
- * placed at their day and block, which they still hold.
+ * the locked seats that still fit, and the set's linked choices (slice E8, ./linked.js). Also the
+ * locks that no longer fit (shown, never sent); the camper is not placed at their day and block,
+ * which they still hold.
  */
 export function engineInput(run, terms) {
-  const { choices, unmatched } = choicesOf(run);
+  const linked = linkedOf(run);
+  const { choices, unmatched } = choicesOf(run, linked);
   const offerings = [];
   run.times.forEach((t) => {
     (t.offeringIds || []).forEach((id) => {
@@ -261,19 +277,7 @@ export function engineInput(run, terms) {
   const { locks, stray } = locksOf(run);
   // A lock that no longer fits still holds its camper's day and block: the engine gets no time
   // there, so nothing it places can trip over or replace the locked seat (ADR 0016).
-  const held = new Set();
-  stray.forEach((seat) => {
-    const camper = run.camperById.get(seat.camperId);
-    const time = camper ? run.timeOf(camper, seat.day, seat.blockId) : null;
-    if (time) held.add(`${seat.camperId}|${time.key}`);
-  });
-  const attendance = {};
-  run.campers.forEach((camper) => {
-    attendance[camper.id] = run
-      .timesOf(camper)
-      .map((t) => t.key)
-      .filter((key) => !held.has(`${camper.id}|${key}`));
-  });
+  const attendance = attendanceOf(run, stray);
   return {
     input: {
       campers: run.campers.map((c) => ({ id: c.id })),
@@ -287,13 +291,31 @@ export function engineInput(run, terms) {
       choices,
       attendance,
       locks,
-      linkedChoices: [],
-      linkedChoiceTimes: [],
+      linkedChoices: linked.linkedChoices,
+      linkedChoiceTimes: linked.linkedChoiceTimes,
       terms
     },
     unmatched,
     stray
   };
+}
+
+/** The times each camper is given to the engine: those they take, less those a stray lock holds. */
+function attendanceOf(run, stray) {
+  const held = new Set();
+  stray.forEach((seat) => {
+    const camper = run.camperById.get(seat.camperId);
+    const time = camper ? run.timeOf(camper, seat.day, seat.blockId) : null;
+    if (time) held.add(`${seat.camperId}|${time.key}`);
+  });
+  const attendance = {};
+  run.campers.forEach((camper) => {
+    attendance[camper.id] = run
+      .timesOf(camper)
+      .map((t) => t.key)
+      .filter((key) => !held.has(`${camper.id}|${key}`));
+  });
+  return attendance;
 }
 
 /** Locked seats: those at a time the camper still takes, in something offered then; the rest. */
@@ -333,7 +355,8 @@ export function assignRequest(run, result) {
       camperId: s.camperId,
       day: time.day,
       blockId: time.blockId,
-      offeringId: offering.id
+      offeringId: offering.id,
+      linkedChoiceId: linkedIdOf(s.linkedChoiceId)
     });
   });
   const dropped = result.findings
@@ -392,8 +415,9 @@ function dotsFor(count, seats) {
  */
 export function buildBoard(run, t) {
   const view = run.view;
-  const { choices, unmatched } = choicesOf(run);
-  const { stray } = locksOf(run);
+  const linked = linkedOf(run);
+  const { choices, unmatched, uncovered } = choicesOf(run, linked);
+  const { locks, stray } = locksOf(run);
   const strayIds = new Set(stray.map((s) => s.id));
   const dropped = droppedOf(view);
   const slotCount = new Map();
@@ -445,7 +469,22 @@ export function buildBoard(run, t) {
     noBunk: 0,
     notOnSchedule: 0,
     unmatched,
-    noOfferings: []
+    noOfferings: [],
+    linked: linked.problems,
+    uncovered: uncovered.map((u) => {
+      const camper = run.camperById.get(u.camperId);
+      const use = linked.usable.get(u.linkedChoiceId);
+      return {
+        camper,
+        linkedChoiceId: u.linkedChoiceId,
+        name: use.choice.name,
+        activity: use.offering.name,
+        division: camper.group ? camper.group.divisionName : null
+      };
+    }),
+    split: splitOf(linked, choices, attendanceOf(run, stray), locks).map(
+      (s) => ({ ...s, camper: run.camperById.get(s.camperId) })
+    )
   };
 
   const offeringRows = run.offerings
@@ -669,6 +708,46 @@ export function problemSections(board, t) {
       stray: s
     }))
   );
+  // Linked choices that can't be placed as a set: their periods are filled one at a time. The
+  // count is of linked choices, never of the problems listed (one may have several).
+  const linkedCount = new Set(p.linked.flatMap((l) => l.ids)).size;
+  add(
+    "linked",
+    `${linkedCount} ${linkedCount === 1 ? t.sIn("LinkedChoice") : t.pIn("LinkedChoice")} filled one period at a time`,
+    p.linked.map((l) => ({
+      key: `k|${l.key}`,
+      text: l.name,
+      aside: l.text,
+      target: null
+    }))
+  );
+  // Campers who asked for a linked choice but can't have it as a set (the engine's
+  // UNSUPPORTED_LINKED_CHOICE for campers, in its words).
+  add(
+    "split",
+    `${p.split.length} given their ${t.sIn("LinkedChoice")} one period at a time`,
+    p.split.map((s) => ({
+      key: `p|${s.camperId}|${s.linkedChoiceId}|${s.reason}`,
+      text: s.camper.name,
+      aside:
+        s.reason === "absent"
+          ? `Asked for "${s.name}" but doesn't attend every period it covers`
+          : `Asked for "${s.name}" but has a locked seat in one of its periods`,
+      target: { view: "camper", camperId: s.camperId }
+    }))
+  );
+  // Campers a linked choice they asked for doesn't cover: counted as its activity (desktop
+  // BUNDLE_TIER_NOT_COVERED, "treated as ordinary").
+  add(
+    "uncovered",
+    `${p.uncovered.length} asked for a ${t.sIn("LinkedChoice")} not for their ${t.sIn("Division")}`,
+    p.uncovered.map((u) => ({
+      key: `c|${u.camper.id}|${u.linkedChoiceId}`,
+      text: u.camper.name,
+      aside: `"${u.name}" doesn't cover ${u.division || "them"}, so it counts as ${u.activity}`,
+      target: { view: "camper", camperId: u.camper.id }
+    }))
+  );
   add(
     "nothing",
     `${p.noOfferings.length} with nothing offered`,
@@ -749,6 +828,9 @@ export function needsLook(board) {
       p.overSeats.length +
       p.stray.length +
       p.noOfferings.length +
+      p.linked.length +
+      p.split.length +
+      p.uncovered.length +
       p.noBunk +
       p.notOnSchedule +
       p.unmatched.length >

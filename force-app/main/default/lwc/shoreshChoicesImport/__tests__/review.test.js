@@ -3,6 +3,7 @@
 import { csvFile } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import {
   allSettled,
   buildRequest,
@@ -10,6 +11,7 @@ import {
   countLines,
   groupsOfProgram,
   keptCommentRows,
+  linkedByFold,
   notReadRows,
   ordinal,
   proposalFor,
@@ -400,6 +402,75 @@ describe("the request: what the director confirmed", () => {
       r: 3,
       k: "ranked"
     });
+  });
+});
+
+describe("a sheet naming a linked choice (slice E8)", () => {
+  // Chugim's linked choices: "Pottery Wheel" (on Pottery) and "Archery" (on Archery, its
+  // activity's own name, as the desktop names a first one). Bechirot has "Photo club".
+  const setup = nsRecord({
+    electives: {
+      offerings: [
+        { Id: "o1", ElectiveSet__c: "e1", Activity__c: "a1" },
+        { Id: "o3", ElectiveSet__c: "e1", Activity__c: "a3" },
+        { Id: "o9", ElectiveSet__c: "e2", Activity__c: "a2" }
+      ],
+      linkedChoices: [
+        {
+          Id: "lc1",
+          Name: "Pottery Wheel",
+          ElectiveSet__c: "e1",
+          Offering__c: "o3"
+        },
+        { Id: "lc2", Name: "Archery", ElectiveSet__c: "e1", Offering__c: "o1" },
+        {
+          Id: "lc3",
+          Name: "pottery  wheel",
+          ElectiveSet__c: "e1",
+          Offering__c: "o1"
+        },
+        {
+          Id: "lc9",
+          Name: "Photo club",
+          ElectiveSet__c: "e2",
+          Offering__c: "o9"
+        }
+      ]
+    }
+  });
+
+  it("knows the set's linked choices by name, the first of a name kept", () => {
+    const linked = linkedByFold(setup, "e1");
+    expect([...linked.values()]).toEqual([
+      { id: "lc1", name: "Pottery Wheel", activityId: "a3" },
+      { id: "lc2", name: "Archery", activityId: "a1" }
+    ]);
+    expect(linkedByFold(null, "e1").size).toBe(0);
+  });
+
+  it("a linked choice's name is never a name to settle, and is that linked choice before an activity", () => {
+    const linked = linkedByFold(setup, "e1");
+    const read = readChoices(file, {
+      activities: [
+        ...ACTIVITIES.map((a) => a.Name),
+        ...[...linked.values()].map((l) => l.name)
+      ]
+    });
+    expect(read.newNames.map((n) => n.name)).toEqual(["Photo club"]);
+    const request = buildRequest({
+      reading: read,
+      activities: ACTIVITIES,
+      linked,
+      answers: { photoclub: { kind: "leave" } },
+      groups: groupsOfProgram(SETUP, "p1"),
+      place: { seasonId: "s1", setId: "e1", weekId: "w1", scheduleId: "c1" },
+      fileName: "chugim-week3.csv"
+    });
+    expect(request.campers[0].choices).toEqual([
+      { n: "Archery", a: "a1", l: "lc2", r: 1, k: "ranked" },
+      { n: "Drama", a: "a2", r: 2, k: "ranked" },
+      { n: "Pottery Wheel", a: "a3", l: "lc1", r: 3, k: "ranked" }
+    ]);
   });
 });
 
