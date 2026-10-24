@@ -11,8 +11,11 @@ public with sharing class ElectivesInUse {
   /** Another refusal (or null) with this one added, so one refusal names everything. */
   public static String alongside(String otherReason, Id recordId) {
     String electives = reason(recordId);
-    if (otherReason == null || electives == null) {
-      return otherReason != null ? otherReason : electives;
+    if (electives == null) {
+      return otherReason;
+    }
+    if (otherReason == null) {
+      return electives;
     }
     return otherReason +
       ' Also, ' +
