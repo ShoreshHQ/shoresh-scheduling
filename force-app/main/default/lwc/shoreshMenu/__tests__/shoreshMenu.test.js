@@ -98,6 +98,21 @@ describe("c-shoresh-menu", () => {
     ]);
   });
 
+  it("electives wear the camp's word too: Chugim, Chug seats (wiki decision 66)", () => {
+    const chugim = buildTerms([
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+    ]);
+    const labels = menuSections(chugim, true)
+      .flatMap((section) => section.items)
+      .map((item) => item.label);
+    expect(labels).toContain("Chugim");
+    expect(labels).toContain("Chug seats");
+    expect(labels).not.toContain("Electives");
+    expect(labels).not.toContain("Elective seats");
+    // The button at the bottom of Special events names the next screen the same way.
+    expect(nextScreen("specialEvents", chugim, true).label).toBe("Chugim →");
+  });
+
   it("marks the screen shown", async () => {
     const element = await render(true, "groups");
     const active = element.shadowRoot.querySelectorAll(".slds-is-active");

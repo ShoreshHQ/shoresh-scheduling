@@ -786,3 +786,42 @@ screen, and other programs' electives.
     still change them). Opened from the Electives list (a choices file
     given to Import a list), it still starts on the first. Jest: `shoreshElectiveSeats`,
     `shoreshChoicesImport` and `shoreshCampSetup` (also namespaced).
+
+## Electives in the camp's words (wiki decision 66, 2026-10-24)
+
+62. **"Elective" is a camp word** (Greg, decision 66: "Electives follow camp words too"). A new
+    model term `Elective` (singular "Elective", plural "Electives"; a value of
+    `CampLabel__c.ModelTerm__c`, stored and read like every other camp word, once per request,
+    CLAUDE.md #60) sits first in Camp words' Electives section, before Elective set and Offering.
+    A camp that renames it (Chug, plural guessed "Chugs" and typed over to "Chugim", decision 56)
+    sees its word in: the menu and the next buttons ("Chugim", "Chug seats", "Chugim →"); the
+    Elective seats screen's heading and its messages ("Couldn't open Chug seats.", "Make one on
+    Chugim first."); Copy season's "Stays in" list ("Chug seats"); the Manual Build swap refusal
+    ("Can’t swap with Chugim or events.", plural so no article is built from a camp word; with
+    the standard word it keeps the desktop's `useSlotMutations.js` sentence, "an elective or an
+    event"); the delete refusals that name
+    runs ("it has Chug runs: ..."; `ElectivesInUse`, which now reads the camp's words once per
+    refusal instead of once per reason, and `ElectiveSetupTriggers`); the version Finalize keeps
+    ("Chugim finalized: Chugim · Week 1", choice 33); and Import last year (choice 45): a cell
+    holding the camp's word is read as electives, its question says "Read as Chugim" with
+    "Chugim" / "Not Chugim", and a list cell's set is named "Chugim (Arts, Crafts)". A camp that
+    renamed only Elective set before this (and not Elective) keeps reading and naming as it did,
+    by its elective-set word, so the same file makes the same sets. The standard words are
+    unchanged. Rosters and downloads already name the set and the week in the camp's words and
+    hold no "elective" word of their own; Bring in choices names none either. "Elective seats"
+    is the camp's word plus "seats" (decision 66), not the Seats camp word, which is an
+    offering's number of seats.
+    - The desktop has no camp words: its words are fixed (`src/screens/recordLabels.js`), and its
+      vocabulary spec leaves a per-camp relabel layer to a later workstream
+      (`docs/work/specs/2026-08-21-vocabulary-unification-design.md`, "W1b"). So this follows
+      Greg's decision 66 and the repo's existing camp words, not the desktop.
+    - **Left in the standard word:** refusals that come before Shoresh knows the camp ("Those
+      elective seats are no longer there." when the run is gone; "Choose the elective set, the
+      week and the schedule first.", which the screens never send). "That elective set, week or
+      schedule is no longer there." now reads the camp's words for the set and the week. Camp
+      words' own section titles (Camp, Activities, Electives, Schedules) stay standard, as they
+      label the standard words a camp is renaming.
+    - Tests: Jest `shoreshMenu`, `shoreshCampLabels`, `shoreshElectiveSeats`, `shoreshCopySeason`,
+      `shoreshImportEngine` (electives) and `shoreshWeekEditor` (electives); Apex `CampLabelsTest`,
+      `ElectivesDataTest.refusalsNameRunsInTheCampsWordForElectives` (with a query bound) and
+      `ElectiveSeatsTest.finalizeFixesTheSeatsWithAVersionAndNames`.

@@ -48,14 +48,20 @@ function byText(a, b) {
   return a.localeCompare(b);
 }
 
-/** Whether the camp calls elective sets by its own word (Camp words). */
-function customWord(t) {
-  return t.s("ElectiveSet") !== "Elective set";
+/**
+ * The camp words term electives are called by: Elective once the camp has its own word for it
+ * (wiki decision 66: "Chugim"), else the camp's word for elective sets as before decision 66, so
+ * a camp that only renamed Elective set reads (and names its sets) as it did.
+ */
+function electiveTerm(t) {
+  return t.s("Elective") === "Elective" && t.s("ElectiveSet") !== "Elective set"
+    ? "ElectiveSet"
+    : "Elective";
 }
 
 /** "electives", or the camp's word inside a sentence ("chugim"). */
 export function electiveWord(t) {
-  return customWord(t) ? t.pIn("ElectiveSet") : "electives";
+  return t.pIn(electiveTerm(t));
 }
 
 /**
@@ -100,7 +106,7 @@ export function listSetName(parts, t) {
   const sorted = [...parts]
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
     .filter((p) => !seen.has(foldName(p)) && seen.add(foldName(p)));
-  const word = customWord(t) ? t.p("ElectiveSet") : "Electives";
+  const word = t.p(electiveTerm(t));
   return limited(`${word} (${sorted.join(", ")})`);
 }
 

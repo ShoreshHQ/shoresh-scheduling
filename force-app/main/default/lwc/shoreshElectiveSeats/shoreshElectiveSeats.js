@@ -171,7 +171,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.pickStart();
       await this.loadRun();
     } catch (e) {
-      this.error = failed("Couldn't open Elective seats.", e);
+      this.error = failed(`Couldn't open ${this.screenTitle}.`, e);
     }
   }
 
@@ -233,7 +233,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
       if (ticket !== this.loadTicket) return;
       this.view = view;
     } catch (e) {
-      this.error = failed("Couldn't open these elective seats.", e);
+      this.error = failed(
+        `Couldn't open these ${this.t.sIn("Elective")} seats.`,
+        e
+      );
     }
   }
 
@@ -294,6 +297,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
       )
       .reverse();
   }
+  /** "Elective seats", or the camp's "Chug seats" (wiki decision 66). */
+  get screenTitle() {
+    return `${this.t.s("Elective")} seats`;
+  }
   get setWord() {
     return this.t.s("ElectiveSet");
   }
@@ -313,7 +320,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return this.showsPickers && !this.runId;
   }
   get noSetsText() {
-    return `No ${this.t.pIn("ElectiveSet")} yet. Make one on Electives first.`;
+    return `No ${this.t.pIn("ElectiveSet")} yet. Make one on ${this.t.p("Elective")} first.`;
   }
   get noRunText() {
     const set = this.sets.find((s) => s.Id === this.setId);

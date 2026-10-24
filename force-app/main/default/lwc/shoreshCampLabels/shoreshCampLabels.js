@@ -52,6 +52,7 @@ const SECTIONS = [
     key: "electives",
     title: "Electives",
     terms: [
+      "Elective",
       "ElectiveSet",
       "Offering",
       "Seats",

@@ -73,8 +73,14 @@ public with sharing class ChoicesImportPlace {
       WITH USER_MODE
     ];
     if (sets.isEmpty() || weeks.isEmpty() || schedules.isEmpty()) {
+      // In the camp's words, read only for the refusal.
+      CampLabels labels = CampLabels.forCamp(campId);
       throw new ShoreshException(
-        'That elective set, week or schedule is no longer there. Reload the page.'
+        'That ' +
+          labels.singularInSentence('ElectiveSet') +
+          ', ' +
+          labels.singularInSentence('Week') +
+          ' or schedule is no longer there. Reload the page.'
       );
     }
     electiveSet = sets[0];

@@ -40,6 +40,15 @@ const LABELS = [
     labelId: null
   },
   {
+    term: "Elective",
+    modelSingular: "Elective",
+    modelPlural: "Electives",
+    singular: "Elective",
+    plural: "Electives",
+    isCustom: false,
+    labelId: null
+  },
+  {
     term: "ElectiveSet",
     modelSingular: "Elective set",
     modelPlural: "Elective sets",
@@ -147,7 +156,7 @@ describe("c-shoresh-camp-labels", () => {
     }));
     expect(sections).toEqual([
       { title: "Camp", terms: ["Group", "Division"] },
-      { title: "Electives", terms: ["ElectiveSet"] },
+      { title: "Electives", terms: ["Elective", "ElectiveSet"] },
       { title: "Schedules", terms: ["Version"] }
     ]);
   });
@@ -278,6 +287,22 @@ describe("c-shoresh-camp-labels", () => {
       "singular",
       "term"
     ]);
+  });
+
+  it("electives are a camp word too, the plural guessed and typed over (wiki decision 66)", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    expect(input(element, "Elective", "singular").placeholder).toBe("Elective");
+    await type(element, "Elective", "singular", "Chug");
+    expect(input(element, "Elective", "plural").placeholder).toBe("Chugs");
+    await type(element, "Elective", "plural", "Chugim");
+    leave(element, "Elective", "plural");
+    await flush();
+    const sent = saveCampLabels.mock.calls[0][0].labels;
+    expect(sent.find((r) => r.term === "Elective")).toMatchObject({
+      singular: "Chug",
+      plural: "Chugim"
+    });
   });
 
   it("keeps a plural typed over the guess when the word changes after", async () => {

@@ -17,6 +17,7 @@ private class ElectiveSeatsTest {
    * Group A or B, every one choosing Drama first.
    */
   private class SeatsCamp {
+    Id campId;
     Map<String, Id> ids;
     Id setId;
     Id scheduleId;
@@ -25,6 +26,7 @@ private class ElectiveSeatsTest {
 
     SeatsCamp(Integer camperCount) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      campId = camp.Id;
       ShoreshTestData.fullSeason(camp.Id);
       ids = ShoreshTestData.lastSeasonIds.clone();
       makeMenu();
@@ -623,6 +625,16 @@ private class ElectiveSeatsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(260);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      // The camp's own word for electives names the version kept (wiki decision 66).
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = camp.campId,
+          ModelTerm__c = 'Elective',
+          Singular__c = 'Bechira',
+          Plural__c = 'Bechirot'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
 
       Test.startTest();
       Integer before = Limits.getQueries();
@@ -636,6 +648,7 @@ private class ElectiveSeatsTest {
       ElectiveRun__c run = [
         SELECT
           FinalSchedule__c,
+          FinalSchedule__r.Name,
           FinalSchedule__r.Status__c,
           FinalSchedule__r.VersionReason__c,
           FinalizedBy__c
@@ -643,6 +656,10 @@ private class ElectiveSeatsTest {
         WHERE Id = :camp.runId
       ];
       Assert.areEqual('Version', run.FinalSchedule__r.Status__c);
+      Assert.areEqual(
+        'Bechirot finalized: Chugim · Week 1',
+        run.FinalSchedule__r.Name
+      );
       Assert.areEqual(
         'ElectivesFinalized',
         run.FinalSchedule__r.VersionReason__c

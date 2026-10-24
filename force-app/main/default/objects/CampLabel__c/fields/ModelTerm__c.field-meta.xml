@@ -121,6 +121,11 @@
                 <label>Lock</label>
             </value>
             <value>
+                <fullName>Elective</fullName>
+                <default>false</default>
+                <label>Elective</label>
+            </value>
+            <value>
                 <fullName>ElectiveSet</fullName>
                 <default>false</default>
                 <label>Elective set</label>

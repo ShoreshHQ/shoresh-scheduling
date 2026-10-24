@@ -33,11 +33,13 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 1. In the menu, click **Camp words**. One row per word, in sections (Camp, Activities,
    Electives, Schedules): the standard word, then a box with the standard word in grey.
 2. In the **Group** row's box type _Bunk_. _Bunks_ appears beside it: Shoresh guessed the
-   plural. In the **Division** row type _Unit_ (it guesses _Units_). In the **Elective set** row
-   type _Chug_: it guesses _Chugs_; click the guess and type _Chugim_ over it.
+   plural. In the **Division** row type _Unit_ (it guesses _Units_). In the **Elective** row (the
+   first under Electives) type _Chug_: it guesses _Chugs_; click the guess and type _Chugim_
+   over it.
 3. There is no Save button: each word is saved when you leave its box (click elsewhere, press
    **Tab** or **Enter**). At the top, **3 changed** and a small grey **✓ Saved**. The menu now
-   says **Bunks** and **Units**, and so does everything below. If Shoresh refuses a word, why
+   says **Bunks** and **Units**, **Chugim** in place of Electives and **Chug seats** in place of
+   Elective seats, and so does everything below. If Shoresh refuses a word, why
    shows in red under that box and your typing stays. Clearing a box puts the standard word back.
 4. At the bottom right, **Activities →** would take you to the next screen; every setup screen
    ends with one, in menu order, so you can walk through setup with it. (Before there is a
@@ -1180,7 +1182,10 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
 
 1. **The menu.** Under **Activities & Events**, **Electives** is the last entry; under
    **Schedules**, **Elective seats** sits between Manual Build and Saved versions. Neither is marked
-   Coming any more. On **Special events** the button at the bottom is now **Electives →**.
+   Coming any more. On **Special events** the button at the bottom is now **Electives →**. (With
+   the camp words from section 3 they read **Chugim**, **Chug seats** and **Chugim →**, and the
+   Elective seats screen and its messages say Chug seats too; below, read those names for
+   Electives and Elective seats.)
 2. **Activities first.** On **Activities** add _Archery_, _Drama_ and _Pottery_ (no location is
    fine) with **at least 0** times a week, so Generated Schedule doesn't place them by
    themselves.

@@ -83,6 +83,7 @@ public with sharing class ElectiveRunState {
         Id,
         Name,
         Season__c,
+        Season__r.Camp__c,
         ElectiveSet__c,
         ElectiveSet__r.Name,
         Week__c,

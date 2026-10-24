@@ -107,7 +107,9 @@ public with sharing class ElectiveSetupTriggers {
       item.addError(
         'This ' +
           labels.singularInSentence('ElectiveSet') +
-          ' can\'t be deleted yet: it has elective runs: ' +
+          ' can\'t be deleted yet: it has ' +
+          labels.singularInSentence('Elective') +
+          ' runs: ' +
           InUse.quoted(runs) +
           '. First delete ' +
           (runs.size() == 1 ? 'that run' : 'those runs') +

@@ -11,8 +11,11 @@ public with sharing class ElectivesInUse {
   /** Another refusal (or null) with this one added, so one refusal names everything. */
   public static String alongside(String otherReason, Id recordId) {
     String electives = reason(recordId);
-    if (otherReason == null || electives == null) {
-      return otherReason != null ? otherReason : electives;
+    if (electives == null) {
+      return otherReason;
+    }
+    if (otherReason == null) {
+      return electives;
     }
     return otherReason +
       ' Also, ' +
@@ -31,11 +34,18 @@ public with sharing class ElectivesInUse {
     if (kind == TimeBlock__c.SObjectType) {
       addLinkedChoicePeriods(recordId, found);
     }
-    List<String> runs = runsUsing(recordId, kind);
+    List<ElectiveRun__c> runs = runsUsing(recordId, kind);
     if (!runs.isEmpty()) {
-      found.parts.add('it has elective runs: ' + InUse.quoted(runs));
+      CampLabels labels = found.labels(runs[0].Season__r.Camp__c);
+      List<String> names = namesOf(runs);
+      found.parts.add(
+        'it has ' +
+          labels.singularInSentence('Elective') +
+          ' runs: ' +
+          InUse.quoted(names)
+      );
       found.fixes.add(
-        'delete ' + (runs.size() == 1 ? 'that run' : 'those runs')
+        'delete ' + (names.size() == 1 ? 'that run' : 'those runs')
       );
     }
     if (found.parts.isEmpty()) {
@@ -52,6 +62,15 @@ public with sharing class ElectivesInUse {
   private class Reasons {
     List<String> parts = new List<String>();
     List<String> fixes = new List<String>();
+    // The camp's words, read once for the whole refusal (a record is in one camp).
+    private CampLabels words;
+
+    CampLabels labels(Id campId) {
+      if (words == null) {
+        words = CampLabels.forCamp(campId);
+      }
+      return words;
+    }
   }
 
   /** "that elective set" or "those elective sets", in the camp's words. */
@@ -82,7 +101,7 @@ public with sharing class ElectivesInUse {
     if (sets.isEmpty()) {
       return;
     }
-    CampLabels labels = CampLabels.forCamp(campId);
+    CampLabels labels = found.labels(campId);
     found.parts.add('it is offered in ' + InUse.quoted(sets));
     found.fixes.add(
       'take it off ' + thatOrThose(labels, 'ElectiveSet', sets.size())
@@ -113,7 +132,7 @@ public with sharing class ElectivesInUse {
     if (choices.isEmpty()) {
       return;
     }
-    CampLabels labels = CampLabels.forCamp(campId);
+    CampLabels labels = found.labels(campId);
     found.parts.add(
       (kind == Program__c.SObjectType
           ? 'some of its ' + labels.pluralInSentence('Division') + ' are'
@@ -148,17 +167,25 @@ public with sharing class ElectivesInUse {
     if (choices.isEmpty()) {
       return;
     }
-    CampLabels labels = CampLabels.forCamp(campId);
+    CampLabels labels = found.labels(campId);
     found.parts.add('it is a period of ' + InUse.quoted(choices));
     found.fixes.add(
       'take it out of ' + thatOrThose(labels, 'LinkedChoice', choices.size())
     );
   }
 
-  /** The names of the elective runs that use the record, or would lose something with it. */
-  private static List<String> runsUsing(Id recordId, Schema.SObjectType kind) {
+  /** The elective runs that use the record, or would lose something with it. */
+  private static List<ElectiveRun__c> runsUsing(
+    Id recordId,
+    Schema.SObjectType kind
+  ) {
     List<ElectiveRun__c> runs = runsOfSetup(recordId, kind);
     runs.addAll(runsOfSeats(recordId, kind));
+    return runs;
+  }
+
+  /** Each run's name once, sorted. */
+  private static List<String> namesOf(List<ElectiveRun__c> runs) {
     Map<Id, String> names = new Map<Id, String>();
     for (ElectiveRun__c run : runs) {
       names.put(run.Id, run.Name);
@@ -175,7 +202,7 @@ public with sharing class ElectivesInUse {
   ) {
     if (kind == Week__c.SObjectType) {
       return [
-        SELECT Name
+        SELECT Name, Season__r.Camp__c
         FROM ElectiveRun__c
         WHERE Week__c = :recordId
         WITH USER_MODE
@@ -185,7 +212,7 @@ public with sharing class ElectivesInUse {
     }
     if (kind == Program__c.SObjectType) {
       return [
-        SELECT Name
+        SELECT Name, Season__r.Camp__c
         FROM ElectiveRun__c
         WHERE
           Schedule__r.Program__c = :recordId
@@ -197,7 +224,7 @@ public with sharing class ElectivesInUse {
     }
     if (kind == ElectiveSet__c.SObjectType) {
       return [
-        SELECT Name
+        SELECT Name, Season__r.Camp__c
         FROM ElectiveRun__c
         WHERE ElectiveSet__c = :recordId
         WITH USER_MODE
@@ -220,7 +247,7 @@ public with sharing class ElectivesInUse {
     if (kind == Division__c.SObjectType || kind == Group__c.SObjectType) {
       runs.addAll(
         [
-          SELECT Name
+          SELECT Name, Season__r.Camp__c
           FROM ElectiveRun__c
           WHERE
             Id IN (
@@ -243,7 +270,7 @@ public with sharing class ElectivesInUse {
     ) {
       runs.addAll(
         [
-          SELECT Name
+          SELECT Name, Season__r.Camp__c
           FROM ElectiveRun__c
           WHERE
             Id IN (

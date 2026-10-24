@@ -269,6 +269,45 @@ describe("electives read from last year's file", () => {
       "Not Chuggim"
     ]);
   });
+
+  it("the camp's own word for electives is an elective word, and names what it reads (wiki decision 66)", () => {
+    const camp = buildTerms([
+      {
+        term: "Elective",
+        singular: "Bechira",
+        plural: "Bechirot",
+        isCustom: true
+      },
+      {
+        term: "ElectiveSet",
+        singular: "Chug",
+        plural: "Chuggim",
+        isCustom: true
+      }
+    ]);
+    const p = buildProposal({
+      files: byGroupFiles(
+        GROUPS,
+        withCells((g, d, b) => d === 1 && b === 3, "Bechirot")
+      ),
+      existing: existingSetup(),
+      terms: camp,
+      answers: {}
+    });
+    // Electives' own word wins over the elective set's when the camp has both.
+    expect(p.electives.sets.map((s) => s.name)).toEqual([
+      "Bechirot",
+      "Bechirot (Fishing, Hiking, Kayaking)"
+    ]);
+    const card = questionCards(p, camp, {}).find(
+      (c) => c.id === "elective|Bechirot"
+    );
+    expect(card.subtitle).toMatch(/^Read as Bechirot:/);
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Bechirot",
+      "Not Bechirot"
+    ]);
+  });
 });
 
 describe("a list Shoresh isn't sure of is asked once", () => {
