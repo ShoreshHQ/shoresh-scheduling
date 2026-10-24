@@ -64,7 +64,8 @@ function divisionsFor(choice, divisionIds) {
  * usable: linked choice Id -> { choice, offering, periods: Set("Tuesday|<block>"), timeKeys: the
  * run's times its copies hold, copies: [{ id, times, missing }] }.
  * problems: [{ key, ids, name, text }] in the linked choices' order: a period this schedule doesn't
- * have for a division it applies to, and two linked choices sharing a time. ids: the linked
+ * have for a division it applies to, and two linked choices of one offering sharing a time (two
+ * offerings' may: each takes its own offering's seats there, slice E9). ids: the linked
  * choices the problem is about.
  */
 export function linkedOf(run) {
@@ -88,7 +89,7 @@ export function linkedOf(run) {
   const linkedChoiceTimes = [];
   const usable = new Map();
   const problems = [];
-  // time key -> the linked choices holding it, to say which share one.
+  // time key and offering -> the linked choices holding it, to say which share one.
   const holding = new Map();
 
   choices.forEach((choice) => {
@@ -158,19 +159,22 @@ export function linkedOf(run) {
           activityId: offering.activityId
         });
         if (time && periods.length > 1) {
-          if (!holding.has(time.key)) holding.set(time.key, []);
-          holding.get(time.key).push(choice);
+          const seats = `${time.key}|${offering.id}`;
+          if (!holding.has(seats)) {
+            holding.set(seats, { timeKey: time.key, sharing: [] });
+          }
+          holding.get(seats).sharing.push(choice);
         }
       });
     });
   });
 
-  holding.forEach((sharing, timeKey) => {
+  holding.forEach(({ timeKey, sharing }, seats) => {
     const names = [...new Set(sharing.map((c) => c.name))];
     if (sharing.length < 2) return;
     const time = run.timeByKey.get(timeKey);
     problems.push({
-      key: `shared|${timeKey}`,
+      key: `shared|${seats}`,
       ids: [...new Set(sharing.map((c) => c.id))],
       name: names.map((n) => `"${n}"`).join(" and "),
       text: `Share ${time ? timeWordsOf(time) : "a period"}`,

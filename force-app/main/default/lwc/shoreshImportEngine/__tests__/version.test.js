@@ -60,7 +60,7 @@ function checkGrid(grid) {
   });
   grid.i.forEach(([kind, id, name]) => {
     expect(name).toBeTruthy();
-    expect(["A", "F", "R"].includes(kind) ? !!id : id === "").toBe(true);
+    expect(["A", "F", "R", "E"].includes(kind) ? !!id : id === "").toBe(true);
   });
 }
 
@@ -106,7 +106,8 @@ describe("the imported version", () => {
     expect(kinds(0).get("Lunch")).toEqual(["F", "F|P0|Lunch"]);
     expect(kinds(0).get("Morning meeting")[0]).toBe("R");
     expect(kinds(0).get("Swim")).toEqual(["A", "A|Swim"]);
-    expect(kinds(1).get("Chugim")).toEqual(["E", ""]);
+    // An elective set by the key of the set the save makes (slice E9).
+    expect(kinds(1).get("Chugim")).toEqual(["E", "ES|Chugim"]);
     expect(kinds(3).get("Zoo trip")).toEqual(["T", ""]);
     expect(kinds(4).get("Field day")).toEqual(["D", ""]);
     // Boating runs two blocks: its second block carries on.
@@ -309,7 +310,8 @@ describe("part 2 review", () => {
         "locations",
         "activities",
         "fixedActivities",
-        "recurringActivities"
+        "recurringActivities",
+        "electiveSets"
       ].flatMap((list) => plan[list].map((e) => e.key))
     );
     for (const day of plan.versions.flatMap((v) => v.days)) {

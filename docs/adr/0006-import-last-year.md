@@ -76,6 +76,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
    events (the camp's word), and special days (one name filling a whole day for most groups, or
    the camp's word). They are listed on the preview and in the summary, and are not created.
    Part 2 notes them in the imported version as "not set up yet".
+   _Electives are set up since electives slice E9 (choice 23); trips, special events and special
+   days are still noted._
 8. **Similar names, always asked, never merged on their own** (Greg): capitals, spacing, and
    punctuation, "and" / "&" / "+"; endings (Swim / Swimming, including a doubled last letter);
    **one letter changed, added, dropped, or swapped** (Music / Musik). Numbers keep names apart
@@ -463,6 +465,73 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       each state) and, in the test org, by `scripts/a11y-browser-check.mjs` (Import last
       year from Roots by keyboard: heading, files chosen, the first question, a choice kept
       pressed, a count opened, Start again and back to Roots, axe; nothing imported).
+
+23. **Electives in last year's file** (electives slice E9; wiki plan
+    `shoresh-sf-electives-plan` §6.1; desktop ADR `2026-10-11-import-electives-keep-their-shape`
+    (D1-B, D2, D3-C, the precedence, re-import), Director Guide §6 "Double-period electives" and
+    `electron/ops/materializeImportedVersion.js` `writeSpanBundles`; ADR 0018 choices 45 to 50
+    for what is saved). Until now an elective was noted "not set up yet" (choice 7) and its cell
+    stayed a dashed placeholder. Now (`c/shoreshImportEngine` `electives.js`):
+    - **An elective word in a cell is an elective set, without a question**: Chugim, Bechirot,
+      Electives, or the camp's own word for an elective set (Camp words). It is said, not asked:
+      the page lists each set under the camp's word for elective sets, "Read as electives:
+      Tuesday, Period 3, every bunk.", with what it adds ("3 choices proposed: …", "Each choice
+      taken as a set across Period 1 and Period 2 on Thursday.", or "No choices in the file: add
+      them later."), and the one escape, **Not electives**, beside **Electives** (pressed), as
+      the program and unit choices Shoresh makes itself are listed (choice 22). Not electives is
+      per set and remembered; the name then goes the usual way (fixed, recurring, activity, or
+      asked).
+    - **A list cell** ("Hiking, Fishing, Kayaking") is a set of those choices only under the
+      desktop's strict rule: a comma, semicolon or spaced slash; three parts or more; none empty;
+      none with "&" or "and"; none longer than four words. Its set is named after its choices,
+      sorted, once each ("Electives (Fishing, Hiking, Kayaking)", or with the camp's word), so the
+      same list in any order is one set. Anything else list-like (two parts, an unspaced slash as
+      in "Arts/Crafts", an "&") is **one question** in Check these first: 'Is "Arts/Crafts" one
+      activity or a choice of Arts or Crafts?' (One activity, A choice of 2, Leave it out for
+      now). As every question here, it must be answered (choice 11; the desktop defaults to one
+      activity); until then nothing else is asked about that name.
+    - **What the camp has wins** (the desktop's precedence): a name the camp has as an activity,
+      or as a fixed or recurring activity of that program, is never read as an elective. A set the
+      camp has of that name (spaces and capitals aside) is used, and only the choices it doesn't
+      offer yet are added.
+    - **The cells**: the version holds the set by its record (kind `E` with the set's key, ADR
+      0018 choice 20) in every time block it fills, a double period too (each block on its own,
+      ADR 0018 choice 21; never `^`), so bunks side by side show it as one wide cell (#128).
+    - **Choices** are proposed offerings (ADR 0018 choice 45). A choice the camp or the file has
+      as an activity is that activity; otherwise it is added as an activity: one block long, one
+      bunk at a time, 0 times a week (what the file shows: it is never placed as an activity of
+      its own), who held the set as who can do it (the rule of choice 14), with its how often and
+      who marked as guessed (choice 21).
+    - **Double periods** (Director Guide §6): the same set held by a bunk in back-to-back periods
+      (the next block starts when the last ends, or within ten minutes of passing time, choice 2;
+      lunch or anything between keeps them apart) links each choice the import adds across them:
+      a linked choice per choice and day, applying to all divisions. If the bunks holding it that
+      day hold it across different periods it can't be linked, and Good to know says so
+      ("Chugim on Thursday: different bunks hold it across different time blocks, so Shoresh
+      can't link them. Each period is chosen separately."). A choice added later is not linked.
+      Linked choices are named as the Electives screen names them (ADR 0018 choice 41): an
+      offering's first one is the activity's name, so a choices sheet's plain "Pottery" chooses
+      it; a later one "Pottery · Thu 9:00". The desktop's import names them "Pottery — Tuesday";
+      this was chosen so a plain choice on a sheet takes the double period. Their periods are
+      marked as guessed on the Electives screen (choice 21; ADR 0018 choice 48).
+    - **Things you delete stay deleted** (choice 20): an elective set deleted before
+      (`deleted|ElectiveSet||<name>`), an offering (`deleted|Offering|<set>|<activity>`), an
+      activity (`deleted|Activity||<name>`) and a linked choice
+      (`deleted|LinkedChoice|<set>|<activity>|<weekdays>|<time blocks>`, ADR 0018 choice 49) are
+      not added again; each is listed "Deleted before" with Bring back, and a deleted set's cells
+      are "deleted before; not brought back".
+    - **Comes in** counts elective sets, offerings and linked choices as tiles; after Add, the
+      save's own counts.
+    - Not in this slice: binding the "not set up yet" electives of versions already saved (Roots,
+      plan §6.1); similar names among a list's choices (they are matched to activities by name,
+      spaces and capitals aside); the Electives menu stays "Coming".
+    - Checked by `electives.test.js` (the word and the list read, the strict rule and the
+      question, the camp's activity and set winning, the cells, the choices' activities, double
+      periods linked, not linked and kept apart by lunch, a later linked choice's name, things
+      deleted with Bring back, the same plan in any file order), `shoreshImport.test.js` (the
+      section, its words and Not electives, the tiles), the existing engine tests (Chugim is a
+      set now), and `ImportElectivesTest` (the save within a query bound, the guessed periods,
+      Undo, a deleted linked choice remembered, an entry naming a record refused).
 
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 

@@ -8,6 +8,13 @@
  * kind something is, which program, files that disagree) come first, as the desktop's hold lane.
  */
 import { FIELD } from "c/shoreshSchema";
+import {
+  ELECTIVES,
+  NOT_ELECTIVES,
+  ONE_ACTIVITY,
+  SEVERAL,
+  electiveWord
+} from "./electives";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, shortClock } from "./text";
 
@@ -480,6 +487,110 @@ function weekCard(ask, t) {
   };
 }
 
+// ---------- electives (slice E9) ----------
+
+function orList(names) {
+  return names.length <= 2
+    ? names.join(" or ")
+    : `${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}`;
+}
+
+/** Where a set sits: its days, its time blocks, and who holds it, as the file printed them. */
+function electiveWhere(set, proposal, t) {
+  const timetables = proposal.timetables;
+  const days = [...new Set(set.cells.map((p) => p.day))];
+  const blocks = [];
+  set.cells.forEach((p) => {
+    // Every block it fills, the second of a double period too.
+    for (let k = 0; k < p.span; k++) {
+      const block = timetables[p.timetable].blocks[p.blockIndex + k];
+      if (block && !blocks.includes(block.name)) {
+        blocks.push(block.name);
+      }
+    }
+  });
+  const groups = [...new Set(set.cells.map((p) => p.group))];
+  const here = new Set(set.cells.map((p) => p.timetable));
+  const all = proposal.groups.filter(
+    (g) => !g.leftOut && here.has(g.timetable)
+  );
+  const who =
+    groups.length === all.length ? `every ${t.sIn("Group")}` : nameList(groups);
+  return `${dayList(days)}, ${nameList(blocks)}, ${who}`;
+}
+
+function electiveDetail(set) {
+  const parts = [];
+  const n = set.offerings.length;
+  if (n > 0) {
+    parts.push(
+      `${n} ${n === 1 ? "choice" : "choices"} proposed: ${nameList(
+        set.offerings.map((o) => o.activityName),
+        6
+      )}.`
+    );
+  } else if (set.isNew) {
+    parts.push("No choices in the file: add them later.");
+  }
+  set.linked
+    .filter((c, i, all) => all.findIndex((x) => x.day === c.day) === i)
+    .forEach((c) =>
+      parts.push(
+        `Each choice taken as a set across ${nameList(c.blockNames)} on ${c.day}.`
+      )
+    );
+  return parts.join(" ");
+}
+
+/**
+ * An elective set read from the file, with the one escape (desktop D1-B): not a question, so it is
+ * preselected and listed with the other choices Shoresh made itself, still changeable.
+ */
+function electiveCard(ask, t, proposal) {
+  const word = electiveWord(t);
+  const set = ask.set;
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "standard",
+    flag: true,
+    title: set.name,
+    subject: set.name,
+    subtitle: `Read as ${word}: ${electiveWhere(set, proposal, t)}.`,
+    detail: electiveDetail(set),
+    preselected: ELECTIVES,
+    options: [
+      { value: ELECTIVES, label: capital(word) },
+      {
+        value: NOT_ELECTIVES,
+        label: `Not ${word}`,
+        description: `Set up as what its cells show: a fixed or recurring ${t.sIn("Activity")}, or ${article(t.sIn("Activity"))}.`
+      }
+    ]
+  };
+}
+
+/** A cell that looks like a list but not surely one (desktop D3-C): asked once. */
+function listCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `Is ${quoted(ask.name)} one ${t.sIn("Activity")} or a choice of ${orList(ask.parts)}?`,
+    subject: ask.name,
+    subtitle: `${ask.parts.length} names in one cell.`,
+    options: [
+      { value: ONE_ACTIVITY, label: `One ${t.sIn("Activity")}` },
+      {
+        value: SEVERAL,
+        label: `A choice of ${ask.parts.length}`,
+        description: `${capital(electiveWord(t))}, with ${nameList(ask.parts)} proposed as choices.`
+      },
+      leaveOut(`${quoted(ask.name)} is not added this time.`)
+    ]
+  };
+}
+
 const CARDS = {
   week: weekCard,
   kind: kindCard,
@@ -491,7 +602,9 @@ const CARDS = {
   division: divisionCard,
   fixed: setTimeChangeCard,
   recurring: setTimeChangeCard,
-  activity: activityChangeCard
+  activity: activityChangeCard,
+  elective: electiveCard,
+  list: listCard
 };
 
 /** Every card, preview cards first, then hold, then the rest, each with its answer. */
@@ -501,7 +614,7 @@ export function questionCards(proposal, t, answers) {
     ...proposal.reading.timeAsks.map(ampmCard),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...proposal.reading.disagreements.map(crossCard),
-    ...proposal.asks.map((ask) => CARDS[ask.type](ask, t))
+    ...proposal.asks.map((ask) => CARDS[ask.type](ask, t, proposal))
   ];
   const seen = new Set();
   const order = (c) => (c.stage === "preview" ? 0 : c.lane === "hold" ? 1 : 2);

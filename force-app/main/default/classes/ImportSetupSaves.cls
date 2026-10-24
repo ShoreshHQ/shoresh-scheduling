@@ -63,6 +63,8 @@ public with sharing class ImportSetupSaves {
         .fillWeeks(plan.entries('fillWeeks'));
       new ImportStructureWrites(plan, writer).run();
       new ImportItemWrites(plan, writer).run();
+      // Electives read in the file (slice E9): after the activities, before the versions.
+      new ImportElectiveWrites(plan, writer).run();
       new ImportVersionWrites(plan, writer).run();
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);

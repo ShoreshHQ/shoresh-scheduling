@@ -14,8 +14,8 @@
  * (two thirds, as the desktop's weekly rule). A name with no such pattern is an activity, which
  * is what every rotation looks like. Everything in between is asked.
  *
- * Electives, special days, special events, and trips are noted, not set up (Greg, 2026-10-16):
- * electives and trips by their words (the desktop's elective words, src/ingest/extractEntities.js
+ * Special days, special events, and trips are noted, not set up (Greg, 2026-10-16); electives are
+ * set up from their words since electives slice E9 (electives.js). Electives and trips by their words (the desktop's elective words, src/ingest/extractEntities.js
  * ELECTIVE_HEADER_TERMS, Apache-2.0; and the camp's own words), special days when one name fills
  * a whole day for most groups.
  */
@@ -50,9 +50,11 @@ function containsWord(name, words) {
 /** Whether a name is something noted but not set up: "E" elective, "T" trip, "S" event, or null. */
 export function notedKindByWords(name, terms) {
   const key = looseKey(name);
+  // The camp's own word: for an elective set (Camp words), or as the screens call electives.
   if (
     ELECTIVE_WORDS.includes(key) ||
-    wordsOf(terms, "Elective").includes(key)
+    wordsOf(terms, "Elective").includes(key) ||
+    wordsOf(terms, "ElectiveSet").includes(key)
   ) {
     return "E";
   }

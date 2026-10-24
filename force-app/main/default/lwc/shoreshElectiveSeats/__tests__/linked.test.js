@@ -282,15 +282,17 @@ describe("what keeps a linked choice from being placed as a set", () => {
     ]);
   });
 
-  it("two linked choices sharing a time, and an activity not offered at a period, are said", () => {
+  it("two linked choices of one offering sharing a time, and an activity not offered at a period, are said", () => {
     const pottery = {
       ...BOTH_DAYS,
       id: "lc2",
       name: "Ceramics both days",
       offeringId: "o3"
     };
+    // Another linked choice of Drama over the same days: it shares their seats.
+    const again = { ...BOTH_DAYS, id: "lc3", name: "Drama again" };
     const run = readRun(
-      linkedView([BOTH_DAYS, pottery], {
+      linkedView([BOTH_DAYS, pottery, again], {
         // Pottery isn't offered on Tuesday.
         times: [
           runView().times[0],
@@ -299,18 +301,27 @@ describe("what keeps a linked choice from being placed as a set", () => {
       })
     );
     const { linkedChoices, problems } = linkedOf(run);
-    expect(linkedChoices.map((c) => c.id)).toEqual(["lc1|d1", "lc2|d1"]);
+    expect(linkedChoices.map((c) => c.id)).toEqual([
+      "lc1|d1",
+      "lc2|d1",
+      "lc3|d1"
+    ]);
+    // Ceramics shares the times but not Drama's seats: not a problem (slice E9).
     expect(problems.map((p) => [p.name, p.text])).toEqual([
       [
         "Ceramics both days",
         "Pottery isn't offered at Tuesday 12:30 for Juniors"
       ],
-      ['"Drama both days" and "Ceramics both days"', "Share Monday 12:30"],
-      ['"Drama both days" and "Ceramics both days"', "Share Tuesday 12:30"]
+      ['"Drama both days" and "Drama again"', "Share Monday 12:30"],
+      ['"Drama both days" and "Drama again"', "Share Tuesday 12:30"]
     ]);
-    // The engine refuses both, as the desktop does: filled one period at a time.
+    // The engine refuses both of Drama's, as the desktop does: filled one period at a time.
     const result = assignSeats(engineInput(run, t).input);
-    expect(result.seats.filter((s) => s.linkedChoiceId).length).toBe(0);
+    expect(
+      result.seats.filter((s) =>
+        ["lc1|d1", "lc3|d1"].includes(s.linkedChoiceId)
+      ).length
+    ).toBe(0);
   });
 });
 

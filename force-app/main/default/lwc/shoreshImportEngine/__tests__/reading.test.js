@@ -230,10 +230,10 @@ describe("the three layouts", () => {
         "Morning meeting"
       ]);
       expect(proposal.noted.map((n) => [n.name, n.kind])).toEqual([
-        ["Chugim", "E"],
         ["Field day", "D"],
         ["Zoo trip", "T"]
       ]);
+      expect(proposal.electives.sets.map((s) => s.name)).toEqual(["Chugim"]);
       const boating = proposal.activities.find((a) => a.name === "Boating");
       expect(boating.length).toBe(2);
     }

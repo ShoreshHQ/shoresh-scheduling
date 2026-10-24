@@ -71,8 +71,17 @@
             </template>
           </div>
           <template lwc:if={choice.hasRows}>
-            <div class="field">
+            <div class="field field_mark">
               <span class="field-label">Periods</span>
+              <template lwc:if={choice.periodsGuess}>
+                <c-shoresh-guess-mark
+                  label="Guessed from your file"
+                  name={choice.periodsGuess}
+                  data-id="periods-guess"
+                  data-choice={choice.key}
+                  onconfirm={handleConfirmGuess}
+                ></c-shoresh-guess-mark>
+              </template>
               <table class="periods" data-id="periods">
                 <thead>
                   <tr>
@@ -173,6 +182,9 @@
           </div>
         </div>
       </template>
+      <span class="slds-assistive-text" role="status" data-id="status"
+        >{status}</span
+      >
       <template lwc:if={error}>
         <p class="problem slds-text-color_error" role="alert" data-id="problem">
           {error}

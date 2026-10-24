@@ -349,6 +349,7 @@ export default class ShoreshImport extends LightningElement {
     const t = this.terms;
     return {
       programs: `${t.p("Program")} for these ${t.pIn("Group")}`,
+      electives: t.p("ElectiveSet"),
       units: `${t.s("Division")} for each new ${t.sIn("Group")}`,
       locations: t.p("Location")
     };
@@ -360,7 +361,17 @@ export default class ShoreshImport extends LightningElement {
    * listed under its own heading below, where it can still be changed.
    */
   get questionRows() {
-    return this.cards.filter((c) => !(c.select && c.preselected));
+    return this.cards.filter((c) => !(c.select && c.preselected) && !c.flag);
+  }
+  /**
+   * Electives read from the file (slice E9): each set as read, with its one escape, "Not
+   * electives" (desktop: a flag, never a question). Listed with the choices Shoresh made itself.
+   */
+  get electiveRows() {
+    return this.cards.filter((c) => c.flag);
+  }
+  get hasElectiveRows() {
+    return this.electiveRows.length > 0;
   }
   get programChoices() {
     return this.cards.filter((c) => c.select === "program" && c.preselected);

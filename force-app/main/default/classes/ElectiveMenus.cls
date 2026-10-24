@@ -51,6 +51,7 @@ public with sharing class ElectiveMenus {
       SELECT
         Id,
         Name,
+        CreatedDate,
         ElectiveSet__c,
         Offering__c,
         AppliesTo__c,
