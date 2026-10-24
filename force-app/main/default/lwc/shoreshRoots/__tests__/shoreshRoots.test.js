@@ -624,6 +624,27 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
   });
 
+  it("Tab after Escape opens the meld again, so the card the cursor lands on shows", async () => {
+    const element = await render();
+    await sized(element);
+    card(element, "weeks").focus();
+    run(500);
+    element.shadowRoot.activeElement.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(false);
+    // At rest the fourth card is gone from sight; Tab lands there next.
+    expect(card(element, "groups").hasAttribute("data-gone")).toBe(true);
+    card(element, "programs").focus();
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    card(element, "groups").focus();
+    run(500);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
+    expect(card(element, "groups").hasAttribute("data-gone")).toBe(false);
+  });
+
   it("opens on hover intent and closes a moment after the pointer leaves", async () => {
     const element = await render();
     await sized(element);

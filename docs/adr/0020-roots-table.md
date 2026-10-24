@@ -98,21 +98,26 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    the screen is shown at once, drawn over Roots and clipped to a sheet that starts as the card
    (its place, size, tilt, corner and face) and grows to fill the frame, the card's face giving
    way while the screen's own content fades in at its true size; Roots recedes in the same breath.
-   Back to Roots (the menu's Roots) runs it the other way, to the card of the screen being left
-   (or, for a screen with no card, the one the journey came from), whose meld
-   opens to receive it, and the cursor lands on that card. Turned round mid-way, it bends back
+   Back to Roots runs it the other way: **‹ Roots** first on the screen's rail (the mock-up's
+   back, named "Back to Roots", drawn as Import last year's; `c-shoresh-roots-back`), or the
+   menu's Roots, which does the same, to the card of the screen being left (or, for a screen
+   with no card, the one the journey came from), whose meld opens to receive it, and the cursor lands on that card. Turned round mid-way, it bends back
    from wherever it is; a card chosen while one goes home turns it round toward that card's
    screen; another screen chosen from the menu ends the journey where it is. The screens are never
    moved out of the page (ADR 0003 choice 1: unsaved typing stays), and the screen keeps focus on
-   its heading on the way out. Not done: the mock-up's ‹ Roots on every screen's rail; the menu's
-   Roots is always beside the screen (decision 65a), and adding a way back to every rail would
-   change every screen.
+   its heading on the way out. ‹ Roots is on the rail of every screen with a card on Roots (the
+   eleven setup lists, Camp words, Generated Schedule, Manual Build, Elective seats, Saved
+   versions), right after the screen's unseen name, so Tab from the heading reaches it first.
+   Screens with no card keep what they had: Import last year its own Roots, the Schedules
+   doorway and Bring in choices the menu's Roots; Elective seats' end-of-season Clear, which takes
+   over its rail, keeps its own Cancel.
 
 7. **Keyboard and screen readers.** Each meld is a group named by its section; each card a button
    named as its screen. Tab into a meld fans it, the arrows move between its cards (round at the
    ends), Enter opens, Escape closes it with the cursor kept on its front card (it rests closed
-   until the cursor moves). The glimpses and the sheet are hidden from screen readers; the card's
-   name says what it is. Roots' heading is still there for the page to focus when Roots opens
+   until the cursor moves: an arrow, or Tab to another of its cards, opens it again, so the
+   cursor never lands on a card out of sight). The glimpses and the sheet are hidden from screen
+   readers; the card's name says what it is. Roots' heading is still there for the page to focus when Roots opens
    from the menu. axe passes in Jest and in the browser check.
 
 8. **Reduced motion means no animation**: every placement is drawn at once, no frames are asked
@@ -143,10 +148,11 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
 
 `shoreshRoots.test.js` (melds, names in camp words, the doorway, cards opening their screens, one
 request per showing, faces from the camp's data, outlines for an empty camp, rest and open
-layouts, arrows and Escape, hover intent, interruptible motion, reduced motion, the travel hooks,
-axe), `shoreshRootsFaces.test.js`, `shoreshRootsGlimpse.test.js`, `shoreshMotion.test.js`,
-`shoreshRootsTravel.test.js`, `shoreshCampSetup.test.js` (out and home, reduced motion, a journey
-ended by the menu, the cursor on the card), `shoreshDotField.test.js` (solid), `RootsTableTest`
+layouts, arrows and Escape, Tab after Escape, hover intent, interruptible motion, reduced motion,
+the travel hooks, axe), `shoreshRootsFaces.test.js`, `shoreshRootsGlimpse.test.js`, `shoreshMotion.test.js`,
+`shoreshRootsTravel.test.js`, `shoreshRootsBack.test.js`, `shoreshCampSetup.test.js` (out and
+home by the rail's ‹ Roots and by the menu's, ‹ Roots on every setup rail, reduced motion, a
+journey ended by the menu, the cursor on the card), `shoreshDotField.test.js` (solid), `RootsTableTest`
 (query bound, glimpses, seats, versions, this week, an outsider refused), and steps in
-`scripts/a11y-browser-check.mjs` (Tab, arrows, Escape, travel out and home, hover, reduced
-motion, axe).
+`scripts/a11y-browser-check.mjs` (Tab, arrows, Escape, Tab after Escape, travel out and home by
+the rail's Back to Roots, the menu's Roots, hover, reduced motion, axe).

@@ -1,0 +1,18 @@
+<template>
+  <!-- ‹ Roots, first on a screen's rail (wiki decision 68; the approved mock-up's back, drawn
+       as Import last year's): the screen shrinks home into its card, as the menu's Roots does
+       (repo ADR 0020 choice 6). -->
+  <button
+    type="button"
+    class="shoresh-item"
+    aria-label="Back to Roots"
+    data-id="back"
+    onclick={handleClick}
+  >
+    <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M10 4 6 8l4 4"></path>
+    </svg>
+    <span>Roots</span>
+  </button>
+  <span class="shoresh-rail-line" role="presentation"></span>
+</template>

@@ -616,6 +616,15 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
+   * ‹ Roots on a screen's rail (wiki decision 68): what the menu's Roots does, so the screen
+   * shrinks home into its card (repo ADR 0020 choice 6).
+   */
+  handleBackToRoots(event) {
+    event.stopPropagation();
+    this.handleNavigate({ detail: { screen: "roots" } });
+  }
+
+  /**
    * The Electives list was given a file of camper choices, and the director chose to bring them
    * in (plan §6.2): Bring in choices, with the cursor on its heading.
    */

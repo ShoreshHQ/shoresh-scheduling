@@ -499,7 +499,11 @@ export default class ShoreshRoots extends LightningElement {
   handleMeldFocusIn(event) {
     const meld = this.meldOf(event.currentTarget);
     if (meld) {
-      this.openMeld(meld);
+      // The cursor moved on from the card Escape left it on (Tab, say): that is moving it, so
+      // the meld opens again and the card it lands on shows (WCAG 2.4.7, 2.4.11).
+      this.openMeld(meld, {
+        again: !!meld.held && event.target !== meld.held
+      });
     }
   }
 
@@ -521,8 +525,8 @@ export default class ShoreshRoots extends LightningElement {
       const front =
         meld.cards.find((c) => c.key === meld.rest[0]) || meld.cards[0];
       // The cursor stays in the meld, on its front card, and the meld rests closed until the
-      // cursor moves again.
-      meld.held = true;
+      // cursor moves again (held: the card it was left on).
+      meld.held = front?.b || null;
       meld.open = false;
       meld.root.removeAttribute("data-open");
       this.layout();

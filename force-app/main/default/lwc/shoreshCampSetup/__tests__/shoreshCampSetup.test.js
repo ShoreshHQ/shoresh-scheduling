@@ -2478,6 +2478,45 @@ describe("c-shoresh-camp-setup", () => {
     expect(roots.focusHeading).toHaveBeenCalled();
   });
 
+  it("every setup screen's rail starts with ‹ Roots, named Back to Roots (decision 68)", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    [
+      "weeks",
+      "programs",
+      "divisions",
+      "groups",
+      "timeBlocks",
+      "locations",
+      "activities",
+      "fixedActivities",
+      "recurringActivities",
+      "specialEvents",
+      "electives"
+    ].forEach((screen) => {
+      const rail = q(
+        element,
+        `[data-screen="${screen}"] [data-id="setup-rail"]`
+      );
+      const back = rail.querySelector("c-shoresh-roots-back");
+      expect(back).not.toBeNull();
+      expect(
+        back.shadowRoot
+          .querySelector('[data-id="back"]')
+          .getAttribute("aria-label")
+      ).toBe("Back to Roots");
+      // Right after the screen's (unseen) name, before everything else on the rail.
+      expect(back.previousElementSibling.matches("[data-heading]")).toBe(true);
+    });
+    // On Camp words too, inside its own rail.
+    const labels = q(element, "c-shoresh-camp-labels");
+    expect(
+      labels.shadowRoot.querySelector('[data-id="rail"] c-shoresh-roots-back')
+    ).not.toBeNull();
+  });
+
   describe("a card's screen grows out of it and goes home into it (ADR 0020)", () => {
     const realMatchMedia = window.matchMedia;
     let frames;
@@ -2540,6 +2579,30 @@ describe("c-shoresh-camp-setup", () => {
       expect(classOf(element, "activities")).toBe("screen_travel");
       expect(roots.shadowRoot.activeElement).toBe(
         roots.shadowRoot.querySelector('[data-card="activities"]')
+      );
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+    });
+
+    it("the rail's ‹ Roots goes home into the card, as the menu's Roots does (decision 68)", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      roots.shadowRoot.querySelector('[data-card="weeks"]').click();
+      await flush();
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["weeks"]);
+      q(element, '[data-screen="weeks"] c-shoresh-roots-back')
+        .shadowRoot.querySelector('[data-id="back"]')
+        .click();
+      await flush();
+      expect(classOf(element, "weeks")).toBe("screen_travel");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="weeks"]')
       );
       run(3000);
       await flush();
