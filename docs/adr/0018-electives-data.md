@@ -818,10 +818,14 @@ screen, and other programs' electives.
     - **Left in the standard word:** refusals that come before Shoresh knows the camp ("Those
       elective seats are no longer there." when the run is gone; "Choose the elective set, the
       week and the schedule first.", which the screens never send). "That elective set, week or
-      schedule is no longer there." now reads the camp's words for the set and the week. Camp
+      schedule is no longer there." now reads the camp's words for the set and the week. Manual
+      Build's "That elective set was not found. It may have been deleted." (and its special-event
+      twin, `SlotEvents`) always names the set or event in the camp's words ("That Chug block was
+      not found."), with no fixed-word fallback left in the code. Camp
       words' own section titles (Camp, Activities, Electives, Schedules) stay standard, as they
       label the standard words a camp is renaming.
     - Tests: Jest `shoreshMenu`, `shoreshCampLabels`, `shoreshElectiveSeats`, `shoreshCopySeason`,
       `shoreshImportEngine` (electives) and `shoreshWeekEditor` (electives); Apex `CampLabelsTest`,
-      `ElectivesDataTest.refusalsNameRunsInTheCampsWordForElectives` (with a query bound) and
+      `ElectivesDataTest.refusalsNameRunsInTheCampsWordForElectives` (with a query bound),
+      `ElectivesOnGridTest.aSetOrEventNotFoundIsNamedInTheCampsWords` (with a query bound) and
       `ElectiveSeatsTest.finalizeFixesTheSeatsWithAVersionAndNames`.
