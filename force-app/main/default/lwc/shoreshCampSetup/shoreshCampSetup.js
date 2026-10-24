@@ -269,6 +269,9 @@ export default class ShoreshCampSetup extends LightningElement {
   deleting = false;
   // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
   setupStates = {};
+  // The week each schedule screen shows, and whether its week picker waits on work under way:
+  // screen -> { weekId, locked }. The Schedules doorway holds that screen's other weeks meanwhile.
+  weekStates = {};
   // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
   importing = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
@@ -545,18 +548,20 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // A week chosen on the Schedules doorway: that schedule opens on it. Refused while its week
+    // picker waits on work under way: the doorway stays, that week's button held (weekStates),
+    // rather than opening the screen on another week.
+    const weekId = event.detail.weekId;
+    if (weekId && WEEK_SCREENS[screen]) {
+      const target = this.template.querySelector(WEEK_SCREENS[screen]);
+      if (target && !target.openWeek(weekId)) {
+        return;
+      }
+    }
     // Bring in choices from Elective seats starts on the set, week and schedule shown there.
     this.choicesOpening =
       screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
-    // A week chosen on the Schedules doorway: that schedule opens on it.
-    const weekId = event.detail.weekId;
-    if (weekId && WEEK_SCREENS[screen]) {
-      const target = this.template.querySelector(WEEK_SCREENS[screen]);
-      if (target) {
-        target.openWeek(weekId);
-      }
-    }
     const itemId = event.detail.specialItemId;
     if (itemId) {
       // "Open <special day>" from a day it replaces (ADR 0014 slice 4): its details, then its
@@ -619,6 +624,11 @@ export default class ShoreshCampSetup extends LightningElement {
   handleSetupState(event) {
     const screen = event.currentTarget.dataset.setupState;
     this.setupStates = { ...this.setupStates, [screen]: event.detail };
+  }
+  /** Manual Build and Generated Schedule each say the week shown and whether its picker waits. */
+  handleWeekState(event) {
+    const screen = event.currentTarget.dataset.setupState;
+    this.weekStates = { ...this.weekStates, [screen]: event.detail };
   }
   get shownSetupState() {
     // No season on screen (switching, or its read failed): nothing to say about setup.

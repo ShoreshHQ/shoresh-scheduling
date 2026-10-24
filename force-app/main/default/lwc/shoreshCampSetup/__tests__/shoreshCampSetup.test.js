@@ -20,6 +20,8 @@ import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
+import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
+import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -32,6 +34,14 @@ const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 const apex = () => ({ default: jest.fn() });
 jest.mock(
   "@salesforce/apex/ChoicesImportController.choicesSetup",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
+  virtual: true
+});
+jest.mock(
+  "@salesforce/apex/ManualBuildController.startBlankWeek",
   () => apex(),
   { virtual: true }
 );
@@ -2323,37 +2333,105 @@ describe("c-shoresh-camp-setup", () => {
       ).toEqual(["Week 1", "Week 2"]);
     });
 
-    it("a week's Manual Build or Generated Schedule opens that screen on that week, the cursor on its heading", async () => {
+    const weekPicker = (element, screen) =>
+      q(element, screen).shadowRoot.querySelector('[data-id="week"]');
+    const later = () => {
+      let answer;
+      const promise = new Promise((resolve) => {
+        answer = resolve;
+      });
+      return { promise, answer };
+    };
+
+    it("a week's Manual Build opens that screen on that week, the cursor on its heading through the week's read", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
+      getDraft.mockResolvedValue(null);
+      const element = await render();
+      door(element).click();
+      await flush();
+      // The week is read from the server after the screen opens; the cursor stays put meanwhile.
+      const read = later();
+      getDraft.mockClear();
+      getDraft.mockReturnValue(read.promise);
+      weekButton(element, "w2", "manualBuild").click();
+      await flush();
+      const heading = q(element, '[data-screen="manualBuild"] [data-heading]');
+      expect(shownScreens(element)).toEqual(["manualBuild"]);
+      expect(weekPicker(element, "c-shoresh-manual-build").value).toBe("w2");
+      expect(getDraft).toHaveBeenCalledTimes(1);
+      expect(getDraft.mock.calls[0][0].weekId).toBe("w2");
+      expect(element.shadowRoot.activeElement).toBe(heading);
+      read.answer(null);
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(heading);
+      // The menu's own entries open a schedule on the week it already shows.
+      await openScreen(element, "generatedSchedule");
+      await openScreen(element, "manualBuild");
+      expect(weekPicker(element, "c-shoresh-manual-build").value).toBe("w2");
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
+    it("a week's Generated Schedule opens that screen on that week, the cursor on its heading", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
       getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
       const element = await render();
-      const manual = q(element, "c-shoresh-manual-build");
-      const generated = q(element, "c-shoresh-generated-schedule");
-      manual.openWeek = jest.fn(() => true);
-      generated.openWeek = jest.fn(() => true);
       door(element).click();
       await flush();
-      weekButton(element, "w2", "manualBuild").click();
+      weekButton(element, "w2", "generatedSchedule").click();
       await flush();
-      expect(shownScreens(element)).toEqual(["manualBuild"]);
-      expect(manual.openWeek).toHaveBeenCalledWith("w2");
-      expect(generated.openWeek).not.toHaveBeenCalled();
-      expect(element.shadowRoot.activeElement).toBe(
-        q(element, '[data-screen="manualBuild"] [data-heading]')
-      );
-      door(element).click();
-      await flush();
-      weekButton(element, "w1", "generatedSchedule").click();
       await flush();
       expect(shownScreens(element)).toEqual(["generatedSchedule"]);
-      expect(generated.openWeek).toHaveBeenCalledWith("w1");
+      expect(weekPicker(element, "c-shoresh-generated-schedule").value).toBe(
+        "w2"
+      );
       expect(element.shadowRoot.activeElement).toBe(
         q(element, '[data-screen="generatedSchedule"] [data-heading]')
       );
-      // The menu's own entries open a schedule on the week it already shows.
+    });
+
+    it("while Manual Build's week picker waits, the doorway holds its other weeks and stays put", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      // Everything building needs, so Manual Build offers Start a blank week.
+      const ready = twoWeeks();
+      ready.programs[0].divisions[0].groups = [{ Id: "g1" }];
+      ready.activities = [{ Id: "a1", Name: "Swim" }];
+      getSeasonSetup.mockResolvedValue(nsRecord(ready));
+      getDraft.mockResolvedValue(null);
+      const started = later();
+      startBlankWeek.mockReturnValue(started.promise);
+      const element = await render();
       await openScreen(element, "manualBuild");
-      expect(manual.openWeek).toHaveBeenCalledTimes(1);
+      q(element, "c-shoresh-manual-build")
+        .shadowRoot.querySelector('[data-id="start-week"]')
+        .click();
+      await flush();
+      door(element).click();
+      await flush();
+      // Week 1 is the one shown: it still opens. Week 2's Manual Build waits; Generated doesn't.
+      expect(weekButton(element, "w1", "manualBuild").disabled).toBe(false);
+      expect(weekButton(element, "w2", "manualBuild").disabled).toBe(true);
+      expect(weekButton(element, "w2", "generatedSchedule").disabled).toBe(
+        false
+      );
+      // Asked anyway (a click landing as the start began): refused, so nothing moves.
+      getDraft.mockClear();
+      q(element, "c-shoresh-schedule-weeks").dispatchEvent(
+        new CustomEvent("navigate", {
+          detail: { screen: "manualBuild", weekId: "w2" }
+        })
+      );
+      await flush();
+      expect(shownScreens(element)).toEqual(["scheduleWeeks"]);
+      expect(weekPicker(element, "c-shoresh-manual-build").value).toBe("w1");
+      expect(getDraft).not.toHaveBeenCalled();
+      // The start done: Week 2's Manual Build opens again.
+      started.answer(null);
+      await flush();
+      expect(weekButton(element, "w2", "manualBuild").disabled).toBe(false);
     });
   });
 

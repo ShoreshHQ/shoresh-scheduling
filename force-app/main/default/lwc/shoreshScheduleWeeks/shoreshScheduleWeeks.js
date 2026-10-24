@@ -12,21 +12,30 @@ const ROUTES = ["generatedSchedule", "manualBuild"];
  * neither for the director. With no weeks yet, it says so and leads to the Weeks screen.
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
+ * held: screen -> { weekId, locked }, the week each schedule shows and whether its week picker
+ * waits on work under way (a build, a save, a publish). Meanwhile that screen's button is held
+ * on every other week, as its picker is; the week it shows stays open.
  * Fires: navigate { screen, weekId } (weekId only for a week's schedule).
  */
 export default class ShoreshScheduleWeeks extends LightningElement {
   @api setup;
   @api terms;
+  @api held;
 
   get weeks() {
     const labels = screenLabels(this.terms);
+    const held = this.held || {};
     return ((this.setup && this.setup.weeks) || []).map((week) => ({
       id: week.Id,
       name: week.Name,
       routes: ROUTES.map((screen) => ({
         key: `${week.Id}-${screen}`,
         screen,
-        label: labels[screen]
+        label: labels[screen],
+        disabled:
+          !!held[screen] &&
+          held[screen].locked &&
+          held[screen].weekId !== week.Id
       }))
     }));
   }

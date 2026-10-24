@@ -1293,6 +1293,7 @@
                   onnavigate={handleNavigate}
                   onseasonchanged={handleSeasonChanged}
                   onsetupstate={handleSetupState}
+                  onweekstate={handleWeekState}
                   onsetupfocus={handleSetupFocus}
                   data-setup-state="generatedSchedule"
                 ></c-shoresh-generated-schedule>
@@ -1311,6 +1312,7 @@
                   onnavigate={handleNavigate}
                   onseasonchanged={handleSeasonChanged}
                   onsetupstate={handleSetupState}
+                  onweekstate={handleWeekState}
                   onsetupfocus={handleSetupFocus}
                   data-setup-state="manualBuild"
                 ></c-shoresh-manual-build>
@@ -1324,6 +1326,7 @@
                 </h2>
                 <c-shoresh-schedule-weeks
                   setup={setup}
+                  held={weekStates}
                   terms={terms}
                   onnavigate={handleNavigate}
                 ></c-shoresh-schedule-weeks>
