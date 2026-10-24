@@ -9,6 +9,14 @@
  * last year names one a double period would make again (c/shoreshImportEngine electives.js).
  */
 public with sharing class SetupDeletionElectives {
+  private static final List<String> WEEKDAYS = new List<String>{
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday'
+  };
+
   public class Found {
     public String kind;
     public String scope = '';
@@ -65,14 +73,6 @@ public with sharing class SetupDeletionElectives {
     }
     return found;
   }
-
-  private static final List<String> WEEKDAYS = new List<String>{
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday'
-  };
 
   private static Found linkedChoice(Id recordId, Found found) {
     for (LinkedChoice__c row : [
