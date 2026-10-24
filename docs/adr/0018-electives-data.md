@@ -575,10 +575,10 @@ linked choices (E9).
 46. **What a final run's files read** (plan §3, "a final run's downloads never change"): the seats
     with the activity, place and bunk names copied at Finalize (sent with each seat now), the
     elective times and each bunk's week from the version of the schedule kept at Finalize
-    (`ElectiveRunState.shownDays`; `ElectiveDownloads` sends each bunk's cells from those days,
+    (`ElectiveDownloads` reads that version's days and sends each bunk's cells from them,
     once per thing however many blocks it takes, and marks the cells holding this set), and the
     same reading as the seats screen (`readRun`, `buildBoard`), so the files and the screen can't
-    disagree. The read is the run's own 8 or 9 queries; nothing more.
+    disagree. The read is the run's own queries and one more for those days, whatever the size.
     - **Rosters** (decision 53.4, option A, the counsellor's page): one page per offering that runs
       this week, its elective times side by side, each "12 of 12" (the count alone with no limit;
       "Dropped, had 4 of 6") and who is there, sorted by bunk then name with the bunk beside each.
@@ -627,8 +627,8 @@ linked choices (E9).
     solid bars with a padlock. Picking one week dashes only that week. No explaining sentences;
     what each cell means is said to screen readers only ("Week 3, campers: 6, goes; 42 stay").
     Escape or Cancel goes back with nothing done, the cursor on the menu Clear came from.
-51. **Exact: only what the picture shows goes** (`ElectiveClear`). The picture is the season read
-    once (nine queries, any size): each week's campers (and of them, those in no other week's
+51. **Exact: only what the picture shows goes** (`ElectiveClear`; the season read by
+    `ElectiveClearReading`). The picture is the season read once (nine queries, any size): each week's campers (and of them, those in no other week's
     run), choices (counted from the saved choices), seats and runs, and what stays. Where one
     week's Clear leaves some of its campers (they are in other weeks), its Campers cell shows the
     struck number that goes and, solid with a padlock, the number that stays; each row's head

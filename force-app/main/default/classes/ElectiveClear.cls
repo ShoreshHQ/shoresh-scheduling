@@ -85,7 +85,9 @@ public with sharing class ElectiveClear {
 
   /** What the season holds now, week by week, and what stays. Nine queries, any size. */
   public static Picture picture(Id seasonId) {
-    return new Reading(seasonId).picture;
+    Picture result = new ElectiveClearReading(seasonId).picture;
+    readStays(result, seasonId);
+    return result;
   }
 
   /** Clear the whole season, or one week: exactly what the picture with this stamp showed. */
@@ -101,34 +103,15 @@ public with sharing class ElectiveClear {
       WITH USER_MODE
       FOR UPDATE
     ];
-    Reading now = new Reading(request.seasonId);
-    if (now.picture.stamp != request.stamp || now.runs.size() != held.size()) {
-      throw new ShoreshException(
-        'Something changed since this was drawn. Look again, then clear.'
-      );
-    }
+    ElectiveClearReading now = new ElectiveClearReading(request.seasonId);
+    refuseIfMoved(now, held.size(), request.stamp);
     List<ElectiveRun__c> going = now.runsIn(request.weekId);
     List<Camper__c> campers = now.campersGoing(request.weekId);
     if (going.isEmpty() && campers.isEmpty()) {
       throw new ShoreshException('Nothing to clear.');
     }
-    refuseWorking(now, request.weekId);
-    Savepoint before = Database.setSavepoint();
-    try {
-      if (!going.isEmpty()) {
-        Database.delete(going, AccessLevel.USER_MODE);
-      }
-      if (!campers.isEmpty()) {
-        Database.delete(campers, AccessLevel.USER_MODE);
-      }
-      List<SObject> gone = new List<SObject>();
-      gone.addAll(going);
-      gone.addAll(campers);
-      Database.emptyRecycleBin(gone);
-    } catch (Exception e) {
-      Database.rollback(before);
-      throw e;
-    }
+    refuseWorking(now.picture, request.weekId);
+    deleteForGood(going, campers);
     Result result = new Result();
     result.runs = going.size();
     result.campers = campers.size();
@@ -136,9 +119,42 @@ public with sharing class ElectiveClear {
     return result;
   }
 
-  private static void refuseWorking(Reading now, Id weekId) {
+  /** The picture Clear was asked from is not the season now: refused, nothing removed. */
+  private static void refuseIfMoved(
+    ElectiveClearReading now,
+    Integer held,
+    String stamp
+  ) {
+    if (now.picture.stamp != stamp || now.runs.size() != held) {
+      throw new ShoreshException(
+        'Something changed since this was drawn. Look again, then clear.'
+      );
+    }
+  }
+
+  /** The runs (their choices and seats with them) and the campers, out of the Recycle Bin too. */
+  private static void deleteForGood(
+    List<ElectiveRun__c> going,
+    List<Camper__c> campers
+  ) {
+    // Runs first: their seats and choices point at the campers.
+    List<SObject> gone = new List<SObject>();
+    gone.addAll(going);
+    gone.addAll(campers);
+    Savepoint before = Database.setSavepoint();
+    try {
+      Database.delete(going, AccessLevel.USER_MODE);
+      Database.delete(campers, AccessLevel.USER_MODE);
+      Database.emptyRecycleBin(gone);
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
+  }
+
+  private static void refuseWorking(Picture picture, Id weekId) {
     List<String> working = new List<String>();
-    for (WeekCounts week : now.picture.weeks) {
+    for (WeekCounts week : picture.weeks) {
       if (weekId == null || week.weekId == weekId) {
         working.addAll(week.working);
       }
@@ -154,216 +170,34 @@ public with sharing class ElectiveClear {
     }
   }
 
-  /** The season read once: its runs, who is in them, and the picture drawn from that. */
-  private class Reading {
-    Id seasonId;
-    Picture picture = new Picture();
-    List<ElectiveRun__c> runs;
-    Map<Id, Camper__c> campers = new Map<Id, Camper__c>();
-    // Each week's campers (by the runs of that week).
-    Map<Id, Set<Id>> campersByWeek = new Map<Id, Set<Id>>();
-
-    Reading(Id seasonId) {
-      this.seasonId = seasonId;
-      List<Season__c> seasons = [
-        SELECT Name
-        FROM Season__c
-        WHERE Id = :seasonId
-        WITH USER_MODE
-      ];
-      if (seasons.isEmpty()) {
-        throw new ShoreshException(
-          'That season is no longer there. Reload the page.'
-        );
-      }
-      picture.seasonName = seasons[0].Name;
-      Map<Id, WeekCounts> weeks = readWeeks();
-      readRuns(weeks);
-      readCampers();
-      readChoices(weeks);
-      readSeats(weeks);
-      readStays();
-      picture.stamp = stampOf();
+  /** What stays: the sets, the offerings (by activity) and the linked choices. */
+  private static void readStays(Picture picture, Id seasonId) {
+    for (ElectiveSet__c item : [
+      SELECT Name
+      FROM ElectiveSet__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY Name, Id
+    ]) {
+      picture.sets.add(item.Name);
     }
-
-    Map<Id, WeekCounts> readWeeks() {
-      Map<Id, WeekCounts> byId = new Map<Id, WeekCounts>();
-      for (Week__c week : [
-        SELECT Id, Name
-        FROM Week__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY SortOrder__c, StartDate__c, Id
-      ]) {
-        WeekCounts counts = new WeekCounts();
-        counts.weekId = week.Id;
-        counts.name = week.Name;
-        picture.weeks.add(counts);
-        byId.put(week.Id, counts);
-        campersByWeek.put(week.Id, new Set<Id>());
-      }
-      return byId;
+    for (Offering__c offering : [
+      SELECT Activity__r.Name
+      FROM Offering__c
+      WHERE ElectiveSet__r.Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY Activity__r.Name, Id
+    ]) {
+      picture.offerings.add(offering.Activity__r.Name);
     }
-
-    void readRuns(Map<Id, WeekCounts> weeks) {
-      runs = [
-        SELECT Id, Name, Week__c, Status__c, Revision__c, FinalizedAt__c
-        FROM ElectiveRun__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Id
-      ];
-      for (ElectiveRun__c run : runs) {
-        WeekCounts week = weeks.get(run.Week__c);
-        week.runs++;
-        if (run.Status__c == COMMITTED) {
-          week.working.add(run.Name);
-          continue;
-        }
-        week.finals++;
-        if (
-          run.FinalizedAt__c != null &&
-          (week.lastFinalized == null ||
-          run.FinalizedAt__c > week.lastFinalized)
-        ) {
-          week.lastFinalized = run.FinalizedAt__c;
-        }
-      }
-    }
-
-    void readCampers() {
-      for (Camper__c camper : [
-        SELECT Id, Name
-        FROM Camper__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Id
-      ]) {
-        campers.put(camper.Id, camper);
-      }
-      picture.campers = campers.size();
-    }
-
-    /** Each week's campers and how many choices they made (one per activity named). */
-    void readChoices(Map<Id, WeekCounts> weeks) {
-      Map<Id, Id> weekOfRun = new Map<Id, Id>();
-      for (ElectiveRun__c run : runs) {
-        weekOfRun.put(run.Id, run.Week__c);
-      }
-      for (Preference__c pref : [
-        SELECT ElectiveRun__c, Camper__c, Choices__c
-        FROM Preference__c
-        WHERE ElectiveRun__r.Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Camper__c
-      ]) {
-        Id weekId = weekOfRun.get(pref.ElectiveRun__c);
-        WeekCounts week = weeks.get(weekId);
-        week.choices += String.isBlank(pref.Choices__c)
-          ? 0
-          : pref.Choices__c.countMatches('"a":');
-        if (campersByWeek.get(weekId).add(pref.Camper__c)) {
-          week.campers++;
-          if (week.camperName == null && campers.containsKey(pref.Camper__c)) {
-            week.camperName = campers.get(pref.Camper__c).Name;
-          }
-        }
-      }
-      for (WeekCounts week : picture.weeks) {
-        week.campersOnlyHere = onlyIn(week.weekId).size();
-      }
-    }
-
-    void readSeats(Map<Id, WeekCounts> weeks) {
-      Map<Id, Id> weekOfRun = new Map<Id, Id>();
-      for (ElectiveRun__c run : runs) {
-        weekOfRun.put(run.Id, run.Week__c);
-      }
-      for (AggregateResult row : [
-        SELECT ElectiveRun__c runId, COUNT(Id) seatCount
-        FROM Assignment__c
-        WHERE ElectiveRun__r.Season__c = :seasonId
-        WITH USER_MODE
-        GROUP BY ElectiveRun__c
-      ]) {
-        weeks.get(weekOfRun.get((Id) row.get('runId')))
-          .seats += (Integer) row.get('seatCount');
-      }
-    }
-
-    /** What stays: the sets, the offerings (by activity) and the linked choices. */
-    void readStays() {
-      for (ElectiveSet__c item : [
-        SELECT Name
-        FROM ElectiveSet__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Name, Id
-      ]) {
-        picture.sets.add(item.Name);
-      }
-      for (Offering__c offering : [
-        SELECT Activity__r.Name
-        FROM Offering__c
-        WHERE ElectiveSet__r.Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Activity__r.Name, Id
-      ]) {
-        picture.offerings.add(offering.Activity__r.Name);
-      }
-      for (LinkedChoice__c choice : [
-        SELECT Name
-        FROM LinkedChoice__c
-        WHERE ElectiveSet__r.Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY Name, Id
-      ]) {
-        picture.linked.add(choice.Name);
-      }
-    }
-
-    /** A week's campers that no other week's run has. */
-    Set<Id> onlyIn(Id weekId) {
-      Set<Id> result = campersByWeek.get(weekId).clone();
-      for (Id other : campersByWeek.keySet()) {
-        if (other != weekId) {
-          result.removeAll(campersByWeek.get(other));
-        }
-      }
-      return result;
-    }
-
-    List<ElectiveRun__c> runsIn(Id weekId) {
-      List<ElectiveRun__c> result = new List<ElectiveRun__c>();
-      for (ElectiveRun__c run : runs) {
-        if (weekId == null || run.Week__c == weekId) {
-          result.add(new ElectiveRun__c(Id = run.Id));
-        }
-      }
-      return result;
-    }
-
-    /** The whole season: every camper. One week: its campers no other week has. */
-    List<Camper__c> campersGoing(Id weekId) {
-      Set<Id> ids = weekId == null
-        ? campers.keySet()
-        : (campersByWeek.containsKey(weekId) ? onlyIn(weekId) : new Set<Id>());
-      List<Camper__c> result = new List<Camper__c>();
-      for (Id camperId : ids) {
-        result.add(new Camper__c(Id = camperId));
-      }
-      return result;
-    }
-
-    String stampOf() {
-      List<String> parts = new List<String>();
-      for (ElectiveRun__c run : runs) {
-        parts.add(run.Id + ':' + run.Revision__c + ':' + run.Status__c);
-      }
-      parts.add('campers:' + campers.size());
-      return EncodingUtil.convertToHex(
-        Crypto.generateDigest('SHA-256', Blob.valueOf(String.join(parts, ',')))
-      );
+    for (LinkedChoice__c choice : [
+      SELECT Name
+      FROM LinkedChoice__c
+      WHERE ElectiveSet__r.Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY Name, Id
+    ]) {
+      picture.linked.add(choice.Name);
     }
   }
 }

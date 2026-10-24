@@ -6,8 +6,8 @@
  * committed run is refused, saying so. The files themselves are made in the browser (SheetJS),
  * from what the director can already read: nothing is stored in the org.
  *
- * Read in user mode through ElectiveRunState, in its fixed number of queries; the bunks' weeks
- * come from the days that read already holds, so this adds none.
+ * Read in user mode through ElectiveRunState, in its fixed number of queries, and the kept
+ * version's days once more for the bunks' weeks: one query more, whatever the size.
  */
 public with sharing class ElectiveDownloads {
   public static final String NOT_FINAL = 'Downloads come once seats are final. Finalize first.';
@@ -75,7 +75,11 @@ public with sharing class ElectiveDownloads {
     result.view = ElectiveSeats.viewOf(state);
     result.weekName = state.run.Week__r.Name;
     String setId = String.valueOf(state.run.ElectiveSet__c);
-    for (ScheduleDays.DayGrid each : state.shownDays) {
+    // The version kept at Finalize (read once more here), or the live days without one.
+    List<ScheduleDays.DayGrid> days = state.run.FinalSchedule__c == null
+      ? state.liveDays
+      : ScheduleDays.read(state.run.FinalSchedule__c);
+    for (ScheduleDays.DayGrid each : days) {
       if (each.grid != null) {
         result.days.add(dayOf(each, state.groups, setId));
       }
@@ -99,26 +103,18 @@ public with sharing class ElectiveDownloads {
       made.blocks.add(info);
     }
     for (Integer g = 0; g < grid.groups.size(); g++) {
-      Id groupId = GridItems.isId(grid.groups[g].id)
-        ? Id.valueOf(grid.groups[g].id)
-        : null;
-      if (groupId == null || !groups.containsKey(groupId)) {
-        continue;
+      String groupId = grid.groups[g].id;
+      if (GridItems.isId(groupId) && groups.containsKey(Id.valueOf(groupId))) {
+        made.bunks.add(bunkOf(grid, g, setId));
       }
-      made.bunks.add(bunkOf(grid, g, groupId, setId));
     }
     return made;
   }
 
   /** A bunk's cells, one per thing it does, with how many blocks it carries on for. */
-  private static BunkCells bunkOf(
-    ScheduleGrid grid,
-    Integer g,
-    Id groupId,
-    String setId
-  ) {
+  private static BunkCells bunkOf(ScheduleGrid grid, Integer g, String setId) {
     BunkCells bunk = new BunkCells();
-    bunk.groupId = groupId;
+    bunk.groupId = Id.valueOf(grid.groups[g].id);
     Cell open = null;
     for (Integer b = 0; b < grid.blocks.size(); b++) {
       String text = grid.rows[g][b];
