@@ -4241,8 +4241,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       case REFUSED.FIXED_HERE:
         return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is.`;
       case REFUSED.NO_SWAP:
-        // The desktop's words (useSlotMutations.js): elective and event cells never swap.
-        return "Can’t swap with an elective or an event. Move it to an empty cell instead.";
+        // The desktop's words (useSlotMutations.js): elective and event cells never swap. The
+        // camp's word for electives (wiki decision 66), plural so no article is built from it.
+        return `Can’t swap with ${this.t.pIn("Elective")} or events. Move it to an empty cell instead.`;
       default:
         return `${name} doesn't fit there.`;
     }

@@ -52,12 +52,15 @@ public with sharing class ElectiveFinalize {
 
   /**
    * A version of the run's schedule as it is (ManualVersions' automatic version), its reason
-   * Electives finalized: what a final run is shown from, and what its downloads read.
+   * Electives finalized: what a final run is shown from, and what its downloads read. Named in
+   * the camp's word for electives (wiki decision 66): "Chugim finalized: ...".
    */
   private static Id keepSchedule(ElectiveRunState state) {
+    String electives = CampLabels.forCamp(state.run.Season__r.Camp__c)
+      .plural('Elective');
     Id versionId = ManualVersions.keepAutomatically(
       scheduleOf(state.run),
-      ('Electives finalized: ' + state.run.Name).left(80),
+      (electives + ' finalized: ' + state.run.Name).left(80),
       state.liveDays
     );
     Database.update(

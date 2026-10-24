@@ -24,7 +24,9 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    the desktop's, Camp, Activities & Events, Schedules._ _Confirmed 2026-10-23 (wiki decision
    56): Programs and Camp words stay under Camp, and Programs is always in the menu, also for a
    camp with one program. The desktop hides Programs while a camp has only "Main"; Greg chose
-   to keep it shown, so a camp can see and add its programs without a separate door._
+   to keep it shown, so a camp can see and add its programs without a separate door._ _Changed 2026-10-24
+   (wiki decision 66, ADR 0018 choice 62): Electives and Elective seats are in the camp's words
+   too ("Chugim", "Chug seats"), from the new Elective camp word._
 3. **Before the first season**, only Camp words can be opened; the rest is greyed out (each
    needs a season). _Changed 2026-10-20 (ADR 0013 choice 11): greyed entries stay in the tab
    order, marked unavailable, and say why ("Needs a season", "Coming") to screen readers._ New season and Copy season stay at the top, beside the season picker;

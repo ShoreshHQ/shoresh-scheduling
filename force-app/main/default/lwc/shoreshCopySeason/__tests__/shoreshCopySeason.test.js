@@ -23,7 +23,8 @@ const SEASON = {
   EndDate__c: "2026-08-07"
 };
 const terms = buildTerms([
-  { term: "Week", singular: "Session", plural: "Sessions", isCustom: true }
+  { term: "Week", singular: "Session", plural: "Sessions", isCustom: true },
+  { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
 ]);
 
 const SAME_DAYS = {
@@ -142,13 +143,14 @@ describe("c-shoresh-copy-season", () => {
     expect(texts(element, '[data-id="stays-behind"] h3')).toEqual([
       "Stays in Summer 2026"
     ]);
-    // Elective seats and the campers' choices belong to the summer (decision 56, ADR 0018).
+    // Elective seats and the campers' choices belong to the summer (decision 56, ADR 0018), in
+    // the camp's word for electives (decision 66).
     expect(texts(element, '[data-id="stays-behind"] li')).toEqual([
       "Schedules",
       "Versions",
       "Special days",
       "Special events",
-      "Elective seats",
+      "Chug seats",
       "Camper choices"
     ]);
   });

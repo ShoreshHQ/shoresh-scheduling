@@ -124,7 +124,9 @@
  * - Copy season, Camp words and Programs (wiki decision 56, ADR 0015 choice 14): a program added
  *   from the Programs table's blank row by keyboard is said, its no-time-blocks corner shows, and
  *   its trash can deletes it after the question, said; on Camp words the Group row's word typed
- *   shows its plural guessed, is saved and said when left, then put back; Copy this season
+ *   shows its plural guessed, is saved and said when left, then put back, and the Elective row's
+ *   word the same, with the menu then reading it for Electives and Elective seats (decision 66,
+ *   ADR 0018 choice 62); Copy this season
  *   draws the weeks twice, as many above as below;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
@@ -1916,6 +1918,11 @@ async function campSetup() {
   );
   await step(
     S,
+    "Camp words: electives renamed, and the menu says so",
+    electiveCampWord
+  );
+  await step(
+    S,
     "Locations: Same location? merges a place typed twice",
     async () => {
       await openFromMenu("Locations", /^Locations\b/);
@@ -2433,6 +2440,56 @@ async function campWord() {
   else await press("Backspace");
   await expectLive(W, "Putting the word back: Saved is said again", SAVED, () =>
     press("Tab", 200)
+  );
+}
+
+/**
+ * Electives in the camp's words (wiki decision 66, repo ADR 0018 choice 62): on Camp words (where
+ * campWord leaves the page) the Elective row's word typed and saved; the menu then reads its
+ * guessed plural for Electives and "<word> seats" for Elective seats. Then put back as it was.
+ */
+async function electiveCampWord() {
+  const W = "Camp words";
+  const box = (field) =>
+    shown(
+      `c-shoresh-camp-labels input[data-term="Elective"][data-field="${field}"]`
+    );
+  const before = await box("singular").inputValue();
+  const word = before === "Chug" ? "Bechira" : "Chug";
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  await type(word);
+  const guess = await box("plural").getAttribute("placeholder");
+  await expectLive(W, "Electives: leaving the word, Saved is said", SAVED, () =>
+    press("Tab", 200)
+  );
+  await pause(2000);
+  const menu = page.locator(APP).locator("c-shoresh-menu");
+  const label = async (key) =>
+    ((await menu.locator(`[data-item="${key}"]`).textContent()) || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  const electives = await label("electives");
+  const seats = await label("electiveSeats");
+  const STEP = "Electives: the menu uses the camp's word";
+  if (electives.startsWith(guess) && seats.startsWith(`${word} seats`)) {
+    results.pass(W, STEP, `"${electives}" and "${seats}".`);
+  } else {
+    results.fail(
+      W,
+      STEP,
+      `"${electives}" and "${seats}", expected "${guess}" and "${word} seats".`
+    );
+  }
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  if (before) await type(before);
+  else await press("Backspace");
+  await expectLive(
+    W,
+    "Electives: putting the word back, Saved is said again",
+    SAVED,
+    () => press("Tab", 200)
   );
 }
 

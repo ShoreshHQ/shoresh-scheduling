@@ -261,7 +261,7 @@ describe("c-shoresh-week-editor: elective sets", () => {
     await fromGrid(element, "cellspace", { key: "1-1" });
     expect(saveRuns).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Can’t swap with an elective or an event. Move it to an empty cell instead."
+      "Can’t swap with electives or events. Move it to an empty cell instead."
     );
   });
 

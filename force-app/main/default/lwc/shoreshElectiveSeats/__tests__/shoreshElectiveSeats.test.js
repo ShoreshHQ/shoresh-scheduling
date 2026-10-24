@@ -85,7 +85,8 @@ function text(node) {
 async function render({
   situation = SITUATION,
   view = runView(),
-  setup = SETUP
+  setup = SETUP,
+  words = []
 } = {}) {
   seatsSetup.mockResolvedValue(situation);
   openRun.mockResolvedValue(view);
@@ -99,7 +100,8 @@ async function render({
       singular: "Elective set",
       plural: "Elective sets",
       isCustom: false
-    }
+    },
+    ...words
   ]);
   element.setup = nsRecord(setup);
   document.body.appendChild(element);
@@ -176,6 +178,33 @@ describe("the start", () => {
     });
     expect($(element, '[data-id="no-sets"]').title).toBe(
       "No elective sets yet. Make one on Electives first."
+    );
+  });
+
+  it("says electives in the camp's word: Chug seats, Chugim (wiki decision 66)", async () => {
+    const words = [
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+    ];
+    let element = await render({
+      situation: { runs: [] },
+      setup: { ...SETUP, electives: { sets: [] } },
+      words
+    });
+    expect(text($(element, "[data-heading]"))).toBe("Chug seats");
+    expect($(element, '[data-id="no-sets"]').title).toBe(
+      "No elective sets yet. Make one on Chugim first."
+    );
+    document.body.removeChild(element);
+    seatsSetup.mockRejectedValue({ body: { message: "Gone." } });
+    element = createElement("c-shoresh-elective-seats", {
+      is: ShoreshElectiveSeats
+    });
+    element.terms = buildTerms(words);
+    element.setup = nsRecord(SETUP);
+    document.body.appendChild(element);
+    await flush();
+    expect(text(element.shadowRoot.firstChild.parentNode)).toContain(
+      "Couldn't open Chug seats."
     );
   });
 

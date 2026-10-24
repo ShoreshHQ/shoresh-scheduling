@@ -99,7 +99,7 @@ export default class ShoreshCopySeason extends LightningElement {
       t.p("Version"),
       t.p("SpecialDay"),
       t.p("SpecialEvent"),
-      "Elective seats",
+      `${t.s("Elective")} seats`,
       `${t.s("Camper")} choices`
     ].map((label) => ({ key: label, label }));
   }

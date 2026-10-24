@@ -10,6 +10,10 @@ private class CampLabelsTest {
     Assert.areEqual('activities', labels.pluralInSentence('Activity'));
     Assert.areEqual('Rainy days', labels.plural('RainyDay'));
     Assert.areEqual('Seats', labels.plural('Seats'));
+    // Electives are a camp word too (wiki decision 66).
+    Assert.areEqual('Elective', labels.singular('Elective'));
+    Assert.areEqual('Electives', labels.plural('Elective'));
+    Assert.areEqual('electives', labels.pluralInSentence('Elective'));
   }
 
   @IsTest

@@ -521,6 +521,42 @@ private class ElectivesDataTest {
   }
 
   @IsTest
+  static void refusalsNameRunsInTheCampsWordForElectives() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveCamp camp = new ElectiveCamp().withRun();
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = camp.season.Camp__c,
+          ModelTerm__c = 'Elective',
+          Singular__c = 'Chug',
+          Plural__c = 'Chugim'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      String week = deleteRefusal(camp.ids.get('Week 1'));
+      Integer used = Limits.getQueries() - before;
+      Database.DeleteResult setResult = Database.delete(
+        camp.chugim.Id,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Test.stopTest();
+
+      Assert.areEqual(
+        'This can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
+        week
+      );
+      Assert.areEqual(
+        'This elective set can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
+        setResult.getErrors()[0].getMessage()
+      );
+      Assert.isTrue(used <= 12, 'Queries for one refusal: ' + used);
+    }
+  }
+
+  @IsTest
   static void aSetWithoutRunsGoesWithItsOfferingsAndLinkedChoices() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp();

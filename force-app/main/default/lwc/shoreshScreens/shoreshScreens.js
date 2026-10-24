@@ -38,8 +38,9 @@ export function screenLabels(t) {
     fixedActivities: t.p("FixedActivity"),
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
-    electives: "Electives",
-    electiveSeats: "Elective seats",
+    // The camp's word for electives too (wiki decision 66): "Chugim", "Chug seats".
+    electives: t.p("Elective"),
+    electiveSeats: `${t.s("Elective")} seats`,
     manualBuild: "Manual Build",
     generatedSchedule: "Generated Schedule",
     schedules: "Saved versions",
