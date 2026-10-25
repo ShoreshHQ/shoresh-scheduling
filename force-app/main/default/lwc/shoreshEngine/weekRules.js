@@ -26,9 +26,10 @@ export const RELAX_ORDER = Object.freeze([
   RULE.SAME_DIVISION,
   RULE.PLACE_CAPACITY
 ]);
-/** What never-blank may bend (care plan step 7): preferences only. Who an activity is set up
- * for, groups at once, same division and groups that fit are limits and never give way there. */
-export const PREFERENCES = Object.freeze([RULE.WEEKLY_MAX, RULE.ONCE_A_DAY]);
+/** What never-blank may bend (care plan step 7, Greg 2026-10-25): the weekly max only. Once a
+ * day, who an activity is set up for, groups at once, same division and groups that fit are
+ * limits and never give way there. */
+export const PREFERENCES = Object.freeze([RULE.WEEKLY_MAX]);
 // Most serious first, for comparing two bends.
 export const SEVERITY = [...RELAX_ORDER].reverse();
 

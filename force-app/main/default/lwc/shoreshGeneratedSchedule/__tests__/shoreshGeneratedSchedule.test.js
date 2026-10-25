@@ -801,10 +801,11 @@ describe("c-shoresh-generated-schedule", () => {
   });
 
   it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {
-    // One activity, at most once a week, for four cells: never blank goes over the limit.
+    // One activity with a weekly max of 0: never blank goes over the limit on the first day shown
+    // (it never doubles up in a day: once a day is a limit, Greg 2026-10-25).
     const inputs = camp({
       ...SMALL,
-      activities: [{ name: "Swim", min: 0, max: 1, atOnce: 2 }]
+      activities: [{ name: "Swim", min: 0, max: 0, atOnce: 2 }]
     });
     const element = await render(inputs);
     await generate(element);
@@ -819,7 +820,7 @@ describe("c-shoresh-generated-schedule", () => {
     const days = sent().days;
     const saved = camp({
       ...SMALL,
-      activities: [{ name: "Swim", min: 0, max: 1, atOnce: 2 }],
+      activities: [{ name: "Swim", min: 0, max: 0, atOnce: 2 }],
       scheduleId: SCHEDULE
     });
     saved.days = saved.days.map((day, i) => ({

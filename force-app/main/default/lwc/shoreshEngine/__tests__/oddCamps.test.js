@@ -13,12 +13,31 @@ import { cellsOf } from "./data/camp";
 import { inputOf, ODD_CAMPS } from "./data/oddCamps";
 import { settledRules } from "./data/settledRules";
 
-/** camp name -> rule -> [the PR that fixes it, the exact lines today's engine gives]. */
-const KNOWN_FAILURES = {};
+const PR4 = "PR 4 (search before giving up, import as floor)";
+
+/**
+ * camp name -> rule -> [the PR that fixes it, the exact lines today's engine gives]. Since once a
+ * day became a limit (Greg, 2026-10-25), never-blank leaves these cells Open, each with its
+ * reason; a rearranging search (PR 4) is what fills them.
+ */
+const KNOWN_FAILURES = {
+  "half days": {
+    gapIsABug: [
+      PR4,
+      ["the exhaustive search ran out of budget: no proof either way"]
+    ]
+  },
+  "overlapping time blocks": {
+    gapIsABug: [
+      PR4,
+      ["filled 8 cells within the hard limits; a week exists that fills 10"]
+    ]
+  }
+};
 
 const RULES = {
   hardLimits:
-    "never breaks a hard limit (who it's for, groups at once, groups that fit, divisions)",
+    "never breaks a hard limit (who it's for, once a day, groups at once, groups that fit, divisions)",
   visible:
     "shows every problem: every bend flagged, every shortfall and blank setup listed",
   gapIsABug: "leaves no cell Open that something allowed could fill"
@@ -143,8 +162,9 @@ describe("the settled-rules checker itself", () => {
       ]
     };
     const found = settledRules(c, input, planted, { exhaustive: true });
+    // Swim and arts are already on that day (once a day is a limit), so only sports could.
     expect(found.gapIsABug).toEqual([
-      "2026-07-06 g01 b0 Open, but swim, arts, sports could go there",
+      "2026-07-06 g01 b0 Open, but sports could go there",
       "filled 8 cells within the hard limits; a week exists that fills 9"
     ]);
   });

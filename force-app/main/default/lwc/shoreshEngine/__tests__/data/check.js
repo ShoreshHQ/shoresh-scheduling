@@ -358,8 +358,8 @@ export function problems(spec, input, result) {
     }
   }
   // A cell left Open with something set up for the group free there, within every limit (who
-  // it's for, groups at once, groups that fit, same division): weekly max and once a day are
-  // preferences, so they never excuse it.
+  // it's for, once a day, groups at once, groups that fit, same division): the weekly max is a
+  // preference, so it never excuses it.
   const free = (act, group, d, b) => {
     const there = doing.get(`${act.id}|${d}|${b}`) || [];
     if (
@@ -394,7 +394,11 @@ export function problems(spec, input, result) {
   };
   for (const { k, d, b, group, gap, row, peers } of maybeFull) {
     const could = [...acts.values()].filter((act) => {
-      if (!eligible(act, group) || act.span > gap) {
+      if (
+        !eligible(act, group) ||
+        act.span > gap ||
+        row.some((c) => c && c.kind === "A" && c.id === act.id)
+      ) {
         return false;
       }
       for (let i = b; i < b + act.span; i++) {

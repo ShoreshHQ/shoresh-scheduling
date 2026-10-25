@@ -17,11 +17,10 @@ import {
  */
 
 // Never blank (Greg, 2026-10-17; care plan step 7, 2026-10-25): a cell nothing fits cleanly
-// gets an activity the group is set up for that fits every physical limit (groups at once,
-// groups that fit, same division), bending only a preference: its weekly max (Greg: "max is a
-// preference; going over is fine") or, failing that, once a day (the care plan's gap rule counts
-// both as preferences). Going over the max is tried first, smallest overage first: a third Art
-// for several bunks before a fifth for one. Then high priority, then the one the group has had
+// gets an activity the group is set up for that fits every limit (once a day, groups at once,
+// groups that fit, same division), bending only its weekly max (Greg: "max is a preference;
+// going over is fine"), smallest overage first: a third Art for several bunks before a fifth
+// for one. Then high priority, then the one the group has had
 // least, then the stable key. Nothing allowed fits: the cell stays Open, saying so (FULL). An
 // activity is never shortened (Greg): a cell where the group is busy at an overlapping time, or
 // a gap no activity's length fits, stays Open.

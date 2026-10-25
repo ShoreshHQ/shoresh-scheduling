@@ -59,8 +59,9 @@ export function reasonFor(
  */
 export function blankSetupNote(field, name, terms) {
   const t = terms || buildTerms([]);
-  const what = field === "fit" ? "that fit" : "at once";
-  return `${name}: ${t.pIn("Group")} ${what} is blank, so it counts as 1`;
+  // The field's own label, as the setup screen shows it (c/shoreshCampLabels).
+  const label = t.s(field === "fit" ? "GroupsThatFit" : "GroupsAtOnce");
+  return `${name}: ${label} is blank, so it counts as 1`;
 }
 
 /** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */

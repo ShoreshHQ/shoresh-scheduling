@@ -96,7 +96,7 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     and counts, the same words as Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
  *   noEarlyDay, noEarlyDayBy: checkWeek's early-week goals the week has no day for, once each
  *   setupNotes: lines for each blank groups at once (an activity running this week) or groups
- *     that fit (a place), taken as 1: "Arts: groups at once is blank, so it counts as 1"
+ *     that fit (a place one uses), taken as 1: "Arts: Groups at once is blank, so it counts as 1"
  *   overlapping: checkWeek's cells where a placement breaks a rule that time block shares with
  *     other cells: [{ dateValue, groupId, blockId, rules: [RULE... or BUSY], text }]
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
@@ -160,7 +160,10 @@ export function* generateWeekSteps(input) {
     ...activities.running
       .filter((a) => a.atOnceBlank)
       .map((a) => blankSetupNote("atOnce", a.name, t)),
-    ...blank.map((id) => blankSetupNote("fit", placeNames.get(id), t))
+    // Only the places an activity running this week uses.
+    ...blank
+      .filter((id) => activities.running.some((a) => a.locationId === id))
+      .map((id) => blankSetupNote("fit", placeNames.get(id), t))
   ];
   const model = {
     days,

@@ -85,12 +85,26 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
-  it("repeats an activity in a day before leaving a cell blank", () => {
+  it("never repeats an activity in a day: the cell stays Open, saying so (Greg, 2026-10-25)", () => {
     const result = run({
       blocks: [block(0), block(1)],
       activities: [activity("swim")]
     });
-    // Twice in a day dots both.
+    expect(result.flags).toEqual([]);
+    expect(result.openCells.map((c) => c.reason)).toEqual([
+      "Everything for Bunk g1 is full then"
+    ]);
+  });
+
+  it("a hand edit twice in a day is dotted on both", () => {
+    const result = handEdited({
+      blocks: [block(0), block(1)],
+      activities: [activity("swim")],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "swim" },
+        { day: 0, group: "g1", block: "b1", act: "swim" }
+      ]
+    });
     expect(result.flags.map((f) => f.bends)).toEqual([
       [RULE.ONCE_A_DAY],
       [RULE.ONCE_A_DAY]
@@ -279,7 +293,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
 
   // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
   // exactly that rule there. Taking them away one at a time walks the order rules give way in.
-  describe("only preferences give way, in order: weekly max, then once a day; nothing else ever", () => {
+  describe("only the weekly max gives way; nothing else ever", () => {
     const candidates = {
       [RULE.WEEKLY_MAX]: activity("x", { max: 0, atOnce: null }),
       [RULE.ONCE_A_DAY]: activity("y", { max: null, atOnce: null }),
@@ -314,7 +328,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       }))
     });
 
-    const PREFERENCE = [RULE.WEEKLY_MAX, RULE.ONCE_A_DAY];
+    const PREFERENCE = [RULE.WEEKLY_MAX];
     const ways = RELAX_ORDER.map((rule, i) => [rule, RELAX_ORDER.slice(i)]);
     it.each(ways.filter(([rule]) => PREFERENCE.includes(rule)))(
       "%s gives way when it is the least serious left",
@@ -1250,7 +1264,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     );
     expect(result.ok).toBe(true);
     expect(result.setupNotes).toEqual([
-      "Arts: groups at once is blank, so it counts as 1"
+      "Arts: Groups at once is blank, so it counts as 1"
     ]);
     expect(
       [at(result, 0, "g1", 0), at(result, 0, "g2", 0)].filter(Boolean)
@@ -1269,9 +1283,20 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     );
     expect(result.ok).toBe(true);
     expect(result.setupNotes).toEqual([
-      "Field: groups that fit is blank, so it counts as 1"
+      "Field: Groups that fit is blank, so it counts as 1"
     ]);
     expect(result.openCells).toHaveLength(1);
+  });
+
+  it("says nothing of a blank place no activity this week uses", () => {
+    const result = blanked(
+      {
+        locations: [{ id: "shed", name: "Shed", fit: 2 }],
+        activities: [activity("swim", { atOnce: null })]
+      },
+      { fit: ["shed"] }
+    );
+    expect(result.setupNotes).toEqual([]);
   });
 
   it("says nothing when every field is set, or the activity has no group limit", () => {
