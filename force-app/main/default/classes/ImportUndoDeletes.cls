@@ -103,16 +103,6 @@ public with sharing class ImportUndoDeletes {
   }
 
   public void run(Map<String, Object> created) {
-    // Undo takes away the imported week it made, which nothing else may delete (PublishedGuard).
-    PublishedGuard.allowImport();
-    try {
-      undo(created);
-    } finally {
-      PublishedGuard.doneImport();
-    }
-  }
-
-  private void undo(Map<String, Object> created) {
     collectCreated(created);
     // Who-can-do-it rows and weeks off are not removed on their own: they go with their item. An
     // item kept (edited since, or in use) keeps who it covers and the weeks it is off, so items

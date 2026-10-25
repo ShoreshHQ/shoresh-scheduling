@@ -21,7 +21,11 @@ private class ScheduleDeleteTest {
       ORDER BY StartDate__c
       LIMIT 1
     ];
-    Schedule__c version = ShoreshTestData.version(program.Id, week.Id, 'V');
+    Schedule__c version = ShoreshTestData.savedVersion(
+      program.Id,
+      week.Id,
+      'V'
+    );
     Database.insert(
       new ScheduleDay__c(
         Schedule__c = version.Id,

@@ -14,12 +14,12 @@ public with sharing class ImportVersionWrites {
   }
 
   public void run() {
-    // The imported week is kept as it came in; only the import writes it (PublishedGuard).
-    PublishedGuard.allowImport();
+    // The imported week is kept as it came in; only the import writes it (ImportedWeekGuard).
+    ImportedWeekGuard.allow();
     try {
       write();
     } finally {
-      PublishedGuard.doneImport();
+      ImportedWeekGuard.done();
     }
   }
 

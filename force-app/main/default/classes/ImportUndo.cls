@@ -70,8 +70,14 @@ public with sharing class ImportUndo {
       new ImportUndoWho(result).run(whoLists);
       new ImportUndoWeeksOff(result, done.Season__c).run(weeksBackOn);
       new ImportUndoWords(result, campId).run(wordsOff);
-      new ImportUndoDeletes(result)
-        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
+      // Undo takes away the imported week it made, which nothing else may delete.
+      ImportedWeekGuard.allow();
+      try {
+        new ImportUndoDeletes(result)
+          .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
+      } finally {
+        ImportedWeekGuard.done();
+      }
       SetTimeGuard.checkPending();
       ImportLog.markUndone(done);
     } catch (Exception e) {

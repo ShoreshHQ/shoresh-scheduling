@@ -31,7 +31,7 @@ private class SetupTablesTest {
       WHERE Id = :ids.get('Week ' + week)
       WITH SYSTEM_MODE
     ];
-    Schedule__c schedule = ShoreshTestData.version(
+    Schedule__c schedule = ShoreshTestData.savedVersion(
       ids.get('Main'),
       saved.Id,
       name
@@ -112,8 +112,8 @@ private class SetupTablesTest {
           Week__c = week.Id,
           Name = 'Version ' + i,
           Status__c = 'Version',
-          Origin__c = 'Imported',
-          VersionReason__c = 'Imported'
+          Origin__c = 'Manual',
+          VersionReason__c = 'SavedByHand'
         )
       );
     }

@@ -232,6 +232,23 @@ public class ShoreshTestData {
     );
   }
 
+  /**
+   * A version saved by hand (Origin Manual), whose days a test may write as it likes. A version as an
+   * import makes one (version) is kept as it came in: its days can't be written after it (ImportedWeekGuard).
+   */
+  public static Schedule__c savedVersion(Id programId, Id weekId, String name) {
+    Schedule__c schedule = new Schedule__c(
+      Program__c = programId,
+      Week__c = weekId,
+      Name = name,
+      Status__c = 'Version',
+      Origin__c = 'Manual',
+      VersionReason__c = 'SavedByHand'
+    );
+    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
+    return schedule;
+  }
+
   /** A saved version of a program's week, as an import makes one. */
   public static Schedule__c version(Id programId, Id weekId, String name) {
     Schedule__c schedule = new Schedule__c(

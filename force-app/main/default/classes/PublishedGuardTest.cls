@@ -412,11 +412,11 @@ private class PublishedGuardTest {
       Map<String, Id> ids = camp();
       Id importedId = importedVersion(ids);
       Test.startTest();
-      PublishedGuard.allowImport();
+      ImportedWeekGuard.allow();
       try {
         delete new Schedule__c(Id = importedId);
       } finally {
-        PublishedGuard.doneImport();
+        ImportedWeekGuard.done();
       }
       Test.stopTest();
       Assert.isTrue(

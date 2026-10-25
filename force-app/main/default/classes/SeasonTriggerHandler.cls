@@ -98,8 +98,8 @@ public with sharing class SeasonTriggerHandler {
         ]
       );
       // Schedules point at the season's weeks (restrict-delete); their days go with them. The
-      // season's imported weeks go too: they are kept only while their season is (PublishedGuard).
-      PublishedGuard.allowImport();
+      // season's imported weeks go too: they are kept only while their season is (ImportedWeekGuard).
+      ImportedWeekGuard.allow();
       try {
         clear(
           [
@@ -110,7 +110,7 @@ public with sharing class SeasonTriggerHandler {
           ]
         );
       } finally {
-        PublishedGuard.doneImport();
+        ImportedWeekGuard.done();
       }
       // Special dates point at the season's weeks and special days and events; plans at the
       // special days and events; special events at its locations. Clearing the dates first
