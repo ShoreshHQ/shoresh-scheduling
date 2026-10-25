@@ -48,6 +48,8 @@ export default class ShoreshRootsHand extends LightningElement {
   mediaReduced;
   resizer;
   focusAt = -1;
+  // The most height the hand may take with cards in it (Roots: what the window leaves it).
+  most = Infinity;
 
   @api
   get cards() {
@@ -216,9 +218,11 @@ export default class ShoreshRootsHand extends LightningElement {
   size() {
     const width = this.handEl?.clientWidth || 0;
     // The mock-up's card: a fifth of the frame the hand lies in (its host, the hand's margins
-    // included), never under 196 (the narrowest whose picture keeps its 11 px words) nor over 232.
+    // included), never under 196 (the narrowest whose picture keeps its 11 px words) nor over 232;
+    // and no taller than the window leaves the hand (fitHeight), down to that 196.
     const frame = this.template.host?.clientWidth || width;
-    this.hw = Math.round(Math.max(196, Math.min(232, frame * 0.2)));
+    const tall = Math.floor((this.most - ABOVE - BELOW - 0.5) / 0.68);
+    this.hw = Math.round(Math.max(196, Math.min(232, frame * 0.2, tall)));
     // Tall enough that the picture's 11 px words are never drawn smaller.
     this.hh = Math.round(this.hw * 0.68);
     return width;
@@ -421,6 +425,19 @@ export default class ShoreshRootsHand extends LightningElement {
       return true;
     }
     return false;
+  }
+
+  /**
+   * The most height the hand may take with cards in it: what the window leaves below the table
+   * (Roots). The cards give way to it, never under 196 wide; none (0 or less) is no limit.
+   */
+  @api
+  fitHeight(px) {
+    const most = px > 0 ? px : Infinity;
+    if (most !== this.most) {
+      this.most = most;
+      this.layout();
+    }
   }
 
   /** A card's size at scale 1. */

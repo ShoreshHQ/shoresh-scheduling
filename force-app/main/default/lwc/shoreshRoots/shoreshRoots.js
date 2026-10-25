@@ -540,6 +540,11 @@ export default class ShoreshRoots extends LightningElement {
     if (typeof ResizeObserver === "function") {
       this.resizer = new ResizeObserver(() => this.layout());
       this.resizer.observe(table);
+      // The worksheet bar growing (a last import shown) takes room from the hand (fitHand).
+      const tools = this.template.querySelector('[data-id="tools"]');
+      if (tools) {
+        this.resizer.observe(tools);
+      }
     }
     this.fit();
     this.layout();
@@ -548,15 +553,20 @@ export default class ShoreshRoots extends LightningElement {
   /** Roots is as tall as the window leaves it (the table is the screen; nothing scrolls past it). */
   fit() {
     const root = this.template.querySelector('[data-id="roots"]');
-    if (!root) {
-      return;
+    const room = this.room();
+    if (root && room) {
+      root.style.minHeight = `${Math.max(520, Math.round(room))}px`;
+    }
+  }
+
+  /** The height the window leaves Roots below the page's header (0 while Roots is not shown). */
+  room() {
+    const root = this.template.querySelector('[data-id="roots"]');
+    if (!root || !root.getClientRects().length) {
+      return 0;
     }
     const top = root.getBoundingClientRect().top + (window.scrollY || 0);
-    if (!root.getClientRects().length) {
-      return;
-    }
-    const room = (window.innerHeight || 0) - Math.max(0, top) - 12;
-    root.style.minHeight = `${Math.max(520, Math.round(room))}px`;
+    return Math.max(0, (window.innerHeight || 0) - Math.max(0, top) - 12);
   }
 
   onWindowResize = () => {
@@ -738,7 +748,7 @@ export default class ShoreshRoots extends LightningElement {
     this.ch = ch;
     table.style.setProperty("--cw", `${cw}px`);
     table.style.setProperty("--ch", `${ch}px`);
-    this.holdRoom(cw, ch);
+    this.fitHand(this.holdRoom(cw, ch));
     const open = this.melded.find((m) => m.open);
     const fan = Math.round(ch * 0.17);
     const restS = Math.min(
@@ -820,15 +830,46 @@ export default class ShoreshRoots extends LightningElement {
    * short window Roots grows past it (the page scrolls) instead of the table or the hand giving way.
    */
   holdRoom(cw, ch) {
-    const field = this.template.querySelector('[data-id="field"]');
-    if (!field) {
-      return;
-    }
     const least = Math.ceil(2 * ch * fullFace(cw, ch) + GAP + 2.5 + 64);
+    const field = this.template.querySelector('[data-id="field"]');
     const value = `${least}px`;
-    if (field.style.minHeight !== value) {
+    if (field && field.style.minHeight !== value) {
       field.style.minHeight = value;
     }
+    return least;
+  }
+
+  /**
+   * Table, hand and worksheet bar on one screen (decision 68, at 1440 by 900 with a last import
+   * shown): the hand may take what the window leaves below the table's least height and above the
+   * bar. Its cards are the mock-up's size when that is room enough, and give way first (never under
+   * 196 wide); only past that does Roots grow past the window.
+   */
+  fitHand(least) {
+    const hand = this.handEl;
+    const field = this.template.querySelector('[data-id="field"]');
+    const body = this.template.querySelector('[data-id="body"]');
+    const room = this.room();
+    if (!hand || !field || !body || !room) {
+      return;
+    }
+    // Everything but the table and the hand: the table's margin, the hairline and the bar. Each
+    // measured itself, never as what the hand leaves (that moves while the hand eases to its
+    // height); layout heights, since the body is scaled while a screen grows out of a card.
+    const margins = (el) => {
+      const style = window.getComputedStyle(el);
+      return (
+        (parseFloat(style.marginTop) || 0) +
+        (parseFloat(style.marginBottom) || 0)
+      );
+    };
+    let others = margins(field);
+    [...body.children].forEach((el) => {
+      if (el !== field && el !== hand) {
+        others += el.offsetHeight + margins(el);
+      }
+    });
+    hand.fitHeight(Math.floor(room - least - others));
   }
 
   /**

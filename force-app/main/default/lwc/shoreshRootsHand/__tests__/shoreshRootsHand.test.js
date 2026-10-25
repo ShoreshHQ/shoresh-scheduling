@@ -233,6 +233,26 @@ describe("c-shoresh-roots-hand", () => {
     expect(element.cardSize()).toEqual({ w: 196, h: 133 });
   });
 
+  it("gives way to the height the window leaves it, never under 196 wide, and grows back", async () => {
+    const element = await render([card("A"), card("B")]);
+    run(3000);
+    const hand = element.shadowRoot.querySelector('[data-id="hand"]');
+    // 195 px left below the table (1440 by 900 with a last import shown): the cards take it.
+    element.fitHeight(195);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 218, h: 148 });
+    expect(parseFloat(hand.style.height)).toBeLessThanOrEqual(195);
+    // Far too little: the least card, whose words still read at 11 px; Roots grows past.
+    element.fitHeight(120);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
+    // Room again (or no limit): the mock-up's size.
+    element.fitHeight(0);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 232, h: 158 });
+    expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
+  });
+
   it("moves the cursor to the next card when the card it was on is played", async () => {
     const element = await render([card("A"), card("B"), card("C")]);
     run(3000);

@@ -223,10 +223,17 @@
 }
 
 .last-import {
+  /* Beside the buttons when it has 26rem there (a laptop), its words wrapping; else its own row. */
+  flex: 1 1 26rem;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--shoresh-s2);
+  gap: var(--shoresh-s4);
+}
+
+.last-words {
+  flex: 1;
+  min-width: 0;
 }
 
 .weak {

@@ -218,7 +218,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
       the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
-      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). **The hand always shows its cards whole, at the mock-up's size** (R2.1, 2026-10-25): a card a fifth of the frame wide, never under 196 px (the narrowest whose picture keeps its 11 px words) nor over 232, 0.68 as tall, the hand its height and 46 px more (232 by 158 at 1440 wide, as the mock-up). It never lowers or eases aside: R2 lowered it while a meld was open to give the table its room, and in shoresh-test that left the hand cut off under the worksheet bar whenever a meld stayed open, as it does while a card in it has the cursor (the mock-up's rule, choice 4: focus holds a meld open, whatever the pointer does). Instead the table and the hand size to fit: the table never gets shorter than two rows of cards at full face with the meld names above them (about 435 px), so an open meld still shows full faces at 1440 by 900 with cards in hand, and on a short window Roots grows past the window (the page scrolls) rather than the table or the hand giving way; the worksheet bar lies below the hand, never over it. Should a later read fail, the
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). **The hand always shows its cards whole, at the mock-up's size** (R2.1, 2026-10-25): a card a fifth of the frame wide, never under 196 px (the narrowest whose picture keeps its 11 px words) nor over 232, 0.68 as tall, the hand its height and 46 px more (232 by 158 at 1440 wide, as the mock-up). It never lowers or eases aside: R2 lowered it while a meld was open to give the table its room, and in shoresh-test that left the hand cut off under the worksheet bar whenever a meld stayed open, as it does while a card in it has the cursor (the mock-up's rule, choice 4: focus holds a meld open, whatever the pointer does). Instead the table and the hand size to fit: the table never gets shorter than two rows of cards at full face with the meld names above them (about 435 px), so an open meld still shows full faces at 1440 by 900 with cards in hand; the worksheet bar lies below the hand, never over it. **Table, hand and bar share one screen at 1440 by 900** (decision 68), a last import in the bar included: the hand takes what the window leaves between the table's least height and the bar, its cards the mock-up's size when that is room enough and smaller when it is not, never under 196 wide (with a last import shown at 1440 by 900, 213 by 145 in shoresh-test, the bar ending 12 px above the window's bottom). Only once the cards are at 196 does Roots grow past the window (the page scrolls), on a short window, rather than the table or the hand giving way. (The first R2.1 build kept the cards at 232 and pushed Undo last import half off a 1440 by 900 window; review of PR #142.) Should a later read fail, the
       cards the table fed stay as they were (nothing is played away on a failed read). However
       many cards there are, the hand keeps a clear margin at both ends: past what fits side by
       side they close up and overlap, a lifted card coming to the front; the cards breathe very
@@ -227,7 +227,10 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       The camp's workbook tools (Import last year, first for an empty camp; Download worksheet; a
       workbook's Import a list; Re-import last year; the last import with Undo) stay in their bar
       under a hairline below the hand, the secondary actions' place (decision 28C; the mock-up has
-      no workbook bar).
+      no workbook bar). The last import is laid out as the desktop's (`LastImportUndo.jsx`): its
+      line and the sentence on what Undo does on the left, Undo last import on their right; it
+      sits beside the buttons, its words wrapping, when it has 26rem there (a laptop), so the bar
+      keeps to one row, and takes a row of its own on a narrower window.
 
 11. **Tokens** (ADR 0015): the mock-up's card shadows (`--shoresh-card-rest`, `--shoresh-card-lift`,
     made of the shade and the primary's steps), its easing and lift time (`--shoresh-flow`,
@@ -238,11 +241,15 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
 ## Checked by
 
 R2.1: `shoreshRootsHand.test.js` (the mock-up's card size at three widths, the hand its height
-and 46 more), `shoreshRoots.test.js` (an open meld leaves the hand as it is; the table keeps two
-rows of full faces), and the browser check's hand step: every hand card whole, at the mock-up's
-size and overlapped by nothing, the worksheet bar below, at rest and with a meld open, at 1440,
-1280 and 1024 wide and in a 560 px tall window (it fails on any card clipped or covered); the
-steps before it leave the table at rest (no card holding the cursor) before the hand is measured.
+and 46 more; giving way to the height it is left, never under 196, and growing back),
+`shoreshRoots.test.js` (an open meld leaves the hand as it is; the table keeps two rows of full
+faces; at 1440 by 900 with a two-row bar the hand takes what is left, with a one-row bar the
+mock-up's 232), and the browser check's hand step: every hand card whole, at the mock-up's size
+(smaller, never under 196, only while the window has no room) and overlapped by nothing, the
+worksheet bar below, at rest and with a meld open, at 1440, 1280 and 1024 wide and in a 560 px
+tall window (it fails on any card clipped or covered, and on Roots running past the bottom of a
+1440 by 900 window); the steps before it leave the table at rest (no card holding the cursor)
+before the hand is measured.
 
 R2: `shoreshRootsLooks.test.js` (every attention signal kept, each kind on one card, the table's
 missing things, weeks not built in season order whatever order they were made in, camp words, the menu's order, the same hand every time, names that fit, pictures

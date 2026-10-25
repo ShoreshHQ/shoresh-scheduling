@@ -908,6 +908,64 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(parseFloat(field.style.minHeight)).toBeGreaterThan(laptop);
   });
 
+  it("table, hand and worksheet bar share the window: the hand's cards give way before Roots grows past it", async () => {
+    // 1440 by 900 in Salesforce: Roots starts 166 down, so 722 px are its own.
+    const innerHeight = window.innerHeight;
+    window.innerHeight = 900;
+    // Below the table and the hand: a hairline and a bar of three lines (a last import shown).
+    let bar = 82;
+    jest
+      .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+      .mockImplementation(function () {
+        if (this.tagName === "C-SHORESH-ROOTS-HAND") return 204;
+        if (this.dataset?.id === "field") return 434;
+        if (this.dataset?.id === "tools") return bar;
+        if (this.classList?.contains("shoresh-hairline")) return 1;
+        return 0;
+      });
+    // The table's margin above it.
+    const realStyle = window.getComputedStyle;
+    jest.spyOn(window, "getComputedStyle").mockImplementation((el) => {
+      const style = realStyle(el);
+      return el.dataset?.id === "field"
+        ? { ...style, marginTop: "12px", marginBottom: "0px" }
+        : style;
+    });
+    // The hand's frame: 1164 wide, so its card is the mock-up's 232 when it has the room.
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 1164);
+    const realRects = Element.prototype.getClientRects;
+    jest
+      .spyOn(Element.prototype, "getClientRects")
+      .mockImplementation(function () {
+        return this.dataset?.id === "roots" ? [{}] : realRects.call(this);
+      });
+    jest
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(() => ({ top: 166, left: 0, right: 0, bottom: 0 }));
+    try {
+      const element = await render();
+      const field = $(element, '[data-id="field"]');
+      await sized(element, 1140, 300);
+      run(3000);
+      const least = parseFloat(field.style.minHeight);
+      const left = 722 - least - (12 + 1 + bar);
+      const size = handOf(element).cardSize();
+      expect(size.w).toBeLessThan(232);
+      expect(size.w).toBeGreaterThanOrEqual(196);
+      expect(size.h + 46).toBeLessThanOrEqual(left);
+      expect(size.h + 46).toBeGreaterThan(left - 3);
+      // A one-row bar (no last import): room for the mock-up's card.
+      bar = 56;
+      await sized(element, 1140, 301);
+      run(3000);
+      expect(handOf(element).cardSize()).toEqual({ w: 232, h: 158 });
+    } finally {
+      window.innerHeight = innerHeight;
+    }
+  });
+
   it("the hand's last card with the cursor played away: the cursor goes to its meld", async () => {
     const element = await render();
     await sized(element);
