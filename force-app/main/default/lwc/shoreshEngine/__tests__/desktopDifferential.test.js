@@ -333,16 +333,22 @@ function earlyKindOf(row) {
 
 describe("desktop differential (outcomes on shared synthetic camps)", () => {
   const rows = [];
-  for (let seed = 1; seed <= SEEDS; seed++) {
-    rows.push(compare(seed));
-  }
+  // The camps both engines built (an error is reported by the first test, with its seed).
+  const built = [];
+  // Built inside the suite's hooks, so Jest's timeout applies and a crash names its test.
+  beforeAll(() => {
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      rows.push(compare(seed));
+    }
+    built.push(...rows.filter((r) => r.sf));
+  });
 
   it(`builds every camp in both engines (${SEEDS} seeds)`, () => {
     expect(rows.filter((r) => r.sfError || r.desktopError)).toEqual([]);
   });
 
   it("adds up: each engine's filled plus empty cells never exceed the cells to fill", () => {
-    const bad = rows.filter(
+    const bad = built.filter(
       (r) =>
         r.sf.filled + r.sf.empty > r.cells ||
         r.desktop.filled + r.desktop.empty > r.cells
@@ -352,28 +358,29 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
 
   it("reports how the outcomes differ (data, not a pass or fail)", () => {
     const summary = {};
-    for (const r of rows) {
+    for (const r of built) {
       const k = kindOf(r);
       summary[k] = (summary[k] || 0) + 1;
     }
     const early = {};
-    for (const r of rows) {
+    for (const r of built) {
       const k = earlyKindOf(r);
       early[k] = (early[k] || 0) + 1;
     }
     const bends = {};
-    for (const r of rows) {
+    for (const r of built) {
       for (const [rule, n] of Object.entries(r.sf.bends)) {
         bends[rule] = (bends[rule] || 0) + n;
       }
     }
-    const total = (side, field) => rows.reduce((n, r) => n + r[side][field], 0);
+    const total = (side, field) =>
+      built.reduce((n, r) => n + r[side][field], 0);
     const report = {
-      camps: rows.length,
+      camps: built.length,
       kinds: summary,
       earlyWeek: early,
       totals: {
-        cells: rows.reduce((n, r) => n + r.cells, 0),
+        cells: built.reduce((n, r) => n + r.cells, 0),
         sfEmpty: total("sf", "empty"),
         desktopEmpty: total("desktop", "empty"),
         sfBentCells: total("sf", "bentCells"),
@@ -382,7 +389,7 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
         desktopMinimumsShort: total("desktop", "minimumsShort"),
         sfEarlyShort: total("sf", "earlyShort"),
         desktopEarlyShort: total("desktop", "earlyShort"),
-        campsWithDifferentCounts: rows.filter((r) => r.pairsDiffer > 0).length
+        campsWithDifferentCounts: built.filter((r) => r.pairsDiffer > 0).length
       },
       // The camps worth a look: this engine met fewer goals or left more empty than the desktop.
       worthALook: rows
@@ -399,15 +406,15 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
           desktop: r.desktop
         }))
     };
-    console.log(
-      `Desktop differential:\n${JSON.stringify({ ...report, worthALook: report.worthALook.slice(0, 10) }, null, 2)}`
-    );
     if (process.env.DESKTOP_DIFF_REPORT) {
+      console.log(
+        `Desktop differential: ${JSON.stringify(report.kinds)}, early week ${JSON.stringify(report.earlyWeek)}`
+      );
       require("fs").writeFileSync(
         process.env.DESKTOP_DIFF_REPORT,
         JSON.stringify({ ...report, rows }, null, 2)
       );
     }
-    expect(report.camps).toBe(SEEDS);
+    expect(report.camps).toBe(rows.length);
   });
 });
