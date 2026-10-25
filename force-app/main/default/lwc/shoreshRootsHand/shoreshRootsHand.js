@@ -11,6 +11,8 @@ const DEAL_STEP = 140;
 // bottom. The hand always shows its cards whole; the table above takes what is left (Roots).
 const ABOVE = 22;
 const BELOW = 24;
+// The cards turn about a point this much of their height below their bottom edge (CSS 50% 120%).
+const PIVOT = 0.2;
 const CALM_HEIGHT = 16;
 const MIN_STEP = 24;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
@@ -236,8 +238,21 @@ export default class ShoreshRootsHand extends LightningElement {
     const step =
       n > 1 ? Math.max(MIN_STEP, Math.min(this.hw * 1.06, room / (n - 1))) : 0;
     const tilt = n > 3 ? (2.2 * 3) / n : 2.2;
-    const drop = n > 3 ? (3 * 3) / n : 3;
+    // The mock-up's curve, flattened only as far as its end cards (the lowest) need to stay
+    // whole in the room below them: from about ten cards on, the curve alone would sink them.
+    const end = (n - 1) / 2;
+    const deepest = end > 0 ? (BELOW - this.sink(end * tilt)) / (end * end) : 0;
+    const drop = Math.max(0, Math.min(n > 3 ? (3 * 3) / n : 3, deepest));
     return { x: k * step, y: k * k * drop, r: k * tilt, s: 1, o: 1 };
+  }
+
+  /**
+   * How far a card's lowest corner goes below its resting bottom edge when tilted by deg: it
+   * turns about a point under its middle, a fifth of its height below it (the CSS's 50% 120%).
+   */
+  sink(deg) {
+    const a = (Math.abs(deg) * Math.PI) / 180;
+    return (this.hw / 2) * Math.sin(a) + PIVOT * this.hh * (1 - Math.cos(a));
   }
 
   layout() {

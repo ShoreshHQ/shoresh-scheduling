@@ -253,6 +253,62 @@ describe("c-shoresh-roots-hand", () => {
     expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
   });
 
+  // How far a card lies below where its bottom edge rests: its drop, and its lowest corner as it
+  // tilts about the point a fifth of its height under its middle (the CSS's 50% 120%).
+  const below = (b, { w, h }) => {
+    const m =
+      /translate\(calc\(-50% \+ -?[\d.]+px\), (-?[\d.]+)px\) rotate\((-?[\d.]+)deg\)/.exec(
+        b.style.transform
+      );
+    const a = (Number(m[2]) * Math.PI) / 180;
+    const lowest = Math.max(
+      ...[-w / 2, w / 2].map(
+        (dx) => 1.2 * h + dx * Math.sin(a) - 0.2 * h * Math.cos(a)
+      )
+    );
+    return { drop: Number(m[1]), deepest: Number(m[1]) + lowest - h };
+  };
+  const fan = async (frame, n) => {
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => frame);
+    const element = await render([...Array(n)].map((_, i) => card(`C${i}`)));
+    run(12000);
+    const size = element.cardSize();
+    return live(element).map((b) => below(b, size));
+  };
+
+  it.each([
+    [1200, 3],
+    [1200, 9],
+    [1200, 10],
+    [1200, 12],
+    [1200, 20],
+    [760, 12],
+    [760, 15],
+    [760, 20],
+    [760, 30]
+  ])(
+    "keeps every card whole above the hand's bottom (%i wide, %i cards)",
+    async (frame, n) => {
+      const cards = await fan(frame, n);
+      // The hand leaves 24 px below its cards (BELOW, .hcard's bottom) and shows nothing past.
+      expect(Math.max(...cards.map((c) => c.deepest))).toBeLessThanOrEqual(
+        24.01
+      );
+    }
+  );
+
+  it.each([3, 6, 9])(
+    "keeps the mock-up's curve while it fits (%i cards)",
+    async (n) => {
+      const cards = await fan(1200, n);
+      // The end card 9 / n px lower per step from the middle, squared (3 px for three or fewer).
+      const k = (n - 1) / 2;
+      expect(cards[n - 1].drop).toBeCloseTo(k * k * (n > 3 ? 9 / n : 3), 1);
+    }
+  );
+
   it("moves the cursor to the next card when the card it was on is played", async () => {
     const element = await render([card("A"), card("B"), card("C")]);
     run(3000);
