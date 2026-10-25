@@ -1,0 +1,56 @@
+@import "c/shoreshTokens";
+
+/*
+ * A hand card's face (repo ADR 0020; the approved mock-up's .hcard .face): the name at 13 px, the
+ * words for what is off under it, the picture below, the needs-a-look corner top right.
+ */
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 13px 12px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.name {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 10px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: var(--shoresh-text-1);
+}
+
+.name small {
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--shoresh-text-2);
+}
+
+.off {
+  flex: none;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  color: var(--shoresh-text-2);
+}
+
+.glimpse {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.corner {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+}

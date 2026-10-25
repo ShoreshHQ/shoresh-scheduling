@@ -427,6 +427,31 @@ describe("c/shoreshRootsFaces", () => {
       expect(g.shapes.filter((s) => s.cls === "g-lock")).toHaveLength(2);
     });
 
+    it("a fixed activity always looks fixed: its padlock stays, and a name with no room for both is shortened", () => {
+      [
+        "Lunch",
+        "Morning flagpole",
+        "Morning announcements and flagpole"
+      ].forEach((name) => {
+        const withName = readCamp(
+          nsRecord({
+            ...SETUP,
+            programs: [
+              {
+                ...SETUP.programs[0],
+                fixedActivities: [{ Name: name, TimeBlock__c: "b1" }]
+              }
+            ]
+          }),
+          TABLE
+        );
+        [12, 14, 16, 18, 20, 24].forEach((f) => {
+          const g = glimpseOf("fixedActivities", withName, f);
+          expect(g.shapes.filter((s) => s.cls === "g-lock")).toHaveLength(2);
+        });
+      });
+    });
+
     it("seats tell the truth at any size: past the limit always shows, no limit counts past the row", () => {
       const seatsOf = (seat, f = 0) =>
         glimpseOf(

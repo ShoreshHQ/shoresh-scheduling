@@ -1,0 +1,37 @@
+<template>
+  <!-- The hand (repo ADR 0020 choice 10): what needs a look, fanned along the bottom of the
+       table. Cards are placed and moved from script (c/shoreshMotion); a card being played onto
+       its meld stays drawn, out of reach, until it lands. -->
+  <div
+    class="hand"
+    role="group"
+    aria-label="Needs a look"
+    data-id="hand"
+    data-alive={alive}
+    onkeydown={handleKeydown}
+  >
+    <template for:each={shown} for:item="card">
+      <button
+        key={card.key}
+        type="button"
+        class="hcard"
+        data-hand={card.key}
+        data-gone={card.gone}
+        aria-hidden={card.gone}
+        disabled={card.leaving}
+        tabindex={card.tabindex}
+        aria-label={card.label}
+        onclick={handleClick}
+      >
+        <c-shoresh-roots-hand-face
+          class="face"
+          data-face
+          card={card}
+        ></c-shoresh-roots-hand-face>
+      </button>
+    </template>
+    <span class="slds-assistive-text" role="status" data-id="calm"
+      >{calmWords}</span
+    >
+  </div>
+</template>

@@ -15,6 +15,7 @@ import {
   smallOf
 } from "c/shoreshRootsFaces";
 import { createMotion, smooth, W_MOVE } from "c/shoreshMotion";
+import { looksOf } from "c/shoreshRootsLooks";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 const COARSE_POINTER = "(pointer: coarse)";
@@ -34,6 +35,9 @@ const GAP = 14;
 const MIN_STRIP = 25;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
 const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
+// A meld settles as a card from the hand lands on it (the mock-up's nudge).
+const NUDGE = 950;
+const isHand = (key) => typeof key === "string" && key.startsWith("hand:");
 
 /**
  * Roots, the home screen: the canasta table (wiki decisions 60 to 68, approved 2026-10-24; repo
@@ -45,19 +49,39 @@ const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
  * one continuous, interruptible model (c/shoreshMotion); with reduced motion asked for, nothing
  * moves.
  *
- * Until the hand (slice R2), "Needs your attention" sits where the hand will go, along the bottom,
- * and the camp's workbook tools (Import last year, Download worksheet, a workbook import, Undo
- * last import) sit under it.
+ * Along the bottom lies the hand (slice R2, c-shoresh-roots-hand): what needs a look in this camp
+ * (c/shoreshRootsLooks), each card opening the exact thing, grown out of the card. The hand
+ * changes only while Roots is shown and still (never behind a screen or mid-journey), once the
+ * table's request for this showing is back: so what was dealt with on another screen is played
+ * onto its meld as Roots comes back, and anything new is dealt in. The camp's workbook tools
+ * (Import last year, Download worksheet, a workbook import, Undo last import) sit under it.
  *
- * Fires: navigate { screen, fromCard? }; imported; undoimport { importId, files }
+ * Fires: navigate { screen, fromCard?, weekId?, setId?, specialItemId? }; imported;
+ * undoimport { importId, files }
  */
 export default class ShoreshRoots extends LightningElement {
   downloading = false;
   /** The season setup from SeasonSetupController. */
   @api setup;
   @api terms;
-  /** From shoreshSetupRules.setupProblems: [{ key, screen, name, why }]. */
-  @api problems = [];
+  /** From shoreshSetupRules.setupProblems: [{ key, screen, kind, name, why, of }]. */
+  @api
+  get problems() {
+    return this._problems;
+  }
+  set problems(value) {
+    this._problems = value || [];
+    this.refreshHand();
+  }
+
+  _problems = [];
+  /** The hand's cards (c/shoreshRootsLooks), as last handed to it. */
+  hand = [];
+  handSig = "";
+  /** The table's request for this showing is back (or failed): the hand may change. */
+  tableRead = false;
+  /** The last table read, for the hand when a later read fails (nothing is played away then). */
+  handTable = null;
 
   /** What the table draws beyond the setup (RootsController.getTable), once read. */
   table = null;
@@ -146,7 +170,10 @@ export default class ShoreshRoots extends LightningElement {
   async readTable() {
     const seasonId = this.setup?.season?.Id || null;
     this.readSeason = seasonId;
+    this.tableRead = false;
     if (!seasonId) {
+      this.tableRead = true;
+      this.refreshHand();
       return;
     }
     const mine = ++this.reading;
@@ -154,12 +181,17 @@ export default class ShoreshRoots extends LightningElement {
       const table = await getTable({ seasonId });
       if (mine === this.reading) {
         this.table = table;
+        this.handTable = table;
+        this.tableRead = true;
+        this.refreshHand();
       }
     } catch (e) {
       // The table still draws everything the setup holds; the schedule cards show their
       // outlines, and the director is told why the rest is missing (never silently).
       if (mine === this.reading) {
         this.table = null;
+        this.tableRead = true;
+        this.refreshHand();
         this.dispatchEvent(
           new ShowToastEvent({
             title: "Roots could not read your schedules",
@@ -231,7 +263,7 @@ export default class ShoreshRoots extends LightningElement {
 
   /** The card a screen travels to or from, worn by the sheet. */
   get travelCard() {
-    if (!this.travelKey) {
+    if (!this.travelKey || isHand(this.travelKey)) {
       return null;
     }
     for (const meld of this.melds) {
@@ -243,24 +275,97 @@ export default class ShoreshRoots extends LightningElement {
     return null;
   }
 
+  /** The hand card a screen travels to or from. */
+  get travelHand() {
+    return isHand(this.travelKey)
+      ? this.hand.find((c) => c.key === this.travelKey) || null
+      : null;
+  }
+
   get travelPic() {
     return (this.pics[this.travelKey] || 0) > 0 ? "true" : null;
   }
 
-  /** Alphabetical by name, as on the desktop: a stable order that makes no claim about priority. */
-  get attention() {
-    const labels = this.labels;
-    return [...(this.problems || [])]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((problem) => ({
-        ...problem,
-        tag: labels[problem.screen],
-        ariaLabel: `${problem.name}: ${problem.why}`
-      }));
+  // ---------- the hand ----------
+
+  /**
+   * The hand anew, when it may change: Roots shown, no journey under way, and this showing's table
+   * read. A season read of another camp's table is never mixed in (handTable is this season's).
+   */
+  refreshHand() {
+    if (!this._active || this.travelKey || !this.tableRead || !this.terms) {
+      return;
+    }
+    const seasonId = this.setup?.season?.Id || null;
+    const table =
+      this.handTable && this.readSeason === seasonId ? this.handTable : null;
+    const openable = this.melds.flatMap((m) => [
+      m.door,
+      ...m.cards.map((c) => c.key)
+    ]);
+    const next = looksOf({
+      problems: this._problems,
+      setup: this.setup,
+      table,
+      terms: this.terms,
+      openable: openable.filter(Boolean)
+    });
+    const sig = JSON.stringify(next);
+    if (sig !== this.handSig) {
+      this.handSig = sig;
+      this.hand = next;
+    }
   }
 
-  get hasAttention() {
-    return (this.problems || []).length > 0;
+  get handEl() {
+    return this.template.querySelector("c-shoresh-roots-hand");
+  }
+
+  /** A hand card: the exact thing it is about, grown out of the card. */
+  handleHandOpen(event) {
+    const card = this.hand.find((c) => c.key === event.detail.key);
+    if (!card) {
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { ...card.nav, screen: card.screen, fromCard: card.key }
+      })
+    );
+  }
+
+  /** Where a meld's front card is, for a hand card played onto it. */
+  playTo = (meldKey) => {
+    const meld = this.melded.find((m) => m.key === meldKey);
+    const front = meld && (meld.rest[0] || meld.cards[0]?.key);
+    const pose = front ? this.cardPose(front) : null;
+    return pose ? { x: pose.x, y: pose.y, w: pose.w, r: pose.r } : null;
+  };
+
+  /** A card from the hand landed on its meld: the stack settles. */
+  handleLanded(event) {
+    const meld = this.melded.find((m) => m.key === event.detail.meld);
+    const front = meld?.cards.find((c) => c.key === meld.rest[0]);
+    if (!front || this.reduced) {
+      return;
+    }
+    front.b.removeAttribute("data-nudge");
+    front.b.setAttribute("data-nudge", "");
+    if (front.cancelNudge) {
+      front.cancelNudge();
+    }
+    front.cancelNudge = this.motion.after(NUDGE, () =>
+      front.b.removeAttribute("data-nudge")
+    );
+  }
+
+  /** The hand card with the cursor was played away and none is left: the cursor goes to its meld. */
+  handleLeftFocus(event) {
+    const meld = this.melded.find((m) => m.key === event.detail.meld);
+    const front = meld && (meld.rest[0] || meld.cards[0]?.key);
+    if (front) {
+      this.focusCard(front);
+    }
   }
 
   /** Setup screens' rows, for whether the camp has any setup yet. */
@@ -322,7 +427,7 @@ export default class ShoreshRoots extends LightningElement {
     );
   }
 
-  /** A door (the Schedules title) or an item that needs attention: that screen. */
+  /** A door (the Schedules title), or Import last year: that screen. */
   handleOpen(event) {
     this.dispatchEvent(
       new CustomEvent("navigate", {
@@ -858,6 +963,9 @@ export default class ShoreshRoots extends LightningElement {
   /** Whether Roots has a card for that screen. */
   @api
   hasCard(key) {
+    if (isHand(key)) {
+      return !!this.handEl?.hasCard(key);
+    }
     return !!this.meldCard(key);
   }
 
@@ -867,6 +975,9 @@ export default class ShoreshRoots extends LightningElement {
    */
   @api
   cardPose(key, { going = false } = {}) {
+    if (isHand(key)) {
+      return this.handEl?.cardPose(key, { going }) || null;
+    }
     const found = this.meldCard(key);
     const table = this.tableEl;
     if (!found || !table) {
@@ -895,6 +1006,9 @@ export default class ShoreshRoots extends LightningElement {
   /** How fast the card is moving now, as the sheet's own values (it carries on from there). */
   @api
   cardVelocity(key) {
+    if (isHand(key)) {
+      return this.handEl?.cardVelocity(key) || {};
+    }
     const vel = this.motion.vel(`card:${key}`);
     const out = {};
     ["x", "y", "r"].forEach((n) => {
@@ -915,6 +1029,19 @@ export default class ShoreshRoots extends LightningElement {
    */
   @api
   prepareHome(key) {
+    // The journey home is under way from here: the hand holds still until it is over.
+    this.travelKey = key;
+    if (isHand(key)) {
+      // Home to the hand card it left from: still in the hand (the hand holds still until the
+      // journey is over), the cursor on it.
+      if (!this.handEl?.hasCard(key)) {
+        return null;
+      }
+      this.fit();
+      this.layout();
+      this.handEl.focusCard(key);
+      return this.handEl.cardPose(key, { going: true });
+    }
     const found = this.meldCard(key);
     if (!found) {
       return null;
@@ -929,6 +1056,9 @@ export default class ShoreshRoots extends LightningElement {
   /** Puts the cursor on a card. */
   @api
   focusCard(key) {
+    if (isHand(key)) {
+      return !!this.handEl?.focusCard(key);
+    }
     const found = this.meldCard(key);
     if (found) {
       found.card.b.focus({ preventScroll: true });
@@ -988,10 +1118,13 @@ export default class ShoreshRoots extends LightningElement {
       shade.style.opacity = (1 - smooth(0, 0.85, p)).toFixed(3);
     }
     if (ghost) {
-      const k = v.w / this.cw;
+      const size = isHand(key)
+        ? this.handEl?.cardSize() || { w: this.cw, h: this.ch }
+        : { w: this.cw, h: this.ch };
+      const k = v.w / size.w;
       Object.assign(ghost.style, {
-        width: `${this.cw}px`,
-        height: `${this.ch}px`,
+        width: `${size.w}px`,
+        height: `${size.h}px`,
         transform: `scale(${k.toFixed(4)})`,
         opacity: (1 - smooth(0.03, 0.4, p)).toFixed(3)
       });
@@ -1024,9 +1157,15 @@ export default class ShoreshRoots extends LightningElement {
       body.style.opacity = "";
       body.style.transform = "";
     }
+    // The hand held still for the journey: now it may change (what was dealt with is played).
+    this.refreshHand();
   }
 
   showFace(key, on) {
+    if (isHand(key)) {
+      this.handEl?.showFace(key, on);
+      return;
+    }
     const found = key && this.meldCard(key);
     const face = found && found.card.b.querySelector('[data-id="face"]');
     if (face) {

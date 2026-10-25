@@ -315,6 +315,16 @@ private class RootsTableTest {
       Assert.areEqual(10, table.seats[0].taken);
       Assert.areEqual(6, table.seats[1].minimum);
       Assert.areEqual(5, table.seats[1].taken);
+
+      // The hand: the one offering kept below its minimum (5 of 6 at its only time), with the
+      // run's set and week; and no week close at hand outside the season.
+      Assert.areEqual(1, table.shortSeats.size());
+      Assert.areEqual('Activity 1', table.shortSeats[0].name);
+      Assert.areEqual(5, table.shortSeats[0].fewest);
+      Assert.areEqual(6, table.shortSeats[0].minimum);
+      Assert.areEqual(camp.ids.get('Week 2'), table.seatsWeekId);
+      Assert.isNotNull(table.seatsSetId);
+      Assert.isTrue(table.soonWeekIds.isEmpty());
     }
   }
 
@@ -386,6 +396,31 @@ private class RootsTableTest {
       Assert.areEqual(
         ShoreshTestData.lastSeasonIds.get('Week 3'),
         table.shownWeekId
+      );
+      // Close at hand: this week, and next week (it starts in five days).
+      Assert.areEqual(
+        new List<Id>{
+          ShoreshTestData.lastSeasonIds.get('Week 3'),
+          ShoreshTestData.lastSeasonIds.get('Week 4')
+        },
+        table.soonWeekIds
+      );
+    }
+  }
+
+  @IsTest
+  static void theFridayBeforeCampTheFirstWeekIsCloseAtHand() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Synthetic Meadow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      RootsTable.todayForTest = Date.newInstance(2026, 6, 26);
+      Test.startTest();
+      RootsTable.Table table = RootsController.getTable(season.Id);
+      Test.stopTest();
+      Assert.isNull(table.thisWeekId);
+      Assert.areEqual(
+        new List<Id>{ ShoreshTestData.lastSeasonIds.get('Week 1') },
+        table.soonWeekIds
       );
     }
   }

@@ -14,8 +14,10 @@ const COVERS = FIELD.Coverage;
 
 /**
  * Problems in a season's setup, shown to the scheduler and never fixed silently. Each says what it
- * is about (name), what is wrong (why), and which screen fixes it (screen, see shoreshScreens).
- * Dates are ISO strings (YYYY-MM-DD), which compare correctly as text.
+ * is about (name), what is wrong (why), and which screen fixes it (screen, see shoreshScreens);
+ * kind names the check, and of (where there is one) the record it is about, so Roots' hand can
+ * gather each kind onto one card (repo ADR 0020 choice 10). Dates are ISO strings (YYYY-MM-DD),
+ * which compare correctly as text.
  */
 export function setupProblems(setup, terms) {
   if (!setup || !setup.season) {
@@ -38,22 +40,33 @@ function weekProblems(setup, terms) {
   const weeks = [...(setup.weeks || [])].sort((a, b) => {
     return a[WEEK.StartDate] < b[WEEK.StartDate] ? -1 : 1;
   });
-  const add = (name, why) => problems.push({ screen: "weeks", name, why });
+  const add = (kind, name, why, of) =>
+    problems.push({ screen: "weeks", kind, name, why, of });
   weeks.forEach((week) => {
     if (
       week[WEEK.StartDate] < season[SEASON.StartDate] ||
       week[WEEK.EndDate] > season[SEASON.EndDate]
     ) {
-      add(week.Name, `Falls outside the dates of this ${terms.sIn("Season")}.`);
+      add(
+        "weekOutside",
+        week.Name,
+        `Falls outside the dates of this ${terms.sIn("Season")}.`,
+        week.Id
+      );
     }
   });
   for (let i = 1; i < weeks.length; i++) {
     if (weeks[i][WEEK.StartDate] <= weeks[i - 1][WEEK.EndDate]) {
-      add(`${weeks[i - 1].Name} and ${weeks[i].Name}`, "Share dates.");
+      add(
+        "weeksShare",
+        `${weeks[i - 1].Name} and ${weeks[i].Name}`,
+        "Share dates.",
+        `${weeks[i - 1].Id}|${weeks[i].Id}`
+      );
     }
   }
   if (weeks.length === 0) {
-    add(season.Name, `No ${terms.pIn("Week")} yet.`);
+    add("noWeeks", season.Name, `No ${terms.pIn("Week")} yet.`);
   }
   return problems;
 }
@@ -117,22 +130,24 @@ function electiveProblems(setup) {
   (electives.offerings || []).forEach((offering) => {
     const name = activities.get(offering[OFFER.Activity]) || "";
     const set = sets.get(offering[OFFER.ElectiveSet]) || "";
-    const add = (why) =>
+    const add = (kind, why) =>
       problems.push({
         screen: "electives",
+        kind,
         name,
         why: `In "${set}": ${why}`,
+        of: offering.Id,
         markedInPlace: true
       });
     if (offering[OFFER.Proposed]) {
-      add("proposed, not confirmed yet.");
+      add("offeringProposed", "proposed, not confirmed yet.");
     }
     const seats = offering[OFFER.Seats];
     if (
       !offering[OFFER.NoSeatLimit] &&
       (seats === null || seats === undefined || seats === "")
     ) {
-      add("seats not filled in yet.");
+      add("offeringNoSeats", "seats not filled in yet.");
     }
   });
   return problems;
@@ -171,13 +186,22 @@ function specialDayProblems(setup, terms) {
     if (!brief) {
       return;
     }
-    const add = (why) =>
-      problems.push({ screen: "specialEvents", name: specialDay.Name, why });
+    const add = (kind, why, day) =>
+      problems.push({
+        screen: "specialEvents",
+        kind,
+        name: specialDay.Name,
+        why,
+        of: specialDay.Id,
+        day
+      });
     (brief.days || []).forEach((onDay) => {
       const week = weeks.get(onDay.weekId);
       if (week && !weekdaysIn(week).has(onDay.day)) {
         add(
-          `On ${onDay.day} of "${week.Name}", which that ${terms.sIn("Week")} no longer has. Take it off that day.`
+          "specialOffDay",
+          `On ${onDay.day} of "${week.Name}", which that ${terms.sIn("Week")} no longer has. Take it off that day.`,
+          onDay.day
         );
       }
     });
@@ -202,6 +226,7 @@ function specialDayProblems(setup, terms) {
     });
     if (differ.length) {
       add(
+        "specialTimes",
         `Its ${terms.pIn("TimeBlock")} no longer match ${program.program.Name}'s: ${differ.join("; ")}.`
       );
     }
@@ -211,11 +236,13 @@ function specialDayProblems(setup, terms) {
 
 function structureProblems(setup, terms) {
   const problems = [];
-  const add = (screen, name, why) => problems.push({ screen, name, why });
+  const add = (screen, kind, name, why, of) =>
+    problems.push({ screen, kind, name, why, of });
   const programs = setup.programs || [];
   if (programs.length === 0) {
     add(
       "programs",
+      "noPrograms",
       setup.season.Name,
       `No ${terms.pIn("Program")} yet. Every ${terms.sIn("Season")} needs at least one.`
     );
@@ -223,14 +250,32 @@ function structureProblems(setup, terms) {
   programs.forEach((entry) => {
     const name = entry.program.Name;
     if ((entry.timeBlocks || []).length === 0) {
-      add("timeBlocks", name, `No ${terms.pIn("TimeBlock")} yet.`);
+      add(
+        "timeBlocks",
+        "noTimeBlocks",
+        name,
+        `No ${terms.pIn("TimeBlock")} yet.`,
+        entry.program.Id || name
+      );
     }
     if ((entry.divisions || []).length === 0) {
-      add("divisions", name, `No ${terms.pIn("Division")} yet.`);
+      add(
+        "divisions",
+        "noDivisions",
+        name,
+        `No ${terms.pIn("Division")} yet.`,
+        entry.program.Id || name
+      );
     }
     (entry.divisions || []).forEach((d) => {
       if ((d.groups || []).length === 0) {
-        add("groups", d.division.Name, `No ${terms.pIn("Group")} yet.`);
+        add(
+          "groups",
+          "noGroups",
+          d.division.Name,
+          `No ${terms.pIn("Group")} yet.`,
+          d.division.Id
+        );
       }
     });
   });
@@ -249,27 +294,42 @@ function activityProblems(setup, terms) {
     return [
       {
         screen: "activities",
+        kind: "noActivities",
         name: setup.season.Name,
         why: `No ${terms.pIn("Activity")} yet.`
       }
     ];
   }
   const problems = groupsWithNothingToDo(setup, terms);
-  const add = (name, why) => problems.push({ screen: "activities", name, why });
+  const add = (kind, activity, why, more) =>
+    problems.push({
+      screen: "activities",
+      kind,
+      name: activity.Name,
+      why,
+      of: activity.Id,
+      ...more
+    });
   const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
   activities.forEach((activity) => {
     if (activity[ACTIVITY.Outdoor] && !activity[ACTIVITY.RainPlan]) {
-      add(activity.Name, `Outdoors and has no ${terms.sIn("RainPlan")}.`);
+      add(
+        "noRainPlan",
+        activity,
+        `Outdoors and has no ${terms.sIn("RainPlan")}.`
+      );
     }
     const location = locations.get(activity[ACTIVITY.Location]);
     const atOnce = activity[ACTIVITY.GroupsAtOnce];
     const fits = location && location[LOCATION.GroupsThatFit];
     if (location && !activity[ACTIVITY.NoGroupLimit] && atOnce > fits) {
       add(
-        activity.Name,
+        "tooManyAtOnce",
+        activity,
         `Allows ${atOnce} ${terms.pIn("Group")} at once, ` +
           `but "${location.Name}" fits ${fits}. Scheduling uses ` +
-          `${fits}; change whichever number is wrong.`
+          `${fits}; change whichever number is wrong.`,
+        { atOnce, fits }
       );
     }
   });
@@ -296,6 +356,8 @@ function groupsWithNothingToDo(setup, terms) {
         if (!canDoOne) {
           problems.push({
             screen: "activities",
+            kind: "nothingOpen",
+            of: grp.Id,
             name: grp.Name,
             why: `No ${terms.pIn("Activity")} are open to this ${terms.sIn("Group")}.`
           });
@@ -497,12 +559,15 @@ function setTimeProblems(setup, terms) {
     ];
     kinds.forEach(([screen, object, itemFields, field, items]) => {
       (items || []).forEach((item) => {
-        const add = (why) => problems.push({ screen, name: item.Name, why });
+        const add = (kind, why) =>
+          problems.push({ screen, kind, name: item.Name, why, of: item.Id });
         const moved = spanChange(entry, item, terms, itemFields);
         if (moved) {
           // Each fix is offered right on the attention item, as a save of this row.
           problems.push({
             screen,
+            kind: "spanChanged",
+            of: item.Id,
             name: item.Name,
             why: moved.why,
             actions: moved.actions.map((action) => ({
@@ -516,7 +581,7 @@ function setTimeProblems(setup, terms) {
           marks.filter((m) => m[field] === item.Id).map((m) => m[OFF.Week])
         );
         if (weeks.length > 0 && off.size >= weeks.length) {
-          add(`Runs in no ${terms.pIn("Week")}.`);
+          add("runsNoWeek", `Runs in no ${terms.pIn("Week")}.`);
         }
         const { groups, span } = whoIsThere(entry, item, itemFields);
         if (
@@ -525,6 +590,7 @@ function setTimeProblems(setup, terms) {
           groups.every((g) => g.blocks === 0)
         ) {
           add(
+            "allLeftOut",
             `Every ${terms.sIn("Group")} it covers is left out: none is at camp then.`
           );
         }
@@ -539,6 +605,7 @@ function setTimeProblems(setup, terms) {
           .map((w) => w.Name);
         if (closed.length > 0) {
           add(
+            "placeClosed",
             `"${location.Name}" is not open in ${closed.join(", ")}, but this runs then.`
           );
         }

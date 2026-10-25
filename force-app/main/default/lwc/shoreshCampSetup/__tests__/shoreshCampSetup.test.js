@@ -2642,6 +2642,37 @@ describe("c-shoresh-camp-setup", () => {
       expect(shownScreens(element)).toEqual(["roots"]);
     });
 
+    it("a hand card's screen grows out of it; home again lands on that card while the hand holds it", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      const hand = roots.shadowRoot.querySelector("c-shoresh-roots-hand");
+      const card = hand.shadowRoot.querySelector(
+        '[data-hand="hand:noGroups|groups"]'
+      );
+      expect(card.getAttribute("aria-label")).toBe("Juniors: No Bunks yet.");
+      card.click();
+      await flush();
+      expect(classOf(element, "groups")).toBe("screen_travel");
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+      // Home: to the hand card it left from (Groups has its own card on the table too).
+      await openScreen(element, "roots");
+      expect(hand.shadowRoot.activeElement).toBe(card);
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+      // Opened from the menu instead, it goes home to its own card.
+      await openScreen(element, "groups");
+      await openScreen(element, "roots");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="groups"]')
+      );
+    });
+
     it("another screen chosen mid-way ends the journey where it is", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));

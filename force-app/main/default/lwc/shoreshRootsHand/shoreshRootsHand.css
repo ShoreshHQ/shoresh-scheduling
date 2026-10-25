@@ -1,0 +1,125 @@
+@import "c/shoreshTokens";
+
+/*
+ * Roots' hand (repo ADR 0020 choice 10; the approved mock-up's .hand and .hcard). Every colour and
+ * shadow is a design-system token (ADR 0015). Cards are placed by script; only their lift under
+ * the pointer or the cursor, and their slow breath, are CSS.
+ */
+:host {
+  display: block;
+  position: relative;
+  /* Above the table, so a card played onto a meld travels over it. */
+  z-index: 2;
+}
+
+.hand {
+  position: relative;
+  height: 16px;
+  margin: 0 var(--shoresh-space-pad);
+}
+
+.hcard {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: var(--hw, 220px);
+  height: var(--hh, 150px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--shoresh-radius-piece);
+  transform-origin: 50% 120%;
+  will-change: transform;
+}
+
+.hcard[data-gone] {
+  pointer-events: none;
+}
+
+.hcard:hover,
+.hcard:focus-visible {
+  z-index: 40 !important;
+}
+
+.hcard:focus-visible {
+  outline: none;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-card-rest);
+  transition:
+    transform var(--shoresh-t-lift) var(--shoresh-flow),
+    box-shadow var(--shoresh-t-lift) var(--shoresh-flow);
+}
+
+.hcard:hover .face,
+.hcard:focus-visible .face {
+  transform: translateY(-12px);
+  box-shadow: var(--shoresh-card-lift);
+}
+
+.hcard:active .face {
+  transform: translateY(-8px);
+}
+
+.hcard:focus-visible .face {
+  box-shadow: var(--shoresh-card-lift), var(--shoresh-focus-ring);
+}
+
+.hcard[data-gone] .face {
+  box-shadow: var(--shoresh-card-lift);
+}
+
+/* The cards you hold breathe, very slowly, out of step with each other (the mock-up). */
+.hand[data-alive] .hcard:not([data-gone]) .face {
+  animation: breath 7s ease-in-out infinite;
+}
+
+.hand[data-alive] .hcard:nth-child(4n + 2) .face {
+  animation-delay: -2.3s;
+}
+
+.hand[data-alive] .hcard:nth-child(4n + 3) .face {
+  animation-delay: -4.6s;
+}
+
+.hand[data-alive] .hcard:nth-child(4n + 4) .face {
+  animation-delay: -1.1s;
+}
+
+.hand[data-alive] .hcard:hover .face,
+.hand[data-alive] .hcard:focus-visible .face {
+  animation: none;
+}
+
+@keyframes breath {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face {
+    transition: none;
+    animation: none !important;
+  }
+
+  .hcard:hover .face,
+  .hcard:focus-visible .face,
+  .hcard:active .face {
+    transform: none;
+  }
+}

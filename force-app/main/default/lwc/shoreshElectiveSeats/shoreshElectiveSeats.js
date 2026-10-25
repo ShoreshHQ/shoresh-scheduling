@@ -175,6 +175,23 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
   }
 
+  /**
+   * Opens on a run's set and week (Roots' hand, repo ADR 0020 choice 10: the offerings kept below
+   * their minimum are that run's). Always true: nothing here waits to change week.
+   */
+  @api
+  openWeek(weekId, setId) {
+    const set = this.sets.some((s) => s.Id === setId) ? setId : this.setId;
+    const week = this.weeks.some((w) => w.Id === weekId) ? weekId : this.weekId;
+    if (set !== this.setId || week !== this.weekId) {
+      this.setId = set;
+      this.weekId = week;
+      this.scheduleId = null;
+      this.afterPick().catch(() => {});
+    }
+    return true;
+  }
+
   /** Where the screen starts: as it was, else the latest run's set and week, else the first. */
   pickStart() {
     const runs = this.runs;

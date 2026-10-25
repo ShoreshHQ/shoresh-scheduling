@@ -64,8 +64,12 @@
  *   emulated a card opens its screen at once; a card starts to grow within 250 ms of Enter and
  *   going home too, with no frame held over 120 ms; the Weeks card's bars (at most twelve) read
  *   on the check camp's long season; Manual Build's and Recurring activities' faces cut no name
- *   short; in a 560 px tall window every meld's name stays on the table, the lower side stack's
- *   below the upper one's cards (ADR 0020, R1.1);
+ *   short and drop none, and every fixed activity on its card keeps its padlock; in a 560 px tall
+ *   window every meld's name stays on the table, the lower side stack's wholly below the upper
+ *   one's cards (ADR 0020, R1.1 and R2); the hand (R2): a made-up event on a day with nothing
+ *   planned is dealt as a card named by what is off (axe), Tab and Enter grow Special events out
+ *   of it with the event's schedule open, and once dealt with (deleted) the menu's Roots goes
+ *   home to that card and it is played onto its meld (with --hand-shots, pictures of the hand);
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
@@ -204,6 +208,9 @@ const shotsDir = resolve(
   argValue("--shots", join(tmpdir(), "a11y-browser-check"))
 );
 const headed = args.includes("--headed");
+// Where the hand's pictures go (Roots R2: cards in hand, one being played away, a calm hand), if
+// asked for: --hand-shots <folder>.
+const handShotsDir = argValue("--hand-shots", null);
 // Some steps on their own (the camp is still seeded first): "electives", or "lists" (Import a
 // list on Groups and on Electives, ADR 0007 choice 33).
 const only = argValue("--only", null);
@@ -376,6 +383,31 @@ System.debug('A11Y_GUESS[' + activity.Name + ']');
   const name = /A11Y_GUESS\[([^\]']+)\]/.exec(logs);
   if (!name) throw new Error("The guessed activity was not reported back.");
   return name[1];
+}
+
+// A made-up special event put on a day of the check's week with nothing planned in it: Roots'
+// hand deals it (ADR 0020 choice 10), and the hand step deals with it (deletes it) and watches it
+// played away. Deleted again after the step, whatever happens.
+const HAND_EVENT = "Hand check event (made up)";
+
+function clearHandEvent() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM SpecialDate__c WHERE SpecialEvent__r.Name = '${HAND_EVENT}' AND Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM PlanPart__c WHERE SpecialEvent__r.Name = '${HAND_EVENT}' AND Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM SpecialEvent__c WHERE Name = '${HAND_EVENT}' AND Season__r.Camp__c = :camp.Id];
+`);
+}
+
+function seedHandEvent() {
+  clearHandEvent();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Week__c week = [SELECT Id, Season__c FROM Week__c WHERE Season__r.Camp__c = :camp.Id AND Name = '${week}' ORDER BY StartDate__c DESC LIMIT 1];
+SpecialEvent__c event = new SpecialEvent__c(Season__c = week.Season__c, Name = '${HAND_EVENT}');
+insert event;
+SpecialDates.place(event.Id, week.Id, 'Wednesday');
+`);
 }
 
 /** The sign-in link, kept in memory only. Any failure is reported without it. */
@@ -1951,6 +1983,61 @@ async function framesSince() {
 }
 
 /**
+ * A Roots card's face as drawn: its words; its raised tiles and how many have no name (no word
+ * inside, none heading their row just above, no padlock); its locked bars (tiles with a padlock
+ * or a fixed activity's well) and how many lost their padlock.
+ */
+async function faceWords(key) {
+  return page
+    .locator(APP)
+    .locator(`c-shoresh-roots [data-card="${key}"] c-shoresh-roots-glimpse`)
+    .first()
+    .evaluate((glimpse) => {
+      const root = glimpse.shadowRoot || glimpse;
+      const box = (el) => el.getBoundingClientRect();
+      const texts = [...root.querySelectorAll("text")]
+        .map((t) => ({ text: t.textContent.trim(), box: box(t) }))
+        .filter((t) => t.text);
+      const locks = [...root.querySelectorAll("path.g-lock")].map(box);
+      const inside = (b, tile) => {
+        const x = (b.left + b.right) / 2;
+        const y = (b.top + b.bottom) / 2;
+        return (
+          x >= tile.left && x <= tile.right && y >= tile.top && y <= tile.bottom
+        );
+      };
+      const tiles = [...root.querySelectorAll("rect")]
+        .filter((r) => /(^|\s)f50(\s|$)/.test(r.getAttribute("class") || ""))
+        .map(box);
+      let nameless = 0;
+      let bars = 0;
+      let unlocked = 0;
+      tiles.forEach((tile) => {
+        const named = texts.some(
+          (t) =>
+            inside(t.box, tile) ||
+            // A name heading its row, just above the row's tiles.
+            (t.box.bottom <= tile.top + 1 && t.box.bottom >= tile.top - 18)
+        );
+        const locked = locks.some((l) => inside(l, tile));
+        if (!named && !locked) nameless++;
+        // A bar across the face (a fixed activity): wider than half the card.
+        if (tile.width > box(root.querySelector("svg")).width * 0.5) {
+          bars++;
+          if (!locked) unlocked++;
+        }
+      });
+      return {
+        words: texts.map((t) => t.text),
+        tiles: tiles.length,
+        nameless,
+        bars,
+        unlocked
+      };
+    });
+}
+
+/**
  * Roots R1.1 (ADR 0020 choices 2, 4 and 6): a card starts to grow on the frames right after it is
  * pressed and no frame is held up on the way out or home (a page-wide redraw once held the first
  * frame half a second); the Weeks card on the check camp's long season draws bars that read; the
@@ -1984,24 +2071,40 @@ async function rootsPolish() {
     );
   }
   for (const key of ["manualBuild", "recurringActivities"]) {
-    const cut = (
-      await page
-        .locator(APP)
-        .locator(`c-shoresh-roots [data-card="${key}"] svg text`)
-        .allTextContents()
-    )
-      .map((t) => t.trim())
-      .filter((t) => t.endsWith("…"));
-    if (cut.length) {
+    const face = await faceWords(key);
+    const cut = face.words.filter((t) => t.endsWith("…"));
+    // A name dropped entirely: a raised tile with no name in it or heading its row, and no
+    // padlock (a fixed activity's bar). Empty cells are wells, never raised.
+    if (cut.length || face.nameless) {
       await shot(S, `${key} face`);
-      results.fail(S, `No name cut short on the ${key} card`, cut.join(", "));
+      results.fail(
+        S,
+        `No name cut short or dropped on the ${key} card`,
+        `${cut.length ? `Cut: ${cut.join(", ")}. ` : ""}${face.nameless} raised tile(s) with no name.`
+      );
     } else {
       results.pass(
         S,
-        `No name cut short on the ${key} card`,
-        "Every name whole."
+        `No name cut short or dropped on the ${key} card`,
+        `Every name whole; ${face.tiles} raised tiles, each named.`
       );
     }
+  }
+  // A fixed activity always looks fixed (R2): each locked bar keeps its padlock.
+  const fixed = await faceWords("fixedActivities");
+  if (fixed.bars > 0 && fixed.unlocked === 0) {
+    results.pass(
+      S,
+      "Every fixed activity on its card keeps its padlock",
+      `${fixed.bars} locked bar(s), each with its padlock.`
+    );
+  } else {
+    await shot(S, "fixedActivities face");
+    results.fail(
+      S,
+      "Every fixed activity on its card keeps its padlock",
+      `${fixed.bars} bar(s), ${fixed.unlocked} without a padlock.`
+    );
   }
   // Out and home: the card starts to grow at once, and no frame waits long.
   if (!(await tabTo(isCard(/^Weeks$/), { max: 280 }))) {
@@ -2087,8 +2190,9 @@ async function rootsPolish() {
       });
     const { camp: c, activities: a, schedules: z } = geometry;
     const onTable = [c, a, z].every((m) => m.labelTop >= -1);
-    // Cards are tilted a little: their box reaches a few px past the card itself.
-    const clear = z.labelTop >= a.cardsBottom - 6;
+    // No overlap at all: the lower name starts at or below the upper stack's lowest card box
+    // (a tilted card's box included).
+    const clear = z.labelTop >= a.cardsBottom;
     if (c.open && onTable && clear) {
       results.pass(
         S,
@@ -2107,6 +2211,149 @@ async function rootsPolish() {
     await page.mouse.move(2, 2);
     await page.setViewportSize(size);
     await pause(1500);
+  }
+}
+
+// ---------- Roots' hand: what needs a look (ADR 0020 choice 10, slice R2) ----------
+
+const isHandCard = (re) => (f) =>
+  f.tag === "button" &&
+  f.components.includes("c-shoresh-roots-hand") &&
+  re.test(f.name);
+const handLabels = () =>
+  page
+    .locator(APP)
+    .locator("c-shoresh-roots-hand [data-hand]:not([data-gone])")
+    .evaluateAll((cards) => cards.map((c) => c.getAttribute("aria-label")));
+
+async function handShot(name) {
+  if (!handShotsDir) return;
+  try {
+    mkdirSync(handShotsDir, { recursive: true });
+    await page.screenshot({ path: join(handShotsDir, `${name}.png`) });
+  } catch {
+    // A picture is a help, never a reason to stop.
+  }
+}
+
+/**
+ * Roots' hand (ADR 0020 choice 10): the made-up event put on a day with nothing planned
+ * (seedHandEvent) is dealt as a card named by what is off, in the group "Needs a look" (axe with
+ * it). Tab reaches it and Enter grows Special events out of it with that event's own schedule
+ * open. Dealt with (the event deleted, the schedule's way back reading the season again), the
+ * menu's Roots goes home to the hand card it came from, with the cursor on it, and the card is
+ * then played away onto its meld while focus stays on the page. With --hand-shots, pictures of
+ * the hand with cards, a card being played, and (when nothing else needs a look) the calm hand.
+ */
+async function rootsHand() {
+  const S = "Roots";
+  const label = new RegExp(
+    `^${HAND_EVENT.replace(/[()]/g, "\\$&")} has no .+ planned yet\\.$`
+  );
+  await page.mouse.move(2, 2);
+  await pause(1500);
+  const held = await handLabels();
+  if (held.some((l) => label.test(l))) {
+    results.pass(
+      S,
+      "The hand deals what needs a look, named by what is off",
+      `${held.length} card(s): ${held.join(" | ")}`
+    );
+  } else {
+    await shot(S, "The hand");
+    results.fail(
+      S,
+      "The hand deals what needs a look, named by what is off",
+      `No card for the made-up event; the hand holds: ${held.join(" | ") || "nothing"}.`
+    );
+  }
+  await handShot("hand-with-cards");
+  await axe("Roots (the hand)");
+  const card =
+    (await tabTo(isHandCard(label), { max: 80 })) ||
+    (await tabTo(isHandCard(label), { max: 80, back: true }));
+  if (!card) throw new Error("The hand's card was not reached with Tab.");
+  await recordFrames("specialEvents");
+  await page.keyboard.press("Enter");
+  const out = await framesSince();
+  const schedule = await exists('[data-id="special-schedule"]');
+  if (out.moves != null && schedule) {
+    results.pass(
+      S,
+      "A hand card grows its exact thing out of the card",
+      `Special events grew out of the card (${out.moves} ms after Enter), the event's own schedule open.`
+    );
+  } else {
+    await shot(S, "Hand card opens");
+    results.fail(
+      S,
+      "A hand card grows its exact thing out of the card",
+      `${out.moves == null ? "Nothing grew out of the card" : `Grew after ${out.moves} ms`}; the event's schedule ${schedule ? "open" : "not open"}.`
+    );
+  }
+  // Dealt with: the event goes, and the schedule's way back reads the season again.
+  clearHandEvent();
+  if (
+    !(await tabTo(named(/^Special events$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("The schedule's way back was not reached with Tab.");
+  await press("Enter", 2500);
+  const roots =
+    (await tabTo(isMenuLink(/^Roots/), { back: true })) ||
+    (await tabTo(isMenuLink(/^Roots/), { max: 280 }));
+  if (!roots) throw new Error("The menu's Roots was not reached with Tab.");
+  await page.keyboard.press("Enter");
+  await expectFocus(S, "Home to the hand card it came from", {
+    tag: "button",
+    name: label
+  });
+  // Then, the table read, it is played onto its meld: seen in flight, then gone.
+  let flying = false;
+  const end = Date.now() + 6000;
+  while (Date.now() < end) {
+    const n = await page
+      .locator(APP)
+      .locator("c-shoresh-roots-hand [data-hand][data-gone]")
+      .count();
+    if (n && !flying) {
+      flying = true;
+      await pause(180);
+      await handShot("hand-playing");
+    }
+    if (flying && !n) break;
+    await pause(40);
+  }
+  await pause(800);
+  const after = await handLabels();
+  if (flying && !after.some((l) => label.test(l))) {
+    results.pass(
+      S,
+      "Dealt with, the card is played onto its meld and leaves the hand",
+      `Seen in flight; ${after.length} card(s) left.`
+    );
+  } else {
+    await shot(S, "Played away");
+    results.fail(
+      S,
+      "Dealt with, the card is played onto its meld and leaves the hand",
+      `${flying ? "Seen in flight" : "Never seen in flight"}; the hand holds: ${after.join(" | ") || "nothing"}.`
+    );
+  }
+  await expectFocusKept(S, "The card played away: focus stays on the page");
+  if (!after.length) {
+    const calm = await page
+      .locator(APP)
+      .locator('c-shoresh-roots-hand [data-id="calm"]')
+      .textContent();
+    if (calm.trim() === "Nothing needs a look") {
+      results.pass(S, "A calm camp is an empty hand, said once", calm.trim());
+    } else {
+      results.fail(S, "A calm camp is an empty hand, said once", calm);
+    }
+    await handShot("hand-calm");
   }
 }
 
@@ -2317,6 +2564,7 @@ async function campSetup() {
     "Roots: faces, the journey's first frames, a short window",
     rootsPolish
   );
+  await step(S, "Roots: the hand, what needs a look", rootsHand);
   await step(S, "Import last year: the one page, by keyboard", importLastYear);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {
@@ -6231,6 +6479,7 @@ async function main() {
   refuseWhileCiRuns();
   week = seedCamp();
   guessed = seedGuess();
+  if (!only) seedHandEvent();
   const url = signInUrl();
   const browser = await chromium.launch({
     channel: "chrome",
@@ -6324,6 +6573,13 @@ async function main() {
       await electiveSeats();
     }
   } finally {
+    if (!only) {
+      try {
+        clearHandEvent();
+      } catch (e) {
+        say(`The hand's made-up event could not be deleted: ${e.message}`);
+      }
+    }
     const version = browser.version();
     await browser.close();
     mkdirSync(dirname(reportPath), { recursive: true });

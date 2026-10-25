@@ -126,8 +126,12 @@ const SCREENS = [
 // The schedule screens a week can be opened on (the Schedules doorway, wiki decision 61).
 const WEEK_SCREENS = {
   generatedSchedule: "c-shoresh-generated-schedule",
-  manualBuild: "c-shoresh-manual-build"
+  manualBuild: "c-shoresh-manual-build",
+  electiveSeats: "c-shoresh-elective-seats"
 };
+
+/** A card from Roots' hand (repo ADR 0020 choice 10), not one of its melds'. */
+const isHandCard = (key) => typeof key === "string" && key.startsWith("hand:");
 
 /**
  * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
@@ -285,6 +289,8 @@ export default class ShoreshCampSetup extends LightningElement {
   traveller = null;
   // The Roots card that takes the cursor at the next render (coming home without motion).
   focusCardOf = null;
+  /** The hand card the shown screen was opened from: { card, screen }, or null. */
+  handOrigin = null;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -607,29 +613,42 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
-    // A Roots card: its screen grows out of it; and back to Roots: home into the same card
-    // (repo ADR 0020). Without motion, the screen simply shows.
-    if (this.travelFrom(screen, event.detail.fromCard)) {
-      return;
-    }
-    // A week chosen on the Schedules doorway: that schedule opens on it. Refused while its week
-    // picker waits on work under way: the doorway stays, that week's button held (weekStates),
-    // rather than opening the screen on another week.
+    // A week chosen on the Schedules doorway, or a hand card's week: that schedule opens on it.
+    // Refused while its week picker waits on work under way: the doorway (or Roots) stays, that
+    // week's button held (weekStates), rather than opening the screen on another week.
     const weekId = event.detail.weekId;
     if (weekId && WEEK_SCREENS[screen]) {
       const target = this.template.querySelector(WEEK_SCREENS[screen]);
-      if (target && !target.openWeek(weekId)) {
+      if (target && !target.openWeek(weekId, event.detail.setId)) {
         return;
       }
+    }
+    const fromCard = event.detail.fromCard;
+    if (screen !== "roots") {
+      // Opened from a hand card: going back to Roots goes home to that card while it is held.
+      this.handOrigin = isHandCard(fromCard)
+        ? { card: fromCard, screen }
+        : null;
+    }
+    // A Roots card: its screen grows out of it; and back to Roots: home into the same card
+    // (repo ADR 0020). Without motion, the screen simply shows.
+    if (this.travelFrom(screen, fromCard)) {
+      this.openSpecialItem(event.detail.specialItemId);
+      return;
     }
     // Bring in choices from Elective seats starts on the set, week and schedule shown there.
     this.choicesOpening =
       screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
-    const itemId = event.detail.specialItemId;
+    this.openSpecialItem(event.detail.specialItemId);
+  }
+
+  /**
+   * "Open <special day>" from a day it replaces (ADR 0014 slice 4), or a hand card about one: its
+   * details, then its schedule in the list's place, as Open schedule there does.
+   */
+  openSpecialItem(itemId) {
     if (itemId) {
-      // "Open <special day>" from a day it replaces (ADR 0014 slice 4): its details, then its
-      // schedule in the list's place, as Open schedule there does.
       Promise.resolve().then(() => {
         const details = this.template.querySelector(
           "c-shoresh-special-details"
@@ -737,12 +756,17 @@ export default class ShoreshCampSetup extends LightningElement {
       return false;
     }
     const leaving = this.travel ? this.travel.screen : this.currentScreen;
+    // Home to the hand card the screen was opened from, while the hand still holds it; else to
+    // the screen's own card, or the card the journey came from.
+    const origin = this.handOrigin;
     const card =
-      leaving && roots.hasCard(leaving)
-        ? leaving
-        : this.travel
-          ? this.travel.card
-          : null;
+      origin && origin.screen === leaving && roots.hasCard(origin.card)
+        ? origin.card
+        : leaving && roots.hasCard(leaving)
+          ? leaving
+          : this.travel
+            ? this.travel.card
+            : null;
     if (!leaving || leaving === "roots" || !card) {
       return false;
     }

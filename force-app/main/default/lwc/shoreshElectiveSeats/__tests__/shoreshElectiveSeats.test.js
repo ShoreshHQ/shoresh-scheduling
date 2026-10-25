@@ -152,6 +152,21 @@ describe("the start", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("opens on the run Roots' hand is about: its set and week (repo ADR 0020 choice 10)", async () => {
+    const element = await render();
+    expect(element.openWeek("w2", "e1")).toBe(true);
+    await flush();
+    expect($(element, 'c-shoresh-rail-picker[data-id="week"]').value).toBe(
+      "w2"
+    );
+    // A week it doesn't know leaves it where it is.
+    expect(element.openWeek("nope", "e1")).toBe(true);
+    await flush();
+    expect($(element, 'c-shoresh-rail-picker[data-id="week"]').value).toBe(
+      "w2"
+    );
+  });
+
   it("asks Assign against when the week has two schedules", async () => {
     const element = await render({
       setup: {

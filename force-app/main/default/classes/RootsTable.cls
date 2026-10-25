@@ -26,12 +26,29 @@ public with sharing class RootsTable {
     /** Weeks with a draft or a published schedule in any program. */
     @AuraEnabled
     public List<Id> builtWeekIds = new List<Id>();
+    /**
+     * The weeks close at hand (Roots' hand, ADR 0020 choice 10): the week under way today, and a
+     * week starting within the next seven days, in the season's order.
+     */
+    @AuraEnabled
+    public List<Id> soonWeekIds = new List<Id>();
     @AuraEnabled
     public Glimpse generated;
     @AuraEnabled
     public Glimpse manual;
     @AuraEnabled
     public List<Seat> seats = new List<Seat>();
+    /**
+     * The offerings of that same run kept below their minimum at some time (the Elective seats
+     * counter's "kept below minimum", ADR 0018 choice 36), every one, by name.
+     */
+    @AuraEnabled
+    public List<Seat> shortSeats = new List<Seat>();
+    /** That run's set and week, so the hand opens Elective seats on it. */
+    @AuraEnabled
+    public Id seatsSetId;
+    @AuraEnabled
+    public Id seatsWeekId;
     @AuraEnabled
     public Version latestVersion;
   }
@@ -73,6 +90,9 @@ public with sharing class RootsTable {
     public Integer taken = 0;
     @AuraEnabled
     public Integer minimum;
+    /** The fewest campers it holds at any time it has any (0 when it has none). */
+    @AuraEnabled
+    public Integer fewest = 0;
   }
 
   public class Version {
@@ -99,6 +119,7 @@ public with sharing class RootsTable {
       return result;
     }
     result.thisWeekId = thisWeek(weeks);
+    result.soonWeekIds = soonWeeks(weeks);
     List<Schedule__c> schedules = [
       SELECT Id, Week__c, Status__c, Origin__c
       FROM Schedule__c
@@ -135,6 +156,22 @@ public with sharing class RootsTable {
       }
     }
     return null;
+  }
+
+  /** The week under way today and any week starting in the next seven days, in order. */
+  private static List<Id> soonWeeks(List<Week__c> weeks) {
+    Date today = todayForTest != null ? todayForTest : Date.today();
+    List<Id> result = new List<Id>();
+    for (Week__c week : weeks) {
+      Boolean underWay = week.StartDate__c <= today && today <= week.EndDate__c;
+      Boolean coming =
+        today < week.StartDate__c &&
+        week.StartDate__c <= today.addDays(7);
+      if (underWay || coming) {
+        result.add(week.Id);
+      }
+    }
+    return result;
   }
 
   /** The weeks in the set, in the season's order. */

@@ -54,13 +54,12 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. Click **Create season**. (If a calendar was still open, the first click only closes it;
    click again.)
 3. You land on **Roots**, the home screen. It has:
-   - **Build or generate the schedule**, with two buttons side by side, **Generated
-     Schedule →** and **Manual Build →** (sections 19 to 23);
-   - **What has taken root**: a card each for Activities, Bunks, Units, Locations,
-     Time blocks, and Weeks, with how many there are (all 0 for now), and a wide
-     **Fixed activities** card;
-   - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
-     activities yet;
+   - **The table**: three stacks of cards, **Camp**, **Activities & Events** and **Schedules**,
+     the menu's sections. Rest the pointer on a stack and it fans open; click a card and its
+     screen grows out of it. For now most cards show dashed outlines: nothing is in yet;
+   - **The hand** along the bottom: a card for each thing that needs a look. Here: **Weeks**,
+     _none yet_; **Programs**, _none yet_; **Activities**, _none yet_. A calm camp has an empty
+     hand;
    - **Import last year** at the bottom, the blue button (section 14). Once the season has
      units, bunks or time blocks it becomes a quiet **Re-import last year** link instead.
    - In the menu, a small **!** beside Weeks, Programs, Units, Bunks, Time blocks, and
@@ -68,8 +67,9 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
      first rows it turns to a green **✓** (Locations, Fixed and Recurring activities get the
      ✓ too once they have rows, but never the !). A screen reader reads them as _Needed_ and
      _Done_.
-4. Click the **Summer 2026 / No weeks yet** item. Shoresh opens the **Weeks** screen, where
-   it is fixed. Every card and every attention item works this way.
+4. Click the **Weeks** card in the hand. The **Weeks** screen grows out of it, where it is
+   fixed. Come back with **‹ Roots**: the card returns to the hand, and once the season has
+   weeks it is played onto the Camp stack and leaves. Every card works this way.
 
 ## 5. Weeks with real dates
 
