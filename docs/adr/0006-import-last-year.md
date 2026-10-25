@@ -552,9 +552,14 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
 ## The imported week is kept as it came in (2026-10-25)
 
 Greg (engine care plan, `projects/shoresh-sf-engine-care-plan.md` in the wiki): the imported week is a
-permanent version, labelled with where it came from. `ImportedWeekGuard` keeps it (alongside `PublishedGuard`, in the
-same days lookup): a version an import made (Status Version, Origin Imported) is never deleted, its days never
-change, and it stays its program's and week's import, except by the import itself, its Undo, and
-deleting its whole season (`allowImport()`). It can be renamed and restored; its origin still says
-Imported. Marking some other version Imported by hand is not refused (it does no harm). Test data that
-writes a version's days uses a saved-by-hand version (`ShoreshTestData.savedVersion`). Every engine build being never emptier than this week comes with the engine search (PR 4a).
+permanent version, labelled with where it came from. `ImportedWeekGuard` keeps it, alongside
+`PublishedGuard` and in the same days lookup: a version an import made (Status Version, Origin
+Imported) is never deleted, its days never change, and it stays its program's and week's import.
+The exceptions are the import itself, its Undo and deleting its whole season (inside
+`ImportedWeekGuard.allow()`), and Shoresh's own Publish, Unpublish and rename (`PublishedGuard.writing()`).
+Deleting its whole program also takes it (Salesforce deletes a program's schedules with it, as a
+season's): the week belongs to the program, so it goes when the program does. It can be renamed and
+restored; its origin still says Imported. Marking some other version Imported by hand is not refused
+(it does no harm). Test data that writes a version's days uses a saved-by-hand version
+(`ShoreshTestData.savedVersion`). Every engine build being never emptier than this week comes with the
+engine search (PR 4a).

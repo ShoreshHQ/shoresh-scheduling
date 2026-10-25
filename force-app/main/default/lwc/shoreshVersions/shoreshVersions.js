@@ -184,7 +184,7 @@ export default class ShoreshVersions extends LightningElement {
           this.restore &&
           !this.noDraft &&
           !version.publishedAt &&
-          // The imported week is kept as it came in (PublishedGuard).
+          // The imported week is kept as it came in (ImportedWeekGuard).
           version.origin !== "Imported",
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,

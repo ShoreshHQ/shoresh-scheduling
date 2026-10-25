@@ -38,7 +38,7 @@ private class GroupPlacementsTest {
       Origin__c = statusAndOrigin[1]
     );
     if (schedule.Status__c == 'Version') {
-      schedule.VersionReason__c = 'Imported';
+      schedule.VersionReason__c = 'SavedByHand';
     }
     return schedule;
   }

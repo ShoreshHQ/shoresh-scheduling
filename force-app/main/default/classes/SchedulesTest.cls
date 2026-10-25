@@ -80,7 +80,7 @@ private class SchedulesTest {
       Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
-        'Imported from summer.xlsx'
+        'Saved by hand'
       );
       Test.startTest();
       ScheduleDaySaves.write(
