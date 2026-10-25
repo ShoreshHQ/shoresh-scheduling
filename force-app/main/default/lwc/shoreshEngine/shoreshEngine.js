@@ -102,7 +102,7 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
  *     work done, the same on any machine
  *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is
- *     busy at an overlapping time ("Already busy then"), everything set up for it is full then,
+ *     busy at an overlapping time ("Already busy then"), everything set up for it is taken then,
  *     nothing running this week is set up for it, or no activity's length fits the gap
  */
 export function generateWeek(input) {

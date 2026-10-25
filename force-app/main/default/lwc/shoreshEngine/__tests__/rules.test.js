@@ -92,7 +92,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
     expect(result.flags).toEqual([]);
     expect(result.openCells.map((c) => c.reason)).toEqual([
-      "Everything for Bunk g1 is full then"
+      "Everything for Bunk g1 is taken then"
     ]);
   });
 
@@ -112,7 +112,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
-  it("never puts one group too many at an activity: the cell stays Open, everything full, in camp words", () => {
+  it("never puts one group too many at an activity: the cell stays Open, everything taken, in camp words", () => {
     const result = generateWeek({
       ...camp({
         groups: [group("g1"), group("g2")],
@@ -129,8 +129,14 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       ])
     });
     expect(result.flags).toEqual([]);
-    expect(result.openCells.map((c) => c.reason)).toEqual([
-      expect.stringMatching(/^Everything for Bunk g[12] is full then$/)
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
     ]);
   });
 
@@ -141,8 +147,15 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       activities: [activity("swim", { atOnce: null, location: "pool" })]
     });
     expect(result.flags).toEqual([]);
-    expect(result.openCells).toHaveLength(1);
-    expect(result.openCells[0].reason).toMatch(/is full then$/);
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
+    ]);
   });
 
   it("never shares a same-division activity across divisions", () => {
@@ -151,7 +164,16 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       activities: [activity("swim", { atOnce: null, sameDivision: true })]
     });
     expect(result.flags).toEqual([]);
-    expect(result.openCells).toHaveLength(1);
+    // g2 has room but the activity is held for g1's division: "taken" is true of both.
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
+    ]);
   });
 
   it("counts other programs as full: the cell stays Open", () => {
@@ -172,7 +194,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
     expect(result.flags).toEqual([]);
     expect(openAt(result, 0, "g1", "b0").reason).toBe(
-      "Everything for Bunk g1 is full then"
+      "Everything for Bunk g1 is taken then"
     );
   });
 
@@ -341,12 +363,12 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       }
     );
     it.each(ways.filter(([rule]) => !PREFERENCE.includes(rule)))(
-      "%s never gives way: the cell stays Open, saying everything is full then",
+      "%s never gives way: the cell stays Open, saying everything is taken then",
       (rule, rules) => {
         const result = run(spec(rules));
         expect(flagAt(result, 0, "g1", "b0")).toBeUndefined();
         expect(openAt(result, 0, "g1", "b0").reason).toBe(
-          "Everything for Bunk g1 is full then"
+          "Everything for Bunk g1 is taken then"
         );
       }
     );
@@ -1323,6 +1345,19 @@ describe("early-week goals count from the week's real first day (care plan)", ()
     expect(result.spread).toEqual([]);
   });
 
+  it("a Saturday-start week counts Saturday to Tuesday for a goal by Tuesday", () => {
+    // Saturday 2026-07-04 to Friday 2026-07-10, a changeover camp.
+    const days = [4, 5, 6, 7, 8, 9, 10].map(
+      (n) => `2026-07-${String(n).padStart(2, "0")}`
+    );
+    expect([...earlyDates(days, 2)]).toEqual([
+      "2026-07-04",
+      "2026-07-05",
+      "2026-07-06",
+      "2026-07-07"
+    ]);
+  });
+
   it("a goal by Sunday in a Monday week counts every day to Sunday", () => {
     const days = [0, 1, 2, 3, 4, 5, 6].map(dateAt);
     expect(earlyDates(days, 7).size).toBe(7);
@@ -1336,9 +1371,14 @@ describe("early-week goals count from the week's real first day (care plan)", ()
     ]);
   });
 
+  it("a Monday-Thursday week counts every day for a goal by Friday", () => {
+    const days = [0, 1, 2, 3].map(dateAt);
+    expect(earlyDates(days, 5).size).toBe(4);
+  });
+
   it("a week with no day by then says so once for the goal, and costs nothing", () => {
-    // Saturday and Sunday only: no day on or before Tuesday.
-    const days = ["2026-07-11", "2026-07-12"];
+    // Wednesday to Friday: no day on or before Tuesday.
+    const days = [2, 3, 4].map(dateAt);
     expect(earlyDates(days, 2).size).toBe(0);
     const result = run({
       days,
@@ -1585,7 +1625,7 @@ describe("the hover reasons, shared with Manual Build", () => {
       "With another Edah at the same time"
     ],
     [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"],
-    [FULL, cell, "Everything for Bunk 3 is full then"],
+    [FULL, cell, "Everything for Bunk 3 is taken then"],
     [NONE_FOR, cell, "No activity this week is set up for Bunk 3"]
   ])("%s: %j", (rule, details, words) => {
     expect(reasonFor(rule, details)).toBe(words);

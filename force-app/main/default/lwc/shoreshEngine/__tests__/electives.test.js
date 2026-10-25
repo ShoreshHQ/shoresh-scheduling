@@ -103,7 +103,7 @@ describe("c-shoresh-engine: elective sets", () => {
     expect(
       result.openCells.find((c) => c.groupId === "g2" && c.blockId === "b1")
         .reason
-    ).toMatch(/is full then$/);
+    ).toMatch(/is taken then$/);
     const free = generateWeek({
       ...input({
         activities: [activity("archery", { location: "range", min: 0, max: 5 })]

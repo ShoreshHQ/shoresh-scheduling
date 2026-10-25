@@ -42,7 +42,8 @@ export const NO_FIT = "noFit";
 // already somewhere at an overlapping time. These never give way.
 export const LENGTH = "length";
 export const OVERLAP = "overlap";
-// Every activity set up for the group is full or taken then (a limit, never a preference).
+// Every activity set up for the group is taken then: full, or held for another division (a
+// limit, never a preference).
 export const FULL = "full";
 // No activity running this week is set up for the group.
 export const NONE_FOR = "noneFor";

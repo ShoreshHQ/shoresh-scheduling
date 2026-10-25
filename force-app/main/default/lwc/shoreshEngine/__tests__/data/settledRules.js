@@ -312,13 +312,23 @@ function bestFill(spec, m) {
   return best;
 }
 
-/** The days an early-week goal counts, from the week's real first day (settled rule). */
+/**
+ * The days an early-week goal counts, from the week's real first day (settled rule; coordinator,
+ * 2026-10-25): a week starting Saturday or Sunday starts there, any other on the Monday before.
+ */
 function earlyDays(dates, dayName) {
-  const want = WEEKDAY[dayName];
-  const last = dates.findIndex(
-    (date) => new Date(`${date}T00:00:00Z`).getUTCDay() === want
-  );
-  return last < 0 ? [] : dates.slice(0, last + 1);
+  const at = (date) => new Date(`${date}T00:00:00Z`);
+  const firstDay = at(dates[0]).getUTCDay();
+  const weekend = firstDay === 6 || firstDay === 0;
+  const start = new Date(at(dates[0]));
+  if (!weekend) {
+    start.setUTCDate(start.getUTCDate() - ((firstDay + 6) % 7));
+  }
+  const goal = new Date(start);
+  while (goal.getUTCDay() !== WEEKDAY[dayName]) {
+    goal.setUTCDate(goal.getUTCDate() + 1);
+  }
+  return dates.filter((date) => at(date) <= goal);
 }
 
 /**

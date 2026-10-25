@@ -7,7 +7,7 @@ import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
  * for both.
  *
  * rule: a RULE value, BUSY (the group is busy at an overlapping time), NO_FIT (a gap no
- * activity's length fits), FULL (everything set up for the group is full then) or NONE_FOR
+ * activity's length fits), FULL (everything set up for the group is taken then) or NONE_FOR
  * (nothing running this week is set up for the group). groupName: the group the cell belongs to. placeName: the activity's place
  * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
  * camp's words (c/shoreshTerms); model words when left out. inUseBy: what other programs are
@@ -44,7 +44,7 @@ export function reasonFor(
     case BUSY:
       return "Already busy then";
     case FULL:
-      return `Everything for ${groupName} is full then`;
+      return `Everything for ${groupName} is taken then`;
     case NONE_FOR:
       return `No ${t.sIn("Activity")} this ${t.sIn("Week")} is set up for ${groupName}`;
     default:

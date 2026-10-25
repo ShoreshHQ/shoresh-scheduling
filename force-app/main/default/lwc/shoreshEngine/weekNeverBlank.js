@@ -75,7 +75,7 @@ export function* neverBlank(st, slots, from) {
 }
 
 /** Why a cell is still Open, in the order a director would look: busy, nothing for the group,
- * all of it full, too short a gap. */
+ * all of it taken (full, or held for another division), too short a gap. */
 function openWhy(st, s) {
   const k = st.keyOf(s);
   if (busyAt(st, s)) {
@@ -98,7 +98,7 @@ function busyAt(st, s) {
 /**
  * A cell left out for an overlapping one that stayed Open isn't busy after all: it is filled
  * now. Each round frees at least one cell, so the rounds end. Then every cell still Open says
- * why: the group is busy then, everything set up for it is full then, or no activity's length
+ * why: the group is busy then, everything set up for it is taken then, or no activity's length
  * fits (st.openCells).
  */
 export function* finishOpen(st, from) {

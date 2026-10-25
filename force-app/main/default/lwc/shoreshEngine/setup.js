@@ -81,9 +81,11 @@ export function weekdayOf(date) {
 /**
  * The days an early-week goal "by" a weekday (1 Monday ... 7 Sunday) counts, of these days
  * ("YYYY-MM-DD"): calendar days from the week's real first day up to that weekday (care plan,
- * Greg 2026-10-25). The week starts on its first day when that is a Sunday (a Sunday-start week's
- * Sunday comes before its Monday), else on the Monday on or before it. A Set of the dates that
- * count; empty when the week has no day on or before the goal's day.
+ * Greg 2026-10-25). The week starts on its first day when that is a Saturday or Sunday (a
+ * Sunday-start week's Sunday comes before its Monday; a Saturday-start changeover week's Saturday
+ * and Sunday before its Tuesday), else on the Monday on or before it, so a Monday-Thursday week
+ * counts every day for a goal by Friday. A Set of the dates that count; empty when the week has
+ * no day on or before the goal's day (a Wednesday-Friday week has none by Tuesday).
  */
 export function earlyDates(dates, byDay) {
   const days = [...dates].filter((d) => weekdayOf(d) != null).sort(compareText);
@@ -95,8 +97,9 @@ export function earlyDates(dates, byDay) {
     return Date.UTC(y, m - 1, d) / 86400000;
   };
   const first = weekdayOf(days[0]);
-  const start = dayNumber(days[0]) - (first === 7 ? 0 : first - 1);
-  const startWeekday = first === 7 ? 7 : 1;
+  const weekend = first >= 6;
+  const startWeekday = weekend ? first : 1;
+  const start = dayNumber(days[0]) - (first - startWeekday);
   const last = start + ((byDay - startWeekday + 7) % 7);
   return new Set(days.filter((d) => dayNumber(d) <= last));
 }
