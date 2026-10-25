@@ -9,13 +9,14 @@
  * differential"). The expected one: where the desktop leaves a cell empty (UNFILLABLE), this
  * engine fills it by bending a rule (never-blank, step 7). The test fails only if a camp can't be
  * built by either engine, or if the comparison itself is broken (counts that don't add up).
- * Set DESKTOP_DIFF_REPORT=<file> to write the full table as JSON.
+ * Set DESKTOP_DIFF_REPORT=<file> to write the full table as JSON (jest/desktop-report.js).
  *
  * Only what both engines share is drawn: no overlapping blocks, other programs, same-division
  * activities, locks, electives or special days (each engine's own tests cover those).
  */
 import { generateWeek } from "c/shoreshEngine";
 import buildSchedule from "shoresh-jest/desktop-engine/engine/buildSchedule";
+import { writeDesktopReport } from "shoresh-jest/desktop-report";
 import { mulberry32 } from "../random";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
 
@@ -406,15 +407,10 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
           desktop: r.desktop
         }))
     };
-    if (process.env.DESKTOP_DIFF_REPORT) {
-      console.log(
-        `Desktop differential: ${JSON.stringify(report.kinds)}, early week ${JSON.stringify(report.earlyWeek)}`
-      );
-      require("fs").writeFileSync(
-        process.env.DESKTOP_DIFF_REPORT,
-        JSON.stringify({ ...report, rows }, null, 2)
-      );
-    }
+    writeDesktopReport(
+      `Desktop differential: ${JSON.stringify(report.kinds)}, early week ${JSON.stringify(report.earlyWeek)}`,
+      { ...report, rows }
+    );
     expect(report.camps).toBe(rows.length);
   });
 });
