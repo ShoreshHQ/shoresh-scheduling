@@ -385,9 +385,9 @@ System.debug('A11Y_GUESS[' + activity.Name + ']');
   return name[1];
 }
 
-// A made-up special event put on a day of the check's week with nothing planned in it: Roots'
-// hand deals it (ADR 0020 choice 10), and the hand step deals with it (deletes it) and watches it
-// played away. Deleted again after the step, whatever happens.
+// A made-up special event put on a day of the check's week, its schedule a time block and a station
+// with nothing in it: Roots' hand deals it (ADR 0020 choice 10), and the hand step deals with it
+// (an activity typed into its schedule) and watches it played away. Deleted after the run.
 const HAND_EVENT = "Hand check event (made up)";
 
 function clearHandEvent() {
@@ -406,6 +406,16 @@ Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
 Week__c week = [SELECT Id, Season__c FROM Week__c WHERE Season__r.Camp__c = :camp.Id AND Name = '${week}' ORDER BY StartDate__c DESC LIMIT 1];
 SpecialEvent__c event = new SpecialEvent__c(Season__c = week.Season__c, Name = '${HAND_EVENT}');
 insert event;
+SpecialScheduleFrame.Change block = new SpecialScheduleFrame.Change();
+block.action = 'addBlock';
+block.name = 'Relays';
+block.startTime = '09:00';
+block.endTime = '10:00';
+SpecialScheduleController.changeFrame(event.Id, null, block);
+SpecialScheduleFrame.Change station = new SpecialScheduleFrame.Change();
+station.action = 'addStation';
+station.name = 'Blue';
+SpecialScheduleController.changeFrame(event.Id, 1, station);
 SpecialDates.place(event.Id, week.Id, 'Wednesday');
 `);
 }
@@ -1982,6 +1992,16 @@ async function framesSince() {
   };
 }
 
+/** The pointer rests on a meld's front card, so the meld opens and its cards show full size. */
+async function openStack(meldKey) {
+  await page.mouse.move(2, 2);
+  await pause(600);
+  await shown(`c-shoresh-roots [data-meld="${meldKey}"] [data-front]`)
+    .first()
+    .hover();
+  await pause(1500);
+}
+
 /**
  * A Roots card's face as drawn: its words; its raised tiles and how many have no name (no word
  * inside, none heading their row just above, no padlock); its locked bars (tiles with a padlock
@@ -2075,7 +2095,13 @@ async function rootsPolish() {
       `${bars.length} bars, the thinnest ${thinnest.toFixed(1)} px wide.`
     );
   }
-  for (const key of ["manualBuild", "recurringActivities"]) {
+  for (const [meldKey, key] of [
+    ["schedules", "manualBuild"],
+    ["activities", "recurringActivities"]
+  ]) {
+    // Its stack open, so the card shows its full face (shrunk aside it is a picture, whose
+    // names are left out by design: ADR 0020 choice 2).
+    await openStack(meldKey);
     const face = await faceWords(key);
     const cut = face.words.filter((t) => t.endsWith("…"));
     // A name dropped entirely: a raised tile with no name in it or heading its row, and no
@@ -2096,7 +2122,10 @@ async function rootsPolish() {
     }
   }
   // A fixed activity always looks fixed (R2): each locked bar keeps its padlock.
+  await openStack("activities");
   const fixed = await faceWords("fixedActivities");
+  await page.mouse.move(2, 2);
+  await pause(1200);
   if (fixed.bars > 0 && fixed.unlocked === 0) {
     results.pass(
       S,
@@ -2245,7 +2274,7 @@ async function handShot(name) {
  * Roots' hand (ADR 0020 choice 10): the made-up event put on a day with nothing planned
  * (seedHandEvent) is dealt as a card named by what is off, in the group "Needs a look" (axe with
  * it). Tab reaches it and Enter grows Special events out of it with that event's own schedule
- * open. Dealt with (the event deleted, the schedule's way back reading the season again), the
+ * open. Dealt with (an activity typed into a cell, the schedule's way back reading the season), the
  * menu's Roots goes home to the hand card it came from, with the cursor on it, and the card is
  * then played away onto its meld while focus stays on the page. With --hand-shots, pictures of
  * the hand with cards, a card being played, and (when nothing else needs a look) the calm hand.
@@ -2296,8 +2325,13 @@ async function rootsHand() {
       `${out.moves == null ? "Nothing grew out of the card" : `Grew after ${out.moves} ms`}; the event's schedule ${schedule ? "open" : "not open"}.`
     );
   }
-  // Dealt with: the event goes, and the schedule's way back reads the season again.
-  clearHandEvent();
+  // Dealt with, as a director would: an activity typed into the event's schedule (saved), and
+  // the schedule's way back reads the season again.
+  if (!(await tabTo(grid, { max: 40 })))
+    throw new Error("No cell of the event's schedule reached with Tab.");
+  await press("Enter", 500);
+  await type("Swim");
+  await press("Enter", 2500);
   if (
     !(await tabTo(named(/^Special events$/, { tag: "button" }), {
       max: 40,
