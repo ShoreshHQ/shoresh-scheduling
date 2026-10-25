@@ -55,7 +55,6 @@ public with sharing class RootsSeats {
    * The run Elective seats opens on for the week (its pickSchedule): the latest run's set and
    * schedule, and on them the committed run, else the latest.
    */
-  @TestVisible
   private static ElectiveRun__c runOf(Id seasonId, Id weekId) {
     List<ElectiveRun__c> runs = [
       SELECT Id, ElectiveSet__c, Week__c, Schedule__c, Status__c

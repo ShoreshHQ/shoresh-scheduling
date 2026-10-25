@@ -348,7 +348,7 @@ private class RootsTableTest {
       .ElectiveSet__c;
       // Run A is committed (one offering short); run B, a later run on the same schedule that is
       // not the committed one, has no seats. Elective seats opens on A, so the hand counts A.
-      ElectiveRun__c later = run(camp, setId, generatedId, 'Final');
+      ElectiveRun__c later = run(camp, setId, generatedId);
       Database.insert(later, AccessLevel.USER_MODE);
       Test.setCreatedDate(camp.runId, Datetime.now().addDays(-2));
       Test.setCreatedDate(later.Id, Datetime.now().addDays(-1));
@@ -364,7 +364,7 @@ private class RootsTableTest {
 
       // A newer run on the week's other schedule: Elective seats opens on that schedule, on
       // which nothing is short.
-      ElectiveRun__c other = run(camp, setId, manualId, 'Final');
+      ElectiveRun__c other = run(camp, setId, manualId);
       Database.insert(other, AccessLevel.USER_MODE);
       table = RootsController.getTable(camp.ids.get('Season'));
       Test.stopTest();
@@ -374,19 +374,15 @@ private class RootsTableTest {
     }
   }
 
-  private static ElectiveRun__c run(
-    Camp camp,
-    Id setId,
-    Id scheduleId,
-    String status
-  ) {
+  /** A run of Week 2 that is not the committed one. */
+  private static ElectiveRun__c run(Camp camp, Id setId, Id scheduleId) {
     return new ElectiveRun__c(
       Season__c = camp.ids.get('Season'),
-      Name = 'Chugim · Week 2 · ' + status,
+      Name = 'Chugim · Week 2 · Final',
       ElectiveSet__c = setId,
       Week__c = camp.ids.get('Week 2'),
       Schedule__c = scheduleId,
-      Status__c = status,
+      Status__c = 'Final',
       Revision__c = 1
     );
   }
