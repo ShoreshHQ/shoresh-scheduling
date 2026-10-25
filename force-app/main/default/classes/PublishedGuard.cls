@@ -7,11 +7,21 @@
  * words, and so is making a schedule published other than by Publish. One is never deleted.
  * Called from before triggers on Schedule__c, ScheduleDay__c and PublishedPlan__c (the special
  * days' and events' plans a published schedule carries).
+ *
+ * The imported week is kept the same way (engine care plan, Greg 2026-10-25): a version made by an
+ * import (Status Version, Origin Imported) is never deleted and its days never change, except by
+ * the import that writes it and its Undo (ImportVersionWrites, ImportUndoDeletes), which
+ * allowImport() around their writes. It can be renamed, as published history can; its origin
+ * still says Imported.
  */
 public with sharing class PublishedGuard {
   private static final String PUBLISHED = 'Published';
+  private static final String VERSION = 'Version';
+  private static final String IMPORTED = 'Imported';
   // How many of Shoresh's own publish, unpublish or rename writes are under way.
   private static Integer allowed = 0;
+  // How many of an import's own writes or Undos are under way.
+  private static Integer importAllowed = 0;
   // Schedules already found not to be published history in this transaction: their days aren't
   // looked up again (a week's saves write days several times). Forgotten when one is updated.
   private static Set<Id> notHistory = new Set<Id>();
@@ -25,18 +35,32 @@ public with sharing class PublishedGuard {
     allowed = Math.max(0, allowed - 1);
   }
 
+  /** An import, or its Undo, starts writing its own imported week: call doneImport() in a finally. */
+  public static void allowImport() {
+    importAllowed++;
+  }
+
+  public static void doneImport() {
+    importAllowed = Math.max(0, importAllowed - 1);
+  }
+
   /**
    * Before delete of schedules: one that is or was published is never deleted, not even by
    * Shoresh.
    */
   public static void refuseScheduleDeletes(List<Schedule__c> olds) {
     List<Schedule__c> history = new List<Schedule__c>();
+    List<String> whats = new List<String>();
     for (Schedule__c old : olds) {
       if (isPublished(old)) {
         history.add(old);
+        whats.add('deleted');
+      } else if (isImported(old) && importAllowed == 0) {
+        history.add(old);
+        whats.add('importDeleted');
       }
     }
-    refuse(history, history, repeated('deleted', history.size()));
+    refuse(history, history, whats);
   }
 
   /** Before insert or update of schedules (oldMap null on insert). */
@@ -47,14 +71,36 @@ public with sharing class PublishedGuard {
     if (oldMap != null) {
       notHistory.removeAll(oldMap.keySet());
     }
-    if (allowed > 0) {
-      return;
-    }
     List<Schedule__c> refused = new List<Schedule__c>();
     List<Schedule__c> shown = new List<Schedule__c>();
     List<String> whats = new List<String>();
+    // Shoresh's own publish, unpublish and rename (allow()) are trusted here too.
+    if (importAllowed == 0 && allowed == 0) {
+      for (Schedule__c schedule : news) {
+        Schedule__c old = oldMap == null ? null : oldMap.get(schedule.Id);
+        // Anything but its name: it stays the import's version of its program and week.
+        if (
+          isImported(old) &&
+          (!isImported(schedule) ||
+          schedule.Program__c != old.Program__c ||
+          schedule.Week__c != old.Week__c ||
+          schedule.VersionReason__c != old.VersionReason__c)
+        ) {
+          refused.add(schedule);
+          shown.add(old);
+          whats.add('importChanged');
+        }
+      }
+    }
+    if (allowed > 0) {
+      refuse(refused, shown, whats);
+      return;
+    }
     for (Schedule__c schedule : news) {
       Schedule__c old = oldMap == null ? null : oldMap.get(schedule.Id);
+      if (old != null && isImported(old) && refused.contains(schedule)) {
+        continue;
+      }
       if (isPublished(old)) {
         // Published history changed: the message names it as it was.
         refused.add(schedule);
@@ -89,6 +135,7 @@ public with sharing class PublishedGuard {
     List<SObject> rows,
     Schema.SObjectField scheduleField
   ) {
+    // Shoresh's own publish, unpublish and rename never write an imported week's days.
     if (allowed > 0) {
       return;
     }
@@ -110,14 +157,17 @@ public with sharing class PublishedGuard {
           PublishedAt__c,
           PublishedBy__c,
           PublishKey__c,
-          Program__c
+          Program__c,
+          Origin__c
         FROM Schedule__c
         WHERE
           Id IN :scheduleIds
           AND (Status__c = :PUBLISHED
           OR PublishedAt__c != NULL
           OR PublishedBy__c != NULL
-          OR PublishKey__c != NULL)
+          OR PublishKey__c != NULL
+          OR (Status__c = :VERSION
+          AND Origin__c = :IMPORTED))
         WITH SYSTEM_MODE
       ]
     );
@@ -126,19 +176,30 @@ public with sharing class PublishedGuard {
         notHistory.add(scheduleId);
       }
     }
+    // An import (or its Undo) writes its own imported week.
+    if (importAllowed > 0) {
+      for (Id scheduleId : new Set<Id>(history.keySet())) {
+        if (isImported(history.get(scheduleId))) {
+          history.remove(scheduleId);
+        }
+      }
+    }
     if (history.isEmpty()) {
       return;
     }
     List<SObject> refused = new List<SObject>();
     List<Schedule__c> shown = new List<Schedule__c>();
+    List<String> whats = new List<String>();
     for (SObject row : rows) {
       Id scheduleId = (Id) row.get(scheduleField);
       if (history.containsKey(scheduleId)) {
+        Schedule__c schedule = history.get(scheduleId);
         refused.add(row);
-        shown.add(history.get(scheduleId));
+        shown.add(schedule);
+        whats.add(isImported(schedule) ? 'importDays' : 'days');
       }
     }
-    refuse(refused, shown, repeated('days', refused.size()));
+    refuse(refused, shown, whats);
   }
 
   /** Is, or was, a week's published schedule. */
@@ -150,12 +211,11 @@ public with sharing class PublishedGuard {
       schedule.PublishKey__c != null);
   }
 
-  private static List<String> repeated(String what, Integer count) {
-    List<String> result = new List<String>();
-    for (Integer i = 0; i < count; i++) {
-      result.add(what);
-    }
-    return result;
+  /** The week as an import brought it in (a version an import made). */
+  private static Boolean isImported(Schedule__c schedule) {
+    return schedule != null &&
+      schedule.Status__c == VERSION &&
+      schedule.Origin__c == IMPORTED;
   }
 
   /**
@@ -203,6 +263,21 @@ public with sharing class PublishedGuard {
   ) {
     if (labels == null) {
       labels = CampLabels.modelTermsOnly();
+    }
+    if (what.startsWith('import')) {
+      String kept =
+        '"' +
+        schedule.Name +
+        '" is the ' +
+        labels.singularInSentence('Week') +
+        ' as it was imported, which is kept as it came in, so ';
+      if (what == 'importDeleted') {
+        return kept + 'it can\'t be deleted.';
+      }
+      if (what == 'importDays') {
+        return kept + 'its days can\'t be changed.';
+      }
+      return kept + 'only its name can change.';
     }
     if (what == 'made') {
       return 'Only Publish in Shoresh can make the ' +

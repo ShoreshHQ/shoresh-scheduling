@@ -14,6 +14,16 @@ public with sharing class ImportVersionWrites {
   }
 
   public void run() {
+    // The imported week is kept as it came in; only the import writes it (PublishedGuard).
+    PublishedGuard.allowImport();
+    try {
+      write();
+    } finally {
+      PublishedGuard.doneImport();
+    }
+  }
+
+  private void write() {
     List<ImportPlan.Entry> entries = plan.entries('versions');
     List<SObject> schedules = new List<SObject>();
     for (ImportPlan.Entry entry : entries) {

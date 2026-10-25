@@ -180,7 +180,12 @@ export default class ShoreshVersions extends LightningElement {
         meta: showSaved ? `${meta} · ` : meta,
         showSaved,
         // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
-        deletable: this.restore && !this.noDraft && !version.publishedAt,
+        deletable:
+          this.restore &&
+          !this.noDraft &&
+          !version.publishedAt &&
+          // The imported week is kept as it came in (PublishedGuard).
+          version.origin !== "Imported",
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "delete",
