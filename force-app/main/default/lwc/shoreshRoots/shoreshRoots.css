@@ -223,8 +223,9 @@
 }
 
 .last-import {
-  /* Beside the buttons when it has 26rem there (a laptop), its words wrapping; else its own row. */
-  flex: 1 1 26rem;
+  /* Beside the buttons, one row as tall as they are, from a 1024 wide window on (18rem there:
+     the time and Undo whole, the file cut short); on a narrower one, its own row. */
+  flex: 1 1 18rem;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -234,6 +235,14 @@
 .last-words {
   flex: 1;
   min-width: 0;
+  line-height: 16px;
+}
+
+.last-what,
+.last-when {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .weak {

@@ -3,7 +3,8 @@
 Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
 (2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps; slice
 R2 (2026-10-24): the "needs a look" hand (choice 10); R2.1 (2026-10-25): the hand always
-whole, at the mock-up's size. Design source: Greg's
+whole, at the mock-up's size; R2.2 (2026-10-25): Roots fits a laptop's window (1280 by 800,
+1024 by 768). Design source: Greg's
 approval, wiki `projects/shoresh-scheduling-sf.md` decisions 60 to 68 (68: "this is it"), and the
 approved working mock-up `~/Dev/Shoresh/design-research/roots-approved/` (`needs-a-look.html`,
 `table.css`, `table.js`), which is the spec for look, layout and motion. Replaces ADR 0003 choice 4
@@ -218,7 +219,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
       the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
-      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). **The hand always shows its cards whole, at the mock-up's size** (R2.1, 2026-10-25): a card a fifth of the frame wide, never under 196 px (the narrowest whose picture keeps its 11 px words) nor over 232, 0.68 as tall, the hand its height and 46 px more (232 by 158 at 1440 wide, as the mock-up). It never lowers or eases aside: R2 lowered it while a meld was open to give the table its room, and in shoresh-test that left the hand cut off under the worksheet bar whenever a meld stayed open, as it does while a card in it has the cursor (the mock-up's rule, choice 4: focus holds a meld open, whatever the pointer does). Instead the table and the hand size to fit: the table never gets shorter than two rows of cards at full face with the meld names above them (about 435 px), so an open meld still shows full faces at 1440 by 900 with cards in hand; the worksheet bar lies below the hand, never over it. **Table, hand and bar share one screen at 1440 by 900** (decision 68), a last import in the bar included: the hand takes what the window leaves between the table's least height and the bar, its cards the mock-up's size when that is room enough and smaller when it is not, never under 196 wide (with a last import shown at 1440 by 900, 213 by 145 in shoresh-test, the bar ending 12 px above the window's bottom). Only once the cards are at 196 does Roots grow past the window (the page scrolls), on a short window, rather than the table or the hand giving way; a window too short even for the table's least height leaves the hand no room, so its cards are 196 there too (the first build took no room for no limit and kept them at 232 in a 560 px tall window; the full browser check on PR #142 found it). (The first R2.1 build kept the cards at 232 and pushed Undo last import half off a 1440 by 900 window; review of PR #142.) However many cards the hand holds, they stay whole: the fan keeps the mock-up's curve (each card 9 / n px lower per step from the middle, squared, and tilted 6.6 / n degrees) until its end cards would sink past the 24 px below them, from about ten cards on, and then flattens just enough that they do not (review of PR #142: at 12 cards the end card lost about 5 px, at 20 about 22). Should a later read fail, the
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). **The hand always shows its cards whole, at the mock-up's size** (R2.1, 2026-10-25): a card a fifth of the frame wide, never under 196 px (the narrowest whose picture keeps its 11 px words) nor over 232, 0.68 as tall, the hand its height and 46 px more (232 by 158 at 1440 wide, as the mock-up). It never lowers or eases aside: R2 lowered it while a meld was open to give the table its room, and in shoresh-test that left the hand cut off under the worksheet bar whenever a meld stayed open, as it does while a card in it has the cursor (the mock-up's rule, choice 4: focus holds a meld open, whatever the pointer does). Instead the table and the hand size to fit, the worksheet bar below the hand, never over it. **Table, hand and bar share one screen on a laptop: 1440 by 900, 1280 by 800 and 1024 by 768** (decision 68; R2.2, 2026-10-25), a last import in the bar included, as the mock-up fits those windows. What the window leaves Roots is shared in this order: the table never gets shorter than its melds need **at rest**, as large as its width lets them (full size where it can: 349 px at 1280 wide; at 1024 the width already holds them to 0.98, so a little less); past that it takes what it can, up to the height of two rows of cards at full face with the meld names above them (about 435 px, an open meld's at 1440 by 900), while the hand keeps its narrowest cards; the hand then takes what is left, its cards the mock-up's size when that is room enough, smaller when not, never under 196 wide. So at 1440 by 900 the cards are the mock-up's 232 and an open meld shows full faces; at 1280 by 800 and 1024 by 768 the cards are 196 and an open meld shows its cards as large as the table then allows (its glimpses become their pictures, whose words stay 11 px or more, as the mock-up's do when cards shrink: choice 2). Only a window too short for the table at rest and the narrowest hand (1440 by 560) has Roots grow past it (the page scrolls), rather than the table or the hand giving way further; there the cards are 196. The table re-measures as the hand takes cards in or goes calm (a calm hand leaves the table its two rows of full faces). (R2.1 held two rows of full faces whatever the window, which ran Roots 93 px past a 1280 by 800 window and 138 px past a 1024 by 768 one, though at those widths an open meld's cards were held to pictures by the table's width anyway; the first R2.1 build kept the cards at 232 and pushed Undo last import half off a 1440 by 900 window, review of PR #142; and it took no room for no limit, keeping 232 in a 560 px tall window, the full browser check on PR #142.) However many cards the hand holds, they stay whole: the fan keeps the mock-up's curve (each card 9 / n px lower per step from the middle, squared, and tilted 6.6 / n degrees) until its end cards would sink past the 24 px below them, from about ten cards on, and then flattens just enough that they do not (review of PR #142: at 12 cards the end card lost about 5 px, at 20 about 22). Should a later read fail, the
       cards the table fed stay as they were (nothing is played away on a failed read). However
       many cards there are, the hand keeps a clear margin at both ends: past what fits side by
       side they close up and overlap, a lifted card coming to the front; the cards breathe very
@@ -228,9 +229,16 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       workbook's Import a list; Re-import last year; the last import with Undo) stay in their bar
       under a hairline below the hand, the secondary actions' place (decision 28C; the mock-up has
       no workbook bar). The last import is laid out as the desktop's (`LastImportUndo.jsx`): its
-      line and the sentence on what Undo does on the left, Undo last import on their right; it
-      sits beside the buttons, its words wrapping, when it has 26rem there (a laptop), so the bar
-      keeps to one row, and takes a row of its own on a narrower window.
+      words on the left, Undo last import on their right, beside the buttons in **one quiet row**
+      as tall as they are, from a 1024 wide window on (R2.2): "Last import: <files>" with the time
+      under it, the file cut short with an ellipsis rather than the bar growing, and the whole
+      line when the pointer rests on it. The desktop's sentence on what Undo does ("Undo removes
+      what this import added…") is no longer drawn in the bar: Undo last import asks first, and
+      its confirmation says the same (the page's, desktop wording), so nothing is undone without
+      it being read; a screen reader still hears it in the bar. (R2.1's bar wrapped the sentence
+      to three lines at 1280 and gave the last import a row of its own at 1024, 99 and 115 px
+      tall, which alone ran Roots past those windows.) On a window narrower than 1024 it takes a
+      row of its own.
 
 11. **Tokens** (ADR 0015): the mock-up's card shadows (`--shoresh-card-rest`, `--shoresh-card-lift`,
     made of the shade and the primary's steps), its easing and lift time (`--shoresh-flow`,
@@ -239,6 +247,16 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
     instead of being cut off (the mock-up's menu). No new colour.
 
 ## Checked by
+
+R2.2: `shoreshRoots.test.js` (in a window as Salesforce shows it: at 1440 by 900 the mock-up's
+cards and two rows of full faces; at 1280 by 800 and 1024 by 768 the narrowest cards, the table
+never under its melds at rest, nothing past the window; at 1440 by 560 Roots grows past it; a calm
+hand leaves the table its two rows; the last import's one row, its time, its whole line on hover,
+what Undo does said to a screen reader), `shoreshRootsHand.test.js` (its least height, with cards,
+while one is played away, and calm), and the browser check's hand step, which now fails on Roots
+running past the bottom of a 1280 by 800 or 1024 by 768 window as well as a 1440 by 900 one, and
+says how tall the table and the bar are. Checked in shoresh-test with a long hand (12 made-up
+cards, removed after) at each of those windows.
 
 R2.1: `shoreshRootsHand.test.js` (every card whole at 3 to 30 cards and two card sizes, the mock-up's curve kept up to nine; the mock-up's card size at three widths, the hand its height
 and 46 more; giving way to the height it is left, never under 196, and growing back),

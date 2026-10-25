@@ -14,6 +14,11 @@ const BELOW = 24;
 // The cards turn about a point this much of their height below their bottom edge (CSS 50% 120%).
 const PIVOT = 0.2;
 const CALM_HEIGHT = 16;
+// A card's width: never under the narrowest whose picture keeps its 11 px words, nor over the
+// mock-up's; 0.68 as tall.
+const LEAST_W = 196;
+const MOST_W = 232;
+const TALL = 0.68;
 const MIN_STEP = 24;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
 const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
@@ -223,10 +228,12 @@ export default class ShoreshRootsHand extends LightningElement {
     // included), never under 196 (the narrowest whose picture keeps its 11 px words) nor over 232;
     // and no taller than the window leaves the hand (fitHeight), down to that 196.
     const frame = this.template.host?.clientWidth || width;
-    const tall = Math.floor((this.most - ABOVE - BELOW - 0.5) / 0.68);
-    this.hw = Math.round(Math.max(196, Math.min(232, frame * 0.2, tall)));
+    const tall = Math.floor((this.most - ABOVE - BELOW - 0.5) / TALL);
+    this.hw = Math.round(
+      Math.max(LEAST_W, Math.min(MOST_W, frame * 0.2, tall))
+    );
     // Tall enough that the picture's 11 px words are never drawn smaller.
-    this.hh = Math.round(this.hw * 0.68);
+    this.hh = Math.round(this.hw * TALL);
     return width;
   }
 
@@ -454,6 +461,18 @@ export default class ShoreshRootsHand extends LightningElement {
       this.most = most;
       this.layout();
     }
+  }
+
+  /**
+   * The least height the hand takes: with cards in it (or one still being played away), its
+   * narrowest cards' and the room above and below them; calm, its calm space. Roots gives the
+   * table what the window leaves past it.
+   */
+  @api
+  leastHeight() {
+    return this.leaving.size || this.live.length
+      ? Math.round(LEAST_W * TALL) + ABOVE + BELOW
+      : CALM_HEIGHT;
   }
 
   /** A card's size at scale 1. */

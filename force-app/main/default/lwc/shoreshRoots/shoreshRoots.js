@@ -410,7 +410,10 @@ export default class ShoreshRoots extends LightningElement {
     return !this.campHasData;
   }
 
-  /** The season's last import that stands: "Last import: <files>, <when>". */
+  /**
+   * The season's last import that stands: "Last import: <files>", and <when> under it (the
+   * whole line, "Last import: <files>, <when>", when the pointer rests on it).
+   */
   get lastImport() {
     const last = this.setup && this.setup.lastImport;
     if (!last) {
@@ -420,10 +423,13 @@ export default class ShoreshRoots extends LightningElement {
       dateStyle: "medium",
       timeStyle: "short"
     });
+    const what = `Last import: ${last[FIELD.Import.Files] || "a file"}`;
     return {
       id: last.Id,
       files: last[FIELD.Import.Files],
-      line: `Last import: ${last[FIELD.Import.Files] || "a file"}, ${when}`
+      what,
+      when,
+      line: `${what}, ${when}`
     };
   }
 
@@ -540,10 +546,14 @@ export default class ShoreshRoots extends LightningElement {
     if (typeof ResizeObserver === "function") {
       this.resizer = new ResizeObserver(() => this.layout());
       this.resizer.observe(table);
-      // The worksheet bar growing (a last import shown) takes room from the hand (fitHand).
+      // The worksheet bar changing (an import opened in it), or the hand taking cards in or
+      // going calm, changes what the window leaves the table (fitTable).
       const tools = this.template.querySelector('[data-id="tools"]');
       if (tools) {
         this.resizer.observe(tools);
+      }
+      if (this.handEl) {
+        this.resizer.observe(this.handEl);
       }
     }
     this.fit();
@@ -748,9 +758,9 @@ export default class ShoreshRoots extends LightningElement {
     this.ch = ch;
     table.style.setProperty("--cw", `${cw}px`);
     table.style.setProperty("--ch", `${ch}px`);
-    this.fitHand(this.holdRoom(cw, ch));
-    const open = this.melded.find((m) => m.open);
     const fan = Math.round(ch * 0.17);
+    this.fitTable(cw, ch, Wt, fan);
+    const open = this.melded.find((m) => m.open);
     const restS = Math.min(
       1,
       (Wt / 3 - 20) / cw,
@@ -825,51 +835,57 @@ export default class ShoreshRoots extends LightningElement {
   }
 
   /**
-   * The table never gets shorter than two rows of cards whose words still read at full face (an
-   * open meld's), the meld names above them: the hand below always shows its cards whole, so on a
-   * short window Roots grows past it (the page scrolls) instead of the table or the hand giving way.
+   * Table, hand and worksheet bar share the window (decision 68; at 1440 by 900, 1280 by 800 and
+   * 1024 by 768, a last import in the bar included). The table never gets shorter than its melds
+   * need at rest, as large as its width lets them (full size where it can): that is the screen
+   * as it first shows. Past that, it would like the height of two rows of cards at full face
+   * with the meld names above them (an open meld's, as at 1440 by 900), and takes what it can of
+   * that while the hand keeps its narrowest cards (196 wide). The hand then takes what is left,
+   * its cards the mock-up's size when that is room enough, smaller when not (never under 196).
+   * Only a window too short for the table at rest and the narrowest hand (1440 by 560) has Roots
+   * grow past it (the page scrolls), rather than the table or the hand giving way.
    */
-  holdRoom(cw, ch) {
-    const least = Math.ceil(2 * ch * fullFace(cw, ch) + GAP + 2.5 + 64);
+  fitTable(cw, ch, Wt, fan) {
     const field = this.template.querySelector('[data-id="field"]');
-    const value = `${least}px`;
-    if (field && field.style.minHeight !== value) {
-      field.style.minHeight = value;
-    }
-    return least;
-  }
-
-  /**
-   * Table, hand and worksheet bar on one screen (decision 68, at 1440 by 900 with a last import
-   * shown): the hand may take what the window leaves below the table's least height and above the
-   * bar. Its cards are the mock-up's size when that is room enough, and give way first (never under
-   * 196 wide); only past that does Roots grow past the window.
-   */
-  fitHand(least) {
-    const hand = this.handEl;
-    const field = this.template.querySelector('[data-id="field"]');
-    const body = this.template.querySelector('[data-id="body"]');
-    const room = this.room();
-    if (!hand || !field || !body || !room) {
+    if (!field) {
       return;
     }
-    // Everything but the table and the hand: the table's margin, the hairline and the bar. Each
-    // measured itself, never as what the hand leaves (that moves while the hand eases to its
-    // height); layout heights, since the body is scaled while a screen grows out of a card.
-    const margins = (el) => {
-      const style = window.getComputedStyle(el);
-      return (
-        (parseFloat(style.marginTop) || 0) +
-        (parseFloat(style.marginBottom) || 0)
-      );
-    };
-    let others = margins(field);
-    [...body.children].forEach((el) => {
-      if (el !== field && el !== hand) {
-        others += el.offsetHeight + margins(el);
-      }
-    });
-    hand.fitHeight(Math.floor(room - least - others));
+    const restS = Math.min(1, (Wt / 3 - 20) / cw);
+    const rest = Math.ceil(70 + (ch + 2 * fan + 40) * restS);
+    const wish = Math.ceil(2 * ch * fullFace(cw, ch) + GAP + 2.5 + 64);
+    const hand = this.handEl;
+    const body = this.template.querySelector('[data-id="body"]');
+    const room = this.room();
+    let least = Math.max(rest, wish);
+    let handMost = null;
+    if (hand && body && room) {
+      // Everything but the table and the hand: the table's margin, the hairline and the bar.
+      // Each measured itself, never as what the hand leaves (that moves while the hand eases to
+      // its height); layout heights, since the body is scaled while a screen grows out of a card.
+      const margins = (el) => {
+        const style = window.getComputedStyle(el);
+        return (
+          (parseFloat(style.marginTop) || 0) +
+          (parseFloat(style.marginBottom) || 0)
+        );
+      };
+      let others = margins(field);
+      [...body.children].forEach((el) => {
+        if (el !== field && el !== hand) {
+          others += el.offsetHeight + margins(el);
+        }
+      });
+      const left = Math.floor(room - others);
+      least = Math.max(rest, Math.min(wish, left - hand.leastHeight()));
+      handMost = left - least;
+    }
+    const value = `${least}px`;
+    if (field.style.minHeight !== value) {
+      field.style.minHeight = value;
+    }
+    if (hand && handMost !== null) {
+      hand.fitHeight(handMost);
+    }
   }
 
   /**

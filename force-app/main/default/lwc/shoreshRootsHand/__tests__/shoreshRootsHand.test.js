@@ -257,6 +257,25 @@ describe("c-shoresh-roots-hand", () => {
     expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
   });
 
+  it("says the least height it takes: its narrowest cards' room with cards, its calm space without", async () => {
+    const element = await render([card("A"), card("B")]);
+    run(3000);
+    // The narrowest card (196 by 133) and the 46 px above and below it, however roomy now.
+    expect(element.leastHeight()).toBe(133 + 46);
+    element.fitHeight(-340);
+    run(3000);
+    const hand = element.shadowRoot.querySelector('[data-id="hand"]');
+    expect(parseFloat(hand.style.height)).toBeCloseTo(element.leastHeight(), 0);
+    // A card still being played away keeps the hand's room until it lands.
+    element.cards = [];
+    await settle();
+    expect(element.leastHeight()).toBe(133 + 46);
+    run(5000);
+    await settle();
+    run(3000);
+    expect(element.leastHeight()).toBe(16);
+  });
+
   // How far a card lies below where its bottom edge rests: its drop, and its lowest corner as it
   // tilts about the point a fifth of its height under its middle (the CSS's 50% 120%).
   const below = (b, { w, h }) => {
