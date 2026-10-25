@@ -739,6 +739,8 @@ export default class ShoreshRoots extends LightningElement {
     table.style.setProperty("--cw", `${cw}px`);
     table.style.setProperty("--ch", `${ch}px`);
     const open = this.melded.find((m) => m.open);
+    // The hand eases aside while a meld is open, so the open meld has the room for full faces.
+    this.handEl?.ease(!!open);
     const fan = Math.round(ch * 0.17);
     const restS = Math.min(
       1,
@@ -771,7 +773,7 @@ export default class ShoreshRoots extends LightningElement {
         const s = Math.min(
           1.04,
           (x1 - x0 - (cols - 1) * GAP) / (cols * cw),
-          (Ht - 52 - (rows - 1) * vg) / (rows * ch)
+          (Ht - 64 - (rows - 1) * vg) / (rows * ch)
         );
         if (!best || s > best.s + 0.02) {
           best = { s, cols, rows };

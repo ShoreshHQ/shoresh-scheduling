@@ -212,6 +212,25 @@ describe("c-shoresh-roots-hand", () => {
     expect(xs[1] - xs[0]).toBeGreaterThanOrEqual(24);
   });
 
+  it("eases aside while a meld is open: lowered to the cards' tops, rising again after", async () => {
+    const element = await render([card("A"), card("B")]);
+    run(3000);
+    const hand = element.shadowRoot.querySelector('[data-id="hand"]');
+    const full = parseFloat(hand.style.height);
+    const a = button(element, "A");
+    const yOf = (b) =>
+      Number(/\)\s*,\s*(-?[\d.]+)px\)/.exec(b.style.transform)[1]);
+    const up = yOf(a);
+    element.ease(true);
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
+    expect(yOf(a)).toBeGreaterThan(up + 80);
+    element.ease(false);
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
+    expect(yOf(a)).toBeCloseTo(up, 0);
+  });
+
   it("moves the cursor to the next card when the card it was on is played", async () => {
     const element = await render([card("A"), card("B"), card("C")]);
     run(3000);

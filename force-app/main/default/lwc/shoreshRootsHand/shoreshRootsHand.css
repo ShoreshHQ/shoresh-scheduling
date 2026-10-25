@@ -16,6 +16,9 @@
   position: relative;
   height: 16px;
   margin: 0 var(--shoresh-space-pad);
+  /* Nothing shows below the hand (lowered cards, a card dealt in): above and to the sides, the
+     lift and a card played onto its meld go free. */
+  clip-path: inset(-100vh -100vw 0 -100vw);
 }
 
 .hcard {

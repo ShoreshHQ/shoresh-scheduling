@@ -877,6 +877,21 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(card(element, "weeks").hasAttribute("data-nudge")).toBe(false);
   });
 
+  it("an open meld has the hand ease aside, and closing it brings the hand back", async () => {
+    const element = await render();
+    await sized(element);
+    const hand = handOf(element).shadowRoot.querySelector('[data-id="hand"]');
+    run(3000);
+    const full = parseFloat(hand.style.height);
+    expect(full).toBeGreaterThan(150);
+    card(element, "weeks").focus();
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
+    card(element, "weeks").blur();
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
+  });
+
   it("the hand's last card with the cursor played away: the cursor goes to its meld", async () => {
     const element = await render();
     await sized(element);
