@@ -156,7 +156,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    its cards a button named by the whole sentence (the attention list's own words, "Soccer:
    Outdoors and has no rain plan."); the arrows move between them (round at the ends). A card
    with the cursor that is played away hands the cursor to the next card, or, the last one, to
-   its meld's front card. Roots' heading is still there for the page to focus when Roots opens
+   its meld's front card, the meld resting closed (as after Escape) so the card in flight lands where it was aimed. Roots' heading is still there for the page to focus when Roots opens
    from the menu. axe passes in Jest and in the browser check.
 
 8. **Reduced motion means no animation**: every placement is drawn at once, no frames are asked
@@ -209,7 +209,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
       the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
-      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). Should a later read fail, the
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). The hand takes as little height as it can (cards 196 px wide, the narrowest whose picture keeps its 11 px words, wider only on wide screens; tight margins), and an open meld reserves less above its fan, so with cards in hand an open meld still shows full faces at 1440 by 900 (found in shoresh-test: Activities & Events had fallen to its pictures). Should a later read fail, the
       cards the table fed stay as they were (nothing is played away on a failed read). However
       many cards there are, the hand keeps a clear margin at both ends: past what fits side by
       side they close up and overlap, a lifted card coming to the front; the cards breathe very

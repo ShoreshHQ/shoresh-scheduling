@@ -276,7 +276,7 @@ describe("c-shoresh-roots-hand", () => {
     expect(element.hasCard("hand:A")).toBe(true);
     expect(element.hasCard("hand:Z")).toBe(false);
     const pose = element.cardPose("hand:A");
-    expect(pose.w).toBe(232);
+    expect(pose.w).toBe(204);
     expect(pose.x).toBeCloseTo(600, 0);
     element.showFace("hand:A", false);
     const face = button(element, "A").querySelector("[data-face]");

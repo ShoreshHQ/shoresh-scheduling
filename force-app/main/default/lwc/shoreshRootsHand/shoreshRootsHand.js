@@ -6,9 +6,11 @@ const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 const DEAL_AFTER = 80;
 const DEAL_FIRST = 220;
 const DEAL_STEP = 140;
-// The hand's room above its cards (for the lift) and below them.
-const ABOVE = 22;
-const BELOW = 24;
+// The hand's room above its cards (the lift, the breath and the focus ring) and below them
+// (the outer cards' drop). Kept tight: every pixel the hand takes is the table's, and an open meld
+// needs it to show its cards' full faces on a laptop screen.
+const ABOVE = 18;
+const BELOW = 16;
 const CALM_HEIGHT = 16;
 const MIN_STEP = 24;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
@@ -213,7 +215,8 @@ export default class ShoreshRootsHand extends LightningElement {
 
   size() {
     const width = this.handEl?.clientWidth || 0;
-    this.hw = Math.round(Math.max(196, Math.min(232, width * 0.2)));
+    // 196 is the narrowest card whose picture keeps its 11 px words; wider only on wide screens.
+    this.hw = Math.round(Math.max(196, Math.min(232, width * 0.17)));
     // Tall enough that the picture's 11 px words are never drawn smaller.
     this.hh = Math.round(this.hw * 0.68);
     return width;

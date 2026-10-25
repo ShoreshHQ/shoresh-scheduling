@@ -884,6 +884,8 @@ describe("c-shoresh-roots: the melds move", () => {
       new CustomEvent("leftfocus", { detail: { meld: "schedules" } })
     );
     expect(element.shadowRoot.activeElement).toBe(card(element, "manualBuild"));
+    // The meld rests closed, so the card in flight lands where it was aimed.
+    expect(meld(element, "schedules").hasAttribute("data-open")).toBe(false);
   });
 
   it("coming home opens the card's meld and puts the cursor on it", async () => {

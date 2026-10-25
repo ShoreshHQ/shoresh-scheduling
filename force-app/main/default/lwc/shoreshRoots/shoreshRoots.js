@@ -363,12 +363,18 @@ export default class ShoreshRoots extends LightningElement {
     );
   }
 
-  /** The hand card with the cursor was played away and none is left: the cursor goes to its meld. */
+  /**
+   * The hand card with the cursor was played away and none is left: the cursor goes to its meld's
+   * front card, the meld resting closed (as after Escape) so the card lands where it was aimed;
+   * the meld opens when the cursor moves on.
+   */
   handleLeftFocus(event) {
     const meld = this.melded.find((m) => m.key === event.detail.meld);
-    const front = meld && (meld.rest[0] || meld.cards[0]?.key);
+    const front =
+      meld && (meld.cards.find((c) => c.key === meld.rest[0]) || meld.cards[0]);
     if (front) {
-      this.focusCard(front);
+      meld.held = front.b;
+      front.b.focus({ preventScroll: true });
     }
   }
 
@@ -765,7 +771,7 @@ export default class ShoreshRoots extends LightningElement {
         const s = Math.min(
           1.04,
           (x1 - x0 - (cols - 1) * GAP) / (cols * cw),
-          (Ht - 64 - (rows - 1) * vg) / (rows * ch)
+          (Ht - 52 - (rows - 1) * vg) / (rows * ch)
         );
         if (!best || s > best.s + 0.02) {
           best = { s, cols, rows };
