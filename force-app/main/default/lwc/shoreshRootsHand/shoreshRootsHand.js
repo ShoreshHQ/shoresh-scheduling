@@ -6,14 +6,12 @@ const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 const DEAL_AFTER = 80;
 const DEAL_FIRST = 220;
 const DEAL_STEP = 140;
-// The hand's room above its cards (the lift, the breath and the focus ring) and below them
-// (the outer cards' drop). Kept tight: every pixel the hand takes is the table's, and an open meld
-// needs it to show its cards' full faces on a laptop screen.
-const ABOVE = 18;
-const BELOW = 16;
+// The hand's room above its cards (the lift, the breath and the focus ring) and below them (the
+// outer cards' drop): the mock-up's hand, its cards' height and 46 more, the cards 24 above its
+// bottom. The hand always shows its cards whole; the table above takes what is left (Roots).
+const ABOVE = 22;
+const BELOW = 24;
 const CALM_HEIGHT = 16;
-// Eased aside (a meld open on the table): the cards lowered, the top of each still showing.
-const PEEK = 40;
 const MIN_STEP = 24;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
 const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
@@ -50,7 +48,6 @@ export default class ShoreshRootsHand extends LightningElement {
   mediaReduced;
   resizer;
   focusAt = -1;
-  eased = false;
 
   @api
   get cards() {
@@ -218,8 +215,10 @@ export default class ShoreshRootsHand extends LightningElement {
 
   size() {
     const width = this.handEl?.clientWidth || 0;
-    // 196 is the narrowest card whose picture keeps its 11 px words; wider only on wide screens.
-    this.hw = Math.round(Math.max(196, Math.min(232, width * 0.17)));
+    // The mock-up's card: a fifth of the frame the hand lies in (its host, the hand's margins
+    // included), never under 196 (the narrowest whose picture keeps its 11 px words) nor over 232.
+    const frame = this.template.host?.clientWidth || width;
+    this.hw = Math.round(Math.max(196, Math.min(232, frame * 0.2)));
     // Tall enough that the picture's 11 px words are never drawn smaller.
     this.hh = Math.round(this.hw * 0.68);
     return width;
@@ -234,8 +233,7 @@ export default class ShoreshRootsHand extends LightningElement {
       n > 1 ? Math.max(MIN_STEP, Math.min(this.hw * 1.06, room / (n - 1))) : 0;
     const tilt = n > 3 ? (2.2 * 3) / n : 2.2;
     const drop = n > 3 ? (3 * 3) / n : 3;
-    const lowered = this.eased ? this.hh + BELOW - PEEK : 0;
-    return { x: k * step, y: k * k * drop + lowered, r: k * tilt, s: 1, o: 1 };
+    return { x: k * step, y: k * k * drop, r: k * tilt, s: 1, o: 1 };
   }
 
   layout() {
@@ -248,12 +246,10 @@ export default class ShoreshRootsHand extends LightningElement {
     hand.style.setProperty("--hh", `${this.hh}px`);
     // The hand keeps its room while a card is still being played away: the card flies from the
     // hand's bottom, and the meld it goes to would move if the table grew under it mid-flight.
-    let height = CALM_HEIGHT;
-    if (this.leaving.size) {
-      height = this.hh + ABOVE + BELOW;
-    } else if (this.live.length) {
-      height = this.eased ? ABOVE + PEEK : this.hh + ABOVE + BELOW;
-    }
+    const height =
+      this.leaving.size || this.live.length
+        ? this.hh + ABOVE + BELOW
+        : CALM_HEIGHT;
     this.motion.to("height", { h: height }, { snap: this.reduced });
     this.live.forEach((card, i) => {
       const b = this.button(card.key);
@@ -425,19 +421,6 @@ export default class ShoreshRootsHand extends LightningElement {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Eases aside while a meld is open (decision 65a: the others ease aside): the cards lower until
-   * only their tops show, and the table takes the room, so the open meld shows its full faces;
-   * they rise again when it closes.
-   */
-  @api
-  ease(on) {
-    if (this.eased !== !!on) {
-      this.eased = !!on;
-      this.layout();
-    }
   }
 
   /** A card's size at scale 1. */

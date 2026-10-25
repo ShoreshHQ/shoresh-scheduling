@@ -24,7 +24,7 @@
 .hcard {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: 24px;
   width: var(--hw, 220px);
   height: var(--hh, 150px);
   margin: 0;

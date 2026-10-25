@@ -877,19 +877,35 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(card(element, "weeks").hasAttribute("data-nudge")).toBe(false);
   });
 
-  it("an open meld has the hand ease aside, and closing it brings the hand back", async () => {
+  it("an open meld leaves the hand as it is: its cards stay whole, never lowered", async () => {
     const element = await render();
     await sized(element);
     const hand = handOf(element).shadowRoot.querySelector('[data-id="hand"]');
     run(3000);
     const full = parseFloat(hand.style.height);
     expect(full).toBeGreaterThan(150);
+    const cards = [
+      ...handOf(element).shadowRoot.querySelectorAll("[data-hand]")
+    ];
+    const before = cards.map((b) => b.style.transform);
     card(element, "weeks").focus();
     run(3000);
-    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
-    card(element, "weeks").blur();
-    run(3000);
+    expect(meld(element, "camp").hasAttribute("data-open")).toBe(true);
     expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
+    expect(cards.map((b) => b.style.transform)).toEqual(before);
+  });
+
+  it("the table keeps the height of two rows of full faces, so the hand never takes it", async () => {
+    const element = await render();
+    const field = $(element, '[data-id="field"]');
+    // A laptop's table (cards 285 wide): two rows of full faces and the names above them.
+    await sized(element, 1140, 300);
+    const laptop = parseFloat(field.style.minHeight);
+    expect(laptop).toBeGreaterThanOrEqual(420);
+    expect(laptop).toBeLessThanOrEqual(450);
+    // 1024 wide (the least card, 248): its faces read only at full size, so a little taller.
+    await sized(element, 730, 300);
+    expect(parseFloat(field.style.minHeight)).toBeGreaterThan(laptop);
   });
 
   it("the hand's last card with the cursor played away: the cursor goes to its meld", async () => {

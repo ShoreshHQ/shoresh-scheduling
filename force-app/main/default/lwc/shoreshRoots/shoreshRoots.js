@@ -738,9 +738,8 @@ export default class ShoreshRoots extends LightningElement {
     this.ch = ch;
     table.style.setProperty("--cw", `${cw}px`);
     table.style.setProperty("--ch", `${ch}px`);
+    this.holdRoom(cw, ch);
     const open = this.melded.find((m) => m.open);
-    // The hand eases aside while a meld is open, so the open meld has the room for full faces.
-    this.handEl?.ease(!!open);
     const fan = Math.round(ch * 0.17);
     const restS = Math.min(
       1,
@@ -813,6 +812,23 @@ export default class ShoreshRoots extends LightningElement {
       }
       this.rest(meld, cx, cy, s, fan);
     });
+  }
+
+  /**
+   * The table never gets shorter than two rows of cards whose words still read at full face (an
+   * open meld's), the meld names above them: the hand below always shows its cards whole, so on a
+   * short window Roots grows past it (the page scrolls) instead of the table or the hand giving way.
+   */
+  holdRoom(cw, ch) {
+    const field = this.template.querySelector('[data-id="field"]');
+    if (!field) {
+      return;
+    }
+    const least = Math.ceil(2 * ch * fullFace(cw, ch) + GAP + 2.5 + 64);
+    const value = `${least}px`;
+    if (field.style.minHeight !== value) {
+      field.style.minHeight = value;
+    }
   }
 
   /**
@@ -1190,6 +1206,15 @@ export default class ShoreshRoots extends LightningElement {
  * How much further apart the cards of a meld at rest lie than the fan's own spacing: a far meld's
  * larger names need room, and each card behind shows at least MIN_STRIP.
  */
+/** The least scale at which a card of cw by ch keeps its full face (its words at 11 px). */
+function fullFace(cw, ch) {
+  let s = 0.5;
+  while (s < 1.04 && pictureSize(s, cw, ch) > 0) {
+    s += 0.01;
+  }
+  return s;
+}
+
 function liftOf(s, strip) {
   return Math.max(s < 0.6 ? 1.5 : 1, strip > 0 ? MIN_STRIP / strip : 1);
 }

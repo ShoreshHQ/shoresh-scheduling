@@ -212,23 +212,25 @@ describe("c-shoresh-roots-hand", () => {
     expect(xs[1] - xs[0]).toBeGreaterThanOrEqual(24);
   });
 
-  it("eases aside while a meld is open: lowered to the cards' tops, rising again after", async () => {
-    const element = await render([card("A"), card("B")]);
+  it("sizes its cards as the mock-up: a fifth of the frame, 196 to 232 wide, 0.68 as tall", async () => {
+    const element = await render([card("A")]);
     run(3000);
+    // 1200 wide: the widest card, the hand its height and 46 more.
+    expect(element.cardSize()).toEqual({ w: 232, h: 158 });
     const hand = element.shadowRoot.querySelector('[data-id="hand"]');
-    const full = parseFloat(hand.style.height);
-    const a = button(element, "A");
-    const yOf = (b) =>
-      Number(/\)\s*,\s*(-?[\d.]+)px\)/.exec(b.style.transform)[1]);
-    const up = yOf(a);
-    element.ease(true);
-    run(3000);
-    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
-    expect(yOf(a)).toBeGreaterThan(up + 80);
-    element.ease(false);
-    run(3000);
-    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
-    expect(yOf(a)).toBeCloseTo(up, 0);
+    expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 1060);
+    element.cards = [card("A"), card("B")];
+    await settle();
+    expect(element.cardSize()).toEqual({ w: 212, h: 144 });
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 760);
+    element.cards = [card("A")];
+    await settle();
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
   });
 
   it("moves the cursor to the next card when the card it was on is played", async () => {
@@ -295,7 +297,7 @@ describe("c-shoresh-roots-hand", () => {
     expect(element.hasCard("hand:A")).toBe(true);
     expect(element.hasCard("hand:Z")).toBe(false);
     const pose = element.cardPose("hand:A");
-    expect(pose.w).toBe(204);
+    expect(pose.w).toBe(232);
     expect(pose.x).toBeCloseTo(600, 0);
     element.showFace("hand:A", false);
     const face = button(element, "A").querySelector("[data-face]");

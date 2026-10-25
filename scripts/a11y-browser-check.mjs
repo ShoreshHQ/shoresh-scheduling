@@ -67,7 +67,9 @@
  *   short and drop none, and every fixed activity on its card keeps its padlock; in a 560 px tall
  *   window every meld's name stays on the table, the lower side stack's wholly below the upper
  *   one's cards (ADR 0020, R1.1 and R2); the hand (R2): a made-up event on a day with nothing
- *   planned is dealt as a card named by what is off (axe), Tab and Enter grow Special events out
+ *   planned is dealt as a card named by what is off (axe); every hand card is whole, at the
+ *   mock-up's size and overlapped by nothing (the worksheet bar below it), at rest and with a meld
+ *   open, at 1440, 1280 and 1024 wide and in a 560 px tall window; Tab and Enter grow Special events out
  *   of it with the event's schedule open, and once dealt with (deleted) the menu's Roots goes
  *   home to that card and it is played onto its meld (with --hand-shots, pictures of the hand);
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
@@ -2271,6 +2273,184 @@ async function handShot(name) {
 }
 
 /**
+ * Roots at rest: the pointer away and no card holding the cursor, as a director finds it (a meld
+ * stays fanned while the cursor is in it, as in the mock-up, so a card left with the cursor by an
+ * earlier step would hold its meld open). A click on the empty table lets the cursor go.
+ */
+async function restTable() {
+  await page.mouse.move(2, 2);
+  const field = shown('c-shoresh-roots [data-id="field"]').first();
+  await field.scrollIntoViewIfNeeded();
+  const box = await field.boundingBox();
+  if (box) await page.mouse.click(box.x + 6, box.y + 6);
+  await page.mouse.move(2, 2);
+  await pause(1500);
+}
+
+/**
+ * Every card in the hand, measured as drawn (its tilt included): whole, at the mock-up's size,
+ * and overlapped by nothing. Problems found, as plain words ([] when all is well).
+ */
+async function handProblems() {
+  // Measured where they lie on the page (in a short window, partly below the fold).
+  return page
+    .locator(APP)
+    .locator("c-shoresh-roots")
+    .first()
+    .evaluate((roots) => {
+      const root = roots.shadowRoot || roots;
+      const handHost = root.querySelector("c-shoresh-roots-hand");
+      const handRoot = handHost.shadowRoot || handHost;
+      const hand = handRoot
+        .querySelector('[data-id="hand"]')
+        .getBoundingClientRect();
+      const field = root
+        .querySelector('[data-id="field"]')
+        .getBoundingClientRect();
+      const tools = root
+        .querySelector('[data-id="tools"]')
+        .getBoundingClientRect();
+      let frameEl = roots;
+      while (frameEl && !frameEl.matches?.('[data-id="frame-body"]')) {
+        frameEl =
+          frameEl.parentElement || frameEl.getRootNode?.()?.host || null;
+      }
+      const frame = (frameEl || roots).getBoundingClientRect();
+      const problems = [];
+      const cards = [
+        ...handRoot.querySelectorAll("[data-hand]:not([data-gone])")
+      ].map((b) => {
+        const box = b.getBoundingClientRect();
+        const deg = /rotate\((-?[\d.]+)deg\)/.exec(b.style.transform);
+        const a = ((deg ? Number(deg[1]) : 0) * Math.PI) / 180;
+        const w = b.offsetWidth;
+        const h = b.offsetHeight;
+        const cx = (box.left + box.right) / 2;
+        const cy = (box.top + box.bottom) / 2;
+        const corners = [
+          [-1, -1],
+          [1, -1],
+          [1, 1],
+          [-1, 1]
+        ].map(([sx, sy]) => {
+          const x = (sx * w) / 2;
+          const y = (sy * h) / 2;
+          return {
+            x: cx + x * Math.cos(a) - y * Math.sin(a),
+            y: cy + x * Math.sin(a) + y * Math.cos(a)
+          };
+        });
+        return {
+          name: b.getAttribute("aria-label"),
+          w,
+          h,
+          cx,
+          top: Math.min(...corners.map((c) => c.y)),
+          bottom: Math.max(...corners.map((c) => c.y)),
+          left: Math.min(...corners.map((c) => c.x)),
+          right: Math.max(...corners.map((c) => c.x))
+        };
+      });
+      if (!cards.length)
+        return { cards: 0, problems: ["No card in the hand."] };
+      // The mock-up's card: a fifth of the frame, 196 to 232 wide, 0.68 as tall.
+      const want = Math.round(
+        Math.max(196, Math.min(232, handHost.clientWidth * 0.2))
+      );
+      const short = (t) => t.slice(0, 40);
+      cards.forEach((c) => {
+        if (Math.abs(c.w - want) > 1 || Math.abs(c.h / c.w - 0.68) > 0.01)
+          problems.push(
+            `"${short(c.name)}" is ${c.w} by ${c.h}; the mock-up's is ${want} by ${Math.round(want * 0.68)}`
+          );
+        if (c.bottom > hand.bottom + 0.5)
+          problems.push(
+            `"${short(c.name)}" is cut off at the bottom by ${Math.round(c.bottom - hand.bottom)} px`
+          );
+        if (c.top < field.bottom - 0.5)
+          problems.push(
+            `"${short(c.name)}" runs ${Math.round(field.bottom - c.top)} px into the table`
+          );
+        if (c.left < frame.left || c.right > frame.right)
+          problems.push(`"${short(c.name)}" runs past the frame's side`);
+        if (c.bottom > tools.top + 0.5)
+          problems.push(
+            `the worksheet bar covers ${Math.round(c.bottom - tools.top)} px of "${short(c.name)}"`
+          );
+      });
+      if (hand.bottom > tools.top + 0.5)
+        problems.push("the hand runs under the worksheet bar");
+      // Side by side when they fit; closed up (overlapping by design) only when they do not.
+      const sorted = [...cards].sort((x, y) => x.cx - y.cx);
+      const w = sorted[0].w;
+      const room = hand.width - 2 * Math.max(40, hand.width * 0.05) - w;
+      const fits = sorted.length < 2 || room / (sorted.length - 1) >= w;
+      for (let i = 1; i < sorted.length && fits; i++) {
+        if (sorted[i].cx - sorted[i - 1].cx < w - 1)
+          problems.push(
+            `"${short(sorted[i].name)}" overlaps "${short(sorted[i - 1].name)}" though they fit side by side`
+          );
+      }
+      return {
+        cards: cards.length,
+        size: `${cards[0].w} by ${cards[0].h}`,
+        problems
+      };
+    });
+}
+
+/**
+ * The hand's cards are whole at the mock-up's size, at rest and with a meld open, at 1440, 1280 and
+ * 1024 wide and in a short window: the table and the hand size to fit it, and the worksheet bar
+ * lies below, overlapping nothing (ADR 0020 choice 10). Fails on any card clipped or overlapped.
+ */
+async function handFits() {
+  const S = "Roots";
+  const size = page.viewportSize();
+  const windows = [
+    [1440, 900],
+    [1280, 800],
+    [1024, 768],
+    [1440, 560]
+  ];
+  try {
+    for (const [width, height] of windows) {
+      await page.setViewportSize({ width, height });
+      await pause(1500);
+      for (const open of [false, true]) {
+        await restTable();
+        if (open) {
+          await shown('c-shoresh-roots [data-meld="activities"] [data-front]')
+            .first()
+            .hover();
+          await pause(1500);
+        }
+        const name = `The hand's cards are whole and uncovered at ${width} by ${height}${open ? ", a meld open" : ", at rest"}`;
+        const opened = open ? await meldOpen("activities") : true;
+        const found = await handProblems();
+        if (opened && !found.problems.length) {
+          results.pass(
+            S,
+            name,
+            `${found.cards} card(s), each ${found.size}, whole; the worksheet bar below them.`
+          );
+        } else {
+          await shot(S, `Hand ${width}x${height}${open ? " open" : ""}`);
+          results.fail(
+            S,
+            name,
+            `${opened ? "" : "Activities & Events did not open. "}${found.problems.join("; ")}.`
+          );
+        }
+      }
+    }
+  } finally {
+    await page.setViewportSize(size);
+    await restTable();
+  }
+}
+
+/**
  * Roots' hand (ADR 0020 choice 10): the made-up event put on a day with nothing planned
  * (seedHandEvent) is dealt as a card named by what is off, in the group "Needs a look" (axe with
  * it). Tab reaches it and Enter grows Special events out of it with that event's own schedule
@@ -2284,8 +2464,8 @@ async function rootsHand() {
   const label = new RegExp(
     `^${HAND_EVENT.replace(/[()]/g, "\\$&")} has no .+ planned yet\\.$`
   );
-  await page.mouse.move(2, 2);
-  await pause(1500);
+  // At rest: no card left with the cursor by the steps before (it would hold its meld open).
+  await restTable();
   const held = await handLabels();
   if (held.some((l) => label.test(l))) {
     results.pass(
@@ -2301,6 +2481,7 @@ async function rootsHand() {
       `No card for the made-up event; the hand holds: ${held.join(" | ") || "nothing"}.`
     );
   }
+  await handFits();
   await handShot("hand-with-cards");
   await axe("Roots (the hand)");
   const card =
