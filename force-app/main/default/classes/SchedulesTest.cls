@@ -77,10 +77,10 @@ private class SchedulesTest {
   static void daysAreSavedAndReadBackInDateOrder() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      Schedule__c version = ShoreshTestData.version(
+      Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
-        'Imported from summer.xlsx'
+        'Saved by hand'
       );
       Test.startTest();
       ScheduleDaySaves.write(
@@ -101,7 +101,7 @@ private class SchedulesTest {
   static void aSaveFromAnOlderCopyIsRefusedAndNothingIsSaved() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      Schedule__c version = ShoreshTestData.version(
+      Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
         'V'
@@ -193,7 +193,7 @@ private class SchedulesTest {
   static void aBigDayIsStoredInPartsAndShrinksBack() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      Schedule__c version = ShoreshTestData.version(
+      Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
         'V'
@@ -240,7 +240,7 @@ private class SchedulesTest {
   static void aDayThatCannotBeReadSaysWhyInsteadOfShowingHalf() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      Schedule__c version = ShoreshTestData.version(
+      Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
         'V'
@@ -333,7 +333,7 @@ private class SchedulesTest {
   static void anOpenedVersionShowsWhatWasSavedAndWhatIsGoneSince() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      Schedule__c version = ShoreshTestData.version(
+      Schedule__c version = ShoreshTestData.savedVersion(
         c.program.Id,
         c.weeks[0].Id,
         'V'

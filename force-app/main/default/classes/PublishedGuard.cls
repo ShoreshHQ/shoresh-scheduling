@@ -25,6 +25,11 @@ public with sharing class PublishedGuard {
     allowed = Math.max(0, allowed - 1);
   }
 
+  /** Shoresh's own publish, unpublish or rename is writing (ImportedWeekGuard trusts it too). */
+  public static Boolean writing() {
+    return allowed > 0;
+  }
+
   /**
    * Before delete of schedules: one that is or was published is never deleted, not even by
    * Shoresh.
@@ -110,14 +115,17 @@ public with sharing class PublishedGuard {
           PublishedAt__c,
           PublishedBy__c,
           PublishKey__c,
-          Program__c
+          Program__c,
+          Origin__c
         FROM Schedule__c
         WHERE
           Id IN :scheduleIds
           AND (Status__c = :PUBLISHED
           OR PublishedAt__c != NULL
           OR PublishedBy__c != NULL
-          OR PublishKey__c != NULL)
+          OR PublishKey__c != NULL
+          OR (Status__c = 'Version'
+          AND Origin__c = 'Imported'))
         WITH SYSTEM_MODE
       ]
     );
@@ -126,6 +134,8 @@ public with sharing class PublishedGuard {
         notHistory.add(scheduleId);
       }
     }
+    // The imported week is kept too, in this same lookup (ImportedWeekGuard).
+    history = ImportedWeekGuard.refuseDays(rows, scheduleField, history);
     if (history.isEmpty()) {
       return;
     }

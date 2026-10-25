@@ -38,7 +38,7 @@ private class GroupPlacementsTest {
       Origin__c = statusAndOrigin[1]
     );
     if (schedule.Status__c == 'Version') {
-      schedule.VersionReason__c = 'Imported';
+      schedule.VersionReason__c = 'SavedByHand';
     }
     return schedule;
   }
@@ -122,7 +122,7 @@ private class GroupPlacementsTest {
       // A saved version is history: it is not counted.
       write(
         c,
-        new List<Schedule__c>{ schedule(c, c.weeks[2], 'Version/Imported') },
+        new List<Schedule__c>{ schedule(c, c.weeks[2], 'Version/Manual') },
         new List<String>{ 'Soccer', 'Gym games' }
       );
       Test.startTest();

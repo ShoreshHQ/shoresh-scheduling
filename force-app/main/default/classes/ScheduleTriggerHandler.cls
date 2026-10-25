@@ -1,6 +1,6 @@
 /**
  * Schedules: a schedule's week must be in the same season as its program, so a version can
- * never belong to another season's week; published history is kept (PublishedGuard). A draft
+ * never belong to another season's week; published history is kept (PublishedGuard), and so is the imported week (ImportedWeekGuard). A draft
  * deleted or restored takes its special events off their days or puts them back
  * (DeletedDrafts).
  */
@@ -12,6 +12,7 @@ public with sharing class ScheduleTriggerHandler {
   ) {
     if (operation == TriggerOperation.BEFORE_DELETE) {
       PublishedGuard.refuseScheduleDeletes(oldMap.values());
+      ImportedWeekGuard.refuseDeletes(oldMap.values());
       DeletedDrafts.beforeDelete(oldMap.keySet());
       return;
     }
@@ -24,6 +25,7 @@ public with sharing class ScheduleTriggerHandler {
       return;
     }
     PublishedGuard.checkSchedules(news, oldMap);
+    ImportedWeekGuard.checkSchedules(news, oldMap);
     beforeSave(news);
   }
 

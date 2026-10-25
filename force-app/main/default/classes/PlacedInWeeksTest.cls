@@ -51,7 +51,7 @@ private class PlacedInWeeksTest {
       Origin__c = statusAndOrigin[1]
     );
     if (schedule.Status__c == 'Version') {
-      schedule.VersionReason__c = 'Imported';
+      schedule.VersionReason__c = 'SavedByHand';
     }
     Database.insert(schedule, AccessLevel.SYSTEM_MODE);
     List<TimeBlock__c> blocks = [
@@ -136,7 +136,7 @@ private class PlacedInWeeksTest {
   static void aGeneratedDraftCountsAndAVersionDoesNot() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
-      draftWithSwim(c, c.weeks[0], 'Version/Imported');
+      draftWithSwim(c, c.weeks[0], 'Version/Manual');
       draftWithSwim(c, c.weeks[1], 'Draft/Generated');
       Test.startTest();
       Map<String, Integer> found = counted(

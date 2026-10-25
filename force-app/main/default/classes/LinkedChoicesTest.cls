@@ -47,7 +47,7 @@ private class LinkedChoicesTest {
         Origin__c = 'Manual'
       );
       Database.insert(manual, AccessLevel.USER_MODE);
-      Schedule__c kept = ShoreshTestData.version(
+      Schedule__c kept = ShoreshTestData.savedVersion(
         ids.get('Main'),
         ids.get('Week 1'),
         'Week 1, kept'

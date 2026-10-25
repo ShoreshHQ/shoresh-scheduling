@@ -341,6 +341,25 @@ describe("c-shoresh-versions", () => {
       expect(other.querySelector('[data-action="delete"]')).not.toBeNull();
     });
 
+    it("the imported week says Imported and can't be deleted", async () => {
+      const element = await renderRestore([
+        {
+          id: "i1",
+          name: "Imported from last-summer.xlsx",
+          origin: "Imported",
+          savedAt: "2026-10-16T17:00:00.000Z"
+        },
+        ...VERSIONS
+      ]);
+      const [imported, other] = qa(element, ".version");
+      expect(imported.textContent).toContain("Imported");
+      expect(imported.querySelector('[data-action="delete"]')).toBeNull();
+      // It can still be restored and renamed, like any version.
+      expect(imported.querySelector('[data-action="open"]')).not.toBeNull();
+      expect(imported.querySelector('[data-action="rename"]')).not.toBeNull();
+      expect(other.querySelector('[data-action="delete"]')).not.toBeNull();
+    });
+
     it("a copy named by when it was published doesn't say Published or the time again", async () => {
       const element = await renderRestore([
         {

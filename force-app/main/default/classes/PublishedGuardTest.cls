@@ -336,4 +336,112 @@ private class PublishedGuardTest {
       Assert.areEqual(5, daysOf(versionId)[0].Revision__c);
     }
   }
+
+  /** A version made as an import makes it (Status Version, Origin Imported). */
+  private static Id importedVersion(Map<String, Id> ids) {
+    Id versionId = ManualBuildController.saveVersion(
+      startWeek(ids),
+      'Imported from last-summer.xlsx'
+    );
+    update new Schedule__c(
+      Id = versionId,
+      Origin__c = 'Imported',
+      VersionReason__c = 'Imported'
+    );
+    return versionId;
+  }
+
+  @IsTest
+  static void theImportedWeekCantBeDeletedOrItsDaysChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id importedId = importedVersion(ids);
+      ScheduleDay__c day = daysOf(importedId)[0];
+      Test.startTest();
+      Database.DeleteResult deleted = Database.delete(
+        importedId,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Database.SaveResult dayChanged = Database.update(
+        new ScheduleDay__c(Id = day.Id, Grid__c = '{}'),
+        false,
+        AccessLevel.USER_MODE
+      );
+      Database.DeleteResult dayDeleted = Database.delete(
+        day.Id,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Database.SaveResult madeManual = Database.update(
+        new Schedule__c(Id = importedId, Origin__c = 'Manual'),
+        false,
+        AccessLevel.USER_MODE
+      );
+      Test.stopTest();
+      String kept = '"Imported from last-summer.xlsx" is the week as it was imported, which is kept as it came in, so ';
+      Assert.areEqual(kept + 'it can\'t be deleted.', refusal(deleted));
+      Assert.areEqual(
+        kept + 'its days can\'t be changed.',
+        refusal(dayChanged)
+      );
+      Assert.areEqual(
+        kept + 'its days can\'t be changed.',
+        refusal(dayDeleted)
+      );
+      Assert.areEqual(kept + 'only its name can change.', refusal(madeManual));
+      Assert.areEqual(day.Grid__c, daysOf(importedId)[0].Grid__c);
+    }
+  }
+
+  @IsTest
+  static void theImportedWeekCanBeRenamed() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id importedId = importedVersion(ids);
+      Test.startTest();
+      SchedulesController.renameSchedule(importedId, 'Summer 2025 as run');
+      Test.stopTest();
+      Assert.areEqual('Summer 2025 as run', reread(importedId).Name);
+    }
+  }
+
+  @IsTest
+  static void theImportItselfCanTakeItsWeekAway() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id importedId = importedVersion(ids);
+      Test.startTest();
+      ImportedWeekGuard.allow();
+      try {
+        delete new Schedule__c(Id = importedId);
+      } finally {
+        ImportedWeekGuard.done();
+      }
+      Test.stopTest();
+      Assert.isTrue(
+        [SELECT Id FROM Schedule__c WHERE Id = :importedId WITH SYSTEM_MODE]
+          .isEmpty()
+      );
+    }
+  }
+
+  @IsTest
+  static void otherVersionsCanStillBeDeleted() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id versionId = ManualBuildController.saveVersion(
+        startWeek(ids),
+        'By hand'
+      );
+      Test.startTest();
+      Database.DeleteResult deleted = Database.delete(
+        versionId,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Test.stopTest();
+      Assert.isTrue(deleted.isSuccess());
+    }
+  }
 }
