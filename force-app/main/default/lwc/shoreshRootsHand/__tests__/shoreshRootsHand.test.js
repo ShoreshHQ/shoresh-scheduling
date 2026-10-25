@@ -186,6 +186,32 @@ describe("c-shoresh-roots-hand", () => {
     expect(live(element)).toHaveLength(1);
   });
 
+  it("keeps its room while the last card flies to its meld, then closes up", async () => {
+    const element = await render([card("A")]);
+    run(3000);
+    const hand = element.shadowRoot.querySelector('[data-id="hand"]');
+    const full = parseFloat(hand.style.height);
+    expect(full).toBeGreaterThan(150);
+    element.cards = [];
+    await settle();
+    run(300);
+    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
+    run(3000);
+    await settle();
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeLessThan(20);
+  });
+
+  it("however narrow, each card keeps a strip a pointer can hit", async () => {
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 320);
+    const element = await render([card("A"), card("B"), card("C")]);
+    run(3000);
+    const xs = live(element).map(xOf);
+    expect(xs[1] - xs[0]).toBeGreaterThanOrEqual(24);
+  });
+
   it("moves the cursor to the next card when the card it was on is played", async () => {
     const element = await render([card("A"), card("B"), card("C")]);
     run(3000);

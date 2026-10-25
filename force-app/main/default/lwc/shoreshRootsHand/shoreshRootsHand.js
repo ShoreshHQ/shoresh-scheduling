@@ -10,6 +10,7 @@ const DEAL_STEP = 140;
 const ABOVE = 22;
 const BELOW = 24;
 const CALM_HEIGHT = 16;
+const MIN_STEP = 24;
 const KEYS_NEXT = new Set(["ArrowRight", "ArrowDown"]);
 const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
 
@@ -69,7 +70,12 @@ export default class ShoreshRootsHand extends LightningElement {
   disconnectedCallback() {
     this.resizer?.disconnect();
     this.resizer = undefined;
+    // Stopping forgets everything followed: a hand put back on the page follows its cards anew.
     this.motion.stop();
+    this.motion = createMotion();
+    this.template.querySelectorAll("[data-hand]").forEach((b) => {
+      b._followed = false;
+    });
   }
 
   renderedCallback() {
@@ -217,8 +223,9 @@ export default class ShoreshRootsHand extends LightningElement {
   slot(i, n, width) {
     const room = width - 2 * Math.max(40, width * 0.05) - this.hw;
     const k = i - (n - 1) / 2;
+    // However narrow the hand, each card keeps a strip a pointer can hit (WCAG 2.5.8).
     const step =
-      n > 1 ? Math.max(0, Math.min(this.hw * 1.06, room / (n - 1))) : 0;
+      n > 1 ? Math.max(MIN_STEP, Math.min(this.hw * 1.06, room / (n - 1))) : 0;
     const tilt = n > 3 ? (2.2 * 3) / n : 2.2;
     const drop = n > 3 ? (3 * 3) / n : 3;
     return { x: k * step, y: k * k * drop, r: k * tilt, s: 1, o: 1 };
@@ -232,7 +239,12 @@ export default class ShoreshRootsHand extends LightningElement {
     const width = this.size();
     hand.style.setProperty("--hw", `${this.hw}px`);
     hand.style.setProperty("--hh", `${this.hh}px`);
-    const height = this.live.length ? this.hh + ABOVE + BELOW : CALM_HEIGHT;
+    // The hand keeps its room while a card is still being played away: the card flies from the
+    // hand's bottom, and the meld it goes to would move if the table grew under it mid-flight.
+    const height =
+      this.live.length || this.leaving.size
+        ? this.hh + ABOVE + BELOW
+        : CALM_HEIGHT;
     this.motion.to("height", { h: height }, { snap: this.reduced });
     this.live.forEach((card, i) => {
       const b = this.button(card.key);

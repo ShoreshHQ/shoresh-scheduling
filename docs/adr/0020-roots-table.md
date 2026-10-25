@@ -200,7 +200,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       after a whole word, never smaller than 13 px. Cards lie in the menu's order of the screens
       that fix them, so each sits below its meld. A click opens the exact thing, grown out of the
       card (choice 6): the setup screen that fixes it; a week not built opens the Schedules
-      doorway (`scheduleWeeks`, decision 61), which offers both ways to build that week, since
+      doorway (`scheduleWeeks`, decision 61) with the cursor on that week, offering both ways to build it, since
       picking Manual Build or Generated Schedule for the director would break the desktop's rule
       (`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`; the mock-up opened Manual
       Build); a special day or event opens its details and its schedule; offerings short open
@@ -209,7 +209,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
       the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
-      anything new is dealt in from the right, one after another. Should a later read fail, the
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). Should a later read fail, the
       cards the table fed stay as they were (nothing is played away on a failed read). However
       many cards there are, the hand keeps a clear margin at both ends: past what fits side by
       side they close up and overlap, a lifted card coming to the front; the cards breathe very

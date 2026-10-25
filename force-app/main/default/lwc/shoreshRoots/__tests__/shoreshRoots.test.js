@@ -470,6 +470,27 @@ describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
     );
   });
 
+  it("never deals one season's table into another's hand when the new read fails", async () => {
+    const element = await render(SETUP, {
+      table: {
+        ...TABLE,
+        shortSeats: [{ name: "Ropes", fewest: 5, minimum: 6, seats: 12 }]
+      }
+    });
+    expect(handCards(element).map((c) => c.dataset.hand)).toContain(
+      "hand:seatsShort|"
+    );
+    getTable.mockRejectedValue({ body: { message: "Offline" } });
+    element.setup = nsRecord({
+      ...SETUP,
+      season: { ...SETUP.season, Id: "s2" }
+    });
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).not.toContain(
+      "hand:seatsShort|"
+    );
+  });
+
   it("is accessible with cards in hand", async () => {
     const element = await render({ ...SETUP, weeks: [] });
     expect(handCards(element).length).toBeGreaterThan(0);

@@ -52,6 +52,22 @@ export default class ShoreshScheduleWeeks extends LightningElement {
     return `${screenLabels(this.terms).weeks} →`;
   }
 
+  /**
+   * The cursor on a week's first way to build it (Roots' hand: a week not built yet, repo ADR 0020
+   * choice 10). True when that week is here.
+   */
+  @api
+  focusWeek(weekId) {
+    const button = [
+      ...this.template.querySelectorAll("button[data-week]")
+    ].find((b) => b.dataset.week === weekId && !b.disabled);
+    if (button) {
+      button.focus();
+      return true;
+    }
+    return false;
+  }
+
   handleRoute(event) {
     const { screen, week } = event.currentTarget.dataset;
     this.dispatchEvent(

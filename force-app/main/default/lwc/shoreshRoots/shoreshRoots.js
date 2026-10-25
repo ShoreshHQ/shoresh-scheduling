@@ -82,6 +82,7 @@ export default class ShoreshRoots extends LightningElement {
   tableRead = false;
   /** The last table read, for the hand when a later read fails (nothing is played away then). */
   handTable = null;
+  handTableSeason = null;
 
   /** What the table draws beyond the setup (RootsController.getTable), once read. */
   table = null;
@@ -182,6 +183,7 @@ export default class ShoreshRoots extends LightningElement {
       if (mine === this.reading) {
         this.table = table;
         this.handTable = table;
+        this.handTableSeason = seasonId;
         this.tableRead = true;
         this.refreshHand();
       }
@@ -298,7 +300,9 @@ export default class ShoreshRoots extends LightningElement {
     }
     const seasonId = this.setup?.season?.Id || null;
     const table =
-      this.handTable && this.readSeason === seasonId ? this.handTable : null;
+      this.handTable && this.handTableSeason === seasonId
+        ? this.handTable
+        : null;
     const openable = this.melds.flatMap((m) => [
       m.door,
       ...m.cards.map((c) => c.key)

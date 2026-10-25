@@ -1988,11 +1988,14 @@ async function framesSince() {
  * or a fixed activity's well) and how many lost their padlock.
  */
 async function faceWords(key) {
+  // Only Recurring activities heads a row with its name (a name too long for a day's tile); on
+  // Manual Build the words above the first row are the groups', never a cell's name.
+  const headed = key === "recurringActivities";
   return page
     .locator(APP)
     .locator(`c-shoresh-roots [data-card="${key}"] c-shoresh-roots-glimpse`)
     .first()
-    .evaluate((glimpse) => {
+    .evaluate((glimpse, rowHeads) => {
       const root = glimpse.shadowRoot || glimpse;
       const box = (el) => el.getBoundingClientRect();
       const texts = [...root.querySelectorAll("text")]
@@ -2017,7 +2020,9 @@ async function faceWords(key) {
           (t) =>
             inside(t.box, tile) ||
             // A name heading its row, just above the row's tiles.
-            (t.box.bottom <= tile.top + 1 && t.box.bottom >= tile.top - 18)
+            (rowHeads &&
+              t.box.bottom <= tile.top + 1 &&
+              t.box.bottom >= tile.top - 18)
         );
         const locked = locks.some((l) => inside(l, tile));
         if (!named && !locked) nameless++;
@@ -2034,7 +2039,7 @@ async function faceWords(key) {
         bars,
         unlocked
       };
-    });
+    }, headed);
 }
 
 /**

@@ -22,6 +22,7 @@ import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup"
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
+import getTable from "@salesforce/apex/RootsController.getTable";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -32,6 +33,9 @@ const pageAddress = (state) =>
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
+jest.mock("@salesforce/apex/RootsController.getTable", () => apex(), {
+  virtual: true
+});
 jest.mock(
   "@salesforce/apex/ChoicesImportController.choicesSetup",
   () => apex(),
@@ -2671,6 +2675,27 @@ describe("c-shoresh-camp-setup", () => {
       expect(roots.shadowRoot.activeElement).toBe(
         roots.shadowRoot.querySelector('[data-card="groups"]')
       );
+    });
+
+    it("a week not built opens the Schedules doorway with the cursor on that week", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      getTable.mockResolvedValue({ soonWeekIds: ["w1"], builtWeekIds: [] });
+      const element = await render();
+      const hand = q(element, "c-shoresh-roots").shadowRoot.querySelector(
+        "c-shoresh-roots-hand"
+      );
+      hand.shadowRoot
+        .querySelector('[data-hand="hand:weekNotBuilt|w1"]')
+        .click();
+      await flush();
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["scheduleWeeks"]);
+      const doorway = q(element, "c-shoresh-schedule-weeks");
+      expect(doorway.shadowRoot.activeElement.dataset.week).toBe("w1");
+      getTable.mockReset();
     });
 
     it("another screen chosen mid-way ends the journey where it is", async () => {

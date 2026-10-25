@@ -291,6 +291,8 @@ export default class ShoreshCampSetup extends LightningElement {
   focusCardOf = null;
   /** The hand card the shown screen was opened from: { card, screen }, or null. */
   handOrigin = null;
+  /** A week the Schedules doorway puts the cursor on once it shows (a hand card's week). */
+  weekToFocus = null;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -438,12 +440,26 @@ export default class ShoreshCampSetup extends LightningElement {
         target.focus();
       }
     }
-    if (!this.focusHeadingOf) {
+    if (this.focusHeadingOf) {
+      const screen = this.focusHeadingOf;
+      this.focusHeadingOf = null;
+      this.focusScreenHeading(screen);
+    }
+    this.focusWeekOnDoorway();
+  }
+
+  /** Once the doorway shows (its journey over), the cursor on the week asked for. */
+  focusWeekOnDoorway() {
+    if (!this.weekToFocus || this.travel) {
       return;
     }
-    const screen = this.focusHeadingOf;
-    this.focusHeadingOf = null;
-    this.focusScreenHeading(screen);
+    if (this.currentScreen !== "scheduleWeeks") {
+      this.weekToFocus = null;
+      return;
+    }
+    const weekId = this.weekToFocus;
+    this.weekToFocus = null;
+    this.template.querySelector("c-shoresh-schedule-weeks")?.focusWeek(weekId);
   }
 
   focusScreenHeading(screen) {
@@ -624,6 +640,8 @@ export default class ShoreshCampSetup extends LightningElement {
       }
     }
     const fromCard = event.detail.fromCard;
+    // A week on the Schedules doorway (a hand card's week not built yet): the cursor goes to it.
+    this.weekToFocus = screen === "scheduleWeeks" ? weekId || null : null;
     if (screen !== "roots") {
       // Opened from a hand card: going back to Roots goes home to that card while it is held.
       this.handOrigin = isHandCard(fromCard)
