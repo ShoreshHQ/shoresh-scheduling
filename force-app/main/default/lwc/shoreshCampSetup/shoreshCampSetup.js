@@ -280,6 +280,8 @@ export default class ShoreshCampSetup extends LightningElement {
   // { screen, card, dir: "out" | "home" } while it travels; and the step to start once drawn.
   travel = null;
   travelNext = null;
+  // What memo() keeps: name -> { inputs, value }.
+  memos = {};
   traveller = null;
   // The Roots card that takes the cursor at the next render (coming home without motion).
   focusCardOf = null;
@@ -470,8 +472,33 @@ export default class ShoreshCampSetup extends LightningElement {
 
   // ---------- what the template shows ----------
 
+  /**
+   * The camp's words, one object per read of them. Every screen is handed it, shown or not, and a
+   * new object each time would redraw them all: a page-wide redraw on every change of screen held
+   * a card's first frame on Roots for half a second (repo ADR 0020 choice 6).
+   */
   get terms() {
-    return buildTerms(this.termLabels);
+    return this.memo("terms", [this.termLabels], () =>
+      buildTerms(this.termLabels)
+    );
+  }
+
+  /**
+   * The same object while its inputs are the same ones, so the screens handed it (shown or not)
+   * aren't redrawn when the page is.
+   */
+  memo(name, inputs, make) {
+    const kept = this.memos[name];
+    if (
+      kept &&
+      kept.inputs.length === inputs.length &&
+      kept.inputs.every((value, i) => value === inputs[i])
+    ) {
+      return kept.value;
+    }
+    const value = make();
+    this.memos[name] = { inputs, value };
+    return value;
   }
 
   get isLoading() {
@@ -948,6 +975,9 @@ export default class ShoreshCampSetup extends LightningElement {
     return from ? from.Name : null;
   }
   get weekColumns() {
+    return this.memo("weekColumns", [], () => this.readWeekColumns());
+  }
+  readWeekColumns() {
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
@@ -965,9 +995,17 @@ export default class ShoreshCampSetup extends LightningElement {
     ];
   }
   get weekDefaults() {
+    return this.memo("weekDefaults", [this.seasonId], () =>
+      this.readWeekDefaults()
+    );
+  }
+  readWeekDefaults() {
     return { [WEEK.Season]: this.seasonId };
   }
   get programs() {
+    return this.memo("programs", [this.setup], () => this.readPrograms());
+  }
+  readPrograms() {
     return ((this.setup && this.setup.programs) || []).map((entry) => ({
       key: entry.program.Id,
       entry
@@ -999,6 +1037,11 @@ export default class ShoreshCampSetup extends LightningElement {
    * carries the needs-a-look corner.
    */
   get programColumns() {
+    return this.memo("programColumns", [this.setup, this.terms], () =>
+      this.readProgramColumns()
+    );
+  }
+  readProgramColumns() {
     const t = this.terms;
     const entries = new Map(
       ((this.setup && this.setup.programs) || []).map((entry) => [
@@ -1064,6 +1107,11 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** A new program: in this season, last in order, running every day (the fields' default). */
   get programDefaults() {
+    return this.memo("programDefaults", [this.seasonId, this.programs], () =>
+      this.readProgramDefaults()
+    );
+  }
+  readProgramDefaults() {
     const defaults = {
       [FIELD.Program.Season]: this.seasonId,
       [FIELD.Program.SortOrder]: this.programs.length + 1
@@ -1075,9 +1123,19 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get locationTypeColumns() {
+    return this.memo("locationTypeColumns", [], () =>
+      this.readLocationTypeColumns()
+    );
+  }
+  readLocationTypeColumns() {
     return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
   }
   get locationTypeDefaults() {
+    return this.memo("locationTypeDefaults", [this.seasonId], () =>
+      this.readLocationTypeDefaults()
+    );
+  }
+  readLocationTypeDefaults() {
     return { [FIELD.LocationType.Season]: this.seasonId };
   }
   /**
@@ -1086,6 +1144,11 @@ export default class ShoreshCampSetup extends LightningElement {
    * notes are its details, opened from the row.
    */
   get locationColumns() {
+    return this.memo("locationColumns", [this.setup, this.terms], () =>
+      this.readLocationColumns()
+    );
+  }
+  readLocationColumns() {
     const t = this.terms;
     const activities = (this.setup && this.setup.activities) || [];
     return [
@@ -1171,6 +1234,13 @@ export default class ShoreshCampSetup extends LightningElement {
    * on the rail. Each section is its own table with its own blank row, which starts in its type.
    */
   get locationSections() {
+    return this.memo(
+      "locationSections",
+      [this.setup, this.terms, this.locationFilter],
+      () => this.readLocationSections()
+    );
+  }
+  readLocationSections() {
     const t = this.terms;
     const types = (this.setup && this.setup.locationTypes) || [];
     const chosen = this.locationFilterValue;
@@ -1204,6 +1274,11 @@ export default class ShoreshCampSetup extends LightningElement {
     this.locationFilter = event.currentTarget.dataset.value;
   }
   get locationDefaults() {
+    return this.memo("locationDefaults", [this.seasonId], () =>
+      this.readLocationDefaults()
+    );
+  }
+  readLocationDefaults() {
     return {
       [LOCATION.Season]: this.seasonId,
       [LOCATION.GroupsThatFit]: 1
@@ -1216,6 +1291,11 @@ export default class ShoreshCampSetup extends LightningElement {
    * is in its details beside the table.
    */
   get activityColumns() {
+    return this.memo("activityColumns", [this.setup, this.terms], () =>
+      this.readActivityColumns()
+    );
+  }
+  readActivityColumns() {
     const t = this.terms;
     const activities = (this.setup && this.setup.activities) || [];
     const who = this.whoNames;
@@ -1293,6 +1373,11 @@ export default class ShoreshCampSetup extends LightningElement {
    * file's name gave it.
    */
   get guessesByRecord() {
+    return this.memo("guessesByRecord", [this.setup, this.terms], () =>
+      this.readGuessesByRecord()
+    );
+  }
+  readGuessesByRecord() {
     const t = this.terms;
     const names = new Map();
     const setup = this.setup || {};
@@ -1374,6 +1459,13 @@ export default class ShoreshCampSetup extends LightningElement {
    * other section on the next read.
    */
   get activitySections() {
+    return this.memo(
+      "activitySections",
+      [this.setup, this.terms, this.seasonId],
+      () => this.readActivitySections()
+    );
+  }
+  readActivitySections() {
     const activities = (this.setup && this.setup.activities) || [];
     const anyHigh = activities.some(isHighPriority);
     const sections = [];
@@ -1405,6 +1497,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get activityDefaults() {
+    return this.memo("activityDefaults", [this.seasonId], () =>
+      this.readActivityDefaults()
+    );
+  }
+  readActivityDefaults() {
     // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
     return {
       [ACTIVITY.Season]: this.seasonId,
@@ -1439,6 +1536,9 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get special() {
+    return this.memo("special", [this.setup], () => this.readSpecial());
+  }
+  readSpecial() {
     return specialOf(this.setup);
   }
 
@@ -1525,18 +1625,38 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get specialDayColumns() {
+    return this.memo("specialDayColumns", [this.setup, this.terms], () =>
+      this.readSpecialDayColumns()
+    );
+  }
+  readSpecialDayColumns() {
     return this.specialColumns(false);
   }
 
   get specialEventColumns() {
+    return this.memo("specialEventColumns", [this.setup, this.terms], () =>
+      this.readSpecialEventColumns()
+    );
+  }
+  readSpecialEventColumns() {
     return this.specialColumns(true);
   }
 
   get specialDayDefaults() {
+    return this.memo("specialDayDefaults", [this.seasonId], () =>
+      this.readSpecialDayDefaults()
+    );
+  }
+  readSpecialDayDefaults() {
     return { [FIELD.SpecialDay.Season]: this.seasonId };
   }
 
   get specialEventDefaults() {
+    return this.memo("specialEventDefaults", [this.seasonId], () =>
+      this.readSpecialEventDefaults()
+    );
+  }
+  readSpecialEventDefaults() {
     return { [FIELD.SpecialEvent.Season]: this.seasonId };
   }
 
@@ -1598,6 +1718,9 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- electives (repo ADR 0018, slice E4) ----------
 
   get electives() {
+    return this.memo("electives", [this.setup], () => this.readElectives());
+  }
+  readElectives() {
     return electivesOf(this.setup);
   }
 
@@ -1630,6 +1753,11 @@ export default class ShoreshCampSetup extends LightningElement {
    * "Add to Chugim". Each section is its own table over every offering, showing its set's.
    */
   get electiveSections() {
+    return this.memo("electiveSections", [this.setup, this.terms], () =>
+      this.readElectiveSections()
+    );
+  }
+  readElectiveSections() {
     const electives = this.electives;
     return electives.sets.map((set, index) => {
       const mine = electives.offerings.filter(
@@ -1807,10 +1935,20 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get electiveSetColumns() {
+    return this.memo("electiveSetColumns", [], () =>
+      this.readElectiveSetColumns()
+    );
+  }
+  readElectiveSetColumns() {
     return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
   }
 
   get electiveSetDefaults() {
+    return this.memo("electiveSetDefaults", [this.seasonId], () =>
+      this.readElectiveSetDefaults()
+    );
+  }
+  readElectiveSetDefaults() {
     return { [FIELD.ElectiveSet.Season]: this.seasonId };
   }
 
@@ -1875,6 +2013,9 @@ export default class ShoreshCampSetup extends LightningElement {
    * calls them sessions: "Every session", "Off Session 3").
    */
   get weekWords() {
+    return this.memo("weekWords", [this.terms], () => this.readWeekWords());
+  }
+  readWeekWords() {
     const t = this.terms;
     const standard = t.s("Week") === "Week";
     return {
@@ -1887,6 +2028,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   /** A place is closed, not off (docs/design/setup/locations.html). */
   get locationWeekWords() {
+    return this.memo("locationWeekWords", [this.terms], () =>
+      this.readLocationWeekWords()
+    );
+  }
+  readLocationWeekWords() {
     return { ...this.weekWords, off: "Closed" };
   }
   /** With more than one program, each program's tables are headed with its name. */

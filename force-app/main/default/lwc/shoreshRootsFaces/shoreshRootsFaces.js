@@ -282,6 +282,46 @@ function fit(text, width, size) {
   return `${cut.trimEnd()}…`;
 }
 
+// Little words a name is never cut after ("Arts and…" reads as "Arts…").
+const JOINERS = new Set([
+  "and",
+  "&",
+  "of",
+  "the",
+  "a",
+  "for",
+  "with",
+  "+",
+  "-"
+]);
+
+/**
+ * A name as it best fits a width at a size: whole when it fits; else cut after the last whole
+ * word that fits, with an ellipsis ("Morning…", never "Morni…"); only a first word too long for
+ * the width is cut inside it. Never smaller than the size given: the glimpse's words stay 11 px.
+ */
+export function shorten(text, width, size = 11) {
+  const s = String(text || "").trim();
+  if (nameWidth(s) * size <= width) {
+    return s;
+  }
+  const words = s.split(/\s+/);
+  for (let k = words.length - 1; k >= 1; k--) {
+    const kept = words.slice(0, k);
+    while (
+      kept.length > 1 &&
+      JOINERS.has(kept[kept.length - 1].toLowerCase())
+    ) {
+      kept.pop();
+    }
+    const cut = `${kept.join(" ").replace(/[,;:/-]+$/, "")}…`;
+    if (nameWidth(cut) * size <= width) {
+      return cut;
+    }
+  }
+  return fit(s, width, size);
+}
+
 // ---------- drawing ----------
 
 const n1 = (x) => Math.round(x * 10) / 10;
@@ -377,6 +417,13 @@ function link(x, y) {
 }
 
 function lockedBar(x, y, w, h, label, size = 11) {
+  if (!label) {
+    // The padlock alone: a locked row whose name has no room to read whole.
+    return [
+      rect(x + 0.5, y + 0.5, w - 1, h - 1, 4, "f50 sedge"),
+      ...lock(x + w / 2 - size / 2, y + h / 2 - size * 0.55, size)
+    ];
+  }
   const tw2 = nameWidth(label) * size;
   return [
     rect(x + 0.5, y + 0.5, w - 1, h - 1, 4, "f50 sedge"),
@@ -408,16 +455,54 @@ const weekW = (n) => Math.min(22, W / Math.max(n, 1) - 4);
 const weekX = (i, n) =>
   i * (W / Math.max(n, 1)) + (W / Math.max(n, 1) - weekW(n)) / 2;
 
-function weekBars(c, top, h, numbers) {
-  const n = Math.max(c.weeks.length, 1);
+// Up to this many weeks, every week is a bar. A longer season shows WEEK_WINDOW of them, from just
+// before this week (else the first week not built yet), with the whole season as a line beneath.
+export const MAX_WEEK_BARS = 12;
+export const WEEK_WINDOW = 8;
+
+/** The weeks a card draws as bars: { from, to, whole }. */
+export function weekWindow(weeks) {
+  const n = weeks.length;
+  if (n <= MAX_WEEK_BARS) {
+    return { from: 0, to: n, whole: true };
+  }
+  let anchor = weeks.findIndex((w) => w.now);
+  if (anchor < 0) {
+    anchor = weeks.findIndex((w) => !w.built);
+  }
+  if (anchor < 0) {
+    anchor = n - 1;
+  }
+  const from = Math.max(0, Math.min(anchor - 2, n - WEEK_WINDOW));
+  return { from, to: from + WEEK_WINDOW, whole: false };
+}
+
+/** The whole season as a line, the weeks drawn above it marked on it, this week in the highlight. */
+function seasonLine(c, win, x0, x1, y) {
+  const n = c.weeks.length;
+  const k = (x1 - x0) / n;
+  const out = [
+    rect(x0, y, x1 - x0, 3, 1.5, "f400"),
+    rect(x0 + win.from * k, y - 1.5, WEEK_WINDOW * k, 6, 3, "f500")
+  ];
+  const now = c.weeks.findIndex((w) => w.now);
+  if (now >= 0) {
+    out.push(rect(x0 + now * k, y - 1.5, Math.max(3, k), 6, 3, "fhl"));
+  }
+  return out;
+}
+
+function weekBars(c, top, h, numbers, win = weekWindow(c.weeks)) {
+  const list = c.weeks.slice(win.from, win.to);
+  const n = Math.max(list.length, 1);
   const out = [];
-  if (!c.weeks.length) {
+  if (!list.length) {
     for (let i = 0; i < 8; i++) {
       out.push(dashed(weekX(i, 8), top, weekW(8), h, 5));
     }
     return out;
   }
-  c.weeks.forEach((wk, i) => {
+  list.forEach((wk, i) => {
     const x = weekX(i, n);
     const bw = weekW(n);
     if (wk.now) {
@@ -427,7 +512,7 @@ function weekBars(c, top, h, numbers) {
     } else {
       out.push(dashed(x, top, bw, h, 5));
     }
-    const label = numbers(i, wk);
+    const label = numbers(i, wk, n);
     if (label) {
       out.push(label);
     }
@@ -437,23 +522,33 @@ function weekBars(c, top, h, numbers) {
 
 const G = {
   weeks(c) {
-    const n = Math.max(c.weeks.length, 1);
-    const shapes = weekBars(c, 30, 66, (i, wk) => {
-      return n <= 12 || wk.now || i === 0 || i === n - 1
-        ? txt(
-            weekX(i, n) + weekW(n) / 2,
-            114,
-            String(wk.n),
-            wk.now ? "g-mb" : "g-m",
-            "middle"
-          )
-        : null;
-    });
+    // A long season: its window of weeks, numbered, over the line of the whole season.
+    const win = weekWindow(c.weeks);
+    const top = win.whole ? 30 : 24;
+    const shapes = weekBars(
+      c,
+      top,
+      win.whole ? 66 : 54,
+      (i, wk, n) =>
+        txt(
+          weekX(i, n) + weekW(n) / 2,
+          win.whole ? 114 : 94,
+          String(wk.n),
+          wk.now ? "g-mb" : "g-m",
+          "middle"
+        ),
+      win
+    );
     if (c.weeks.length) {
-      shapes.push(txt(0, 14, shortDate(c.weeks[0].start), "g-m"));
-      shapes.push(
-        txt(W, 14, shortDate(c.weeks[c.weeks.length - 1].end), "g-m", "end")
-      );
+      const last = Math.min(win.to, c.weeks.length) - 1;
+      shapes.push(txt(0, 14, shortDate(c.weeks[win.from].start), "g-m"));
+      shapes.push(txt(W, 14, shortDate(c.weeks[last].end), "g-m", "end"));
+    }
+    if (!win.whole) {
+      const end = String(c.weeks.length);
+      shapes.push(seasonLine(c, win, 14, W - nameWidth(end) * 11 - 6, 110));
+      shapes.push(txt(0, 115, "1", "g-m"));
+      shapes.push(txt(W, 115, end, "g-m", "end"));
     }
     return glimpse(shapes);
   },
@@ -472,7 +567,7 @@ const G = {
     }
     list.forEach((p, r) => {
       const y = 4 + r * lane;
-      shapes.push(txt(0, y + 10, fit(p.name, W, 11), "g-tb"));
+      shapes.push(txt(0, y + 10, shorten(p.name, W, 11), "g-tb"));
       p.days.forEach((on, i) => {
         const x = i * (dw + 4);
         shapes.push(
@@ -506,7 +601,7 @@ const G = {
     byProgram.forEach((lane) => {
       if (y > H - 24) return;
       if (named) {
-        shapes.push(txt(0, y + 10, fit(lane.name, W, 11), "g-t2"));
+        shapes.push(txt(0, y + 10, shorten(lane.name, W, 11), "g-t2"));
         y += 16;
       }
       let x = 0;
@@ -516,7 +611,8 @@ const G = {
           x = 0;
           y += 28;
         }
-        if (y + 22 <= H) shapes.push(tile(x, y, w, 22, fit(name, w - 10, 11)));
+        if (y + 22 <= H)
+          shapes.push(tile(x, y, w, 22, shorten(name, w - 10, 11)));
         x += w + 5;
       });
       y += 32;
@@ -534,7 +630,7 @@ const G = {
     }
     rows.forEach((d, i) => {
       const y = 2 + i * 20;
-      shapes.push(txt(0, y + 11.5, fit(d.name, 84, 11), "g-t2"));
+      shapes.push(txt(0, y + 11.5, shorten(d.name, 84, 11), "g-t2"));
       const count = Math.min(d.groups.length, 6);
       if (!count) shapes.push(dashed(92, y, 17, 15));
       for (let k = 0; k < count; k++)
@@ -582,14 +678,24 @@ const G = {
       for (let r = 0; r < 3; r++) shapes.push(dashed(0, 20 + r * 30, 70, 20));
       return glimpse(shapes, { align: "xMidYMid" });
     }
+    // The places' column is as wide as their names need, up to half the card.
+    const pw = Math.round(
+      Math.min(
+        110,
+        Math.max(70, ...rows.map(([p]) => (p ? nameWidth(p) * 11 + 14 : 0)))
+      )
+    );
     rows.forEach(([p, acts], r) => {
       const y = 4 + r * 24.5;
       if (p)
         shapes.push(
-          tile(0, y, 70, 20, fit(p, 58, 11), { left: true, cls: "g-tb" })
+          tile(0, y, pw, 20, shorten(p, pw - 12, 11), {
+            left: true,
+            cls: "g-tb"
+          })
         );
-      else shapes.push(rect(0.5, y + 0.5, 69, 19, 4, "fnone s700 dash"));
-      let x = 78;
+      else shapes.push(rect(0.5, y + 0.5, pw - 1, 19, 4, "fnone s700 dash"));
+      let x = pw + 8;
       acts.forEach((a) => {
         const w = tw(a) - 2;
         if (p) {
@@ -612,7 +718,7 @@ const G = {
       shapes.push(txt(0, y + 15, row.std, "g-t2"));
       if (row.mine) {
         shapes.push(well(92, y, 128, 22));
-        shapes.push(txt(100, y + 15, fit(row.mine, 112, 11), "g-tb"));
+        shapes.push(txt(100, y + 15, shorten(row.mine, 112, 11), "g-tb"));
       } else {
         shapes.push(dashed(92, y, 128, 22, 4));
         shapes.push(txt(100, y + 15, row.std, "g-t2"));
@@ -658,7 +764,7 @@ const G = {
     }
     names.forEach((n, i) => {
       shapes.push(cells(4 + i * 41));
-      shapes.push(lockedBar(0, 21 + i * 41, W, 20, fit(n, W - 40, 11)));
+      shapes.push(lockedBar(0, 21 + i * 41, W, 20, shorten(n, W - 40, 11)));
     });
     if (names.length < 3) shapes.push(cells(4 + names.length * 41));
     return glimpse(shapes, { align: "xMidYMin" });
@@ -675,12 +781,27 @@ const G = {
       DAY_LETTERS.forEach((d, i) => shapes.push(dashed(i * 45, 34, 41, 36)));
       return glimpse(shapes);
     }
+    if (rows.every((r) => nameWidth(r.name) * 11 <= 35)) {
+      rows.forEach((r, ri) => {
+        r.days.forEach((on, i) => {
+          const x = i * 45;
+          const y = 34 + ri * (rh + 8);
+          shapes.push(on ? tile(x, y, 41, rh, r.name) : well(x, y, 41, rh));
+        });
+      });
+      return glimpse(shapes);
+    }
+    // A name too long for a day's tile ("Morning meeting") heads its row instead.
+    const unit = (H - 28) / rows.length;
     rows.forEach((r, ri) => {
+      const y = 28 + ri * unit;
+      shapes.push(txt(0, y + 10, shorten(r.name, W, 11), "g-t2"));
       r.days.forEach((on, i) => {
         const x = i * 45;
-        const y = 34 + ri * (rh + 8);
         shapes.push(
-          on ? tile(x, y, 41, rh, fit(r.name, 36, 11)) : well(x, y, 41, rh)
+          on
+            ? tile(x, y + 14, 41, unit - 18, "")
+            : well(x, y + 14, 41, unit - 18)
         );
       });
     });
@@ -706,19 +827,10 @@ const G = {
         );
       }
     });
-    const flagged = new Map();
-    c.events.forEach((e) =>
-      flagged.set(e.n, (flagged.get(e.n) ?? true) && e.done)
-    );
-    if (!flagged.size) {
+    if (!c.events.length) {
       shapes.push(...flag(W / 2 - 14, 46, 40, false));
     }
-    flagged.forEach((done, wn) => {
-      const s = Math.min(40, weekW(n) * 1.9);
-      shapes.push(
-        ...flag(weekX(wn - 1, n) + weekW(n) / 2 - s * 0.25, 92 - s, s, done)
-      );
-    });
+    shapes.push(flags(c, n, 92, 16, 40));
     return glimpse(shapes);
   },
 
@@ -731,7 +843,7 @@ const G = {
     }
     sets.forEach((set, r) => {
       const y = r * 56;
-      shapes.push(txt(0, y + 26, fit(set.name, W, 11), "g-t2"));
+      shapes.push(txt(0, y + 26, shorten(set.name, W, 11), "g-t2"));
       let x = 0;
       set.offerings.forEach((o) => {
         const w = tw(o.name) + (o.linked ? 12 : 0);
@@ -765,7 +877,7 @@ const G = {
     }
     rows.forEach((seat, r) => {
       const y = 10 + r * 29;
-      shapes.push(txt(0, y + 12, fit(seat.name, 62, 11), "g-t2"));
+      shapes.push(txt(0, y + 12, shorten(seat.name, 62, 11), "g-t2"));
       shapes.push(...seatBoxes(seat, 68, y + 2, W - 68, 14));
     });
     return glimpse(shapes);
@@ -793,7 +905,7 @@ const G = {
       txt(
         12,
         56,
-        fit(v.week ? `${v.week} · ${v.name}` : v.name, 132, 11),
+        shorten(v.week ? `${v.week} · ${v.name}` : v.name, 132, 11),
         "g-t"
       )
     );
@@ -805,28 +917,70 @@ const G = {
 };
 
 /**
+ * A flag over each week with a special day or event, filled once all there are planned. On a long
+ * season the flags keep a size that reads; weeks too close for a flag each share one, which is
+ * dashed while any of them is unplanned.
+ */
+function flags(c, n, base, least, most) {
+  const byWeek = new Map();
+  c.events.forEach((e) => byWeek.set(e.n, (byWeek.get(e.n) ?? true) && e.done));
+  const s = Math.max(least, Math.min(most, weekW(n) * 1.9));
+  const placed = [];
+  [...byWeek]
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([wn, done]) => {
+      const x = weekX(wn - 1, n) + weekW(n) / 2 - s * 0.25;
+      const prev = placed[placed.length - 1];
+      if (prev && x - prev.x < s * 0.62) {
+        prev.done = prev.done && done;
+      } else {
+        placed.push({ x, done });
+      }
+    });
+  return placed.flatMap((p) => flag(p.x, base - s, s, p.done));
+}
+
+/**
  * Seats as a row of boxes: taken filled, the rest of the minimum dashed, free seats an outline.
  * Campers past the limit are more boxes in the caution colour, never hidden in a full row; an
  * offering with no limit is its taken boxes and an open end (∞), never a count of empty seats.
  */
-function seatBoxes(seat, x0, y, width, h) {
+function seatBoxes(seat, x0, y, width, h, size = 11, cls = "g-m") {
   const out = [];
+  const count = seat.taken || 0;
+  const px = size === 11 ? null : size;
   if (seat.seats == null) {
+    // No limit: a box a camper, then the open end. More campers than the row holds show their
+    // number before the open end, so the row never looks like a limit.
     const w = width / 12;
-    const taken = Math.min(seat.taken || 0, 10);
+    const taken = count > 10 ? 8 : count;
     for (let s = 0; s < taken; s++)
       out.push(rect(x0 + s * w, y, w - 2.5, h, 2.5, "f500"));
-    out.push(txt(x0 + taken * w + 1, y + h - 3, "\u221e", "g-m"));
+    let x = x0 + taken * w + 1;
+    if (count > 10) {
+      out.push(txt(x + 2, y + h - 3, String(count), cls, "start", px));
+      x += String(count).length * 0.64 * size + size * 0.45;
+    }
+    out.push(txt(x, y + h - 3, "\u221e", cls, "start", px));
     return out;
   }
   const limit = seat.seats;
-  const all = Math.max(limit, seat.taken || 0);
+  const all = Math.max(limit, count);
   const boxes = Math.max(1, Math.min(all, 20));
   const scale = boxes / Math.max(all, 1);
-  const taken = Math.round((seat.taken || 0) * scale);
-  const cap = Math.round(limit * scale);
+  let taken = Math.round(count * scale);
+  let cap = Math.round(limit * scale);
+  if (count > limit) {
+    // Past the limit always shows, however small a share of the seats it is.
+    cap = Math.min(cap, boxes - 1);
+    taken = boxes;
+  } else if (count > 0) {
+    // Someone seated is never an empty row, and a row not yet full never looks full.
+    taken = Math.max(1, count < limit ? Math.min(taken, cap - 1) : taken);
+  }
   const min = seat.minimum ? Math.round(seat.minimum * scale) : 0;
-  const w = width / boxes;
+  // A few seats are boxes of a seat's size, not stretched across the row.
+  const w = Math.min(width / boxes, 15.2);
   for (let s = 0; s < boxes; s++) {
     const x = x0 + s * w;
     if (s < taken)
@@ -836,6 +990,44 @@ function seatBoxes(seat, x0, y, width, h) {
     else out.push(rect(x + 0.5, y + 0.5, w - 3.5, h - 1, 2.5, "fnone s400"));
   }
   return out;
+}
+
+// Manual Build's named grid: the times' column, then the groups across the rest.
+const NAMED_X = 40;
+const NAMED_SPAN = W - 1 - NAMED_X;
+const CELL_LOCK = 10;
+
+/**
+ * How many groups Manual Build's face shows across (up to max): fewer, wider columns when that
+ * cuts fewer names, so "Woodworking & Carpentry" reads whole rather than as "Woodwo…"; down to
+ * one group's day when only that reads.
+ */
+export function namedColumns(groups, rows, max) {
+  const n = Math.min(max, groups.length);
+  if (n <= 1) {
+    return 1;
+  }
+  let best = n;
+  let fewest = Infinity;
+  for (let k = n; k >= 1; k--) {
+    const cw = (NAMED_SPAN - (k - 1) * 4) / k;
+    let cuts = groups
+      .slice(0, k)
+      .filter((g) => nameWidth(g) * 11 > cw - 2).length;
+    rows
+      .filter((row) => !row.fixed)
+      .forEach((row) => {
+        (row.cells || []).slice(0, k).forEach((cell) => {
+          const room = cw - 8 - (cell.locked ? CELL_LOCK : 0);
+          if (cell.name && nameWidth(cell.name) * 11 > room) cuts++;
+        });
+      });
+    if (cuts < fewest) {
+      best = k;
+      fewest = cuts;
+    }
+  }
+  return best;
 }
 
 /**
@@ -857,32 +1049,54 @@ function gridGlimpse(grid, cols, rows, named) {
     }
     return shapes;
   }
-  const groupCount = Math.min(cols, (grid.groups || []).length);
   const list = grid.rows.slice(0, rows);
   if (named) {
-    const cx = (i) => 40 + i * 61;
-    (grid.groups || []).slice(0, groupCount).forEach((g, i) => {
-      shapes.push(txt(cx(i) + 28, 14, fit(g, 56, 11), "g-t2", "middle"));
+    // The groups across, as many as their names and what they have fit (fewer columns before
+    // any name is cut); the padlock in a cell's corner, clear of its name.
+    const k = namedColumns(grid.groups || [], list, cols);
+    const cw = (NAMED_SPAN - (k - 1) * 4) / k;
+    const cx = (i) => NAMED_X + i * (cw + 4);
+    (grid.groups || []).slice(0, k).forEach((g, i) => {
+      shapes.push(
+        txt(cx(i) + cw / 2, 14, shorten(g, cw - 2, 11), "g-t2", "middle")
+      );
     });
     list.forEach((row, r) => {
       const y = 24 + r * 26;
       shapes.push(txt(0, y + 15, clockOf(minutesOf(row.startTime)), "g-m"));
       if (row.fixed) {
-        shapes.push(lockedBar(40, y, 179, 21, fit(row.fixed, 140, 11)));
+        shapes.push(
+          lockedBar(NAMED_X, y, NAMED_SPAN, 21, shorten(row.fixed, 140, 11))
+        );
         return;
       }
-      (row.cells || []).slice(0, groupCount).forEach((cell, i) => {
-        shapes.push(
-          cell.name
-            ? tile(cx(i), y, 57, 21, fit(cell.name, 50, 11))
-            : well(cx(i), y, 57, 21)
-        );
-        if (cell.locked) shapes.push(...lock(cx(i) + 57 - 11, y + 21 - 11, 9));
+      (row.cells || []).slice(0, k).forEach((cell, i) => {
+        const room = cw - 8 - (cell.locked ? CELL_LOCK : 0);
+        if (cell.name) {
+          shapes.push(tile(cx(i), y, cw, 21, ""));
+          shapes.push(
+            txt(
+              cx(i) + room / 2 + 4,
+              y + 14.3,
+              shorten(cell.name, room, 11),
+              "g-t",
+              "middle"
+            )
+          );
+        } else {
+          shapes.push(well(cx(i), y, cw, 21));
+        }
+        if (cell.locked) shapes.push(...lock(cx(i) + cw - 11, y + 21 - 11, 9));
       });
     });
     return shapes;
   }
-  const cw = (W - (groupCount - 1) * 4.4) / Math.max(groupCount, 1);
+  const groupCount = Math.min(cols, (grid.groups || []).length);
+  // One or two groups are columns of a cell's size, not stretched across the card.
+  const cw = Math.min(
+    48,
+    (W - (groupCount - 1) * 4.4) / Math.max(groupCount, 1)
+  );
   list.forEach((row, r) => {
     const y = 4 + r * 24;
     if (row.fixed) {
@@ -908,11 +1122,15 @@ const ptx = (x, y, s, cls, f, anchor) => txt(x, y, s, cls, anchor, f);
 const PIC = {
   weeks(c, f) {
     const yb = H - 2;
-    const n = Math.max(c.weeks.length, 1);
+    const win = weekWindow(c.weeks);
     const top = 4;
-    const h = yb - f - 6 - top;
-    return glimpse(
-      weekBars(c, top, h, (i, wk) => {
+    const line = win.whole ? 0 : 12;
+    const h = yb - f - 6 - top - line;
+    const shapes = weekBars(
+      c,
+      top,
+      h,
+      (i, wk, n) => {
         return i === 0 || i === n - 1 || wk.now
           ? ptx(
               weekX(i, n) + weekW(n) / 2,
@@ -923,8 +1141,13 @@ const PIC = {
               "middle"
             )
           : null;
-      })
+      },
+      win
     );
+    if (!win.whole) {
+      shapes.push(seasonLine(c, win, 0, W, top + h + 5));
+    }
+    return glimpse(shapes);
   },
 
   programs(c, f) {
@@ -936,7 +1159,7 @@ const PIC = {
     if (!list.length) return glimpse([dashed(0, H / 2 - 8, W, 16)]);
     list.forEach((p, r) => {
       const y = r * lane + 2;
-      shapes.push(ptx(0, y + f * 0.9, fit(p.name, W, f), "g-p", f));
+      shapes.push(ptx(0, y + f * 0.9, shorten(p.name, W, f), "g-p", f));
       const dw = (W - 16) / 5;
       p.days.forEach((on, i) => {
         shapes.push(
@@ -964,7 +1187,7 @@ const PIC = {
       const w = Math.min(W, nameWidth(d.name) * f + f * 1.2);
       shapes.push(tile(0, y, w, rh, ""));
       shapes.push(
-        ptx(f * 0.6, y + rh / 2 + f * 0.36, fit(d.name, W - f, f), "g-p", f)
+        ptx(f * 0.6, y + rh / 2 + f * 0.36, shorten(d.name, W - f, f), "g-p", f)
       );
     });
     return glimpse(shapes, { align: "xMidYMid" });
@@ -1024,7 +1247,7 @@ const PIC = {
       if (p) {
         shapes.push(tile(0, y, pw, rh, ""));
         shapes.push(
-          ptx(8, y + rh / 2 + f * 0.36, fit(p, pw - 12, f), "g-p", f)
+          ptx(8, y + rh / 2 + f * 0.36, shorten(p, pw - 12, f), "g-p", f)
         );
       } else {
         shapes.push(rect(0.5, y + 0.5, pw - 1, rh - 1, 4, "fnone s700 dash"));
@@ -1055,7 +1278,7 @@ const PIC = {
           ptx(
             wx + 8,
             y + rh / 2 + f * 0.36,
-            fit(row.mine, W - wx - 12, f),
+            shorten(row.mine, W - wx - 12, f),
             "g-p",
             f
           )
@@ -1108,7 +1331,14 @@ const PIC = {
     names.forEach((n, i) => {
       const y = gap / 2 + i * (bh + gap);
       shapes.push(well(0, y - gap / 2 + 2, W, gap - 4));
-      shapes.push(lockedBar(0, y, W, bh, fit(n, W - f * 3, f), f));
+      shapes.push(
+        nameWidth(n) * f > W - f * 3 && nameWidth(n) * f <= W - f
+          ? [
+              rect(0.5, y + 0.5, W - 1, bh - 1, 4, "f50 sedge"),
+              ptx(W / 2, y + bh / 2 + f * 0.36, n, "g-p", f, "middle")
+            ]
+          : lockedBar(0, y, W, bh, shorten(n, W - f * 3, f), f)
+      );
     });
     return glimpse(shapes);
   },
@@ -1147,23 +1377,10 @@ const PIC = {
           ptx(weekX(i, n) + weekW(n) / 2, yb, String(wk.n), "g-pm", f, "middle")
         );
     });
-    const flagged = new Map();
-    c.events.forEach((e) =>
-      flagged.set(e.n, (flagged.get(e.n) ?? true) && e.done)
-    );
     const s = Math.min(40, line - 6);
-    if (!flagged.size)
+    if (!c.events.length)
       shapes.push(...flag(W / 2 - s / 4, line - s - 2, s, false));
-    flagged.forEach((done, wn) => {
-      shapes.push(
-        ...flag(
-          weekX(wn - 1, n) + weekW(n) / 2 - s * 0.25,
-          line - s - 2,
-          s,
-          done
-        )
-      );
-    });
+    shapes.push(flags(c, n, line - 2, 22, s));
     return glimpse(shapes);
   },
 
@@ -1177,7 +1394,7 @@ const PIC = {
       const y = r * lane + 2;
       const k = Math.max(1, Math.min(set.offerings.length, 4));
       const w = (W - 15) / 4;
-      shapes.push(ptx(0, y + f * 0.9, fit(set.name, W, f), "g-p", f));
+      shapes.push(ptx(0, y + f * 0.9, shorten(set.name, W, f), "g-p", f));
       for (let i = 0; i < k; i++) {
         shapes.push(
           set.offerings.length
@@ -1193,9 +1410,9 @@ const PIC = {
     const grid = c.generated;
     const shapes = [];
     const rows = (grid?.rows || []).slice(0, 5);
-    const rh = (H - 4 * 5) / 5;
+    const rh = (H - 4 - 4 * 5) / 5;
     const cols = Math.min(6, (grid?.groups || []).length) || 6;
-    const cw = (W - (cols - 1) * 4.4) / cols;
+    const cw = Math.min(48, (W - (cols - 1) * 4.4) / cols);
     if (!rows.length) {
       for (let r = 0; r < 5; r++)
         for (let k = 0; k < 6; k++)
@@ -1232,13 +1449,24 @@ const PIC = {
       return glimpse(shapes);
     }
     const fixedRows = rows.filter((r) => r.fixed).length;
-    const rh =
+    const rh = Math.min(
+      30,
       (H - fixedRows * bh - (rows.length - 1) * 6) /
-      Math.max(rows.length - fixedRows, 1);
+        Math.max(rows.length - fixedRows, 1)
+    );
     let y = 0;
     rows.forEach((row) => {
       if (row.fixed) {
-        shapes.push(lockedBar(0, y, W, bh, fit(row.fixed, W - f * 3, f), f));
+        shapes.push(
+          lockedBar(
+            0,
+            y,
+            W,
+            bh,
+            nameWidth(row.fixed) * f <= W - f * 3 ? row.fixed : "",
+            f
+          )
+        );
         y += bh + 6;
         return;
       }
@@ -1261,8 +1489,8 @@ const PIC = {
       return glimpse([dashed(0, H / 2 - bh / 2, W, bh, 2.5, "s400")]);
     rows.forEach((seat, r) => {
       const y = r * lane + 2;
-      shapes.push(ptx(0, y + f * 0.9, fit(seat.name, W, f), "g-p", f));
-      shapes.push(...seatBoxes(seat, 0, y + f * 1.15, W, bh));
+      shapes.push(ptx(0, y + f * 0.9, shorten(seat.name, W, f), "g-p", f));
+      shapes.push(...seatBoxes(seat, 0, y + f * 1.15, W, bh, f, "g-pm"));
     });
     return glimpse(shapes);
   },
@@ -1280,7 +1508,7 @@ const PIC = {
     const shapes = [sheet(36, 6), sheet(18, 20), sheet(0, 34)];
     if (v) {
       shapes.push(
-        ptx(12, 34 + 14 + f, fit(v.week || v.name, 130, f), "g-p", f)
+        ptx(12, 34 + 14 + f, shorten(v.week || v.name, 130, f), "g-p", f)
       );
       if (v.published)
         shapes.push(

@@ -676,7 +676,7 @@ export default class ShoreshRoots extends LightningElement {
       if (!open) {
         cx = (Wt * (meld.mi + 0.5)) / this.melded.length;
         s = restS;
-        cy = Ht * 0.5 + fan * s;
+        cy = this.restY([Ht * 0.5 + fan * s], s, fan, Ht)[0];
       } else {
         s = sideS;
         const leftSide = meld.mi < open.mi;
@@ -685,13 +685,38 @@ export default class ShoreshRoots extends LightningElement {
         );
         const k = same.indexOf(meld);
         cx = leftSide ? 18 + sideW * 0.5 : region.x1 + sideW * 0.5;
-        cy =
+        cy = this.restY(
           same.length === 1
-            ? Ht * 0.5 + fan * s
-            : Ht * (k ? 0.74 : 0.3) + fan * s;
+            ? [Ht * 0.5 + fan * s]
+            : [Ht * 0.3 + fan * s, Ht * 0.74 + fan * s],
+          s,
+          fan,
+          Ht
+        )[k];
       }
       this.rest(meld, cx, cy, s, fan);
     });
+  }
+
+  /**
+   * Where melds at rest lie, one above the other (each wanted at its y): every meld's name stays
+   * on the table, and a lower meld's name clears the cards above it, however tall a short window
+   * and the cards' least strip (MIN_STRIP) make the stacks.
+   */
+  restY(wanted, s, fan, Ht) {
+    const strip = fan * s;
+    const above = (this.ch * s) / 2 + 2 * strip * liftOf(s, strip) + 22 + 12;
+    const below = (this.ch * s) / 2 + 6;
+    const ys = [];
+    wanted.forEach((y, i) => {
+      const least = i ? ys[i - 1] + below + 10 + above : 12 + above;
+      ys.push(Math.max(least, y));
+    });
+    // Over the bottom: lift them all, as far as the first name allows.
+    const over = ys[ys.length - 1] - (Ht - 8 - below);
+    const room = ys[0] - (12 + above);
+    const shift = Math.max(0, Math.min(over, room));
+    return ys.map((y) => y - shift);
   }
 
   /** A meld's cards keep one stacking order, open or at rest, so nothing pops in front. */
@@ -711,7 +736,7 @@ export default class ShoreshRoots extends LightningElement {
     // Room for a far meld's larger names; and each card behind shows at least a 24 px strip,
     // so it stays a target a finger or pointer can hit (WCAG 2.5.8).
     const strip = fan * s;
-    const lift = Math.max(s < 0.6 ? 1.5 : 1, strip > 0 ? MIN_STRIP / strip : 1);
+    const lift = liftOf(s, strip);
     this.restOrder(meld).forEach((ci, d) => {
       const card = meld.cards[ci];
       const [dx, dy, rot] = REST_FAN[Math.min(d, 2)];
@@ -1008,6 +1033,14 @@ export default class ShoreshRoots extends LightningElement {
       face.style.opacity = on ? "" : "0";
     }
   }
+}
+
+/**
+ * How much further apart the cards of a meld at rest lie than the fan's own spacing: a far meld's
+ * larger names need room, and each card behind shows at least MIN_STRIP.
+ */
+function liftOf(s, strip) {
+  return Math.max(s < 0.6 ? 1.5 : 1, strip > 0 ? MIN_STRIP / strip : 1);
 }
 
 function toggle(element, attribute, on) {

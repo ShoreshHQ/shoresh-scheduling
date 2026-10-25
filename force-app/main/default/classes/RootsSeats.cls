@@ -1,7 +1,8 @@
 /**
  * Roots' elective seats (repo ADR 0020): the offerings of the shown week's latest run (none when
- * that week has no run, so another week's seats never pass as this week's), each with its seats and the most campers it holds at any one time. Nothing when
- * electives can't be read. Three queries. Runs in user mode.
+ * that week has no run, so another week's seats never pass as this week's), each with its seats
+ * and the most campers it holds at any one time. Nothing when electives can't be read. Three
+ * queries. Runs in user mode.
  */
 public with sharing class RootsSeats {
   @TestVisible

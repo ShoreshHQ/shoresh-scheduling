@@ -1,6 +1,7 @@
 # 0020: Roots, the canasta table
 
-Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table). Design source: Greg's
+Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
+(2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps. Design source: Greg's
 approval, wiki `projects/shoresh-scheduling-sf.md` decisions 60 to 68 (68: "this is it"), and the
 approved working mock-up `~/Dev/Shoresh/design-research/roots-approved/` (`needs-a-look.html`,
 `table.css`, `table.js`), which is the spec for look, layout and motion. Replaces ADR 0003 choice 4
@@ -28,7 +29,11 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    counts the director already knows. As built from the real data model:
    - **Weeks**: one bar per week, built weeks (a draft or a published schedule) filled, this week
      in the highlight, the rest an outline; the season's first and last day; the year beside the
-     name.
+     name. A season of more than 12 weeks would squeeze them into slivers, so it shows 8 bars,
+     numbered, from two weeks before this week (else before the first week not built yet), with
+     their first and last day, over a line of the whole season (its first and last week number at
+     the ends) on which those 8 weeks and this week are marked. Shrunk aside, the same 8 over the
+     line.
    - **Programs**: each program across Monday to Friday, its days raised, the others an outline.
      (The mock-up drew the ages each program takes; Shoresh keeps no ages, so the days a program
      runs are its real shape.)
@@ -42,23 +47,34 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      as it is shown dashed.
    - **Activities**: every activity as a tile; one with no place, dashed.
    - **Fixed activities**: up to three, each a locked bar across the grid.
-   - **Recurring activities**: up to three, on their days.
+   - **Recurring activities**: up to three, on their days; a name too long for a day's tile
+     ("Morning meeting") heads its row instead, the days below it.
    - **Special events**: the weeks as a line, a flag on each week with a special day or event,
-     filled once planned, dashed until then.
+     filled once planned, dashed until then. On a long season a flag keeps a size that reads
+     (16 or more); weeks too close for a flag each share one, dashed while any is unplanned.
    - **Electives**: each set and its offerings (proposed ones left out), a linked choice with the
      link mark.
    - **Generated Schedule** and **Manual Build**: one day of the shown week's draft (this week,
      else the first week with a draft, else the first): placed cells raised, empty ones wells, a
      fixed activity's block one locked bar, the director's locks; Manual Build with the groups'
-     and the things' names. The week beside the name.
+     and the things' names. The week beside the name. Manual Build shows fewer groups across
+     (down to one group's day) before it cuts a name, and its padlocks sit in the cell's corner,
+     clear of the name; one or two groups on Generated Schedule are columns of a cell's size.
    - **Elective seats**: the offerings of the shown week's latest run (none when that week has no
      run, so another week's seats never pass as its own), seats as boxes, taken filled, a
      minimum's missing seats dashed, campers past the limit as more boxes in the caution colour;
-     no limit is the taken boxes and an open end (∞). Taken is the most it holds at any one time.
+     no limit is the taken boxes and an open end (∞), and past ten campers eight boxes, how many,
+     then ∞, so the row never looks like a limit. However the boxes are scaled (twenty at most),
+     campers past the limit always show, a row not yet full never looks full, and a few seats
+     are boxes of a seat's size. Taken is the most it holds at any one time.
    - **Saved versions**: the latest version, its week, name and day, a check when it is the
      published one.
      An empty area draws its outline (what is missing shows by its shape, decision 29); nothing is
-     made up. A card shrunk aside cannot carry 11 px words, so it shows a simpler picture of the
+     made up. A name too long for its room is cut after its last whole word ("Morning…", never
+     "Morni…"; never after "and" or "&"), and only a single word too long is cut inside it; the
+     words stay 11 px, never smaller. Locations' place column widens to its names (up to half the
+     card). A picture shrunk aside shows a fixed activity on a schedule whole or only its padlock,
+     and a fixed activity's name drops the padlock before it loses letters. A card shrunk aside cannot carry 11 px words, so it shows a simpler picture of the
      same data with one or two key words at 11.5 px or more on screen (`pictureSize`); it changes
      over once, as its size passes that point. Faces are `c/shoreshRootsFaces` (pure, the same camp
      gives the same faces) drawn by `c-shoresh-roots-glimpse` (SVG elements in its template, never
@@ -83,7 +99,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    unfolding card after card, while the other melds shrink aside into a column (stacked when the
    open meld is at an end), never so small their names fall under 11.5 px. Leaving closes it 300
    ms later. The pointer resting on another meld wins over a cursor left in an open one (the
-   cursor lets go). A card lifts under the pointer and the cursor. On a touch screen nothing opens
+   cursor lets go). However short the window, every meld's name stays on the table, and when two
+   melds stack aside the lower one's name lies below the upper one's cards (the 25 px strips
+   make stacks taller: they are moved apart, then up as far as the top name allows). A card lifts under the pointer and the cursor. On a touch screen nothing opens
    on hover; a tap opens the card's screen.
 
 5. **One continuous, interruptible motion** (decision 67): every moving thing (cards, meld names,
@@ -97,7 +115,8 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
 6. **A card opens its real screen, growing out of the card; going back shrinks it home**
    (decisions 65, 68). The page (`c-shoresh-camp-setup`) runs the journey (`c/shoreshRootsTravel`):
    the screen is shown at once, drawn over Roots and clipped to a sheet that starts as the card
-   (its place, size, tilt, corner and face) and grows to fill the frame, the card's face giving
+   (its place, size, tilt, corner and face) on the very frame the card is pressed and grows from
+   the next one to fill the frame, the card's face giving
    way while the screen's own content fades in at its true size; Roots recedes in the same breath.
    Back to Roots runs it the other way: **‹ Roots** first on the screen's rail (the mock-up's
    back, named "Back to Roots", drawn as Import last year's; `c-shoresh-roots-back`), or the
@@ -111,7 +130,16 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    versions), right after the screen's unseen name, so Tab from the heading reaches it first.
    Screens with no card keep what they had: Import last year its own Roots, the Schedules
    doorway and Bring in choices the menu's Roots; Elective seats' end-of-season Clear, which takes
-   over its rail, keeps its own Cancel.
+   over its rail, keeps its own Cancel. Nothing may hold the journey's frames: the page hands
+   every screen, shown or not, the same camp words, columns, row defaults and lists for as long
+   as what they are made from is the same (`memo`), so a change of screen redraws only what
+   changes. Before (R1), each change redrew every hidden screen, Manual Build and Generated
+   Schedule included: in shoresh-test the card sat still about half a second (a 470 ms frame)
+   when pressed, again on arriving, and on the way home. Now the card grows from the frame after
+   the press (about 80 ms to a visible change, the soft start of choice 5) and no frame is held
+   over about 50 ms, out or home, on any card measured (Weeks, Activities, Manual Build,
+   Generated Schedule, Elective seats, Saved versions, Camp words). A screen still reading its
+   data shows it as it arrives, fading in with the sheet.
 
 7. **Keyboard and screen readers.** Each meld is a group named by its section; each card a button
    named as its screen. Tab into a meld fans it, the arrows move between its cards (round at the
@@ -156,4 +184,10 @@ home by the rail's ‹ Roots and by the menu's, ‹ Roots on every setup rail, r
 journey ended by the menu, the cursor on the card), `shoreshDotField.test.js` (solid), `RootsTableTest`
 (query bound, glimpses, seats, versions, this week, an outsider refused), and steps in
 `scripts/a11y-browser-check.mjs` (Tab, arrows, Escape, Tab after Escape, travel out and home by
-the rail's Back to Roots, the menu's Roots, hover, reduced motion, axe).
+the rail's Back to Roots, the menu's Roots, hover, reduced motion, axe; R1.1: the card growing within 250 ms of Enter and
+going home likewise, no frame over 120 ms, the Weeks card's bars on a long season, no name cut
+on Manual Build's and Recurring activities' faces, the meld names in a 560 px tall window).
+R1.1 in Jest: long seasons, flags, fewer columns before a cut, whole-word cuts, seats at any size,
+every face with one of everything and with a hundred (`shoreshRootsFaces.test.js`), the meld
+names on a short table (`shoreshRoots.test.js`), and a change of screen handing the hidden
+screens what they had (`shoreshCampSetup.test.js`).
