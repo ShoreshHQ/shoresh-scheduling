@@ -29,6 +29,17 @@ public with sharing class ImportUndo {
     }
   }
 
+  /** Undo takes away what the import made, its imported week too, which nothing else may delete. */
+  private static void deleteCreated(Result result, Import__c done) {
+    ImportedWeekGuard.allow();
+    try {
+      new ImportUndoDeletes(result)
+        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
+    } finally {
+      ImportedWeekGuard.done();
+    }
+  }
+
   public static Result undo(Id importId) {
     Import__c done = withLog(load(importId));
     // Before anything is put back: someone who can only read the season is told so plainly,
@@ -70,14 +81,7 @@ public with sharing class ImportUndo {
       new ImportUndoWho(result).run(whoLists);
       new ImportUndoWeeksOff(result, done.Season__c).run(weeksBackOn);
       new ImportUndoWords(result, campId).run(wordsOff);
-      // Undo takes away the imported week it made, which nothing else may delete.
-      ImportedWeekGuard.allow();
-      try {
-        new ImportUndoDeletes(result)
-          .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
-      } finally {
-        ImportedWeekGuard.done();
-      }
+      deleteCreated(result, done);
       SetTimeGuard.checkPending();
       ImportLog.markUndone(done);
     } catch (Exception e) {
