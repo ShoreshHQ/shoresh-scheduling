@@ -243,17 +243,17 @@ empty than the desktop (13 cells in all): search gaps for PR 4. Minimums short i
 (was 2,517) against 2,634 on the desktop. Early-week goals: 267 camps the same, 73 differ in a
 week missing the desktop's target day, 46 short more on the desktop, 14 short more here.
 
-After PR 4a (2026-10-25, same 400 camps; step 8's search, and early-week goals as the first days
-of the run): **this engine leaves 3,826 of 17,686 cells Open (was 4,063); no camp leaves more Open
-than the desktop (was 8).** Of the Open cells: 3,393 proven unfillable ("everything taken": the
-day holds its most and nothing allowed fits), 59 no activity's length fits, 180 nothing set up for
-the group, 40 fillable only by leaving a minimum short, and 154 where the search ran out of work
-(said as such, never as a proof). By weekly minimums met: 154 camps the same with no bends, 107
-the same filling by going over a max, 132 meet more here (was 42), 7 meet fewer (was 26).
-Minimums short in all: 2,352 here (was 2,611) against 2,634 on the desktop. The 7 that meet fewer
-have no Open cells to trade: the search rearranges within a day, and their shortfalls would need
-a session moved between days. Early-week goals: 262 camps the same, 71 differ in a week missing the
-desktop's target day, 47 short more on the desktop, 20 short more here.
+After PR 4a (2026-10-25, same 400 camps; step 8's search, and early-week goals as each group's
+first days of the run): **this engine leaves 3,829 of 17,686 cells Open (was 4,063); no camp
+leaves more Open than the desktop (was 8).** Of the Open cells: 3,417 proven unfillable (the day
+holds its most), 59 no activity's length fits, 180 nothing set up for the group, 40 fillable only
+by leaving a named group short of a named activity, and 133 where the search ran out of work
+(said as such, never as a proof). By weekly minimums met: 164 camps the same with no bends, 111
+the same filling by going over a max, 114 meet more here (was 42), 11 meet fewer (was 26).
+Minimums short in all: 2,409 here (was 2,611) against 2,634 on the desktop. The 11 that meet
+fewer have no Open cells to trade: the search rearranges within a day, and their shortfalls would
+need a session moved between days. Early-week goals: 262 camps the same, 71 differ in a week
+missing the desktop's target day, 48 short more on the desktop, 19 short more here.
 
 ### Step 8 budget
 
@@ -268,8 +268,7 @@ fuller day is found to change fewer cells, 5,000 per minimums pass, 2,000,000 pe
 most 15,000,000 cells looked at per build (about 400,000 a second in Node, so a week built twice
 stays well under the 3-minute ceiling in a browser; not yet measured in a browser). Inside one
 search it pauses every 200 steps so the screen keeps the tab responsive. The slowest differential
-camp takes about
-20 s in Node, the 60-group odd camp 1.6 s, the 30-group ordinary camp 1.1 s.
+camp takes about 13 s in Node, the 60-group odd camp 1.6 s, the 30-group ordinary camp 1.1 s.
 
 ### CI's sample and the full run
 
