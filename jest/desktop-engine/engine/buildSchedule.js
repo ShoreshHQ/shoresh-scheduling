@@ -1,0 +1,1711 @@
+import { assertIdListShape } from './assertIdListShape.js'
+import { resolveFixedEventActivityIds } from './fixedEventActivityLink.js'
+import { resolveFixedEventGroupIds, resolveFixedEventDayIds } from './fixedEventScope.js'
+import { isActivityEligibleForGroup } from './eligibility.js'
+import { createDayLedger, removeOwnPlaceEntry } from './placementLedger.js'
+import { isFreeChoiceActivity } from './freeChoiceActivities.js'
+import { resolveElectiveOfferingLocations } from './electiveOccupancy.js'
+import { findRouteConflicts } from './routeConflicts.js'
+import { resolveWeekCatalog } from './weekCatalog.js'
+import { overlappingBlockPeers } from './blockOverlap.js'
+import { partOfDayForStart } from '../utils/timeBlockRange.js'
+import { dropReplacedPreplaced, requireReplacedDayIds, replacedTargetFinding } from './effectiveDays.js'
+
+// Pure function — zero React dependencies, zero Supabase calls.
+//
+// Supports two call signatures:
+//
+//   NEW (multi-cohort):
+//   buildSchedule({ cohorts, days, activities, campId })
+//   where cohorts = [{ cohort, timeBlocks, tiers, groups, preplacedSlots, activityTargets }]
+//
+//   LEGACY (single-cohort, backward compat):
+//   buildSchedule({ groups, tiers, days, timeBlocks, activities, fixedEvents, campId, preplacedSlots })
+//
+// Output: { slots, conflicts, findings }
+//   slots     — array of scheduled slot objects (cohort_id and is_span_head added).
+//               Per-slot flags carry only UNFILLABLE now — UNDERSERVED/DISTRIBUTION
+//               moved to `findings` and WEATHER_RISK was removed entirely (outdoor
+//               exposure is read at render time from activity.is_outdoor).
+//               (T65: a coverage `stats` object was removed here — nothing outside
+//               this file ever read it; the renderer computes its own stats from
+//               DB rows via recalcStats in src/screens/schedule/useScheduleData.js.)
+//   conflicts — cross-cohort resource conflicts, computed by routeConflicts.js
+//     over the combined allSlots after every cohort has been scheduled (T193)
+//   findings  — aggregate, one entry per (groupId, activityId, kind) for
+//               UNDERSERVED/DISTRIBUTION. Never persisted — recomputed fresh
+//               on every build. See docs/adr/2026-07-28-schedule-flag-findings-reshape.md.
+
+function djb2(str) {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i)
+    hash = hash & hash
+  }
+  return Math.abs(hash)
+}
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed)
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+}
+
+// Normalize both call signatures into the cohorts-array format.
+// Omitting `locations` defaults it to [] → an empty capacity map, so every
+// activity's location_id is unmapped and therefore unconstrained (see
+// placeBlocked). Callers that rely on place capacity must therefore pass
+// `locations`; both live callers do.
+//
+// T350 (ADR 2026-10-09 D4): replaced days are applied HERE, once, for both
+// branches — dropped from `days` and from every cohort's preplacedSlots, so a
+// locked/elective/event row stored on a special day is never placed, counted
+// or charged to a location. `replacedDays` (the removed rows) is kept only so
+// a prefer_before_day goal aimed at one can say it cannot be met.
+function normalizeInput(input) {
+  const replaced = new Set(requireReplacedDayIds(input.replacedDayIds, 'buildSchedule'))
+  const allDays = input.days || []
+  const days = allDays.filter(d => !replaced.has(d.id))
+  const replacedDays = allDays.filter(d => replaced.has(d.id))
+  if (input.cohorts) {
+    return {
+      cohorts: input.cohorts.map(c => ({ ...c, preplacedSlots: dropReplacedPreplaced(c.preplacedSlots, replaced) })),
+      days,
+      replacedDays,
+      activities: input.activities,
+      campId: input.campId || '',
+      locations: input.locations || [],
+      electiveSetActivities: input.electiveSetActivities || [],
+      events: input.events || [],
+      fixedEventsOnly: input.fixedEventsOnly || false,
+      weekId: input.weekId ?? null,
+    }
+  }
+  return {
+    cohorts: [{
+      cohort: { id: null, fixed_event_model: 'fixed', capacity_source: 'groups_per_slot', session_week_start: 1, session_week_end: 1 },
+      timeBlocks: input.timeBlocks || [],
+      tiers: input.tiers || [],
+      groups: input.groups || [],
+      preplacedSlots: dropReplacedPreplaced(input.preplacedSlots, replaced),
+      activityTargets: null,
+      _legacyFixedEvents: input.fixedEvents || [],
+    }],
+    days,
+    replacedDays,
+    activities: input.activities || [],
+    campId: input.campId || '',
+    locations: input.locations || [],
+    electiveSetActivities: input.electiveSetActivities || [],
+    events: input.events || [],
+    fixedEventsOnly: input.fixedEventsOnly || false,
+    weekId: input.weekId ?? null,
+  }
+}
+
+// T62, corrected (T182 extraction). A fixed event links its activity by
+// `activity_id` (see fixedEventActivityLink.js) — so this is keyed by
+// activity_id, and scoped PER GROUP rather than camp-wide. The scope
+// matters: `fixed_events` holds both all-camp Fixed events (Lunch) and
+// group-scoped Recurring ones
+// (docs/adr/2026-08-28-fixed-vs-recurring-events.md). A camp-wide exclusion
+// would let one group's recurring Swim delete Swim from every other group's
+// catalog. Day-agnostic within a group, deliberately: a fixed event IS that
+// group's scheduling of that activity for the week, which is T62's premise.
+//
+// Extracted from Pass 1 (docs/adr/2026-09-16-anchor-duplicate-finding.md) so
+// Pass 1 and computeFindings() decide "fixed-event-covered for this group" through the
+// SAME computation — the ADR's anti-drift point. Callers pass UNFILTERED,
+// camp-wide fixed events; this function does the schedule_week_id filter itself.
+// `days` WAS documented-but-unused, on the reasoning that day scoping is
+// placement mechanics that stays Pass-1-local. That changed when the owner
+// answered §10 Q5 of docs/adr/2026-09-12-activities-as-one-entity-with-
+// placement.md ("if an activity is pinned for some groups, should it be
+// rotatable for the others?") with YES — for other groups AND for other days.
+// Post-T180 a Recurring Event can be pinned to a division on SOME days, and a
+// group-level Map would remove that activity from those bunks' catalogue for
+// the WHOLE week: pin Monday swim for Juniors and they may never swim again
+// that week. So the Map is keyed groupId|dayId and `days` is now load-bearing
+// (a fixed event with a null day_id covers every day, exactly as Pass 1 reads it).
+// What is NOT day-scoped, deliberately: the exclusion is per DAY, never per
+// BLOCK — same group, same day, same activity at another hour is the original
+// T62 double-booking and must stay excluded.
+// SINGLE SEAM for the FIXED_EVENT_DUPLICATE finding's group-COVERAGE question —
+// "which group ids does this fixed event cover?" — used by fixedEventActivityIdsByGroupDay
+// below. The finding's coverage resolution goes through here and nowhere else;
+// reading fixedEvent.group_ids directly for coverage is exactly the mistake that
+// produced several separate scope bugs across buildSchedule / weekCatalog /
+// ingest liveFixedEventScope / FixedEventsScreen (T182 investigation, 2026-09-16), each
+// from a slightly different direct read.
+//
+// Semantics mirror gracious-thompson's forthcoming (not yet on main)
+// resolveFixedEventGroupIds(fixedEvent, groups) contract, minus its unit_ids rule which
+// does not exist here yet: resolution order unit_id > is_all_groups > group_ids,
+// where an empty/absent unit_id is NOT a scope claim and FALLS THROUGH to the
+// next rule (never "no groups"). Returns group IDs, not group objects. The live
+// group list must be passed at evaluation time, never a stale one.
+//
+// SCOPE OF THIS SEAM — read before the T180 rebase: this covers the finding's
+// coverage step only. TWO other scope readers exist and are NOT this function:
+//   1. Pass 1's placement loop (fixedEventLookup, ~40 lines below) keeps its own
+//      copy — that is gracious-thompson's placement seam to swap, with a
+//      load-bearing DO-NOT-INLINE one-liner at its call site; do not touch it.
+//   2. resolveWeekCatalog (src/engine/weekCatalog.js), which computeFindings now
+//      calls, has its OWN fixed-event group-scope reader for its suppression rule.
+//      It is a pre-existing shared engine function (used by generation too), so
+//      the finding stays CONSISTENT with a fresh build by reusing it — but it is
+//      a second post-T180 swap point, tracked in the ticket, not this file.
+// T180 REBASE DONE: this body was the contract above minus the unit_ids rule,
+// which now exists. It DELEGATES and must never re-implement — a local copy is
+// how this codebase grew several separate scope bugs in the first place, and a
+// re-implementation that omits `unit_ids` compiles, lints clean, and silently
+// drops live division scope. The wrapper is kept rather than inlined at its one
+// call site deliberately (agreed with T182's author): it gives "which groups
+// does this fixed event cover" one named home, and an alias is a far smaller target
+// for a merge conflict to mangle than a call-site edit.
+// See docs/work/tickets/T182-stale-anchor-duplicate-finding.md.
+const sameFixedEventName = (a, b) => String(a.name ?? '').trim().toLowerCase() === String(b.name ?? '').trim().toLowerCase()
+
+function fixedEventOverlapWinner(a, b) {
+  const spanA = a.span_blocks || 1
+  const spanB = b.span_blocks || 1
+  if (spanA !== spanB) return spanA > spanB ? a : b
+  return String(a.id) <= String(b.id) ? a : b
+}
+
+// T363: two same-name rows holding one group at one head block (overlapping scopes) must not be decided
+// by row order: the longer span wins, ties go to the smaller id, and the group gets one finding. Events
+// with different names in one block are not covered here; they keep the older last-write-wins behaviour.
+// Shared by the build and by computeFindings so the finding survives a recompute. `fixedEvents` must
+// already be filtered to the week being built.
+function fixedEventOverlapFindings(fixedEvents, groups, days) {
+  const findings = []
+  const heads = new Map()
+  const reported = new Set()
+  for (const fixedEvent of fixedEvents || []) {
+    const groupList = resolveFixedEventGroupIds(fixedEvent, groups)
+    const dayList = resolveFixedEventDayIds(fixedEvent, days)
+    for (const gid of groupList) {
+      for (const did of dayList) {
+        const key = `${gid}|${did}|${fixedEvent.time_block_id}|${String(fixedEvent.name ?? '').trim().toLowerCase()}|${fixedEvent.schedule_week_id ?? ''}`
+        const rival = heads.get(key)
+        if (!rival) { heads.set(key, fixedEvent); continue }
+        if (rival.id === fixedEvent.id || reported.has(gid)) continue
+        reported.add(gid)
+        const winner = fixedEventOverlapWinner(rival, fixedEvent)
+        const spanA = rival.span_blocks || 1
+        const spanB = fixedEvent.span_blocks || 1
+        const groupName = groups.find((g) => g.id === gid)?.name || gid
+        const eventName = fixedEvent.name || fixedEvent.id
+        findings.push({
+          kind: 'FIXED_EVENT_OVERLAP',
+          groupId: gid,
+          activityId: winner.activity_id ?? null,
+          severity: 'caution',
+          reason: spanA === spanB
+            ? `${groupName} has "${eventName}" set twice in the same block; only one of them is used`
+            : `${groupName} has "${eventName}" set twice in the same block, for ${spanA} and ${spanB} blocks; the longer one is used`,
+        })
+      }
+    }
+  }
+  return findings
+}
+
+function fixedEventCoveredGroupIds(fixedEvent, liveGroups) {
+  return resolveFixedEventGroupIds(fixedEvent, liveGroups)
+}
+
+// A block's part of day: the stored value, else derived from its start time. An imported block carries
+// none, and reading that as "no part of day" made a morning-only group unavailable in every block of
+// the camp (consistency audit 2026-10-12, A3).
+function blockPartOfDay(block) {
+  return block.part_of_day ?? partOfDayForStart(block.start_time)
+}
+
+export function fixedEventActivityIdsByGroupDay(fixedEvents, activities, groups, { days = [], weekId = null } = {}) {
+  const filtered = (fixedEvents || []).filter(
+    (a) => a.schedule_week_id == null || a.schedule_week_id === weekId
+  )
+  // An empty `days` makes every null-day_id fixed event mark NOTHING — a guard that
+  // silently stops guarding. Unreachable-in-effect from scheduleCohort (no days
+  // means no slots to place, so it excludes nothing from nothing), but REACHABLE
+  // from computeFindings, which runs against PERSISTED slots with `days` passed
+  // from screen state: if slots have loaded and days has not, FIXED_EVENT_DUPLICATE
+  // silently under-reports. Loud in DEV, no production behaviour change — the
+  // same convention assertIdListShape uses in buildSchedule.js. (Q5 review.)
+  if (false /* vendored: was import.meta.env?.DEV */ && (days || []).length === 0 && (fixedEvents || []).some((a) => a.day_id == null || a.day_id === '')) {
+    console.warn('fixedEventActivityIdsByGroupDay: empty `days` with all-day fixedEvents — exclusion will be empty')
+  }
+  const byGroupDay = new Map() // "groupId|dayId" → Set<activityId>
+  for (const fixedEvent of filtered) {
+    // Group scope goes through the single seam (fixedEventCoveredGroupIds) — never
+    // a direct fixedEvent.group_ids read here. `groups` is the live list.
+    const groupList = fixedEventCoveredGroupIds(fixedEvent, groups)
+
+    const fixedEventIds = resolveFixedEventActivityIds(fixedEvent)
+    if (fixedEventIds.length === 0) continue
+    // Same shared atom Pass 1 uses — one reading of "which days does this
+    // fixed event cover", not two.
+    const dayList = resolveFixedEventDayIds(fixedEvent, days)
+    for (const gid of groupList) {
+      for (const did of dayList) {
+        const k = `${gid}|${did}`
+        let set = byGroupDay.get(k)
+        if (!set) { set = new Set(); byGroupDay.set(k, set) }
+        for (const actId of fixedEventIds) set.add(actId)
+      }
+    }
+  }
+  return byGroupDay
+}
+
+// How many placements the repair pass may lift in a chain to fill one
+// stranded cell. Bounds its cost; deeper chains are rare and expensive.
+const REPAIR_DEPTH = 3
+// And how many lifts it may try per cell in total, so a week that genuinely
+// cannot be filled costs milliseconds, not seconds, to give up on.
+const REPAIR_LIFTS_PER_CELL = 300
+
+// Short cause tags for an UNFILLABLE cell, keyed by blockedBy()'s codes.
+const UNFILLABLE_TAGS = {
+  none: 'Nothing eligible',
+  max: 'Weekly max reached',
+  today: 'Already on today',
+  place: 'Place full',
+  span: 'No room for full length',
+  activity: 'Activity at capacity',
+  overlap: 'Group busy at an overlapping time',
+}
+
+function scheduleCohort({ cohortEntry, days, replacedDays, activities, rand, matchSeed, locationCapById, locationNameById, electiveSetActivities, events, fixedEventsOnly = false, weekId = null }) {
+  const { cohort, timeBlocks, tiers: _tiers, groups, preplacedSlots, activityTargets, _legacyFixedEvents } = cohortEntry
+  const cohortId = cohort?.id ?? null
+
+  // Sort time blocks by sort_order so span_blocks consecutive logic is stable
+  const timeBlocksSorted = [...timeBlocks].sort((a, b) => a.sort_order - b.sort_order)
+  const blockOrder = new Map(timeBlocksSorted.map((b, i) => [b.id, i]))
+  const blockPeers = overlappingBlockPeers(timeBlocksSorted)
+
+  // ── Pass 0: resolve eligibility ──────────────────────────────────────────
+  const eligibility = new Map() // activityId → Set<groupId>
+  for (const act of activities) {
+    // T266 — a pinned event's row stays in `activities`: isFreeChoiceActivity
+    // (src/engine/freeChoiceActivities.js) reads `activities.catalog_role` and
+    // that is what makes it eligible for NO group AS A FREE CHOICE here — ingest
+    // pass 1/2 already claimed it, so pass 3 may not place it. (Separately, the
+    // fixed_events row also references this row BY ID via `activity_id`, which
+    // is the SEPARATE fixed-event-duplicate exclusion below in this file — removing
+    // the activities row would dangle that link too, but that is a different
+    // mechanism keyed by a different column.) Recording the free-choice claim
+    // as an empty
+    // eligibility set, rather than skipping the row, means every downstream
+    // consumer of `eligibility` — the open-slot pool below, UNDERSERVED, and
+    // prefer_before_day — honours it from one decision.
+    //
+    // This is the free-choice question ONLY. isActivityEligibleForGroup below is
+    // the separate group-eligibility question and is left exactly as it was.
+    if (!isFreeChoiceActivity(act)) {
+      eligibility.set(act.id, new Set())
+      continue
+    }
+    // Contract: eligible_tier_ids / eligible_group_ids are arrays of ids.
+    // Callers normalize — this engine does not deserialize; see
+    // src/utils/normalizeActivityEligibility.js.
+    if (false /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
+    const eligible = new Set()
+    for (const g of groups) {
+      if (isActivityEligibleForGroup(act, g)) eligible.add(g.id)
+    }
+    eligibility.set(act.id, eligible)
+  }
+
+  // ── Pass 1: map the grid ──────────────────────────────────────────────────
+  // Build fixed-event lookup from legacy fixedEvents (flat signature) or preplacedSlots
+  const fixedEventLookup = new Map() // "groupId|dayId|blockId" → fixed event
+  // Slice 2 (schedule_week_id, docs/work/specs/2026-08-23-unified-schedule-
+  // overlay-slices.md): schedule_week_id NULL means "every week" (today's
+  // implicit behavior, unchanged). A non-null schedule_week_id that doesn't
+  // match the week being built is dropped here, BEFORE fixedEventActivityIds is
+  // built below — a week-bound fixed event must not occupy a cell on another week,
+  // and must not exclude its activity from regular placement there either.
+  const fixedEvents = (_legacyFixedEvents || []).filter(
+    (a) => a.schedule_week_id == null || a.schedule_week_id === weekId
+  )
+  // T62, corrected. A fixed event links its activity by `activity_id` (see
+  // fixedEventActivityLink.js) — so this is keyed by activity_id, and scoped PER
+  // GROUP rather than camp-wide. The scope matters: `fixed_events` holds both
+  // all-camp Fixed events (Lunch) and group-scoped Recurring ones (docs/adr/
+  // 2026-08-28-fixed-vs-recurring-events.md). A camp-wide exclusion would let
+  // one group's recurring Swim delete Swim from every other group's catalog.
+  // Day-agnostic within a group, deliberately: a fixed event IS that group's
+  // scheduling of that activity for the week, which is T62's premise.
+  const fixedEventActivityIdsByGroupDayMap = fixedEventActivityIdsByGroupDay(fixedEvents, activities, groups, { days, weekId })
+
+  // Board finding, 2026-09-29: two fixed events can target the same cell — an
+  // all-weeks fixed event (schedule_week_id == null) and a week-scoped
+  // override for the week being built. A week-scoped fixed event is an override:
+  // it beats an all-weeks one at the same cell regardless of which one this
+  // loop visits last. (Two fixed events of the SAME scope colliding is unrelated
+  // and stays last-write-wins, as before.)
+  function setFixedEventLookup(key, fixedEvent) {
+    const existing = fixedEventLookup.get(key)
+    if (existing && existing.schedule_week_id == null && fixedEvent.schedule_week_id != null) {
+      fixedEventLookup.set(key, fixedEvent)
+      return
+    }
+    if (existing && existing.schedule_week_id != null && fixedEvent.schedule_week_id == null) {
+      return
+    }
+    fixedEventLookup.set(key, fixedEvent)
+  }
+
+  for (const fixedEvent of fixedEvents) {
+    // Scope resolution order (unit_ids > unit_id > is_all_groups > group_ids)
+    // lives in one place, shared with weekCatalog.js — the two disagreeing is
+    // how a division-scoped event became unsuppressable. See fixedEventScope.js.
+    //
+    // DO NOT INLINE THIS BACK INTO AN if/else CHAIN. It replaced one here
+    // (T180), and re-inlining it is a silent regression: an inline chain that
+    // omits `unit_ids` still compiles, still lints clean, and drops live
+    // division scope — a group added to a division stops being covered, with
+    // nothing to show for it. Only buildSchedule.test.js's `fixedEvent unit_ids
+    // scope` block catches it. If a merge conflict offers you the old chain,
+    // the one-liner is the correct side.
+    const groupList = resolveFixedEventGroupIds(fixedEvent, groups)
+
+    // day_id null/undefined means every day — resolved through the shared atom
+    // so this and the exclusion Map cannot answer it differently (Q5 review).
+    const dayList = resolveFixedEventDayIds(fixedEvent, days)
+
+    const spanBlocks = fixedEvent.span_blocks || 1
+
+    for (const gid of groupList) {
+      for (const did of dayList) {
+        // T363: two rows for one group at one head block (overlapping scopes at different spans) must
+        // not be decided by row order. The longer span wins, ties go to the smaller id, and the group
+        // gets a finding. A tied loser is skipped whole, so its tails never land.
+        const rival = fixedEventLookup.get(`${gid}|${did}|${fixedEvent.time_block_id}`)
+        if (rival?._isSpanHead && rival.id !== fixedEvent.id && (rival.schedule_week_id ?? null) === (fixedEvent.schedule_week_id ?? null)
+          && sameFixedEventName(rival, fixedEvent) && fixedEventOverlapWinner(rival, fixedEvent) === rival) continue
+        // Head block
+        setFixedEventLookup(`${gid}|${did}|${fixedEvent.time_block_id}`, { ...fixedEvent, _isSpanHead: true })
+        // Tail blocks (span_blocks > 1)
+        if (spanBlocks > 1) {
+          const headIdx = blockOrder.get(fixedEvent.time_block_id)
+          if (headIdx !== undefined) {
+            for (let i = 1; i < spanBlocks; i++) {
+              const tailBlock = timeBlocksSorted[headIdx + i]
+              if (tailBlock) {
+                setFixedEventLookup(`${gid}|${did}|${tailBlock.id}`, { ...fixedEvent, _isSpanHead: false })
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // T41 slice 1 (group-level electives,
+  // docs/work/specs/2026-08-20-group-electives-design.md): a template_slots
+  // cell carrying elective_set_id is authored content, never engine output —
+  // the same pre-placed/do-not-fill treatment fixedEvents get via fixedEventLookup
+  // above (T62 closed fixed-event double-scheduling the same way). Threaded
+  // through preplacedSlots entries carrying an electiveSetId (rather than an
+  // activityId) so callers don't need a third top-level array.
+  const electiveLookup = new Map() // "groupId|dayId|blockId" → electiveSetId
+  const electiveTailKeys = new Set() // T219: cells that continue a double-period elective
+  // Events overlay placement Slice 1 (docs/adr/2026-08-22-events-overlay-
+  // placement.md §6): same posture as electiveLookup above — a
+  // template_slots cell carrying event_id is authored content, never engine
+  // output, threaded through preplacedSlots entries carrying an eventId.
+  const eventLookup = new Map() // "groupId|dayId|blockId" → eventId
+  for (const pre of (preplacedSlots || [])) {
+    if (pre.electiveSetId != null) {
+      electiveLookup.set(`${pre.groupId}|${pre.dayId}|${pre.blockId}`, pre.electiveSetId)
+      if (pre.isSpanHead === false) electiveTailKeys.add(`${pre.groupId}|${pre.dayId}|${pre.blockId}`)
+    }
+    if (pre.eventId != null) {
+      eventLookup.set(`${pre.groupId}|${pre.dayId}|${pre.blockId}`, pre.eventId)
+    }
+  }
+
+  // T219: a stored tail continues its span only while the block above holds the same set; a
+  // tail left behind by a moved or cleared head is its own session.
+  function isElectiveTail(groupId, dayId, blockId, setId) {
+    if (!electiveTailKeys.has(`${groupId}|${dayId}|${blockId}`)) return false
+    const idx = blockOrder.get(blockId)
+    const above = idx > 0 ? timeBlocksSorted[idx - 1] : null
+    return Boolean(above) && electiveLookup.get(`${groupId}|${dayId}|${above.id}`) === setId
+  }
+
+  const groupMap = new Map(groups.map(g => [g.id, g]))
+  const activityById = new Map(activities.map(a => [a.id, a]))
+  const eventById = new Map((events || []).map(e => [e.id, e]))
+  // Slice 4b (docs/work/specs/2026-08-23-slice4-engine-location-contention.md
+  // §1): an elective set doesn't have one location — each offering has its
+  // own, via elective_set_activities.activity_id → activities.location_id.
+  const electiveOfferingsBySetId = new Map() // electiveSetId → [activityId, ...]
+  for (const m of (electiveSetActivities || [])) {
+    if (!electiveOfferingsBySetId.has(m.elective_set_id)) electiveOfferingsBySetId.set(m.elective_set_id, [])
+    electiveOfferingsBySetId.get(m.elective_set_id).push(m.activity_id)
+  }
+
+  // placeUsage — how many groups are in a PLACE at once, keyed by the shared
+  // location_id, capped at locations.capacity. Occupant list (not a count)
+  // because same_tier_only reasons about who else is there. Declared here
+  // (before Pass 1) because overlay cells now register their location during
+  // Pass 1 itself (§2.1: every overlay must be registered before Pass 2's
+  // canPlace/placeBlocked ever runs, or placement would become order-
+  // dependent on which overlay happened to be visited first).
+  const placeUsage = new Map()    // "locationId|dayId|blockId" → [{ groupId, tierId, sourceLabel }]
+
+  // Shared by occupyPlace (regular activities, Pass 2) and the overlay
+  // registration below (fixedEvents/electives/events, Pass 1) — one physical
+  // capacity ledger, one write path, per the design doc's explicit rejection
+  // of a parallel mechanism. sourceLabel (the fixed event/elective offering/event
+  // name) is optional and used only to enrich UNFILLABLE_reason in Pass 3.
+  function registerOverlayOccupancy(locId, groupId, dayId, blockId, tierId, sourceLabel, activityId = null) {
+    if (locId == null) return
+    const lk = `${locId}|${dayId}|${blockId}`
+    const list = placeUsage.get(lk) || []
+    list.push({ groupId, tierId, sourceLabel: sourceLabel ?? null, activityId })
+    placeUsage.set(lk, list)
+  }
+
+  const slots = []
+  const openSlots = []
+
+  for (const group of groups) {
+    for (const day of days) {
+      for (const block of timeBlocksSorted) {
+        const key = `${group.id}|${day.id}|${block.id}`
+        const fixedEvent = fixedEventLookup.get(key)
+
+        // Deliberate precedence: the fixed event is checked before elective, so a
+        // slot carrying BOTH is_fixed_event and elective_set_id resolves as an
+        // fixed event — the elective is silently dropped for that cell. Slice 1
+        // has no writer that can produce both on the same slot, but if one
+        // ever does, this is the intended tie-break (fixedEvents are the older,
+        // more constrained mechanism).
+        if (fixedEvent) {
+          slots.push({ groupId: group.id, dayId: day.id, blockId: block.id, cohort_id: cohortId, type: 'fixed_event', activityId: null, fixedEventId: fixedEvent.id, is_span_head: fixedEvent._isSpanHead !== false, flags: {} })
+          if (fixedEvent.location_id != null) {
+            registerOverlayOccupancy(fixedEvent.location_id, group.id, day.id, block.id, group.tier_id ?? null, fixedEvent.name || 'a fixed event')
+          }
+          continue
+        }
+
+        // Precedence fixed event → event → elective → open (ADR §6) — only one of
+        // these is ever populated on real data by write-path convention
+        // (MUTUALLY_EXCLUSIVE_FIELDS), this order is the documented tie-break.
+        const eventId = eventLookup.get(key)
+        if (eventId != null) {
+          slots.push({ groupId: group.id, dayId: day.id, blockId: block.id, cohort_id: cohortId, type: 'event', activityId: null, fixedEventId: null, eventId, is_span_head: true, flags: {} })
+          const eventRow = eventById.get(eventId)
+          if (eventRow?.location_id != null) {
+            registerOverlayOccupancy(eventRow.location_id, group.id, day.id, block.id, group.tier_id ?? null, eventRow.name || 'an event')
+          }
+          continue
+        }
+
+        const electiveSetId = electiveLookup.get(key)
+        if (electiveSetId != null) {
+          // Excluded from openSlots entirely: the engine never fills this
+          // cell and never counts it as unfilled (no UNFILLABLE flag), the
+          // same way a fixed event slot above is excluded.
+          slots.push({ groupId: group.id, dayId: day.id, blockId: block.id, cohort_id: cohortId, type: 'elective', activityId: null, fixedEventId: null, electiveSetId, is_span_head: !isElectiveTail(group.id, day.id, block.id, electiveSetId), flags: {} })
+          // Owner-resolved model (§1): the set doesn't have one location —
+          // each DISTINCT offering location contends, simultaneously. But an
+          // occupant is a GROUP AT A LOCATION, not an offering — two
+          // offerings of the SAME set sharing one location (e.g. a
+          // waterfront period with swim+kayak both at 'Waterfront') are one
+          // group physically present in one place (campers split by choice
+          // within it), not two groups. Dedup by location before
+          // registering, or a colocated set would phantom-consume extra
+          // capacity at its own location for a single group's presence.
+          const offeringLocationLabels = resolveElectiveOfferingLocations(electiveOfferingsBySetId.get(electiveSetId), activityById)
+          for (const [locId, label] of offeringLocationLabels) {
+            registerOverlayOccupancy(locId, group.id, day.id, block.id, group.tier_id ?? null, label)
+          }
+          continue
+        }
+
+        // F2: an events-only block (a kept 10-minute Flag Raising/Taps row) takes fixed events
+        // only. A group with no event there gets an empty cell, never an activity.
+        if (block.events_only) {
+          slots.push({ groupId: group.id, dayId: day.id, blockId: block.id, cohort_id: cohortId, type: 'unavailable', activityId: null, fixedEventId: null, is_span_head: true, flags: {} })
+          continue
+        }
+
+        const avail = group.availability
+        const pod = blockPartOfDay(block)
+        if (avail !== 'all' && avail !== pod) {
+          slots.push({ groupId: group.id, dayId: day.id, blockId: block.id, cohort_id: cohortId, type: 'unavailable', activityId: null, fixedEventId: null, is_span_head: true, flags: {} })
+          continue
+        }
+
+        const fixedEventHere = fixedEventActivityIdsByGroupDayMap.get(`${group.id}|${day.id}`)
+        // T266 — the load-bearing site for predicate clause 2. `isFreeChoiceActivity`
+        // is stated HERE explicitly as well as via the empty eligibility set above:
+        // this is the placement candidate pool, and an unfiltered pool is the
+        // failure that is INVISIBLE (the event is placed a second time with no
+        // error and no finding), so it is worth asserting directly rather than
+        // depending on a derived map three hundred lines away.
+        const eligibleActs = activities.filter(a => isFreeChoiceActivity(a) && !fixedEventHere?.has(a.id) && (eligibility.get(a.id) || new Set()).has(group.id))
+        openSlots.push({ groupId: group.id, dayId: day.id, blockId: block.id, eligibleActs })
+      }
+    }
+  }
+
+  // ── Pass 2: place activities ──────────────────────────────────────────────
+  const assigned = new Map() // "groupId|dayId|blockId" → activityId
+  const spanTails = new Set() // keys for tail blocks of multi-block placements
+  const usageCount = new Map() // "groupId|activityId" → count
+  const dailyUsage = createDayLedger() // per-day dedup guard, counted (placementLedger.js)
+  // Two independent occupancy ledgers, two independent constraints (ADR D2):
+  //   placeUsage — how many groups are in a PLACE at once (declared above,
+  //     before Pass 1, since overlay cells register into it during Pass 1).
+  //   activityUsage — how many groups can do an ACTIVITY at once (an
+  //     instructor/equipment cap), keyed per activity, capped at
+  //     max_groups_per_slot. NOT a min() of the two — different key, different
+  //     constraint; the engine checks both.
+  const activityUsage = new Map() // "activityId|dayId|blockId" → count
+
+  function getCount(groupId, actId) {
+    return usageCount.get(`${groupId}|${actId}`) || 0
+  }
+
+  function incCount(groupId, actId, dayId) {
+    const k = `${groupId}|${actId}`
+    usageCount.set(k, (usageCount.get(k) || 0) + 1)
+    dailyUsage.add(groupId, dayId, actId)
+  }
+
+  function placedTodayForGroup(groupId, dayId, actId) {
+    return dailyUsage.has(groupId, dayId, actId)
+  }
+
+  // Place capacity + same_tier_only at ONE block. Only constrains an activity
+  // bound to a location — location_id == null has no place (interim M1→M3
+  // state) and is unconstrained, identical to today's no-location behavior.
+  // A location_id that IS set but resolves to nothing in locationCapById (a
+  // deleted place, a cross-device race, a stale import — "dangling") gets the
+  // same unconstrained treatment, not a silent capacity-1 default: an absent
+  // map entry is not evidence of a capacity-1 place, it's evidence the place
+  // doesn't exist, and the director sees that via the DANGLING_LOCATION
+  // finding in buildSchedule() rather than an invisibly tightened schedule.
+  // Returns true when the place at this block cannot admit `act` for `group`.
+  // Applied at the head AND at every span tail (a span occupies its place at
+  // every block it covers — place()/occupyPlace push tails into placeUsage, so
+  // the check side must match, or a span overfills its place at the tail).
+  function placeBlocked(act, group, dayId, blockId) {
+    const locId = act.location_id ?? null
+    if (locId == null || !locationCapById.has(locId)) return false
+    const capacity = locationCapById.get(locId)
+    const occupants = placeUsage.get(`${locId}|${dayId}|${blockId}`) || []
+    if (occupants.length >= capacity) return true
+    if (act.same_tier_only && occupants.length > 0) {
+      if (!occupants.every(o => o.tierId === group?.tier_id)) return true
+    }
+    return false
+  }
+
+  // Why `act` cannot go here, or null when it can. The code names the first
+  // constraint that refuses it; Pass 3 turns the codes into the cell's reason.
+  function blockedBy(act, groupId, dayId, blockId) {
+    if (act.max_per_week != null && getCount(groupId, act.id) >= act.max_per_week) return 'max'
+    if (placedTodayForGroup(groupId, dayId, act.id)) return 'today'
+
+    const group = groupMap.get(groupId)
+    if (placeBlocked(act, group, dayId, blockId)) return 'place'
+
+    const ownBlocks = [blockId]
+    const spanCount = act.span_blocks || 1
+    if (spanCount > 1) {
+      const blockIdx = blockOrder.get(blockId)
+      if (blockIdx === undefined) return 'span'
+      const avail = group?.availability
+      for (let i = 1; i < spanCount; i++) {
+        const nextBlock = timeBlocksSorted[blockIdx + i]
+        if (!nextBlock) return 'span'  // not enough blocks remaining
+        const nextKey = `${groupId}|${dayId}|${nextBlock.id}`
+        // A multi-block activity must not span INTO an elective cell, same
+        // as it can't span into a fixed event — otherwise place() would write
+        // phantom bookkeeping (assigned/usageCount/placeUsage/activityUsage)
+        // at the elective coordinate, corrupting session credit and capacity
+        // even though the visible schedule still renders the elective.
+        if (assigned.has(nextKey) || fixedEventLookup.has(nextKey) || electiveLookup.has(nextKey) || eventLookup.has(nextKey)) return 'span'
+        // Tail block must also be within the group's available part of day
+        if (nextBlock.events_only) return 'span'
+        if (avail !== 'all' && avail !== blockPartOfDay(nextBlock)) return 'span'
+        // Tail block occupies the place too — same capacity + same_tier_only
+        // guard as the head.
+        if (placeBlocked(act, group, dayId, nextBlock.id)) return 'place'
+        ownBlocks.push(nextBlock.id)
+      }
+    }
+
+    // A group holds at most one placement across time-overlapping blocks
+    // (audit A6), whether the other one is an activity, span tail, fixed
+    // event, event, or elective.
+    for (const own of ownBlocks) {
+      for (const peer of blockPeers.get(own) || []) {
+        if (ownBlocks.includes(peer.id)) continue
+        const k = `${groupId}|${dayId}|${peer.id}`
+        if (assigned.has(k) || fixedEventLookup.has(k) || eventLookup.has(k) || electiveLookup.has(k)) return 'overlap'
+      }
+    }
+
+    // Activity (instructor/equipment) capacity, per activity per (day, block).
+    // null/0 mean "no per-activity cap" — unchanged from today, and matching
+    // computeOverlaps/normalizeActivityEligibility's documented `null = no cap`.
+    // Checked in every block a span covers, not just its head: two groups' spans offset by one
+    // block would otherwise over-fill the block they share.
+    if (act.max_groups_per_slot > 0) {
+      for (const own of ownBlocks) {
+        if ((activityUsage.get(`${act.id}|${dayId}|${own}`) || 0) >= act.max_groups_per_slot) return 'activity'
+      }
+    }
+
+    return null
+  }
+
+  function canPlace(act, groupId, dayId, blockId) {
+    return blockedBy(act, groupId, dayId, blockId) === null
+  }
+
+  function occupyPlace(act, safeGroup, groupId, dayId, blockId) {
+    const locId = act.location_id ?? null
+    registerOverlayOccupancy(locId, groupId, dayId, blockId, safeGroup.tier_id, null, act.id)
+    const ak = `${act.id}|${dayId}|${blockId}`
+    activityUsage.set(ak, (activityUsage.get(ak) || 0) + 1)
+  }
+
+  function place(act, groupId, dayId, blockId) {
+    const group = groupMap.get(groupId)
+    // Guard: if group is not in this cohort, occupancy still tracks with a null
+    // tier_id (can't read it) — same_tier_only then treats it as its own tier.
+    const safeGroup = group ?? { tier_id: null }
+    const headKey = `${groupId}|${dayId}|${blockId}`
+    assigned.set(headKey, act.id)
+    incCount(groupId, act.id, dayId)  // count once per placement (head only)
+
+    const spanCount = act.span_blocks || 1
+    if (spanCount > 1) {
+      const blockIdx = blockOrder.get(blockId)
+      for (let i = 1; i < spanCount; i++) {
+        const nextBlock = timeBlocksSorted[blockIdx + i]
+        if (nextBlock) {
+          const tailKey = `${groupId}|${dayId}|${nextBlock.id}`
+          assigned.set(tailKey, act.id)
+          spanTails.add(tailKey)
+          // A span tail occupies both the place and the activity at its block.
+          occupyPlace(act, safeGroup, groupId, dayId, nextBlock.id)
+        }
+      }
+    }
+
+    occupyPlace(act, safeGroup, groupId, dayId, blockId)
+  }
+
+  // Exact inverse of place(), span tails included. Only the repair pass calls
+  // it: to undo a trial fill (which may be a whole span), or to lift a
+  // single-block placement. It never lifts an existing span or a pre-placed slot.
+  function unplace(act, groupId, dayId, blockId) {
+    const k = `${groupId}|${act.id}`
+    usageCount.set(k, usageCount.get(k) - 1)
+    dailyUsage.remove(groupId, dayId, act.id)
+    const own = [blockId]
+    const spanCount = act.span_blocks || 1
+    if (spanCount > 1) {
+      const blockIdx = blockOrder.get(blockId)
+      for (let i = 1; i < spanCount; i++) {
+        const nextBlock = timeBlocksSorted[blockIdx + i]
+        if (nextBlock) own.push(nextBlock.id)
+      }
+    }
+    const locId = act.location_id ?? null
+    for (const b of own) {
+      const key = `${groupId}|${dayId}|${b}`
+      assigned.delete(key)
+      spanTails.delete(key)
+      if (locId != null) removeOwnPlaceEntry(placeUsage.get(`${locId}|${dayId}|${b}`), groupId, act.id)
+      const ak = `${act.id}|${dayId}|${b}`
+      activityUsage.set(ak, activityUsage.get(ak) - 1)
+    }
+  }
+
+  const preplacedKeys = new Set()
+
+  // Pre-place locked slots (fixed events from new signature + any explicit preplacedSlots)
+  // Note: place() calls incCount() which registers daily usage, so canPlace() will
+  // correctly block duplicate same-day placements even for pre-placed activities.
+  for (const pre of (preplacedSlots || [])) {
+    const key = `${pre.groupId}|${pre.dayId}|${pre.blockId}`
+    // Defense-in-depth: no slice-1 writer can produce a preplacedSlots entry
+    // that is both a locked activity AND an elective cell at the same
+    // coordinate, but a future write path or a sync race shouldn't be able
+    // to silently corrupt bookkeeping if it ever does — mirrors the same
+    // guard fixedEventLookup effectively gets via the openSlots exclusion above.
+    if (!assigned.has(key) && !electiveLookup.has(key) && !eventLookup.has(key)) {
+      const act = activities.find(a => a.id === pre.activityId)
+      if (act) {
+        place(act, pre.groupId, pre.dayId, pre.blockId)
+        preplacedKeys.add(key)
+      }
+    }
+  }
+
+  const dayOrder = new Map(days.map((d, i) => [d.id, i]))
+
+  function scoreForPrefer(act, groupId, dayId) {
+    if (act.prefer_before_day == null || act.prefer_before_day_min == null) return 0
+    const dayIdx = dayOrder.get(dayId)
+    const targetIdx = days.findIndex(d => d.day_of_week === act.prefer_before_day)
+    if (targetIdx < 0) return 0
+    const countSoFar = getCount(groupId, act.id)
+    if (countSoFar < act.prefer_before_day_min && dayIdx >= targetIdx) return 1
+    return 0
+  }
+
+  // F5: span activities (span_blocks N > 1) go FIRST in their round. A span
+  // needs N free blocks in a row, and once singles have taken cells there is
+  // rarely such a run left (a text-grid camp's span went from 6 placed to 0).
+  // Round-robin over groups, one session per group per sweep, up to the
+  // activity's min_per_week; the head is the free fit that honours
+  // prefer_before_day (scoreForPrefer), then whose day holds the
+  // fewest of this activity's sessions so far (spreads load across days), then
+  // the earliest in openSlots order. No rand(): a camp with no span activity
+  // draws exactly the same PRNG sequence as before.
+  function placeSpansFirst(slotsToFill, priority) {
+    const spanActs = activities
+      .filter(a => a.priority === priority && (a.span_blocks || 1) > 1)
+      .sort((a, b) => (b.span_blocks || 1) - (a.span_blocks || 1))
+    if (!spanActs.length) return
+    const actDayLoad = new Map() // "actId|dayId" -> sessions placed
+    for (const act of spanActs) {
+      const min = getMin(act.id)
+      for (let session = 0; session < min; session++) {
+        for (const group of groups) {
+          if (getCount(group.id, act.id) >= min) continue
+          let best = null
+          let bestLoad = Infinity
+          let bestDeferred = Infinity
+          for (const s of slotsToFill) {
+            if (s.groupId !== group.id) continue
+            if (assigned.has(keyOf(s))) continue
+            if (!s.eligibleActs.includes(act)) continue
+            if (!canPlace(act, s.groupId, s.dayId, s.blockId)) continue
+            const load = actDayLoad.get(`${act.id}|${s.dayId}`) || 0
+            // prefer_before_day: a head on/after the target day, while the group is
+            // still short of prefer_before_day_min, loses to any earlier-day head
+            // (the same deferral the single-block round applies).
+            const deferred = scoreForPrefer(act, s.groupId, s.dayId)
+            if (deferred < bestDeferred || (deferred === bestDeferred && load < bestLoad)) {
+              best = s; bestLoad = load; bestDeferred = deferred
+            }
+          }
+          if (!best) continue
+          place(act, best.groupId, best.dayId, best.blockId)
+          actDayLoad.set(`${act.id}|${best.dayId}`, bestLoad + 1)
+        }
+      }
+    }
+  }
+
+  // T380: an activity capped to a few groups at once (an instructor, a boat) can be left one session
+  // short by the greedy rounds even in a week that fits: they fill one cell at a time and spend the
+  // capped slots on whichever activity is first in line. In a tight week the capped activities
+  // compete for the same cells (every group needs one session of each, one group per activity per
+  // slot), a Latin-square problem that no per-cell rule solves. So before the greedy rounds, each
+  // slot (day, block) in turn gets a bipartite matching of its free groups to the scarce activities
+  // they still need, each activity taking at most its remaining capacity in that slot. Kuhn's
+  // augmenting paths over groups offered most-pressed first (fewest spare cells against sessions
+  // still owed) give a matching that covers the most pressed groups possible; each group's
+  // candidates are tried most-urgent activity first (sessions owed against capacity left in the
+  // week). Every match lowers a group's spare cells and its owed sessions by one, so a match never
+  // makes another session of that group impossible by count. The greedy rounds and the repair fill
+  // everything the matching leaves.
+  // Scarce = a weekly minimum and a per-slot cap below the number of groups it serves: the cap, not
+  // the group count, is what limits the week. It runs only in a tight week, one where some group has
+  // no cell to spare after its owed sessions. A single-block activity only: a span needs a free run
+  // across several slots, which a slot-by-slot matching cannot say, so spans keep placeSpansFirst
+  // (high and low priority alike, ahead of the matching) and the T378 repair. The only randomness is the order ties are broken in,
+  // from a stream of its own (matchSeed, the camp and cohort seed), so it never moves the draws the
+  // rest of the build makes.
+  function isScarce(act) {
+    return (act.span_blocks || 1) === 1 && act.max_groups_per_slot > 0 && getMin(act.id) > 0
+      && act.max_groups_per_slot < (eligibility.get(act.id)?.size ?? 0)
+  }
+
+  // Free cells less the cells its owed sessions need, per group.
+  function spareCells() {
+    const spare = new Map()
+    for (const g of groups) {
+      let free = 0
+      for (const s of openSlotsByGroup.get(g.id) ?? []) if (!assigned.has(keyOf(s))) free++
+      let need = 0
+      for (const a of activities) if (eligibility.get(a.id)?.has(g.id)) need += Math.max(0, getMin(a.id) - getCount(g.id, a.id)) * (a.span_blocks || 1)
+      spare.set(g.id, free - need)
+    }
+    return spare
+  }
+
+  function placeScarceSessions(slotsToFill) {
+    const scarce = activities.filter(isScarce)
+    if (!scarce.length) return
+    // Only a tight week needs it: while every group has a cell to spare, the greedy rounds and the
+    // repair absorb a bad draw (every camp in the corpus with spare cells everywhere fills on every seed).
+    if (Math.min(...spareCells().values()) > 0) return
+    // Low-priority spans are placed now too, ahead of the matching: it spends the free runs a span needs.
+    placeSpansFirst(slotsToFill, 'low')
+    const matchRand = mulberry32(matchSeed)
+    const tie = new Map([...scarce.map(a => a.id), ...groups.map(g => g.id)].map(id => [id, matchRand()]))
+    const owed = (act, groupId) => {
+      let n = getMin(act.id) - getCount(groupId, act.id)
+      if (act.max_per_week != null) n = Math.min(n, act.max_per_week - getCount(groupId, act.id))
+      return n
+    }
+    const periods = []
+    for (const d of days) for (const b of timeBlocksSorted) {
+      const cells = openSlotsByPeriod.get(`${d.id}|${b.id}`)
+      if (cells) periods.push(cells)
+    }
+    for (let p = 0; p < periods.length; p++) {
+      const urgency = new Map(scarce.map(a => {
+        let owedTotal = 0
+        for (const g of groups) if (eligibility.get(a.id)?.has(g.id)) owedTotal += Math.max(0, owed(a, g.id))
+        return [a.id, owedTotal / (a.max_groups_per_slot * (periods.length - p))]
+      }))
+      // A group with no cell to spare for the activities the matching leaves to the greedy rounds (this slot
+      // and later ones, less the scarce sessions still owed; a cell the matching passed over is behind it) must be matched in every remaining slot: first in line.
+      const cellsLeft = new Map()
+      for (let q = p; q < periods.length; q++) for (const s of periods[q]) if (!assigned.has(keyOf(s))) cellsLeft.set(s.groupId, (cellsLeft.get(s.groupId) ?? 0) + 1)
+      const slack = new Map(groups.map(g => {
+        const cells = cellsLeft.get(g.id) ?? 0
+        let need = 0
+        for (const a of scarce) if (eligibility.get(a.id)?.has(g.id)) need += Math.max(0, owed(a, g.id))
+        return [g.id, cells - need]
+      }))
+      const free = periods[p].filter(s => !assigned.has(keyOf(s)))
+        .sort((x, y) => slack.get(x.groupId) - slack.get(y.groupId) || tie.get(x.groupId) - tie.get(y.groupId))
+      const candidates = new Map()
+      for (const s of free) {
+        candidates.set(s.groupId, scarce
+          .filter(a => s.eligibleActs.includes(a) && owed(a, s.groupId) > 0 && canPlace(a, s.groupId, s.dayId, s.blockId))
+          .sort((x, y) => scoreForPrefer(x, s.groupId, s.dayId) - scoreForPrefer(y, s.groupId, s.dayId)
+            || urgency.get(y.id) - urgency.get(x.id) || tie.get(x.id) - tie.get(y.id)))
+      }
+      const holders = new Map() // activity id -> group ids matched to it in this slot
+      const roomOf = (a, s) => a.max_groups_per_slot - (activityUsage.get(`${a.id}|${s.dayId}|${s.blockId}`) || 0)
+      // A shared location's capacity is a limit across activities, which a seat count per activity cannot see.
+      const locationHasRoom = (a, s) => {
+        const loc = a.location_id ?? null
+        if (loc == null || !locationCapById.has(loc)) return true
+        let n = (placeUsage.get(`${loc}|${s.dayId}|${s.blockId}`) || []).length
+        for (const [actId, gs] of holders) if (activityById.get(actId).location_id === loc) n += gs.length
+        return n < locationCapById.get(loc)
+      }
+      const slotOf = new Map(free.map(s => [s.groupId, s]))
+      let critical = null
+      const assign = (groupId, seen) => {
+        for (const a of candidates.get(groupId)) {
+          if (critical && !critical.has(a.id)) continue
+          if (seen.has(a.id)) continue
+          seen.add(a.id)
+          const held = holders.get(a.id) ?? []
+          if (held.length < roomOf(a, slotOf.get(groupId)) && locationHasRoom(a, slotOf.get(groupId))) { holders.set(a.id, [...held, groupId]); return true }
+          for (let i = 0; i < held.length; i++) {
+            if (assign(held[i], seen)) {
+              const now = holders.get(a.id) ?? []
+              holders.set(a.id, [...now.filter(x => x !== held[i]), groupId])
+              return true
+            }
+          }
+        }
+        return false
+      }
+      // An activity owed as many sessions as the week has seats left for it (urgency 1) is lost for good if
+      // any seat goes empty, so those are matched first; an augmenting path never unmatches an activity's
+      // seat, so the second pass over everything cannot take that coverage back.
+      critical = new Set(scarce.filter(a => urgency.get(a.id) >= 1 - 1e-9).map(a => a.id))
+      const matched = new Set()
+      if (critical.size) for (const s of free) if (assign(s.groupId, new Set())) matched.add(s.groupId)
+      critical = null
+      for (const s of free) if (!matched.has(s.groupId)) assign(s.groupId, new Set())
+      const pick = new Map()
+      for (const [actId, gs] of holders) for (const g of gs) pick.set(g, activityById.get(actId))
+      for (const s of free) {
+        // A pick can have lost its place to a shared location filled by another pick: the group's
+        // next candidate takes it instead.
+        const a = [pick.get(s.groupId), ...candidates.get(s.groupId)].find(x => x && canPlace(x, s.groupId, s.dayId, s.blockId))
+        if (a) place(a, s.groupId, s.dayId, s.blockId)
+      }
+    }
+  }
+
+  function runRound(slotsToFill, priority) {
+    placeSpansFirst(slotsToFill, priority)
+    if (priority === 'high') placeScarceSessions(slotsToFill)
+    const roundSlots = slotsToFill.filter(s => {
+      const acts = s.eligibleActs.filter(a => a.priority === priority)
+      return acts.some(a => canPlace(a, s.groupId, s.dayId, s.blockId))
+    })
+    roundSlots.sort((a, b) => {
+      const aCount = a.eligibleActs.filter(x => x.priority === priority && canPlace(x, a.groupId, a.dayId, a.blockId)).length
+      const bCount = b.eligibleActs.filter(x => x.priority === priority && canPlace(x, b.groupId, b.dayId, b.blockId)).length
+      return aCount - bCount
+    })
+    for (const slot of roundSlots) {
+      if (assigned.has(`${slot.groupId}|${slot.dayId}|${slot.blockId}`)) continue
+      let candidates = slot.eligibleActs
+        .filter(a => a.priority === priority && canPlace(a, slot.groupId, slot.dayId, slot.blockId))
+      if (!candidates.length) continue
+      const normal = candidates.filter(a => scoreForPrefer(a, slot.groupId, slot.dayId) === 0)
+      const deferred = candidates.filter(a => scoreForPrefer(a, slot.groupId, slot.dayId) !== 0)
+      const ordered = [...normal, ...deferred]
+      ordered.sort((a, b) => {
+        const diff = getCount(slot.groupId, a.id) - getCount(slot.groupId, b.id)
+        return diff !== 0 ? diff : rand() - 0.5
+      })
+      place(ordered[0], slot.groupId, slot.dayId, slot.blockId)
+    }
+  }
+
+  // Greedy placement can strand a cell that a short reshuffle would fill
+  // (audit #20: a tight Latin-square week left 6 blank). tryFill fills a cell
+  // directly, or lifts one placement that is in its way (same group, or same
+  // day and block), fills the cell, and recursively refills the lifted cell,
+  // up to REPAIR_DEPTH lifts deep and REPAIR_LIFTS_PER_CELL in all. Every
+  // step that does not end filled is undone, so no filled cell ever empties,
+  // and nothing is lifted below its weekly minimum. Candidates are tried in
+  // Pass 2's preference (high before low, least-used first, then catalog
+  // order); no rand(), so the same input gives the same week.
+  const keyOf = s => `${s.groupId}|${s.dayId}|${s.blockId}`
+  const PRIORITY_RANK = { high: 0, low: 1 }
+  // A span fits with its head at the cell (canPlace checks its tail blocks are
+  // free), so a fill places the whole span; lifting below never touches one,
+  // so a span is never split.
+  const fits = s => s.eligibleActs
+    .filter(a => canPlace(a, s.groupId, s.dayId, s.blockId))
+    .sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1)
+      || getCount(s.groupId, a.id) - getCount(s.groupId, b.id))
+
+  function tryFill(u, depth, locked) {
+    // A span filled into a neighbouring cell may already cover u.
+    if (assigned.has(keyOf(u))) return true
+    const direct = fits(u)[0]
+    if (direct) { place(direct, u.groupId, u.dayId, u.blockId); return true }
+    if (depth === 0) return false
+    locked.add(keyOf(u))
+    for (const s of openSlots) {
+      if (liftBudget <= 0) break
+      const key = keyOf(s)
+      if (locked.has(key) || spanTails.has(key) || preplacedKeys.has(key)) continue
+      if (s.groupId !== u.groupId && (s.dayId !== u.dayId || s.blockId !== u.blockId)) continue
+      const lifted = activityById.get(assigned.get(key))
+      if (!lifted || (lifted.span_blocks || 1) !== 1) continue
+      if (getCount(s.groupId, lifted.id) <= getMin(lifted.id)) continue
+      liftBudget--
+      unplace(lifted, s.groupId, s.dayId, s.blockId)
+      for (const a of fits(u)) {
+        place(a, u.groupId, u.dayId, u.blockId)
+        if (tryFill(s, depth - 1, locked)) { locked.delete(keyOf(u)); return true }
+        unplace(a, u.groupId, u.dayId, u.blockId)
+      }
+      place(lifted, s.groupId, s.dayId, s.blockId)
+    }
+    locked.delete(keyOf(u))
+    return false
+  }
+
+  let liftBudget = 0
+  // A later reshuffle can free room for a cell that failed earlier, so sweep
+  // until a sweep fills nothing (each productive sweep fills >= 1 cell, so this
+  // ends within openSlots.length sweeps).
+  function repair() {
+    let filled = true
+    while (filled) {
+      filled = false
+      for (const u of openSlots) {
+        if (assigned.has(keyOf(u))) continue
+        liftBudget = REPAIR_LIFTS_PER_CELL
+        if (tryFill(u, REPAIR_DEPTH, new Set())) filled = true
+      }
+    }
+  }
+
+  // Every cell can be filled while an activity stays below its weekly minimum,
+  // because the cells went to activities at or above theirs (a low-priority span
+  // finds no free run once the high round has filled the day), or another group
+  // holds the activity's only capacity in the slot it needs. minRepair raises each
+  // short (group, activity) by an ejection chain: lift what sits in the cells it
+  // needs, place it, then re-place anything the lift left short, up to
+  // MIN_REPAIR_DEPTH steps deep. A session of a capped activity held by another
+  // group in that slot may move too, and that group is then re-placed the same way.
+  // Every place/unplace is journaled, and a chain that does not end with nothing
+  // newly short is rolled back whole, so no cell empties and nothing ends below its
+  // minimum that was not already. Scans openSlots in order, no rand(): the same
+  // input gives the same week.
+  const MIN_REPAIR_DEPTH = 3
+  // T378: work for one span-lifting second attempt, kept apart from the pass's shared budget.
+  const SPAN_LIFT_WORK = 5000
+  const MIN_REPAIR_BUDGET = 1500 // attempts per short (group, activity) or empty cell
+  // Attempts across the whole week: an infeasible week (many cells nothing can fill) must
+  // give up in bounded time rather than spend the per-item budget on every hopeless cell.
+  // Each pass gets its own share, so a week of hopeless minimums cannot starve the empty-cell pass.
+  const REPAIR_WORK_PER_PASS = 20000 + 200 * openSlots.length
+  let repairWorkLeft = REPAIR_WORK_PER_PASS
+  const openSlotByKey = new Map(openSlots.map(s => [keyOf(s), s]))
+  // Indexes so each search step reads one group's cells or one period's cells, not the week.
+  const openSlotsByGroup = new Map()
+  const openSlotsByPeriod = new Map()
+  for (const s of openSlots) {
+    if (!openSlotsByGroup.has(s.groupId)) openSlotsByGroup.set(s.groupId, [])
+    openSlotsByGroup.get(s.groupId).push(s)
+    const pk = `${s.dayId}|${s.blockId}`
+    if (!openSlotsByPeriod.has(pk)) openSlotsByPeriod.set(pk, [])
+    openSlotsByPeriod.get(pk).push(s)
+  }
+  const journal = []
+  let minRepairBudget = 0
+  function jPlace(act, g, d, b) { place(act, g, d, b); journal.push([act, g, d, b, true]) }
+  function jUnplace(act, g, d, b) { unplace(act, g, d, b); journal.push([act, g, d, b, false]) }
+  function rollback(mark) {
+    while (journal.length > mark) {
+      const [act, g, d, b, placed] = journal.pop()
+      if (placed) unplace(act, g, d, b)
+      else place(act, g, d, b)
+    }
+  }
+  const movable = k => assigned.has(k) && !spanTails.has(k) && !preplacedKeys.has(k)
+    && (activityById.get(assigned.get(k))?.span_blocks || 1) === 1
+
+  // T378: the cell holding a span's head, for a key anywhere in that span (its head or a tail).
+  function spanHeadKey(k) {
+    if (!spanTails.has(k)) return k
+    const [g, d, b] = k.split('|')
+    for (let i = blockOrder.get(b) - 1; i >= 0; i--) {
+      const hk = `${g}|${d}|${timeBlocksSorted[i].id}`
+      if (assigned.get(hk) !== assigned.get(k)) return null
+      if (!spanTails.has(hk)) return hk
+    }
+    return null
+  }
+  // A whole placed span the repair may lift as one session (T378): never a pre-placed one.
+  function movableSpanHead(k) {
+    if (!assigned.has(k)) return null
+    const hk = spanHeadKey(k)
+    if (!hk || preplacedKeys.has(hk)) return null
+    return (activityById.get(assigned.get(hk))?.span_blocks || 1) > 1 ? hk : null
+  }
+  // The cells a span placed at head key `hk` covers.
+  function spanKeys(hk) {
+    const [g, d, b] = hk.split('|')
+    const act = activityById.get(assigned.get(hk))
+    const out = []
+    for (let i = 0; i < (act?.span_blocks || 1); i++) {
+      const blk = timeBlocksSorted[blockOrder.get(b) + i]
+      if (blk) out.push(`${g}|${d}|${blk.id}`)
+    }
+    return out
+  }
+
+  // One more session of `act` for `groupId`, never using a cell in `locked`. With `liftSpans`
+  // (T378, a second attempt only), a span in the way is lifted whole and placed again elsewhere.
+  function raise(act, groupId, depth, locked, liftSpans = false) {
+    const span = act.span_blocks || 1
+    for (const head of openSlotsByGroup.get(groupId) ?? []) {
+      if (minRepairBudget-- <= 0 || repairWorkLeft-- <= 0) return false
+      if (!head.eligibleActs.includes(act)) continue
+      const idx = blockOrder.get(head.blockId)
+      const keys = []
+      for (let i = 0; i < span; i++) {
+        const blk = timeBlocksSorted[idx + i]
+        if (!blk) break
+        keys.push(`${groupId}|${head.dayId}|${blk.id}`)
+      }
+      if (keys.length !== span || keys.some(k => locked.has(k) || !openSlotByKey.has(k))) continue
+      const spanHeads = new Set()
+      let blocked = false
+      for (const k of keys) {
+        if (!assigned.has(k) || movable(k)) {
+          if (assigned.get(k) === act.id) blocked = true
+          continue
+        }
+        const hk = liftSpans ? movableSpanHead(k) : null
+        if (!hk || assigned.get(hk) === act.id || spanKeys(hk).some(x => locked.has(x))) { blocked = true; break }
+        spanHeads.add(hk)
+      }
+      if (blocked) continue
+      const mark = journal.length
+      const lifted = []
+      // Cells a lifted span covered outside this session's own: they must not stay empty. A span above
+      // its minimum may be lifted for good (its surplus session gives way, as a single's does in
+      // tryFill); one at its minimum is placed again below.
+      const vacated = []
+      for (const hk of spanHeads) {
+        const l = activityById.get(assigned.get(hk))
+        for (const x of spanKeys(hk)) if (!keys.includes(x)) vacated.push(x)
+        const s = openSlotByKey.get(hk)
+        jUnplace(l, s.groupId, s.dayId, s.blockId)
+        lifted.push(l)
+      }
+      for (const k of keys) {
+        if (!assigned.has(k)) continue
+        const l = activityById.get(assigned.get(k))
+        const s = openSlotByKey.get(k)
+        jUnplace(l, s.groupId, s.dayId, s.blockId)
+        lifted.push(l)
+      }
+      const nextLocked = new Set([...locked, ...keys])
+      // Another group's session of a capped activity in this slot may move.
+      const moved = []
+      if (blockedBy(act, groupId, head.dayId, head.blockId) === 'activity' && depth > 0) {
+        for (const peer of openSlotsByPeriod.get(`${head.dayId}|${head.blockId}`) ?? []) {
+          if (peer.groupId === groupId) continue
+          const pk = keyOf(peer)
+          if (assigned.get(pk) !== act.id || !movable(pk) || locked.has(pk)) continue
+          jUnplace(act, peer.groupId, peer.dayId, peer.blockId)
+          moved.push(peer)
+          nextLocked.add(pk)
+          if (canPlace(act, groupId, head.dayId, head.blockId)) break
+        }
+      }
+      if (canPlace(act, groupId, head.dayId, head.blockId)) {
+        jPlace(act, groupId, head.dayId, head.blockId)
+        let ok = true
+        for (const l of lifted) {
+          if (getCount(groupId, l.id) >= getMin(l.id)) continue
+          if (depth === 0 || !raise(l, groupId, depth - 1, nextLocked, liftSpans)) { ok = false; break }
+        }
+        for (const x of vacated) {
+          if (!ok) break
+          if (assigned.has(x)) continue
+          const v = openSlotByKey.get(x)
+          const fill = v ? fits(v)[0] : null
+          if (fill) jPlace(fill, v.groupId, v.dayId, v.blockId)
+          else ok = false
+        }
+        for (const peer of moved) {
+          if (!ok) break
+          if (getCount(peer.groupId, act.id) >= getMin(act.id)) continue
+          if (!raise(act, peer.groupId, depth - 1, nextLocked, liftSpans)) ok = false
+        }
+        // The cell a moved session vacated must not stay empty.
+        for (const peer of moved) {
+          if (!ok) break
+          if (assigned.has(keyOf(peer))) continue
+          const fill = fits(peer)[0]
+          if (fill) jPlace(fill, peer.groupId, peer.dayId, peer.blockId)
+          else ok = false
+        }
+        if (ok) return true
+      }
+      rollback(mark)
+    }
+    return false
+  }
+
+  // An empty cell can stay empty when every activity that fits it is blocked by
+  // one of its own sessions: already on that day, at its weekly max, or its slot
+  // capacity held by another group. fillCell moves that one blocking session into
+  // the empty cell and fills the cell the move vacated the same way, up to
+  // FILL_REPAIR_DEPTH steps; a chain that does not end filled is rolled back.
+  // Counts are unchanged except a capacity move; a group that move takes below its
+  // minimum must be raised again (raise) or the chain is rolled back, so no minimum is broken.
+  const FILL_REPAIR_DEPTH = 4
+  function fillCell(u, depth, locked) {
+    if (assigned.has(keyOf(u))) return true
+    const direct = fits(u)[0]
+    if (direct) { jPlace(direct, u.groupId, u.dayId, u.blockId); return true }
+    if (depth === 0) return false
+    locked.add(keyOf(u))
+    const candidates = u.eligibleActs
+      .filter(a => (a.span_blocks || 1) === 1)
+      .sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1)
+        || getCount(u.groupId, a.id) - getCount(u.groupId, b.id))
+    for (const act of candidates) {
+      if (minRepairBudget-- <= 0 || repairWorkLeft-- <= 0) break
+      const blocker = blockedBy(act, u.groupId, u.dayId, u.blockId)
+      // The sessions whose move could clear the blocker; a same-day one first, since moving
+      // it clears "already on today" and "weekly max" together.
+      const vacates = []
+      const pool = blocker === 'activity' ? openSlotsByPeriod.get(`${u.dayId}|${u.blockId}`) ?? [] : openSlotsByGroup.get(u.groupId) ?? []
+      for (const s of pool) {
+        const k = keyOf(s)
+        if (locked.has(k) || assigned.get(k) !== act.id || !movable(k)) continue
+        if ((blocker === 'today' || blocker === 'max') && s.groupId === u.groupId) vacates.push(s)
+        else if (blocker === 'activity' && s.groupId !== u.groupId && s.dayId === u.dayId && s.blockId === u.blockId) vacates.push(s)
+      }
+      vacates.sort((a, b) => (a.dayId === u.dayId ? 0 : 1) - (b.dayId === u.dayId ? 0 : 1))
+      for (const vacate of vacates) {
+        if (minRepairBudget-- <= 0 || repairWorkLeft-- <= 0) break
+        const mark = journal.length
+        jUnplace(act, vacate.groupId, vacate.dayId, vacate.blockId)
+        if (canPlace(act, u.groupId, u.dayId, u.blockId)) {
+          jPlace(act, u.groupId, u.dayId, u.blockId)
+          // A group that gave up a capacity-held session below its minimum gets it back elsewhere.
+          if (fillCell(vacate, depth - 1, locked)
+            && (getCount(vacate.groupId, act.id) >= getMin(act.id) || raise(act, vacate.groupId, depth - 1, locked))) {
+            locked.delete(keyOf(u))
+            return true
+          }
+        }
+        rollback(mark)
+      }
+    }
+    locked.delete(keyOf(u))
+    return false
+  }
+
+  function fillRepair() {
+    repairWorkLeft = REPAIR_WORK_PER_PASS
+    for (const u of openSlots) {
+      if (assigned.has(keyOf(u))) continue
+      minRepairBudget = MIN_REPAIR_BUDGET
+      journal.length = 0
+      fillCell(u, FILL_REPAIR_DEPTH, new Set())
+    }
+  }
+
+  function minRepair() {
+    for (const act of activities) {
+      for (const group of groups) {
+        if (!eligibility.get(act.id)?.has(group.id)) continue
+        while (getCount(group.id, act.id) < getMin(act.id)) {
+          minRepairBudget = MIN_REPAIR_BUDGET
+          journal.length = 0
+          if (raise(act, group.id, MIN_REPAIR_DEPTH, new Set())) continue
+          // T378: only when that fails, let the chain lift a span that took the cells this needs.
+          // It spends a budget of its own, so the pass's shared work budget, and with it every
+          // later (group, activity) the first attempt would have raised, is exactly as before.
+          minRepairBudget = MIN_REPAIR_BUDGET
+          journal.length = 0
+          const sharedWorkLeft = repairWorkLeft
+          repairWorkLeft = SPAN_LIFT_WORK
+          const raised = raise(act, group.id, MIN_REPAIR_DEPTH, new Set(), true)
+          repairWorkLeft = sharedWorkLeft
+          if (!raised) break
+        }
+      }
+    }
+  }
+
+  const unfilledSlots = openSlots.filter(s => !assigned.has(`${s.groupId}|${s.dayId}|${s.blockId}`))
+  if (!fixedEventsOnly) {
+    runRound(unfilledSlots, 'high')
+    const stillUnfilled = openSlots.filter(s => !assigned.has(`${s.groupId}|${s.dayId}|${s.blockId}`))
+    runRound(stillUnfilled, 'low')
+    repair()
+    minRepair()
+    fillRepair()
+  }
+
+  // ── Pass 3: audit ─────────────────────────────────────────────────────────
+  const resultSlots = []
+
+  const eventsOnlyBlockIds = new Set(timeBlocksSorted.filter(b => b.events_only).map(b => b.id))
+  for (const slot of slots) {
+    // F2: a director-locked span can run through an events-only block. Generate never puts a
+    // placement there itself, so any assignment at an events-only cell is a lock's span tail,
+    // and the lock wins: the cell shows the activity, flagged by EVENTS_ONLY_SPAN below.
+    const lockTail = slot.type === 'unavailable' && eventsOnlyBlockIds.has(slot.blockId)
+      ? assigned.get(`${slot.groupId}|${slot.dayId}|${slot.blockId}`)
+      : null
+    resultSlots.push(lockTail ? { ...slot, type: 'activity', activityId: lockTail, is_span_head: false } : { ...slot })
+  }
+
+  for (const os of openSlots) {
+    const key = `${os.groupId}|${os.dayId}|${os.blockId}`
+    const actId = assigned.get(key) || null
+    const isSpanHead = !spanTails.has(key)
+    const flags = {}
+
+    if (!actId && !fixedEventsOnly) {
+      flags.UNFILLABLE = true
+      const codes = os.eligibleActs.length > 0
+        ? [...new Set(os.eligibleActs.map(a => blockedBy(a, os.groupId, os.dayId, os.blockId)))].filter(Boolean)
+        : ['none']
+      flags.UNFILLABLE_reason = codes.map(c => UNFILLABLE_TAGS[c]).join(' · ')
+      // Slice 4b (§3): if every eligible activity was blocked by a place an
+      // overlay (fixed event/elective offering/event) already occupies, name that
+      // overlay — otherwise a director sees a newly-blank cell with no way to
+      // connect it to the Lunch fixed event or Sports Day event that caused it.
+      // This re-scans os.eligibleActs (O(eligibleActs) per unfilled slot) —
+      // fine here because it only runs on the rare UNFILLABLE path in Pass 3,
+      // after placement is done; do not hoist this into canPlace/placeBlocked
+      // or the hot per-slot placement loop in Pass 2.
+      for (const act of os.eligibleActs) {
+        const locId = act.location_id ?? null
+        if (locId == null || !locationCapById.has(locId)) continue
+        const occupants = placeUsage.get(`${locId}|${os.dayId}|${os.blockId}`) || []
+        if (occupants.length < locationCapById.get(locId)) continue
+        const blocker = occupants.find(o => o.sourceLabel)
+        if (blocker) {
+          const locName = locationNameById?.get(locId) || locId
+          flags.UNFILLABLE_reason = `${locName} in use by ${blocker.sourceLabel}`
+          break
+        }
+      }
+    }
+
+    resultSlots.push({ groupId: os.groupId, dayId: os.dayId, blockId: os.blockId, cohort_id: cohortId, type: 'activity', activityId: actId, fixedEventId: null, is_span_head: isSpanHead, flags })
+  }
+
+  // Resolve activityTargets: caller may supply scaled min/max for override weeks
+  function getMin(actId) {
+    if (activityTargets?.[actId]?.min_per_week != null) return activityTargets[actId].min_per_week
+    return activities.find(a => a.id === actId)?.min_per_week ?? 0
+  }
+
+  // Aggregate findings — one per (groupId, activityId, kind), never stamped
+  // onto individual slots. See docs/adr/2026-07-28-schedule-flag-findings-reshape.md.
+  const findings = fixedEventOverlapFindings(fixedEvents, groups, days)
+  const underserved = []
+  if (!fixedEventsOnly) {
+    for (const group of groups) {
+      for (const act of activities) {
+        if (!(eligibility.get(act.id) || new Set()).has(group.id)) continue
+        if (getMin(act.id) <= 0) continue
+        if (getCount(group.id, act.id) < getMin(act.id)) {
+          underserved.push({ groupId: group.id, activityId: act.id, got: getCount(group.id, act.id), needed: getMin(act.id) })
+        }
+      }
+    }
+
+    const seenTails = new Set()
+    for (const key of spanTails) {
+      const [groupId, , blockId] = key.split('|')
+      if (!eventsOnlyBlockIds.has(blockId)) continue
+      const actId = assigned.get(key)
+      if (seenTails.has(`${groupId}|${actId}`)) continue
+      seenTails.add(`${groupId}|${actId}`)
+      const eventName = [...fixedEventLookup.entries()].find(([k]) => k.endsWith(`|${blockId}`))?.[1]?.name
+        ?? timeBlocksSorted.find(b => b.id === blockId)?.name
+      findings.push(eventsOnlySpanFinding(groupId, actId, activities.find(a => a.id === actId)?.name, eventName))
+    }
+
+    for (const u of underserved) {
+      const groupName = groupMap.get(u.groupId)?.name || u.groupId
+      const act = activities.find(a => a.id === u.activityId)
+      const actName = act?.name || u.activityId
+      const reason = `Goal: ${u.needed}×/wk — scheduled ${u.got}× (group: ${groupName}, activity: ${actName})`
+      findings.push({ kind: 'UNDERSERVED', groupId: u.groupId, activityId: u.activityId, severity: 'caution', reason, got: u.got, needed: u.needed })
+    }
+
+    for (const group of groups) {
+      for (const act of activities) {
+        if (act.prefer_before_day == null || act.prefer_before_day_min == null) continue
+        if (!(eligibility.get(act.id) || new Set()).has(group.id)) continue
+        const targetIdx = days.findIndex(d => d.day_of_week === act.prefer_before_day)
+        if (targetIdx < 0) {
+          const replacedTarget = replacedDays.find(d => d.day_of_week === act.prefer_before_day)
+          if (replacedTarget) findings.push(replacedTargetFinding(group, act, replacedTarget))
+          continue
+        }
+        // One SESSION, not one block: a 2-block swim is a single swim. The
+        // tail rows of a span carry the same activityId and would otherwise
+        // each count, which both overstates the week and disagreed with
+        // computeFindings() below (which has always counted heads only).
+        const beforeCount = resultSlots.filter(s =>
+          s.type === 'activity' && s.groupId === group.id && s.activityId === act.id &&
+          s.is_span_head !== false &&
+          (dayOrder.get(s.dayId) ?? 99) < targetIdx
+        ).length
+        if (beforeCount < act.prefer_before_day_min) {
+          const reason = `Goal: ${act.prefer_before_day_min}× before day ${act.prefer_before_day} — only ${beforeCount}× placed (group: ${group.name}, activity: ${act.name})`
+          findings.push({ kind: 'DISTRIBUTION', groupId: group.id, activityId: act.id, severity: 'info', reason, beforeCount, requiredBefore: act.prefer_before_day_min, byDay: act.prefer_before_day })
+        }
+      }
+    }
+  }
+
+  return {
+    slots: resultSlots,
+    findings,
+  }
+}
+
+function eventsOnlySpanFinding(groupId, activityId, activityName, eventName) {
+  return { kind: 'EVENTS_ONLY_SPAN', groupId, activityId, severity: 'caution', reason: `${activityName || activityId} runs into ${eventName} (events only)` }
+}
+
+// Pure, placement-free recompute of UNDERSERVED/DISTRIBUTION findings from an
+// already-persisted set of template_slots rows (snake_case DB shape:
+// group_id/day_id/time_block_id/activity_id). Used when the screen loads or
+// restores a schedule without regenerating it — see B2 in the round-2 review:
+// findings must reflect what's on screen, not just what the last generate()
+// happened to compute. Mirrors the aggregate-findings logic in scheduleCohort's
+// Pass 3, but reads counts off `slots` instead of the live placement maps.
+//
+// T350: `replacedDayIds` is required (see normalizeInput). Replaced days and
+// any stored rows on them are dropped up front, so every loop below — goals,
+// distribution and the fixed-event audit — sees only the days that run, with
+// or without fixedEvents/weekId (the manual route passes neither).
+export function computeFindings({ slots: allSlots, groups, activities, days: allDays, fixedEvents, overlapFixedEvents, timeBlocks, weekId = null, activityExclusions, groupExclusions, locationExclusions, replacedDayIds }) {
+  const replaced = new Set(requireReplacedDayIds(replacedDayIds, 'computeFindings'))
+  const findings = []
+  if (!allSlots || !groups || !activities || !allDays) return findings
+  const days = allDays.filter(d => !replaced.has(d.id))
+  const replacedDays = allDays.filter(d => replaced.has(d.id))
+  const slots = allSlots.filter(s => !replaced.has(s.day_id))
+
+  const eligibility = new Map()
+  for (const act of activities) {
+    // T266 — same empty-eligibility treatment as scheduleCohort's Pass 0 above,
+    // for the same reason: a pinned event is not a free choice, so it must not
+    // raise UNDERSERVED or prefer_before_day findings about not having been
+    // freely placed. It IS placed — as its event.
+    if (!isFreeChoiceActivity(act)) {
+      eligibility.set(act.id, new Set())
+      continue
+    }
+    // Contract: eligible_tier_ids / eligible_group_ids are arrays of ids.
+    // Callers normalize — this engine does not deserialize; see
+    // src/utils/normalizeActivityEligibility.js.
+    if (false /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
+    const eligible = new Set()
+    for (const g of groups) {
+      if (isActivityEligibleForGroup(act, g)) eligible.add(g.id)
+    }
+    eligibility.set(act.id, eligible)
+  }
+
+  const groupMap = new Map(groups.map(g => [g.id, g]))
+  const dayOrder = new Map(days.map((d, i) => [d.id, i]))
+
+  // Count once per placement (head only), matching Pass 3 above — a spanned
+  // activity persists as a head row plus one tail row per extra block. Rows
+  // predating the is_span_head column have it undefined and count as heads.
+  const activitySlots = slots.filter(s => !s.is_fixed_event && s.activity_id && s.is_span_head !== false)
+  const counts = new Map() // "groupId|activityId" → count
+  for (const s of activitySlots) {
+    const k = `${s.group_id}|${s.activity_id}`
+    counts.set(k, (counts.get(k) || 0) + 1)
+  }
+  function getCount(groupId, actId) { return counts.get(`${groupId}|${actId}`) || 0 }
+
+  const underserved = []
+  for (const group of groups) {
+    for (const act of activities) {
+      if (!(eligibility.get(act.id) || new Set()).has(group.id)) continue
+      const min = act.min_per_week ?? 0
+      if (min <= 0) continue
+      const got = getCount(group.id, act.id)
+      if (got < min) underserved.push({ groupId: group.id, activityId: act.id, got, needed: min })
+    }
+  }
+
+  for (const u of underserved) {
+    const groupName = groupMap.get(u.groupId)?.name || u.groupId
+    const act = activities.find(a => a.id === u.activityId)
+    const actName = act?.name || u.activityId
+    const reason = `Goal: ${u.needed}×/wk — scheduled ${u.got}× (group: ${groupName}, activity: ${actName})`
+    findings.push({ kind: 'UNDERSERVED', groupId: u.groupId, activityId: u.activityId, severity: 'caution', reason, got: u.got, needed: u.needed })
+  }
+
+  for (const group of groups) {
+    for (const act of activities) {
+      if (act.prefer_before_day == null || act.prefer_before_day_min == null) continue
+      if (!(eligibility.get(act.id) || new Set()).has(group.id)) continue
+      const targetIdx = days.findIndex(d => d.day_of_week === act.prefer_before_day)
+      if (targetIdx < 0) {
+        const replacedTarget = replacedDays.find(d => d.day_of_week === act.prefer_before_day)
+          if (replacedTarget) findings.push(replacedTargetFinding(group, act, replacedTarget))
+        continue
+      }
+      const beforeCount = activitySlots.filter(s =>
+        s.group_id === group.id && s.activity_id === act.id &&
+        (dayOrder.get(s.day_id) ?? 99) < targetIdx
+      ).length
+      if (beforeCount < act.prefer_before_day_min) {
+        const reason = `Goal: ${act.prefer_before_day_min}× before day ${act.prefer_before_day} — only ${beforeCount}× placed (group: ${group.name}, activity: ${act.name})`
+        findings.push({ kind: 'DISTRIBUTION', groupId: group.id, activityId: act.id, severity: 'info', reason, beforeCount, requiredBefore: act.prefer_before_day_min, byDay: act.prefer_before_day })
+      }
+    }
+  }
+
+  // T182: a GENERATED schedule persists its template_slots; this is an audit
+  // pass over those rows, not a re-run of Pass 1's exclusion. If a director
+  // re-keys a fixed event's name after generating, a fresh build would now
+  // exclude the activity for that group but the persisted regular slot is
+  // never re-checked. Flag it using the SAME shared per-group exclusion the
+  // engine uses in Pass 1 — anti-drift is the point (docs/adr/2026-09-16-
+  // anchor-duplicate-finding.md). Absent/empty fixedEvents → no findings (safe
+  // default for callers that don't yet thread fixedEvents/weekId through).
+  // overlapFixedEvents: a caller that wants only the double-booking check (the
+  // Manual route) passes the events here and leaves fixedEvents out.
+  const overlapSource = overlapFixedEvents ?? fixedEvents
+  if (overlapSource && overlapSource.length > 0) {
+    findings.push(...fixedEventOverlapFindings(
+      overlapSource.filter((fe) => fe.schedule_week_id == null || fe.schedule_week_id === weekId), groups, days,
+    ))
+  }
+  if (fixedEvents && fixedEvents.length > 0) {
+    // Suppress a week-closed activity from the exclusion set: an activity
+    // closed via activityExclusions/groupExclusions/locationExclusions for
+    // this week would not be excluded by a fresh build even though its
+    // all-weeks fixed event is still live — flagging it here would be a false
+    // positive. Effective sets are used ONLY for this loop; UNDERSERVED/
+    // DISTRIBUTION above keep reading the raw activities/groups unchanged.
+    const { groups: effGroups, activities: effActivities, fixedEvents: effFixedEvents } = resolveWeekCatalog({
+      groups, activities, fixedEvents, weekId,
+      activityExclusions: activityExclusions || [],
+      groupExclusions: groupExclusions || [],
+      locationExclusions: locationExclusions || [],
+    })
+    const fixedEventByGroupDay = fixedEventActivityIdsByGroupDay(effFixedEvents, effActivities, effGroups, { days, weekId })
+    const activityById = new Map(activities.map(a => [a.id, a]))
+    // Dedup stays WEEK-scoped ("groupId|activityId") even though the exclusion
+    // above is now day-scoped, and that asymmetry is deliberate — do not
+    // "fix" it. The dismissal key in the UI is `groupId|activityId|kind` with
+    // NO day (src/screens/ScheduleScreen.jsx:567 and :621). Adding day here
+    // would emit two findings sharing ONE dismissal key: a duplicated row in
+    // the rail, and dismissing either would dismiss both. The `reason` copy is
+    // week-granular ("is also a fixed event this week") for the same reason.
+    // Consequence, accepted: two same-week duplicates on different days surface
+    // one at a time — the director clears one and the next recalc surfaces the
+    // other. Self-healing across iterations, acceptable for a caution.
+    // (Q5 review, gracious-thompson — who went looking to argue the opposite.)
+    const seen = new Set() // "groupId|activityId" — one finding per pair
+    for (const s of activitySlots) {
+      // Day-scoped, matching placement (Q5). Without this the finding would
+      // flag every legitimate placement the new keying now ALLOWS — a Juniors
+      // swim on Thursday when swim is pinned Monday is correct, not a
+      // duplicate — turning a real signal into noise on the director's screen.
+      const fixedEventHere = fixedEventByGroupDay.get(`${s.group_id}|${s.day_id}`)
+      if (!fixedEventHere?.has(s.activity_id)) continue
+      const key = `${s.group_id}|${s.activity_id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const groupName = groupMap.get(s.group_id)?.name || s.group_id
+      const actName = activityById.get(s.activity_id)?.name || s.activity_id
+      const reason = `${actName} is also a fixed event this week (group: ${groupName}) — regenerate to clear it`
+      findings.push({ kind: 'FIXED_EVENT_DUPLICATE', groupId: s.group_id, activityId: s.activity_id, severity: 'caution', reason })
+    }
+  }
+
+  // F2: a locked span's tail inside an events-only block. Persisted tail rows carry is_span_head false.
+  const eventsOnlyBlocks = new Map((timeBlocks || []).filter(b => b.events_only).map(b => [b.id, b]))
+  if (eventsOnlyBlocks.size > 0) {
+    const seenTails = new Set()
+    for (const s of slots) {
+      if (s.is_span_head !== false || !s.activity_id || !eventsOnlyBlocks.has(s.time_block_id)) continue
+      if (seenTails.has(`${s.group_id}|${s.activity_id}`)) continue
+      seenTails.add(`${s.group_id}|${s.activity_id}`)
+      const eventName = (fixedEvents || []).find(fe => fe.time_block_id === s.time_block_id)?.name ?? eventsOnlyBlocks.get(s.time_block_id).name
+      findings.push(eventsOnlySpanFinding(s.group_id, s.activity_id, activities.find(a => a.id === s.activity_id)?.name, eventName))
+    }
+  }
+
+  return findings
+}
+
+function buildSchedule(input) {
+  const { cohorts, days, replacedDays, activities, campId, locations, electiveSetActivities, events, fixedEventsOnly, weekId } = normalizeInput(input)
+
+  // location_id → capacity (how many GROUPS fit in this place at once). Built
+  // once from the camp's locations rows. A stored capacity of 0 or negative
+  // (not reachable via the M3a UI — CapacityStepper floors at 1 — but
+  // reachable via the op-log or a future import) floors to 1, matching M1's
+  // migration; a place always holds at least 1 group. A location_id absent
+  // from this map entirely (dangling — see placeBlocked) is a different case
+  // and is NOT defaulted here: its absence from the map is exactly what tells
+  // placeBlocked to treat it as unconstrained.
+  const locationCapById = new Map()
+  const locationNameById = new Map()
+  for (const loc of (locations || [])) {
+    if (loc && loc.id != null) {
+      locationCapById.set(loc.id, loc.capacity > 0 ? loc.capacity : 1)
+      locationNameById.set(loc.id, loc.name || loc.id)
+    }
+  }
+
+  // Findings that are properties of an activity, not of any one cohort/group,
+  // so computed once here rather than per cohort. Gated by fixedEventsOnly like
+  // the rest of the findings work (Pass 3), since fixedEventsOnly is an
+  // fixedEvents-grid-only audit.
+  const danglingFindings = []
+  if (!fixedEventsOnly) {
+    for (const act of activities) {
+      if (act.location_id != null && !locationCapById.has(act.location_id)) {
+        danglingFindings.push({
+          kind: 'DANGLING_LOCATION',
+          groupId: null,
+          activityId: act.id,
+          severity: 'caution',
+          reason: `"${act.name || act.id}" is set to a location that isn't in your locations list, so it has no capacity limit`,
+        })
+      }
+    }
+  }
+
+  // Pass 1: schedule each cohort independently. Each cohort's own placeUsage
+  // ledger keeps IT within capacity, but the ledgers are per-cohort and torn
+  // down between cohorts, so nothing here can see two cohorts landing in the
+  // same real location at once — that is routeConflicts.js's job, over the
+  // combined allSlots, below.
+  const allSlots = []
+  const allFindings = [...danglingFindings]
+  const allFixedEvents = []
+
+  for (let idx = 0; idx < cohorts.length; idx++) {
+    const cohortEntry = cohorts[idx]
+    const cohortSeed = campId + (cohortEntry.cohort?.id || String(idx))
+    const rand = mulberry32(djb2(cohortSeed))
+    const { slots, findings } = scheduleCohort({ cohortEntry, days, replacedDays, activities, rand, matchSeed: djb2(`${cohortSeed}|match`), locationCapById, locationNameById, electiveSetActivities, events, fixedEventsOnly, weekId })
+    allSlots.push(...slots)
+    allFindings.push(...findings)
+    allFixedEvents.push(...(cohortEntry._legacyFixedEvents || []))
+  }
+
+  // T267 PR2 (ADR step 5): the identity invariant, checked against the REAL
+  // `activities` list handed to this build — a since-deleted activity is
+  // simply absent from it, which is exactly what "zero live" means here. A
+  // fixed_events row with no resolvable activity_id, or one pointing at
+  // nothing live, is a generation-blocking gap, not a silent placement miss
+  // (that was T62's failure class). `activityById` counts matches
+  // defensively (>1 cannot occur by id lookup, but the guard should read
+  // honestly rather than assume its own invariant).
+  const liveActivityIds = new Set(activities.map(a => a.id))
+  const identityGapFindings = []
+  const seenGapFixedEvents = new Set()
+  for (const fixedEvent of allFixedEvents) {
+    if (seenGapFixedEvents.has(fixedEvent.id)) continue
+    seenGapFixedEvents.add(fixedEvent.id)
+    const ids = resolveFixedEventActivityIds(fixedEvent).filter((id) => liveActivityIds.has(id))
+    if (ids.length === 1) continue
+    identityGapFindings.push({
+      kind: 'FIXED_EVENT_IDENTITY_GAP',
+      groupId: null,
+      activityId: fixedEvent.activity_id ?? null,
+      severity: 'error',
+      reason: ids.length === 0
+        ? `"${fixedEvent.name || fixedEvent.id}" is not linked to a live activity — regeneration is blocked until this is fixed`
+        : `"${fixedEvent.name || fixedEvent.id}" resolves to more than one activity — regeneration is blocked until this is fixed`,
+      fixedEventId: fixedEvent.id,
+    })
+  }
+
+  const conflicts = findRouteConflicts({
+    slots: allSlots,
+    activities,
+    fixedEvents: allFixedEvents,
+    electiveSetActivities,
+    events,
+    locations,
+  })
+
+  return {
+    slots: allSlots,
+    conflicts,
+    findings: [...allFindings, ...identityGapFindings],
+  }
+}
+
+export default buildSchedule
