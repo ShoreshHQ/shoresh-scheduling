@@ -1,5 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
-import { reasonFor } from "./words";
+import { blankSetupNote, reasonFor } from "./words";
 import { DAY_NAMES, checkWeek, weekdayOf } from "./checks";
 import {
   readElectivePlaces,
@@ -20,7 +20,10 @@ import {
 } from "./setup";
 import {
   BUSY,
+  FULL,
+  LENGTH,
   NO_FIT,
+  NONE_FOR,
   OVERLAP,
   RELAX_ORDER,
   RULE,
@@ -28,7 +31,16 @@ import {
   scheduleWeekSteps
 } from "./week";
 
-export { BUSY, NO_FIT, RELAX_ORDER, RULE, reasonFor, checkWeek };
+export {
+  BUSY,
+  FULL,
+  NONE_FOR,
+  NO_FIT,
+  RELAX_ORDER,
+  RULE,
+  reasonFor,
+  checkWeek
+};
 export {
   readActivities,
   readElectivePlaces,
@@ -36,6 +48,14 @@ export {
   readProgram
 } from "./checkInputs";
 export { measureWeek } from "./measure";
+
+// Why a cell is Open (weekRules) -> the words that say so (words.js).
+const OPEN_WHY = {
+  [OVERLAP]: BUSY,
+  [LENGTH]: NO_FIT,
+  [FULL]: FULL,
+  [NONE_FOR]: NONE_FOR
+};
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
@@ -64,8 +84,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     set on the grid is kept like a lock and takes up the places of its confirmed, open offerings
  *     (readElectivePlaces; ADR 0018 slice E5, desktop electiveOccupancy.js)
  *
- * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells,
- * openCells, ruleChecks }
+ * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, noEarlyDay,
+ * noEarlyDayBy, setupNotes, overlapping, cells, openCells, ruleChecks }
  * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
@@ -74,12 +94,16 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     bend a rule for always has one; so does anything kept that breaks a rule
  *   stillNeeded, spread, stillNeededBy, spreadBy, cells: checkWeek's lines, the same as data,
  *     and counts, the same words as Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
+ *   noEarlyDay, noEarlyDayBy: checkWeek's early-week goals the week has no day for, once each
+ *   setupNotes: lines for each blank groups at once (an activity running this week) or groups
+ *     that fit (a place one uses), taken as 1: "Arts: Groups at once is blank, so it counts as 1"
  *   overlapping: checkWeek's cells where a placement breaks a rule that time block shares with
  *     other cells: [{ dateValue, groupId, blockId, rules: [RULE... or BUSY], text }]
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
  *     work done, the same on any machine
  *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is
- *     busy at an overlapping time ("Already busy then"), or no activity's length fits the gap
+ *     busy at an overlapping time ("Already busy then"), everything set up for it is taken then,
+ *     nothing running this week is set up for it, or no activity's length fits the gap
  */
 export function generateWeek(input) {
   const steps = generateWeekSteps(input);
@@ -130,7 +154,17 @@ export function* generateWeekSteps(input) {
   if (!option) {
     return { ok: false, error: "That option can't be built." };
   }
-  const { fit } = readLocations(input.locations);
+  const { fit, names: placeNames, blank } = readLocations(input.locations);
+  // Blank groups at once or groups that fit: taken as 1 and said, never 0, never a stop.
+  const setupNotes = [
+    ...activities.running
+      .filter((a) => a.atOnceBlank)
+      .map((a) => blankSetupNote("atOnce", a.name, t)),
+    // Only the places an activity running this week uses.
+    ...blank
+      .filter((id) => activities.running.some((a) => a.locationId === id))
+      .map((id) => blankSetupNote("fit", placeNames.get(id), t))
+  ];
   const model = {
     days,
     groups,
@@ -208,6 +242,9 @@ export function* generateWeekSteps(input) {
     spread: checked.spread,
     stillNeededBy: checked.stillNeededBy,
     spreadBy: checked.spreadBy,
+    noEarlyDay: checked.noEarlyDay,
+    noEarlyDayBy: checked.noEarlyDayBy,
+    setupNotes,
     overlapping: checked.overlapping,
     cells: checked.cells,
     ruleChecks,
@@ -217,7 +254,10 @@ export function* generateWeekSteps(input) {
         date: days[d].date,
         groupId,
         blockId,
-        reason: reasonFor(why === OVERLAP ? BUSY : NO_FIT, { terms: t })
+        reason: reasonFor(OPEN_WHY[why], {
+          terms: t,
+          groupName: (groups.get(groupId) || {}).name || ""
+        })
       };
     })
   };

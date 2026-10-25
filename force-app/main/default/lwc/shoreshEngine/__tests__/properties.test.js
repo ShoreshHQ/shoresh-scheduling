@@ -131,7 +131,6 @@ describe("generateWeek on random small camps", () => {
   it(`keeps every rule, never leaves a cell blank, and is deterministic (${SEEDS} seeds)`, () => {
     const bad = [];
     let flagged = 0;
-    let overlaps = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const spec = withHistory(randomCamp(seed), seed);
       const input = camp(spec);
@@ -166,7 +165,6 @@ describe("generateWeek on random small camps", () => {
           bad.push(`seed ${seed}: an overlap with no matching dot: ${o.text}`);
         }
       }
-      overlaps += result.overlapping.length;
       // Each data entry says what its line says: the activity, the bunk and the number.
       const name = (id) => spec.activities.find((a) => a.id === id).name;
       const bunk = (id) => spec.groups.find((g) => g.id === id).name;
@@ -196,9 +194,9 @@ describe("generateWeek on random small camps", () => {
       }
     }
     expect(bad.slice(0, 20)).toEqual([]);
-    // The camps are tight enough that the never-blank pass really runs.
+    // The camps are tight enough that the never-blank pass really runs. (It bends only
+    // preferences now, care plan step 7, so it makes no overlaps for this test to count.)
     expect(flagged).toBeGreaterThan(0);
-    expect(overlaps).toBeGreaterThan(0);
   });
 });
 

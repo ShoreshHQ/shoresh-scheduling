@@ -88,19 +88,22 @@ describe("c-shoresh-engine: elective sets", () => {
     expect(day.g1[0]).toEqual({ kind: "E", id: SET, head: true });
   });
 
-  it("knows the set has the place: a bunk sent there anyway is a bend, said", () => {
-    // Archery alone, at the Range that fits one bunk: g2's Period 2 gets it only by bending the
-    // place's limit, since Chugim (g1) has the Range then.
+  it("knows the set has the place: no bunk is sent there, and the cell says it is full", () => {
+    // Archery alone, at the Range that fits one bunk: g2's Period 2 could get it only by bending
+    // the place's limit, since Chugim (g1) has the Range then, so it stays Open (care plan step 7).
     const result = generateWeek(
       input({
         activities: [activity("archery", { location: "range", min: 0, max: 5 })]
       })
     );
     expect(result.ok).toBe(true);
-    const flag = result.flags.find(
-      (f) => f.groupId === "g2" && f.blockId === "b1"
+    expect(result.flags.some((f) => f.bends.includes("placeCapacity"))).toBe(
+      false
     );
-    expect(flag.bends).toContain("placeCapacity");
+    expect(
+      result.openCells.find((c) => c.groupId === "g2" && c.blockId === "b1")
+        .reason
+    ).toMatch(/is taken then$/);
     const free = generateWeek({
       ...input({
         activities: [activity("archery", { location: "range", min: 0, max: 5 })]

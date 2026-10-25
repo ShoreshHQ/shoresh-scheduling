@@ -26,6 +26,10 @@ export const RELAX_ORDER = Object.freeze([
   RULE.SAME_DIVISION,
   RULE.PLACE_CAPACITY
 ]);
+/** What never-blank may bend (care plan step 7, Greg 2026-10-25): the weekly max only. Once a
+ * day, who an activity is set up for, groups at once, same division and groups that fit are
+ * limits and never give way there. */
+export const PREFERENCES = Object.freeze([RULE.WEEKLY_MAX]);
 // Most serious first, for comparing two bends.
 export const SEVERITY = [...RELAX_ORDER].reverse();
 
@@ -38,6 +42,11 @@ export const NO_FIT = "noFit";
 // already somewhere at an overlapping time. These never give way.
 export const LENGTH = "length";
 export const OVERLAP = "overlap";
+// Every activity set up for the group is taken then: full, or held for another division (a
+// limit, never a preference).
+export const FULL = "full";
+// No activity running this week is set up for the group.
+export const NONE_FOR = "noneFor";
 
 export const PRIORITY_RANK = { high: 0, low: 1 };
 

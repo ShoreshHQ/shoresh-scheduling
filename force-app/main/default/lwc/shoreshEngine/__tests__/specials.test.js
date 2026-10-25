@@ -14,7 +14,8 @@ const spec = {
   days: 3,
   blocks: [block(1), block(2), block(3)],
   activities: [
-    activity("swim", { min: 2, max: 3 }),
+    // Two bunks at once, so both can swim in day 1's one free block (once a day is a limit).
+    activity("swim", { min: 2, max: 3, atOnce: 2 }),
     activity("arts", { min: 1, max: 3 })
   ],
   // Carnival over both bunks, Period 2 and 3 of the first day.

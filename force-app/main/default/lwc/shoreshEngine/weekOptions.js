@@ -1,4 +1,5 @@
 import { streamFor } from "./random";
+import { earlyDates } from "./setup";
 import { LENGTH, OVERLAP, RULE, lexLess } from "./weekRules";
 
 /**
@@ -265,14 +266,22 @@ export const blockedBy = (st, act, g, d, b) => check(st, act, g, d, b, false);
 export const canPlace = (st, act, g, d, b) =>
   check(st, act, g, d, b, false) === null;
 
-/** Early in the week (EarlyWeekCount by EarlyWeekByDay): the last day index that counts. */
+/**
+ * Early in the week (EarlyWeekCount by EarlyWeekByDay): the last day index that counts, counted
+ * from the week's real first day (setup.js earlyDates); -1 when no day does, and the goal then
+ * weighs nothing, so it never costs a filled cell.
+ */
 export function readEarlyGoals(st) {
   st.earlyEnd = new Map();
   for (const act of st.acts) {
     if (act.early) {
+      const counts = earlyDates(
+        st.days.map((day) => day.date),
+        act.early.byDay
+      );
       let end = -1;
       st.days.forEach((day, i) => {
-        if (day.weekday != null && day.weekday <= act.early.byDay) {
+        if (counts.has(day.date)) {
           end = i;
         }
       });

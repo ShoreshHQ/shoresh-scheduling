@@ -8,12 +8,14 @@
  *                  setup fields counted here);
  *   gapIsABug      every Open cell is proven unfillable: nothing allowed is physically free there,
  *                  and (small camps) no week fills more cells within the hard limits.
- * Weekly maximums and once a day are preferences (step 7), so they never make a cell unfillable.
+ * Weekly maximums are a preference (step 7), so they never make a cell unfillable; once a day is
+ * a limit (Greg, 2026-10-25).
  */
 import { cellsOf } from "./camp";
 import { busiestOther, problems } from "./check";
 
 export const HARD = [
+  "onceADay",
   "eligibility",
   "groupsAtOnce",
   "placeCapacity",
@@ -226,6 +228,10 @@ function fitsAt(m, led, cells, act, d, g, b, isFree) {
   if (!eligible(act, group) || b + act.span > m.blocks.length) {
     return false;
   }
+  // Once a day: the group doesn't already have it that day.
+  if (cells[d][g].some((c) => c && c.kind === "A" && c.id === act.id)) {
+    return false;
+  }
   const span = [];
   for (let i = b; i < b + act.span; i++) {
     if (cells[d][g][i] || !isFree(d, g, i)) {
@@ -306,13 +312,23 @@ function bestFill(spec, m) {
   return best;
 }
 
-/** The days an early-week goal counts, from the week's real first day (settled rule). */
+/**
+ * The days an early-week goal counts, from the week's real first day (settled rule; coordinator,
+ * 2026-10-25): a week starting Saturday or Sunday starts there, any other on the Monday before.
+ */
 function earlyDays(dates, dayName) {
-  const want = WEEKDAY[dayName];
-  const last = dates.findIndex(
-    (date) => new Date(`${date}T00:00:00Z`).getUTCDay() === want
-  );
-  return last < 0 ? [] : dates.slice(0, last + 1);
+  const at = (date) => new Date(`${date}T00:00:00Z`);
+  const firstDay = at(dates[0]).getUTCDay();
+  const weekend = firstDay === 6 || firstDay === 0;
+  const start = new Date(at(dates[0]));
+  if (!weekend) {
+    start.setUTCDate(start.getUTCDate() - ((firstDay + 6) % 7));
+  }
+  const goal = new Date(start);
+  while (goal.getUTCDay() !== WEEKDAY[dayName]) {
+    goal.setUTCDate(goal.getUTCDate() + 1);
+  }
+  return dates.filter((date) => at(date) <= goal);
 }
 
 /**
@@ -389,7 +405,11 @@ export function settledRules(c, input, result, options = {}) {
         const days = earlyDays(dates, a.early.day);
         const said2 = listed(result.spreadBy, a, g);
         if (!days.length) {
-          if (!said2) {
+          // Said once for the goal (noEarlyDayBy), not per group.
+          const once = (result.noEarlyDayBy || []).some(
+            (e) => e.activityId === a.id
+          );
+          if (!said2 && !once) {
             out.visible.push(
               `${a.id} for ${g.id}: the week has no day by ${a.early.day}, unsaid`
             );

@@ -2,8 +2,17 @@
  * The rules one at a time: what Generated Schedule keeps, what it never touches, what it bends
  * (and in which order) when nothing fits, and what it reports as still to place.
  */
-import { generateWeek, reasonFor, RELAX_ORDER, RULE } from "c/shoreshEngine";
+import {
+  FULL,
+  generateWeek,
+  NONE_FOR,
+  reasonFor,
+  RELAX_ORDER,
+  RULE
+} from "c/shoreshEngine";
+import { FIELD } from "c/shoreshSchema";
 import { buildTerms } from "c/shoreshTerms";
+import { earlyDates } from "../setup";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { problems } from "./data/check";
 
@@ -14,17 +23,51 @@ const flagAt = (result, d, groupId, blockId) =>
       f.date === dateAt(d) && f.groupId === groupId && f.blockId === blockId
   );
 
-describe("never blank (Greg, 2026-10-17)", () => {
-  it("fills a cell no activity is set up for, flagged with who it's set up for", () => {
+// Care plan step 7 (Greg, 2026-10-25): never-blank bends only preferences (weekly max, then once a
+// day), never who an activity is for or a physical limit; a cell nothing allowed fits says why.
+const openAt = (result, d, groupId, blockId) =>
+  result.openCells.find(
+    (c) =>
+      c.date === dateAt(d) && c.groupId === groupId && c.blockId === blockId
+  );
+
+/** A week where every lock is a kept cell: its dots are checkWeek's words for a hand edit. */
+const handEdited = (spec) =>
+  run({
+    ...spec,
+    locks: (spec.cells || []).map((c) => ({
+      date: dateAt(c.day),
+      groupId: c.group,
+      blockId: c.block
+    }))
+  });
+
+describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
+  it("never places an activity the group isn't set up for: the cell stays Open, saying so", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
       activities: [activity("swim", { eligible: ["g2"], atOnce: null })]
     });
-    expect(at(result, 0, "g1", 0)).toBe("swim");
-    expect(flagAt(result, 0, "g1", "b0")).toMatchObject({
-      bends: [RULE.ELIGIBILITY],
-      reason: "Not set up for Bunk g1"
+    expect(at(result, 0, "g1", 0)).toBeNull();
+    expect(flagAt(result, 0, "g1", "b0")).toBeUndefined();
+    expect(openAt(result, 0, "g1", "b0").reason).toBe(
+      "No activity this week is set up for Bunk g1"
+    );
+  });
+
+  it("never bends who an activity is for, even when something else allowed is full", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      activities: [
+        activity("swim", { atOnce: 1 }),
+        activity("arts", { eligible: ["g2"], atOnce: null })
+      ]
     });
+    // g2 takes arts; swim goes to g1. Nothing else may go anywhere.
+    expect(result.flags).toEqual([]);
+    expect(result.openCells).toEqual([]);
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(at(result, 0, "g2", 0)).toBe("arts");
   });
 
   it("goes over a weekly limit before leaving a cell blank", () => {
@@ -42,12 +85,26 @@ describe("never blank (Greg, 2026-10-17)", () => {
     });
   });
 
-  it("repeats an activity in a day before leaving a cell blank", () => {
+  it("never repeats an activity in a day: the cell stays Open, saying so (Greg, 2026-10-25)", () => {
     const result = run({
       blocks: [block(0), block(1)],
       activities: [activity("swim")]
     });
-    // Twice in a day dots both.
+    expect(result.flags).toEqual([]);
+    expect(result.openCells.map((c) => c.reason)).toEqual([
+      "Everything for Bunk g1 is taken then"
+    ]);
+  });
+
+  it("a hand edit twice in a day is dotted on both", () => {
+    const result = handEdited({
+      blocks: [block(0), block(1)],
+      activities: [activity("swim")],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "swim" },
+        { day: 0, group: "g1", block: "b1", act: "swim" }
+      ]
+    });
     expect(result.flags.map((f) => f.bends)).toEqual([
       [RULE.ONCE_A_DAY],
       [RULE.ONCE_A_DAY]
@@ -55,34 +112,105 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
-  it("puts one group too many at an activity before leaving a cell blank, in camp words", () => {
+  it("never puts one group too many at an activity: the cell stays Open, everything taken, in camp words", () => {
     const result = generateWeek({
       ...camp({
         groups: [group("g1"), group("g2")],
         activities: [activity("swim", { atOnce: 1 })]
       }),
       terms: buildTerms([
-        { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
+        { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
+        {
+          term: "Activity",
+          singular: "Peulah",
+          plural: "Peulot",
+          isCustom: true
+        }
       ])
     });
-    expect(result.flags).toHaveLength(2);
-    expect(result.flags[0]).toMatchObject({
-      bends: [RULE.GROUPS_AT_ONCE],
-      reason: "Over its limit of 1 Bunk at once"
-    });
+    expect(result.flags).toEqual([]);
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
+    ]);
   });
 
-  it("over-fills a place last, naming the place", () => {
+  it("never over-fills a place", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
       locations: [{ id: "pool", name: "Pool", fit: 1 }],
       activities: [activity("swim", { atOnce: null, location: "pool" })]
     });
-    expect(result.flags.map((f) => f.bends)).toEqual([
-      [RULE.PLACE_CAPACITY],
-      [RULE.PLACE_CAPACITY]
+    expect(result.flags).toEqual([]);
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
     ]);
-    expect(result.flags[0].reason).toBe("More groups at Pool than fit");
+  });
+
+  it("never shares a same-division activity across divisions", () => {
+    const result = run({
+      groups: [group("g1"), group("g2", { division: "div2" })],
+      activities: [activity("swim", { atOnce: null, sameDivision: true })]
+    });
+    expect(result.flags).toEqual([]);
+    // g2 has room but the activity is held for g1's division: "taken" is true of both.
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(result.openCells).toEqual([
+      {
+        date: dateAt(0),
+        groupId: "g2",
+        blockId: "b0",
+        reason: "Everything for Bunk g2 is taken then"
+      }
+    ]);
+  });
+
+  it("counts other programs as full: the cell stays Open", () => {
+    const result = run({
+      blocks: [block(0)],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          groups: 1,
+          locationId: "pool",
+          names: ["Teen swim"]
+        }
+      ]
+    });
+    expect(result.flags).toEqual([]);
+    expect(openAt(result, 0, "g1", "b0").reason).toBe(
+      "Everything for Bunk g1 is taken then"
+    );
+  });
+
+  it("goes over the weekly max before leaving a cell Open, though a limit stops everything else", () => {
+    const result = run({
+      days: 2,
+      groups: [group("g1"), group("g2")],
+      activities: [
+        activity("swim", { max: 1, atOnce: null }),
+        activity("arts", { atOnce: 1, max: null })
+      ]
+    });
+    expect(result.openCells).toEqual([]);
+    expect(
+      result.flags.every((f) => f.bends.every((r) => r === RULE.WEEKLY_MAX))
+    ).toBe(true);
   });
 
   it("names what another program is doing at the place, and says so for groups at once", () => {
@@ -93,19 +221,22 @@ describe("never blank (Greg, 2026-10-17)", () => {
       groups: 1,
       ...extra
     });
-    const placed = run({
+    // A hand edit (kept): never-blank no longer bends these limits itself.
+    const placed = handEdited({
       blocks: [block(0)],
       locations: [{ id: "pool", name: "Pool", fit: 1 }],
       activities: [activity("swim", { atOnce: null, location: "pool" })],
-      otherPrograms: [other({ locationId: "pool", names: ["Teen swim"] })]
+      otherPrograms: [other({ locationId: "pool", names: ["Teen swim"] })],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "swim" }]
     });
     expect(placed.flags.find((f) => f.date === dateAt(0)).reason).toBe(
       "More groups at Pool than fit, in use by Teen swim"
     );
-    const atOnce = run({
+    const atOnce = handEdited({
       blocks: [block(0)],
       activities: [activity("swim", { atOnce: 1 })],
-      otherPrograms: [other({ activityId: "swim" })]
+      otherPrograms: [other({ activityId: "swim" })],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "swim" }]
     });
     expect(atOnce.flags.find((f) => f.date === dateAt(0)).reason).toBe(
       "Over its limit of 1 group at once, with another program"
@@ -137,12 +268,13 @@ describe("never blank (Greg, 2026-10-17)", () => {
     });
     // Swim runs Period 1 and 2 at the Pool (fits 1); Teen swim is there in Period 1, Lunch and
     // something the user can't read in Period 2.
-    const placed = run({
+    const placed = handEdited({
       blocks: [block(0), block(1)],
       locations: [{ id: "pool", name: "Pool", fit: 1 }],
       activities: [
         activity("swim", { atOnce: null, location: "pool", span: 2 })
       ],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "swim" }],
       otherPrograms: [
         other("08:00", "08:45", { locationId: "pool", names: ["Teen swim"] }),
         other("09:00", "09:45", { locationId: "pool", names: ["Lunch"] }),
@@ -164,11 +296,15 @@ describe("never blank (Greg, 2026-10-17)", () => {
       "More groups at Pool than fit, in use by Lunch"
     ]);
     // Two bunks swimming both blocks (one at a time); another program swims in Period 1 only.
-    const atOnce = run({
+    const atOnce = handEdited({
       groups: [group("g1"), group("g2")],
       blocks: [block(0), block(1)],
       activities: [activity("swim", { atOnce: 1, span: 2 })],
-      otherPrograms: [other("08:00", "08:45", { activityId: "swim" })]
+      otherPrograms: [other("08:00", "08:45", { activityId: "swim" })],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "swim" },
+        { day: 0, group: "g2", block: "b0", act: "swim" }
+      ]
     });
     expect([
       ...new Set(
@@ -179,7 +315,7 @@ describe("never blank (Greg, 2026-10-17)", () => {
 
   // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
   // exactly that rule there. Taking them away one at a time walks the order rules give way in.
-  describe("rules give way in order: weekly max, once a day, who it's set up for, groups at once, same division, the place", () => {
+  describe("only the weekly max gives way; nothing else ever", () => {
     const candidates = {
       [RULE.WEEKLY_MAX]: activity("x", { max: 0, atOnce: null }),
       [RULE.ONCE_A_DAY]: activity("y", { max: null, atOnce: null }),
@@ -214,16 +350,26 @@ describe("never blank (Greg, 2026-10-17)", () => {
       }))
     });
 
-    it.each(RELAX_ORDER.map((rule, i) => [rule, RELAX_ORDER.slice(i)]))(
+    const PREFERENCE = [RULE.WEEKLY_MAX];
+    const ways = RELAX_ORDER.map((rule, i) => [rule, RELAX_ORDER.slice(i)]);
+    it.each(ways.filter(([rule]) => PREFERENCE.includes(rule)))(
       "%s gives way when it is the least serious left",
       (rule, rules) => {
         // Activities the kept cells name must exist even when they aren't candidates any more;
         // they are kept as they are.
-        const s = spec(rules);
-        const result = run(s);
-        const flag = flagAt(result, 0, "g1", "b0");
+        const flag = flagAt(run(spec(rules)), 0, "g1", "b0");
         expect(flag.bends).toEqual([rule]);
         expect(flag.activityId).toBe(candidates[rule].id);
+      }
+    );
+    it.each(ways.filter(([rule]) => !PREFERENCE.includes(rule)))(
+      "%s never gives way: the cell stays Open, saying everything is taken then",
+      (rule, rules) => {
+        const result = run(spec(rules));
+        expect(flagAt(result, 0, "g1", "b0")).toBeUndefined();
+        expect(openAt(result, 0, "g1", "b0").reason).toBe(
+          "Everything for Bunk g1 is taken then"
+        );
       }
     );
   });
@@ -1113,6 +1259,144 @@ describe("other programs count against capacity (G5 supplies them)", () => {
   });
 });
 
+describe("a blank setup field counts as 1, and is said (care plan step 1)", () => {
+  const blanked = (spec, { atOnce = [], fit = [] }) => {
+    const input = camp(spec);
+    for (const r of input.activities) {
+      if (atOnce.includes(r.Id)) {
+        r[FIELD.Activity.GroupsAtOnce] = null;
+        r[FIELD.Activity.NoGroupLimit] = false;
+      }
+    }
+    for (const r of input.locations) {
+      if (fit.includes(r.Id)) {
+        r[FIELD.Location.GroupsThatFit] = null;
+      }
+    }
+    return generateWeek(input);
+  };
+
+  it("a blank groups at once: one group at a time, never blocking the build, and a line naming it", () => {
+    const result = blanked(
+      {
+        groups: [group("g1"), group("g2")],
+        activities: [activity("arts", { name: "Arts" })]
+      },
+      { atOnce: ["arts"] }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.setupNotes).toEqual([
+      "Arts: Groups at once is blank, so it counts as 1"
+    ]);
+    expect(
+      [at(result, 0, "g1", 0), at(result, 0, "g2", 0)].filter(Boolean)
+    ).toEqual(["arts"]);
+    expect(result.flags).toEqual([]);
+  });
+
+  it("a blank groups that fit: one group at the place, a line naming the place", () => {
+    const result = blanked(
+      {
+        groups: [group("g1"), group("g2")],
+        locations: [{ id: "field", name: "Field", fit: 3 }],
+        activities: [activity("sports", { atOnce: null, location: "field" })]
+      },
+      { fit: ["field"] }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.setupNotes).toEqual([
+      "Field: Groups that fit is blank, so it counts as 1"
+    ]);
+    expect(result.openCells).toHaveLength(1);
+  });
+
+  it("says nothing of a blank place no activity this week uses", () => {
+    const result = blanked(
+      {
+        locations: [{ id: "shed", name: "Shed", fit: 2 }],
+        activities: [activity("swim", { atOnce: null })]
+      },
+      { fit: ["shed"] }
+    );
+    expect(result.setupNotes).toEqual([]);
+  });
+
+  it("says nothing when every field is set, or the activity has no group limit", () => {
+    const result = run({ activities: [activity("swim", { atOnce: null })] });
+    expect(result.setupNotes).toEqual([]);
+  });
+});
+
+describe("early-week goals count from the week's real first day (care plan)", () => {
+  const goal = (day, count = 1) =>
+    activity("climb", { name: "Climbing", early: { count, day }, max: null });
+
+  it("a Sunday-start week's Sunday counts before its Monday", () => {
+    // 2026-07-05 is a Sunday; the week runs Sunday to Thursday.
+    const days = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
+    expect([...earlyDates(days, 1)]).toEqual(["2026-07-05", "2026-07-06"]);
+    const result = run({
+      days,
+      blocks: [block(0)],
+      activities: [goal("Monday", 2), activity("arts", { max: null })]
+    });
+    expect(at(result, 0, "g1", 0)).toBe("climb");
+    expect(at(result, 1, "g1", 0)).toBe("climb");
+    expect(result.spread).toEqual([]);
+  });
+
+  it("a Saturday-start week counts Saturday to Tuesday for a goal by Tuesday", () => {
+    // Saturday 2026-07-04 to Friday 2026-07-10, a changeover camp.
+    const days = [4, 5, 6, 7, 8, 9, 10].map(
+      (n) => `2026-07-${String(n).padStart(2, "0")}`
+    );
+    expect([...earlyDates(days, 2)]).toEqual([
+      "2026-07-04",
+      "2026-07-05",
+      "2026-07-06",
+      "2026-07-07"
+    ]);
+  });
+
+  it("a goal by Sunday in a Monday week counts every day to Sunday", () => {
+    const days = [0, 1, 2, 3, 4, 5, 6].map(dateAt);
+    expect(earlyDates(days, 7).size).toBe(7);
+    expect([...earlyDates(["2026-07-05", ...days], 7)]).toEqual(["2026-07-05"]);
+  });
+
+  it("a weekday missing from the week still counts the days before it", () => {
+    // Monday, Wednesday, Thursday: a goal by Tuesday counts Monday.
+    expect([...earlyDates([dateAt(0), dateAt(2), dateAt(3)], 2)]).toEqual([
+      dateAt(0)
+    ]);
+  });
+
+  it("a Monday-Thursday week counts every day for a goal by Friday", () => {
+    const days = [0, 1, 2, 3].map(dateAt);
+    expect(earlyDates(days, 5).size).toBe(4);
+  });
+
+  it("a week with no day by then says so once for the goal, and costs nothing", () => {
+    // Wednesday to Friday: no day on or before Tuesday.
+    const days = [2, 3, 4].map(dateAt);
+    expect(earlyDates(days, 2).size).toBe(0);
+    const result = run({
+      days,
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0)],
+      activities: [goal("Tuesday", 2), activity("arts", { max: null })]
+    });
+    expect(result.noEarlyDay).toEqual([
+      "Climbing: this week has no day by Tuesday"
+    ]);
+    expect(result.noEarlyDayBy).toEqual([
+      { activityId: "climb", byDay: "Tuesday" }
+    ]);
+    expect(result.spread).toEqual([]);
+    expect(result.openCells).toEqual([]);
+  });
+});
+
 describe("soft goals and what is still to place", () => {
   it("places an early-in-the-week goal by its day (by Tuesday counts Tuesday)", () => {
     const result = run({
@@ -1340,7 +1624,9 @@ describe("the hover reasons, shared with Manual Build", () => {
       { ...cell, placeName: null },
       "With another Edah at the same time"
     ],
-    [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"]
+    [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"],
+    [FULL, cell, "Everything for Bunk 3 is taken then"],
+    [NONE_FOR, cell, "No activity this week is set up for Bunk 3"]
   ])("%s: %j", (rule, details, words) => {
     expect(reasonFor(rule, details)).toBe(words);
   });
@@ -1358,10 +1644,14 @@ describe("the hover reasons, shared with Manual Build", () => {
   });
 
   it("is what the engine puts on a flagged cell", () => {
-    const result = run({
+    const result = handEdited({
       groups: [group("g1"), group("g2")],
       locations: [{ id: "pool", name: "Pool", fit: 1 }],
-      activities: [activity("swim", { atOnce: null, location: "pool" })]
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "swim" },
+        { day: 0, group: "g2", block: "b0", act: "swim" }
+      ]
     });
     expect(result.flags[0].reason).toBe(
       reasonFor(RULE.PLACE_CAPACITY, { placeName: "Pool" })
