@@ -406,7 +406,17 @@ export function settledRules(c, input, result, options = {}) {
       }
     }
   }
-  const words = JSON.stringify(result);
+  // Every line of words the result holds, anywhere in it.
+  const lines = [];
+  const collect = (v) => {
+    if (typeof v === "string") {
+      lines.push(v);
+    } else if (v && typeof v === "object") {
+      Object.values(v).forEach(collect);
+    }
+  };
+  collect({ ...result, days: undefined });
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const id of [
     ...((spec.blank || {}).atOnce || []),
     ...((spec.blank || {}).fit || [])
@@ -414,13 +424,43 @@ export function settledRules(c, input, result, options = {}) {
     const name = (
       actsById.get(id) || (spec.locations || []).find((l) => l.id === id)
     ).name;
-    if (!new RegExp(`${name}[^"]*blank|blank[^"]*${name}`, "i").test(words)) {
+    const named = new RegExp(`\\b${escape(name)}\\b`);
+    if (!lines.some((l) => named.test(l) && /\bblank\b/i.test(l))) {
       out.visible.push(`${name}: a blank setup field, unsaid`);
     }
   }
 
+  // A cell of a placement the engine made that bends a hard limit.
+  function bentAt(d, g, b) {
+    const row = m.after[d][g];
+    if (!m.free(d, g, b) || !row[b]) {
+      return false;
+    }
+    let s = b;
+    while (!row[s].head) {
+      s--;
+    }
+    return result.flags.some(
+      (f) =>
+        f.date === input.days[d].dateValue &&
+        f.groupId === g &&
+        f.blockId === m.blocks[s].id &&
+        f.bends.some((r) => HARD.includes(r))
+    );
+  }
+
   // Gap is a bug: every Open engine cell has nothing allowed physically free there.
-  const led = ledger(full, m, m.after);
+  // Room is judged without the engine's own placements that break a hard limit: a bent
+  // placement holds no room a cell could be refused for.
+  const legal = m.after.map((day, d) =>
+    Object.fromEntries(
+      Object.entries(day).map(([g, row]) => [
+        g,
+        row.map((cell, b) => (cell && bentAt(d, g, b) ? null : cell))
+      ])
+    )
+  );
+  const led = ledger(full, m, legal);
   let filled = 0;
   for (const day of m.days) {
     for (const g of day.groups) {
@@ -431,18 +471,7 @@ export function settledRules(c, input, result, options = {}) {
         }
         const cell = m.after[day.d][g.id][b];
         if (cell) {
-          let s = b;
-          while (!m.after[day.d][g.id][s].head) {
-            s--;
-          }
-          const bent = result.flags.some(
-            (f) =>
-              f.date === day.date &&
-              f.groupId === g.id &&
-              f.blockId === m.blocks[s].id &&
-              f.bends.some((r) => HARD.includes(r))
-          );
-          filled += bent ? 0 : 1;
+          filled += bentAt(day.d, g.id, b) ? 0 : 1;
           continue;
         }
         const could = m.acts.filter((a) =>
@@ -458,7 +487,11 @@ export function settledRules(c, input, result, options = {}) {
   }
   if (options.exhaustive) {
     const best = bestFill(full, m);
-    if (best != null && best > filled) {
+    if (best == null) {
+      out.gapIsABug.push(
+        "the exhaustive search ran out of budget: no proof either way"
+      );
+    } else if (best > filled) {
       out.gapIsABug.push(
         `filled ${filled} cells within the hard limits; a week exists that fills ${best}`
       );

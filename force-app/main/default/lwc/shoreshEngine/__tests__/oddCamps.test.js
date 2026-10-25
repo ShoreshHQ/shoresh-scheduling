@@ -9,6 +9,7 @@
  * pinned exactly below, so a new break, or a changed one, fails.
  */
 import { generateWeek } from "c/shoreshEngine";
+import { cellsOf } from "./data/camp";
 import { inputOf, ODD_CAMPS } from "./data/oddCamps";
 import { settledRules } from "./data/settledRules";
 
@@ -86,13 +87,54 @@ const RULES = {
   gapIsABug: "leaves no cell Open that something allowed could fill"
 };
 
-const reversed = (input) =>
-  Object.fromEntries(
-    Object.entries(input).map(([k, v]) => [
-      k,
-      Array.isArray(v) && k !== "days" ? [...v].reverse() : v
-    ])
+/**
+ * The same camp with every list in reverse: records, locks, other programs, and within each day
+ * its groups (with their rows) and its items (rows renumbered to match). Days and blocks keep
+ * their order: that order is the week itself.
+ */
+function reversed(input) {
+  const out = {};
+  for (const [k, v] of Object.entries(input)) {
+    out[k] = Array.isArray(v) && k !== "days" ? [...v].reverse() : v;
+  }
+  out.days = input.days.map((day) => {
+    const n = day.items.length;
+    const renumber = (token) => {
+      if (!token || token === "^") {
+        return token;
+      }
+      return String(n + 1 - Number(token));
+    };
+    return {
+      ...day,
+      groups: [...day.groups].reverse(),
+      items: [...day.items].reverse(),
+      rows: [...day.rows]
+        .reverse()
+        .map((row) => String(row).split(",").map(renumber).join(","))
+    };
+  });
+  return out;
+}
+
+/**
+ * A week as what it says, whatever order the grid lists groups and items in: each day's cells
+ * by group, and every list in the result (flags, lines, open cells) as a set.
+ */
+const asCells = (result) => {
+  const out = {};
+  for (const [k, v] of Object.entries(result)) {
+    out[k] = Array.isArray(v)
+      ? v.map((x) => JSON.stringify(x)).sort()
+      : JSON.stringify(v);
+  }
+  out.days = cellsOf(result.days).map((day) =>
+    Object.keys(day)
+      .sort()
+      .map((g) => [g, day[g]])
   );
+  return JSON.stringify(out);
+};
 
 const built = new Map();
 function check(c) {
@@ -117,7 +159,7 @@ describe.each(ODD_CAMPS.map((c) => [c.name, c]))("odd camp: %s", (name, c) => {
     const { result } = check(c);
     const again = JSON.stringify(generateWeek(inputOf(c)));
     expect(again).toBe(JSON.stringify(result));
-    expect(JSON.stringify(generateWeek(reversed(inputOf(c))))).toBe(again);
+    expect(asCells(generateWeek(reversed(inputOf(c))))).toBe(asCells(result));
   });
 
   for (const [rule, words] of Object.entries(RULES)) {
