@@ -308,24 +308,29 @@ private class RootsTableTest {
       Assert.isNotNull(table.latestVersion);
       Assert.areEqual(camp.ids.get('Week 2'), table.latestVersion.weekId);
 
-      Assert.areEqual(RootsSeats.SEAT_ROWS, table.seats.size());
-      Assert.areEqual('Activity 0', table.seats[0].name);
-      Assert.areEqual(12, table.seats[0].seats);
-      // The most it holds at any one time: 10 in Period 1, not 13 over the day.
-      Assert.areEqual(10, table.seats[0].taken);
-      Assert.areEqual(6, table.seats[1].minimum);
-      Assert.areEqual(5, table.seats[1].taken);
-
-      // The hand: the one offering kept below its minimum (5 of 6 at its only time), with the
-      // run's set and week; and no week close at hand outside the season.
-      Assert.areEqual(1, table.shortSeats.size());
-      Assert.areEqual('Activity 1', table.shortSeats[0].name);
-      Assert.areEqual(5, table.shortSeats[0].fewest);
-      Assert.areEqual(6, table.shortSeats[0].minimum);
-      Assert.areEqual(camp.ids.get('Week 2'), table.seatsWeekId);
-      Assert.isNotNull(table.seatsSetId);
-      Assert.isTrue(table.soonWeekIds.isEmpty());
+      assertSeats(table, camp);
     }
+  }
+
+  /** The seats card's offerings, and for the hand the ones kept below their minimum. */
+  private static void assertSeats(RootsTable.Table table, Camp camp) {
+    Assert.areEqual(RootsSeats.SEAT_ROWS, table.seats.size());
+    Assert.areEqual('Activity 0', table.seats[0].name);
+    Assert.areEqual(12, table.seats[0].seats);
+    // The most it holds at any one time: 10 in Period 1, not 13 over the day.
+    Assert.areEqual(10, table.seats[0].taken);
+    Assert.areEqual(6, table.seats[1].minimum);
+    Assert.areEqual(5, table.seats[1].taken);
+
+    // The hand: the one offering kept below its minimum (5 of 6 at its only time), with the
+    // run's set and week; and no week close at hand outside the season.
+    Assert.areEqual(1, table.shortSeats.size());
+    Assert.areEqual('Activity 1', table.shortSeats[0].name);
+    Assert.areEqual(5, table.shortSeats[0].fewest);
+    Assert.areEqual(6, table.shortSeats[0].minimum);
+    Assert.areEqual(camp.ids.get('Week 2'), table.seatsWeekId);
+    Assert.isNotNull(table.seatsSetId);
+    Assert.isTrue(table.soonWeekIds.isEmpty());
   }
 
   @IsTest
