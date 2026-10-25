@@ -52,6 +52,9 @@ import {
 const REGION_WORK = 2000;
 const DAY_WORK = 60000;
 const POLISH_WORK = 2000;
+// The first try at a fuller day, in the order that finds the fills leaving fewest short: 99% of
+// fuller days are found within this; past it, the proving order takes over.
+const FIND_WORK = 20000;
 const MINIMUM_WORK = 5000;
 const TOTAL_WORK = 2000000;
 // And the ceiling on time, whatever the camp's size: cells looked at over the whole build. About
@@ -421,14 +424,24 @@ function sessionsMost(span, caps, starts, most) {
  * best arrangement found in (or the original back) and returns { improved, exhausted, moves }.
  * apply false: only asks whether one exists; the week is left as it was. A generator: it pauses
  * every PAUSE_EVERY steps, yielding `at` (how far the build is) for the screen. minimums: the second
- * pass (as many cells, fewer short, no minimum met given up). spansFirst: branch first where a
+ * pass (as many cells, fewer short, no minimum met given up). split: decide a multi-block
+ * activity one start at a time (it starts here, or not), the order that proves days soonest.
+ * spansFirst: branch first where a
  * multi-block activity could start.
  */
 function* solve(
   st,
   d,
   keys,
-  { guard, budget, at, apply = true, minimums = false, spansFirst = true }
+  {
+    guard,
+    budget,
+    at,
+    apply = true,
+    minimums = false,
+    spansFirst = true,
+    split = false
+  }
 ) {
   // Placements that reach outside the cells searched stay where they are.
   const inside = new Set(keys);
@@ -490,9 +503,13 @@ function* solve(
     }
     return best ? best.filled : filledBefore + 1;
   };
+  // Among equally full days a filling search also weighs minimums (below), which can still get
+  // better further down a branch, so only the bare question (no guard) prunes on bends and
+  // changes.
   const pruned = (ub) =>
     ub < need() ||
     (!minimums &&
+      !guard &&
       best &&
       ub === best.filled &&
       !lexLess([bends, changes], [best.bends, best.changes]));
@@ -742,10 +759,18 @@ function* solve(
       }
     }
     const span =
-      pick && spansFirst
+      pick && spansFirst && split
         ? optsOf.get(pick).find((o) => o.act.span > 1) || null
         : null;
     return { forced, ub, pick, span, opts: pick ? optsOf.get(pick) : [] };
+  }
+
+  // Of equally full days: fewer groups short of a minimum, fewer sessions short, fewer weekly-max
+  // bends, then fewest cells changed (missed sessions matter most, Greg).
+  function rankNow() {
+    return guard
+      ? [...shortfall(st, groupsIn).count, bends, changes]
+      : [bends, changes];
   }
 
   function leaf() {
@@ -782,12 +807,13 @@ function* solve(
       (!guard || !worseShort(shortfall(st, groupsIn), shortBefore)) &&
       (!best ||
         filled > best.filled ||
-        lexLess([bends, changes], [best.bends, best.changes]))
+        (filled === best.filled && lexLess(rankNow(), best.rank)))
     ) {
       best = {
         filled,
         bends,
         changes,
+        rank: rankNow(),
         // Without the guard: who the fuller day would leave short, and of what.
         cost: guard ? null : costOf(shortfall(st, groupsIn), shortBefore),
         placed: vars
@@ -1125,13 +1151,22 @@ function* fillDay(st, d, at, watch) {
     watch.now = { step: 8, dayIndex: d, groupId: null, blockId: null };
     yield at;
     const all = st.freeByDay[d].map((s) => st.keyOf(s));
+    // The order that finds the fills that leave fewest short first; when it can't settle the
+    // day, the order that proves days soonest; then fewest options first throughout.
     let r = yield* solve(st, d, all, {
       guard: true,
-      budget: Math.min(DAY_WORK, st.searchWorkLeft),
+      budget: Math.min(FIND_WORK, st.searchWorkLeft),
       at
     });
     if (!r.improved && !r.exhausted && !outOfWork(st)) {
-      // Out of work with no answer: the same search again, fewest options first throughout.
+      r = yield* solve(st, d, all, {
+        guard: true,
+        budget: Math.min(DAY_WORK, st.searchWorkLeft),
+        at,
+        split: true
+      });
+    }
+    if (!r.improved && !r.exhausted && !outOfWork(st)) {
       r = yield* solve(st, d, all, {
         guard: true,
         budget: Math.min(DAY_WORK, st.searchWorkLeft),
@@ -1151,7 +1186,8 @@ function* fillDay(st, d, at, watch) {
         guard: false,
         budget: Math.min(DAY_WORK, st.searchWorkLeft),
         at,
-        apply: false
+        apply: false,
+        split: true
       });
       if (relaxed.improved) {
         why = MIN_COST;
