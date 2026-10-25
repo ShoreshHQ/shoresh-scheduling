@@ -97,15 +97,21 @@ public with sharing class SeasonTriggerHandler {
           WITH SYSTEM_MODE
         ]
       );
-      // Schedules point at the season's weeks (restrict-delete); their days go with them.
-      clear(
-        [
-          SELECT Id
-          FROM Schedule__c
-          WHERE Program__r.Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
+      // Schedules point at the season's weeks (restrict-delete); their days go with them. The
+      // season's imported weeks go too: they are kept only while their season is (PublishedGuard).
+      PublishedGuard.allowImport();
+      try {
+        clear(
+          [
+            SELECT Id
+            FROM Schedule__c
+            WHERE Program__r.Season__c IN :deletable
+            WITH SYSTEM_MODE
+          ]
+        );
+      } finally {
+        PublishedGuard.doneImport();
+      }
       // Special dates point at the season's weeks and special days and events; plans at the
       // special days and events; special events at its locations. Clearing the dates first
       // means no special event is refused for still being on a day.

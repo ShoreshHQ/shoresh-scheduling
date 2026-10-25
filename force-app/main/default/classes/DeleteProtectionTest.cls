@@ -28,6 +28,36 @@ private class DeleteProtectionTest {
   }
 
   @IsTest
+  static void aSeasonWithAnImportedWeekCanBeDeleted() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Program__c program = [
+      SELECT Id
+      FROM Program__c
+      WHERE Season__c = :season.Id
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ];
+    Week__c week = [
+      SELECT Id
+      FROM Week__c
+      WHERE Season__c = :season.Id
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ];
+    ShoreshTestData.version(
+      program.Id,
+      week.Id,
+      'Imported from last-summer.xlsx'
+    );
+
+    Database.delete(season, AccessLevel.SYSTEM_MODE);
+
+    Assert.areEqual(0, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
+    Assert.areEqual(0, [SELECT COUNT() FROM Schedule__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
   static void deletingOneSeasonLeavesTheOtherAlone() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c doomed = ShoreshTestData.fullSeason(camp.Id);

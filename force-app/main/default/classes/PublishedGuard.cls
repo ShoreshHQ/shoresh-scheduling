@@ -74,6 +74,7 @@ public with sharing class PublishedGuard {
     List<Schedule__c> refused = new List<Schedule__c>();
     List<Schedule__c> shown = new List<Schedule__c>();
     List<String> whats = new List<String>();
+    Set<Id> importRefused = new Set<Id>();
     // Shoresh's own publish, unpublish and rename (allow()) are trusted here too.
     if (importAllowed == 0 && allowed == 0) {
       for (Schedule__c schedule : news) {
@@ -89,6 +90,7 @@ public with sharing class PublishedGuard {
           refused.add(schedule);
           shown.add(old);
           whats.add('importChanged');
+          importRefused.add(schedule.Id);
         }
       }
     }
@@ -98,7 +100,7 @@ public with sharing class PublishedGuard {
     }
     for (Schedule__c schedule : news) {
       Schedule__c old = oldMap == null ? null : oldMap.get(schedule.Id);
-      if (old != null && isImported(old) && refused.contains(schedule)) {
+      if (importRefused.contains(schedule.Id)) {
         continue;
       }
       if (isPublished(old)) {
