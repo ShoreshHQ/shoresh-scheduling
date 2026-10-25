@@ -1,11 +1,12 @@
 # 0020: Roots, the canasta table
 
 Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
-(2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps. Design source: Greg's
+(2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps; slice
+R2 (2026-10-24): the "needs a look" hand (choice 10). Design source: Greg's
 approval, wiki `projects/shoresh-scheduling-sf.md` decisions 60 to 68 (68: "this is it"), and the
 approved working mock-up `~/Dev/Shoresh/design-research/roots-approved/` (`needs-a-look.html`,
 `table.css`, `table.js`), which is the spec for look, layout and motion. Replaces ADR 0003 choice 4
-(the desktop's Roots home) for everything but "Needs your attention", which slice R2 turns into the
+(the desktop's Roots home), its "Needs your attention" list included: slice R2 turns it into the
 hand. Builds on ADR 0015 (tokens, the dot field of choice 13, the raised treatment) and ADR 0003
 choice 10 (the Schedules title as a doorway).
 
@@ -60,8 +61,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      and the things' names. The week beside the name. Manual Build shows fewer groups across
      (down to one group's day) before it cuts a name, and its padlocks sit in the cell's corner,
      clear of the name; one or two groups on Generated Schedule are columns of a cell's size.
-   - **Elective seats**: the offerings of the shown week's latest run (none when that week has no
-     run, so another week's seats never pass as its own), seats as boxes, taken filled, a
+   - **Elective seats**: the offerings of the run Elective seats opens on for the shown week (the
+     latest run's set and schedule, and on them the committed run, else the latest; none when
+     that week has no run, so another week's seats never pass as its own), seats as boxes, taken filled, a
      minimum's missing seats dashed, campers past the limit as more boxes in the caution colour;
      no limit is the taken boxes and an open end (∞), and past ten campers eight boxes, how many,
      then ∞, so the row never looks like a limit. However the boxes are scaled (twenty at most),
@@ -74,7 +76,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      "Morni…"; never after "and" or "&"), and only a single word too long is cut inside it; the
      words stay 11 px, never smaller. Locations' place column widens to its names (up to half the
      card). A picture shrunk aside shows a fixed activity on a schedule whole or only its padlock,
-     and a fixed activity's name drops the padlock before it loses letters. A card shrunk aside cannot carry 11 px words, so it shows a simpler picture of the
+     and a fixed activity always looks fixed: on Fixed activities' picture its bar keeps the
+     padlock and the name is shortened instead (R2; before, R1.1 dropped the padlock when the
+     name fit only without it). A card shrunk aside cannot carry 11 px words, so it shows a simpler picture of the
      same data with one or two key words at 11.5 px or more on screen (`pictureSize`); it changes
      over once, as its size passes that point. Faces are `c/shoreshRootsFaces` (pure, the same camp
      gives the same faces) drawn by `c-shoresh-roots-glimpse` (SVG elements in its template, never
@@ -84,7 +88,8 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    has already read (`SeasonSetupController`), so they cost nothing. The rest (which weeks have a
    schedule, the two drafts' day, seats, versions) is one call, `RootsController.getTable`
    (`RootsTable`, with `RootsGlimpses` and `RootsSeats`; `with sharing`, every query `WITH USER_MODE`): eight queries whatever the size of
-   the camp, asserted by `RootsTableTest` inside `System.runAs` a scheduler, on a camp with six
+   the camp (R2 adds, from the same queries, the weeks close at hand and the offerings kept below
+   their minimum, for the hand: still eight), asserted by `RootsTableTest` inside `System.runAs` a scheduler, on a camp with six
    weeks, 28 bunks, eight time blocks, 25 activities, two drafts of five days, twenty versions
    and 40 seated campers. The names on a glimpse are those the schedule saved, so the request
    reads no camp words (the page read them once). Roots reads it each time it is shown, so coming
@@ -125,7 +130,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    from wherever it is; a card chosen while one goes home turns it round toward that card's
    screen; another screen chosen from the menu ends the journey where it is. The screens are never
    moved out of the page (ADR 0003 choice 1: unsaved typing stays), and the screen keeps focus on
-   its heading on the way out. ‹ Roots is on the rail of every screen with a card on Roots (the
+   its heading on the way out. A hand card (choice 10) travels the same way, its own face on the
+   sheet; going back from the screen it opened lands on that hand card while the hand still
+   holds it (the hand holds still until the journey is over), else on the screen's own card. ‹ Roots is on the rail of every screen with a card on Roots (the
    eleven setup lists, Camp words, Generated Schedule, Manual Build, Elective seats, Saved
    versions), right after the screen's unseen name, so Tab from the heading reaches it first.
    Screens with no card keep what they had: Import last year its own Roots, the Schedules
@@ -146,12 +153,16 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    ends), Enter opens, Escape closes it with the cursor kept on its front card (it rests closed
    until the cursor moves: an arrow, or Tab to another of its cards, opens it again, so the
    cursor never lands on a card out of sight). The glimpses and the sheet are hidden from screen
-   readers; the card's name says what it is. Roots' heading is still there for the page to focus when Roots opens
+   readers; the card's name says what it is. The hand is a group named "Needs a look"; each of
+   its cards a button named by the whole sentence (the attention list's own words, "Soccer:
+   Outdoors and has no rain plan."); the arrows move between them (round at the ends). A card
+   with the cursor that is played away hands the cursor to the next card, or, the last one, to
+   its meld's front card, the meld resting closed (as after Escape) so the card in flight lands where it was aimed. Roots' heading is still there for the page to focus when Roots opens
    from the menu. axe passes in Jest and in the browser check.
 
 8. **Reduced motion means no animation**: every placement is drawn at once, no frames are asked
    for, a card opens its screen at once and back puts the cursor on the card; the lift is
-   instant. The dot field is still, as ADR 0015 choice 13 has it.
+   instant. Hand cards are dealt and leave at once, and do not breathe. The dot field is still, as ADR 0015 choice 13 has it.
 
 9. **The table lies on the living dot field** (decision 49, ADR 0015 choice 13), made _solid_
    (`c-shoresh-dot-field solid`): its content covers it with surfaces of its own (cards, and the
@@ -159,13 +170,61 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    middle, and measures nothing; the empty table between the cards reacts to the pointer. No dot
    is ever under words.
 
-10. **Until the hand (slice R2)**: what needs attention (`setupProblems`, alphabetical, each
-    opening the screen that fixes it) lies along the bottom where the hand will go, as small raised
-    cards with the needs-a-look corner; nothing shows while all is calm (screen readers hear "All
-    clear"). The camp's workbook tools (Import last year, first for an empty camp; Download
-    worksheet; a workbook's Import a list; Re-import last year; the last import with Undo) sit in a
-    bar under a hairline, the secondary actions' place (decision 28C). Slice R2 moves what needs a
-    look into the hand.
+10. **The hand: what needs a look** (slice R2; decisions 64g, 64h, 65, 65a; the mock-up's hand).
+    Fanned along the bottom of the table (`c-shoresh-roots-hand`), each card is something that
+    genuinely needs a look in this camp (`c/shoreshRootsLooks`, pure: the same camp gives the
+    same hand). Nothing is a rule of its own; every card comes from what the app already knew:
+    - **Every signal the old "Needs your attention" list had** (`setupProblems`: the desktop's
+      Roots attention list, `docs/adr/2026-08-28-roots-home-is-a-distinct-screen.md` §3, and
+      Greg's 2026-10-16 nudges), each problem now naming its kind, and each kind gathered onto
+      one card (per elective set for offerings; one card per special day or event for the
+      special-day checks): a week outside the season, weeks sharing dates, no weeks, no
+      programs, a program with no time blocks or divisions, a division with no groups, no
+      activities, groups no activity is open to, outdoor activities with no rain plan, more
+      groups at once than the place fits, a fixed or recurring activity whose time block
+      changed, that runs in no week, whose groups are all away, or whose place is closed, a
+      special day on a weekday its week lost or whose time blocks moved, and offerings proposed
+      or with seats not filled in.
+    - **What the table already draws as missing** (choice 2; decision 29, a dashed outline is
+      what is missing): a week close at hand (under way today, or starting in the next seven
+      days) with no schedule (the Weeks card's outline bars); activities with no place, in a
+      camp that has places (a camp with none doesn't use them: desktop `readiness.js`
+      `OPTIONAL_AREAS`); a special day or event put on a day with nothing planned in it (its
+      dashed flag).
+    - **The Elective seats counter's "kept below minimum"** (ADR 0018 choice 36) for the run the
+      table shows, read in the same one request.
+      Each card says exactly what is off at a glance: its name (the one thing it is about, or the
+      screen's name in the camp's words when several are gathered), a few words ("no rain plan",
+      "not built", "one seat short", in the camp's words), and a picture drawn with the table's
+      own marks (the thing and where it should lead, dashed; outline cells; a dashed flag; seat
+      boxes with the minimum's missing seats dashed), with the needs-a-look corner. Names are cut
+      after a whole word, never smaller than 13 px. Cards lie in the menu's order of the screens
+      that fix them, so each sits below its meld; weeks not built lie in season order. A click opens the exact thing, grown out of the
+      card (choice 6): the setup screen that fixes it; a week not built opens the Schedules
+      doorway (`scheduleWeeks`, decision 61) with the cursor on that week, offering both ways to build it, since
+      picking Manual Build or Generated Schedule for the director would break the desktop's rule
+      (`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`; the mock-up opened Manual
+      Build); a special day or event opens its details and its schedule; offerings short open
+      Elective seats on the exact run counted: its set, week, schedule and the run itself
+      (`openWeek`; since that screen is drawn only while shown, the page hands it the card's run
+      as `opening`, and it starts there ahead of the season's latest run). Should that run be
+      gone by then, it opens on the set and week as before. Elective seats' own first pick on a
+      week is the same as the hand's (the latest run's schedule, then its committed run), so the
+      card's face and the run that opens never disagree.
+      **Leaving and arriving**: the hand changes only while Roots is shown and still (never behind
+      a screen or mid-journey), once this showing's table request is back, so what was dealt with
+      on another screen leaves on the next visit: the card is played onto its meld (it lifts off
+      the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). The hand takes as little height as it can (cards 196 px wide, the narrowest whose picture keeps its 11 px words, wider only on wide screens; tight margins), so with cards in hand an open meld still shows full faces at 1440 by 900 (found in shoresh-test: Activities & Events had fallen to its pictures). For that the hand also **eases aside while a meld is open** (decision 65a, the others ease aside): its cards lower until only their tops show and the table takes the room; they rise again when the meld closes. Should a later read fail, the
+      cards the table fed stay as they were (nothing is played away on a failed read). However
+      many cards there are, the hand keeps a clear margin at both ends: past what fits side by
+      side they close up and overlap, a lifted card coming to the front; the cards breathe very
+      slowly, out of step (the mock-up). **Calm**: an empty hand, a calm space with nothing drawn;
+      to a screen reader, a live "Nothing needs a look" (the app's own words, choices import).
+      The camp's workbook tools (Import last year, first for an empty camp; Download worksheet; a
+      workbook's Import a list; Re-import last year; the last import with Undo) stay in their bar
+      under a hairline below the hand, the secondary actions' place (decision 28C; the mock-up has
+      no workbook bar).
 
 11. **Tokens** (ADR 0015): the mock-up's card shadows (`--shoresh-card-rest`, `--shoresh-card-lift`,
     made of the shade and the primary's steps), its easing and lift time (`--shoresh-flow`,
@@ -174,6 +233,21 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
     instead of being cut off (the mock-up's menu). No new colour.
 
 ## Checked by
+
+R2: `shoreshRootsLooks.test.js` (every attention signal kept, each kind on one card, the table's
+missing things, weeks not built in season order whatever order they were made in, camp words, the menu's order, the same hand every time, names that fit, pictures
+in the design system's classes), `shoreshRootsHand.test.js` (dealt in, fanned, any number,
+arrows, played onto its meld, the cursor kept, taken back mid-play, reduced motion, travel
+hooks, axe), `shoreshRoots.test.js` (the hand after the table read, opening the exact thing,
+calm, holding still while away, a failed read, the sheet wearing a hand card, home to it, the
+meld settling), `shoreshCampSetup.test.js` (a hand card out and home again; the seats card opening Elective
+seats on its run's week and set, not the latest run's), `shoreshRootsFaces`
+(a fixed activity keeps its padlock), `shoreshSetupRules` (kinds), `shoreshElectiveSeats`
+(`openWeek`, and `opening` on a fresh start; the exact run, committed run A against a later run
+B (Final) and a second schedule, and a run gone), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
+queries; the run counted is the one Elective seats opens on: committed over a later Final run, then a
+newer run on the other schedule), and the browser check's hand step (dealt, opened, played away, axe) and R1.1 steps
+tightened (a name dropped from a face fails too; no overlap at all in the short window).
 
 `shoreshRoots.test.js` (melds, names in camp words, the doorway, cards opening their screens, one
 request per showing, faces from the camp's data, outlines for an empty camp, rest and open

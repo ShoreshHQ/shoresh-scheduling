@@ -308,14 +308,83 @@ private class RootsTableTest {
       Assert.isNotNull(table.latestVersion);
       Assert.areEqual(camp.ids.get('Week 2'), table.latestVersion.weekId);
 
-      Assert.areEqual(RootsSeats.SEAT_ROWS, table.seats.size());
-      Assert.areEqual('Activity 0', table.seats[0].name);
-      Assert.areEqual(12, table.seats[0].seats);
-      // The most it holds at any one time: 10 in Period 1, not 13 over the day.
-      Assert.areEqual(10, table.seats[0].taken);
-      Assert.areEqual(6, table.seats[1].minimum);
-      Assert.areEqual(5, table.seats[1].taken);
+      assertSeats(table, camp);
     }
+  }
+
+  /** The seats card's offerings, and for the hand the ones kept below their minimum. */
+  private static void assertSeats(RootsTable.Table table, Camp camp) {
+    Assert.areEqual(RootsSeats.SEAT_ROWS, table.seats.size());
+    Assert.areEqual('Activity 0', table.seats[0].name);
+    Assert.areEqual(12, table.seats[0].seats);
+    // The most it holds at any one time: 10 in Period 1, not 13 over the day.
+    Assert.areEqual(10, table.seats[0].taken);
+    Assert.areEqual(6, table.seats[1].minimum);
+    Assert.areEqual(5, table.seats[1].taken);
+
+    // The hand: the one offering kept below its minimum (5 of 6 at its only time), with the
+    // run's set and week; and no week close at hand outside the season.
+    Assert.areEqual(1, table.shortSeats.size());
+    Assert.areEqual('Activity 1', table.shortSeats[0].name);
+    Assert.areEqual(5, table.shortSeats[0].fewest);
+    Assert.areEqual(6, table.shortSeats[0].minimum);
+    Assert.areEqual(camp.ids.get('Week 2'), table.seatsWeekId);
+    Assert.isNotNull(table.seatsSetId);
+    Assert.isTrue(table.soonWeekIds.isEmpty());
+  }
+
+  @IsTest
+  static void theSeatsAreTheRunElectiveSeatsOpensOn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      Id generatedId = camp.draft('Generated');
+      Id manualId = camp.draft('Manual');
+      camp.electives(generatedId);
+      Id setId = [
+        SELECT ElectiveSet__c
+        FROM ElectiveRun__c
+        WHERE Id = :camp.runId
+      ]
+      .ElectiveSet__c;
+      // Run A is committed (one offering short); run B, a later run on the same schedule that is
+      // not the committed one, has no seats. Elective seats opens on A, so the hand counts A.
+      ElectiveRun__c later = run(camp, setId, generatedId);
+      Database.insert(later, AccessLevel.USER_MODE);
+      Test.setCreatedDate(camp.runId, Datetime.now().addDays(-2));
+      Test.setCreatedDate(later.Id, Datetime.now().addDays(-1));
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Integer queries = Limits.getQueries() - before;
+      Assert.isTrue(queries <= 8, 'Roots read with ' + queries + ' queries');
+      Assert.areEqual(camp.runId, table.seatsRunId);
+      Assert.areEqual(generatedId, table.seatsScheduleId);
+      Assert.areEqual(setId, table.seatsSetId);
+      Assert.areEqual(1, table.shortSeats.size());
+
+      // A newer run on the week's other schedule: Elective seats opens on that schedule, on
+      // which nothing is short.
+      ElectiveRun__c other = run(camp, setId, manualId);
+      Database.insert(other, AccessLevel.USER_MODE);
+      table = RootsController.getTable(camp.ids.get('Season'));
+      Test.stopTest();
+      Assert.areEqual(other.Id, table.seatsRunId);
+      Assert.areEqual(manualId, table.seatsScheduleId);
+      Assert.isTrue(table.shortSeats.isEmpty());
+    }
+  }
+
+  /** A run of Week 2 that is not the committed one. */
+  private static ElectiveRun__c run(Camp camp, Id setId, Id scheduleId) {
+    return new ElectiveRun__c(
+      Season__c = camp.ids.get('Season'),
+      Name = 'Chugim · Week 2 · Final',
+      ElectiveSet__c = setId,
+      Week__c = camp.ids.get('Week 2'),
+      Schedule__c = scheduleId,
+      Status__c = 'Final',
+      Revision__c = 1
+    );
   }
 
   @IsTest
@@ -386,6 +455,31 @@ private class RootsTableTest {
       Assert.areEqual(
         ShoreshTestData.lastSeasonIds.get('Week 3'),
         table.shownWeekId
+      );
+      // Close at hand: this week, and next week (it starts in five days).
+      Assert.areEqual(
+        new List<Id>{
+          ShoreshTestData.lastSeasonIds.get('Week 3'),
+          ShoreshTestData.lastSeasonIds.get('Week 4')
+        },
+        table.soonWeekIds
+      );
+    }
+  }
+
+  @IsTest
+  static void theFridayBeforeCampTheFirstWeekIsCloseAtHand() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Synthetic Meadow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      RootsTable.todayForTest = Date.newInstance(2026, 6, 26);
+      Test.startTest();
+      RootsTable.Table table = RootsController.getTable(season.Id);
+      Test.stopTest();
+      Assert.isNull(table.thisWeekId);
+      Assert.areEqual(
+        new List<Id>{ ShoreshTestData.lastSeasonIds.get('Week 1') },
+        table.soonWeekIds
       );
     }
   }

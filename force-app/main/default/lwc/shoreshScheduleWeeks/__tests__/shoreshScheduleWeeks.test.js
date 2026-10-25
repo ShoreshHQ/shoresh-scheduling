@@ -70,6 +70,13 @@ describe("c-shoresh-schedule-weeks (the Schedules doorway, wiki decision 61)", (
     expect(element.shadowRoot.activeElement).toBe(manual);
   });
 
+  it("puts the cursor on a week's first way to build it (Roots' hand, ADR 0020 choice 10)", async () => {
+    const element = await render();
+    expect(element.focusWeek("w2")).toBe(true);
+    expect(element.shadowRoot.activeElement).toBe(buttons(rows(element)[1])[0]);
+    expect(element.focusWeek("nope")).toBe(false);
+  });
+
   it("asks to open that schedule on that week", async () => {
     const element = await render();
     const handler = jest.fn();

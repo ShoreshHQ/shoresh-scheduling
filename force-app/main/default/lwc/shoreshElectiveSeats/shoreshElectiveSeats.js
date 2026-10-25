@@ -83,6 +83,9 @@ const ICONS = {
  */
 export default class ShoreshElectiveSeats extends LightningElement {
   @api terms;
+  // Where the screen starts when Roots' hand opened it ({ weekId, setId, scheduleId, runId }),
+  // before the latest run.
+  @api opening;
 
   _setup;
   @api
@@ -175,23 +178,80 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
   }
 
-  /** Where the screen starts: as it was, else the latest run's set and week, else the first. */
+  /**
+   * Opens on a run (Roots' hand, repo ADR 0020 choice 10: the offerings kept below their minimum
+   * are that run's): its set, week, schedule and the run itself; when that run is gone, its set
+   * and week as before. Always true: nothing here waits to change week.
+   */
+  @api
+  openWeek(weekId, setId, scheduleId, runId) {
+    const set = this.sets.some((s) => s.Id === setId) ? setId : this.setId;
+    const week = this.weeks.some((w) => w.Id === weekId) ? weekId : this.weekId;
+    const run = this.runAsked(set, week, scheduleId, runId);
+    if (
+      set !== this.setId ||
+      week !== this.weekId ||
+      (run && run.id !== this.runId)
+    ) {
+      this.setId = set;
+      this.weekId = week;
+      this.scheduleId = run ? run.scheduleId : null;
+      this.error = null;
+      this.runId = run ? run.id : null;
+      this.pickSchedule();
+      this.loadRun().catch(() => {});
+    }
+    return true;
+  }
+
+  /** The run asked for, while it is still the season's and on that set and week; else null. */
+  runAsked(setId, weekId, scheduleId, runId) {
+    return (
+      this.runs.find(
+        (r) =>
+          r.id === runId &&
+          r.setId === setId &&
+          r.weekId === weekId &&
+          r.scheduleId === scheduleId
+      ) || null
+    );
+  }
+
+  /**
+   * Where the screen starts: as it was, else where it was opened on (opening), else the latest
+   * run's set and week, else the first.
+   */
   pickStart() {
     const runs = this.runs;
     const latest = runs.length ? runs[runs.length - 1] : null;
+    const asked = this.opening || {};
     if (!this.sets.some((s) => s.Id === this.setId)) {
-      this.setId = latest
-        ? latest.setId
-        : this.sets.length
-          ? this.sets[0].Id
-          : null;
+      this.setId = this.sets.some((s) => s.Id === asked.setId)
+        ? asked.setId
+        : latest
+          ? latest.setId
+          : this.sets.length
+            ? this.sets[0].Id
+            : null;
     }
     if (!this.weeks.some((w) => w.Id === this.weekId)) {
-      this.weekId = latest
-        ? latest.weekId
-        : this.weeks.length
-          ? this.weeks[0].Id
-          : null;
+      this.weekId = this.weeks.some((w) => w.Id === asked.weekId)
+        ? asked.weekId
+        : latest
+          ? latest.weekId
+          : this.weeks.length
+            ? this.weeks[0].Id
+            : null;
+    }
+    const run = this.runAsked(
+      this.setId,
+      this.weekId,
+      asked.scheduleId,
+      asked.runId
+    );
+    if (run && !this.runId) {
+      this.scheduleId = run.scheduleId;
+      this.runId = run.id;
     }
     this.pickSchedule();
   }
@@ -199,16 +259,17 @@ export default class ShoreshElectiveSeats extends LightningElement {
   pickSchedule() {
     const options = this.scheduleOptions;
     if (!options.some((o) => o.value === this.scheduleId)) {
-      const withRun = options.find((o) =>
-        this.runs.some(
+      // The schedule of this set's latest run on the week (as Roots' hand counts it: RootsSeats).
+      const latest = this.runs
+        .filter(
           (r) =>
             r.setId === this.setId &&
             r.weekId === this.weekId &&
-            r.scheduleId === o.value
+            options.some((o) => o.value === r.scheduleId)
         )
-      );
-      this.scheduleId = withRun
-        ? withRun.value
+        .pop();
+      this.scheduleId = latest
+        ? latest.scheduleId
         : options.length
           ? options[0].value
           : null;

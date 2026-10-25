@@ -22,6 +22,7 @@ import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup"
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
+import getTable from "@salesforce/apex/RootsController.getTable";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -32,6 +33,9 @@ const pageAddress = (state) =>
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
+jest.mock("@salesforce/apex/RootsController.getTable", () => apex(), {
+  virtual: true
+});
 jest.mock(
   "@salesforce/apex/ChoicesImportController.choicesSetup",
   () => apex(),
@@ -2640,6 +2644,113 @@ describe("c-shoresh-camp-setup", () => {
       run(3000);
       await flush();
       expect(shownScreens(element)).toEqual(["roots"]);
+    });
+
+    it("a hand card's screen grows out of it; home again lands on that card while the hand holds it", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const roots = q(element, "c-shoresh-roots");
+      const hand = roots.shadowRoot.querySelector("c-shoresh-roots-hand");
+      const card = hand.shadowRoot.querySelector(
+        '[data-hand="hand:noGroups|groups"]'
+      );
+      expect(card.getAttribute("aria-label")).toBe("Juniors: No Bunks yet.");
+      card.click();
+      await flush();
+      expect(classOf(element, "groups")).toBe("screen_travel");
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+      // Home: to the hand card it left from (Groups has its own card on the table too).
+      await openScreen(element, "roots");
+      expect(hand.shadowRoot.activeElement).toBe(card);
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+      // Opened from the menu instead, it goes home to its own card.
+      await openScreen(element, "groups");
+      await openScreen(element, "roots");
+      expect(roots.shadowRoot.activeElement).toBe(
+        roots.shadowRoot.querySelector('[data-card="groups"]')
+      );
+    });
+
+    it("a week not built opens the Schedules doorway with the cursor on that week", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      getTable.mockResolvedValue({ soonWeekIds: ["w1"], builtWeekIds: [] });
+      const element = await render();
+      const hand = q(element, "c-shoresh-roots").shadowRoot.querySelector(
+        "c-shoresh-roots-hand"
+      );
+      hand.shadowRoot
+        .querySelector('[data-hand="hand:weekNotBuilt|w1"]')
+        .click();
+      await flush();
+      run(3000);
+      await flush();
+      expect(shownScreens(element)).toEqual(["scheduleWeeks"]);
+      const doorway = q(element, "c-shoresh-schedule-weeks");
+      expect(doorway.shadowRoot.activeElement.dataset.week).toBe("w1");
+      getTable.mockReset();
+    });
+
+    it("offerings short open Elective seats on that run's set and week, not the latest run's", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({
+            weeks: [
+              { Id: "w1", Name: "Week 1" },
+              { Id: "w2", Name: "Week 2" },
+              { Id: "w3", Name: "Week 3" }
+            ],
+            electives: {
+              sets: [
+                { Id: "es1", Name: "Chugim" },
+                { Id: "es2", Name: "Evening" }
+              ],
+              offerings: [],
+              linkedChoices: []
+            }
+          })
+        )
+      );
+      getTable.mockResolvedValue({
+        soonWeekIds: [],
+        builtWeekIds: ["w1", "w2", "w3"],
+        shortSeats: [{ name: "Ropes", fewest: 5, minimum: 6, seats: 12 }],
+        seatsWeekId: "w2",
+        seatsSetId: "es2",
+        seatsScheduleId: null,
+        seatsRunId: "r2"
+      });
+      // Electives were already run for Week 3: the screen alone would start there.
+      seatsSetup.mockResolvedValue({
+        runs: [{ id: "r3", setId: "es1", weekId: "w3", scheduleId: null }]
+      });
+      const element = await render();
+      expect(q(element, "c-shoresh-elective-seats")).toBeNull();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector("c-shoresh-roots-hand")
+        .shadowRoot.querySelector('[data-hand="hand:seatsShort|"]')
+        .click();
+      await flush();
+      run(3000);
+      await flush();
+      await flush();
+      expect(shownScreens(element)).toEqual(["electiveSeats"]);
+      const seats = q(element, "c-shoresh-elective-seats");
+      const picker = (id) =>
+        seats.shadowRoot.querySelector(`c-shoresh-rail-picker[data-id="${id}"]`)
+          .value;
+      expect(picker("week")).toBe("w2");
+      expect(picker("set")).toBe("es2");
+      getTable.mockReset();
     });
 
     it("another screen chosen mid-way ends the journey where it is", async () => {

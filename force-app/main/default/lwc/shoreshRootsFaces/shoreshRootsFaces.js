@@ -1331,14 +1331,8 @@ const PIC = {
     names.forEach((n, i) => {
       const y = gap / 2 + i * (bh + gap);
       shapes.push(well(0, y - gap / 2 + 2, W, gap - 4));
-      shapes.push(
-        nameWidth(n) * f > W - f * 3 && nameWidth(n) * f <= W - f
-          ? [
-              rect(0.5, y + 0.5, W - 1, bh - 1, 4, "f50 sedge"),
-              ptx(W / 2, y + bh / 2 + f * 0.36, n, "g-p", f, "middle")
-            ]
-          : lockedBar(0, y, W, bh, shorten(n, W - f * 3, f), f)
-      );
+      // A fixed thing always looks fixed: the padlock stays, and the name is shortened instead.
+      shapes.push(lockedBar(0, y, W, bh, shorten(n, W - f * 3, f), f));
     });
     return glimpse(shapes);
   },
@@ -1519,6 +1513,12 @@ const PIC = {
     return glimpse(shapes);
   }
 };
+
+/**
+ * The drawing pieces, for the hand's cards (c/shoreshRootsLooks): the same tiles, wells, dashed
+ * outlines, flags and words as the table's faces, so the hand speaks the table's language.
+ */
+export const pieces = { rect, txt, path, tile, well, dashed, flag, lock };
 
 /** A card's glimpse: its full face (f 0), or its picture with key words at f px. */
 export function glimpseOf(key, camp, f = 0) {

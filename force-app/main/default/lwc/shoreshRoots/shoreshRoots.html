@@ -69,40 +69,15 @@
         </div>
       </c-shoresh-dot-field>
 
-      <!-- Where the hand will lie (slice R2): until then, what needs attention, each item opening
-           the screen that fixes it. Nothing shows while all is calm. -->
-      <div
-        class="hand"
-        role="group"
-        aria-label="Needs your attention"
-        data-id="attention"
-      >
-        <template lwc:if={hasAttention}>
-          <template for:each={attention} for:item="row">
-            <button
-              key={row.key}
-              type="button"
-              class="hand-item"
-              data-screen={row.screen}
-              data-attention={row.key}
-              aria-label={row.ariaLabel}
-              onclick={handleOpen}
-            >
-              <span class="hand-name"
-                >{row.name}<span class="hand-tag">{row.tag}</span></span
-              >
-              <span class="hand-why">{row.why}</span>
-              <span
-                class="shoresh-look-mark hand-mark"
-                aria-hidden="true"
-              ></span>
-            </button>
-          </template>
-        </template>
-        <template lwc:else>
-          <span class="slds-assistive-text" data-id="all-clear">All clear</span>
-        </template>
-      </div>
+      <!-- The hand (slice R2, repo ADR 0020 choice 10): what needs a look, fanned along the
+           bottom; an empty hand while all is calm. -->
+      <c-shoresh-roots-hand
+        cards={hand}
+        play-to={playTo}
+        onopen={handleHandOpen}
+        onlanded={handleLanded}
+        onleftfocus={handleLeftFocus}
+      ></c-shoresh-roots-hand>
 
       <!-- The camp's workbook: secondary actions in a bar along the bottom (decision 28C). -->
       <div class="shoresh-hairline" role="presentation"></div>
@@ -166,6 +141,14 @@
     ></div>
     <div class="sheet" data-id="sheet" aria-hidden="true" hidden>
       <div class="sheet-shelf" data-id="sheet-shelf"></div>
+      <template lwc:if={travelHand}>
+        <div class="ghost hghost" data-id="ghost">
+          <c-shoresh-roots-hand-face
+            class="hface"
+            card={travelHand}
+          ></c-shoresh-roots-hand-face>
+        </div>
+      </template>
       <template lwc:if={travelCard}>
         <div class="ghost card" data-id="ghost" data-pic={travelPic}>
           <span class="face">

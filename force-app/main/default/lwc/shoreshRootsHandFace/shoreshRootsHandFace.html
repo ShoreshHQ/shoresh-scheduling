@@ -1,0 +1,15 @@
+<template>
+  <!-- A hand card's face (repo ADR 0020 choice 10): its name, the words for what is off, the
+       picture, and the needs-a-look corner. For the eye: the card's button says it all. -->
+  <span class="name" aria-hidden="true"
+    ><span class="name-text">{name}</span
+    ><template lwc:if={small}
+      ><small class="shoresh-num">{small}</small></template
+    ></span
+  >
+  <span class="off" aria-hidden="true">{off}</span>
+  <span class="glimpse">
+    <c-shoresh-roots-glimpse glimpse={glimpse}></c-shoresh-roots-glimpse>
+  </span>
+  <span class="shoresh-look-mark corner" aria-hidden="true"></span>
+</template>

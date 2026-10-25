@@ -192,76 +192,24 @@
   align-items: flex-end;
 }
 
-/* ---------- where the hand will lie (slice R2): what needs attention ---------- */
-
-.hand {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--shoresh-s2);
-  padding: var(--shoresh-s4) var(--shoresh-space-pad);
+/* A meld settles as a card from the hand lands on it (the mock-up's nudge). */
+.card[data-nudge] .face {
+  animation: nudge 0.9s var(--shoresh-flow);
 }
 
-.hand:empty {
-  display: none;
-}
-
-.hand-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-width: calc(var(--shoresh-u) * 80);
-  padding: var(--shoresh-s2) var(--shoresh-s5) var(--shoresh-s2)
-    var(--shoresh-s3);
-  border: 0;
-  border-radius: var(--shoresh-radius-piece);
-  background: var(--shoresh-color-primary-50);
-  box-shadow: var(--shoresh-card-rest);
-  color: var(--shoresh-text-1);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    transform var(--shoresh-t-lift) var(--shoresh-flow),
-    box-shadow var(--shoresh-t-lift) var(--shoresh-flow);
-}
-
-.hand-item:hover,
-.hand-item:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: var(--shoresh-card-lift);
-  outline: none;
-}
-
-.hand-item:focus-visible {
-  box-shadow: var(--shoresh-card-lift), var(--shoresh-focus-ring);
-}
-
-.hand-name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--shoresh-s2);
-  font-weight: 500;
-}
-
-.hand-tag {
-  font-family: var(--shoresh-font-mono);
-  font-size: var(--shoresh-font-size-label);
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--shoresh-text-2);
-}
-
-.hand-why {
-  color: var(--shoresh-text-2);
-}
-
-.hand-mark {
-  position: absolute;
-  top: 9px;
-  right: 9px;
+@keyframes nudge {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-7px) rotate(-0.6deg);
+  }
+  65% {
+    transform: translateY(1px);
+  }
+  100% {
+    transform: none;
+  }
 }
 
 /* ---------- the workbook's bar ---------- */
@@ -334,18 +282,24 @@
   transition: none;
 }
 
+/* A hand card's face on the sheet: the card's own surface, without its shadow (the sheet's). */
+.hface {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--shoresh-radius-piece);
+  background: var(--shoresh-color-primary-50);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .face,
-  .hand-item {
+  .face {
     transition: none;
+    animation: none;
   }
 
   .meld[data-open] .card:hover .face,
   .meld:not([data-open]) .card[data-front]:hover .face,
   .card:focus-visible .face,
-  .card:active .face,
-  .hand-item:hover,
-  .hand-item:focus-visible {
+  .card:active .face {
     transform: none;
   }
 }

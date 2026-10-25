@@ -139,11 +139,14 @@ const flush = () => Promise.resolve();
 // A few turns of the microtask queue: the request, its answer, and the redraws after it.
 const settle = () => flush().then(flush).then(flush).then(flush).then(flush);
 
-async function render(setup = SETUP, { active = true } = {}) {
+async function render(setup = SETUP, { active = true, problems, table } = {}) {
+  if (table) {
+    getTable.mockResolvedValue(table);
+  }
   const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
   element.setup = nsRecord(setup);
   element.terms = terms;
-  element.problems = setupProblems(nsRecord(setup), terms);
+  element.problems = problems || setupProblems(nsRecord(setup), terms);
   element.active = active;
   document.body.appendChild(element);
   await settle();
@@ -358,49 +361,140 @@ describe("c-shoresh-roots: the table", () => {
   });
 });
 
-describe("c-shoresh-roots: what needs attention (where the hand will lie)", () => {
-  it("lists it alphabetically, each opening the screen that fixes it", async () => {
+const handOf = (element) => $(element, "c-shoresh-roots-hand");
+const handCards = (element) => [
+  ...handOf(element).shadowRoot.querySelectorAll("[data-hand]:not([data-gone])")
+];
+
+describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
+  it("deals what needs a look in this camp once the table is read, each card saying what is off", async () => {
     const element = await render({ ...SETUP, weeks: [] });
-    const rows = $$(element, "[data-attention]");
-    expect(
-      rows.map((r) => [
-        r.querySelector(".hand-name").firstChild.textContent,
-        r.querySelector(".hand-tag").textContent
-      ])
-    ).toEqual([
-      ["Flagpole", "Fixed activities"],
-      ["Seniors", "Bunks"],
-      ["Soccer", "Activities"],
-      ["Summer 2026", "Weeks"]
+    const cards = handCards(element);
+    const group = handOf(element).shadowRoot.querySelector('[data-id="hand"]');
+    expect(group.getAttribute("role")).toBe("group");
+    expect(group.getAttribute("aria-label")).toBe("Needs a look");
+    // Every signal the attention list had, in the menu's order of the screens that fix them.
+    expect(cards.map((c) => c.getAttribute("aria-label"))).toEqual([
+      "Summer 2026: No weeks yet.",
+      "Seniors: No Bunks yet.",
+      "Soccer has no location.",
+      "Soccer: Outdoors and has no rain plan.",
+      expect.stringMatching(/^Flagpole: /)
     ]);
-    expect(rows[2].querySelector(".hand-why").textContent).toBe(
-      "Outdoors and has no rain plan."
-    );
-    expect(rows[2].getAttribute("aria-label")).toBe(
-      "Soccer: Outdoors and has no rain plan."
-    );
-    const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    rows.forEach((row) => row.click());
-    expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
-      "fixedActivities",
-      "groups",
-      "activities",
-      "weeks"
-    ]);
+    const face = cards[1].querySelector("c-shoresh-roots-hand-face");
+    expect(face.card).toMatchObject({
+      name: "Bunks",
+      small: "SENIORS",
+      off: "none yet"
+    });
   });
 
-  it("is calm when nothing needs a look: nothing shows, and that is said", async () => {
-    const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
-    element.setup = nsRecord(SETUP);
-    element.terms = terms;
-    element.problems = [];
-    document.body.appendChild(element);
-    await settle();
-    expect($$(element, "[data-attention]")).toHaveLength(0);
-    expect($(element, '[data-id="all-clear"]').textContent).toContain(
-      "All clear"
+  it("opens the exact thing a card is about, grown out of the card", async () => {
+    const element = await render(SETUP, {
+      table: { ...TABLE, soonWeekIds: ["w2"], builtWeekIds: ["w1"] }
+    });
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const week = handCards(element).find(
+      (c) => c.dataset.hand === "hand:weekNotBuilt|w2"
     );
+    week.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({
+      screen: "scheduleWeeks",
+      fromCard: "hand:weekNotBuilt|w2",
+      weekId: "w2"
+    });
+  });
+
+  it("is an empty hand while all is calm, and says so to a screen reader", async () => {
+    // Every activity has its place; nothing else is off.
+    const element = await render(
+      {
+        ...SETUP,
+        activities: SETUP.activities.map((a) => ({ ...a, Location__c: "l1" }))
+      },
+      { problems: [] }
+    );
+    expect(handCards(element)).toHaveLength(0);
+    const calm = handOf(element).shadowRoot.querySelector('[data-id="calm"]');
+    expect(calm.getAttribute("role")).toBe("status");
+    expect(calm.textContent).toBe("Nothing needs a look");
+  });
+
+  it("holds still while Roots is away, and changes on the next visit once the table is read", async () => {
+    const element = await render();
+    const before = handCards(element).map((c) => c.dataset.hand);
+    expect(before).toContain("hand:noRainPlan|activities");
+    // Away on a screen: the rain plan is given.
+    element.active = false;
+    const fixed = {
+      ...SETUP,
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a2" ? { ...a, RainPlan__c: "a1" } : a;
+      })
+    };
+    element.setup = nsRecord(fixed);
+    element.problems = setupProblems(nsRecord(fixed), terms);
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).toEqual(before);
+    // Back on Roots: nothing changes until this showing's table is read.
+    let answer;
+    getTable.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    element.active = true;
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).toEqual(before);
+    answer(TABLE);
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).not.toContain(
+      "hand:noRainPlan|activities"
+    );
+  });
+
+  it("keeps what the table fed when a later read fails, rather than playing it away", async () => {
+    const element = await render(SETUP, {
+      table: { ...TABLE, soonWeekIds: ["w2"], builtWeekIds: ["w1"] }
+    });
+    expect(handCards(element).map((c) => c.dataset.hand)).toContain(
+      "hand:weekNotBuilt|w2"
+    );
+    element.active = false;
+    getTable.mockRejectedValue({ body: { message: "Offline" } });
+    element.active = true;
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).toContain(
+      "hand:weekNotBuilt|w2"
+    );
+  });
+
+  it("never deals one season's table into another's hand when the new read fails", async () => {
+    const element = await render(SETUP, {
+      table: {
+        ...TABLE,
+        shortSeats: [{ name: "Ropes", fewest: 5, minimum: 6, seats: 12 }]
+      }
+    });
+    expect(handCards(element).map((c) => c.dataset.hand)).toContain(
+      "hand:seatsShort|"
+    );
+    getTable.mockRejectedValue({ body: { message: "Offline" } });
+    element.setup = nsRecord({
+      ...SETUP,
+      season: { ...SETUP.season, Id: "s2" }
+    });
+    await settle();
+    expect(handCards(element).map((c) => c.dataset.hand)).not.toContain(
+      "hand:seatsShort|"
+    );
+  });
+
+  it("is accessible with cards in hand", async () => {
+    const element = await render({ ...SETUP, weeks: [] });
+    expect(handCards(element).length).toBeGreaterThan(0);
+    await expect(element).toBeAccessible();
   });
 });
 
@@ -747,6 +841,66 @@ describe("c-shoresh-roots: the melds move", () => {
     await settle();
     expect(face.style.opacity).toBe("");
     expect(sheet.hidden).toBe(true);
+  });
+
+  it("a hand card a screen grows out of lends its face to the sheet; home, the cursor is on it", async () => {
+    const element = await render({ ...SETUP, weeks: [] });
+    await sized(element);
+    const key = "hand:noWeeks|weeks";
+    expect(element.hasCard(key)).toBe(true);
+    const pose = element.cardPose(key);
+    expect(pose).not.toBeNull();
+    element.travel({ ...pose, p: 0.1 }, key);
+    await settle();
+    const sheet = $(element, '[data-id="sheet"]');
+    expect(sheet.querySelector("c-shoresh-roots-hand-face").card.name).toBe(
+      "Weeks"
+    );
+    element.endTravel();
+    await settle();
+    expect(element.prepareHome(key)).not.toBeNull();
+    expect(handOf(element).shadowRoot.activeElement.dataset.hand).toBe(key);
+    element.endTravel();
+  });
+
+  it("a card played from the hand lands on its meld's front card, which settles", async () => {
+    const element = await render();
+    await sized(element);
+    const target = handOf(element).playTo("camp");
+    const weeks = element.cardPose("weeks");
+    expect(target).toEqual({ x: weeks.x, y: weeks.y, w: weeks.w, r: weeks.r });
+    handOf(element).dispatchEvent(
+      new CustomEvent("landed", { detail: { meld: "camp" } })
+    );
+    expect(card(element, "weeks").hasAttribute("data-nudge")).toBe(true);
+    run(1000);
+    expect(card(element, "weeks").hasAttribute("data-nudge")).toBe(false);
+  });
+
+  it("an open meld has the hand ease aside, and closing it brings the hand back", async () => {
+    const element = await render();
+    await sized(element);
+    const hand = handOf(element).shadowRoot.querySelector('[data-id="hand"]');
+    run(3000);
+    const full = parseFloat(hand.style.height);
+    expect(full).toBeGreaterThan(150);
+    card(element, "weeks").focus();
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
+    card(element, "weeks").blur();
+    run(3000);
+    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
+  });
+
+  it("the hand's last card with the cursor played away: the cursor goes to its meld", async () => {
+    const element = await render();
+    await sized(element);
+    handOf(element).dispatchEvent(
+      new CustomEvent("leftfocus", { detail: { meld: "schedules" } })
+    );
+    expect(element.shadowRoot.activeElement).toBe(card(element, "manualBuild"));
+    // The meld rests closed, so the card in flight lands where it was aimed.
+    expect(meld(element, "schedules").hasAttribute("data-open")).toBe(false);
   });
 
   it("coming home opens the card's meld and puts the cursor on it", async () => {

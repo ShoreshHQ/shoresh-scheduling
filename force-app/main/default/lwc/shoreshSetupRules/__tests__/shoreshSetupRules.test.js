@@ -175,6 +175,30 @@ describe("setupProblems", () => {
       ["weeks", "Session 1 and Session 2", "Share dates."]
     ]);
   });
+
+  it("names each problem's kind, so Roots' hand can gather each kind onto one card", () => {
+    const setup = {
+      season,
+      weeks: [
+        week("Session 2", "2026-07-02", "2026-07-08"),
+        week("Session 1", "2026-06-29", "2026-07-03"),
+        week("Late", "2026-08-10", "2026-08-14")
+      ],
+      programs: [],
+      activities: []
+    };
+    expect(setupProblems(setup, terms).map((p) => p.kind)).toEqual([
+      "weekOutside",
+      "weeksShare",
+      "noPrograms",
+      "noActivities"
+    ]);
+    expect(
+      setupProblems({ season, weeks: [], programs: [] }, terms).every(
+        (p) => typeof p.kind === "string" && p.kind
+      )
+    ).toBe(true);
+  });
 });
 
 describe("activity nudges", () => {
