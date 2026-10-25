@@ -389,7 +389,11 @@ export function settledRules(c, input, result, options = {}) {
         const days = earlyDays(dates, a.early.day);
         const said2 = listed(result.spreadBy, a, g);
         if (!days.length) {
-          if (!said2) {
+          // Said once for the goal (noEarlyDayBy), not per group.
+          const once = (result.noEarlyDayBy || []).some(
+            (e) => e.activityId === a.id
+          );
+          if (!said2 && !once) {
             out.visible.push(
               `${a.id} for ${g.id}: the week has no day by ${a.early.day}, unsaid`
             );

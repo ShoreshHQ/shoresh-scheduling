@@ -1,13 +1,14 @@
 import { buildTerms } from "c/shoreshTerms";
-import { BUSY, NO_FIT, RULE } from "./week";
+import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
 
 /**
  * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
  * for its dots (ADR 0010), so both schedules say the same thing: keep them here, and change them
  * for both.
  *
- * rule: a RULE value, BUSY (the group is busy at an overlapping time), or NO_FIT (a gap no
- * activity's length fits). groupName: the group the cell belongs to. placeName: the activity's place
+ * rule: a RULE value, BUSY (the group is busy at an overlapping time), NO_FIT (a gap no
+ * activity's length fits), FULL (everything set up for the group is full then) or NONE_FOR
+ * (nothing running this week is set up for the group). groupName: the group the cell belongs to. placeName: the activity's place
  * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
  * camp's words (c/shoreshTerms); model words when left out. inUseBy: what other programs are
  * doing at the place then, by name, as the desktop names them ("Pool in use by Teen swim",
@@ -42,9 +43,24 @@ export function reasonFor(
       return `No ${t.sIn("Activity")} fits this ${t.sIn("Gap")}`;
     case BUSY:
       return "Already busy then";
+    case FULL:
+      return `Everything for ${groupName} is full then`;
+    case NONE_FOR:
+      return `No ${t.sIn("Activity")} this ${t.sIn("Week")} is set up for ${groupName}`;
     default:
       return "";
   }
+}
+
+/**
+ * A setup field left blank that the engine took as 1 (care plan step 1): never 0, never a reason
+ * to stop, always said. field: "atOnce" (an activity's groups at once) or "fit" (a place's groups
+ * that fit); name: the activity's or the place's.
+ */
+export function blankSetupNote(field, name, terms) {
+  const t = terms || buildTerms([]);
+  const what = field === "fit" ? "that fit" : "at once";
+  return `${name}: ${t.pIn("Group")} ${what} is blank, so it counts as 1`;
 }
 
 /** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */

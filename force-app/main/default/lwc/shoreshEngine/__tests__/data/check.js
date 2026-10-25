@@ -2,7 +2,8 @@
  * An independent check of a generated week against the camp spec it came from (camp.js),
  * written without the engine's code: every hard rule a cell breaks must be named by a flag on
  * a cell the generator placed (kept cells don't count: they were there before), every at-camp,
- * unlocked, open cell must be filled unless the result lists it as impossible, and kept cells
+ * unlocked, open cell must be filled unless the result lists it as impossible (busy then, too
+ * short a gap, or everything set up for the group full there), and kept cells
  * (locks, fixed activities, not-at-camp cells, and every filled cell in "fill the open cells")
  * must come back exactly as they went in.
  */
@@ -143,6 +144,7 @@ export function problems(spec, input, result) {
           ))
     );
 
+  const maybeFull = [];
   const counts = new Map();
   const daily = new Map();
   const place = new Map();
@@ -198,7 +200,9 @@ export function problems(spec, input, result) {
         const tooShort =
           cell === null && spec.activities.every((a) => a.span > gap);
         if (openCells.has(k) && !busyThen && !tooShort) {
-          out.push(`listed as impossible but isn't: ${k}`);
+          // Or (never-blank, care plan step 7) everything set up for the group that fits the gap
+          // is full there: judged once every cell is counted, below.
+          maybeFull.push({ k, d, b, group, gap, row, peers });
         }
         if (!cell) {
           return;
@@ -351,6 +355,62 @@ export function problems(spec, input, result) {
     }
     if (act.sameDivision && !sameDivisionHolds(list, extra, () => true)) {
       out.push(`two divisions at one activity, unflagged: ${dk}`);
+    }
+  }
+  // A cell left Open with something set up for the group free there, within every limit (who
+  // it's for, groups at once, groups that fit, same division): weekly max and once a day are
+  // preferences, so they never excuse it.
+  const free = (act, group, d, b) => {
+    const there = doing.get(`${act.id}|${d}|${b}`) || [];
+    if (
+      act.atOnce != null &&
+      there.length + other(d, b, "activityId", act.id) >= act.atOnce
+    ) {
+      return false;
+    }
+    if (
+      act.sameDivision &&
+      (other(d, b, "activityId", act.id) > 0 ||
+        there.some((o) => o.group.division !== group.division))
+    ) {
+      return false;
+    }
+    if (!act.location || !fit.has(act.location)) {
+      return true;
+    }
+    const at = place.get(`${act.location}|${d}|${b}`) || [];
+    const extra = other(d, b, "locationId", act.location);
+    return (
+      at.length + extra < fit.get(act.location) &&
+      !(
+        act.sameDivision &&
+        (extra > 0 || at.some((o) => o.group.division !== group.division))
+      ) &&
+      !at.some(
+        (o) =>
+          o.act && o.act.sameDivision && o.group.division !== group.division
+      )
+    );
+  };
+  for (const { k, d, b, group, gap, row, peers } of maybeFull) {
+    const could = [...acts.values()].filter((act) => {
+      if (!eligible(act, group) || act.span > gap) {
+        return false;
+      }
+      for (let i = b; i < b + act.span; i++) {
+        // Each block it runs into: the group not busy at an overlapping time there, and not a
+        // block overlapping one it already runs (two overlapping blocks are one stretch of time).
+        if (
+          !free(act, group, d, i) ||
+          (i > b && peers[i].some((j) => row[j] || (j >= b && j < i)))
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+    if (could.length) {
+      out.push(`listed as impossible but isn't: ${k}`);
     }
   }
   return out;

@@ -18,7 +18,9 @@ const WEEKDAYS = {
   Tuesday: 2,
   Wednesday: 3,
   Thursday: 4,
-  Friday: 5
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7
 };
 
 /** Text compared by character code, never by locale: the same order in every browser. */
@@ -76,6 +78,29 @@ export function weekdayOf(date) {
   return day === 0 ? 7 : day;
 }
 
+/**
+ * The days an early-week goal "by" a weekday (1 Monday ... 7 Sunday) counts, of these days
+ * ("YYYY-MM-DD"): calendar days from the week's real first day up to that weekday (care plan,
+ * Greg 2026-10-25). The week starts on its first day when that is a Sunday (a Sunday-start week's
+ * Sunday comes before its Monday), else on the Monday on or before it. A Set of the dates that
+ * count; empty when the week has no day on or before the goal's day.
+ */
+export function earlyDates(dates, byDay) {
+  const days = [...dates].filter((d) => weekdayOf(d) != null).sort(compareText);
+  if (!days.length || !byDay) {
+    return new Set();
+  }
+  const dayNumber = (date) => {
+    const [y, m, d] = date.split("-").map(Number);
+    return Date.UTC(y, m - 1, d) / 86400000;
+  };
+  const first = weekdayOf(days[0]);
+  const start = dayNumber(days[0]) - (first === 7 ? 0 : first - 1);
+  const startWeekday = first === 7 ? 7 : 1;
+  const last = start + ((byDay - startWeekday + 7) % 7);
+  return new Set(days.filter((d) => dayNumber(d) <= last));
+}
+
 /** The activities that run this week, as the generator reads them. */
 export function readActivities(records, weekExceptions, weekId) {
   const closedActivities = new Set();
@@ -106,6 +131,10 @@ export function readActivities(records, weekExceptions, weekId) {
       atOnce: r[ACTIVITY.NoGroupLimit]
         ? null
         : Math.max(1, wholeNumber(r[ACTIVITY.GroupsAtOnce], 1)),
+      // Groups at once left blank (and not "No group limit"): taken as 1, and said (step 1).
+      atOnceBlank:
+        !r[ACTIVITY.NoGroupLimit] &&
+        wholeNumber(r[ACTIVITY.GroupsAtOnce], null) == null,
       sameDivision: Boolean(r[ACTIVITY.SameDivisionOnly]),
       sortOrder:
         typeof r[ACTIVITY.SortOrder] === "number"
@@ -179,15 +208,22 @@ export function readPartsOfDay(records) {
   return parts;
 }
 
-/** How many groups fit in each location at once (at least 1), and its name. */
+/**
+ * How many groups fit in each location at once (at least 1), its name, and the locations whose
+ * groups-that-fit is blank (taken as 1, and said: step 1), in order.
+ */
 export function readLocations(records) {
   const fit = new Map();
   const names = new Map();
+  const blank = [];
   for (const r of inOrder(records, LOCATION.SortOrder)) {
     fit.set(r.Id, Math.max(1, wholeNumber(r[LOCATION.GroupsThatFit], 1)));
     names.set(r.Id, r.Name || "");
+    if (wholeNumber(r[LOCATION.GroupsThatFit], null) == null) {
+      blank.push(r.Id);
+    }
   }
-  return { fit, names };
+  return { fit, names, blank };
 }
 
 /**

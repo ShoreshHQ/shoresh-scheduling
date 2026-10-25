@@ -13,71 +13,8 @@ import { cellsOf } from "./data/camp";
 import { inputOf, ODD_CAMPS } from "./data/oddCamps";
 import { settledRules } from "./data/settledRules";
 
-const PR3 =
-  "PR 3 (never-blank eligible-only, blank-as-1 flag, early-week calendar)";
-const PR4 = "PR 4 (search before giving up, import as floor)";
-
 /** camp name -> rule -> [the PR that fixes it, the exact lines today's engine gives]. */
-const KNOWN_FAILURES = {
-  "weekend-only week": {
-    visible: [
-      PR3,
-      [
-        "climb for g01: the week has no day by Tuesday, unsaid",
-        "climb for g02: the week has no day by Tuesday, unsaid"
-      ]
-    ]
-  },
-  "Sunday-start week": {
-    visible: [PR3, ["climb for g01: 0 short by Monday, listed 1"]]
-  },
-  "goal by Sunday": {
-    visible: [PR3, ["climb for g01: 1 short by Sunday, listed 0"]]
-  },
-  "scarce places": {
-    hardLimits: [
-      PR3,
-      [
-        "2026-07-06 g01 b0: placeCapacity",
-        "2026-07-06 g01 b1: placeCapacity",
-        "2026-07-06 g04 b0: placeCapacity",
-        "2026-07-06 g04 b1: placeCapacity"
-      ]
-    ],
-    gapIsABug: [
-      PR4,
-      ["filled 4 cells within the hard limits; a week exists that fills 6"]
-    ]
-  },
-  "eligible activities all full": {
-    hardLimits: [
-      PR3,
-      ["2026-07-06 young b0: eligibility", "2026-07-06 young b1: eligibility"]
-    ]
-  },
-  "blank groups at once": {
-    hardLimits: [
-      PR3,
-      ["2026-07-06 g01 b0: groupsAtOnce", "2026-07-06 g02 b0: groupsAtOnce"]
-    ],
-    visible: [PR3, ["arts: a blank setup field, unsaid"]],
-    gapIsABug: [
-      PR3,
-      ["filled 0 cells within the hard limits; a week exists that fills 1"]
-    ]
-  },
-  "blank groups that fit": {
-    hardLimits: [
-      PR3,
-      ["2026-07-06 g01 b0: placeCapacity", "2026-07-06 g02 b0: placeCapacity"]
-    ],
-    visible: [PR3, ["Field: a blank setup field, unsaid"]],
-    gapIsABug: [
-      PR3,
-      ["filled 0 cells within the hard limits; a week exists that fills 1"]
-    ]
-  }
-};
+const KNOWN_FAILURES = {};
 
 const RULES = {
   hardLimits:

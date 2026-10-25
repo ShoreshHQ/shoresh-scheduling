@@ -29,7 +29,16 @@ import { createWeekState } from "./weekState";
  * The ledgers every step shares: weekState.js.
  */
 
-export { RULE, RELAX_ORDER, BUSY, NO_FIT, LENGTH, OVERLAP } from "./weekRules";
+export {
+  RULE,
+  RELAX_ORDER,
+  BUSY,
+  NO_FIT,
+  LENGTH,
+  OVERLAP,
+  FULL,
+  NONE_FOR
+} from "./weekRules";
 export { lockKey } from "./weekFixed";
 
 /**

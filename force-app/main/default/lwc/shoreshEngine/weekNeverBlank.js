@@ -1,7 +1,10 @@
 import { check } from "./weekOptions";
 import {
+  FULL,
   LENGTH,
+  NONE_FOR,
   OVERLAP,
+  PREFERENCES,
   PRIORITY_RANK,
   RULE,
   SEVERITY,
@@ -13,13 +16,15 @@ import {
  * (weekRepair.js), on every cell still empty; then says why each cell still Open is Open.
  */
 
-// Never blank (Greg, 2026-10-17): a cell nothing fits cleanly gets the least-bad activity, the
-// one whose most serious bend is least serious (RELAX_ORDER). Weekly maximums are soft in
-// practice (Greg: "I write 2 art periods, but I'd accept 3"), so going over one is tried before
-// any other bend, and among those the smallest overage wins: a third Art for several bunks
-// before a fifth for one. Then high priority, then the one the group has had least, then the
-// stable key. An activity is never shortened (Greg): a cell where the group is busy at an
-// overlapping time, or a gap no activity's length fits, stays Open.
+// Never blank (Greg, 2026-10-17; care plan step 7, 2026-10-25): a cell nothing fits cleanly
+// gets an activity the group is set up for that fits every physical limit (groups at once,
+// groups that fit, same division), bending only a preference: its weekly max (Greg: "max is a
+// preference; going over is fine") or, failing that, once a day (the care plan's gap rule counts
+// both as preferences). Going over the max is tried first, smallest overage first: a third Art
+// for several bunks before a fifth for one. Then high priority, then the one the group has had
+// least, then the stable key. Nothing allowed fits: the cell stays Open, saying so (FULL). An
+// activity is never shortened (Greg): a cell where the group is busy at an overlapping time, or
+// a gap no activity's length fits, stays Open.
 export function* neverBlank(st, slots, from) {
   for (const u of slots) {
     const k = st.keyOf(u);
@@ -29,9 +34,19 @@ export function* neverBlank(st, slots, from) {
     yield from;
     let best = null;
     let bestRank = null;
+    let full = false;
+    let any = false;
     for (const act of st.acts) {
+      if (!st.eligibility.get(act.id).has(u.groupId)) {
+        continue;
+      }
+      any = true;
       const bends = check(st, act, u.groupId, u.dayIndex, u.blockId, true);
       if (bends === null) {
+        continue;
+      }
+      if (bends.some((rule) => !PREFERENCES.includes(rule))) {
+        full = true;
         continue;
       }
       const over = bends.includes(RULE.WEEKLY_MAX)
@@ -52,8 +67,25 @@ export function* neverBlank(st, slots, from) {
     if (best) {
       // Its dots come from checkWeek on the finished week (checks.js), like any other cell's.
       st.place(best, u.groupId, u.dayIndex, u.blockId);
+    } else if (full) {
+      st.fullThen.add(k);
+    } else if (!any) {
+      st.noneFor.add(k);
     }
   }
+}
+
+/** Why a cell is still Open, in the order a director would look: busy, nothing for the group,
+ * all of it full, too short a gap. */
+function openWhy(st, s) {
+  const k = st.keyOf(s);
+  if (busyAt(st, s)) {
+    return OVERLAP;
+  }
+  if (st.noneFor.has(k)) {
+    return NONE_FOR;
+  }
+  return st.fullThen.has(k) ? FULL : LENGTH;
 }
 
 /** Whether the group holds anything at a time overlapping this cell. */
@@ -67,7 +99,8 @@ function busyAt(st, s) {
 /**
  * A cell left out for an overlapping one that stayed Open isn't busy after all: it is filled
  * now. Each round frees at least one cell, so the rounds end. Then every cell still Open says
- * why: the group is busy then, or no activity's length fits (st.openCells).
+ * why: the group is busy then, everything set up for it is full then, or no activity's length
+ * fits (st.openCells).
  */
 export function* finishOpen(st, from) {
   st.openCells = [];
@@ -88,7 +121,7 @@ export function* finishOpen(st, from) {
     if (!st.assigned.has(st.keyOf(s))) {
       st.openCells.push({
         key: st.keyOf(s),
-        why: busyAt(st, s) ? OVERLAP : LENGTH
+        why: openWhy(st, s)
       });
     }
   }
