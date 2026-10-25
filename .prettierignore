@@ -17,3 +17,5 @@ docs/design/manual-build.html
 docs/design/spacing-spec.md
 docs/design/spacing-spec-continuous.md
 docs/design/setup/
+# The desktop engine, kept exactly as its source has it (jest/desktop-engine/README.md)
+jest/desktop-engine/
