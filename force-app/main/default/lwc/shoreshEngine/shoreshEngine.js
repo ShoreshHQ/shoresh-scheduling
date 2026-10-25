@@ -1,11 +1,12 @@
 import { buildTerms } from "c/shoreshTerms";
-import { blankSetupNote, reasonFor } from "./words";
+import { blankSetupNote, floorNote, reasonFor } from "./words";
 import { DAY_NAMES, checkWeek, weekdayOf } from "./checks";
 import {
   readElectivePlaces,
   readLocations as readLocationMap
 } from "./checkInputs";
 import { identity } from "./grid";
+import { sameFrame, seedFromImport } from "./weekFloor";
 import {
   atCamp,
   compareText,
@@ -92,12 +93,22 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *   electiveOfferings: the season's offerings (Offering__c, setup.electives.offerings): an elective
  *     set on the grid is kept like a lock and takes up the places of its confirmed, open offerings
  *     (readElectivePlaces; ADR 0018 slice E5, desktop electiveOccupancy.js)
+ *   imported, importedName: the week as it was imported (DayView days, as `days`) and that
+ *     version's name, or nothing: step 8's floor (weekFloor.js). A full build that fills fewer
+ *     cells than it is built again from it, and the fuller of the two kept; "fill the open cells"
+ *     keeps every filled cell already, so it is not compared there
  *
- * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy,
+ * Returns { ok: true, floor, days, flags, stillNeeded, spread, stillNeededBy, spreadBy,
  * setupNotes, overlapping, cells, openCells, ruleChecks }
  * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
+ *   floor: what step 8's floor found: { importedName, imported (the imported week's filled cells,
+ *     counted as `cells` counts them; null when not compared), built (this week's), used ("none":
+ *     no import, "fill the open cells", a changed set-up, or no fuller than the first build;
+ *     "first": the first build was kept; "seeded": the build from the imported week), reason (in
+ *     camp words when the imported week no longer matches this week's set-up, or this week is
+ *     still emptier, naming both counts; else null) }
  *   flags: checkWeek's dots on the finished week, one entry per cell of each dotted placement:
  *     [{ date, groupId, blockId, activityId, bends: [RULE...], reason }]. A cell the engine had to
  *     bend a rule for always has one; so does anything kept that breaks a rule
@@ -238,24 +249,94 @@ export function* generateWeekSteps(input, watch = {}) {
       checked: checkWeek(built, checkModel(input, settings, state), words)
     };
   }
-  let chosen = yield* build(model, 0, 0.5, true);
-  let ruleChecks = chosen.state.ruleChecks;
-  if (chosen.state.leftForNeverBlank) {
-    // The minimum repair left a cell for never-blank to fill. Keep that week only if it is no
-    // worse: it meets more minimums, or as many with no more bends (ADR 0010).
-    const strict = yield* build(
-      { ...model, strictRepair: true },
-      0.5,
-      0.5,
-      false
-    );
-    ruleChecks += strict.state.ruleChecks;
-    if (worse(chosen.checked, strict.checked)) {
-      chosen = strict;
+  // One build, and when the minimum repair left a cell for never-blank, the same again without
+  // that leniency: the week kept is the one no worse (it meets more minimums, or as many with no
+  // more bends; ADR 0010).
+  function* buildBest(settings, from, share, once) {
+    let best = yield* build(settings, from, share / 2, once);
+    let checks = best.state.ruleChecks;
+    if (best.state.leftForNeverBlank) {
+      const strict = yield* build(
+        { ...settings, strictRepair: true },
+        from + share / 2,
+        share / 2,
+        false
+      );
+      checks += strict.state.ruleChecks;
+      if (worse(best.checked, strict.checked)) {
+        best = strict;
+      }
+    }
+    return { ...best, ruleChecks: checks };
+  }
+  const first = yield* buildBest(model, 0, 1, true);
+  let ruleChecks = first.ruleChecks;
+  // Step 8's floor: never emptier than the week as it was imported (weekFloor.js).
+  const floor = {
+    importedName: input.importedName || null,
+    imported: null,
+    built: first.checked.cells.filled,
+    used: "none",
+    reason: null
+  };
+  let chosen = first;
+  const importedDays = (input.imported || []).filter(
+    (day) =>
+      day &&
+      day.dateValue &&
+      !replaced.some((r) => r.dateValue === day.dateValue)
+  );
+  if (importedDays.length && model.mode === MODE.FULL) {
+    if (!sameFrame(toBuild, importedDays)) {
+      floor.reason = floorNote("frame", { name: floor.importedName, terms: t });
+    } else {
+      const fromImport = readDays(
+        importedDays,
+        readPartsOfDay(input.timeBlocks)
+      );
+      floor.imported = checkWeek(
+        fromImport.map((day) => day.frame),
+        checkModel(input, model, null),
+        words
+      ).cells.filled;
+      if (floor.imported > first.checked.cells.filled) {
+        const seed = seedFromImport(model, fromImport, writeDays);
+        ruleChecks += seed.kept.ruleChecks;
+        const seededModel = {
+          ...model,
+          days: readDays(seed.days, readPartsOfDay(input.timeBlocks)),
+          mode: MODE.FILL_OPEN
+        };
+        const seeded = yield* buildBest(seededModel, 1, 0, false);
+        ruleChecks += seeded.ruleChecks;
+        // Checked as the director's week: only what the first build kept counts as kept, so a
+        // weekly-limit dot lands where it would on any other build.
+        seeded.checked = checkWeek(
+          seeded.built,
+          checkModel(input, model, seed.kept),
+          words
+        );
+        if (fuller(seeded.checked, first.checked)) {
+          chosen = seeded;
+          floor.used = "seeded";
+        } else {
+          floor.used = "first";
+        }
+        floor.built = chosen.checked.cells.filled;
+        if (floor.built < floor.imported) {
+          floor.reason = floorNote("emptier", {
+            name: floor.importedName,
+            built: floor.built,
+            imported: floor.imported,
+            terms: t
+          });
+        }
+      }
     }
   }
   const { state, built, checked } = chosen;
   return {
+    floor,
     ok: true,
     days: withReplaced(built, replaced),
     flags: flagCells(built, checked),
@@ -436,6 +517,26 @@ function bendCount(checked) {
     n += rules.length;
   }
   return n;
+}
+
+/** Weekly-limit bends the week's dots name. */
+function weeklyMaxBends(checked) {
+  let n = 0;
+  for (const rules of checked.bends.values()) {
+    n += rules.filter((r) => r === RULE.WEEKLY_MAX).length;
+  }
+  return n;
+}
+
+/**
+ * Whether week a (the seeded build) is kept over week b (the first build): more cells filled, or
+ * as many with fewer weekly-limit bends; a tie keeps the first build.
+ */
+function fuller(a, b) {
+  if (a.cells.filled !== b.cells.filled) {
+    return a.cells.filled > b.cells.filled;
+  }
+  return weeklyMaxBends(a) < weeklyMaxBends(b);
 }
 
 /** Whether week a is worse than week b: fewer minimums met, or as many with more bends. */

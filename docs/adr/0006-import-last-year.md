@@ -561,5 +561,6 @@ Deleting its whole program also takes it (Salesforce deletes a program's schedul
 season's): the week belongs to the program, so it goes when the program does. It can be renamed and
 restored; its origin still says Imported. Marking some other version Imported by hand is not refused
 (it does no harm). Test data that writes a version's days uses a saved-by-hand version
-(`ShoreshTestData.savedVersion`). Every engine build being never emptier than this week comes with the
-engine search (PR 4a).
+(`ShoreshTestData.savedVersion`). Every full engine build is never emptier than this
+week where the limits allow (PR 4b): `GeneratedInputs` sends the newest imported version's days with
+the week, and the engine builds again from it when its first build is emptier (protocol 8.19–8.23).

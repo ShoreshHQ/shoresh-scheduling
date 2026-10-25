@@ -396,6 +396,50 @@ private class GeneratedVersionsTest {
   }
 
   @IsTest
+  static void theWeekAsItWasImportedComesWithTheInputs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // An imported week (Origin Imported) with Swim in Group A's Monday Period 2, before the
+      // week is generated (its blank week has the same days).
+      Id imported = manualVersionWithSwim(ids);
+      update new Schedule__c(
+        Id = imported,
+        Name = 'Week 1 as imported',
+        Origin__c = 'Imported'
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Integer used = Limits.getQueries();
+      Test.stopTest();
+      Assert.isNull(read.scheduleId);
+      Assert.areEqual('Week 1 as imported', read.importedName);
+      Assert.areEqual(read.days.size(), read.imported.size());
+      ScheduleViews.DayView monday = read.imported[0];
+      Assert.areEqual(GeneratedTestData.MONDAY, monday.dateValue);
+      String cell = monday.rows[GeneratedTestData.GROUP_A]
+        .split(',', -1)[GeneratedTestData.PERIOD_2];
+      Integer swim = Integer.valueOf(cell);
+      Assert.areEqual(ids.get('Swim'), monday.items[swim - 1].id);
+      // Opening the week, its import included, stays well inside the request's queries.
+      Assert.isTrue(used <= 25, 'Opening the week used ' + used + ' queries');
+    }
+  }
+
+  @IsTest
+  static void aWeekWithNoImportComesWithNone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // A version saved by hand is not the imported week.
+      manualVersionWithSwim(ids);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.isNull(read.importedName);
+      Assert.isTrue(read.imported.isEmpty());
+    }
+  }
+
+  @IsTest
   static void anOpenCellLockedToKeepItEmptyStaysLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();

@@ -67,7 +67,10 @@ export function reasonFor(
     case SEARCHED:
       return "Everything that fits this day is already placed";
     case MIN_COST:
-      return `Filling it would leave ${groupName} short of ${activityName}`;
+      // Without both names (a group or activity gone from setup), the plain sentence.
+      return groupName && activityName
+        ? `Filling it would leave ${groupName} short of ${activityName}`
+        : `Filling it would leave a ${t.sIn("Group")} short of a weekly minimum`;
     case BUDGET:
       return "Shoresh couldn't finish checking every way to fill this";
     case NONE_FOR:
@@ -87,6 +90,22 @@ export function blankSetupNote(field, name, terms) {
   // The field's own label, as the setup screen shows it (c/shoreshCampLabels).
   const label = t.s(field === "fit" ? "GroupsThatFit" : "GroupsAtOnce");
   return `${name}: ${label} is blank, so it counts as 1`;
+}
+
+/**
+ * What step 8's floor found (care plan step 8): kind "frame", the imported week's days, time
+ * blocks or groups are no longer this week's, so it wasn't compared; kind "emptier", this week
+ * still has fewer filled cells than the imported week (built and imported: the counts). name: the
+ * imported version's name, or null.
+ */
+export function floorNote(kind, { name, built, imported, terms } = {}) {
+  const t = terms || buildTerms([]);
+  const week = t.sIn("Week");
+  const called = name ? ` ("${name}")` : "";
+  if (kind === "frame") {
+    return `The imported ${week}${called} no longer matches this ${week}'s days, ${t.pIn("TimeBlock")} or ${t.pIn("Group")}, so it wasn't compared.`;
+  }
+  return `This ${week} has ${built} filled, the imported ${week}${called} ${imported}.`;
 }
 
 /** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */

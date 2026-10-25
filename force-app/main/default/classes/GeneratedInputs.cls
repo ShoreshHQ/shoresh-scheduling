@@ -5,11 +5,14 @@
  * season's records as the engine reads them. Records go to the screen as records, so their field
  * names carry the package's prefix once it has one (ADR 0009), plus other programs' use of the
  * season's places and activities that week (OtherProgramUse), and the week's published schedule
- * beside the draft. Every query runs in user mode,
+ * beside the draft, and the week as it was imported (the engine's floor). Every query runs in user mode,
  * which checks object and field access; the set-time reader behind a blank week is checked first
  * by SetTimeAccess (ADR 0008 §3).
  */
 public with sharing class GeneratedInputs {
+  private static final String VERSION = 'Version';
+  private static final String IMPORTED = 'Imported';
+
   public class Inputs {
     // The program and week as the server has them (18-character Ids): the engine compares them
     // exactly, and they make its seed.
@@ -62,6 +65,13 @@ public with sharing class GeneratedInputs {
     // (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
+    // The week as it was imported (the newest version an import made for this program and week,
+    // ImportedWeekGuard) and that version's name: the engine's floor (care plan step 8), never
+    // emptier than this. Empty and null when the week has no import.
+    @AuraEnabled
+    public List<ScheduleViews.DayView> imported = new List<ScheduleViews.DayView>();
+    @AuraEnabled
+    public String importedName;
   }
 
   public static Inputs read(Id programId, Id weekId) {
@@ -97,7 +107,9 @@ public with sharing class GeneratedInputs {
         days
       );
     }
-    inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
+    Set<String> there = stillThere(setup, inputs);
+    inputs.days = ScheduleViews.dayViews(days, there);
+    readImported(inputs, setup, there);
     inputs.specials = WeekSpecials.ofWeek(setup.week, setup.groups);
     return inputs;
   }
@@ -152,6 +164,38 @@ public with sharing class GeneratedInputs {
       days.add(day);
     }
     return days;
+  }
+
+  /**
+   * The newest version an import made for the program's week (Status Version, Origin Imported;
+   * the latest created, then the highest Id, so the same records always give the same one), with
+   * its days read as the draft's are.
+   */
+  private static void readImported(
+    Inputs inputs,
+    GeneratedSetup setup,
+    Set<String> there
+  ) {
+    List<Schedule__c> found = [
+      SELECT Id, Name
+      FROM Schedule__c
+      WHERE
+        Program__c = :setup.program.Id
+        AND Week__c = :setup.week.Id
+        AND Status__c = :VERSION
+        AND Origin__c = :IMPORTED
+      WITH USER_MODE
+      ORDER BY CreatedDate DESC, Id DESC
+      LIMIT 1
+    ];
+    if (found.isEmpty()) {
+      return;
+    }
+    inputs.importedName = found[0].Name;
+    inputs.imported = ScheduleViews.dayViews(
+      ScheduleDays.read(found[0].Id),
+      there
+    );
   }
 
   private static void readSeason(Inputs inputs, Id seasonId) {

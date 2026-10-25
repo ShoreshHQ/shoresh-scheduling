@@ -69,7 +69,10 @@ export async function loadWeek(programId, weekId) {
       // Other programs' published schedules, or fixed and recurring activities, this week (G5).
       otherPrograms: readOtherPrograms(r.otherPrograms),
       // The week's days a special day replaces (ADR 0014 slice 4).
-      specials: r.specials || { days: [] }
+      specials: r.specials || { days: [] },
+      // The week as it was imported and that version's name: the engine's floor (step 8).
+      imported: r.imported || [],
+      importedName: r.importedName || null
     }
   };
 }
