@@ -52,6 +52,9 @@ import {
 const REGION_WORK = 2000;
 const DAY_WORK = 60000;
 const POLISH_WORK = 2000;
+// The first try at a fuller day, in the order that finds the fills leaving fewest short: 99% of
+// fuller days are found within this; past it, the proving order takes over.
+const FIND_WORK = 20000;
 const MINIMUM_WORK = 5000;
 const TOTAL_WORK = 2000000;
 // And the ceiling on time, whatever the camp's size: cells looked at over the whole build. About
@@ -421,14 +424,24 @@ function sessionsMost(span, caps, starts, most) {
  * best arrangement found in (or the original back) and returns { improved, exhausted, moves }.
  * apply false: only asks whether one exists; the week is left as it was. A generator: it pauses
  * every PAUSE_EVERY steps, yielding `at` (how far the build is) for the screen. minimums: the second
- * pass (as many cells, fewer short, no minimum met given up). spansFirst: branch first where a
+ * pass (as many cells, fewer short, no minimum met given up). split: decide a multi-block
+ * activity one start at a time (it starts here, or not), the order that proves days soonest.
+ * spansFirst: branch first where a
  * multi-block activity could start.
  */
 function* solve(
   st,
   d,
   keys,
-  { guard, budget, at, apply = true, minimums = false, spansFirst = true }
+  {
+    guard,
+    budget,
+    at,
+    apply = true,
+    minimums = false,
+    spansFirst = true,
+    split = false
+  }
 ) {
   // Placements that reach outside the cells searched stay where they are.
   const inside = new Set(keys);
@@ -473,6 +486,9 @@ function* solve(
   // may start (a longer activity starting earlier may still cover them).
   const emptied = new Set();
   const noStart = new Set();
+  // A multi-block activity ruled out of starting in a cell on this branch (cell -> activity ids);
+  // the cell stays open to everything else.
+  const banned = new Map();
   // Work done: steps (each a look() at the undecided cells).
   let work = 0;
   let best = null;
@@ -487,9 +503,13 @@ function* solve(
     }
     return best ? best.filled : filledBefore + 1;
   };
+  // Among equally full days a filling search also weighs minimums (below), which can still get
+  // better further down a branch, so only the bare question (no guard) prunes on bends and
+  // changes.
   const pruned = (ub) =>
     ub < need() ||
     (!minimums &&
+      !guard &&
       best &&
       ub === best.filled &&
       !lexLess([bends, changes], [best.bends, best.changes]));
@@ -535,7 +555,11 @@ function* solve(
     if (noStart.has(st.keyOf(s))) {
       return opts;
     }
+    const out = banned.get(st.keyOf(s));
     for (const act of s.eligibleActs) {
+      if (out && out.has(act.id)) {
+        continue;
+      }
       const bend = allowed(st, act, s.groupId, d, s.blockId);
       if (!bend) {
         continue;
@@ -720,9 +744,10 @@ function* solve(
       }
       ub = Math.min(ub, byFlow(byBlock, byGroup, startsOf));
     }
-    // Branch first where a multi-block activity could start (the bounds count its cells as if
-    // they could be shared out, so deciding it early is what tightens them), then on the cell
-    // with fewest options. Any order is exhaustive; this one only reaches the answer sooner.
+    // Decide multi-block activities first, one start at a time: does it start in this cell or
+    // not (the bounds count its cells as if they could be shared out between groups, so settling
+    // who gets it is what tightens them). Then the cell with fewest options. Either way every
+    // arrangement stays reachable; this order only reaches the answer sooner.
     const rank = (x) => [
       spansFirst && optsOf.get(x).some((o) => o.act.span > 1) ? 0 : 1,
       optsOf.get(x).length
@@ -733,7 +758,19 @@ function* solve(
         pick = s;
       }
     }
-    return { forced, ub, pick, opts: pick ? optsOf.get(pick) : [] };
+    const span =
+      pick && spansFirst && split
+        ? optsOf.get(pick).find((o) => o.act.span > 1) || null
+        : null;
+    return { forced, ub, pick, span, opts: pick ? optsOf.get(pick) : [] };
+  }
+
+  // Of equally full days: fewer groups short of a minimum, fewer sessions short, fewer weekly-max
+  // bends, then fewest cells changed (missed sessions matter most, Greg).
+  function rankNow() {
+    return guard
+      ? [...shortfall(st, groupsIn).count, bends, changes]
+      : [bends, changes];
   }
 
   function leaf() {
@@ -770,12 +807,13 @@ function* solve(
       (!guard || !worseShort(shortfall(st, groupsIn), shortBefore)) &&
       (!best ||
         filled > best.filled ||
-        lexLess([bends, changes], [best.bends, best.changes]))
+        (filled === best.filled && lexLess(rankNow(), best.rank)))
     ) {
       best = {
         filled,
         bends,
         changes,
+        rank: rankNow(),
         // Without the guard: who the fuller day would leave short, and of what.
         cost: guard ? null : costOf(shortfall(st, groupsIn), shortBefore),
         placed: vars
@@ -822,6 +860,11 @@ function* solve(
     const s = v.pick;
     const before = was.get(st.keyOf(s));
     f.s = s;
+    if (v.span) {
+      // It starts here, or it doesn't (and the cell stays open to everything else).
+      f.opts = [v.span, { act: EMPTY, bend: 0, ban: v.span.act }];
+      return f;
+    }
     f.opts = v.opts.sort(
       (x, y) =>
         (x.act.id === before ? 0 : 1) - (y.act.id === before ? 0 : 1) ||
@@ -847,6 +890,10 @@ function* solve(
       for (const c of f.cells) {
         f.changed += was.get(c) === o.act.id ? 0 : 1;
       }
+    } else if (o.ban) {
+      const k = st.keyOf(s);
+      banned.set(k, new Set([...(banned.get(k) || []), o.ban.id]));
+      turn(groupTurn, s.groupId);
     } else {
       // Nothing starts here; whether it ends Open is decided once nothing can reach it.
       noStart.add(st.keyOf(s));
@@ -862,6 +909,10 @@ function* solve(
     if (o.act) {
       st.unplace(o.act, s.groupId, d, s.blockId);
       moved(o.act, s.groupId, s.blockId);
+    } else if (o.ban) {
+      const k = st.keyOf(s);
+      banned.get(k).delete(o.ban.id);
+      turn(groupTurn, s.groupId);
     } else {
       noStart.delete(st.keyOf(s));
       turn(groupTurn, s.groupId);
@@ -1100,13 +1151,22 @@ function* fillDay(st, d, at, watch) {
     watch.now = { step: 8, dayIndex: d, groupId: null, blockId: null };
     yield at;
     const all = st.freeByDay[d].map((s) => st.keyOf(s));
+    // The order that finds the fills that leave fewest short first; when it can't settle the
+    // day, the order that proves days soonest; then fewest options first throughout.
     let r = yield* solve(st, d, all, {
       guard: true,
-      budget: Math.min(DAY_WORK, st.searchWorkLeft),
+      budget: Math.min(FIND_WORK, st.searchWorkLeft),
       at
     });
     if (!r.improved && !r.exhausted && !outOfWork(st)) {
-      // Out of work with no answer: the same search again, fewest options first throughout.
+      r = yield* solve(st, d, all, {
+        guard: true,
+        budget: Math.min(DAY_WORK, st.searchWorkLeft),
+        at,
+        split: true
+      });
+    }
+    if (!r.improved && !r.exhausted && !outOfWork(st)) {
       r = yield* solve(st, d, all, {
         guard: true,
         budget: Math.min(DAY_WORK, st.searchWorkLeft),
@@ -1126,7 +1186,8 @@ function* fillDay(st, d, at, watch) {
         guard: false,
         budget: Math.min(DAY_WORK, st.searchWorkLeft),
         at,
-        apply: false
+        apply: false,
+        split: true
       });
       if (relaxed.improved) {
         why = MIN_COST;

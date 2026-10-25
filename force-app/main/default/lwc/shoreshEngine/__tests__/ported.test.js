@@ -267,8 +267,8 @@ describe("no activity left below its minimum when the week can hold it", () => {
   it("camp 166 (coordinator's review): no extra bends from the minimum repair", () => {
     const result = run(camp166);
     expect(result.flags).toEqual([]);
-    // 26 before step 8's search (PR 4a); it meets three more by rearranging days.
-    expect(result.stillNeeded).toHaveLength(23);
+    // 26 before step 8's search (PR 4a); it meets two more by rearranging days.
+    expect(result.stillNeeded).toHaveLength(24);
   });
 
   it("camp 93: the week without the leniency has fewer bends for the same minimums", () => {
