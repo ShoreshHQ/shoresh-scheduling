@@ -29,6 +29,8 @@ import { createWeekState } from "./weekState";
  *                                   before step 7; part 2, weekSearch.js: the exact search
  *                                   (8.10-8.18), after it
  *   7 never blank ................. weekNeverBlank.js
+ *   8 the floor ................... weekFloor.js, from shoreshEngine.js: never emptier than the
+ *                                   imported week (8.19-8.23)
  *   9 write the why ............... checks.js, words.js
  * The ledgers every step shares: weekState.js.
  */

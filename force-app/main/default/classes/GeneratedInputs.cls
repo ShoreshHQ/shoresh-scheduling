@@ -5,11 +5,14 @@
  * season's records as the engine reads them. Records go to the screen as records, so their field
  * names carry the package's prefix once it has one (ADR 0009), plus other programs' use of the
  * season's places and activities that week (OtherProgramUse), and the week's published schedule
- * beside the draft. Every query runs in user mode,
+ * beside the draft, and the week as it was imported (the engine's floor). Every query runs in user mode,
  * which checks object and field access; the set-time reader behind a blank week is checked first
  * by SetTimeAccess (ADR 0008 §3).
  */
 public with sharing class GeneratedInputs {
+  private static final String VERSION_STATUS = 'Version';
+  private static final String IMPORTED_ORIGIN = 'Imported';
+
   public class Inputs {
     // The program and week as the server has them (18-character Ids): the engine compares them
     // exactly, and they make its seed.
@@ -62,6 +65,19 @@ public with sharing class GeneratedInputs {
     // (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
+    // The week as it was imported (the newest version an import made for this program and week,
+    // ImportedWeekGuard): the engine's floor (care plan step 8), never emptier than this. Null
+    // when the week has no import.
+    @AuraEnabled
+    public ImportedWeek imported;
+  }
+
+  /** The week as it was imported: the version's name and its days. */
+  public class ImportedWeek {
+    @AuraEnabled
+    public String name;
+    @AuraEnabled
+    public List<ScheduleViews.DayView> days = new List<ScheduleViews.DayView>();
   }
 
   public static Inputs read(Id programId, Id weekId) {
@@ -79,13 +95,15 @@ public with sharing class GeneratedInputs {
     inputs.otherPrograms = new OtherProgramUse(setup.week, setup.exceptions)
       .read(setup.program, inputs.activities);
     List<ScheduleDays.DayGrid> days;
-    Schedule__c draft = GeneratedDrafts.find(setup.program.Id, setup.week.Id);
+    // The draft and the imported week in one query, and both their days in one more.
+    Schedules found = new Schedules(setup);
+    Schedule__c draft = found.draft;
     if (draft == null) {
       BlankWeek.Week blank = setup.blankWeek();
       days = daysOf(blank.days);
       inputs.notPlaced = blank.notPlaced;
     } else {
-      days = ScheduleDays.read(draft.Id);
+      days = found.daysById.get(draft.Id);
       inputs.scheduleId = draft.Id;
       inputs.revision = GeneratedDrafts.revisionOf(days);
       inputs.option = draft.EngineOption__c == null
@@ -97,9 +115,38 @@ public with sharing class GeneratedInputs {
         days
       );
     }
-    inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
+    found.week = days;
+    showDays(inputs, setup, found);
     inputs.specials = WeekSpecials.ofWeek(setup.week, setup.groups);
     return inputs;
+  }
+
+  /**
+   * The week's days (found.week) and the imported week's (or none) as the screens show them, with what both
+   * point at looked for once.
+   */
+  private static void showDays(
+    Inputs inputs,
+    GeneratedSetup setup,
+    Schedules found
+  ) {
+    List<ScheduleDays.DayGrid> days = found.week;
+    Schedule__c imported = found.imported;
+    List<ScheduleDays.DayGrid> importedDays = imported == null
+      ? new List<ScheduleDays.DayGrid>()
+      : found.daysById.get(imported.Id);
+    List<ScheduleDays.DayGrid> both = new List<ScheduleDays.DayGrid>(days);
+    both.addAll(importedDays);
+    Set<String> there = ScheduleRefs.stillThere(
+      both,
+      stillThere(setup, inputs)
+    );
+    inputs.days = ScheduleViews.dayViews(days, there);
+    if (imported != null) {
+      inputs.imported = new ImportedWeek();
+      inputs.imported.name = imported.Name;
+      inputs.imported.days = ScheduleViews.dayViews(importedDays, there);
+    }
   }
 
   /**
@@ -152,6 +199,54 @@ public with sharing class GeneratedInputs {
       days.add(day);
     }
     return days;
+  }
+
+  /**
+   * The week's Generated draft (the first made, as GeneratedDrafts.find picks it) and the newest
+   * version an import made (Status Version, Origin Imported; the latest created, then the highest
+   * Id, so the same records always give the same one), from one query.
+   */
+  private with sharing class Schedules {
+    Schedule__c draft;
+    Schedule__c imported;
+    // Both schedules' days, by schedule.
+    Map<Id, List<ScheduleDays.DayGrid>> daysById;
+    // The week's days to show: the draft's, or a blank week's.
+    List<ScheduleDays.DayGrid> week;
+
+    Schedules(GeneratedSetup setup) {
+      for (Schedule__c schedule : [
+        SELECT Id, Name, EngineOption__c, Status__c, Origin__c
+        FROM Schedule__c
+        WHERE
+          Program__c = :setup.program.Id
+          AND Week__c = :setup.week.Id
+          AND ((Status__c = :ManualDrafts.DRAFT
+          AND Origin__c = :GeneratedDrafts.GENERATED)
+          OR (Status__c = :VERSION_STATUS
+          AND Origin__c = :IMPORTED_ORIGIN))
+        WITH USER_MODE
+        ORDER BY CreatedDate, Id
+      ]) {
+        if (schedule.Status__c == VERSION_STATUS) {
+          imported = schedule;
+        } else if (draft == null) {
+          draft = schedule;
+        }
+      }
+      daysById = ScheduleDays.read(scheduleIds());
+    }
+
+    Set<Id> scheduleIds() {
+      Set<Id> found = new Set<Id>();
+      if (draft != null) {
+        found.add(draft.Id);
+      }
+      if (imported != null) {
+        found.add(imported.Id);
+      }
+      return found;
+    }
   }
 
   private static void readSeason(Inputs inputs, Id seasonId) {
