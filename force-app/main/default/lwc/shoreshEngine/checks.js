@@ -476,17 +476,15 @@ function stillToPlace(ctx) {
   const activities = [...ctx.activities.values()].sort(
     (a, b) => sortValue(a) - sortValue(b) || compareText(a.id, b.id)
   );
-  const early = new Map(
-    activities
-      .filter((act) => act.early)
-      .map((act) => [
-        act.id,
-        earlyDates(
-          readable.map((day) => day.dateValue),
-          act.early.byDay
-        )
-      ])
-  );
+  // The days an early-week goal counts for a group: the first N days of the run it is at camp
+  // (special days are already out of the week; a day the group isn't in doesn't count).
+  const earlyFor = (act, groupId) =>
+    earlyDates(
+      readable
+        .filter((day) => (day.groups || []).some((grp) => grp.id === groupId))
+        .map((day) => day.dateValue),
+      act.early.byDay
+    );
   groups.forEach((groupName, groupId) => {
     activities.forEach((act) => {
       if (ctx.notFor(act.id).has(groupId)) {
@@ -498,9 +496,10 @@ function stillToPlace(ctx) {
         stillNeeded.push(`${act.name} · ${groupName}: ${missing} still needed`);
         stillNeededBy.push({ activityId: act.id, groupId, missing });
       }
-      if (act.early && early.get(act.id).size) {
+      const early = act.early ? earlyFor(act, groupId) : null;
+      if (early && early.size) {
         const done = mine.filter((p) =>
-          early.get(act.id).has(ctx.days[p.d].dateValue)
+          early.has(ctx.days[p.d].dateValue)
         ).length;
         if (done < act.early.count) {
           const missing = act.early.count - done;

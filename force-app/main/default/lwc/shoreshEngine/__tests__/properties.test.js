@@ -16,8 +16,10 @@ import { mulberry32 } from "../random";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 import { busiestOther, problems } from "./data/check";
+import { sampled } from "shoresh-jest/sample";
 
-const SEEDS = 300;
+// CI builds the first 100; the full run all 300 (jest/sample.js).
+const SEEDS = sampled(300, 100);
 
 /**
  * checkWeek on the engine's finished week, its model built here from the camp spec rather than
@@ -209,7 +211,7 @@ describe("generateWeek on random small camps", () => {
  * day). Counts only grow as the week fills, so the finished week shows what was available.
  */
 describe("going over weekly maximums, on random camps", () => {
-  it("never puts a bunk 2+ over on an activity while one 1 over was free for the cell (300 seeds)", () => {
+  it(`never puts a bunk 2+ over on an activity while one 1 over was free for the cell (${SEEDS} seeds)`, () => {
     const bad = [];
     let twoOver = 0;
     for (let seed = 1; seed <= 300; seed++) {

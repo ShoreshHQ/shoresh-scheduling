@@ -1367,6 +1367,36 @@ describe("early-week goals count the first days of this week's run (Greg, 2026-1
     expect(earlyDates(days, 7).size).toBe(4);
   });
 
+  it("skips a special day and a day the group isn't in: the group's own first days of the run count", () => {
+    // Monday to Thursday, by Tuesday. Monday is a special day for everyone; g2 isn't in on
+    // Tuesday. g1's early days are Tuesday and Wednesday; g2's are Wednesday and Thursday.
+    const input = camp({
+      days: 4,
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0)],
+      activities: [
+        activity("climb", {
+          name: "Climbing",
+          early: { count: 2, day: "Tuesday" },
+          max: null,
+          atOnce: null
+        }),
+        activity("arts", { max: null })
+      ]
+    });
+    input.replacedDates = [dateAt(0)];
+    const tuesday = input.days[1];
+    const g2 = tuesday.groups.findIndex((g) => g.id === "g2");
+    tuesday.groups = tuesday.groups.filter((_, i) => i !== g2);
+    tuesday.rows = tuesday.rows.filter((_, i) => i !== g2);
+    const result = generateWeek(input);
+    expect(at(result, 1, "g1", 0)).toBe("climb");
+    expect(at(result, 2, "g1", 0)).toBe("climb");
+    expect(at(result, 2, "g2", 0)).toBe("climb");
+    expect(at(result, 3, "g2", 0)).toBe("climb");
+    expect(result.spread).toEqual([]);
+  });
+
   it("places it in the first days of a week that starts mid-week, and never says a week has no early days", () => {
     // Wednesday to Friday, by Tuesday: Wednesday and Thursday count.
     const result = run({
@@ -1612,9 +1642,13 @@ describe("the hover reasons, shared with Manual Build", () => {
     [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"],
     [FULL, cell, "Everything for Bunk 3 is taken then"],
     [NONE_FOR, cell, "No activity this week is set up for Bunk 3"],
-    [SEARCHED, cell, "No arrangement of the day fits another activity here"],
-    [MIN_COST, cell, "Filling it would take a Bunk below a weekly minimum"],
-    [BUDGET, cell, "Not enough time to try every arrangement"]
+    [SEARCHED, cell, "Everything that fits this day is already placed"],
+    [
+      MIN_COST,
+      { ...cell, activityName: "Swim" },
+      "Filling it would leave Bunk 3 short of Swim"
+    ],
+    [BUDGET, cell, "Shoresh couldn't finish checking every way to fill this"]
   ])("%s: %j", (rule, details, words) => {
     expect(reasonFor(rule, details)).toBe(words);
   });

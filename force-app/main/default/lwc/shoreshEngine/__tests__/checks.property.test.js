@@ -388,10 +388,13 @@ function oracle(days, model) {
         });
       }
       const byDay = act.early && act.early.byDay;
-      // The first byDay days of the week's run (Greg, 2026-10-25).
+      // The first byDay days of the week's run the group is in (Greg, 2026-10-25).
       const firstDays = new Set(
         days
-          .filter((day) => !day.problem)
+          .filter(
+            (day) =>
+              !day.problem && day.groups.some((other) => other.id === grp.id)
+          )
           .map((day) => day.dateValue)
           .sort()
           .slice(0, byDay || 0)

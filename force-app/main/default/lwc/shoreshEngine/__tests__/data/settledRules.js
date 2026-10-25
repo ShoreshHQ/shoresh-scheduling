@@ -321,8 +321,8 @@ function bestFill(spec, m) {
 }
 
 /**
- * The days an early-week goal counts (Greg, 2026-10-25): the first N days of the week's own run,
- * N the goal day's place in a Monday-start week (by Tuesday = the first 2 days).
+ * The days an early-week goal counts (Greg, 2026-10-25): the first N days of the week's own run
+ * that the group is in, N the goal day's place in a Monday-start week (by Tuesday = the first 2).
  */
 function earlyDays(dates, dayName) {
   const n = WEEKDAY[dayName] === 0 ? 7 : WEEKDAY[dayName];
@@ -383,7 +383,6 @@ export function settledRules(c, input, result, options = {}) {
   const present = spec.groups.filter((g) =>
     m.days.some((day) => day.groups.some((x) => x.id === g.id))
   );
-  const dates = m.days.map((day) => day.date);
   const listed = (list, a, g) =>
     list.find((e) => e.activityId === a.id && e.groupId === g.id);
   for (const g of present) {
@@ -400,7 +399,13 @@ export function settledRules(c, input, result, options = {}) {
         );
       }
       if (a.early) {
-        const days = earlyDays(dates, a.early.day);
+        // The group's own days of the run: a day it isn't in doesn't count.
+        const days = earlyDays(
+          m.days
+            .filter((day) => day.groups.some((x) => x.id === g.id))
+            .map((day) => day.date),
+          a.early.day
+        );
         const said2 = listed(result.spreadBy, a, g);
         const early = mine.filter((date) => days.includes(date)).length;
         const missing = Math.max(0, a.early.count - early);

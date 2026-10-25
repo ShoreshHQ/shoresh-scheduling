@@ -9,6 +9,7 @@ import { mulberry32 } from "../random";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { problems } from "./data/check";
 import { camp166, camp93 } from "./data/repairCamps";
+import { sampled } from "shoresh-jest/sample";
 
 const run = (spec) => generateWeek(camp(spec));
 const short = (result) => ({
@@ -164,9 +165,11 @@ describe("capped activities in an exactly fitting week (T380)", () => {
     expect(bad).toEqual([]);
   });
 
-  it("one spare cell per group (9 cells, 8 capped activities) still meets every minimum (options 1..100)", () => {
+  // CI tries options 1..25; the full run 1..100 (jest/sample.js).
+  const spareOptions = sampled(100, 25);
+  it(`one spare cell per group (9 cells, 8 capped activities) still meets every minimum (options 1..${spareOptions})`, () => {
     const bad = [];
-    for (let option = 1; option <= 100; option++) {
+    for (let option = 1; option <= spareOptions; option++) {
       const r = short(
         run(spec({ option, days: 3, blocks: [block(1), block(2), block(3)] }))
       );

@@ -7,8 +7,10 @@ import { generateWeek, generateWeekSteps } from "c/shoreshEngine";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
 import { randomCamp } from "./data/randomCamp";
 import { settledRules } from "./data/settledRules";
+import { sampled } from "shoresh-jest/sample";
 
-const SEEDS = 150;
+// CI checks the first 50; the full run 150 (jest/sample.js).
+const SEEDS = sampled(150, 50);
 // Reasons that are proofs; BUDGET is the one that isn't, and MIN_COST says a fuller week exists
 // only by leaving a minimum short.
 const PROOFS = ["overlap", "noneFor", "length", "full", "searched"];

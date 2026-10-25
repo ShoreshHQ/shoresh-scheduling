@@ -114,7 +114,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     then, nothing running this week is set up for it, no activity's length fits the gap, every
  *     arrangement of the day was tried, filling it would take a group below a weekly minimum, or
  *     the search ran out of work first (why: the code, weekRules.js; BUDGET is the one that is
- *     not a proof)
+ *     not a proof); for MIN_COST also shortGroupId and shortActivityId, the group a fuller day
+ *     would leave short and of what
  *   moved: each cell the step 8 search changed, in order: [{ date, groupId, blockId, from, to,
  *     why, toFill: [{ date, groupId, blockId }] }] (from/to: activity ids, null for Open; why:
  *     "fill" to fill cells, "minimum" to leave fewer groups short of a weekly minimum with as
@@ -266,17 +267,24 @@ export function* generateWeekSteps(input, watch = {}) {
     overlapping: checked.overlapping,
     cells: checked.cells,
     ruleChecks,
-    openCells: state.openCells.map(({ key, why }) => {
+    openCells: state.openCells.map(({ key, why, cost }) => {
       const [groupId, d, blockId] = state.splitKey(key);
+      // A cell a fuller day would fill only by leaving a group short names that group and
+      // activity; every other reason names the cell's own group.
+      const named = cost ? cost.groupId : groupId;
       return {
         date: days[d].date,
         groupId,
         blockId,
         reason: reasonFor(OPEN_WHY[why], {
           terms: t,
-          groupName: (groups.get(groupId) || {}).name || ""
+          groupName: (groups.get(named) || {}).name || "",
+          activityName: cost ? state.actById.get(cost.activityId).name : ""
         }),
-        why
+        why,
+        ...(cost
+          ? { shortGroupId: cost.groupId, shortActivityId: cost.activityId }
+          : {})
       };
     }),
     moved: state.searchMoves.map((m) => ({

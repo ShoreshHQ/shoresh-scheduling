@@ -13,8 +13,8 @@ import {
 } from "./weekRules";
 
 /**
- * Step 8 of the protocol (docs/engine/protocol.md): search before giving up. Runs after
- * never-blank, on every cell still Open, and ends with each Open cell filled, proven unfillable
+ * Step 8 of the protocol (docs/engine/protocol.md), part 2 (rules 8.10-8.18): search before
+ * giving up. Runs after never-blank (part 1, the desktop's three repairs, is weekRepair.js), on every cell still Open, and ends with each Open cell filled, proven unfillable
  * (with the proof's reason), or marked as left when the search's work ran out (BUDGET: never
  * silent, never called a proof).
  *
@@ -75,6 +75,10 @@ function startSearch(st) {
   // What the search found for each day it could not fill further (SEARCHED, MIN_COST or
   // BUDGET): a proof is about the whole day, so it holds for whichever of its cells end Open.
   st.dayWhy = new Map();
+  // Each day's most, without search (dayHoldsMost), once worked out.
+  st.dayLimit = new Map();
+  // For a MIN_COST day: the group and activity a fuller day would leave short.
+  st.dayCost = new Map();
   // Every free cell, the ones left out for an overlapping cell included, is the search's to fill.
   for (const s of st.busyThen.values()) {
     const k = st.keyOf(s);
@@ -152,7 +156,8 @@ function cellsOfHead(st, hk) {
 /**
  * The most cells a group's day can hold on its own, other groups aside: each activity it is set
  * up for and doesn't already have that day in a kept cell, at most once, at its full length, in
- * free cells whose times don't overlap. null when that takes too long to be sure.
+ * free cells whose times don't overlap. null when that takes too long to be sure. Its steps are
+ * charged to the build's work.
  */
 function groupDayMost(st, g, d) {
   const blocks = st.blocksOf(d);
@@ -225,8 +230,10 @@ function groupDayMost(st, g, d) {
       acts.reduce((n, a) => n + a.span, 0)
     );
   } catch {
-    return null;
+    best = null;
   }
+  st.searchWorkLeft -= work;
+  st.searchLooksLeft -= work;
   return best;
 }
 
@@ -329,24 +336,34 @@ function periodMost(st, d, b) {
 function shortfall(st, groups) {
   let pairs = 0;
   let sessions = 0;
-  const short = new Set();
+  const short = new Map();
   for (const g of groups) {
     for (const act of st.acts) {
       const missing = act.min - st.getCount(g, act.id);
       if (missing > 0 && st.eligibility.get(act.id).has(g)) {
         pairs++;
         sessions += missing;
-        short.add(`${g}|${act.id}`);
+        short.set(`${g}|${act.id}`, missing);
       }
     }
   }
   return { count: [pairs, sessions], short };
 }
+/** The first group and activity (in the build's order) further short now than before. */
+function costOf(now, before) {
+  for (const [k, missing] of now.short) {
+    if (missing > (before.short.get(k) || 0)) {
+      const [groupId, activityId] = k.split("|");
+      return { groupId, activityId };
+    }
+  }
+  return null;
+}
 const worseShort = (now, before) =>
   now.count[0] > before.count[0] || now.count[1] > before.count[1];
 // A group newly short of a minimum it met.
 const lostMinimum = (now, before) =>
-  [...now.short].some((k) => !before.short.has(k));
+  [...now.short.keys()].some((k) => !before.short.has(k));
 
 /**
  * The most sessions of one activity a day can hold: each `span` blocks long, starting only at
@@ -729,8 +746,8 @@ function* solve(
         lexLess(short.count, shortBefore.count) &&
         (!best ||
           lexLess(
-            [...short.count, changes],
-            [...best.short.count, best.changes]
+            [...short.count, bends, changes],
+            [...best.short.count, best.bends, best.changes]
           ))
       ) {
         best = {
@@ -759,6 +776,8 @@ function* solve(
         filled,
         bends,
         changes,
+        // Without the guard: who the fuller day would leave short, and of what.
+        cost: guard ? null : costOf(shortfall(st, groupsIn), shortBefore),
         placed: vars
           .filter(
             (s) =>
@@ -913,7 +932,12 @@ function* solve(
       }
     }
   }
-  return { improved: Boolean(best), exhausted, moves };
+  return {
+    improved: Boolean(best),
+    exhausted,
+    moves,
+    cost: best ? best.cost : null
+  };
 }
 
 // ── The search, day by day ─────────────────────────────────────────────────
@@ -925,26 +949,35 @@ function* solve(
  * way: a group's day, or a time block, being full on its own does not make any one of its Open
  * cells unfillable, since the rest of the day may move.
  */
-function dayHoldsMost(st, d) {
+function* dayHoldsMost(st, d, at) {
   const free = st.freeByDay[d];
   const filled = free.filter((s) => st.assigned.has(st.keyOf(s))).length;
-  let byGroup = 0;
-  for (const g of new Set(free.map((s) => s.groupId))) {
-    const most = groupDayMost(st, g, d);
-    if (most == null) {
-      byGroup = Infinity;
-      break;
+  // Both limits read only what never moves (free cells, kept cells, other programs), so each
+  // day's is worked out once, pausing between groups, its work charged to the build's.
+  if (!st.dayLimit.has(d)) {
+    let byGroup = 0;
+    for (const g of new Set(free.map((s) => s.groupId))) {
+      if (outOfWork(st)) {
+        byGroup = Infinity;
+        break;
+      }
+      yield at;
+      const most = groupDayMost(st, g, d);
+      if (most == null) {
+        byGroup = Infinity;
+        break;
+      }
+      byGroup += most;
     }
-    byGroup += most;
+    let byBlock = 0;
+    for (const b of new Set(free.map((s) => s.blockId))) {
+      byBlock += periodMost(st, d, b);
+      st.searchWorkLeft--;
+      st.searchLooksLeft -= free.length;
+    }
+    st.dayLimit.set(d, Math.min(byGroup, byBlock));
   }
-  if (filled >= byGroup) {
-    return true;
-  }
-  let byBlock = 0;
-  for (const b of new Set(free.map((s) => s.blockId))) {
-    byBlock += periodMost(st, d, b);
-  }
-  return filled >= byBlock;
+  return filled >= st.dayLimit.get(d);
 }
 
 /** A cell nothing can go in on its own: kept time overlaps it, nothing is for the group, no length fits. */
@@ -1029,7 +1062,7 @@ function* fillDay(st, d, at, watch) {
       st.dayWhy.set(d, SEARCHED);
       return;
     }
-    if (dayHoldsMost(st, d)) {
+    if (yield* dayHoldsMost(st, d, at)) {
       st.dayWhy.set(d, SEARCHED);
       return;
     }
@@ -1097,6 +1130,7 @@ function* fillDay(st, d, at, watch) {
       });
       if (relaxed.improved) {
         why = MIN_COST;
+        st.dayCost.set(d, relaxed.cost);
       } else if (relaxed.exhausted) {
         why = SEARCHED;
       }
@@ -1188,6 +1222,10 @@ export function explainOpen(st) {
         why = FULL;
       }
     }
-    st.openCells.push({ key: k, why });
+    st.openCells.push({
+      key: k,
+      why,
+      cost: why === MIN_COST ? st.dayCost.get(s.dayIndex) : null
+    });
   }
 }

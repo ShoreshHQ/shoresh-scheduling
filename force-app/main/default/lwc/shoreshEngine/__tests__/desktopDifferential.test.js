@@ -19,8 +19,10 @@ import buildSchedule from "shoresh-jest/desktop-engine/engine/buildSchedule";
 import { writeDesktopReport } from "shoresh-jest/desktop-report";
 import { mulberry32 } from "../random";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
+import { sampled } from "shoresh-jest/sample";
 
-const SEEDS = 400;
+// CI builds the first 100; the full run all 400 (jest/sample.js).
+const SEEDS = sampled(400, 100);
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /** A random camp in plain words, from a seed. Synthetic only. */

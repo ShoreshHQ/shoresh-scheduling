@@ -16,7 +16,8 @@ import { createWeekState } from "./weekState";
  * the tight-week matching of capped activities; greedy fewest-choices, high priority then low;
  * then three repair passes (a reshuffle per empty cell, raising weekly minimums, moving a blocking
  * session), each step of which is undone unless it ends whole. Then, new here, nothing is left
- * blank: a cell no activity fits cleanly gets the least-bad one, flagged with the rule it bends.
+ * blank: a cell no activity fits cleanly gets one that only goes over a weekly max, flagged; and
+ * an exact search rearranges each day to fill what is still Open, or proves it can't be filled.
  *
  * Each part lives in its own file, named by the protocol step it carries out
  * (docs/engine/protocol.md lists every rule and where it lives):
@@ -24,8 +25,9 @@ import { createWeekState } from "./weekState";
  *   2 lay down what's fixed ....... weekFixed.js
  *   3 each cell's options ......... weekOptions.js (rules: weekRules.js)
  *   4-6 place by priority ......... weekPlace.js
- *   8 search before giving up ..... weekRepair.js (three repairs, before step 7) and
- *                                   weekSearch.js (the exact search, after it)
+ *   8 search before giving up ..... part 1, weekRepair.js: the desktop's three repairs (8.1-8.8),
+ *                                   before step 7; part 2, weekSearch.js: the exact search
+ *                                   (8.10-8.18), after it
  *   7 never blank ................. weekNeverBlank.js
  *   9 write the why ............... checks.js, words.js
  * The ledgers every step shares: weekState.js.
@@ -100,7 +102,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
   );
   let at = SHARE.rounds;
   yield at;
-  // Step 8: the three repairs.
+  // Step 8, part 1 (protocol 8.1-8.8): the desktop's three repairs, before never-blank.
   yield* repair(st, at);
   at += SHARE.repair;
   yield* minRepair(st, at, SHARE.minRepair);
@@ -113,7 +115,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
   yield* neverBlank(st, st.openSlots, at);
   yield* finishOpen(st, at);
   at += SHARE.neverBlank;
-  // Step 8's exact search, then why each cell still Open is Open.
+  // Step 8, part 2 (protocol 8.10-8.18): the exact search; then why each cell still Open is Open.
   yield* searchWeek(st, at, SHARE.search, notes);
   explainOpen(st);
 
