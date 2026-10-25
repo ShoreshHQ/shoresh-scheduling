@@ -234,8 +234,13 @@ function desktopOutcome(spec) {
 function compare(seed) {
   const spec = sharedCamp(seed);
   const sf = salesforceOutcome(spec);
-  const desk = desktopOutcome(spec);
   const row = { seed, cells: cellsToFill(spec) };
+  let desk;
+  try {
+    desk = desktopOutcome(spec);
+  } catch (e) {
+    return { ...row, desktopError: String(e) };
+  }
   if (sf.error) {
     return { ...row, sfError: sf.error };
   }
@@ -286,8 +291,8 @@ function compare(seed) {
 
 /** Each camp's kind of difference, from the outcomes alone. */
 function kindOf(row) {
-  if (row.sfError) {
-    return "sfError";
+  if (row.sfError || row.desktopError) {
+    return "error";
   }
   const { sf, desktop } = row;
   const same =
@@ -297,14 +302,18 @@ function kindOf(row) {
   if (same) {
     return "sameOutcome";
   }
-  // Expected: the desktop left cells empty, this engine filled them by bending (never-blank).
-  if (sf.empty <= desktop.empty && sf.minimumsShort <= desktop.minimumsShort) {
-    return sf.bentCells > 0 ? "sfFillsByBending" : "sfMeetsMore";
-  }
   if (sf.minimumsShort > desktop.minimumsShort) {
     return "sfMeetsFewerMinimums";
   }
-  return "sfLeavesMoreEmpty";
+  if (sf.minimumsShort < desktop.minimumsShort) {
+    return "sfMeetsMoreMinimums";
+  }
+  if (sf.empty > desktop.empty) {
+    return "sfLeavesMoreEmpty";
+  }
+  // Expected: same minimums met; the desktop left cells empty, this engine filled them by
+  // bending (never-blank).
+  return "sameMinimumsSfFillsByBending";
 }
 
 /** How the early-week goals compare, kept apart: the two engines read a goal's day differently. */
@@ -314,7 +323,8 @@ function earlyKindOf(row) {
     return "same";
   }
   if (row.earlyTargetMissing) {
-    return "desktopDropsGoalWithoutTargetDay";
+    // Likely the target-day reading above (the cause is assumed, not shown).
+    return "differsTargetDayNotInWeek";
   }
   return sf.earlyShort > desktop.earlyShort
     ? "sfShortMore"
@@ -328,7 +338,7 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
   }
 
   it(`builds every camp in both engines (${SEEDS} seeds)`, () => {
-    expect(rows.filter((r) => r.sfError)).toEqual([]);
+    expect(rows.filter((r) => r.sfError || r.desktopError)).toEqual([]);
   });
 
   it("adds up: each engine's filled plus empty cells never exceed the cells to fill", () => {

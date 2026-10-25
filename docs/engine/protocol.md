@@ -152,8 +152,12 @@ Known, expected differences:
   the week, it drops the goal. This engine still counts it if any day by then is in the week.
 
 Results on the first run (2026-10-25, 400 camps): this engine left 0 cells empty where the
-desktop left 5,355 of 17,686; 140 camps had the same outcome, 222 differed only by never-blank
-bends, 14 met more minimums here; 24 camps met fewer minimums here than on the desktop (by 1–5
-group-activity pairs), worth a look in PR 4 (search) since never-blank's bends can take a cell a
-minimum needed. Early-week goals: 265 camps the same, 72 differ by the target-day reading above,
-48 short more on the desktop, 15 short more here.
+desktop left 5,355 of 17,686. By weekly minimums met: 140 camps had the same outcome with no
+bends; 160 met the same minimums, with this engine filling the desktop's empty cells by bending;
+76 met more minimums here; 24 met fewer here (by 1 to 5 group-activity pairs), worth a look in
+PR 4 (search), since a never-blank bend can take a cell a minimum needed. Early-week goals: 265
+camps the same; 72 differ in a week missing the desktop's target day (likely the reading above;
+the cause is assumed, not shown); 48 short more on the desktop; 15 short more here.
+
+The check that counts add up is one-sided (filled plus empty never exceed the cells to fill), so
+it would not catch an undercount.
