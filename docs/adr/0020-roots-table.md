@@ -204,7 +204,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       picking Manual Build or Generated Schedule for the director would break the desktop's rule
       (`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`; the mock-up opened Manual
       Build); a special day or event opens its details and its schedule; offerings short open
-      Elective seats on that run's set and week (`openWeek`).
+      Elective seats on that run's set and week (`openWeek`; since that screen is drawn only
+      while shown, the page hands it the card's week and set as `opening`, and it starts there
+      ahead of the season's latest run).
       **Leaving and arriving**: the hand changes only while Roots is shown and still (never behind
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
@@ -234,9 +236,10 @@ in the design system's classes), `shoreshRootsHand.test.js` (dealt in, fanned, a
 arrows, played onto its meld, the cursor kept, taken back mid-play, reduced motion, travel
 hooks, axe), `shoreshRoots.test.js` (the hand after the table read, opening the exact thing,
 calm, holding still while away, a failed read, the sheet wearing a hand card, home to it, the
-meld settling), `shoreshCampSetup.test.js` (a hand card out and home again), `shoreshRootsFaces`
+meld settling), `shoreshCampSetup.test.js` (a hand card out and home again; the seats card opening Elective
+seats on its run's week and set, not the latest run's), `shoreshRootsFaces`
 (a fixed activity keeps its padlock), `shoreshSetupRules` (kinds), `shoreshElectiveSeats`
-(`openWeek`), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
+(`openWeek`, and `opening` on a fresh start), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
 queries), and the browser check's hand step (dealt, opened, played away, axe) and R1.1 steps
 tightened (a name dropped from a face fails too; no overlap at all in the short window).
 

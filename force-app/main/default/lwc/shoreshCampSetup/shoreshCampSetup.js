@@ -262,6 +262,8 @@ export default class ShoreshCampSetup extends LightningElement {
   electiveDetailsFor = null;
   // Where Bring in choices starts when Elective seats opened it ({ setId, weekId, scheduleId }).
   choicesOpening = null;
+  // Where Elective seats starts when a Roots hand card opened it ({ weekId, setId }).
+  seatsOpening = null;
   // The screen the page's address asks for (?c__preview=electives, repo ADR 0018;
   // ?c__preview=bringInChoices, ADR 0017 choice 19), and whether it has been opened once (after
   // that the menu leads, as for any screen).
@@ -633,12 +635,18 @@ export default class ShoreshCampSetup extends LightningElement {
     // Refused while its week picker waits on work under way: the doorway (or Roots) stays, that
     // week's button held (weekStates), rather than opening the screen on another week.
     const weekId = event.detail.weekId;
-    if (weekId && WEEK_SCREENS[screen]) {
-      const target = this.template.querySelector(WEEK_SCREENS[screen]);
-      if (target && !target.openWeek(weekId, event.detail.setId)) {
-        return;
-      }
+    const target =
+      weekId && WEEK_SCREENS[screen]
+        ? this.template.querySelector(WEEK_SCREENS[screen])
+        : null;
+    if (target && !target.openWeek(weekId, event.detail.setId)) {
+      return;
     }
+    // Elective seats is drawn only while shown: the hand card's week and set wait for it.
+    this.seatsOpening =
+      screen === "electiveSeats" && weekId && !target
+        ? { weekId, setId: event.detail.setId }
+        : null;
     const fromCard = event.detail.fromCard;
     // A week on the Schedules doorway (a hand card's week not built yet): the cursor goes to it.
     this.weekToFocus = screen === "scheduleWeeks" ? weekId || null : null;

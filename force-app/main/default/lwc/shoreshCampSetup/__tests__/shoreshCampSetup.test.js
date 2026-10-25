@@ -2698,6 +2698,59 @@ describe("c-shoresh-camp-setup", () => {
       getTable.mockReset();
     });
 
+    it("offerings short open Elective seats on that run's set and week, not the latest run's", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({
+            weeks: [
+              { Id: "w1", Name: "Week 1" },
+              { Id: "w2", Name: "Week 2" },
+              { Id: "w3", Name: "Week 3" }
+            ],
+            electives: {
+              sets: [
+                { Id: "es1", Name: "Chugim" },
+                { Id: "es2", Name: "Evening" }
+              ],
+              offerings: [],
+              linkedChoices: []
+            }
+          })
+        )
+      );
+      getTable.mockResolvedValue({
+        soonWeekIds: [],
+        builtWeekIds: ["w1", "w2", "w3"],
+        shortSeats: [{ name: "Ropes", fewest: 5, minimum: 6, seats: 12 }],
+        seatsWeekId: "w2",
+        seatsSetId: "es2"
+      });
+      // Electives were already run for Week 3: the screen alone would start there.
+      seatsSetup.mockResolvedValue({
+        runs: [{ id: "r3", setId: "es1", weekId: "w3", scheduleId: null }]
+      });
+      const element = await render();
+      expect(q(element, "c-shoresh-elective-seats")).toBeNull();
+      q(element, "c-shoresh-roots")
+        .shadowRoot.querySelector("c-shoresh-roots-hand")
+        .shadowRoot.querySelector('[data-hand="hand:seatsShort|"]')
+        .click();
+      await flush();
+      run(3000);
+      await flush();
+      await flush();
+      expect(shownScreens(element)).toEqual(["electiveSeats"]);
+      const seats = q(element, "c-shoresh-elective-seats");
+      const picker = (id) =>
+        seats.shadowRoot.querySelector(`c-shoresh-rail-picker[data-id="${id}"]`)
+          .value;
+      expect(picker("week")).toBe("w2");
+      expect(picker("set")).toBe("es2");
+      getTable.mockReset();
+    });
+
     it("another screen chosen mid-way ends the journey where it is", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));

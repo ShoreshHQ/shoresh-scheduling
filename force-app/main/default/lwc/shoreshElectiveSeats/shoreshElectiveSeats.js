@@ -83,6 +83,8 @@ const ICONS = {
  */
 export default class ShoreshElectiveSeats extends LightningElement {
   @api terms;
+  // Where the screen starts when Roots' hand opened it ({ weekId, setId }), before the latest run.
+  @api opening;
 
   _setup;
   @api
@@ -192,23 +194,31 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return true;
   }
 
-  /** Where the screen starts: as it was, else the latest run's set and week, else the first. */
+  /**
+   * Where the screen starts: as it was, else where it was opened on (opening), else the latest
+   * run's set and week, else the first.
+   */
   pickStart() {
     const runs = this.runs;
     const latest = runs.length ? runs[runs.length - 1] : null;
+    const asked = this.opening || {};
     if (!this.sets.some((s) => s.Id === this.setId)) {
-      this.setId = latest
-        ? latest.setId
-        : this.sets.length
-          ? this.sets[0].Id
-          : null;
+      this.setId = this.sets.some((s) => s.Id === asked.setId)
+        ? asked.setId
+        : latest
+          ? latest.setId
+          : this.sets.length
+            ? this.sets[0].Id
+            : null;
     }
     if (!this.weeks.some((w) => w.Id === this.weekId)) {
-      this.weekId = latest
-        ? latest.weekId
-        : this.weeks.length
-          ? this.weeks[0].Id
-          : null;
+      this.weekId = this.weeks.some((w) => w.Id === asked.weekId)
+        ? asked.weekId
+        : latest
+          ? latest.weekId
+          : this.weeks.length
+            ? this.weeks[0].Id
+            : null;
     }
     this.pickSchedule();
   }

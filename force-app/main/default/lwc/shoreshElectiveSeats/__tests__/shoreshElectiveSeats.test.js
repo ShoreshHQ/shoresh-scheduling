@@ -86,7 +86,8 @@ async function render({
   situation = SITUATION,
   view = runView(),
   setup = SETUP,
-  words = []
+  words = [],
+  opening = null
 } = {}) {
   seatsSetup.mockResolvedValue(situation);
   openRun.mockResolvedValue(view);
@@ -103,6 +104,7 @@ async function render({
     },
     ...words
   ]);
+  element.opening = opening;
   element.setup = nsRecord(setup);
   document.body.appendChild(element);
   await flush();
@@ -165,6 +167,14 @@ describe("the start", () => {
     expect($(element, 'c-shoresh-rail-picker[data-id="week"]').value).toBe(
       "w2"
     );
+  });
+
+  it("drawn fresh from Roots' hand, starts on the week it was opened on, not the latest run's", async () => {
+    const element = await render({ opening: { weekId: "w2", setId: "e1" } });
+    expect($(element, 'c-shoresh-rail-picker[data-id="week"]').value).toBe(
+      "w2"
+    );
+    expect($(element, 'c-shoresh-rail-picker[data-id="set"]').value).toBe("e1");
   });
 
   it("asks Assign against when the week has two schedules", async () => {
