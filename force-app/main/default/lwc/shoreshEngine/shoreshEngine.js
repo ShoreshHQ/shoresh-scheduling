@@ -6,7 +6,7 @@ import {
   readLocations as readLocationMap
 } from "./checkInputs";
 import { identity } from "./grid";
-import { sameFrame, seedFromImport } from "./weekFloor";
+import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
 import {
   atCamp,
   compareText,
@@ -220,7 +220,9 @@ export function* generateWeekSteps(input, watch = {}) {
     ...otherPrograms(input.otherPrograms, days)
   };
   const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
-  function* build(settings, from, share, once) {
+  // A build fills the bar from `from` by `share`; `once` (it may be the only build in its part of
+  // the bar): once that is known, it runs on to `end` instead.
+  function* build(settings, from, share, once, end = 1) {
     const notes = {};
     const steps = scheduleWeekSteps(settings, notes);
     // Where the bar was when it became known this is the only build (see above), if it is.
@@ -235,14 +237,14 @@ export function* generateWeekSteps(input, watch = {}) {
         ? { ...notes.now, date: days[notes.now.dayIndex].date }
         : null;
       yield alone && alone.f < 1
-        ? alone.at + ((f - alone.f) / (1 - alone.f)) * (1 - alone.at)
+        ? alone.at + ((f - alone.f) / (1 - alone.f)) * (end - alone.at)
         : from + share * f;
       step = steps.next();
     }
     const state = step.value;
     const built = writeDays(settings, state);
     watch.now = null;
-    yield once && !state.leftForNeverBlank ? 1 : from + share;
+    yield once && !state.leftForNeverBlank ? end : from + share;
     return {
       state,
       built,
@@ -253,7 +255,7 @@ export function* generateWeekSteps(input, watch = {}) {
   // that leniency: the week kept is the one no worse (it meets more minimums, or as many with no
   // more bends; ADR 0010).
   function* buildBest(settings, from, share, once) {
-    let best = yield* build(settings, from, share / 2, once);
+    let best = yield* build(settings, from, share / 2, once, from + share);
     let checks = best.state.ruleChecks;
     if (best.state.leftForNeverBlank) {
       const strict = yield* build(
@@ -269,7 +271,17 @@ export function* generateWeekSteps(input, watch = {}) {
     }
     return { ...best, ruleChecks: checks };
   }
-  const first = yield* buildBest(model, 0, 1, true);
+  const importedDays = (input.imported || []).filter(
+    (day) =>
+      day &&
+      day.dateValue &&
+      !replaced.some((r) => r.dateValue === day.dateValue)
+  );
+  // With an imported week to compare, the first build has the first half of the bar and a build
+  // from the imported week the second (the bar jumps to the end when none is needed); else the
+  // first build has all of it.
+  const floorShare = importedDays.length && model.mode === MODE.FULL ? 0.5 : 0;
+  const first = yield* buildBest(model, 0, 1 - floorShare, true);
   let ruleChecks = first.ruleChecks;
   // Step 8's floor: never emptier than the week as it was imported (weekFloor.js).
   const floor = {
@@ -280,12 +292,6 @@ export function* generateWeekSteps(input, watch = {}) {
     reason: null
   };
   let chosen = first;
-  const importedDays = (input.imported || []).filter(
-    (day) =>
-      day &&
-      day.dateValue &&
-      !replaced.some((r) => r.dateValue === day.dateValue)
-  );
   if (importedDays.length && model.mode === MODE.FULL) {
     if (!sameFrame(toBuild, importedDays)) {
       floor.reason = floorNote("frame", { name: floor.importedName, terms: t });
@@ -294,11 +300,12 @@ export function* generateWeekSteps(input, watch = {}) {
         importedDays,
         readPartsOfDay(input.timeBlocks)
       );
-      floor.imported = checkWeek(
-        fromImport.map((day) => day.frame),
-        checkModel(input, model, null),
-        words
-      ).cells.filled;
+      // Counted only over the cells this week counts (the first build's week, as it stands).
+      floor.imported = importedFilled(
+        checkModel(input, model, first.state),
+        first.built,
+        importedDays
+      );
       if (floor.imported > first.checked.cells.filled) {
         const seed = seedFromImport(model, fromImport, writeDays);
         ruleChecks += seed.kept.ruleChecks;
@@ -307,7 +314,12 @@ export function* generateWeekSteps(input, watch = {}) {
           days: readDays(seed.days, readPartsOfDay(input.timeBlocks)),
           mode: MODE.FILL_OPEN
         };
-        const seeded = yield* buildBest(seededModel, 1, 0, false);
+        const seeded = yield* buildBest(
+          seededModel,
+          1 - floorShare,
+          floorShare,
+          true
+        );
         ruleChecks += seeded.ruleChecks;
         // Checked as the director's week: only what the first build kept counts as kept, so a
         // weekly-limit dot lands where it would on any other build.
@@ -333,6 +345,9 @@ export function* generateWeekSteps(input, watch = {}) {
         }
       }
     }
+  }
+  if (floorShare) {
+    yield 1;
   }
   const { state, built, checked } = chosen;
   return {
@@ -517,26 +532,6 @@ function bendCount(checked) {
     n += rules.length;
   }
   return n;
-}
-
-/** Weekly-limit bends the week's dots name. */
-function weeklyMaxBends(checked) {
-  let n = 0;
-  for (const rules of checked.bends.values()) {
-    n += rules.filter((r) => r === RULE.WEEKLY_MAX).length;
-  }
-  return n;
-}
-
-/**
- * Whether week a (the seeded build) is kept over week b (the first build): more cells filled, or
- * as many with fewer weekly-limit bends; a tie keeps the first build.
- */
-function fuller(a, b) {
-  if (a.cells.filled !== b.cells.filled) {
-    return a.cells.filled > b.cells.filled;
-  }
-  return weeklyMaxBends(a) < weeklyMaxBends(b);
 }
 
 /** Whether week a is worse than week b: fewer minimums met, or as many with more bends. */

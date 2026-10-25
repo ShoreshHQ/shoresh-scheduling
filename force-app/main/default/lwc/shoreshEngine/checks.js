@@ -527,10 +527,15 @@ function stillToPlace(ctx) {
  * one noted from a file by name counts as before), and not a cell
  * the director locked empty (Generated Schedule: a Lock on an Open cell keeps it empty).
  */
-function filledCount(ctx) {
-  let filled = 0;
-  let total = 0;
-  ctx.days.forEach((day) => {
+/**
+ * Each cell the week's filled count counts, in order: { day, groupId, b, item } (item: the
+ * cell's identity, '' for Open). Away cells, fixed and recurring activities, specials, placed
+ * electives and cells locked Open aren't counted. ctx: checkWeek's model (isAway, isLockedOpen)
+ * and the days.
+ */
+export function countedCells(ctx, days) {
+  const out = [];
+  days.forEach((day) => {
     if (day.problem) {
       return;
     }
@@ -549,12 +554,19 @@ function filledCount(ctx) {
         ) {
           return;
         }
-        total += 1;
-        filled += item === OPEN ? 0 : 1;
+        out.push({ day, groupId: grp.id, b, item });
       });
     });
   });
-  return { filled, total };
+  return out;
+}
+
+function filledCount(ctx) {
+  const cells = countedCells(ctx, ctx.days);
+  return {
+    filled: cells.filter((c) => c.item !== OPEN).length,
+    total: cells.length
+  };
 }
 
 /**

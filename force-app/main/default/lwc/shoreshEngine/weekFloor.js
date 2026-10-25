@@ -1,6 +1,8 @@
+import { countedCells } from "./checks";
+import { CARRIES_ON, slots } from "./grid";
 import { readGrid } from "./weekFixed";
 import { check } from "./weekOptions";
-import { PREFERENCES } from "./weekRules";
+import { PREFERENCES, RULE } from "./weekRules";
 import { createWeekState } from "./weekState";
 
 /**
@@ -42,6 +44,31 @@ export function sameFrame(days, imported) {
     const b = frameOf(other);
     return a.blocks === b.blocks && a.groups === b.groups;
   });
+}
+
+/**
+ * How many of the cells this week counts (checks.js countedCells on this week's days, ctx its
+ * checkWeek model) the imported week holds an activity in. A cell this week no longer counts (a
+ * fixed or recurring activity, a special or an elective there now, a group away, a cell locked
+ * Open) isn't counted for the imported week either, and neither is a cell the imported week held
+ * something other than an activity in: the floor is what a build could put back.
+ */
+export function importedFilled(ctx, days, imported) {
+  const byDate = new Map(imported.map((day) => [day.dateValue, day]));
+  const rowOf = new Map();
+  const slotOf = (day, groupId, b) => {
+    const k = `${day.dateValue}|${groupId}`;
+    if (!rowOf.has(k)) {
+      const other = byDate.get(day.dateValue);
+      const g = other ? other.groups.findIndex((x) => x.id === groupId) : -1;
+      rowOf.set(k, g < 0 ? [] : slots(other, g));
+    }
+    const slot = rowOf.get(k)[b] || "";
+    return slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
+  };
+  return countedCells(ctx, days).filter((c) =>
+    slotOf(c.day, c.groupId, c.b).startsWith("A:")
+  ).length;
 }
 
 /**
@@ -110,4 +137,36 @@ export function seedFromImport(model, importDays, writeDays) {
     placed += 1;
   }
   return { days: writeDays(model, st), kept: st, placed };
+}
+
+/** Weekly-limit bends a checked week's dots name. */
+function weeklyMaxBends(checked) {
+  let n = 0;
+  for (const rules of checked.bends.values()) {
+    n += rules.filter((r) => r === RULE.WEEKLY_MAX).length;
+  }
+  return n;
+}
+
+/**
+ * Whether checked week a (the build from the imported week) is kept over checked week b (the
+ * first build): more cells filled (a full week first, Greg); as many: fewer groups short of a
+ * weekly minimum, then fewer sessions short, then fewer weekly-limit bends; still a tie keeps
+ * the first build.
+ */
+export function fuller(a, b) {
+  const rank = (c) => [
+    -c.cells.filled,
+    new Set(c.stillNeededBy.map((n) => n.groupId)).size,
+    c.stillNeededBy.reduce((sum, n) => sum + n.missing, 0),
+    weeklyMaxBends(c)
+  ];
+  const ra = rank(a);
+  const rb = rank(b);
+  for (let i = 0; i < ra.length; i++) {
+    if (ra[i] !== rb[i]) {
+      return ra[i] < rb[i];
+    }
+  }
+  return false;
 }

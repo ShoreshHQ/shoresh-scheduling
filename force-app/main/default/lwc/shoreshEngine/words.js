@@ -105,7 +105,7 @@ export function floorNote(kind, { name, built, imported, terms } = {}) {
   if (kind === "frame") {
     return `The imported ${week}${called} no longer matches this ${week}'s days, ${t.pIn("TimeBlock")} or ${t.pIn("Group")}, so it wasn't compared.`;
   }
-  return `This ${week} has ${built} filled, the imported ${week}${called} ${imported}.`;
+  return `This ${week} has ${built} ${built === 1 ? "cell" : "cells"} filled; the imported ${week}${called} has ${imported}.`;
 }
 
 /** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */

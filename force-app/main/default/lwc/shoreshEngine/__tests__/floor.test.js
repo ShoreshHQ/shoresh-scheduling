@@ -4,7 +4,8 @@
  * still win; what the import holds that a limit no longer allows is skipped, never placed; an
  * import whose days, time blocks or groups have changed isn't compared, and that is said.
  */
-import { generateWeek } from "c/shoreshEngine";
+import { generateWeek, generateWeekSteps } from "c/shoreshEngine";
+import { fuller as keepsSeeded } from "../weekFloor";
 import { activity, at, block, camp, dateAt, group } from "./data/camp";
 
 /** The imported week: the same camp's days with these cells in the grid. */
@@ -89,7 +90,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(result.floor.used).not.toBe("none");
     expect(result.floor.built).toBeLessThan(result.floor.imported);
     expect(result.floor.reason).toBe(
-      `This week has ${result.floor.built} filled, the imported week ${result.floor.imported}.`
+      `This week has ${result.floor.built} cells filled; the imported week has ${result.floor.imported}.`
     );
     expect(result.openCells.every((c) => c.reason)).toBe(true);
   });
@@ -110,7 +111,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(at(result, 0, "g2", 0)).toBeNull();
     expect(result.floor.used).toBe("first");
     expect(result.floor.reason).toBe(
-      "This week has 2 filled, the imported week 3."
+      "This week has 2 cells filled; the imported week has 3."
     );
   });
 
@@ -148,5 +149,145 @@ describe("never emptier than the imported week (step 8's floor)", () => {
       imported: importOf(tight, fuller)
     });
     expect(result.floor.used).toBe("none");
+  });
+
+  it("counts the imported week only where this week counts: a fixed activity there now", () => {
+    // Flagpole now holds g2's Period 1, where the imported week had Arts.
+    const spec = {
+      ...tight,
+      fixed: [{ id: "flag", name: "Flagpole", block: "b0", groups: ["g2"] }]
+    };
+    const result = generateWeek({
+      ...camp(spec),
+      imported: importOf(tight, fuller)
+    });
+    expect(result.floor).toEqual({
+      importedName: null,
+      imported: 2,
+      built: 2,
+      used: "none",
+      reason: null
+    });
+    expect(JSON.stringify(result.days)).toBe(
+      JSON.stringify(generateWeek(camp(spec)).days)
+    );
+  });
+
+  it("puts a double period back whole, and skips one whose length has changed", () => {
+    const spec = {
+      ...tight,
+      activities: [
+        ...tight.activities.filter((a) => a.id !== "arts"),
+        activity("drama", { span: 2, location: "pool", eligible: ["g2"] })
+      ]
+    };
+    const cells = [
+      fuller[0],
+      fuller[1],
+      { day: 0, group: "g2", block: "b0", act: "drama", length: 2 }
+    ];
+    const result = generateWeek({
+      ...camp(spec),
+      imported: importOf(spec, cells)
+    });
+    expect(result.floor.used).toBe("seeded");
+    expect(result.floor.imported).toBe(4);
+    expect(at(result, 0, "g2", 0)).toBe("drama");
+    expect(at(result, 0, "g2", 1)).toBe("drama");
+    expect(result.cells.filled).toBe(4);
+    // Drama was a single period in the imported week: it isn't put back as it was (the build
+    // still fills the cell as it would any other).
+    const single = generateWeek({
+      ...camp(spec),
+      imported: importOf(spec, [
+        fuller[0],
+        fuller[1],
+        { day: 0, group: "g2", block: "b0", act: "drama", length: 1 }
+      ])
+    });
+    expect(single.floor.imported).toBe(3);
+    // Drama only ever goes in as the double period it is now, never a single.
+    expect(at(single, 0, "g2", 1)).toBe(at(single, 0, "g2", 0));
+    expect(single.flags).toEqual([]);
+  });
+
+  it("gives the build from the imported week its own part of the bar", () => {
+    const steps = generateWeekSteps({
+      ...camp(tight),
+      imported: importOf(tight, fuller)
+    });
+    const seen = [];
+    let step = steps.next();
+    while (!step.done) {
+      seen.push(step.value);
+      step = steps.next();
+    }
+    expect(step.value.floor.used).toBe("seeded");
+    seen.forEach((f, i) => expect(f).toBeGreaterThanOrEqual(seen[i - 1] || 0));
+    expect(seen.some((f) => f > 0.5 && f < 1)).toBe(true);
+    expect(seen[seen.length - 1]).toBe(1);
+  });
+});
+
+describe("which build is kept (step 8's floor)", () => {
+  const week = ({ filled, short = [], maxBends = 0 }) => ({
+    cells: { filled },
+    stillNeededBy: short.map(([groupId, missing]) => ({
+      activityId: "swim",
+      groupId,
+      missing
+    })),
+    bends: new Map(
+      Array.from({ length: maxBends }, (_, i) => [`p${i}`, ["weeklyMax"]])
+    )
+  });
+
+  it("keeps the fuller week, whatever it is short of", () => {
+    expect(
+      keepsSeeded(week({ filled: 5, short: [["g1", 2]] }), week({ filled: 4 }))
+    ).toBe(true);
+  });
+
+  it("on as many filled: fewer groups short, then fewer sessions short", () => {
+    expect(
+      keepsSeeded(
+        week({ filled: 4, short: [["g1", 2]] }),
+        week({
+          filled: 4,
+          short: [
+            ["g1", 1],
+            ["g2", 1]
+          ]
+        })
+      )
+    ).toBe(true);
+    expect(
+      keepsSeeded(
+        week({ filled: 4, short: [["g1", 2]] }),
+        week({ filled: 4, short: [["g1", 1]] })
+      )
+    ).toBe(false);
+  });
+
+  it("on a tie in both, fewer weekly-limit bends decide; a full tie keeps the first build", () => {
+    const short = [["g1", 1]];
+    expect(
+      keepsSeeded(
+        week({ filled: 4, short, maxBends: 1 }),
+        week({ filled: 4, short, maxBends: 2 })
+      )
+    ).toBe(true);
+    expect(
+      keepsSeeded(
+        week({ filled: 4, short, maxBends: 2 }),
+        week({ filled: 4, short, maxBends: 1 })
+      )
+    ).toBe(false);
+    expect(
+      keepsSeeded(
+        week({ filled: 4, short, maxBends: 1 }),
+        week({ filled: 4, short, maxBends: 1 })
+      )
+    ).toBe(false);
   });
 });
