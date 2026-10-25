@@ -71,8 +71,8 @@ export async function loadWeek(programId, weekId) {
       // The week's days a special day replaces (ADR 0014 slice 4).
       specials: r.specials || { days: [] },
       // The week as it was imported and that version's name: the engine's floor (step 8).
-      imported: r.imported || [],
-      importedName: r.importedName || null
+      imported: (r.imported && r.imported.days) || [],
+      importedName: (r.imported && r.imported.name) || null
     }
   };
 }
