@@ -177,6 +177,73 @@ describe("the start", () => {
     expect($(element, 'c-shoresh-rail-picker[data-id="set"]').value).toBe("e1");
   });
 
+  describe("the run Roots' hand counted (repo ADR 0020 choice 10)", () => {
+    // Week 1 has two schedules; on s1, run A is committed and the later run B not (Final); on s2,
+    // run C is the latest of all.
+    const TWO = {
+      ...SETUP,
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "s2",
+          Program__c: "p1",
+          Week__c: "w1",
+          Status__c: "Draft",
+          Origin__c: "Generated"
+        }
+      ]
+    };
+    const A = { ...RUN_INFO, id: "rA", scheduleId: "s1", status: "Committed" };
+    const B = { ...RUN_INFO, id: "rB", scheduleId: "s1", status: "Final" };
+    const C = { ...RUN_INFO, id: "rC", scheduleId: "s2", status: "Final" };
+    const situation = { runs: [A, B, C] };
+    const shown = (element) =>
+      $(element, 'c-shoresh-rail-picker[data-id="schedule"]').value;
+    const opened = () => openRun.mock.calls.map((c) => c[0].runId);
+
+    it("on its own, opens the latest run's schedule, its committed run first", async () => {
+      const element = await render({ setup: TWO, situation });
+      expect(shown(element)).toBe("s2");
+      expect(opened()).toEqual(["rC"]);
+      // On s1, the committed run, not the later one.
+      openRun.mockClear();
+      $(element, 'c-shoresh-rail-picker[data-id="schedule"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s1" } })
+      );
+      await flush();
+      expect(opened()).toEqual(["rA"]);
+    });
+
+    it("drawn fresh, opens on the exact run asked for", async () => {
+      const element = await render({
+        setup: TWO,
+        situation,
+        opening: { weekId: "w1", setId: "e1", scheduleId: "s1", runId: "rB" }
+      });
+      expect(shown(element)).toBe("s1");
+      expect(opened()).toEqual(["rB"]);
+    });
+
+    it("already open, moves to the exact run asked for", async () => {
+      const element = await render({ setup: TWO, situation });
+      openRun.mockClear();
+      expect(element.openWeek("w1", "e1", "s1", "rA")).toBe(true);
+      await flush();
+      expect(shown(element)).toBe("s1");
+      expect(opened()).toEqual(["rA"]);
+    });
+
+    it("when that run is gone, opens the set and week as before", async () => {
+      const element = await render({
+        setup: TWO,
+        situation,
+        opening: { weekId: "w1", setId: "e1", scheduleId: "s1", runId: "gone" }
+      });
+      expect(shown(element)).toBe("s2");
+      expect(opened()).toEqual(["rC"]);
+    });
+  });
+
   it("asks Assign against when the week has two schedules", async () => {
     const element = await render({
       setup: {

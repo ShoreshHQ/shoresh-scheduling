@@ -44,11 +44,15 @@ public with sharing class RootsTable {
      */
     @AuraEnabled
     public List<Seat> shortSeats = new List<Seat>();
-    /** That run's set and week, so the hand opens Elective seats on it. */
+    /** That run, its set, week and schedule, so the hand opens Elective seats on it. */
     @AuraEnabled
     public Id seatsSetId;
     @AuraEnabled
     public Id seatsWeekId;
+    @AuraEnabled
+    public Id seatsScheduleId;
+    @AuraEnabled
+    public Id seatsRunId;
     @AuraEnabled
     public Version latestVersion;
   }

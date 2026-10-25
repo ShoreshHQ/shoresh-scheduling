@@ -639,13 +639,14 @@ export default class ShoreshCampSetup extends LightningElement {
       weekId && WEEK_SCREENS[screen]
         ? this.template.querySelector(WEEK_SCREENS[screen])
         : null;
-    if (target && !target.openWeek(weekId, event.detail.setId)) {
+    const { setId, scheduleId, runId } = event.detail;
+    if (target && !target.openWeek(weekId, setId, scheduleId, runId)) {
       return;
     }
-    // Elective seats is drawn only while shown: the hand card's week and set wait for it.
+    // Elective seats is drawn only while shown: the hand card's run waits for it.
     this.seatsOpening =
       screen === "electiveSeats" && weekId && !target
-        ? { weekId, setId: event.detail.setId }
+        ? { weekId, setId, scheduleId, runId }
         : null;
     const fromCard = event.detail.fromCard;
     // A week on the Schedules doorway (a hand card's week not built yet): the cursor goes to it.

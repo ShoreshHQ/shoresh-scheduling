@@ -2725,7 +2725,9 @@ describe("c-shoresh-camp-setup", () => {
         builtWeekIds: ["w1", "w2", "w3"],
         shortSeats: [{ name: "Ropes", fewest: 5, minimum: 6, seats: 12 }],
         seatsWeekId: "w2",
-        seatsSetId: "es2"
+        seatsSetId: "es2",
+        seatsScheduleId: null,
+        seatsRunId: "r2"
       });
       // Electives were already run for Week 3: the screen alone would start there.
       seatsSetup.mockResolvedValue({

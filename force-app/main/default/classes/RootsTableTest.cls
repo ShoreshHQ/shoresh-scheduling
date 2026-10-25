@@ -334,6 +334,64 @@ private class RootsTableTest {
   }
 
   @IsTest
+  static void theSeatsAreTheRunElectiveSeatsOpensOn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      Id generatedId = camp.draft('Generated');
+      Id manualId = camp.draft('Manual');
+      camp.electives(generatedId);
+      Id setId = [
+        SELECT ElectiveSet__c
+        FROM ElectiveRun__c
+        WHERE Id = :camp.runId
+      ]
+      .ElectiveSet__c;
+      // Run A is committed (one offering short); run B, a later run on the same schedule that is
+      // not the committed one, has no seats. Elective seats opens on A, so the hand counts A.
+      ElectiveRun__c later = run(camp, setId, generatedId, 'Final');
+      Database.insert(later, AccessLevel.USER_MODE);
+      Test.setCreatedDate(camp.runId, Datetime.now().addDays(-2));
+      Test.setCreatedDate(later.Id, Datetime.now().addDays(-1));
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Integer queries = Limits.getQueries() - before;
+      Assert.isTrue(queries <= 8, 'Roots read with ' + queries + ' queries');
+      Assert.areEqual(camp.runId, table.seatsRunId);
+      Assert.areEqual(generatedId, table.seatsScheduleId);
+      Assert.areEqual(setId, table.seatsSetId);
+      Assert.areEqual(1, table.shortSeats.size());
+
+      // A newer run on the week's other schedule: Elective seats opens on that schedule, on
+      // which nothing is short.
+      ElectiveRun__c other = run(camp, setId, manualId, 'Final');
+      Database.insert(other, AccessLevel.USER_MODE);
+      table = RootsController.getTable(camp.ids.get('Season'));
+      Test.stopTest();
+      Assert.areEqual(other.Id, table.seatsRunId);
+      Assert.areEqual(manualId, table.seatsScheduleId);
+      Assert.isTrue(table.shortSeats.isEmpty());
+    }
+  }
+
+  private static ElectiveRun__c run(
+    Camp camp,
+    Id setId,
+    Id scheduleId,
+    String status
+  ) {
+    return new ElectiveRun__c(
+      Season__c = camp.ids.get('Season'),
+      Name = 'Chugim · Week 2 · ' + status,
+      ElectiveSet__c = setId,
+      Week__c = camp.ids.get('Week 2'),
+      Schedule__c = scheduleId,
+      Status__c = status,
+      Revision__c = 1
+    );
+  }
+
+  @IsTest
   static void anotherWeeksRunNeverShowsAsTheShownWeeksSeats() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp camp = new Camp();

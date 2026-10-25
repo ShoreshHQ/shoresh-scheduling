@@ -61,8 +61,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      and the things' names. The week beside the name. Manual Build shows fewer groups across
      (down to one group's day) before it cuts a name, and its padlocks sit in the cell's corner,
      clear of the name; one or two groups on Generated Schedule are columns of a cell's size.
-   - **Elective seats**: the offerings of the shown week's latest run (none when that week has no
-     run, so another week's seats never pass as its own), seats as boxes, taken filled, a
+   - **Elective seats**: the offerings of the run Elective seats opens on for the shown week (the
+     latest run's set and schedule, and on them the committed run, else the latest; none when
+     that week has no run, so another week's seats never pass as its own), seats as boxes, taken filled, a
      minimum's missing seats dashed, campers past the limit as more boxes in the caution colour;
      no limit is the taken boxes and an open end (∞), and past ten campers eight boxes, how many,
      then ∞, so the row never looks like a limit. However the boxes are scaled (twenty at most),
@@ -198,15 +199,18 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       own marks (the thing and where it should lead, dashed; outline cells; a dashed flag; seat
       boxes with the minimum's missing seats dashed), with the needs-a-look corner. Names are cut
       after a whole word, never smaller than 13 px. Cards lie in the menu's order of the screens
-      that fix them, so each sits below its meld. A click opens the exact thing, grown out of the
+      that fix them, so each sits below its meld; weeks not built lie in season order. A click opens the exact thing, grown out of the
       card (choice 6): the setup screen that fixes it; a week not built opens the Schedules
       doorway (`scheduleWeeks`, decision 61) with the cursor on that week, offering both ways to build it, since
       picking Manual Build or Generated Schedule for the director would break the desktop's rule
       (`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`; the mock-up opened Manual
       Build); a special day or event opens its details and its schedule; offerings short open
-      Elective seats on that run's set and week (`openWeek`; since that screen is drawn only
-      while shown, the page hands it the card's week and set as `opening`, and it starts there
-      ahead of the season's latest run).
+      Elective seats on the exact run counted: its set, week, schedule and the run itself
+      (`openWeek`; since that screen is drawn only while shown, the page hands it the card's run
+      as `opening`, and it starts there ahead of the season's latest run). Should that run be
+      gone by then, it opens on the set and week as before. Elective seats' own first pick on a
+      week is the same as the hand's (the latest run's schedule, then its committed run), so the
+      card's face and the run that opens never disagree.
       **Leaving and arriving**: the hand changes only while Roots is shown and still (never behind
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
@@ -231,7 +235,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
 ## Checked by
 
 R2: `shoreshRootsLooks.test.js` (every attention signal kept, each kind on one card, the table's
-missing things, camp words, the menu's order, the same hand every time, names that fit, pictures
+missing things, weeks not built in season order whatever order they were made in, camp words, the menu's order, the same hand every time, names that fit, pictures
 in the design system's classes), `shoreshRootsHand.test.js` (dealt in, fanned, any number,
 arrows, played onto its meld, the cursor kept, taken back mid-play, reduced motion, travel
 hooks, axe), `shoreshRoots.test.js` (the hand after the table read, opening the exact thing,
@@ -239,8 +243,10 @@ calm, holding still while away, a failed read, the sheet wearing a hand card, ho
 meld settling), `shoreshCampSetup.test.js` (a hand card out and home again; the seats card opening Elective
 seats on its run's week and set, not the latest run's), `shoreshRootsFaces`
 (a fixed activity keeps its padlock), `shoreshSetupRules` (kinds), `shoreshElectiveSeats`
-(`openWeek`, and `opening` on a fresh start), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
-queries), and the browser check's hand step (dealt, opened, played away, axe) and R1.1 steps
+(`openWeek`, and `opening` on a fresh start; the exact run, committed run A against a later run
+B (Final) and a second schedule, and a run gone), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
+queries; the run counted is the one Elective seats opens on: committed over a later Final run, then a
+newer run on the other schedule), and the browser check's hand step (dealt, opened, played away, axe) and R1.1 steps
 tightened (a name dropped from a face fails too; no overlap at all in the short window).
 
 `shoreshRoots.test.js` (melds, names in camp words, the doorway, cards opening their screens, one

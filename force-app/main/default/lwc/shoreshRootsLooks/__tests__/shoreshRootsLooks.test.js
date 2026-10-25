@@ -150,7 +150,9 @@ const TABLE = {
   builtWeekIds: ["w1"],
   shortSeats: [{ name: "Ropes", seats: 12, fewest: 5, minimum: 6 }],
   seatsWeekId: "w1",
-  seatsSetId: "es1"
+  seatsSetId: "es1",
+  seatsScheduleId: "sc1",
+  seatsRunId: "r1"
 };
 
 function hand(setup = MESSY, table = TABLE, openable = OPENABLE) {
@@ -229,8 +231,30 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
       small: "CHUGIM",
       off: "one seat short",
       label: "Ropes is one seat short of its minimum.",
-      nav: { weekId: "w1", setId: "es1" }
+      // The exact run counted, so Elective seats opens on it (repo ADR 0020 choice 10).
+      nav: { weekId: "w1", setId: "es1", scheduleId: "sc1", runId: "r1" }
     });
+  });
+
+  it("deals the weeks not built in season order, whatever order they were made in", () => {
+    // Week 2 was made first (the lower record Id), Week 1 later.
+    const weeks = [
+      { Id: "w9", Name: "Week 1", StartDate__c: "2027-06-28" },
+      { Id: "w1", Name: "Week 2", StartDate__c: "2027-07-05" }
+    ];
+    const cards = hand(
+      { ...MESSY, weeks },
+      {
+        ...TABLE,
+        soonWeekIds: ["w9", "w1"],
+        builtWeekIds: []
+      }
+    );
+    expect(
+      cards
+        .filter((c) => c.key.startsWith("hand:weekNotBuilt"))
+        .map((c) => c.name)
+    ).toEqual(["Week 1", "Week 2"]);
   });
 
   it("says it in the camp's words", () => {

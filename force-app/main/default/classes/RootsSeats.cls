@@ -1,6 +1,7 @@
 /**
- * Roots' elective seats (repo ADR 0020): the offerings of the shown week's latest run (none when
- * that week has no run, so another week's seats never pass as this week's), each with its seats
+ * Roots' elective seats (repo ADR 0020): the offerings of the run Elective seats shows first for
+ * the shown week (runOf; none when that week has no run, so another week's seats never pass as
+ * this week's), each with its seats
  * and the most campers it holds at any one time; and, for the hand, every offering of that run
  * kept below its minimum at some time. Nothing when electives can't be read. Three queries. Runs
  * in user mode.
@@ -10,6 +11,8 @@ public with sharing class RootsSeats {
   private static final Integer SEAT_ROWS = 4;
   // A set offers each activity once (ADR 0018), so this is far more than any set holds.
   private static final Integer MOST_OFFERINGS = 500;
+  // A week's runs: a few versions per set and schedule, so far more than any week holds.
+  private static final Integer MOST_RUNS = 500;
 
   public static void read(RootsTable.Table result, Id seasonId) {
     if (!canRead()) {
@@ -21,6 +24,8 @@ public with sharing class RootsSeats {
     }
     result.seatsSetId = run.ElectiveSet__c;
     result.seatsWeekId = run.Week__c;
+    result.seatsScheduleId = run.Schedule__c;
+    result.seatsRunId = run.Id;
     Map<Id, Integer> taken = new Map<Id, Integer>();
     Map<Id, Integer> fewest = new Map<Id, Integer>();
     readCounts(run.Id, taken, fewest);
@@ -46,16 +51,34 @@ public with sharing class RootsSeats {
     }
   }
 
+  /**
+   * The run Elective seats opens on for the week (its pickSchedule): the latest run's set and
+   * schedule, and on them the committed run, else the latest.
+   */
+  @TestVisible
   private static ElectiveRun__c runOf(Id seasonId, Id weekId) {
     List<ElectiveRun__c> runs = [
-      SELECT Id, ElectiveSet__c, Week__c
+      SELECT Id, ElectiveSet__c, Week__c, Schedule__c, Status__c
       FROM ElectiveRun__c
       WHERE Season__c = :seasonId AND Week__c = :weekId AND Week__c != NULL
       WITH USER_MODE
       ORDER BY CreatedDate DESC, Id DESC
-      LIMIT 1
+      LIMIT :MOST_RUNS
     ];
-    return runs.isEmpty() ? null : runs[0];
+    if (runs.isEmpty()) {
+      return null;
+    }
+    ElectiveRun__c latest = runs[0];
+    for (ElectiveRun__c run : runs) {
+      if (
+        run.ElectiveSet__c == latest.ElectiveSet__c &&
+        run.Schedule__c == latest.Schedule__c &&
+        run.Status__c == ChoicesImport.COMMITTED
+      ) {
+        return run;
+      }
+    }
+    return latest;
   }
 
   /**

@@ -453,6 +453,10 @@ function fitted(name, small) {
 
 // ---------- what the table draws as missing ----------
 
+function weekNotBuilt(card) {
+  return card.id.startsWith("weekNotBuilt|");
+}
+
 function weekCards(setup, table) {
   const built = new Set(table.builtWeekIds || []);
   const weeks = new Map((setup.weeks || []).map((w) => [w.Id, w]));
@@ -557,7 +561,12 @@ function seatCards(table, t, labels) {
         )
         .join(" "),
       picture: one ? shortSeats(first) : shortRows(short),
-      nav: { weekId: table.seatsWeekId, setId: table.seatsSetId }
+      nav: {
+        weekId: table.seatsWeekId,
+        setId: table.seatsSetId,
+        scheduleId: table.seatsScheduleId,
+        runId: table.seatsRunId
+      }
     }
   ];
 }
@@ -617,7 +626,14 @@ export function looksOf({ problems, setup, table, terms, openable }) {
     .sort(
       (a, b) =>
         SCREEN_ORDER.indexOf(a.screen) - SCREEN_ORDER.indexOf(b.screen) ||
-        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+        // Weeks not built stay in season order, as they came (the sort keeps ties in place).
+        (weekNotBuilt(a) && weekNotBuilt(b)
+          ? 0
+          : a.id < b.id
+            ? -1
+            : a.id > b.id
+              ? 1
+              : 0)
     )
     .map((c) => ({
       key: `hand:${c.id}`,
