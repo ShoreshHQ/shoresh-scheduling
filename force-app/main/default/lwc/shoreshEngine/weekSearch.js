@@ -473,6 +473,9 @@ function* solve(
   // may start (a longer activity starting earlier may still cover them).
   const emptied = new Set();
   const noStart = new Set();
+  // A multi-block activity ruled out of starting in a cell on this branch (cell -> activity ids);
+  // the cell stays open to everything else.
+  const banned = new Map();
   // Work done: steps (each a look() at the undecided cells).
   let work = 0;
   let best = null;
@@ -535,7 +538,11 @@ function* solve(
     if (noStart.has(st.keyOf(s))) {
       return opts;
     }
+    const out = banned.get(st.keyOf(s));
     for (const act of s.eligibleActs) {
+      if (out && out.has(act.id)) {
+        continue;
+      }
       const bend = allowed(st, act, s.groupId, d, s.blockId);
       if (!bend) {
         continue;
@@ -720,9 +727,10 @@ function* solve(
       }
       ub = Math.min(ub, byFlow(byBlock, byGroup, startsOf));
     }
-    // Branch first where a multi-block activity could start (the bounds count its cells as if
-    // they could be shared out, so deciding it early is what tightens them), then on the cell
-    // with fewest options. Any order is exhaustive; this one only reaches the answer sooner.
+    // Decide multi-block activities first, one start at a time: does it start in this cell or
+    // not (the bounds count its cells as if they could be shared out between groups, so settling
+    // who gets it is what tightens them). Then the cell with fewest options. Either way every
+    // arrangement stays reachable; this order only reaches the answer sooner.
     const rank = (x) => [
       spansFirst && optsOf.get(x).some((o) => o.act.span > 1) ? 0 : 1,
       optsOf.get(x).length
@@ -733,7 +741,11 @@ function* solve(
         pick = s;
       }
     }
-    return { forced, ub, pick, opts: pick ? optsOf.get(pick) : [] };
+    const span =
+      pick && spansFirst
+        ? optsOf.get(pick).find((o) => o.act.span > 1) || null
+        : null;
+    return { forced, ub, pick, span, opts: pick ? optsOf.get(pick) : [] };
   }
 
   function leaf() {
@@ -822,6 +834,11 @@ function* solve(
     const s = v.pick;
     const before = was.get(st.keyOf(s));
     f.s = s;
+    if (v.span) {
+      // It starts here, or it doesn't (and the cell stays open to everything else).
+      f.opts = [v.span, { act: EMPTY, bend: 0, ban: v.span.act }];
+      return f;
+    }
     f.opts = v.opts.sort(
       (x, y) =>
         (x.act.id === before ? 0 : 1) - (y.act.id === before ? 0 : 1) ||
@@ -847,6 +864,10 @@ function* solve(
       for (const c of f.cells) {
         f.changed += was.get(c) === o.act.id ? 0 : 1;
       }
+    } else if (o.ban) {
+      const k = st.keyOf(s);
+      banned.set(k, new Set([...(banned.get(k) || []), o.ban.id]));
+      turn(groupTurn, s.groupId);
     } else {
       // Nothing starts here; whether it ends Open is decided once nothing can reach it.
       noStart.add(st.keyOf(s));
@@ -862,6 +883,10 @@ function* solve(
     if (o.act) {
       st.unplace(o.act, s.groupId, d, s.blockId);
       moved(o.act, s.groupId, s.blockId);
+    } else if (o.ban) {
+      const k = st.keyOf(s);
+      banned.get(k).delete(o.ban.id);
+      turn(groupTurn, s.groupId);
     } else {
       noStart.delete(st.keyOf(s));
       turn(groupTurn, s.groupId);
