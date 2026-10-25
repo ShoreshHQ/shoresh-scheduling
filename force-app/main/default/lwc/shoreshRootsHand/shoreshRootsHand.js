@@ -444,11 +444,12 @@ export default class ShoreshRootsHand extends LightningElement {
 
   /**
    * The most height the hand may take with cards in it: what the window leaves below the table
-   * (Roots). The cards give way to it, never under 196 wide; none (0 or less) is no limit.
+   * (Roots). The cards give way to it, never under 196 wide (so with no room left at all, 0 or
+   * less, they are 196); none (null) is no limit.
    */
   @api
   fitHeight(px) {
-    const most = px > 0 ? px : Infinity;
+    const most = Number.isFinite(px) ? px : Infinity;
     if (most !== this.most) {
       this.most = most;
       this.layout();

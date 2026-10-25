@@ -246,8 +246,12 @@ describe("c-shoresh-roots-hand", () => {
     element.fitHeight(120);
     run(3000);
     expect(element.cardSize()).toEqual({ w: 196, h: 133 });
+    // No room at all (a short window: the table's least height already runs past it): the same.
+    element.fitHeight(-340);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
     // Room again (or no limit): the mock-up's size.
-    element.fitHeight(0);
+    element.fitHeight(null);
     run(3000);
     expect(element.cardSize()).toEqual({ w: 232, h: 158 });
     expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
