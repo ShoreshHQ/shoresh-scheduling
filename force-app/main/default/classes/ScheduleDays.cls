@@ -27,9 +27,24 @@ public with sharing class ScheduleDays {
 
   /** The schedule's days, in date order. */
   public static List<DayGrid> read(Id scheduleId) {
-    Map<Date, List<ScheduleDay__c>> partsByDay = new Map<Date, List<ScheduleDay__c>>();
+    return read(new Set<Id>{ scheduleId }).get(scheduleId);
+  }
+
+  /**
+   * Several schedules' days from one query: each schedule's days in date order, read exactly as
+   * read(scheduleId) reads them (a schedule with no days has an empty list).
+   */
+  public static Map<Id, List<DayGrid>> read(Set<Id> scheduleIds) {
+    Map<Id, Map<Date, List<ScheduleDay__c>>> partsBySchedule = new Map<Id, Map<Date, List<ScheduleDay__c>>>();
+    for (Id scheduleId : scheduleIds) {
+      partsBySchedule.put(scheduleId, new Map<Date, List<ScheduleDay__c>>());
+    }
+    if (scheduleIds.isEmpty()) {
+      return new Map<Id, List<DayGrid>>();
+    }
     for (ScheduleDay__c part : [
       SELECT
+        Schedule__c,
         Date__c,
         Part__c,
         Grid__c,
@@ -37,15 +52,28 @@ public with sharing class ScheduleDays {
         Revision__c,
         RainyDay__c
       FROM ScheduleDay__c
-      WHERE Schedule__c = :scheduleId
+      WHERE Schedule__c IN :scheduleIds
       WITH USER_MODE
       ORDER BY Date__c, Part__c
     ]) {
+      Map<Date, List<ScheduleDay__c>> partsByDay = partsBySchedule.get(
+        part.Schedule__c
+      );
       if (!partsByDay.containsKey(part.Date__c)) {
         partsByDay.put(part.Date__c, new List<ScheduleDay__c>());
       }
       partsByDay.get(part.Date__c).add(part);
     }
+    Map<Id, List<DayGrid>> out = new Map<Id, List<DayGrid>>();
+    for (Id scheduleId : partsBySchedule.keySet()) {
+      out.put(scheduleId, daysFrom(partsBySchedule.get(scheduleId)));
+    }
+    return out;
+  }
+
+  private static List<DayGrid> daysFrom(
+    Map<Date, List<ScheduleDay__c>> partsByDay
+  ) {
     List<Date> dates = new List<Date>(partsByDay.keySet());
     dates.sort();
     List<DayGrid> days = new List<DayGrid>();

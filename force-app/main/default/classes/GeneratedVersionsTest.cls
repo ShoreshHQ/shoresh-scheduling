@@ -396,6 +396,66 @@ private class GeneratedVersionsTest {
   }
 
   @IsTest
+  static void theWeekAsItWasImportedComesWithTheInputs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // An imported week (Origin Imported) with Swim in Group A's Monday Period 2, before the
+      // week is generated (its blank week has the same days; setup plus a generated draft would
+      // leave this test too few queries).
+      Id imported = manualVersionWithSwim(ids);
+      update new Schedule__c(
+        Id = imported,
+        Name = 'Week 1 as imported',
+        Origin__c = 'Imported'
+      );
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Integer withImport = Limits.getQueries() - before;
+      // The same week with no import: the version saved by hand again (as its import's Undo may).
+      ImportedWeekGuard.allow();
+      update new Schedule__c(Id = imported, Origin__c = 'Manual');
+      ImportedWeekGuard.done();
+      before = Limits.getQueries();
+      GeneratedInputs.Inputs none = GeneratedTestData.inputs();
+      Integer withoutImport = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isNull(read.scheduleId);
+      Assert.areEqual('Week 1 as imported', read.imported.name);
+      Assert.areEqual(read.days.size(), read.imported.days.size());
+      ScheduleViews.DayView monday = read.imported.days[0];
+      Assert.areEqual(GeneratedTestData.MONDAY, monday.dateValue);
+      String cell = monday.rows[GeneratedTestData.GROUP_A]
+        .split(',', -1)[GeneratedTestData.PERIOD_2];
+      Integer swim = Integer.valueOf(cell);
+      Assert.areEqual(ids.get('Swim'), monday.items[swim - 1].id);
+      Assert.isNull(none.imported);
+      // The import costs at most one query more than the same week without it.
+      Assert.isTrue(
+        withImport - withoutImport <= 1,
+        'With the import ' +
+          withImport +
+          ' queries, without it ' +
+          withoutImport
+      );
+    }
+  }
+
+  @IsTest
+  static void aWeekWithNoImportComesWithNone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // A version saved by hand is not the imported week.
+      manualVersionWithSwim(ids);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.isNull(read.imported);
+      Assert.isNull(read.scheduleId);
+    }
+  }
+
+  @IsTest
   static void anOpenCellLockedToKeepItEmptyStaysLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
