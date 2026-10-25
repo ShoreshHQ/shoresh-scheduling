@@ -5,7 +5,7 @@
     <div class="roots-body" data-id="body">
       <!-- The table: the three melds on the living dot field (ADR 0015 choice 13, ADR 0020).
            The cards and labels cover the dots with their own surfaces. -->
-      <c-shoresh-dot-field class="table-field" solid>
+      <c-shoresh-dot-field class="table-field" data-id="field" solid>
         <div class="table" data-id="table">
           <template for:each={melds} for:item="meld">
             <div
@@ -115,12 +115,16 @@
           ></lightning-button>
         </template>
         <template lwc:if={lastImport}>
+          <!-- As the desktop's LastImportUndo: the words on the left, Undo on their right; beside
+               the buttons while it fits, so the bar keeps to one row on a laptop. -->
           <div class="last-import" data-id="last-import">
-            <span>{lastImport.line}</span>
-            <span class="weak"
-              >Undo removes what this import added and puts back what it
-              changed. Anything you have edited since stays as it is.</span
-            >
+            <div class="last-words">
+              <div>{lastImport.line}</div>
+              <div class="weak">
+                Undo removes what this import added and puts back what it
+                changed. Anything you have edited since stays as it is.
+              </div>
+            </div>
             <lightning-button
               data-id="undo-import"
               label="Undo last import"

@@ -2,7 +2,8 @@
 
 Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
 (2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps; slice
-R2 (2026-10-24): the "needs a look" hand (choice 10). Design source: Greg's
+R2 (2026-10-24): the "needs a look" hand (choice 10); R2.1 (2026-10-25): the hand always
+whole, at the mock-up's size. Design source: Greg's
 approval, wiki `projects/shoresh-scheduling-sf.md` decisions 60 to 68 (68: "this is it"), and the
 approved working mock-up `~/Dev/Shoresh/design-research/roots-approved/` (`needs-a-look.html`,
 `table.css`, `table.js`), which is the spec for look, layout and motion. Replaces ADR 0003 choice 4
@@ -103,8 +104,10 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
    a meld for 170 ms, or the cursor entering it, opens it: all its cards in gently arced rows,
    unfolding card after card, while the other melds shrink aside into a column (stacked when the
    open meld is at an end), never so small their names fall under 11.5 px. Leaving closes it 300
-   ms later. The pointer resting on another meld wins over a cursor left in an open one (the
-   cursor lets go). However short the window, every meld's name stays on the table, and when two
+   ms later, unless the cursor is on one of its cards: a meld with the cursor stays open wherever
+   the pointer is, so the card with the cursor is never hidden (the mock-up does the same; checked
+   in it, 2026-10-25), until the cursor leaves or the pointer rests on another meld, which wins
+   over a cursor left in an open one (the cursor lets go). However short the window, every meld's name stays on the table, and when two
    melds stack aside the lower one's name lies below the upper one's cards (the 25 px strips
    make stacks taller: they are moved apart, then up as far as the top name allows). A card lifts under the pointer and the cursor. On a touch screen nothing opens
    on hover; a tap opens the card's screen.
@@ -215,7 +218,7 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       a screen or mid-journey), once this showing's table request is back, so what was dealt with
       on another screen leaves on the next visit: the card is played onto its meld (it lifts off
       the hand, travels and shrinks onto that meld's front card, which settles as it lands), and
-      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). The hand takes as little height as it can (cards 196 px wide, the narrowest whose picture keeps its 11 px words, wider only on wide screens; tight margins), so with cards in hand an open meld still shows full faces at 1440 by 900 (found in shoresh-test: Activities & Events had fallen to its pictures). For that the hand also **eases aside while a meld is open** (decision 65a, the others ease aside): its cards lower until only their tops show and the table takes the room; they rise again when the meld closes. Should a later read fail, the
+      anything new is dealt in from the right, one after another. The hand keeps its room until a card in flight has landed, so its stack does not move under it; however narrow the hand, each card keeps a 24 px strip (WCAG 2.5.8). **The hand always shows its cards whole, at the mock-up's size** (R2.1, 2026-10-25): a card a fifth of the frame wide, never under 196 px (the narrowest whose picture keeps its 11 px words) nor over 232, 0.68 as tall, the hand its height and 46 px more (232 by 158 at 1440 wide, as the mock-up). It never lowers or eases aside: R2 lowered it while a meld was open to give the table its room, and in shoresh-test that left the hand cut off under the worksheet bar whenever a meld stayed open, as it does while a card in it has the cursor (the mock-up's rule, choice 4: focus holds a meld open, whatever the pointer does). Instead the table and the hand size to fit: the table never gets shorter than two rows of cards at full face with the meld names above them (about 435 px), so an open meld still shows full faces at 1440 by 900 with cards in hand; the worksheet bar lies below the hand, never over it. **Table, hand and bar share one screen at 1440 by 900** (decision 68), a last import in the bar included: the hand takes what the window leaves between the table's least height and the bar, its cards the mock-up's size when that is room enough and smaller when it is not, never under 196 wide (with a last import shown at 1440 by 900, 213 by 145 in shoresh-test, the bar ending 12 px above the window's bottom). Only once the cards are at 196 does Roots grow past the window (the page scrolls), on a short window, rather than the table or the hand giving way; a window too short even for the table's least height leaves the hand no room, so its cards are 196 there too (the first build took no room for no limit and kept them at 232 in a 560 px tall window; the full browser check on PR #142 found it). (The first R2.1 build kept the cards at 232 and pushed Undo last import half off a 1440 by 900 window; review of PR #142.) However many cards the hand holds, they stay whole: the fan keeps the mock-up's curve (each card 9 / n px lower per step from the middle, squared, and tilted 6.6 / n degrees) until its end cards would sink past the 24 px below them, from about ten cards on, and then flattens just enough that they do not (review of PR #142: at 12 cards the end card lost about 5 px, at 20 about 22). Should a later read fail, the
       cards the table fed stay as they were (nothing is played away on a failed read). However
       many cards there are, the hand keeps a clear margin at both ends: past what fits side by
       side they close up and overlap, a lifted card coming to the front; the cards breathe very
@@ -224,7 +227,10 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       The camp's workbook tools (Import last year, first for an empty camp; Download worksheet; a
       workbook's Import a list; Re-import last year; the last import with Undo) stay in their bar
       under a hairline below the hand, the secondary actions' place (decision 28C; the mock-up has
-      no workbook bar).
+      no workbook bar). The last import is laid out as the desktop's (`LastImportUndo.jsx`): its
+      line and the sentence on what Undo does on the left, Undo last import on their right; it
+      sits beside the buttons, its words wrapping, when it has 26rem there (a laptop), so the bar
+      keeps to one row, and takes a row of its own on a narrower window.
 
 11. **Tokens** (ADR 0015): the mock-up's card shadows (`--shoresh-card-rest`, `--shoresh-card-lift`,
     made of the shade and the primary's steps), its easing and lift time (`--shoresh-flow`,
@@ -233,6 +239,17 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
     instead of being cut off (the mock-up's menu). No new colour.
 
 ## Checked by
+
+R2.1: `shoreshRootsHand.test.js` (every card whole at 3 to 30 cards and two card sizes, the mock-up's curve kept up to nine; the mock-up's card size at three widths, the hand its height
+and 46 more; giving way to the height it is left, never under 196, and growing back),
+`shoreshRoots.test.js` (an open meld leaves the hand as it is; the table keeps two rows of full
+faces; at 1440 by 900 with a two-row bar the hand takes what is left, with a one-row bar the
+mock-up's 232), and the browser check's hand step: every hand card whole, at the mock-up's size
+(smaller, never under 196, only while the window has no room) and overlapped by nothing, the
+worksheet bar below, at rest and with a meld open, at 1440, 1280 and 1024 wide and in a 560 px
+tall window (it fails on any card clipped or covered, and on Roots running past the bottom of a
+1440 by 900 window); the steps before it leave the table at rest (no card holding the cursor)
+before the hand is measured.
 
 R2: `shoreshRootsLooks.test.js` (every attention signal kept, each kind on one card, the table's
 missing things, weeks not built in season order whatever order they were made in, camp words, the menu's order, the same hand every time, names that fit, pictures

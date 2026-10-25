@@ -212,24 +212,106 @@ describe("c-shoresh-roots-hand", () => {
     expect(xs[1] - xs[0]).toBeGreaterThanOrEqual(24);
   });
 
-  it("eases aside while a meld is open: lowered to the cards' tops, rising again after", async () => {
+  it("sizes its cards as the mock-up: a fifth of the frame, 196 to 232 wide, 0.68 as tall", async () => {
+    const element = await render([card("A")]);
+    run(3000);
+    // 1200 wide: the widest card, the hand its height and 46 more.
+    expect(element.cardSize()).toEqual({ w: 232, h: 158 });
+    const hand = element.shadowRoot.querySelector('[data-id="hand"]');
+    expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 1060);
+    element.cards = [card("A"), card("B")];
+    await settle();
+    expect(element.cardSize()).toEqual({ w: 212, h: 144 });
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => 760);
+    element.cards = [card("A")];
+    await settle();
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
+  });
+
+  it("gives way to the height the window leaves it, never under 196 wide, and grows back", async () => {
     const element = await render([card("A"), card("B")]);
     run(3000);
     const hand = element.shadowRoot.querySelector('[data-id="hand"]');
-    const full = parseFloat(hand.style.height);
-    const a = button(element, "A");
-    const yOf = (b) =>
-      Number(/\)\s*,\s*(-?[\d.]+)px\)/.exec(b.style.transform)[1]);
-    const up = yOf(a);
-    element.ease(true);
+    // 195 px left below the table (1440 by 900 with a last import shown): the cards take it.
+    element.fitHeight(195);
     run(3000);
-    expect(parseFloat(hand.style.height)).toBeLessThan(full - 80);
-    expect(yOf(a)).toBeGreaterThan(up + 80);
-    element.ease(false);
+    expect(element.cardSize()).toEqual({ w: 218, h: 148 });
+    expect(parseFloat(hand.style.height)).toBeLessThanOrEqual(195);
+    // Far too little: the least card, whose words still read at 11 px; Roots grows past.
+    element.fitHeight(120);
     run(3000);
-    expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
-    expect(yOf(a)).toBeCloseTo(up, 0);
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
+    // No room at all (a short window: the table's least height already runs past it): the same.
+    element.fitHeight(-340);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 196, h: 133 });
+    // Room again (or no limit): the mock-up's size.
+    element.fitHeight(null);
+    run(3000);
+    expect(element.cardSize()).toEqual({ w: 232, h: 158 });
+    expect(parseFloat(hand.style.height)).toBeCloseTo(158 + 46, 0);
   });
+
+  // How far a card lies below where its bottom edge rests: its drop, and its lowest corner as it
+  // tilts about the point a fifth of its height under its middle (the CSS's 50% 120%).
+  const below = (b, { w, h }) => {
+    const m =
+      /translate\(calc\(-50% \+ -?[\d.]+px\), (-?[\d.]+)px\) rotate\((-?[\d.]+)deg\)/.exec(
+        b.style.transform
+      );
+    const a = (Number(m[2]) * Math.PI) / 180;
+    const lowest = Math.max(
+      ...[-w / 2, w / 2].map(
+        (dx) => 1.2 * h + dx * Math.sin(a) - 0.2 * h * Math.cos(a)
+      )
+    );
+    return { drop: Number(m[1]), deepest: Number(m[1]) + lowest - h };
+  };
+  const fan = async (frame, n) => {
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => frame);
+    const element = await render([...Array(n)].map((_, i) => card(`C${i}`)));
+    run(12000);
+    const size = element.cardSize();
+    return live(element).map((b) => below(b, size));
+  };
+
+  it.each([
+    [1200, 3],
+    [1200, 9],
+    [1200, 10],
+    [1200, 12],
+    [1200, 20],
+    [760, 12],
+    [760, 15],
+    [760, 20],
+    [760, 30]
+  ])(
+    "keeps every card whole above the hand's bottom (%i wide, %i cards)",
+    async (frame, n) => {
+      const cards = await fan(frame, n);
+      // The hand leaves 24 px below its cards (BELOW, .hcard's bottom) and shows nothing past.
+      expect(Math.max(...cards.map((c) => c.deepest))).toBeLessThanOrEqual(
+        24.01
+      );
+    }
+  );
+
+  it.each([3, 6, 9])(
+    "keeps the mock-up's curve while it fits (%i cards)",
+    async (n) => {
+      const cards = await fan(1200, n);
+      // The end card 9 / n px lower per step from the middle, squared (3 px for three or fewer).
+      const k = (n - 1) / 2;
+      expect(cards[n - 1].drop).toBeCloseTo(k * k * (n > 3 ? 9 / n : 3), 1);
+    }
+  );
 
   it("moves the cursor to the next card when the card it was on is played", async () => {
     const element = await render([card("A"), card("B"), card("C")]);
@@ -295,7 +377,7 @@ describe("c-shoresh-roots-hand", () => {
     expect(element.hasCard("hand:A")).toBe(true);
     expect(element.hasCard("hand:Z")).toBe(false);
     const pose = element.cardPose("hand:A");
-    expect(pose.w).toBe(204);
+    expect(pose.w).toBe(232);
     expect(pose.x).toBeCloseTo(600, 0);
     element.showFace("hand:A", false);
     const face = button(element, "A").querySelector("[data-face]");
