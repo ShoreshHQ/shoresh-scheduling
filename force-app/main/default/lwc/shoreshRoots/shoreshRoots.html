@@ -115,15 +115,18 @@
           ></lightning-button>
         </template>
         <template lwc:if={lastImport}>
-          <!-- As the desktop's LastImportUndo: the words on the left, Undo on their right; beside
-               the buttons while it fits, so the bar keeps to one row on a laptop. -->
+          <!-- As the desktop's LastImportUndo: the words on the left, Undo on their right; one
+               quiet row beside the buttons (the file cut short with an ellipsis rather than the
+               bar growing), so table, hand and bar share a laptop's window. What Undo does is
+               said in its confirmation (the page's), and here to a screen reader. -->
           <div class="last-import" data-id="last-import">
-            <div class="last-words">
-              <div>{lastImport.line}</div>
-              <div class="weak">
+            <div class="last-words" title={lastImport.line}>
+              <div class="last-what">{lastImport.what}</div>
+              <div class="weak last-when">{lastImport.when}</div>
+              <span class="slds-assistive-text">
                 Undo removes what this import added and puts back what it
                 changed. Anything you have edited since stays as it is.
-              </div>
+              </span>
             </div>
             <lightning-button
               data-id="undo-import"

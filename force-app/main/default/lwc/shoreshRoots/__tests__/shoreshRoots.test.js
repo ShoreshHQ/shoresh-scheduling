@@ -531,7 +531,18 @@ describe("c-shoresh-roots: the camp's workbook", () => {
     });
     const line = $(element, '[data-id="last-import"]');
     expect(line.textContent).toContain("Last import: maple-grove.xlsx");
-    expect(line.textContent).toContain(
+    // One quiet row beside the buttons: the file, the time under it, the whole line on hover.
+    const when = new Date("2027-06-20T14:00:00.000Z").toLocaleString(
+      undefined,
+      { dateStyle: "medium", timeStyle: "short" }
+    );
+    expect(line.querySelector(".last-when").textContent).toBe(when);
+    expect(line.querySelector(".last-words").title).toBe(
+      `Last import: maple-grove.xlsx, ${when}`
+    );
+    // What Undo does: said in its confirmation, and here to a screen reader.
+    const said = line.querySelector(".slds-assistive-text");
+    expect(said.textContent).toContain(
       "Anything you have edited since stays as it is."
     );
     const handler = jest.fn();
@@ -895,7 +906,7 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(cards.map((b) => b.style.transform)).toEqual(before);
   });
 
-  it("the table keeps the height of two rows of full faces, so the hand never takes it", async () => {
+  it("with the window's room unknown, the table keeps the height of two rows of full faces", async () => {
     const element = await render();
     const field = $(element, '[data-id="field"]');
     // A laptop's table (cards 285 wide): two rows of full faces and the names above them.
@@ -908,12 +919,13 @@ describe("c-shoresh-roots: the melds move", () => {
     expect(parseFloat(field.style.minHeight)).toBeGreaterThan(laptop);
   });
 
-  it("table, hand and worksheet bar share the window: the hand's cards give way before Roots grows past it", async () => {
-    // 1440 by 900 in Salesforce: Roots starts 166 down, so 722 px are its own.
-    const innerHeight = window.innerHeight;
-    window.innerHeight = 900;
-    // Below the table and the hand: a hairline and a bar of three lines (a last import shown).
-    let bar = 82;
+  /**
+   * Roots in a window as Salesforce shows it (decision 68): Roots starts top px down, the table's
+   * margin above it, then the table (wide px), the hand, a hairline and the worksheet bar (bar
+   * px: one row, a last import in it). What the window leaves Roots is innerHeight - top - 12.
+   */
+  async function inWindow({ inner, top, margin, wide, bar, calm = false }) {
+    window.innerHeight = inner;
     jest
       .spyOn(HTMLElement.prototype, "offsetHeight", "get")
       .mockImplementation(function () {
@@ -923,18 +935,17 @@ describe("c-shoresh-roots: the melds move", () => {
         if (this.classList?.contains("shoresh-hairline")) return 1;
         return 0;
       });
-    // The table's margin above it.
     const realStyle = window.getComputedStyle;
     jest.spyOn(window, "getComputedStyle").mockImplementation((el) => {
       const style = realStyle(el);
       return el.dataset?.id === "field"
-        ? { ...style, marginTop: "12px", marginBottom: "0px" }
+        ? { ...style, marginTop: `${margin}px`, marginBottom: "0px" }
         : style;
     });
-    // The hand's frame: 1164 wide, so its card is the mock-up's 232 when it has the room.
+    // The hand's frame: the table and its margins.
     jest
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
-      .mockImplementation(() => 1164);
+      .mockImplementation(() => wide + 2 * margin);
     const realRects = Element.prototype.getClientRects;
     jest
       .spyOn(Element.prototype, "getClientRects")
@@ -943,27 +954,118 @@ describe("c-shoresh-roots: the melds move", () => {
       });
     jest
       .spyOn(Element.prototype, "getBoundingClientRect")
-      .mockImplementation(() => ({ top: 166, left: 0, right: 0, bottom: 0 }));
-    try {
-      const element = await render();
-      const field = $(element, '[data-id="field"]');
-      await sized(element, 1140, 300);
-      run(3000);
-      const least = parseFloat(field.style.minHeight);
-      const left = 722 - least - (12 + 1 + bar);
-      const size = handOf(element).cardSize();
-      expect(size.w).toBeLessThan(232);
-      expect(size.w).toBeGreaterThanOrEqual(196);
-      expect(size.h + 46).toBeLessThanOrEqual(left);
-      expect(size.h + 46).toBeGreaterThan(left - 3);
-      // A one-row bar (no last import): room for the mock-up's card.
-      bar = 56;
-      await sized(element, 1140, 301);
-      run(3000);
-      expect(handOf(element).cardSize()).toEqual({ w: 232, h: 158 });
-    } finally {
+      .mockImplementation(() => ({ top, left: 0, right: 0, bottom: 0 }));
+    // Calm: every activity has its place; nothing else is off.
+    const element = calm
+      ? await render(
+          {
+            ...SETUP,
+            activities: SETUP.activities.map((a) => ({
+              ...a,
+              Location__c: "l1"
+            }))
+          },
+          { problems: [] }
+        )
+      : await render();
+    await sized(element, wide, 300);
+    run(3000);
+    const table = parseFloat($(element, '[data-id="field"]').style.minHeight);
+    const size = handOf(element).cardSize();
+    // Everything Roots draws, top to bottom, against what the window leaves it.
+    const over = margin + table + size.h + 46 + 1 + bar - (inner - top - 12);
+    return { element, table, size, over };
+  }
+
+  const restHeight = (cw) => {
+    const ch = Math.round(cw * 0.72);
+    return 70 + ch + 2 * Math.round(ch * 0.17) + 40;
+  };
+
+  describe("table, hand and worksheet bar share the window", () => {
+    let innerHeight;
+    beforeEach(() => {
+      innerHeight = window.innerHeight;
+    });
+    afterEach(() => {
       window.innerHeight = innerHeight;
-    }
+      jest.restoreAllMocks();
+    });
+
+    it("1440 by 900: the hand's cards are the mock-up's size, the table two rows of full faces", async () => {
+      const { table, size, over } = await inWindow({
+        inner: 900,
+        top: 166,
+        margin: 12,
+        wide: 1140,
+        bar: 56
+      });
+      expect(size).toEqual({ w: 232, h: 158 });
+      expect(table).toBeGreaterThanOrEqual(420);
+      expect(over).toBeLessThanOrEqual(0);
+    });
+
+    it("1280 by 800: the hand gives way first, then the table, down to its melds at rest; nothing past the window", async () => {
+      const { table, size, over } = await inWindow({
+        inner: 800,
+        top: 165,
+        margin: 10,
+        wide: 1010,
+        bar: 52
+      });
+      expect(size.w).toBe(196);
+      // Short of two rows of full faces, but never short of the melds at rest at full size.
+      expect(table).toBeLessThan(420);
+      expect(table).toBeGreaterThanOrEqual(restHeight(248));
+      expect(over).toBeLessThanOrEqual(0);
+      expect(over).toBeGreaterThan(-2);
+    });
+
+    it("1024 by 768: the melds at rest as large as the table's width lets them; nothing past the window", async () => {
+      const { table, size, over } = await inWindow({
+        inner: 768,
+        top: 163,
+        margin: 9,
+        wide: 791,
+        bar: 50
+      });
+      expect(size.w).toBe(196);
+      const restS = (791 / 3 - 20) / 248;
+      expect(restS).toBeLessThan(1);
+      expect(table).toBeGreaterThanOrEqual(
+        Math.ceil(70 + (restHeight(248) - 70) * restS)
+      );
+      expect(over).toBeLessThanOrEqual(0);
+    });
+
+    it("a window too short for the table at rest (1440 by 560): the smallest cards, and Roots grows past it", async () => {
+      const { table, size, over } = await inWindow({
+        inner: 560,
+        top: 166,
+        margin: 12,
+        wide: 1140,
+        bar: 56
+      });
+      expect(size.w).toBe(196);
+      expect(table).toBe(restHeight(285));
+      expect(over).toBeGreaterThan(0);
+    });
+
+    it("a calm hand leaves the table its two rows of full faces at 1280 by 800", async () => {
+      const { element, table } = await inWindow({
+        inner: 800,
+        top: 165,
+        margin: 10,
+        wide: 1010,
+        bar: 52,
+        calm: true
+      });
+      expect(handCards(element)).toHaveLength(0);
+      expect(handOf(element).leastHeight()).toBe(16);
+      expect(table).toBeGreaterThanOrEqual(420);
+      // The hand's calm space is 16 px: Roots still ends inside the window.
+      expect(10 + table + 16 + 1 + 52).toBeLessThanOrEqual(800 - 165 - 12);
+    });
   });
 
   it("the hand's last card with the cursor played away: the cursor goes to its meld", async () => {

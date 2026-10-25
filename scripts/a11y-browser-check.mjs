@@ -70,8 +70,8 @@
  *   planned is dealt as a card named by what is off (axe); every hand card is whole, at the
  *   mock-up's size (smaller, never under 196 wide, only while the window has no room for it) and
  *   overlapped by nothing (the worksheet bar below it), at rest and with a meld open, at 1440, 1280
- *   and 1024 wide and in a 560 px tall window, and at 1440 by 900 Roots ends inside the window (the
- *   worksheet bar whole); Tab and Enter grow Special events out
+ *   and 1024 wide and in a 560 px tall window, and at 1440 by 900, 1280 by 800 and 1024 by 768
+ *   Roots ends inside the window (the worksheet bar whole); Tab and Enter grow Special events out
  *   of it with the event's schedule open, and once dealt with (deleted) the menu's Roots goes
  *   home to that card and it is played onto its meld (with --hand-shots, pictures of the hand);
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
@@ -2425,6 +2425,8 @@ async function handProblems() {
         cards: cards.length,
         size: `${cards[0].w} by ${cards[0].h}`,
         past: Math.round(past),
+        table: Math.round(field.height),
+        bar: Math.round(tools.height),
         lastImport: !!root.querySelector('[data-id="last-import"]'),
         problems
       };
@@ -2435,8 +2437,9 @@ async function handProblems() {
  * The hand's cards are whole at the mock-up's size, at rest and with a meld open, at 1440, 1280 and
  * 1024 wide and in a short window: the table and the hand size to fit it, and the worksheet bar
  * lies below, overlapping nothing (ADR 0020 choice 10). The cards give way (never under 196) only
- * while Roots would otherwise run past the window, and at 1440 by 900 it never does. Fails on any
- * card clipped or overlapped, and on the bar cut off by the bottom of a 1440 by 900 window.
+ * while Roots would otherwise run past the window, and at 1440 by 900, 1280 by 800 and 1024 by 768
+ * (a laptop's) it never does; only the 560 px tall window may scroll. Fails on any card clipped or
+ * overlapped, and on the bar cut off by the bottom of a laptop's window.
  */
 async function handFits() {
   const S = "Roots";
@@ -2462,17 +2465,18 @@ async function handFits() {
         const name = `The hand's cards are whole and uncovered at ${width} by ${height}${open ? ", a meld open" : ", at rest"}`;
         const opened = open ? await meldOpen("activities") : true;
         const found = await handProblems();
-        // The laptop's window (decision 68): table, hand and worksheet bar on one screen, nothing
-        // past its bottom, with or without a last import in the bar.
-        if (width === 1440 && height === 900 && found.past > 0)
+        // A laptop's window (decision 68): table, hand and worksheet bar on one screen, nothing
+        // past its bottom, with or without a last import in the bar. Only a very short window
+        // (560 px tall) may scroll.
+        if (height >= 768 && found.past > 0)
           found.problems.push(
-            `Roots runs ${found.past} px past the bottom of a 1440 by 900 window (the worksheet bar cut off)`
+            `Roots runs ${found.past} px past the bottom of a ${width} by ${height} window (the worksheet bar cut off)`
           );
         if (opened && !found.problems.length) {
           results.pass(
             S,
             name,
-            `${found.cards} card(s), each ${found.size}, whole; the worksheet bar below them${found.lastImport ? " (a last import in it)" : ""}, ${found.past > 0 ? `the page running ${found.past} px past the window` : "inside the window"}.`
+            `${found.cards} card(s), each ${found.size}, whole, under a table ${found.table} px tall; the worksheet bar below them (${found.bar} px${found.lastImport ? ", a last import in it" : ""}), ${found.past > 0 ? `the page running ${found.past} px past the window` : "inside the window"}.`
           );
         } else {
           await shot(S, `Hand ${width}x${height}${open ? " open" : ""}`);
