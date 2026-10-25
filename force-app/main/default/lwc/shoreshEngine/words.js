@@ -1,5 +1,14 @@
 import { buildTerms } from "c/shoreshTerms";
-import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
+import {
+  BUDGET,
+  BUSY,
+  FULL,
+  MIN_COST,
+  NONE_FOR,
+  NO_FIT,
+  RULE,
+  SEARCHED
+} from "./week";
 
 /**
  * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
@@ -8,7 +17,9 @@ import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
  *
  * rule: a RULE value, BUSY (the group is busy at an overlapping time), NO_FIT (a gap no
  * activity's length fits), FULL (everything set up for the group is taken then) or NONE_FOR
- * (nothing running this week is set up for the group). groupName: the group the cell belongs to. placeName: the activity's place
+ * (nothing running this week is set up for the group), SEARCHED, MIN_COST or BUDGET (what the
+ * step 8 search found for a cell left Open; for MIN_COST, groupName and activityName are the
+ * group a fuller day would leave short and the activity it would be short of). groupName: the group the cell belongs to. placeName: the activity's place
  * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
  * camp's words (c/shoreshTerms); model words when left out. inUseBy: what other programs are
  * doing at the place then, by name, as the desktop names them ("Pool in use by Teen swim",
@@ -17,7 +28,15 @@ import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
  */
 export function reasonFor(
   rule,
-  { groupName, placeName, groupsAtOnce, terms, inUseBy, otherProgram } = {}
+  {
+    groupName,
+    activityName,
+    placeName,
+    groupsAtOnce,
+    terms,
+    inUseBy,
+    otherProgram
+  } = {}
 ) {
   const t = terms || buildTerms([]);
   switch (rule) {
@@ -45,6 +64,12 @@ export function reasonFor(
       return "Already busy then";
     case FULL:
       return `Everything for ${groupName} is taken then`;
+    case SEARCHED:
+      return "Everything that fits this day is already placed";
+    case MIN_COST:
+      return `Filling it would leave ${groupName} short of ${activityName}`;
+    case BUDGET:
+      return "Shoresh couldn't finish checking every way to fill this";
     case NONE_FOR:
       return `No ${t.sIn("Activity")} this ${t.sIn("Week")} is set up for ${groupName}`;
     default:

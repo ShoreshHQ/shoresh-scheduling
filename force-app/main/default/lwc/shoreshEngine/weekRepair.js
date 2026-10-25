@@ -2,8 +2,9 @@ import { blockedBy, canPlace } from "./weekOptions";
 import { PRIORITY_RANK, RULE } from "./weekRules";
 
 /**
- * Step 8 of the protocol (docs/engine/protocol.md): search before giving up. Three repairs, run
- * after the rounds and before never-blank: a reshuffle per empty cell (repair), raising weekly
+ * Step 8 of the protocol (docs/engine/protocol.md), part 1 (rules 8.1-8.8): search before giving
+ * up. The desktop's three repairs, run after the rounds and before never-blank (part 2, the exact
+ * search after never-blank, is weekSearch.js): a reshuffle per empty cell (repair), raising weekly
  * minimums by ejection chains (minRepair), and moving a blocking session (fillRepair). Each step
  * of a repair is undone unless it ends whole.
  */

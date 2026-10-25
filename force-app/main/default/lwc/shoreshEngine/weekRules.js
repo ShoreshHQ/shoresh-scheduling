@@ -47,6 +47,12 @@ export const OVERLAP = "overlap";
 export const FULL = "full";
 // No activity running this week is set up for the group.
 export const NONE_FOR = "noneFor";
+// What the step 8 search found (weekSearch.js) for a cell no cheaper proof covers: every
+// arrangement of the day was tried and none holds more; one that holds more exists but would take
+// a group below an activity's weekly minimum; or the search ran out of work before it could tell.
+export const SEARCHED = "searched";
+export const MIN_COST = "minCost";
+export const BUDGET = "budget";
 
 export const PRIORITY_RANK = { high: 0, low: 1 };
 

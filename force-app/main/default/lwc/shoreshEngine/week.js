@@ -3,6 +3,7 @@ import { readEarlyGoals, drawTieKeys } from "./weekOptions";
 import { runRound } from "./weekPlace";
 import { fillRepair, minRepair, repair, startRepairs } from "./weekRepair";
 import { finishOpen, neverBlank } from "./weekNeverBlank";
+import { explainOpen, searchWeek } from "./weekSearch";
 import { createWeekState } from "./weekState";
 
 /**
@@ -15,7 +16,8 @@ import { createWeekState } from "./weekState";
  * the tight-week matching of capped activities; greedy fewest-choices, high priority then low;
  * then three repair passes (a reshuffle per empty cell, raising weekly minimums, moving a blocking
  * session), each step of which is undone unless it ends whole. Then, new here, nothing is left
- * blank: a cell no activity fits cleanly gets the least-bad one, flagged with the rule it bends.
+ * blank: a cell no activity fits cleanly gets one that only goes over a weekly max, flagged; and
+ * an exact search rearranges each day to fill what is still Open, or proves it can't be filled.
  *
  * Each part lives in its own file, named by the protocol step it carries out
  * (docs/engine/protocol.md lists every rule and where it lives):
@@ -23,7 +25,9 @@ import { createWeekState } from "./weekState";
  *   2 lay down what's fixed ....... weekFixed.js
  *   3 each cell's options ......... weekOptions.js (rules: weekRules.js)
  *   4-6 place by priority ......... weekPlace.js
- *   8 search before giving up ..... weekRepair.js (runs before step 7)
+ *   8 search before giving up ..... part 1, weekRepair.js: the desktop's three repairs (8.1-8.8),
+ *                                   before step 7; part 2, weekSearch.js: the exact search
+ *                                   (8.10-8.18), after it
  *   7 never blank ................. weekNeverBlank.js
  *   9 write the why ............... checks.js, words.js
  * The ledgers every step shares: weekState.js.
@@ -37,7 +41,10 @@ export {
   LENGTH,
   OVERLAP,
   FULL,
-  NONE_FOR
+  NONE_FOR,
+  SEARCHED,
+  MIN_COST,
+  BUDGET
 } from "./weekRules";
 export { lockKey } from "./weekFixed";
 
@@ -59,9 +66,10 @@ export function scheduleWeek(model) {
 const SHARE = Object.freeze({
   rounds: 0.03,
   repair: 0.02,
-  minRepair: 0.45,
-  fillRepair: 0.48,
-  neverBlank: 0.02
+  minRepair: 0.3,
+  fillRepair: 0.3,
+  neverBlank: 0.02,
+  search: 0.33
 });
 
 /**
@@ -94,7 +102,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
   );
   let at = SHARE.rounds;
   yield at;
-  // Step 8: the three repairs.
+  // Step 8, part 1 (protocol 8.1-8.8): the desktop's three repairs, before never-blank.
   yield* repair(st, at);
   at += SHARE.repair;
   yield* minRepair(st, at, SHARE.minRepair);
@@ -103,9 +111,13 @@ export function* scheduleWeekSteps(model, notes = {}) {
   notes.settled = true;
   yield* fillRepair(st, at, SHARE.fillRepair);
   at += SHARE.fillRepair;
-  // Step 7: never blank, then why each cell still Open is Open.
+  // Step 7: never blank.
   yield* neverBlank(st, st.openSlots, at);
   yield* finishOpen(st, at);
+  at += SHARE.neverBlank;
+  // Step 8, part 2 (protocol 8.10-8.18): the exact search; then why each cell still Open is Open.
+  yield* searchWeek(st, at, SHARE.search, notes);
+  explainOpen(st);
 
   return {
     assigned: st.assigned,
@@ -123,6 +135,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
     splitKey: st.splitKey,
     cellKey: st.cellKey,
     actById: st.actById,
-    openSlotByKey: st.openSlotByKey
+    openSlotByKey: st.openSlotByKey,
+    searchMoves: st.searchMoves
   };
 }

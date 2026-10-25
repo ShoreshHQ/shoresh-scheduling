@@ -466,9 +466,6 @@ function stillToPlace(ctx) {
   // The same, as data: entry i is line i's activity, group and how many are missing.
   const stillNeededBy = [];
   const spreadBy = [];
-  // An early-week goal the week has no day for: said once per activity, not per group.
-  const noEarlyDay = [];
-  const noEarlyDayBy = [];
   const groups = weekGroups(ctx.days);
   const readable = ctx.days.filter((day) => !day.problem);
   const heads = groupBy(
@@ -479,26 +476,15 @@ function stillToPlace(ctx) {
   const activities = [...ctx.activities.values()].sort(
     (a, b) => sortValue(a) - sortValue(b) || compareText(a.id, b.id)
   );
-  const early = new Map(
-    activities
-      .filter((act) => act.early)
-      .map((act) => [
-        act.id,
-        earlyDates(
-          readable.map((day) => day.dateValue),
-          act.early.byDay
-        )
-      ])
-  );
-  for (const act of activities) {
-    if (act.early && readable.length && !early.get(act.id).size) {
-      const byDay = DAY_NAMES[act.early.byDay];
-      noEarlyDay.push(
-        `${act.name}: this ${ctx.t ? ctx.t.sIn("Week") : "week"} has no day by ${byDay}`
-      );
-      noEarlyDayBy.push({ activityId: act.id, byDay });
-    }
-  }
+  // The days an early-week goal counts for a group: the first N days of the run it is at camp
+  // (special days are already out of the week; a day the group isn't in doesn't count).
+  const earlyFor = (act, groupId) =>
+    earlyDates(
+      readable
+        .filter((day) => (day.groups || []).some((grp) => grp.id === groupId))
+        .map((day) => day.dateValue),
+      act.early.byDay
+    );
   groups.forEach((groupName, groupId) => {
     activities.forEach((act) => {
       if (ctx.notFor(act.id).has(groupId)) {
@@ -510,9 +496,10 @@ function stillToPlace(ctx) {
         stillNeeded.push(`${act.name} · ${groupName}: ${missing} still needed`);
         stillNeededBy.push({ activityId: act.id, groupId, missing });
       }
-      if (act.early && early.get(act.id).size) {
+      const early = act.early ? earlyFor(act, groupId) : null;
+      if (early && early.size) {
         const done = mine.filter((p) =>
-          early.get(act.id).has(ctx.days[p.d].dateValue)
+          early.has(ctx.days[p.d].dateValue)
         ).length;
         if (done < act.early.count) {
           const missing = act.early.count - done;
@@ -529,9 +516,7 @@ function stillToPlace(ctx) {
     stillNeeded,
     spread,
     stillNeededBy,
-    spreadBy,
-    noEarlyDay,
-    noEarlyDayBy
+    spreadBy
   };
 }
 
@@ -587,9 +572,7 @@ function filledCount(ctx) {
  * day's group order; rules in give-way order; text "Bunk 3 · Monday · Period 2: reason · reason"),
  * stillNeeded, spread (lines of text), stillNeededBy ([{ activityId, groupId,
  * missing }], entry i for line i), spreadBy ([{ activityId, groupId, missing, byDay }], byDay the
- * day's name as the line says it), noEarlyDay (lines: an early-week goal whose day the week
- * doesn't reach, once per activity, "Climbing: this week has no day by Tuesday"), noEarlyDayBy
- * ([{ activityId, byDay }], entry i for line i), cells: { filled, total }, hasCoverageTargets and
+ * day's name as the line says it), cells: { filled, total }, hasCoverageTargets and
  * hasSpreadTargets (some activity has a weekly minimum / an early-week goal: without one, the
  * screens don't show that counter, desktop ScheduleScreen), activityIds (the activities checked:
  * on Generated, those running this week) }.

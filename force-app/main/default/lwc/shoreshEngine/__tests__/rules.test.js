@@ -3,12 +3,15 @@
  * (and in which order) when nothing fits, and what it reports as still to place.
  */
 import {
+  BUDGET,
   FULL,
+  MIN_COST,
   generateWeek,
   NONE_FOR,
   reasonFor,
   RELAX_ORDER,
-  RULE
+  RULE,
+  SEARCHED
 } from "c/shoreshEngine";
 import { FIELD } from "c/shoreshSchema";
 import { buildTerms } from "c/shoreshTerms";
@@ -135,7 +138,8 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
         date: dateAt(0),
         groupId: "g2",
         blockId: "b0",
-        reason: "Everything for Bunk g2 is taken then"
+        reason: "Everything for Bunk g2 is taken then",
+        why: "full"
       }
     ]);
   });
@@ -153,7 +157,8 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
         date: dateAt(0),
         groupId: "g2",
         blockId: "b0",
-        reason: "Everything for Bunk g2 is taken then"
+        reason: "Everything for Bunk g2 is taken then",
+        why: "full"
       }
     ]);
   });
@@ -171,7 +176,8 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
         date: dateAt(0),
         groupId: "g2",
         blockId: "b0",
-        reason: "Everything for Bunk g2 is taken then"
+        reason: "Everything for Bunk g2 is taken then",
+        why: "full"
       }
     ]);
   });
@@ -1327,73 +1333,82 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
   });
 });
 
-describe("early-week goals count from the week's real first day (care plan)", () => {
+describe("early-week goals count the first days of this week's run (Greg, 2026-10-25)", () => {
   const goal = (day, count = 1) =>
     activity("climb", { name: "Climbing", early: { count, day }, max: null });
 
-  it("a Sunday-start week's Sunday counts before its Monday", () => {
-    // 2026-07-05 is a Sunday; the week runs Sunday to Thursday.
-    const days = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
-    expect([...earlyDates(days, 1)]).toEqual(["2026-07-05", "2026-07-06"]);
-    const result = run({
-      days,
+  it("by Tuesday is the first 2 days of the run, whatever day it starts", () => {
+    // A Sunday-start week: Sunday and Monday.
+    const sunday = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
+    expect([...earlyDates(sunday, 2)]).toEqual(["2026-07-05", "2026-07-06"]);
+    // A Saturday-start changeover week: Saturday and Sunday.
+    const saturday = [4, 5, 6, 7, 8, 9, 10].map(
+      (n) => `2026-07-${String(n).padStart(2, "0")}`
+    );
+    expect([...earlyDates(saturday, 2)]).toEqual(["2026-07-04", "2026-07-05"]);
+    // A Wednesday-Friday week: Wednesday and Thursday.
+    expect([...earlyDates([2, 3, 4].map(dateAt), 2)]).toEqual([
+      dateAt(2),
+      dateAt(3)
+    ]);
+  });
+
+  it("counts days of the run, not the calendar: a missing weekday doesn't shorten it", () => {
+    // Monday, Wednesday, Thursday: by Tuesday counts Monday and Wednesday.
+    expect([...earlyDates([dateAt(0), dateAt(2), dateAt(3)], 2)]).toEqual([
+      dateAt(0),
+      dateAt(2)
+    ]);
+  });
+
+  it("a goal later than the run is long counts the whole run", () => {
+    const days = [0, 1, 2, 3].map(dateAt);
+    expect(earlyDates(days, 5).size).toBe(4);
+    expect(earlyDates(days, 7).size).toBe(4);
+  });
+
+  it("skips a special day and a day the group isn't in: the group's own first days of the run count", () => {
+    // Monday to Thursday, by Tuesday. Monday is a special day for everyone; g2 isn't in on
+    // Tuesday. g1's early days are Tuesday and Wednesday; g2's are Wednesday and Thursday.
+    const input = camp({
+      days: 4,
+      groups: [group("g1"), group("g2")],
       blocks: [block(0)],
-      activities: [goal("Monday", 2), activity("arts", { max: null })]
+      activities: [
+        activity("climb", {
+          name: "Climbing",
+          early: { count: 2, day: "Tuesday" },
+          max: null,
+          atOnce: null
+        }),
+        activity("arts", { max: null })
+      ]
+    });
+    input.replacedDates = [dateAt(0)];
+    const tuesday = input.days[1];
+    const g2 = tuesday.groups.findIndex((g) => g.id === "g2");
+    tuesday.groups = tuesday.groups.filter((_, i) => i !== g2);
+    tuesday.rows = tuesday.rows.filter((_, i) => i !== g2);
+    const result = generateWeek(input);
+    expect(at(result, 1, "g1", 0)).toBe("climb");
+    expect(at(result, 2, "g1", 0)).toBe("climb");
+    expect(at(result, 2, "g2", 0)).toBe("climb");
+    expect(at(result, 3, "g2", 0)).toBe("climb");
+    expect(result.spread).toEqual([]);
+  });
+
+  it("places it in the first days of a week that starts mid-week, and never says a week has no early days", () => {
+    // Wednesday to Friday, by Tuesday: Wednesday and Thursday count.
+    const result = run({
+      days: [2, 3, 4].map(dateAt),
+      blocks: [block(0)],
+      activities: [goal("Tuesday", 2), activity("arts", { max: null })]
     });
     expect(at(result, 0, "g1", 0)).toBe("climb");
     expect(at(result, 1, "g1", 0)).toBe("climb");
     expect(result.spread).toEqual([]);
-  });
-
-  it("a Saturday-start week counts Saturday to Tuesday for a goal by Tuesday", () => {
-    // Saturday 2026-07-04 to Friday 2026-07-10, a changeover camp.
-    const days = [4, 5, 6, 7, 8, 9, 10].map(
-      (n) => `2026-07-${String(n).padStart(2, "0")}`
-    );
-    expect([...earlyDates(days, 2)]).toEqual([
-      "2026-07-04",
-      "2026-07-05",
-      "2026-07-06",
-      "2026-07-07"
-    ]);
-  });
-
-  it("a goal by Sunday in a Monday week counts every day to Sunday", () => {
-    const days = [0, 1, 2, 3, 4, 5, 6].map(dateAt);
-    expect(earlyDates(days, 7).size).toBe(7);
-    expect([...earlyDates(["2026-07-05", ...days], 7)]).toEqual(["2026-07-05"]);
-  });
-
-  it("a weekday missing from the week still counts the days before it", () => {
-    // Monday, Wednesday, Thursday: a goal by Tuesday counts Monday.
-    expect([...earlyDates([dateAt(0), dateAt(2), dateAt(3)], 2)]).toEqual([
-      dateAt(0)
-    ]);
-  });
-
-  it("a Monday-Thursday week counts every day for a goal by Friday", () => {
-    const days = [0, 1, 2, 3].map(dateAt);
-    expect(earlyDates(days, 5).size).toBe(4);
-  });
-
-  it("a week with no day by then says so once for the goal, and costs nothing", () => {
-    // Wednesday to Friday: no day on or before Tuesday.
-    const days = [2, 3, 4].map(dateAt);
-    expect(earlyDates(days, 2).size).toBe(0);
-    const result = run({
-      days,
-      groups: [group("g1"), group("g2")],
-      blocks: [block(0)],
-      activities: [goal("Tuesday", 2), activity("arts", { max: null })]
-    });
-    expect(result.noEarlyDay).toEqual([
-      "Climbing: this week has no day by Tuesday"
-    ]);
-    expect(result.noEarlyDayBy).toEqual([
-      { activityId: "climb", byDay: "Tuesday" }
-    ]);
-    expect(result.spread).toEqual([]);
-    expect(result.openCells).toEqual([]);
+    expect(result.noEarlyDay).toBeUndefined();
+    expect(result.noEarlyDayBy).toBeUndefined();
   });
 });
 
@@ -1626,7 +1641,14 @@ describe("the hover reasons, shared with Manual Build", () => {
     ],
     [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"],
     [FULL, cell, "Everything for Bunk 3 is taken then"],
-    [NONE_FOR, cell, "No activity this week is set up for Bunk 3"]
+    [NONE_FOR, cell, "No activity this week is set up for Bunk 3"],
+    [SEARCHED, cell, "Everything that fits this day is already placed"],
+    [
+      MIN_COST,
+      { ...cell, activityName: "Swim" },
+      "Filling it would leave Bunk 3 short of Swim"
+    ],
+    [BUDGET, cell, "Shoresh couldn't finish checking every way to fill this"]
   ])("%s: %j", (rule, details, words) => {
     expect(reasonFor(rule, details)).toBe(words);
   });

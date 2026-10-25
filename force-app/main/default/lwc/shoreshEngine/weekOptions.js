@@ -267,41 +267,44 @@ export const canPlace = (st, act, g, d, b) =>
   check(st, act, g, d, b, false) === null;
 
 /**
- * Early in the week (EarlyWeekCount by EarlyWeekByDay): the last day index that counts, counted
- * from the week's real first day (setup.js earlyDates); -1 when no day does, and the goal then
- * weighs nothing, so it never costs a filled cell.
+ * Early in the week (EarlyWeekCount by EarlyWeekByDay): the day indexes that count, for each
+ * goal and group: the first N days of this week's run that the group is at camp (setup.js
+ * earlyDates). Special days are already out of the week; a day the group isn't in doesn't count.
  */
 export function readEarlyGoals(st) {
-  st.earlyEnd = new Map();
+  st.earlyDays = new Map();
   for (const act of st.acts) {
     if (act.early) {
-      const counts = earlyDates(
-        st.days.map((day) => day.date),
-        act.early.byDay
-      );
-      let end = -1;
-      st.days.forEach((day, i) => {
-        if (counts.has(day.date)) {
-          end = i;
-        }
-      });
-      st.earlyEnd.set(act.id, end);
+      for (const g of st.model.groupIds) {
+        const own = st.days.filter((day) => day.tokens.has(g));
+        const counts = earlyDates(
+          own.map((day) => day.date),
+          act.early.byDay
+        );
+        st.earlyDays.set(
+          `${act.id}|${g}`,
+          new Set(
+            own.filter((day) => counts.has(day.date)).map((day) => day.index)
+          )
+        );
+      }
     }
   }
 }
 
 /** -1 while a group still needs it early and this day counts, 1 once that day has passed. */
 export function earlyScore(st, act, g, d) {
-  if (!act.early || st.earlyEnd.get(act.id) < 0) {
+  const days = act.early ? st.earlyDays.get(`${act.id}|${g}`) : null;
+  if (!days || !days.size) {
     return 0;
   }
   // Only sessions on the days that count: a locked Friday session doesn't meet a Tuesday goal.
   let early = 0;
-  for (let day = 0; day <= st.earlyEnd.get(act.id); day++) {
+  for (const day of days) {
     early += st.dailyUsage.get(`${g}|${day}|${act.id}`) || 0;
   }
   if (early >= act.early.count) {
     return 0;
   }
-  return d <= st.earlyEnd.get(act.id) ? -1 : 1;
+  return days.has(d) ? -1 : 1;
 }

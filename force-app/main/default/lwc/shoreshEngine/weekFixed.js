@@ -119,18 +119,13 @@ function readRow(st, grid, day, groupId, row) {
 /**
  * Reads every group's row of every day into the ledgers, and puts on `st` the cells to fill:
  * openSlots (to fill now), freeSlots (every Open, at-camp, unlocked cell, in order), busyThen
- * (left out because the group is busy at an overlapping time), fullThen and noneFor (why
- * never-blank left a cell Open), lockedOpen and away.
+ * (left out because the group is busy at an overlapping time), lockedOpen and away.
  */
 export function readGrid(st) {
   const grid = {
     openSlots: [],
     freeSlots: [],
     busyThen: new Map(),
-    // Cells never-blank found nothing set up for the group with room for (FULL), or nothing set
-    // up for it at all this week (NONE_FOR).
-    fullThen: new Set(),
-    noneFor: new Set(),
     lockedOpen: new Set(),
     away: new Set()
   };

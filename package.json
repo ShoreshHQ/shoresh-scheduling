@@ -8,6 +8,7 @@
     "test": "npm run test:unit",
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:namespaced": "sfdx-lwc-jest -- --config jest.namespaced.config.js",
+    "test:engine:full": "sfdx-lwc-jest -- --config jest.full.config.js force-app/main/default/lwc/shoreshEngine",
     "test:unit:watch": "sfdx-lwc-jest --watch",
     "test:unit:debug": "sfdx-lwc-jest --debug",
     "test:unit:coverage": "sfdx-lwc-jest --coverage",
