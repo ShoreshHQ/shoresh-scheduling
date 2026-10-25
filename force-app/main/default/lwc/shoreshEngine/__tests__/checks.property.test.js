@@ -388,12 +388,17 @@ function oracle(days, model) {
         });
       }
       const byDay = act.early && act.early.byDay;
-      if (
-        byDay &&
-        days.some((day) => !day.problem && weekday(day.dateValue) <= byDay)
-      ) {
-        const early = mine.filter(
-          (q) => weekday(days[q.d].dateValue) <= byDay
+      // The first byDay days of the week's run (Greg, 2026-10-25).
+      const firstDays = new Set(
+        days
+          .filter((day) => !day.problem)
+          .map((day) => day.dateValue)
+          .sort()
+          .slice(0, byDay || 0)
+      );
+      if (byDay && firstDays.size) {
+        const early = mine.filter((q) =>
+          firstDays.has(days[q.d].dateValue)
         ).length;
         if (early < act.early.count) {
           spread.push(

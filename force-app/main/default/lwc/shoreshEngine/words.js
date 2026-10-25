@@ -1,5 +1,14 @@
 import { buildTerms } from "c/shoreshTerms";
-import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
+import {
+  BUDGET,
+  BUSY,
+  FULL,
+  MIN_COST,
+  NONE_FOR,
+  NO_FIT,
+  RULE,
+  SEARCHED
+} from "./week";
 
 /**
  * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
@@ -8,7 +17,8 @@ import { BUSY, FULL, NONE_FOR, NO_FIT, RULE } from "./week";
  *
  * rule: a RULE value, BUSY (the group is busy at an overlapping time), NO_FIT (a gap no
  * activity's length fits), FULL (everything set up for the group is taken then) or NONE_FOR
- * (nothing running this week is set up for the group). groupName: the group the cell belongs to. placeName: the activity's place
+ * (nothing running this week is set up for the group), SEARCHED, MIN_COST or BUDGET (what the
+ * step 8 search found for a cell left Open). groupName: the group the cell belongs to. placeName: the activity's place
  * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
  * camp's words (c/shoreshTerms); model words when left out. inUseBy: what other programs are
  * doing at the place then, by name, as the desktop names them ("Pool in use by Teen swim",
@@ -45,6 +55,12 @@ export function reasonFor(
       return "Already busy then";
     case FULL:
       return `Everything for ${groupName} is taken then`;
+    case SEARCHED:
+      return `No arrangement of the day fits another ${t.sIn("Activity")} here`;
+    case MIN_COST:
+      return `Filling it would take a ${t.sIn("Group")} below a weekly minimum`;
+    case BUDGET:
+      return "Not enough time to try every arrangement";
     case NONE_FOR:
       return `No ${t.sIn("Activity")} this ${t.sIn("Week")} is set up for ${groupName}`;
     default:

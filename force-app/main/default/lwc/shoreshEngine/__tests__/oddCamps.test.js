@@ -13,27 +13,11 @@ import { cellsOf } from "./data/camp";
 import { inputOf, ODD_CAMPS } from "./data/oddCamps";
 import { settledRules } from "./data/settledRules";
 
-const PR4 = "PR 4 (search before giving up, import as floor)";
-
 /**
- * camp name -> rule -> [the PR that fixes it, the exact lines today's engine gives]. Since once a
- * day became a limit (Greg, 2026-10-25), never-blank leaves these cells Open, each with its
- * reason; a rearranging search (PR 4) is what fills them.
+ * camp name -> rule -> [the PR that fixes it, the exact lines today's engine gives]. Empty since
+ * PR 4a's search (step 8): every Open cell in the library is proven unfillable.
  */
-const KNOWN_FAILURES = {
-  "half days": {
-    gapIsABug: [
-      PR4,
-      ["the exhaustive search ran out of budget: no proof either way"]
-    ]
-  },
-  "overlapping time blocks": {
-    gapIsABug: [
-      PR4,
-      ["filled 8 cells within the hard limits; a week exists that fills 10"]
-    ]
-  }
-};
+const KNOWN_FAILURES = {};
 
 const RULES = {
   hardLimits:

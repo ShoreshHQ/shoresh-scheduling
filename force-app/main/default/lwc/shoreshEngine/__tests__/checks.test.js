@@ -455,7 +455,7 @@ describe("checks: still to place and the counters", () => {
   it("spread across the week: short of its early-week goal, by that day inclusive", () => {
     const early = { count: 1, byDay: 3 };
     const thursday = weekOf(
-      { [MON]: [[""]], [THU]: [["A:swim"]] },
+      { [MON]: [[""]], [TUE]: [[""]], [WED]: [[""]], [THU]: [["A:swim"]] },
       { width: 1 }
     );
     expect(
@@ -470,14 +470,18 @@ describe("checks: still to place and the counters", () => {
     ).toEqual([]);
   });
 
-  it("no early-week line when the week has no day by then", () => {
+  it("a week that starts after the goal's day counts its own first days (Greg, 2026-10-25)", () => {
+    // A Thursday-only week, by Wednesday: its first day counts, and it is short.
     const days = weekOf({ [THU]: [[""]] }, { width: 1 });
     const result = checkWeek(
       days,
       model([activity("swim", { early: { count: 1, byDay: 3 } })]),
       words
     );
-    expect(result.spread).toEqual([]);
+    expect(result.spread).toEqual([
+      "Swim · Bunk 1: 1 still needed by Wednesday"
+    ]);
+    expect(result.noEarlyDay).toBeUndefined();
   });
 
   it("filled: cells filled of the cells to fill, leaving out fixed activities and not at camp", () => {

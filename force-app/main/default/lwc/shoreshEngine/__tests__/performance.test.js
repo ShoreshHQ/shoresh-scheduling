@@ -88,7 +88,8 @@ describe("generateWeek on a large camp", () => {
   it("gives up on a week that can't fit within its work budget, still leaving nothing blank", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
-    expect(result.ruleChecks).toBeLessThan(1500000); // about 1,070,000 today
+    // About 1,640,000 today: 1,070,000 before step 8's exact search (PR 4a).
+    expect(result.ruleChecks).toBeLessThan(2500000);
     // About 1 s alone (under 3 s on a busy machine). ruleChecks above counts how many checks
     // run, not how long each takes, so this ceiling is what catches a slower check (roughly
     // 10x or worse); a slowdown smaller than that can still pass.

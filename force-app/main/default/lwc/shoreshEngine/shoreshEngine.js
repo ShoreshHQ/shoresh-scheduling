@@ -19,25 +19,31 @@ import {
   readSetTimeLocations
 } from "./setup";
 import {
+  BUDGET,
   BUSY,
   FULL,
   LENGTH,
+  MIN_COST,
   NO_FIT,
   NONE_FOR,
   OVERLAP,
   RELAX_ORDER,
   RULE,
+  SEARCHED,
   lockKey,
   scheduleWeekSteps
 } from "./week";
 
 export {
+  BUDGET,
   BUSY,
   FULL,
+  MIN_COST,
   NONE_FOR,
   NO_FIT,
   RELAX_ORDER,
   RULE,
+  SEARCHED,
   reasonFor,
   checkWeek
 };
@@ -54,7 +60,10 @@ const OPEN_WHY = {
   [OVERLAP]: BUSY,
   [LENGTH]: NO_FIT,
   [FULL]: FULL,
-  [NONE_FOR]: NONE_FOR
+  [NONE_FOR]: NONE_FOR,
+  [SEARCHED]: SEARCHED,
+  [MIN_COST]: MIN_COST,
+  [BUDGET]: BUDGET
 };
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
@@ -84,8 +93,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     set on the grid is kept like a lock and takes up the places of its confirmed, open offerings
  *     (readElectivePlaces; ADR 0018 slice E5, desktop electiveOccupancy.js)
  *
- * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, noEarlyDay,
- * noEarlyDayBy, setupNotes, overlapping, cells, openCells, ruleChecks }
+ * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy,
+ * setupNotes, overlapping, cells, openCells, ruleChecks }
  * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
@@ -94,16 +103,22 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     bend a rule for always has one; so does anything kept that breaks a rule
  *   stillNeeded, spread, stillNeededBy, spreadBy, cells: checkWeek's lines, the same as data,
  *     and counts, the same words as Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
- *   noEarlyDay, noEarlyDayBy: checkWeek's early-week goals the week has no day for, once each
  *   setupNotes: lines for each blank groups at once (an activity running this week) or groups
  *     that fit (a place one uses), taken as 1: "Arts: Groups at once is blank, so it counts as 1"
  *   overlapping: checkWeek's cells where a placement breaks a rule that time block shares with
  *     other cells: [{ dateValue, groupId, blockId, rules: [RULE... or BUSY], text }]
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
  *     work done, the same on any machine
- *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is
- *     busy at an overlapping time ("Already busy then"), everything set up for it is taken then,
- *     nothing running this week is set up for it, or no activity's length fits the gap
+ *   openCells: [{ date, groupId, blockId, reason, why }] for an at-camp cell left Open: the group
+ *     is busy at an overlapping time ("Already busy then"), everything set up for it is taken
+ *     then, nothing running this week is set up for it, no activity's length fits the gap, every
+ *     arrangement of the day was tried, filling it would take a group below a weekly minimum, or
+ *     the search ran out of work first (why: the code, weekRules.js; BUDGET is the one that is
+ *     not a proof)
+ *   moved: each cell the step 8 search changed, in order: [{ date, groupId, blockId, from, to,
+ *     why, toFill: [{ date, groupId, blockId }] }] (from/to: activity ids, null for Open; why:
+ *     "fill" to fill cells, "minimum" to leave fewer groups short of a weekly minimum with as
+ *     many cells filled; toFill: the cells that rearrangement filled)
  */
 export function generateWeek(input) {
   const steps = generateWeekSteps(input);
@@ -121,9 +136,10 @@ export function generateWeek(input) {
  * the week, so it is the same as generateWeek's. It ends at 1. A week built twice (the minimum
  * repair's leniency, below) spends the first half of the way on the first build; once the first
  * build's minimum repair shows it won't be built again, the rest of the first build fills the
- * rest of the way.
+ * rest of the way. watch, if given, holds what the build is working on as it goes (watch.now:
+ * { step, date, groupId, blockId }, null between searches), for a progress screen to say in words.
  */
-export function* generateWeekSteps(input) {
+export function* generateWeekSteps(input, watch = {}) {
   const t = input.terms || buildTerms([]);
   const weekId = input.weekId || null;
   const activities = readActivities(
@@ -203,6 +219,9 @@ export function* generateWeekSteps(input) {
       if (once && !alone && notes.settled && !notes.leftForNeverBlank) {
         alone = { f, at: from + share * f };
       }
+      watch.now = notes.now
+        ? { ...notes.now, date: days[notes.now.dayIndex].date }
+        : null;
       yield alone && alone.f < 1
         ? alone.at + ((f - alone.f) / (1 - alone.f)) * (1 - alone.at)
         : from + share * f;
@@ -210,6 +229,7 @@ export function* generateWeekSteps(input) {
     }
     const state = step.value;
     const built = writeDays(settings, state);
+    watch.now = null;
     yield once && !state.leftForNeverBlank ? 1 : from + share;
     return {
       state,
@@ -242,8 +262,6 @@ export function* generateWeekSteps(input) {
     spread: checked.spread,
     stillNeededBy: checked.stillNeededBy,
     spreadBy: checked.spreadBy,
-    noEarlyDay: checked.noEarlyDay,
-    noEarlyDayBy: checked.noEarlyDayBy,
     setupNotes,
     overlapping: checked.overlapping,
     cells: checked.cells,
@@ -257,9 +275,22 @@ export function* generateWeekSteps(input) {
         reason: reasonFor(OPEN_WHY[why], {
           terms: t,
           groupName: (groups.get(groupId) || {}).name || ""
-        })
+        }),
+        why
       };
-    })
+    }),
+    moved: state.searchMoves.map((m) => ({
+      date: days[m.dayIndex].date,
+      groupId: m.groupId,
+      blockId: m.blockId,
+      from: m.from,
+      to: m.to,
+      why: m.why,
+      toFill: m.toFill.map((k) => {
+        const [g, d, b] = state.splitKey(k);
+        return { date: days[d].date, groupId: g, blockId: b };
+      })
+    }))
   };
 }
 

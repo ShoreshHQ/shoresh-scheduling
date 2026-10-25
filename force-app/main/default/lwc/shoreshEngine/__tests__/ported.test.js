@@ -264,16 +264,18 @@ describe("no activity left below its minimum when the week can hold it", () => {
   it("camp 166 (coordinator's review): no extra bends from the minimum repair", () => {
     const result = run(camp166);
     expect(result.flags).toEqual([]);
-    expect(result.stillNeeded).toHaveLength(26);
+    // 26 before step 8's search (PR 4a); it meets three more by rearranging days.
+    expect(result.stillNeeded).toHaveLength(23);
   });
 
   it("camp 93: the week without the leniency has fewer bends for the same minimums", () => {
-    // Lenient alone: two sessions past their weekly limits; without it, one.
+    // Lenient alone: two sessions past their weekly limits; without it, one. Step 8's search
+    // (PR 4a) then meets the last minimum by rearranging a day.
     const result = run(camp93);
-    expect(result.stillNeeded).toHaveLength(1);
+    expect(result.stillNeeded).toHaveLength(0);
     expect(
       result.flags.map((f) => [f.groupId, f.activityId, f.reason])
-    ).toEqual([["g4", "a3", "Over its weekly limit"]]);
+    ).toEqual([["g1", "a3", "Over its weekly limit"]]);
   });
 
   // The desktop's acceptance rule in miniature: build a full week, read the rules off it the way

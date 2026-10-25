@@ -267,68 +267,66 @@ function bestFill(spec, m) {
       );
     }
   }
-  let best = 0;
-  let nodes = 0;
-  const search = (i, filled) => {
-    if (++nodes > NODE_BUDGET) {
-      throw new Error("budget");
-    }
-    if (filled + (order.length - i) <= best) {
-      return;
-    }
-    if (i === order.length) {
-      best = filled;
-      return;
-    }
-    const [d, g, b] = order[i];
-    if (cells[d][g][b]) {
+  // Every hard limit is within one day (once a day, groups at once, groups that fit, divisions,
+  // lengths, overlaps); the weekly max is a preference. So the week's most is each day's most,
+  // added up, and each day is searched on its own.
+  let total = 0;
+  const work = { nodes: 0 };
+  for (const day of m.days) {
+    const mine = order.filter(([d]) => d === day.d);
+    let best = 0;
+    const search = (i, filled) => {
+      if (++work.nodes > NODE_BUDGET) {
+        throw new Error("budget");
+      }
+      if (filled + (mine.length - i) <= best) {
+        return;
+      }
+      if (i === mine.length) {
+        best = filled;
+        return;
+      }
+      const [d, g, b] = mine[i];
+      if (cells[d][g][b]) {
+        search(i + 1, filled);
+        return;
+      }
+      for (const act of m.acts) {
+        if (!fitsAt(m, led, cells, act, d, g, b, m.free)) {
+          continue;
+        }
+        const placed = [];
+        for (let k = 0; k < act.span; k++) {
+          const cell = { kind: "A", id: act.id, head: k === 0 };
+          cells[d][g][b + k] = cell;
+          led.put(cell, d, g, b + k);
+          placed.push(b + k);
+        }
+        search(i + 1, filled + act.span);
+        for (const k of placed) {
+          led.put(cells[d][g][k], d, g, k, -1);
+          cells[d][g][k] = null;
+        }
+      }
       search(i + 1, filled);
-      return;
+    };
+    try {
+      search(0, 0);
+    } catch {
+      return null;
     }
-    for (const act of m.acts) {
-      if (!fitsAt(m, led, cells, act, d, g, b, m.free)) {
-        continue;
-      }
-      const placed = [];
-      for (let k = 0; k < act.span; k++) {
-        const cell = { kind: "A", id: act.id, head: k === 0 };
-        cells[d][g][b + k] = cell;
-        led.put(cell, d, g, b + k);
-        placed.push(b + k);
-      }
-      search(i + 1, filled + act.span);
-      for (const k of placed) {
-        led.put(cells[d][g][k], d, g, k, -1);
-        cells[d][g][k] = null;
-      }
-    }
-    search(i + 1, filled);
-  };
-  try {
-    search(0, 0);
-  } catch {
-    return null;
+    total += best;
   }
-  return best;
+  return total;
 }
 
 /**
- * The days an early-week goal counts, from the week's real first day (settled rule; coordinator,
- * 2026-10-25): a week starting Saturday or Sunday starts there, any other on the Monday before.
+ * The days an early-week goal counts (Greg, 2026-10-25): the first N days of the week's own run,
+ * N the goal day's place in a Monday-start week (by Tuesday = the first 2 days).
  */
 function earlyDays(dates, dayName) {
-  const at = (date) => new Date(`${date}T00:00:00Z`);
-  const firstDay = at(dates[0]).getUTCDay();
-  const weekend = firstDay === 6 || firstDay === 0;
-  const start = new Date(at(dates[0]));
-  if (!weekend) {
-    start.setUTCDate(start.getUTCDate() - ((firstDay + 6) % 7));
-  }
-  const goal = new Date(start);
-  while (goal.getUTCDay() !== WEEKDAY[dayName]) {
-    goal.setUTCDate(goal.getUTCDate() + 1);
-  }
-  return dates.filter((date) => at(date) <= goal);
+  const n = WEEKDAY[dayName] === 0 ? 7 : WEEKDAY[dayName];
+  return dates.slice(0, n);
 }
 
 /**
@@ -404,18 +402,6 @@ export function settledRules(c, input, result, options = {}) {
       if (a.early) {
         const days = earlyDays(dates, a.early.day);
         const said2 = listed(result.spreadBy, a, g);
-        if (!days.length) {
-          // Said once for the goal (noEarlyDayBy), not per group.
-          const once = (result.noEarlyDayBy || []).some(
-            (e) => e.activityId === a.id
-          );
-          if (!said2 && !once) {
-            out.visible.push(
-              `${a.id} for ${g.id}: the week has no day by ${a.early.day}, unsaid`
-            );
-          }
-          continue;
-        }
         const early = mine.filter((date) => days.includes(date)).length;
         const missing = Math.max(0, a.early.count - early);
         if ((said2 ? said2.missing : 0) !== missing) {

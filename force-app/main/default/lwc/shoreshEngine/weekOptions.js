@@ -267,9 +267,9 @@ export const canPlace = (st, act, g, d, b) =>
   check(st, act, g, d, b, false) === null;
 
 /**
- * Early in the week (EarlyWeekCount by EarlyWeekByDay): the last day index that counts, counted
- * from the week's real first day (setup.js earlyDates); -1 when no day does, and the goal then
- * weighs nothing, so it never costs a filled cell.
+ * Early in the week (EarlyWeekCount by EarlyWeekByDay): the last day index that counts, the
+ * first N days of this week's run (setup.js earlyDates); -1 only when the goal has no day set,
+ * and it then weighs nothing.
  */
 export function readEarlyGoals(st) {
   st.earlyEnd = new Map();
