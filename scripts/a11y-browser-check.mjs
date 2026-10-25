@@ -2285,6 +2285,23 @@ async function restTable() {
   if (box) await page.mouse.click(box.x + 6, box.y + 6);
   await page.mouse.move(2, 2);
   await pause(1500);
+  // Still: every card where it lies (a card still gliding home can peek out by a pixel or two
+  // from behind its stack for a moment, which axe would take for a target).
+  const places = () =>
+    page
+      .locator(APP)
+      .locator("c-shoresh-roots")
+      .first()
+      .evaluate((roots) =>
+        [...(roots.shadowRoot || roots).querySelectorAll("[data-card]")]
+          .map((c) => c.style.transform)
+          .join("|")
+      );
+  for (let i = 0; i < 20; i++) {
+    const before = await places();
+    await pause(150);
+    if ((await places()) === before) break;
+  }
 }
 
 /**
