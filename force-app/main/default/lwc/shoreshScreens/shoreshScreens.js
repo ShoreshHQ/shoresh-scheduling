@@ -3,7 +3,8 @@
  * desktop's sidebar (navSections.js): Roots (home), then Camp, then Activities & Events, then
  * Schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
  * are equal and the order means nothing), Elective seats, and Saved versions (key "schedules").
- * Section titles are the desktop's NAV_SECTIONS titles. Every label is in the camp's own words.
+ * Section titles are the desktop's NAV_SECTIONS titles. At the foot, What Shoresh has learned
+ * (repo ADR 0021), where the desktop has its footer link. Every label is in the camp's own words.
  * Screens not built yet are listed as coming, not hidden.
  *
  * The Schedules title is itself a doorway (wiki decision 61): it opens the season's weeks
@@ -21,7 +22,7 @@ const COMING = new Set();
 // opens what the menu does. Nothing else is opened from the address.
 const PREVIEWABLE = new Set(["electives", "bringInChoices", "electiveSeats"]);
 // Everything else needs a season first.
-const WITHOUT_SEASON = new Set(["campWords"]);
+const WITHOUT_SEASON = new Set(["campWords", "learned"]);
 
 /** Each screen's name, in the camp's words. */
 export function screenLabels(t) {
@@ -45,7 +46,8 @@ export function screenLabels(t) {
     generatedSchedule: "Generated Schedule",
     schedules: "Saved versions",
     scheduleWeeks: "Schedules",
-    import: "Import last year"
+    import: "Import last year",
+    learned: "What Shoresh has learned"
   };
 }
 
@@ -80,7 +82,9 @@ const SECTIONS = [
     title: () => "Schedules",
     door: "scheduleWeeks",
     screens: ["generatedSchedule", "manualBuild", "electiveSeats", "schedules"]
-  }
+  },
+  // At the foot of the menu, as the desktop's sidebar footer link (Sidebar.jsx): no title.
+  { key: "learned", foot: true, screens: ["learned"] }
 ];
 
 export function isComing(screen) {
@@ -150,6 +154,7 @@ export function menuSections(t, hasSeason, marks = {}, preview = null) {
   return SECTIONS.map((section) => ({
     key: section.key,
     title: section.title ? section.title(t) : null,
+    foot: !!section.foot,
     door: section.door
       ? {
           key: section.door,

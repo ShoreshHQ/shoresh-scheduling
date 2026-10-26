@@ -87,7 +87,8 @@ const FLUSH_SCREENS = new Set([
   "electives",
   "bringInChoices",
   "electiveSeats",
-  "schedules"
+  "schedules",
+  "learned"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -122,7 +123,8 @@ const SCREENS = [
   "scheduleWeeks",
   "import",
   "bringInChoices",
-  "electiveSeats"
+  "electiveSeats",
+  "learned"
 ];
 // The schedule screens a week can be opened on (the Schedules doorway, wiki decision 61).
 const WEEK_SCREENS = {
@@ -564,6 +566,11 @@ export default class ShoreshCampSetup extends LightningElement {
     return FLUSH_SCREENS.has(screen) || this.isCopy
       ? "zone body body_flush"
       : "zone body";
+  }
+
+  /** What Shoresh has learned reads the camp's answers each time it is shown (repo ADR 0021). */
+  get learnedActive() {
+    return this.currentScreen === "learned";
   }
 
   /** Roots reads its table each time it is shown (repo ADR 0020). */

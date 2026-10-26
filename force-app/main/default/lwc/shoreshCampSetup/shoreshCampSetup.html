@@ -387,6 +387,19 @@
               </template>
             </div>
 
+            <!-- What Shoresh has learned (repo ADR 0021): the camp's, so no season needed -->
+            <div class={shown.learned} data-screen="learned">
+              <template for:each={campKeys} for:item="key">
+                <c-shoresh-learned
+                  key={key}
+                  camp-id={campId}
+                  terms={terms}
+                  setup={setup}
+                  active={learnedActive}
+                ></c-shoresh-learned>
+              </template>
+            </div>
+
             <template lwc:if={setup}>
               <!-- Roots -->
               <div class={shown.roots} data-screen="roots">

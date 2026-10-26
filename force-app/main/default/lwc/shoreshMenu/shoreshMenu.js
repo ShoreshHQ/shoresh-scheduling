@@ -35,7 +35,8 @@ export default class ShoreshMenu extends LightningElement {
     return (this.sections || []).map((section) => ({
       ...section,
       // Entries under a section title sit indented under it; Roots sits on its own.
-      sectionClass: section.title ? "section section_titled" : "section",
+      // The foot section (What Shoresh has learned) sits at the bottom, under a hairline.
+      sectionClass: this.sectionClass(section),
       // A title that opens a screen (section.door): raised while its screen is shown, quieter
       // and saying why while it can't open, as an entry is.
       ...this.doorView(section.door),
@@ -55,6 +56,13 @@ export default class ShoreshMenu extends LightningElement {
         };
       })
     }));
+  }
+
+  sectionClass(section) {
+    if (section.foot) {
+      return "section section_foot";
+    }
+    return section.title ? "section section_titled" : "section";
   }
 
   doorView(door) {

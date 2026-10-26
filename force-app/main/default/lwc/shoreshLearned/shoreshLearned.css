@@ -1,0 +1,242 @@
+@import "c/shoreshTokens";
+
+/*
+ * What Shoresh has learned, in the setup screens' grammar (camp words, ADR 0015): the rail, the
+ * hairline, then the groups, each a heading that opens and closes it, and its answers as quiet
+ * rows on the page (desktop LearnedScreen.jsx: no cards, a rule between rows, the actions on
+ * the right of the who-and-when line).
+ */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
+}
+
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-count {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  white-space: pre;
+}
+
+.rail-count b {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+/* The search and the kind: wells, as camp words' boxes. */
+.well {
+  box-sizing: border-box;
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-250);
+  box-shadow: var(--shoresh-well-in);
+  font: inherit;
+  color: var(--shoresh-text-1);
+  outline: none;
+}
+
+.well::placeholder {
+  color: var(--shoresh-text-2);
+  opacity: 1;
+}
+
+.well:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.search {
+  width: calc(var(--shoresh-u) * 60);
+  max-width: 100%;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-space-pad);
+}
+
+.note,
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.load-error {
+  color: var(--slds-g-color-error-1, #b60554);
+}
+
+.group-head {
+  margin: 0;
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+}
+
+/* A group's heading opens and closes it: its name, its count, a chevron. */
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  width: 100%;
+  min-height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-toggle:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.group-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.group-count {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+}
+
+.chevron {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--shoresh-t-lift) var(--shoresh-flow);
+}
+
+.chevron_open {
+  transform: rotate(90deg);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border-bottom: 1px solid var(--shoresh-rule);
+}
+
+.row:hover,
+.row:focus-within {
+  background: var(--shoresh-surface-hover);
+}
+
+.line1,
+.line2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shoresh-s2);
+}
+
+.title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.row_forgotten .title {
+  color: var(--shoresh-text-2);
+}
+
+.meta {
+  color: var(--shoresh-text-2);
+}
+
+/* A row's result ("Forgotten", "Updated"): a quiet mark, as the menu's "Coming". */
+.flag {
+  flex: none;
+  padding: 0 var(--shoresh-s1);
+  border: 1px solid var(--shoresh-edge);
+  border-radius: var(--shoresh-s1);
+  color: var(--shoresh-text-2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  line-height: 16px;
+}
+
+.actions,
+.choices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1);
+  margin-left: auto;
+}
+
+.choices {
+  margin-left: 0;
+}
+
+/* Row actions are quiet words in the highlight; Forget in the error colour (desktop). */
+.link {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+}
+
+.link_forget {
+  color: var(--slds-g-color-error-1, #b60554);
+}
+
+.editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shoresh-s2);
+  padding-top: var(--shoresh-s1);
+}
+
+.row-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  margin: 0;
+  color: var(--slds-g-color-error-1, #b60554);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

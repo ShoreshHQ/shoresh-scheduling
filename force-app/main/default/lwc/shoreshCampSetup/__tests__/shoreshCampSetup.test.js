@@ -4273,7 +4273,19 @@ describe("c-shoresh-camp-setup", () => {
       ).toBe("First week");
     });
 
-    it("before the first season, only camp words opens", async () => {
+    it("opens what Shoresh has learned for the camp, before any season", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([]));
+      const element = await render();
+      const learned = q(element, "c-shoresh-learned");
+      expect(learned.active).toBe(false);
+      await openScreen(element, "learned");
+      expect(shownScreens(element)).toEqual(["learned"]);
+      expect(learned.active).toBe(true);
+      expect(learned.campId).toBe(CAMP.Id);
+    });
+
+    it("before the first season, only camp words and what Shoresh has learned open", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([]));
       const element = await render();
@@ -4283,7 +4295,7 @@ describe("c-shoresh-camp-setup", () => {
         .flatMap((section) => section.items)
         .filter((item) => !item.disabled)
         .map((item) => item.key);
-      expect(open).toEqual(["campWords"]);
+      expect(open).toEqual(["campWords", "learned"]);
       await openScreen(element, "campWords");
       expect(shownScreens(element)).toEqual(["campWords"]);
       expect(element.shadowRoot.textContent).not.toContain(
