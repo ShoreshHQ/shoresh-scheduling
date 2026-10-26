@@ -39,7 +39,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   `day + '__c'`): once the package has its `shoresh` namespace they find nothing. LWC takes names
   from `c/shoreshSchema` (generated: `node scripts/generate-shoresh-schema.js`); Apex uses typed
   references and `ShoreshSchema`; stored names (import logs, answer keys) are bare local names.
-  `npm run check:namespace` fails on any one, and every component's tests also run namespaced
+  `npm run check:namespace` fails on any one, and every component's tests also run namespaced (except the engine's seed sweeps listed in `jest.namespaced.config.js`)
   (`npm run test:unit:namespaced`). Rules and guards: `docs/adr/0009-namespace-safe-names.md`.
 - **Salesforce skills** in `.claude/skills/` are a vetted copy of Salesforce's sf-skills
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
