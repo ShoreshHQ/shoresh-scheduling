@@ -4686,97 +4686,17 @@ async function rainyDay(S) {
 /**
  * The lock's look (Greg, 2026-10-22; ADR 0015 choice 6): every locked cell on the grid shows the
  * padlock (c-shoresh-lock) inside its bottom-right corner, draws no border or outline for the
- * lock, and the padlock overlaps neither the cell's name nor its needs-a-look corner, both shown.
+ * lock, and the padlock doesn't overlap the cell's name. Nothing from the checks is on the grid
+ * (Greg, engine care plan Q18, 2026-10-25): no cell carries a corner mark, so nothing is arranged.
  */
 async function lockLook(S) {
   const name =
-    "Locked cells: the padlock bottom right, no edge, clear of the mark";
-  let found = await measureLocks();
-  // A locked cell that also has the needs-a-look corner: lock one that has the mark when none does.
-  let arranged = null;
-  let retyped = null;
-  try {
-    if (!found.some((c) => c.lock && c.mark && c.mark !== "hidden")) {
-      const isMarked = (c) =>
-        /\bcell_look\b/.test(c.classes) &&
-        !/\bcell_(locked|locked-empty|away)\b/.test(c.classes);
-      let marked = (await gridCells()).find(isMarked);
-      if (!marked) {
-        // Break a rule on purpose: a bunk's activity typed over another of its cells that day
-        // ("Twice in a day"), put back after.
-        const cells = await gridCells();
-        const bunkOf = (c) => c.key.split("-")[0];
-        const pair = cells
-          .filter(isPlaced)
-          .map((a) => [
-            a,
-            cells.find(
-              (b) => isPlaced(b) && bunkOf(b) === bunkOf(a) && b.name !== a.name
-            )
-          ])
-          .find(([, b]) => b);
-        if (pair) {
-          const [a, b] = pair;
-          // Noted first: a typing that fails halfway may still have saved.
-          retyped = { key: b.key, name: b.name };
-          await placeAt(b.key, a.name);
-          // A hand edit on Generated Schedule is locked as it saves; then it is the cell wanted.
-          const end = Date.now() + 8000;
-          while (Date.now() < end && !marked && !arranged) {
-            await pause(300);
-            const c = (await gridCells()).find((x) => x.key === b.key);
-            if (c && /\bcell_look\b/.test(c.classes)) {
-              if (/\bcell_locked\b/.test(c.classes)) arranged = b.key;
-              else marked = c;
-            }
-          }
-          found = await measureLocks();
-        }
-      }
-      if (marked) {
-        await focusCell(marked.key);
-        if (!(await openRailMenu(/^Edit$/)))
-          throw new Error("Edit not reached.");
-        if (!(await arrowTo(/^Lock /))) {
-          await press("Escape", 300);
-          throw new Error(`No Lock choice in Edit for ${marked.key}.`);
-        }
-        arranged = marked.key;
-        await expectLive(
-          S,
-          `Lock ${marked.key}, which has the corner mark: it is said`,
-          /lock/i,
-          () => press("Enter")
-        );
-        await pause(500);
-        found = await measureLocks();
-      }
-    }
-    await judgeLocks(S, name, found);
-  } finally {
-    if (arranged) await unlockCell(arranged);
-    if (retyped) {
-      await placeAt(retyped.key, retyped.name);
-      // Typed back by hand, it is locked again as it saves: it was not locked before.
-      await pause(1500);
-      const c = (await gridCells()).find((x) => x.key === retyped.key);
-      if (c && /\bcell_locked\b/.test(c.classes)) await unlockCell(retyped.key);
-    }
-  }
+    "Locked cells: the padlock bottom right, no edge, clear of the name";
+  const { cells, dots } = await measureLocks();
+  await judgeLocks(S, name, cells, dots);
 }
 
-/** Arranging, put back: unlocks a cell from the rail's Edit menu. */
-async function unlockCell(key) {
-  await focusCell(key);
-  if ((await openRailMenu(/^Edit$/)) && (await arrowTo(/^Unlock /))) {
-    await press("Enter", 1500);
-  } else {
-    await press("Escape", 300);
-    say(`Could not unlock ${key} again (a draft, deleted next run).`);
-  }
-}
-
-/** Every locked cell's box, padlock, name and corner mark, measured on screen. */
+/** Every locked cell's box, padlock, name and corner mark, measured on screen, and how many dots the grid has. */
 async function measureLocks() {
   return shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
     .first()
@@ -4802,44 +4722,43 @@ async function measureLocks() {
           r.height > 0
         );
       };
-      return [...(g.shadowRoot || g).querySelectorAll(".cell_locked")].map(
-        (c) => {
-          const inner = c.querySelector(".cell-inner");
-          const st = getComputedStyle(inner);
-          const outlined = /\bcell_(picked|chosen|same|fits|stretching)\b/.test(
-            c.className
+      const root = g.shadowRoot || g;
+      const dots = root.querySelectorAll("c-shoresh-dot").length;
+      const cells = [...root.querySelectorAll(".cell_locked")].map((c) => {
+        const inner = c.querySelector(".cell-inner");
+        const st = getComputedStyle(inner);
+        const outlined = /\bcell_(picked|chosen|same|fits|stretching)\b/.test(
+          c.className
+        );
+        const lock = c.querySelector(".cell-lock c-shoresh-lock");
+        const svg = lock && (lock.shadowRoot || lock).querySelector("svg");
+        const nameEl = c.querySelector(".cell-name:not(.slds-assistive-text)");
+        const corner = c.querySelector(".cell-dot c-shoresh-dot");
+        const mark =
+          corner &&
+          (corner.shadowRoot || corner).querySelector(
+            '[data-id="corner-mark"]'
           );
-          const lock = c.querySelector(".cell-lock c-shoresh-lock");
-          const svg = lock && (lock.shadowRoot || lock).querySelector("svg");
-          const nameEl = c.querySelector(
-            ".cell-name:not(.slds-assistive-text)"
-          );
-          const corner = c.querySelector(".cell-dot c-shoresh-dot");
-          const mark =
-            corner &&
-            (corner.shadowRoot || corner).querySelector(
-              '[data-id="corner-mark"]'
-            );
-          return {
-            key: c.dataset.cell,
-            cell: box(inner),
-            border: ["Top", "Right", "Bottom", "Left"].some(
-              (side) => parseFloat(st[`border${side}Width`]) > 0
-            ),
-            outline:
-              !outlined &&
-              st.outlineStyle !== "none" &&
-              parseFloat(st.outlineWidth) > 0,
-            lock: svg && seen(svg) ? box(svg) : null,
-            name: nameEl && nameEl.textContent.trim() ? box(nameEl) : null,
-            mark: mark ? (seen(mark) ? box(mark) : "hidden") : null
-          };
-        }
-      );
+        return {
+          key: c.dataset.cell,
+          cell: box(inner),
+          border: ["Top", "Right", "Bottom", "Left"].some(
+            (side) => parseFloat(st[`border${side}Width`]) > 0
+          ),
+          outline:
+            !outlined &&
+            st.outlineStyle !== "none" &&
+            parseFloat(st.outlineWidth) > 0,
+          lock: svg && seen(svg) ? box(svg) : null,
+          name: nameEl && nameEl.textContent.trim() ? box(nameEl) : null,
+          mark: mark ? (seen(mark) ? box(mark) : "hidden") : null
+        };
+      });
+      return { cells, dots };
     });
 }
 
-async function judgeLocks(S, name, found) {
+async function judgeLocks(S, name, found, dots) {
   if (!found.length) {
     results.notRun(S, name, "No locked cell on the day shown.");
     return;
@@ -4883,22 +4802,20 @@ async function judgeLocks(S, name, found) {
       `${found.length} locked cell(s), ${withMark} with the corner mark as well.`
     );
   }
-  const both =
-    "A locked cell with the corner mark: padlock and mark both shown, apart";
-  const pair = found.find((c) => c.lock && c.mark && c.mark !== "hidden");
-  if (!pair) {
-    results.notRun(
+  const clean =
+    "A locked cell shows its padlock and no mark; the grid has no needs-a-look dot";
+  const marked = found.filter((c) => c.mark);
+  if (marked.length || dots) {
+    results.fail(
       S,
-      both,
-      "No cell on the day shown has the corner mark to lock."
+      clean,
+      `${dots} dot(s) on the grid; marked: ${marked.map((c) => c.key).join(", ") || "none"}.`
     );
-  } else if (overlap(pair.lock, pair.mark)) {
-    results.fail(S, both, `${pair.key}: they overlap.`);
   } else {
     results.pass(
       S,
-      both,
-      `${pair.key}: padlock at ${Math.round(pair.lock.l)},${Math.round(pair.lock.t)}, mark at ${Math.round(pair.mark.l)},${Math.round(pair.mark.t)}, no overlap.`
+      clean,
+      `${found.length} locked cell(s), no mark or dot on the grid.`
     );
   }
 }

@@ -81,3 +81,38 @@ export function counterText(element) {
     .textContent.replace(/\s+/g, " ")
     .trim();
 }
+
+// The Why list (wiki engine care plan Q18): nothing from the engine or the checks is on the grid;
+// every line is in the counter's dropdown (c-shoresh-week-checks), from its measure.
+
+/** Every line of the Why list, in order: Open, to look at, then notes. */
+export function whyLines(element) {
+  const checks = element.shadowRoot.querySelector("c-shoresh-week-checks");
+  const m = checks && checks.measure;
+  if (!m) {
+    return [];
+  }
+  return [...(m.open || []), ...m.look, ...(m.notes || [])].map((l) => l.text);
+}
+
+/**
+ * What the Why list says about one cell, named as its lines name it ("Bunk 1 · Monday ·
+ * Period 2"): the words of each line about it, joined with " · ", or null for none.
+ */
+export function whyAt(element, where) {
+  const words = whyLines(element)
+    .map((text) => [
+      text.slice(0, text.indexOf(": ")),
+      text.slice(text.indexOf(": ") + 2)
+    ])
+    .filter(([at]) => at === where || at.startsWith(`${where} · `))
+    .map(([, said]) => said);
+  return words.length ? words.join(" · ") : null;
+}
+
+/** No cell of the editor's grid carries anything from the checks (no dot, no pulse). */
+export function expectCleanGrid(element) {
+  const root = editorRoot(element);
+  const grid = root && root.querySelector('[data-id="edit-grid"]');
+  expect(grid.shadowRoot.querySelectorAll("c-shoresh-dot")).toHaveLength(0);
+}

@@ -8,7 +8,13 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { expectFocusInGrid, find } from "shoresh-jest/week-editor";
+import {
+  expectCleanGrid,
+  expectFocusInGrid,
+  find,
+  whyAt,
+  whyLines
+} from "shoresh-jest/week-editor";
 import { draft } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
 // "Setup changed since the week started" on Manual Build (ADR 0008 part 6): the dots the server
@@ -220,8 +226,13 @@ const cell = (element, key) =>
   q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
     `[data-cell="${key}"]`
   );
-const dotIn = (element, key) =>
-  cell(element, key).querySelector("c-shoresh-dot");
+// A cell's words are its lines in the Why list (nothing from the checks is on the grid).
+const WHERE = {
+  "0-1": "Bunk 1 · Monday · Period 2",
+  "1-1": "Bunk 2 · Monday · Period 2",
+  "0-2": "Bunk 1 · Monday · Lunch"
+};
+const whyFor = (element, key) => whyAt(element, WHERE[key]);
 /** Delete on a cell, as the keyboard sends it. */
 const clearCell = (element, key) =>
   cell(element, key).dispatchEvent(
@@ -290,25 +301,26 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     jest.clearAllMocks();
   });
 
-  it("asks for the week's setup changes once the week is shown, and dots the cells", async () => {
+  it("asks for the week's setup changes once the week is shown, and lists the cells", async () => {
     const element = await render();
+    expectCleanGrid(element);
     expect(getSetupChanges).toHaveBeenCalledWith({ scheduleId: "d1" });
-    // Bunk 1's Swim and Bunk 2's Open Period 2: the server's words, on the cell.
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
-    expect(dotIn(element, "1-1").label).toBe("Flagpole is set up here now");
-    expect(dotIn(element, "0-2")).toBeNull();
+    // Bunk 1's Swim and Bunk 2's Open Period 2: the server's words, in the Why list.
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
+    expect(whyFor(element, "1-1")).toBe("Flagpole is set up here now");
+    expect(whyFor(element, "0-2")).toBeNull();
   });
 
   it("setup saved on another screen reads the week's setup changes again", async () => {
     const element = await render(NOTHING);
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
     // Camp Setup reloads the season after a save elsewhere: a new setup, the same week.
     getSetupChanges.mockResolvedValue(PREVIEW);
     element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
   });
 
   it("setup saved on another screen while an edit is saving still reads its setup changes", async () => {
@@ -326,7 +338,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(updatable()).toBe(true);
   });
 
-  it("joins a setup dot to the checks' own words on the same placement", async () => {
+  it("joins a setup change to the checks' own words on the same placement, in one row", async () => {
     // Swim in Bunk 2, which it isn't set up for, and deleted from setup since.
     const start = draft([FLAGPOLE, SWIM], ["1,,", "1,2,"]);
     const element = await render(
@@ -336,9 +348,10 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       },
       start
     );
-    expect(dotIn(element, "1-1").label).toBe(
-      "Not set up for Bunk 2 · Deleted from setup"
-    );
+    // One row for the placement, place first, both reasons joined: one Accept hides both.
+    expect(whyLines(element)).toEqual([
+      "Bunk 2 · Monday · Period 2 · Swim: Not set up for Bunk 2 · Deleted from setup"
+    ]);
   });
 
   it("says it at the menu's foot only: no line or button of its own (ADR 0015 §9)", async () => {
@@ -346,8 +359,8 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(updatable()).toBe(true);
     expect(q(element, '[data-id="setup-changed"]')).toBeNull();
     expect(q(element, '[data-id="update-to-match"]')).toBeNull();
-    // The cells it is about still carry their marks.
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    // The cells it is about are still listed.
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
   });
 
   it("tells the page it can be updated to match setup, and the menu's Update opens the same list", async () => {
@@ -445,7 +458,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       }
     });
     // The week as the server now has it: Swim is gone, and its dot with it.
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
     expect(rowsIn(element)).toEqual([
       "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
     ]);
@@ -500,7 +513,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(dialog(element)).toBeNull();
     expect(updateToMatchSetup).not.toHaveBeenCalled();
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
   });
 
   it("someone else saved the week since: nothing is updated, it says so, and reads the week again", async () => {
@@ -566,7 +579,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await saved(element);
     // Hiding them would make the week look as if it matched setup.
     expect(updatable()).toBe(true);
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
     expect(editorText(element)).toBe(
       "Shoresh couldn't check Week 1 against setup. No access."
     );
@@ -681,7 +694,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     first.resolve(PREVIEW);
     await flush();
     expect(updatable()).toBe(false);
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
   });
 
   it("another week shows none of the last week's setup changes while its own are read", async () => {
@@ -694,7 +707,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
     expect(updatable()).toBe(false);
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
   });
 
   it("reads the setup changes again after a Restore", async () => {
@@ -820,8 +833,8 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
   });
 
-  it("a setup dot on any period of a longer activity shows on the activity, said once", async () => {
-    // Boating runs Period 2 and Lunch for Bunk 1; only Lunch's cell has a dot.
+  it("a setup change on any period of a longer activity is listed on the activity, said once", async () => {
+    // Boating runs Period 2 and Lunch for Bunk 1; only Lunch's cell changed.
     const start = draft([FLAGPOLE, SWIM, BOATING], ["1,3,^", "1,,"]);
     const element = await render(
       {
@@ -830,7 +843,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       },
       start
     );
-    expect(dotIn(element, "0-1").label).toBe("Its Periods changed");
+    expect(whyFor(element, "0-1")).toBe("Its Periods changed");
   });
 
   it("the same words on two periods of one activity are said once", async () => {
@@ -845,7 +858,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       },
       start
     );
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
   });
   // ---------- review round 3 ----------
 
@@ -868,7 +881,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
     expect(updatable()).toBe(false);
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
   });
 
   it("a late failed check for the last week says nothing on the week chosen next", async () => {
@@ -1174,7 +1187,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
     first.resolve(NOTHING);
     await flush();
-    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(whyFor(element, "0-1")).toBe("Deleted from setup");
     expect(updatable()).toBe(true);
   });
 

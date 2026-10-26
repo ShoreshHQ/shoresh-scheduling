@@ -1,13 +1,19 @@
 /**
  * "Setup changed since the week was built" on the Generated Schedule screen (ADR 0010 §56; Greg's
- * look-and-feel decision 1, 2026-10-20), as on Manual Build (ADR 0008 part 6): the dots the
- * server works out (SetupMatch), the box under the toolbar in Manual Build's place, and "Update
+ * look-and-feel decision 1, 2026-10-20), as on Manual Build (ADR 0008 part 6): the setup changes
+ * the server works out (lines in the Why list) (SetupMatch), the box under the toolbar in Manual Build's place, and "Update
  * to match setup", shown first, one change at a time or all at once, the week read again after
  * each update. Synthetic data only.
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { expectFocusInGrid, find, lockRows } from "shoresh-jest/week-editor";
+import {
+  expectCleanGrid,
+  expectFocusInGrid,
+  find,
+  lockRows,
+  whyAt
+} from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
@@ -183,7 +189,12 @@ const cell = (element, at) =>
   q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
     `[data-cell="${at}"]`
   );
-const dotIn = (element, at) => cell(element, at).querySelector("c-shoresh-dot");
+// A cell's words are its lines in the Why list (nothing from the checks is on the grid).
+const WHERE = {
+  "0-1": "Bunk 1 · Monday · Period 1",
+  "1-2": "Bunk 2 · Monday · Period 2"
+};
+const whyFor = (element, at) => whyAt(element, WHERE[at]);
 /**
  * Whether the screen last told the page it can be updated to match setup: the menu's foot says
  * so then, with Update to match setup (ADR 0015 §9). The screen has no box of its own.
@@ -226,14 +237,13 @@ describe("Setup changed on the Generated Schedule screen", () => {
     jest.resetAllMocks();
   });
 
-  it("asks for the week's setup changes once the week is shown, and dots the cells", async () => {
+  it("asks for the week's setup changes once the week is shown, and lists the cells", async () => {
     const element = await render();
+    expectCleanGrid(element);
     expect(getSetupChanges).toHaveBeenCalledWith({ scheduleId: SCHEDULE });
-    expect(dotIn(element, "0-1").label).toContain("Deleted from setup");
-    expect(dotIn(element, "1-2").label).toContain(
-      "Flagpole is set up here now"
-    );
-    // The lock stays drawn beside the dot: the director's choice is still the director's.
+    expect(whyFor(element, "0-1")).toContain("Deleted from setup");
+    expect(whyFor(element, "1-2")).toContain("Flagpole is set up here now");
+    // The lock stays drawn: the director's choice is still the director's.
     expect(cell(element, "0-1").querySelector(".cell-lock")).not.toBeNull();
   });
 
@@ -330,9 +340,9 @@ describe("Setup changed on the Generated Schedule screen", () => {
       scheduleId: SCHEDULE,
       ask: { keys: ["k1"], seenRevisions: REVISION, versionKept: false }
     });
-    // The week as the server now has it: read again, Swim gone and its dot with it.
+    // The week as the server now has it: read again, Swim gone and its line with it.
     expect(getInputs).toHaveBeenCalledTimes(2);
-    expect(dotIn(element, "0-1")).toBeNull();
+    expect(whyFor(element, "0-1")).toBeNull();
     expect(rowsIn(element)).toEqual([
       "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
     ]);
@@ -421,7 +431,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     await flush();
     expect(dialog(element)).toBeNull();
     expect(updateToMatchSetup).not.toHaveBeenCalled();
-    expect(dotIn(element, "0-1").label).toContain("Deleted from setup");
+    expect(whyFor(element, "0-1")).toContain("Deleted from setup");
     expect(asked).toEqual([true]);
   });
 
@@ -473,7 +483,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
       "Shoresh couldn't check Week 1 against setup."
     );
     expect(updatable()).toBe(true);
-    expect(dotIn(element, "0-1").label).toContain("Deleted from setup");
+    expect(whyFor(element, "0-1")).toContain("Deleted from setup");
     getSetupChanges.mockResolvedValue(PREVIEW);
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();

@@ -17,6 +17,38 @@
       <p class="shoresh-pop-row" data-id="still-needed">
         <b>{stillNeeded}</b><span>still needed</span>
       </p>
+      <template lwc:if={openRows.length}>
+        <div class="shoresh-pop-divider" role="presentation"></div>
+        <p class="shoresh-pop-row shoresh-pop-head" id="open" data-id="open">
+          <span>Open</span>
+        </p>
+        <ul aria-labelledby="open">
+          <template for:each={openRows} for:item="line">
+            <li key={line.key} class="line">
+              <button
+                type="button"
+                class="shoresh-pop-row look-row"
+                data-pop-row
+                data-line
+                data-key={line.key}
+                onclick={handleLocate}
+              >
+                {line.text}
+              </button>
+              <button
+                type="button"
+                class="shoresh-pop-row accept"
+                data-pop-row
+                data-key={line.key}
+                aria-label={line.acceptLabel}
+                onclick={handleAccept}
+              >
+                Accept
+              </button>
+            </li>
+          </template>
+        </ul>
+      </template>
       <template lwc:if={showUnder}>
         <div class="shoresh-pop-divider" role="presentation"></div>
         <p class="shoresh-pop-row shoresh-pop-head" id="under" data-id="under">
@@ -127,6 +159,31 @@
                   Accept
                 </button>
               </template>
+            </li>
+          </template>
+        </ul>
+      </template>
+      <template lwc:if={noteRows.length}>
+        <div class="shoresh-pop-divider" role="presentation"></div>
+        <p class="shoresh-pop-row shoresh-pop-head" id="notes" data-id="notes">
+          <span>Notes</span>
+        </p>
+        <ul aria-labelledby="notes">
+          <template for:each={noteRows} for:item="line">
+            <li key={line.key} class="line">
+              <p class="shoresh-pop-row look-row note" data-line tabindex="-1">
+                {line.text}
+              </p>
+              <button
+                type="button"
+                class="shoresh-pop-row accept"
+                data-pop-row
+                data-key={line.key}
+                aria-label={line.acceptLabel}
+                onclick={handleAccept}
+              >
+                Accept
+              </button>
             </li>
           </template>
         </ul>

@@ -8,9 +8,11 @@ import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
 import {
   chooseLock,
   editorRoot,
+  expectCleanGrid,
   find,
   lockLabels,
-  lockRows
+  lockRows,
+  whyAt
 } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
@@ -588,9 +590,9 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(lockAt(element, "0-2")).toBe("Locked");
   });
 
-  it("a dot follows the locks on screen while an edit saves: the over-limit dot skips the session just locked", async () => {
+  it("the Why list follows the locks on screen while an edit saves: over the limit skips the session just locked", async () => {
     // Swim (at most 2 a week) in Bunk 1's Period 1 on Monday and Tuesday; a third on Tuesday's
-    // Period 2 is typed in and still saving. It is locked on screen, so the dot goes on the
+    // Period 2 is typed in and still saving. It is locked on screen, so the line names the
     // latest unlocked session, Tuesday's Period 1, as the engine places it.
     const element = await render();
     saveSlots.mockReturnValue(new Promise(() => {}));
@@ -603,12 +605,13 @@ describe("hand editing on the Generated Schedule screen", () => {
     await flush();
     await press(input, "Enter");
     expect(textAt(element, "0-2")).toBe("Swim");
-    const dotAt = (key) => {
-      const dot = cellAt(element, key).querySelector("c-shoresh-dot");
-      return dot ? dot.label : "";
-    };
-    expect(dotAt("0-1")).toMatch(/weekly limit/);
-    expect(dotAt("0-2")).not.toMatch(/weekly limit/);
+    expectCleanGrid(element);
+    expect(whyAt(element, "Bunk 1 · Tuesday · Period 1")).toMatch(
+      /weekly limit/
+    );
+    expect(whyAt(element, "Bunk 1 · Tuesday · Period 2") || "").not.toMatch(
+      /weekly limit/
+    );
   });
 
   it("after a build Undo starts over; after an Unlock the editor has the week as saved", async () => {
@@ -655,7 +658,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(getInputs.mock.calls.length).toBe(reads);
   });
 
-  it("the dots in the editor are Generated's own: an Open cell no activity fits shows the engine's reason", async () => {
+  it("the Why list is Generated's own: an Open cell no activity fits says why", async () => {
     // Bunk 1's Monday: Swim, Art, then the one Open Period 3; every activity is two blocks long
     // here, so none fits it.
     const week = savedWeek({ rows: ["1,2,3,", "1,,,"] });
@@ -674,9 +677,10 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
     week.activities = week.activities.map((a) => ({ ...a, [length]: 2 }));
     const element = await render(week);
-    const dot = cellAt(element, "0-3").querySelector("c-shoresh-dot");
-    expect(dot).not.toBeNull();
-    expect(dot.label).toBe("No activity fits this gap");
+    expectCleanGrid(element);
+    expect(whyAt(element, "Bunk 1 · Monday · Period 3")).toBe(
+      "No activity fits this gap"
+    );
   });
 
   it("Add <name> to activities adds on the Generated draft, not Manual Build's, and places it", async () => {
@@ -719,7 +723,7 @@ describe("hand editing on the Generated Schedule screen", () => {
       `A:${archery}`
     ]);
     // Known to the checks at once: counted in the drawer before the week is read again.
-    expect(cellAt(element, "0-2").querySelector("c-shoresh-dot")).toBeNull();
+    expect(whyAt(element, "Bunk 1 · Monday · Period 2")).toBeNull();
     const palette = q(element, "c-shoresh-build-palette").shadowRoot;
     const tile = palette.querySelector(`[data-id="${archery}"]`);
     expect(tile.getAttribute("aria-label")).toMatch(
@@ -733,11 +737,12 @@ describe("hand editing on the Generated Schedule screen", () => {
     await flush();
     await press(again, "Enter");
     expect(textAt(element, "0-3")).toBe("Archery");
-    const dots = [cellAt(element, "0-2"), cellAt(element, "0-3")]
-      .map((c) => c.querySelector("c-shoresh-dot"))
-      .filter(Boolean)
-      .map((d) => d.label);
-    expect(dots.join(" ")).toMatch(/weekly limit/);
+    expect(
+      [
+        whyAt(element, "Bunk 1 · Monday · Period 2"),
+        whyAt(element, "Bunk 1 · Monday · Period 3")
+      ].join(" ")
+    ).toMatch(/weekly limit/);
   });
 
   it("an activity added while another edit saves is on the Activity View as this week's, not deleted, after both save", async () => {

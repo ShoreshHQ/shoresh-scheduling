@@ -339,4 +339,98 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(q(element, 'button[data-activity="a1"]')).not.toBeNull();
     });
   });
+  describe("the Why list's Open cells and notes", () => {
+    // Generated: the editor adds the Open cells (with the engine's words) and the lines with no
+    // cell to the measure.
+    const WHY = {
+      ...MEASURE,
+      open: [
+        {
+          key: "open|2026-06-29|g2|t3|No activity fits this gap",
+          kind: "open",
+          text: "Bunk 2 · Monday · Period 3: No activity fits this gap",
+          groupId: "g2",
+          dateValue: "2026-06-29",
+          blockId: "t3"
+        }
+      ],
+      notes: [
+        {
+          key: "note|Arts: Groups at once is blank, so it counts as 1",
+          kind: "note",
+          text: "Arts: Groups at once is blank, so it counts as 1"
+        }
+      ]
+    };
+    const opened = async () => {
+      const element = render({ measure: WHY });
+      await flush();
+      word(element).click();
+      await flush();
+      return element;
+    };
+
+    it("Open comes first and notes last, each under its own word, with no count", async () => {
+      const element = await opened();
+      expect(text(q(element, '[data-id="open"]'))).toBe("Open");
+      expect(text(q(element, '[data-id="notes"]'))).toBe("Notes");
+      expect(qa(element, "[data-line]").map(text)).toEqual([
+        "Bunk 2 · Monday · Period 3: No activity fits this gap",
+        "Swim1of 4",
+        "Soccer2of 1",
+        "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+        "Arts: Groups at once is blank, so it counts as 1"
+      ]);
+      await expect(element).toBeAccessible();
+    });
+
+    it("an Open cell takes the director there; a note names no cell, so it is not a button", async () => {
+      const element = await opened();
+      const located = [];
+      element.addEventListener("locate", (e) => located.push(e.detail));
+      // The first line is the Open cell's.
+      q(element, ".look-row").click();
+      expect(located).toEqual([
+        expect.objectContaining({
+          kind: "open",
+          groupId: "g2",
+          dateValue: "2026-06-29",
+          blockId: "t3"
+        })
+      ]);
+      expect(q(element, ".note").tagName).toBe("P");
+    });
+
+    it("both can be accepted for the visit", async () => {
+      const element = await opened();
+      const accept = (label) =>
+        qa(element, ".accept")
+          .find((b) => b.getAttribute("aria-label") === label)
+          .click();
+      accept("Accept: Bunk 2 · Monday · Period 3: No activity fits this gap");
+      await flush();
+      accept("Accept: Arts: Groups at once is blank, so it counts as 1");
+      await flush();
+      expect(q(element, '[data-id="open"]')).toBeNull();
+      expect(q(element, '[data-id="notes"]')).toBeNull();
+      expect(text(q(element, '[data-id="accept-said"]'))).toBe(
+        "Accepted for this visit: Arts: Groups at once is blank, so it counts as 1."
+      );
+    });
+
+    it("an Open cell alone puts the corner on the counter", async () => {
+      const element = render({
+        measure: {
+          ...measureWeek(
+            { cells: { filled: 1, total: 2 }, placements: [] },
+            [],
+            DAYS
+          ),
+          open: WHY.open
+        }
+      });
+      await flush();
+      expect(word(element).querySelector(".shoresh-look-mark")).not.toBeNull();
+    });
+  });
 });
