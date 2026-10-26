@@ -55,33 +55,42 @@ private class GeneratedEngineNotesTest {
     return GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
   }
 
-  /** Swim by hand in a group's Monday Lunch (Open after the first Generate). */
-  private static SlotEdits.Result swimInLunch(
-    Map<String, Id> ids,
+  /**
+   * Swim by hand in a group's Monday Lunch (Open after the first Generate), from a screen that
+   * read the week at seen; the caller adds the engine's notes it sends.
+   */
+  private static GeneratedWeek.HandEdits swimInLunch(
     Id draftId,
-    String seen,
-    String engineNotes,
-    String groupKey
+    String groupKey,
+    String seen
   ) {
+    Map<String, Id> ids = GeneratedTestData.ids;
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
-    return GeneratedScheduleController.saveSlots(
-      draftId,
-      new List<SlotEdits.Edit>{
-        SlotRunsTestData.edit(
-          SlotRunsTestData.at(
-            GeneratedTestData.MONDAY,
-            ids.get(groupKey),
-            ids.get('Lunch')
-          ),
-          new List<String>{ '' },
-          new List<String>{ GeneratedTestData.a('Swim') }
-        )
-      },
-      seen,
-      engineNotes
-    );
+    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
+    request.scheduleId = draftId;
+    request.revision = seen;
+    request.edits = new List<SlotEdits.Edit>{
+      SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get(groupKey),
+          ids.get('Lunch')
+        ),
+        new List<String>{ '' },
+        new List<String>{ GeneratedTestData.a('Swim') }
+      )
+    };
+    return request;
+  }
+
+  private static SlotEdits.Result saved(
+    GeneratedWeek.HandEdits request,
+    String engineNotes
+  ) {
+    request.engineNotes = engineNotes;
+    return GeneratedScheduleController.saveSlots(request);
   }
 
   @IsTest
@@ -94,7 +103,7 @@ private class GeneratedEngineNotesTest {
       Integer before = Limits.getQueries();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Integer withNotes = Limits.getQueries() - before;
-      Assert.areEqual(sent, read.engineNotes);
+      Assert.areEqual(sent, read.engine.notes);
 
       // Start over builds nothing: the notes of the week it replaced go.
       GeneratedWeek.Save startOver = GeneratedTestData.request(
@@ -107,7 +116,7 @@ private class GeneratedEngineNotesTest {
       GeneratedInputs.Inputs after = GeneratedTestData.inputs();
       Integer without = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isNull(after.engineNotes);
+      Assert.isNull(after.engine.notes);
       Assert.isNull(stored(draftId));
       // A field on the draft already read: reading the notes costs no query.
       Assert.areEqual(without, withNotes);
@@ -138,7 +147,7 @@ private class GeneratedEngineNotesTest {
   @IsTest
   static void notesTooLongOrOfAnotherShapeAreNotKeptButTheWeekIsSaved() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+      GeneratedTestData.camp();
       Test.startTest();
       String tooLong =
         '{"v":1,"open":[],"blank":[],"pad":"' +
@@ -204,15 +213,12 @@ private class GeneratedEngineNotesTest {
       );
       Test.startTest();
       // No notes sent: kept as they are.
-      swimInLunch(ids, draftId, revisionNow(draftId), null, 'Group A');
+      saved(swimInLunch(draftId, 'Group A', revisionNow(draftId)), null);
       Assert.areEqual(built, stored(draftId));
       // The notes without the cell the edit changed.
-      SlotEdits.Result edited = swimInLunch(
-        ids,
-        draftId,
-        revisionNow(draftId),
-        none,
-        'Group B'
+      SlotEdits.Result edited = saved(
+        swimInLunch(draftId, 'Group B', revisionNow(draftId)),
+        none
       );
       Assert.isTrue(edited.conflicts.isEmpty());
       Test.stopTest();
@@ -240,12 +246,9 @@ private class GeneratedEngineNotesTest {
       );
       rebuild.engineNotes = notes(ids, 'searched');
       GeneratedTestData.save(rebuild);
-      SlotEdits.Result edited = swimInLunch(
-        ids,
-        draftId,
-        seen,
-        notes(ids, 'budget'),
-        'Group A'
+      SlotEdits.Result edited = saved(
+        swimInLunch(draftId, 'Group A', seen),
+        notes(ids, 'budget')
       );
       Assert.isTrue(edited.conflicts.isEmpty());
       Test.stopTest();

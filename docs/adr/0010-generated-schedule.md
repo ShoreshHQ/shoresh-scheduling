@@ -1383,7 +1383,7 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
    version later doesn't change it). The visit that built the week words it the same way, so a
    reload says exactly what the build said.
 3. **One field on the draft, not one per day.** The draft is already read with the week
-   (`GeneratedInputs`) and already written by every save, so the notes cost no query and no extra
+   (`GeneratedInputs`, sent as `engine.notes` beside `engine.imported`) and already written by every save, so the notes cost no query and no extra
    write; per day they would need a second field for the week's notes anyway. Size: an Open row
    is about 70 characters, so the field holds some 1,700 Open cells. The screen keeps it under
    120,000 characters by leaving out the last Open rows and counting them (`cut`), and the Why list
@@ -1393,8 +1393,9 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
    anyway). Nothing reads them but the screen, only to word the Why list (`readNotes` drops
    unknown codes and shapes; nothing is shown as stored). User mode; the field is in the Shoresh
    Scheduler permission set.
-5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots`'s
-   `engineNotes`): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the
+5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots` now takes one
+   request, `GeneratedWeek.HandEdits`: the edits, the revision and `engineNotes`; Code Analyzer's
+   parameter limit; `GeneratedEngineNotes.saveHandEdits` saves the edits, then the notes): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the
    week since the screen read it (the answer's revision is given); otherwise the newer notes stay.
    So a cell filled and cleared again by hand says what the week shows after a reload, not the
    build's reason. Any hand edit also drops the floor note (its filled counts are the build's and
@@ -1423,8 +1424,9 @@ The engine's notes (PR 5b):
 
 - The field `Schedule__c.EngineNotes__c` (Long Text Area, 131,072) and notes version 1's shape
   (every reader must keep reading version 1, or show nothing for it).
-- `saveSlots`'s fourth parameter `engineNotes` and `GeneratedWeek.Save.engineNotes` (global once
-  packaged).
+- `saveSlots(GeneratedWeek.HandEdits request)` (was three parameters), `GeneratedWeek.Save.engineNotes`,
+  and `GeneratedInputs.Inputs.engine` (`{ imported, notes }`; the imported week moved there from
+  `Inputs.imported` to keep Inputs under Code Analyzer's public-member limit). Global once packaged.
 
 G5: none (no objects, fields or global members).
 

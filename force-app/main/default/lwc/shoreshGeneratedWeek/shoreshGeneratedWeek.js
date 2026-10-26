@@ -53,7 +53,7 @@ export async function loadWeek(programId, weekId) {
     option: r.option || 1,
     notPlaced: r.notPlaced || [],
     published: r.published || null,
-    engineNotes: readNotes(r.engineNotes),
+    engineNotes: readNotes(r.engine && r.engine.notes),
     input: {
       // The server's own Ids (18 characters): the engine compares them exactly and seeds with them.
       programId: r.programId || programId,
@@ -74,8 +74,9 @@ export async function loadWeek(programId, weekId) {
       // The week's days a special day replaces (ADR 0014 slice 4).
       specials: r.specials || { days: [] },
       // The week as it was imported and that version's name: the engine's floor (step 8).
-      imported: (r.imported && r.imported.days) || [],
-      importedName: (r.imported && r.imported.name) || null
+      imported: (r.engine && r.engine.imported && r.engine.imported.days) || [],
+      importedName:
+        (r.engine && r.engine.imported && r.engine.imported.name) || null
     }
   };
 }
@@ -249,10 +250,12 @@ function withLocksSeen(loaded, edits) {
 export async function saveEdits(loaded, edits, engineNotes) {
   try {
     const result = await saveSlots({
-      scheduleId: loaded.scheduleId,
-      edits: withLocksSeen(loaded, edits),
-      revision: loaded.revision,
-      engineNotes: engineNotes === undefined ? null : notesText(engineNotes)
+      request: {
+        scheduleId: loaded.scheduleId,
+        edits: withLocksSeen(loaded, edits),
+        revision: loaded.revision,
+        engineNotes: engineNotes === undefined ? null : notesText(engineNotes)
+      }
     });
     return {
       status: SAVED,

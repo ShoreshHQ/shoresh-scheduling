@@ -45,6 +45,22 @@ public with sharing class GeneratedWeek {
   }
 
   /**
+   * Hand edits on the Generated draft (GeneratedScheduleController.saveSlots): the edits, the
+   * revision the screen read the week at, and the engine's notes without the reasons of the cells
+   * the edits change (null: kept as they are; GeneratedEngineNotes).
+   */
+  public class HandEdits {
+    @AuraEnabled
+    public Id scheduleId { get; set; }
+    @AuraEnabled
+    public List<SlotEdits.Edit> edits { get; set; }
+    @AuraEnabled
+    public String revision { get; set; }
+    @AuraEnabled
+    public String engineNotes { get; set; }
+  }
+
+  /**
    * One day as the engine built it. Its time blocks and groups are named so the server can check
    * they are the day's own; its items and rows are the compact grid's (ADR 0005 §6).
    */

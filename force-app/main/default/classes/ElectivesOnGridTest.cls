@@ -414,11 +414,10 @@ private class ElectivesOnGridTest {
       run.after = new List<String>{ 'E:' + setId };
       SlotEdits.Edit edit = new SlotEdits.Edit();
       edit.runs = new List<SlotEdits.Run>{ run };
-      SlotEdits.Result saved = GeneratedScheduleController.saveSlots(
+      SlotEdits.Result saved = GeneratedTestData.handEdits(
         draftId,
         new List<SlotEdits.Edit>{ edit },
-        read.revision,
-        null
+        read.revision
       );
       Assert.isTrue(saved.conflicts.isEmpty());
       GeneratedInputs.Inputs now = GeneratedTestData.inputs();

@@ -867,7 +867,7 @@ describe("c-shoresh-generated-schedule", () => {
       items: days[i].items.map((it) => ({ ...it, gone: false })),
       rows: days[i].rows
     }));
-    saved.engineNotes = kept;
+    saved.engine = { notes: kept };
     document.body.removeChild(element);
     const again = await render(saved);
     expect(checks(again).measure.open.map((l) => l.text)).toEqual(open);
@@ -876,7 +876,7 @@ describe("c-shoresh-generated-schedule", () => {
 
   it("notes kept in a shape this screen doesn't know are never shown", async () => {
     const saved = camp({ ...SMALL, scheduleId: SCHEDULE });
-    saved.engineNotes = '{"v":99,"open":[["<b>raw</b>"]]}';
+    saved.engine = { notes: '{"v":99,"open":[["<b>raw</b>"]]}' };
     const element = await render(saved);
     expect(checks(element).measure.notes).toEqual([]);
   });

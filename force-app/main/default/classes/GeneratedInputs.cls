@@ -30,10 +30,6 @@ public with sharing class GeneratedInputs {
     // The option the draft was last built with, or null.
     @AuraEnabled
     public Integer option;
-    // What the engine said about the week it last built (GeneratedEngineNotes), or null. Only
-    // the screen reads it, and only to word the Why list.
-    @AuraEnabled
-    public String engineNotes;
     @AuraEnabled
     public List<ScheduleViews.DayView> days = new List<ScheduleViews.DayView>();
     // A blank week only: fixed or recurring activities whose slot was taken ("Rest · Bunk 3 ·
@@ -69,11 +65,22 @@ public with sharing class GeneratedInputs {
     // (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
+    // What the engine reads from what was saved before: the week as imported and its notes.
+    @AuraEnabled
+    public Engine engine = new Engine();
+  }
+
+  /** What the engine reads from what was saved before. */
+  public class Engine {
     // The week as it was imported (the newest version an import made for this program and week,
     // ImportedWeekGuard): the engine's floor (care plan step 8), never emptier than this. Null
     // when the week has no import.
     @AuraEnabled
     public ImportedWeek imported;
+    // What the engine said about the week it last built (GeneratedEngineNotes), or null. Only
+    // the screen reads it, and only to word the Why list.
+    @AuraEnabled
+    public String notes;
   }
 
   /** The week as it was imported: the version's name and its days. */
@@ -113,7 +120,7 @@ public with sharing class GeneratedInputs {
       inputs.option = draft.EngineOption__c == null
         ? null
         : draft.EngineOption__c.intValue();
-      inputs.engineNotes = draft.EngineNotes__c;
+      inputs.engine.notes = draft.EngineNotes__c;
       inputs.published = SchedulePublish.stateOf(
         setup.program.Id,
         setup.week,
@@ -148,9 +155,9 @@ public with sharing class GeneratedInputs {
     );
     inputs.days = ScheduleViews.dayViews(days, there);
     if (imported != null) {
-      inputs.imported = new ImportedWeek();
-      inputs.imported.name = imported.Name;
-      inputs.imported.days = ScheduleViews.dayViews(importedDays, there);
+      inputs.engine.imported = new ImportedWeek();
+      inputs.engine.imported.name = imported.Name;
+      inputs.engine.imported.days = ScheduleViews.dayViews(importedDays, there);
     }
   }
 

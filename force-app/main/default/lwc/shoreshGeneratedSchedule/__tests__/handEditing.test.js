@@ -278,7 +278,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     await flush();
     await press(input, "Enter");
     expect(saveSlots).toHaveBeenCalledTimes(1);
-    const request = saveSlots.mock.calls[0][0];
+    const request = saveSlots.mock.calls[0][0].request;
     expect(request.scheduleId).toBe(SCHEDULE);
     expect(request.revision).toBe("2026-06-29:1");
     const [run] = request.edits[0].runs;
@@ -351,7 +351,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
     await flush();
     expect(saveSlots).toHaveBeenCalledTimes(2);
-    expect(saveSlots.mock.calls[1][0].revision).toBe(
+    expect(saveSlots.mock.calls[1][0].request.revision).toBe(
       "2026-06-29:2|2026-06-30:1"
     );
     second.answer(
@@ -485,7 +485,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     saveSlots.mockReturnValueOnce(new Promise(() => {}));
     q(element, '[data-id="undo"]').click();
     await flush();
-    const [run] = saveSlots.mock.calls[1][0].edits[0].runs;
+    const [run] = saveSlots.mock.calls[1][0].request.edits[0].runs;
     expect(run.after).toEqual([""]);
     expect(run.locksAfter).toEqual(["1"]);
     expect(lockAt(element, "0-2")).toBe("Locked empty");
@@ -510,7 +510,9 @@ describe("hand editing on the Generated Schedule screen", () => {
     await press(document.body, "z", { ctrlKey: true });
     jest.restoreAllMocks();
     expect(saveSlots).toHaveBeenCalledTimes(2);
-    expect(saveSlots.mock.calls[1][0].edits[0].runs[0].after).toEqual([""]);
+    expect(saveSlots.mock.calls[1][0].request.edits[0].runs[0].after).toEqual([
+      ""
+    ]);
     expect(q(element, '[data-id="announce"]').textContent).toContain(
       "Undone: Placed Swim · Bunk 1 · Monday · Period 2"
     );
@@ -541,7 +543,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     saveSlots.mockReturnValueOnce(new Promise(() => {}));
     q(element, '[data-id="undo"]').click();
     await flush();
-    const [run] = saveSlots.mock.calls[1][0].edits[0].runs;
+    const [run] = saveSlots.mock.calls[1][0].request.edits[0].runs;
     expect(run.after).toEqual([""]);
     expect(run.locksAfter).toEqual(["1"]);
     expect(lockAt(element, "0-2")).toBe("Locked empty");
@@ -584,7 +586,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     saveSlots.mockReturnValueOnce(new Promise(() => {}));
     q(element, '[data-id="redo"]').click();
     await flush();
-    const [run] = saveSlots.mock.calls[2][0].edits[0].runs;
+    const [run] = saveSlots.mock.calls[2][0].request.edits[0].runs;
     expect(run.after).toEqual([`A:${savedWeek().activities[0].Id}`]);
     expect(run.locksAfter).toEqual(["1"]);
     expect(lockAt(element, "0-2")).toBe("Locked");
@@ -666,7 +668,8 @@ describe("hand editing on the Generated Schedule screen", () => {
     const monday = week.days[0].dateValue;
     const block = (name) => week.timeBlocks.find((b) => b.Name === name).Id;
     const row = (name) => [monday, bunk1.Id, block(name), "full"];
-    week.engineNotes = JSON.stringify({
+    week.engine = { notes: null };
+    week.engine.notes = JSON.stringify({
       v: 1,
       open: [row("Period 2"), row("Period 3")],
       blank: [],
@@ -688,13 +691,14 @@ describe("hand editing on the Generated Schedule screen", () => {
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
     await press(input, "Enter");
-    const kept = JSON.parse(saveSlots.mock.calls[0][0].engineNotes);
+    const kept = JSON.parse(saveSlots.mock.calls[0][0].request.engineNotes);
     expect(kept.open).toEqual([row("Period 3")]);
     // Opened again later with Period 2 cleared since: it says what the week shows, not the
     // build's reason; Period 3 still has the build's.
     document.body.removeChild(element);
     const later = savedWeek();
-    later.engineNotes = saveSlots.mock.calls[0][0].engineNotes;
+    later.engine = { notes: null };
+    later.engine.notes = saveSlots.mock.calls[0][0].request.engineNotes;
     const again = await render(later);
     expect(whyAt(again, "Bunk 1 · Monday · Period 2")).toBeNull();
     expect(whyAt(again, "Bunk 1 · Monday · Period 3")).toBe(
@@ -704,7 +708,8 @@ describe("hand editing on the Generated Schedule screen", () => {
 
   it("any hand edit drops the floor note (its counts go stale), and keeps the week without it", async () => {
     const week = savedWeek();
-    week.engineNotes = JSON.stringify({
+    week.engine = { notes: null };
+    week.engine.notes = JSON.stringify({
       v: 1,
       open: [],
       blank: [],
@@ -719,7 +724,9 @@ describe("hand editing on the Generated Schedule screen", () => {
     ]);
     saveSlots.mockReturnValue(new Promise(() => {}));
     await clearSwim(element);
-    expect(JSON.parse(saveSlots.mock.calls[0][0].engineNotes).floor).toBeNull();
+    expect(
+      JSON.parse(saveSlots.mock.calls[0][0].request.engineNotes).floor
+    ).toBeNull();
     await flush();
     expect(notesShown()).toEqual([]);
   });
@@ -728,7 +735,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     const element = await render();
     saveSlots.mockReturnValue(new Promise(() => {}));
     await clearSwim(element);
-    expect(saveSlots.mock.calls[0][0].engineNotes).toBeNull();
+    expect(saveSlots.mock.calls[0][0].request.engineNotes).toBeNull();
   });
 
   it("the Why list is Generated's own: an Open cell no activity fits says why", async () => {
@@ -792,7 +799,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     });
     expect(addOnManualBuild).not.toHaveBeenCalled();
     expect(textAt(element, "0-2")).toBe("Archery");
-    expect(saveSlots.mock.calls[0][0].edits[0].runs[0].after).toEqual([
+    expect(saveSlots.mock.calls[0][0].request.edits[0].runs[0].after).toEqual([
       `A:${archery}`
     ]);
     // Known to the checks at once: counted in the drawer before the week is read again.

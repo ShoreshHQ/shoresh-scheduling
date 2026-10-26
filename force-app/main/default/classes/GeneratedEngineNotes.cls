@@ -39,6 +39,45 @@ public with sharing class GeneratedEngineNotes {
     }
   }
 
+  /**
+   * Hand edits on the Generated draft (SlotSaves.saveOnGenerated), then the engine's notes they
+   * carry (afterHandEdits), under the draft's lock.
+   */
+  public static SlotEdits.Result saveHandEdits(
+    GeneratedWeek.HandEdits request
+  ) {
+    if (request == null) {
+      throw GeneratedFrames.unreadable();
+    }
+    SlotEdits.Result result = SlotSaves.saveOnGenerated(
+      request.scheduleId,
+      request.edits == null ? new List<SlotEdits.Edit>() : request.edits,
+      request.revision
+    );
+    afterHandEdits(request.scheduleId, request.engineNotes, result.revision);
+    return result;
+  }
+
+  /**
+   * After hand edits on the draft (locked by the save): the notes without the reasons of the cells
+   * they changed (null: kept as they are). Kept only when nobody else saved the week since the
+   * screen read it (revision: the answer's, given only then); else they are notes on a week the
+   * screen hasn't seen, and the stored ones stay.
+   */
+  private static void afterHandEdits(
+    Id scheduleId,
+    String engineNotes,
+    String revision
+  ) {
+    if (engineNotes == null || String.isEmpty(revision)) {
+      return;
+    }
+    Database.update(
+      new Schedule__c(Id = scheduleId, EngineNotes__c = kept(engineNotes)),
+      AccessLevel.USER_MODE
+    );
+  }
+
   /** How many characters the field holds (its own length, so the two never differ). */
   @TestVisible
   private static Integer maxLength() {

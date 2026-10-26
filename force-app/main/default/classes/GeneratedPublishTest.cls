@@ -40,7 +40,7 @@ private class GeneratedPublishTest {
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
-    SlotEdits.Result result = GeneratedScheduleController.saveSlots(
+    SlotEdits.Result result = GeneratedTestData.handEdits(
       draftId,
       new List<SlotEdits.Edit>{
         SlotRunsTestData.edit(
@@ -53,8 +53,7 @@ private class GeneratedPublishTest {
           new List<String>{ GeneratedTestData.a('Swim') }
         )
       },
-      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId)),
-      null
+      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
     );
     Assert.isTrue(result.conflicts.isEmpty());
   }
