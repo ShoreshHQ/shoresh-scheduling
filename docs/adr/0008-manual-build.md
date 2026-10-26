@@ -15,6 +15,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    Undo/Redo (50 steps per visit).
 3. Counters (Filled, Still needed, Spread across the week, Overlapping) and the bronze dots (over
    its weekly limit, not set up for a bunk, twice in a day).
+   _Changed (Greg, engine care plan Q18, 2026-10-25):_ nothing from the checks is on the grid any
+   more, not even on hover. The dots' words, the setup-changed words and "Rain plan full" are
+   rows in the counter's dropdown (the Why list), each naming its bunk, day and time block; a row
+   goes to its cell without changing it. The rules below still decide what is said and where.
 4. In two (coordinator, 2026-10-17): **4a** Clear day, Clear week, Copy day to…; **4b** Versions
    on this screen (Save version, Restore, rename, delete) and Start from another week.
 5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`); see "Choices (part 5)".

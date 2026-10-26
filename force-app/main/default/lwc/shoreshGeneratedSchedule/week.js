@@ -108,14 +108,17 @@ export function coveredBlocks(day, groupIndex, firstBlock) {
  * in is shorter than the shortest activity (shortest, in blocks). A cell Start over just cleared
  * has neither: something fits, it just isn't built yet. lockedOpen(dateValue, groupId, blockId)
  * says a cell is locked empty: it isn't listed and isn't room for an activity. Worked out from the
- * week as it stands, so a saved week reads the same as one just built.
+ * week as it stands, so a saved week reads the same as one just built. engineWhy: the engine's
+ * own reasons for the cells its build left Open ("date|groupId|blockId" to words; wiki engine
+ * care plan Q18): when it names a cell, its words are used instead of these.
  */
 export function openCells(
   days,
   isAway,
   terms,
   shortest = null,
-  lockedOpen = () => false
+  lockedOpen = () => false,
+  engineWhy = new Map()
 ) {
   const busy = reasonFor(BUSY, { terms });
   const noFit = reasonFor(NO_FIT, { terms });
@@ -158,8 +161,11 @@ export function openCells(
         while (open(last + 1)) {
           last += 1;
         }
-        let reason = null;
-        if (taken) {
+        let reason =
+          engineWhy.get(`${day.dateValue}|${grp.id}|${block.id}`) || null;
+        if (reason) {
+          // The engine's own words for a cell its build left Open.
+        } else if (taken) {
           reason = busy;
         } else if (shortest !== null && last - first + 1 < shortest) {
           reason = noFit;
@@ -179,5 +185,35 @@ export function openCells(
       });
     });
   });
+  return out;
+}
+
+/**
+ * The engine's reasons for the cells its build left Open ("date|groupId|blockId" to words),
+ * without those of the cells these edits change by hand (each run's blocks, from its first, as
+ * many as it holds before or after): a cell changed after the build says what the week as it
+ * stands shows (wiki engine care plan Q18). days: the week's days (their blocks). A new Map.
+ */
+export function withoutEdited(reasons, edits, days) {
+  const out = new Map(reasons);
+  (edits || []).forEach((edit) =>
+    ((edit && edit.runs) || []).forEach((run) => {
+      const day = (days || []).find((d) => d.dateValue === run.day);
+      const blocks = (day && day.blocks) || [];
+      const first = blocks.findIndex((b) => b.id === run.firstBlockId);
+      if (first < 0) {
+        out.delete(`${run.day}|${run.groupId}|${run.firstBlockId}`);
+        return;
+      }
+      const length = Math.max(
+        1,
+        (run.after || []).length,
+        (run.before || []).length
+      );
+      blocks
+        .slice(first, first + length)
+        .forEach((b) => out.delete(`${run.day}|${run.groupId}|${b.id}`));
+    })
+  );
   return out;
 }

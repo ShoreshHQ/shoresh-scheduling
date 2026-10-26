@@ -69,7 +69,9 @@ than cut off, and a solid dot field for Roots' table._
    lock when they are restyled. _On every schedule grid (Greg, 2026-10-22):_ a locked cell's lock
    is this padlock in the cell's **bottom-right corner** (6 px in), in the colour of the cell's
    words, and the lock draws no border or outline of its own. The top-right corner is the
-   needs-a-look mark's, and the special event flag (decision 47.3) sits before the event's name
+   needs-a-look mark's (_on the schedule grids it is no longer used: nothing from the checks sits
+   on a cell, Greg, engine care plan Q18, 2026-10-25; every explanation is a row in the counter's
+   dropdown_), and the special event flag (decision 47.3) sits before the event's name
    on the left, so all three show at once without touching: the words keep 18 px clear above and
    below on a locked cell. A placement locked over several blocks shows it once, on its last
    block (the one cell spanning them); a cell locked empty shows only the padlock. Screen readers

@@ -204,16 +204,6 @@
                       <span class="slds-assistive-text"> {cell.note}</span>
                     </template>
                   </template>
-                  <template lwc:if={cell.dot}>
-                    <span class="cell-dot"
-                      ><c-shoresh-dot
-                        label={cell.dot}
-                        open={cell.dotOpen}
-                        shape="corner"
-                        in-cell
-                      ></c-shoresh-dot
-                    ></span>
-                  </template>
                   <template lwc:if={cell.handle}>
                     <span class="handle" data-handle="true" aria-hidden="true">
                       <span class="handle-bar" data-handle-bar="true"></span>

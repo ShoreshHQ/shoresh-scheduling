@@ -130,7 +130,7 @@ function openWeek({ published = null } = {}) {
 
 /**
  * A finished week: one bunk, one day, Flag then Period 1 holding Swim (no weekly minimum), so
- * nothing is Open and nothing has a dot. maxSwim 0 puts Swim over its weekly limit (a dot).
+ * nothing is Open and the Why list is empty. maxSwim 0 puts Swim over its weekly limit (listed).
  */
 function cleanWeek({ published = null, maxSwim = 5 } = {}) {
   const inputs = camp({
@@ -291,11 +291,12 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(publishButton(element).disabled).toBe(false);
   });
 
-  it("a placement with a dot is still to do: the box says it needs a look", async () => {
+  it("what the Why list shows is still to do: the box counts its rows", async () => {
     const element = await render(cleanWeek({ maxSwim: 0 }));
     previewPublish.mockResolvedValue(preview());
     await clickPublish(element);
-    expect(ask(element).lines).toContain("1 activity needs a look.");
+    // Swim's over row and its session past the limit: two rows in the Why list.
+    expect(ask(element).lines).toEqual(["To look at: 2"]);
     publish.mockResolvedValue({ published: PUBLISHED });
     await answer(ask(element), true);
     expect(publish).toHaveBeenCalledTimes(1);

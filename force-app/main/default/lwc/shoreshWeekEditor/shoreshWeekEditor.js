@@ -72,12 +72,6 @@ function loose(text) {
     .toLowerCase();
 }
 
-/** A dot's words, joined as the checks join reasons (" · "); null for none. */
-function joinWords(...parts) {
-  const words = parts.filter(Boolean);
-  return words.length ? words.join(" · ") : null;
-}
-
 // Inputs that take no typing: Ctrl+Z on them is the schedule's Undo.
 const NOT_TYPED = new Set([
   "button",
@@ -151,16 +145,16 @@ function slotKey(slot) {
  *   host shows the schedule it carries, never a patched copy); "editstate" says whether edits are
  *   saving (busy) or waiting (queueEmpty), so a host can hold a Rebuild.
  * - checkWith(days, locks): the host's own check of the week (Generated's engine check, with its
- *   locks), used instead of the editor's: its flags draw the dots, and openReasons (cell key to
- *   words) a dot on an Open cell. The editor only draws what it is given.
+ *   locks), used instead of the editor's: its flags, openCells (each with its words) and notes
+ *   (lines with no cell) are rows in the Why list (the counter's dropdown). The editor only
+ *   lists what it is given; nothing from a check is drawn on the grid (wiki engine care plan Q18).
  * - addActivityWith({ scheduleId, name }): how "Add <name> to activities" adds on the host's draft
  *   (Manual Build's draft when left out).
  * - say(text) and clearNotice(): the host's own line on the quiet line, and taking it away once
  *   it is no longer true (a Lock or Unlock saved).
  *
  * What Manual Build adds: setupDots, a Map of cell ("date|groupId|blockId") to the words of its
- * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
- * placement, after its words.
+ * "setup changed since the week started" note (ADR 0008 part 6): a row each in the Why list.
  *
  * Special days and events on a week (ADR 0014 slice 4): the draft's `specials` ({ days },
  * WeekSpecials) and the season setup's special events. A day a special day replaces shows its own schedule, read-only, in Daily View
@@ -200,14 +194,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api restoring = false;
   // Pass false for no tools slot.
   @api tools;
-  // The host's check of the week: (days, locks) => checkWeek's answer, plus openReasons. Left out,
+  // The host's check of the week: (days, locks) => checkWeek's answer, plus openCells and notes. Left out,
   // the editor checks the week itself (Manual Build).
   @api checkWith;
   // The host's rows in the Edit menu, after Undo and Redo (see above).
   @api editItems;
   // Adds an activity on the host's draft: ({ scheduleId, name }) => the activity as offered.
   @api addActivityWith;
-  // Setup changed since the week started (Manual Build): cell key to its dot's words, or nothing.
+  // Setup changed since the week started (Manual Build): cell key to its words, or nothing.
   @api setupDots;
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
   // no views, day pills or drawer. Left out for a week.
@@ -279,8 +273,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusPillAfterRender = null;
   // focusCell asked before the grid was drawn (a week just started): { key }, kept until it is.
   focusCellWhenDrawn = null;
-  // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
-  // useFlagChangeAck), only for a director's own edit and only when it touched a few.
+  // Cells a rainy day just switched to their rain plan: a quiet pulse shows what changed.
   pulseKeys = [];
   pulseFlip = false;
   // The last check and what it was worked out from. Changed in place, so updating it while the
@@ -664,17 +657,155 @@ export default class ShoreshWeekEditor extends LightningElement {
   get measure() {
     const checked = this.checked;
     const activities = (this.draft && this.draft.activities) || null;
+    const weekDays = (this.schedule && this.schedule.days) || [];
     const memo = this.measureMemo;
-    if (memo.checked !== checked || memo.activities !== activities) {
+    if (
+      memo.checked !== checked ||
+      memo.activities !== activities ||
+      memo.setupDots !== this.setupDots ||
+      memo.days !== weekDays
+    ) {
       memo.checked = checked;
       memo.activities = activities;
-      memo.result = measureWeek(
-        checked,
-        activities || [],
-        (this.schedule && this.schedule.days) || []
-      );
+      memo.setupDots = this.setupDots;
+      memo.days = weekDays;
+      const measured = measureWeek(checked, activities || [], weekDays);
+      const why = this.whyRows(checked, weekDays);
+      memo.result = {
+        ...measured,
+        look: [...measured.look, ...why.look],
+        open: why.open,
+        notes: why.notes,
+        offTarget:
+          measured.offTarget ||
+          why.look.length > 0 ||
+          why.open.length > 0 ||
+          why.notes.length > 0
+      };
     }
     return memo.result;
+  }
+
+  /**
+   * The Why list's rows that measureWeek doesn't make (wiki engine care plan Q18: nothing from
+   * the engine or the rule checks sits on the grid; it is all said here, each row naming its
+   * cell, place first): look, one row per placement with everything said about it joined (what
+   * the check says about the placement as a whole (a time block it shares with other
+   * cells is the overlapping cell's own row), setup changed since the week started,
+   * rain plan full), "Bunk 1 · Monday · Period 2 · Soccer: …"; open, the host's Open cells with
+   * why (Generated), "Bunk 1 · Monday · Period 3: …"; notes, the
+   * host's lines with no cell (setup taken as 1, the imported week).
+   */
+  whyRows(checked, weekDays) {
+    const look = [];
+    if (!checked) {
+      return { look, open: [], notes: [] };
+    }
+    const dayOf = (dateValue) =>
+      weekDays.find((d) => d.dateValue === dateValue);
+    const where = (dateValue, groupId, blockId) => {
+      const day = dayOf(dateValue);
+      const grp = day && day.groups.find((x) => x.id === groupId);
+      const block = day && day.blocks.find((x) => x.id === blockId);
+      return [
+        grp ? grp.name : "",
+        this.dayNameOf(dateValue),
+        block ? block.name : ""
+      ].join(" · ");
+    };
+    // One row per placement (keyed where it starts), its reasons joined as the checks join
+    // them (" · "): what the check flags, then setup changed, then rain plan full.
+    const said = new Map();
+    const say = (key, words) => {
+      const list = said.get(key) || [];
+      if (words && !list.includes(words)) {
+        list.push(words);
+      }
+      said.set(key, list);
+    };
+    // Only the reasons about the placement as a whole: a reason about a time block it shares
+    // with other cells is that overlapping cell's own row (no Accept), from measureWeek.
+    (checked.wholeFlags || new Map()).forEach((words, key) => say(key, words));
+    // Setup changed: on the placement it is part of (any of its time blocks).
+    (this.setupDots || new Map()).forEach((words, key) => {
+      const [dateValue, groupId, blockId] = key.split("|");
+      const day = dayOf(dateValue);
+      const g = day ? day.groups.findIndex((x) => x.id === groupId) : -1;
+      const b = day ? day.blocks.findIndex((x) => x.id === blockId) : -1;
+      say(
+        g >= 0 && b >= 0
+          ? `${dateValue}|${groupId}|${day.blocks[placement(day, g, b).first].id}`
+          : key,
+        words
+      );
+    });
+    weekDays.forEach((day, d) => {
+      if (!day.rain || !day.rain.length || day.problem) {
+        return;
+      }
+      day.groups.forEach((grp, g) =>
+        day.blocks.forEach((block, b) => {
+          if (
+            placement(day, g, b).first === b &&
+            this.rainFullFor({ day: d, group: g, block: b })
+          ) {
+            say(`${day.dateValue}|${grp.id}|${block.id}`, RAIN_PLAN_FULL);
+          }
+        })
+      );
+    });
+    // In the week's order: by day, then group, then time block.
+    const at = (key) => {
+      const [dateValue, groupId, blockId] = key.split("|");
+      const d = weekDays.findIndex((x) => x.dateValue === dateValue);
+      const day = weekDays[d];
+      return [
+        d,
+        day ? day.groups.findIndex((x) => x.id === groupId) : -1,
+        day ? day.blocks.findIndex((x) => x.id === blockId) : -1
+      ];
+    };
+    [...said]
+      .sort((x, y) => {
+        const px = at(x[0]);
+        const py = at(y[0]);
+        return px[0] - py[0] || px[1] - py[1] || px[2] - py[2];
+      })
+      .forEach(([key, list]) => {
+        const [dateValue, groupId, blockId] = key.split("|");
+        const p = (checked.placements || []).find((x) => x.key === key);
+        const name = p ? this.activityName(p.id) : "";
+        const words = list.join(" · ");
+        // Place first, then what is there: "Bunk 1 · Monday · Period 2 · Soccer: …".
+        const place = [where(dateValue, groupId, blockId), name]
+          .filter(Boolean)
+          .join(" · ");
+        look.push({
+          key: `why|${key}|${words}`,
+          kind: "placement",
+          text: `${place}: ${words}`,
+          groupId,
+          dateValue,
+          blockId
+        });
+      });
+    // Only an Open cell with a reason: the rest are counted in "still needed", as on Manual Build.
+    const open = (checked.openCells || [])
+      .filter((c) => c.reason)
+      .map((c) => ({
+        key: `open|${c.dateValue}|${c.groupId}|${c.blockId}|${c.reason || ""}`,
+        kind: "open",
+        text: c.text,
+        groupId: c.groupId,
+        dateValue: c.dateValue,
+        blockId: c.blockId
+      }));
+    const notes = (checked.notes || []).map((text) => ({
+      key: `note|${text}`,
+      kind: "note",
+      text
+    }));
+    return { look, open, notes };
   }
 
   /** The counter's row: that activity, in Activity View (the editor's own drill-down). */
@@ -1482,14 +1613,8 @@ export default class ShoreshWeekEditor extends LightningElement {
             }
           : {}),
         readOnly: this.lockedReason(cell.slot) !== null,
-        movable: isMovable(here, this.ownPlan),
-        dot: joinWords(
-          this.dotFor(cell.slot) ||
-            (cell.open && this.openReasonFor(cell.slot)) ||
-            null,
-          this.setupDotFor(cell.slot),
-          this.rainDotFor(cell.slot)
-        )
+        // Nothing from the checks on the grid (wiki engine care plan Q18): the Why list says it.
+        movable: isMovable(here, this.ownPlan)
       };
       if (cell.elective) {
         // "Chugim (4)": the set as setup has it now, and its confirmed, open offerings
@@ -1549,49 +1674,11 @@ export default class ShoreshWeekEditor extends LightningElement {
     return result;
   }
 
-  /** Why an Open cell is Open, when the host's check says (its dot's words). */
-  openReasonFor(slot) {
-    const reasons = this.checked.openReasons;
-    if (!reasons) {
-      return null;
-    }
-    const day = this.dayOf(slot);
-    return (
-      reasons.get(
-        lockKey(
-          day.dateValue,
-          day.groups[slot.group].id,
-          day.blocks[slot.block].id
-        )
-      ) || null
-    );
-  }
-
-  /** The words of the setup-changed dots on any block of the placement a slot is part of. */
-  setupDotFor(slot) {
-    if (!this.setupDots || !this.setupDots.size) {
-      return null;
-    }
-    const day = this.dayOf(slot);
-    const groupId = day.groups[slot.group].id;
-    const at = placement(day, slot.group, slot.block);
-    const words = [];
-    day.blocks.slice(at.first, at.first + at.length).forEach((block) => {
-      const said = this.setupDots.get(
-        lockKey(day.dateValue, groupId, block.id)
-      );
-      if (said && !words.includes(said)) {
-        words.push(said);
-      }
-    });
-    return words.length ? words.join(" · ") : null;
-  }
-
   /**
-   * "Rain plan full: choose another" on a cell a rainy day left outdoors (repo docs/adr/0019),
-   * while it still holds that activity, as on the desktop.
+   * "Rain plan full: choose another" for a cell a rainy day left outdoors (repo docs/adr/0019),
+   * while it still holds that activity, as on the desktop: a row in the Why list.
    */
-  rainDotFor(slot) {
+  rainFullFor(slot) {
     const day = this.dayOf(slot);
     if (!day || !day.rain || !day.rain.length) {
       return null;
@@ -1608,11 +1695,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     )
       ? RAIN_PLAN_FULL
       : null;
-  }
-
-  /** The words of a placement's dot, if it has one (keyed by where it starts). */
-  dotFor(slot) {
-    return this.checked.flags.get(this.placementKeyOf(slot));
   }
 
   /** The check's key for the placement a slot is in: "date|groupId|firstBlockId". */
@@ -2326,7 +2408,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.edited();
     const rain = this.rainFor(stepId, kind);
     const edit = rain ? { runs: serverRuns, rain } : { runs: serverRuns };
-    const before = this.checked;
+    // The Why list's rows before the edit, to say what it changed there.
+    const before = this.whyRowsNow();
     const entry = {
       edit,
       key,
@@ -2348,54 +2431,51 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     this.queue = [...this.queue, entry];
     this.applyLocally(edit);
-    // A dot the edit brought or took away, said with its save (a sighted director sees it).
-    entry.news = this.dotNews(before, this.checked);
-    this.pulseKeys =
-      kind === "edit" ? this.dotChanges(before, this.checked) : [];
-    this.pulseFlip = !this.pulseFlip;
+    // A Why list row the edit brought or took away, said with its save (a sighted director
+    // sees the list change).
+    entry.news = this.whyNews(before, this.whyRowsNow(), this.checked);
+    this.pulseKeys = [];
     this.saveNext();
   }
 
-  /**
-   * The placements (still on the grid) whose dot changed, when they are few enough to be one
-   * edit's doing (desktop MAX_SINGLE_EDIT_CELLS, 3); otherwise none.
-   */
-  dotChanges(before, after) {
-    const keys = new Set([...before.flags.keys(), ...after.flags.keys()]);
-    const changed = [...keys].filter(
-      (key) => before.flags.get(key) !== after.flags.get(key)
-    );
-    const still = new Set(after.placements.map((p) => p.key));
-    return changed.length <= 3 ? changed.filter((key) => still.has(key)) : [];
+  /** The Why list's rows about a cell (Open, clashes, placements), from the measure now. */
+  whyRowsNow() {
+    const m = this.measure;
+    return [...(m.open || []), ...m.look].filter((row) => row.dateValue);
   }
 
   /**
-   * One short line on what an edit did to the bronze dots, for screen readers: the first dot it
-   * brought ("Soccer · Bunk 1: Over its limit of 1 Bunk at once"), or else the first it took away
-   * ("Soccer · Bunk 1: fine now"), with how many more. Null when the dots didn't change.
+   * One short line on what an edit did to the Why list, for screen readers: the first row it
+   * brought or changed, in the list's words ("Bunk 1 · Monday · Period 2: Over its limit of 1
+   * Bunk at once"), or else the first it took away whose placement is still there ("Bunk 1 ·
+   * Monday · Period 2: fine now"), with how many more. Null when no row changed. An Open row gone
+   * because its cell was filled, or a row gone with its placement, isn't news: the edit's own
+   * line says that.
    */
-  dotNews(before, after) {
-    const named = (checked, key) => {
-      const p = checked.placements.find((x) => x.key === key);
-      return p ? `${this.activityName(p.id)} · ${p.groupName}` : "";
-    };
-    const brought = [...after.flags].filter(
-      ([key, words]) => before.flags.get(key) !== words
-    );
-    // A dot gone with its placement (cleared or moved) isn't "fine now": only placements still
-    // on the grid.
-    const still = new Set(after.placements.map((p) => p.key));
-    const gone = [...before.flags.keys()].filter(
-      (key) => !after.flags.has(key) && still.has(key)
+  whyNews(before, after, checked) {
+    const keyOf = (row) =>
+      `${row.kind}|${row.dateValue}|${row.groupId}|${row.blockId}`;
+    const was = new Map(before.map((row) => [keyOf(row), row]));
+    const now = new Map(after.map((row) => [keyOf(row), row]));
+    const brought = after.filter((row) => {
+      const old = was.get(keyOf(row));
+      return !old || old.text !== row.text;
+    });
+    const still = new Set(checked.placements.map((p) => p.key));
+    const gone = before.filter(
+      (row) =>
+        !now.has(keyOf(row)) &&
+        row.kind !== "open" &&
+        still.has(`${row.dateValue}|${row.groupId}|${row.blockId}`)
     );
     let line = null;
     let more = 0;
     if (brought.length) {
-      const [key, words] = brought[0];
-      line = `${named(after, key)}: ${words}`;
+      line = brought[0].text;
       more = brought.length - 1;
     } else if (gone.length) {
-      line = `${named(before, gone[0])}: fine now`;
+      const text = gone[0].text;
+      line = `${text.slice(0, text.indexOf(": "))}: fine now`;
       more = gone.length - 1;
     }
     return line && more ? `${line}, and ${more} more` : line;

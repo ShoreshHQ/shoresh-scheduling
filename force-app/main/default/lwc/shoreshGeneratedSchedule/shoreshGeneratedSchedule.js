@@ -35,7 +35,7 @@ import {
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import { clearedDays, openCells } from "./week";
+import { clearedDays, openCells, withoutEdited } from "./week";
 import { activityOptions, awayRows, lockOf } from "./editing";
 
 // What each action is called on its button and while it runs.
@@ -60,6 +60,26 @@ function statementOf(message) {
 // The rail's Build menu (Rebuild, Try another, Fill the open cells, the options, Start over):
 // focus goes back to it once one of them is done.
 const BUILD_MENU = '[data-id="build-menu"]';
+
+/**
+ * What the engine said about a week it built, for the Why list (wiki engine care plan Q18):
+ * open, each cell it left Open ("date|groupId|blockId") to its reason in camp words; notes, its
+ * lines with no cell (a blank setting taken as 1, the imported week's note).
+ */
+function engineWhyOf(result) {
+  return {
+    open: new Map(
+      (result.openCells || []).map((c) => [
+        `${c.date}|${c.groupId}|${c.blockId}`,
+        c.reason
+      ])
+    ),
+    notes: [
+      ...(result.setupNotes || []),
+      ...(result.floor && result.floor.reason ? [result.floor.reason] : [])
+    ]
+  };
+}
 
 /**
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
@@ -155,6 +175,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The season as the editor reads it, worked out once per season and week loaded.
   setupMemo = { setup: undefined, input: undefined, value: undefined };
   checksResetKey = 0;
+  // What the engine said about the week this visit built (engineWhyOf), or null: kept until the
+  // week is shown fresh (resetChecks).
+  engineWhy = null;
   // The cells a counter lights up ("date|groupId|blockId"), generated route.
   focusAfterRender = null;
   // Where focus goes once a versions action is over (its control may be gone meanwhile).
@@ -700,7 +723,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const loaded = this.loaded;
     // Keyed on the week's input alone: the camp's words come with the season, and when they
     // change the season (and so the week) is read again.
-    const inputs = [loaded && loaded.input];
+    const inputs = [loaded && loaded.input, this.engineWhy];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
@@ -715,9 +738,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /**
    * Days checked by the engine's rules with these locks ({ date, groupId, blockId }): { days,
-   * checked (with openCells and openReasons), isAway, locked, shortest }.
+   * checked (with openCells and notes, the Why list's), isAway, locked, shortest }. Each Open cell
+   * says the engine's own reason when this visit's build left it Open (engineWhy), else what the
+   * week as it stands shows.
    */
   checkDays(days, locks) {
+    const engineWhy = this.engineWhy;
     const week = checkGeneratedWeek(this.engineInput(days, { locks }));
     const locked = lockedKeys(locks);
     // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
@@ -727,22 +753,17 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.t,
       week.shortest,
       (dateValue, groupId, blockId) =>
-        locked.has(`${dateValue}|${groupId}|${blockId}`)
-    );
-    // Why each Open cell is Open, when the grid can say (its dot's words).
-    const openReasons = new Map(
-      open
-        .filter((cell) => cell.reason)
-        .map((cell) => [
-          `${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
-          cell.reason
-        ])
+        locked.has(`${dateValue}|${groupId}|${blockId}`),
+      engineWhy ? engineWhy.open : undefined
     );
     return {
       ...week,
       locked,
-      openReasons,
-      checked: { ...week.checked, openCells: open, openReasons }
+      checked: {
+        ...week.checked,
+        openCells: open,
+        notes: engineWhy ? engineWhy.notes : []
+      }
     };
   }
 
@@ -753,8 +774,24 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.week ? this.week.checked : null;
   }
 
+  /**
+   * A cell changed by hand after the build (filled, cleared or moved) no longer has the engine's
+   * reason: it says what the week as it stands shows (wiki engine care plan Q18).
+   */
+  dropEngineWhy(edits) {
+    const why = this.engineWhy;
+    if (!why || !why.open.size || !this.loaded) {
+      return;
+    }
+    const open = withoutEdited(why.open, edits, this.loaded.input.days);
+    if (open.size !== why.open.size) {
+      this.engineWhy = { ...why, open };
+    }
+  }
+
   resetChecks() {
     this.checksResetKey += 1;
+    this.engineWhy = null;
   }
 
   // ---------- actions ----------
@@ -887,6 +924,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.busy = { action, progress: null };
     this.announce(this.busyText);
     let days;
+    let built = null;
     try {
       if (action === ACTION.START_OVER) {
         days = clearedDays(loaded.input.days, new Set(this.replacedDates));
@@ -915,6 +953,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           return;
         }
         days = result.days;
+        built = result;
         if (this.busy && this.busy.progress !== null) {
           this.busy = { action, progress: 100 };
         }
@@ -940,6 +979,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
               }
             : null;
         this.resetChecks();
+        // What the engine said about the week it just built, for the Why list.
+        this.engineWhy = built ? engineWhyOf(built) : null;
         // A whole new week: Undo starts over (its steps were made on the week it replaced).
         this.showInEditor("rebuilt");
         // Rebuild, Try another and Start over kept a version first: Versions lists it.
@@ -1543,6 +1584,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** The editor saves each hand edit through here (GeneratedScheduleController.saveSlots). */
   saveRuns = async (edits) => {
+    this.dropEngineWhy(edits);
     // Each edit moves loadTicket on (handleEdited), also one made while this one saves; the
     // answer still names the revision the next edit in the queue is sent from.
     const ticket = this.weekTicket;
@@ -2138,6 +2180,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         preview,
         checked: this.checked,
         counts: null,
+        measure: this.measure,
         weekName: this.weekName,
         t: this.t
       });

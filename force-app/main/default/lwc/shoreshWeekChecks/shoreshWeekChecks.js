@@ -8,6 +8,13 @@ import { LightningElement, api } from "lwc";
  * their weekly limit ("placed of goal"), and what else needs a look. It replaces the desktop's
  * counter cards (Filled, Overlapping, Still needed, Spread across the week).
  *
+ * It is the week's Why list (wiki engine care plan Q18; desktop FindingsRail "Still to place",
+ * a list under the counter): nothing from the engine or the rule checks is on the grid, so every
+ * explanation is a row here, in groups: Open (each Open cell and why, when the page knows), under,
+ * over, to look at (overlapping cells, early-week goals, rules bent, hand-edit reminders, setup
+ * changed, rain plan full), then notes with no cell (a blank setting taken as 1, the imported week).
+ * A row naming a cell takes the director there without changing it.
+ *
  * measure: c/shoreshEngine measureWeek's answer for the week shown. resetKey: change it when a
  * different week is shown fresh; the dropdown closes.
  *
@@ -60,6 +67,8 @@ export default class ShoreshWeekChecks extends LightningElement {
         under: { count: 0, rows: [] },
         over: { count: 0, rows: [] },
         look: [],
+        open: [],
+        notes: [],
         offTarget: false
       }
     );
@@ -77,9 +86,11 @@ export default class ShoreshWeekChecks extends LightningElement {
   /** The corner: something off target that hasn't been accepted this visit. */
   get showMark() {
     return (
+      this.openRows.length > 0 ||
       this.underRows.length > 0 ||
       this.overRows.length > 0 ||
-      this.lookRows.length > 0
+      this.lookRows.length > 0 ||
+      this.noteRows.length > 0
     );
   }
   /** "29 of 35 placed", then whether anything needs a look (the corner says it to the eye). */
@@ -128,6 +139,18 @@ export default class ShoreshWeekChecks extends LightningElement {
       }))
       .filter((row) => !this.accepted.includes(row.key));
   }
+  /** Open cells and why (Generated: the engine's words). An Open cell can be accepted. */
+  get openRows() {
+    return (this.m.open || [])
+      .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
+      .filter((line) => !this.accepted.includes(line.key));
+  }
+  /** Lines with no cell to go to. */
+  get noteRows() {
+    return (this.m.notes || [])
+      .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
+      .filter((line) => !this.accepted.includes(line.key));
+  }
   get lookRows() {
     return this.m.look
       .map((line) => ({
@@ -147,7 +170,13 @@ export default class ShoreshWeekChecks extends LightningElement {
     // The dropdown's own click handling would close it: Accept keeps it open.
     event.stopPropagation();
     const key = event.currentTarget.dataset.key;
-    const all = [...this.underRows, ...this.overRows, ...this.lookRows];
+    const all = [
+      ...this.openRows,
+      ...this.underRows,
+      ...this.overRows,
+      ...this.lookRows,
+      ...this.noteRows
+    ];
     const index = all.findIndex((line) => line.key === key);
     if (index < 0) {
       return;
@@ -186,7 +215,7 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
 
   handleLocate(event) {
-    const line = this.m.look.find(
+    const line = [...this.m.look, ...(this.m.open || [])].find(
       (l) => l.key === event.currentTarget.dataset.key
     );
     if (line) {

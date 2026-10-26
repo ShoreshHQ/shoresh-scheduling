@@ -1,6 +1,12 @@
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { counterText, find, findAll } from "shoresh-jest/week-editor";
+import {
+  counterText,
+  expectCleanGrid,
+  find,
+  findAll,
+  whyLines
+} from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { buildTerms } from "c/shoreshTerms";
@@ -509,6 +515,9 @@ describe("c-shoresh-generated-schedule", () => {
     action(element, "StartOver").click();
     await settle(element);
     expect(action(element, "FillOpen").disabled).toBe(false);
+    // The cleared cells have no reason: counted in "still needed", not listed one by one.
+    expect(checks(element).measure.open).toEqual([]);
+    expect(checks(element).measure.stillNeeded).toBe(10);
     saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
     action(element, "FillOpen").click();
     await settle(element);
@@ -779,7 +788,7 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
-  it("a gap no activity fits stays Open with the engine's reason on its dot", async () => {
+  it("a gap no activity fits stays Open, with the engine's reason in the Why list", async () => {
     // Every activity takes two blocks; Period 3 (afternoon) is a one-block gap for Bunk 1.
     const inputs = camp({
       ...SMALL,
@@ -791,16 +800,36 @@ describe("c-shoresh-generated-schedule", () => {
       c.className.includes("cell_open")
     );
     expect(open.length).toBeGreaterThan(0);
-    open.forEach((c) =>
-      expect(c.querySelector("c-shoresh-dot").label).toBe(
-        "No activity fits this gap"
-      )
-    );
+    // Nothing on the grid (wiki engine care plan Q18): each Open cell is a line, in its words.
+    expectCleanGrid(element);
+    expect(checks(element).measure.open.map((l) => l.text)).toEqual([
+      "Bunk 1 · Monday · Period 3: No activity fits this gap",
+      "Bunk 1 · Tuesday · Period 3: No activity fits this gap"
+    ]);
     // Placed counts them as not filled.
     expect(counterText(element)).not.toMatch(/^(\d+)of \1 placed$/);
   });
 
-  it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {
+  it("the engine's notes with no cell are in the Why list for the week it just built", async () => {
+    const inputs = camp({
+      ...SMALL,
+      activities: [{ name: "Swim", min: 0, max: 5, atOnce: 2 }]
+    });
+    const atOnce = Object.keys(inputs.activities[0]).find((k) =>
+      /GroupsAtOnce__c$/.test(k)
+    );
+    inputs.activities = inputs.activities.map((a) => ({
+      ...a,
+      [atOnce]: null
+    }));
+    const element = await render(inputs);
+    await generate(element);
+    expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
+      "Swim: Groups at once is blank, so it counts as 1"
+    ]);
+  });
+
+  it("lists a cell that bends a rule, never on the grid, worked out again on load", async () => {
     // One activity with a weekly max of 0: never blank goes over the limit on the first day shown
     // (it never doubles up in a day: once a day is a limit, Greg 2026-10-25).
     const inputs = camp({
@@ -809,14 +838,12 @@ describe("c-shoresh-generated-schedule", () => {
     });
     const element = await render(inputs);
     await generate(element);
-    const dotted = cells(element).filter((c) =>
-      c.querySelector("c-shoresh-dot")
-    );
-    expect(dotted.length).toBeGreaterThan(0);
-    const words = dotted.map((c) => c.querySelector("c-shoresh-dot").label);
-    expect(words.some((w) => w.includes("Over its weekly limit"))).toBe(true);
+    expectCleanGrid(element);
+    const look = checks(element).measure.look.map((l) => l.text);
+    expect(look.length).toBeGreaterThan(0);
+    expect(look.some((w) => w.includes("Over its weekly limit"))).toBe(true);
 
-    // The same week opened later has the same dots.
+    // The same week opened later lists the same.
     const days = sent().days;
     const saved = camp({
       ...SMALL,
@@ -830,12 +857,7 @@ describe("c-shoresh-generated-schedule", () => {
     }));
     document.body.removeChild(element);
     const again = await render(saved);
-    const dottedAgain = cells(again).filter((c) =>
-      c.querySelector("c-shoresh-dot")
-    );
-    expect(dottedAgain.map((c) => c.dataset.cell)).toEqual(
-      dotted.map((c) => c.dataset.cell)
-    );
+    expect(checks(again).measure.look.map((l) => l.text)).toEqual(look);
   });
 
   it("the counter's under row shows that activity; a line to look at takes the director to that bunk", async () => {
@@ -864,7 +886,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, ".drill-name").textContent).toBe("Swim");
   });
 
-  it("an activity closed this week is never counted under: the counter measures what the dots check", async () => {
+  it("an activity closed this week is never counted under: the counter measures what the checks check", async () => {
     // Swim (three a week) is closed this week; Art has no goal or limit. Nothing is under or over.
     const inputs = camp({
       ...SMALL,
@@ -883,11 +905,15 @@ describe("c-shoresh-generated-schedule", () => {
     const root = checks(element).shadowRoot;
     expect(root.querySelector(`button[data-activity="${swimId}"]`)).toBeNull();
     expect(root.querySelector('[data-id="under"]')).toBeNull();
-    expect(
-      root
-        .querySelector('[data-id="counter"]')
-        .shadowRoot.querySelector(".mark")
-    ).toBeNull();
+    // What it couldn't fill is listed as Open, in the engine's words; nothing else is.
+    expect(whyLines(element)).toEqual([
+      "Bunk 1 · Monday · Period 2: Everything for Bunk 1 is taken then",
+      "Bunk 1 · Monday · Period 3: Everything for Bunk 1 is taken then",
+      "Bunk 2 · Monday · Period 2: Everything for Bunk 2 is taken then",
+      "Bunk 1 · Tuesday · Period 2: Everything for Bunk 1 is taken then",
+      "Bunk 1 · Tuesday · Period 3: Everything for Bunk 1 is taken then",
+      "Bunk 2 · Tuesday · Period 2: Everything for Bunk 2 is taken then"
+    ]);
   });
 
   it("cells can be reached from the keyboard and changed by hand, never through a whole-week save", async () => {

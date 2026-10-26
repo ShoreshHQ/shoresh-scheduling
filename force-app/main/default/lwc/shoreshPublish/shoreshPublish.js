@@ -62,12 +62,14 @@ function changeWords(preview, t) {
 }
 
 /**
- * What is still to do: Filled while cells are still Open, placements with a dot, then the
- * counters (each line only when it is above 0), as the screen's counters and dots show them. counts: what the counters count
- * now (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
- * t: the camp's words (c/shoreshTerms), so a dot names the camp's word for Activity.
+ * What is still to do: Filled while cells are still Open, then what the Why list shows; without
+ * the list, the counters instead (each line only when it is above 0). counts: what the counters count now
+ * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
+ * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it: every row in it
+ * is counted ("To look at: 5"), accepted or not. Without it, the placements the check flags are
+ * ("2 activities need a look."). t: the camp's words (c/shoreshTerms).
  */
-export function problemLines(checked, counts, t = buildTerms([])) {
+export function problemLines(checked, counts, t = buildTerms([]), measure) {
   if (!checked) {
     return [];
   }
@@ -76,13 +78,27 @@ export function problemLines(checked, counts, t = buildTerms([])) {
   if (total > filled) {
     lines.push(`Filled: ${filled} of ${total}`);
   }
-  // Every placement with a dot (over its weekly limit, not set up for a bunk, twice in a day,
-  // overlapping...): some have no counter of their own.
-  const dotted = checked.flags ? checked.flags.size : 0;
+  const rows = measure
+    ? (measure.open || []).length +
+      measure.under.rows.length +
+      measure.over.rows.length +
+      measure.look.length +
+      (measure.notes || []).length
+    : 0;
+  // Without the list: every placement the check flags (over its weekly limit, not set up for a
+  // bunk, twice in a day, overlapping...): some have no counter of their own.
+  const dotted = !measure && checked.flags ? checked.flags.size : 0;
+  if (rows > 0) {
+    lines.push(`To look at: ${rows}`);
+  }
   if (dotted > 0) {
     lines.push(
       `${dotted} ${dotted === 1 ? `${t.sIn("Activity")} needs` : `${t.pIn("Activity")} need`} a look.`
     );
+  }
+  if (measure) {
+    // The Why list covers overlapping, still needed and spread: never counted twice.
+    return lines;
   }
   const { overlapping, stillNeeded, spread } = counts || {
     overlapping: (checked.overlapping || []).length,
@@ -103,12 +119,19 @@ export function problemLines(checked, counts, t = buildTerms([])) {
   return lines;
 }
 
-export function publishQuestion({ preview, checked, counts, weekName, t }) {
+export function publishQuestion({
+  preview,
+  checked,
+  counts,
+  measure,
+  weekName,
+  t
+}) {
   const replacing = !!preview.published;
   if (replacing && preview.changeCount === 0) {
     return { kind: "same" };
   }
-  const problems = problemLines(checked, counts, t);
+  const problems = problemLines(checked, counts, t, measure);
   if (!replacing && problems.length === 0) {
     return { kind: "now" };
   }

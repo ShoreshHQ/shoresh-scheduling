@@ -49,6 +49,31 @@ describe("c/shoreshPublish", () => {
     ]);
   });
 
+  it("with the Why list: Filled, then its rows counted once, and no counter beside them", () => {
+    const row = { text: "x" };
+    expect(
+      problemLines(
+        {
+          ...CLEAN,
+          cells: { filled: 7, total: 10 },
+          flags: new Map([["k1", "Over its weekly limit"]]),
+          overlapping: [{}],
+          stillNeeded: ["a", "b"],
+          spread: ["c"]
+        },
+        null,
+        undefined,
+        {
+          open: [row],
+          under: { rows: [row, row] },
+          over: { rows: [] },
+          look: [row],
+          notes: [row]
+        }
+      )
+    ).toEqual(["Filled: 7 of 10", "To look at: 5"]);
+  });
+
   it("says one in the singular", () => {
     expect(
       problemLines({

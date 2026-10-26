@@ -38,14 +38,13 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * Escape lets go without a change. Pointer events, so a mouse, a trackpad, a pen and touch all
  * work, in Chrome and Safari alike; a press that doesn't move stays a click.
  *
- * A cell with `dot` (its words) shows the bronze "needs a look" dot (c-shoresh-dot): the words
- * on hover, tap, or while the cell has keyboard focus, and always in assistive text. The grid
- * doesn't know why; the page says. A cell with `locked` shows the padlock (c-shoresh-lock) in
+ * Nothing from the engine or the rule checks is drawn on a cell (Greg, engine care plan Q18): the
+ * page's Why list says it, beside the grid. A cell with `locked` shows the padlock (c-shoresh-lock) in
  * its bottom-right corner (Generated Schedule: the director's Lock keeps it through every build),
  * "Locked" in assistive text before the name.
  *
  * Editable, it says which cell keyboard focus has reached ("cellfocus", with the cell's key), so
- * the page can offer actions on it (a dot in the cell taking focus, tapped, counts as the cell).
+ * the page can offer actions on it.
  * A locked cell's lock says `lockLabel` ("Locked" when not given) in assistive text.
  *
  * Choosing cells together (Greg decision 45, for Copy and Paste): Cmd/Ctrl with a click asks to
@@ -61,7 +60,7 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * to the cells. Every placed cell is the one raised look; an Open cell is recessed and wordless
  * ("Open" stays its name for screen readers). A row where every column holds the same fixed or
  * recurring activity for one block (Lunch, Assembly) is one slim cell across the columns, with
- * the lock. The needs-a-look dot is the corner mark. A cell's other states keep their meaning as
+ * the lock. A cell's other states keep their meaning as
  * marks with words for screen readers, and a quiet line under the grid names the marks on it:
  * not set up yet (a dashed edge), removed (the name struck through), not at camp (hatched).
  *
@@ -87,7 +86,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
   @api held;
 
   activeKey;
-  // The cell that has keyboard focus now, if any: its dot shows its words.
+  // The cell that has keyboard focus now, if any.
   focusedKey = null;
   // The cell under the pointer, if any (its activity's other cells are outlined).
   hoverKey = null;
@@ -174,7 +173,6 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const same = (a, b) =>
       a.text === b.text &&
       a.title === b.title &&
-      (a.dot || null) === (b.dot || null) &&
       !!a.locked === !!b.locked &&
       !!a.gone === !!b.gone;
     const slim = new Set();
@@ -212,8 +210,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
       if (!cell.mergeKey || cell.colSpan) {
         return;
       }
-      // Only cells that look the same are one: the same lock and the same look mark.
-      const key = `${cell.row}|${cell.mergeKey}|${!!cell.locked}|${cell.dot || ""}`;
+      // Only cells that look the same are one: the same lock.
+      const key = `${cell.row}|${cell.mergeKey}|${!!cell.locked}`;
       if (!runs.has(key)) {
         runs.set(key, []);
       }
@@ -356,7 +354,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
         .map((cell) => {
           const look = {
             ...cell,
-            className: `${cell.className}${cell.locked ? " cell_locked" : ""}${cell.dot ? " cell_look" : ""}${slim.has(i) ? " cell_slim" : ""}${this.outlineClass(cell, outline)}`
+            className: `${cell.className}${cell.locked ? " cell_locked" : ""}${slim.has(i) ? " cell_slim" : ""}${this.outlineClass(cell, outline)}`
           };
           return {
             ...look,
@@ -372,7 +370,6 @@ export default class ShoreshScheduleGrid extends LightningElement {
             draggable: this.editable && cell.movable ? "true" : null,
             ariaSelected: this.editable && cell.selected ? "true" : null,
             handle: this.editable && cell.movable,
-            dotOpen: Boolean(cell.dot) && cell.key === this.focusedKey,
             lockText: cell.lockLabel || "Locked",
             // The lock: a director's Lock (with its words), or a fixed or recurring activity's.
             setTimeLock: !!cell.setTime && !cell.locked,
@@ -506,7 +503,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
   }
 
   handleFocusIn(event) {
-    // The cell itself, or something in it that takes focus (its dot, tapped).
+    // The cell itself, or something in it that takes focus.
     const at = event.target.closest && event.target.closest("[data-cell]");
     const key = at ? at.dataset.cell : null;
     if (this.editable && key) {

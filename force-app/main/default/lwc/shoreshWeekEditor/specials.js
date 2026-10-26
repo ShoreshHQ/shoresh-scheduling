@@ -128,7 +128,7 @@ export function mergedWith(cells, cell) {
   if (!cell || !cell.mergeKey) {
     return cell ? [cell] : [];
   }
-  const look = (c) => `${!!c.locked}|${c.dot || ""}`;
+  const look = (c) => `${!!c.locked}`;
   const same = cells
     .filter(
       (c) =>

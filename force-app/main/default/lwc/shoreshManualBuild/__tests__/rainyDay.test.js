@@ -6,7 +6,7 @@ import saveRainyVersion from "@salesforce/apex/RainyDayController.keepManualWeek
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { editorRoot, find } from "shoresh-jest/week-editor";
+import { editorRoot, find, whyLines } from "shoresh-jest/week-editor";
 import {
   ACTIVITIES,
   draft
@@ -144,12 +144,9 @@ const notice = (element) => {
   return line ? line.textContent.trim() : null;
 };
 const sent = (call) => saveSlots.mock.calls[call][0].edits[0];
+// What the Why list says (nothing from the checks is on the grid): each line's words.
 const dots = (element) =>
-  [
-    ...q(element, '[data-id="edit-grid"]').shadowRoot.querySelectorAll(
-      "c-shoresh-dot"
-    )
-  ].map((dot) => dot.label);
+  whyLines(element).map((text) => text.slice(text.indexOf(": ") + 2));
 
 describe("c-shoresh-manual-build: rainy day", () => {
   afterEach(() => {
@@ -206,7 +203,7 @@ describe("c-shoresh-manual-build: rainy day", () => {
     expect(toolNotice(element)).toBe(
       "Rainy Monday: 1 switched to rain plans, 1 full · Undo"
     );
-    // The cell left outdoors carries the mark, in the desktop's words.
+    // The cell left outdoors is listed, in the desktop's words.
     expect(dots(element)).toContain("Rain plan full: choose another");
   });
 

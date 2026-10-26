@@ -66,12 +66,13 @@ describe("c-shoresh-schedule-grid: merged cells", () => {
     expect(element.shadowRoot.querySelectorAll("[data-cell]")).toHaveLength(3);
   });
 
-  it("shows the flag, the padlock and the look mark at once (decision 51)", async () => {
+  it("shows the flag and the padlock at once (decision 51), never a check's mark", async () => {
     const element = await render([cell(0, { locked: true, dot: "Over" })]);
     const drawn = element.shadowRoot.querySelector("[data-cell]");
     expect(drawn.querySelector(".flag")).not.toBeNull();
     expect(drawn.querySelector(".cell-lock")).not.toBeNull();
-    expect(drawn.querySelector(".cell-dot")).not.toBeNull();
+    // Nothing from the checks on the grid (engine care plan Q18), even when a page passes words.
+    expect(drawn.querySelector("c-shoresh-dot")).toBeNull();
   });
 
   it("draws an elective set across bunks as one cell with its mark, no place under it", async () => {
