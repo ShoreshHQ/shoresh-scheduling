@@ -305,7 +305,7 @@ fuller day is found to change fewer cells, 5,000 per minimums pass, 3,000 moves 
 and activity for the moves between days and 60,000 per build (more found nothing more on the 400
 camps), 2,000,000 per build; and at
 most 15,000,000 cells looked at per build (about 400,000 a second in Node, so a week built twice
-stays well under the 3-minute ceiling in a browser; not yet measured in a browser). Inside one
+stays well under the 3-minute ceiling in a browser; measured below). Inside one
 search it pauses every 200 steps so the screen keeps the tab responsive. The slowest differential
 camp takes about 11 s in Node, the 60-group odd camp 1.6 s, the 30-group ordinary camp 1.1 s.
 
@@ -321,7 +321,37 @@ largest test camp, differential seed 241, uses about 20 million (10.5 s); seed 1
 60-group odd camp 1.6 s; the 30-group ordinary camp 1.2 s; none reaches the ceiling, so none
 changed (all 425 odd and differential camps build the same week as before). Made-up weeks that
 can't fit, with the ceiling: 60 groups x 8 blocks 33 s (85 s before), 80 groups 28 s (232 s
-before), 100 groups x 10 blocks 31 s. Not yet measured in a browser.
+before), 100 groups x 10 blocks 31 s.
+
+Measured in a browser (2026-10-26, `npm run time:engine:browser`, scripts/engine-browser-timing.mjs):
+the same camps built in headless Chrome 155 with Generated Schedule's own `pieces.js` (about 30 ms
+of work, then the browser's turn), beside Node 26 building them at once, on an Apple M5 laptop
+that was busy with other work (load 5-15 on 10 cores, so the Node times are higher and noisier
+than those above). The made-up weeks that can't fit are rebuilt from their recorded shape
+(groups, blocks, activities owed, groups at once), so they are close to, not the same as, the
+ones above; they reach the ceiling as those did (about 38-39 million). Every case did exactly
+the same work in both (ruleChecks equal), so both built the same week. Two runs:
+
+| Camp                              | Node           | Chrome         | Chrome / Node | Longest the tab was held |
+| --------------------------------- | -------------- | -------------- | ------------- | ------------------------ |
+| odd: sixty groups                 | 3.4 s, 3.7 s   | 1.5 s, 1.5 s   | 0.42-0.44     | 141-147 ms               |
+| odd: ordinary large camp          | 2.2 s, 1.6 s   | 1.1 s, 1.1 s   | 0.48-0.70     | 67-68 ms                 |
+| odd: ordinary medium camp         | under 0.1 s    | under 0.1 s    | -             | under 1 ms               |
+| differential seed 143             | 20.8 s, 13.1 s | 9.8 s, 9.2 s   | 0.47-0.71     | under 50 ms              |
+| differential seed 241             | 17.3 s, 17.6 s | 9.2 s, 8.9 s   | 0.51-0.53     | under 50 ms              |
+| can't fit: 60 groups x 8 blocks   | 45.6 s, 33.6 s | 26.8 s, 25.4 s | 0.59-0.76     | 242-255 ms               |
+| can't fit: 80 groups x 8 blocks   | 40.9 s, 42.0 s | 24.2 s, 22.5 s | 0.54-0.59     | 430-499 ms               |
+| can't fit: 100 groups x 10 blocks | 39.0 s, 29.8 s | 26.2 s, 23.2 s | 0.67-0.78     | 643-738 ms               |
+
+So the engine is not slower in a browser: Chrome took about half to three quarters of Node's
+time, and the slowest Generate, one that hits the ceiling, took 27 s, a sixth of the 3 minutes.
+The ceiling stays as it is: even a laptop four times slower than this one would finish the worst
+case in under 2 minutes. Not measured here: the Salesforce page itself (Lightning Web Security
+around the engine, saving the week), other browsers, or slower laptops; the test org's Generate
+time is printed by `scripts/a11y-browser-check.mjs` ("Generate: how long"), on its small made-up
+camp. "Longest the tab was held" is the longest single task Chrome reported (long tasks, over
+50 ms): one step of the build can run past its 30 ms piece, up to about 0.7 s on the 100-group
+week, a short stall a director could notice while scrolling, not a stuck tab.
 
 ### What the build is doing now
 
