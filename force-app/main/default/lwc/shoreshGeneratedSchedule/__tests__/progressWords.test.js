@@ -106,6 +106,16 @@ describe("the progress line", () => {
       }),
       [NOW.SEARCH_DAY]: say(NOW.SEARCH_DAY, MONDAY),
       [NOW.NEEDED]: say(NOW.NEEDED, MONDAY),
+      [NOW.ACROSS]: say(NOW.ACROSS, {
+        ...MONDAY,
+        groupId: "g1",
+        blockId: "b1",
+        activityId: "a1",
+        toActivityId: "a3",
+        toDate: "2026-07-02",
+        toDayIndex: 1,
+        times: 2
+      }),
       [NOW.AGAIN]: say(NOW.AGAIN),
       [NOW.IMPORTED]: say(NOW.IMPORTED)
     };
@@ -127,6 +137,8 @@ describe("the progress line", () => {
       [NOW.SEARCH]: "Checking every way to fill Badgers' Monday",
       [NOW.SEARCH_DAY]: "Checking every way to fill Monday",
       [NOW.NEEDED]: "Rearranging Monday so each Bunk gets what it still needs",
+      [NOW.ACROSS]:
+        "Moving Badgers' Sports from Monday to Thursday so they get Swim twice",
       [NOW.AGAIN]: "Trying a second way, to keep the better Session",
       [NOW.IMPORTED]: "Building from the imported Session, to compare"
     });
@@ -142,6 +154,29 @@ describe("the progress line", () => {
     expect(say(NOW.SEARCH_DAY, { date: null })).toBe(null);
     expect(say("something new")).toBe(null);
     expect(progressLine(null, names, terms)).toBe(null);
+  });
+
+  it("says how often a group gets an activity once a session moves between days", () => {
+    const across = (times, over = {}) =>
+      say(NOW.ACROSS, {
+        ...MONDAY,
+        groupId: "g2",
+        blockId: "b1",
+        activityId: "a2",
+        toActivityId: "a3",
+        toDate: "2026-06-30",
+        toDayIndex: 1,
+        times,
+        ...over
+      });
+    expect(across(1)).toBe(
+      "Moving Eagles' Playground from Monday to Tuesday so they get Swim once"
+    );
+    expect(across(3)).toBe(
+      "Moving Eagles' Playground from Monday to Tuesday so they get Swim 3 times"
+    );
+    expect(across(2, { toDate: null })).toBe(null);
+    expect(across(null)).toBe(null);
   });
 
   it("puts the possessive on a name as it is spoken", () => {

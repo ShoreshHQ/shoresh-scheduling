@@ -1,6 +1,7 @@
 /**
- * The desktop differential's random camps (desktopDifferential.test.js), here so the browser
- * timing script (scripts/engine-browser-timing.mjs) builds the very same camps.
+ * The desktop differential's random camps (desktopDifferential.test.js), drawn only from what
+ * both engines share: no overlapping blocks, other programs, same-division activities, locks,
+ * electives or special days. Shared with the tests that pin one of its camps (across.test.js).
  */
 import { mulberry32 } from "../../random";
 import { activity, block, group } from "./camp";

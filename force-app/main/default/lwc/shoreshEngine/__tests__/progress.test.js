@@ -61,6 +61,7 @@ const STEP_OF = {
   [NOW.SEARCH]: 8,
   [NOW.SEARCH_DAY]: 8,
   [NOW.NEEDED]: 8,
+  [NOW.ACROSS]: 8,
   [NOW.AGAIN]: 8,
   [NOW.IMPORTED]: 8
 };
@@ -80,6 +81,7 @@ const NAMES = {
   [NOW.SEARCH]: ["date", "groupId", "blockId"],
   [NOW.SEARCH_DAY]: ["date"],
   [NOW.NEEDED]: ["date"],
+  [NOW.ACROSS]: ["date", "groupId", "blockId", "activityId", "toActivityId"],
   [NOW.AGAIN]: [],
   [NOW.IMPORTED]: []
 };
