@@ -422,6 +422,35 @@ private class ElectiveSeatsTest {
   }
 
   @IsTest
+  static void blankOrZeroSeatsAreNoLimit() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(3);
+      Offering__c archery = new Offering__c(
+        Id = camp.ids.get('o:Archery'),
+        Seats__c = 0
+      );
+      Database.update(archery, AccessLevel.USER_MODE);
+
+      Test.startTest();
+      ElectiveSeatSaves.AssignRequest request = camp.everyoneInDrama(1);
+      for (Integer i = 0; i < 3; i++) {
+        request.seats[i * 2] = camp.seat(i, MONDAY, 'Archery');
+      }
+      ElectiveSeats.RunView view = camp.assign(request);
+      archery.Seats__c = null;
+      Database.update(archery, AccessLevel.USER_MODE);
+      camp.assign(camp.everyoneInDrama(view.revision));
+      Test.stopTest();
+
+      Assert.areEqual(
+        6,
+        [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId],
+        'Three campers in a 0-seat offering, then Assign again with it blank'
+      );
+    }
+  }
+
+  @IsTest
   static void assignRefusesMoreCampersThanSeats() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
@@ -861,6 +890,62 @@ private class ElectiveSeatsTest {
         [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId],
         'Nothing saved'
       );
+    }
+  }
+
+  @IsTest
+  static void aLinkedChoicesPeriodNotInTheRunIsLeftOut() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      // Wednesday isn't on this schedule: the set is Monday and Tuesday here (engine care PR 8).
+      Database.insert(
+        new LinkedChoiceTime__c(
+          LinkedChoice__c = both.Id,
+          Weekday__c = 'Wednesday',
+          TimeBlock__c = camp.ids.get('Period 1')
+        ),
+        AccessLevel.USER_MODE
+      );
+      String mismatch = 'A seat sent as part of a linked choice doesn\'t match it. Reload the page and assign again.';
+      ElectiveSeatSaves.AssignRequest half = camp.everyoneInDrama(1);
+      half.seats[0].linkedChoiceId = both.Id;
+
+      Test.startTest();
+      String refusal = refusalOf(new Assigning(camp, half));
+      camp.assign(camp.firstAsSet(1, both.Id));
+      Test.stopTest();
+
+      Assert.areEqual(mismatch, refusal, 'Still all or none here');
+      Assert.areEqual(both.Id, camp.mondaySeat(0).LinkedChoice__c);
+    }
+  }
+
+  @IsTest
+  static void aLinkedChoicesPeriodItsOfferingIsNotOfferedIsLeftOut() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      ElectiveSeatSaves.SeatIn monday = camp.seat(0, MONDAY, 'Drama');
+      monday.linkedChoiceId = both.Id;
+
+      Test.startTest();
+      ElectiveRunState state = ElectiveRunState.held(camp.runId);
+      // Tuesday is on the schedule, but Drama isn't offered then.
+      ElectivePeriod tuesday = state.live.periodOf(
+        state.groupOf(camp.campers[0]),
+        TUESDAY,
+        camp.ids.get('Period 1')
+      );
+      tuesday.offeringIds.remove(
+        tuesday.offeringIds.indexOf(camp.ids.get('o:Drama'))
+      );
+      ElectiveLinkedSeats linked = new ElectiveLinkedSeats(state);
+      linked.add(monday, ElectiveSeatChecks.offeredAt(state, monday));
+      linked.refuseIncomplete();
+      Test.stopTest();
+
+      Assert.isFalse(tuesday.offeringIds.contains(camp.ids.get('o:Drama')));
     }
   }
 

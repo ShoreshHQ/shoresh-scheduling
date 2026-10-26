@@ -396,7 +396,7 @@ function fromProblems(kind, list, t, labels) {
       return {
         ...card,
         small: (first.set || screenName).toUpperCase(),
-        off: "seats not filled in",
+        off: "choose seats",
         picture: toMissing(names)
       };
     default:

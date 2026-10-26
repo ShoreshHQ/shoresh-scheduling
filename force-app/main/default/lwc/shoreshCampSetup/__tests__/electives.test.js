@@ -274,7 +274,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
     const roots = q(element, "c-shoresh-roots");
     expect(
       roots.problems.filter((p) => p.screen === "electives").map((p) => p.name)
-    ).toEqual(["Photography", "Woodworking"]);
+    ).toEqual(["Ceramics", "Photography", "Woodworking"]);
     q(element, "c-shoresh-menu")
       .shadowRoot.querySelector('a[data-screen="electives"]')
       .click();
@@ -296,9 +296,9 @@ describe("c-shoresh-camp-setup: Electives", () => {
     ).toBe("2 elective sets");
     const tables = sections(element);
     expect(tables.map((t) => t.heading)).toEqual(["Bechirot", "Chugim"]);
-    // Decision 53: confirmed, open offerings only. Chugim: not Ceramics (closed) or Woodworking
-    // (proposed); Bechirot: Debate and Photography (its seats are only not filled in yet).
-    expect(tables.map((t) => t.headingCount)).toEqual([2, 4]);
+    // Decision 53: confirmed offerings. Chugim: not Woodworking (proposed); Ceramics' 0 seats
+    // don't close it (Greg, 2026-10-26); Bechirot: Debate and Photography (blank seats).
+    expect(tables.map((t) => t.headingCount)).toEqual([2, 5]);
     expect(tables.map((t) => t.showColumns)).toEqual([true, false]);
     const chugim = section(element, "es1");
     expect(chugim.objectApiName).toBe(nsName("Offering__c"));
@@ -352,7 +352,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
       [...chugim.shadowRoot.querySelectorAll('[data-id="seats-text"]')].map(
         (s) => s.textContent
       )
-    ).toEqual(["12", "Closed", "15", "No limit", "12", "10", ""]);
+    ).toEqual(["12", "0", "15", "No limit", "12", "10", ""]);
     // The sets themselves: named, added and deleted under the sections.
     const sets = q(
       element,
@@ -418,11 +418,19 @@ describe("c-shoresh-camp-setup: Electives", () => {
     });
     const bechirot = section(element, "es2");
     expect(bareRecord(bechirot.guesses)).toEqual({
+      o2: {
+        Seats__c: {
+          field: "seats",
+          words: 'Choose how many seats "Ceramics" has',
+          name: 'Seats for Ceramics: Choose how many seats "Ceramics" has',
+          wordsOnly: true
+        }
+      },
       o8: {
         Seats__c: {
           field: "seats",
-          words: "Seats not filled in yet",
-          name: "Seats for Photography: seats not filled in yet",
+          words: 'Choose how many seats "Photography" has',
+          name: 'Seats for Photography: Choose how many seats "Photography" has',
           wordsOnly: true
         }
       }
@@ -433,7 +441,11 @@ describe("c-shoresh-camp-setup: Electives", () => {
       (p) => p.screen === "electives"
     );
     expect(problems.map((p) => [p.name, p.why])).toEqual([
-      ["Photography", 'In "Bechirot": seats not filled in yet.'],
+      ["Ceramics", 'In "Chugim": choose how many seats "Ceramics" has.'],
+      [
+        "Photography",
+        'In "Bechirot": choose how many seats "Photography" has.'
+      ],
       ["Woodworking", 'In "Chugim": proposed, not confirmed yet.']
     ]);
   });

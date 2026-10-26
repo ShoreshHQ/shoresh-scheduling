@@ -2,7 +2,8 @@
  * Campers per offering per elective time, for Assign seats' check (electives slice E7; repo ADR
  * 0018 choice 31): what locks already hold, and what Assign adds. Assign may not put more campers
  * in an offering than its seats leave free after the locks; locks alone may hold more (a move by
- * hand may go over, and the screen shows it).
+ * hand may go over, and the screen shows it). Blank or 0 seats are no limit (engine care PR 8;
+ * Greg, 2026-10-26: an offering on the table needs seats; the engine places it and says so).
  */
 public with sharing class ElectiveSeatTally {
   private ElectiveRunState state;
@@ -62,12 +63,10 @@ public with sharing class ElectiveSeatTally {
       Offering__c offering = state.offeringsById.get(
         Id.valueOf(key.substringAfterLast('|'))
       );
-      if (offering.NoSeatLimit__c == true) {
+      if (noLimitUsed(offering)) {
         continue;
       }
-      Integer seats = offering.Seats__c == null
-        ? 0
-        : offering.Seats__c.intValue();
+      Integer seats = offering.Seats__c.intValue();
       Integer held = lockedCount.containsKey(key) ? lockedCount.get(key) : 0;
       if (addedCount.get(key) > Math.max(0, seats - held)) {
         throw new ShoreshException(
@@ -79,5 +78,12 @@ public with sharing class ElectiveSeatTally {
         );
       }
     }
+  }
+
+  /** No seat limit, ticked, or seats blank or 0 (the engine's NO_SEATS_SET). */
+  private static Boolean noLimitUsed(Offering__c offering) {
+    return offering.NoSeatLimit__c == true ||
+      offering.Seats__c == null ||
+      offering.Seats__c == 0;
   }
 }

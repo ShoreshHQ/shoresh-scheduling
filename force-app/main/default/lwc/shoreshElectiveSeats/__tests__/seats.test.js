@@ -237,21 +237,33 @@ describe("the engine's input, and what Assign seats sends", () => {
     expect(b.seats.map(key).sort()).toEqual(a.seats.map(key).sort());
   });
 
-  it("stops at an offering with its seats not filled in, naming it", () => {
+  it("places an offering with blank or 0 seats as no limit, and says so", () => {
     const run = readRun(
       runView({
         offerings: runView().offerings.map((o) => ({
           ...o,
-          seats: o.id === "o3" ? null : o.seats
+          seats: o.id === "o3" ? null : o.id === "o1" ? 0 : o.seats
         }))
       })
     );
     const result = assignSeats(engineInput(run, t).input);
-    expect(result).toEqual({
-      ok: false,
-      error: "Fill blank capacities first.",
-      blank: ["Pottery"]
-    });
+    expect(result.ok).toBe(true);
+    expect(
+      result.findings
+        .filter((f) => f.kind === "NO_SEATS_SET")
+        .map((f) => f.message)
+    ).toEqual([
+      "Choose how many seats “Archery” has.",
+      "Choose how many seats “Pottery” has."
+    ]);
+    const board = buildBoard(run, t);
+    const section = problemSections(board, t).find((s) => s.key === "noSeats");
+    expect(section.head).toBe("2 need their seats chosen");
+    expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
+      ["Archery", 'Choose how many seats "Archery" has'],
+      ["Pottery", 'Choose how many seats "Pottery" has']
+    ]);
+    expect(needsLook(board)).toBe(true);
   });
 
   it("places 260 campers at every time they take, within the seats", () => {

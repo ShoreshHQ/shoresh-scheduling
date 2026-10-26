@@ -651,7 +651,7 @@ describe("Assign seats", () => {
     );
   });
 
-  it("stops before sending when an offering's seats aren't filled in", async () => {
+  it("assigns even when an offering's seats aren't filled in", async () => {
     const view = runView();
     view.offerings = view.offerings.map((o) => ({
       ...o,
@@ -660,10 +660,8 @@ describe("Assign seats", () => {
     const element = await render({ view });
     $(element, '[data-id="primary"]').click();
     await flush();
-    expect(assignSeats).not.toHaveBeenCalled();
-    expect(text($(element, '[data-id="error"]'))).toBe(
-      "Fill blank capacities first: Archery."
-    );
+    expect(assignSeats).toHaveBeenCalled();
+    expect($(element, '[data-id="error"]')).toBeNull();
   });
 
   it("the counter opens to the problems, and a camper who couldn't be placed leads to their row", async () => {

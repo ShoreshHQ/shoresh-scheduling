@@ -971,9 +971,9 @@ describe("buildElectiveAssignments", () => {
     expect(withChoices).toEqual(buildElectiveAssignments(base));
   });
 
-  // UNSUPPORTED_LINKED_CHOICE case (a) — a member names an occurrence the run
-  // does not contain. A data problem, and it reads as one.
-  it("reports UNSUPPORTED_LINKED_CHOICE when a member names an occurrence outside the run", () => {
+  // Case (a) — a member names an occurrence the run does not contain. Engine care PR 8 (Greg,
+  // Q13: never refuse): the set is kept whole over the periods the run has, and flagged.
+  it("flags LINKED_PERIOD_LEFT_OUT when a member names an occurrence outside the run", () => {
     const out = buildElectiveAssignments({
       campers: [{ id: "c1" }],
       occurrences: [occ("o1")],
@@ -987,11 +987,12 @@ describe("buildElectiveAssignments", () => {
     });
     expect(out.findings).toContainEqual(
       expect.objectContaining({
-        kind: "UNSUPPORTED_LINKED_CHOICE",
-        choice_ids: ["C"]
+        kind: "LINKED_PERIOD_LEFT_OUT",
+        choice_ids: ["C"],
+        occurrence_ids: ["o-gone"]
       })
     );
-    // Refused from tier 1, not mis-solved: the camper is still placed by tier 2.
+    // Placed as the set over the one period the run has.
     expect(
       out.assignments.map((a) => [a.occurrence_id, a.activity_id])
     ).toEqual([["o1", "a-arch"]]);
@@ -1043,9 +1044,9 @@ describe("buildElectiveAssignments", () => {
     ).toEqual(["o1", "o2"]);
   });
 
-  // Case (c) — the NEW case. Two linked choices sharing a member occurrence is
-  // an implementation limit of the two-tier construction, not bad data.
-  it("refuses two linked choices that share a member occurrence, naming the limitation", () => {
+  // Case (c) — two linked choices sharing a member occurrence. Engine care PR 8 (Greg, Q13):
+  // never refused; the first by name keeps the shared seats as a set, the other is flagged.
+  it("keeps the first of two linked choices sharing a member occurrence and flags the other", () => {
     const out = buildElectiveAssignments({
       campers: [{ id: "c1" }, { id: "c2" }],
       occurrences: [occ("o1"), occ("o2"), occ("o3")],
@@ -1064,18 +1065,19 @@ describe("buildElectiveAssignments", () => {
         member("C2", "o3", "a-gaga")
       ]
     });
-    const finding = out.findings.find(
-      (f) => f.kind === "UNSUPPORTED_LINKED_CHOICE"
-    );
-    expect(finding.choice_ids).toEqual(["C1", "C2"]);
-    expect(finding.occurrence_id).toBe("o2");
-    expect(finding.message).toMatch(/limit of the scheduler/);
-    // Both choices are refused from tier 1, and their campers fall through to
-    // tier 2 as ordinary per-occurrence rows — never a silently wrong placement.
-    expect(out.assignments.every((a) => a.source === undefined)).toBe(true);
+    const finding = out.findings.find((f) => f.kind === "LINKED_SEATS_SHARED");
+    expect(finding).toMatchObject({
+      choice_ids: ["C2"],
+      keptLinkedChoiceId: "C1",
+      occurrence_id: "o2",
+      camper_ids: ["c2"]
+    });
     expect(
-      out.assignments.filter((a) => a.camper_id === "c1").length
-    ).toBeGreaterThan(0);
+      out.findings.some((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
+    ).toBe(false);
+    // C1's camper has the set; C2's camper is still placed, one period at a time.
+    expect(out.assignments.filter((a) => a.camper_id === "c1").length).toBe(3);
+    expect(out.assignments.filter((a) => a.camper_id === "c2").length).toBe(3);
   });
 
   // Ordinary capacity infeasibility is NOT this finding — it stays an ordinary

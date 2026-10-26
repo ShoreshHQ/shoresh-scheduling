@@ -48,22 +48,10 @@ export function readProgram(entry) {
 
 const OFFERING = FIELD.Offering;
 
-/** Closed: 0 seats and a limit (repo ADR 0018: 0 is closed, never unlimited). */
-function isClosedOffering(offering) {
-  const seats = offering[OFFERING.Seats];
-  return (
-    !offering[OFFERING.NoSeatLimit] &&
-    seats !== null &&
-    seats !== undefined &&
-    seats !== "" &&
-    Number(seats) === 0
-  );
-}
-
 /**
  * Where each elective set takes place (ADR 0018 slice E5; desktop engine/electiveOccupancy.js):
- * the places of its confirmed, open offerings' activities (a proposed or closed offering has no
- * campers there), each place once, since two offerings at one place are one group's presence
+ * the places of its confirmed offerings' activities (a proposed one has no campers there; 0 or
+ * blank seats don't close one, Greg 2026-10-26: the seat run uses no limit), each place once, since two offerings at one place are one group's presence
  * there. offerings: the season's Offering__c records (setup.electives.offerings); activities: the
  * season's Activity__c records. Returns set Id -> [place Ids], in the offerings' order.
  */
@@ -74,7 +62,7 @@ export function readElectivePlaces(offerings, activities) {
   const places = new Map();
   (offerings || []).forEach((offering) => {
     const placeId = placeOf.get(offering[OFFERING.Activity]);
-    if (!placeId || offering[OFFERING.Proposed] || isClosedOffering(offering)) {
+    if (!placeId || offering[OFFERING.Proposed]) {
       return;
     }
     const setId = offering[OFFERING.ElectiveSet];

@@ -1,9 +1,9 @@
 /**
  * What the port adds to the desktop engine, in Salesforce's shapes: seat limits ("No limit",
- * 0 means closed, blank stops the assignment), times filled in date, block and division order,
+ * blank or 0 seats placed as no limit and said), times filled in date, block and division order,
  * the camp's own words in findings, and which linked choice a seat came from.
  */
-import { assignSeats } from "c/shoreshElectiveEngine";
+import { assignSeats, linkedSetPlan } from "c/shoreshElectiveEngine";
 import { buildTerms } from "c/shoreshTerms";
 
 const campers = (n) => Array.from({ length: n }, (_, i) => ({ id: `c${i}` }));
@@ -17,21 +17,31 @@ const offering = (timeId, activityId, more = {}) => ({
 });
 
 describe("seat limits", () => {
-  it("stops when a limited offering has blank seats, naming each once", () => {
+  it("places an offering with blank seats as no limit and says so, once per offering", () => {
     const out = assignSeats({
-      campers: campers(1),
+      campers: campers(3),
       times: [{ id: "t1" }, { id: "t2" }],
       offerings: [
         offering("t1", "pottery", { seats: null }),
         offering("t2", "pottery", { seats: undefined }),
         offering("t1", "archery", { seats: 3 })
-      ]
+      ],
+      choices: campers(3).map((c) => ({
+        camperId: c.id,
+        key: "pottery",
+        rank: 1
+      }))
     });
-    expect(out).toEqual({
-      ok: false,
-      error: "Fill blank capacities first.",
-      blank: ["Pottery"]
-    });
+    expect(out.ok).toBe(true);
+    expect(out.seats.filter((x) => x.activityId === "pottery")).toHaveLength(6);
+    expect(out.findings).toEqual([
+      {
+        kind: "NO_SEATS_SET",
+        activityId: "pottery",
+        timeIds: ["t1", "t2"],
+        message: "Choose how many seats “Pottery” has."
+      }
+    ]);
   });
 
   it("seats everyone in an offering with no limit", () => {
@@ -50,16 +60,24 @@ describe("seat limits", () => {
     expect(out.findings).toEqual([]);
   });
 
-  it("treats 0 seats as closed, never as unlimited", () => {
+  it("places an offering with 0 seats as no limit and says so (0 is not closed)", () => {
     const out = assignSeats({
       campers: campers(2),
       times: [{ id: "t1" }],
       offerings: [offering("t1", "ceramics", { seats: 0 })],
       choices: [{ camperId: "c0", key: "ceramics", rank: 1 }]
     });
-    expect(out.seats).toEqual([]);
+    expect(out.seats.map((x) => [x.camperId, x.activityId])).toEqual([
+      ["c0", "ceramics"],
+      ["c1", "ceramics"]
+    ]);
     expect(out.findings).toEqual([
-      expect.objectContaining({ kind: "NO_CAPACITY", camperIds: ["c0", "c1"] })
+      {
+        kind: "NO_SEATS_SET",
+        activityId: "ceramics",
+        timeIds: ["t1"],
+        message: "Choose how many seats “Ceramics” has."
+      }
     ]);
   });
 });
@@ -206,12 +224,16 @@ describe("a double period linked for every choice (slice E9)", () => {
     ]);
   });
 
-  it("two linked choices of one offering at one time are still refused", () => {
+  it("two linked choices of one offering at one time: the first by name is kept, the other flagged", () => {
     const out = assignSeats(
       both({
+        offerings: [
+          offering("t1", "pottery", { seats: 5 }),
+          offering("t2", "pottery", { seats: 5 })
+        ],
         linkedChoices: [
-          { id: "lp", key: "pottery", name: "Pottery" },
-          { id: "lp2", key: "pottery-again", name: "Pottery again" }
+          { id: "lp2", key: "pottery-again", name: "Pottery again" },
+          { id: "lp", key: "pottery", name: "Pottery" }
         ],
         linkedChoiceTimes: [
           { linkedChoiceId: "lp", timeId: "t1", activityId: "pottery" },
@@ -219,17 +241,167 @@ describe("a double period linked for every choice (slice E9)", () => {
           { linkedChoiceId: "lp2", timeId: "t2", activityId: "pottery" },
           { linkedChoiceId: "lp2", timeId: "t1", activityId: "pottery" }
         ],
-        choices: [{ camperId: "c0", linkedChoiceId: "lp", rank: 1 }]
+        choices: [
+          { camperId: "c0", linkedChoiceId: "lp", rank: 1 },
+          { camperId: "c1", linkedChoiceId: "lp2", rank: 1 }
+        ]
       })
     );
-    expect(
-      out.findings
-        .filter((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
-        .map((f) => [f.linkedChoiceIds, f.timeId])
-    ).toEqual([
-      [["lp", "lp2"], "t1"],
-      [["lp", "lp2"], "t2"]
+    expect(out.findings).toEqual([
+      {
+        kind: "LINKED_SEATS_SHARED",
+        linkedChoiceIds: ["lp2"],
+        keptLinkedChoiceId: "lp",
+        timeId: "t1",
+        activityId: "pottery",
+        camperIds: ["c1"],
+        message:
+          "“Pottery again” shares “Pottery” seats with “Pottery” in t1, so 1 camper who asked " +
+          "for “Pottery again” got a seat each period instead."
+      }
     ]);
+    // The kept set is placed as a set; the other camper still gets a seat each period.
+    expect(
+      out.seats.map((x) => [x.camperId, x.timeId, x.linkedChoiceId ?? null])
+    ).toEqual([
+      ["c0", "t1", "lp"],
+      ["c1", "t1", null],
+      ["c0", "t2", "lp"],
+      ["c1", "t2", null]
+    ]);
+  });
+
+  it("which set is kept doesn't depend on the order the linked choices arrive in", () => {
+    const input = both({
+      linkedChoices: [
+        { id: "lp", key: "pottery", name: "Pottery" },
+        { id: "lp2", key: "pottery-again", name: "Pottery again" }
+      ],
+      linkedChoiceTimes: [
+        { linkedChoiceId: "lp2", timeId: "t1", activityId: "pottery" },
+        { linkedChoiceId: "lp2", timeId: "t2", activityId: "pottery" },
+        { linkedChoiceId: "lp", timeId: "t2", activityId: "pottery" },
+        { linkedChoiceId: "lp", timeId: "t1", activityId: "pottery" }
+      ]
+    });
+    const reversed = {
+      ...input,
+      linkedChoices: [...input.linkedChoices].reverse(),
+      linkedChoiceTimes: [...input.linkedChoiceTimes].reverse()
+    };
+    expect(assignSeats(reversed)).toEqual(assignSeats(input));
+  });
+});
+
+describe("a linked choice with a period this run can't give it", () => {
+  const input = (more = {}) => ({
+    campers: campers(2),
+    times: [
+      { id: "t1", name: "Mon 12:30" },
+      { id: "t2", name: "Tue 12:30" },
+      { id: "t3", name: "Wed 12:30" }
+    ],
+    offerings: [
+      offering("t1", "drama", { seats: 5 }),
+      offering("t2", "drama", { seats: 5 }),
+      offering("t2", "archery", { seats: 5 }),
+      offering("t3", "archery", { seats: 5 })
+    ],
+    linkedChoices: [{ id: "ld", key: "drama-week", name: "Drama all week" }],
+    linkedChoiceTimes: [
+      { linkedChoiceId: "ld", timeId: "t1", activityId: "drama" },
+      { linkedChoiceId: "ld", timeId: "t2", activityId: "drama" },
+      // Not in this run, and drama not offered at t3.
+      {
+        linkedChoiceId: "ld",
+        timeId: "t9",
+        activityId: "drama",
+        name: "Fri 12:30"
+      },
+      { linkedChoiceId: "ld", timeId: "t3", activityId: "drama" }
+    ],
+    choices: [{ camperId: "c0", linkedChoiceId: "ld", rank: 1 }],
+    ...more
+  });
+
+  it("is kept whole over the periods it has, and says which it couldn't give", () => {
+    const out = assignSeats(input());
+    expect(out.findings).toEqual([
+      {
+        kind: "LINKED_PERIOD_LEFT_OUT",
+        linkedChoiceIds: ["ld"],
+        timeIds: ["t3", "t9"],
+        camperIds: ["c0"],
+        message:
+          "“Drama all week”: Wed 12:30 and Fri 12:30 can’t be given in this run; its other " +
+          "periods were kept together."
+      }
+    ]);
+    expect(
+      out.seats
+        .filter((x) => x.camperId === "c0")
+        .map((x) => [x.timeId, x.activityId, x.linkedChoiceId ?? null])
+    ).toEqual([
+      ["t1", "drama", "ld"],
+      ["t2", "drama", "ld"],
+      ["t3", "archery", null]
+    ]);
+  });
+
+  it("is matched to its own offering when ids are given, not just its activity", () => {
+    const out = linkedSetPlan({
+      linkedChoices: [{ id: "ld", key: "d", name: "Drama" }],
+      linkedChoiceTimes: [
+        {
+          linkedChoiceId: "ld",
+          timeId: "t1",
+          activityId: "drama",
+          offeringId: "oA"
+        },
+        {
+          linkedChoiceId: "ld",
+          timeId: "t2",
+          activityId: "drama",
+          offeringId: "oA"
+        }
+      ],
+      timeIds: ["t1", "t2"],
+      offerings: [
+        { timeId: "t1", activityId: "drama", offeringId: "oA" },
+        // Another offering of the same activity at t2: not this one.
+        { timeId: "t2", activityId: "drama", offeringId: "oB" }
+      ]
+    });
+    expect(out.sets.get("ld")).toEqual({
+      members: [
+        {
+          linkedChoiceId: "ld",
+          timeId: "t1",
+          activityId: "drama",
+          offeringId: "oA"
+        }
+      ],
+      left: ["t2"]
+    });
+  });
+
+  it("with none of its periods here, places nobody in it and says so", () => {
+    const out = assignSeats(
+      input({
+        linkedChoiceTimes: [
+          { linkedChoiceId: "ld", timeId: "t8", activityId: "drama" },
+          { linkedChoiceId: "ld", timeId: "t9", activityId: "drama" }
+        ]
+      })
+    );
+    expect(out.findings[0]).toMatchObject({
+      kind: "LINKED_PERIOD_LEFT_OUT",
+      timeIds: ["t8", "t9"],
+      camperIds: []
+    });
+    expect(out.findings[0].message).toMatch(
+      /^“Drama all week”: t8 and t9 can’t be given in this run; nobody was placed in it\.$/
+    );
     expect(out.seats.some((x) => x.linkedChoiceId)).toBe(false);
   });
 });

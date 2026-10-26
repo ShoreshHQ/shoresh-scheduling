@@ -149,7 +149,7 @@ const SHORT_DAYS = {
  *
  * Electives setup (repo ADR 0018, slice E4) adds:
  *   type "seats" (fieldName: the number, noLimitField: the tick, noLimitLabel): words at rest,
- *     "No limit", "Closed" for 0, the number, or nothing while it is blank; the number and the
+ *     "No limit", the number (0 too: not closed, it needs a look), or nothing while it is blank; the number and the
  *     tick in their place on hover or edit. The number waits while No limit is ticked.
  *   placeholder on a number column: what a blank reads as, quietly ("No minimum").
  *   nameFor(values): a row's name for its buttons and what is said, for records whose own Name
@@ -1539,9 +1539,9 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   /**
-   * Seats (repo ADR 0018; desktop D3: "No limit" and closed are unmistakable): words at rest,
-   * "No limit" when ticked, "Closed" for 0, the number, or nothing while it is blank (the cell's
-   * needs-a-look corner says so); the number and the No limit tick in their place under the
+   * Seats (repo ADR 0018; desktop D3: "No limit" is unmistakable): words at rest, "No limit" when
+   * ticked, the number, or nothing while it is blank. 0 is a number, not closed (Greg,
+   * 2026-10-26); blank and 0 carry the cell's needs-a-look corner; the number and the No limit tick in their place under the
    * pointer or while the row is edited. The number waits while No limit is ticked.
    */
   seatsCell(col, draft, className, named) {
@@ -1550,8 +1550,6 @@ export default class ShoreshEditableTable extends LightningElement {
     let words = "";
     if (noLimit) {
       words = col.noLimitLabel || "No limit";
-    } else if (!isBlank(seats) && Number(seats) === 0) {
-      words = "Closed";
     } else if (!isBlank(seats)) {
       words = String(seats);
     }
@@ -1564,7 +1562,7 @@ export default class ShoreshEditableTable extends LightningElement {
       // The blank row is typed in, so it shows its fields, not words.
       seatsClass: draft.isNew ? "seats seats_open" : "seats",
       seatsText: words,
-      // "Closed" and "No limit" are what the director chose: values, never quiet.
+      // "No limit" is what the director chose: a value, never quiet.
       seatsTextClass: "rest seats-text",
       value: noLimit ? null : seats,
       label: named(col.label),

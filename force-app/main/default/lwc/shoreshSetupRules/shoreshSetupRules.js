@@ -29,7 +29,7 @@ export function setupProblems(setup, terms) {
     ...activityProblems(setup, terms),
     ...setTimeProblems(setup, terms),
     ...specialDayProblems(setup, terms),
-    ...electiveProblems(setup)
+    ...electiveProblems(setup, terms)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -115,11 +115,11 @@ function nameKey(name) {
 /**
  * Elective offerings (repo ADR 0018, slice E4; plan section 4.6), for Roots' Needs attention: one
  * an import proposed and no one has confirmed (it gets no campers until then), and a limited one
- * whose seats are not filled in yet (seats are not assigned until they are; desktop "Fill blank
- * capacities first."). On the Electives screen they are marked in their rows (a dashed edge, the
+ * whose seats are blank or 0 (seats are still assigned, with no limit; the flag says to choose
+ * them, Greg 2026-10-26). On the Electives screen they are marked in their rows (a dashed edge, the
  * needs-a-look corner), so the screen's own list leaves them out (markedInPlace).
  */
-function electiveProblems(setup) {
+function electiveProblems(setup, terms) {
   const electives = setup.electives || {};
   const OFFER = FIELD.Offering;
   const sets = new Map((electives.sets || []).map((s) => [s.Id, s.Name]));
@@ -143,11 +143,13 @@ function electiveProblems(setup) {
       add("offeringProposed", "proposed, not confirmed yet.");
     }
     const seats = offering[OFFER.Seats];
-    if (
-      !offering[OFFER.NoSeatLimit] &&
-      (seats === null || seats === undefined || seats === "")
-    ) {
-      add("offeringNoSeats", "seats not filled in yet.");
+    const blank = seats === null || seats === undefined || seats === "";
+    // Blank or 0: the seat run uses no limit; the flag says what to do (Greg, 2026-10-26).
+    if (!offering[OFFER.NoSeatLimit] && (blank || Number(seats) === 0)) {
+      add(
+        "offeringNoSeats",
+        `choose how many ${terms.sIn("Seats")} "${name}" has.`
+      );
     }
   });
   return problems;

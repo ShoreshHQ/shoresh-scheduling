@@ -74,8 +74,18 @@ describe("linked choices in the engine's input", () => {
       { id: "lc1|d1", key: "linked|lc1", name: "Drama both days" }
     ]);
     expect(input.linkedChoiceTimes).toEqual([
-      { linkedChoiceId: "lc1|d1", timeId: `${MONDAY}|b1|d1`, activityId: "a2" },
-      { linkedChoiceId: "lc1|d1", timeId: `${TUESDAY}|b1|d1`, activityId: "a2" }
+      {
+        linkedChoiceId: "lc1|d1",
+        timeId: `${MONDAY}|b1|d1`,
+        activityId: "a2",
+        offeringId: "o2"
+      },
+      {
+        linkedChoiceId: "lc1|d1",
+        timeId: `${TUESDAY}|b1|d1`,
+        activityId: "a2",
+        offeringId: "o2"
+      }
     ]);
   });
 
@@ -240,7 +250,7 @@ describe("linked choices in the engine's input", () => {
 });
 
 describe("what keeps a linked choice from being placed as a set", () => {
-  it("a period this schedule doesn't have: passed, filled one period at a time, and said", () => {
+  it("a period this schedule doesn't have: passed, the rest kept together, and said", () => {
     const wednesday = {
       ...BOTH_DAYS,
       periods: [...BOTH_DAYS.periods, { weekday: "Wednesday", blockId: "b1" }]
@@ -254,16 +264,23 @@ describe("what keeps a linked choice from being placed as a set", () => {
     ]);
     const result = assignSeats(input);
     expect(
-      result.findings.filter((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
-    ).toHaveLength(1);
-    // Maya still gets Drama at each period, ranked, one at a time.
+      result.findings
+        .filter((f) => f.kind === "LINKED_PERIOD_LEFT_OUT")
+        .map((f) => [f.timeIds, f.message])
+    ).toEqual([
+      [
+        ["missing|Wednesday|b1|d1"],
+        "“Drama both days”: Wed 12:30 can’t be given in this run; its other periods were kept together."
+      ]
+    ]);
+    // Maya gets Drama on Monday and Tuesday as the set (engine care PR 8: never refused).
     expect(
       result.seats
         .filter((s) => s.camperId === "c1")
         .map((s) => [s.activityId, s.rank, s.linkedChoiceId])
     ).toEqual([
-      ["a2", 1, undefined],
-      ["a2", 1, undefined]
+      ["a2", 1, "lc1|d1"],
+      ["a2", 1, "lc1|d1"]
     ]);
     const board = buildBoard(run, t);
     expect(board.problems.linked).toEqual([
@@ -276,7 +293,7 @@ describe("what keeps a linked choice from being placed as a set", () => {
     ]);
     expect(needsLook(board)).toBe(true);
     const section = problemSections(board, t).find((s) => s.key === "linked");
-    expect(section.head).toBe("1 linked choice filled one period at a time");
+    expect(section.head).toBe("1 linked choice not given in full");
     expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
       ["Drama both days", "Not on this schedule at Wednesday 12:30 for Juniors"]
     ]);
@@ -312,16 +329,28 @@ describe("what keeps a linked choice from being placed as a set", () => {
         "Ceramics both days",
         "Pottery isn't offered at Tuesday 12:30 for Juniors"
       ],
-      ['"Drama both days" and "Drama again"', "Share Monday 12:30"],
-      ['"Drama both days" and "Drama again"', "Share Tuesday 12:30"]
+      [
+        "Drama both days",
+        'Shares Monday 12:30 with "Drama again", which was kept as a set'
+      ]
     ]);
-    // The engine refuses both of Drama's, as the desktop does: filled one period at a time.
+    // The engine keeps the first by name ("Drama again") as a set and sets the other aside.
     const result = assignSeats(engineInput(run, t).input);
     expect(
-      result.seats.filter((s) =>
-        ["lc1|d1", "lc3|d1"].includes(s.linkedChoiceId)
-      ).length
-    ).toBe(0);
+      result.findings
+        .filter((f) => f.kind === "LINKED_SEATS_SHARED")
+        .map((f) => [f.linkedChoiceIds, f.keptLinkedChoiceId])
+    ).toEqual([[["lc1|d1"], "lc3|d1"]]);
+    expect(result.seats.some((s) => s.linkedChoiceId === "lc1|d1")).toBe(false);
+    // Maya asked for the one set aside: said, with the set kept and the period.
+    const board = buildBoard(run, t);
+    const section = problemSections(board, t).find((x) => x.key === "split");
+    expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
+      [
+        board.problems.split[0].camper.name,
+        'Asked for "Drama both days", which shares Mon 12:30 with "Drama again", kept as a set'
+      ]
+    ]);
   });
 });
 
@@ -545,7 +574,7 @@ describe("the counter counts linked choices, not their problems", () => {
       "Not on this schedule at Thursday 12:30 for Seniors"
     ]);
     const section = problemSections(board, t).find((s) => s.key === "linked");
-    expect(section.head).toBe("1 linked choice filled one period at a time");
+    expect(section.head).toBe("1 linked choice not given in full");
     expect(section.rows).toHaveLength(2);
   });
 });

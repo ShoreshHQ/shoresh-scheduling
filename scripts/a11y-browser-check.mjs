@@ -5926,7 +5926,9 @@ async function electives() {
           { tag: "button", name: /^Offering\b/ }
         );
         const mark = named(
-          new RegExp(`^Seats for ${names.blank}: seats not filled in yet$`),
+          new RegExp(
+            `^Seats for ${names.blank}: Choose how many seats "${names.blank}" has$`
+          ),
           { tag: "button" }
         );
         if (!(await tabTo(mark, { max: 40 })))

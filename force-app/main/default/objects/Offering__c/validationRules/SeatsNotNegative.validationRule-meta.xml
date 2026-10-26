@@ -3,7 +3,7 @@
     <fullName>SeatsNotNegative</fullName>
     <active>true</active>
     <description
-  >Seats are 0 (closed) or more, unless there is no limit.</description>
+  >Seats are 0 or more, unless there is no limit. Blank or 0 is assigned with no limit, and said.</description>
     <errorConditionFormula
   >AND(NOT(NoSeatLimit__c), NOT(ISBLANK(Seats__c)), Seats__c &lt; 0)</errorConditionFormula>
     <errorDisplayField>Seats__c</errorDisplayField>

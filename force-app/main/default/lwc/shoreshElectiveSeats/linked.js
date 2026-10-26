@@ -10,14 +10,19 @@
  *   the divisions holding at least one of its periods in this run (desktop D2, D4: a set of seats
  *   per division, since a time is one division's). Every one shares the key "linked|<Id>", so a
  *   camper's choice of it reaches the one for their division (the engine's D4 broadcast).
- * - A period this run doesn't have for that division is still passed (desktop D5): the engine then
- *   fills that linked choice one period at a time and says so; here it is a problem in words.
+ * - A period this run doesn't have for that division (or where its offering isn't offered) is
+ *   still passed (desktop D5): the engine keeps the set whole over the periods it has
+ *   (linkedSetPlan, engine care PR 8) and says so; here it is a problem in words.
+ * - Two linked choices of one offering sharing a period: the first by name keeps it as a set, the
+ *   other is filled one period at a time (linkedSetPlan); here it is a problem in words.
  * - A camper it doesn't cover (their division left out, or holding none of its periods) has their
  *   choice of it counted as its activity, and said (desktop D6 amendment 2026-09-30,
  *   BUNDLE_TIER_NOT_COVERED): never dropped.
  * - A camper it covers who can't have it as a set (the engine's UNSUPPORTED_LINKED_CHOICE for
  *   campers) is worked out here by the engine's own rule, and said.
  */
+
+import { linkedSetPlan } from "c/shoreshElectiveEngine";
 
 const WEEKDAYS = [
   "Sunday",
@@ -64,9 +69,10 @@ function divisionsFor(choice, divisionIds) {
  * usable: linked choice Id -> { choice, offering, periods: Set("Tuesday|<block>"), timeKeys: the
  * run's times its copies hold, copies: [{ id, times, missing }] }.
  * problems: [{ key, ids, name, text }] in the linked choices' order: a period this schedule doesn't
- * have for a division it applies to, and two linked choices of one offering sharing a time (two
- * offerings' may: each takes its own offering's seats there, slice E9). ids: the linked
- * choices the problem is about.
+ * have for a division it applies to, and a linked choice set aside because another of the same
+ * offering, kept as a set, shares a time with it (two offerings' may share: each takes its own
+ * offering's seats there, slice E9). ids: the linked choices the problem is about.
+ * plan: the engine's linkedSetPlan for these, so the screen says what the engine did.
  */
 export function linkedOf(run) {
   const choices = (run.view && run.view.linkedChoices) || [];
@@ -89,8 +95,6 @@ export function linkedOf(run) {
   const linkedChoiceTimes = [];
   const usable = new Map();
   const problems = [];
-  // time key and offering -> the linked choices holding it, to say which share one.
-  const holding = new Map();
 
   choices.forEach((choice) => {
     const offering = run.offeringById.get(choice.offeringId);
@@ -156,37 +160,56 @@ export function linkedOf(run) {
         linkedChoiceTimes.push({
           linkedChoiceId: id,
           timeId,
-          activityId: offering.activityId
+          activityId: offering.activityId,
+          offeringId: offering.id,
+          ...(time ? {} : { name: missingName(run, p) })
         });
-        if (time && periods.length > 1) {
-          const seats = `${time.key}|${offering.id}`;
-          if (!holding.has(seats)) {
-            holding.set(seats, { timeKey: time.key, sharing: [] });
-          }
-          holding.get(seats).sharing.push(choice);
-        }
       });
     });
   });
 
-  holding.forEach(({ timeKey, sharing }, seats) => {
-    const names = [...new Set(sharing.map((c) => c.name))];
-    if (sharing.length < 2) return;
-    const time = run.timeByKey.get(timeKey);
+  const plan = linkedSetPlan({
+    linkedChoices,
+    linkedChoiceTimes,
+    timeIds: run.times.map((t) => t.key),
+    offerings: run.times.flatMap((t) =>
+      (t.offeringIds || [])
+        .map((id) => run.offeringById.get(id))
+        .filter(Boolean)
+        .map((o) => ({
+          timeId: t.key,
+          activityId: o.activityId,
+          offeringId: o.id
+        }))
+    )
+  });
+  const nameOfCopy = (copyId) => {
+    const use = usable.get(linkedIdOf(copyId));
+    return use ? use.choice.name : "";
+  };
+  plan.setAside.forEach((aside) => {
+    const time = run.timeByKey.get(aside.timeId);
     problems.push({
-      key: `shared|${seats}`,
-      ids: [...new Set(sharing.map((c) => c.id))],
-      name: names.map((n) => `"${n}"`).join(" and "),
-      text: `Share ${time ? timeWordsOf(time) : "a period"}`,
+      key: `shared|${aside.id}`,
+      ids: [linkedIdOf(aside.id)],
+      name: nameOfCopy(aside.id),
+      text: `Shares ${time ? timeWordsOf(time) : "a period"} with "${nameOfCopy(aside.keptId)}", which was kept as a set`,
       shared: true
     });
   });
 
-  return { linkedChoices, linkedChoiceTimes, usable, problems };
+  return { linkedChoices, linkedChoiceTimes, usable, problems, plan };
 }
 
 function timeWordsOf(time) {
   return `${weekdayOf(time.day)} ${time.startTime || time.blockName}`;
+}
+
+/** "Thu 12:30": a period this run doesn't have, as findings say it. */
+function missingName(run, period) {
+  const block = run.times.find((t) => t.blockId === period.blockId);
+  const when = block ? block.startTime || block.blockName : "";
+  return `${String(period.weekday).slice(0, 3)} ${when}`.trim();
 }
 
 /** "at Thursday 12:30 for Seniors": a period by its weekday and its block's start or name. */
@@ -227,65 +250,67 @@ export function linkedRows(run, linked, camper, saved, base) {
 }
 
 /**
- * Campers who asked for a linked choice the engine places as a set but can't have it as one, by
- * the engine's own rule (shoreshElectiveEngine placeLinkedChoices, UNSUPPORTED_LINKED_CHOICE with
- * camperIds): they take some of a copy's times but not all ("absent"), or hold a locked seat at
- * one ("locked"). The engine fills theirs one period at a time. A camper who takes none of a
- * copy's times is another division's, and is not one of these.
+ * Campers who asked for a linked choice but can't have it as a set, by the engine's own rule
+ * (shoreshElectiveEngine placeLinkedChoices and linkedSetPlan, through linked.plan): over the
+ * periods a set has in this run, they take some but not all ("absent"), or hold a locked seat at
+ * one ("locked"); or the set was set aside because another of the same offering, kept as a set,
+ * shares a period with it ("shared", with keptName and timeKey). The engine fills theirs one
+ * period at a time. A camper who takes none of a copy's periods is another division's, and is
+ * not one of these.
  * choices: the engine's choice rows; attendance: camperId -> the time keys the engine is given;
- * locks: the locks the engine is given. Returns [{ camperId, linkedChoiceId, name, reason }].
+ * locks: the locks the engine is given.
+ * Returns [{ camperId, linkedChoiceId, name, reason, keptName?, timeKey? }].
  */
 export function splitOf(linked, choices, attendance, locks) {
-  // The copies the engine tries as sets: more than one time, all in the run, none shared.
-  const tried = [];
-  linked.usable.forEach((use, linkedChoiceId) => {
-    use.copies.forEach((copy) => {
-      const times = [...new Set(copy.times)];
-      if (times.length > 1 && !copy.missing) {
-        tried.push({ linkedChoiceId, name: use.choice.name, times });
-      }
-    });
-  });
-  const holders = new Map();
-  tried.forEach((c) =>
-    c.times.forEach((x) => holders.set(x, (holders.get(x) || 0) + 1))
-  );
+  const nameOfCopy = (copyId) => {
+    const use = linked.usable.get(linkedIdOf(copyId));
+    return use ? use.choice.name : "";
+  };
+  const asideOf = new Map(linked.plan.setAside.map((a) => [a.id, a]));
   const lockedAt = new Set(locks.map((l) => `${l.camperId}|${l.timeId}`));
   const split = [];
   const said = new Set();
-  tried
-    .filter((c) => c.times.every((x) => holders.get(x) === 1))
-    .forEach((c) => {
-      const key = linkedKey(c.linkedChoiceId);
-      const wanted = [];
-      choices.forEach((row) => {
-        if (
-          row.key === key &&
-          (row.timeId == null || c.times.includes(row.timeId)) &&
-          !wanted.includes(row.camperId)
-        ) {
-          wanted.push(row.camperId);
-        }
-      });
-      wanted.forEach((camperId) => {
-        const takes = attendance[camperId] || [];
-        const some = c.times.filter((x) => takes.includes(x)).length;
-        let reason = null;
-        if (some === 0) return;
-        if (some < c.times.length) reason = "absent";
-        else if (c.times.some((x) => lockedAt.has(`${camperId}|${x}`))) {
-          reason = "locked";
-        }
-        const once = `${camperId}|${c.linkedChoiceId}|${reason}`;
-        if (!reason || said.has(once)) return;
-        said.add(once);
-        split.push({
-          camperId,
-          linkedChoiceId: c.linkedChoiceId,
-          name: c.name,
-          reason
-        });
+  [...linked.plan.sets.keys()].forEach((copyId) => {
+    const times = [
+      ...new Set(linked.plan.sets.get(copyId).members.map((m) => m.timeId))
+    ];
+    if (times.length === 0) return;
+    const linkedChoiceId = linkedIdOf(copyId);
+    const aside = asideOf.get(copyId);
+    const key = linkedKey(linkedChoiceId);
+    const wanted = [];
+    choices.forEach((row) => {
+      if (
+        row.key === key &&
+        (row.timeId == null || times.includes(row.timeId)) &&
+        !wanted.includes(row.camperId)
+      ) {
+        wanted.push(row.camperId);
+      }
+    });
+    wanted.forEach((camperId) => {
+      const takes = attendance[camperId] || [];
+      const some = times.filter((x) => takes.includes(x)).length;
+      let reason = null;
+      if (some === 0) return;
+      if (aside) reason = "shared";
+      else if (some < times.length) reason = "absent";
+      else if (times.some((x) => lockedAt.has(`${camperId}|${x}`))) {
+        reason = "locked";
+      }
+      const once = `${camperId}|${linkedChoiceId}|${reason}`;
+      if (!reason || said.has(once)) return;
+      said.add(once);
+      split.push({
+        camperId,
+        linkedChoiceId,
+        name: nameOfCopy(copyId),
+        reason,
+        ...(aside
+          ? { keptName: nameOfCopy(aside.keptId), timeKey: aside.timeId }
+          : {})
       });
     });
+  });
   return split;
 }

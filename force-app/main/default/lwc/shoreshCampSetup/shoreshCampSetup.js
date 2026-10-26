@@ -42,7 +42,8 @@ import {
 } from "c/shoreshSpecialDetails";
 import {
   electivesOf,
-  hasBlankSeats,
+  seatsNeedingLook,
+  seatsLookWords,
   linkedNames,
   openCount
 } from "c/shoreshElectiveDetails";
@@ -1830,7 +1831,7 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /**
    * An offering's row, as the approved mock-up draws it (setup-a; desktop ElectiveSetDetail.jsx):
-   * the activity, its seats (a number, "No limit", or "Closed" for 0), its minimum ("No minimum"
+   * the activity, its seats (a number, "No limit", or nothing while blank), its minimum ("No minimum"
    * quiet), who can take it and where it happens (the activity's, read only, never typed twice),
    * and its linked choices. An activity is offered once in a set: the choice leaves out those
    * already offered there.
@@ -1963,21 +1964,23 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
-   * A limited offering with no seats yet carries the needs-a-look corner on its seats, its
-   * words only (seats are not assigned until they are filled in; desktop "Fill blank capacities
-   * first.").
+   * A limited offering with blank or 0 seats carries the needs-a-look corner on its seats, its
+   * words only (the seat run places it with no limit and says so; Greg, 2026-10-26).
    */
   get offeringMarks() {
     const t = this.terms;
     const names = this.activityNames;
-    const words = "Seats not filled in yet";
     const result = {};
-    this.electives.offerings.filter(hasBlankSeats).forEach((o) => {
+    this.electives.offerings.forEach((o) => {
+      const kind = seatsNeedingLook(o);
+      if (!kind) return;
+      const activity = names.get(o[OFFER.Activity]) || "";
+      const words = seatsLookWords(activity, t.pIn("Seats"));
       result[o.Id] = {
         [OFFER.Seats]: {
           field: "seats",
           words,
-          name: `${t.s("Seats")} for ${names.get(o[OFFER.Activity]) || ""}: ${words.toLowerCase()}`,
+          name: `${t.s("Seats")} for ${activity}: ${words}`,
           wordsOnly: true
         }
       };

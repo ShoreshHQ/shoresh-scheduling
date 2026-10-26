@@ -84,7 +84,8 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
      `NoSeatLimit__c`, `MinimumToRun__c`, `Proposed__c`, `CopiedFrom__c`. Who can take it and where
      it happens come from the activity; the data model's `Location__c` is not added.
      A set's count ("Chugim (4)") means confirmed, open offerings only (decision 53): not
-     `Proposed__c` and not closed (0 seats). It is worked out when shown, so no count field
+     `Proposed__c` (0 or blank seats don't close one: they need a look, and the seat run uses no
+     limit). _(Amended 2026-10-26, engine care PR 8: 0 is not closed.)_ It is worked out when shown, so no count field
      is stored and no field changes for it.
    - `LinkedChoice__c` (detail of ElectiveSet): Name, `Offering__c` (required, same set),
      `AppliesTo__c` (All, Only these, All except; All by default), `SortOrder__c`, `CopiedFrom__c`.
@@ -141,8 +142,8 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
 6. **Kept inside the season** (as every setup record is): an offering's activity, a linked
    choice's time blocks and divisions, a run's set and week, all in the same season; a linked
    choice's offering in the same set; a run's schedule (and final schedule) of the run's week.
-   Seats are 0 or more (0 is closed) or No limit; blank seats are allowed (seats are not assigned
-   until they are filled, plan §2); a minimum is blank or 1 or more.
+   Seats are 0 or more or No limit; blank seats are allowed; blank or 0 is assigned with no limit
+   and said (Greg, 2026-10-26; ADR 0016 "Engine care PR 8"); a minimum is blank or 1 or more.
 7. **Who a linked choice is for** uses `Coverage__c`, which gains the owner `LinkedChoice__c`
    (exactly one owner: a recurring activity or a linked choice). A linked choice's rows name
    divisions only ("Choose a division: a linked choice is for whole divisions."), read only when
@@ -197,7 +198,7 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
 13. **Its layout is the approved mock-up's (setup-a).** The rail counts the season's elective
     sets ("2 elective sets", in the camp's word) with the quiet Saved. One section per set, in name
     order, headed with its name and its count of **confirmed, open offerings** (decision 53: not
-    proposed, not closed; blank seats still count, they are only not filled in yet), so "Chugim 4"
+    proposed; blank or 0 seats still count, and their seats carry the needs-a-look corner) _(Amended 2026-10-26, engine care PR 8: 0 is not closed.)_, so "Chugim 4"
     is the number the grid will show. A row per offering, in the activity's name order (the
     desktop's): the activity (a choice of the season's activities, less those already offered in
     that set: an activity is offered once in a set), its seats, its minimum, who can take it and
@@ -206,8 +207,8 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
     deleted in a list under the sections ("Elective sets", "Add Elective set"), as location types
     are under the Locations sections. The desktop's set table ("Open", "Rename", "Delete") and its
     separate set page become this one screen, as the mock-up draws it.
-14. **Seats say what they are** (desktop D3: "No limit" and closed must be unmistakable). At rest
-    a number, "No limit" (ticked), "Closed" (0), or nothing while blank; under the pointer or while
+14. **Seats say what they are** (desktop D3: "No limit" must be unmistakable). At rest
+    a number (0 too, marked for a look), "No limit" (ticked), or nothing while blank (marked); _(Amended 2026-10-26, engine care PR 8: 0 is not closed.) Was "Closed" for 0.)_ under the pointer or while
     the row is edited, the number and a No limit tick in their place. The number waits while No
     limit is ticked; its value is kept, and ignored, as the validation rule already says. The
     minimum is a number, "No minimum" quiet while blank; 0 is refused by the rule ("Must be 1 or
@@ -262,7 +263,7 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
       or activity on a list (`ImportListRows`: new-only links).
     - **Proposed**: an offering a list adds is proposed unless the file says No (the desktop's
       import only ever proposes, `electiveSetPopulate.js`); a file with only names offers each
-      with no seat limit, as the desktop's import does. Seats are a number (0 is closed), "No
+      with no seat limit, as the desktop's import does. Seats are a number, "No
       limit", or blank (not filled in yet, on a new offering too). On an offering set up, every
       difference, Proposed included, is a Keep or Change: a file never confirms or un-confirms
       one silently.
@@ -382,8 +383,8 @@ at a place.
     `deriveOccurrences.js`): from the run's schedule's days, one elective time per day, time block
     and division where the set sits, with the bunks there. A time offers the set's **confirmed**
     offerings whose activity is open to it (no eligibility rows, or one for its division or one of
-    its bunks; `c/shoreshEngine` `readEligibility`'s rule, per division); a closed one (0 seats)
-    is offered and takes nobody. Each division's time has the offering's seats, as the desktop
+    its bunks; `c/shoreshEngine` `readEligibility`'s rule, per division); an offering with 0 or
+    blank seats is offered with no limit, and said (ADR 0016 "Engine care PR 8"). Each division's time has the offering's seats, as the desktop
     gives each occurrence its capacity. A camper takes their bunk's time; a camper whose sheet gave
     no bunk takes, at each day and block, the first division's time there (division order), and
     is listed under "No Bunk" with the needs-a-look corner (decision 48.5; the desktop's
@@ -395,8 +396,8 @@ at a place.
     session at Friday Period 9 on this schedule.").
 31. **Assign seats runs the engine in the browser** (ADR 0016) on the run's choices and locks, with
     no linked choices yet (slice E8; the input keeps their shape). Choices in no order are a tie,
-    rank 1 each, never an order. A confirmed limited offering with blank seats stops it before
-    anything is sent ("Fill blank capacities first." and the names). The browser sends the seats;
+    rank 1 each, never an order. A confirmed limited offering with blank or 0 seats is placed with
+    no limit and said (ADR 0016 "Engine care PR 8"; it used to stop the run). The browser sends the seats;
     the server (`ElectiveSeatSaves.assign`) **checks what it saves** (plan §5): the run is
     committed and at the revision the screen read; every seat's camper is in the run, at a time
     their bunk holds the set now, once per day and block, in an offering confirmed and open then;

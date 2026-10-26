@@ -224,7 +224,7 @@ private class ElectivesScreenTest {
           null
         )
         .id;
-      // Closed this summer: 0 seats; and a minimum.
+      // 0 seats (saved; the seat run uses no limit and says so); and a minimum.
       RowSaves.Result closed = save(
         new Offering__c(
           Id = menu.archery.Id,

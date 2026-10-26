@@ -790,7 +790,7 @@ describe("elective offerings", () => {
   const electives = (setup) =>
     setupProblems(setup, terms).filter((p) => p.screen === "electives");
 
-  it("a proposed offering and one with blank seats need a look; closed and no limit don't", () => {
+  it("a proposed offering and one with blank or 0 seats need a look; no limit doesn't", () => {
     const problems = electives(
       electiveSetup([
         { Id: "o1", ElectiveSet__c: "es1", Activity__c: "a1", Seats__c: 0 },
@@ -811,8 +811,13 @@ describe("elective offerings", () => {
       ])
     );
     expect(problems.map((p) => [p.name, p.why, p.markedInPlace])).toEqual([
+      ["Swim", 'In "Chugim": choose how many seats "Swim" has.', true],
       ["Woodworking", 'In "Chugim": proposed, not confirmed yet.', true],
-      ["Photography", 'In "Chugim": seats not filled in yet.', true]
+      [
+        "Photography",
+        'In "Chugim": choose how many seats "Photography" has.',
+        true
+      ]
     ]);
   });
 

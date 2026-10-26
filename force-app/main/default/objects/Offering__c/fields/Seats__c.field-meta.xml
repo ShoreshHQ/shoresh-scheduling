@@ -2,7 +2,7 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Seats__c</fullName>
     <description
-  >How many campers can take it at one time. 0 means closed this time; blank means not filled in yet (seats are not assigned until it is). Ignored when No Seat Limit is ticked.</description>
+  >How many campers can take it at one time. Blank (not filled in yet) or 0: seats are still assigned with no limit, and the director is told. Ignored when No Seat Limit is ticked. Proposed, or not open to a division or period, is how an offering is not offered.</description>
     <label>Seats</label>
     <precision>5</precision>
     <required>false</required>
