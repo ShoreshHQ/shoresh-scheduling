@@ -4517,6 +4517,10 @@ async function generated(openGenerated) {
     }
     if (!(await tabTo(named(/^Generate a schedule/))))
       throw new Error("Generate not reached.");
+    // How long Generate takes in the org's page (Lightning and its sandbox around the engine),
+    // to set beside npm run time:engine:browser (docs/engine/protocol.md); from Enter to
+    // "Filled", so it includes saving the week.
+    const generateStarted = Date.now();
     await expectLive(
       S,
       "Generate: it is said when it ends",
@@ -4524,6 +4528,8 @@ async function generated(openGenerated) {
       () => press("Enter"),
       90000
     );
+    const generateSeconds = ((Date.now() - generateStarted) / 1000).toFixed(1);
+    results.pass(S, "Generate: how long", `${generateSeconds} s.`);
     await expectFocusKept(S, "Generate: focus not lost when the button goes");
   });
   await step(S, "axe", () => axe(S));
