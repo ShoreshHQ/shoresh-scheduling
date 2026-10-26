@@ -97,6 +97,7 @@ function placementOf(row, b) {
  * locks the target holds. Otherwise, as a hand edit (GeneratedEdits.lock): the whole placement of
  * each changed cell is locked when the cell holds something and unlocked when Open (a fixed or
  * recurring activity is never locked), and what is left of a placement made shorter is locked.
+ * A cell a fixed or recurring activity is cleared from by hand is locked empty.
  */
 export function foldRun(locks, run, target) {
   const next = new Set(locks);
@@ -131,6 +132,12 @@ export function foldRun(locks, run, target) {
       return;
     }
     const b = row.ids.indexOf(id);
+    if (run.after[i] === "" && isSetTime(run.before[i])) {
+      // A fixed or recurring activity cleared or moved away by hand: locked empty, so no build
+      // fills it (Greg, 2026-10-26: the director's choice beats anything generated).
+      next.add(lockKey(run.day, run.groupId, id));
+      return;
+    }
     lockIfFilled(b);
     if (b > 0 && run.before[i].startsWith("^")) {
       // What is left of the placement this cell carried on from (made shorter).

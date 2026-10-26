@@ -2,7 +2,9 @@
  * What a hand edit on Generated Schedule adds to Manual Build's slot saves (SlotSaves): a run is
  * made only if its cells' locks are still as the screen saw them (locksBefore), so nobody's Lock
  * is removed or covered unseen; and every cell an edit changes is locked when it holds something
- * (its whole placement), unlocked when it is left Open (Greg, 2026-10-17: hand edits are locks);
+ * (its whole placement), unlocked when it is left Open (Greg, 2026-10-17: hand edits are locks),
+ * except a cell a fixed or recurring activity is cleared from, which is locked empty (Greg,
+ * 2026-10-26: a set time the director cleared by hand is never filled by a build);
  * an Undo or Redo leaves the locks its run names instead (the screen works them out: the step's
  * own locks taken back or made again, a Lock set or removed since kept; Greg, 2026-10-18).
  */
@@ -48,6 +50,16 @@ public with sharing class GeneratedEdits {
     }
     List<String> now = SlotIds.ofRow(grid, at[0]);
     for (Integer b = at[1]; b < at[1] + run.after.size(); b++) {
+      if (
+        !now[b].equals(was[b]) &&
+        now[b] == SlotIds.OPEN &&
+        SlotIds.isSetTime(was[b])
+      ) {
+        // A fixed or recurring activity cleared or moved away by hand: locked empty, so no build
+        // fills it (Greg, 2026-10-26: the director's choice beats anything generated).
+        ScheduleGridLocks.lock(grid, new List<Integer>{ at[0], b });
+        continue;
+      }
       if (!now[b].equals(was[b])) {
         GeneratedLockCells.lockIfFilled(grid, new List<Integer>{ at[0], b });
       }

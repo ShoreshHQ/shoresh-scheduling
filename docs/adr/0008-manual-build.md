@@ -1414,11 +1414,16 @@ physical world. Flag it as a reminder but allow it."_
    elective set; drops onto a time a group isn't at camp are made. The cell keeps its look (set
    time lock mark, _Not at camp_ hatch). An editable grid no longer draws a row every bunk spends
    on the same fixed activity as one slim cell: each bunk's cell is its own, so one can be
-   changed (read-only grids still draw the slim row). Bulk tools (Copy and Paste, copy a day, a
-   rainy day) still leave fixed activities and not-at-camp times as they are: they are not one
-   cell the director chose.
+   changed (read-only grids still draw the slim row). **Copy and Paste are hand edits** (review
+   of #154): Copy takes fixed and recurring activities and not-at-camp times too, and a paste
+   covers a fixed or recurring activity and goes onto a time a bunk isn't at camp, reminded as
+   above. Copy day to… and a rainy day stay bulk tools: they still leave fixed and recurring
+   activities and not-at-camp times as they are, since they are not cells the director chose one
+   by one.
 5. **The engine never places them** (closed, away, not at camp, set time): generated builds are
-   unchanged. A hand edit on Generated is a lock, so later builds keep it (ADR 0010).
+   unchanged. A hand edit on Generated is a lock, so later builds keep it; a cell a fixed or
+   recurring activity is cleared or moved away from by hand is locked empty, so no build fills it
+   (ADR 0010).
 
 Checked by `ManualBuildTest` (`fixedRecurringAndNotAtCampSlotsAreHandEditsWithReminders`,
 `closedActivitiesPlacesAndGroupsAwayAreHandEditsWithReminders`, `whatProtectsTheDataIsStillRefused`),

@@ -60,6 +60,29 @@ public with sharing class WeekSpecials {
     );
   }
 
+  /**
+   * The dates of a week (read with its special days, ProgramReads.weekWithSpecialDays) that a
+   * special day replaces, worked out as the screen's are (ofWeek); null when the special days
+   * can't be read, so nobody can tell which days are replaced. No query.
+   */
+  public static Set<Date> replacedDates(Week__c week) {
+    if (!readable() || week.SpecialDates__r == null) {
+      return null;
+    }
+    Set<Date> result = new Set<Date>();
+    for (SpecialDate__c row : week.SpecialDates__r) {
+      Date onDate = SpecialDates.dateOf(
+        week.StartDate__c,
+        week.EndDate__c,
+        row.Day__c
+      );
+      if (onDate != null) {
+        result.add(onDate);
+      }
+    }
+    return result;
+  }
+
   /** The same, from a week read with its special days (ProgramReads.weekWithSpecialDays). */
   public static Specials ofWeek(Week__c week, List<Group__c> groups) {
     if (!readable() || week.SpecialDates__r == null) {

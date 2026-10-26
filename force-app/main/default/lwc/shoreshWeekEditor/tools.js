@@ -88,6 +88,17 @@ function sortRow(day, row, isAwayAt, skipAt) {
   return result;
 }
 
+/** A row's fixed and recurring activities, as placements. */
+function setTimeIn(row) {
+  const found = [];
+  row.forEach((slot, b) => {
+    if (slot && !slot.startsWith(CARRIES_ON) && isSetTime(slot)) {
+      found.push(placementIn(row, b));
+    }
+  });
+  return found;
+}
+
 function clearPlacements(row, placements) {
   placements.forEach((p) => {
     for (let i = 0; i < p.length; i++) {
@@ -237,14 +248,20 @@ function place(row, head, source, target, checks) {
  * Puts a placement (`slot`) on a row's blocks `at` (indexes, next to each other), as place()
  * does; `isGone`: deleted from setup since it was placed.
  */
-function placeAt(row, at, slot, isGone, { isAwayAt, skipAt }) {
+function placeAt(
+  row,
+  at,
+  slot,
+  isGone,
+  { isAwayAt, skipAt, canPlace = isPlaceable }
+) {
   const wanted = at.map((tb, i) => {
     return i === 0 ? slot : CARRIES_ON + slot;
   });
   if (at.every((tb, i) => row[tb] === wanted[i])) {
     return null;
   }
-  if (!isPlaceable(slot)) {
+  if (!canPlace(slot)) {
     return { why: LEFT_OUT.NOT_SET_UP };
   }
   if (isGone) {
@@ -268,10 +285,12 @@ function placeAt(row, at, slot, isGone, { isAwayAt, skipAt }) {
 }
 
 /**
- * Pastes copied cells (Edit > Paste, Ctrl/Cmd+V; Greg decision 45) as one change, by the same
- * rules as Copy day to…: what goes in is an activity still in setup, at a time its bunk is at
- * camp; fixed and recurring activities stay where setup put them; what can't go is left out
- * whole and listed. tool: { items: [{ date, groupId, blockIds, slot, gone, name }] (each
+ * Pastes copied cells (Edit > Paste, Ctrl/Cmd+V; Greg decision 45) as one change. A paste is a
+ * hand edit (Greg, 2026-10-26: always made, reminded of in the Why list): it goes onto a fixed or
+ * recurring activity (covering it) and onto a time its bunk isn't at camp, and a copied fixed or
+ * recurring activity is pasted too. Otherwise as Copy day to…: what goes in is still in setup;
+ * what can't go is left out whole and listed. Copy day to… and a rainy day stay bulk tools, which
+ * leave fixed and recurring activities and not-at-camp times as they are. tool: { items: [{ date, groupId, blockIds, slot, gone, name }] (each
  * placement, by the blocks it goes onto, next to each other), opens: [cell keys] (copied Open
  * cells: what is there is cleared), outside: [{ slot, name }] (no room on the grid) }. Every
  * placement Undo could put back that a pasted cell touches is cleared whole first. Returns {
@@ -279,7 +298,9 @@ function placeAt(row, at, slot, isGone, { isAwayAt, skipAt }) {
  * indexes, null for no room).
  */
 export function pasteEdit(days, tool, options = {}) {
-  const { isAway = never, skip = never } = options;
+  // A hand edit: no time is away for it (options.isAway is not used).
+  const { skip = never } = options;
+  const isAway = never;
   const rows = new Rows(days);
   const noRoom = (o) => ({
     day: null,
@@ -343,10 +364,20 @@ export function pasteEdit(days, tool, options = {}) {
       row,
       sorted.clear.filter((p) => touches(p.first, p.length))
     );
+    // A fixed or recurring activity a pasted cell touches is covered whole, as by hand.
+    clearPlacements(
+      row,
+      setTimeIn(row).filter(
+        (p) =>
+          touches(p.first, p.length) &&
+          ![...Array(p.length).keys()].some((i) => skipAt(p.first + i))
+      )
+    );
     placements.forEach(({ item, at }) => {
       const result = placeAt(row, at, item.slot, !!item.gone, {
         isAwayAt,
-        skipAt
+        skipAt,
+        canPlace: (slot) => isPlaceable(slot) || isSetTime(slot)
       });
       if (result && result.skipped !== undefined) {
         skipped.add(`${d}|${g}|${result.skipped}`);

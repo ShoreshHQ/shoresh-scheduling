@@ -10,8 +10,9 @@
  * - Fill the open cells changes only cells that were Open;
  * - a locked cell is never changed (ScheduleGridLocks): its lock is the director's, and the
  *   server keeps the stored locks whatever the screen sends. Start over clears them all;
- * - Start over leaves no activity on a day it clears (every day but those a special day replaces):
- *   the screen clears every activity and builds nothing (ADR 0010, Start over).
+ * - Start over leaves no activity on a day it clears (every day but those a special day replaces;
+ *   not checked when the special days can't be read): the screen clears every activity and builds
+ *   nothing (ADR 0010, Start over).
  * These hold what the engine builds. A hand edit is never refused for them (SlotSaves; Greg,
  * 2026-10-26): it is saved locked, and a locked cell is never a changed cell here, so a save keeps
  * it unchecked, whatever closure, away group or set time it goes against. A cell the director
@@ -55,10 +56,12 @@ public with sharing class GeneratedChecks {
       request.action == GeneratedSaves.FILL_OPEN
     );
     checks.keepLocks = request.action != GeneratedSaves.START_OVER;
-    // Start over: the weekdays a special day replaces keep what they hold; every other is cleared.
-    Set<String> kept = checks.keepLocks
+    // Start over: the days a special day replaces keep what they hold; every other is cleared.
+    // Worked out as the screen works them out (WeekSpecials.replacedDates); when special days
+    // can't be read, no day can be told apart, so none is checked (never a wrong refusal).
+    Set<Date> kept = checks.keepLocks
       ? null
-      : WeekSpecials.replacedNames(setup.week.Id).keySet();
+      : WeekSpecials.replacedDates(setup.week);
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
@@ -68,7 +71,7 @@ public with sharing class GeneratedChecks {
       for (Integer g = 0; g < now.groups.size(); g++) {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
       }
-      if (kept != null && !kept.contains(BlankWeek.weekdayOf(day.day))) {
+      if (kept != null && !kept.contains(day.day)) {
         checkCleared(now);
       }
       grids.add(now);

@@ -1414,7 +1414,11 @@ reload…"; `GeneratedEngineNotesTest`.
 1. **A hand edit is never refused for setup** (Greg, engine care Q4; ADR 0008 part 12): a closed
    activity or place, a group away this week, a time a group isn't at camp, a fixed or recurring
    activity moved, covered or cleared. It is saved locked (§G4: hand edits are locks), and
-   reminded of in the Why list's setup rows.
+   reminded of in the Why list's setup rows. A cell a fixed or recurring activity is cleared or
+   moved away from by hand is locked **empty** (`GeneratedEdits.lock`, and the editor's
+   `foldRun`, cases shared in `GeneratedEditLocksTest`), so Rebuild and Fill the open cells keep it
+   Open; a build filling it is refused (_… is locked._). Checked by `GeneratedRefusalsTest`
+   `aFixedActivityClearedByHandStaysOpenThroughABuild`.
 2. **Whole-week saves still hold the engine to every rule** (§18, `GeneratedChecks`,
    `GeneratedClosures`), on the cells that changed. A locked cell is never a changed cell
    (`checkNotLocked`), so a Rebuild, Try another or Fill the open cells that keeps a hand edit
@@ -1429,8 +1433,11 @@ reload…"; `GeneratedEngineNotesTest`.
 3. **Start over is checked as what it is.** Start over builds nothing: the screen clears every
    activity of every day but those a special day replaces (`clearedDays`) and saves, all locks
    cleared. The server now checks exactly that: on Start over, no activity (start or carry-on)
-   is left on a day a special day doesn't replace (`GeneratedChecks.checkCleared`, the replaced
-   weekdays read with `WeekSpecials.replacedNames`, one query, Start over only). Anything else is
+   is left on a day a special day doesn't replace (`GeneratedChecks.checkCleared`). The replaced
+   dates are worked out as the screen's are (`WeekSpecials.replacedDates`, from the week already
+   read with its special days: no query). When the user can't read special days, the server
+   can't tell which days are replaced, so it checks none rather than refuse a Start over the
+   screen made correctly. Anything else is
    refused as a save the screen didn't make (_That change could not be read. Reload the page and
    try again._). Fixed and recurring activities, specials and elective sets stay, and are checked
    as any changed cell; the stored locks were already never the screen's (§G4). Nothing else needs

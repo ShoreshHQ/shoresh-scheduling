@@ -151,12 +151,14 @@ describe("c-shoresh-week-editor: Copy and Paste", () => {
     expect(cell(element, "0-2").className).toContain("cell_chosen");
     await shortcut(element, "0-2", "c");
     expect(notice(element)).toBe("Copied 2 activities.");
-    // Paste on Bunk 2's Period 2: Swim goes in; Soccer would be at Lunch, when Bunk 2 is away.
+    // Paste on Bunk 2's Period 2: Swim goes in, and Soccer at Lunch though Bunk 2 is away then
+    // (a paste is a hand edit, Greg 2026-10-26; the Why list reminds).
     await pasteAt(element, "1-1");
     expect(saveRuns).toHaveBeenCalledTimes(1);
     expect(cellText(element, "1-1")).toBe("Swim");
+    expect(cellText(element, "1-2")).toBe("Soccer");
     expect(toolNotice(element)).toBe(
-      "Pasted 2 activities · Bunk 2 · Monday · Period 2. 1 left out: Soccer · Bunk 2 · Monday: not at camp then. ·Undo"
+      "Pasted 2 activities · Bunk 2 · Monday · Period 2 ·Undo"
     );
     // What is pasted lets go of what was chosen.
     expect(chosen(element)).toEqual([]);
@@ -172,21 +174,28 @@ describe("c-shoresh-week-editor: Copy and Paste", () => {
     expect(toolNotice(element)).toContain("1 left out: Soccer: no room there.");
   });
 
-  it("fixed activities aren't copied, and a paste onto one is left out and said", async () => {
+  it("a fixed activity is copied and pasted, and a paste covers one, as by hand (Greg, 2026-10-26)", async () => {
     const { element, saveRuns } = await render(["1,2,", "1,,"]);
-    await fromGrid(element, "cellfocus", { key: "0-0" });
-    await fromGrid(element, "cellselect", { key: "0-1", extend: true });
-    await shortcut(element, "0-1", "c");
+    await copyAt(element, "0-1");
     expect(notice(element)).toBe("Copied Swim.");
-    // Onto Period 1, the row everyone spends at Flagpole (drawn as one cell).
+    // Onto Bunk 1's Flagpole: covered.
     await pasteAt(element, "0-0");
-    expect(saveRuns).not.toHaveBeenCalled();
-    expect(notice(element)).toBe(
-      "Nothing pasted. 1 left out: Swim · Bunk 1 · Monday: Flagpole is set up there."
-    );
-    // Copy and Paste leave fixed activities where they are; a hand move or edit can change one.
-    await copyAt(element, "0-0");
-    expect(notice(element)).toBe("Nothing copied: Flagpole is set up there.");
+    expect(sentRuns(saveRuns, 0)[0]).toMatchObject({
+      groupId: "g1",
+      firstBlockId: "t1",
+      before: ["F:f1"],
+      after: ["A:a1"]
+    });
+    // Bunk 2's Flagpole copied, pasted into its Period 2.
+    await copyAt(element, "1-0");
+    expect(notice(element)).toBe("Copied Flagpole.");
+    await pasteAt(element, "1-1");
+    expect(sentRuns(saveRuns, 1)[0]).toMatchObject({
+      groupId: "g2",
+      firstBlockId: "t2",
+      before: [""],
+      after: ["F:f1"]
+    });
   });
 
   it("a copied Open cell clears where it is pasted", async () => {

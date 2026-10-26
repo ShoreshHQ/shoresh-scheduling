@@ -21,8 +21,7 @@ import {
   isMovable,
   isSetTime,
   owner,
-  placement,
-  staysPut
+  placement
 } from "./slotEdits";
 import {
   eventRuns,
@@ -3659,9 +3658,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * Copy (Edit, or Cmd/Ctrl+C on the grid): what the cells hold, by where they sit, for Paste.
-   * Fixed and recurring activities stay where setup put them, so they aren't taken; nor is a
-   * time a bunk isn't at camp.
+   * Copy (Edit, or Cmd/Ctrl+C on the grid): what the cells hold, by where they sit, for Paste,
+   * fixed and recurring activities and times a bunk isn't at camp included (a paste is a hand
+   * edit, Greg 2026-10-26).
    */
   handleCopy() {
     const cells = this.copyCells;
@@ -3673,13 +3672,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     cells.forEach((cell) => {
       const day = this.dayOf(cell.slot);
       const at = placement(day, cell.slot.group, cell.slot.block);
-      if (staysPut(at.slot, this.ownPlan)) {
-        return;
-      }
+      // Fixed and recurring activities and not-at-camp times are copied too: a paste is a hand
+      // edit (Greg, 2026-10-26).
       if (at.slot === OPEN) {
-        if (!this.isAwaySlot(cell.slot)) {
-          opens.push({ row: cell.row, column: cell.column });
-        }
+        opens.push({ row: cell.row, column: cell.column });
         return;
       }
       const saved = this.savedItem(at.slot, day);
@@ -3693,13 +3689,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       });
     });
     if (!items.length && !opens.length) {
-      const day = this.dayOf(cells[0].slot);
-      const at = placement(day, cells[0].slot.group, cells[0].slot.block);
-      this.refuse(
-        staysPut(at.slot, this.ownPlan)
-          ? `Nothing copied: ${this.nameOf(at.slot, day)} is set up there.`
-          : "Nothing to copy there."
-      );
+      this.refuse("Nothing to copy there.");
       return;
     }
     const all = [...items, ...opens];

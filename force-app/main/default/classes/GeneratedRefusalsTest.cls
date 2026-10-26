@@ -876,4 +876,51 @@ private class GeneratedRefusalsTest {
       );
     }
   }
+
+  @IsTest
+  static void aFixedActivityClearedByHandStaysOpenThroughABuild() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      generated();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> period1A = GeneratedTestData.at(
+        GeneratedTestData.GROUP_A,
+        GeneratedTestData.PERIOD_1
+      );
+      Test.startTest();
+      // Group A's Flagpole cleared by hand (Greg, 2026-10-26): saved, and locked empty.
+      SlotEdits.Result saved = GeneratedTestData.handEdits(
+        read.scheduleId,
+        new List<SlotEdits.Edit>{
+          handEdit(read, period1A, 'F:' + ids.get('Flagpole'), '')
+        },
+        read.revision
+      );
+      Assert.isTrue(saved.conflicts.isEmpty(), String.valueOf(saved.conflicts));
+      read.revision = saved.revision;
+      read.days = saved.schedule.days;
+      // A build filling it is refused: the director's choice beats anything generated.
+      GeneratedWeek.Save filled = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(filled.days[0], period1A, 'Soccer');
+      Assert.areEqual(
+        'Group A · Monday · Period 1 is locked.',
+        GeneratedTestData.refusal(filled)
+      );
+      // A Rebuild leaving it Open: saved.
+      GeneratedWeek.Result kept = GeneratedTestData.save(
+        request(read, GeneratedSaves.REBUILD)
+      );
+      Test.stopTest();
+      Assert.isFalse(kept.conflict, kept.message);
+      Assert.areEqual(
+        '',
+        GeneratedTestData.slots(
+          read.scheduleId,
+          GeneratedTestData.at(0, GeneratedTestData.GROUP_A)
+        )[
+          GeneratedTestData.PERIOD_1
+        ]
+      );
+    }
+  }
 }
