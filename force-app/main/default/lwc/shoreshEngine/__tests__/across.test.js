@@ -10,6 +10,22 @@ import { problems } from "./data/check";
 import { sharedCamp } from "./data/sharedCamp";
 import { sampled } from "shoresh-jest/sample";
 
+// The same engine with the moves between days switched off, for comparing a week with and
+// without them (mockAcross.off); the engine itself has no such switch.
+const mockAcross = { off: false };
+jest.mock("../weekAcross", () => {
+  const actual = jest.requireActual("../weekAcross");
+  return {
+    ...actual,
+    *moveAcrossDays(...args) {
+      if (mockAcross.off) {
+        return new Set();
+      }
+      return yield* actual.moveAcrossDays(...args);
+    }
+  };
+});
+
 // The differential's camps (data/sharedCamp.js): CI checks the first 60, the full run 200.
 const SEEDS = sampled(200, 60);
 // Differential camps where a group's minimum is met only by moving sessions between days.
@@ -141,4 +157,137 @@ describe("the same week every time", () => {
       }
     }
   );
+});
+
+/** Sessions short per "group|activity" (who it's for and minimums from the spec), from the grid. */
+function shortBy(spec, days) {
+  const { week } = countsOf(days);
+  const short = new Map();
+  for (const g of spec.groups) {
+    for (const a of spec.activities) {
+      const forGroup =
+        !a.eligible.length ||
+        a.eligible.includes(g.id) ||
+        a.eligible.includes(g.division);
+      const missing = a.min - (week.get(`${g.id}|${a.id}`) || 0);
+      if (forGroup && missing > 0) {
+        short.set(`${g.id}|${a.id}`, missing);
+      }
+    }
+  }
+  return short;
+}
+
+/** Open cells per date. */
+function openByDate(result) {
+  const n = new Map();
+  for (const c of result.openCells) {
+    const { date } = c;
+    n.set(date, (n.get(date) || 0) + 1);
+  }
+  return n;
+}
+
+describe("with and without the moves between days", () => {
+  it("never leaves a group newly or further short, never a day with more Open cells", () => {
+    let fewer = 0;
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const spec = sharedCamp(seed);
+      mockAcross.off = true;
+      const without = generateWeek(camp(spec));
+      mockAcross.off = false;
+      const withIt = generateWeek(camp(spec));
+      if (!without.ok) {
+        continue;
+      }
+      const a = shortBy(spec, without.days);
+      const b = shortBy(spec, withIt.days);
+      const worse = [...b].filter(([k, n]) => n > (a.get(k) || 0));
+      expect([seed, worse]).toEqual([seed, []]);
+      const total = (m) => [...m.values()].reduce((x, y) => x + y, 0);
+      expect(total(b)).toBeLessThanOrEqual(total(a));
+      if (total(b) < total(a)) {
+        fewer++;
+      }
+      const openA = openByDate(without);
+      const moreOpen = [...openByDate(withIt)].filter(
+        ([date, n]) => n > (openA.get(date) || 0)
+      );
+      expect([seed, moreOpen]).toEqual([seed, []]);
+    }
+    expect(fewer).toBeGreaterThan(0);
+  });
+});
+
+describe("kept cells never move", () => {
+  const SEED = 123;
+  const spec = sharedCamp(SEED);
+  const built = generateWeek(camp(spec));
+  const dates = camp(spec).days.map((d) => d.dateValue);
+  // What the moves between days changed, put back by hand where they took something out.
+  const handEdits = minimumMoves(built)
+    .filter((m) => m.from)
+    .map((m) => ({
+      day: dates.indexOf(m.date),
+      group: m.groupId,
+      block: m.blockId,
+      act: m.from
+    }));
+
+  it("leaves a locked hand edit where the director put it", () => {
+    expect(handEdits.length).toBeGreaterThan(0);
+    const locked = {
+      ...spec,
+      cells: handEdits,
+      locks: handEdits.map((c) => ({
+        date: dates[c.day],
+        groupId: c.group,
+        blockId: c.block
+      }))
+    };
+    const input = camp(locked);
+    const result = generateWeek(input);
+    const grid = cellsOf(result.days);
+    for (const c of handEdits) {
+      const b = spec.blocks.findIndex((x) => x.id === c.block);
+      expect([c, grid[c.day][c.group][b].id]).toEqual([c, c.act]);
+    }
+    const isLocked = new Set(
+      input.locks.map((l) => `${l.date}|${l.groupId}|${l.blockId}`)
+    );
+    for (const m of result.moved) {
+      expect(isLocked.has(`${m.date}|${m.groupId}|${m.blockId}`)).toBe(false);
+    }
+  });
+
+  it("in fill the open cells, keeps every filled cell as it was", () => {
+    // The built week with the cells it moved emptied: every other cell is kept.
+    const moved = new Set(
+      minimumMoves(built).map(
+        (m) => `${dates.indexOf(m.date)}|${m.groupId}|${m.blockId}`
+      )
+    );
+    const cells = [];
+    cellsOf(built.days).forEach((byGroup, d) => {
+      for (const [g, row] of Object.entries(byGroup)) {
+        row.forEach((cell, b) => {
+          const block = spec.blocks[b].id;
+          if (
+            cell &&
+            cell.kind === "A" &&
+            cell.head &&
+            !moved.has(`${d}|${g}|${block}`)
+          ) {
+            cells.push({ day: d, group: g, block, act: cell.id });
+          }
+        });
+      }
+    });
+    const result = generateWeek(camp({ ...spec, cells, mode: "fillOpen" }));
+    const grid = cellsOf(result.days);
+    for (const c of cells) {
+      const b = spec.blocks.findIndex((x) => x.id === c.block);
+      expect([c, grid[c.day][c.group][b].id]).toEqual([c, c.act]);
+    }
+  });
 });

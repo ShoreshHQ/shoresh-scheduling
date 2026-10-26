@@ -1,4 +1,4 @@
-import { NOW, nowOf } from "./progress";
+import { NOW, nowOf, tell } from "./progress";
 import { check } from "./weekOptions";
 import { PREFERENCES } from "./weekRules";
 
@@ -36,6 +36,8 @@ import { PREFERENCES } from "./weekRules";
 const CHAIN_STEPS = 4;
 const PAIR_WORK = 3000;
 const PASS_WORK = 60000;
+// Moves tried between pauses, so the screen keeps the tab responsive.
+const PAUSE_EVERY = 200;
 
 /** The bends placing `act` here would need: null when a limit forbids it. */
 function allowed(st, act, g, d, b) {
@@ -162,7 +164,7 @@ function lessThan(a, b) {
  * above). Returns the chain's moves ({ g, d, b, from, to } per cell changed, in the order made)
  * applied to the week, or null with the week as it was.
  */
-function bestChain(st, g0, need, budget, outOfWork) {
+function* bestChain(st, g0, need, budget, outOfWork, at) {
   const journal = [];
   const doPlace = (act, g, d, b) => {
     st.place(act, g, d, b);
@@ -191,6 +193,15 @@ function bestChain(st, g0, need, budget, outOfWork) {
   let work = 0;
   let best = null;
   const spent = () => work >= budget || outOfWork(st);
+  // One move tried: charged to the search's budget at once, and every PAUSE_EVERY a pause, so
+  // the screen keeps the tab responsive (the week is mid-chain then; only watch.now is read).
+  function* tried() {
+    work++;
+    st.searchWorkLeft--;
+    if (work % PAUSE_EVERY === 0) {
+      yield at;
+    }
+  }
 
   const finish = () => {
     // No day ends with more Open cells than it had: a cell is left Open only for another of the
@@ -241,7 +252,7 @@ function bestChain(st, g0, need, budget, outOfWork) {
   let makeRoom;
 
   // tasks: what is still to do, first first: { place: act, g } or { fill: key }.
-  const run = (tasks, steps) => {
+  const run = function* (tasks, steps) {
     if (spent()) {
       return;
     }
@@ -258,16 +269,16 @@ function bestChain(st, g0, need, budget, outOfWork) {
     const task = tasks[i];
     const rest = [...tasks.slice(0, i), ...tasks.slice(i + 1)];
     if (task.fill) {
-      fill(task.fill, rest, steps);
+      yield* fill(task.fill, rest, steps);
     } else if (steps > 0) {
-      place(task.place, task.g, rest, steps - 1);
+      yield* place(task.place, task.g, rest, steps - 1);
     }
   };
 
   // An emptied cell gets any one-block activity allowed for its group there (counts only rise).
-  fill = (k, rest, steps) => {
+  fill = function* (k, rest, steps) {
     if (st.assigned.has(k)) {
-      run(rest, steps);
+      yield* run(rest, steps);
       return;
     }
     const [g, d, b] = st.splitKey(k);
@@ -278,17 +289,17 @@ function bestChain(st, g0, need, budget, outOfWork) {
       if (act.span !== 1 || !st.eligibility.get(act.id).has(g)) {
         continue;
       }
-      work++;
+      yield* tried();
       if (allowed(st, act, g, d, b)) {
         const mark = journal.length;
         doPlace(act, g, d, b);
-        run(rest, steps);
+        yield* run(rest, steps);
         undoTo(mark);
       }
     }
     // Or left Open, when the chain fills another cell in its place (finish counts them).
     if (!spent()) {
-      run(rest, steps);
+      yield* run(rest, steps);
     }
   };
 
@@ -313,12 +324,12 @@ function bestChain(st, g0, need, budget, outOfWork) {
     return out;
   };
 
-  place = (act, g, rest, steps) => {
+  place = function* (act, g, rest, steps) {
     for (const s of starts(act, g)) {
       if (spent()) {
         return;
       }
-      work++;
+      yield* tried();
       const mark = journal.length;
       // Take out what is in the cells (whole placements; one reaching a kept cell can't move).
       const out = [];
@@ -355,9 +366,9 @@ function bestChain(st, g0, need, budget, outOfWork) {
         }
         if (allowed(st, act, g, s.d, s.b)) {
           doPlace(act, g, s.d, s.b);
-          run([...more, ...rest], steps);
+          yield* run([...more, ...rest], steps);
         } else if (steps > 0) {
-          makeRoom(act, g, s, [...more, ...rest], steps);
+          yield* makeRoom(act, g, s, [...more, ...rest], steps);
         }
       }
       undoTo(mark);
@@ -365,7 +376,7 @@ function bestChain(st, g0, need, budget, outOfWork) {
   };
 
   // The activity, or its place, is full then: another group's session there makes room.
-  makeRoom = (act, g, s, rest, steps) => {
+  makeRoom = function* (act, g, s, rest, steps) {
     const seen = new Set();
     for (const h of st.model.groupIds) {
       if (h === g) {
@@ -386,7 +397,7 @@ function bestChain(st, g0, need, budget, outOfWork) {
         if (!p.keys.every((x) => movable(st, x)) || spent()) {
           continue;
         }
-        work++;
+        yield* tried();
         const mark = journal.length;
         doUnplace(p);
         if (allowed(st, act, g, s.d, s.b)) {
@@ -397,7 +408,7 @@ function bestChain(st, g0, need, budget, outOfWork) {
           if (needs(st, h, p.act)) {
             more.push({ place: p.act, g: h });
           }
-          run([...more, ...rest], steps - 1);
+          yield* run([...more, ...rest], steps - 1);
           if (!hadH) {
             groups.delete(h);
           }
@@ -407,8 +418,7 @@ function bestChain(st, g0, need, budget, outOfWork) {
     }
   };
 
-  run([{ place: need, g: g0 }], CHAIN_STEPS);
-  st.searchWorkLeft -= work;
+  yield* run([{ place: need, g: g0 }], CHAIN_STEPS);
   if (!best) {
     return { work, moves: null };
   }
@@ -465,7 +475,22 @@ export function* moveAcrossDays(st, at, outOfWork) {
         if (left <= 0 || outOfWork(st)) {
           break;
         }
-        const r = bestChain(st, g, need, Math.min(PAIR_WORK, left), outOfWork);
+        tell(
+          st,
+          NOW.SHORT,
+          8,
+          { dayIndex: null, groupId: g, blockId: null },
+          need.id
+        );
+        yield at;
+        const r = yield* bestChain(
+          st,
+          g,
+          need,
+          Math.min(PAIR_WORK, left),
+          outOfWork,
+          at
+        );
         left -= r.work;
         if (!r.moves) {
           tried.add(k);
