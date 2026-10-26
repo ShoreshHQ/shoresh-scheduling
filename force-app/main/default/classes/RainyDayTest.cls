@@ -349,7 +349,8 @@ private class RainyDayTest {
       GeneratedScheduleController.saveSlots(
         draftId,
         new List<SlotEdits.Edit>{ marksOnly },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId)),
+        null
       );
       Test.startTest();
       Integer before = Limits.getQueries();

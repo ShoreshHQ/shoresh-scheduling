@@ -189,20 +189,20 @@ export function openCells(
 }
 
 /**
- * The engine's reasons for the cells its build left Open ("date|groupId|blockId" to words),
- * without those of the cells these edits change by hand (each run's blocks, from its first, as
- * many as it holds before or after): a cell changed after the build says what the week as it
- * stands shows (wiki engine care plan Q18). days: the week's days (their blocks). A new Map.
+ * The cells these hand edits change ("date|groupId|blockId": each run's blocks, from its first, as
+ * many as it holds before or after): a cell changed after the build no longer has the engine's
+ * reason, it says what the week as it stands shows (wiki engine care plan Q18). days: the week's
+ * days (their blocks). A new Set.
  */
-export function withoutEdited(reasons, edits, days) {
-  const out = new Map(reasons);
+export function editedKeys(edits, days) {
+  const out = new Set();
   (edits || []).forEach((edit) =>
     ((edit && edit.runs) || []).forEach((run) => {
       const day = (days || []).find((d) => d.dateValue === run.day);
       const blocks = (day && day.blocks) || [];
       const first = blocks.findIndex((b) => b.id === run.firstBlockId);
       if (first < 0) {
-        out.delete(`${run.day}|${run.groupId}|${run.firstBlockId}`);
+        out.add(`${run.day}|${run.groupId}|${run.firstBlockId}`);
         return;
       }
       const length = Math.max(
@@ -212,7 +212,7 @@ export function withoutEdited(reasons, edits, days) {
       );
       blocks
         .slice(first, first + length)
-        .forEach((b) => out.delete(`${run.day}|${run.groupId}|${b.id}`));
+        .forEach((b) => out.add(`${run.day}|${run.groupId}|${b.id}`));
     })
   );
   return out;

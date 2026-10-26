@@ -192,7 +192,9 @@ describe("c/shoreshGeneratedWeek locks", () => {
             { ...edits[0].runs[1], locksBefore: [""] }
           ]
         }
-      ]
+      ],
+      // No engine notes given: the week keeps them as they are.
+      engineNotes: null
     });
     expect(result.status).toBe(SAVED);
     expect(result.conflicts).toEqual([]);

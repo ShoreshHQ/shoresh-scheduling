@@ -485,7 +485,8 @@ private class GeneratedLimitsTest {
       SlotEdits.Result edited = GeneratedScheduleController.saveSlots(
         draftId,
         new List<SlotEdits.Edit>{ edit },
-        locked.revision
+        locked.revision,
+        null
       );
       Integer editing = Limits.getQueries() - before;
       Assert.isFalse(locked.conflict);

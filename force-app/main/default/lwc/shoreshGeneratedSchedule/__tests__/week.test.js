@@ -1,5 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
-import { activityCells, clearedDays, openCells, withoutEdited } from "../week";
+import { activityCells, clearedDays, editedKeys, openCells } from "../week";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -125,22 +125,16 @@ describe("openCells", () => {
   });
 });
 
-describe("withoutEdited: the engine's reasons once cells change by hand", () => {
+describe("editedKeys: the cells a hand edit changes lose the engine's reason", () => {
   const DAYS = [
     {
       dateValue: "2026-06-29",
       blocks: [{ id: "t1" }, { id: "t2" }, { id: "t3" }]
     }
   ];
-  const REASONS = new Map([
-    ["2026-06-29|g1|t2", "Everything for Bunk 1 is taken then"],
-    ["2026-06-29|g1|t3", "Everything for Bunk 1 is taken then"],
-    ["2026-06-29|g2|t2", "Everything for Bunk 2 is taken then"]
-  ]);
 
-  it("drops every cell a run covers, before or after, and keeps the rest", () => {
-    const out = withoutEdited(
-      REASONS,
+  it("names every cell a run covers, before or after, and no other", () => {
+    const keys = editedKeys(
       [
         {
           runs: [
@@ -156,25 +150,14 @@ describe("withoutEdited: the engine's reasons once cells change by hand", () => 
       ],
       DAYS
     );
-    expect([...out.keys()]).toEqual(["2026-06-29|g2|t2"]);
-    // The engine's own map is left as it was.
-    expect(REASONS.size).toBe(3);
+    expect([...keys]).toEqual(["2026-06-29|g1|t2", "2026-06-29|g1|t3"]);
   });
 
-  it("a cell filled and then cleared again by hand keeps no engine reason", () => {
-    const run = (after) => ({
-      runs: [
-        {
-          day: "2026-06-29",
-          groupId: "g2",
-          firstBlockId: "t2",
-          before: ["O"],
-          after
-        }
-      ]
-    });
-    const filled = withoutEdited(REASONS, [run(["A:a1"])], DAYS);
-    const cleared = withoutEdited(filled, [run(["O"])], DAYS);
-    expect(cleared.has("2026-06-29|g2|t2")).toBe(false);
+  it("a run on a time block the week doesn't have still names its own cell", () => {
+    const keys = editedKeys(
+      [{ runs: [{ day: "2026-06-29", groupId: "g2", firstBlockId: "tX" }] }],
+      DAYS
+    );
+    expect([...keys]).toEqual(["2026-06-29|g2|tX"]);
   });
 });

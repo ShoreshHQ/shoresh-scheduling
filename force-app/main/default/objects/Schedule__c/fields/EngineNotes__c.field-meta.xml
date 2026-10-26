@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EngineNotes__c</fullName>
+    <description
+  >What the generator said about the week it last built (why each cell was left Open, settings taken as 1, the imported-week note), as codes and record Ids, so the schedule's Why list says the same after a reload. Written by the Generated Schedule screen only; shown in words, never as stored. Blank for schedules not built by the generator, versions, and a restored week.</description>
+    <label>Engine Notes</label>
+    <length>131072</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

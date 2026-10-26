@@ -30,6 +30,10 @@ public with sharing class GeneratedInputs {
     // The option the draft was last built with, or null.
     @AuraEnabled
     public Integer option;
+    // What the engine said about the week it last built (GeneratedEngineNotes), or null. Only
+    // the screen reads it, and only to word the Why list.
+    @AuraEnabled
+    public String engineNotes;
     @AuraEnabled
     public List<ScheduleViews.DayView> days = new List<ScheduleViews.DayView>();
     // A blank week only: fixed or recurring activities whose slot was taken ("Rest · Bunk 3 ·
@@ -109,6 +113,7 @@ public with sharing class GeneratedInputs {
       inputs.option = draft.EngineOption__c == null
         ? null
         : draft.EngineOption__c.intValue();
+      inputs.engineNotes = draft.EngineNotes__c;
       inputs.published = SchedulePublish.stateOf(
         setup.program.Id,
         setup.week,
@@ -216,7 +221,7 @@ public with sharing class GeneratedInputs {
 
     Schedules(GeneratedSetup setup) {
       for (Schedule__c schedule : [
-        SELECT Id, Name, EngineOption__c, Status__c, Origin__c
+        SELECT Id, Name, EngineOption__c, EngineNotes__c, Status__c, Origin__c
         FROM Schedule__c
         WHERE
           Program__c = :setup.program.Id

@@ -26,6 +26,10 @@ public with sharing class GeneratedWeek {
     public Integer option { get; set; }
     @AuraEnabled
     public List<Day> days { get; set; }
+    // What the engine said about the week it built (GeneratedEngineNotes), or null: none (Start
+    // over builds nothing). Kept only for the Why list; never checked against the days.
+    @AuraEnabled
+    public String engineNotes { get; set; }
 
     /** Refuses a save the screen could not have sent, or an option that can't be built. */
     public void check(Set<String> actions) {

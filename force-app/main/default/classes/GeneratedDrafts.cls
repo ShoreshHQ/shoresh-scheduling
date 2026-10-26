@@ -65,6 +65,7 @@ public with sharing class GeneratedDrafts {
         Status__c,
         Origin__c,
         EngineOption__c,
+        EngineNotes__c,
         Program__c,
         Week__c,
         Program__r.Id,

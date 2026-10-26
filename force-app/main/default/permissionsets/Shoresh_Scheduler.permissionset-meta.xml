@@ -111,6 +111,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Schedule__c.EngineNotes__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Schedule__c.EngineOption__c</field>
         <readable>true</readable>
     </fieldPermissions>

@@ -417,7 +417,8 @@ private class ElectivesOnGridTest {
       SlotEdits.Result saved = GeneratedScheduleController.saveSlots(
         draftId,
         new List<SlotEdits.Edit>{ edit },
-        read.revision
+        read.revision,
+        null
       );
       Assert.isTrue(saved.conflicts.isEmpty());
       GeneratedInputs.Inputs now = GeneratedTestData.inputs();

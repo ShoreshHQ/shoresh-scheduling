@@ -53,7 +53,8 @@ private class GeneratedPublishTest {
           new List<String>{ GeneratedTestData.a('Swim') }
         )
       },
-      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId)),
+      null
     );
     Assert.isTrue(result.conflicts.isEmpty());
   }

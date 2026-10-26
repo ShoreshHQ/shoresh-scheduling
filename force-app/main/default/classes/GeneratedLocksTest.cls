@@ -63,7 +63,8 @@ private class GeneratedLocksTest {
     return GeneratedScheduleController.saveSlots(
       draftId,
       new List<SlotEdits.Edit>{ edit },
-      revisionNow(draftId)
+      revisionNow(draftId),
+      null
     );
   }
 
@@ -117,7 +118,8 @@ private class GeneratedLocksTest {
             new List<String>{ '' }
           )
         },
-        revisionNow(draftId)
+        revisionNow(draftId),
+        null
       );
       Assert.isTrue(placed.conflicts.isEmpty());
       Assert.areEqual(
@@ -355,7 +357,8 @@ private class GeneratedLocksTest {
             new List<String>{ GeneratedTestData.a('Swim') }
           )
         },
-        seen
+        seen,
+        null
       );
       Assert.isTrue(edited.conflicts.isEmpty());
       Assert.isNull(edited.revision);

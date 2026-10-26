@@ -70,20 +70,44 @@ public with sharing class SlotSaves {
   public static SlotEdits.Result saveOnGenerated(
     Id scheduleId,
     List<SlotEdits.Edit> edits,
-    String seen
+    String seen,
+    String engineNotes
   ) {
     SlotSaves saves = new SlotSaves();
     saves.lockEdits = true;
     Schedule__c draft = GeneratedDrafts.lockedToEdit(scheduleId);
     SlotEdits.Result result = saves.saveOn(draft, edits);
-    // Shown with "deleted since" as Generated Schedule's own reader works it out.
-    result.schedule = GeneratedInputs.view(draft);
     result.revision = GeneratedEdits.revisionAfter(
       saves.days,
       saves.changed,
       seen
     );
+    keepEngineNotes(draft, engineNotes, result.revision);
+    // Shown with "deleted since" as Generated Schedule's own reader works it out.
+    result.schedule = GeneratedInputs.view(draft);
     return result;
+  }
+
+  /**
+   * The engine's notes without the reasons of the cells the edits changed (null: kept as they
+   * are). Kept only when nobody else saved the week since the screen read it (revision given):
+   * else they are notes on a week the screen hasn't seen, and the stored ones stay.
+   */
+  private static void keepEngineNotes(
+    Schedule__c draft,
+    String engineNotes,
+    String revision
+  ) {
+    if (engineNotes == null || String.isEmpty(revision)) {
+      return;
+    }
+    Database.update(
+      new Schedule__c(
+        Id = draft.Id,
+        EngineNotes__c = GeneratedEngineNotes.kept(engineNotes)
+      ),
+      AccessLevel.USER_MODE
+    );
   }
 
   private SlotEdits.Result saveOn(

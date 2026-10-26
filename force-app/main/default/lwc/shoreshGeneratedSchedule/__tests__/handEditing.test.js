@@ -658,6 +658,57 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(getInputs.mock.calls.length).toBe(reads);
   });
 
+  it("the engine's reasons kept with the week show after a reload; a cell changed by hand loses its own, for good", async () => {
+    // Saved after a build that left Bunk 1's Monday Period 2 and Period 3 Open: everything for
+    // Bunk 1 was taken then (codes and Ids, worded when shown).
+    const week = savedWeek();
+    const [bunk1] = week.groups;
+    const monday = week.days[0].dateValue;
+    const block = (name) => week.timeBlocks.find((b) => b.Name === name).Id;
+    const row = (name) => [monday, bunk1.Id, block(name), "full"];
+    week.engineNotes = JSON.stringify({
+      v: 1,
+      open: [row("Period 2"), row("Period 3")],
+      blank: [],
+      floor: null,
+      cut: 0
+    });
+    const element = await render(week);
+    expect(whyAt(element, "Bunk 1 · Monday · Period 2")).toBe(
+      "Everything for Bunk 1 is taken then"
+    );
+    expect(whyAt(element, "Bunk 1 · Monday · Period 3")).toBe(
+      "Everything for Bunk 1 is taken then"
+    );
+    // Swim typed into Period 2: its reason goes, and the week keeps the notes without it.
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    const kept = JSON.parse(saveSlots.mock.calls[0][0].engineNotes);
+    expect(kept.open).toEqual([row("Period 3")]);
+    // Opened again later with Period 2 cleared since: it says what the week shows, not the
+    // build's reason; Period 3 still has the build's.
+    document.body.removeChild(element);
+    const later = savedWeek();
+    later.engineNotes = saveSlots.mock.calls[0][0].engineNotes;
+    const again = await render(later);
+    expect(whyAt(again, "Bunk 1 · Monday · Period 2")).toBeNull();
+    expect(whyAt(again, "Bunk 1 · Monday · Period 3")).toBe(
+      "Everything for Bunk 1 is taken then"
+    );
+  });
+
+  it("a hand edit on a cell with no kept reason leaves the kept notes as they are", async () => {
+    const element = await render();
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await clearSwim(element);
+    expect(saveSlots.mock.calls[0][0].engineNotes).toBeNull();
+  });
+
   it("the Why list is Generated's own: an Open cell no activity fits says why", async () => {
     // Bunk 1's Monday: Swim, Art, then the one Open Period 3; every activity is two blocks long
     // here, so none fits it.

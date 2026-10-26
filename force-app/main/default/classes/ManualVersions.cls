@@ -256,17 +256,25 @@ public with sharing class ManualVersions {
     }
   }
 
-  /** A Generated week goes on from the version's option, when it has one (ADR 0010 §17). */
+  /**
+   * A Generated week goes on from the version's option, when it has one (ADR 0010 §17), and keeps
+   * no engine notes: they were about the week the restore replaced (versions don't keep them).
+   */
   private static void takeOption(Schedule__c draft, Schedule__c version) {
-    if (
-      isGenerated(draft) &&
+    if (!isGenerated(draft)) {
+      return;
+    }
+    Boolean newOption =
       version.EngineOption__c != null &&
-      version.EngineOption__c != draft.EngineOption__c
-    ) {
+      version.EngineOption__c != draft.EngineOption__c;
+    if (newOption || draft.EngineNotes__c != null) {
       Database.update(
         new Schedule__c(
           Id = draft.Id,
-          EngineOption__c = version.EngineOption__c
+          EngineOption__c = newOption
+            ? version.EngineOption__c
+            : draft.EngineOption__c,
+          EngineNotes__c = null
         ),
         AccessLevel.USER_MODE
       );

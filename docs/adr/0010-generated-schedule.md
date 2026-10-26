@@ -1364,6 +1364,47 @@ elective cell and registers its offerings' places, `engine/electiveOccupancy.js`
 Checked by `c/shoreshEngine` `electives.test.js` and `ElectivesOnGridTest`
 (`aGeneratedBuildKeepsTheSetAndNeverPlacesOne`).
 
+## Choices (the engine's notes, kept with the week, 2026-10-25)
+
+Engine care plan PR 5b (wiki `projects/shoresh-sf-engine-care-plan.md`, Q18; Greg: "someone can
+inspect the why and know what happened"). Protocol rule 9.7.
+
+1. **What the engine said about a build is kept on the Generated draft**, in
+   `Schedule__c.EngineNotes__c` (Long Text Area, 131,072 characters): why each cell was left Open,
+   the blank settings taken as 1 (listed only while still blank: the list shows what still needs a look, coordinator 2026-10-25), and step 8's floor note: everything in the Why list that the
+   week's own check can't work out again. Every build that saves (Generate, Rebuild, Try another,
+   Fill the open cells) replaces it with its own; Start over builds nothing and keeps none.
+2. **Codes and record Ids, not sentences** (`c/shoreshEngine` `notes.js`, version 1:
+   `{ v, open: [[date, groupId, blockId, why, shortGroupId?, shortActivityId?]], blank: [[field,
+id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.js`), in the
+   camp's words and setup's names as they are then; a row whose group, activity or place is gone
+   is left out. The visit that built the week words it the same way, so a reload says exactly
+   what the build said.
+3. **One field on the draft, not one per day.** The draft is already read with the week
+   (`GeneratedInputs`) and already written by every save, so the notes cost no query and no extra
+   write; per day they would need a second field for the week's notes anyway. Size: an Open row
+   is about 70 characters, so the field holds some 1,700 Open cells. The screen keeps it under
+   120,000 characters by leaving out the last Open rows and counting them (`cut`), and the Why list
+   then says how many reasons weren't kept; the week itself always saves.
+4. **The server keeps, never trusts** (`GeneratedEngineNotes.kept`): notes longer than the field,
+   not JSON, another version, or not lists of rows of text are not kept (the week is saved
+   anyway). Nothing reads them but the screen, only to word the Why list (`readNotes` drops
+   unknown codes and shapes; nothing is shown as stored). User mode; the field is in the Shoresh
+   Scheduler permission set.
+5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots`'s
+   `engineNotes`): sent only when a kept reason goes, and kept only when nobody else saved the
+   week since the screen read it (the answer's revision is given); otherwise the newer notes stay.
+   So a cell filled and cleared again by hand says what the week shows after a reload, not the
+   build's reason.
+6. **Versions don't keep notes, and a restored week has none** (`ManualVersions.takeOption`
+   clears them): they were about the week the restore replaced. Undo after Start over is a
+   restore, so it has none either. Other changes that don't fill cells (Lock, Update to match
+   setup, a rainy day, a special day) keep them: a reason shows only on a cell still Open.
+
+Checked by `c/shoreshEngine` `notes.test.js`; `c/shoreshGeneratedSchedule` "the engine's reasons
+and notes are kept with the week…", "the engine's reasons kept with the week show after a
+reload…"; `GeneratedEngineNotesTest`.
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -1374,6 +1415,13 @@ G2:
 - The picklist value `VersionReason__c` `AutoSaved` ("Auto-saved").
 - The Generated draft's name "Generated Schedule" and the versions' names "Before Rebuild",
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
+
+The engine's notes (PR 5b):
+
+- The field `Schedule__c.EngineNotes__c` (Long Text Area, 131,072) and notes version 1's shape
+  (every reader must keep reading version 1, or show nothing for it).
+- `saveSlots`'s fourth parameter `engineNotes` and `GeneratedWeek.Save.engineNotes` (global once
+  packaged).
 
 G5: none (no objects, fields or global members).
 
