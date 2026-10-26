@@ -393,10 +393,20 @@ export function droppedOf(view) {
 
 function seatWords(offering) {
   if (offering.noLimit) return "No limit";
-  if (offering.seats == null) return "Seats not filled in";
+  if (seatsUnset(offering)) return "Choose seats";
   const n = Number(offering.seats);
-  if (n === 0) return "Closed";
   return `${n} seat${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * Blank or 0 seats on a limited offering: the seat engine places it as no limit and says so
+ * (NO_SEATS_SET; Greg, 2026-10-26: an offering on the table needs seats, 0 is not closed).
+ */
+function seatsUnset(offering) {
+  return (
+    !offering.noLimit &&
+    (offering.seats == null || Number(offering.seats) === 0)
+  );
 }
 
 /** The dots under a count: filled for each camper, open for each seat left (the mock-up's). */
@@ -470,6 +480,7 @@ export function buildBoard(run, t) {
     notOnSchedule: 0,
     unmatched,
     noOfferings: [],
+    noSeats: run.offerings.filter((o) => !o.proposed && seatsUnset(o)),
     linked: linked.problems,
     uncovered: uncovered.map((u) => {
       const camper = run.camperById.get(u.camperId);
@@ -565,7 +576,7 @@ function offeringCell(column, offering, byCell, dropped, problems) {
   const offered = (column.time.offeringIds || []).includes(offering.id);
   const here = byCell.get(`${column.key}|${offering.id}`) || [];
   const count = here.length;
-  const limited = !offering.noLimit && offering.seats != null;
+  const limited = !seatsUnset(offering) && !offering.noLimit;
   const seats = limited ? Number(offering.seats) : null;
   const gone = dropped.get(`${column.key}|${offering.activityId}`);
   const cell = {
@@ -708,12 +719,24 @@ export function problemSections(board, t) {
       stray: s
     }))
   );
-  // Linked choices that can't be placed as a set: their periods are filled one at a time. The
+  // Blank or 0 seats: placed as no limit; the flag says what to do (the engine's NO_SEATS_SET).
+  add(
+    "noSeats",
+    `${p.noSeats.length} ${p.noSeats.length === 1 ? "needs its" : "need their"} ${t.pIn("Seats")} chosen`,
+    p.noSeats.map((o) => ({
+      key: `s|${o.id}`,
+      text: o.name,
+      aside: `Choose how many ${t.pIn("Seats")} "${o.name}" has`,
+      target: null
+    }))
+  );
+  // Linked choices not given in full: a period this run can't give one (the rest are kept
+  // together), or one set aside for another sharing its seats (filled one period at a time). The
   // count is of linked choices, never of the problems listed (one may have several).
   const linkedCount = new Set(p.linked.flatMap((l) => l.ids)).size;
   add(
     "linked",
-    `${linkedCount} ${linkedCount === 1 ? t.sIn("LinkedChoice") : t.pIn("LinkedChoice")} filled one period at a time`,
+    `${linkedCount} ${linkedCount === 1 ? t.sIn("LinkedChoice") : t.pIn("LinkedChoice")} not given in full`,
     p.linked.map((l) => ({
       key: `k|${l.key}`,
       text: l.name,
@@ -729,10 +752,7 @@ export function problemSections(board, t) {
     p.split.map((s) => ({
       key: `p|${s.camperId}|${s.linkedChoiceId}|${s.reason}`,
       text: s.camper.name,
-      aside:
-        s.reason === "absent"
-          ? `Asked for "${s.name}" but doesn't attend every period it covers`
-          : `Asked for "${s.name}" but has a locked seat in one of its periods`,
+      aside: splitWords(s, board),
       target: { view: "camper", camperId: s.camperId }
     }))
   );
@@ -818,6 +838,18 @@ export function problemSections(board, t) {
   return sections;
 }
 
+/** Why a camper was given their linked choice one period at a time. */
+function splitWords(s, board) {
+  if (s.reason === "absent") {
+    return `Asked for "${s.name}" but doesn't attend every period it covers`;
+  }
+  if (s.reason === "locked") {
+    return `Asked for "${s.name}" but has a locked seat in one of its periods`;
+  }
+  const column = board.columnByKey.get(s.timeKey);
+  return `Asked for "${s.name}", which shares ${column ? column.label : "a period"} with "${s.keptName}", kept as a set`;
+}
+
 /** Whether anything in the problems needs a look (the counter's corner). */
 export function needsLook(board) {
   const p = board.problems;
@@ -828,6 +860,7 @@ export function needsLook(board) {
       p.overSeats.length +
       p.stray.length +
       p.noOfferings.length +
+      p.noSeats.length +
       p.linked.length +
       p.split.length +
       p.uncovered.length +

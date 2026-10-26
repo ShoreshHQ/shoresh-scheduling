@@ -16,7 +16,7 @@ function check(input) {
   const offeringAt = new Map(
     input.offerings.map((o) => [at(o.timeId, o.activityId), o])
   );
-  const limit = (o) => (o.noLimit ? Infinity : o.seats);
+  const limit = (o) => (o.noLimit || !o.seats ? Infinity : o.seats);
 
   // One seat per camper per time.
   const seatOf = new Map();
@@ -101,16 +101,26 @@ function check(input) {
     }
   }
 
-  // A linked choice is all of its times or none.
+  // A linked choice is all of the times this run can give it (in the run, its offering offered
+  // there) or none; and one offering's seats at a time are never held by two linked choices.
+  const holders = new Map();
   for (const s of out.seats.filter((x) => x.linkedChoiceId)) {
+    const k = at(s.timeId, s.activityId);
+    if (!holders.has(k)) holders.set(k, new Set());
+    holders.get(k).add(s.linkedChoiceId);
     for (const m of input.linkedChoiceTimes.filter(
-      (x) => x.linkedChoiceId === s.linkedChoiceId
+      (x) =>
+        x.linkedChoiceId === s.linkedChoiceId &&
+        offeringAt.has(at(x.timeId, x.activityId))
     )) {
       expect(seatOf.get(at(s.camperId, m.timeId))).toMatchObject({
         linkedChoiceId: s.linkedChoiceId,
         activityId: m.activityId
       });
     }
+  }
+  for (const ids of holders.values()) {
+    expect(ids.size).toBe(1);
   }
   return out;
 }

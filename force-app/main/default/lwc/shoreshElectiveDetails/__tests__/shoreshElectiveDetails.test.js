@@ -4,8 +4,8 @@ import { createElement } from "lwc";
 import ShoreshElectiveDetails, {
   divisionsCovered,
   electivesOf,
-  hasBlankSeats,
-  isClosed,
+  seatsNeedingLook,
+  seatsLookWords,
   linkedNames,
   openCount,
   withPending
@@ -715,15 +715,26 @@ describe("c-shoresh-elective-details", () => {
       { Id: "o6" }
     ]);
 
-    it("a set's count is its confirmed, open offerings: not proposed, not closed", () => {
-      expect(offerings.filter(isClosed).map((o) => o.Id)).toEqual(["o3"]);
-      // Blank seats are not closed: not filled in yet.
-      expect(openCount(offerings)).toBe(4);
+    it("a set's count is its confirmed offerings: 0 or blank seats don't close one", () => {
+      expect(openCount(offerings)).toBe(5);
       expect(openCount([])).toBe(0);
     });
 
-    it("seats not filled in: blank and limited", () => {
-      expect(offerings.filter(hasBlankSeats).map((o) => o.Id)).toEqual(["o6"]);
+    it("seats need a look when blank or 0 and limited", () => {
+      expect(offerings.map((o) => [o.Id, seatsNeedingLook(o)])).toEqual([
+        ["o1", null],
+        ["o2", null],
+        ["o3", "zero"],
+        ["o4", null],
+        ["o5", null],
+        ["o6", "blank"]
+      ]);
+      expect(seatsLookWords("Archery")).toBe(
+        'Choose how many seats "Archery" has'
+      );
+      expect(seatsLookWords("Archery", "spots")).toBe(
+        'Choose how many spots "Archery" has'
+      );
     });
 
     it("reads a season with no electives as empty, and names an offering's linked choices", () => {

@@ -218,7 +218,7 @@ private class ElectivesDataTest {
         Database.update(archery, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );
-      archery.Seats__c = 0; // closed this summer
+      archery.Seats__c = 0; // 0 is allowed (no limit is used, said)
       archery.MinimumToRun__c = 0;
       Assert.areEqual(
         'Must be 1 or more, or blank for no minimum.',

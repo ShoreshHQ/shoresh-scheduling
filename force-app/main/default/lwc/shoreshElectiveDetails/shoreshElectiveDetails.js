@@ -36,35 +36,35 @@ export function electivesOf(setup) {
   };
 }
 
-/** Closed: 0 seats and a limit (repo ADR 0018: 0 is closed, never unlimited). */
-export function isClosed(offering) {
-  const seats = offering[OFFER.Seats];
-  return (
-    !offering[OFFER.NoSeatLimit] &&
-    seats !== null &&
-    seats !== undefined &&
-    seats !== "" &&
-    Number(seats) === 0
-  );
+/**
+ * A set's count, as the grid will show it ("Chugim (4)"): its confirmed offerings (decision 53).
+ * 0 or blank seats don't close one (Greg, 2026-10-26: an offering on the table needs seats; the
+ * seat run uses no limit and says so): Proposed, or not open to a division or period, is how
+ * something isn't offered.
+ */
+export function openCount(offerings) {
+  return (offerings || []).filter((offering) => !offering[OFFER.Proposed])
+    .length;
 }
 
 /**
- * A set's count, as the grid will show it ("Chugim (4)"): its confirmed, open offerings only
- * (decision 53): not proposed, not closed.
+ * Why a limited offering's seats need a look, or null: "blank" (not filled in yet) or "zero".
+ * Either way the seat run places it with no limit and says so (engine care PR 8).
  */
-export function openCount(offerings) {
-  return (offerings || []).filter(
-    (offering) => !offering[OFFER.Proposed] && !isClosed(offering)
-  ).length;
+export function seatsNeedingLook(offering) {
+  if (offering[OFFER.NoSeatLimit]) {
+    return null;
+  }
+  const seats = offering[OFFER.Seats];
+  if (seats === null || seats === undefined || seats === "") {
+    return "blank";
+  }
+  return Number(seats) === 0 ? "zero" : null;
 }
 
-/** A limited offering whose seats are not filled in yet (desktop: "Fill blank capacities first."). */
-export function hasBlankSeats(offering) {
-  const seats = offering[OFFER.Seats];
-  return (
-    !offering[OFFER.NoSeatLimit] &&
-    (seats === null || seats === undefined || seats === "")
-  );
+/** What to do when seatsNeedingLook says so (Greg, 2026-10-26: the flag says what to do). */
+export function seatsLookWords(name, seatsWord = "seats") {
+  return `Choose how many ${seatsWord} "${name}" has`;
 }
 
 /** The names of an offering's linked choices, in their order. */

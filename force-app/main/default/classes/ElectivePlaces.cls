@@ -58,7 +58,7 @@ public with sharing class ElectivePlaces {
 
   private void readSets(Set<Id> setIds) {
     for (Offering__c offering : [
-      SELECT ElectiveSet__c, Activity__r.Location__c, Seats__c, NoSeatLimit__c
+      SELECT ElectiveSet__c, Activity__r.Location__c
       FROM Offering__c
       WHERE ElectiveSet__c IN :setIds AND Proposed__c = FALSE
       WITH USER_MODE
@@ -68,14 +68,13 @@ public with sharing class ElectivePlaces {
     }
   }
 
-  /** A confirmed offering's place counts for its set, unless it is closed (0 seats). */
+  /**
+   * A confirmed offering's place counts for its set, whatever its seats: 0 or blank seats don't
+   * close it (Greg, 2026-10-26: the seat run uses no limit and says so).
+   */
   private void addSetPlace(Offering__c offering) {
     Id place = offering.Activity__r?.Location__c;
-    Boolean closed =
-      offering.NoSeatLimit__c != true &&
-      offering.Seats__c != null &&
-      offering.Seats__c == 0;
-    if (place == null || closed) {
+    if (place == null) {
       return;
     }
     if (!placesOfSet.containsKey(offering.ElectiveSet__c)) {

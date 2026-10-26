@@ -189,3 +189,48 @@ except, an unconfirmed offering, a sheet's choice of one, the seats placed as a 
 Assign sends, a missing period and two sharing a time with the engine's refusal, the same seats
 in any order, an uncovered camper's choice kept as its activity, the campers split from a set
 matching the engine's findings).
+
+## Engine care PR 8: nothing in a setup stops or refuses the run (2026-10-26)
+
+Greg, engine care plan decision 50, Q13: "We should be agnostic on the rules someone wants to
+set... never refuse the run. Place what's possible and flag each choice it couldn't honour, with
+the reason." And on seats (Greg, 2026-10-26): an offering on the table needs seats, so blank and 0
+both are placed with no limit, and the flag tells the director what to do; 0 is no longer closed.
+This amends choices 2 (D8), 4 and 7, and slice E7's blank-seats refusal.
+
+- **Blank or 0 seats** on a limited offering: placed as if it had no limit, never skipped, and
+  flagged once per offering with what to do (`NO_SEATS_SET`: "Choose how many seats “Archery”
+  has.", in the camp's word for seats). `assignSeats` always returns `ok: true`. The server's tally
+  (`ElectiveSeatTally`) takes blank or 0 as no limit. The seats screen lists them ("2 need their
+  seats chosen", each row 'Choose how many seats "Archery" has') and shows "Choose seats" under
+  the offering. The same holds everywhere else: Electives setup counts such an offering and marks
+  its seats for a look ('Choose how many seats "Archery" has', also in Roots), shows 0 as "0"
+  rather than "Closed", and the week grid counts its place (`ElectivePlaces`,
+  `readElectivePlaces`).
+  Proposed, or not open to a division or period, is how an offering isn't offered.
+- **Which periods a set has** is `linkedSetPlan` (exported, so the seats screen says exactly
+  what the engine did). A period the run can't give it (its time is not in the run, or its
+  offering isn't offered then) is **left out**: the set is kept whole over the periods it has,
+  all of them or none (`LINKED_PERIOD_LEFT_OUT`, with the periods and the campers who asked).
+  Why that and not "one period at a time": the left-out period belongs to another schedule (or
+  isn't offered), so this run can't decide it either way; refusing the set here only broke the
+  camper's set in the periods this run can keep. The server's all-or-none check
+  (`ElectiveLinkedSeats`) compares against the periods the run has for the camper's division with
+  the offering offered there.
+- **Two linked choices of one offering sharing a period's seats**: the first by name (then id)
+  keeps them and is placed as a set; one sharing with a set already kept is set aside, its campers
+  placed one period at a time, and said per set (`LINKED_SEATS_SHARED`, with the set kept, the
+  period, the offering and the campers who asked). Name order is chosen because a director can
+  see it; it doesn't depend on the order the records arrive in.
+- **Campers who can't take a set as one** (they miss one of its periods here, or hold a locked
+  seat in one) were already said (`UNSUPPORTED_LINKED_CHOICE` with `camperIds`; on the screen per
+  camper): unchanged, now counted over the periods the set has here. The screen adds the third
+  reason per camper: "Asked for "X", which shares Mon 12:30 with "Y", kept as a set".
+
+Tests: `assignSeats.test.js` (blank and 0 seats, the set kept by name and the other flagged, in
+any order, a left-out period, none of its periods here), `ported.test.js` (the two desktop
+refusal cases now flagged), `properties.test.js` (all-or-none over the periods a set has, one set
+per offering's seats per period, blank or 0 as no limit), `unchangedWithoutConflicts.test.js`
+(89 random camps with none of these cases give exactly the seats and findings the engine gave
+before), and the seats screen's `linked.test.js`, `seats.test.js` and component test. Apex:
+`ElectiveSeatsTest` `blankOrZeroSeatsAreNoLimit` and `aLinkedChoicesPeriodNotInTheRunIsLeftOut`.

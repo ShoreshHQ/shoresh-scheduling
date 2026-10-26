@@ -133,14 +133,14 @@ describe("c-shoresh-editable-table: an elective set's offerings", () => {
     }
   });
 
-  it("seats read as words at rest: a number, No limit, Closed for 0, nothing while blank", async () => {
+  it("seats read as words at rest: a number (0 too, not closed), No limit, nothing while blank", async () => {
     const element = render();
     await flush();
     const words = [
       ...element.shadowRoot.querySelectorAll('[data-id="seats-text"]')
     ].map((s) => s.textContent);
     // The set's rows, then the blank row (typed in, so nothing to read yet).
-    expect(words).toEqual(["12", "No limit", "Closed", "10", "", ""]);
+    expect(words).toEqual(["12", "No limit", "0", "10", "", ""]);
     // Under the pointer or while edited: the number and the tick, named for the row.
     const seats = field(element, 0, "Seats__c");
     expect(seats.label).toBe("Seats");
@@ -181,7 +181,7 @@ describe("c-shoresh-editable-table: an elective set's offerings", () => {
     });
   });
 
-  it("closing an offering is typing 0: a number, as Salesforce wants it", async () => {
+  it("typing 0 saves a number, as Salesforce wants it (0 is not closed)", async () => {
     const element = render();
     const sent = listen(element);
     await flush();
@@ -192,7 +192,7 @@ describe("c-shoresh-editable-table: an elective set's offerings", () => {
     expect(
       element.shadowRoot.querySelectorAll('[data-id="seats-text"]')[0]
         .textContent
-    ).toBe("Closed");
+    ).toBe("0");
     allValid(element);
     leave(element, 0);
     expect(sent[0].record).toEqual({

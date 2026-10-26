@@ -597,7 +597,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   /**
    * Assign seats: the engine places everyone it can around the locks, in the browser, and the
-   * server checks and saves the seats. The blank-seats refusal stops it before anything is sent.
+   * server checks and saves the seats. Nothing in a setup stops it (engine care PR 8): what the
+   * engine couldn't honour is in the problems.
    * The button that started it is held while saving, so the cursor goes back to it once done
    * (WCAG 2.4.3): focusAfter, the main button unless said otherwise.
    */
@@ -611,11 +612,6 @@ export default class ShoreshElectiveSeats extends LightningElement {
       const run = readRun(this.view);
       const { input } = engineInput(run, this.t);
       const result = runEngine(input);
-      if (!result.ok) {
-        this.error = blankWords(result);
-        this.status = "";
-        return;
-      }
       const view = await assignSeats({
         request: JSON.stringify(assignRequest(run, result))
       });
@@ -1308,12 +1304,6 @@ export default class ShoreshElectiveSeats extends LightningElement {
     event.stopPropagation();
     this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
   }
-}
-
-/** "Fill blank capacities first: Archery, Pottery." (the desktop's words, with the names). */
-function blankWords(result) {
-  const names = (result.blank || []).join(", ");
-  return names ? `${result.error.replace(/\.$/, "")}: ${names}.` : result.error;
 }
 
 function cellClass(cell, open) {

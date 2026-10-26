@@ -1,7 +1,7 @@
 // Elective sets on the week (repo ADR 0018 slice E5; decision 53.2; mock-up
 // design-research/electives-r1 grid-a): the sets come first in the drawer, only when the camp has
 // any; a set is put down, dragged or typed onto a cell or the cells chosen together, each time
-// block on its own; bunks side by side holding it are one cell, "Chugim (2)"; it never swaps; it
+// block on its own; bunks side by side holding it are one cell, "Chugim (3)"; it never swaps; it
 // takes up its offerings' places and is not counted as placed; a cell a file noted offers Set it
 // up. Synthetic data only.
 import { createElement } from "lwc";
@@ -17,8 +17,8 @@ const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
 const CHUGIM = { kind: "E", id: SET_ID, name: "Chugim", gone: false };
 
 // The season setup carries its elective sets (SeasonSetupController: electives, ElectiveMenus):
-// Chugim offers Swim (12 seats) and Soccer (no limit); Boating is only proposed and Gaga is
-// closed, so Chugim counts 2. Soccer is at the Field, which fits one bunk.
+// Chugim offers Swim (12 seats) and Soccer (no limit); Boating is only proposed; Gaga has 0 seats, which
+// does not close it (Greg, 2026-10-26), so Chugim counts 3. Soccer is at the Field, which fits one bunk.
 const ELECTIVES = {
   sets: [{ Id: SET_ID, Name: "Chugim" }],
   offerings: [
@@ -154,8 +154,8 @@ describe("c-shoresh-week-editor: elective sets", () => {
       {
         id: SET_ID,
         name: "Chugim",
-        words: "2 offerings",
-        said: "Chugim, Elective set, 2 offerings"
+        words: "3 offerings",
+        said: "Chugim, Elective set, 3 offerings"
       }
     ]);
     const tiles = [
@@ -170,7 +170,7 @@ describe("c-shoresh-week-editor: elective sets", () => {
       "Chugim"
     );
     expect(tiles[0].querySelector(".tile-words").textContent).toBe(
-      "2 offerings"
+      "3 offerings"
     );
   });
 
@@ -195,7 +195,7 @@ describe("c-shoresh-week-editor: elective sets", () => {
       })
     ]);
     const cell = grid(element).shadowRoot.querySelector('[data-cell="0-1"]');
-    expect(cell.querySelector(".cell-name").textContent).toBe("Chugim (2)");
+    expect(cell.querySelector(".cell-name").textContent).toBe("Chugim (3)");
     expect(cell.querySelector(".flag")).not.toBeNull();
   });
 
@@ -212,7 +212,7 @@ describe("c-shoresh-week-editor: elective sets", () => {
       ["g2", [`E:${SET_ID}`]]
     ]);
     // Bunk 1 and Bunk 2 side by side: one cell (decision 53.2).
-    const cells = drawn(grid(element)).filter((c) => c.text === "Chugim (2)");
+    const cells = drawn(grid(element)).filter((c) => c.text === "Chugim (3)");
     expect(cells).toEqual([expect.objectContaining({ colSpan: "2" })]);
   });
 
@@ -237,13 +237,13 @@ describe("c-shoresh-week-editor: elective sets", () => {
     });
     const input = q(element, '[data-id="slot-input"]');
     let options = [...q(element, '[role="listbox"]').querySelectorAll("li")];
-    expect(options[0].textContent.trim()).toBe("Chugim (2)");
+    expect(options[0].textContent.trim()).toBe("Chugim (3)");
     input.value = "chugim";
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
     options = [...q(element, '[role="listbox"]').querySelectorAll("li")];
     // The set only: no "Add" for a name the camp already has as a set.
-    expect(options.map((o) => o.textContent.trim())).toEqual(["Chugim (2)"]);
+    expect(options.map((o) => o.textContent.trim())).toEqual(["Chugim (3)"]);
     input.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
     );

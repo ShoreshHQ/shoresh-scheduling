@@ -14,8 +14,8 @@ import { activity, block, camp, cellsOf } from "./data/camp";
 
 const SET = "a0X000000000001AAA";
 
-// Chugim offers Archery (at the Range, which fits one bunk); Pottery is only proposed and Drama is
-// closed, so neither takes up its place.
+// Chugim offers Archery (at the Range, which fits one bunk) and Drama (0 seats: not closed, Greg
+// 2026-10-26, so it takes up the Stage); Pottery is only proposed, so it doesn't take its place.
 const OFFERINGS = nsRecord([
   { Id: "o1", ElectiveSet__c: SET, Activity__c: "archery", Proposed__c: false },
   { Id: "o2", ElectiveSet__c: SET, Activity__c: "pottery", Proposed__c: true },
@@ -65,7 +65,7 @@ function input(over = {}) {
 }
 
 describe("c-shoresh-engine: elective sets", () => {
-  it("reads a set's places from its confirmed, open offerings, each place once", () => {
+  it("reads a set's places from its confirmed offerings, 0 seats too, each place once", () => {
     const places = readElectivePlaces(
       [
         ...OFFERINGS,
@@ -77,7 +77,7 @@ describe("c-shoresh-engine: elective sets", () => {
         { Id: "drama", Location__c: "stage" }
       ])
     );
-    expect([...places]).toEqual([[SET, ["range"]]]);
+    expect([...places]).toEqual([[SET, ["range", "stage"]]]);
     expect(readElectivePlaces(undefined, undefined).size).toBe(0);
   });
 
