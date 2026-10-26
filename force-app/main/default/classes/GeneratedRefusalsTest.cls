@@ -709,11 +709,10 @@ private class GeneratedRefusalsTest {
   }
 
   /**
-   * Generated after the week was set up, then Group B away, Soccer closed; then by hand (Greg,
-   * 2026-10-26: a hand edit is always made): Soccer in Group A's Lunch, Swim in away Group B's
-   * Lunch, and Swim over Group C's Flagpole. Each is saved, and locked.
+   * Setup, before Test.startTest(): generated, then Group B away and Soccer closed. Returns the
+   * week as the screen reads it now.
    */
-  private static void handEditedAgainstSetup(Map<String, Id> ids) {
+  private static GeneratedInputs.Inputs awayAndClosed(Map<String, Id> ids) {
     generated();
     Database.insert(
       new List<WeekException__c>{
@@ -728,7 +727,19 @@ private class GeneratedRefusalsTest {
       },
       AccessLevel.SYSTEM_MODE
     );
-    GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+    return GeneratedTestData.inputs();
+  }
+
+  /**
+   * By hand (Greg, 2026-10-26: a hand edit is always made): Soccer (closed) in Group A's Lunch,
+   * Swim in away Group B's Lunch, and Swim over Group C's Flagpole. Each is saved, and locked.
+   * Returns read as the screen has it after the save (the answer's days and revision), so the
+   * test reads nothing again.
+   */
+  private static GeneratedInputs.Inputs handEdited(
+    Map<String, Id> ids,
+    GeneratedInputs.Inputs read
+  ) {
     SlotEdits.Result saved = GeneratedTestData.handEdits(
       read.scheduleId,
       new List<SlotEdits.Edit>{
@@ -763,15 +774,19 @@ private class GeneratedRefusalsTest {
       read.revision
     );
     Assert.isTrue(saved.conflicts.isEmpty(), String.valueOf(saved.conflicts));
+    Assert.isNotNull(saved.revision);
+    read.revision = saved.revision;
+    read.days = saved.schedule.days;
+    return read;
   }
 
   @IsTest
   static void aRebuildKeepsHandEditsAgainstSetupButRefusesTheEngineBreakingIt() {
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
-      handEditedAgainstSetup(ids);
+      GeneratedInputs.Inputs read = awayAndClosed(ids);
       Test.startTest();
-      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      read = handEdited(ids, read);
       // The engine putting closed Soccer in an unlocked cell: refused, as before.
       GeneratedWeek.Save engineBuilt = request(read, GeneratedSaves.REBUILD);
       GeneratedTestData.put(
@@ -791,12 +806,11 @@ private class GeneratedRefusalsTest {
         request(read, GeneratedSaves.REBUILD)
       );
       Test.stopTest();
-      Assert.isFalse(kept.conflict, kept.message);
-      Id draftId = read.scheduleId;
+      Assert.isFalse(kept.conflict, 'Refused: ' + kept.message);
       Assert.areEqual(
         GeneratedTestData.a('Soccer'),
         GeneratedTestData.slots(
-          draftId,
+          read.scheduleId,
           GeneratedTestData.at(0, GeneratedTestData.GROUP_A)
         )[
           GeneratedTestData.LUNCH
@@ -805,7 +819,7 @@ private class GeneratedRefusalsTest {
       Assert.areEqual(
         GeneratedTestData.a('Swim'),
         GeneratedTestData.slots(
-          draftId,
+          read.scheduleId,
           GeneratedTestData.at(0, GeneratedTestData.GROUP_C)
         )[
           GeneratedTestData.PERIOD_1
@@ -818,15 +832,11 @@ private class GeneratedRefusalsTest {
   static void startOverClearsEveryActivityAndKeepsNone() {
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
-      handEditedAgainstSetup(ids);
+      GeneratedInputs.Inputs read = awayAndClosed(ids);
       Test.startTest();
-      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      // Start over that kept an activity (here every one, the hand edits too): not what the
-      // screen sends, refused, and nothing written.
-      Assert.areEqual(
-        'That change could not be read. Reload the page and try again.',
-        GeneratedTestData.refusal(request(read, GeneratedSaves.START_OVER))
-      );
+      read = handEdited(ids, read);
+      // Start over that kept an activity (one left on Tuesday): not what the screen sends,
+      // refused, and nothing written.
       GeneratedWeek.Save oneLeft = GeneratedTestData.cleared(
         request(read, GeneratedSaves.START_OVER)
       );
@@ -842,12 +852,12 @@ private class GeneratedRefusalsTest {
         'That change could not be read. Reload the page and try again.',
         GeneratedTestData.refusal(oneLeft)
       );
-      // Every activity cleared, fixed and recurring activities kept: saved.
+      // Every activity cleared, the hand edits too; fixed and recurring activities kept: saved.
       GeneratedWeek.Result cleared = GeneratedTestData.save(
         GeneratedTestData.cleared(request(read, GeneratedSaves.START_OVER))
       );
       Test.stopTest();
-      Assert.isFalse(cleared.conflict, cleared.message);
+      Assert.isFalse(cleared.conflict, 'Refused: ' + cleared.message);
       // Group C's Swim over Flagpole and its Gym games are cleared; Group A's Flagpole stays.
       List<String> groupC = GeneratedTestData.slots(
         read.scheduleId,
