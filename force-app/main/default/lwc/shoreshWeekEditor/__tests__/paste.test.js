@@ -79,7 +79,8 @@ describe("Paste", () => {
     expect(after(days, runs)[0][0]).toEqual(["F:f1", "", "A:a3"]);
   });
 
-  it("leaves out, and says why, what can't go: away, set up there, removed, not set up, no room", () => {
+  it("a paste is a hand edit: it covers a fixed activity and goes where a bunk isn't at camp; the rest that can't go is said", () => {
+    // Greg, 2026-10-26: a hand edit is always made; the Why list reminds.
     const days = week(["1,,", "1,,"], ["1,,", "1,,"]);
     const isAway = (d, g, b) => g === 1 && b === 2;
     const { runs, leftOut } = pasteEdit(
@@ -90,25 +91,39 @@ describe("Paste", () => {
           item(MON, "g1", ["t1"], "A:a3", "Soccer"),
           item(TUE, "g1", ["t2"], "A:a2", "Boating", true),
           item(TUE, "g2", ["t2"], "E:Chugim", "Chugim"),
-          item(TUE, "g1", ["t3", "t1"], "A:a1", "Swim")
+          item(TUE, "g1", ["t3", "t1"], "A:a1", "Swim"),
+          item(TUE, "g2", ["t1"], "F:f1", "Flagpole")
         ],
         [],
         [{ slot: "A:a3", name: "Soccer" }]
       ),
       { isAway }
     );
-    expect(runs).toEqual([]);
+    expect(runs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          day: 0,
+          group: 1,
+          first: 2,
+          before: [""],
+          after: ["A:a1"]
+        }),
+        expect.objectContaining({
+          day: 0,
+          group: 0,
+          first: 0,
+          before: ["F:f1"],
+          after: ["A:a3"]
+        })
+      ])
+    );
+    expect(runs).toHaveLength(2);
     expect(why(leftOut)).toEqual([
       ["Soccer", LEFT_OUT.NO_ROOM],
       ["Swim", LEFT_OUT.NO_ROOM],
-      ["Swim", LEFT_OUT.AWAY],
-      ["Soccer", LEFT_OUT.TAKEN],
       ["Boating", LEFT_OUT.GONE],
       ["Chugim", LEFT_OUT.NOT_SET_UP]
     ]);
-    const taken = leftOut.find((o) => o.why === LEFT_OUT.TAKEN);
-    expect(taken.blocking).toBe("F:f1");
-    expect(taken).toMatchObject({ day: 0, group: 0, block: 0 });
   });
 
   it("the same activity already there needs nothing", () => {

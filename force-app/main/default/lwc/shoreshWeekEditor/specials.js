@@ -91,7 +91,8 @@ export function rowsCovered(days, cells) {
  * holding it for every block, whatever was there going in full (nothing is left cut short).
  * Returns { runs } or, when a block can't take it, { refused, at }: "setTime" (a fixed or
  * recurring activity, which stays where setup puts it), "away" (the bunk isn't at camp), or
- * "locked". checks: isAway(slot) and isLocked(slot), on { day, group, block }. eachBlock: each
+ * "locked". checks: isAway(slot) and isLocked(slot), on { day, group, block }, and coversSetTime
+ * (a hand edit may cover a fixed or recurring activity: Greg, 2026-10-26). eachBlock: each
  * block holds it on its own (an elective set, ADR 0018 slice E5: each time block is its own
  * elective time) rather than one run carrying on.
  */
@@ -101,7 +102,7 @@ export function eventRuns(days, rows, event, checks, eachBlock = false) {
     const row = slots(days[target.day], target.group);
     for (let b = target.first; b <= target.last; b++) {
       const at = { day: target.day, group: target.group, block: b };
-      if (staysPut(row[b])) {
+      if (!checks.coversSetTime && staysPut(row[b])) {
         return { refused: "setTime", at };
       }
       if (checks.isAway(at)) {

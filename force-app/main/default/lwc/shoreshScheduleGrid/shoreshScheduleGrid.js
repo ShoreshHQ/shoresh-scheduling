@@ -159,9 +159,13 @@ export default class ShoreshScheduleGrid extends LightningElement {
   /**
    * The rows where every column holds the same fixed or recurring activity for one block (Lunch,
    * Assembly): each is drawn as one slim cell across the columns. Their marks and words must
-   * match too, so nothing one bunk's cell says is lost.
+   * match too, so nothing one bunk's cell says is lost. Only where the grid can't be edited: a
+   * hand edit may move or cover one bunk's (Greg, 2026-10-26), so an editable grid draws each.
    */
   get slimRows() {
+    if (this.editable) {
+      return new Set();
+    }
     const columns = ((this.grid && this.grid.columns) || []).length;
     const byRow = new Map();
     this.allCells.forEach((cell) => {
@@ -194,7 +198,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
 
   /**
    * The cells as drawn: in a slim row only its first column's cell, spanning every column (the
-   * rest go; the slot is read-only, so nothing is lost by sending the first one's key).
+   * rest go; slim rows are only drawn where nothing can be edited, so no key is lost).
    */
   get drawnCells() {
     return this.merged(this.slimDrawn());

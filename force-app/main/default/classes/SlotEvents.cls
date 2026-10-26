@@ -19,12 +19,17 @@ public with sharing class SlotEvents {
     return new SlotEvents();
   }
 
-  /** The season's events and elective sets the edits place. */
+  /**
+   * The season's (setup.seasonId) events and elective sets the edits place, but those already read
+   * in user mode (known: the season's, with Id and Name), which aren't read again.
+   */
   public static SlotEvents read(
-    Id seasonId,
-    CampLabels labels,
-    List<SlotEdits.Edit> edits
+    SlotRules.Setup setup,
+    List<SlotEdits.Edit> edits,
+    Map<Id, SObject> known
   ) {
+    Id seasonId = setup.seasonId;
+    CampLabels labels = setup.labels;
     SlotEvents result = new SlotEvents();
     result.labels = labels ?? result.labels;
     Set<Id> eventIds = new Set<Id>();
@@ -35,6 +40,11 @@ public with sharing class SlotEvents {
     }
     eventIds.remove(null);
     setIds.remove(null);
+    for (Id recordId : known.keySet()) {
+      if (setIds.remove(recordId) || eventIds.remove(recordId)) {
+        result.placed.put(recordId, known.get(recordId));
+      }
+    }
     if (!eventIds.isEmpty()) {
       result.placed.putAll(
         [

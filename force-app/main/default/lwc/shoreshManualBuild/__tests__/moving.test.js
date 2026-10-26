@@ -143,14 +143,21 @@ describe("c-shoresh-manual-build: moving things", () => {
     const element = await render();
     await fire(chip(element, "a2"), "dragstart");
     await fire(cell(element, "1-2"), "drop");
-    // Bunk 2 is not at camp at Lunch in the fixture: refused.
-    expect(saveSlots).not.toHaveBeenCalled();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Bunk 2 isn't at camp then."
-    );
+    // Bunk 2 is not at camp at Lunch in the fixture: placed all the same, as the director chose
+    // (Greg, 2026-10-26); the Why list reminds them.
+    expect(sentRuns(0)).toEqual([
+      {
+        day: "2026-06-29",
+        groupId: "g2",
+        firstBlockId: "t3",
+        before: [""],
+        after: ["A:a2"],
+        blockIds: ["t3"]
+      }
+    ]);
     await fire(chip(element, "a2"), "dragstart");
     await fire(cell(element, "0-2"), "drop");
-    expect(sentRuns()).toEqual([
+    expect(sentRuns(1)).toEqual([
       {
         day: "2026-06-29",
         groupId: "g1",
@@ -468,11 +475,6 @@ describe("c-shoresh-manual-build: moving things", () => {
   it("Undo sends the change back the other way, and Redo again; Ctrl+Z and Ctrl+Shift+Z too", async () => {
     const element = await render();
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
-    await fire(cell(element, "1-1"), "dragstart");
-    // Flagpole, every bunk's first block, is one slim cell across the bunks (its first bunk's).
-    await fire(cell(element, "0-0"), "drop");
-    // Flagpole stays where it is set up: refused, nothing to undo.
-    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
     await press(cell(element, "1-1"), "Delete");
     expect(q(element, '[data-id="undo"]').disabled).toBe(false);
     q(element, '[data-id="undo"]').click();
@@ -766,25 +768,37 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
   });
 
-  it("a swap never sends an activity to where its new bunk isn't at camp", async () => {
+  it("a swap may send an activity to where its new bunk isn't at camp (Greg, 2026-10-26)", async () => {
     // Swim left in Bunk 2's Lunch (Bunk 2 isn't at camp then), Soccer in Bunk 1's Period 2.
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,3,", "1,,2"])
     );
     await fire(cell(element, "1-2"), "dragstart");
     await fire(cell(element, "0-1"), "drop");
-    expect(saveSlots).not.toHaveBeenCalled();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Bunk 2 isn't at camp then."
+    expect(sentRuns(0)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          groupId: "g2",
+          firstBlockId: "t3",
+          before: ["A:a1"],
+          after: ["A:a3"]
+        }),
+        expect.objectContaining({
+          groupId: "g1",
+          firstBlockId: "t2",
+          before: ["A:a3"],
+          after: ["A:a1"]
+        })
+      ])
     );
     expect(q(element, '[data-id="build-error"]')).toBeNull();
   });
 
-  it("Space on a fixed activity says it stays put", async () => {
+  it("Space on a fixed activity picks it up, to move by hand (Greg, 2026-10-26)", async () => {
     const element = await render();
     await press(cell(element, "0-0"), " ");
     expect(q(element, '[data-id="announce"]').textContent).toBe(
-      "Flagpole stays where it is set up."
+      "Flagpole picked up from Bunk 1 · Monday · Period 1."
     );
   });
 
@@ -871,12 +885,28 @@ describe("c-shoresh-manual-build: moving things", () => {
     );
   });
 
-  it("Space on a fixed activity says it stays put, on the quiet line too", async () => {
+  it("a fixed activity moved by hand to an Open slot is sent as a move", async () => {
     const element = await render();
-    await press(cell(element, "0-0"), " ");
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Flagpole stays where it is set up."
-    );
+    await fire(cell(element, "0-0"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
+    expect(sentRuns(0)).toEqual([
+      {
+        day: "2026-06-29",
+        groupId: "g1",
+        firstBlockId: "t1",
+        before: ["F:f1"],
+        after: [""],
+        blockIds: ["t1"]
+      },
+      {
+        day: "2026-06-29",
+        groupId: "g1",
+        firstBlockId: "t3",
+        before: [""],
+        after: ["F:f1"],
+        blockIds: ["t3"]
+      }
+    ]);
   });
 
   it("after Use yours, the director's saved change can always be undone", async () => {

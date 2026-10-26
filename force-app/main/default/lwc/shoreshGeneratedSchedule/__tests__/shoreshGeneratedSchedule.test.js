@@ -339,12 +339,13 @@ describe("c-shoresh-generated-schedule", () => {
     const texts = cells(element).map(
       (c) => c.querySelector(".cell-name").textContent
     );
-    // Flagpole for every bunk: one slim cell across the bunks, with the lock.
+    // Flagpole for every bunk, each bunk's own cell (a hand edit may move or cover one: Greg,
+    // 2026-10-26), with the set-time lock.
     const flagpole = cells(element).filter(
       (c) => c.querySelector(".cell-name").textContent === "Flagpole"
     );
-    expect(flagpole).toHaveLength(1);
-    expect(flagpole[0].getAttribute("aria-colspan")).toBe("2");
+    expect(flagpole).toHaveLength(2);
+    expect(flagpole[0].getAttribute("aria-colspan")).toBeNull();
     expect(flagpole[0].querySelector(".set-lock svg")).not.toBeNull();
     // Bunk 2 is at camp mornings only: its afternoon cell is hatched.
     expect(texts).toContain("Not at camp");
@@ -1146,7 +1147,8 @@ describe("c-shoresh-generated-schedule", () => {
     expect(all.filter((c) => c.getAttribute("tabindex") === "0")).toHaveLength(
       1
     );
-    // An activity can be changed by hand (the editor's grid); Flagpole stays where it is set up.
+    // An activity can be changed by hand (the editor's grid), and so can Flagpole (Greg,
+    // 2026-10-26), but only as a hand edit, never through a whole-week save.
     const swim = all.find(
       (c) => c.querySelector(".cell-name").textContent === "Swim"
     );
@@ -1154,9 +1156,8 @@ describe("c-shoresh-generated-schedule", () => {
     const flagpole = all.find(
       (c) => c.querySelector(".cell-name").textContent === "Flagpole"
     );
-    expect(flagpole.getAttribute("aria-readonly")).toBe("true");
+    expect(flagpole.getAttribute("aria-readonly")).toBeNull();
     const before = sent().days;
-    // Bunk 2's Flagpole (now the one slim Flagpole cell across the bunks, as all[1] was).
     flagpole.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Delete", bubbles: true })
     );

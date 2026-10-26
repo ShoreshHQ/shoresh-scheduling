@@ -87,10 +87,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      so nothing is left cut short.
    - While the question is open, later edits wait. **Use yours** goes first; then they are
      sent, each checked the same way.
-5. **What an edit may not do** (refused with a sentence, nothing saved):
-   - change, cover, or place a fixed or recurring activity (they stay where setup puts them;
-     part 6 adds "Update to match setup");
-   - place anything in a block where the group is not at camp (morning or afternoon only);
+5. **What an edit may not do** (refused with a sentence, nothing saved). _The first two were
+   lifted on 2026-10-26: a hand edit is a reminder, never a refusal (part 12)._
+   - ~~change, cover, or place a fixed or recurring activity~~ (part 12);
+   - ~~place anything in a block where the group is not at camp~~ (part 12);
    - place an activity from another season;
    - change anything but a Manual Build draft (a version, a published schedule, or a later
      Generated Schedule draft);
@@ -107,8 +107,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    you type (spaces and capitals aside):
    - **Open**, when the slot is filled and nothing is typed;
    - the activities set up for that bunk;
-   - only **Open** for something left in a block where the group isn't at camp (it can only be
-     cleared);
+   - (until part 12: only **Open** for something left where the group isn't at camp; now the
+     full list, as any slot);
    - then the rest, each with a bronze dot and _Not set up for <bunk>_ (Greg #3: allowed, with
      a dot). The desktop lists only eligible activities; here typing must be able to do what
      dragging can;
@@ -144,8 +144,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    is under way), so other people's changes show. A reload that started before an edit never
    replaces it. There is no push from the server. The slot box closes when the page scrolls.
 10. **Not at camp.** In the draft, a slot where the group isn't at camp (from today's setup:
-    morning-only or afternoon-only groups) is hatched and says _Not at camp_; nothing can be
-    placed there. The legend gains that look.
+    morning-only or afternoon-only groups) is hatched and says _Not at camp_. The legend gains
+    that look. (Until part 12 nothing could be placed there; now a hand edit can, reminded.)
 11. **Code layout:**
     - `ManualBuildController`: the screen's four calls;
     - `ManualDrafts`: find, start, and lock a draft;
@@ -1372,6 +1372,69 @@ Generated Schedule:
 5. **Start from another week** carries a placed set where it was, while the season has it.
 
 Checked by `ElectivesOnGridTest` and `shoreshWeekEditor` `electives.test.js`.
+
+## Choices (part 12: hand edits are reminders, 2026-10-26)
+
+Greg's decision (engine care plan Q4, binding): _"always allow a hand-edit. We should not assume
+that we know better than the person with direct knowledge of what they can or cannot do in the
+physical world. Flag it as a reminder but allow it."_
+
+1. **Never refused for what setup says** (Manual Build and Generated Schedule, `SlotSaves`): a
+   closed activity, an activity at a closed place, a group away this week (where the grid has a
+   row for it), a time a group isn't at camp (morning or afternoon only), and a fixed or recurring
+   activity moved, covered or cleared by hand. Those two rules now live in `GeneratedCellRules`, used only by Generated's whole-week saves (ADR 0010). A
+   fixed or recurring activity moved onto a day that doesn't list it is listed there as another
+   day of the schedule names it.
+2. **Still refused, because they protect the data, not the plan:** a cell that changed since the
+   screen read it (a conflict, "keep theirs or use yours"); a run that would cut into a placement
+   or whose neighbours changed (a conflict); a Lock the screen didn't see (Generated: a conflict);
+   an activity, event or elective set that isn't this season's (or was deleted), or a fixed or
+   recurring activity no day of the schedule has; a day, group or time block that isn't the
+   draft's (`That day is not in this schedule`, a conflict for the rest); a day that can't be
+   read; a run the screen could not have sent; and anything but a Manual Build draft (or the
+   Generated draft, on Generated Schedule). Generated's whole-week build saves are not hand edits
+   and keep every check (ADR 0010).
+3. **The reminder is the Why list's setup row**, in the words "Update to match setup" already uses
+   (part 6, from the desktop's `computeWeekClosures.js`), place first, so a cell never gets the
+   same fact said twice in two phrasings:
+   - closed activity: _Bunk 2 · Tuesday · Period 3 · Swim: Not running this week_;
+   - closed place: _… · Soccer: Field A is closed this week_;
+   - group away this week: _… · Gym games: Not at camp this week_;
+   - not at camp then: _… · Soccer: Not at camp then_;
+   - a fixed activity moved: _… · Flagpole: Not set up here now_ where it went, and
+     _… Period 1: Flagpole is set up here now_ (Open) or _… · Swim: Flagpole is set up here now_
+     (covered) where it was.
+     "Week" is the camp's word. After a hand edit the screen reads setup changes again when the
+     edit touched a fixed or recurring activity or a time a group isn't at camp, or the week has a
+     closed activity or a group away (`awayGroupIds`, new on the preview), as it already did for
+     closed activities.
+4. **On the screen:** no cell is read-only for these reasons; fixed and recurring activities can
+   be picked up, moved, stretched, cleared and covered by typing, dragging, an event or an
+   elective set; drops onto a time a group isn't at camp are made. The cell keeps its look (set
+   time lock mark, _Not at camp_ hatch). An editable grid no longer draws a row every bunk spends
+   on the same fixed activity as one slim cell: each bunk's cell is its own, so one can be
+   changed (read-only grids still draw the slim row). **Copy and Paste are hand edits** (review
+   of #154): Copy takes fixed and recurring activities and not-at-camp times too, and a paste
+   covers a fixed or recurring activity and goes onto a time a bunk isn't at camp, reminded as
+   above. Copy day to… and a rainy day stay bulk tools: they still leave fixed and recurring
+   activities and not-at-camp times as they are, since they are not cells the director chose one
+   by one.
+5. **The engine never places them** (closed, away, not at camp, set time): generated builds are
+   unchanged. A hand edit on Generated is a lock, so later builds keep it; a cell a fixed or
+   recurring activity is cleared or moved away from by hand is locked empty, so no build fills it
+   (ADR 0010).
+
+Checked by `ManualBuildTest` (`fixedRecurringAndNotAtCampSlotsAreHandEditsWithReminders`,
+`closedActivitiesPlacesAndGroupsAwayAreHandEditsWithReminders`, `whatProtectsTheDataIsStillRefused`),
+`GeneratedRefusalsTest`, and Jest (`shoreshManualBuild` `setupMatch.test.js`, `moving.test.js`).
+
+**Start from another week, query headroom (2026-10-26).** The start read both weeks' days in
+two queries, read the new draft's days again to save into it, read the copied activities again
+though setup had them, and read an elective set twice (once to check it is the season's, once to
+place it). Now: both weeks in one query, the copy saves into the days as read, the rules use the
+season's activities already read (`GeneratedSetup.rules`), and the set read for the check is the
+one placed (`SlotRules.withEvents(edits, known)`). Three queries fewer (39 to 36), four with an
+elective set (40 to 36); `ManualWeekStartTest` asserts 36 for both.
 
 ## Choices that are hard to undo after release
 

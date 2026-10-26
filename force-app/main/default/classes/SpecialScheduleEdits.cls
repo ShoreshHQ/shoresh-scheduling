@@ -97,13 +97,13 @@ public with sharing class SpecialScheduleEdits {
       }
     }
     // A run starts where a placement starts: starting inside one would cut off its first part.
-    SlotRules.checkStartsClean(was[first]);
+    SlotRunChecks.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
       inRun.add(first + i);
     }
-    return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
+    return SlotRunChecks.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }
 
   /** One cell (at: its row and time block) given what it should now hold. */

@@ -9,6 +9,14 @@
  * fills is locked, so building the week again keeps it (Greg, 2026-10-17: hand edits are locks);
  * a cell an edit leaves Open is unlocked, for the next build to fill.
  *
+ * A hand edit is never refused for what the director knows better than setup (Greg, 2026-10-26,
+ * engine care Q4): a closed activity or place, a group away or not at camp then, or a fixed or
+ * recurring activity moved, covered or cleared. Each shows as a reminder in the Why list instead
+ * ("Update to match setup", SetupMatch). What is still refused protects the data: a stale or
+ * changed cell (a conflict), a Lock the screen didn't see, a record that isn't the season's, a
+ * day or group or time block that isn't the draft's, a run cutting into a placement, and anything
+ * but a draft (repo docs/adr/0008-manual-build.md, hand edits are reminders).
+ *
  * Only a draft can be changed, and only as SlotRules allows. Runs in user mode; the days are
  * written by ScheduleDaySaves under the schedule's lock.
  */
@@ -48,18 +56,25 @@ public with sharing class SlotSaves {
   }
 
   /**
-   * Start from another week's copy: on setup already read (GeneratedSetup.rules), and without
-   * reading the schedule back (the start reads the whole draft once afterwards anyway). The draft
-   * must be one this request inserted, so nobody else can save it meanwhile.
+   * Start from another week's copy: on setup already read (GeneratedSetup.rules) and the draft's
+   * days as the start read them (Prepared), and without reading the schedule back (the start reads the
+   * whole draft once afterwards anyway). The draft must be one this request inserted, so nobody
+   * else can save it meanwhile.
    */
   public static SlotEdits.Result makeWith(
-    Id scheduleId,
-    List<SlotEdits.Edit> edits,
-    SlotRules rules
+    Prepared draft,
+    List<SlotEdits.Edit> edits
   ) {
     SlotSaves saves = new SlotSaves();
-    saves.rules = rules;
-    return saves.saveAll(scheduleId, edits);
+    saves.rules = draft.rules;
+    return saves.saveAll(draft.scheduleId, draft.days, edits);
+  }
+
+  /** A draft this request made, with its days as read and the rules its edits go by (makeWith). */
+  public class Prepared {
+    public Id scheduleId;
+    public List<ScheduleDays.DayGrid> days;
+    public SlotRules rules;
   }
 
   /**
@@ -93,12 +108,16 @@ public with sharing class SlotSaves {
     setup = setupOf(schedule.Program__r);
     rules = new SlotRules(setup, SlotRules.activityIdsIn(edits))
       .withEvents(edits);
-    return saveAll(schedule.Id, edits);
+    return saveAll(schedule.Id, ScheduleDays.read(schedule.Id), edits);
   }
 
-  /** The edits, on the rules already set. */
-  private SlotEdits.Result saveAll(Id scheduleId, List<SlotEdits.Edit> edits) {
-    for (ScheduleDays.DayGrid day : ScheduleDays.read(scheduleId)) {
+  /** The edits, on the rules already set, on the schedule's days as read. */
+  private SlotEdits.Result saveAll(
+    Id scheduleId,
+    List<ScheduleDays.DayGrid> read,
+    List<SlotEdits.Edit> edits
+  ) {
+    for (ScheduleDays.DayGrid day : read) {
       days.put(day.day, day);
     }
     SlotEdits.Result result = new SlotEdits.Result();
@@ -203,7 +222,7 @@ public with sharing class SlotSaves {
       return false;
     }
     // A run starts where a placement starts: starting inside one would cut off its first part.
-    SlotRules.checkStartsClean(was[first]);
+    SlotRunChecks.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
@@ -212,7 +231,7 @@ public with sharing class SlotSaves {
     if (lockEdits) {
       new GeneratedEdits(run, was).lock(grid, new List<Integer>{ g, first });
     }
-    return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
+    return SlotRunChecks.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }
 
   /** Generated Schedule: the run's locks are as the screen saw them (GeneratedEdits). */
@@ -233,8 +252,6 @@ public with sharing class SlotSaves {
     if (slot.equals(row[b])) {
       return;
     }
-    rules.checkNotSetTime(row[b], slot);
-    rules.checkAtCamp(slot, grid.groups[g].id, grid.blocks[b].id);
     if (slot == SlotIds.OPEN) {
       grid.rows[g][b] = SlotIds.OPEN;
     } else if (SlotIds.isCarryOn(slot)) {
@@ -246,6 +263,7 @@ public with sharing class SlotSaves {
       }
       grid.rows[g][b] = ScheduleGrid.CARRIES_ON;
     } else {
+      SlotSetTimeItems.bring(grid, slot, days.values());
       grid.rows[g][b] = rules.startToken(grid, slot);
     }
   }

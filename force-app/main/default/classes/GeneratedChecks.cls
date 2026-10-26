@@ -2,19 +2,28 @@
  * What the server checks when a generated week is saved (GeneratedSaves). The engine runs in the
  * browser (ADR 0010), so the server re-checks what it cheaply can and refuses an impossible write,
  * on the cells that changed:
- * - fixed and recurring activities stay where they are (Manual Build's SlotRules);
- * - nothing is put where a group isn't at camp (SlotRules: part of day; GeneratedClosures: away
+ * - fixed and recurring activities stay where they are (GeneratedCellRules);
+ * - nothing is put where a group isn't at camp (GeneratedCellRules: part of day; GeneratedClosures: away
  *   this week); a leftover there may be cleared;
  * - only this season's activities, and none closed this week (GeneratedClosures);
  * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
  * - Fill the open cells changes only cells that were Open;
  * - a locked cell is never changed (ScheduleGridLocks): its lock is the director's, and the
- *   server keeps the stored locks whatever the screen sends. Start over clears them all.
+ *   server keeps the stored locks whatever the screen sends. Start over clears them all;
+ * - Start over leaves no activity on a day it clears (every day but those a special day replaces;
+ *   not checked when the special days can't be read): the screen clears every activity and builds
+ *   nothing (ADR 0010, Start over).
+ * These hold what the engine builds. A hand edit is never refused for them (SlotSaves; Greg,
+ * 2026-10-26): it is saved locked, and a locked cell is never a changed cell here, so a save keeps
+ * it unchecked, whatever closure, away group or set time it goes against. A cell the director
+ * unlocks is the engine's again at the next build, and held to these rules if it changes.
  * Rule bends (over a weekly limit and the rest) are allowed: the engine marks them. That the days
  * are the draft's own is GeneratedFrames; the grids themselves, GeneratedGrids. Reads in user mode.
  */
 public with sharing class GeneratedChecks {
   private SlotRules rules;
+  // What the engine may never build (fixed and recurring activities, at camp).
+  private GeneratedCellRules cells;
   private GeneratedClosures closures;
   // Fill the open cells: every filled cell stays as it is.
   private Boolean onlyOpen;
@@ -49,6 +58,7 @@ public with sharing class GeneratedChecks {
       request.action == GeneratedSaves.FILL_OPEN
     );
     checks.keepLocks = request.action != GeneratedSaves.START_OVER;
+    checks.cells = new GeneratedCellRules(setup);
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
@@ -59,6 +69,9 @@ public with sharing class GeneratedChecks {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
       }
       grids.add(now);
+    }
+    if (!checks.keepLocks) {
+      GeneratedStartOver.check(setup, days, grids);
     }
     return grids;
   }
@@ -142,8 +155,8 @@ public with sharing class GeneratedChecks {
       throw GeneratedFrames.unreadable();
     }
     checkNotSetUpKept(was);
-    rules.checkNotSetTime(was, slot);
-    rules.checkAtCamp(slot, at[0], at[1]);
+    cells.checkNotSetTime(was, slot);
+    cells.checkAtCamp(slot, at);
     if (slot == SlotIds.OPEN) {
       return;
     }

@@ -524,10 +524,10 @@ private class ManualBuildTest {
   }
 
   @IsTest
-  static void fixedRecurringAndAwaySlotsCannotBeChanged() {
+  static void fixedRecurringAndNotAtCampSlotsAreHandEditsWithReminders() {
+    // Greg, 2026-10-26 (engine care Q4): a hand edit is always made; the Why list reminds.
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
-      Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
@@ -535,39 +535,186 @@ private class ManualBuildTest {
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
       Date mon = monday(view.schedule).dateValue;
-      String overFlagpole = refusal(
+      String flagpole = 'F:' + ids.get('Flagpole');
+      Test.startTest();
+      // Swim over Group A's Flagpole.
+      SlotEdits.Edit overFlagpole = SlotRunsTestData.edit(
+        SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 1')),
+        new List<String>{ flagpole },
+        new List<String>{ a(ids, 'Swim') }
+      );
+      // Group B's Flagpole moved from Period 1 to Period 2.
+      SlotEdits.Edit moved = SlotRunsTestData.edit(
+        SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 1')),
+        new List<String>{ flagpole, '' },
+        new List<String>{ '', flagpole }
+      );
+      // Soccer at Lunch, when Group B (mornings only) isn't at camp.
+      SlotEdits.Edit notAtCamp = SlotRunsTestData.edit(
+        SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Lunch')),
+        new List<String>{ '' },
+        new List<String>{ a(ids, 'Soccer') }
+      );
+      SlotEdits.Result made = ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{ overFlagpole, moved, notAtCamp }
+      );
+      Assert.isTrue(made.conflicts.isEmpty(), String.valueOf(made.conflicts));
+      ScheduleViews.DayView day = monday(made.schedule);
+      Assert.areEqual(
+        new List<String>{ a(ids, 'Swim'), '', '' },
+        SlotRunsTestData.slots(day, 0)
+      );
+      Assert.areEqual(
+        new List<String>{ '', flagpole, a(ids, 'Soccer') },
+        SlotRunsTestData.slots(day, 1)
+      );
+      // Each is reminded of, in the words "Update to match setup" uses.
+      List<SetupMatch.Dot> dots = SetupMatchController.getSetupChanges(draftId)
+        .dots;
+      Assert.areEqual(
+        'Flagpole is set up here now',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group A'), ids.get('Period 1') }
+        )
+      );
+      Assert.areEqual(
+        'Flagpole is set up here now',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 1') }
+        )
+      );
+      Assert.areEqual(
+        'Not set up here now',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 2') }
+        )
+      );
+      Assert.areEqual(
+        'Not at camp then',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Lunch') }
+        )
+      );
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void closedActivitiesPlacesAndGroupsAwayAreHandEditsWithReminders() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      Date mon = monday(view.schedule).dateValue;
+      // After the week started: Swim and Field A (Soccer's place) closed, Group C away.
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Activity__c = ids.get('Swim')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Location__c = ids.get('Field A')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Group__c = ids.get('Group C')
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      SlotEdits.Result made = ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
+            new List<String>{ '' },
+            new List<String>{ a(ids, 'Swim') }
+          ),
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 2')),
+            new List<String>{ '' },
+            new List<String>{ a(ids, 'Soccer') }
+          ),
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(mon, ids.get('Group C'), ids.get('Period 2')),
+            new List<String>{ '' },
+            new List<String>{ a(ids, 'Gym games') }
+          )
+        }
+      );
+      Assert.isTrue(made.conflicts.isEmpty(), String.valueOf(made.conflicts));
+      List<SetupMatch.Dot> dots = SetupMatchController.getSetupChanges(draftId)
+        .dots;
+      Assert.areEqual(
+        'Not running this week',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group A'), ids.get('Period 2') }
+        )
+      );
+      Assert.areEqual(
+        'Field A is closed this week',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 2') }
+        )
+      );
+      Assert.areEqual(
+        'Not at camp this week',
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group C'), ids.get('Period 2') }
+        )
+      );
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void whatProtectsTheDataIsStillRefused() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      Date mon = monday(view.schedule).dateValue;
+      // A fixed activity no day of the week has: not something the screen showed.
+      Assert.areEqual(
+        'That change could not be read. Reload the page and try again.',
+        refusal(
+          draftId,
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
+            new List<String>{ '' },
+            new List<String>{ 'F:' + ids.get('Group A') }
+          )
+        )
+      );
+      // A cell that changed since the screen read it is a conflict, never overwritten.
+      SlotEdits.Result stale = save(
         draftId,
         SlotRunsTestData.edit(
           SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 1')),
-          new List<String>{ 'F:' + ids.get('Flagpole') },
+          new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
       );
-      Assert.isTrue(
-        overFlagpole.contains('stay where they are set up'),
-        overFlagpole
-      );
-      String placingFixed = refusal(
-        draftId,
-        SlotRunsTestData.edit(
-          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
-          new List<String>{ '' },
-          new List<String>{ 'F:' + ids.get('Flagpole') }
-        )
-      );
-      Assert.isTrue(
-        placingFixed.contains('stay where they are set up'),
-        placingFixed
-      );
-      String away = refusal(
-        draftId,
-        SlotRunsTestData.edit(
-          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Lunch')),
-          new List<String>{ '' },
-          new List<String>{ a(ids, 'Soccer') }
-        )
-      );
-      Assert.areEqual('Group B isn\'t at camp in Lunch.', away);
+      Assert.areEqual(new List<Integer>{ 0 }, stale.conflicts);
     }
   }
 

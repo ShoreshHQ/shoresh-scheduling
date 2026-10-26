@@ -1,8 +1,10 @@
 /**
- * What a Manual Build edit may do (SlotSaves): place the season's activities, special events
- * (ADR 0014 slice 4) and elective sets (ADR 0018 slice E5), never move or cover a
- * fixed or recurring activity (they stay where setup puts them), and never place anything where a
- * group is not at camp. Reads what the edits need once, in user mode.
+ * What an edit may place (SlotSaves): the season's activities, special events (ADR 0014 slice 4)
+ * and elective sets (ADR 0018 slice E5), as the day saved them. A hand edit may also move, cover
+ * or clear a fixed or recurring activity and place anything where a group is not at camp: the
+ * director knows better (Greg, 2026-10-26), and the Why list reminds them. A generated week's save
+ * still holds what the engine built to those rules (GeneratedCellRules). Reads
+ * what the edits need once, in user mode.
  */
 public with sharing class SlotRules {
   private CampLabels labels;
@@ -11,8 +13,7 @@ public with sharing class SlotRules {
   // read them.
   private SlotEvents events = SlotEvents.none();
   private Id seasonId;
-  private Map<Id, Group__c> groups = new Map<Id, Group__c>();
-  private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
+  private Setup setup;
 
   /** What the rules are checked against: the season, the camp's words, groups and time blocks. */
   public class Setup {
@@ -24,27 +25,43 @@ public with sharing class SlotRules {
 
   /** The rules on setup already read, with the activities the edits place. */
   public SlotRules(Setup setup, Set<Id> activityIds) {
+    this(setup, seasonActivities(setup.seasonId, activityIds));
+  }
+
+  private static List<Activity__c> seasonActivities(
+    Id seasonId,
+    Set<Id> activityIds
+  ) {
+    return [
+      SELECT Id, Name, Location__c
+      FROM Activity__c
+      WHERE Id IN :activityIds AND Season__c = :seasonId
+      WITH USER_MODE
+    ];
+  }
+
+  /**
+   * The same, on the season's activities already read in user mode (Id, Name, Location__c), so a
+   * request that has them reads none again.
+   */
+  public SlotRules(Setup setup, List<Activity__c> seasonActivities) {
     seasonId = setup.seasonId;
     labels = setup.labels;
-    activities = new Map<Id, Activity__c>(
-      [
-        SELECT Id, Name, Location__c
-        FROM Activity__c
-        WHERE Id IN :activityIds AND Season__c = :seasonId
-        WITH USER_MODE
-      ]
-    );
-    for (Group__c grp : setup.groups) {
-      groups.put(grp.Id, grp);
-    }
-    for (TimeBlock__c block : setup.blocks) {
-      blocks.put(block.Id, block);
-    }
+    activities = new Map<Id, Activity__c>(seasonActivities);
+    this.setup = setup;
   }
 
   /** The season's special events and elective sets the edits place, read once (SlotEvents). */
   public SlotRules withEvents(List<SlotEdits.Edit> edits) {
-    events = SlotEvents.read(seasonId, labels, edits);
+    return withEvents(edits, new Map<Id, SObject>());
+  }
+
+  /** The same, given elective sets already read (Id, Name, of the season): not read again. */
+  public SlotRules withEvents(
+    List<SlotEdits.Edit> edits,
+    Map<Id, SObject> known
+  ) {
+    events = SlotEvents.read(setup, edits, known);
     return this;
   }
 
@@ -73,32 +90,6 @@ public with sharing class SlotRules {
     }
     result.remove(null);
     return result;
-  }
-
-  /** Fixed and recurring activities stay where setup put them. */
-  public void checkNotSetTime(String was, String slot) {
-    if (SlotIds.isSetTime(was) || SlotIds.isSetTime(slot)) {
-      throw new ShoreshException(
-        labels.plural('FixedActivity') +
-          ' and ' +
-          labels.pluralInSentence('RecurringActivity') +
-          ' stay where they are set up.'
-      );
-    }
-  }
-
-  /** Nothing goes where a group isn't at camp (a morning-only group's afternoon). */
-  public void checkAtCamp(String slot, String groupId, String blockId) {
-    if (String.isEmpty(slot)) {
-      return;
-    }
-    Group__c grp = groups.get(Id.valueOf(groupId));
-    TimeBlock__c block = blocks.get(Id.valueOf(blockId));
-    if (grp != null && block != null && !SetTimePlan.atCamp(grp, block)) {
-      throw new ShoreshException(
-        grp.Name + ' isn\'t at camp in ' + block.Name + '.'
-      );
-    }
   }
 
   /** The stored cell for an item starting in a slot, adding it to the day's list if new. */
@@ -132,34 +123,5 @@ public with sharing class SlotRules {
       );
     }
     return activity;
-  }
-
-  /**
-   * Whether the slots outside a run still belong to what they did (the run didn't cut into a
-   * placement). When they don't, the screen's picture of the day was out of date: a conflict.
-   */
-  public static Boolean neighboursKept(
-    List<String> was,
-    List<String> now,
-    Set<Integer> inRun
-  ) {
-    for (Integer b = 0; b < now.size(); b++) {
-      if (
-        !inRun.contains(b) &&
-        !SlotIds.owner(now[b]).equals(SlotIds.owner(was[b]))
-      ) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /** A run may not start partway through a placement (it would cut off the part before). */
-  public static void checkStartsClean(String firstSlot) {
-    if (SlotIds.isCarryOn(firstSlot)) {
-      throw new ShoreshException(
-        'That change would cut into the cell next to it. Reload the page and try again.'
-      );
-    }
   }
 }

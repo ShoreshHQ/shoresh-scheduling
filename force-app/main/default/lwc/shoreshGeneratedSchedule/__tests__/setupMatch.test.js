@@ -520,6 +520,22 @@ describe("Setup changed on the Generated Schedule screen", () => {
     editor.dispatchEvent(new CustomEvent("saved", { detail: {} }));
     await flush();
     expect(getSetupChanges).toHaveBeenCalledTimes(3);
+    // A hand edit over a fixed activity or where a group isn't at camp is a new difference to
+    // remind of (Greg, 2026-10-26): read again, though the week matched.
+    editor.dispatchEvent(
+      new CustomEvent("saved", { detail: { remind: true } })
+    );
+    await flush();
+    expect(getSetupChanges).toHaveBeenCalledTimes(4);
+    // So is any hand edit while a group is away this week.
+    getSetupChanges.mockResolvedValue({ ...NOTHING, awayGroupIds: [BUNK_2] });
+    editor.dispatchEvent(
+      new CustomEvent("saved", { detail: { remind: true } })
+    );
+    await flush();
+    editor.dispatchEvent(new CustomEvent("saved", { detail: {} }));
+    await flush();
+    expect(getSetupChanges).toHaveBeenCalledTimes(6);
   });
 
   it("coming back to the window doesn't read the week again while the list is open or an update is on its way", async () => {
