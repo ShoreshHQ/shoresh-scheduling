@@ -207,56 +207,59 @@ async function launch() {
 
 async function main() {
   const browser = await launch();
-  const page = await browser.newPage();
-  await page.route(`${ORIGIN}/**`, (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/") {
-      return route.fulfill({ contentType: "text/html", body: PAGE });
-    }
-    if (path.startsWith("/schema/")) {
+  const rows = [];
+  // A failed run still closes Chromium.
+  try {
+    const page = await browser.newPage();
+    await page.route(`${ORIGIN}/**`, (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === "/") {
+        return route.fulfill({ contentType: "text/html", body: PAGE });
+      }
+      if (path.startsWith("/schema/")) {
+        return route.fulfill({
+          contentType: "text/javascript",
+          body: schemaModule(decodeURIComponent(path.slice("/schema/".length)))
+        });
+      }
+      const file = join(ROOT, "force-app/main/default", path);
+      const withJs = existsSync(file) ? file : `${file}.js`;
+      if (!path.startsWith("/lwc/") || !existsSync(withJs)) {
+        return route.fulfill({ status: 404, body: "" });
+      }
       return route.fulfill({
         contentType: "text/javascript",
-        body: schemaModule(decodeURIComponent(path.slice("/schema/".length)))
+        body: readFileSync(withJs, "utf8")
       });
-    }
-    const file = join(ROOT, "force-app/main/default", path);
-    const withJs = existsSync(file) ? file : `${file}.js`;
-    if (!path.startsWith("/lwc/") || !existsSync(withJs)) {
-      return route.fulfill({ status: 404, body: "" });
-    }
-    return route.fulfill({
-      contentType: "text/javascript",
-      body: readFileSync(withJs, "utf8")
     });
-  });
-  page.on("pageerror", (e) => console.error("page:", e.message));
-  await page.goto(`${ORIGIN}/`);
-  await page.waitForFunction(() => window.ready === true);
-  const version = browser.version();
-  console.log(`Node ${process.version}, Chromium ${version}\n`);
-
-  const rows = [];
-  for (const c of CASES) {
-    const node = inNode(c.input);
-    const web = await page.evaluate(
-      (input) => window.timeBuild(input),
-      c.input
-    );
-    const row = {
-      camp: c.name,
-      nodeS: +(node.ms / 1000).toFixed(1),
-      chromiumS: +(web.ms / 1000).toFixed(1),
-      ratio: +(web.ms / node.ms).toFixed(2),
-      longestBlockMs: Math.round(web.longestBlock),
-      pieces: web.pieces,
-      ruleChecks: web.ruleChecks,
-      sameWork: web.ruleChecks === node.ruleChecks,
-      under3min: web.ms < CEILING_MS
-    };
-    rows.push(row);
-    console.log(JSON.stringify(row));
+    page.on("pageerror", (e) => console.error("page:", e.message));
+    await page.goto(`${ORIGIN}/`);
+    await page.waitForFunction(() => window.ready === true);
+    const version = browser.version();
+    console.log(`Node ${process.version}, Chromium ${version}\n`);
+    for (const c of CASES) {
+      const node = inNode(c.input);
+      const web = await page.evaluate(
+        (input) => window.timeBuild(input),
+        c.input
+      );
+      const row = {
+        camp: c.name,
+        nodeS: +(node.ms / 1000).toFixed(1),
+        chromiumS: +(web.ms / 1000).toFixed(1),
+        ratio: +(web.ms / node.ms).toFixed(2),
+        longestBlockMs: Math.round(web.longestBlock),
+        pieces: web.pieces,
+        ruleChecks: web.ruleChecks,
+        sameWork: web.ruleChecks === node.ruleChecks,
+        under3min: web.ms < CEILING_MS
+      };
+      rows.push(row);
+      console.log(JSON.stringify(row));
+    }
+  } finally {
+    await browser.close();
   }
-  await browser.close();
 
   console.log(
     "\n| Camp | Node | Chromium | Chromium / Node | Longest block | Same work |"

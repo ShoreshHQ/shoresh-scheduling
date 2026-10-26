@@ -336,6 +336,7 @@ the same work in both (ruleChecks equal), so both built the same week. Two runs:
 | --------------------------------- | -------------- | -------------- | ------------- | ------------------------ |
 | odd: sixty groups                 | 3.4 s, 3.7 s   | 1.5 s, 1.5 s   | 0.42-0.44     | 141-147 ms               |
 | odd: ordinary large camp          | 2.2 s, 1.6 s   | 1.1 s, 1.1 s   | 0.48-0.70     | 67-68 ms                 |
+| odd: ordinary medium camp         | under 0.1 s    | under 0.1 s    | -             | under 1 ms               |
 | differential seed 143             | 20.8 s, 13.1 s | 9.8 s, 9.2 s   | 0.47-0.71     | under 50 ms              |
 | differential seed 241             | 17.3 s, 17.6 s | 9.2 s, 8.9 s   | 0.51-0.53     | under 50 ms              |
 | can't fit: 60 groups x 8 blocks   | 45.6 s, 33.6 s | 26.8 s, 25.4 s | 0.59-0.76     | 242-255 ms               |
