@@ -194,7 +194,7 @@
                     </template>
                   </template>
                   <template lwc:if={card.fromMemory}>
-                    <span class="tag">Remembered</span>
+                    <span class="tag">{card.memoryNote}</span>
                   </template>
                 </span>
                 <template lwc:if={card.open}>
@@ -323,7 +323,7 @@
                     </button>
                   </template>
                   <template lwc:if={card.fromMemory}>
-                    <span class="tag">Remembered</span>
+                    <span class="tag">{card.memoryNote}</span>
                   </template>
                 </span>
               </div>
@@ -352,7 +352,7 @@
                 <span class="d">{place.usedByText}</span>
                 <span class="options">
                   <template lwc:if={place.fromMemory}>
-                    <span class="tag">Remembered</span>
+                    <span class="tag">{place.memoryNote}</span>
                   </template>
                 </span>
               </div>

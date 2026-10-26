@@ -1,6 +1,6 @@
 # 0021: What Shoresh has learned
 
-Status: proposed (2026-10-26), PR 1 of the port (the screen; answers only: the desktop's patterns, with their progress and Forget this pattern, come in PR 3). Spec: the desktop's
+Status: proposed (2026-10-26). PR 1 #160 the screen (answers only: the desktop's patterns, with their progress and Forget this pattern, come in PR 3); PR 2 the who-and-when words in the import cards and an import's different answer replacing the record (choice 9). Spec: the desktop's
 `src/screens/LearnedScreen.jsx`, `src/screens/learned/LearnedRow.jsx`, `src/ingest/learnedView.js`
 and `docs/work/specs/2026-10-11-what-shoresh-has-learned-view.md`. Plan and decisions: wiki
 `projects/shoresh-sf-learned-plan.md` (binding). Builds on ADR 0006 §19-21 (remembered answers,
@@ -39,7 +39,7 @@ things you delete stay deleted, rules Shoresh guessed) and ADR 0015 (design syst
 
 4. **A row in camp words**: "<name>: <answer>" ("Lunch: A fixed activity", "Riflery: Activity
    deleted"), then who answered it and when, from the record's own Created By and date (no
-   field of its own; see choice 6 for why Created and not Last Modified): "Answered by you on 3 Jul", "Answered by Dana on 3 Jul";
+   field of its own; see choice 6 for why Created and not Last Modified): "Answered by you on 3 Jul", "Answered by Dana on 3 Jul" (first name; "a former user" when that user is inactive; the date in the camp's time zone, as on the import cards, choice 9);
    "Deleted by ..." for a deletion and "Guessed in an import by ..." for a guess. A name a key
    keeps in lower case ("swim") shows as the camp writes it now (except a similar-names pair,
    whose two spellings are the question), matched ignoring capitals and
@@ -87,9 +87,8 @@ things you delete stay deleted, rules Shoresh guessed) and ADR 0015 (design syst
    - Unlike the desktop's 8 seconds, Undo stays until the screen is next opened: these screens
      use no timers, and an Undo that vanishes on its own is a timing barrier (WCAG 2.2.1). The
      group count leaves a forgotten answer out.
-   - Not covered: an import that answers a remembered question again with another answer
-     updates the record in place (`ImportAnswers`), so the row keeps its first author and date
-     until the import does the same.
+   - An import that answers a remembered question again with another answer replaces the
+     record the same way (choice 9); the same answer again leaves it as it is.
 
 7. **Every result is read out** (a polite live region): "Updated.", "Forgotten. <what happens
    next>", "Remembered again.", "Changed back.". A refused write stays on its row ("Couldn't save that." and the
@@ -107,8 +106,21 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
    there and unchanged (Last Modified equals Created), and rolls back its delete if the
    undelete fails. Nothing the screen sends is written as an answer.
 
+9. **The import cards say whose answer it was and when** (PR 2; desktop `memoryStripText`): an
+   answer filled in from memory is marked "Remembered from your answer on 3 Jul", "Remembered
+   from Dana's answer on 3 Jul" (first name), or "Remembered from a former user's answer on 3
+   Jul" when that person's user is inactive, in place of the plain "Remembered" tag, on every
+   import that fills answers in (setup, list and choices imports: cards, column headings, ticked
+   places). Still never applied unseen, still changeable on the card; no link to this screen.
+   Who and when are the record's Created By and date, read in the import's one user-mode query
+   (`ImportAnswers.forCamp`), the date in the camp's time zone (`Camp__c.TimeZone__c`; else the
+   reader's). So they stay true, every write of a remembered answer (`ImportAnswers.save`,
+   `remember`, `rememberEach`) leaves an answer that is the same (exact, capitals count) as it
+   is, and replaces one that differs: the old record deleted, a new one saved, in one savepoint
+   and user mode, still one query.
+
 ## Not in this PR
 
-Patterns (PR 3), the who-and-when words in the import cards (PR 2), automatic use (PR 4). The
+Patterns (PR 3), automatic use (PR 4). The
 desktop's "Remembered on this computer only" and its import-permission line do not apply
 (plan). The desktop's per-viewer memory of which groups were open is not ported.

@@ -324,7 +324,9 @@
                     Leave out
                   </button>
                   <template lwc:if={row.remembered}>
-                    <span class="tag" data-id="remembered">Remembered</span>
+                    <span class="tag" data-id="remembered"
+                      >{row.rememberedNote}</span
+                    >
                   </template>
                 </span>
                 <template lwc:if={row.unsettled}>

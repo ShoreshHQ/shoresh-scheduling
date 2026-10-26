@@ -23,6 +23,7 @@ import {
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { rememberedByKey } from "c/shoreshRemembered";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 
 /** Each layout in the camp's words. */
@@ -73,6 +74,7 @@ export default class ShoreshImport extends LightningElement {
   undone;
   undoing = false;
   remembered = {};
+  rememberedNotes = {};
   dragging = false;
   sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
@@ -239,11 +241,9 @@ export default class ShoreshImport extends LightningElement {
       // Without remembered answers the import still works: everything is asked.
       saved = [];
     }
-    const answers = {};
-    (saved || []).forEach((row) => {
-      answers[row.key] = row.answer;
-    });
+    const { answers, notes } = rememberedByKey(saved);
     this.remembered = { ...answers };
+    this.rememberedNotes = notes;
     return answers;
   }
 
@@ -324,6 +324,7 @@ export default class ShoreshImport extends LightningElement {
       open: !chosen,
       className: chosen ? "row shoresh-raised" : "row row_look shoresh-raised",
       fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+      memoryNote: this.rememberedNotes[card.id] || "Remembered",
       // A program or a division: a dropdown in the row.
       value: chosen ? card.answer : null,
       comboOptions: card.options.map((o) => ({
@@ -511,7 +512,8 @@ export default class ShoreshImport extends LightningElement {
       ? this.proposal.offeredPlaces.map((p) => ({
           ...p,
           usedByText: p.usedBy.join(", "),
-          fromMemory: p.ticked && this.remembered[p.id] === "add"
+          fromMemory: p.ticked && this.remembered[p.id] === "add",
+          memoryNote: this.rememberedNotes[p.id] || "Remembered"
         }))
       : [];
   }

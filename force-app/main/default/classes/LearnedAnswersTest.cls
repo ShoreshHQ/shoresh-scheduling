@@ -46,6 +46,37 @@ private class LearnedAnswersTest {
   }
 
   @IsTest
+  static void anAnswerByAFormerUserHasNoNameAndTheCampsDate() {
+    User former = ShoreshTestData.scheduler();
+    Camp__c willow;
+    System.runAs(former) {
+      willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'fixed' }
+      );
+      // 2am on 3 Jul in London is still 2 Jul in New York, the camp's time zone.
+      Test.setCreatedDate(
+        only(willow.Id).Id,
+        Datetime.newInstanceGmt(2026, 7, 3, 2, 0, 0)
+      );
+    }
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      update new User(Id = former.Id, IsActive = false);
+    }
+    System.runAs(ShoreshTestData.scheduler()) {
+      Test.startTest();
+      List<LearnedAnswers.Learned> rows = LearnedController.getLearned(
+        willow.Id
+      );
+      Test.stopTest();
+      Assert.isFalse(rows[0].byYou);
+      Assert.isNull(rows[0].byName, 'the screen says "a former user"');
+      Assert.areEqual(Date.newInstance(2026, 7, 2), rows[0].answeredOn);
+    }
+  }
+
+  @IsTest
   static void aChangeIsANewAnswerByWhoeverChangedItToday() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c willow = ShoreshTestData.camp('Camp Willow');
@@ -165,7 +196,8 @@ private class LearnedAnswersTest {
       );
       Id oldId = only(willow.Id).Id;
       Id newId = LearnedController.changeLearned(willow.Id, oldId, 'fixed');
-      // Another person's import answers the question again, on the same record.
+      // The new answer is edited in place by someone else (no import does this now: an import's
+      // different answer replaces the record, ADR 0021 choice 9); Undo must still refuse it.
       System.runAs(importer) {
         Database.update(
           new ImportAnswer__c(Id = newId, Answer__c = 'recurring'),

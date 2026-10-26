@@ -14,7 +14,7 @@ export function shortDate(iso) {
 }
 
 function whoLine(row, group) {
-  const who = row.byYou ? "you" : row.byName || "someone";
+  const who = row.byYou ? "you" : row.byName || "a former user";
   const on = shortDate(row.answeredOn);
   if (group === "deleted") {
     return `Deleted by ${who} on ${on}`;

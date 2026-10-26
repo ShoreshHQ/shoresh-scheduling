@@ -348,7 +348,15 @@ describe("c-shoresh-choices-import", () => {
   it("Leave out and Add are answers too; a remembered answer shows as answered and marked", async () => {
     const element = await render({
       ...SITUATION,
-      answers: [{ key: "choiceName|potterywheel", answer: "leave" }]
+      answers: [
+        {
+          key: "choiceName|potterywheel",
+          answer: "leave",
+          byYou: false,
+          byName: null,
+          answeredOn: "2026-07-03"
+        }
+      ]
     });
     await choose(element, "chugim-week1.csv", SHEET);
     await click(element, '[data-id="primary"]');
@@ -356,7 +364,9 @@ describe("c-shoresh-choices-import", () => {
     expect(
       row.querySelector('[data-answer="leave"]').getAttribute("aria-pressed")
     ).toBe("true");
-    expect(row.querySelector('[data-id="remembered"]')).not.toBeNull();
+    expect(row.querySelector('[data-id="remembered"]').textContent).toBe(
+      "Remembered from a former user's answer on 3 Jul"
+    );
     await click(element, '[data-settle="potterywheel"] [data-answer="add"]');
     await click(element, '[data-id="primary"]');
     const sent = JSON.parse(checkChoices.mock.calls[0][0].request);
