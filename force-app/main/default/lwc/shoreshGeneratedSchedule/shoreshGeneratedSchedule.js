@@ -35,7 +35,7 @@ import {
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import { clearedDays, openCells } from "./week";
+import { clearedDays, openCells, withoutEdited } from "./week";
 import { activityOptions, awayRows, lockOf } from "./editing";
 
 // What each action is called on its button and while it runs.
@@ -772,6 +772,21 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   get checked() {
     return this.week ? this.week.checked : null;
+  }
+
+  /**
+   * A cell changed by hand after the build (filled, cleared or moved) no longer has the engine's
+   * reason: it says what the week as it stands shows (wiki engine care plan Q18).
+   */
+  dropEngineWhy(edits) {
+    const why = this.engineWhy;
+    if (!why || !why.open.size || !this.loaded) {
+      return;
+    }
+    const open = withoutEdited(why.open, edits, this.loaded.input.days);
+    if (open.size !== why.open.size) {
+      this.engineWhy = { ...why, open };
+    }
   }
 
   resetChecks() {
@@ -1569,6 +1584,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** The editor saves each hand edit through here (GeneratedScheduleController.saveSlots). */
   saveRuns = async (edits) => {
+    this.dropEngineWhy(edits);
     // Each edit moves loadTicket on (handleEdited), also one made while this one saves; the
     // answer still names the revision the next edit in the queue is sent from.
     const ticket = this.weekTicket;
@@ -2164,6 +2180,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         preview,
         checked: this.checked,
         counts: null,
+        measure: this.measure,
         weekName: this.weekName,
         t: this.t
       });

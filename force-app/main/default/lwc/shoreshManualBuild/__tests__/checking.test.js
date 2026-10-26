@@ -448,7 +448,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     await press(input, "Enter");
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
-      "Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit of 1 Bunk at once, and 1 more"
+      "Placed Soccer · Bunk 2 · Monday · Period 2. Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once, and 1 more"
     );
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
@@ -457,7 +457,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(cell(element, "1-1"), "Delete");
     // Bunk 2's Soccer is gone, not fixed: only Bunk 1's is fine now.
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
-      "Cleared Bunk 2 · Monday · Period 2. Soccer · Bunk 1: fine now"
+      "Cleared Bunk 2 · Monday · Period 2. Bunk 1 · Monday · Period 2: fine now"
     );
   });
 
@@ -469,10 +469,10 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "0-1"), "Delete");
     expect(q(element, '[data-id="announce"]').textContent).toContain(
-      "Soccer · Bunk 2: fine now"
+      "Bunk 2 · Monday · Period 2: fine now"
     );
     expect(q(element, '[data-id="announce"]').textContent).not.toContain(
-      "Soccer · Bunk 1: fine now"
+      "Bunk 1 · Monday · Period 2: fine now"
     );
   });
 
@@ -755,6 +755,52 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(q(element, '[data-id="announce"]').textContent).toContain(
       "Twice in a day"
     );
+  });
+
+  it("a placement that also overlaps keeps its own reasons in its row; the clash is the cell's row", async () => {
+    // The Pool fits one Bunk; both swim Monday Period 2, and Swim isn't set up for Bunk 2.
+    const pool = nsRecord({
+      ...SETUP,
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a1" ? { ...a, Location__c: "l1" } : a;
+      }),
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 1 }]
+    });
+    const element = await render(
+      draft([FLAGPOLE, SWIM], ["1,2,", "1,2,"]),
+      pool
+    );
+    expect(await whyLines(element)).toEqual([
+      "Bunk 1 · Monday · Period 2: More Bunks at Pool than fit",
+      "Bunk 2 · Monday · Period 2: More Bunks at Pool than fit",
+      "Bunk 2 · Monday · Period 2 · Swim: Not set up for Bunk 2"
+    ]);
+  });
+
+  it("a clash on a later block of a longer activity is said once, on that cell", async () => {
+    // Boating (two Periods, one Bunk at a time): Bunk 1 from Period 2 into Lunch, Bunk 2 at Lunch.
+    const BOATING = { kind: "A", id: "a2", name: "Boating", gone: false };
+    const boating = nsRecord({
+      ...SETUP,
+      activities: [
+        ...SETUP.activities,
+        {
+          Id: "a2",
+          Name: "Boating",
+          Length__c: 2,
+          TimesPerWeekMin__c: 0,
+          GroupsAtOnce__c: 1,
+          NoGroupLimit__c: false
+        }
+      ]
+    });
+    const start = draft([FLAGPOLE, BOATING], ["1,2,^", "1,,2"]);
+    start.away = [];
+    const element = await render(start, boating);
+    expect(await whyLines(element)).toEqual([
+      "Bunk 1 · Monday · Lunch: Over its limit of 1 Bunk at once",
+      "Bunk 2 · Monday · Lunch: Over its limit of 1 Bunk at once"
+    ]);
   });
 
   it("a row taken from the counter lets go of what was picked up", async () => {

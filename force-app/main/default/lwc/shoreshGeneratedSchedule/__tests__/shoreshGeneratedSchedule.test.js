@@ -515,6 +515,9 @@ describe("c-shoresh-generated-schedule", () => {
     action(element, "StartOver").click();
     await settle(element);
     expect(action(element, "FillOpen").disabled).toBe(false);
+    // The cleared cells have no reason: counted in "still needed", not listed one by one.
+    expect(checks(element).measure.open).toEqual([]);
+    expect(checks(element).measure.stillNeeded).toBe(10);
     saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
     action(element, "FillOpen").click();
     await settle(element);

@@ -1,5 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
-import { activityCells, clearedDays, openCells } from "../week";
+import { activityCells, clearedDays, openCells, withoutEdited } from "../week";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -122,5 +122,59 @@ describe("openCells", () => {
     expect(openCells([{ ...DAY, problem: "bad row" }], atCamp, terms)).toEqual(
       []
     );
+  });
+});
+
+describe("withoutEdited: the engine's reasons once cells change by hand", () => {
+  const DAYS = [
+    {
+      dateValue: "2026-06-29",
+      blocks: [{ id: "t1" }, { id: "t2" }, { id: "t3" }]
+    }
+  ];
+  const REASONS = new Map([
+    ["2026-06-29|g1|t2", "Everything for Bunk 1 is taken then"],
+    ["2026-06-29|g1|t3", "Everything for Bunk 1 is taken then"],
+    ["2026-06-29|g2|t2", "Everything for Bunk 2 is taken then"]
+  ]);
+
+  it("drops every cell a run covers, before or after, and keeps the rest", () => {
+    const out = withoutEdited(
+      REASONS,
+      [
+        {
+          runs: [
+            {
+              day: "2026-06-29",
+              groupId: "g1",
+              firstBlockId: "t2",
+              before: ["O", "O"],
+              after: ["A:a1"]
+            }
+          ]
+        }
+      ],
+      DAYS
+    );
+    expect([...out.keys()]).toEqual(["2026-06-29|g2|t2"]);
+    // The engine's own map is left as it was.
+    expect(REASONS.size).toBe(3);
+  });
+
+  it("a cell filled and then cleared again by hand keeps no engine reason", () => {
+    const run = (after) => ({
+      runs: [
+        {
+          day: "2026-06-29",
+          groupId: "g2",
+          firstBlockId: "t2",
+          before: ["O"],
+          after
+        }
+      ]
+    });
+    const filled = withoutEdited(REASONS, [run(["A:a1"])], DAYS);
+    const cleared = withoutEdited(filled, [run(["O"])], DAYS);
+    expect(cleared.has("2026-06-29|g2|t2")).toBe(false);
   });
 });

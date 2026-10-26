@@ -927,6 +927,7 @@ export default class ShoreshManualBuild extends LightningElement {
         preview,
         checked: this.checked,
         counts: null,
+        measure: this.measure,
         weekName: this.weekName,
         t: this.t
       });

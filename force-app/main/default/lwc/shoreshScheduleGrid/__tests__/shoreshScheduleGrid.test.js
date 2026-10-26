@@ -160,8 +160,8 @@ describe("c-shoresh-schedule-grid", () => {
       expect(swim.querySelector(".cell-lock").getAttribute("title")).toBe(
         "Locked"
       );
-      // The look corner and the padlock together, each in its own corner.
-      expect(swim.querySelector(".cell-dot c-shoresh-dot")).not.toBeNull();
+      // Nothing from the checks beside it (engine care plan Q18).
+      expect(swim.querySelector("c-shoresh-dot")).toBeNull();
       // Said as before: "Locked", then the name.
       const inner = swim.querySelector(".cell-inner");
       expect(inner.firstElementChild.className).toBe("cell-lock");
@@ -179,7 +179,7 @@ describe("c-shoresh-schedule-grid", () => {
       await expect(element).toBeAccessible();
     });
 
-    it("the padlock sits in the bottom-right corner, the mark in the top-right, and a lock draws no edge", () => {
+    it("the padlock sits in the bottom-right corner, and a lock draws no edge", () => {
       const fs = require("fs");
       const path = require("path");
       const css = fs
@@ -202,9 +202,6 @@ describe("c-shoresh-schedule-grid", () => {
       expect(lock).toMatch(/right:\s*6px/);
       expect(lock).toMatch(/bottom:\s*6px/);
       expect(lock).not.toMatch(/top:/);
-      const dot = body(".cell-dot");
-      expect(dot).toMatch(/top:\s*6px/);
-      expect(dot).toMatch(/right:\s*6px/);
       // No border, outline or edge for a lock: the padlock is the whole mark. (Locked empty
       // keeps the recessed look every empty cell has.)
       rules
@@ -212,17 +209,14 @@ describe("c-shoresh-schedule-grid", () => {
         .forEach((r) =>
           expect(r.body).not.toMatch(/border|outline|box-shadow/)
         );
-      // The name keeps clear of the padlock (6 + 12) and of the mark above.
+      // The name keeps clear of the padlock (6 + 12).
       const locked = body(".cell_locked .cell-inner");
       expect(locked).toMatch(/padding-top:\s*18px/);
       expect(locked).toMatch(/padding-bottom:\s*18px/);
     });
 
-    it("says which cell focus reached, the cell's dot included", async () => {
-      const element = editable([
-        { ...GRID.cells[0], dot: "Twice in a day" },
-        GRID.cells[1]
-      ]);
+    it("says which cell focus reached", async () => {
+      const element = editable([GRID.cells[0], GRID.cells[1]]);
       const reached = jest.fn();
       element.addEventListener("cellfocus", reached);
       await flush();
@@ -230,12 +224,11 @@ describe("c-shoresh-schedule-grid", () => {
       cell.dispatchEvent(
         new CustomEvent("focusin", { bubbles: true, composed: true })
       );
-      const dot = element.shadowRoot.querySelector(
-        '[data-cell="0-0"] c-shoresh-dot'
-      );
-      dot.dispatchEvent(
-        new CustomEvent("focusin", { bubbles: true, composed: true })
-      );
+      element.shadowRoot
+        .querySelector('[data-cell="0-0"]')
+        .dispatchEvent(
+          new CustomEvent("focusin", { bubbles: true, composed: true })
+        );
       expect(reached.mock.calls.map((c) => c[0].detail.key)).toEqual([
         "1-0",
         "0-0"
@@ -433,7 +426,7 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
 
   it("keeps a row whole when one bunk's fixed cell differs (its words would be lost)", () => {
     const cells = LOOK.cells.map((c) => {
-      return c.key === "1-2" ? { ...c, dot: "Not set up for Birch" } : c;
+      return c.key === "1-2" ? { ...c, title: "Flagpole, Birch only" } : c;
     });
     const element = renderLook({ ...LOOK, cells });
     expect(at(element, "1-2")).not.toBeNull();
@@ -469,14 +462,13 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     expect(plain.shadowRoot.querySelector('[data-id="legend"]')).toBeNull();
   });
 
-  it("the needs-a-look dot is the corner mark", () => {
+  it("a cell given a check's words draws no mark: the Why list says them (engine care plan Q18)", () => {
     const cells = LOOK.cells.map((c) => {
       return c.key === "0-0" ? { ...c, dot: "Twice in a day" } : c;
     });
     const element = renderLook({ ...LOOK, cells });
-    const dot = at(element, "0-0").querySelector("c-shoresh-dot");
-    expect(dot.shape).toBe("corner");
-    expect(at(element, "0-0").className).toContain("cell_look");
+    expect(at(element, "0-0").querySelector("c-shoresh-dot")).toBeNull();
+    expect(at(element, "0-0").className).not.toContain("cell_look");
   });
 
   it("pointing at a cell outlines every other cell of its activity, never an Open one", async () => {

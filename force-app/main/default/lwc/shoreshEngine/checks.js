@@ -578,7 +578,9 @@ function filledCount(ctx) {
  * dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
- * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
+ * the same key -> its rules (RULE values and BUSY, in give-way order), wholeFlags: the same key
+ * -> only its reasons about the placement as a whole (weekly limit, once a day, who it is for),
+ * not those about a time block it shares with other cells (overlapping says those), placements,
  * overlapping ([{ dateValue, groupId, blockId, rules, text }]: one per group's cell where a
  * placement breaks a rule shared with other cells there, by day, then time block, then the
  * day's group order; rules in give-way order; text "Bunk 3 · Monday · Period 2: reason · reason"),
@@ -638,6 +640,9 @@ export function checkWeek(days, model, words) {
   ].map((rule) => rule(ctx));
 
   const reasons = new Map();
+  // Each placement's reasons that are about it as a whole, not about one time block it shares
+  // with other cells (those are the overlapping cell's own): the Why list's placement row.
+  const wholeReasons = new Map();
   const bends = new Map();
   const cellMarks = new Map();
   marks
@@ -656,6 +661,12 @@ export function checkWeek(days, model, words) {
           cell.reasons.push(reason);
         }
         cellMarks.set(key, cell);
+      } else {
+        const own = wholeReasons.get(p.key) || [];
+        if (!own.includes(reason)) {
+          own.push(reason);
+        }
+        wholeReasons.set(p.key, own);
       }
       const list = reasons.get(p.key) || [];
       const said = whole || reason;
@@ -694,6 +705,9 @@ export function checkWeek(days, model, words) {
   const activities = [...ctx.activities.values()];
   return {
     flags,
+    wholeFlags: new Map(
+      [...wholeReasons].map(([key, list]) => [key, list.join(" · ")])
+    ),
     bends,
     placements,
     overlapping,

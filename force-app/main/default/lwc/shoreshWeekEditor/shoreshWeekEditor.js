@@ -690,7 +690,8 @@ export default class ShoreshWeekEditor extends LightningElement {
    * The Why list's rows that measureWeek doesn't make (wiki engine care plan Q18: nothing from
    * the engine or the rule checks sits on the grid; it is all said here, each row naming its
    * cell, place first): look, one row per placement with everything said about it joined (what
-   * the check flags that isn't an overlapping cell already, setup changed since the week started,
+   * the check says about the placement as a whole (a time block it shares with other
+   * cells is the overlapping cell's own row), setup changed since the week started,
    * rain plan full), "Bunk 1 · Monday · Period 2 · Soccer: …"; open, the host's Open cells with
    * why (Generated), "Bunk 1 · Monday · Period 3: …"; notes, the
    * host's lines with no cell (setup taken as 1, the imported week).
@@ -712,11 +713,6 @@ export default class ShoreshWeekEditor extends LightningElement {
         block ? block.name : ""
       ].join(" · ");
     };
-    const overlapping = new Set(
-      (checked.overlapping || []).map(
-        (c) => `${c.dateValue}|${c.groupId}|${c.blockId}`
-      )
-    );
     // One row per placement (keyed where it starts), its reasons joined as the checks join
     // them (" · "): what the check flags, then setup changed, then rain plan full.
     const said = new Map();
@@ -727,12 +723,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
       said.set(key, list);
     };
-    (checked.flags || new Map()).forEach((words, key) => {
-      // An overlapping cell is its own row already (no Accept), from measureWeek.
-      if (!overlapping.has(key)) {
-        say(key, words);
-      }
-    });
+    // Only the reasons about the placement as a whole: a reason about a time block it shares
+    // with other cells is that overlapping cell's own row (no Accept), from measureWeek.
+    (checked.wholeFlags || new Map()).forEach((words, key) => say(key, words));
     // Setup changed: on the placement it is part of (any of its time blocks).
     (this.setupDots || new Map()).forEach((words, key) => {
       const [dateValue, groupId, blockId] = key.split("|");
@@ -796,14 +789,17 @@ export default class ShoreshWeekEditor extends LightningElement {
           blockId
         });
       });
-    const open = (checked.openCells || []).map((c) => ({
-      key: `open|${c.dateValue}|${c.groupId}|${c.blockId}|${c.reason || ""}`,
-      kind: "open",
-      text: c.text,
-      groupId: c.groupId,
-      dateValue: c.dateValue,
-      blockId: c.blockId
-    }));
+    // Only an Open cell with a reason: the rest are counted in "still needed", as on Manual Build.
+    const open = (checked.openCells || [])
+      .filter((c) => c.reason)
+      .map((c) => ({
+        key: `open|${c.dateValue}|${c.groupId}|${c.blockId}|${c.reason || ""}`,
+        kind: "open",
+        text: c.text,
+        groupId: c.groupId,
+        dateValue: c.dateValue,
+        blockId: c.blockId
+      }));
     const notes = (checked.notes || []).map((text) => ({
       key: `note|${text}`,
       kind: "note",
@@ -2412,7 +2408,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.edited();
     const rain = this.rainFor(stepId, kind);
     const edit = rain ? { runs: serverRuns, rain } : { runs: serverRuns };
-    const before = this.checked;
+    // The Why list's rows before the edit, to say what it changed there.
+    const before = this.whyRowsNow();
     const entry = {
       edit,
       key,
@@ -2436,38 +2433,49 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.applyLocally(edit);
     // A Why list row the edit brought or took away, said with its save (a sighted director
     // sees the list change).
-    entry.news = this.whyNews(before, this.checked);
+    entry.news = this.whyNews(before, this.whyRowsNow(), this.checked);
     this.pulseKeys = [];
     this.saveNext();
   }
 
+  /** The Why list's rows about a cell (Open, clashes, placements), from the measure now. */
+  whyRowsNow() {
+    const m = this.measure;
+    return [...(m.open || []), ...m.look].filter((row) => row.dateValue);
+  }
+
   /**
-   * One short line on what an edit did to the Why list's flagged placements, for screen readers:
-   * the first it brought ("Soccer · Bunk 1: Over its limit of 1 Bunk at once"), or else the first
-   * it took away ("Soccer · Bunk 1: fine now"), with how many more. Null when none changed.
+   * One short line on what an edit did to the Why list, for screen readers: the first row it
+   * brought or changed, in the list's words ("Bunk 1 · Monday · Period 2: Over its limit of 1
+   * Bunk at once"), or else the first it took away whose placement is still there ("Bunk 1 ·
+   * Monday · Period 2: fine now"), with how many more. Null when no row changed. An Open row gone
+   * because its cell was filled, or a row gone with its placement, isn't news: the edit's own
+   * line says that.
    */
-  whyNews(before, after) {
-    const named = (checked, key) => {
-      const p = checked.placements.find((x) => x.key === key);
-      return p ? `${this.activityName(p.id)} · ${p.groupName}` : "";
-    };
-    const brought = [...after.flags].filter(
-      ([key, words]) => before.flags.get(key) !== words
-    );
-    // A row gone with its placement (cleared or moved) isn't "fine now": only placements still
-    // on the grid.
-    const still = new Set(after.placements.map((p) => p.key));
-    const gone = [...before.flags.keys()].filter(
-      (key) => !after.flags.has(key) && still.has(key)
+  whyNews(before, after, checked) {
+    const keyOf = (row) =>
+      `${row.kind}|${row.dateValue}|${row.groupId}|${row.blockId}`;
+    const was = new Map(before.map((row) => [keyOf(row), row]));
+    const now = new Map(after.map((row) => [keyOf(row), row]));
+    const brought = after.filter((row) => {
+      const old = was.get(keyOf(row));
+      return !old || old.text !== row.text;
+    });
+    const still = new Set(checked.placements.map((p) => p.key));
+    const gone = before.filter(
+      (row) =>
+        !now.has(keyOf(row)) &&
+        row.kind !== "open" &&
+        still.has(`${row.dateValue}|${row.groupId}|${row.blockId}`)
     );
     let line = null;
     let more = 0;
     if (brought.length) {
-      const [key, words] = brought[0];
-      line = `${named(after, key)}: ${words}`;
+      line = brought[0].text;
       more = brought.length - 1;
     } else if (gone.length) {
-      line = `${named(before, gone[0])}: fine now`;
+      const text = gone[0].text;
+      line = `${text.slice(0, text.indexOf(": "))}: fine now`;
       more = gone.length - 1;
     }
     return line && more ? `${line}, and ${more} more` : line;

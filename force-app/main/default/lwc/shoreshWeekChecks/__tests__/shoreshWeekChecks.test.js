@@ -379,8 +379,12 @@ describe("c-shoresh-week-checks: the counter", () => {
         "Swim1of 4",
         "Soccer2of 1",
         "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
-        "Arts: Groups at once is blank, so it counts as 1"
+        // A note's row for focus is its Accept.
+        "Accept"
       ]);
+      expect(text(q(element, ".note"))).toBe(
+        "Arts: Groups at once is blank, so it counts as 1"
+      );
       await expect(element).toBeAccessible();
     });
 
@@ -416,6 +420,46 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(text(q(element, '[data-id="accept-said"]'))).toBe(
         "Accepted for this visit: Arts: Groups at once is blank, so it counts as 1."
       );
+    });
+
+    it("accepting the line before a note puts focus on the note's Accept, a row the keys work on", async () => {
+      // No clash: the line before the note is Soccer's over row.
+      const element = render({ measure: { ...WHY, look: [] } });
+      await flush();
+      word(element).click();
+      await flush();
+      const key = (k) =>
+        element.shadowRoot.activeElement.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: k,
+            bubbles: true,
+            composed: true
+          })
+        );
+      qa(element, ".accept")
+        .find(
+          (b) => b.getAttribute("aria-label") === "Accept: Soccer, 2 of 1, over"
+        )
+        .click();
+      await flush();
+      const noteAccept = () =>
+        qa(element, ".accept").find(
+          (b) =>
+            b.getAttribute("aria-label") ===
+            "Accept: Arts: Groups at once is blank, so it counts as 1"
+        );
+      expect(element.shadowRoot.activeElement).toBe(noteAccept());
+      // Up moves to the row before it.
+      key("ArrowUp");
+      await flush();
+      expect(element.shadowRoot.activeElement).not.toBe(noteAccept());
+      key("ArrowDown");
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(noteAccept());
+      // Escape closes the dropdown, focus back on the counter.
+      key("Escape");
+      await flush();
+      expect(word(element).getAttribute("aria-expanded")).toBe("false");
     });
 
     it("an Open cell alone puts the corner on the counter", async () => {

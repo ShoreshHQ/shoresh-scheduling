@@ -171,13 +171,13 @@
         <ul aria-labelledby="notes">
           <template for:each={noteRows} for:item="line">
             <li key={line.key} class="line">
-              <p class="shoresh-pop-row look-row note" data-line tabindex="-1">
-                {line.text}
-              </p>
+              <!-- A note names no cell: its Accept is its row for focus and the keys. -->
+              <p class="shoresh-pop-row look-row note">{line.text}</p>
               <button
                 type="button"
                 class="shoresh-pop-row accept"
                 data-pop-row
+                data-line
                 data-key={line.key}
                 aria-label={line.acceptLabel}
                 onclick={handleAccept}

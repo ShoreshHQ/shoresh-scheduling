@@ -224,19 +224,6 @@
 }
 
 /* Needs a look: the corner, and a fine edge in the text colour. */
-.cell_look .cell-inner {
-  box-shadow:
-    inset 0 0 0 1px rgba(38, 35, 27, 0.3),
-    var(--shoresh-raise);
-}
-
-.cell-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  line-height: 0;
-}
-
 /* Keyboard focus: the highlight ring outside the cell, as on every item. */
 .cell:focus {
   outline: none;
