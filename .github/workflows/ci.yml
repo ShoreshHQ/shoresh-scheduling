@@ -20,8 +20,42 @@ permissions:
   contents: read
 
 jobs:
-  static:
-    name: LWC Jest and Code Analyzer
+  # The quick checks run as three jobs side by side (about 7 minutes instead of 13 one after
+  # another); "LWC Jest and Code Analyzer" below passes only when all three pass, so the merge
+  # procedure still watches that one check (docs/ci-setup.md).
+  jest:
+    name: LWC Jest
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: LWC Jest
+        run: npm run test:unit
+
+  jest-namespaced:
+    name: LWC Jest, as if the package had its namespace
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: LWC Jest, as if the package had its namespace
+        # Every component's tests, with every schema import named shoresh__...: a component
+        # that spells a field name as text fails here (docs/adr/0009-namespace-safe-names.md).
+        run: npm run test:unit:namespaced
+      - name: No field or object names written as text
+        # scripts/namespace-safety.js: any one fails the check (docs/adr/0009-namespace-safe-names.md).
+        run: npm run check:namespace
+
+  code-analyzer:
+    name: Code Analyzer and Apex file checks
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -34,15 +68,6 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - name: LWC Jest
-        run: npm run test:unit
-      - name: LWC Jest, as if the package had its namespace
-        # Every component's tests, with every schema import named shoresh__...: a component
-        # that spells a field name as text fails here (docs/adr/0009-namespace-safe-names.md).
-        run: npm run test:unit:namespaced
-      - name: No field or object names written as text
-        # scripts/namespace-safety.js: any one fails the check (docs/adr/0009-namespace-safe-names.md).
-        run: npm run check:namespace
       - name: Every Apex class and trigger has its -meta.xml
         # scripts/apex-meta-files.js: a class without one never reaches the org (#55).
         run: npm run check:meta
@@ -69,7 +94,7 @@ jobs:
       - name: AppExchange security-review report
         # The same scan Salesforce documents for security review, on its own, for the submission.
         # Runs even when the scan above fails, but only once the CLI is installed: when an earlier
-        # check (Jest) fails, the install is skipped and this would only say "sf: command not found".
+        # check fails, the install is skipped and this would only say "sf: command not found".
         if: ${{ !cancelled() && steps.install-sf.outcome == 'success' }}
         run: >-
           sf code-analyzer run --workspace force-app
@@ -83,6 +108,25 @@ jobs:
             code-analyzer.html
             appexchange-security-review.html
           if-no-files-found: ignore
+
+  static:
+    # The one check the merge procedure looks for: passes only when all three jobs above pass.
+    name: LWC Jest and Code Analyzer
+    runs-on: ubuntu-24.04
+    needs: [jest, jest-namespaced, code-analyzer]
+    if: ${{ always() }}
+    steps:
+      - name: All quick checks passed
+        env:
+          RESULTS: ${{ needs.jest.result }} ${{ needs.jest-namespaced.result }} ${{ needs.code-analyzer.result }}
+        run: |
+          echo "LWC Jest / namespaced Jest / Code Analyzer: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A quick check did not pass ($RESULTS). Open the failed job above."
+              exit 1
+            fi
+          done
 
   pr-category:
     name: Which org checks this change needs
