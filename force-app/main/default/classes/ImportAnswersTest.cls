@@ -82,7 +82,7 @@ private class ImportAnswersTest {
       ImportAnswer__c after = [
         SELECT Id, CreatedById, CreatedDate
         FROM ImportAnswer__c
-        WHERE Camp__c = :willow.Id AND QuestionKey__c = 'kind|Lunch'
+        WHERE Key__c = :ImportAnswers.keyOf(willow.Id, 'kind|Lunch')
       ];
       Assert.areEqual(before.Id, after.Id, 'left untouched');
       Assert.areEqual(first.Id, after.CreatedById);

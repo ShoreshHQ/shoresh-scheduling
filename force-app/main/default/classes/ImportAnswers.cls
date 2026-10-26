@@ -187,6 +187,7 @@ public with sharing class ImportAnswers {
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */
+  @TestVisible
   private static String keyOf(Id campId, String question) {
     return campId +
       ':' +
