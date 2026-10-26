@@ -4063,8 +4063,8 @@ async function copyPasteCells(S) {
 /**
  * Greg's drag (2026-10-21): the activity placed in Bunk 1's second time block, its bottom handle
  * pressed a little below the visible bar (still in the handle's area, as a trackpad press lands),
- * moved down in small steps past the next block's line into the fixed activity after it, and let
- * go. While moving, the cell itself must span two blocks and the fixed activity carry the ghost;
+ * moved down in small steps past the next block's line into the fixed activity after it (a
+ * filled cell: a stretch runs only over Open ones, so it stops there), and let go. While moving, the cell itself must span two blocks and the fixed activity carry the ghost;
  * after, the placement runs two blocks and that is said. Ctrl+Z puts it back.
  */
 async function stretchByHandle(S) {
@@ -4080,7 +4080,10 @@ async function stretchByHandle(S) {
       `Bunk 1 is not an activity then Open (it shows "${await textOf(from)}", "${await textOf(open)}").`
     );
   }
-  if ((await stop.getAttribute("draggable")) === "true") {
+  // A stretch runs only over Open cells (moves.js resizeEdit; the grid's canTake), so any filled
+  // cell stops it. A fixed activity is filled: it still stops a stretch, though since Greg's
+  // 2026-10-26 decision it can be moved or covered by hand (so it is draggable now).
+  if (!/\bcell_set-time\b/.test((await stop.getAttribute("class")) || "")) {
     throw new Error(
       "The third time block is not a fixed activity in the made-up camp."
     );
