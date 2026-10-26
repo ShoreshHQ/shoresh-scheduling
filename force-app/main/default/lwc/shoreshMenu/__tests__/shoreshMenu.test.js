@@ -94,8 +94,16 @@ describe("c-shoresh-menu", () => {
       "Generated Schedule",
       "Manual Build",
       "Elective seats",
-      "Saved versions"
+      "Saved versions",
+      "What Shoresh has learned"
     ]);
+  });
+
+  it("puts What Shoresh has learned at the foot, as the desktop's footer link", async () => {
+    const element = await render(false, null);
+    const foot = element.shadowRoot.querySelector(".section_foot");
+    expect(foot.querySelector("[data-item]").dataset.item).toBe("learned");
+    expect(foot.querySelector("h2")).toBeNull();
   });
 
   it("electives wear the camp's word too: Chugim, Chug seats (wiki decision 66)", () => {
@@ -269,7 +277,7 @@ describe("c-shoresh-menu", () => {
       const doors = menuSections(terms, true).map(
         (section) => section.door && section.door.key
       );
-      expect(doors).toEqual([null, null, null, "scheduleWeeks"]);
+      expect(doors).toEqual([null, null, null, "scheduleWeeks", null]);
     });
   });
 
@@ -281,10 +289,13 @@ describe("c-shoresh-menu", () => {
     expect(handler.mock.calls[0][0].detail).toEqual({ screen: "locations" });
   });
 
-  it("coming entries, and before a season everything but camp words, cannot be opened", async () => {
+  it("coming entries, and before a season everything but camp words and what Shoresh has learned, cannot be opened", async () => {
     const element = await render(false, null);
     const links = [...element.shadowRoot.querySelectorAll("a[data-screen]")];
-    expect(links.map((a) => a.dataset.screen)).toEqual(["campWords"]);
+    expect(links.map((a) => a.dataset.screen)).toEqual([
+      "campWords",
+      "learned"
+    ]);
     expect(canOpen("specialEvents", true)).toBe(true);
     expect(canOpen("specialEvents", false)).toBe(false);
     expect(canOpen("schedules", true)).toBe(true);

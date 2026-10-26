@@ -277,6 +277,25 @@ ul {
   color: var(--shoresh-color-highlight);
 }
 
+/* The foot section (What Shoresh has learned, desktop Sidebar.jsx's footer link): at the bottom,
+   a hairline above it. The setup notice, when there is one, sits right under it. */
+.section_foot {
+  margin-top: auto;
+  padding-top: var(--shoresh-space-pad);
+}
+
+.section_foot::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 0 calc(-1 * var(--shoresh-space-pad)) var(--shoresh-space-pad);
+  background: var(--shoresh-rule);
+}
+
+.section_foot ~ .foot {
+  margin-top: 0;
+}
+
 /* The foot: the schedule shown no longer matches setup. Its line lines up with the drawer's. */
 .foot {
   margin-top: auto;
