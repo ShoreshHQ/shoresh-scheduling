@@ -7,7 +7,8 @@
  *
  * An offering a list adds is proposed unless the file says otherwise (desktop
  * electiveSetPopulate.js: an import only ever proposes; the director confirms on the screen).
- * Seats: a number (0 is closed), "No limit", or blank (not filled in yet); a list without a
+ * Seats: a number, "No limit", or blank (not filled in yet; blank or 0 asks the director to choose
+ * them, and the seat run uses no limit meanwhile, engine care PR 8); a list without a
  * Seats column offers each new one with no limit, as the desktop's import does.
  *
  * Not on the list: who and where, which are the activity's (the screen shows them, read only),

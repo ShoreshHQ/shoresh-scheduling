@@ -3,7 +3,7 @@
  * blank or 0 seats placed as no limit and said), times filled in date, block and division order,
  * the camp's own words in findings, and which linked choice a seat came from.
  */
-import { assignSeats } from "c/shoreshElectiveEngine";
+import { assignSeats, linkedSetPlan } from "c/shoreshElectiveEngine";
 import { buildTerms } from "c/shoreshTerms";
 
 const campers = (n) => Array.from({ length: n }, (_, i) => ({ id: `c${i}` }));
@@ -256,9 +256,8 @@ describe("a double period linked for every choice (slice E9)", () => {
         activityId: "pottery",
         camperIds: ["c1"],
         message:
-          "“Pottery again” shares “Pottery” seats in one period with “Pottery”. “Pottery” was " +
-          "kept as a set (the first by name); 1 camper(s) who asked for “Pottery again” were " +
-          "placed one period at a time instead."
+          "“Pottery again” shares “Pottery” seats with “Pottery” in t1, so 1 camper who asked " +
+          "for “Pottery again” got a seat each period instead."
       }
     ]);
     // The kept set is placed as a set; the other camper still gets a seat each period.
@@ -297,7 +296,11 @@ describe("a double period linked for every choice (slice E9)", () => {
 describe("a linked choice with a period this run can't give it", () => {
   const input = (more = {}) => ({
     campers: campers(2),
-    times: [{ id: "t1" }, { id: "t2" }, { id: "t3" }],
+    times: [
+      { id: "t1", name: "Mon 12:30" },
+      { id: "t2", name: "Tue 12:30" },
+      { id: "t3", name: "Wed 12:30" }
+    ],
     offerings: [
       offering("t1", "drama", { seats: 5 }),
       offering("t2", "drama", { seats: 5 }),
@@ -309,7 +312,12 @@ describe("a linked choice with a period this run can't give it", () => {
       { linkedChoiceId: "ld", timeId: "t1", activityId: "drama" },
       { linkedChoiceId: "ld", timeId: "t2", activityId: "drama" },
       // Not in this run, and drama not offered at t3.
-      { linkedChoiceId: "ld", timeId: "t9", activityId: "drama" },
+      {
+        linkedChoiceId: "ld",
+        timeId: "t9",
+        activityId: "drama",
+        name: "Fri 12:30"
+      },
       { linkedChoiceId: "ld", timeId: "t3", activityId: "drama" }
     ],
     choices: [{ camperId: "c0", linkedChoiceId: "ld", rank: 1 }],
@@ -325,9 +333,8 @@ describe("a linked choice with a period this run can't give it", () => {
         timeIds: ["t3", "t9"],
         camperIds: ["c0"],
         message:
-          "“Drama all week” lists 2 periods this run can’t give it (not on this schedule, or " +
-          "“Drama” isn’t offered then). Its other periods were kept together: each camper who " +
-          "asked for it has all of them or none."
+          "“Drama all week”: Wed 12:30 and Fri 12:30 can’t be given in this run; its other " +
+          "periods were kept together."
       }
     ]);
     expect(
@@ -339,6 +346,43 @@ describe("a linked choice with a period this run can't give it", () => {
       ["t2", "drama", "ld"],
       ["t3", "archery", null]
     ]);
+  });
+
+  it("is matched to its own offering when ids are given, not just its activity", () => {
+    const out = linkedSetPlan({
+      linkedChoices: [{ id: "ld", key: "d", name: "Drama" }],
+      linkedChoiceTimes: [
+        {
+          linkedChoiceId: "ld",
+          timeId: "t1",
+          activityId: "drama",
+          offeringId: "oA"
+        },
+        {
+          linkedChoiceId: "ld",
+          timeId: "t2",
+          activityId: "drama",
+          offeringId: "oA"
+        }
+      ],
+      timeIds: ["t1", "t2"],
+      offerings: [
+        { timeId: "t1", activityId: "drama", offeringId: "oA" },
+        // Another offering of the same activity at t2: not this one.
+        { timeId: "t2", activityId: "drama", offeringId: "oB" }
+      ]
+    });
+    expect(out.sets.get("ld")).toEqual({
+      members: [
+        {
+          linkedChoiceId: "ld",
+          timeId: "t1",
+          activityId: "drama",
+          offeringId: "oA"
+        }
+      ],
+      left: ["t2"]
+    });
   });
 
   it("with none of its periods here, places nobody in it and says so", () => {
@@ -356,7 +400,7 @@ describe("a linked choice with a period this run can't give it", () => {
       camperIds: []
     });
     expect(out.findings[0].message).toMatch(
-      /None of its periods can be given in this run, so nobody was placed in it\.$/
+      /^“Drama all week”: t8 and t9 can’t be given in this run; nobody was placed in it\.$/
     );
     expect(out.seats.some((x) => x.linkedChoiceId)).toBe(false);
   });

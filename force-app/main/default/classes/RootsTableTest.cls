@@ -374,6 +374,38 @@ private class RootsTableTest {
     }
   }
 
+  @IsTest
+  static void zeroSeatsAreNoLimitOnTheSeatsCard() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      camp.electives(camp.draft('Generated'));
+      // 0 seats is no limit, as the seat run uses it (engine care PR 8): never drawn as over.
+      Offering__c first = [
+        SELECT Id
+        FROM Offering__c
+        WHERE Activity__r.Name = 'Activity 0'
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      first.Seats__c = 0;
+      Database.update(first, AccessLevel.USER_MODE);
+
+      Test.startTest();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Test.stopTest();
+
+      RootsTable.Seat shown = null;
+      for (RootsTable.Seat seat : table.seats) {
+        if (seat.name == 'Activity 0') {
+          shown = seat;
+        }
+      }
+      Assert.isNotNull(shown, 'Activity 0 is on the seats card');
+      Assert.isNull(shown.seats, 'No limit, not 0');
+      Assert.areEqual(10, shown.taken);
+    }
+  }
+
   /** A run of Week 2 that is not the committed one. */
   private static ElectiveRun__c run(Camp camp, Id setId, Id scheduleId) {
     return new ElectiveRun__c(

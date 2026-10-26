@@ -28,11 +28,12 @@ const NO_LIMIT = Number.MAX_SAFE_INTEGER;
  *
  * input:
  *   campers: [{ id }]
- *   times: [{ id, date, blockOrder, divisionOrder }]: the elective times (one per day, time
+ *   times: [{ id, date, blockOrder, divisionOrder, name? }]: the elective times (name: how
+ *     findings say it, "Mon 12:30") (one per day, time
  *     block and division where the set sits on the schedule). Filled one after another by date,
  *     then block order, then division order, then id, so the result can be explained ("Tuesday
  *     filled first, and by Thursday Archery was full").
- *   offerings: [{ timeId, activityId, key, name, seats, noLimit, minimum }]: what each time
+ *   offerings: [{ timeId, activityId, offeringId?, key, name, seats, noLimit, minimum }]: what each time
  *     offers. `key` is what a camper's choice names; `name` is what findings say. `noLimit`
  *     true means no seat limit; otherwise `seats`. Blank or 0 seats are placed as no limit and
  *     said (NO_SEATS_SET; Greg, 2026-10-26: never stop the run). `minimum`: null for none,
@@ -45,7 +46,8 @@ const NO_LIMIT = Number.MAX_SAFE_INTEGER;
  *   locks: [{ camperId, timeId, activityId }]: seats set by hand and locked. Never re-decided;
  *     each takes its seat before anything else is placed.
  *   linkedChoices: [{ id, key, name }] and linkedChoiceTimes: [{ linkedChoiceId, timeId,
- *     activityId }]: an offering's periods a camper takes together or not at all. One with
+ *     activityId, offeringId?, name? }]: an offering's periods a camper takes together or not at all
+ *     (name: a period's words when the run doesn't have it). One with
  *     more than one time is linked; it is placed before everything else, as a set, over the
  *     periods this run can give it (linkedSetPlan). Never refused (Greg, Q13): what can't be
  *     honoured is placed one period at a time and said.
@@ -559,6 +561,26 @@ export function assignSeats({
       const o = offerings.find((x) => x.activityId === activityId);
       return o ? nameOf(o) : activityId;
     };
+    // A period in words: the time's name, or the linked choice time's (one this run doesn't
+    // have), else its id.
+    const periodName = new Map();
+    for (const m of linkedChoiceTimes) {
+      if (m.name != null && !periodName.has(m.timeId)) {
+        periodName.set(m.timeId, m.name);
+      }
+    }
+    for (const x of times) {
+      if (x.name != null) {
+        periodName.set(x.id, x.name);
+      }
+    }
+    const periodWords = (timeId) => periodName.get(timeId) ?? timeId;
+    const periodsWords = (ids) => {
+      const words = ids.map(periodWords);
+      return words.length < 2
+        ? words.join("")
+        : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+    };
     // Who asked for a set and takes at least one of the periods it has here; anyone else only
     // matched by name (another division's copy).
     const askedFor = (id) => {
@@ -578,19 +600,16 @@ export function assignSeats({
         continue;
       }
       const name = nameOfLinked(id);
-      const activity = activityName(membersByLinked.get(id)[0].activityId);
       findings.push({
         kind: "LINKED_PERIOD_LEFT_OUT",
         linkedChoiceIds: [id],
         timeIds: left,
         camperIds: members.length ? askedFor(id) : [],
         message:
-          `“${name}” lists ${left.length === 1 ? "a period" : `${left.length} periods`} this ` +
-          `run can’t give it (not on this schedule, or “${activity}” isn’t offered then). ` +
+          `“${name}”: ${periodsWords(left)} can’t be given in this run; ` +
           (members.length
-            ? "Its other periods were kept together: each camper who asked for it has all of " +
-              "them or none."
-            : "None of its periods can be given in this run, so nobody was placed in it.")
+            ? "its other periods were kept together."
+            : "nobody was placed in it.")
       });
     }
 
@@ -608,9 +627,12 @@ export function assignSeats({
         activityId: aside.activityId,
         camperIds: asked,
         message:
-          `“${name}” shares “${activityName(aside.activityId)}” seats in one period with ` +
-          `“${kept}”. “${kept}” was kept as a set (the first by name); ${asked.length} ` +
-          `camper(s) who asked for “${name}” were placed one period at a time instead.`
+          `“${name}” shares “${activityName(aside.activityId)}” ${t.sIn("Seats")} with ` +
+          `“${kept}” in ${periodWords(aside.timeId)}, so ` +
+          (asked.length === 0
+            ? `“${name}” wasn’t kept as a set.`
+            : `${asked.length} ${asked.length === 1 ? "camper who asked for" : "campers who asked for"} ` +
+              `“${name}” got a seat each period instead.`)
       });
     }
 
@@ -799,8 +821,11 @@ export function linkedSetPlan({
   offerings = []
 } = {}) {
   const inRun = new Set(timeIds);
+  // Matched by the offering itself when the caller gives its id (as the server does), else by
+  // its activity (one offering per activity in a set).
+  const offeringOf = (x) => x.offeringId ?? x.activityId;
   const offered = new Set(
-    offerings.map((o) => `${o.timeId}\u0000${o.activityId}`)
+    offerings.map((o) => `${o.timeId}\u0000${offeringOf(o)}`)
   );
   const nameById = new Map(
     linkedChoices.map((c) => [c.id, c.name ?? c.key ?? c.id])
@@ -826,7 +851,7 @@ export function linkedSetPlan({
       continue;
     }
     const can = (m) =>
-      inRun.has(m.timeId) && offered.has(`${m.timeId}\u0000${m.activityId}`);
+      inRun.has(m.timeId) && offered.has(`${m.timeId}\u0000${offeringOf(m)}`);
     sets.set(id, {
       members: all.filter(can),
       left: [...new Set(all.filter((m) => !can(m)).map((m) => m.timeId))]

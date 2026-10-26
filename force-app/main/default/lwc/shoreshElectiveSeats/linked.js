@@ -160,7 +160,9 @@ export function linkedOf(run) {
         linkedChoiceTimes.push({
           linkedChoiceId: id,
           timeId,
-          activityId: offering.activityId
+          activityId: offering.activityId,
+          offeringId: offering.id,
+          ...(time ? {} : { name: missingName(run, p) })
         });
       });
     });
@@ -174,7 +176,11 @@ export function linkedOf(run) {
       (t.offeringIds || [])
         .map((id) => run.offeringById.get(id))
         .filter(Boolean)
-        .map((o) => ({ timeId: t.key, activityId: o.activityId }))
+        .map((o) => ({
+          timeId: t.key,
+          activityId: o.activityId,
+          offeringId: o.id
+        }))
     )
   });
   const nameOfCopy = (copyId) => {
@@ -197,6 +203,13 @@ export function linkedOf(run) {
 
 function timeWordsOf(time) {
   return `${weekdayOf(time.day)} ${time.startTime || time.blockName}`;
+}
+
+/** "Thu 12:30": a period this run doesn't have, as findings say it. */
+function missingName(run, period) {
+  const block = run.times.find((t) => t.blockId === period.blockId);
+  const when = block ? block.startTime || block.blockName : "";
+  return `${String(period.weekday).slice(0, 3)} ${when}`.trim();
 }
 
 /** "at Thursday 12:30 for Seniors": a period by its weekday and its block's start or name. */

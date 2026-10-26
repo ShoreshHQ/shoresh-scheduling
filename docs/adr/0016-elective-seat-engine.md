@@ -211,7 +211,10 @@ This amends choices 2 (D8), 4 and 7, and slice E7's blank-seats refusal.
 - **Which periods a set has** is `linkedSetPlan` (exported, so the seats screen says exactly
   what the engine did). A period the run can't give it (its time is not in the run, or its
   offering isn't offered then) is **left out**: the set is kept whole over the periods it has,
-  all of them or none (`LINKED_PERIOD_LEFT_OUT`, with the periods and the campers who asked).
+  all of them or none (`LINKED_PERIOD_LEFT_OUT`, with the periods and the campers who asked:
+  "“Drama all week”: Wed 12:30 can’t be given in this run; its other periods were kept
+  together."). "Offered then" is matched by the offering itself when the caller gives its id
+  (the seats screen does, as the server matches), else by its activity.
   Why that and not "one period at a time": the left-out period belongs to another schedule (or
   isn't offered), so this run can't decide it either way; refusing the set here only broke the
   camper's set in the periods this run can keep. The server's all-or-none check
@@ -220,7 +223,8 @@ This amends choices 2 (D8), 4 and 7, and slice E7's blank-seats refusal.
 - **Two linked choices of one offering sharing a period's seats**: the first by name (then id)
   keeps them and is placed as a set; one sharing with a set already kept is set aside, its campers
   placed one period at a time, and said per set (`LINKED_SEATS_SHARED`, with the set kept, the
-  period, the offering and the campers who asked). Name order is chosen because a director can
+  period, the offering and the campers who asked: "“B” shares “Pottery” seats with “A” in Mon
+  12:30, so 3 campers who asked for “B” got a seat each period instead."). Name order is chosen because a director can
   see it; it doesn't depend on the order the records arrive in.
 - **Campers who can't take a set as one** (they miss one of its periods here, or hold a locked
   seat in one) were already said (`UNSUPPORTED_LINKED_CHOICE` with `camperIds`; on the screen per
@@ -233,4 +237,6 @@ refusal cases now flagged), `properties.test.js` (all-or-none over the periods a
 per offering's seats per period, blank or 0 as no limit), `unchangedWithoutConflicts.test.js`
 (89 random camps with none of these cases give exactly the seats and findings the engine gave
 before), and the seats screen's `linked.test.js`, `seats.test.js` and component test. Apex:
-`ElectiveSeatsTest` `blankOrZeroSeatsAreNoLimit` and `aLinkedChoicesPeriodNotInTheRunIsLeftOut`.
+`ElectiveSeatsTest` `blankOrZeroSeatsAreNoLimit`, `aLinkedChoicesPeriodNotInTheRunIsLeftOut` and
+`aLinkedChoicesPeriodItsOfferingIsNotOfferedIsLeftOut`; `RootsTableTest`
+`zeroSeatsAreNoLimitOnTheSeatsCard` (Roots' seats card takes 0 as no limit too).

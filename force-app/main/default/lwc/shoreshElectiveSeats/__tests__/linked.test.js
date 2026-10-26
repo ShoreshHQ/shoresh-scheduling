@@ -74,8 +74,18 @@ describe("linked choices in the engine's input", () => {
       { id: "lc1|d1", key: "linked|lc1", name: "Drama both days" }
     ]);
     expect(input.linkedChoiceTimes).toEqual([
-      { linkedChoiceId: "lc1|d1", timeId: `${MONDAY}|b1|d1`, activityId: "a2" },
-      { linkedChoiceId: "lc1|d1", timeId: `${TUESDAY}|b1|d1`, activityId: "a2" }
+      {
+        linkedChoiceId: "lc1|d1",
+        timeId: `${MONDAY}|b1|d1`,
+        activityId: "a2",
+        offeringId: "o2"
+      },
+      {
+        linkedChoiceId: "lc1|d1",
+        timeId: `${TUESDAY}|b1|d1`,
+        activityId: "a2",
+        offeringId: "o2"
+      }
     ]);
   });
 
@@ -256,8 +266,13 @@ describe("what keeps a linked choice from being placed as a set", () => {
     expect(
       result.findings
         .filter((f) => f.kind === "LINKED_PERIOD_LEFT_OUT")
-        .map((f) => f.timeIds)
-    ).toEqual([["missing|Wednesday|b1|d1"]]);
+        .map((f) => [f.timeIds, f.message])
+    ).toEqual([
+      [
+        ["missing|Wednesday|b1|d1"],
+        "“Drama both days”: Wed 12:30 can’t be given in this run; its other periods were kept together."
+      ]
+    ]);
     // Maya gets Drama on Monday and Tuesday as the set (engine care PR 8: never refused).
     expect(
       result.seats

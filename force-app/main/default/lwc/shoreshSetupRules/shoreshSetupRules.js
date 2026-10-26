@@ -29,7 +29,7 @@ export function setupProblems(setup, terms) {
     ...activityProblems(setup, terms),
     ...setTimeProblems(setup, terms),
     ...specialDayProblems(setup, terms),
-    ...electiveProblems(setup)
+    ...electiveProblems(setup, terms)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -119,7 +119,7 @@ function nameKey(name) {
  * them, Greg 2026-10-26). On the Electives screen they are marked in their rows (a dashed edge, the
  * needs-a-look corner), so the screen's own list leaves them out (markedInPlace).
  */
-function electiveProblems(setup) {
+function electiveProblems(setup, terms) {
   const electives = setup.electives || {};
   const OFFER = FIELD.Offering;
   const sets = new Map((electives.sets || []).map((s) => [s.Id, s.Name]));
@@ -146,7 +146,10 @@ function electiveProblems(setup) {
     const blank = seats === null || seats === undefined || seats === "";
     // Blank or 0: the seat run uses no limit; the flag says what to do (Greg, 2026-10-26).
     if (!offering[OFFER.NoSeatLimit] && (blank || Number(seats) === 0)) {
-      add("offeringNoSeats", `choose how many seats "${name}" has.`);
+      add(
+        "offeringNoSeats",
+        `choose how many ${terms.sIn("Seats")} "${name}" has.`
+      );
     }
   });
   return problems;

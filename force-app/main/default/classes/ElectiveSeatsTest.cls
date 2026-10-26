@@ -922,6 +922,34 @@ private class ElectiveSeatsTest {
   }
 
   @IsTest
+  static void aLinkedChoicesPeriodItsOfferingIsNotOfferedIsLeftOut() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      LinkedChoice__c both = camp.dramaBothDays('All', null);
+      ElectiveSeatSaves.SeatIn monday = camp.seat(0, MONDAY, 'Drama');
+      monday.linkedChoiceId = both.Id;
+
+      Test.startTest();
+      ElectiveRunState state = ElectiveRunState.held(camp.runId);
+      // Tuesday is on the schedule, but Drama isn't offered then.
+      ElectivePeriod tuesday = state.live.periodOf(
+        state.groupOf(camp.campers[0]),
+        TUESDAY,
+        camp.ids.get('Period 1')
+      );
+      tuesday.offeringIds.remove(
+        tuesday.offeringIds.indexOf(camp.ids.get('o:Drama'))
+      );
+      ElectiveLinkedSeats linked = new ElectiveLinkedSeats(state);
+      linked.add(monday, ElectiveSeatChecks.offeredAt(state, monday));
+      linked.refuseIncomplete();
+      Test.stopTest();
+
+      Assert.isFalse(tuesday.offeringIds.contains(camp.ids.get('o:Drama')));
+    }
+  }
+
+  @IsTest
   static void aSeatMovedByHandIsNoLongerPartOfItsLinkedChoice() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(2);

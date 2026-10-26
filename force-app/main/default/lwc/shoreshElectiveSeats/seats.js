@@ -266,6 +266,7 @@ export function engineInput(run, terms) {
       offerings.push({
         timeId: t.key,
         activityId: o.activityId,
+        offeringId: o.id,
         key: o.activityId,
         name: o.name,
         seats: o.noLimit ? null : o.seats == null ? null : Number(o.seats),
@@ -285,7 +286,8 @@ export function engineInput(run, terms) {
         id: t.key,
         date: t.day,
         blockOrder: t.blockOrder,
-        divisionOrder: t.divisionOrder
+        divisionOrder: t.divisionOrder,
+        name: timeLabel(t)
       })),
       offerings,
       choices,

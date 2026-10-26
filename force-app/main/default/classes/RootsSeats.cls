@@ -112,9 +112,11 @@ public with sharing class RootsSeats {
   ) {
     RootsTable.Seat seat = new RootsTable.Seat();
     seat.name = offering.Activity__r?.Name;
+    // Blank or 0 seats are no limit, as the seat run uses them (engine care PR 8).
     Boolean noLimit =
       offering.NoSeatLimit__c == true ||
-      offering.Seats__c == null;
+      offering.Seats__c == null ||
+      offering.Seats__c == 0;
     seat.seats = noLimit ? null : offering.Seats__c.intValue();
     seat.minimum = offering.MinimumToRun__c?.intValue();
     seat.taken = taken.containsKey(offering.Id) ? taken.get(offering.Id) : 0;
