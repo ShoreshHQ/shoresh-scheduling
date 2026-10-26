@@ -911,7 +911,7 @@ private class GeneratedRefusalsTest {
         request(read, GeneratedSaves.REBUILD)
       );
       Test.stopTest();
-      Assert.isFalse(kept.conflict, kept.message);
+      Assert.isFalse(kept.conflict, 'Refused: ' + kept.message);
       Assert.areEqual(
         '',
         GeneratedTestData.slots(
