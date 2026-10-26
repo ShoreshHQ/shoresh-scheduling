@@ -9,7 +9,13 @@
  * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
  * - Fill the open cells changes only cells that were Open;
  * - a locked cell is never changed (ScheduleGridLocks): its lock is the director's, and the
- *   server keeps the stored locks whatever the screen sends. Start over clears them all.
+ *   server keeps the stored locks whatever the screen sends. Start over clears them all;
+ * - Start over leaves no activity on a day it clears (every day but those a special day replaces):
+ *   the screen clears every activity and builds nothing (ADR 0010, Start over).
+ * These hold what the engine builds. A hand edit is never refused for them (SlotSaves; Greg,
+ * 2026-10-26): it is saved locked, and a locked cell is never a changed cell here, so a save keeps
+ * it unchecked, whatever closure, away group or set time it goes against. A cell the director
+ * unlocks is the engine's again at the next build, and held to these rules if it changes.
  * Rule bends (over a weekly limit and the rest) are allowed: the engine marks them. That the days
  * are the draft's own is GeneratedFrames; the grids themselves, GeneratedGrids. Reads in user mode.
  */
@@ -49,6 +55,10 @@ public with sharing class GeneratedChecks {
       request.action == GeneratedSaves.FILL_OPEN
     );
     checks.keepLocks = request.action != GeneratedSaves.START_OVER;
+    // Start over: the weekdays a special day replaces keep what they hold; every other is cleared.
+    Set<String> kept = checks.keepLocks
+      ? null
+      : WeekSpecials.replacedNames(setup.week.Id).keySet();
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
@@ -57,6 +67,9 @@ public with sharing class GeneratedChecks {
       checks.name(day.grid, now);
       for (Integer g = 0; g < now.groups.size(); g++) {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
+      }
+      if (kept != null && !kept.contains(BlankWeek.weekdayOf(day.day))) {
+        checkCleared(now);
       }
       grids.add(now);
     }
@@ -92,6 +105,22 @@ public with sharing class GeneratedChecks {
         item.name = activity.Name;
       } else if (savedNames.containsKey(identity)) {
         item.name = savedNames.get(identity);
+      }
+    }
+  }
+
+  /**
+   * Start over clears every activity of the day and places nothing (the screen's clearedDays):
+   * an activity still on it, kept or new, is a save the screen didn't make, refused. What else
+   * a day holds (fixed and recurring activities, specials, electives) stays as it was, and is
+   * checked as any changed cell is.
+   */
+  private static void checkCleared(ScheduleGrid now) {
+    for (Integer g = 0; g < now.groups.size(); g++) {
+      for (String slot : SlotIds.ofRow(now, g)) {
+        if (SlotIds.owner(slot).startsWith('A:')) {
+          throw GeneratedFrames.unreadable();
+        }
       }
     }
   }

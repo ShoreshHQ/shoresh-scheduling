@@ -1,7 +1,8 @@
 /**
- * What the server refuses when a generated week is saved (ADR 0010, G2): moving, covering or
- * placing a fixed or recurring activity; anything new where a group isn't at camp (a leftover
- * there may be cleared); another season's activity; something not set up yet newly placed;
+ * What the server refuses when a generated week is saved (ADR 0010, G2): the engine moving,
+ * covering or placing a fixed or recurring activity; anything new where a group isn't at camp (a
+ * leftover there may be cleared); a hand edit's locked cell is kept unchecked (Greg, 2026-10-26),
+ * and Start over may leave no activity; another season's activity; something not set up yet newly placed;
  * days that aren't the draft's own; a version, Manual Build's draft or another week's; a save
  * the screen could not have sent; an option that can't be built; a day that can't be read; and
  * anyone without Shoresh access. Each refusal writes nothing. Camp and helpers:
@@ -686,5 +687,183 @@ private class GeneratedRefusalsTest {
       }
     }
     Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+  }
+
+  /** A hand edit of one cell on the Generated draft, from what the screen saw. */
+  private static SlotEdits.Edit handEdit(
+    GeneratedInputs.Inputs read,
+    List<Integer> cell,
+    String before,
+    String after
+  ) {
+    SlotEdits.Run run = new SlotEdits.Run();
+    run.day = GeneratedTestData.MONDAY;
+    run.groupId = read.days[0].groups[cell[0]].id;
+    run.firstBlockId = read.days[0].blocks[cell[1]].id;
+    run.blockIds = new List<String>{ run.firstBlockId };
+    run.before = new List<String>{ before };
+    run.after = new List<String>{ after };
+    SlotEdits.Edit edit = new SlotEdits.Edit();
+    edit.runs = new List<SlotEdits.Run>{ run };
+    return edit;
+  }
+
+  /**
+   * Generated after the week was set up, then Group B away, Soccer closed; then by hand (Greg,
+   * 2026-10-26: a hand edit is always made): Soccer in Group A's Lunch, Swim in away Group B's
+   * Lunch, and Swim over Group C's Flagpole. Each is saved, and locked.
+   */
+  private static void handEditedAgainstSetup(Map<String, Id> ids) {
+    generated();
+    Database.insert(
+      new List<WeekException__c>{
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Group__c = ids.get('Group B')
+        ),
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Activity__c = ids.get('Soccer')
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+    SlotEdits.Result saved = GeneratedTestData.handEdits(
+      read.scheduleId,
+      new List<SlotEdits.Edit>{
+        handEdit(
+          read,
+          GeneratedTestData.at(
+            GeneratedTestData.GROUP_A,
+            GeneratedTestData.LUNCH
+          ),
+          '',
+          GeneratedTestData.a('Soccer')
+        ),
+        handEdit(
+          read,
+          GeneratedTestData.at(
+            GeneratedTestData.GROUP_B,
+            GeneratedTestData.LUNCH
+          ),
+          '',
+          GeneratedTestData.a('Swim')
+        ),
+        handEdit(
+          read,
+          GeneratedTestData.at(
+            GeneratedTestData.GROUP_C,
+            GeneratedTestData.PERIOD_1
+          ),
+          'F:' + ids.get('Flagpole'),
+          GeneratedTestData.a('Swim')
+        )
+      },
+      read.revision
+    );
+    Assert.isTrue(saved.conflicts.isEmpty(), String.valueOf(saved.conflicts));
+  }
+
+  @IsTest
+  static void aRebuildKeepsHandEditsAgainstSetupButRefusesTheEngineBreakingIt() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      handEditedAgainstSetup(ids);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      // The engine putting closed Soccer in an unlocked cell: refused, as before.
+      GeneratedWeek.Save engineBuilt = request(read, GeneratedSaves.REBUILD);
+      GeneratedTestData.put(
+        engineBuilt.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_A,
+          GeneratedTestData.PERIOD_2
+        ),
+        'Soccer'
+      );
+      Assert.areEqual(
+        'Soccer is closed in Week 1.',
+        GeneratedTestData.refusal(engineBuilt)
+      );
+      // The same Rebuild keeping the hand edits as they are (locked): saved.
+      GeneratedWeek.Result kept = GeneratedTestData.save(
+        request(read, GeneratedSaves.REBUILD)
+      );
+      Test.stopTest();
+      Assert.isFalse(kept.conflict, kept.message);
+      Id draftId = read.scheduleId;
+      Assert.areEqual(
+        GeneratedTestData.a('Soccer'),
+        GeneratedTestData.slots(
+          draftId,
+          GeneratedTestData.at(0, GeneratedTestData.GROUP_A)
+        )[
+          GeneratedTestData.LUNCH
+        ]
+      );
+      Assert.areEqual(
+        GeneratedTestData.a('Swim'),
+        GeneratedTestData.slots(
+          draftId,
+          GeneratedTestData.at(0, GeneratedTestData.GROUP_C)
+        )[
+          GeneratedTestData.PERIOD_1
+        ]
+      );
+    }
+  }
+
+  @IsTest
+  static void startOverClearsEveryActivityAndKeepsNone() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      handEditedAgainstSetup(ids);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      // Start over that kept an activity (here every one, the hand edits too): not what the
+      // screen sends, refused, and nothing written.
+      Assert.areEqual(
+        'That change could not be read. Reload the page and try again.',
+        GeneratedTestData.refusal(request(read, GeneratedSaves.START_OVER))
+      );
+      GeneratedWeek.Save oneLeft = GeneratedTestData.cleared(
+        request(read, GeneratedSaves.START_OVER)
+      );
+      GeneratedTestData.put(
+        oneLeft.days[1],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_A,
+          GeneratedTestData.PERIOD_2
+        ),
+        'Gym games'
+      );
+      Assert.areEqual(
+        'That change could not be read. Reload the page and try again.',
+        GeneratedTestData.refusal(oneLeft)
+      );
+      // Every activity cleared, fixed and recurring activities kept: saved.
+      GeneratedWeek.Result cleared = GeneratedTestData.save(
+        GeneratedTestData.cleared(request(read, GeneratedSaves.START_OVER))
+      );
+      Test.stopTest();
+      Assert.isFalse(cleared.conflict, cleared.message);
+      // Group C's Swim over Flagpole and its Gym games are cleared; Group A's Flagpole stays.
+      List<String> groupC = GeneratedTestData.slots(
+        read.scheduleId,
+        GeneratedTestData.at(0, GeneratedTestData.GROUP_C)
+      );
+      Assert.areEqual('', groupC[GeneratedTestData.PERIOD_1]);
+      Assert.areEqual('', groupC[GeneratedTestData.PERIOD_2]);
+      Assert.areEqual(
+        'F:' + ids.get('Flagpole'),
+        GeneratedTestData.slots(
+          read.scheduleId,
+          GeneratedTestData.at(0, GeneratedTestData.GROUP_A)
+        )[
+          GeneratedTestData.PERIOD_1
+        ]
+      );
+    }
   }
 }

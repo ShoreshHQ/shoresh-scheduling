@@ -313,7 +313,7 @@ export const SETUP_CHANGED = "setupChanged";
 
 /**
  * What setup changed since the Generated draft's week was built (Manual Build's SetupMatch, ADR
- * 0010 §56): resolves to { changes, dots, revisions, closedActivityIds, problem } (SetupMatch
+ * 0010 §56): resolves to { changes, dots, revisions, closedActivityIds, awayGroupIds, problem } (SetupMatch
  * Preview, every list there), or null before the week's first save; rejects when it can't be read.
  */
 export async function readSetupChanges(loaded) {
@@ -326,6 +326,7 @@ export async function readSetupChanges(loaded) {
     dots: (preview && preview.dots) || [],
     revisions: (preview && preview.revisions) || "",
     closedActivityIds: (preview && preview.closedActivityIds) || [],
+    awayGroupIds: (preview && preview.awayGroupIds) || [],
     problem: (preview && preview.problem) || null
   };
 }

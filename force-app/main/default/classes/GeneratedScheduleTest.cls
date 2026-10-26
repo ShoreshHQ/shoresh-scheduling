@@ -402,6 +402,10 @@ private class GeneratedScheduleTest {
       action,
       option
     );
+    if (action == GeneratedSaves.START_OVER) {
+      // Start over builds nothing: every activity is cleared (the screen's clearedDays).
+      return GeneratedTestData.save(GeneratedTestData.cleared(request));
+    }
     return GeneratedTestData.save(
       activity == null ? request : GeneratedTestData.filled(request, activity)
     );
@@ -491,7 +495,7 @@ private class GeneratedScheduleTest {
       GeneratedWeek.Result startedOver = saveNow(
         GeneratedSaves.START_OVER,
         6,
-        'Swim'
+        null
       );
       Assert.isNull(filledOpen.versionId);
       Schedule__c beforeStartOver = version(startedOver.versionId);
@@ -506,10 +510,10 @@ private class GeneratedScheduleTest {
           GeneratedTestData.PERIOD_2
         ]
       );
-      // The draft holds the newest week; the one version is listed.
+      // The draft holds the newest week, every activity cleared; the one version is listed.
       Assert.areEqual(draftId, startedOver.scheduleId);
       Assert.areEqual(
-        GeneratedTestData.a('Swim'),
+        SlotIds.OPEN,
         GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
           GeneratedTestData.PERIOD_2
         ]

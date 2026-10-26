@@ -106,11 +106,12 @@ private class ManualWeekStartTest {
       );
       // A fixed number of queries, whatever the size of the camp (nothing is read per day,
       // group or placement), under the limit of 100 with room to spare. Measured 39 in the test
-      // org on 2026-10-20 (40 before the draft this request inserts stopped being locked again).
+      // org on 2026-10-20; three fewer since both weeks' days are read at once, the copy saves
+      // into the days as read, and the save's rules use the setup already read (2026-10-26).
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
       Assert.isTrue(
-        queries <= 40,
+        queries <= 36,
         'Start from another week used ' + queries + ' queries'
       );
       Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));
@@ -129,6 +130,51 @@ private class ManualWeekStartTest {
         .Status__c
       );
       Assert.areNotEqual(source, view.schedule.schedule.id);
+    }
+  }
+
+  @IsTest
+  static void aWeekWithAnElectiveSetStartsWithinTheSameBound() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id source = weekOneWithSwim(ids);
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      put(
+        source,
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
+            WEEK_1_MONDAY,
+            ids.get('Group B'),
+            ids.get('Period 2')
+          ),
+          new List<String>{ '' },
+          new List<String>{ 'E:' + chugim.Id }
+        )
+      );
+      Test.startTest();
+      Integer queriesBefore = Limits.getQueries();
+      ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
+        ids.get('Main'),
+        ids.get('Week 2'),
+        source
+      );
+      // The season's elective sets are read once, and the save places the set from that read:
+      // the same bound as a week without one (it reached 40 of 40 before, 2026-10-25).
+      Integer queries = Limits.getQueries() - queriesBefore;
+      Test.stopTest();
+      Assert.isTrue(
+        queries <= 36,
+        'Start from another week with an elective set used ' +
+          queries +
+          ' queries'
+      );
+      Assert.isTrue(view.leftOut.isEmpty(), String.join(view.leftOut, '; '));
+      Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));
+      Assert.areEqual('Chugim', mondayPeriod2(view, 'Group B'));
     }
   }
 

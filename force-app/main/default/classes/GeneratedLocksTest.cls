@@ -617,18 +617,17 @@ private class GeneratedLocksTest {
         }
       );
       GeneratedWeek.Result result = GeneratedTestData.save(
-        GeneratedTestData.filled(
+        GeneratedTestData.cleared(
           GeneratedTestData.request(
             GeneratedTestData.inputs(),
             GeneratedSaves.START_OVER,
             3
-          ),
-          'Soccer'
+          )
         )
       );
       Assert.isFalse(result.conflict);
       Assert.areEqual(
-        GeneratedTestData.a('Soccer'),
+        SlotIds.OPEN,
         GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
           GeneratedTestData.PERIOD_2
         ]

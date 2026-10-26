@@ -1409,6 +1409,44 @@ Checked by `c/shoreshEngine` `notes.test.js`; `c/shoreshGeneratedSchedule` "the 
 and notes are kept with the week…", "the engine's reasons kept with the week show after a
 reload…"; `GeneratedEngineNotesTest`.
 
+## Choices (hand edits are reminders; Start over checked, 2026-10-26)
+
+1. **A hand edit is never refused for setup** (Greg, engine care Q4; ADR 0008 part 12): a closed
+   activity or place, a group away this week, a time a group isn't at camp, a fixed or recurring
+   activity moved, covered or cleared. It is saved locked (§G4: hand edits are locks), and
+   reminded of in the Why list's setup rows.
+2. **Whole-week saves still hold the engine to every rule** (§18, `GeneratedChecks`,
+   `GeneratedClosures`), on the cells that changed. A locked cell is never a changed cell
+   (`checkNotLocked`), so a Rebuild, Try another or Fill the open cells that keeps a hand edit
+   keeps it unchecked, whatever closure, away group or set time it goes against, while a cell the
+   engine changed to a closed activity, an away group's row, a time a group isn't at camp or a
+   set-time cell is refused as before. A hand edit the director unlocks is the engine's again: a
+   full build clears it (`weekFixed.js`), and anything the engine puts there is checked. A fixed
+   or recurring activity moved by hand is never locked (`GeneratedLockCells`), but the engine
+   keeps every fixed or recurring activity where the grid has it (protocol 2.1), so no build
+   moves it back and no save sees it change. Checked by `GeneratedRefusalsTest`
+   `aRebuildKeepsHandEditsAgainstSetupButRefusesTheEngineBreakingIt`.
+3. **Start over is checked as what it is.** Start over builds nothing: the screen clears every
+   activity of every day but those a special day replaces (`clearedDays`) and saves, all locks
+   cleared. The server now checks exactly that: on Start over, no activity (start or carry-on)
+   is left on a day a special day doesn't replace (`GeneratedChecks.checkCleared`, the replaced
+   weekdays read with `WeekSpecials.replacedNames`, one query, Start over only). Anything else is
+   refused as a save the screen didn't make (_That change could not be read. Reload the page and
+   try again._). Fixed and recurring activities, specials and elective sets stay, and are checked
+   as any changed cell; the stored locks were already never the screen's (§G4). Nothing else needs
+   the engine re-run: a cleared week is the whole of what Start over sends. Checked by
+   `GeneratedRefusalsTest` `startOverClearsEveryActivityAndKeepsNone`; the tests that saved a
+   Start over with activities in it (`GeneratedLocksTest`, `GeneratedScheduleTest`,
+   `GeneratedEngineNotesTest`) now send it cleared (`GeneratedTestData.cleared`).
+4. **Rebuild, Generate and Try another are not checked for freshness**: whether an unlocked
+   activity is the engine's or kept from before can't be told without building again (a full
+   build clears unlocked activities, but the floor, protocol 8.21, puts imported ones back where
+   allowed). Their cells are checked against the rules, as before.
+5. **The preview names groups away** (`SetupMatch.Preview.awayGroupIds`), so the screen reads
+   setup changes again after a hand edit while a group is away, as it does while an activity is
+   closed; and after any edit touching a fixed or recurring activity or a time a group isn't at
+   camp (the editor's `saved` event says `remind`).
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -1432,6 +1470,9 @@ G5: none (no objects, fields or global members).
 
 Setup changed (§56): none (no objects, fields, picklist values or global members; the version
 name "Before Update to match setup" is Manual Build's, ADR 0008 part 6).
+
+Hand edits are reminders (2026-10-26): `SetupMatch.Preview.awayGroupIds` (an `@AuraEnabled`
+member, global once packaged). No objects or fields.
 
 Publish: none (no objects, fields or global members; `revisionOf`'s text is never stored).
 

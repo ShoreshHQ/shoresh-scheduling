@@ -106,10 +106,8 @@ private class GeneratedEngineNotesTest {
       Assert.areEqual(sent, read.engine.notes);
 
       // Start over builds nothing: the notes of the week it replaced go.
-      GeneratedWeek.Save startOver = GeneratedTestData.request(
-        read,
-        GeneratedSaves.START_OVER,
-        1
+      GeneratedWeek.Save startOver = GeneratedTestData.cleared(
+        GeneratedTestData.request(read, GeneratedSaves.START_OVER, 1)
       );
       GeneratedTestData.save(startOver);
       before = Limits.getQueries();

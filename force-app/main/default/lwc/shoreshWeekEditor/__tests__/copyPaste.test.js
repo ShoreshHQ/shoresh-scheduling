@@ -184,8 +184,9 @@ describe("c-shoresh-week-editor: Copy and Paste", () => {
     expect(notice(element)).toBe(
       "Nothing pasted. 1 left out: Swim · Bunk 1 · Monday: Flagpole is set up there."
     );
+    // Copy and Paste leave fixed activities where they are; a hand move or edit can change one.
     await copyAt(element, "0-0");
-    expect(notice(element)).toBe("Flagpole stays where it is set up.");
+    expect(notice(element)).toBe("Nothing copied: Flagpole is set up there.");
   });
 
   it("a copied Open cell clears where it is pasted", async () => {

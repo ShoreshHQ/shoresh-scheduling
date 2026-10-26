@@ -573,6 +573,115 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
   });
 
+  it("reads them again after a save when a group is away this week (a hand edit there is a new difference)", async () => {
+    const element = await render({ ...NOTHING, awayGroupIds: ["g2"] });
+    q(element, "c-shoresh-week-editor").dispatchEvent(
+      new CustomEvent("saved", { detail: {} })
+    );
+    await flush();
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+  });
+
+  describe("a hand edit is made, and reminded of in the Why list (Greg, 2026-10-26)", () => {
+    const typeInto = async (element, key, text) => {
+      cell(element, key).dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          composed: true
+        })
+      );
+      await flush();
+      const input = q(element, '[data-id="slot-input"]');
+      input.value = text;
+      input.dispatchEvent(new CustomEvent("input"));
+      await flush();
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          composed: true
+        })
+      );
+      await flush();
+    };
+    const answered = (items, rows) => ({
+      conflicts: [],
+      schedule: draft(items, rows).schedule
+    });
+
+    it("Soccer where Bunk 2 isn't at camp: saved, read again, and reminded", async () => {
+      const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
+      const element = await render(NOTHING, draft([FLAGPOLE], ["1,,", "1,,"]));
+      saveSlots.mockResolvedValue(
+        answered([FLAGPOLE, SOCCER], ["1,,", "1,,2"])
+      );
+      getSetupChanges.mockResolvedValue({
+        ...NOTHING,
+        dots: [{ key: "2026-06-29|g2|t3", words: "Not at camp then" }]
+      });
+      await typeInto(element, "1-2", "soccer");
+      expect(saveSlots.mock.calls[0][0].edits[0].runs[0].after).toEqual([
+        "A:a3"
+      ]);
+      // Nothing differed and nothing was closed: the edit itself asked for the read.
+      expect(getSetupChanges).toHaveBeenCalledTimes(2);
+      expect(whyLines(element)).toEqual([
+        "Bunk 2 · Monday · Lunch · Soccer: Not at camp then"
+      ]);
+    });
+
+    it("Swim over Flagpole: saved, read again, and reminded where each now is", async () => {
+      const element = await render(NOTHING, draft([FLAGPOLE], ["1,,", "1,,"]));
+      saveSlots.mockResolvedValue(answered([FLAGPOLE, SWIM], ["2,,", "1,,"]));
+      getSetupChanges.mockResolvedValue({
+        ...NOTHING,
+        dots: [
+          { key: "2026-06-29|g1|t1", words: "Flagpole is set up here now" }
+        ]
+      });
+      await typeInto(element, "0-0", "swim");
+      expect(saveSlots.mock.calls[0][0].edits[0].runs[0]).toMatchObject({
+        before: ["F:f1"],
+        after: ["A:a1"]
+      });
+      expect(getSetupChanges).toHaveBeenCalledTimes(2);
+      expect(whyLines(element)).toEqual([
+        "Bunk 1 · Monday · Period 1 · Swim: Flagpole is set up here now"
+      ]);
+    });
+
+    it("an ordinary edit, with the week matching setup, reads nothing again", async () => {
+      const element = await render(NOTHING, draft([FLAGPOLE], ["1,,", "1,,"]));
+      saveSlots.mockResolvedValue(answered([FLAGPOLE, SWIM], ["1,2,", "1,,"]));
+      await typeInto(element, "0-1", "swim");
+      expect(saveSlots).toHaveBeenCalledTimes(1);
+      expect(getSetupChanges).toHaveBeenCalledTimes(1);
+    });
+
+    it("the server's words for a closed activity, a closed place and a group away, place first", async () => {
+      const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
+      const element = await render(
+        {
+          ...NOTHING,
+          closedActivityIds: ["a1", "a3"],
+          awayGroupIds: ["g2"],
+          dots: [
+            { key: "2026-06-29|g1|t2", words: "Not running this session" },
+            { key: "2026-06-29|g1|t3", words: "Pool is closed this session" },
+            { key: "2026-06-29|g2|t2", words: "Not at camp this session" }
+          ]
+        },
+        draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
+      );
+      expect(whyLines(element)).toEqual([
+        "Bunk 1 · Monday · Period 2 · Swim: Not running this session",
+        "Bunk 1 · Monday · Lunch · Soccer: Pool is closed this session",
+        "Bunk 2 · Monday · Period 2 · Soccer: Not at camp this session"
+      ]);
+    });
+  });
+
   it("a failed read keeps the box and the dots, and says it couldn't check", async () => {
     const element = await render();
     getSetupChanges.mockRejectedValue({ body: { message: "No access." } });

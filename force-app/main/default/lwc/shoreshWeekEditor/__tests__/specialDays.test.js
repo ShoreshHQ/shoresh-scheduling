@@ -386,7 +386,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(sentRuns(saveRuns, 0).map((r) => r.groupId)).toEqual(["g1", "g2"]);
   });
 
-  it("refuses an event over a fixed activity, saying why", async () => {
+  it("puts an event over a fixed activity by hand (Greg, 2026-10-26: a hand edit is always made)", async () => {
     const { element, saveRuns } = await render();
     await fromGrid(element, "cellfocus", { key: "0-0" });
     await fromGrid(element, "cellselect", { key: "0-1", extend: true });
@@ -394,10 +394,14 @@ describe("c-shoresh-week-editor: special days and events", () => {
       new CustomEvent("pickevent", { detail: { id: EVENT_ID } })
     );
     await flush();
-    expect(saveRuns).not.toHaveBeenCalled();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Flagpole stays where it is set up."
-    );
+    expect(sentRuns(saveRuns, 0)).toEqual([
+      expect.objectContaining({
+        groupId: "g1",
+        firstBlockId: "t1",
+        before: ["F:f1", ""],
+        after: [`S:${EVENT_ID}`, `^S:${EVENT_ID}`]
+      })
+    ]);
   });
 
   it("offers Set it up on a cell a file noted as an event", async () => {

@@ -405,9 +405,10 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
   });
 
   it("draws a row every bunk spends on the same fixed activity as one slim cell with the lock", () => {
-    const element = renderLook();
+    // Read-only (a published week, a view): an editable grid draws each bunk's cell, below.
+    const element = renderLook(LOOK, false);
     const row = element.shadowRoot.querySelectorAll('[role="row"]')[3];
-    const cells = [...row.querySelectorAll('[role="gridcell"]')];
+    const cells = [...row.querySelectorAll('[role="cell"]')];
     expect(cells.map((c) => c.dataset.cell)).toEqual(["0-2"]);
     expect(cells[0].getAttribute("aria-colspan")).toBe("3");
     expect(cells[0].getAttribute("style")).toContain("grid-column: 2 / span 3");
@@ -526,35 +527,15 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     expect(classes(element, "cell_fits")).toEqual([]);
   });
 
-  it("Up and Down through a slim row come out in the column they went in from", async () => {
+  it("an editable grid draws each bunk's fixed activity, so a hand edit can move or cover one", () => {
+    // Greg, 2026-10-26: a hand edit is always allowed, so no bunk's cell is hidden in a slim row.
     const element = renderLook();
-    await flush();
-    const press = (key, cell) =>
-      at(element, cell).dispatchEvent(
-        new KeyboardEvent("keydown", { key, bubbles: true, composed: true })
-      );
-    press("ArrowRight", "0-0");
-    await flush();
-    press("ArrowRight", "1-0");
-    await flush();
-    press("ArrowDown", "2-0");
-    await flush();
-    press("ArrowDown", "2-1");
-    await flush();
-    await flush();
-    expect(element.shadowRoot.activeElement.dataset.cell).toBe("0-2");
-    press("ArrowDown", "0-2");
-    await flush();
-    await flush();
-    expect(element.shadowRoot.activeElement.dataset.cell).toBe("2-3");
-    press("ArrowUp", "2-3");
-    await flush();
-    await flush();
-    press("ArrowRight", "0-2");
-    await flush();
-    await flush();
-    // Right from the slim row: nothing beyond it, focus stays.
-    expect(element.shadowRoot.activeElement.dataset.cell).toBe("0-2");
+    const row = element.shadowRoot.querySelectorAll('[role="row"]')[3];
+    const cells = [...row.querySelectorAll('[role="gridcell"]')];
+    expect(cells.map((c) => c.dataset.cell)).toEqual(["0-2", "1-2", "2-2"]);
+    expect(cells[0].getAttribute("aria-colspan")).toBeNull();
+    expect(cells[0].className).not.toContain("cell_slim");
+    expect(cells[0].querySelector(".set-lock svg")).not.toBeNull();
   });
 });
 

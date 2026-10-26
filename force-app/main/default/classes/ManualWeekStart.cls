@@ -16,8 +16,9 @@ public with sharing class ManualWeekStart {
   private Map<Id, Group__c> groups;
   private Map<Id, TimeBlock__c> blocks;
   private GeneratedSetup setup;
-  // The season's elective sets, read when the other week first has one (ADR 0018 slice E5).
-  private Set<Id> electiveSets;
+  // The season's elective sets (Id, Name), read when the other week first has one (ADR 0018
+  // slice E5); the save places them from here, without reading them again.
+  private Map<Id, SObject> electiveSets;
 
   /** The new draft, and what was left out. */
   public class Started {
@@ -51,16 +52,25 @@ public with sharing class ManualWeekStart {
       return result;
     }
     result.notPlaced = blank.notPlaced;
-    ManualWeekCopy copy = new ManualWeekCopy(new ManualWeekStart(setup));
-    copy.plan(ScheduleDays.read(source.Id), ScheduleDays.read(blank.draftId));
+    ManualWeekStart rules = new ManualWeekStart(setup);
+    ManualWeekCopy copy = new ManualWeekCopy(rules);
+    // Both weeks' days in one read; the new week's are saved into as read (nothing else can have
+    // changed them: this request made them).
+    Map<Id, List<ScheduleDays.DayGrid>> read = ScheduleDays.read(
+      new Set<Id>{ source.Id, blank.draftId }
+    );
+    copy.plan(read.get(source.Id), read.get(blank.draftId));
     result.leftOut = copy.leftOut;
     if (!copy.edits.isEmpty()) {
       // No second lock: this request inserted the draft (under the program's lock), so nobody
-      // else can see or save it until the request ends.
+      // else can see or save it until the request ends. The rules use the setup and elective
+      // sets this request already read (repo docs/adr/0008-manual-build.md: query headroom).
       SlotEdits.Result saved = SlotSaves.makeWith(
         blank.draftId,
+        read.get(blank.draftId),
         copy.edits,
-        setup.rules(SlotRules.activityIdsIn(copy.edits)).withEvents(copy.edits)
+        setup.rules(SlotRules.activityIdsIn(copy.edits))
+          .withEvents(copy.edits, rules.electiveSets ?? new Map<Id, SObject>())
       );
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
@@ -139,7 +149,7 @@ public with sharing class ManualWeekStart {
     Id setId = SlotIds.electiveIn(slot);
     if (setId != null) {
       // An elective set goes where it was, as the week's pattern (ADR 0018 slice E5).
-      return seasonSets().contains(setId) ? null : 'deleted from setup';
+      return seasonSets().containsKey(setId) ? null : 'deleted from setup';
     }
     if (activityId == null) {
       return 'not set up yet';
@@ -153,17 +163,16 @@ public with sharing class ManualWeekStart {
   }
 
   /** The season's elective sets, read once. */
-  private Set<Id> seasonSets() {
+  private Map<Id, SObject> seasonSets() {
     if (electiveSets == null) {
-      electiveSets = new Map<Id, ElectiveSet__c>(
-          [
-            SELECT Id
-            FROM ElectiveSet__c
-            WHERE Season__c = :setup.program.Season__c
-            WITH USER_MODE
-          ]
-        )
-        .keySet();
+      electiveSets = new Map<Id, SObject>(
+        [
+          SELECT Id, Name
+          FROM ElectiveSet__c
+          WHERE Season__c = :setup.program.Season__c
+          WITH USER_MODE
+        ]
+      );
     }
     return electiveSets;
   }

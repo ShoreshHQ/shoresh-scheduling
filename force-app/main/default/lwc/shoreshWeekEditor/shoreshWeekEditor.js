@@ -19,6 +19,7 @@ import {
   editRun,
   identity,
   isMovable,
+  isSetTime,
   owner,
   placement,
   staysPut
@@ -64,6 +65,16 @@ import {
   readOtherPrograms,
   readProgram
 } from "c/shoreshEngine";
+
+/**
+ * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
+ * happen in the real world. A fixed or recurring activity can be moved, covered or cleared by
+ * hand, and anything can go where a group is away or not at camp then; the Why list reminds them
+ * ("Update to match setup" reads the week again after such an edit: savedNotice). Bulk tools
+ * (copy a day, paste, a rainy day) still leave those cells as they are.
+ */
+const SET_TIME_BY_HAND = true;
+const NEVER_AWAY = () => false;
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -1374,8 +1385,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       rows,
       `E:${setId}`,
       {
-        isAway: (slot) => this.isAwaySlot(slot),
-        isLocked: (slot) => this.isLockedSlot(slot)
+        isAway: NEVER_AWAY,
+        isLocked: (slot) => this.isLockedSlot(slot),
+        coversSetTime: SET_TIME_BY_HAND
       },
       true
     );
@@ -1429,8 +1441,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       (a, b) => a.day - b.day || a.group - b.group
     );
     const result = eventRuns(weekDays, rows, `S:${eventId}`, {
-      isAway: (slot) => this.isAwaySlot(slot),
-      isLocked: (slot) => this.isLockedSlot(slot)
+      isAway: NEVER_AWAY,
+      isLocked: (slot) => this.isLockedSlot(slot),
+      coversSetTime: SET_TIME_BY_HAND
     });
     this.commitPlaced(result, rows, found.name, cell);
   }
@@ -1440,18 +1453,9 @@ export default class ShoreshWeekEditor extends LightningElement {
    * cell keeps focus, or the cell it is now drawn as one with.
    */
   commitPlaced(result, rows, name, cell) {
-    const weekDays = this.schedule.days;
     if (result.refused) {
-      const at = result.at;
-      if (result.refused === "locked") {
-        this.refuseLocked(at);
-      } else if (result.refused === "away") {
-        this.refuse(
-          `${weekDays[at.day].groups[at.group].name} isn't at camp then.`
-        );
-      } else {
-        this.refuse(this.lockedReason(at));
-      }
+      // Only a Lock stops a hand edit (eventRuns with coversSetTime and NEVER_AWAY).
+      this.refuseLocked(result.at);
       return;
     }
     if (!result.runs.length) {
@@ -1495,7 +1499,9 @@ export default class ShoreshWeekEditor extends LightningElement {
         c.slot.block,
         OPEN,
         1,
-        this.awayIn(c.slot)
+        NEVER_AWAY,
+        () => false,
+        SET_TIME_BY_HAND
       );
       if (run) {
         runs.push({ day: c.slot.day, group: c.slot.group, ...run });
@@ -1612,9 +1618,9 @@ export default class ShoreshWeekEditor extends LightningElement {
               title: cell.text
             }
           : {}),
-        readOnly: this.lockedReason(cell.slot) !== null,
+        readOnly: false,
         // Nothing from the checks on the grid (wiki engine care plan Q18): the Why list says it.
-        movable: isMovable(here, this.ownPlan)
+        movable: isMovable(here, SET_TIME_BY_HAND)
       };
       if (cell.elective) {
         // "Chugim (4)": the set as setup has it now, and its confirmed, open offerings
@@ -1783,20 +1789,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     return grid ? grid.cells.find((cell) => cell.key === key) : null;
   }
 
-  /** Why a slot can't be changed here, or null. */
-  lockedReason(slot) {
-    const day = this.dayOf(slot);
-    const at = placement(day, slot.group, slot.block);
-    if (staysPut(at.slot, this.ownPlan)) {
-      return `${this.nameOf(at.slot, day)} stays where it is set up.`;
-    }
-    // A placement left there from an earlier setup can still be cleared.
-    if (at.slot === OPEN && this.isAwaySlot(slot)) {
-      return `${day.groups[slot.group].name} isn't at camp then.`;
-    }
-    return null;
-  }
-
   /** The day's saved item a slot's identity is, if the day has it. */
   savedItem(slot, day) {
     const item = owner(slot);
@@ -1847,11 +1839,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.handleCellSpace(event);
       return;
     }
-    const reason = this.lockedReason(cell.slot);
-    if (reason) {
-      this.announce(reason);
-      return;
-    }
     if (cell.locked) {
       this.requestUnlock(cell);
       return;
@@ -1877,11 +1864,6 @@ export default class ShoreshWeekEditor extends LightningElement {
   handleClearCell(event) {
     const cell = this.cellByKey(event.detail.key);
     if (!cell || !cell.slot) {
-      return;
-    }
-    const reason = this.lockedReason(cell.slot);
-    if (reason) {
-      this.announce(reason);
       return;
     }
     if (cell.locked) {
@@ -1980,14 +1962,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     const options = [];
     const here = placement(day, slot.group, slot.block);
     const filled = here.slot !== OPEN;
-    // Left there from an earlier setup where the group isn't at camp (where the placement
-    // starts): it can only be cleared.
-    const awayHere = this.isAwaySlot({ ...slot, block: here.first });
-    if (filled && (!typed || awayHere)) {
+    if (filled && !typed) {
       options.push({ key: "open", kind: "open", label: "Open" });
-    }
-    if (awayHere) {
-      return this.marked(options);
     }
     // The season's elective sets first, as in the drawer (mock-up electives-r1 grid-a; desktop
     // CellInlineEditor offers them), each with its mark; a week's, not a special day's or
@@ -2203,16 +2179,12 @@ export default class ShoreshWeekEditor extends LightningElement {
       slot.block,
       next,
       length,
-      this.awayIn(slot),
+      NEVER_AWAY,
       // A longer activity stops at a locked cell, as it stops at a filled one.
       (block) => this.isLockedSlot({ ...slot, block }),
-      this.ownPlan
+      SET_TIME_BY_HAND
     );
     if (!run) {
-      const head = placement(day, slot.group, slot.block).first;
-      if (next !== OPEN && this.isAwaySlot({ ...slot, block: head })) {
-        this.say(`${day.groups[slot.group].name} isn't at camp then.`);
-      }
       return;
     }
     if (this.runsLocked([{ day: slot.day, group: slot.group, ...run }])) {
@@ -2508,6 +2480,15 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   itemFor(item) {
+    if (isSetTime(item)) {
+      // A fixed or recurring activity moved by hand onto another day: as a day of the week has it.
+      for (const day of this.schedule.days) {
+        const found = (day.items || []).find((i) => identity(i) === item);
+        if (found) {
+          return { kind: found.kind, id: found.id, name: found.name };
+        }
+      }
+    }
     if (item.startsWith("S:")) {
       const event = this.eventFor(item);
       return { kind: "S", id: item.slice(2), name: event ? event.name : "" };
@@ -2522,6 +2503,25 @@ export default class ShoreshWeekEditor extends LightningElement {
       id: item.slice(2),
       name: activity ? activity.name : ""
     };
+  }
+
+  /**
+   * Whether saved runs (as the server takes them) touched a fixed or recurring activity or a cell
+   * where the group isn't at camp: such a hand edit can differ from setup, so the host reads
+   * "Update to match setup" again for its reminder in the Why list.
+   */
+  remindsOf(runs) {
+    const away = new Set();
+    ((this.draft && this.draft.away) || []).forEach((row) =>
+      row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
+    );
+    return (runs || []).some(
+      (run) =>
+        [...(run.before || []), ...(run.after || [])].some(isSetTime) ||
+        (run.blockIds || []).some((blockId) =>
+          away.has(`${run.groupId}|${blockId}`)
+        )
+    );
   }
 
   /** Sends queued edits one at a time, so each names what the one before it left. */
@@ -2550,7 +2550,8 @@ export default class ShoreshWeekEditor extends LightningElement {
             schedule: result.schedule,
             conflicts: result.conflicts,
             label: entry.label,
-            kind: entry.kind
+            kind: entry.kind,
+            remind: this.remindsOf(entry.edit.runs)
           }
         })
       );
@@ -3692,7 +3693,13 @@ export default class ShoreshWeekEditor extends LightningElement {
       });
     });
     if (!items.length && !opens.length) {
-      this.refuse(this.lockedReason(cells[0].slot) || "Nothing to copy there.");
+      const day = this.dayOf(cells[0].slot);
+      const at = placement(day, cells[0].slot.group, cells[0].slot.block);
+      this.refuse(
+        staysPut(at.slot, this.ownPlan)
+          ? `Nothing copied: ${this.nameOf(at.slot, day)} is set up there.`
+          : "Nothing to copy there."
+      );
       return;
     }
     const all = [...items, ...opens];
@@ -4062,10 +4069,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (!cell.movable) {
-      const reason = this.lockedReason(cell.slot);
-      if (reason) {
-        this.refuse(reason);
-      } else if (cell.locked) {
+      if (cell.locked) {
         this.refuseLocked(cell.slot);
       }
       return;
@@ -4184,11 +4188,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (what.kind === "activity") {
-      const reason = this.lockedReason(cell.slot);
-      if (reason) {
-        this.refuse(reason);
-        return;
-      }
       this.change(
         cell.slot,
         cell.key,
@@ -4224,8 +4223,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.schedule.days,
       from,
       cell.slot,
-      (p) => this.isAwaySlot(p),
-      this.ownPlan
+      NEVER_AWAY,
+      SET_TIME_BY_HAND
     );
     if (!result) {
       // Put down where it already is.
@@ -4251,7 +4250,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   removeAt(slot) {
     const day = this.dayOf(slot);
     const name = this.nameOf(placement(day, slot.group, slot.block).slot, day);
-    const result = removeEdit(this.schedule.days, slot, this.ownPlan);
+    const result = removeEdit(this.schedule.days, slot, SET_TIME_BY_HAND);
     if (result && !this.runsLocked(result.runs)) {
       this.commit(
         result.runs,
@@ -4285,8 +4284,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.schedule.days,
       slot,
       lastBlock,
-      (p) => this.isAwaySlot(p),
-      this.ownPlan
+      NEVER_AWAY,
+      SET_TIME_BY_HAND
     );
     if (!result) {
       return;

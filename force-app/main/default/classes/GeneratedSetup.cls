@@ -84,13 +84,18 @@ public with sharing class GeneratedSetup {
     return BlankWeek.build(this);
   }
 
-  /** Manual Build's rules for the cells (SlotRules), with the activities placed. */
+  /**
+   * Manual Build's rules for the cells (SlotRules), with the activities placed: on the season's
+   * activities when this request has read them already (activityRecords), else read for these.
+   */
   public SlotRules rules(Set<Id> activityIds) {
     SlotRules.Setup setup = new SlotRules.Setup();
     setup.seasonId = program.Season__c;
     setup.labels = labels();
     setup.groups = groups;
     setup.blocks = blocks;
-    return new SlotRules(setup, activityIds);
+    return activitiesRead == null
+      ? new SlotRules(setup, activityIds)
+      : new SlotRules(setup, activitiesRead);
   }
 }

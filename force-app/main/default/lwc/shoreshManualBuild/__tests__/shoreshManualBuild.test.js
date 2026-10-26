@@ -409,19 +409,30 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-1")).toBe("Open");
   });
 
-  it("fixed activities and slots where a bunk isn't at camp can't be changed", async () => {
+  it("a fixed activity and a slot where a bunk isn't at camp change by hand (Greg, 2026-10-26)", async () => {
     getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["2,,", "1,,"]));
     const element = await render();
     expect(cellText(element, "1-2")).toBe("Not at camp");
+    // Swim typed over Flagpole: the director knows it can happen; the Why list reminds them.
     await press(cell(element, "0-0"), "Enter");
-    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
-    expect(q(element, '[data-id="announce"]').textContent).toContain(
-      "Flagpole stays where it is set up."
-    );
-    await press(cell(element, "0-0"), "Delete");
+    await press(await type(element, "swim"), "Enter");
+    expect(saveSlots.mock.calls[0][0].edits[0].runs[0]).toMatchObject({
+      groupId: "g1",
+      firstBlockId: "t1",
+      before: ["F:f1"],
+      after: ["A:a1"]
+    });
+    // Soccer typed where Bunk 2 is not at camp.
+    saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,,", "1,,2"]));
     await press(cell(element, "1-2"), "Enter");
-    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
-    expect(saveSlots).not.toHaveBeenCalled();
+    await press(await type(element, "soccer"), "Enter");
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toMatchObject({
+      groupId: "g2",
+      firstBlockId: "t3",
+      before: [""],
+      after: ["A:a3"]
+    });
   });
 
   it("a new name adds it to activities, then places it", async () => {
@@ -675,12 +686,12 @@ describe("c-shoresh-manual-build", () => {
     expect(saveSlots.mock.calls[2][0].edits[0].runs[0].groupId).toBe("g2");
   });
 
-  it("something left where a bunk isn't at camp can only be cleared", async () => {
+  it("something where a bunk isn't at camp can be changed like any cell", async () => {
     getDraft.mockResolvedValue(draft(WITH_SOCCER, ["1,,", "1,,2"]));
     const element = await render();
     await press(cell(element, "1-2"), "Enter");
     await type(element, "sw");
-    expect(optionLabels(element)).toEqual(["Open"]);
+    expect(optionLabels(element)).toEqual(["Swim", 'Add "sw" to activities']);
   });
 
   it("when someone made the activity longer, the question names the cell that changed", async () => {
@@ -759,7 +770,7 @@ describe("c-shoresh-manual-build", () => {
     ]);
   });
 
-  it("an activity that starts where a bunk isn't at camp can only be cleared", async () => {
+  it("an activity that starts where a bunk isn't at camp offers the full list too", async () => {
     const start = draft(
       [WITH_SOCCER[0], { kind: "A", id: "a2", name: "Boating", gone: false }],
       ["1,,", "1,2,^"]
@@ -770,8 +781,12 @@ describe("c-shoresh-manual-build", () => {
     });
     const element = await render();
     await press(cell(element, "1-1"), "Enter");
-    await type(element, "sw");
-    expect(optionLabels(element)).toEqual(["Open"]);
+    expect(optionLabels(element)).toEqual([
+      "Open",
+      "Boating",
+      "Soccer",
+      "Swim"
+    ]);
   });
 
   it("an error goes away once a save works", async () => {
@@ -789,11 +804,11 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="build-error"]')).toBeNull();
   });
 
-  it("slots that can't change are read-only for screen readers", async () => {
+  it("no slot is read-only: a fixed activity and a time a bunk isn't at camp change by hand", async () => {
     getDraft.mockResolvedValue(draft());
     const element = await render();
-    expect(cell(element, "0-0").getAttribute("aria-readonly")).toBe("true");
-    expect(cell(element, "1-2").getAttribute("aria-readonly")).toBe("true");
+    expect(cell(element, "0-0").getAttribute("aria-readonly")).toBeNull();
+    expect(cell(element, "1-2").getAttribute("aria-readonly")).toBeNull();
     expect(cell(element, "0-1").getAttribute("aria-readonly")).toBeNull();
   });
 

@@ -79,6 +79,9 @@ public with sharing class SetupMatch {
     // Activities closed this week: placing one makes a new difference.
     @AuraEnabled
     public List<Id> closedActivityIds = new List<Id>();
+    // Groups away this week: a hand edit in one's row makes a new difference (a reminder).
+    @AuraEnabled
+    public List<Id> awayGroupIds = new List<Id>();
     // Why the week can't be compared with setup now ("No bunks of Main are at camp in Week 1."),
     // or null.
     @AuraEnabled
@@ -258,6 +261,7 @@ public with sharing class SetupMatch {
     }
     SetupMatchRules rules = new SetupMatchRules(setup);
     plan.preview.closedActivityIds.addAll(rules.closed);
+    plan.preview.awayGroupIds.addAll(setup.away());
     Map<Date, ScheduleGrid> targetByDay = new Map<Date, ScheduleGrid>();
     for (ScheduleDaySaves.DaySave day : target.days) {
       targetByDay.put(day.day, day.grid);
