@@ -247,9 +247,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
   };
 
   // The three kinds of step, defined below (each calls the others through run).
-  let fill;
-  let place;
-  let makeRoom;
+  const step = {};
 
   // tasks: what is still to do, first first: { place: act, g } or { fill: key }.
   const run = function* (tasks, steps) {
@@ -269,14 +267,14 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
     const task = tasks[i];
     const rest = [...tasks.slice(0, i), ...tasks.slice(i + 1)];
     if (task.fill) {
-      yield* fill(task.fill, rest, steps);
+      yield* step.fill(task.fill, rest, steps);
     } else if (steps > 0) {
-      yield* place(task.place, task.g, rest, steps - 1);
+      yield* step.place(task.place, task.g, rest, steps - 1);
     }
   };
 
   // An emptied cell gets any one-block activity allowed for its group there (counts only rise).
-  fill = function* (k, rest, steps) {
+  step.fill = function* (k, rest, steps) {
     if (st.assigned.has(k)) {
       yield* run(rest, steps);
       return;
@@ -324,7 +322,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
     return out;
   };
 
-  place = function* (act, g, rest, steps) {
+  step.place = function* (act, g, rest, steps) {
     for (const s of starts(act, g)) {
       if (spent()) {
         return;
@@ -368,7 +366,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
           doPlace(act, g, s.d, s.b);
           yield* run([...more, ...rest], steps);
         } else if (steps > 0) {
-          yield* makeRoom(act, g, s, [...more, ...rest], steps);
+          yield* step.makeRoom(act, g, s, [...more, ...rest], steps);
         }
       }
       undoTo(mark);
@@ -376,7 +374,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
   };
 
   // The activity, or its place, is full then: another group's session there makes room.
-  makeRoom = function* (act, g, s, rest, steps) {
+  step.makeRoom = function* (act, g, s, rest, steps) {
     const seen = new Set();
     for (const h of st.model.groupIds) {
       if (h === g) {
