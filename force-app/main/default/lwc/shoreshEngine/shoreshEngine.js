@@ -265,7 +265,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
         told = notes.now;
         watch.now = {
           ...told,
-          date: told.dayIndex == null ? null : days[told.dayIndex].date
+          date: told.dayIndex == null ? null : days[told.dayIndex].date,
+          toDate: told.toDayIndex == null ? null : days[told.toDayIndex].date
         };
       }
       yield alone && alone.f < 1

@@ -88,14 +88,18 @@ describe("generateWeek on a large camp", () => {
   it("gives up on a week that can't fit within its work budget, still leaving nothing blank", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
-    // About 1,640,000 today: 1,070,000 before step 8's exact search (PR 4a).
+    // About 1,735,000 today: 1,070,000 before step 8's exact search (PR 4a), 1,640,000 before
+    // its moves between days.
     expect(result.ruleChecks).toBeLessThan(2500000);
     // About 1 s alone (under 3 s on a busy machine). ruleChecks above counts how many checks
     // run, not how long each takes, so this ceiling is what catches a slower check (roughly
     // 10x or worse); a slowdown smaller than that can still pass.
     expect(ms).toBeLessThan(10000);
     expect(problems(spec, input, result)).toEqual([]);
-    expect(result.flags.length).toBeGreaterThan(0);
+    // Only a weekly max ever bends (one cell did before the moves between days; none now).
+    expect(
+      result.flags.every((f) => f.bends.every((b) => b === "weeklyMax"))
+    ).toBe(true);
     expect(result.stillNeeded.length).toBeGreaterThan(0);
   });
 
