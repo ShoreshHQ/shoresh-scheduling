@@ -41,7 +41,9 @@ in every category; its log and summary say which category it chose and why.
 
 ### The nightly full run on main (the safety net)
 
-Merges to main run only the quick check ("LWC Jest and Code Analyzer"). Every night at 07:15 UTC
+Merges to main run only the quick check ("LWC Jest and Code Analyzer"). That check is a summary:
+it passes only when its three jobs, run side by side, pass ("LWC Jest", "LWC Jest, as if the
+package had its namespace", "Code Analyzer and Apex file checks"); open the red one to see why. Every night at 07:15 UTC
 (03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
 Apex test. Whatever a `docs` or `screen` pull request skipped is tested by the next morning. It
 waits its turn for the test org like any pull request.
@@ -86,7 +88,8 @@ saves). Every such spelling has been replaced; two checks keep it that way
 - **Namespaced Jest run** (`npm run test:unit:namespaced`): every component's tests run with every
   `@salesforce/schema` import named `shoresh__...`; new components are included automatically.
   Tests hand records in through `nsRecord()` and check what is sent through `bareRecord()`
-  (`jest/namespace.js`).
+  (`jest/namespace.js`). The engine's seed sweeps (listed in `jest.namespaced.config.js`) are left
+  out of this run only: they read setup through the same code the other suites already cover here.
 
 Neither proves the namespaced org works; that is checked after the namespace is registered.
 
