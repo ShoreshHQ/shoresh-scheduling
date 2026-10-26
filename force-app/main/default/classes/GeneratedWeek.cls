@@ -26,6 +26,10 @@ public with sharing class GeneratedWeek {
     public Integer option { get; set; }
     @AuraEnabled
     public List<Day> days { get; set; }
+    // What the engine said about the week it built (GeneratedEngineNotes), or null: none (Start
+    // over builds nothing). Kept only for the Why list; never checked against the days.
+    @AuraEnabled
+    public String engineNotes { get; set; }
 
     /** Refuses a save the screen could not have sent, or an option that can't be built. */
     public void check(Set<String> actions) {
@@ -38,6 +42,22 @@ public with sharing class GeneratedWeek {
         throw new ShoreshException('That option can\'t be built.');
       }
     }
+  }
+
+  /**
+   * Hand edits on the Generated draft (GeneratedScheduleController.saveSlots): the edits, the
+   * revision the screen read the week at, and the engine's notes without the reasons of the cells
+   * the edits change (null: kept as they are; GeneratedEngineNotes).
+   */
+  public class HandEdits {
+    @AuraEnabled
+    public Id scheduleId { get; set; }
+    @AuraEnabled
+    public List<SlotEdits.Edit> edits { get; set; }
+    @AuraEnabled
+    public String revision { get; set; }
+    @AuraEnabled
+    public String engineNotes { get; set; }
   }
 
   /**

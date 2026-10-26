@@ -90,7 +90,8 @@ public with sharing class GeneratedSaves {
         Name = GeneratedDrafts.NAME,
         Status__c = ManualDrafts.DRAFT,
         Origin__c = GeneratedDrafts.GENERATED,
-        EngineOption__c = request.option
+        EngineOption__c = request.option,
+        EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes)
       );
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, daySaves(blank, grids, false));
@@ -120,8 +121,13 @@ public with sharing class GeneratedSaves {
       Id versionId = VERSION_FIRST.containsKey(request.action)
         ? saveVersion(draft, days)
         : null;
+      // The engine's notes are this build's: none kept from the week it replaces.
       Database.update(
-        new Schedule__c(Id = draft.Id, EngineOption__c = request.option),
+        new Schedule__c(
+          Id = draft.Id,
+          EngineOption__c = request.option,
+          EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes)
+        ),
         AccessLevel.USER_MODE
       );
       ScheduleDaySaves.write(draft.Id, daySaves(days, grids, true));

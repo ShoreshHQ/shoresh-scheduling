@@ -6,7 +6,7 @@ import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.ad
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetupOnServer from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
 import { reasonOf } from "c/shoreshErrors";
-import { readOtherPrograms } from "c/shoreshEngine";
+import { notesText, readNotes, readOtherPrograms } from "c/shoreshEngine";
 
 /** What a save is for (GeneratedSaves). Rebuild and Start over keep the week as a version first. */
 export const ACTION = Object.freeze({
@@ -33,13 +33,15 @@ export const REFUSED = "refused";
  * prefix (ADR 0009).
  *
  * loadWeek resolves to
- *   { scheduleId, revision, option, notPlaced, published, input }
+ *   { scheduleId, revision, option, notPlaced, published, engineNotes, input }
  *   scheduleId: the Generated draft, or null before the week's first save
  *   revision: what the draft was saved at; saveWeek sends it back
  *   option: the option the draft was built with (1 when it has none yet)
  *   notPlaced: a blank week's fixed or recurring activities whose slot was taken
  *   published: the week's published schedule beside the draft ({ id, publishedAt, publishedBy,
  *     changedSince }), or null when it has none (or nothing is generated yet)
+ *   engineNotes: what the engine said about the week it last built, kept with it (notesOf,
+ *     c/shoreshEngine notes.js), or null: none, a restored week, or not the shape it keeps
  *   input: generateWeek's input, without option, mode and terms (the screen adds them)
  * and rejects when the week can't be opened (the screen says what didn't happen: failed()).
  */
@@ -51,6 +53,7 @@ export async function loadWeek(programId, weekId) {
     option: r.option || 1,
     notPlaced: r.notPlaced || [],
     published: r.published || null,
+    engineNotes: readNotes(r.engine && r.engine.notes),
     input: {
       // The server's own Ids (18 characters): the engine compares them exactly and seeds with them.
       programId: r.programId || programId,
@@ -71,14 +74,16 @@ export async function loadWeek(programId, weekId) {
       // The week's days a special day replaces (ADR 0014 slice 4).
       specials: r.specials || { days: [] },
       // The week as it was imported and that version's name: the engine's floor (step 8).
-      imported: (r.imported && r.imported.days) || [],
-      importedName: (r.imported && r.imported.name) || null
+      imported: (r.engine && r.engine.imported && r.engine.imported.days) || [],
+      importedName:
+        (r.engine && r.engine.imported && r.engine.imported.name) || null
     }
   };
 }
 
 /**
- * Saves the week the engine built (its result's days) over what was loaded.
+ * Saves the week the engine built (its result's days) over what was loaded, with what the engine
+ * said about it (engineNotes: notesOf of its result; null for Start over, which builds nothing).
  * Resolves to one of
  *   { status: SAVED, scheduleId, revision, versionId, published, loaded }: loaded is the week
  *     to go on with (what was built, the new revision, the locks kept: none after Start over);
@@ -88,7 +93,10 @@ export async function loadWeek(programId, weekId) {
  *   { status: REFUSED, message }: the server refused it; message is why, in Shoresh's own words
  *     or "Try again." (reasonOf), for the screen to put after what didn't happen (failed())
  */
-export async function saveWeek(loaded, { action, option, days }) {
+export async function saveWeek(
+  loaded,
+  { action, option, days, engineNotes = null }
+) {
   const request = {
     programId: loaded.input.programId,
     weekId: loaded.input.weekId,
@@ -96,7 +104,8 @@ export async function saveWeek(loaded, { action, option, days }) {
     revision: loaded.revision,
     action,
     option,
-    days: (days || []).map(dayToSave)
+    days: (days || []).map(dayToSave),
+    engineNotes: notesText(engineNotes)
   };
   let result;
   try {
@@ -119,6 +128,7 @@ export async function saveWeek(loaded, { action, option, days }) {
       ...loaded,
       scheduleId: result.scheduleId,
       revision: result.revision,
+      engineNotes,
       input: {
         ...loaded.input,
         days: days || [],
@@ -234,13 +244,18 @@ function withLocksSeen(loaded, edits) {
  *     saved the week meanwhile its revision is empty, so a whole-week save from it is a
  *     conflict: loadWeek again before Rebuild, while hand edits can go on from it
  *   { status: REFUSED, message }
+ * engineNotes, when given: the engine's notes without the reasons of the cells these edits change
+ * (notesWithout), kept with the week when nobody else saved it since; left out, they stay as kept.
  */
-export async function saveEdits(loaded, edits) {
+export async function saveEdits(loaded, edits, engineNotes) {
   try {
     const result = await saveSlots({
-      scheduleId: loaded.scheduleId,
-      edits: withLocksSeen(loaded, edits),
-      revision: loaded.revision
+      request: {
+        scheduleId: loaded.scheduleId,
+        edits: withLocksSeen(loaded, edits),
+        revision: loaded.revision,
+        engineNotes: engineNotes === undefined ? null : notesText(engineNotes)
+      }
     });
     return {
       status: SAVED,

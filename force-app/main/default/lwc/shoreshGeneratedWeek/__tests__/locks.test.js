@@ -183,16 +183,20 @@ describe("c/shoreshGeneratedWeek locks", () => {
     ];
     const result = await saveEdits(LOADED, edits);
     expect(saveSlots).toHaveBeenCalledWith({
-      scheduleId: "a0S000000000001AAA",
-      revision: "2026-06-29:2",
-      edits: [
-        {
-          runs: [
-            { ...edits[0].runs[0], locksBefore: ["", "1"] },
-            { ...edits[0].runs[1], locksBefore: [""] }
-          ]
-        }
-      ]
+      request: {
+        scheduleId: "a0S000000000001AAA",
+        revision: "2026-06-29:2",
+        edits: [
+          {
+            runs: [
+              { ...edits[0].runs[0], locksBefore: ["", "1"] },
+              { ...edits[0].runs[1], locksBefore: [""] }
+            ]
+          }
+        ],
+        // No engine notes given: the week keeps them as they are.
+        engineNotes: null
+      }
     });
     expect(result.status).toBe(SAVED);
     expect(result.conflicts).toEqual([]);
@@ -241,7 +245,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
     await saveEdits(twoDays, [
       { runs: [{ day: "2026-06-30", groupId: G1, blockIds: [B2] }] }
     ]);
-    const sent = saveSlots.mock.calls[0][0].edits[0].runs[0];
+    const sent = saveSlots.mock.calls[0][0].request.edits[0].runs[0];
     expect(sent.locksBefore).toEqual([""]);
   });
 
@@ -260,7 +264,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
       locksAfter: ["1"]
     };
     await saveEdits(LOADED, [{ runs: [run] }]);
-    const sent = saveSlots.mock.calls[0][0].edits[0].runs[0];
+    const sent = saveSlots.mock.calls[0][0].request.edits[0].runs[0];
     expect(sent.locksBefore).toEqual([""]);
     expect(sent.locksAfter).toEqual(["1"]);
   });

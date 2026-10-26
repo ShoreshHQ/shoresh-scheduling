@@ -6,6 +6,7 @@ import {
   readLocations as readLocationMap
 } from "./checkInputs";
 import { identity } from "./grid";
+import { OPEN_WHY } from "./notes";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
 import {
   atCamp,
@@ -23,11 +24,9 @@ import {
   BUDGET,
   BUSY,
   FULL,
-  LENGTH,
   MIN_COST,
   NO_FIT,
   NONE_FOR,
-  OVERLAP,
   RELAX_ORDER,
   RULE,
   SEARCHED,
@@ -55,17 +54,15 @@ export {
   readProgram
 } from "./checkInputs";
 export { measureWeek } from "./measure";
-
-// Why a cell is Open (weekRules) -> the words that say so (words.js).
-const OPEN_WHY = {
-  [OVERLAP]: BUSY,
-  [LENGTH]: NO_FIT,
-  [FULL]: FULL,
-  [NONE_FOR]: NONE_FOR,
-  [SEARCHED]: SEARCHED,
-  [MIN_COST]: MIN_COST,
-  [BUDGET]: BUDGET
-};
+export {
+  NOTES_MAX,
+  notesOf,
+  notesText,
+  notesWithout,
+  openKey,
+  readNotes,
+  whyOf
+} from "./notes";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
@@ -99,7 +96,7 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     keeps every filled cell already, so it is not compared there
  *
  * Returns { ok: true, floor, days, flags, stillNeeded, spread, stillNeededBy, spreadBy,
- * setupNotes, overlapping, cells, openCells, ruleChecks }
+ * setupNotes, setupBlank, overlapping, cells, openCells, ruleChecks }
  * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
@@ -116,6 +113,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     and counts, the same words as Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
  *   setupNotes: lines for each blank groups at once (an activity running this week) or groups
  *     that fit (a place one uses), taken as 1: "Arts: Groups at once is blank, so it counts as 1"
+ *   setupBlank: the same settings as data, [{ field ("atOnce" or "fit"), id (the activity's or
+ *     place's) }], for the notes kept with the saved week (notesOf, notes.js)
  *   overlapping: checkWeek's cells where a placement breaks a rule that time block shares with
  *     other cells: [{ dateValue, groupId, blockId, rules: [RULE... or BUSY], text }]
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
@@ -184,15 +183,17 @@ export function* generateWeekSteps(input, watch = {}) {
   }
   const { fit, names: placeNames, blank } = readLocations(input.locations);
   // Blank groups at once or groups that fit: taken as 1 and said, never 0, never a stop.
-  const setupNotes = [
+  // Which settings those are (field and record), kept with the saved week (notes.js).
+  const setupBlank = [
     ...activities.running
       .filter((a) => a.atOnceBlank)
-      .map((a) => blankSetupNote("atOnce", a.name, t)),
+      .map((a) => ({ field: "atOnce", id: a.id, name: a.name })),
     // Only the places an activity running this week uses.
     ...blank
       .filter((id) => activities.running.some((a) => a.locationId === id))
-      .map((id) => blankSetupNote("fit", placeNames.get(id), t))
+      .map((id) => ({ field: "fit", id, name: placeNames.get(id) }))
   ];
+  const setupNotes = setupBlank.map((b) => blankSetupNote(b.field, b.name, t));
   const model = {
     days,
     groups,
@@ -360,6 +361,7 @@ export function* generateWeekSteps(input, watch = {}) {
     stillNeededBy: checked.stillNeededBy,
     spreadBy: checked.spreadBy,
     setupNotes,
+    setupBlank: setupBlank.map(({ field, id }) => ({ field, id })),
     overlapping: checked.overlapping,
     cells: checked.cells,
     ruleChecks,

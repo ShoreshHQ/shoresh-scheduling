@@ -40,7 +40,7 @@ private class GeneratedPublishTest {
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
-    SlotEdits.Result result = GeneratedScheduleController.saveSlots(
+    SlotEdits.Result result = GeneratedTestData.handEdits(
       draftId,
       new List<SlotEdits.Edit>{
         SlotRunsTestData.edit(

@@ -174,6 +174,19 @@ public class GeneratedTestData {
     return save;
   }
 
+  /** Hand edits on a Generated draft from a screen that read it at revision; no engine notes. */
+  public static SlotEdits.Result handEdits(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits,
+    String revision
+  ) {
+    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
+    request.scheduleId = scheduleId;
+    request.edits = edits;
+    request.revision = revision;
+    return GeneratedScheduleController.saveSlots(request);
+  }
+
   public static GeneratedWeek.Result save(GeneratedWeek.Save request) {
     return GeneratedScheduleController.saveWeek(request);
   }

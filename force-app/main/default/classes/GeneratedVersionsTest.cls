@@ -421,15 +421,15 @@ private class GeneratedVersionsTest {
       Integer withoutImport = Limits.getQueries() - before;
       Test.stopTest();
       Assert.isNull(read.scheduleId);
-      Assert.areEqual('Week 1 as imported', read.imported.name);
-      Assert.areEqual(read.days.size(), read.imported.days.size());
-      ScheduleViews.DayView monday = read.imported.days[0];
+      Assert.areEqual('Week 1 as imported', read.engine.imported.name);
+      Assert.areEqual(read.days.size(), read.engine.imported.days.size());
+      ScheduleViews.DayView monday = read.engine.imported.days[0];
       Assert.areEqual(GeneratedTestData.MONDAY, monday.dateValue);
       String cell = monday.rows[GeneratedTestData.GROUP_A]
         .split(',', -1)[GeneratedTestData.PERIOD_2];
       Integer swim = Integer.valueOf(cell);
       Assert.areEqual(ids.get('Swim'), monday.items[swim - 1].id);
-      Assert.isNull(none.imported);
+      Assert.isNull(none.engine.imported);
       // The import costs at most one query more than the same week without it.
       Assert.isTrue(
         withImport - withoutImport <= 1,
@@ -450,7 +450,7 @@ private class GeneratedVersionsTest {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Test.stopTest();
-      Assert.isNull(read.imported);
+      Assert.isNull(read.engine.imported);
       Assert.isNull(read.scheduleId);
     }
   }

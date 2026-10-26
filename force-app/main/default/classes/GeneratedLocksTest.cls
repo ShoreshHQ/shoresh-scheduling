@@ -60,7 +60,7 @@ private class GeneratedLocksTest {
 
   /** One hand edit from a screen that has the week as it is now. */
   private static SlotEdits.Result handEdit(Id draftId, SlotEdits.Edit edit) {
-    return GeneratedScheduleController.saveSlots(
+    return GeneratedTestData.handEdits(
       draftId,
       new List<SlotEdits.Edit>{ edit },
       revisionNow(draftId)
@@ -95,7 +95,7 @@ private class GeneratedLocksTest {
       useBlocks(ids);
       Test.startTest();
       // Swim by hand in Group A's Monday Lunch; Group B's Period 2 cleared by hand.
-      SlotEdits.Result placed = GeneratedScheduleController.saveSlots(
+      SlotEdits.Result placed = GeneratedTestData.handEdits(
         draftId,
         new List<SlotEdits.Edit>{
           SlotRunsTestData.edit(
@@ -342,7 +342,7 @@ private class GeneratedLocksTest {
       );
       // A hand edit is still made (slot by slot, as Manual Build's), but gives no revision to
       // build on: the screen reads the week again before a whole-week save.
-      SlotEdits.Result edited = GeneratedScheduleController.saveSlots(
+      SlotEdits.Result edited = GeneratedTestData.handEdits(
         draftId,
         new List<SlotEdits.Edit>{
           SlotRunsTestData.edit(

@@ -829,6 +829,58 @@ describe("c-shoresh-generated-schedule", () => {
     ]);
   });
 
+  it("the engine's reasons and notes are kept with the week: opened again, the Why list says the same", async () => {
+    // Every activity takes two blocks (Period 3 is a gap none fits) and Hike's groups at once is
+    // blank (a note with no cell).
+    const spec = {
+      ...SMALL,
+      activities: [{ name: "Hike", min: 0, max: 5, atOnce: 2, length: 2 }]
+    };
+    const blankAtOnce = (inputs) => {
+      const atOnce = Object.keys(inputs.activities[0]).find((k) =>
+        /GroupsAtOnce__c$/.test(k)
+      );
+      inputs.activities = inputs.activities.map((a) => ({
+        ...a,
+        [atOnce]: null
+      }));
+      return inputs;
+    };
+    const element = await render(blankAtOnce(camp(spec)));
+    await generate(element);
+    const open = checks(element).measure.open.map((l) => l.text);
+    const notes = checks(element).measure.notes.map((l) => l.text);
+    expect(open).toContain(
+      "Bunk 1 · Monday · Period 3: No activity fits this gap"
+    );
+    expect(notes).toEqual(["Hike: Groups at once is blank, so it counts as 1"]);
+    // Kept as codes and Ids, never sentences.
+    const kept = sent().engineNotes;
+    expect(typeof kept).toBe("string");
+    expect(kept).not.toContain("No activity fits");
+
+    // The same week opened later (another day, the draft and what was kept with it).
+    const days = sent().days;
+    const saved = blankAtOnce(camp({ ...spec, scheduleId: SCHEDULE }));
+    saved.days = saved.days.map((day, i) => ({
+      ...day,
+      items: days[i].items.map((it) => ({ ...it, gone: false })),
+      rows: days[i].rows
+    }));
+    saved.engine = { notes: kept };
+    document.body.removeChild(element);
+    const again = await render(saved);
+    expect(checks(again).measure.open.map((l) => l.text)).toEqual(open);
+    expect(checks(again).measure.notes.map((l) => l.text)).toEqual(notes);
+  });
+
+  it("notes kept in a shape this screen doesn't know are never shown", async () => {
+    const saved = camp({ ...SMALL, scheduleId: SCHEDULE });
+    saved.engine = { notes: '{"v":99,"open":[["<b>raw</b>"]]}' };
+    const element = await render(saved);
+    expect(checks(element).measure.notes).toEqual([]);
+  });
+
   it("lists a cell that bends a rule, never on the grid, worked out again on load", async () => {
     // One activity with a weekly max of 0: never blank goes over the limit on the first day shown
     // (it never doubles up in a day: once a day is a limit, Greg 2026-10-25).

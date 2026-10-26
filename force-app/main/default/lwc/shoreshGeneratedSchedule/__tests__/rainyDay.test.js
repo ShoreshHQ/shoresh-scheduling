@@ -106,7 +106,7 @@ describe("c-shoresh-generated-schedule: rainy day", () => {
       scheduleId: SCHEDULE,
       name: "Before rainy Monday"
     });
-    const request = saveSlots.mock.calls[0][0];
+    const request = saveSlots.mock.calls[0][0].request;
     expect(request.scheduleId).toBe(SCHEDULE);
     expect(request.edits[0].runs).toEqual([
       expect.objectContaining({

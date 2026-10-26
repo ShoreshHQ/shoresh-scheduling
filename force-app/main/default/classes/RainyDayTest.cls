@@ -346,7 +346,7 @@ private class RainyDayTest {
       SlotEdits.Edit marksOnly = new SlotEdits.Edit();
       marksOnly.runs = new List<SlotEdits.Run>();
       withRain(marksOnly, new List<String>{ mark('Group A', 'Gym games') });
-      GeneratedScheduleController.saveSlots(
+      GeneratedTestData.handEdits(
         draftId,
         new List<SlotEdits.Edit>{ marksOnly },
         GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))

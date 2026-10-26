@@ -262,7 +262,9 @@ describe("c/shoreshGeneratedWeek", () => {
             ],
             rows: ["1,2", "1,"]
           }
-        ]
+        ],
+        // No engine notes given (Start over builds nothing): none kept.
+        engineNotes: null
       }
     });
     expect(result).toMatchObject({
