@@ -959,9 +959,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           action
         );
         const names = namesOf(input);
-        // When the line last changed, and when it was last said aloud (the start said "Generating…").
+        // When the line last changed, and when and what was last said aloud (the start said
+        // "Generating…"): a line is said once, never again every few seconds.
         let shownAt = 0;
         let saidAt = Date.now();
+        let said = null;
         const result = await buildInPieces(
           input,
           (fraction, now) => {
@@ -983,8 +985,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
               line,
               building
             };
-            if (line && at - saidAt >= SAY_MS) {
+            if (line && line !== said && at - saidAt >= SAY_MS) {
               saidAt = at;
+              said = line;
               this.announce(line);
             }
           },
@@ -992,7 +995,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         );
         if (!result) {
           if (this.stopAsked && ticket === this.loadTicket) {
-            this.announce(this.stoppedText);
+            // Shown and said where the editor says what just happened.
+            this.say(this.stoppedText);
           }
           return;
         }
@@ -1002,7 +1006,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         }
         days = result.days;
         built = result;
-        // Built: being saved now, so no line and no Cancel.
+        // Built: being saved now, so no line and no Cancel. Focus on Cancel goes at once to the
+        // progress it was part of (the build actions are held until the save is done; then
+        // focus moves on to Build, below).
+        const stop = this.template.querySelector('[data-id="stop-build"]');
+        if (stop && this.template.activeElement === stop) {
+          this.focusAfterRender = { selector: '[data-id="busy"]' };
+        }
         if (this.busy) {
           this.busy = {
             action,

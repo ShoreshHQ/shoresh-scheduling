@@ -4,7 +4,7 @@
  * camp says the same things in the same order, and the ids name the camp's own records. And the
  * run's work ceiling (RUN_WORK): past it the week is finished as it stands, the same way every time.
  */
-import { NOW, generateWeek, generateWeekSteps } from "c/shoreshEngine";
+import { BUDGET, NOW, generateWeek, generateWeekSteps } from "c/shoreshEngine";
 import { activity, block, camp, group } from "./data/camp";
 import { problems } from "./data/check";
 import { randomCamp, withHistory } from "./data/randomCamp";
@@ -257,6 +257,35 @@ describe("the run's work ceiling", () => {
     expect(result.ruleChecks).toBeLessThan(full.ruleChecks / 2);
     // Every rule still kept, nothing left blank that a group could have.
     expect(problems(overfullSpec, overfull, result)).toEqual([]);
+  });
+
+  it("says a cell it stopped on couldn't be finished, never that it was proven", () => {
+    // A camp whose search leaves cells Open when stopped early.
+    const spec = randomCamp(5);
+    const input = camp(spec);
+    const runWork = Math.floor(generateWeek(input).ruleChecks / 4);
+    const { result } = watched(input, runWork);
+    expect(problems(spec, input, result)).toEqual([]);
+    const budget = result.openCells.filter((c) => c.why === BUDGET);
+    expect(budget.length).toBeGreaterThan(0);
+    budget.forEach((c) =>
+      expect(c.reason).toBe(
+        "Shoresh couldn't finish checking every way to fill this"
+      )
+    );
+  });
+
+  it("gives a second build only the work the first left over", () => {
+    // Built twice (the stricter second build). With no work at all, each build does only what
+    // is never stopped (placing by priority, never-blank): that much is the floor.
+    const floor = watched(overfull, 1).result.ruleChecks;
+    const runWork = Math.floor(generateWeek(overfull).ruleChecks / 4);
+    const { told, result } = watched(overfull, runWork);
+    expect(told.some((now) => now && now.code === NOW.AGAIN)).toBe(true);
+    // Both builds together stay within the one allowance (plus the floor, and at most one
+    // step past it); had the second its own, it would be about twice that.
+    expect(result.ruleChecks).toBeLessThanOrEqual(runWork + floor + 5000);
+    expect(runWork).toBeGreaterThan(2 * (floor + 5000));
   });
 
   it("changes nothing for a camp well under it", () => {

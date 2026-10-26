@@ -50,7 +50,7 @@ export function progressLine(now, names, t) {
     case NOW.READ:
       return "Reading your setup";
     case NOW.FIXED:
-      return `Putting in locked cells, ${t.pIn("FixedActivity")} and ${t.pIn("RecurringActivity")}`;
+      return `Putting in what's locked, ${t.pIn("FixedActivity")} and ${t.pIn("RecurringActivity")}`;
     case NOW.OPTIONS:
       return all(block, group, day)
         ? `Finding everything that can go in ${block} for ${group} on ${day}`

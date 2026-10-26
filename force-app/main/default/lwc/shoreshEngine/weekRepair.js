@@ -495,8 +495,13 @@ export function* minRepair(st, from, share) {
         if (outOfRunWork(st)) {
           return;
         }
-        tell(st, NOW.SHORT, 8, null, act.id);
-        st.watch.now.groupId = groupId;
+        tell(
+          st,
+          NOW.SHORT,
+          8,
+          { dayIndex: null, groupId, blockId: null },
+          act.id
+        );
         yield at;
         st.minRepairBudget = MIN_REPAIR_BUDGET;
         st.journal.length = 0;

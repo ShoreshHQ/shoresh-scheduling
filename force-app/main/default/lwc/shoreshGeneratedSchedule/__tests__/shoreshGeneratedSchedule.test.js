@@ -90,6 +90,9 @@ async function until(done, tries = 2000) {
 
 const q = (element, selector) => find(element, selector);
 
+/** The screen's element with focus (slotted into the editor, it is still the screen's own). */
+const focused = (element) => element.shadowRoot.activeElement;
+
 /** Until the screen has stopped building (the build runs in pieces, between timers). */
 const settle = (element) => until(() => !q(element, '[data-id="busy"]'));
 
@@ -467,6 +470,10 @@ describe("c-shoresh-generated-schedule", () => {
             5000
           );
         }
+        // A line is said once, never again while it stays the same.
+        for (let i = 1; i < progress.length; i++) {
+          expect(progress[i].text).not.toBe(progress[i - 1].text);
+        }
       } finally {
         now.mockRestore();
       }
@@ -478,14 +485,41 @@ describe("c-shoresh-generated-schedule", () => {
       await flush();
       const stop = q(element, '[data-id="stop-build"]');
       expect(stop.textContent.trim()).toBe("Cancel");
+      // The test's stand-in for Salesforce's button can't hold focus: see that it is asked to.
+      const generateButton = q(element, '[data-id="generate"]');
+      generateButton.focus = jest.fn();
       stop.click();
       await settle(element);
       expect(saveWeekOnServer).not.toHaveBeenCalled();
       expect(q(element, '[data-id="announce"]').textContent).toContain(
         "Stopped. Week 1 wasn't changed."
       );
-      // Not generated, so Generate is offered again.
-      expect(q(element, '[data-id="generate"]').disabled).toBe(false);
+      // Shown too, on the editor's quiet line.
+      expect(q(element, '[data-id="notice"]').textContent).toBe(
+        "Stopped. Week 1 wasn't changed."
+      );
+      // Not generated, so Generate is offered again, and has focus.
+      expect(generateButton.disabled).toBe(false);
+      await until(() => generateButton.focus.mock.calls.length > 0);
+    });
+
+    it("moves focus from Cancel as soon as the week is built, not after the save", async () => {
+      const element = await render(camp(BIG));
+      let answer;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      q(element, '[data-id="stop-build"]').focus();
+      expect(focused(element)).toBe(q(element, '[data-id="stop-build"]'));
+      await until(() => saveWeekOnServer.mock.calls.length > 0);
+      // Still saving: focus is on the progress, not lost with Cancel.
+      await until(() => focused(element) === q(element, '[data-id="busy"]'));
+      answer(savedAnswer());
+      await settle(element);
     });
 
     it("offers no Cancel once the week is built and being saved", async () => {

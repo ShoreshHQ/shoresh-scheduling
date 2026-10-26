@@ -112,7 +112,7 @@ describe("the progress line", () => {
     expect(lines).toEqual({
       [NOW.READ]: "Reading your setup",
       [NOW.FIXED]:
-        "Putting in locked cells, All-camp events and recurring activities",
+        "Putting in what's locked, All-camp events and recurring activities",
       [NOW.OPTIONS]:
         "Finding everything that can go in Period 1 for Badgers on Monday",
       [NOW.PLACE]: "Placing Swim for Badgers in Monday's Period 1",
