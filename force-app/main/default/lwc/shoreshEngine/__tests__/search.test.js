@@ -26,7 +26,7 @@ describe("its proofs hold against an exhaustive search", () => {
         continue;
       }
       const found = settledRules({ spec }, input, result, { exhaustive: true });
-      rows.push({ seed, result, found });
+      rows.push({ seed, spec, result, found });
     }
   });
 
@@ -66,7 +66,32 @@ describe("its proofs hold against an exhaustive search", () => {
     for (const r of rows) {
       for (const c of r.result.openCells) {
         expect(c.reason).toBeTruthy();
-        expect([...PROOFS, "minCost", "budget"]).toContain(c.why);
+        expect([...PROOFS, "minCost", "budget", "trade"]).toContain(c.why);
+      }
+    }
+  });
+
+  it("says a trade only where it holds: the group that gained has the activity, no more than its minimum", () => {
+    for (const { seed, spec, result } of rows) {
+      const count = new Map();
+      cellsOf(result.days).forEach((byGroup) => {
+        for (const [g, row] of Object.entries(byGroup)) {
+          for (const cell of row) {
+            if (cell && cell.kind === "A" && cell.head) {
+              const k = `${g}|${cell.id}`;
+              count.set(k, (count.get(k) || 0) + 1);
+            }
+          }
+        }
+      });
+      for (const c of result.openCells.filter((x) => x.why === "trade")) {
+        const act = spec.activities.find((a) => a.id === c.shortActivityId);
+        const n = count.get(`${c.shortGroupId}|${c.shortActivityId}`) || 0;
+        expect([
+          seed,
+          c.groupId !== c.shortGroupId,
+          n >= 1 && n <= act.min
+        ]).toEqual([seed, true, true]);
       }
     }
   });

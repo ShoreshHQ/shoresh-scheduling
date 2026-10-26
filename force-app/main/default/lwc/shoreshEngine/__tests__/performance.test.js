@@ -91,10 +91,10 @@ describe("generateWeek on a large camp", () => {
     // About 1,735,000 today: 1,070,000 before step 8's exact search (PR 4a), 1,640,000 before
     // its moves between days.
     expect(result.ruleChecks).toBeLessThan(2500000);
-    // About 1 s alone (under 3 s on a busy machine). ruleChecks above counts how many checks
-    // run, not how long each takes, so this ceiling is what catches a slower check (roughly
-    // 10x or worse); a slowdown smaller than that can still pass.
-    expect(ms).toBeLessThan(10000);
+    // About 6 s alone since the cross-day passes (#157, #159), ~10 s on CI's runners.
+    // ruleChecks above counts how many checks run, not how long each takes, so this ceiling is
+    // what catches a much slower check (roughly 4x or worse); a smaller slowdown can still pass.
+    expect(ms).toBeLessThan(25000);
     expect(problems(spec, input, result)).toEqual([]);
     // Only a weekly max ever bends (one cell did before the moves between days; none now).
     expect(

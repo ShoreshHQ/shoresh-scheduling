@@ -178,10 +178,10 @@ function shortBy(spec, days) {
   return short;
 }
 
-/** Open cells per date. */
+/** Open cells per date, the last resort's own (why "trade", left Open for a minimum) aside. */
 function openByDate(result) {
   const n = new Map();
-  for (const c of result.openCells) {
+  for (const c of result.openCells.filter((x) => x.why !== "trade")) {
     const { date } = c;
     n.set(date, (n.get(date) || 0) + 1);
   }
@@ -189,7 +189,7 @@ function openByDate(result) {
 }
 
 describe("with and without the moves between days", () => {
-  it("never leaves a group newly or further short, never a day with more Open cells", () => {
+  it("never leaves a group newly or further short, never a day with more Open cells but the last resort's", () => {
     let fewer = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const spec = sharedCamp(seed);
@@ -206,6 +206,14 @@ describe("with and without the moves between days", () => {
       expect([seed, worse]).toEqual([seed, []]);
       const total = (m) => [...m.values()].reduce((x, y) => x + y, 0);
       expect(total(b)).toBeLessThanOrEqual(total(a));
+      // Each cell the last resort left Open saved at least one session short (cells the minimum
+      // repair left, Open without the moves too, aside).
+      const key = (c) => `${c.date}|${c.groupId}|${c.blockId}`;
+      const openWithout = new Set(without.openCells.map(key));
+      const traded = withIt.openCells.filter(
+        (c) => c.why === "trade" && !openWithout.has(key(c))
+      ).length;
+      expect([seed, total(a) - total(b) >= traded]).toEqual([seed, true]);
       if (total(b) < total(a)) {
         fewer++;
       }

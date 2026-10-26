@@ -5,7 +5,8 @@
  * is read by the build, so a week built while watched is the same as one built without.
  *
  * now: { code, step (the protocol step, docs/engine/protocol.md), dayIndex, groupId, blockId,
- *        activityId, toActivityId, toDayIndex, times } (each null when it doesn't apply);
+ *        activityId, toActivityId, toDayIndex, times } (each null when it doesn't apply; TRADE
+ *        also has forGroupId);
  *        generateWeekSteps adds the day's date (and toDate, toDayIndex's).
  */
 export const NOW = Object.freeze({
@@ -39,6 +40,9 @@ export const NOW = Object.freeze({
   // Step 8, moves between days: groupId's activityId moves from dayIndex to toDayIndex, so it gets
   // toActivityId `times` times this week (a weekly minimum).
   ACROSS: "across",
+  // Step 8, the last resort (minimums first): groupId's cell (dayIndex, blockId) is left Open so
+  // forGroupId gets toActivityId (a weekly minimum).
+  TRADE: "trade",
   // The same week built a second time, the stricter way, to keep the better of the two.
   AGAIN: "again",
   // Step 8's floor: building from the imported week, to compare.

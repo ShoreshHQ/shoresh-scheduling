@@ -4,6 +4,7 @@ import { moveAcrossDays } from "./weekAcross";
 import {
   BUDGET,
   FULL,
+  TRADE,
   LENGTH,
   MIN_COST,
   NONE_FOR,
@@ -89,6 +90,9 @@ function startSearch(st) {
   st.dayLimit = new Map();
   // For a MIN_COST day: the group and activity a fuller day would leave short.
   st.dayCost = new Map();
+  // Cells the last resort left Open on purpose (weekAcross.js): key -> { groupId, activityId },
+  // the group and the activity whose weekly minimum it was left Open for.
+  st.tradeOpen = new Map();
   // Every free cell, the ones left out for an overlapping cell included, is the search's to fill.
   for (const s of st.busyThen.values()) {
     const k = st.keyOf(s);
@@ -1129,6 +1133,17 @@ export function* searchWeek(st, from, share) {
       yield* fillDay(st, d, from + share);
     }
   }
+  // The last resort, minimums first (Greg, 2026-10-26; protocol 8.29-8.32): only now, with every
+  // way that keeps each cell filled tried, may a chain leave a cell Open whose group has nothing
+  // allowed left there, to give another group its weekly minimum. Each day it changed is searched
+  // again (which fills the cell if it can without leaving anyone short).
+  const traded = yield* moveAcrossDays(st, from + share, outOfWork, true);
+  for (let d = 0; d < st.days.length; d++) {
+    if (traded.has(d)) {
+      st.dayWhy.delete(d);
+      yield* fillDay(st, d, from + share);
+    }
+  }
   st.looksUsed = LOOK_LIMIT - st.searchLooksLeft;
 }
 
@@ -1274,11 +1289,35 @@ function regionAround(st, u) {
  * an overlapping time, nothing set up for the group, no activity's length fits, then what the
  * search proved or that it ran out of work.
  */
+/**
+ * Whether a trade still holds as the week ends: the group that gained has at least as many of the
+ * activity as it had once it gained it, and no more than its minimum (so the gain was needed).
+ */
+function tradeHolds(st, t) {
+  const n = st.getCount(t.groupId, t.activityId);
+  return n >= t.count && n <= st.actById.get(t.activityId).min;
+}
+
 export function explainOpen(st) {
   st.openCells = [];
   for (const s of st.freeSlots) {
     const k = st.keyOf(s);
     if (st.assigned.has(k)) {
+      continue;
+    }
+    // Left Open on purpose so another group gets a weekly minimum: said so, never as a proof.
+    // The minimum repair's own such cells (weekRepair.js) say the same. Either is said only
+    // when it still holds at the end of the week (tradeHolds); else the cell's own reason.
+    const trade = [
+      st.tradeOpen.get(k),
+      st.repairTrade && st.repairTrade.get(k)
+    ].find((x) => x && tradeHolds(st, x));
+    if (trade) {
+      st.openCells.push({
+        key: k,
+        why: TRADE,
+        cost: { groupId: trade.groupId, activityId: trade.activityId }
+      });
       continue;
     }
     const proven = st.dayWhy.get(s.dayIndex) || BUDGET;

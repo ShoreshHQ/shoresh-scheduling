@@ -107,6 +107,12 @@ export function progressLine(now, names, t) {
         ? `Moving ${possessive(group)} ${act} from ${day} to ${toDay} so they get ${to} ${timesWord(now.times)}`
         : null;
     }
+    case NOW.TRADE: {
+      const forGroup = names.group.get(now.forGroupId) || "";
+      return all(group, day, block, forGroup, to)
+        ? `Leaving ${possessive(group)} ${block} on ${day} open, so ${forGroup} gets ${to}`
+        : null;
+    }
     case NOW.AGAIN:
       return `Trying a second way, to keep the better ${t.sIn("Week")}`;
     case NOW.IMPORTED:
