@@ -4,6 +4,7 @@ import getLearned from "@salesforce/apex/LearnedController.getLearned";
 import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
 import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
+import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 
 jest.mock(
   "@salesforce/apex/LearnedController.getLearned",
@@ -17,6 +18,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/LearnedController.forgetLearned",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/LearnedController.undoChangeLearned",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -204,8 +210,14 @@ describe("c-shoresh-learned", () => {
     expect($(element, '[data-id="save"]')).toBeNull();
     choices[0].click();
     await flush();
-    changeLearned.mockResolvedValue(true);
-    getLearned.mockResolvedValue([answer("1", "kind|Lunch", "fixed")]);
+    changeLearned.mockResolvedValue("7");
+    getLearned.mockResolvedValue([
+      {
+        ...answer("7", "kind|Lunch", "fixed"),
+        byYou: true,
+        answeredOn: "2026-10-26"
+      }
+    ]);
     $(element, '[data-id="save"]').click();
     await flush();
     await flush();
@@ -218,7 +230,57 @@ describe("c-shoresh-learned", () => {
       "Lunch: A fixed activity"
     );
     expect($(element, '[data-id="flag"]').textContent).toBe("Updated");
+    expect($(element, '[data-id="who"]').textContent).toBe(
+      "Answered by you on 26 Oct"
+    );
+    expect(element.shadowRoot.activeElement.dataset.id).toBe("undo-change");
+
+    undoChangeLearned.mockResolvedValue(true);
+    getLearned.mockResolvedValue([answer("1", "kind|Lunch", "activity")]);
+    $(element, '[data-id="undo-change"]').click();
+    await flush();
+    await flush();
+    expect(undoChangeLearned).toHaveBeenCalledWith({
+      campId: "a00",
+      newId: "7",
+      oldId: "1"
+    });
+    expect($(element, '[data-id="title"]').textContent).toBe(
+      "Lunch: An activity"
+    );
+    expect($(element, '[data-id="who"]').textContent).toBe(
+      "Answered by Dana on 3 Jul"
+    );
+    expect($(element, '[data-id="flag"]').textContent).toBe("Changed back");
+    expect($(element, '[data-id="said"]').textContent.trim()).toBe(
+      "Changed back."
+    );
+    expect($(element, '[data-id="undo-change"]')).toBeNull();
     expect(element.shadowRoot.activeElement.dataset.id).toBe("change");
+  });
+
+  it("an Undo of a Change over a newer answer shows the latest instead", async () => {
+    const element = await mount([answer("1", "kind|Lunch", "activity")]);
+    $(element, '[data-id="change"]').click();
+    await flush();
+    $$(element, '[data-id="choice"]')[0].click();
+    await flush();
+    changeLearned.mockResolvedValue("7");
+    getLearned.mockResolvedValue([answer("7", "kind|Lunch", "fixed")]);
+    $(element, '[data-id="save"]').click();
+    await flush();
+    await flush();
+    undoChangeLearned.mockResolvedValue(false);
+    getLearned.mockResolvedValue([answer("8", "kind|Lunch", "recurring")]);
+    $(element, '[data-id="undo-change"]').click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="said"]').textContent.trim()).toBe(
+      "Someone else changed this just now. Showing the latest."
+    );
+    expect($(element, '[data-id="title"]').textContent).toBe(
+      "Lunch: A recurring activity"
+    );
   });
 
   it("closes Change with Escape, the cursor back on Change", async () => {
@@ -269,6 +331,24 @@ describe("c-shoresh-learned", () => {
     $(element, '[data-id="retry"]').click();
     await flush();
     expect($(element, '[data-id="flag"]').textContent).toBe("Forgotten");
+  });
+
+  it("an Undo that would overwrite a newer answer shows the latest instead", async () => {
+    const element = await mount([answer("1", "kind|Lunch", "fixed")]);
+    forgetLearned.mockResolvedValue(true);
+    $(element, '[data-id="forget"]').click();
+    await flush();
+    restoreLearned.mockResolvedValue(false);
+    getLearned.mockResolvedValue([answer("5", "kind|Lunch", "activity")]);
+    $(element, '[data-id="undo"]').click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="said"]').textContent.trim()).toBe(
+      "Someone else changed this just now. Showing the latest."
+    );
+    expect($(element, '[data-id="title"]').textContent).toBe(
+      "Lunch: An activity"
+    );
   });
 
   it("shows the latest when the answer was changed somewhere else", async () => {

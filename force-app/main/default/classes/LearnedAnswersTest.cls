@@ -46,7 +46,7 @@ private class LearnedAnswersTest {
   }
 
   @IsTest
-  static void changesAnAnswerOnlyToOneOfItsChoices() {
+  static void aChangeIsANewAnswerByWhoeverChangedItToday() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c willow = ShoreshTestData.camp('Camp Willow');
       ImportAnswers.rememberEach(
@@ -54,13 +54,16 @@ private class LearnedAnswersTest {
         new Map<String, String>{ 'kind|Lunch' => 'activity' }
       );
       Id answerId = only(willow.Id).Id;
+      Test.setCreatedDate(answerId, Datetime.newInstance(2026, 7, 3, 12, 0, 0));
       Test.startTest();
-      Assert.isTrue(
-        LearnedController.changeLearned(willow.Id, answerId, 'fixed')
+      Id changed = LearnedController.changeLearned(
+        willow.Id,
+        answerId,
+        'fixed'
       );
       Boolean refused = false;
       try {
-        LearnedController.changeLearned(willow.Id, answerId, 'Main');
+        LearnedController.changeLearned(willow.Id, changed, 'Main');
       } catch (AuraHandledException e) {
         refused = true;
         Assert.areEqual(
@@ -68,9 +71,86 @@ private class LearnedAnswersTest {
           e.getMessage()
         );
       }
+      Id again = LearnedController.changeLearned(willow.Id, answerId, 'fixed');
       Test.stopTest();
       Assert.isTrue(refused, 'not one of its choices');
-      Assert.areEqual('fixed', only(willow.Id).Answer__c);
+      Assert.isNull(
+        again,
+        'the old answer is gone: the screen shows the latest'
+      );
+      Assert.areNotEqual(answerId, changed, 'a new record');
+      List<LearnedAnswers.Learned> rows = LearnedController.getLearned(
+        willow.Id
+      );
+      Assert.areEqual(1, rows.size());
+      Assert.areEqual(changed, rows[0].id);
+      Assert.areEqual('fixed', rows[0].answer);
+      Assert.isTrue(rows[0].byYou);
+      Assert.areEqual(Date.today(), rows[0].answeredOn);
+    }
+  }
+
+  @IsTest
+  static void undoOfAChangeBringsBackTheOldAnswerWithItsDate() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Id oldId = only(willow.Id).Id;
+      Datetime answered = Datetime.newInstance(2026, 7, 3, 12, 0, 0);
+      Test.setCreatedDate(oldId, answered);
+      Id newId = LearnedController.changeLearned(willow.Id, oldId, 'fixed');
+      Test.startTest();
+      Boolean undone = LearnedController.undoChangeLearned(
+        willow.Id,
+        newId,
+        oldId
+      );
+      Test.stopTest();
+      Assert.isTrue(undone);
+      ImportAnswer__c back = [
+        SELECT Id, Answer__c, CreatedDate
+        FROM ImportAnswer__c
+        WHERE Camp__c = :willow.Id
+      ];
+      Assert.areEqual(oldId, back.Id);
+      Assert.areEqual('activity', back.Answer__c);
+      Assert.areEqual(answered, back.CreatedDate, 'who and when kept');
+    }
+  }
+
+  @IsTest
+  static void undoOfAChangeNeverOverwritesANewerAnswer() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      String question = 'kind|Lunch';
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ question => 'activity' }
+      );
+      Id oldId = only(willow.Id).Id;
+      Id newId = LearnedController.changeLearned(willow.Id, oldId, 'fixed');
+      // Forgotten since, and an import answered the question again.
+      LearnedController.forgetLearned(willow.Id, newId);
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ question => 'recurring' }
+      );
+      Test.startTest();
+      Boolean undone = LearnedController.undoChangeLearned(
+        willow.Id,
+        newId,
+        oldId
+      );
+      Test.stopTest();
+      Assert.isFalse(undone);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :willow.Id]
+      );
+      Assert.areEqual('recurring', only(willow.Id).Answer__c);
     }
   }
 
@@ -114,14 +194,10 @@ private class LearnedAnswersTest {
       );
       Id cedars = only(cedar.Id).Id;
       Test.startTest();
-      Boolean changed = LearnedController.changeLearned(
-        willow.Id,
-        cedars,
-        'fixed'
-      );
+      Id changed = LearnedController.changeLearned(willow.Id, cedars, 'fixed');
       Boolean forgotten = LearnedController.forgetLearned(willow.Id, cedars);
       Test.stopTest();
-      Assert.isFalse(changed);
+      Assert.isNull(changed);
       Assert.isFalse(forgotten);
       Assert.areEqual('activity', only(cedar.Id).Answer__c);
     }
@@ -137,10 +213,13 @@ private class LearnedAnswersTest {
         new Map<String, String>{ question => 'deleted' }
       );
       ImportAnswer__c before = [
-        SELECT Id, LastModifiedById, LastModifiedDate
+        SELECT Id, CreatedById
         FROM ImportAnswer__c
         WHERE Camp__c = :willow.Id
       ];
+      // Answered long ago: the record that comes back is that one, not one made today.
+      Datetime answered = Datetime.newInstance(2026, 7, 3, 12, 0, 0);
+      Test.setCreatedDate(before.Id, answered);
       Test.startTest();
       Assert.isTrue(LearnedController.forgetLearned(willow.Id, before.Id));
       Assert.isFalse(
@@ -154,19 +233,20 @@ private class LearnedAnswersTest {
       Assert.isTrue(LearnedController.restoreLearned(willow.Id, before.Id));
       Test.stopTest();
       ImportAnswer__c back = [
-        SELECT Id, QuestionKey__c, Answer__c, LastModifiedById, LastModifiedDate
+        SELECT Id, QuestionKey__c, Answer__c, CreatedById, CreatedDate
         FROM ImportAnswer__c
         WHERE Camp__c = :willow.Id
       ];
       Assert.areEqual(before.Id, back.Id, 'the same record, not a new one');
       Assert.areEqual(question, back.QuestionKey__c);
       Assert.areEqual('deleted', back.Answer__c);
-      Assert.areEqual(before.LastModifiedById, back.LastModifiedById);
+      Assert.areEqual(before.CreatedById, back.CreatedById);
+      Assert.areEqual(answered, back.CreatedDate, 'the original record');
     }
   }
 
   @IsTest
-  static void undoRemembersTheAnswerAgainWhenTheRecordCannotComeBack() {
+  static void undoNeverOverwritesANewerAnswer() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c willow = ShoreshTestData.camp('Camp Willow');
       String question = 'kind|Lunch';
@@ -176,19 +256,20 @@ private class LearnedAnswersTest {
       );
       Id forgotten = only(willow.Id).Id;
       LearnedController.forgetLearned(willow.Id, forgotten);
-      // An import answers the same question again: the old record can't come back beside it.
+      // An import answers the same question again since.
       ImportAnswers.rememberEach(
         willow.Id,
         new Map<String, String>{ question => 'activity' }
       );
       Test.startTest();
-      Assert.isTrue(LearnedController.restoreLearned(willow.Id, forgotten));
+      Boolean restored = LearnedController.restoreLearned(willow.Id, forgotten);
       Test.stopTest();
+      Assert.isFalse(restored, 'the screen shows the latest instead');
       Assert.areEqual(
         1,
         [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :willow.Id]
       );
-      Assert.areEqual('fixed', only(willow.Id).Answer__c);
+      Assert.areEqual('activity', only(willow.Id).Answer__c);
     }
   }
 

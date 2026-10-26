@@ -12,9 +12,9 @@ public with sharing class LearnedController {
     }
   }
 
-  /** False when the answer is no longer there: the screen shows the latest. */
+  /** The new record's Id, or null when the answer is no longer there (the screen shows the latest). */
   @AuraEnabled
-  public static Boolean changeLearned(Id campId, Id answerId, String answer) {
+  public static Id changeLearned(Id campId, Id answerId, String answer) {
     try {
       return LearnedAnswers.change(campId, answerId, answer);
     } catch (Exception e) {
@@ -32,11 +32,21 @@ public with sharing class LearnedController {
     }
   }
 
-  /** Undo of a Forget. False when the answer is nowhere to be found. */
+  /** Undo of a Forget. False when it can't come back: the screen shows the latest. */
   @AuraEnabled
   public static Boolean restoreLearned(Id campId, Id answerId) {
     try {
-      return LearnedAnswers.restore(campId, answerId);
+      return LearnedUndo.forget(campId, answerId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Undo of a Change: newId is what the Change saved, oldId what it replaced. */
+  @AuraEnabled
+  public static Boolean undoChangeLearned(Id campId, Id newId, Id oldId) {
+    try {
+      return LearnedUndo.change(campId, newId, oldId);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

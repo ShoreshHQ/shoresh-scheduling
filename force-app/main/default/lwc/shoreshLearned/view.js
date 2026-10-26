@@ -34,9 +34,9 @@ const loose = (name) =>
 /**
  * The names the camp has set up now, in the season the page has open (its setup, already read:
  * no query of its own): programs, time blocks, divisions, groups, set-time items, places and
- * activities.
+ * activities, weeks.
  */
-function setupNames(setup) {
+function setupRecords(setup) {
   if (!setup) {
     return [];
   }
@@ -53,9 +53,10 @@ function setupNames(setup) {
     ),
     ...(setup.locationTypes || []),
     ...(setup.locations || []),
-    ...(setup.activities || [])
+    ...(setup.activities || []),
+    ...(setup.weeks || [])
   ];
-  return records.map((r) => r && r.Name).filter(Boolean);
+  return records.filter((r) => r && r.Name);
 }
 
 /**
@@ -64,12 +65,19 @@ function setupNames(setup) {
  */
 export function speller(setup) {
   const byLoose = new Map();
-  setupNames(setup).forEach((name) => {
-    if (!byLoose.has(loose(name))) {
-      byLoose.set(loose(name), name);
+  const byId = new Map();
+  setupRecords(setup).forEach((r) => {
+    if (!byLoose.has(loose(r.Name))) {
+      byLoose.set(loose(r.Name), r.Name);
+    }
+    if (r.Id) {
+      byId.set(r.Id, r.Name);
     }
   });
-  return (part) => byLoose.get(loose(part)) ?? part;
+  const spell = (part) => byId.get(part) ?? byLoose.get(loose(part)) ?? part;
+  // A record by its Id (weeks, items), or null: never shown as an Id.
+  spell.nameOf = (id) => byId.get(id) ?? null;
+  return spell;
 }
 
 /** One answer from the server ({ id, question, answer, byYou, byName, answeredOn }) as a row. */

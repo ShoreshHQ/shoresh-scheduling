@@ -3,6 +3,7 @@ import getLearned from "@salesforce/apex/LearnedController.getLearned";
 import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
 import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
+import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
 import { GROUPS } from "./kinds";
@@ -39,6 +40,8 @@ export default class ShoreshLearned extends LightningElement {
   states = {};
   // Rows changed or remembered again, until the next read: their result word.
   flashes = {};
+  // A Change saves a new record: its Id -> the Id of the one it replaced, for its Undo.
+  changedFrom = {};
   closed = {};
   limits = {};
   query = "";
@@ -58,6 +61,7 @@ export default class ShoreshLearned extends LightningElement {
     if (showing) {
       this.states = {};
       this.flashes = {};
+      this.changedFrom = {};
       this.notice = "";
       this.load();
     }
@@ -218,6 +222,9 @@ export default class ShoreshLearned extends LightningElement {
       changeLabel: `Change ${r.title}`,
       forgetLabel: `Forget ${r.title}`,
       undoLabel: `Undo forgetting ${r.title}`,
+      canUndoChange: !!this.changedFrom[r.id],
+      undoChangeLabel: `Undo changing ${r.title}`,
+      undoChangeText: state.pending === "undoChange" ? "Undoing..." : "Undo",
       choiceViews: r.choices.map((c) => ({
         ...c,
         pressed: c.value === choice ? "true" : "false",
@@ -311,13 +318,34 @@ export default class ShoreshLearned extends LightningElement {
     const answer = this.stateOf(row.id).choice;
     this.write(row, "change", () =>
       changeLearned({ campId: this.campId, answerId: row.id, answer })
-    ).then((found) => {
-      if (found) {
-        this.flashes = { ...this.flashes, [row.id]: "Updated" };
+    ).then((newId) => {
+      if (newId) {
+        this.flashes = { ...this.flashes, [newId]: "Updated" };
+        this.changedFrom = { ...this.changedFrom, [newId]: row.id };
         this.announcement = "Updated.";
         this.load(() => {
-          this.setState(row.id, {});
-          this.focusAfter = `[data-id="change"][data-row="${row.id}"]`;
+          this.focusAfter = `[data-id="undo-change"][data-row="${newId}"]`;
+        });
+      }
+    });
+  }
+
+  /** Undo of a Change: the answer it replaced comes back, with who answered it and when. */
+  handleUndoChange(event) {
+    const row = this.rowOf(event);
+    const oldId = this.changedFrom[row.id];
+    this.write(row, "undoChange", () =>
+      undoChangeLearned({ campId: this.campId, newId: row.id, oldId })
+    ).then((done) => {
+      if (done) {
+        const changedFrom = { ...this.changedFrom };
+        delete changedFrom[row.id];
+        this.changedFrom = changedFrom;
+        this.flashes = { ...this.flashes, [oldId]: "Changed back" };
+        this.announcement = "Changed back.";
+        this.load(() => {
+          this.setState(oldId, {});
+          this.focusAfter = `[data-id="change"][data-row="${oldId}"]`;
         });
       }
     });
@@ -400,6 +428,8 @@ export default class ShoreshLearned extends LightningElement {
       this.handleSave(fake);
     } else if (pending === "forget") {
       this.handleForget(fake);
+    } else if (pending === "undoChange") {
+      this.handleUndoChange(fake);
     } else {
       this.handleUndo(fake);
     }

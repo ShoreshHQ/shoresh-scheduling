@@ -81,14 +81,22 @@ function classification(p, t) {
   };
 }
 
-// "similar|<kind>|<fold>|<fold>|<name>|<name>": the names are sorted in the key, so which one
-// "a" or "b" kept is not known here; "Same" says what was decided without guessing a name.
-function similar(p, answer) {
+// "similar|<kind>|<fold>|<fold>|<name>|<name>". The import's pair puts the file's two names in
+// localeCompare order (c/shoreshImportEngine names.js similarPairs): "a" keeps the first, "b"
+// the second (mergesFrom). A name the camp already has is kept whichever is chosen, as there.
+function similar(p) {
+  const [first, second] = [p[4] || p[2], p[5] || p[3]].sort((x, y) =>
+    x.localeCompare(y)
+  );
   return {
     group: "split",
-    name: `${quoted(p[4] || p[2])} and ${quoted(p[5] || p[3])}`,
-    words: { a: "Same", b: "Same", different: "Different: keep both" },
-    choices: [answer === "a" ? "a" : "b", "different"]
+    name: `${quoted(first)} and ${quoted(second)}`,
+    words: {
+      a: `Same: keep ${quoted(first)}`,
+      b: `Same: keep ${quoted(second)}`,
+      different: "Different: keep both"
+    },
+    choices: ["a", "b", "different"]
   };
 }
 
@@ -106,7 +114,7 @@ function oneOrSeveral(p, t) {
 
 // Import last year's "change|fixed|<timetable>|<name>|..." and Import a list's
 // "change|<screen>|<name>|<column>|<to>": kept as it is, or the file's value.
-function changeName(p) {
+function changeName(p, spell) {
   if (p[1] === "fixed" || p[1] === "recurring") {
     return p[3];
   }
@@ -114,15 +122,30 @@ function changeName(p) {
     return `${p[2]}, ${p[3]}`;
   }
   if (p[1] === "runsIn") {
-    return "Weeks it runs in";
+    return runsInName(p, spell);
   }
   return p[2];
 }
 
-function change(p) {
+// "change|runsIn|<item Id, or a new item's key>|<week Ids>": the item and the weeks by name.
+function runsInName(p, spell) {
+  const nameOf = spell.nameOf || (() => null);
+  const item =
+    nameOf(p[2]) || (p[2].includes(":") ? p[2].split(":").pop() : "");
+  const weeks = p[3]
+    .split(",")
+    .map((id) => nameOf(id))
+    .filter(Boolean);
+  const off = weeks.length
+    ? `, off in ${weeks.join(", ")}`
+    : ", weeks it runs in";
+  return `${item || "An item"}${off}`;
+}
+
+function change(p, spell) {
   return {
     group: "value",
-    name: changeName(p),
+    name: changeName(p, spell),
     words: { keep: "Kept the current value", change: "Used the file’s value" },
     choices: p[1] === "block" ? [] : KEEP_OR_CHANGE
   };
@@ -213,9 +236,9 @@ function named(name, words = {}) {
 
 const FAMILIES = {
   kind: (p, a, t) => classification(p, t),
-  similar: (p, a) => similar(p, a),
+  similar: (p) => similar(p),
   list: (p, a, t) => oneOrSeveral(p, t),
-  change: (p) => change(p),
+  change: (p, a, t, spell) => change(p, spell),
   ampm: (p) =>
     valueOf(p[2], { morning: "In the morning", evening: "In the evening" }),
   tueThu: (p) => valueOf(p[2], { Tuesday: "Tuesday", Thursday: "Thursday" }),
@@ -256,9 +279,14 @@ const FAMILIES = {
 export function describe(key, answer, t, spell = (name) => name) {
   const text = String(answer ?? "");
   const [family0, ...rest] = keyParts(String(key ?? ""));
-  const p = [family0, ...rest.map(spell)];
+  // The two names of a similar pair are the question itself: shown as the file wrote them.
+  // Runs-in names its item and weeks by Id (runsInName).
+  const raw = family0 === "similar" || rest[0] === "runsIn";
+  const p = [family0, ...(raw ? rest : rest.map(spell))];
   const family = FAMILIES[p[0]];
-  const kind = family ? family(p, text, t) : named(p.slice(1).join(", "));
+  const kind = family
+    ? family(p, text, t, spell)
+    : named(p.slice(1).join(", "));
   const words = { ...PLAIN, ...kind.words };
   return {
     group: kind.group,

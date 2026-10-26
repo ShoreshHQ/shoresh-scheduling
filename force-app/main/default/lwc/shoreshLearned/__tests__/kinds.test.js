@@ -1,4 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
+import { mergesFrom, similarPairs } from "c/shoreshImportEngine";
 import { describe as kindOf, keyParts } from "../kinds";
 import {
   learnedGroups,
@@ -35,7 +36,7 @@ describe("each remembered question in camp words", () => {
       "different",
       "split",
       "“Archery” and “Archry”: Different: keep both",
-      2
+      3
     ],
     [
       "list|Art / Music",
@@ -124,7 +125,7 @@ describe("each remembered question in camp words", () => {
     ).toEqual(["fixed", "recurring", "activity"]);
     expect(
       kindOf("similar|g|a|b|A|B", "a", t).choices.map((c) => c.value)
-    ).toEqual(["a", "different"]);
+    ).toEqual(["a", "b", "different"]);
   });
 
   it("says plainly what forgetting means", () => {
@@ -212,5 +213,79 @@ describe("names as the camp writes them now", () => {
       spell
     );
     expect(r.title).toBe("Main on Saturday: Added Saturday");
+  });
+});
+
+describe("similar names: each choice keeps what the import keeps", () => {
+  it.each([
+    [["Archry", "Archery"]],
+    [["archery", "Archery"]],
+    [["Kayaks", "Kayak"]]
+  ])("%j", (names) => {
+    const [pair] = similarPairs(
+      "activity",
+      names.map((name) => ({ name, count: 1 })),
+      []
+    );
+    const kind = kindOf(pair.id, "a", t);
+    for (const choice of kind.choices.filter((c) => c.value !== "different")) {
+      const merged = mergesFrom([pair], { [pair.id]: choice.value });
+      const kept = names.find((n) => !merged.has(n));
+      expect(choice.label).toBe(`Same: keep “${kept}”`);
+    }
+    expect(mergesFrom([pair], { [pair.id]: "different" }).size).toBe(0);
+  });
+
+  it("shows the pair's names as the file wrote them, never the camp's spelling", () => {
+    const spell = speller({ activities: [{ Name: "ARCHERY" }] });
+    const r = learnedRow(
+      {
+        id: "1",
+        question: "similar|activity|archery|archry|Archery|Archry",
+        answer: "a",
+        answeredOn: "2026-07-03"
+      },
+      t,
+      spell
+    );
+    expect(r.title).toBe("“Archery” and “Archry”: Same: keep “Archery”");
+  });
+});
+
+describe("never an Id or an internal name", () => {
+  it("names the item and its weeks for runs-in", () => {
+    const spell = speller({
+      weeks: [
+        { Id: "a0W000000000001AAA", Name: "Week 1" },
+        { Id: "a0W000000000002AAA", Name: "Week 2" }
+      ],
+      activities: [{ Id: "a0A000000000001AAA", Name: "Archery" }]
+    });
+    const runsIn = (question) =>
+      learnedRow(
+        { id: "1", question, answer: "keep", answeredOn: "2026-07-03" },
+        t,
+        spell
+      );
+    expect(
+      runsIn(
+        "change|runsIn|a0A000000000001AAA|a0W000000000001AAA,a0W000000000002AAA"
+      ).title
+    ).toBe("Archery, off in Week 1, Week 2: Kept the current value");
+    expect(
+      runsIn("change|runsIn|a0A00000000009XAAA|a0W00000000009XAAA").title
+    ).toBe("An item, weeks it runs in: Kept the current value");
+    expect(runsIn("change|runsIn|Activity:new:Pottery|").title).toBe(
+      "Pottery, weeks it runs in: Kept the current value"
+    );
+  });
+
+  it("names a deleted kind in the camp's words", () => {
+    expect(row("deleted|LocationType||Field", "deleted").title).toBe(
+      "Field: Location type deleted"
+    );
+    expect(row("deleted|ProgramGroup|Main|Bunk 3", "deleted").title).toBe(
+      "Bunk 3 (Main): Bunk deleted"
+    );
   });
 });

@@ -158,6 +158,20 @@
                         <span class="meta" data-id="who">{row.who}</span>
                         <template lwc:if={row.idle}>
                           <span class="actions">
+                            <template lwc:if={row.canUndoChange}>
+                              <button
+                                type="button"
+                                class="shoresh-item link"
+                                aria-label={row.undoChangeLabel}
+                                aria-busy={row.busy}
+                                disabled={row.busy}
+                                data-row={row.id}
+                                data-id="undo-change"
+                                onclick={handleUndoChange}
+                              >
+                                {row.undoChangeText}
+                              </button>
+                            </template>
                             <template lwc:if={row.canChange}>
                               <button
                                 type="button"

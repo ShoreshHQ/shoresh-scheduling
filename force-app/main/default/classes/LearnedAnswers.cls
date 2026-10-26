@@ -1,7 +1,9 @@
 /**
  * "What Shoresh has learned" (repo ADR 0021; desktop LearnedScreen.jsx): the answers a camp's
- * imports and setup screens remember (ImportAnswer__c, ADR 0006 §19-21), each with who last
- * answered it and when, from the record's own history (no field of its own). Everything runs in
+ * imports and setup screens remember (ImportAnswer__c, ADR 0006 §19-21), each with who answered
+ * it and when: the record's own Created By and date (no field of its own). So that stays true,
+ * a Change here replaces the record (the changer, today) rather than editing it, and Undo brings
+ * a record back from the recycle bin (an undelete keeps Created, not Last Modified). Everything runs in
  * user mode and stays inside the camp the screen shows.
  */
 public with sharing class LearnedAnswers {
@@ -15,10 +17,10 @@ public with sharing class LearnedAnswers {
     public String question;
     @AuraEnabled
     public String answer;
-    /** The person reading is who last answered it. */
+    /** The person reading is who answered it. */
     @AuraEnabled
     public Boolean byYou;
-    /** Who last answered it: their first name (else their name). */
+    /** Who answered it: their first name (else their name). */
     @AuraEnabled
     public String byName;
     /** When, as a date in the reader's own time zone. */
@@ -34,14 +36,14 @@ public with sharing class LearnedAnswers {
         Id,
         QuestionKey__c,
         Answer__c,
-        LastModifiedDate,
-        LastModifiedById,
-        LastModifiedBy.FirstName,
-        LastModifiedBy.Name
+        CreatedDate,
+        CreatedById,
+        CreatedBy.FirstName,
+        CreatedBy.Name
       FROM ImportAnswer__c
       WHERE Camp__c = :campId
       WITH USER_MODE
-      ORDER BY LastModifiedDate DESC, Id DESC
+      ORDER BY CreatedDate DESC, Id DESC
       LIMIT 5000
     ]) {
       result.add(learnedOf(row));
@@ -50,23 +52,34 @@ public with sharing class LearnedAnswers {
   }
 
   /**
-   * Changes one answer to another of its choices. False when it is no longer there (forgotten
-   * or changed elsewhere): the screen then shows the latest.
+   * Changes one answer to another of its choices: the old record is forgotten (it stays in the
+   * recycle bin for Undo) and a new one saved for the same question, so it shows who changed it
+   * and when. Deleted first: the question's key is unique. The new record's Id, or null when the
+   * answer is no longer there (forgotten or changed elsewhere): the screen then shows the latest.
    */
-  public static Boolean change(Id campId, Id answerId, String answer) {
+  public static Id change(Id campId, Id answerId, String answer) {
     ImportAnswer__c row = rowOf(campId, answerId);
     if (row == null) {
-      return false;
+      return null;
     }
     if (!LearnedChoices.allows(row.QuestionKey__c, answer)) {
       throw new ShoreshException(CANNOT);
     }
-    UserModeWrites.save(
-      new List<ImportAnswer__c>{
-        new ImportAnswer__c(Id = row.Id, Answer__c = answer)
-      }
+    ImportAnswer__c replaced = new ImportAnswer__c(
+      Camp__c = campId,
+      Key__c = row.Key__c,
+      QuestionKey__c = row.QuestionKey__c,
+      Answer__c = answer
     );
-    return true;
+    Savepoint before = Database.setSavepoint();
+    try {
+      Database.delete(row, true, AccessLevel.USER_MODE);
+      UserModeWrites.save(new List<ImportAnswer__c>{ replaced });
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
+    return replaced.Id;
   }
 
   /** Forgets one answer: the next import asks again. False when it was already gone. */
@@ -79,41 +92,9 @@ public with sharing class LearnedAnswers {
     return true;
   }
 
-  /**
-   * Undo of a Forget: the forgotten record itself brought back from the recycle bin, so it keeps
-   * who answered and when. If it can't be (an import has remembered that question again since),
-   * its answer is remembered again as the import would. False when it is nowhere to be found.
-   */
-  public static Boolean restore(Id campId, Id answerId) {
-    List<ImportAnswer__c> rows = [
-      SELECT Id, QuestionKey__c, Answer__c
-      FROM ImportAnswer__c
-      WHERE Id = :answerId AND Camp__c = :campId AND IsDeleted = TRUE
-      WITH USER_MODE
-      LIMIT 1
-      ALL ROWS
-    ];
-    if (rows.isEmpty()) {
-      return false;
-    }
-    ImportAnswer__c row = rows[0];
-    Database.UndeleteResult result = Database.undelete(
-      new List<Id>{ row.Id },
-      false,
-      AccessLevel.USER_MODE
-    )[0];
-    if (!result.isSuccess()) {
-      ImportAnswers.rememberEach(
-        campId,
-        new Map<String, String>{ row.QuestionKey__c => row.Answer__c }
-      );
-    }
-    return true;
-  }
-
   private static ImportAnswer__c rowOf(Id campId, Id answerId) {
     List<ImportAnswer__c> rows = [
-      SELECT Id, QuestionKey__c
+      SELECT Id, Key__c, QuestionKey__c
       FROM ImportAnswer__c
       WHERE Id = :answerId AND Camp__c = :campId
       WITH USER_MODE
@@ -127,11 +108,11 @@ public with sharing class LearnedAnswers {
     learned.id = row.Id;
     learned.question = row.QuestionKey__c;
     learned.answer = row.Answer__c;
-    learned.byYou = row.LastModifiedById == UserInfo.getUserId();
-    learned.byName = String.isBlank(row.LastModifiedBy.FirstName)
-      ? row.LastModifiedBy.Name
-      : row.LastModifiedBy.FirstName;
-    learned.answeredOn = row.LastModifiedDate.date();
+    learned.byYou = row.CreatedById == UserInfo.getUserId();
+    learned.byName = String.isBlank(row.CreatedBy.FirstName)
+      ? row.CreatedBy.Name
+      : row.CreatedBy.FirstName;
+    learned.answeredOn = row.CreatedDate.date();
     return learned;
   }
 }
