@@ -497,7 +497,12 @@ function* tellMove(st, u, at) {
 function keepRepairLeft(st, groupId, act) {
   for (const { key } of st.repairLeft) {
     if (st.splitKey(key)[0] !== groupId && !st.assigned.has(key)) {
-      st.repairTrade.set(key, { groupId, activityId: act.id });
+      // The group's count of it then: said as a trade only while it still has as many.
+      st.repairTrade.set(key, {
+        groupId,
+        activityId: act.id,
+        count: st.getCount(groupId, act.id)
+      });
     }
   }
   st.repairLeft = [];

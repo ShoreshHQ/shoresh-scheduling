@@ -10,6 +10,36 @@ import { notesOf, readNotes, whyOf } from "../notes";
 import { activity, at, block, camp, group } from "./data/camp";
 import { sharedCamp } from "./data/sharedCamp";
 
+// To check the label against a week where the gain is later lost (mockLose.on): after the last
+// resort, the group that gained loses that session again, and no day is searched again.
+const mockLose = { on: false };
+jest.mock("../weekAcross", () => {
+  const actual = jest.requireActual("../weekAcross");
+  return {
+    ...actual,
+    *moveAcrossDays(st, from, outOfWork, trade) {
+      const changed = yield* actual.moveAcrossDays(st, from, outOfWork, trade);
+      if (!trade || !mockLose.on) {
+        return changed;
+      }
+      for (const [, t] of st.tradeOpen) {
+        for (let d = 0; d < st.days.length; d++) {
+          for (const b of st.blocksOf(d)) {
+            const k = st.cellKey(t.groupId, d, b.id);
+            if (
+              st.assigned.get(k) === t.activityId &&
+              st.freeSlotByKey.has(k)
+            ) {
+              st.unplace(st.actById.get(t.activityId), t.groupId, d, b.id);
+            }
+          }
+        }
+      }
+      return new Set();
+    }
+  };
+});
+
 // Two days, two periods. Swim takes one group at a time; Bunk 3 must have it once. Bunk 5 can
 // only Swim or play Games (Games once a day); Archery is Bunk 3's alone. Every other way to give
 // Bunk 3 its Swim leaves somebody with nothing allowed.
@@ -258,5 +288,26 @@ describe("a cell the minimum repair empties for a minimum says the same", () => 
     expect(JSON.stringify(generateWeek(camp(spec)))).toBe(
       JSON.stringify(result)
     );
+  });
+});
+
+describe("a trade is said only while it holds", () => {
+  afterEach(() => {
+    mockLose.on = false;
+  });
+
+  it("falls back to the cell's own reason when the group that gained loses it again", () => {
+    mockLose.on = true;
+    const r = generateWeek(camp(pool));
+    // Bunk 3's Swim is gone again: Bunk 5's cell is Open, but not "so Bunk 3 gets Swim".
+    expect(at(r, 0, "g3", 0)).toBeFalsy();
+    const cell = r.openCells.find(
+      (c) => c.date === "2026-07-06" && c.groupId === "g5" && c.blockId === "b0"
+    );
+    expect(cell).toBeTruthy();
+    expect(cell.why).not.toBe("trade");
+    expect(cell.reason).not.toMatch(/gets/);
+    expect(cell.shortGroupId).toBeUndefined();
+    expect(r.openCells.filter((c) => c.why === "trade")).toEqual([]);
   });
 });

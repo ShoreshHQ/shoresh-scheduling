@@ -539,7 +539,8 @@ function noteTrades(st, g, need, moves) {
     if (m.from != null && m.to == null) {
       st.tradeOpen.set(st.cellKey(m.g, m.d, m.b), {
         groupId: g,
-        activityId: need.id
+        activityId: need.id,
+        count: st.getCount(g, need.id)
       });
     }
   }

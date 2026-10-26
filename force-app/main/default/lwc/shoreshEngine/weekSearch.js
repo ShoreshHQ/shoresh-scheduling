@@ -1289,6 +1289,15 @@ function regionAround(st, u) {
  * an overlapping time, nothing set up for the group, no activity's length fits, then what the
  * search proved or that it ran out of work.
  */
+/**
+ * Whether a trade still holds as the week ends: the group that gained has at least as many of the
+ * activity as it had once it gained it, and no more than its minimum (so the gain was needed).
+ */
+function tradeHolds(st, t) {
+  const n = st.getCount(t.groupId, t.activityId);
+  return n >= t.count && n <= st.actById.get(t.activityId).min;
+}
+
 export function explainOpen(st) {
   st.openCells = [];
   for (const s of st.freeSlots) {
@@ -1297,16 +1306,18 @@ export function explainOpen(st) {
       continue;
     }
     // Left Open on purpose so another group gets a weekly minimum: said so, never as a proof.
-    // The minimum repair's own such cells (weekRepair.js) say the same, while the group that
-    // gained still has the activity.
-    const repaired = st.repairTrade && st.repairTrade.get(k);
-    const trade =
-      st.tradeOpen.get(k) ||
-      (repaired && st.getCount(repaired.groupId, repaired.activityId) > 0
-        ? repaired
-        : null);
+    // The minimum repair's own such cells (weekRepair.js) say the same. Either is said only
+    // when it still holds at the end of the week (tradeHolds); else the cell's own reason.
+    const trade = [
+      st.tradeOpen.get(k),
+      st.repairTrade && st.repairTrade.get(k)
+    ].find((x) => x && tradeHolds(st, x));
     if (trade) {
-      st.openCells.push({ key: k, why: TRADE, cost: trade });
+      st.openCells.push({
+        key: k,
+        why: TRADE,
+        cost: { groupId: trade.groupId, activityId: trade.activityId }
+      });
       continue;
     }
     const proven = st.dayWhy.get(s.dayIndex) || BUDGET;
