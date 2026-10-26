@@ -31,6 +31,7 @@ import {
   RELAX_ORDER,
   RULE,
   SEARCHED,
+  TRADE,
   lockKey,
   scheduleWeekSteps
 } from "./week";
@@ -45,6 +46,7 @@ export {
   RELAX_ORDER,
   RULE,
   SEARCHED,
+  TRADE,
   reasonFor,
   checkWeek
 };
@@ -135,7 +137,8 @@ const RUN_WORK = 40000000;
  *     arrangement of the day was tried, filling it would take a group below a weekly minimum, or
  *     the search ran out of work first (why: the code, weekRules.js; BUDGET is the one that is
  *     not a proof); for MIN_COST also shortGroupId and shortActivityId, the group a fuller day
- *     would leave short and of what
+ *     would leave short and of what; TRADE (left Open on purpose so another group gets a weekly
+ *     minimum, as a last resort) also has shortGroupId and shortActivityId: that group and activity
  *   moved: each cell the step 8 search changed, in order: [{ date, groupId, blockId, from, to,
  *     why, toFill: [{ date, groupId, blockId }] }] (from/to: activity ids, null for Open; why:
  *     "fill" to fill cells, "minimum" to leave fewer groups short of a weekly minimum with as
@@ -411,8 +414,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     ruleChecks,
     openCells: state.openCells.map(({ key, why, cost }) => {
       const [groupId, d, blockId] = state.splitKey(key);
-      // A cell a fuller day would fill only by leaving a group short names that group and
-      // activity; every other reason names the cell's own group.
+      // A cell a fuller day would fill only by leaving a group short, or left Open so a group
+      // gets a minimum, names that group and activity; every other reason, the cell's own group.
       const named = cost ? cost.groupId : groupId;
       return {
         date: days[d].date,

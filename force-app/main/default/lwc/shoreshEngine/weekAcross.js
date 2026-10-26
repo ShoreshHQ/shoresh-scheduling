@@ -29,6 +29,14 @@ import { PREFERENCES } from "./weekRules";
  * (spread), fewer moves; still a tie, the first found (days, time blocks, groups and activities in
  * the build's order). Work is counted in moves tried, against the search's budget and the run's,
  * never time, so the same inputs give the same week on any machine.
+ *
+ * Minimums first, as a last resort (Greg, 2026-10-26; protocol 8.29-8.32): once every way that
+ * keeps each cell filled has been tried (this pass, then the search again), the pass runs once
+ * more for each group and activity still short, now letting a chain leave a cell Open, but only
+ * another group's cell, whose group has nothing allowed left there (no activity, over its weekly max included),
+ * and never more Open cells than the sessions short it saves. Of those chains, fewest Open cells
+ * first. Each such cell is kept in st.tradeOpen with the group and activity it was left Open for,
+ * and says so ("Open, so Bunk 3 gets Swim").
  */
 
 // Steps of one chain (each places one activity), moves tried for one group and activity, and
@@ -164,7 +172,7 @@ function lessThan(a, b) {
  * above). Returns the chain's moves ({ g, d, b, from, to } per cell changed, in the order made)
  * applied to the week, or null with the week as it was.
  */
-function* bestChain(st, g0, need, budget, outOfWork, at) {
+function* bestChain(st, g0, need, budget, outOfWork, at, trade = false) {
   const journal = [];
   const doPlace = (act, g, d, b) => {
     st.place(act, g, d, b);
@@ -205,13 +213,17 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
 
   const finish = () => {
     // No day ends with more Open cells than it had: a cell is left Open only for another of the
-    // same day filled, so what the search found about each day still holds.
-    if (st.emptyCells > emptyBefore) {
-      return;
-    }
-    for (const d of new Set(journal.map((j) => j.d))) {
-      if (openOn(st, d) > openBefore[d]) {
+    // same day filled, so what the search found about each day still holds. The last resort
+    // (trade) may leave cells Open, each one saving at least one session short (checked below).
+    const opened = st.emptyCells - emptyBefore;
+    if (!trade) {
+      if (opened > 0) {
         return;
+      }
+      for (const d of new Set(journal.map((j) => j.d))) {
+        if (openOn(st, d) > openBefore[d]) {
+          return;
+        }
       }
     }
     const now = shortOf(st, groups);
@@ -224,7 +236,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
       }
     }
     nowTotal += total(now);
-    if (nowTotal >= beforeTotal) {
+    if (nowTotal >= beforeTotal || opened > beforeTotal - nowTotal) {
       return;
     }
     for (const [k, missing] of now) {
@@ -233,9 +245,10 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
       }
     }
     const list = [...groups];
+    // The last resort leaves as few cells Open as it can, then saves the most.
     const rank = [
-      nowTotal,
-      st.emptyCells,
+      trade ? st.emptyCells : nowTotal,
+      trade ? nowTotal : st.emptyCells,
       overMax(st, list),
       -earlyMet(st, list),
       backToBack(st, list),
@@ -280,23 +293,35 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
       return;
     }
     const [g, d, b] = st.splitKey(k);
+    let any = false;
     for (const act of st.acts) {
       if (spent()) {
         return;
       }
-      if (act.span !== 1 || !st.eligibility.get(act.id).has(g)) {
+      if (!st.eligibility.get(act.id).has(g)) {
+        continue;
+      }
+      // The last resort leaves a cell Open only when nothing allowed is left for its group there,
+      // a longer activity starting there included.
+      if (act.span !== 1) {
+        if (trade && !any) {
+          yield* tried();
+          any = allowed(st, act, g, d, b) !== null;
+        }
         continue;
       }
       yield* tried();
       if (allowed(st, act, g, d, b)) {
+        any = true;
         const mark = journal.length;
         doPlace(act, g, d, b);
         yield* run(rest, steps);
         undoTo(mark);
       }
     }
-    // Or left Open, when the chain fills another cell in its place (finish counts them).
-    if (!spent()) {
+    // Or left Open, when the chain fills another cell in its place (finish counts them); in the
+    // last resort, only another group's cell, and only when nothing allowed fits it.
+    if (!spent() && !(trade && (any || g === g0))) {
       yield* run(rest, steps);
     }
   };
@@ -452,7 +477,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at) {
  * and told to the progress screen. A group and activity no chain helps is not tried again.
  * Returns the days a chain changed.
  */
-export function* moveAcrossDays(st, at, outOfWork) {
+export function* moveAcrossDays(st, at, outOfWork, trade = false) {
   // Days a chain changed: what can go in their Open cells may have changed with it.
   const changed = new Set();
   let left = PASS_WORK;
@@ -487,7 +512,8 @@ export function* moveAcrossDays(st, at, outOfWork) {
           need,
           Math.min(PAIR_WORK, left),
           outOfWork,
-          at
+          at,
+          trade
         );
         left -= r.work;
         if (!r.moves) {
@@ -495,7 +521,10 @@ export function* moveAcrossDays(st, at, outOfWork) {
           continue;
         }
         r.moves.forEach((m) => changed.add(m.d));
-        yield* tellAndRecord(st, g, need, r.moves, at);
+        if (trade) {
+          noteTrades(st, g, need, r.moves);
+        }
+        yield* tellAndRecord(st, g, need, r.moves, at, trade);
         helped = true;
         break;
       }
@@ -504,7 +533,19 @@ export function* moveAcrossDays(st, at, outOfWork) {
   return changed;
 }
 
-function* tellAndRecord(st, g, need, moves, at) {
+/** The cells a last-resort chain left Open, kept with the group and activity they were left for. */
+function noteTrades(st, g, need, moves) {
+  for (const m of moves) {
+    if (m.from != null && m.to == null) {
+      st.tradeOpen.set(st.cellKey(m.g, m.d, m.b), {
+        groupId: g,
+        activityId: need.id
+      });
+    }
+  }
+}
+
+function* tellAndRecord(st, g, need, moves, at, trade = false) {
   for (const m of moves) {
     st.searchMoves.push({
       groupId: m.g,
@@ -527,20 +568,26 @@ function* tellAndRecord(st, g, need, moves, at) {
       m.d !== put.d &&
       mine.some((x) => x.d === put.d && x.from === m.to)
   );
-  st.watch.now = moved
-    ? nowOf(
-        NOW.ACROSS,
-        8,
-        put.d,
-        g,
-        moved.b,
-        moved.to,
-        need.id,
-        moved.d,
-        st.getCount(g, need.id)
-      )
-    : put.from == null
-      ? nowOf(NOW.PLACE, 8, put.d, put.g, put.b, put.to)
-      : nowOf(NOW.MOVE, 8, put.d, put.g, put.b, put.from, put.to);
+  const left = trade && moves.find((m) => m.from != null && m.to == null);
+  st.watch.now = left
+    ? {
+        ...nowOf(NOW.TRADE, 8, left.d, left.g, left.b, null, need.id),
+        forGroupId: g
+      }
+    : moved
+      ? nowOf(
+          NOW.ACROSS,
+          8,
+          put.d,
+          g,
+          moved.b,
+          moved.to,
+          need.id,
+          moved.d,
+          st.getCount(g, need.id)
+        )
+      : put.from == null
+        ? nowOf(NOW.PLACE, 8, put.d, put.g, put.b, put.to)
+        : nowOf(NOW.MOVE, 8, put.d, put.g, put.b, put.from, put.to);
   yield at;
 }

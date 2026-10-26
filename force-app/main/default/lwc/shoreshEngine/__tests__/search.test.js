@@ -66,7 +66,7 @@ describe("its proofs hold against an exhaustive search", () => {
     for (const r of rows) {
       for (const c of r.result.openCells) {
         expect(c.reason).toBeTruthy();
-        expect([...PROOFS, "minCost", "budget"]).toContain(c.why);
+        expect([...PROOFS, "minCost", "budget", "trade"]).toContain(c.why);
       }
     }
   });

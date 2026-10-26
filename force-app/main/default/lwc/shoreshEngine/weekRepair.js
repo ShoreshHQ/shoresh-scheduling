@@ -27,6 +27,13 @@ export function startRepairs(st) {
   st.liftBudget = 0;
   // Repairs 2 and 3 share a journal: a chain that doesn't end whole is rolled back.
   st.journal = [];
+  // Cells the minimum repair left Open for never-blank, in the chain being tried: { key, at
+  // (the journal's length then) }, so a rollback drops them with the moves.
+  st.repairLeft = [];
+  // Cells a kept minimum-repair chain left Open in another group's row: key -> { groupId,
+  // activityId }, the group that gained and what (said as a trade if the cell ends Open).
+  st.repairTrade = new Map();
+  st.repairFor = null;
 }
 
 // The activities that fit a cell cleanly, high priority first, then the one the group has had least.
@@ -125,6 +132,9 @@ function jUnplace(st, act, g, d, b) {
   st.journal.push([act, g, d, b, false]);
 }
 function rollback(st, mark) {
+  if (st.repairLeft && st.repairLeft.length) {
+    st.repairLeft = st.repairLeft.filter((x) => x.at <= mark);
+  }
   while (st.journal.length > mark) {
     const [act, g, d, b, placed] = st.journal.pop();
     if (placed) {
@@ -311,6 +321,7 @@ function raise(
           jPlace(st, fill, v.groupId, v.dayIndex, v.blockId);
         } else if (lenient) {
           st.leftForNeverBlank = true;
+          st.repairLeft.push({ key: x, at: st.journal.length });
         } else {
           ok = false;
         }
@@ -340,6 +351,7 @@ function raise(
           jPlace(st, fill, peer.groupId, peer.dayIndex, peer.blockId);
         } else if (lenient) {
           st.leftForNeverBlank = true;
+          st.repairLeft.push({ key: st.keyOf(peer), at: st.journal.length });
         } else {
           ok = false;
         }
@@ -476,6 +488,21 @@ function* tellMove(st, u, at) {
 }
 
 /** Repair 2 for every group short of an activity's weekly minimum. */
+/**
+ * A kept chain's cells left Open in another group's row are remembered with the group that
+ * gained and its activity: if never-blank and the search can't fill one, it says the trade
+ * ("Open, so Bunk 3 gets Swim"), as the last resort's cells do (protocol 8.31). A group's own
+ * cells keep their own reason.
+ */
+function keepRepairLeft(st, groupId, act) {
+  for (const { key } of st.repairLeft) {
+    if (st.splitKey(key)[0] !== groupId && !st.assigned.has(key)) {
+      st.repairTrade.set(key, { groupId, activityId: act.id });
+    }
+  }
+  st.repairLeft = [];
+}
+
 export function* minRepair(st, from, share) {
   const pairs = st.acts.length * st.model.groupIds.length || 1;
   let pair = 0;
@@ -505,6 +532,7 @@ export function* minRepair(st, from, share) {
         yield at;
         st.minRepairBudget = MIN_REPAIR_BUDGET;
         st.journal.length = 0;
+        st.repairLeft = [];
         if (
           raise(
             st,
@@ -517,11 +545,13 @@ export function* minRepair(st, from, share) {
             st.emptyCells
           )
         ) {
+          keepRepairLeft(st, groupId, act);
           continue;
         }
         // Only when that fails may the chain lift a multi-block placement, on its own budget.
         st.minRepairBudget = MIN_REPAIR_BUDGET;
         st.journal.length = 0;
+        st.repairLeft = [];
         const sharedWorkLeft = st.repairWorkLeft;
         st.repairWorkLeft = SPAN_LIFT_WORK;
         const raised = raise(
@@ -538,6 +568,7 @@ export function* minRepair(st, from, share) {
         if (!raised) {
           break;
         }
+        keepRepairLeft(st, groupId, act);
       }
     }
   }

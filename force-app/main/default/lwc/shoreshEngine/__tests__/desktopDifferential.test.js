@@ -150,7 +150,23 @@ function salesforceOutcome(spec) {
     bentCells: result.flags.length,
     bends,
     minimumsShort: result.stillNeededBy.length,
-    earlyShort: result.spreadBy.length
+    earlyShort: result.spreadBy.length,
+    // Open cells left on purpose so another group gets a minimum (the last resort), and where
+    // the search ran out of work.
+    traded: result.openCells.filter((c) => c.why === "trade").length,
+    // Of those, the ones the minimum repair (step 8, part 1) left, not a move of the search.
+    tradedByRepair: result.openCells.filter(
+      (c) =>
+        c.why === "trade" &&
+        !result.moved.some(
+          (m) =>
+            m.to == null &&
+            m.date === c.date &&
+            m.groupId === c.groupId &&
+            m.blockId === c.blockId
+        )
+    ).length,
+    outOfWork: result.openCells.filter((c) => c.why === "budget").length
   };
 }
 
@@ -220,7 +236,10 @@ function compare(seed) {
       bentCells: sf.bentCells,
       bends: sf.bends,
       minimumsShort: sf.minimumsShort,
-      earlyShort: sf.earlyShort
+      earlyShort: sf.earlyShort,
+      traded: sf.traded,
+      tradedByRepair: sf.tradedByRepair,
+      outOfWork: sf.outOfWork
     },
     desktop: {
       filled: desk.filled,
@@ -337,6 +356,9 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
         sfMinimumsShort: total("sf", "minimumsShort"),
         desktopMinimumsShort: total("desktop", "minimumsShort"),
         sfEarlyShort: total("sf", "earlyShort"),
+        sfTraded: total("sf", "traded"),
+        sfTradedByRepair: total("sf", "tradedByRepair"),
+        sfOutOfWork: total("sf", "outOfWork"),
         desktopEarlyShort: total("desktop", "earlyShort"),
         campsWithDifferentCounts: built.filter((r) => r.pairsDiffer > 0).length
       },

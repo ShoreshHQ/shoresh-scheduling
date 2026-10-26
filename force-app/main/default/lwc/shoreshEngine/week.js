@@ -48,7 +48,8 @@ export {
   NONE_FOR,
   SEARCHED,
   MIN_COST,
-  BUDGET
+  BUDGET,
+  TRADE
 } from "./weekRules";
 export { lockKey } from "./weekFixed";
 

@@ -53,6 +53,10 @@ export const NONE_FOR = "noneFor";
 export const SEARCHED = "searched";
 export const MIN_COST = "minCost";
 export const BUDGET = "budget";
+// Left Open on purpose (Greg, 2026-10-26, "minimums first" as a last resort): the group that was
+// here had to move so another group gets an activity's weekly minimum, and nothing allowed is left
+// for it here (weekAcross.js, protocol 8.29-8.32).
+export const TRADE = "trade";
 
 export const PRIORITY_RANK = { high: 0, low: 1 };
 

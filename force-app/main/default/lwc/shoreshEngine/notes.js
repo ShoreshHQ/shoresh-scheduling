@@ -10,7 +10,8 @@ import {
   NO_FIT,
   NONE_FOR,
   OVERLAP,
-  SEARCHED
+  SEARCHED,
+  TRADE
 } from "./week";
 
 /**
@@ -21,7 +22,7 @@ import {
  *   { v: 1,
  *     open: [[date, groupId, blockId, why, shortGroupId?, shortActivityId?]]: each cell the build
  *       left Open and why (weekRules' code; for MIN_COST, the group and activity a fuller day would
- *       leave short),
+ *       leave short; for TRADE, the group and activity the cell was left Open for),
  *     blank: [[field ("atOnce" or "fit"), activityId or locationId]]: a blank setting taken as 1,
  *     floor: { kind ("frame" or "emptier"), name, built, imported } or null: step 8's floor note,
  *     cut: how many Open cells' reasons were left out to keep it under NOTES_MAX (0 when none) }
@@ -39,7 +40,8 @@ export const OPEN_WHY = Object.freeze({
   [NONE_FOR]: NONE_FOR,
   [SEARCHED]: SEARCHED,
   [MIN_COST]: MIN_COST,
-  [BUDGET]: BUDGET
+  [BUDGET]: BUDGET,
+  [TRADE]: TRADE
 });
 
 const BLANK_FIELDS = new Set(["atOnce", "fit"]);

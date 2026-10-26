@@ -116,6 +116,13 @@ describe("the progress line", () => {
         toDayIndex: 1,
         times: 2
       }),
+      [NOW.TRADE]: say(NOW.TRADE, {
+        ...MONDAY,
+        groupId: "g1",
+        blockId: "b1",
+        toActivityId: "a3",
+        forGroupId: "g2"
+      }),
       [NOW.AGAIN]: say(NOW.AGAIN),
       [NOW.IMPORTED]: say(NOW.IMPORTED)
     };
@@ -139,6 +146,8 @@ describe("the progress line", () => {
       [NOW.NEEDED]: "Rearranging Monday so each Bunk gets what it still needs",
       [NOW.ACROSS]:
         "Moving Badgers' Sports from Monday to Thursday so they get Swim twice",
+      [NOW.TRADE]:
+        "Leaving Badgers' Period 1 on Monday open, so Eagles gets Swim",
       [NOW.AGAIN]: "Trying a second way, to keep the better Session",
       [NOW.IMPORTED]: "Building from the imported Session, to compare"
     });
