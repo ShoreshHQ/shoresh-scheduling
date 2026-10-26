@@ -50,6 +50,15 @@ export function createWeekState(model) {
     // How many times a placement was checked against the rules: the build's work, the same on any
     // machine (the performance test bounds it; a build run in pieces could show progress by it).
     ruleChecks: 0,
+    // The whole run's work still allowed when this build began (generateWeekSteps' RUN_WORK, less
+    // the builds before it), in rule checks and cells the search looked at: past it, the repairs
+    // and the search stop, so even the largest camp's week is done in a few minutes. Counted, never
+    // timed, so the same inputs stop at the same place on any machine.
+    runWorkLeft: model.runWorkLeft == null ? Infinity : model.runWorkLeft,
+    // Cells the step 8 search looked at (weekSearch.js), for the run's work.
+    looksUsed: 0,
+    // Told what the build is doing now, for a progress screen (progress.js); never read here.
+    watch: {},
     actById,
     cellKey,
     keyOf: (s) => cellKey(s.groupId, s.dayIndex, s.blockId),
@@ -180,4 +189,9 @@ export function createWeekState(model) {
   };
 
   return st;
+}
+
+/** Whether the run's work (st.runWorkLeft) is spent: the repairs stop then. */
+export function outOfRunWork(st) {
+  return st.ruleChecks + st.looksUsed >= st.runWorkLeft;
 }

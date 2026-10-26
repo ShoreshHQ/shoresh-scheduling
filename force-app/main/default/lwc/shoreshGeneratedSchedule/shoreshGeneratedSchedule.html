@@ -40,17 +40,32 @@
 
       <template lwc:if={busy}>
         <div class="busy" slot="status" data-id="busy">
-          <div
-            class={progressClass}
-            role="progressbar"
-            aria-label={busyText}
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow={progressValue}
-          >
-            <div class="progress-fill" style={progressStyle}></div>
+          <div class="busy-row">
+            <div
+              class={progressClass}
+              role="progressbar"
+              aria-label={busyText}
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={progressValue}
+            >
+              <div class="progress-fill" style={progressStyle}></div>
+            </div>
+            <span class="busy-text">{busyText}</span>
+            <template lwc:if={canStopBuild}>
+              <button
+                type="button"
+                class="slds-button slds-button_neutral"
+                onclick={handleStopBuild}
+                data-id="stop-build"
+              >
+                Cancel
+              </button>
+            </template>
           </div>
-          <span class="busy-text">{busyText}</span>
+          <!-- What the build is doing now, in camp words. Not a live region: it changes a few
+               times a second; a screen reader hears it every few seconds (announce). -->
+          <p class="busy-now" data-id="busy-now">{busyLine}</p>
         </div>
       </template>
 

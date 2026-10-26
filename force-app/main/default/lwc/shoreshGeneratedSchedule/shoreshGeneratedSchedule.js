@@ -40,6 +40,7 @@ import {
 } from "c/shoreshGeneratedWeek";
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
+import { namesOf, progressLine } from "./progressWords";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
 import { clearedDays, editedKeys, openCells } from "./week";
 import { activityOptions, awayRows, lockOf } from "./editing";
@@ -66,6 +67,10 @@ function statementOf(message) {
 // The rail's Build menu (Rebuild, Try another, Fill the open cells, the options, Start over):
 // focus goes back to it once one of them is done.
 const BUILD_MENU = '[data-id="build-menu"]';
+// While a week is built, the line saying what it is doing changes at most this often (ms), so it
+// can be read; and is said aloud to a screen reader at most this often.
+const LINE_MS = 300;
+const SAY_MS = 5000;
 
 /**
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
@@ -133,8 +138,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The week Reload is reading after a conflict ("program|week"): edits wait while any read is
   // under way after it (Reload's, or one that took its place), until the latest lands or fails.
   reloading = null;
-  // The build under way: { action, progress (0-100, or null until a long build first reports) }.
+  // The build under way: { action, progress (0-100, or null until a long build first reports),
+  // line (what it is doing now, in camp words, or null), building (Cancel can stop it: the
+  // week is being built, not yet sent to be saved) }.
   busy;
+  // Cancel was chosen: the build stops before its next piece (buildInPieces' stillWanted).
+  stopAsked = false;
   // The confirm open: { action }.
   // A Lock or Unlock being saved; the cell keyboard focus last reached in the editor's grid (its
   // grid key, and the slot: day, group and block positions in the week shown).
@@ -931,31 +940,60 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.error = null;
     this.errorFromRead = false;
     // No number until a long build first says how far it has got (a short one never does).
-    this.busy = { action, progress: null };
+    const building = action !== ACTION.START_OVER;
+    this.busy = { action, progress: null, line: null, building };
+    this.stopAsked = false;
     this.announce(this.busyText);
     let days;
     let built = null;
     try {
-      if (action === ACTION.START_OVER) {
+      if (!building) {
         days = clearedDays(loaded.input.days, new Set(this.replacedDates));
       } else {
+        const input = this.engineInput(
+          loaded.input.days,
+          {
+            option,
+            mode: action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL
+          },
+          action
+        );
+        const names = namesOf(input);
+        // When the line last changed, and when it was last said aloud (the start said "Generating…").
+        let shownAt = 0;
+        let saidAt = Date.now();
         const result = await buildInPieces(
-          this.engineInput(
-            loaded.input.days,
-            {
-              option,
-              mode: action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL
-            },
-            action
-          ),
-          (fraction) => {
-            if (this.busy) {
-              this.busy = { action, progress: Math.round(fraction * 100) };
+          input,
+          (fraction, now) => {
+            if (!this.busy) {
+              return;
+            }
+            const at = Date.now();
+            let line = this.busy.line;
+            if (at - shownAt >= LINE_MS) {
+              const next = progressLine(now, names, this.t);
+              if (next) {
+                line = next;
+                shownAt = at;
+              }
+            }
+            this.busy = {
+              action,
+              progress: Math.round(fraction * 100),
+              line,
+              building
+            };
+            if (line && at - saidAt >= SAY_MS) {
+              saidAt = at;
+              this.announce(line);
             }
           },
-          () => ticket === this.loadTicket
+          () => ticket === this.loadTicket && !this.stopAsked
         );
         if (!result) {
+          if (this.stopAsked && ticket === this.loadTicket) {
+            this.announce(this.stoppedText);
+          }
           return;
         }
         if (!result.ok) {
@@ -964,8 +1002,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         }
         days = result.days;
         built = result;
-        if (this.busy && this.busy.progress !== null) {
-          this.busy = { action, progress: 100 };
+        // Built: being saved now, so no line and no Cancel.
+        if (this.busy) {
+          this.busy = {
+            action,
+            progress: this.busy.progress === null ? null : 100,
+            line: null,
+            building: false
+          };
         }
       }
       // What the engine said about the week it built, kept with it for the Why list.
@@ -1135,6 +1179,21 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.busy && this.busy.action === ACTION.START_OVER
       ? "Starting over…"
       : "Generating…";
+  }
+  /** What the build is doing now, in camp words (progressWords.js), once it says. */
+  get busyLine() {
+    return this.busy ? this.busy.line : null;
+  }
+  /** Cancel shows while the week is being built (not once it is sent to be saved). */
+  get canStopBuild() {
+    return !!this.busy && this.busy.building;
+  }
+  get stoppedText() {
+    return `Stopped. ${this.weekName} wasn't changed.`;
+  }
+  /** Cancel: the build stops before its next piece; nothing was saved, so nothing changes. */
+  handleStopBuild() {
+    this.stopAsked = true;
   }
   /** Until a long build reports, the bar moves without a number (desktop IndeterminateBar). */
   get progressKnown() {

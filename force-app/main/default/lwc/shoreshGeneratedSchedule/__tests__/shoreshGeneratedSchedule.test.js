@@ -391,6 +391,139 @@ describe("c-shoresh-generated-schedule", () => {
     );
   });
 
+  describe("while it builds, what it is doing in camp words", () => {
+    // Words a camp director should never see on the line.
+    const MACHINERY =
+      /search|budget|step \d|algorithm|repair|constraint|slot|engine|undefined|null/i;
+
+    it("shows one line in the setup's names and the camp's words, never machinery", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValue(savedAnswer());
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      const line = () => q(element, '[data-id="busy-now"]');
+      const seen = new Set();
+      let live;
+      await until(() => {
+        if (line() && line().textContent.trim()) {
+          seen.add(line().textContent.trim());
+          live = line().getAttribute("aria-live");
+        }
+        return saveWeekOnServer.mock.calls.length > 0;
+      });
+      expect(seen.size).toBeGreaterThan(0);
+      for (const text of seen) {
+        expect(text).not.toMatch(MACHINERY);
+      }
+      // Named as the camp names them: its bunks, periods, activities and days.
+      expect(
+        [...seen].some((text) =>
+          /Bunk \d+|Period \d+|Activity \d+|Monday|Tuesday|Wednesday|Thursday|Friday/.test(
+            text
+          )
+        )
+      ).toBe(true);
+      // The line is not a live region (it changes too often); the bar keeps its label.
+      expect(live).toBeNull();
+      await settle(element);
+      await expect(element).toBeAccessible();
+    });
+
+    it("says the line aloud at most every five seconds, not at every change", async () => {
+      // A clock that moves on 40 ms each time it is read.
+      let clock = 0;
+      const now = jest.spyOn(Date, "now").mockImplementation(() => {
+        clock += 40;
+        return clock;
+      });
+      try {
+        const element = await render(camp(BIG));
+        saveWeekOnServer.mockResolvedValue(savedAnswer());
+        const editor = q(element, '[data-id="week-editor"]');
+        const said = [];
+        const announce = editor.announce.bind(editor);
+        editor.announce = (text) => {
+          said.push({ text, at: clock });
+          announce(text);
+        };
+        q(element, '[data-id="generate"]').click();
+        await until(() => saveWeekOnServer.mock.calls.length > 0);
+        const lines = new Set();
+        await until(() => {
+          const line = q(element, '[data-id="busy-now"]');
+          if (line && line.textContent.trim()) {
+            lines.add(line.textContent.trim());
+          }
+          return !q(element, '[data-id="busy"]');
+        });
+        // What was said while building: "Generating…" first, then progress lines.
+        const progress = said.filter(
+          (s) => s.text !== "Generating…" && !/^Generated|Filled/.test(s.text)
+        );
+        expect(progress.length).toBeGreaterThan(0);
+        expect(progress.length).toBeLessThan(clock / 5000 + 2);
+        for (let i = 1; i < progress.length; i++) {
+          expect(progress[i].at - progress[i - 1].at).toBeGreaterThanOrEqual(
+            5000
+          );
+        }
+      } finally {
+        now.mockRestore();
+      }
+    });
+
+    it("Cancel stops the build: nothing is saved, the week is as it was, and it says so", async () => {
+      const element = await render(camp(BIG));
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      const stop = q(element, '[data-id="stop-build"]');
+      expect(stop.textContent.trim()).toBe("Cancel");
+      stop.click();
+      await settle(element);
+      expect(saveWeekOnServer).not.toHaveBeenCalled();
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        "Stopped. Week 1 wasn't changed."
+      );
+      // Not generated, so Generate is offered again.
+      expect(q(element, '[data-id="generate"]').disabled).toBe(false);
+    });
+
+    it("offers no Cancel once the week is built and being saved", async () => {
+      const element = await render(camp(BIG));
+      let answer;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="generate"]').click();
+      await until(() => saveWeekOnServer.mock.calls.length > 0);
+      await flush();
+      expect(q(element, '[data-id="busy"]')).not.toBeNull();
+      expect(q(element, '[data-id="stop-build"]')).toBeNull();
+      expect(q(element, '[data-id="busy-now"]').textContent.trim()).toBe("");
+      answer(savedAnswer());
+      await settle(element);
+    });
+
+    it("keeps the bar still under reduced motion, and the line never moves", () => {
+      const css = require("fs").readFileSync(
+        require("path").join(__dirname, "../shoreshGeneratedSchedule.css"),
+        "utf8"
+      );
+      const reduced = css
+        .split("@media (prefers-reduced-motion: reduce)")
+        .slice(1)
+        .join("");
+      expect(reduced).toMatch(/\.progress-fill\s*{\s*transition: none;/);
+      expect(reduced).toMatch(
+        /\.progress_moving \.progress-fill\s*{[^}]*animation: none;/
+      );
+      const lineRule = css.match(/\.busy-now\s*{[^}]*}/)[0];
+      expect(lineRule).not.toMatch(/animation|transition/);
+    });
+  });
+
   it("Rebuild asks first, in the desktop's words without replacing edits, then builds the same option again", async () => {
     const element = await render();
     await generate(element);
@@ -1043,6 +1176,8 @@ describe("c-shoresh-generated-schedule", () => {
       expect(q(element, '[data-id="busy"]').textContent).not.toContain(
         "Generating"
       );
+      // Start over builds nothing: nothing to stop.
+      expect(q(element, '[data-id="stop-build"]')).toBeNull();
       expect(q(element, '[data-id="announce"]').textContent).toContain(
         "Starting over…"
       );

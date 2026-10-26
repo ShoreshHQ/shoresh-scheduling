@@ -1,3 +1,4 @@
+import { NOW, nowOf, tell } from "./progress";
 import { check } from "./weekOptions";
 import {
   BUDGET,
@@ -68,7 +69,12 @@ const GROUP_DAY_WORK = 20000;
 
 const EMPTY = null;
 
-const outOfWork = (st) => st.searchWorkLeft <= 0 || st.searchLooksLeft <= 0;
+// The whole run's work (weekState.js runWorkLeft): rule checks, and cells looked at here.
+const overRun = (st) =>
+  st.ruleChecks + LOOK_LIMIT - st.searchLooksLeft >= st.runWorkLeft;
+
+const outOfWork = (st) =>
+  st.searchWorkLeft <= 0 || st.searchLooksLeft <= 0 || overRun(st);
 
 /** Prepares the search: every free cell is one it may fill, and its work budget. */
 function startSearch(st) {
@@ -939,6 +945,7 @@ function* solve(
     if (
       work > budget ||
       st.searchLooksLeft <= 0 ||
+      overRun(st) ||
       (foundAt != null && work > foundAt + POLISH_WORK)
     ) {
       exhausted = false;
@@ -1062,6 +1069,25 @@ function fitsAlone(st, s) {
 }
 
 /**
+ * record, then the progress screen is told one of the changes: a group moved from one activity
+ * to another if there is one, else a cell filled.
+ */
+function* recordAndTell(st, d, moves, why, at) {
+  record(st, moves, why);
+  const m =
+    moves.find((x) => x.from !== EMPTY && x.to !== EMPTY) ||
+    moves.find((x) => x.to !== EMPTY);
+  if (m) {
+    const [groupId, , blockId] = st.splitKey(m.key);
+    st.watch.now =
+      m.from === EMPTY
+        ? nowOf(NOW.PLACE, 8, d, groupId, blockId, m.to)
+        : nowOf(NOW.MOVE, 8, d, groupId, blockId, m.from, m.to);
+    yield at;
+  }
+}
+
+/**
  * Each cell a rearrangement changed, why ("fill": to fill cells; "minimum": to leave fewer
  * groups short of a weekly minimum), and the cells it filled (Open before, filled now).
  */
@@ -1082,29 +1108,30 @@ function record(st, moves, why) {
 }
 
 /**
- * Step 8 over every day. `watch`, if given, is told what the search is working on
- * (watch.now: { step: 8, dayIndex, groupId, blockId }) for a progress screen to put in words.
+ * Step 8 over every day. It tells st.watch what it is working on as it goes (progress.js), for a
+ * progress screen to put in words.
  */
-export function* searchWeek(st, from, share, watch = {}) {
+export function* searchWeek(st, from, share) {
   startSearch(st);
   for (let d = 0; d < st.days.length; d++) {
-    yield* fillDay(st, d, from + (share * d) / st.days.length, watch);
+    yield* fillDay(st, d, from + (share * d) / st.days.length);
   }
-  yield* raiseMinimums(st, from + share, watch);
+  yield* raiseMinimums(st, from + share);
   // Moves since may have lifted the minimum that kept a day from filling: such days again.
   for (let d = 0; d < st.days.length; d++) {
     if (st.dayWhy.get(d) === MIN_COST) {
       st.dayWhy.delete(d);
-      yield* fillDay(st, d, from + share, watch);
+      yield* fillDay(st, d, from + share);
     }
   }
-  watch.now = null;
+  st.looksUsed = LOOK_LIMIT - st.searchLooksLeft;
 }
 
 /** Step 8 for one day: fills what it can, then says what it found (st.dayWhy). */
-function* fillDay(st, d, at, watch) {
+function* fillDay(st, d, at) {
   // Each pass fills at least one more cell or ends the day, so the free cells bound the passes.
   for (let pass = 0; pass <= st.freeByDay[d].length; pass++) {
+    st.watch.now = nowOf(NOW.SEARCH_DAY, 8, d);
     // A cell busy only because of a placement the search may move is still one to fill.
     const open = st.freeByDay[d].filter((s) => !st.assigned.has(st.keyOf(s)));
     const unproven = open.filter((s) => !plainlyOpen(st, s));
@@ -1122,12 +1149,7 @@ function* fillDay(st, d, at, watch) {
       if (outOfWork(st)) {
         break;
       }
-      watch.now = {
-        step: 8,
-        dayIndex: d,
-        groupId: u.groupId,
-        blockId: u.blockId
-      };
+      tell(st, NOW.SEARCH, 8, u);
       yield at;
       const r = yield* solve(st, d, regionAround(st, u), {
         guard: true,
@@ -1136,7 +1158,7 @@ function* fillDay(st, d, at, watch) {
         at
       });
       if (r.improved) {
-        record(st, r.moves, "fill");
+        yield* recordAndTell(st, d, r.moves, "fill", at);
         grew = true;
         break;
       }
@@ -1148,7 +1170,7 @@ function* fillDay(st, d, at, watch) {
       st.dayWhy.set(d, BUDGET);
       return;
     }
-    watch.now = { step: 8, dayIndex: d, groupId: null, blockId: null };
+    st.watch.now = nowOf(NOW.SEARCH_DAY, 8, d);
     yield at;
     const all = st.freeByDay[d].map((s) => st.keyOf(s));
     // The order that finds the fills that leave fewest short first; when it can't settle the
@@ -1175,7 +1197,7 @@ function* fillDay(st, d, at, watch) {
       });
     }
     if (r.improved) {
-      record(st, r.moves, "fill");
+      yield* recordAndTell(st, d, r.moves, "fill", at);
       continue;
     }
     // Searched to the end keeping every minimum: a proof only once the same search, minimums
@@ -1206,7 +1228,7 @@ function* fillDay(st, d, at, watch) {
  * groups short of a weekly minimum (or fewer sessions short) is rearranged so. Never fewer cells
  * filled, never more short; each day at most once per short session, on its own small budget.
  */
-function* raiseMinimums(st, at, watch) {
+function* raiseMinimums(st, at) {
   for (let d = 0; d < st.days.length; d++) {
     const groups = [...new Set(st.freeByDay[d].map((s) => s.groupId))];
     const all = st.freeByDay[d].map((s) => st.keyOf(s));
@@ -1214,7 +1236,7 @@ function* raiseMinimums(st, at, watch) {
       if (outOfWork(st) || !shortfall(st, groups).count[1]) {
         break;
       }
-      watch.now = { step: 8, dayIndex: d, groupId: null, blockId: null };
+      st.watch.now = nowOf(NOW.NEEDED, 8, d);
       yield at;
       const r = yield* solve(st, d, all, {
         guard: true,
@@ -1225,7 +1247,7 @@ function* raiseMinimums(st, at, watch) {
       if (!r.improved) {
         break;
       }
-      record(st, r.moves, "minimum");
+      yield* recordAndTell(st, d, r.moves, "minimum", at);
     }
   }
 }

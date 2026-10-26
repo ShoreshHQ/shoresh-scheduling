@@ -1,6 +1,7 @@
 import { streamFor } from "./random";
 import { canPlace, earlyScore } from "./weekOptions";
 import { lexLess } from "./weekRules";
+import { NOW, tell } from "./progress";
 
 /**
  * Steps 4, 5 and 6 of the protocol (docs/engine/protocol.md): place by priority. A round for
@@ -294,6 +295,7 @@ export function* runRound(st, slots, priority, from) {
     if (st.assigned.has(st.keyOf(slot))) {
       continue;
     }
+    tell(st, NOW.OPTIONS, 3, slot);
     yield from;
     const candidates = candidatesFor(st, slot, priority);
     if (!candidates.length) {
@@ -307,5 +309,7 @@ export function* runRound(st, slots, priority, from) {
         st.tieOf(slot, a) - st.tieOf(slot, b)
     );
     st.place(candidates[0], slot.groupId, slot.dayIndex, slot.blockId);
+    tell(st, NOW.PLACE, 4, slot, candidates[0].id);
+    yield from;
   }
 }

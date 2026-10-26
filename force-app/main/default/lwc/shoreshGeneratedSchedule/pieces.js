@@ -32,12 +32,15 @@ export function nextTurn() {
 /**
  * Builds a week a little at a time (ADR 0010 §22): c/shoreshEngine generateWeekSteps, run for
  * about 30 ms, then the browser gets a turn, then the next piece. Resolves to generateWeek's
- * result (the same week as building it at once). onProgress(fraction) is told how far the build
- * has got, 0 to 1, after each piece. stillWanted() is asked before each piece: when it says no
- * (the director moved to another week), the build stops and resolves to null.
+ * result (the same week as building it at once). onProgress(fraction, now) is told how far the
+ * build has got, 0 to 1, after each piece, and what it is doing at that moment (the engine's
+ * watch.now: a code and ids, c/shoreshEngine NOW). stillWanted() is asked before each piece: when
+ * it says no (the director moved to another week, or chose Cancel), the build stops and resolves
+ * to null.
  */
 export function buildInPieces(input, onProgress, stillWanted = () => true) {
-  const steps = generateWeekSteps(input);
+  const watch = {};
+  const steps = generateWeekSteps(input, watch);
   const piece = () => {
     if (!stillWanted()) {
       return null;
@@ -50,7 +53,7 @@ export function buildInPieces(input, onProgress, stillWanted = () => true) {
     if (step.done) {
       return step.value;
     }
-    onProgress(step.value);
+    onProgress(step.value, watch.now);
     // The next piece, after the browser's turn.
     return nextTurn().then(piece);
   };

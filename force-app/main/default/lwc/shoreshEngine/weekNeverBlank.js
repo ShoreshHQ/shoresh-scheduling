@@ -1,3 +1,4 @@
+import { NOW, tell } from "./progress";
 import { check } from "./weekOptions";
 import {
   PREFERENCES,
@@ -26,6 +27,7 @@ export function* neverBlank(st, slots, from) {
     if (st.assigned.has(k)) {
       continue;
     }
+    tell(st, NOW.BLANK, 7, u);
     yield from;
     let best = null;
     let bestRank = null;
