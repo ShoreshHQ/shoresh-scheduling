@@ -176,6 +176,12 @@ private class GeneratedEngineNotesTest {
     Assert.isNull(
       GeneratedEngineNotes.kept('{"v":1,"open":[[1,2,3,4]],"blank":[]}')
     );
+    // Exactly 4 or 6 pieces, as the screen reads them: never 5.
+    Assert.isNull(
+      GeneratedEngineNotes.kept(
+        '{"v":1,"open":[["d","g","b","minCost","g1"]],"blank":[]}'
+      )
+    );
     Assert.isNull(
       GeneratedEngineNotes.kept('{"v":1,"open":[],"blank":[["fit"]]}')
     );

@@ -775,7 +775,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!notes || !this.loaded) {
       return false;
     }
-    const kept = notesWithout(notes, editedKeys(edits, this.loaded.input.days));
+    let kept = notesWithout(notes, editedKeys(edits, this.loaded.input.days));
+    // The floor note's counts are the build's: any hand edit makes them stale.
+    if (kept.floor) {
+      kept = { ...kept, floor: null };
+    }
     if (kept === notes) {
       return false;
     }
@@ -797,6 +801,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.engineNotes && this.loaded
         ? whyOf(this.engineNotes, this.loaded.input, this.t)
         : null;
+    this.checkWeekShown = this.weekCheck();
   }
 
   // ---------- actions ----------
@@ -1578,13 +1583,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /**
    * The editor's check of the week as it shows it (with the edits still saving): the engine's,
-   * with those locks, so its dots, the Open reasons and the counts are this screen's own.
+   * with those locks, so its dots, the Open reasons and the counts are this screen's own. Made
+   * again whenever the engine's notes change (useEngineNotes), so the editor checks again.
    */
-  checkWeekShown = (days, locks) =>
-    this.checkDays(
-      days,
-      locks ? [...locks].map(lockOf) : this.loaded.input.locks
-    ).checked;
+  checkWeekShown = this.weekCheck();
+
+  weekCheck() {
+    return (days, locks) =>
+      this.checkDays(
+        days,
+        locks ? [...locks].map(lockOf) : this.loaded.input.locks
+      ).checked;
+  }
 
   /**
    * Given to the editor once a week is loaded: the editor is drawn before that (so the pickers

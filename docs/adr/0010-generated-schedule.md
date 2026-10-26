@@ -1378,8 +1378,10 @@ inspect the why and know what happened"). Protocol rule 9.7.
    `{ v, open: [[date, groupId, blockId, why, shortGroupId?, shortActivityId?]], blank: [[field,
 id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.js`), in the
    camp's words and setup's names as they are then; a row whose group, activity or place is gone
-   is left out. The visit that built the week words it the same way, so a reload says exactly
-   what the build said.
+   is left out. The one exception is the floor note's imported-week name (`floor.name`): it is
+   the version's name as it was at the build, stored as text and shown as stored (renaming that
+   version later doesn't change it). The visit that built the week words it the same way, so a
+   reload says exactly what the build said.
 3. **One field on the draft, not one per day.** The draft is already read with the week
    (`GeneratedInputs`) and already written by every save, so the notes cost no query and no extra
    write; per day they would need a second field for the week's notes anyway. Size: an Open row
@@ -1392,10 +1394,11 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
    unknown codes and shapes; nothing is shown as stored). User mode; the field is in the Shoresh
    Scheduler permission set.
 5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots`'s
-   `engineNotes`): sent only when a kept reason goes, and kept only when nobody else saved the
+   `engineNotes`): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the
    week since the screen read it (the answer's revision is given); otherwise the newer notes stay.
    So a cell filled and cleared again by hand says what the week shows after a reload, not the
-   build's reason.
+   build's reason. Any hand edit also drops the floor note (its filled counts are the build's and
+   go stale), kept the same way.
 6. **Versions don't keep notes, and a restored week has none** (`ManualVersions.takeOption`
    clears them): they were about the week the restore replaced. Undo after Start over is a
    restore, so it has none either. Other changes that don't fill cells (Lock, Update to match

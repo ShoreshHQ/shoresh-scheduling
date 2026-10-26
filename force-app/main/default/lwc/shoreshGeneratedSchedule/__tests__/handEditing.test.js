@@ -702,6 +702,28 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
   });
 
+  it("any hand edit drops the floor note (its counts go stale), and keeps the week without it", async () => {
+    const week = savedWeek();
+    week.engineNotes = JSON.stringify({
+      v: 1,
+      open: [],
+      blank: [],
+      floor: { kind: "emptier", name: "Last summer", built: 5, imported: 7 },
+      cut: 0
+    });
+    const element = await render(week);
+    const notesShown = () =>
+      q(element, "c-shoresh-week-checks").measure.notes.map((l) => l.text);
+    expect(notesShown()).toEqual([
+      'This week has 5 cells filled; the imported week ("Last summer") has 7.'
+    ]);
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await clearSwim(element);
+    expect(JSON.parse(saveSlots.mock.calls[0][0].engineNotes).floor).toBeNull();
+    await flush();
+    expect(notesShown()).toEqual([]);
+  });
+
   it("a hand edit on a cell with no kept reason leaves the kept notes as they are", async () => {
     const element = await render();
     saveSlots.mockReturnValue(new Promise(() => {}));
