@@ -1,5 +1,7 @@
 import { blockedBy, canPlace } from "./weekOptions";
 import { PRIORITY_RANK, RULE } from "./weekRules";
+import { NOW, tell } from "./progress";
+import { outOfRunWork } from "./weekState";
 
 /**
  * Step 8 of the protocol (docs/engine/protocol.md), part 1 (rules 8.1-8.8): search before giving
@@ -101,6 +103,10 @@ export function* repair(st, from) {
       if (st.assigned.has(st.keyOf(u))) {
         continue;
       }
+      if (outOfRunWork(st)) {
+        return;
+      }
+      tell(st, NOW.FILL, 8, u);
       yield from;
       st.liftBudget = REPAIR_LIFTS_PER_CELL;
       if (tryFill(st, u, REPAIR_DEPTH, new Set())) {
@@ -418,6 +424,8 @@ function fillCell(st, u, depth, held) {
             raise(st, act, vacate.groupId, depth - 1, held, false))
         ) {
           held.delete(st.keyOf(u));
+          // The move that filled the cell, for the progress screen (the outermost one is last).
+          st.lastMove = { act, vacate, blocker };
           return true;
         }
       }
@@ -436,11 +444,35 @@ export function* fillRepair(st, from, share) {
     if (st.assigned.has(st.keyOf(u))) {
       continue;
     }
-    yield from + (share * i) / st.openSlots.length;
+    if (outOfRunWork(st)) {
+      return;
+    }
+    const at = from + (share * i) / st.openSlots.length;
+    tell(st, NOW.FILL, 8, u);
+    yield at;
     st.minRepairBudget = MIN_REPAIR_BUDGET;
     st.journal.length = 0;
-    fillCell(st, u, FILL_REPAIR_DEPTH, new Set());
+    st.lastMove = null;
+    if (fillCell(st, u, FILL_REPAIR_DEPTH, new Set()) && st.lastMove) {
+      yield* tellMove(st, u, at);
+    }
   }
+}
+
+/**
+ * The move fillCell made to fill u, told to the progress screen: another group had the
+ * activity's last room then, so that group moved to another activity in its cell (FULL); or the
+ * group's own session of it moved into u (SHIFT).
+ */
+function* tellMove(st, u, at) {
+  const { act, vacate, blocker } = st.lastMove;
+  const now = st.assigned.get(st.keyOf(vacate));
+  if (blocker === RULE.GROUPS_AT_ONCE && now) {
+    tell(st, NOW.FULL, 8, vacate, act.id, now);
+  } else {
+    tell(st, NOW.SHIFT, 8, u, act.id);
+  }
+  yield at;
 }
 
 /** Repair 2 for every group short of an activity's weekly minimum. */
@@ -460,6 +492,16 @@ export function* minRepair(st, from, share) {
         st.getCount(groupId, act.id) < st.getMin(act.id);
         pass++
       ) {
+        if (outOfRunWork(st)) {
+          return;
+        }
+        tell(
+          st,
+          NOW.SHORT,
+          8,
+          { dayIndex: null, groupId, blockId: null },
+          act.id
+        );
         yield at;
         st.minRepairBudget = MIN_REPAIR_BUDGET;
         st.journal.length = 0;

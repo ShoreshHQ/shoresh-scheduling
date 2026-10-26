@@ -278,6 +278,27 @@ stays well under the 3-minute ceiling in a browser; not yet measured in a browse
 search it pauses every 200 steps so the screen keeps the tab responsive. The slowest differential
 camp takes about 11 s in Node, the 60-group odd camp 1.6 s, the 30-group ordinary camp 1.1 s.
 
+Those limits are per build, and one Generate may build up to four times (the stricter second
+build, and both again from the imported week), while the repairs before the search grow with the
+number of groups: a made-up 80-group week that can't fit took 232 s in Node. So the whole run also
+has a ceiling (`RUN_WORK` in shoreshEngine.js, PR 6): 40,000,000 rule checks plus cells looked at,
+over every build. Node does about 1.1 million a second on the largest camps, so that is about
+35 s in Node, and 70-105 s in a browser two to three times slower: under the 3-minute ceiling.
+Past it the repairs and the search stop and the week is finished as it stands (never-blank still
+runs; a cell still Open says the search ran out of work). Measured in Node (2026-10-26): the
+largest test camp, differential seed 241, uses about 20 million (10.5 s); seed 143 10.8 s; the
+60-group odd camp 1.6 s; the 30-group ordinary camp 1.2 s; none reaches the ceiling, so none
+changed (all 425 odd and differential camps build the same week as before). Made-up weeks that
+can't fit, with the ceiling: 60 groups x 8 blocks 33 s (85 s before), 80 groups 28 s (232 s
+before), 100 groups x 10 blocks 31 s. Not yet measured in a browser.
+
+### What the build is doing now
+
+While it builds, the engine says what it is doing as a code and ids (`progress.js`, `NOW`), one
+per step, set just before it pauses; the screen reads the latest when it gets the tab back and
+says it in camp words (Generated Schedule's `progressWords.js`). Nothing the build reads, so the
+week is the same watched or not.
+
 ### CI's sample and the full run
 
 The engine's heaviest tests build seeded camps in a loop. CI's default run (`jest.config.js`)

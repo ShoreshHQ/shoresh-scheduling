@@ -3,7 +3,7 @@
  * Its proofs are checked against an exhaustive search written without the engine's code
  * (data/settledRules.js), and its moves against the rules it must keep.
  */
-import { generateWeek, generateWeekSteps } from "c/shoreshEngine";
+import { NOW, generateWeek, generateWeekSteps } from "c/shoreshEngine";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
 import { randomCamp } from "./data/randomCamp";
 import { settledRules } from "./data/settledRules";
@@ -175,7 +175,11 @@ describe("progress", () => {
     expect(JSON.stringify(step.value)).toBe(
       JSON.stringify(generateWeek(camp(spec)))
     );
-    for (const now of seen) {
+    const searching = seen.filter((now) =>
+      [NOW.SEARCH, NOW.SEARCH_DAY, NOW.NEEDED].includes(now.code)
+    );
+    // Every code, and that each kind is said somewhere: progress.test.js.
+    for (const now of searching) {
       expect(now.step).toBe(8);
       expect(typeof now.date).toBe("string");
     }

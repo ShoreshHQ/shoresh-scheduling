@@ -7,6 +7,7 @@ import {
 } from "./checkInputs";
 import { identity } from "./grid";
 import { OPEN_WHY } from "./notes";
+import { NOW, nowOf } from "./progress";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
 import {
   atCamp,
@@ -54,6 +55,7 @@ export {
   readProgram
 } from "./checkInputs";
 export { measureWeek } from "./measure";
+export { NOW } from "./progress";
 export {
   NOTES_MAX,
   notesOf,
@@ -66,6 +68,14 @@ export {
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
+
+// The most work one Generate may do, over every build it makes (weekState.js runWorkLeft): rule
+// checks plus cells the step 8 search looked at. Node does about 1.1 million a second on the
+// largest camps, so this is about 40 s there, and in a browser two to three times slower still
+// under the 3-minute ceiling. Past it the repairs and the search stop and the week is finished
+// as it stands (nothing left blank; a cell still Open says the search ran out of work). The
+// largest test camp uses about 20 million (docs/engine/protocol.md, "Step 8 budget").
+const RUN_WORK = 40000000;
 
 /**
  * Generated Schedule's engine (ADR 0010): one program's week, built in the browser from the
@@ -147,10 +157,14 @@ export function generateWeek(input) {
  * the week, so it is the same as generateWeek's. It ends at 1. A week built twice (the minimum
  * repair's leniency, below) spends the first half of the way on the first build; once the first
  * build's minimum repair shows it won't be built again, the rest of the first build fills the
- * rest of the way. watch, if given, holds what the build is working on as it goes (watch.now:
- * { step, date, groupId, blockId }, null between searches), for a progress screen to say in words.
+ * rest of the way. watch, if given, holds what the build is working on as it goes (watch.now,
+ * progress.js: { code, step, date, dayIndex, groupId, blockId, activityId, toActivityId }), for a
+ * progress screen to say in words; the screen reads the latest when it gets the tab back.
+ * runWork: the most work the whole run may do (RUN_WORK; a test may set a smaller one).
  */
-export function* generateWeekSteps(input, watch = {}) {
+export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
+  // Step 1: reading the week's setup (a setup that can't be built answers with no steps).
+  watch.now = nowOf(NOW.READ, 1);
   const t = input.terms || buildTerms([]);
   const weekId = input.weekId || null;
   const activities = readActivities(
@@ -223,28 +237,45 @@ export function* generateWeekSteps(input, watch = {}) {
   const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
   // A build fills the bar from `from` by `share`; `once` (it may be the only build in its part of
   // the bar): once that is known, it runs on to `end` instead.
-  function* build(settings, from, share, once, end = 1) {
+  // The run's work so far, over every build (RUN_WORK).
+  let workUsed = 0;
+  function* build(settings, from, share, once, end = 1, code = null) {
+    if (code) {
+      // A second build (the stricter one, or from the imported week): said first.
+      watch.now = nowOf(code, 8);
+      yield from;
+    }
     const notes = {};
-    const steps = scheduleWeekSteps(settings, notes);
+    const steps = scheduleWeekSteps(
+      { ...settings, runWorkLeft: runWork - workUsed },
+      notes
+    );
     // Where the bar was when it became known this is the only build (see above), if it is.
     let alone = null;
+    // What the build said last, so the watcher's copy (with the day's date) is made only when
+    // it changes, not at every step.
+    let told = null;
     let step = steps.next();
     while (!step.done) {
       const f = step.value;
       if (once && !alone && notes.settled && !notes.leftForNeverBlank) {
         alone = { f, at: from + share * f };
       }
-      watch.now = notes.now
-        ? { ...notes.now, date: days[notes.now.dayIndex].date }
-        : null;
+      if (notes.now !== told) {
+        told = notes.now;
+        watch.now = {
+          ...told,
+          date: told.dayIndex == null ? null : days[told.dayIndex].date
+        };
+      }
       yield alone && alone.f < 1
         ? alone.at + ((f - alone.f) / (1 - alone.f)) * (end - alone.at)
         : from + share * f;
       step = steps.next();
     }
     const state = step.value;
+    workUsed += state.ruleChecks + state.looksUsed;
     const built = writeDays(settings, state);
-    watch.now = null;
     yield once && !state.leftForNeverBlank ? end : from + share;
     return {
       state,
@@ -255,15 +286,24 @@ export function* generateWeekSteps(input, watch = {}) {
   // One build, and when the minimum repair left a cell for never-blank, the same again without
   // that leniency: the week kept is the one no worse (it meets more minimums, or as many with no
   // more bends; ADR 0010).
-  function* buildBest(settings, from, share, once) {
-    let best = yield* build(settings, from, share / 2, once, from + share);
+  function* buildBest(settings, from, share, once, code = null) {
+    let best = yield* build(
+      settings,
+      from,
+      share / 2,
+      once,
+      from + share,
+      code
+    );
     let checks = best.state.ruleChecks;
     if (best.state.leftForNeverBlank) {
       const strict = yield* build(
         { ...settings, strictRepair: true },
         from + share / 2,
         share / 2,
-        false
+        false,
+        1,
+        NOW.AGAIN
       );
       checks += strict.state.ruleChecks;
       if (worse(best.checked, strict.checked)) {
@@ -282,6 +322,7 @@ export function* generateWeekSteps(input, watch = {}) {
   // from the imported week the second (the bar jumps to the end when none is needed); else the
   // first build has all of it.
   const floorShare = importedDays.length && model.mode === MODE.FULL ? 0.5 : 0;
+  yield 0;
   const first = yield* buildBest(model, 0, 1 - floorShare, true);
   let ruleChecks = first.ruleChecks;
   // Step 8's floor: never emptier than the week as it was imported (weekFloor.js).
@@ -310,6 +351,7 @@ export function* generateWeekSteps(input, watch = {}) {
       if (floor.imported > first.checked.cells.filled) {
         const seed = seedFromImport(model, fromImport, writeDays);
         ruleChecks += seed.kept.ruleChecks;
+        workUsed += seed.kept.ruleChecks;
         const seededModel = {
           ...model,
           days: readDays(seed.days, readPartsOfDay(input.timeBlocks)),
@@ -319,7 +361,8 @@ export function* generateWeekSteps(input, watch = {}) {
           seededModel,
           1 - floorShare,
           floorShare,
-          true
+          true,
+          NOW.IMPORTED
         );
         ruleChecks += seeded.ruleChecks;
         // Checked as the director's week: only what the first build kept counts as kept, so a

@@ -5,6 +5,7 @@ import { fillRepair, minRepair, repair, startRepairs } from "./weekRepair";
 import { finishOpen, neverBlank } from "./weekNeverBlank";
 import { explainOpen, searchWeek } from "./weekSearch";
 import { createWeekState } from "./weekState";
+import { NOW, nowOf } from "./progress";
 
 /**
  * Generated Schedule's week builder: the desktop generator (src/engine/buildSchedule.js,
@@ -81,12 +82,17 @@ const SHARE = Object.freeze({
  * steps only say where the build is; they never change it, so a week built in steps is the
  * same as one built at once. notes, if given, is told once the minimum repair is done whether
  * it left a cell for never-blank (notes.settled, notes.leftForNeverBlank): from then on the
- * caller knows whether the week will be built a second time.
+ * caller knows whether the week will be built a second time. notes.now says what the build is
+ * doing as it goes (progress.js), for a progress screen.
  */
 export function* scheduleWeekSteps(model, notes = {}) {
   const st = createWeekState(model);
+  // What it is doing now, for a progress screen (progress.js): told to notes.now.
+  st.watch = notes;
 
   // Step 2: what's fixed goes in; the cells left are the ones to fill.
+  notes.now = nowOf(NOW.FIXED, 2);
+  yield 0;
   readGrid(st);
   // Step 3: each cell's stable tie-break keys and each activity's early-week days.
   drawTieKeys(st, st.freeSlots);
@@ -118,7 +124,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
   yield* finishOpen(st, at);
   at += SHARE.neverBlank;
   // Step 8, part 2 (protocol 8.10-8.18): the exact search; then why each cell still Open is Open.
-  yield* searchWeek(st, at, SHARE.search, notes);
+  yield* searchWeek(st, at, SHARE.search);
   explainOpen(st);
 
   return {
@@ -133,6 +139,7 @@ export function* scheduleWeekSteps(model, notes = {}) {
     lockedOpen: st.lockedOpen,
     placeUsage: st.placeUsage,
     activityUsers: st.activityUsers,
+    looksUsed: st.looksUsed,
     keyOf: st.keyOf,
     splitKey: st.splitKey,
     cellKey: st.cellKey,
