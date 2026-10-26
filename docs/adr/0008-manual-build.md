@@ -1382,8 +1382,7 @@ physical world. Flag it as a reminder but allow it."_
 1. **Never refused for what setup says** (Manual Build and Generated Schedule, `SlotSaves`): a
    closed activity, an activity at a closed place, a group away this week (where the grid has a
    row for it), a time a group isn't at camp (morning or afternoon only), and a fixed or recurring
-   activity moved, covered or cleared by hand. `SlotRules.checkNotSetTime` and `checkAtCamp` are
-   no longer called for hand edits (Generated's whole-week saves still use them, ADR 0010). A
+   activity moved, covered or cleared by hand. Those two rules now live in `GeneratedCellRules`, used only by Generated's whole-week saves (ADR 0010). A
    fixed or recurring activity moved onto a day that doesn't list it is listed there as another
    day of the schedule names it.
 2. **Still refused, because they protect the data, not the plan:** a cell that changed since the

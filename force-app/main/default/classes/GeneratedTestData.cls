@@ -174,44 +174,6 @@ public class GeneratedTestData {
     return save;
   }
 
-  /**
-   * Every activity taken out of every day, as Start over sends the week (the screen's
-   * clearedDays): fixed and recurring activities, specials and electives stay.
-   */
-  public static GeneratedWeek.Save cleared(GeneratedWeek.Save save) {
-    for (GeneratedWeek.Day day : save.days) {
-      List<GeneratedWeek.Item> items = new List<GeneratedWeek.Item>();
-      Map<String, String> numbers = new Map<String, String>();
-      for (Integer g = 0; g < day.rows.size(); g++) {
-        List<String> tokens = day.rows[g].split(',', -1);
-        Boolean dropped = false;
-        for (Integer b = 0; b < tokens.size(); b++) {
-          String token = tokens[b];
-          if (token == ScheduleGrid.CARRIES_ON) {
-            tokens[b] = dropped ? '' : token;
-            continue;
-          }
-          GeneratedWeek.Item placed = String.isBlank(token)
-            ? null
-            : day.items[Integer.valueOf(token) - 1];
-          dropped = placed == null || placed.kind == 'A';
-          if (dropped) {
-            tokens[b] = '';
-            continue;
-          }
-          if (!numbers.containsKey(token)) {
-            items.add(placed);
-            numbers.put(token, String.valueOf(items.size()));
-          }
-          tokens[b] = numbers.get(token);
-        }
-        day.rows[g] = String.join(tokens, ',');
-      }
-      day.items = items;
-    }
-    return save;
-  }
-
   /** Hand edits on a Generated draft from a screen that read it at revision; no engine notes. */
   public static SlotEdits.Result handEdits(
     Id scheduleId,

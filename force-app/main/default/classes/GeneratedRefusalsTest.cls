@@ -690,19 +690,19 @@ private class GeneratedRefusalsTest {
   }
 
   /** A hand edit of one cell on the Generated draft, from what the screen saw. */
+  /** change: what the cell held when the screen saw it, then what it should hold. */
   private static SlotEdits.Edit handEdit(
     GeneratedInputs.Inputs read,
     List<Integer> cell,
-    String before,
-    String after
+    List<String> change
   ) {
     SlotEdits.Run run = new SlotEdits.Run();
     run.day = GeneratedTestData.MONDAY;
     run.groupId = read.days[0].groups[cell[0]].id;
     run.firstBlockId = read.days[0].blocks[cell[1]].id;
     run.blockIds = new List<String>{ run.firstBlockId };
-    run.before = new List<String>{ before };
-    run.after = new List<String>{ after };
+    run.before = new List<String>{ change[0] };
+    run.after = new List<String>{ change[1] };
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = new List<SlotEdits.Run>{ run };
     return edit;
@@ -749,8 +749,7 @@ private class GeneratedRefusalsTest {
             GeneratedTestData.GROUP_A,
             GeneratedTestData.LUNCH
           ),
-          '',
-          GeneratedTestData.a('Soccer')
+          new List<String>{ '', GeneratedTestData.a('Soccer') }
         ),
         handEdit(
           read,
@@ -758,8 +757,7 @@ private class GeneratedRefusalsTest {
             GeneratedTestData.GROUP_B,
             GeneratedTestData.LUNCH
           ),
-          '',
-          GeneratedTestData.a('Swim')
+          new List<String>{ '', GeneratedTestData.a('Swim') }
         ),
         handEdit(
           read,
@@ -767,8 +765,10 @@ private class GeneratedRefusalsTest {
             GeneratedTestData.GROUP_C,
             GeneratedTestData.PERIOD_1
           ),
-          'F:' + ids.get('Flagpole'),
-          GeneratedTestData.a('Swim')
+          new List<String>{
+            'F:' + ids.get('Flagpole'),
+            GeneratedTestData.a('Swim')
+          }
         )
       },
       read.revision
@@ -837,7 +837,7 @@ private class GeneratedRefusalsTest {
       read = handEdited(ids, read);
       // Start over that kept an activity (one left on Tuesday): not what the screen sends,
       // refused, and nothing written.
-      GeneratedWeek.Save oneLeft = GeneratedTestData.cleared(
+      GeneratedWeek.Save oneLeft = StartOverTestData.cleared(
         request(read, GeneratedSaves.START_OVER)
       );
       GeneratedTestData.put(
@@ -854,7 +854,7 @@ private class GeneratedRefusalsTest {
       );
       // Every activity cleared, the hand edits too; fixed and recurring activities kept: saved.
       GeneratedWeek.Result cleared = GeneratedTestData.save(
-        GeneratedTestData.cleared(request(read, GeneratedSaves.START_OVER))
+        StartOverTestData.cleared(request(read, GeneratedSaves.START_OVER))
       );
       Test.stopTest();
       Assert.isFalse(cleared.conflict, 'Refused: ' + cleared.message);
@@ -892,7 +892,11 @@ private class GeneratedRefusalsTest {
       SlotEdits.Result saved = GeneratedTestData.handEdits(
         read.scheduleId,
         new List<SlotEdits.Edit>{
-          handEdit(read, period1A, 'F:' + ids.get('Flagpole'), '')
+          handEdit(
+            read,
+            period1A,
+            new List<String>{ 'F:' + ids.get('Flagpole'), '' }
+          )
         },
         read.revision
       );

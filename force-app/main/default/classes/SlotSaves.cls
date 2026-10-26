@@ -57,19 +57,24 @@ public with sharing class SlotSaves {
 
   /**
    * Start from another week's copy: on setup already read (GeneratedSetup.rules) and the draft's
-   * days as the start read them (read), and without reading the schedule back (the start reads the
+   * days as the start read them (Prepared), and without reading the schedule back (the start reads the
    * whole draft once afterwards anyway). The draft must be one this request inserted, so nobody
    * else can save it meanwhile.
    */
   public static SlotEdits.Result makeWith(
-    Id scheduleId,
-    List<ScheduleDays.DayGrid> read,
-    List<SlotEdits.Edit> edits,
-    SlotRules rules
+    Prepared draft,
+    List<SlotEdits.Edit> edits
   ) {
     SlotSaves saves = new SlotSaves();
-    saves.rules = rules;
-    return saves.saveAll(scheduleId, read, edits);
+    saves.rules = draft.rules;
+    return saves.saveAll(draft.scheduleId, draft.days, edits);
+  }
+
+  /** A draft this request made, with its days as read and the rules its edits go by (makeWith). */
+  public class Prepared {
+    public Id scheduleId;
+    public List<ScheduleDays.DayGrid> days;
+    public SlotRules rules;
   }
 
   /**
@@ -217,7 +222,7 @@ public with sharing class SlotSaves {
       return false;
     }
     // A run starts where a placement starts: starting inside one would cut off its first part.
-    SlotRules.checkStartsClean(was[first]);
+    SlotRunChecks.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
@@ -226,7 +231,7 @@ public with sharing class SlotSaves {
     if (lockEdits) {
       new GeneratedEdits(run, was).lock(grid, new List<Integer>{ g, first });
     }
-    return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
+    return SlotRunChecks.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }
 
   /** Generated Schedule: the run's locks are as the screen saw them (GeneratedEdits). */
@@ -258,39 +263,8 @@ public with sharing class SlotSaves {
       }
       grid.rows[g][b] = ScheduleGrid.CARRIES_ON;
     } else {
-      bringSetTimeItem(grid, slot);
+      SlotSetTimeItems.bring(grid, slot, days.values());
       grid.rows[g][b] = rules.startToken(grid, slot);
     }
-  }
-
-  /**
-   * A fixed or recurring activity moved by hand onto a day that doesn't list it: listed there, as
-   * another day of the schedule names it. One no day names was not on the screen: refused.
-   */
-  private void bringSetTimeItem(ScheduleGrid grid, String slot) {
-    if (!SlotIds.isSetTime(slot) || itemFor(grid, slot) != null) {
-      return;
-    }
-    for (ScheduleDays.DayGrid day : days.values()) {
-      ScheduleGrid.Item item = day.grid == null
-        ? null
-        : itemFor(day.grid, slot);
-      if (item != null) {
-        grid.items.add(new ScheduleGrid.Item(item.kind, item.id, item.name));
-        return;
-      }
-    }
-    throw new ShoreshException(
-      'That change could not be read. Reload the page and try again.'
-    );
-  }
-
-  private static ScheduleGrid.Item itemFor(ScheduleGrid grid, String slot) {
-    for (ScheduleGrid.Item item : grid.items) {
-      if (SlotIds.of(item).equals(slot)) {
-        return item;
-      }
-    }
-    return null;
   }
 }

@@ -19,25 +19,17 @@ public with sharing class SlotEvents {
     return new SlotEvents();
   }
 
-  /** The season's events and elective sets the edits place. */
-  public static SlotEvents read(
-    Id seasonId,
-    CampLabels labels,
-    List<SlotEdits.Edit> edits
-  ) {
-    return read(seasonId, labels, edits, new Map<Id, SObject>());
-  }
-
   /**
-   * The same, given records already read in user mode (the season's, with Id and Name): those
-   * aren't read again.
+   * The season's (setup.seasonId) events and elective sets the edits place, but those already read
+   * in user mode (known: the season's, with Id and Name), which aren't read again.
    */
   public static SlotEvents read(
-    Id seasonId,
-    CampLabels labels,
+    SlotRules.Setup setup,
     List<SlotEdits.Edit> edits,
     Map<Id, SObject> known
   ) {
+    Id seasonId = setup.seasonId;
+    CampLabels labels = setup.labels;
     SlotEvents result = new SlotEvents();
     result.labels = labels ?? result.labels;
     Set<Id> eventIds = new Set<Id>();

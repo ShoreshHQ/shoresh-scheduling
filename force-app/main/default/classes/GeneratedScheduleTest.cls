@@ -404,7 +404,7 @@ private class GeneratedScheduleTest {
     );
     if (action == GeneratedSaves.START_OVER) {
       // Start over builds nothing: every activity is cleared (the screen's clearedDays).
-      return GeneratedTestData.save(GeneratedTestData.cleared(request));
+      return GeneratedTestData.save(StartOverTestData.cleared(request));
     }
     return GeneratedTestData.save(
       activity == null ? request : GeneratedTestData.filled(request, activity)

@@ -65,13 +65,12 @@ public with sharing class ManualWeekStart {
       // No second lock: this request inserted the draft (under the program's lock), so nobody
       // else can see or save it until the request ends. The rules use the setup and elective
       // sets this request already read (repo docs/adr/0008-manual-build.md: query headroom).
-      SlotEdits.Result saved = SlotSaves.makeWith(
-        blank.draftId,
-        read.get(blank.draftId),
-        copy.edits,
-        setup.rules(SlotRules.activityIdsIn(copy.edits))
-          .withEvents(copy.edits, rules.electiveSets ?? new Map<Id, SObject>())
-      );
+      SlotSaves.Prepared draft = new SlotSaves.Prepared();
+      draft.scheduleId = blank.draftId;
+      draft.days = read.get(blank.draftId);
+      draft.rules = setup.rules(SlotRules.activityIdsIn(copy.edits))
+        .withEvents(copy.edits, rules.electiveSets ?? new Map<Id, SObject>());
+      SlotEdits.Result saved = SlotSaves.makeWith(draft, copy.edits);
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
           'The week could not be copied. Reload the page and try again.'

@@ -523,26 +523,6 @@ private class ManualBuildTest {
     }
   }
 
-  /** What "Update to match setup" says about a cell (dots: read once), or null. */
-  private static String reminderAt(
-    List<SetupMatch.Dot> dots,
-    Date day,
-    Id groupId,
-    Id blockId
-  ) {
-    for (SetupMatch.Dot dot : dots) {
-      List<String> parts = dot.key.split('\\|');
-      if (
-        parts[0] == String.valueOf(day) &&
-        Id.valueOf(parts[1]) == groupId &&
-        Id.valueOf(parts[2]) == blockId
-      ) {
-        return dot.words;
-      }
-    }
-    return null;
-  }
-
   @IsTest
   static void fixedRecurringAndNotAtCampSlotsAreHandEditsWithReminders() {
     // Greg, 2026-10-26 (engine care Q4): a hand edit is always made; the Why list reminds.
@@ -594,19 +574,35 @@ private class ManualBuildTest {
         .dots;
       Assert.areEqual(
         'Flagpole is set up here now',
-        reminderAt(dots, mon, ids.get('Group A'), ids.get('Period 1'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group A'), ids.get('Period 1') }
+        )
       );
       Assert.areEqual(
         'Flagpole is set up here now',
-        reminderAt(dots, mon, ids.get('Group B'), ids.get('Period 1'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 1') }
+        )
       );
       Assert.areEqual(
         'Not set up here now',
-        reminderAt(dots, mon, ids.get('Group B'), ids.get('Period 2'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 2') }
+        )
       );
       Assert.areEqual(
         'Not at camp then',
-        reminderAt(dots, mon, ids.get('Group B'), ids.get('Lunch'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Lunch') }
+        )
       );
       Test.stopTest();
     }
@@ -663,15 +659,27 @@ private class ManualBuildTest {
         .dots;
       Assert.areEqual(
         'Not running this week',
-        reminderAt(dots, mon, ids.get('Group A'), ids.get('Period 2'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group A'), ids.get('Period 2') }
+        )
       );
       Assert.areEqual(
         'Field A is closed this week',
-        reminderAt(dots, mon, ids.get('Group B'), ids.get('Period 2'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group B'), ids.get('Period 2') }
+        )
       );
       Assert.areEqual(
         'Not at camp this week',
-        reminderAt(dots, mon, ids.get('Group C'), ids.get('Period 2'))
+        SetupReminders.at(
+          dots,
+          mon,
+          new List<Id>{ ids.get('Group C'), ids.get('Period 2') }
+        )
       );
       Test.stopTest();
     }

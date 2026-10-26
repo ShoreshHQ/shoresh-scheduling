@@ -617,7 +617,7 @@ private class GeneratedLocksTest {
         }
       );
       GeneratedWeek.Result result = GeneratedTestData.save(
-        GeneratedTestData.cleared(
+        StartOverTestData.cleared(
           GeneratedTestData.request(
             GeneratedTestData.inputs(),
             GeneratedSaves.START_OVER,

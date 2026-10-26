@@ -2,8 +2,8 @@
  * What the server checks when a generated week is saved (GeneratedSaves). The engine runs in the
  * browser (ADR 0010), so the server re-checks what it cheaply can and refuses an impossible write,
  * on the cells that changed:
- * - fixed and recurring activities stay where they are (Manual Build's SlotRules);
- * - nothing is put where a group isn't at camp (SlotRules: part of day; GeneratedClosures: away
+ * - fixed and recurring activities stay where they are (GeneratedCellRules);
+ * - nothing is put where a group isn't at camp (GeneratedCellRules: part of day; GeneratedClosures: away
  *   this week); a leftover there may be cleared;
  * - only this season's activities, and none closed this week (GeneratedClosures);
  * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
@@ -22,6 +22,8 @@
  */
 public with sharing class GeneratedChecks {
   private SlotRules rules;
+  // What the engine may never build (fixed and recurring activities, at camp).
+  private GeneratedCellRules cells;
   private GeneratedClosures closures;
   // Fill the open cells: every filled cell stays as it is.
   private Boolean onlyOpen;
@@ -56,12 +58,7 @@ public with sharing class GeneratedChecks {
       request.action == GeneratedSaves.FILL_OPEN
     );
     checks.keepLocks = request.action != GeneratedSaves.START_OVER;
-    // Start over: the days a special day replaces keep what they hold; every other is cleared.
-    // Worked out as the screen works them out (WeekSpecials.replacedDates); when special days
-    // can't be read, no day can be told apart, so none is checked (never a wrong refusal).
-    Set<Date> kept = checks.keepLocks
-      ? null
-      : WeekSpecials.replacedDates(setup.week);
+    checks.cells = new GeneratedCellRules(setup);
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
@@ -71,10 +68,10 @@ public with sharing class GeneratedChecks {
       for (Integer g = 0; g < now.groups.size(); g++) {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
       }
-      if (kept != null && !kept.contains(day.day)) {
-        checkCleared(now);
-      }
       grids.add(now);
+    }
+    if (!checks.keepLocks) {
+      GeneratedStartOver.check(setup, days, grids);
     }
     return grids;
   }
@@ -108,22 +105,6 @@ public with sharing class GeneratedChecks {
         item.name = activity.Name;
       } else if (savedNames.containsKey(identity)) {
         item.name = savedNames.get(identity);
-      }
-    }
-  }
-
-  /**
-   * Start over clears every activity of the day and places nothing (the screen's clearedDays):
-   * an activity still on it, kept or new, is a save the screen didn't make, refused. What else
-   * a day holds (fixed and recurring activities, specials, electives) stays as it was, and is
-   * checked as any changed cell is.
-   */
-  private static void checkCleared(ScheduleGrid now) {
-    for (Integer g = 0; g < now.groups.size(); g++) {
-      for (String slot : SlotIds.ofRow(now, g)) {
-        if (SlotIds.owner(slot).startsWith('A:')) {
-          throw GeneratedFrames.unreadable();
-        }
       }
     }
   }
@@ -174,8 +155,8 @@ public with sharing class GeneratedChecks {
       throw GeneratedFrames.unreadable();
     }
     checkNotSetUpKept(was);
-    rules.checkNotSetTime(was, slot);
-    rules.checkAtCamp(slot, at[0], at[1]);
+    cells.checkNotSetTime(was, slot);
+    cells.checkAtCamp(slot, at);
     if (slot == SlotIds.OPEN) {
       return;
     }
