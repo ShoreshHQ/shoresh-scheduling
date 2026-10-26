@@ -5,8 +5,8 @@
  * is read by the build, so a week built while watched is the same as one built without.
  *
  * now: { code, step (the protocol step, docs/engine/protocol.md), dayIndex, groupId, blockId,
- *        activityId, toActivityId } (each null when it doesn't apply); generateWeekSteps adds
- *        the day's date.
+ *        activityId, toActivityId, toDayIndex, times } (each null when it doesn't apply);
+ *        generateWeekSteps adds the day's date (and toDate, toDayIndex's).
  */
 export const NOW = Object.freeze({
   // Step 1: reading the week's setup.
@@ -36,6 +36,9 @@ export const NOW = Object.freeze({
   SEARCH_DAY: "searchDay",
   // Step 8, the search: rearranging the day so fewer groups are short of a weekly minimum.
   NEEDED: "needed",
+  // Step 8, moves between days: groupId's activityId moves from dayIndex to toDayIndex, so it gets
+  // toActivityId `times` times this week (a weekly minimum).
+  ACROSS: "across",
   // The same week built a second time, the stricter way, to keep the better of the two.
   AGAIN: "again",
   // Step 8's floor: building from the imported week, to compare.
@@ -50,9 +53,21 @@ export function nowOf(
   groupId = null,
   blockId = null,
   activityId = null,
-  toActivityId = null
+  toActivityId = null,
+  toDayIndex = null,
+  times = null
 ) {
-  return { code, step, dayIndex, groupId, blockId, activityId, toActivityId };
+  return {
+    code,
+    step,
+    dayIndex,
+    groupId,
+    blockId,
+    activityId,
+    toActivityId,
+    toDayIndex,
+    times
+  };
 }
 
 /** Tells the build's watcher (st.watch, scheduleWeekSteps' notes) what it is doing now. */

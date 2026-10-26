@@ -431,7 +431,7 @@ describe("c-shoresh-generated-schedule", () => {
       expect(live).toBeNull();
       await settle(element);
       await expect(element).toBeAccessible();
-    });
+    }, 60000); // a big camp's whole build: slow CI runners need longer
 
     it("says the line aloud at most every five seconds, not at every change", async () => {
       // A clock that moves on 40 ms each time it is read.

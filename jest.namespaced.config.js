@@ -31,6 +31,8 @@ module.exports = {
   testPathIgnorePatterns: [
     ...(base.testPathIgnorePatterns || []),
     ...EXCLUDED_SUITES.map((name) => `/lwc/${name}/`),
-    ...ENGINE_SWEEPS.map((name) => `/lwc/shoreshEngine/__tests__/${name}\\.test\\.js$`)
+    ...ENGINE_SWEEPS.map(
+      (name) => `/lwc/shoreshEngine/__tests__/${name}\\.test\\.js$`
+    )
   ]
 };

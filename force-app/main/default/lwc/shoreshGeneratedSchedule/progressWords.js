@@ -13,6 +13,14 @@ export function possessive(name) {
   return /s$/i.test(name) ? `${name}'` : `${name}'s`;
 }
 
+/** 1 -> "once", 2 -> "twice", 3 -> "3 times". */
+function timesWord(n) {
+  if (n === 1) {
+    return "once";
+  }
+  return n === 2 ? "twice" : `${n} times`;
+}
+
 /** The names a line needs, read once per build from the engine's input: ids -> names. */
 export function namesOf(input) {
   const named = (records) =>
@@ -93,6 +101,12 @@ export function progressLine(now, names, t) {
       return day
         ? `Rearranging ${day} so each ${t.sIn("Group")} gets what it still needs`
         : null;
+    case NOW.ACROSS: {
+      const toDay = now.toDate ? dayLabel(now.toDate).label : "";
+      return all(group, act, day, toDay, to) && now.times
+        ? `Moving ${possessive(group)} ${act} from ${day} to ${toDay} so they get ${to} ${timesWord(now.times)}`
+        : null;
+    }
     case NOW.AGAIN:
       return `Trying a second way, to keep the better ${t.sIn("Week")}`;
     case NOW.IMPORTED:

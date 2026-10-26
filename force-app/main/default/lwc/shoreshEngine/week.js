@@ -28,7 +28,8 @@ import { NOW, nowOf } from "./progress";
  *   4-6 place by priority ......... weekPlace.js
  *   8 search before giving up ..... part 1, weekRepair.js: the desktop's three repairs (8.1-8.8),
  *                                   before step 7; part 2, weekSearch.js: the exact search
- *                                   (8.10-8.18), after it
+ *                                   (8.10-8.18), after it; then weekAcross.js, moves
+ *                                   between days for weekly minimums (8.24-8.28)
  *   7 never blank ................. weekNeverBlank.js
  *   8 the floor ................... weekFloor.js, from shoreshEngine.js: never emptier than the
  *                                   imported week (8.19-8.23)

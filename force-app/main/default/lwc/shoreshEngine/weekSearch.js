@@ -1,5 +1,6 @@
 import { NOW, nowOf, tell } from "./progress";
 import { check } from "./weekOptions";
+import { moveAcrossDays } from "./weekAcross";
 import {
   BUDGET,
   FULL,
@@ -1117,9 +1118,13 @@ export function* searchWeek(st, from, share) {
     yield* fillDay(st, d, from + (share * d) / st.days.length);
   }
   yield* raiseMinimums(st, from + share);
-  // Moves since may have lifted the minimum that kept a day from filling: such days again.
+  // Then moves between days, for minimums a day on its own can't meet (weekAcross.js).
+  const changed = yield* moveAcrossDays(st, from + share, outOfWork);
+  // Moves since may have lifted the minimum that kept a day from filling, and a day the moves
+  // between days changed may now fit more in its Open cells (a session that left it frees its
+  // time and place): such days again.
   for (let d = 0; d < st.days.length; d++) {
-    if (st.dayWhy.get(d) === MIN_COST) {
+    if (st.dayWhy.get(d) === MIN_COST || changed.has(d)) {
       st.dayWhy.delete(d);
       yield* fillDay(st, d, from + share);
     }
