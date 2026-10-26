@@ -6,6 +6,10 @@
  * inside the camp the screen shows.
  */
 public with sharing class LearnedUndo {
+  // Tests only: an undelete that fails, as when the recycle bin no longer holds the record.
+  @TestVisible
+  private static Boolean refuseUndelete = false;
+
   /** Undo of a Forget. False when it can't come back (see above). */
   public static Boolean forget(Id campId, Id answerId) {
     ImportAnswer__c old = forgotten(campId, answerId);
@@ -19,17 +23,13 @@ public with sharing class LearnedUndo {
   public static Boolean change(Id campId, Id newId, Id oldId) {
     ImportAnswer__c old = forgotten(campId, oldId);
     List<ImportAnswer__c> current = [
-      SELECT Id, CreatedDate, LastModifiedDate
+      SELECT Id, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById
       FROM ImportAnswer__c
       WHERE Id = :newId AND Camp__c = :campId
       WITH USER_MODE
       LIMIT 1
     ];
-    if (
-      old == null ||
-      current.isEmpty() ||
-      current[0].LastModifiedDate != current[0].CreatedDate
-    ) {
+    if (old == null || current.isEmpty() || changedSince(current[0])) {
       return false;
     }
     Savepoint before = Database.setSavepoint();
@@ -39,6 +39,12 @@ public with sharing class LearnedUndo {
       return false;
     }
     return true;
+  }
+
+  /** Saved again after the Change made it (an import's answer), by anyone. */
+  private static Boolean changedSince(ImportAnswer__c row) {
+    return row.LastModifiedDate != row.CreatedDate ||
+      row.LastModifiedById != row.CreatedById;
   }
 
   /** This camp's answer in the recycle bin, or null. */
@@ -56,6 +62,9 @@ public with sharing class LearnedUndo {
 
   /** Brought back, unless a newer answer to its question holds the key. */
   private static Boolean undeleted(Id answerId) {
+    if (refuseUndelete) {
+      return false;
+    }
     return Database.undelete(
         new List<Id>{ answerId },
         false,

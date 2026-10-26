@@ -77,6 +77,8 @@ export function speller(setup) {
   const spell = (part) => byId.get(part) ?? byLoose.get(loose(part)) ?? part;
   // A record by its Id (weeks, items), or null: never shown as an Id.
   spell.nameOf = (id) => byId.get(id) ?? null;
+  // Whether a name is one the camp has set up (ignoring capitals and spacing).
+  spell.isCamp = (name) => byLoose.has(loose(name));
   return spell;
 }
 

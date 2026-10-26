@@ -83,18 +83,32 @@ function classification(p, t) {
 
 // "similar|<kind>|<fold>|<fold>|<name>|<name>". The import's pair puts the file's two names in
 // localeCompare order (c/shoreshImportEngine names.js similarPairs): "a" keeps the first, "b"
-// the second (mergesFrom). A name the camp already has is kept whichever is chosen, as there.
-function similar(p) {
+// the second (mergesFrom). When one of them is a name the camp has, the import keeps the camp's
+// spelling whichever "same" is chosen (it asks "b": use the camp's), so there is one "same".
+function similar(p, answer, spell) {
   const [first, second] = [p[4] || p[2], p[5] || p[3]].sort((x, y) =>
     x.localeCompare(y)
   );
+  const name = `${quoted(first)} and ${quoted(second)}`;
+  const different = "Different: keep both";
+  const isCamp = spell.isCamp || (() => false);
+  const camp = [first, second].find(isCamp);
+  if (camp) {
+    const same = `Same: keep ${quoted(spell(camp))}`;
+    return {
+      group: "split",
+      name,
+      words: { a: same, b: same, different },
+      choices: [answer === "a" ? "a" : "b", "different"]
+    };
+  }
   return {
     group: "split",
-    name: `${quoted(first)} and ${quoted(second)}`,
+    name,
     words: {
       a: `Same: keep ${quoted(first)}`,
       b: `Same: keep ${quoted(second)}`,
-      different: "Different: keep both"
+      different
     },
     choices: ["a", "b", "different"]
   };
@@ -236,7 +250,7 @@ function named(name, words = {}) {
 
 const FAMILIES = {
   kind: (p, a, t) => classification(p, t),
-  similar: (p) => similar(p),
+  similar: (p, a, t, spell) => similar(p, a, spell),
   list: (p, a, t) => oneOrSeveral(p, t),
   change: (p, a, t, spell) => change(p, spell),
   ampm: (p) =>

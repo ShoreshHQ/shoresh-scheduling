@@ -8,6 +8,9 @@
  */
 public with sharing class LearnedAnswers {
   private static final String CANNOT = 'That answer can\'t be given to this question.';
+  // Tests only: the new answer's save refused after the old one was deleted.
+  @TestVisible
+  private static Boolean refuseSave = false;
 
   /** One remembered answer, as the screen shows it (sent only, never read back). */
   public class Learned {
@@ -74,6 +77,9 @@ public with sharing class LearnedAnswers {
     Savepoint before = Database.setSavepoint();
     try {
       Database.delete(row, true, AccessLevel.USER_MODE);
+      if (refuseSave) {
+        throw new ShoreshException('Refused.');
+      }
       UserModeWrites.save(new List<ImportAnswer__c>{ replaced });
     } catch (Exception e) {
       Database.rollback(before);

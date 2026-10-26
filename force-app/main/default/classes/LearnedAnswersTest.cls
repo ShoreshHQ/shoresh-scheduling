@@ -155,6 +155,88 @@ private class LearnedAnswersTest {
   }
 
   @IsTest
+  static void undoOfAChangeRefusedWhenAnImportChangedTheNewAnswer() {
+    User importer = ShoreshTestData.scheduler();
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Id oldId = only(willow.Id).Id;
+      Id newId = LearnedController.changeLearned(willow.Id, oldId, 'fixed');
+      // Another person's import answers the question again, on the same record.
+      System.runAs(importer) {
+        Database.update(
+          new ImportAnswer__c(Id = newId, Answer__c = 'recurring'),
+          AccessLevel.SYSTEM_MODE
+        );
+      }
+      Test.startTest();
+      Boolean undone = LearnedController.undoChangeLearned(
+        willow.Id,
+        newId,
+        oldId
+      );
+      Test.stopTest();
+      Assert.isFalse(undone);
+      ImportAnswer__c kept = only(willow.Id);
+      Assert.areEqual(newId, kept.Id);
+      Assert.areEqual('recurring', kept.Answer__c);
+    }
+  }
+
+  @IsTest
+  static void aChangeWhoseSaveIsRefusedKeepsTheOldAnswer() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Id oldId = only(willow.Id).Id;
+      LearnedAnswers.refuseSave = true;
+      Test.startTest();
+      Boolean refused = false;
+      try {
+        LearnedController.changeLearned(willow.Id, oldId, 'fixed');
+      } catch (AuraHandledException e) {
+        refused = true;
+      }
+      Test.stopTest();
+      Assert.isTrue(refused);
+      ImportAnswer__c kept = only(willow.Id);
+      Assert.areEqual(oldId, kept.Id, 'the old answer is back');
+      Assert.areEqual('activity', kept.Answer__c);
+    }
+  }
+
+  @IsTest
+  static void undoOfAChangeWhoseOldAnswerCannotComeBackKeepsTheNewOne() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Id oldId = only(willow.Id).Id;
+      Id newId = LearnedController.changeLearned(willow.Id, oldId, 'fixed');
+      LearnedUndo.refuseUndelete = true;
+      Test.startTest();
+      Boolean undone = LearnedController.undoChangeLearned(
+        willow.Id,
+        newId,
+        oldId
+      );
+      Test.stopTest();
+      Assert.isFalse(undone);
+      ImportAnswer__c kept = only(willow.Id);
+      Assert.areEqual(newId, kept.Id, 'the new answer stays');
+      Assert.areEqual('fixed', kept.Answer__c);
+    }
+  }
+
+  @IsTest
   static void anAnswerThatIsANameIsOnlyForgotten() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c willow = ShoreshTestData.camp('Camp Willow');

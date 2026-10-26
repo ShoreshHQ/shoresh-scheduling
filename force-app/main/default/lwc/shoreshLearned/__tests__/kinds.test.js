@@ -236,19 +236,48 @@ describe("similar names: each choice keeps what the import keeps", () => {
     expect(mergesFrom([pair], { [pair.id]: "different" }).size).toBe(0);
   });
 
+  it("offers one Same, the camp's spelling, when one name is already the camp's", () => {
+    const spell = speller({ activities: [{ Name: "Archery" }] });
+    const r = learnedRow(
+      {
+        id: "1",
+        question: "similar|activity|archery|archry|Archery|Archry",
+        answer: "b",
+        answeredOn: "2026-07-03"
+      },
+      t,
+      spell
+    );
+    expect(r.choices.map((c) => [c.value, c.label])).toEqual([
+      ["b", "Same: keep “Archery”"],
+      ["different", "Different: keep both"]
+    ]);
+    expect(r.title).toBe("“Archery” and “Archry”: Same: keep “Archery”");
+    // The import with Archery set up: either "same" keeps the camp's spelling.
+    const [pair] = similarPairs(
+      "activity",
+      [{ name: "Archry", count: 1 }],
+      ["Archery"]
+    );
+    expect(pair.id).toBe("similar|activity|archery|archry|Archery|Archry");
+    expect(mergesFrom([pair], { [pair.id]: "b" }).get("Archry")).toBe(
+      "Archery"
+    );
+  });
+
   it("shows the pair's names as the file wrote them, never the camp's spelling", () => {
     const spell = speller({ activities: [{ Name: "ARCHERY" }] });
     const r = learnedRow(
       {
         id: "1",
         question: "similar|activity|archery|archry|Archery|Archry",
-        answer: "a",
+        answer: "b",
         answeredOn: "2026-07-03"
       },
       t,
       spell
     );
-    expect(r.title).toBe("“Archery” and “Archry”: Same: keep “Archery”");
+    expect(r.name).toBe("“Archery” and “Archry”");
   });
 });
 
