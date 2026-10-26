@@ -315,6 +315,33 @@ private class SetupGuessesTest {
   }
 
   @IsTest
+  static void anItemDeletedAndImportedAgainIsMarkedAgain() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      ImportController.saveSetup(JSON.serialize(guessedPlan(season.Id)));
+      // A later second, then Swim made again (deleted, then imported again: made after the first
+      // guess) and the import guessing the same values again.
+      Long first = Datetime.now().getTime() / 1000;
+      while (Datetime.now().getTime() / 1000 == first) {
+        Datetime.now();
+      }
+      Test.setCreatedDate(idOf(season.Id, 'Swim'), Datetime.now());
+      Map<String, String> again = new Map<String, String>();
+      String swim = 'guessed|' + season.Id + '|Activity||Swim|';
+      Map<String, String> remembered = answersOf(camp.Id);
+      again.put(swim + 'often', remembered.get(swim + 'often'));
+      again.put(swim + 'who', remembered.get(swim + 'who'));
+      ImportAnswers.rememberEach(camp.Id, again);
+
+      Test.startTest();
+      Set<String> shown = marks(season.Id);
+      Test.stopTest();
+      Assert.areEqual(ALL_MARKS, shown, 'Swim is marked again');
+    }
+  }
+
+  @IsTest
   static void anItemSetUpAgainByHandIsTheDirectors() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');

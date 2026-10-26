@@ -5,6 +5,10 @@
  * import asks again.
  */
 public with sharing class ImportAnswers {
+  // Tests only: the save refused after the old answers were deleted.
+  @TestVisible
+  private static Boolean refuseSave = false;
+
   /** One remembered answer, with who gave it and when (the record's Created By and date; sent only, never read back). */
   public class Answer {
     @AuraEnabled
@@ -140,7 +144,9 @@ public with sharing class ImportAnswers {
    * Saves the wanted answers and forgets the rest, so who answered and when (the record's Created
    * By and date, ADR 0021) stays true: an answer already remembered the same is left as it is;
    * one remembered differently is replaced (deleted first, as the key is unique, then saved new),
-   * never edited. One query, then the writes, all or none.
+   * never edited. A guess given again the same is the exception: it is saved again unchanged, so
+   * its Last Modified says when it was last guessed, which marks a record made since then
+   * (SetupGuessStanding), and its Created By and date stay. One query, then the writes.
    */
   private static void write(List<ImportAnswer__c> wanted, Set<String> forget) {
     Map<String, ImportAnswer__c> byKey = new Map<String, ImportAnswer__c>();
@@ -150,6 +156,7 @@ public with sharing class ImportAnswers {
     Set<String> all = new Set<String>(byKey.keySet());
     all.addAll(forget);
     List<ImportAnswer__c> deletes = new List<ImportAnswer__c>();
+    List<ImportAnswer__c> touches = new List<ImportAnswer__c>();
     for (ImportAnswer__c saved : [
       SELECT Id, Key__c, Answer__c
       FROM ImportAnswer__c
@@ -159,14 +166,31 @@ public with sharing class ImportAnswers {
       ImportAnswer__c given = byKey.get(saved.Key__c);
       if (given != null && given.Answer__c.equals(saved.Answer__c)) {
         byKey.remove(saved.Key__c);
+        if (given.QuestionKey__c.startsWith(SetupGuessValues.PREFIX)) {
+          touches.add(
+            new ImportAnswer__c(Id = saved.Id, Answer__c = saved.Answer__c)
+          );
+        }
       } else if (given != null || forget.contains(saved.Key__c)) {
         deletes.add(saved);
       }
     }
+    touches.addAll(byKey.values());
+    commitAll(deletes, touches);
+  }
+
+  /** Deletes, then saves (new and unchanged), all or none: a refused save puts the old answers back. */
+  private static void commitAll(
+    List<ImportAnswer__c> deletes,
+    List<ImportAnswer__c> saves
+  ) {
     Savepoint before = Database.setSavepoint();
     try {
       Database.delete(deletes, true, AccessLevel.USER_MODE);
-      UserModeWrites.save(byKey.values());
+      if (refuseSave) {
+        throw new ShoreshException('Refused.');
+      }
+      UserModeWrites.save(saves);
     } catch (Exception e) {
       Database.rollback(before);
       throw e;

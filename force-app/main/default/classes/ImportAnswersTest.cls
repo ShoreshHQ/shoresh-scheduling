@@ -73,11 +73,6 @@ private class ImportAnswersTest {
     System.runAs(second) {
       Test.startTest();
       ImportAnswers.save(willow.Id, plan('kind|Lunch', 'fixed'));
-      // Capitals are a different answer: replaced, not kept.
-      ImportAnswers.rememberEach(
-        willow.Id,
-        new Map<String, String>{ 'kind|Swim' => 'Fixed' }
-      );
       Test.stopTest();
       ImportAnswer__c after = [
         SELECT Id, CreatedById, CreatedDate
@@ -133,6 +128,43 @@ private class ImportAnswersTest {
       Test.stopTest();
       Assert.isFalse(answers[0].byYou);
       Assert.isNull(answers[0].byName, 'the screen says "a former user"');
+    }
+  }
+
+  @IsTest
+  static void capitalsAreADifferentAnswerAndReplaceIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.save(willow.Id, plan('kind|Lunch', 'fixed'));
+      ImportAnswer__c before = only(willow.Id);
+      Test.startTest();
+      ImportAnswers.save(willow.Id, plan('kind|Lunch', 'Fixed'));
+      Test.stopTest();
+      ImportAnswer__c after = only(willow.Id);
+      Assert.areNotEqual(before.Id, after.Id, 'a new record');
+      Assert.areEqual('Fixed', after.Answer__c);
+    }
+  }
+
+  @IsTest
+  static void aRefusedSaveKeepsTheOldAnswer() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.save(willow.Id, plan('kind|Lunch', 'activity'));
+      ImportAnswer__c before = only(willow.Id);
+      ImportAnswers.refuseSave = true;
+      Test.startTest();
+      Boolean refused = false;
+      try {
+        ImportAnswers.save(willow.Id, plan('kind|Lunch', 'fixed'));
+      } catch (ShoreshException e) {
+        refused = true;
+      }
+      Test.stopTest();
+      Assert.isTrue(refused);
+      ImportAnswer__c kept = only(willow.Id);
+      Assert.areEqual(before.Id, kept.Id, 'the old answer is back');
+      Assert.areEqual('activity', kept.Answer__c);
     }
   }
 }
