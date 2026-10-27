@@ -156,10 +156,6 @@ export function patternsOf(cells) {
   return result;
 }
 
-function signature(pattern) {
-  return `${pattern.slot}|${setKey(pattern.days)}|${pattern.groups.join(",")}`;
-}
-
 // The rules below are numbered as in docs/import/classification.md.
 
 function dayCount(facts, week) {
@@ -216,14 +212,39 @@ function wholeDivisions(groups, facts, among = facts.groups) {
   return covered.length === set.size;
 }
 
+/** Names still asked as similar to this one ("lunch" for "Lunch"): a Set, maybe empty. */
+function spellings(facts) {
+  return (facts.similar && facts.similar.get(facts.name)) || new Set();
+}
+
 /**
- * Two or more groups at once that are whole divisions of the groups that have the name
- * (`holders`), or most of the timetable's groups.
+ * The other groups of the week whose cell there says this name, or a name still asked as similar
+ * to it ("Swim Returning" for "Swim Return"), on every day of the pattern.
  */
-function divisionShaped(pattern, facts, holders) {
+function spelledOtherwise(pattern, facts, week) {
+  const names = new Set([facts.name, ...spellings(facts)]);
+  if (names.size === 1) {
+    return [];
+  }
+  return groupsIn(facts, week).filter(
+    (g) =>
+      !pattern.groups.includes(g) &&
+      pattern.days.every((d) =>
+        names.has(facts.busy.get(`${week}|${g}|${d}|${pattern.block}`))
+      )
+  );
+}
+
+/**
+ * Rule 6: two or more groups at once that are whole divisions of the program (every group of
+ * those divisions that week, not only the groups that have the name; a group whose cell is
+ * spelled otherwise, still asked, counts), or most of its groups.
+ */
+function divisionShaped(pattern, facts, week) {
+  const groups = [...pattern.groups, ...spelledOtherwise(pattern, facts, week)];
   return (
-    pattern.groups.length >= 2 &&
-    (wholeDivisions(pattern.groups, facts, holders) ||
+    groups.length >= 2 &&
+    (wholeDivisions(groups, facts, groupsIn(facts, week)) ||
       mostGroups(pattern.groups.length, facts.groups.length))
   );
 }
@@ -240,12 +261,12 @@ function slotsByGroup(patterns) {
 }
 
 /**
- * Held at a set time: whole divisions (of the groups that have it at all) or most of the groups
- * share it at once; or it repeats for groups that have it in that one slot only.
+ * Held at a set time: whole divisions of the program or most of the groups share it at once; or
+ * it repeats for groups that have it in that one slot only.
  */
 function isHeld(pattern, facts, week, who) {
   return (
-    divisionShaped(pattern, facts, who.holders) ||
+    divisionShaped(pattern, facts, week) ||
     (repeats(pattern, facts, week) &&
       pattern.groups.every((g) => who.slots.get(g).size === 1))
   );
@@ -260,11 +281,27 @@ function allCamp(pattern, facts, week) {
 }
 
 /**
- * Rule 3: repetition the grid shows: the same groups in the same slot on two days or more, or an
- * all-camp moment (even once).
+ * Two or more whole divisions of the program together at once (Swim for Garinim and Pirchim):
+ * divisions that travel apart do not share an activity at one time.
+ */
+function severalDivisions(pattern, facts, week) {
+  const divisions = new Set(pattern.groups.map((g) => facts.divisionOf.get(g)));
+  return (
+    divisions.size >= 2 &&
+    wholeDivisions(pattern.groups, facts, groupsIn(facts, week))
+  );
+}
+
+/**
+ * Rule 3: repetition the grid shows: the same groups in the same slot on two days or more, an
+ * all-camp moment (even once), or two or more whole divisions together.
  */
 function isSetShaped(pattern, facts, week) {
-  return pattern.days.length >= 2 || allCamp(pattern, facts, week);
+  return (
+    pattern.days.length >= 2 ||
+    allCamp(pattern, facts, week) ||
+    severalDivisions(pattern, facts, week)
+  );
 }
 
 function cellCount(patterns) {
@@ -276,7 +313,7 @@ function sortWeeks(byWeek, weeks, facts) {
   return weeks.map((week) => {
     const all = byWeek.get(week);
     const slots = slotsByGroup(all);
-    const who = { holders: [...slots.keys()], slots };
+    const who = { slots };
     return {
       week,
       all,
@@ -286,23 +323,53 @@ function sortWeeks(byWeek, weeks, facts) {
   });
 }
 
-/** Rule 5: the same patterns in every week that has the name (a week without it is fine). */
-function sameEveryWeek(sorted) {
-  const first = setKey(sorted[0].all.map(signature));
-  return sorted.every((w) => setKey(w.all.map(signature)) === first);
+/** Whether a group is there on a day: it has something scheduled (not a trip, not off). */
+function present(facts, week, group, day) {
+  return (
+    (facts.daysByWeek.get(week) || []).includes(day) &&
+    facts.present.has(`${week}|${group}|${day}`)
+  );
+}
+
+/** One week's placements as "group|day|slot". */
+function placementsOf(w) {
+  return w.all.flatMap((p) =>
+    p.groups.flatMap((g) => p.days.map((d) => `${g}|${d}|${p.slot}`))
+  );
+}
+
+/** Whether every placement of week a is in week b, or b's group is away that day. */
+function coveredBy(a, b, facts) {
+  const theirs = new Set(placementsOf(b));
+  return placementsOf(a).every((key) => {
+    const [group, day] = key.split("|");
+    return theirs.has(key) || !present(facts, b.week, group, day);
+  });
+}
+
+/**
+ * Rule 5: the same placements in every week that has the name (a week without it is fine). A
+ * group away on a day (a trip, off, no cells) is not a change, as for fixed (rule 1).
+ */
+function sameEveryWeek(sorted, facts) {
+  return sorted.every(
+    (w) => coveredBy(sorted[0], w, facts) && coveredBy(w, sorted[0], facts)
+  );
 }
 
 // ---------- rule 1: fixed ----------
 
 /**
- * Whether a group has nothing else scheduled in a slot on a day: no cell there, or only a noted
- * one (a trip, a special event) or an "off"/"away" cell. Such a group-day does not break fixed.
+ * Whether a group has nothing else scheduled in a slot on a day: no cell there, only a noted one
+ * (a trip, a special event) or an "off"/"away" cell, or the name spelled otherwise (still asked).
+ * Such a group-day does not break fixed.
  */
 function freeAt(facts, at, slot) {
   const busy = facts.busy;
+  const other = spellings(facts);
   for (let b = slot.block; b < slot.block + slot.length; b++) {
     const text = busy && busy.get(`${at.week}|${at.group}|${at.day}|${b}`);
-    if (text && text !== facts.name) {
+    if (text && text !== facts.name && !other.has(text)) {
       return false;
     }
   }
@@ -321,24 +388,27 @@ function holdersAt(patterns, slot) {
 }
 
 /**
- * Counts one slot over one week for rule 1: the group-days that have it, the ones excused (free),
- * and whether any other activity is ever there.
+ * Counts one slot over one week for rule 1, group by group (into `byGroup`): the days it has the
+ * name there, and the days it is there but the slot is empty. A day the group is away (a trip,
+ * off, no cells) counts for neither. Returns whether any other activity is ever in the slot.
  */
-function tallySlot(facts, week, patterns, slot) {
+function tallySlot(facts, week, patterns, slot, byGroup) {
   const has = holdersAt(patterns, slot);
-  const tally = { held: 0, excused: 0, broken: false };
+  let broken = false;
   for (const group of groupsIn(facts, week)) {
+    const t = byGroup.get(group) || { held: 0, empty: 0 };
+    byGroup.set(group, t);
     for (const day of facts.daysByWeek.get(week) || []) {
       if (has.has(group) && has.get(group).has(day)) {
-        tally.held++;
-      } else if (freeAt(facts, { week, group, day }, slot)) {
-        tally.excused++;
-      } else {
-        tally.broken = true;
+        t.held++;
+      } else if (!freeAt(facts, { week, group, day }, slot)) {
+        broken = true;
+      } else if (present(facts, week, group, day)) {
+        t.empty++;
       }
     }
   }
-  return tally;
+  return broken;
 }
 
 /** The distinct slots of the name over the weeks: [{ slot, block, length }]. */
@@ -361,31 +431,32 @@ function evidenceDays(sorted) {
 }
 
 /**
- * Rule 1 over the weeks: in each of its slots, every group present has it every day it is there,
- * and nothing else is ever in that slot. A group away (no cell, a trip, off) does not break it,
- * as long as the name is there for three times as many group-days as are away. Two days of
- * evidence at least (rule 4).
+ * Rule 1 over the weeks: in each of its slots, nothing else is ever there, and every group has
+ * the name there on most of its own days present: at least three times as many as it is there
+ * with the slot empty. A day a group is away (no cells, a trip, off) does not count; a group that
+ * never has it there is not "every group". Two days of evidence at least (rule 4).
  */
 function isFixed(sorted, facts) {
   if (evidenceDays(sorted) < 2) {
     return false;
   }
   const byWeek = new Map(sorted.map((w) => [w.week, w.all]));
-  const sum = { held: 0, excused: 0 };
   for (const slot of slotsOf(sorted)) {
+    const byGroup = new Map();
     for (const week of facts.weeks) {
-      const t = tallySlot(facts, week, byWeek.get(week) || [], slot);
-      if (t.broken) {
+      // A week without the name at all (a travel week) only has to leave the slot free.
+      const counted = byWeek.has(week) ? byGroup : new Map();
+      if (tallySlot(facts, week, byWeek.get(week) || [], slot, counted)) {
         return false;
       }
-      // A week without the name at all (a travel week) only has to leave the slot free.
-      if (byWeek.has(week)) {
-        sum.held += t.held;
-        sum.excused += t.excused;
+    }
+    for (const t of byGroup.values()) {
+      if (t.held === 0 || t.held < t.empty * 3) {
+        return false;
       }
     }
   }
-  return sum.held >= sum.excused * 3;
+  return true;
 }
 
 /** A fixed name's records: one per slot, every group, from the first week. */
@@ -429,27 +500,14 @@ function movesAround(sorted) {
 }
 
 /**
- * Rule 3: staggered across the camp: on one day its placements together reach most of the groups
- * (Swim for two divisions in one period and two more in the next).
+ * Rule 3: some placement shows repetition, or the weeks repeat it. A stagger across the camp
+ * (Swim for one division in Period 2 and the next in Period 3) counts only when it repeats: then
+ * each division has its slot on two days or more. Once is divisions taking turns at an activity.
  */
-function staggered(w, facts) {
-  const total = groupsIn(facts, w.week).length;
-  const days = new Set(w.held.flatMap((p) => p.days));
-  return [...days].some((day) => {
-    const groups = new Set(
-      w.held.filter((p) => p.days.includes(day)).flatMap((p) => p.groups)
-    );
-    return mostGroups(groups.size, total);
-  });
-}
-
-/** Rule 3: some placement shows repetition, the camp has it staggered, or the weeks repeat it. */
 function showsRepetition(sorted, facts) {
   const w = sorted[0];
   return (
-    sorted.length >= 2 ||
-    w.held.some((p) => isSetShaped(p, facts, w.week)) ||
-    staggered(w, facts)
+    sorted.length >= 2 || w.held.some((p) => isSetShaped(p, facts, w.week))
   );
 }
 
@@ -458,7 +516,7 @@ function verdictOf(sorted, facts) {
     return { verdict: "fixed" };
   }
   if (movesAround(sorted)) {
-    return { verdict: "activity" };
+    return { verdict: "activity", reason: "moves" };
   }
   // Some placements are at no set time: an activity, unless ask A.
   if (sorted.some((w) => w.strays.length > 0)) {
@@ -467,7 +525,7 @@ function verdictOf(sorted, facts) {
       : { verdict: "activity" };
   }
   // Ask B: held each week, but at different times from week to week.
-  if (!sameEveryWeek(sorted)) {
+  if (!sameEveryWeek(sorted, facts)) {
     return { verdict: "ask", reason: "weeks" };
   }
   if (showsRepetition(sorted, facts)) {
@@ -475,7 +533,9 @@ function verdictOf(sorted, facts) {
   }
   // Rule 3: a real division together, but nothing shows it repeats: a genuine split, asked.
   return sorted[0].held.some(
-    (p) => p.groups.length >= 2 && wholeDivisions(p.groups, facts)
+    (p) =>
+      p.groups.length >= 2 &&
+      wholeDivisions(p.groups, facts, groupsIn(facts, sorted[0].week))
   )
     ? { verdict: "ask", reason: "split" }
     : { verdict: "activity" };
@@ -485,7 +545,8 @@ function verdictOf(sorted, facts) {
  * What one name is in one timetable, by the rules in docs/import/classification.md. timetable:
  * { groups: [names], groupsByWeek: Map(week -> groups), divisionOf: Map(group -> division),
  * daysByWeek: Map(week -> days it runs, special days left out), weeks: [..], busy:
- * Map("week|group|day|block" -> name) of what is scheduled there, noted and off cells left out }.
+ * Map("week|group|day|block" -> name) of what is scheduled there, noted and off cells left out,
+ * present: Set("week|group|day") of the days each group has anything in busy }.
  * Returns { verdict: "fixed" | "recurring" | "activity" | "ask", patterns (the set-time ones,
  * from the first week: one per fixed slot, or the recurring patterns), strays (placements outside
  * them), fixedShaped, reason }.

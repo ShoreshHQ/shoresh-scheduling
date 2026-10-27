@@ -101,7 +101,7 @@ function ordinaryTruth(camp) {
     divisions: camp.divisions.map((d) => d.name),
     groups: camp.groups,
     fixed: camp.fixed.map((f) => `${f}|${startOf(f)}`),
-    recurring: [],
+    recurring: camp.recurring || [],
     activities: camp.activities,
     divisionsInFile: camp.divisionsInFile
   };

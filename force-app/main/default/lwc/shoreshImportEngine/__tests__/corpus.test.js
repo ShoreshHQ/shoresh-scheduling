@@ -8,6 +8,7 @@ import * as engine from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
+import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import {
   headingReport,
   plantCamp
@@ -68,6 +69,39 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
         kind,
         n: Math.min(n, CEILING.wrong[kind] || 0)
       });
+    }
+  });
+});
+
+// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 after the
+// second review (a weak clue never decides silently): before it, 21 perfect and 82 rotation
+// activities read as recurring with no question; now 37 perfect, one read wrong (four of six
+// groups together twice, with no divisions in the file, read as most of the camp), and two camps
+// whose divisions take turns at every activity once or twice a week asked (13 each).
+const CEILING_T = {
+  perfectAtLeast: 37,
+  errors: 0,
+  questions: { kind: 28 },
+  wrong: { recurring: 1, activities: 1 }
+};
+
+describe("Import last year on made-up camps whose divisions travel together (level 1)", () => {
+  const results = travellingCamps(40).map((camp) =>
+    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps perfectly, asks and reads wrong no more than it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_T.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_T.perfectAtLeast);
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(totals[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, CEILING_T[key][kind] || 0)
+        });
+      }
     }
   });
 });

@@ -8,7 +8,8 @@
  *   npm run score:import -- --camps      also one line per camp that is not read perfectly
  *   npm run score:import -- --level 2    level 2: schedules that differ from week to week
  *
- * Level 1 also scores Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx) on its own line.
+ * Level 1 also scores the "divisions travel together" camps (scripts/import-corpus/travel.js), and
+ * Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx) on its own line.
  */
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
@@ -53,6 +54,8 @@ const { buildTerms } = await import("c/shoreshTerms");
 const XLSX = await import("xlsx");
 const { CORPUS_SIZE, ordinaryCamps } = await import("./import-corpus/camps.js");
 const { LEVEL2_SIZE, variedCamps } = await import("./import-corpus/level2.js");
+const { TRAVEL_SIZE, travellingCamps } =
+  await import("./import-corpus/travel.js");
 const { headingReport, plantCamp } =
   await import("./import-corpus/plant-camp.js");
 const { scoreCamp, summaryTable, weekTable } =
@@ -84,6 +87,14 @@ if (level === 2) {
   console.log(`Level 1 (ordinary): ${results.length} made-up camps\n`);
   console.log(summaryTable(results));
   printCamps(results);
+  const travel = travellingCamps(TRAVEL_SIZE).map((camp) =>
+    scoreCamp(camp, deps)
+  );
+  console.log(
+    `\nLevel 1, divisions travel together: ${travel.length} made-up camps\n`
+  );
+  console.log(summaryTable(travel));
+  printCamps(travel);
   const bytes = readFileSync(
     join(ROOT, "scripts/import-corpus/fixtures/plant-camp.xlsx")
   );

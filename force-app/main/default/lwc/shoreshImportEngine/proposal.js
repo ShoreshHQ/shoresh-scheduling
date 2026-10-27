@@ -406,6 +406,22 @@ function notedList(usable, kinds) {
  * Everything about one import, with the answers given so far.
  * input: { files, existing, terms, answers, layouts }.
  */
+/**
+ * Activity names still asked as similar ("Swim Return" / "Swim Returning"): Map(name -> Set of
+ * the names it may be). Until answered they stay apart, but one may complete a division (rule 6).
+ */
+function unansweredSimilar(pairs, answers) {
+  const similar = new Map();
+  const add = (a, b) => similar.set(a, (similar.get(a) || new Set()).add(b));
+  for (const pair of pairs) {
+    if (pair.kind === "activity" && !pair.existing && !answers[pair.id]) {
+      add(pair.a, pair.b);
+      add(pair.b, pair.a);
+    }
+  }
+  return similar;
+}
+
 export function buildProposal(input) {
   const answers = input.answers || {};
   const reading = readImport(input);
@@ -449,7 +465,8 @@ export function buildProposal(input) {
     specialDays: noted.specialDays,
     divisionOf: people.divisionOf,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
-    noted: noted.kinds
+    noted: noted.kinds,
+    similar: unansweredSimilar(reading.pairs, answers)
   };
   const decisions = decideKinds(usable, ctx);
   const keyOf = keysFor(people.groups, input.existing, reading.identities);

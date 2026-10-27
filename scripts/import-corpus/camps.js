@@ -96,7 +96,7 @@ export const GROUP_STYLES = [
   "animal"
 ];
 
-const WEEKS = [
+export const WEEKS = [
   ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
   ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
@@ -105,7 +105,7 @@ const WEEKS = [
 ];
 
 export const OPENINGS = ["Flagpole", "Morning Circle", "Boker Tov", "Line Up"];
-const LAYOUT_CHOICES = [
+export const LAYOUT_CHOICES = [
   // [layout, format, how the pages are split]
   ["allCamp", "xlsx", "sheetPerDay"],
   ["allCamp", "xlsx", "oneSheet"],
@@ -301,7 +301,8 @@ function allCampPage(camp, d) {
 function byActivityPage(camp, d) {
   const names = [...camp.activities].sort();
   const rows = [[`${camp.name} - ${dayText(camp, d)}`]];
-  rows.push([...labelHeadings(camp), ...camp.fixed, ...names]);
+  const setTimes = [...camp.fixed, ...(camp.recurring || [])];
+  rows.push([...labelHeadings(camp), ...setTimes, ...names]);
   camp.blocks.forEach((block, b) => {
     const doing = (name) =>
       camp.groups
@@ -310,7 +311,7 @@ function byActivityPage(camp, d) {
         .join(", ");
     rows.push([
       ...labelCells(camp, block),
-      ...camp.fixed.map(doing),
+      ...setTimes.map(doing),
       ...names.map(doing)
     ]);
   });

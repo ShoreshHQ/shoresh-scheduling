@@ -33,13 +33,32 @@ times as "9:00 - 9:45", "9:00 AM - 9:45 AM" or "09:00-09:45", in their own colum
 period name, or alone; days written in full or short ("Mon"). Activities rotate so no group has
 the same thing at the same time every day. No typos, no double periods, no trips or special days.
 
+### Divisions travel together
+
+40 more level-1 camps (`scripts/import-corpus/travel.js`), five in each of the eight layouts,
+scored on their own table in the level-1 report. Two to four divisions of two to four groups each;
+every group of a division at the same activity, rotating through more activities than the day has
+periods, so a division may have an activity only once or twice a week, and divisions take turns at
+one activity a period apart. Set times are by division: Lunch in two sittings every day (the Lunch
+block for the first divisions, the next period for the rest), and in half the camps Swim at its
+own period for each division every day; an opening event every day as in level 1. Truth: Lunch
+(and Swim) recurring, the opening fixed, everything else an activity.
+
+This shape was missing, which is how one-off staggers and single division placements came to be
+read as set times without a question. Baseline (2026-10-27), before and after the second review's
+refinements: before, 21 of 40 perfect, 82 rotation activities read as recurring with no question,
+2 questions; after, 37 of 40 perfect, 28 "set time or activity?" questions in 3 camps (two camps
+whose divisions meet every activity once or twice a week, 13 each; one with an activity mostly at
+a set time), and one wrong read (four of six groups together twice, no divisions in the file).
+
 ## What is scored
 
 - **Questions**: every card the director would have to answer (cards that come with a default
   answer already chosen are not counted), by kind.
 - **Wrong reads**, compared with the truth, each missing or extra item counting one: programs,
   days, time blocks (by start and end), divisions (only where the file shows them), groups,
-  fixed events (name and time), recurring activities (level 1 has none), activities, and grid
+  fixed events (name and time), recurring activities (by name; only the "divisions travel
+  together" camps and Greg's camp have them), activities, and grid
   cells (group, day, time block: the right activity).
 
 ## Greg's camp
@@ -64,6 +83,14 @@ two days of evidence; 2026-10-27): unchanged. Still no "set time or activity?"; 
 (one division once) are recurring by their numbered siblings, Swim and Swim Return by being
 staggered across the camp. Level 1 unchanged (318 of 320, no questions); level 2 unchanged
 (148 of 320, no "set time or activity?", recurring wrong 0).
+
+After the second review (a weak clue never decides silently; 2026-10-27): unchanged, still no
+"set time or activity?". Lunch 4 and 5 are recurring by their numbered siblings (Lunch is a
+set-time word, and every decided sibling is a set time; "Lunch2" in one cell is no evidence);
+Swim and Swim Return because two or three whole divisions have them together; Swim Return's
+Wednesday counts Arazim 2's "Swim Returning" cell, still asked as a similar name, toward the
+division. Level 1 unchanged (318 of 320, no questions); level 2 unchanged (148 of 320, no "set time
+or activity?", recurring wrong 0, fixed 24, activities 121).
 
 ## Level 2
 

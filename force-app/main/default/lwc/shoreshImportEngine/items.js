@@ -126,7 +126,19 @@ function timetableFacts(t, usable, ctx) {
     ])
   );
   const busy = busyMap(here, ctx.noted);
-  return { groups, groupsByWeek, divisionOf, daysByWeek, weeks, busy };
+  const present = new Set(
+    [...busy.keys()].map((k) => k.split("|").slice(0, 3).join("|"))
+  );
+  return {
+    groups,
+    groupsByWeek,
+    divisionOf,
+    daysByWeek,
+    weeks,
+    busy,
+    present,
+    similar: ctx.similar || new Map()
+  };
 }
 
 // ---------- what the camp already has ----------
@@ -202,37 +214,49 @@ function verdictFor(name, t, facts, decided, ctx) {
   };
 }
 
-/** A name without its trailing number: "Lunch 4" and "Lunch 1" are one staggered family. */
+/**
+ * Set times by their words, in Shoresh's own vocabulary: only these join numbered siblings
+ * ("Lunch 4" with "Lunch 1"). Never a word that numbers groups or rotations (Team, Bus, Period).
+ */
+const SET_TIME_WORDS = new Set([
+  "breakfast",
+  "lunch",
+  "dinner",
+  "supper",
+  "snack",
+  "rest",
+  "rest hour",
+  "menucha"
+]);
+
+/** A numbered name's set-time family ("Lunch 4" -> "lunch"), or null. */
 function familyOf(name) {
-  return name.replace(/\s*\d+$/, "");
+  const match = /^(.*\D)\s*\d+$/.exec(name);
+  const base = match ? looseKey(match[1]) : null;
+  return base && SET_TIME_WORDS.has(base) ? base : null;
 }
 
 /**
- * Rule 3's other evidence: a name held but not repeated ("Lunch 4" for one division once) is a
- * set time when a numbered sibling in the same timetable is one ("Lunch 1" every day), and an
- * activity when a numbered sibling is an activity ("Sports 1" rotating).
+ * Rule 3's other evidence: a set-time word held but not repeated ("Lunch 4" for one division
+ * once) is a set time when every decided numbered sibling is one ("Lunch 1" every day). Siblings
+ * that disagree (one a set time, one placed at varying times) leave it asked.
  */
-function familyKinds(decisions, verdict) {
-  return new Set(
-    decisions
-      .filter(([name, d]) => d.verdict === verdict && name !== familyOf(name))
-      .map(([name]) => familyOf(name))
-  );
-}
-
 function withFamilies(decisions) {
-  const recurring = familyKinds(decisions, "recurring");
-  const activity = familyKinds(decisions, "activity");
-  return decisions.map(([name, d]) => {
+  const kinds = new Map();
+  for (const [name, d] of decisions) {
     const family = familyOf(name);
-    if (d.reason !== "split" || name === family) {
-      return [name, d];
+    // A sibling counts when the grid decided it: a set time, or placed at varying times (rule
+    // 2). An activity only because nothing says set time ("Lunch2" in one cell) is no evidence.
+    const decided = d.verdict !== "activity" || d.reason === "moves";
+    if (family && d.verdict !== "ask" && decided) {
+      kinds.set(family, (kinds.get(family) || new Set()).add(d.verdict));
     }
-    if (recurring.has(family)) {
-      return [name, { ...d, verdict: "recurring", reason: undefined }];
-    }
-    return activity.has(family)
-      ? [name, { ...d, verdict: "activity", reason: undefined }]
+  }
+  return decisions.map(([name, d]) => {
+    const seen = kinds.get(familyOf(name));
+    const agreed = d.reason === "split" && seen && seen.size === 1;
+    return agreed && seen.has("recurring")
+      ? [name, { ...d, verdict: "recurring", reason: undefined }]
       : [name, d];
   });
 }
@@ -243,14 +267,12 @@ function groupSets(d) {
 }
 
 /**
- * Rule 3's other evidence the other way: a name held but not repeated is an activity when another
- * activity (or another such name) goes to the very same groups together: they take turns, as a
- * rotation does (Art and Ropes Course for the same two cabins at shifting times).
+ * Rule 3's other evidence the other way: a name held but not repeated is an activity when an
+ * activity placed at varying times (rule 2) goes to the very same groups together: they take
+ * turns, as a rotation does (Art once for two cabins, Ropes Course for them at three times).
  */
 function withRotations(decisions) {
-  const loose = decisions.filter(
-    ([, d]) => d.verdict === "activity" || d.reason === "split"
-  );
+  const loose = decisions.filter(([, d]) => d.reason === "moves");
   return decisions.map(([name, d]) => {
     if (d.reason !== "split") {
       return [name, d];

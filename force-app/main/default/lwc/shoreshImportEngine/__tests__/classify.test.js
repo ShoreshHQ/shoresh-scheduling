@@ -212,7 +212,7 @@ describe("fixed, then recurring, then activities", () => {
   it("weeks in the files must agree before a set time is sure", () => {
     const week = (n, cell) =>
       GROUPS.map((g, gi) =>
-        csv(`Week ${n} - ${g}.csv`, [
+        csv(`Camp - ${g} - Week ${n}.csv`, [
           ["Time", ...DAYS],
           ...["Period 1 9:00-9:45", "Period 2 9:50-10:35"].map((b, bi) => [
             b,
@@ -415,7 +415,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: a numbered sibling that rotates makes one division's single Sports 2 an activity, not asked", () => {
+  it("rule 3: a numbered sibling joins only a set-time word: one division's single Sports 2 is asked", () => {
     const sports1 = [
       [0, 0],
       [1, 1],
@@ -429,39 +429,154 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       return fill(g, d, b);
     });
     expect(kindOf(p, "Sports 1")).toBe("activity");
-    expect(kindOf(p, "Sports 2")).toBe("activity");
-    expect(kindAsks(p)).toEqual([]);
-  });
-
-  it("rule 3: the same groups taking turns at Art and Ropes Course at shifting times are activities, not asked", () => {
-    const turns = {
-      "1|3": "Art",
-      "2|0": "Art",
-      "0|1": "Ropes",
-      "3|2": "Ropes"
-    };
-    const p = propose((g, d, b) => {
-      return (g < 2 && turns[`${d}|${b}`]) || fill(g, d, b);
-    });
-    expect(kindOf(p, "Art")).toBe("activity");
-    expect(kindOf(p, "Ropes")).toBe("activity");
-    expect(kindAsks(p)).toEqual([]);
-  });
-
-  it("rule 3: the same shape with nothing else for those groups together is asked", () => {
-    const turns = { "1|3": "Art", "2|0": "Art" };
-    const p = propose((g, d, b) => {
-      return (g < 2 && turns[`${d}|${b}`]) || fill(g, d, b);
-    });
     expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
-      ["Art", "split"]
+      ["Sports 2", "split"]
     ]);
+  });
+
+  it("rule 3: a numbered sibling joins its set-time word whatever its case (lunch 4 with Lunch 1)", () => {
+    const p = propose((g, d, b) => {
+      if (g < 2 && b === 2) return "Lunch 1";
+      if (g >= 2 && d === 2 && b === 3) return "lunch 4";
+      return fill(g, d, b);
+    });
+    expect(kindOf(p, "lunch 4")).toBe("recurring");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: numbered siblings that disagree leave the single one asked, never one winning", () => {
+    // Lunch 1 for Juniors every day; Lunch 2 for Bunk 3 at three different times (rule 2).
+    const lunch2 = [
+      [0, 0],
+      [1, 1],
+      [3, 3]
+    ];
+    const p = propose((g, d, b) => {
+      if (g < 2 && b === 2) return "Lunch 1";
+      if (g === 2 && lunch2.some(([sd, sb]) => sd === d && sb === b)) {
+        return "Lunch 2";
+      }
+      if (g >= 2 && d === 4 && b === 3) return "Lunch 4";
+      return fill(g, d, b);
+    });
+    expect(kindOf(p, "Lunch 1")).toBe("recurring");
+    expect(kindOf(p, "Lunch 2")).toBe("activity");
+    expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
+      ["Lunch 4", "split"]
+    ]);
+  });
+
+  it("rule 3: two genuine splits for the same division (Library Wednesday, Campfire Thursday) are both asked", () => {
+    const p = propose((g, d, b) => {
+      if (g < 2 && d === 2 && b === 0) return "Library";
+      if (g < 2 && d === 3 && b === 3) return "Campfire";
+      return fill(g, d, b);
+    });
+    expect(
+      kindAsks(p)
+        .map((a) => [a.name, a.facts.reason])
+        .sort()
+    ).toEqual([
+      ["Campfire", "split"],
+      ["Library", "split"]
+    ]);
+  });
+
+  it("rule 3: divisions travelling together, taking turns at Hike once (Juniors Period 1, Seniors Period 2), is an activity", () => {
+    // Each division together all day, rotating; Hike once each on Monday, one period apart.
+    const p = propose((g, d, b) => {
+      const v = g < 2 ? 0 : 1;
+      if (d === 0 && b === v) return "Hike";
+      return FILL[(v + b + d) % FILL.length];
+    });
+    expect(kindOf(p, "Hike")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: the same one-off stagger with nothing else for those divisions is asked, not a set time", () => {
+    const p = propose((g, d, b) => {
+      if (d === 0 && b === (g < 2 ? 0 : 1)) return "Hike";
+      return fill(g, d, b);
+    });
+    expect(kindOf(p, "Hike")).not.toBe("recurring");
+    expect(
+      kindAsks(p)
+        .filter((a) => a.name === "Hike")
+        .map((a) => a.facts.reason)
+    ).toEqual(["split"]);
+  });
+
+  it("rule 3: two whole divisions together once is a set time (Swim for two of four divisions)", () => {
+    const four = [
+      "Aleph - Bunk 1",
+      "Aleph - Bunk 2",
+      "Bet - Bunk 3",
+      "Bet - Bunk 4",
+      "Gimmel - Bunk 5",
+      "Gimmel - Bunk 6",
+      "Daled - Bunk 7",
+      "Daled - Bunk 8"
+    ];
+    const names = ["Art", "Soccer", "Drama", "Music", "Gaga", "Nature"];
+    const p = buildProposal({
+      files: byGroupFiles(four, (g, d, b) => {
+        if (d === 0 && b === 1 && g < 4) return "Swim";
+        return names[(g + b + d) % names.length];
+      }),
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(kindOf(p, "Swim")).toBe("recurring");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 1: a group that never has the name in its slot is not fixed (Carpool for three bunks of four)", () => {
+    const p = propose((g, d, b) => {
+      if (b === 0) return g === 3 ? fill(g, d, b) : "Carpool";
+      return rotation(g, d, b);
+    });
+    expect(kindOf(p, "Carpool")).not.toBe("fixed");
+    const blank = propose((g, d, b) => {
+      if (b === 0) return g === 3 ? "" : "Carpool";
+      return rotation(g, d, b);
+    });
+    expect(kindOf(blank, "Carpool")).not.toBe("fixed");
+  });
+
+  it("rule 1: a cell spelled otherwise, still asked, does not break a fixed Lunch (lunch, LUNCH)", () => {
+    const p = propose((g, d, b) => {
+      if (b === 2) {
+        if (g === 1 && d === 3) return "lunch ";
+        return g === 0 && d === 1 ? "LUNCH" : "Lunch";
+      }
+      return rotation(g, d, b);
+    });
+    expect(kindOf(p, "Lunch")).toBe("fixed");
+    expect(p.reading.pairs.map((x) => x.reason)).toContain("spelling");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 6: a division is every group of it in the program, a cell spelled otherwise counting until answered", () => {
+    // Swim Return: Juniors Monday and Wednesday in Period 2; Bunk 2's Wednesday cell says
+    // "Swim Returning". Bunk 1 with Bunk 3 the same way is no division.
+    const read = (mate) =>
+      propose((g, d, b) => {
+        if ((d === 0 || d === 2) && b === 1 && (g === 0 || g === mate)) {
+          return g === mate && d === 2 ? "Swim Returning" : "Swim Return";
+        }
+        return fill(g, d, b);
+      });
+    expect(kindOf(read(1), "Swim Return")).toBe("recurring");
+    expect(kindAsks(read(1))).toEqual([]);
+    expect(kindOf(read(2), "Swim Return")).toBe("activity");
+    expect(kindAsks(read(2))).toEqual([]);
   });
 
   describe("rule 5: a week without the name is not a change of time", () => {
     const week = (n, cell) =>
       GROUPS.map((g, gi) =>
-        csv(`Week ${n} - ${g}.csv`, [
+        csv(`Camp - ${g} - Week ${n}.csv`, [
           ["Time", ...DAYS],
           ...["Period 1 9:00-9:45", "Period 2 9:50-10:35"].map((b, bi) => [
             b,
@@ -491,6 +606,74 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       expect(kindOf(p, "Flag")).toBe("recurring");
       expect(kindAsks(p)).toEqual([]);
     });
+
+    const twoWeeks = (first, second) =>
+      buildProposal({
+        files: [...week(1, first), ...week(2, second)],
+        existing: null,
+        terms,
+        answers: {}
+      });
+    const juniorsFlag = (g, d, b) => {
+      return g < 2 && b === 0 ? "Flag" : rotation(g, d, b);
+    };
+
+    it("rule 5: a bunk on a trip one day in week 2 is not a change of time", () => {
+      const p = twoWeeks(juniorsFlag, (g, d, b) => {
+        return g === 1 && d === 2 ? "Zoo trip" : juniorsFlag(g, d, b);
+      });
+      expect(kindOf(p, "Flag")).toBe("recurring");
+      expect(kindAsks(p)).toEqual([]);
+    });
+
+    it("rule 5: the slot taken by another activity in week 2 is still asked", () => {
+      const p = twoWeeks(juniorsFlag, (g, d, b) => {
+        return g === 1 && d === 2 && b === 0 ? "Drama" : juniorsFlag(g, d, b);
+      });
+      expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
+        ["Flag", "weeks"]
+      ]);
+    });
+
+    it("rule 3: the same slot in two weeks is enough repetition (Juniors' Library, Wednesday only)", () => {
+      const library = (g, d, b) => {
+        return g < 2 && d === 2 && b === 1 ? "Library" : rotation(g, d, b);
+      };
+      const p = twoWeeks(library, library);
+      expect(kindOf(p, "Library")).toBe("recurring");
+      expect(kindAsks(p)).toEqual([]);
+    });
+
+    it("rule 6: two bunks of different divisions together in both weeks are an activity", () => {
+      const library = (g, d, b) => {
+        const together = (g === 1 || g === 2) && d === 2 && b === 1;
+        return together ? "Library" : rotation(g, d, b);
+      };
+      const p = twoWeeks(library, library);
+      expect(kindOf(p, "Library")).toBe("activity");
+      expect(kindAsks(p)).toEqual([]);
+    });
+  });
+
+  it("rule 4: Lunch for everyone on a Friday of its own is fixed when fixed at that time Monday to Thursday", () => {
+    const friday = ["Period 1 9:00-10:00", "Lunch 11:30-12:15"];
+    const files = [
+      ...byGroupFiles(GROUPS, (g, d, b) => {
+        if (d === 4) return "";
+        return b === 2 ? "Lunch" : rotation(g, d, b);
+      }),
+      ...GROUPS.map((g, gi) =>
+        csv(`Friday - ${g}.csv`, [
+          ["Time", "Friday"],
+          [friday[0], ROTATION[gi]],
+          [friday[1], "Lunch"]
+        ])
+      )
+    ];
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    expect(p.timetables.filter((t) => !t.leftOut)).toHaveLength(2);
+    expect(p.fixed.filter((f) => f.name === "Lunch")).toHaveLength(2);
+    expect(p.recurring.filter((r) => r.name === "Lunch")).toEqual([]);
   });
 });
 
