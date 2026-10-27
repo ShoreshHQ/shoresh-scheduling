@@ -80,6 +80,7 @@ describe("the engine's notes kept with the week", () => {
         ["fit", "l1"]
       ],
       floor: { kind: "emptier", name: "Last summer", built: 10, imported: 12 },
+      keep: null,
       cut: 0
     });
     expect(readNotes(notesText(notes))).toEqual(notes);
@@ -169,6 +170,7 @@ describe("the engine's notes kept with the week", () => {
       open: [["d", "g", "b", "full"]],
       blank: [],
       floor: null,
+      keep: null,
       cut: 0
     });
   });
@@ -179,5 +181,87 @@ describe("the engine's notes kept with the week", () => {
     expect(notesWithout(notes, new Set(["2026-06-29|g1|t2"])).open).toEqual([
       ["2026-06-29", "g2", "t3", "minCost", "g1", "a1"]
     ]);
+  });
+
+  // Protocol 10.7 (Greg 2026-10-27): what a Rebuild that kept the week changed.
+  it("says what a Rebuild that kept the week changed, and reads it back", () => {
+    const at = (blockId) => ({ date: "2026-06-29", groupId: "g1", blockId });
+    const keep = {
+      emptied: [
+        // Sports, deleted since: its name as it was.
+        {
+          ...at("t1"),
+          activityId: "a9",
+          name: "Sports",
+          why: "gone",
+          length: 2,
+          refilled: true
+        },
+        {
+          ...at("t4"),
+          activityId: "a9",
+          name: "Sports",
+          why: "gone",
+          length: 1,
+          refilled: false
+        },
+        {
+          ...at("t5"),
+          activityId: "a2",
+          name: "Arts",
+          why: "weeklyMax",
+          length: 1,
+          refilled: true
+        }
+      ],
+      moved: [
+        {
+          ...at("t6"),
+          from: "a2",
+          to: "a1",
+          shortGroupId: "g1",
+          shortActivityId: "a1",
+          count: 2
+        }
+      ],
+      changed: 6,
+      filled: 1,
+      fresh: false
+    };
+    const notes = notesOf({ ...RESULT, keep });
+    expect(notes.keep).toEqual({
+      emptied: [
+        ["a9", "Sports", "gone", 3, 2],
+        ["a2", "Arts", "weeklyMax", 1, 1]
+      ],
+      moved: [["2026-06-29", "g1", "t6", "g1", "a1", 2]],
+      changed: 6,
+      filled: 1
+    });
+    expect(readNotes(notesText(notes))).toEqual(notes);
+    const input = {
+      ...INPUT,
+      days: [
+        { dateValue: "2026-06-29", blocks: [{ id: "t6", name: "Period 6" }] }
+      ]
+    };
+    expect(whyOf(notes, input, terms).notes.slice(-4)).toEqual([
+      "Sports was removed, so its 3 cells were emptied and 2 refilled.",
+      "Arts was over its weekly limit, so its cell was refilled.",
+      "Bunk 1 · Monday · Period 6: moved so Bunk 1 still gets Swim twice.",
+      "Filled 1 Open cell. Kept everything else as it was."
+    ]);
+    // Nothing changed: said once, plainly.
+    const none = notesOf({
+      ...RESULT,
+      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: false }
+    });
+    expect(whyOf(none, input, terms).notes.slice(-1)).toEqual([
+      "Nothing in setup needed a change, so everything was kept as it was."
+    ]);
+    // A damaged keep note is not read.
+    expect(
+      readNotes('{"v":1,"open":[],"blank":[],"keep":{"emptied":"x"}}').keep
+    ).toBeNull();
   });
 });

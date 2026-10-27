@@ -276,7 +276,7 @@ describe("locks on the Generated Schedule screen", () => {
     q(element, '[data-action="Rebuild"]').click();
     await flush();
     expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "Builds Week 1 again from your setup. Locked cells stay as they are."
+      "Updates Week 1 to your setup, keeping everything that still fits. Locked cells stay as they are."
     );
     q(element, '[data-id="confirm-cancel"]').click();
     await flush();

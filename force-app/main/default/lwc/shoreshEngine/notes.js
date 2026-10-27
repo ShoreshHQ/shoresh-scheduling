@@ -1,5 +1,13 @@
 import { buildTerms } from "c/shoreshTerms";
-import { blankSetupNote, floorNote, reasonFor } from "./words";
+import { DAY_NAMES, weekdayOf } from "./checks";
+import {
+  blankSetupNote,
+  floorNote,
+  keepNote,
+  movedNote,
+  reasonFor
+} from "./words";
+import { KEEP_WHY } from "./weekKeep";
 import { readActivities, readGroups, readLocations } from "./setup";
 import {
   BUDGET,
@@ -25,6 +33,11 @@ import {
  *       leave short; for TRADE, the group and activity the cell was left Open for),
  *     blank: [[field ("atOnce" or "fit"), activityId or locationId]]: a blank setting taken as 1,
  *     floor: { kind ("frame" or "emptier"), name, built, imported } or null: step 8's floor note,
+ *     keep: null, or what a Rebuild that kept the week changed (protocol 10.7): { emptied:
+ *       [[activityId, name, why, cells, refilled]] (each activity's emptied cells by why, the name
+ *       as it was, since a deleted one has none now), moved: [[date, groupId, blockId,
+ *       shortGroupId, shortActivityId, count]] (a cell changed so a group still gets its weekly
+ *       minimum, count), changed, filled (cells changed, and of those once Open) },
  *     cut: how many Open cells' reasons were left out to keep it under NOTES_MAX (0 when none) }
  */
 
@@ -71,6 +84,7 @@ export function notesOf(result) {
           imported: floor.imported
         }
       : null,
+    keep: keepNotesOf(result.keep),
     cut: 0
   };
   // Measured once; each row left out takes its text and comma, and cut's count grows a digit.
@@ -83,12 +97,76 @@ export function notesOf(result) {
   return notes;
 }
 
+/** generateWeek's keep as notes: emptied cells added up by activity and why. */
+function keepNotesOf(keep) {
+  if (!keep || keep.fresh) {
+    return null;
+  }
+  const emptied = new Map();
+  for (const e of keep.emptied) {
+    const k = `${e.activityId}|${e.why}`;
+    const row = emptied.get(k) || [e.activityId, e.name || "", e.why, 0, 0];
+    row[3] += e.length;
+    row[4] += e.refilled ? e.length : 0;
+    emptied.set(k, row);
+  }
+  return {
+    emptied: [...emptied.values()],
+    moved: keep.moved.map((m) => [
+      m.date,
+      m.groupId,
+      m.blockId,
+      m.shortGroupId,
+      m.shortActivityId,
+      m.count
+    ]),
+    changed: keep.changed,
+    filled: keep.filled
+  };
+}
+
+const isText = (value) => typeof value === "string" && value.length > 0;
+const KEEP_WHYS = new Set(Object.values(KEEP_WHY));
+const isCount = (n) => Number.isInteger(n) && n >= 0;
+
+/** The keep notes read back, or null when they are not notesOf's shape. */
+function readKeep(keep) {
+  if (
+    !keep ||
+    !Array.isArray(keep.emptied) ||
+    !Array.isArray(keep.moved) ||
+    !isCount(keep.changed) ||
+    !isCount(keep.filled)
+  ) {
+    return null;
+  }
+  return {
+    emptied: keep.emptied.filter(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 5 &&
+        isText(row[0]) &&
+        typeof row[1] === "string" &&
+        KEEP_WHYS.has(row[2]) &&
+        isCount(row[3]) &&
+        isCount(row[4])
+    ),
+    moved: keep.moved.filter(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 6 &&
+        row.slice(0, 5).every(isText) &&
+        isCount(row[5])
+    ),
+    changed: keep.changed,
+    filled: keep.filled
+  };
+}
+
 /** The notes as kept on the record (text), or null for none. */
 export function notesText(notes) {
   return notes ? JSON.stringify(notes) : null;
 }
-
-const isText = (value) => typeof value === "string" && value.length > 0;
 
 /**
  * The notes kept on the record (text) read back, or null when there are none or they are not
@@ -138,6 +216,7 @@ export function readNotes(text) {
             imported: Number.isInteger(floor.imported) ? floor.imported : 0
           }
         : null,
+    keep: readKeep(notes.keep),
     cut: Number.isInteger(notes.cut) && notes.cut > 0 ? notes.cut : 0
   };
 }
@@ -199,12 +278,59 @@ export function whyOf(notes, input, terms) {
   if (floor) {
     lines.push(floorNote(floor.kind, { ...floor, terms: t }));
   }
+  if (notes && notes.keep) {
+    lines.push(...keepLines(notes.keep, input, { groups, activities, t }));
+  }
   if (notes && notes.cut) {
     lines.push(
       `${notes.cut} more Open ${notes.cut === 1 ? "cell's reason wasn't" : "cells' reasons weren't"} kept with this ${t.sIn("Week")}.`
     );
   }
   return { open, notes: lines };
+}
+
+/**
+ * What a Rebuild that kept the week changed, one line each (protocol 10.7): each activity's
+ * emptied cells and why, each cell changed for a weekly minimum, the Open cells it filled, and
+ * that everything else was kept as it was.
+ */
+function keepLines(keep, input, { groups, activities, t }) {
+  const lines = keep.emptied.map(([id, name, why, cells, refilled]) =>
+    keepNote(why, {
+      // A deleted activity has no record now: its name as it was; a closed one has its record.
+      name: activities.get(id) || name,
+      deleted: !activities.has(id),
+      cells,
+      refilled,
+      terms: t
+    })
+  );
+  const blockNames = new Map();
+  for (const day of (input && input.days) || []) {
+    for (const block of day.blocks || []) {
+      blockNames.set(block.id, block.name);
+    }
+  }
+  keep.moved.forEach(([date, groupId, blockId, shortGroupId, actId, count]) => {
+    const group = groups.get(groupId);
+    const short = groups.get(shortGroupId);
+    if (group && short && activities.has(actId)) {
+      lines.push(
+        movedNote({
+          groupName: group.name,
+          dayName: DAY_NAMES[weekdayOf(date)] || date,
+          blockName: blockNames.get(blockId) || "",
+          shortGroupName: short.name,
+          activityName: activities.get(actId),
+          count
+        })
+      );
+    }
+  });
+  lines.push(
+    keepNote("rest", { filled: keep.filled, changed: keep.changed, terms: t })
+  );
+  return lines;
 }
 
 /** The notes without these cells' rows ("date|groupId|blockId"); the same notes when none go. */

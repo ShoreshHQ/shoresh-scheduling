@@ -9,6 +9,7 @@ import { identity } from "./grid";
 import { OPEN_WHY } from "./notes";
 import { NOW, nowOf } from "./progress";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
+import { keepWhatStillFits, swapForMinimums } from "./weekKeep";
 import {
   atCamp,
   compareText,
@@ -69,7 +70,11 @@ export {
 } from "./notes";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
-export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
+export const MODE = Object.freeze({
+  FULL: "full",
+  FILL_OPEN: "fillOpen",
+  KEEP: "keep"
+});
 
 // The most work one Generate may do, over every build it makes (weekState.js runWorkLeft): rule
 // checks plus cells the step 8 search looked at. Node does about 1.1 million a second on the
@@ -86,7 +91,9 @@ const RUN_WORK = 40000000;
  *
  * input:
  *   programId, weekId, option (1, 2, ... for "Try another"), mode (MODE.FULL keeps locked cells,
- *     fixed and recurring activities and not-set-up items; MODE.FILL_OPEN keeps every filled cell)
+ *     fixed and recurring activities and not-set-up items; MODE.FILL_OPEN keeps every filled cell;
+ *     MODE.KEEP, Rebuild of a generated week, keeps every activity setup still allows and fills
+ *     the rest, weekKeep.js, protocol section 10; a week with no activity in it is built in full)
  *   days: the week's days as Manual Build's DayView has them
  *     ({ dateValue, blocks: [{ id, name, startTime, endTime }], groups: [{ id, name }],
  *        items: [{ kind, id, name }], rows: ["1,^,", ...] }), fixed and recurring activities in
@@ -139,6 +146,13 @@ const RUN_WORK = 40000000;
  *     not a proof); for MIN_COST also shortGroupId and shortActivityId, the group a fuller day
  *     would leave short and of what; TRADE (left Open on purpose so another group gets a weekly
  *     minimum, as a last resort) also has shortGroupId and shortActivityId: that group and activity
+ *   keep: null, or for MODE.KEEP what changed from the week as it was (protocol 10.7):
+ *     { emptied: [{ date, groupId, blockId, activityId, name, why (weekKeep.js KEEP_WHY), length,
+ *       refilled }] (each placement setup no longer allows; refilled: all its cells are filled
+ *       again), moved: [{ date, groupId, blockId, from, to, shortGroupId, shortActivityId, count }]
+ *       (each kept cell changed so a group still gets a weekly minimum), changed: cells that differ
+ *       from the week as it was, filled: of those, cells that were Open (setup now lets one fill), fresh: true when the week kept was emptier than the imported
+ *       week and a full build was used instead (step 8's floor) }
  *   moved: each cell the step 8 search changed, in order: [{ date, groupId, blockId, from, to,
  *     why, toFill: [{ date, groupId, blockId }] }] (from/to: activity ids, null for Open; why:
  *     "fill" to fill cells, "minimum" to leave fewer groups short of a weekly minimum with as
@@ -240,6 +254,14 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     seed: `${input.programId || ""}|${weekId || ""}|${option}`,
     ...otherPrograms(input.otherPrograms, days)
   };
+  // Rebuild of a generated week (protocol 10.1-10.3): what setup still allows stays.
+  const keep =
+    input.mode === MODE.KEEP ? keepWhatStillFits(model, writeDays) : null;
+  if (keep && keep.kept + keep.emptied.length) {
+    model.days = readDays(keep.days, readPartsOfDay(input.timeBlocks));
+    model.mode = MODE.FILL_OPEN;
+  }
+  const keeping = model.mode === MODE.FILL_OPEN && Boolean(keep);
   const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
   // A build fills the bar from `from` by `share`; `once` (it may be the only build in its part of
   // the bar): once that is known, it runs on to `end` instead.
@@ -325,6 +347,62 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
       day.dateValue &&
       !replaced.some((r) => r.dateValue === day.dateValue)
   );
+  // Protocol 10.4-10.5: a group still short of a weekly minimum after the refill gets it by
+  // changing kept cells, one at a time (weekKeep.js), then the week is checked again.
+  function* keepMinimums(built) {
+    const need = built.checked.stillNeededBy;
+    const swapped = need.length
+      ? swapForMinimums(
+          {
+            ...model,
+            days: readDays(built.built, readPartsOfDay(input.timeBlocks))
+          },
+          need,
+          emptiedKeys(keep),
+          writeDays
+        )
+      : null;
+    if (!swapped) {
+      return { chosen: built, ruleChecks: 0 };
+    }
+    const again = yield* buildBest(
+      {
+        ...model,
+        days: readDays(swapped.days, readPartsOfDay(input.timeBlocks))
+      },
+      1,
+      0,
+      false
+    );
+    again.moved = swapped.moved;
+    return { chosen: again, ruleChecks: again.ruleChecks };
+  }
+  // Protocol 10.6: never emptier than the imported week; a full build is used when it is fuller.
+  function* freshIfEmptier(kept) {
+    if (
+      !importedDays.length ||
+      !sameFrame(toBuild, importedDays) ||
+      importedFilled(
+        checkModel(input, model, kept.state),
+        kept.built,
+        importedDays
+      ) <= kept.checked.cells.filled
+    ) {
+      return null;
+    }
+    const fresh = yield* generateWeekSteps(
+      { ...input, mode: MODE.FULL },
+      watch,
+      runWork - workUsed
+    );
+    if (!fresh.ok || fresh.cells.filled <= kept.checked.cells.filled) {
+      return null;
+    }
+    return {
+      ...fresh,
+      keep: { emptied: [], moved: [], changed: null, filled: 0, fresh: true }
+    };
+  }
   // With an imported week to compare, the first build has the first half of the bar and a build
   // from the imported week the second (the bar jumps to the end when none is needed); else the
   // first build has all of it.
@@ -341,6 +419,22 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     reason: null
   };
   let chosen = first;
+  if (keeping) {
+    const kept = yield* keepMinimums(first);
+    ruleChecks += kept.ruleChecks;
+    chosen = kept.chosen;
+    // Checked as the director's week: only what any build keeps counts as kept (locks, fixed and
+    // recurring), so a weekly-limit dot lands where the screen puts it after a reload.
+    chosen.checked = checkWeek(
+      chosen.built,
+      checkModel(input, model, keep.state),
+      words
+    );
+    const fresh = yield* freshIfEmptier(chosen);
+    if (fresh) {
+      return fresh;
+    }
+  }
   if (importedDays.length && model.mode === MODE.FULL) {
     if (!sameFrame(toBuild, importedDays)) {
       floor.reason = floorNote("frame", { name: floor.importedName, terms: t });
@@ -403,6 +497,7 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   const { state, built, checked } = chosen;
   return {
     floor,
+    keep: keeping ? keepSummary(input, model, keep, chosen) : null,
     ok: true,
     days: withReplaced(built, replaced),
     flags: flagCells(built, checked),
@@ -883,4 +978,93 @@ function writeDays(model, state) {
     );
     return { ...day.frame, items, rows };
   });
+}
+
+/** The cells of the emptied placements, "groupId|dayIndex|blockId", as the week state keys them. */
+function emptiedKeys(keep) {
+  const keys = new Set();
+  for (const p of keep.emptied) {
+    keys.add(`${p.groupId}|${p.d}|${p.blockId}`);
+  }
+  return keys;
+}
+
+/** Each cell of DayView days, "date|groupId|blockId" -> "kind:id" of what is there ("" Open). */
+function cellsOf(days) {
+  const cells = new Map();
+  for (const day of days || []) {
+    (day.groups || []).forEach((group, g) => {
+      let carry = "";
+      String((day.rows || [])[g] || "")
+        .split(",")
+        .forEach((token, b) => {
+          const block = (day.blocks || [])[b];
+          if (!block) {
+            return;
+          }
+          if (token !== "^") {
+            const item = token ? (day.items || [])[Number(token) - 1] : null;
+            carry = item ? `${item.kind}:${item.id}` : "";
+          }
+          cells.set(`${day.dateValue}|${group.id}|${block.id}`, carry);
+        });
+    });
+  }
+  return cells;
+}
+
+/** generateWeek's keep: what a Rebuild that kept the week changed from it (protocol 10.7). */
+function keepSummary(input, model, keep, chosen) {
+  const before = cellsOf(input.days);
+  const after = cellsOf(chosen.built);
+  let changed = 0;
+  let filled = 0;
+  for (const [k, now] of after) {
+    if (before.has(k) && before.get(k) !== now) {
+      changed += 1;
+      filled += before.get(k) === "" ? 1 : 0;
+    }
+  }
+  const dateOf = (d) => model.days[d].date;
+  // A placement emptied and refilled with the same activity (a session over a weekly max that
+  // nothing else can take, never-blank's bend again) changed nothing, so it isn't said.
+  const emptied = [];
+  for (const p of keep.emptied) {
+    const blocks = model.days[p.d].blocks;
+    let refilled = true;
+    let same = true;
+    for (let i = 0; i < p.length && blocks[p.b + i]; i++) {
+      const k = `${dateOf(p.d)}|${p.groupId}|${blocks[p.b + i].id}`;
+      refilled = refilled && Boolean(after.get(k));
+      same = same && after.get(k) === before.get(k);
+    }
+    if (!same) {
+      emptied.push({
+        date: dateOf(p.d),
+        groupId: p.groupId,
+        blockId: p.blockId,
+        activityId: p.actId,
+        name: p.name,
+        why: p.why,
+        length: p.length,
+        refilled
+      });
+    }
+  }
+  return {
+    emptied,
+    moved: (chosen.moved || []).map((m) => ({
+      date: dateOf(m.d),
+      groupId: m.groupId,
+      blockId: m.blockId,
+      from: m.from,
+      to: m.to,
+      shortGroupId: m.shortGroupId,
+      shortActivityId: m.shortActivityId,
+      count: m.count
+    })),
+    changed,
+    filled,
+    fresh: false
+  };
 }

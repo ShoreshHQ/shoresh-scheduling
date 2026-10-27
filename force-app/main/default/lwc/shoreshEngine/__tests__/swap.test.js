@@ -310,6 +310,10 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
   const a = generateWeek(inputOf(records, imported));
   const aCells = a.ok ? cellsByName(a) : new Map();
   const run = (b) => generateWeek(inputOf(b, imported));
+  // Rebuild of week A after the setup change (Greg 2026-10-27, protocol section 10): the week as
+  // it is is kept, and only what the change forces moves.
+  const rebuild = (b) =>
+    generateWeek({ ...inputOf(b, imported), mode: MODE.KEEP, days: a.days });
 
   it("builds week A from the imported camp", () => {
     expect(a.ok).toBe(true);
@@ -339,71 +343,104 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
     expect(moved).toEqual([]);
   });
 
+  // Rebuild (rules 10.1-10.3): with setup unchanged nothing moves; with Sports swapped (a, b),
+  // Adventure Baseball lands exactly where Sports was, as on a fresh build.
+  it("a Rebuild with setup unchanged keeps week A exactly", () => {
+    const b = rebuild(records);
+    expect(moves(aCells, cellsByName(b), "-", "-")).toEqual([]);
+    expect(b.keep.changed).toBe(0);
+  });
+  it.each([
+    ["(a) the same location", null],
+    ["(b) a new location that fits as many groups", { name: "Diamond", fit: 2 }]
+  ])(
+    "a Rebuild puts Adventure Baseball exactly where Sports was, at %s",
+    (label, at) => {
+      const b = rebuild(swapped(records, { at }));
+      expect(moves(aCells, cellsByName(b))).toEqual([]);
+    }
+  );
+
   // Twins: an activity with the same settings as others (Drama as Arts and Crafts, Clay and Music;
-  // Gaga Field as Big Playground; Gaga Pit, at 2 at once, is no twin). A fresh build breaks the tie between twins
-  // by name (rule 9.10), so a renamed twin can trade places with the others.
-  // KNOWN FAILURE (it.failing): twins: pending minimal-change rebuild (Greg 2026-10-27).
-  it.failing.each([
+  // Gaga Field as Big Playground; Gaga Pit, at 2 at once, is no twin). A fresh build breaks the
+  // tie between twins by name (rule 9.10), so a renamed twin could trade places with the others;
+  // a Rebuild keeps the week (rules 10.1-10.3), so the replacement lands exactly where it was.
+  it.each([
     ["Drama", "Adventure Baseball"],
     ["Gaga Field", "Aaa"]
   ])("puts %s's replacement %s exactly where it was (a twin)", (from, to) => {
-    const b = run(swapped(records, { from, to }));
+    const b = rebuild(swapped(records, { from, to }));
     const moved = moves(aCells, cellsByName(b), from, to);
     explain(`twin ${from} -> ${to}`, a, b, moved);
     expect(moved).toEqual([]);
   });
 
   // (c) The new location fits fewer groups than Sports ran at once (2): a change is allowed only
-  // where Adventure Baseball can't have the cells Sports had (two groups at once there in A), and
-  // each one must be in the build's Why notes (a dot, an Open cell's reason, or a search move).
+  // where Adventure Baseball can't have the cells Sports had (two groups at once there in A), or
+  // where a group that lost one of those sessions gets it back so it still has its weekly minimum
+  // of Adventure Baseball (rule 10.5: one cell per session lost, the Rebuild's own list). Each
+  // change must be in the build's Why notes (a dot, an Open cell's reason, a search move, or the
+  // Rebuild's list of what it emptied and moved, rule 10.7).
   //
-  // KNOWN FAILURE (it.failing): pending minimal-change rebuild (Greg 2026-10-27). Fresh builds
-  // cascade: a session Sports' replacement loses at a crowded time is needed elsewhere (weekly
-  // minimum 2), taking that cell moves what was there, and so on, and nothing compares with the
-  // week before to explain it. Greg decided a rebuild after a setup change keeps the current week
-  // and moves only the cells the change forces, each explained ("Try another" stays a fresh
-  // build); that comes in its own PR.
-  it.failing(
-    "(c) a smaller location: only forced changes, each with a reason",
-    () => {
-      const b = run(swapped(records, { at: { name: "Small field", fit: 1 } }));
-      const bCells = cellsByName(b);
-      const moved = moves(aCells, bCells);
-      explain("(c) smaller location", a, b, moved);
-      expect(b.ok).toBe(true);
-      // Where Sports had two groups at once.
-      const byTime = new Map();
-      for (const [key, name] of aCells) {
-        if (name === "Sports") {
-          const [date, , block] = key.split("|");
-          const t = `${date}|${block}`;
-          byTime.set(t, (byTime.get(t) || 0) + 1);
-        }
+  // A fresh build cascades (a session lost at a crowded time is needed elsewhere, and so on);
+  // Rebuild keeps the week and moves only what the change forces (Greg 2026-10-27, section 10).
+  it("(c) a smaller location: only forced changes, each with a reason", () => {
+    const b = rebuild(
+      swapped(records, { at: { name: "Small field", fit: 1 } })
+    );
+    const bCells = cellsByName(b);
+    const moved = moves(aCells, bCells);
+    explain("(c) smaller location", a, b, moved);
+    expect(b.ok).toBe(true);
+    // Where Sports had two groups at once.
+    const byTime = new Map();
+    for (const [key, name] of aCells) {
+      if (name === "Sports") {
+        const [date, , block] = key.split("|");
+        const t = `${date}|${block}`;
+        byTime.set(t, (byTime.get(t) || 0) + 1);
       }
-      const crowded = new Set(
-        [...byTime].filter(([, n]) => n > 1).map(([t]) => t)
-      );
-      // The cells the build says something about, by the same names as the cells.
-      const names = new Map();
-      for (const day of b.days) {
-        day.groups.forEach((g) => names.set(g.id, g.name));
-        day.blocks.forEach((x) => names.set(x.id, x.name));
-      }
-      const said = new Set(
-        [...(b.flags || []), ...(b.openCells || []), ...(b.moved || [])].map(
-          (c) => `${c.date}|${names.get(c.groupId)}|${names.get(c.blockId)}`
-        )
-      );
-      const cellOf = (line) => line.split(": ")[0];
-      const unforced = moved.filter((line) => {
-        const [date, , block] = cellOf(line).split("|");
-        return !crowded.has(`${date}|${block}`);
-      });
-      const unexplained = moved.filter((line) => !said.has(cellOf(line)));
-      expect({ unforced, unexplained }).toEqual({
-        unforced: [],
-        unexplained: []
-      });
     }
-  );
+    const crowded = new Set(
+      [...byTime].filter(([, n]) => n > 1).map(([t]) => t)
+    );
+    // The cells the build says something about, by the same names as the cells.
+    const names = new Map();
+    for (const day of b.days) {
+      day.groups.forEach((g) => names.set(g.id, g.name));
+      day.blocks.forEach((x) => names.set(x.id, x.name));
+    }
+    const said = new Set(
+      [
+        ...(b.flags || []),
+        ...(b.openCells || []),
+        ...(b.moved || []),
+        ...(b.keep ? [...b.keep.emptied, ...b.keep.moved] : [])
+      ].map((c) => `${c.date}|${names.get(c.groupId)}|${names.get(c.blockId)}`)
+    );
+    const cellOf = (line) => line.split(": ")[0];
+    const forMinimum = new Set(
+      b.keep.moved
+        .filter((m) => names.get(m.shortGroupId) && m.to === m.shortActivityId)
+        .map((m) => `${m.date}|${names.get(m.groupId)}|${names.get(m.blockId)}`)
+    );
+    const unforced = moved.filter((line) => {
+      const [date, , block] = cellOf(line).split("|");
+      return (
+        !crowded.has(`${date}|${block}`) &&
+        !(forMinimum.has(cellOf(line)) && line.endsWith("Adventure Baseball"))
+      );
+    });
+    // No more minimum moves than sessions lost at crowded times.
+    const lost = moved.filter((line) => {
+      const [date, , block] = cellOf(line).split("|");
+      return crowded.has(`${date}|${block}`);
+    });
+    expect(b.keep.moved.length).toBeLessThanOrEqual(lost.length);
+    const unexplained = moved.filter((line) => !said.has(cellOf(line)));
+    expect({ unforced, unexplained }).toEqual({
+      unforced: [],
+      unexplained: []
+    });
+  });
 });

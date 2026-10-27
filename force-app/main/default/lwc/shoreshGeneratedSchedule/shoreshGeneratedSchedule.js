@@ -56,6 +56,18 @@ const ACTION_LABEL = {
 };
 
 /**
+ * How the engine builds for each action (Greg 2026-10-27, protocol section 10): Rebuild keeps the
+ * week as it is and changes only what setup forces; Generate and Try another build it fresh;
+ * Fill the open cells keeps every filled cell.
+ */
+function modeOf(action) {
+  if (action === ACTION.FILL_OPEN) {
+    return MODE.FILL_OPEN;
+  }
+  return action === ACTION.REBUILD ? MODE.KEEP : MODE.FULL;
+}
+
+/**
  * The server's conflict sentence without its closing instruction ("Open it again…"): the box's
  * Reload button is the one way to act on it (one word per idea; Open is a cell here).
  */
@@ -77,8 +89,9 @@ const SAY_MS = 5000;
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
  * by the engine (c/shoreshEngine) in the browser and saved whole (c/shoreshGeneratedWeek, ADR
  * 0010). A week not generated yet offers "Generate a schedule". Then:
- *   Rebuild builds the whole week again with the same option (after a confirm; a version is kept
- *     first, and locked cells will stay once locks come, G4);
+ *   Rebuild updates the week to setup as it is now (after a confirm; a version is kept first):
+ *     every cell setup still allows stays, and only what a setup change forces is emptied and
+ *     filled again, each change said in the Why list (Greg 2026-10-27, protocol section 10);
  *   Try another builds the next option, and Option brings back any option tried;
  *   Fill the open cells fills only the cells left Open;
  *   Start over clears every activity at once (a version is kept first), with an Undo that brings
@@ -788,9 +801,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return false;
     }
     let kept = notesWithout(notes, editedKeys(edits, this.loaded.input.days));
-    // The floor note's counts are the build's: any hand edit makes them stale.
-    if (kept.floor) {
-      kept = { ...kept, floor: null };
+    // The floor note's and the Rebuild's counts are the build's: any hand edit makes them stale.
+    if (kept.floor || kept.keep) {
+      kept = { ...kept, floor: null, keep: null };
     }
     if (kept === notes) {
       return false;
@@ -957,7 +970,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           loaded.input.days,
           {
             option,
-            mode: action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL
+            mode: modeOf(action)
           },
           action
         );
@@ -1271,9 +1284,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.confirming || !this.checked) {
       return "";
     }
-    // Locked cells stay through a Rebuild (decision 2); said only when the week has some.
+    // Rebuild keeps the week and changes only what setup forces (Greg 2026-10-27). Locked cells
+    // stay too (decision 2); said only when the week has some.
     const anyLocked = this.week.locked.size > 0;
-    return `Builds ${this.weekName} again from your setup.${anyLocked ? " Locked cells stay as they are." : ""}`;
+    return `Updates ${this.weekName} to your setup, keeping everything that still fits.${anyLocked ? " Locked cells stay as they are." : ""}`;
   }
   get confirmNote() {
     return `Saved to ${this.t.p("Version")} first.`;

@@ -115,6 +115,65 @@ export function floorNote(kind, { name, built, imported, terms } = {}) {
   return `This ${week} has ${built} ${built === 1 ? "cell" : "cells"} filled; the imported ${week}${called} has ${imported}.`;
 }
 
+/**
+ * What a Rebuild that kept the week changed (protocol 10.7, Greg 2026-10-27), one line each.
+ * why: weekKeep.js KEEP_WHY, the reason an activity's cells were emptied ("Sports was removed,
+ * so its 12 cells were refilled."), or "rest", the last line ("Kept everything else as it
+ * was."). name: the activity's; deleted: it has no record now (else it is closed this week);
+ * cells, refilled: how many were emptied and filled again; filled, changed: for "rest", cells
+ * once Open now filled, and every cell changed.
+ */
+export function keepNote(
+  why,
+  { name, deleted, cells, refilled, filled, changed, terms } = {}
+) {
+  const t = terms || buildTerms([]);
+  if (why === "rest") {
+    if (!changed) {
+      return "Nothing in setup needed a change, so everything was kept as it was.";
+    }
+    const opened = filled
+      ? `Filled ${filled} Open ${filled === 1 ? "cell" : "cells"}. `
+      : "";
+    return `${opened}Kept everything else as it was.`;
+  }
+  const groups = t.pIn("Group");
+  const what = {
+    gone: deleted
+      ? `${name} was removed`
+      : `${name} is closed this ${t.sIn("Week")}`,
+    length: `${name}'s length changed`,
+    notFor: `${name} is no longer set up for some ${groups}`,
+    away: `${name} no longer fits where it was`,
+    weeklyMax: `${name} was over its weekly limit`,
+    onceADay: `${name} was twice in a day`,
+    groupsAtOnce: `${name} had more ${groups} at once than it takes now`,
+    sameDivision: `${name} shared its place with another ${t.sIn("Division")}`,
+    placeCapacity: `${name}'s place fits fewer ${groups} now`
+  }[why];
+  const these = cells === 1 ? "its cell was" : `its ${cells} cells were`;
+  if (refilled === cells) {
+    return `${what}, so ${these} refilled.`;
+  }
+  if (!refilled) {
+    return `${what}, so ${these} emptied.`;
+  }
+  return `${what}, so ${these} emptied and ${refilled} refilled.`;
+}
+
+/** A kept cell changed for a weekly minimum: "Bunk 3 · Tuesday · Period 2: moved so Bunk 3 still gets Swim twice." */
+export function movedNote({
+  groupName,
+  dayName,
+  blockName,
+  shortGroupName,
+  activityName,
+  count
+}) {
+  const times = { 1: "once", 2: "twice" }[count] || `${count} times`;
+  return `${groupName} · ${dayName} · ${blockName}: moved so ${shortGroupName} still gets ${activityName} ${times}.`;
+}
+
 /** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */
 function listed(names) {
   if (names.length <= 2) {
