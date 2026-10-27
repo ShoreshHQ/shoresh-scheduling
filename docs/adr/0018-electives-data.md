@@ -89,7 +89,7 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
      is stored and no field changes for it.
    - `LinkedChoice__c` (detail of ElectiveSet): Name, `Offering__c` (required, same set),
      `AppliesTo__c` (All, Only these, All except; All by default), `SortOrder__c`, `CopiedFrom__c`.
-   - `LinkedChoiceTime__c` (detail of LinkedChoice): `Weekday__c` (Monday to Friday) and
+   - `LinkedChoiceTime__c` (detail of LinkedChoice): `Weekday__c` (Monday to Friday; Saturday and Sunday too since ADR 0022) and
      `TimeBlock__c` (required). Set once, it applies every week the set is placed there.
    - `Camper__c` (detail of Season): Name as imported, `CamperNumber__c`, `ParentComments__c`.
    - `ElectiveRun__c` (detail of Season): Name ("Chugim · Week 3"), `ElectiveSet__c`, `Week__c`,

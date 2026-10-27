@@ -10,7 +10,9 @@ public with sharing class ImportStructureWrites {
     'Tuesday' => Program__c.Tuesday__c,
     'Wednesday' => Program__c.Wednesday__c,
     'Thursday' => Program__c.Thursday__c,
-    'Friday' => Program__c.Friday__c
+    'Friday' => Program__c.Friday__c,
+    'Saturday' => Program__c.Saturday__c,
+    'Sunday' => Program__c.Sunday__c
   };
 
   private ImportPlan plan;

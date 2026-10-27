@@ -80,17 +80,19 @@ export function weekdayOf(date) {
 
 /**
  * The days an early-week goal "by" a weekday (1 Monday ... 7 Sunday) counts, of these days
- * ("YYYY-MM-DD"): the first N days of this week's run, counted from its own first day, N being
- * the weekday's place in a Monday-start week (Greg, 2026-10-25: by Tuesday = the first 2 days;
- * a Wednesday-Friday week counts Wednesday and Thursday; a Saturday-start week, Saturday and
- * Sunday). A week always has its early days, so the goal is never impossible. A Set of the dates.
+ * ("YYYY-MM-DD"): the first N days of this week's run, N being the days from the week's first
+ * day (weekStart, else the first of these) up to the named day (Greg, 2026-10-27: a Sunday-start
+ * week "by Tuesday" counts Sunday, Monday, and Tuesday; a Monday-start week, Monday and Tuesday;
+ * a Wednesday-Friday week, all three, since Tuesday comes after). Days of the run, not the
+ * calendar, so a week always has its early days and the goal is never impossible. A Set.
  */
-export function earlyDates(dates, byDay) {
+export function earlyDates(dates, byDay, weekStart) {
   const days = [...dates].filter((d) => weekdayOf(d) != null).sort(compareText);
   if (!days.length || !byDay) {
     return new Set();
   }
-  return new Set(days.slice(0, byDay));
+  const first = weekdayOf(weekStart) || weekdayOf(days[0]);
+  return new Set(days.slice(0, ((byDay - first + 7) % 7) + 1));
 }
 
 /** The activities that run this week, as the generator reads them. */

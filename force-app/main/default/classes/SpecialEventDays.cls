@@ -23,7 +23,9 @@ public with sharing class SpecialEventDays {
     'Tuesday',
     'Wednesday',
     'Thursday',
-    'Friday'
+    'Friday',
+    'Saturday',
+    'Sunday'
   };
 
   /** After schedule days are inserted, updated or deleted (olds null on insert, news on delete). */

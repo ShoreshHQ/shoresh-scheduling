@@ -27,7 +27,9 @@ public with sharing class ScreenSaves {
       Program__c.Tuesday__c,
       Program__c.Wednesday__c,
       Program__c.Thursday__c,
-      Program__c.Friday__c
+      Program__c.Friday__c,
+      Program__c.Saturday__c,
+      Program__c.Sunday__c
     },
     Division__c.SObjectType => new Set<Schema.SObjectField>{
       Division__c.Name,
@@ -92,7 +94,9 @@ public with sharing class ScreenSaves {
       RecurringActivity__c.Tuesday__c,
       RecurringActivity__c.Wednesday__c,
       RecurringActivity__c.Thursday__c,
-      RecurringActivity__c.Friday__c
+      RecurringActivity__c.Friday__c,
+      RecurringActivity__c.Saturday__c,
+      RecurringActivity__c.Sunday__c
     },
     // The Special events screen (ADR 0014 choice 11); their plans are saved by SpecialPlans.
     SpecialDay__c.SObjectType => new Set<Schema.SObjectField>{

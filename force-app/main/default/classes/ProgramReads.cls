@@ -15,7 +15,9 @@ public with sharing class ProgramReads {
         Tuesday__c,
         Wednesday__c,
         Thursday__c,
-        Friday__c
+        Friday__c,
+        Saturday__c,
+        Sunday__c
       FROM Program__c
       WHERE Id = :programId
       WITH USER_MODE

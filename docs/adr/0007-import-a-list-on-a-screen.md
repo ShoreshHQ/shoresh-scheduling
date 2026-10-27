@@ -51,7 +51,7 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    10:00 AM") with Leave it out, and the chosen row leads. Its spelling, whatever the row
    order, is as an item set up spells it, else as written most often, then the first
    alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
-   in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
+   in a number column) makes its row unreadable (Saturday too, until ADR 0022): listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
    inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
    before anything they name is resolved: the first row of each name (capitals and spacing

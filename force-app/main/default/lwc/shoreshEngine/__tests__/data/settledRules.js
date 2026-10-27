@@ -321,12 +321,13 @@ function bestFill(spec, m) {
 }
 
 /**
- * The days an early-week goal counts (Greg, 2026-10-25): the first N days of the week's own run
- * that the group is in, N the goal day's place in a Monday-start week (by Tuesday = the first 2).
+ * The days an early-week goal counts (Greg, 2026-10-25 and 2026-10-27): the first N days of the
+ * week's own run that the group is in, N the days from the week's first day up to the goal day
+ * (a Sunday-start week by Tuesday = the first 3).
  */
-function earlyDays(dates, dayName) {
-  const n = WEEKDAY[dayName] === 0 ? 7 : WEEKDAY[dayName];
-  return dates.slice(0, n);
+function earlyDays(dates, dayName, weekStart) {
+  const first = new Date(`${weekStart || dates[0]}T00:00:00Z`).getUTCDay();
+  return dates.slice(0, ((WEEKDAY[dayName] - first + 7) % 7) + 1);
 }
 
 /**
@@ -404,7 +405,8 @@ export function settledRules(c, input, result, options = {}) {
           m.days
             .filter((day) => day.groups.some((x) => x.id === g.id))
             .map((day) => day.date),
-          a.early.day
+          a.early.day,
+          m.days.map((day) => day.date).sort()[0]
         );
         const said2 = listed(result.spreadBy, a, g);
         const early = mine.filter((date) => days.includes(date)).length;

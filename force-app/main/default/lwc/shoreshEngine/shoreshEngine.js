@@ -213,6 +213,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   const setupNotes = setupBlank.map((b) => blankSetupNote(b.field, b.name, t));
   const model = {
     days,
+    // The week's first day, a special day too: an early-week goal counts from it.
+    weekStart: weekStartOf(input),
     groups,
     groupIds: groupOrder(groups, days),
     acts: activities.running,
@@ -468,6 +470,8 @@ export function checkGeneratedWeek(input) {
   const days = readDays(checkedDays, readPartsOfDay(input.timeBlocks));
   const model = {
     days,
+    // The week's first day, a special day too: an early-week goal counts from it.
+    weekStart: weekStartOf(input),
     groups,
     groupIds: groupOrder(groups, days),
     acts: activities.running,
@@ -532,6 +536,16 @@ function splitReplaced(input) {
     built: all.filter((day) => !replacedDates.has(day.dateValue)),
     replaced: all.filter((day) => replacedDates.has(day.dateValue))
   };
+}
+
+/** The first of the week's days ("YYYY-MM-DD"), a replaced one too, or null. */
+function weekStartOf(input) {
+  return (
+    (input.days || [])
+      .map((day) => day.dateValue)
+      .filter((date) => date)
+      .sort()[0] || null
+  );
 }
 
 /** The days with the replaced ones put back as they were, in date order. */
@@ -648,7 +662,8 @@ export function checkModel(input, model, state) {
         `${id}|${d}|${blockId}`
       ) || 0,
     otherNamesAt: (locationId, d, blockId) =>
-      model.otherPlaceNames.get(`${locationId}|${d}|${blockId}`) || []
+      model.otherPlaceNames.get(`${locationId}|${d}|${blockId}`) || [],
+    weekStart: model.weekStart
   };
 }
 

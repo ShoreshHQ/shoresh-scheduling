@@ -157,6 +157,10 @@ export function resolveProgramDays(read, answers) {
       (r) => !r.problems.length && !r.leftOut && r.program && r.values.days
     )
     .forEach((r) => {
+      // "Every day" is every day its program runs.
+      if (r.values.days.length === WEEKDAYS.length) {
+        r.values.days = [...r.program.days];
+      }
       r.values.days
         .filter((d) => !r.program.days.includes(d))
         .forEach((day) => {

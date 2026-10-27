@@ -1,7 +1,12 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD } from "c/shoreshSchema";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
-import { foldName } from "c/shoreshImportEngine";
+import {
+  WEEKDAYS,
+  foldName,
+  programDays,
+  weekOrder
+} from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 
 const OFFER = FIELD.Offering;
@@ -9,14 +14,14 @@ const CHOICE = FIELD.LinkedChoice;
 const TIME = FIELD.LinkedChoiceTime;
 const COVERS = FIELD.Coverage;
 const BLOCK = FIELD.TimeBlock;
-// A linked choice's periods are on weekdays (LinkedChoiceTime__c.Weekday__c).
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const SHORT_DAYS = {
   Monday: "Mon",
   Tuesday: "Tue",
   Wednesday: "Wed",
   Thursday: "Thu",
-  Friday: "Fri"
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
 };
 // "Applies to", in the desktop's words (BundleEditor.jsx: All, Only these, All except).
 const APPLIES_TO = [
@@ -466,13 +471,20 @@ export default class ShoreshElectiveDetails extends LightningElement {
       (c) => c.id !== choice.id && c.periods.size > 1
     );
     const sending = isDraft && this.draft && this.draft.sending;
+    // Columns: the days the camp's programs run, and any day the set sits or a period is on,
+    // in the order the week runs.
+    const onDays = new Set([...keys].map((k) => k.split("|")[0]));
+    const runs = new Set(programDays(this._setup));
+    const weekDays = weekOrder(
+      WEEKDAYS.filter((day) => runs.has(day) || onDays.has(day))
+    );
     const rows = blockIds.map((blockId) => {
       const block = blocks.get(blockId).block;
       const clock = clockOf(block[BLOCK.StartTime]) || block.Name;
       return {
         key: `${key}-${blockId}`,
         clock,
-        cells: WEEKDAYS.map((day) => {
+        cells: weekDays.map((day) => {
           const k = periodKey(day, blockId);
           const sits = places.has(k);
           const ticked = choice.periods.has(k);
@@ -527,7 +539,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
       nameLook: sameName
         ? `Another ${this.term("sIn", "LinkedChoice", "linked choice")} in ${this.setName} is called this, so a sheet can't tell them apart.`
         : null,
-      days: WEEKDAYS.map((day) => ({
+      days: weekDays.map((day) => ({
         key: `${key}-${day}`,
         short: SHORT_DAYS[day],
         label: day

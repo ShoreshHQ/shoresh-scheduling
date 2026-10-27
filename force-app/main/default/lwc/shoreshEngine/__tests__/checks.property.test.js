@@ -388,16 +388,20 @@ function oracle(days, model) {
         });
       }
       const byDay = act.early && act.early.byDay;
-      // The first byDay days of the week's run the group is in (Greg, 2026-10-25).
+      // The first days of the week's run the group is in, from its first day up to byDay
+      // (Greg, 2026-10-25 and 2026-10-27).
+      const own = days
+        .filter(
+          (day) =>
+            !day.problem && day.groups.some((other) => other.id === grp.id)
+        )
+        .map((day) => day.dateValue)
+        .sort();
+      const first = own.length
+        ? ((new Date(`${own[0]}T00:00:00Z`).getUTCDay() + 6) % 7) + 1
+        : 1;
       const firstDays = new Set(
-        days
-          .filter(
-            (day) =>
-              !day.problem && day.groups.some((other) => other.id === grp.id)
-          )
-          .map((day) => day.dateValue)
-          .sort()
-          .slice(0, byDay || 0)
+        own.slice(0, byDay ? ((byDay - first + 7) % 7) + 1 : 0)
       );
       if (byDay && firstDays.size) {
         const early = mine.filter((q) =>

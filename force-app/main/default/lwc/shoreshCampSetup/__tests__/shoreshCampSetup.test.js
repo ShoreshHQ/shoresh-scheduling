@@ -1516,7 +1516,9 @@ describe("c-shoresh-camp-setup", () => {
         ["Tuesday__c", "Tuesday"],
         ["Wednesday__c", "Wednesday"],
         ["Thursday__c", "Thursday"],
-        ["Friday__c", "Friday"]
+        ["Friday__c", "Friday"],
+        ["Saturday__c", "Saturday"],
+        ["Sunday__c", "Sunday"]
       ]);
       expect([divisions.label, groups.label, blocks.label]).toEqual([
         "Divisions",
@@ -1544,10 +1546,11 @@ describe("c-shoresh-camp-setup", () => {
       expect(q(element, '[data-id="add-program"]')).toBeNull();
     });
 
-    it("adds a program from the blank row, in this season, last, every day", async () => {
+    it("adds a program from the blank row, in this season, last, on the days the others run", async () => {
       getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
       const element = await render();
       await openScreen(element, "programs");
+      // The two programs run Monday to Thursday between them.
       expect(bareRecord(table(element).newRowDefaults)).toEqual({
         Season__c: "s1",
         SortOrder__c: 3,
@@ -1555,7 +1558,9 @@ describe("c-shoresh-camp-setup", () => {
         Tuesday__c: true,
         Wednesday__c: true,
         Thursday__c: true,
-        Friday__c: true
+        Friday__c: false,
+        Saturday__c: false,
+        Sunday__c: false
       });
       saveRow.mockResolvedValue(nsRecord({ id: "p3", changed: [] }));
       const { detail, calls } = rowSave({

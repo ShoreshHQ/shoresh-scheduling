@@ -1337,19 +1337,40 @@ describe("early-week goals count the first days of this week's run (Greg, 2026-1
   const goal = (day, count = 1) =>
     activity("climb", { name: "Climbing", early: { count, day }, max: null });
 
-  it("by Tuesday is the first 2 days of the run, whatever day it starts", () => {
-    // A Sunday-start week: Sunday and Monday.
+  it("by Tuesday counts from the week's first day up to Tuesday (Greg, 2026-10-27)", () => {
+    // A Sunday-start week: Sunday, Monday, and Tuesday.
     const sunday = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
-    expect([...earlyDates(sunday, 2)]).toEqual(["2026-07-05", "2026-07-06"]);
-    // A Saturday-start changeover week: Saturday and Sunday.
+    expect([...earlyDates(sunday, 2)]).toEqual([
+      "2026-07-05",
+      "2026-07-06",
+      "2026-07-07"
+    ]);
+    // A Saturday-start changeover week: Saturday to Tuesday.
     const saturday = [4, 5, 6, 7, 8, 9, 10].map(
       (n) => `2026-07-${String(n).padStart(2, "0")}`
     );
-    expect([...earlyDates(saturday, 2)]).toEqual(["2026-07-04", "2026-07-05"]);
-    // A Wednesday-Friday week: Wednesday and Thursday.
-    expect([...earlyDates([2, 3, 4].map(dateAt), 2)]).toEqual([
-      dateAt(2),
-      dateAt(3)
+    expect([...earlyDates(saturday, 2)]).toEqual([
+      "2026-07-04",
+      "2026-07-05",
+      "2026-07-06",
+      "2026-07-07"
+    ]);
+    // A Monday-start week: Monday and Tuesday.
+    expect([...earlyDates([0, 1, 2, 3].map(dateAt), 2)]).toEqual([
+      dateAt(0),
+      dateAt(1)
+    ]);
+    // A Wednesday-Friday week: Tuesday comes after it, so all three.
+    expect(earlyDates([2, 3, 4].map(dateAt), 2).size).toBe(3);
+  });
+
+  it("counts from the week's first day even when the group isn't in that day", () => {
+    // A Sunday-start week whose group starts Monday: by Tuesday is 3 days of its run.
+    const own = ["2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"];
+    expect([...earlyDates(own, 2, "2026-07-05")]).toEqual([
+      "2026-07-06",
+      "2026-07-07",
+      "2026-07-08"
     ]);
   });
 

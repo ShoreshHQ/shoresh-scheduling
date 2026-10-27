@@ -21,7 +21,13 @@ import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActiv
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
-import { undoMessage } from "c/shoreshImportEngine";
+import {
+  MONDAY_TO_FRIDAY,
+  WEEKDAYS,
+  firstDayOf,
+  programDays,
+  undoMessage
+} from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
@@ -52,8 +58,11 @@ import { RootsTravel } from "c/shoreshRootsTravel";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
-// The days a program can run on (its fields, Monday to Friday).
-const PROGRAM_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+/** Every day a program can run on, in the order the camp's week runs (its programs' days). */
+function campWeek(setup) {
+  const first = firstDayOf(programDays(setup));
+  return [...WEEKDAYS.slice(first), ...WEEKDAYS.slice(0, first)];
+}
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
@@ -1130,8 +1139,8 @@ export default class ShoreshCampSetup extends LightningElement {
         label: "Runs on",
         type: "days",
         strip: true,
-        width: 13,
-        days: PROGRAM_DAYS.map((day) => ({
+        width: 15,
+        days: campWeek(this.setup).map((day) => ({
           fieldName: FIELD.Program[day],
           label: day
         }))
@@ -1164,10 +1173,15 @@ export default class ShoreshCampSetup extends LightningElement {
     ];
   }
 
-  /** A new program: in this season, last in order, running every day (the fields' default). */
+  /**
+   * A new program: in this season, last in order, running on the days the camp's other programs
+   * run (Monday to Friday for the first one).
+   */
   get programDefaults() {
-    return this.memo("programDefaults", [this.seasonId, this.programs], () =>
-      this.readProgramDefaults()
+    return this.memo(
+      "programDefaults",
+      [this.seasonId, this.programs, this.setup],
+      () => this.readProgramDefaults()
     );
   }
   readProgramDefaults() {
@@ -1175,8 +1189,11 @@ export default class ShoreshCampSetup extends LightningElement {
       [FIELD.Program.Season]: this.seasonId,
       [FIELD.Program.SortOrder]: this.programs.length + 1
     };
-    PROGRAM_DAYS.forEach((day) => {
-      defaults[FIELD.Program[day]] = true;
+    const runs = this.programs.length
+      ? programDays(this.setup)
+      : MONDAY_TO_FRIDAY;
+    WEEKDAYS.forEach((day) => {
+      defaults[FIELD.Program[day]] = runs.includes(day);
     });
     return defaults;
   }

@@ -41,17 +41,34 @@ describe("days", () => {
     ["MTWTF", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["M T W T F", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["TT", ["Tuesday", "Thursday"]],
-    ["T/T", ["Tuesday", "Thursday"]]
+    ["T/T", ["Tuesday", "Thursday"]],
+    // Any day of the week (Greg, 2026-10-27): weekends, and ranges over them.
+    ["Saturday", ["Saturday"]],
+    ["Sun", ["Sunday"]],
+    ["Saturdays", ["Saturday"]],
+    ["Sa Su", ["Saturday", "Sunday"]],
+    ["Sat/Sun", ["Saturday", "Sunday"]],
+    ["Fri thru Mon", ["Monday", "Friday", "Saturday", "Sunday"]],
+    ["Sun-Thu", ["Monday", "Tuesday", "Wednesday", "Thursday", "Sunday"]],
+    ["Sun-Tue-Thu", ["Tuesday", "Thursday", "Sunday"]],
+    [
+      "every day",
+      [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    ]
   ])("%s", (text, expected) => {
     expect(readCell(DAYS, text)).toEqual({ value: expected });
   });
 
   it.each([
-    ["Saturday", "Saturday isn't a camp day"],
     ["Mon, Funday", '"Funday" isn\'t a day'],
-    ["Fri-Mon", '"Fri-Mon" goes backwards'],
-    ["Sun", "Sunday isn't a camp day"],
-    ["Saturdays", "Saturday isn't a camp day"],
     ["S", '"S" isn\'t a day'],
     ["M-", '"M-" isn\'t a day'],
     ["Mon to", '"Mon to" isn\'t a day'],
@@ -123,7 +140,6 @@ describe("days", () => {
     ["Mon~Fri", '"Mon~Fri" isn\'t a day'],
     ["Mon\u2026Fri", '"Mon\u2026Fri" isn\'t a day'],
     ["MonWedFri", '"MonWedFri" isn\'t a day'],
-    ["Sa Su", "Saturday isn't a camp day"],
     ["R", '"R" isn\'t a day']
   ])("shows %s as unreadable rather than guess", (text, problem) => {
     expect(readCell(DAYS, text)).toEqual({ problem });
@@ -198,8 +214,7 @@ describe("days", () => {
   });
 
   it.each([
-    ["W-F-M", '"W-F-M" goes backwards'],
-    ["Th-T", '"Th-T" goes backwards'],
+    ["W-M-F", '"W-M-F" goes backwards'],
     ["M--F", '"M--F" isn\'t a day']
   ])("can't read %s", (text, problem) => {
     expect(readCell(DAYS, text)).toEqual({ problem });

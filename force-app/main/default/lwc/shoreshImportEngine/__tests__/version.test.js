@@ -19,6 +19,7 @@ import {
 
 findSamplesFrom(__dirname);
 
+const MON_FRI = "Monday+Tuesday+Wednesday+Thursday+Friday";
 const WEEK1 = {
   Id: "w1",
   Name: "Week 1",
@@ -203,8 +204,8 @@ describe("the imported version", () => {
     // Both weeks are added, as "Fill in weeks" would add them, in the same save.
     const plan = planFor(chosen, dated, "s", { answers });
     expect(plan.fillWeeks).toEqual([
-      { start: "2027-06-28", name: "Week 1" },
-      { start: "2027-07-05", name: "Week 2" }
+      { start: "2027-06-28", name: "Week 1", days: MON_FRI },
+      { start: "2027-07-05", name: "Week 2", days: MON_FRI }
     ]);
     expect(plan.versions[0].weekKey).toBe("Week:2027-07-05");
     expect(importNotes(chosen, terms).map((n) => n.key)).toContain("fillWeeks");
@@ -219,7 +220,7 @@ describe("the imported version", () => {
     expect(planFor(left, dated, "s", { answers }).fillWeeks).toEqual([]);
   });
 
-  it("placements that cannot be placed are listed with the reason, never dropped", () => {
+  it("placements that cannot be placed are listed with the reason, never dropped (a Saturday in a Monday-to-Friday week)", () => {
     const rows = [
       ["Time", "Bunk 1", "Bunk 2"],
       ["9:00-9:45", "Swim", "Art"],
@@ -231,9 +232,9 @@ describe("the imported version", () => {
     const p = propose(files, existingSetup({ weeks: [WEEK1] }));
     const lines = unplacedLines(p, terms);
     expect(lines.map((l) => [l.name, l.count, l.why])).toEqual([
-      ["Art", 1, "Shoresh plans Monday to Friday"],
-      ["Lunch", 2, "Shoresh plans Monday to Friday"],
-      ["Swim", 1, "Shoresh plans Monday to Friday"]
+      ["Art", 1, "that week has no such day"],
+      ["Lunch", 2, "that week has no such day"],
+      ["Swim", 1, "that week has no such day"]
     ]);
     expect(lines[0].whereText).toBe("Bunk 2, Saturday, 9:00-9:45");
   });
