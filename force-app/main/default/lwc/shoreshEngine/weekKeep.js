@@ -15,6 +15,7 @@ import { createWeekState } from "./weekState";
 /** Why an activity's cells were emptied: codes, worded by words.js keepNote. */
 export const KEEP_WHY = Object.freeze({
   GONE: "gone", // the activity was deleted, or is closed or its place is closed this week
+  PLACE_GONE: "placeGone", // its place was deleted and setup doesn't point it at another
   LENGTH: "length", // its length changed
   NOT_FOR: "notFor", // no longer set up for that group
   AWAY: "away", // the group isn't at camp then, or the cell is locked empty, or taken
@@ -72,6 +73,9 @@ function whyNot(st, p) {
   const act = st.actById.get(p.actId);
   if (!act) {
     return KEEP_WHY.GONE;
+  }
+  if (act.locationId && !st.fit.has(act.locationId)) {
+    return KEEP_WHY.PLACE_GONE;
   }
   if (act.span !== p.length) {
     return KEEP_WHY.LENGTH;
@@ -158,9 +162,11 @@ export function keepWhatStillFits(model, writeDays) {
 
 /**
  * Step 10c, first: a cell emptied because its activity is gone takes an activity new to the week
- * (running, in none of the week's cells) where every rule allows it, the new ones in settings
- * order (sameness.js): a director who deletes Drama and adds Adventure Baseball sees Adventure
- * Baseball where Drama was. Each one so placed is marked with: its activity's Id.
+ * where every rule allows it. "New" means running now and in none of the saved week's cells (an
+ * activity added since, or one that had no cells). With several new ones, each cell goes to the
+ * one with the fewest cells so far, ties in settings order (sameness.js, rule 9.10): a director
+ * who deletes Drama and adds Adventure Baseball sees Adventure Baseball where Drama was. Each one
+ * so placed is marked with: its activity's Id.
  */
 function replaceLikeForLike(st, model, emptied) {
   const inWeek = new Set(activityPlacements(model).map((p) => p.actId));
@@ -168,18 +174,25 @@ function replaceLikeForLike(st, model, emptied) {
   if (!fresh.length) {
     return;
   }
+  const given = new Map(fresh.map((a) => [a.id, 0]));
   for (const p of emptied) {
     if (p.why !== KEEP_WHY.GONE) {
       continue;
     }
-    const act = fresh.find(
-      (a) =>
+    let act = null;
+    for (const a of fresh) {
+      if (
+        (!act || given.get(a.id) < given.get(act.id)) &&
         a.span === p.length &&
         st.eligibility.get(a.id).has(p.groupId) &&
         whyNot(st, { ...p, actId: a.id }) === null
-    );
+      ) {
+        act = a;
+      }
+    }
     if (act) {
       st.place(act, p.groupId, p.d, p.blockId);
+      given.set(act.id, given.get(act.id) + p.length);
       p.with = act.id;
     }
   }
@@ -264,4 +277,30 @@ export function swapForMinimums(model, stillNeededBy, refilled, writeDays) {
     }
   }
   return moved.length ? { days: writeDays(model, st), moved } : null;
+}
+
+/**
+ * Rule 10.6: the weekly minimums the setup change left short, of those still short (stillNeededBy):
+ * a group that lost cells of the activity (emptied), an activity new to the week or whose minimum
+ * went up since the week was built (builtMinimums: [[activityId, minimum]] as that build had them;
+ * without them, only an activity in none of the saved week's cells counts as new). A minimum the
+ * saved week was already short of, with setup unchanged, stays listed as still needed: rule 10.1.
+ */
+export function shortByChange(model, need, emptied, builtMinimums) {
+  const lost = new Set(emptied.map((p) => `${p.groupId}|${p.actId}`));
+  const built = builtMinimums ? new Map(builtMinimums) : null;
+  const inWeek = new Set(activityPlacements(model).map((p) => p.actId));
+  const minOf = new Map(model.acts.map((a) => [a.id, a.min]));
+  return need.filter((n) => {
+    if (lost.has(`${n.groupId}|${n.activityId}`)) {
+      return true;
+    }
+    if (built) {
+      return (
+        !built.has(n.activityId) ||
+        minOf.get(n.activityId) > built.get(n.activityId)
+      );
+    }
+    return !inWeek.has(n.activityId);
+  });
 }

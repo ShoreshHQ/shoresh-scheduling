@@ -9,7 +9,7 @@ import { identity } from "./grid";
 import { OPEN_WHY } from "./notes";
 import { NOW, nowOf } from "./progress";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
-import { keepWhatStillFits, swapForMinimums } from "./weekKeep";
+import { keepWhatStillFits, shortByChange, swapForMinimums } from "./weekKeep";
 import {
   atCamp,
   compareText,
@@ -257,6 +257,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   // Rebuild of a generated week (protocol 10.1-10.3): what setup still allows stays.
   const keep =
     input.mode === MODE.KEEP ? keepWhatStillFits(model, writeDays) : null;
+  // The saved week as it came (for which activities it already had).
+  const keepModel = { ...model };
   if (keep && keep.kept + keep.emptied.length) {
     model.days = readDays(keep.days, readPartsOfDay(input.timeBlocks));
     model.mode = MODE.FILL_OPEN;
@@ -350,7 +352,12 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   // Protocol 10.4-10.5: a group still short of a weekly minimum after the refill gets it by
   // changing kept cells, one at a time (weekKeep.js), then the week is checked again.
   function* keepMinimums(built) {
-    const need = built.checked.stillNeededBy;
+    const need = shortByChange(
+      keepModel,
+      built.checked.stillNeededBy,
+      keep.emptied,
+      input.builtMinimums || null
+    );
     const swapped = need.length
       ? swapForMinimums(
           {
@@ -400,7 +407,7 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     }
     return {
       ...fresh,
-      keep: { emptied: [], moved: [], changed: null, filled: 0, fresh: true }
+      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: true }
     };
   }
   // With an imported week to compare, the first build has the first half of the bar and a build
@@ -498,6 +505,9 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   return {
     floor,
     keep: keeping ? keepSummary(input, model, keep, chosen) : null,
+    // Each running activity's weekly minimum as built, kept with the week so a later Rebuild can
+    // tell a minimum setup raised from one the week was already short of (rule 10.6).
+    minimums: model.acts.map((a) => [a.id, a.min]),
     ok: true,
     days: withReplaced(built, replaced),
     flags: flagCells(built, checked),
@@ -1038,7 +1048,7 @@ function keepSummary(input, model, keep, chosen) {
       refilled = refilled && Boolean(after.get(k));
       same = same && after.get(k) === before.get(k);
     }
-    if (!same) {
+    if (!same || p.why === "placeGone") {
       emptied.push({
         date: dateOf(p.d),
         groupId: p.groupId,
@@ -1047,7 +1057,8 @@ function keepSummary(input, model, keep, chosen) {
         name: p.name,
         why: p.why,
         length: p.length,
-        refilled
+        refilled,
+        with: p.with || null
       });
     }
   }

@@ -81,6 +81,7 @@ describe("the engine's notes kept with the week", () => {
       ],
       floor: { kind: "emptier", name: "Last summer", built: 10, imported: 12 },
       keep: null,
+      mins: [],
       cut: 0
     });
     expect(readNotes(notesText(notes))).toEqual(notes);
@@ -171,6 +172,7 @@ describe("the engine's notes kept with the week", () => {
       blank: [],
       floor: null,
       keep: null,
+      mins: [],
       cut: 0
     });
   });
@@ -231,12 +233,13 @@ describe("the engine's notes kept with the week", () => {
     const notes = notesOf({ ...RESULT, keep });
     expect(notes.keep).toEqual({
       emptied: [
-        ["a9", "Sports", "gone", 3, 2],
-        ["a2", "Arts", "weeklyMax", 1, 1]
+        ["a9", "Sports", "gone", 3, 2, ""],
+        ["a2", "Arts", "weeklyMax", 1, 1, ""]
       ],
       moved: [["2026-06-29", "g1", "t6", "g1", "a1", 2]],
       changed: 6,
-      filled: 1
+      filled: 1,
+      fresh: false
     });
     expect(readNotes(notesText(notes))).toEqual(notes);
     const input = {
@@ -263,5 +266,55 @@ describe("the engine's notes kept with the week", () => {
     expect(
       readNotes('{"v":1,"open":[],"blank":[],"keep":{"emptied":"x"}}').keep
     ).toBeNull();
+  });
+
+  // Fix 4 and rule 10.9: the replacement is named; a week built fresh says so, never silent.
+  it("names the activity that took a deleted one's cells, and says when the week was built fresh", () => {
+    const keep = {
+      emptied: [
+        {
+          date: "2026-06-29",
+          groupId: "g1",
+          blockId: "t1",
+          activityId: "a9",
+          name: "Drama",
+          why: "gone",
+          length: 1,
+          refilled: true,
+          with: "a1"
+        },
+        {
+          date: "2026-06-29",
+          groupId: "g1",
+          blockId: "t2",
+          activityId: "a9",
+          name: "Drama",
+          why: "gone",
+          length: 1,
+          refilled: true,
+          with: "a1"
+        }
+      ],
+      moved: [],
+      changed: 2,
+      filled: 0,
+      fresh: false
+    };
+    const notes = notesOf({ ...RESULT, keep });
+    expect(
+      whyOf(readNotes(notesText(notes)), INPUT, terms).notes.slice(-2)
+    ).toEqual([
+      "Drama was removed; Swim took its 2 cells.",
+      "Kept everything else as it was."
+    ]);
+    const fresh = notesOf({
+      ...RESULT,
+      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: true }
+    });
+    expect(
+      whyOf(readNotes(notesText(fresh)), INPUT, terms).notes.slice(-1)
+    ).toEqual([
+      "Couldn't keep your Session: it would have had fewer filled cells than the imported Session, so it was built fresh."
+    ]);
   });
 });

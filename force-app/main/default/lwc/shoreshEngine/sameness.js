@@ -33,6 +33,12 @@ function sharedPlaces(model) {
   for (const key of (model.otherPlace || new Map()).keys()) {
     outside.add(key.split("|")[0]);
   }
+  // Another program doing an activity counts against its groups at once, not its place: folding
+  // the place into groups at once would count those groups against the place too (seed 198).
+  const placeOf = new Map(model.acts.map((a) => [a.id, a.locationId]));
+  for (const key of (model.otherActivity || new Map()).keys()) {
+    outside.add(placeOf.get(key.split("|")[0]));
+  }
   for (const list of (model.electivePlaces || new Map()).values()) {
     for (const p of list || []) {
       outside.add(typeof p === "string" ? p : p && p.locationId);

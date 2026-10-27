@@ -41,11 +41,13 @@ function withChange(id, over) {
 
 /** Week A, a fresh build; and a Rebuild of it under setup `over`. */
 const weekA = generateWeek(camp(spec()));
+// As the screen sends it: each weekly minimum as week A was built (notes.mins).
 const rebuild = (over = {}, extra = {}) =>
   generateWeek({
     ...camp(spec(over)),
     mode: MODE.KEEP,
     days: weekA.days,
+    builtMinimums: weekA.minimums,
     ...extra
   });
 
@@ -205,6 +207,77 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(keep.keep).toBeNull();
   });
 
+  it("10.3: two added activities share a deleted one's cells, fewest first", () => {
+    const b = rebuild({
+      activities: [
+        ...spec().activities.filter((a) => a.id !== "drama"),
+        activity("theatre", { max: 4 }),
+        activity("chess", { max: 4 })
+      ]
+    });
+    // A cell neither fits (once a day, groups at once) is refilled the normal way.
+    const took = b.keep.emptied.map((e) => e.with).filter(Boolean);
+    const n = (id) => took.filter((x) => x === id).length;
+    expect(n("theatre") + n("chess")).toBe(took.length);
+    expect(Math.abs(n("theatre") - n("chess"))).toBeLessThanOrEqual(1);
+    expect(n("chess")).toBeGreaterThan(0);
+  });
+
+  it("10.2: an activity whose place was deleted is emptied, saying so", () => {
+    const b = rebuild({ locations: [] });
+    const swimCells = [...cells(weekA)]
+      .filter(([, v]) => v === "swim")
+      .map(([k]) => k);
+    expect(b.keep.emptied.map(keyOf).sort()).toEqual([...swimCells].sort());
+    expect(b.keep.emptied.every((e) => e.why === "placeGone")).toBe(true);
+  });
+
+  it("10.6: a week already short of a minimum, setup unchanged: nothing moves, still listed", () => {
+    // Week A built without swim's minimum of 4; the saved week then rebuilt as it was built.
+    const short = withChange("swim", { min: 4, max: 4 });
+    const saved = generateWeek({
+      ...camp(spec({ activities: short })),
+      mode: MODE.KEEP,
+      days: weekA.days,
+      builtMinimums: short.map((a) => [a.id, a.min])
+    });
+    expect(saved.keep.moved).toEqual([]);
+    expect(changes(weekA, saved)).toEqual([]);
+    expect(saved.stillNeededBy.some((x) => x.activityId === "swim")).toBe(true);
+  });
+
+  it("10.9: a kept week emptier than the imported week is built fresh, and says so", () => {
+    // One bunk, one day, three periods: the saved week has Solo in the middle, so a two-period
+    // Hike fits nowhere; the imported week has Hike then Solo.
+    const s = {
+      blocks: [0, 1, 2].map((i) => block(i)),
+      activities: [
+        activity("hike", { span: 2, max: 5 }),
+        activity("solo", { max: 1 })
+      ]
+    };
+    const saved = camp({
+      ...s,
+      cells: [{ day: 0, group: "g1", block: "b1", act: "solo" }]
+    });
+    const imported = camp({
+      ...s,
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "hike" },
+        { day: 0, group: "g1", block: "b2", act: "solo" }
+      ]
+    });
+    const b = generateWeek({
+      ...camp(s),
+      mode: MODE.KEEP,
+      days: saved.days,
+      imported: imported.days,
+      importedName: "Last summer"
+    });
+    expect(b.keep.fresh).toBe(true);
+    expect(b.cells.filled).toBe(3);
+  });
+
   // Random camps (data/randomCamp.js): a Rebuild with setup unchanged changes nothing; with one
   // activity deleted it keeps every other cell, and the week still keeps every rule.
   it.each(Array.from({ length: SEEDS }, (_, i) => i + 1))(
@@ -237,12 +310,8 @@ function randomCampFindings(seed) {
   }
   const inputB = { ...camp(specB), mode: MODE.KEEP, days: a.days };
   const b = generateWeek(inputB);
-  // Every rule holds, as on a fresh build of the same setup (one camp in 300, seed 198, a fresh
-  // build already lists a cell as impossible that the checker can fill: not this rule's).
-  const fresh = camp({ ...specB, mode: "full" });
-  if (!problems(specB, fresh, generateWeek(fresh)).length) {
-    out.push(...problems(specB, inputB, b));
-  }
+  // Every rule holds.
+  out.push(...problems(specB, inputB, b));
   if (!b.keep) {
     return out;
   }
@@ -263,3 +332,30 @@ function randomCampFindings(seed) {
     .forEach((k) => out.push(`changed without a reason: ${k}`));
   return out;
 }
+
+// Rule 9.10 with other programs (seed 198): another program doing an activity counts against its
+// groups at once, never against its place, so a place the activity has to itself isn't folded
+// into groups at once there; the cell is filled, not said to be full.
+describe("another program doing an activity at a place it has to itself", () => {
+  it("still lets this program's group in up to groups at once", () => {
+    const input = camp({
+      groups: [group("g1")],
+      locations: [{ id: "field", name: "Field", fit: 1 }],
+      activities: [activity("hike", { atOnce: 3, location: "field" })],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "09:00",
+          activityId: "hike",
+          groups: 2
+        }
+      ]
+    });
+    const result = generateWeek(input);
+    expect(cellsOf(result.days)[0].g1[0]).toEqual(
+      expect.objectContaining({ id: "hike" })
+    );
+    expect(result.openCells).toEqual([]);
+  });
+});

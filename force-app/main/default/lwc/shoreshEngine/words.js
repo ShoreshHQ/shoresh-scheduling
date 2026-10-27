@@ -120,14 +120,19 @@ export function floorNote(kind, { name, built, imported, terms } = {}) {
  * why: weekKeep.js KEEP_WHY, the reason an activity's cells were emptied ("Sports was removed,
  * so its 12 cells were refilled."), or "rest", the last line ("Kept everything else as it
  * was."). name: the activity's; deleted: it has no record now (else it is closed this week);
- * cells, refilled: how many were emptied and filled again; filled, changed: for "rest", cells
+ * cells, refilled: how many were emptied and filled again; replacement: the new activity that
+ * took them ("Drama was removed; Adventure Baseball took its 12 cells."); why "fresh": the week
+ * couldn't be kept (10.9); filled, changed: for "rest", cells
  * once Open now filled, and every cell changed.
  */
 export function keepNote(
   why,
-  { name, deleted, cells, refilled, filled, changed, terms } = {}
+  { name, deleted, cells, refilled, replacement, filled, changed, terms } = {}
 ) {
   const t = terms || buildTerms([]);
+  if (why === "fresh") {
+    return `Couldn't keep your ${t.sIn("Week")}: it would have had fewer filled cells than the imported ${t.sIn("Week")}, so it was built fresh.`;
+  }
   if (why === "rest") {
     if (!changed) {
       return "Nothing in setup needed a change, so everything was kept as it was.";
@@ -142,6 +147,7 @@ export function keepNote(
     gone: deleted
       ? `${name} was removed`
       : `${name} is closed this ${t.sIn("Week")}`,
+    placeGone: `${name}'s place was removed`,
     length: `${name}'s length changed`,
     notFor: `${name} is no longer set up for some ${groups}`,
     away: `${name} no longer fits where it was`,
@@ -151,6 +157,9 @@ export function keepNote(
     sameDivision: `${name} shared its place with another ${t.sIn("Division")}`,
     placeCapacity: `${name}'s place fits fewer ${groups} now`
   }[why];
+  if (replacement) {
+    return `${what}; ${replacement} took its ${cells === 1 ? "cell" : `${cells} cells`}.`;
+  }
   const these = cells === 1 ? "its cell was" : `its ${cells} cells were`;
   if (refilled === cells) {
     return `${what}, so ${these} refilled.`;

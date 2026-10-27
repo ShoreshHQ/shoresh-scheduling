@@ -970,7 +970,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           loaded.input.days,
           {
             option,
-            mode: modeOf(action)
+            mode: modeOf(action),
+            // Each weekly minimum as the week was built: Rebuild moves cells only for a minimum
+            // the setup change left short (rule 10.6). Unknown for a week built before they
+            // were kept.
+            builtMinimums:
+              this.engineNotes && this.engineNotes.mins.length
+                ? this.engineNotes.mins
+                : null
           },
           action
         );

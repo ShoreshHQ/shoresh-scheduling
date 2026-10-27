@@ -37,7 +37,10 @@ import {
  *       [[activityId, name, why, cells, refilled]] (each activity's emptied cells by why, the name
  *       as it was, since a deleted one has none now), moved: [[date, groupId, blockId,
  *       shortGroupId, shortActivityId, count]] (a cell changed so a group still gets its weekly
- *       minimum, count), changed, filled (cells changed, and of those once Open) },
+ *       minimum, count), changed, filled (cells changed, and of those once Open), fresh (the week
+ *       couldn't be kept: emptier than the imported week, so built fresh, 10.9) }; emptied rows
+ *       end with the Id of the new activity that took the cells ("" for none),
+ *     mins: [[activityId, minimum]]: each activity's weekly minimum as built (rule 10.6),
  *     cut: how many Open cells' reasons were left out to keep it under NOTES_MAX (0 when none) }
  */
 
@@ -85,6 +88,7 @@ export function notesOf(result) {
         }
       : null,
     keep: keepNotesOf(result.keep),
+    mins: result.minimums || [],
     cut: 0
   };
   // Measured once; each row left out takes its text and comma, and cut's count grows a digit.
@@ -99,13 +103,20 @@ export function notesOf(result) {
 
 /** generateWeek's keep as notes: emptied cells added up by activity and why. */
 function keepNotesOf(keep) {
-  if (!keep || keep.fresh) {
+  if (!keep) {
     return null;
   }
   const emptied = new Map();
   for (const e of keep.emptied) {
-    const k = `${e.activityId}|${e.why}`;
-    const row = emptied.get(k) || [e.activityId, e.name || "", e.why, 0, 0];
+    const k = `${e.activityId}|${e.why}|${e.with || ""}`;
+    const row = emptied.get(k) || [
+      e.activityId,
+      e.name || "",
+      e.why,
+      0,
+      0,
+      e.with || ""
+    ];
     row[3] += e.length;
     row[4] += e.refilled ? e.length : 0;
     emptied.set(k, row);
@@ -121,7 +132,8 @@ function keepNotesOf(keep) {
       m.count
     ]),
     changed: keep.changed,
-    filled: keep.filled
+    filled: keep.filled,
+    fresh: Boolean(keep.fresh)
   };
 }
 
@@ -144,12 +156,13 @@ function readKeep(keep) {
     emptied: keep.emptied.filter(
       (row) =>
         Array.isArray(row) &&
-        row.length === 5 &&
+        row.length === 6 &&
         isText(row[0]) &&
         typeof row[1] === "string" &&
         KEEP_WHYS.has(row[2]) &&
         isCount(row[3]) &&
-        isCount(row[4])
+        isCount(row[4]) &&
+        typeof row[5] === "string"
     ),
     moved: keep.moved.filter(
       (row) =>
@@ -159,7 +172,8 @@ function readKeep(keep) {
         isCount(row[5])
     ),
     changed: keep.changed,
-    filled: keep.filled
+    filled: keep.filled,
+    fresh: keep.fresh === true
   };
 }
 
@@ -217,6 +231,13 @@ export function readNotes(text) {
           }
         : null,
     keep: readKeep(notes.keep),
+    mins: (Array.isArray(notes.mins) ? notes.mins : []).filter(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 2 &&
+        isText(row[0]) &&
+        isCount(row[1])
+    ),
     cut: Number.isInteger(notes.cut) && notes.cut > 0 ? notes.cut : 0
   };
 }
@@ -295,13 +316,19 @@ export function whyOf(notes, input, terms) {
  * that everything else was kept as it was.
  */
 function keepLines(keep, input, { groups, activities, t }) {
-  const lines = keep.emptied.map(([id, name, why, cells, refilled]) =>
+  // Never silent (10.9): the week couldn't be kept and was built fresh.
+  if (keep.fresh) {
+    return [keepNote("fresh", { terms: t })];
+  }
+  const lines = keep.emptied.map(([id, name, why, cells, refilled, withId]) =>
     keepNote(why, {
       // A deleted activity has no record now: its name as it was; a closed one has its record.
       name: activities.get(id) || name,
       deleted: !activities.has(id),
       cells,
       refilled,
+      // The new activity that took its cells (10.3), by its name now.
+      replacement: (withId && activities.get(withId)) || null,
       terms: t
     })
   );
