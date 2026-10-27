@@ -32,7 +32,11 @@ function dated(start, end) {
   const empty = existingSetup();
   return {
     ...empty,
-    season: { ...empty.season, StartDate__c: start, EndDate__c: end }
+    season: {
+      ...empty.season,
+      [FIELD.Season.StartDate]: start,
+      [FIELD.Season.EndDate]: end
+    }
   };
 }
 
@@ -123,7 +127,7 @@ describe("a camp's own week", () => {
   it("grids that name no day fill the programs' weeks, as the save does", () => {
     const camp = sunThuCamp("2027-06-27", "2027-07-08");
     const asSaved = weeksToFill(camp, terms);
-    expect(asSaved.map((w) => w.StartDate__c)).toEqual([
+    expect(asSaved.map((w) => w[FIELD.Week.StartDate])).toEqual([
       "2027-06-27",
       "2027-07-04"
     ]);
