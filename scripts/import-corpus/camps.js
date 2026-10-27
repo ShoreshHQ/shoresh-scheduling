@@ -30,13 +30,13 @@ export function randomFrom(seed) {
   };
 }
 
-const CAMP_WORDS = [
+export const CAMP_WORDS = [
   ["Maple", "Cedar", "Willow", "Birch", "Pine", "Juniper", "Aspen", "Hazel"],
   ["Hollow", "Ridge", "Brook", "Meadow", "Lake", "Grove", "Hill", "Creek"]
 ];
-const CAMP_KINDS = ["Day Camp", "Camp", "Summer Camp", "Day Program"];
+export const CAMP_KINDS = ["Day Camp", "Camp", "Summer Camp", "Day Program"];
 
-const ACTIVITIES = [
+export const ACTIVITIES = [
   "Swim",
   "Archery",
   "Art",
@@ -63,7 +63,7 @@ const ACTIVITIES = [
   "Canoeing"
 ];
 
-const DIVISION_SETS = [
+export const DIVISION_SETS = [
   ["Juniors", "Seniors"],
   ["Juniors", "Inters", "Seniors"],
   ["Aleph", "Bet", "Gimmel", "Daled"],
@@ -88,7 +88,13 @@ const ANIMALS = [
 ];
 
 // How groups are named: "Bunk 7", "Cabin 7", "Juniors 2" (the division in the name), "Otters".
-const GROUP_STYLES = ["Bunk", "Cabin", "Group", "divisionNumber", "animal"];
+export const GROUP_STYLES = [
+  "Bunk",
+  "Cabin",
+  "Group",
+  "divisionNumber",
+  "animal"
+];
 
 const WEEKS = [
   ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
@@ -98,7 +104,7 @@ const WEEKS = [
   ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
 ];
 
-const OPENINGS = ["Flagpole", "Morning Circle", "Boker Tov", "Line Up"];
+export const OPENINGS = ["Flagpole", "Morning Circle", "Boker Tov", "Line Up"];
 const LAYOUT_CHOICES = [
   // [layout, format, how the pages are split]
   ["allCamp", "xlsx", "sheetPerDay"],
@@ -110,10 +116,10 @@ const LAYOUT_CHOICES = [
   ["byActivity", "xlsx", "sheetPerDay"],
   ["byActivity", "csv", "oneFile"]
 ];
-const TIME_STYLES = ["plain", "ampm", "24h"];
-const LABEL_STYLES = ["nameAndTimeColumns", "nameWithTime", "timeOnly"];
+export const TIME_STYLES = ["plain", "ampm", "24h"];
+export const LABEL_STYLES = ["nameAndTimeColumns", "nameWithTime", "timeOnly"];
 
-function groupNames(r, divisions, style) {
+export function groupNames(r, divisions, style) {
   let n = 0;
   const animals = r.shuffle(ANIMALS.concat(ANIMALS.map((a) => `Little ${a}`)));
   return divisions.map((division) => ({
@@ -128,7 +134,7 @@ function groupNames(r, divisions, style) {
 }
 
 /** The day's time blocks: [{ name, start, end, fixed }], minutes after midnight. */
-function blocksFor(r, opening) {
+export function blocksFor(r, opening) {
   const periods = r.int(4, 7);
   const length = r.pick([40, 45, 50, 60]);
   const gap = r.pick([0, 5]);
@@ -223,6 +229,10 @@ export function ordinaryCamps(count) {
   return Array.from({ length: count }, (_, i) => ordinaryCamp(i + 1));
 }
 
+/** Minutes after midnight as "09:05", the key the scorer compares times by. */
+export const hm = (m) =>
+  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
 // ---------- writing the camp's files as a director would ----------
 
 function clockText(minutes, style) {
@@ -241,7 +251,7 @@ function timeText(camp, block) {
 }
 
 /** The first cells of a block's row, and the headings above them. */
-function labelCells(camp, block) {
+export function labelCells(camp, block) {
   if (camp.labelStyle === "nameAndTimeColumns")
     return [block.name, timeText(camp, block)];
   if (camp.labelStyle === "nameWithTime")
@@ -249,7 +259,7 @@ function labelCells(camp, block) {
   return [timeText(camp, block)];
 }
 
-function labelHeadings(camp) {
+export function labelHeadings(camp) {
   if (camp.labelStyle === "nameAndTimeColumns") return ["Period", "Time"];
   return ["Time"];
 }
@@ -259,7 +269,7 @@ function dayText(camp, d) {
   return camp.shortDays ? day.slice(0, 3) : day;
 }
 
-function sheet(name, rows, merges = []) {
+export function sheet(name, rows, merges = []) {
   return { name, rows, merges };
 }
 
@@ -327,7 +337,7 @@ function byGroupPage(camp, g) {
 }
 
 /** Pages stacked in one sheet, a blank row between them (merges moved down with them). */
-function stacked(pages) {
+export function stacked(pages) {
   const rows = [];
   const merges = [];
   for (const page of pages) {
@@ -382,7 +392,7 @@ function pagesOf(camp) {
   return [{ file, sheets: [sheet("Schedule", one.rows, one.merges)] }];
 }
 
-function csvText(rows) {
+export function csvText(rows) {
   return rows
     .map((row) =>
       row
@@ -397,7 +407,12 @@ function csvText(rows) {
  * (xlsx bytes) for workbooks. Read them with csvFile or workbookFile, as the screen does.
  */
 export function campFiles(camp) {
-  return pagesOf(camp).map(({ file, sheets }) => {
+  return filesOf(pagesOf(camp));
+}
+
+/** Pages ({ file, sheets }) written out as campFiles returns them. */
+export function filesOf(pages) {
+  return pages.map(({ file, sheets }) => {
     if (file.endsWith(".csv"))
       return { name: file, csv: csvText(sheets[0].rows) };
     const wb = XLSX.utils.book_new();

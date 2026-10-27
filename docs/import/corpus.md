@@ -9,7 +9,7 @@ Everything in the corpus is invented.
 | Level                          | What the camps are like                                         | Status  |
 | ------------------------------ | --------------------------------------------------------------- | ------- |
 | 1 Ordinary                     | One schedule that repeats every week, clean data                | Built   |
-| 2 Different schedules per week | Week 2 differs from week 1, special weeks                       | Not yet |
+| 2 Different schedules per week | Week 2 differs from week 1, special weeks                       | Built   |
 | 3 Hard                         | Doubles, trips, special days, typos, several files that overlap | Not yet |
 | 4 Very hard                    | Messy real-world layouts, notes in cells, mixed layouts         | Not yet |
 | 5 Really weird                 | Anything a camp has actually sent that breaks the rules         | Not yet |
@@ -41,6 +41,34 @@ the same thing at the same time every day. No typos, no double periods, no trips
   days, time blocks (by start and end), divisions (only where the file shows them), groups,
   fixed events (name and time), recurring activities (level 1 has none), activities, and grid
   cells (group, day, time block: the right activity).
+
+## Greg's camp
+
+`scripts/import-corpus/fixtures/plant-camp.xlsx` is a real camp's schedule made fictional with
+Greg's approval: a sheet per group (13 groups in five plant-name divisions, plus CIT), a heading
+with the group's name on row 1 and the days on row 3, times without am/pm. Its truth is written by
+hand in `scripts/import-corpus/plant-camp.js`. It is scored on its own line under level 1, with a
+check that each heading becomes its group (never data), the days come from the lower row, and no
+cell is read a row off. Baseline (2026-10-27): headings, days and rows all read right; asks 14
+(2 spelling slips, CIT's division, 11 "set time or activity?"); wrong: Carpool not set at its two
+times, 8 set-time names left as activities, the two misspelled cells.
+
+## Level 2
+
+320 camps (`scripts/import-corpus/level2.js`), 2 to 6 weeks, Monday to Friday, each week rotating
+differently; some also have a Friday with different afternoon blocks in one week, a second
+session with a different set of groups, or activities only some weeks. Written as a sheet per
+week, a file per week (Excel or CSV), weeks stacked on one sheet under "Week 2 - Monday" headings,
+a "Week" column, or by group (a sheet per group per week, or a file per week). Cells are scored
+week by week; the report adds which weeks were found per layout and per kind of difference.
+
+    npm run score:import -- --level 2
+
+Baseline (2026-10-27): 98 of 320 perfect; weeks found exactly in 240. Biggest causes: a Friday
+with different blocks splits every group in two ("Cabin 1 (schedule 1)"); a "Week" column file
+is not read at all; by-group files with the week only in the file name lose the week, so every
+cell becomes a "the files disagree" question; a fixed event in a camp whose groups change between
+sessions is asked about.
 
 ## How to run
 
