@@ -91,6 +91,11 @@ even once; 2026-10-27): no "set time or activity?"; Lunch 4 and 5, Swim and Swim
 recurring by rule 7 (Swim: Garinim and Pirchim in Period 6 and Shkedim and Tamarim in Period 7 on
 Monday, Arazim, Garinim and Pirchim in Period 8 on Wednesday). Level 1 and level 2 unchanged.
 
+After the names-and-divisions rules (`docs/import/names-and-divisions.md`, Greg 2026-10-27):
+**perfect, nothing asked.** CIT is its own division; "Lunch2" and "Swim Returning" are read as
+Lunch 2 and Swim Return and shown in the notes. Level 1 (318 of 320, no questions), the travel
+camps (39 of 40) and level 2 (148 of 320) unchanged on every count.
+
 ## Level 2
 
 320 camps (`scripts/import-corpus/level2.js`), 2 to 6 weeks, Monday to Friday, each week rotating

@@ -92,7 +92,9 @@ function times1(n) {
 }
 
 export function similarCard(pair, t) {
-  const term = pair.kind === "group" ? t.sIn("Group") : t.sIn("Activity");
+  const term = t.sIn(
+    { group: "Group", division: "Division" }[pair.kind] || "Activity"
+  );
   const card = {
     id: pair.id,
     stage: "preview",

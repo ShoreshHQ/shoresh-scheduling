@@ -521,7 +521,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindOf(blank, "Carpool")).not.toBe("fixed");
   });
 
-  it("rule 1: a cell spelled otherwise, still asked, does not break a fixed Lunch (lunch, LUNCH)", () => {
+  it("rule 1: a cell spelled otherwise does not break a fixed Lunch (lunch, LUNCH)", () => {
     const p = propose((g, d, b) => {
       if (b === 2) {
         if (g === 1 && d === 3) return "lunch ";
@@ -530,7 +530,8 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       return rotation(g, d, b);
     });
     expect(kindOf(p, "Lunch")).toBe("fixed");
-    expect(p.reading.pairs.map((x) => x.reason)).toContain("spelling");
+    // Both read as Lunch (names-and-divisions.md rules 2 and 5), so nothing is asked.
+    expect(p.reading.pairs).toEqual([]);
     expect(kindAsks(p)).toEqual([]);
   });
 
