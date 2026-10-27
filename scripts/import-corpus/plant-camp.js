@@ -37,7 +37,11 @@ const BLOCKS = [
   [at(15, 40), at(16, 0)]
 ];
 
-// The same for every group, every day: blocks 0-2 and 10-11.
+// Fixed activities by the definition (wiki decision 0004: every group, the same block, every
+// day), checked cell by cell against the file: blocks 0-2 and 10-11 hold one name each for all 14
+// sheets on all five days. Greg named Carpool (morning and afternoon, two fixed activities, one
+// per block) and Group Time; Mifkad (09:20) and Busses (15:20) meet the same definition in the
+// file, so they are fixed here too (2026-10-27, to confirm with Greg).
 const FIXED_ROWS = {
   0: "Carpool",
   1: "Group Time",

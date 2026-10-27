@@ -14,6 +14,7 @@
  * has); the server puts in the Ids once everything is saved.
  */
 import { FIELD } from "c/shoreshSchema";
+import { fixedKey } from "./items";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 import { weeksToFill } from "./weeks";
@@ -150,7 +151,9 @@ function itemKeyFinder(proposal) {
       const existing = camp.fixed.get(`${programId}|${p.text}`);
       return {
         kind: "F",
-        key: existing ? existing.Id : `F|${t.key}|${p.text}`
+        key: existing
+          ? existing.Id
+          : fixedKey(t, p.text, d.patterns.length > 1 ? p.blockIndex : null)
       };
     }
     const existing = camp.recurring.get(`${programId}|${p.text}`);

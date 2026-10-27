@@ -75,20 +75,21 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
 // Level 2: schedules that differ from week to week. The first 40 camps, five of each layout.
 const SAMPLE_2 = 40;
 
-// Baseline 2026-10-27, on these 40 camps. Every kind not listed is 0.
+// Baseline 2026-10-27, on these 40 camps, after the classification rules
+// (docs/import/classification.md). Every kind not listed is 0.
 const CEILING_2 = {
-  perfectAtLeast: 16,
+  perfectAtLeast: 23,
   weeksExactAtLeast: 30,
   errors: 0,
-  questions: { kind: 130, cross: 2023 },
+  questions: { cross: 2023 },
   wrong: {
     programs: 51,
     weeks: 48,
     days: 55,
     blocks: 8,
     groups: 4,
-    fixed: 13,
-    activities: 27,
+    fixed: 2,
+    activities: 8,
     cells: 27516
   }
 };
@@ -154,18 +155,17 @@ describe("Import last year on Greg's camp", () => {
     expect(h.shifted).toBe(0);
   });
 
-  // Baseline 2026-10-27: the two spelling slips are asked about, Carpool (twice a day) and the
-  // set times that are not the same every day are asked; CIT is its own division (Greg) but is
-  // not read as one yet.
+  // Baseline 2026-10-27, after the classification rules: fixed, recurring and activities all
+  // read right with no "set time or activity?" question. Still asked: the two spelling slips
+  // (until answered, "Lunch2" and "Swim Returning" stay apart, two activities and two cells
+  // wrong); CIT is its own division (Greg) but is not read as one yet.
   it("asks and reads wrong no more than it did", () => {
     const ceiling = {
-      questions: { similar: 2, division: 1, kind: 11 },
+      questions: { similar: 2, division: 1 },
       wrong: {
         divisions: 1,
         groups: 2,
-        fixed: 2,
-        recurring: 8,
-        activities: 11,
+        activities: 2,
         cells: 2
       }
     };

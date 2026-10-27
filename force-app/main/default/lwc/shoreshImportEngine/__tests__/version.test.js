@@ -256,14 +256,30 @@ describe("the imported version", () => {
   });
 
   it("a name left out for now is not placed, and is listed", () => {
-    const p = propose(samples("all-camp"), existingSetup({ weeks: [WEEK1] }), {
-      ...answers,
-      "kind|Library time": LEAVE_OUT
-    });
-    const library = unplacedLines(p, terms).find(
-      (l) => l.name === "Library time"
+    // Swim at one time for everyone, and longer once for Bunk 2: asked, then left out.
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const bunks = ["Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4"];
+    const files = days.map((d, di) =>
+      csv(`${d}.csv`, [
+        ["Time", ...bunks],
+        ["9:00-9:45", ...bunks.map(() => "Swim")],
+        [
+          "10:00-10:45",
+          ...bunks.map((b, g) => {
+            return di === 3 && g === 1
+              ? "Swim"
+              : ["Art", "Soccer", "Drama"][(g + di) % 3];
+          })
+        ]
+      ])
     );
-    expect(library).toMatchObject({ count: 3, why: "left out for now" });
+    const p = propose(files, existingSetup({ weeks: [WEEK1] }), {
+      "kind|Swim": LEAVE_OUT
+    });
+    const swim = unplacedLines(p, terms).filter((l) => l.name === "Swim");
+    expect(swim.map((l) => l.why)).toEqual(swim.map(() => "left out for now"));
+    // 20 placements: Bunk 2's Thursday Swim runs on into a double period.
+    expect(swim.reduce((n, l) => n + l.count, 0)).toBe(20);
   });
 });
 
@@ -271,7 +287,7 @@ describe("answers to remember", () => {
   it("the save sends the answers given, and forgets the ones left out", () => {
     const given = {
       "similar|activity|music|musik|Music|Musik": "a",
-      "kind|Library time": LEAVE_OUT
+      "elective|Chugim": LEAVE_OUT
     };
     const p = propose(
       samples("all-camp"),
@@ -285,7 +301,7 @@ describe("answers to remember", () => {
     expect(plan.remember).toEqual([
       { key: "similar|activity|music|musik|Music|Musik", answer: "a" }
     ]);
-    expect(plan.forget).toEqual(["kind|Library time"]);
+    expect(plan.forget).toEqual(["elective|Chugim"]);
     expect(plan.files).toBe("a.xlsx");
     expect(plan.versions).toHaveLength(1);
   });

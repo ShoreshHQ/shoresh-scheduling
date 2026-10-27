@@ -86,32 +86,14 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.recurring[0].who.keys).toEqual([]);
   });
 
-  it("one division on one day of one week is asked: it may or may not be a set time", () => {
+  it("rule 2: one division on one day of one week is a recurring activity, not asked", () => {
     const p = propose((g, d, b) => {
       return d === 2 && b === 3 && g < 2 ? "Library" : rotation(g, d, b);
     });
-    const ask = p.asks.find((a) => a.id === "kind|Library");
-    expect(ask).toBeDefined();
-    const card = questionCards(p, terms, {}).find(
-      (c) => c.id === "kind|Library"
-    );
-    expect(card.options.map((o) => o.value)).toEqual([
-      "recurring",
-      "activity",
-      LEAVE_OUT
-    ]);
-    expect(card.subtitle).toContain("Juniors at Period 3 on Wednesday");
-    expect(
-      kindOf(
-        propose(
-          (g, d, b) => {
-            return d === 2 && b === 3 && g < 2 ? "Library" : rotation(g, d, b);
-          },
-          { "kind|Library": "recurring" }
-        ),
-        "Library"
-      )
-    ).toBe("recurring");
+    expect(kindOf(p, "Library")).toBe("recurring");
+    expect(p.recurring[0]).toMatchObject({ block: 3, days: ["Wednesday"] });
+    expect(p.recurring[0].who.names).toEqual(["Juniors"]);
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
@@ -139,6 +121,80 @@ describe("fixed, then recurring, then activities", () => {
     expect(
       kindOf(propose(cell, { "kind|Swim": LEAVE_OUT }), "Swim")
     ).toBeNull();
+  });
+
+  it("rule 1: fixed at two times a day (Carpool morning and afternoon) is two fixed activities", () => {
+    const p = propose((g, d, b) => {
+      return b === 0 || b === 3 ? "Carpool" : rotation(g, d, b);
+    });
+    expect(kindOf(p, "Carpool")).toBe("fixed");
+    expect(p.fixed.map((f) => [f.name, f.block])).toEqual([
+      ["Carpool", 0],
+      ["Carpool", 3]
+    ]);
+    expect(new Set(p.fixed.map((f) => f.key)).size).toBe(2);
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
+  });
+
+  it("rule 2: everyone but one group at one time twice a week is a recurring activity", () => {
+    const p = propose((g, d, b) => {
+      return (d === 1 || d === 3) && b === 3 && g < 3
+        ? "All Camp"
+        : rotation(g, d, b);
+    });
+    expect(kindOf(p, "All Camp")).toBe("recurring");
+    expect(p.recurring[0]).toMatchObject({
+      block: 3,
+      days: ["Tuesday", "Thursday"]
+    });
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
+  });
+
+  it("rule 2: a division counts the groups that have the name at all (one bunk's cell spelled otherwise)", () => {
+    // Swim Return for Juniors on Monday; on Wednesday for Bunk 1 and the Seniors, Bunk 2's
+    // cell says something else that day.
+    const p = propose((g, d, b) => {
+      if (d === 0 && b === 1 && g < 2) return "Swim Return";
+      if (d === 2 && b === 3 && g !== 1) return "Swim Return";
+      return rotation(g, d, b);
+    });
+    expect(kindOf(p, "Swim Return")).toBe("recurring");
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
+  });
+
+  it("rule 3: one group at the same time on most days is its recurring activity", () => {
+    const p = propose((g, d, b) => {
+      return g === 3 && b === 1 && d < 4 ? "CIT Block" : rotation(g, d, b);
+    });
+    expect(kindOf(p, "CIT Block")).toBe("recurring");
+    expect(p.recurring[0]).toMatchObject({
+      block: 1,
+      days: ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    });
+    expect(p.recurring[0].who.names).toEqual(["Bunk 4"]);
+  });
+
+  it("rule 5: two groups of different divisions together once is an activity, not asked", () => {
+    const p = propose((g, d, b) => {
+      return d === 2 && b === 3 && (g === 1 || g === 2)
+        ? "Library"
+        : rotation(g, d, b);
+    });
+    expect(kindOf(p, "Library")).toBe("activity");
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
+  });
+
+  it("rule 5: a division together, but at three or more different times a week, is an activity", () => {
+    const pairs = ["Art", "Soccer", "Drama"];
+    const p = propose((g, d, b) => {
+      return b === 2 ? "Lunch" : pairs[(Math.floor(g / 2) + b + d) % 3];
+    });
+    expect(pairs.map((n) => kindOf(p, n))).toEqual([
+      "activity",
+      "activity",
+      "activity"
+    ]);
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
   it("a fixed activity may skip a special day (a name that fills the whole day)", () => {

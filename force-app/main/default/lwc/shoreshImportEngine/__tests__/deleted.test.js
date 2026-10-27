@@ -208,9 +208,10 @@ describe("things you delete stay deleted", () => {
     const answers = answered({ [key]: BRING_BACK });
     const p = propose(answers);
     expect(p.deleted).toEqual([]);
-    expect(p.activities.map((a) => a.name)).toContain("Archery");
+    // Bunk 3 has Archery at the same time every day: back as its set time, a recurring activity.
+    expect(p.recurring.map((a) => a.name)).toContain("Archery");
     const plan = planFor(p, season(), "s", { answers });
-    expect(plan.activities.map((a) => a.name)).toContain("Archery");
+    expect(plan.recurringActivities.map((a) => a.name)).toContain("Archery");
     expect(plan.forget).toEqual([key]);
   });
 });

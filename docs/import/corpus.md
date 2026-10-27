@@ -53,6 +53,12 @@ cell is read a row off. Baseline (2026-10-27): headings, days and rows all read 
 (2 spelling slips, CIT's division, 11 "set time or activity?"); wrong: Carpool not set at its two
 times, 8 set-time names left as activities, the two misspelled cells.
 
+After the classification rules (`docs/import/classification.md`, 2026-10-27): asks 3 (2 spelling
+slips, CIT's division), no "set time or activity?"; fixed (Carpool twice, Group Time, Mifkad,
+Busses), recurring and activities all read right. Still wrong: CIT's division, and until the
+spelling questions are answered "Lunch2" and "Swim Returning" stay two activities of one cell
+each (answered, everything reads right).
+
 ## Level 2
 
 320 camps (`scripts/import-corpus/level2.js`), 2 to 6 weeks, Monday to Friday, each week rotating
@@ -69,6 +75,12 @@ with different blocks splits every group in two ("Cabin 1 (schedule 1)"); a "Wee
 is not read at all; by-group files with the week only in the file name lose the week, so every
 cell becomes a "the files disagree" question; a fixed event in a camp whose groups change between
 sessions is asked about.
+
+After the classification rules (2026-10-27): 148 of 320 perfect (was 98); "set time or
+activity?" questions 0 (was 1410); fixed events wrong 24 (was 105), activities wrong 121 (was
+330), grid cells wrong 426582 (unchanged), recurring wrong 0 (unchanged). Each name the import
+decides on, in every timetable it reads, now gets the kind its truth says; the fixed events and
+activities still wrong come from the weeks, programs and Friday splits above.
 
 ## How to run
 

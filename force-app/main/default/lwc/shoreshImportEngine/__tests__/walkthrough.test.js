@@ -82,7 +82,7 @@ function afterSave(plan) {
 describe("Import last year, as the walkthrough tells it", () => {
   let firstPlan;
 
-  it("into an empty season: one similar name, one question, then everything added", () => {
+  it("into an empty season: one similar name, then everything added", () => {
     const files = samples("all-camp");
     const empty = existingSetup();
     const preview = questionCards(
@@ -115,7 +115,10 @@ describe("Import last year, as the walkthrough tells it", () => {
     expect(lists.fixedActivities.map((i) => i.name)).toEqual(["Lunch"]);
     expect(
       lists.recurringActivities.map((i) => `${i.name}: ${i.detail}`)
-    ).toEqual(["Morning meeting: Period 1 on Monday, everyone"]);
+    ).toEqual([
+      "Library time: Period 4 on Wednesday, Juniors",
+      "Morning meeting: Period 1 on Monday, everyone"
+    ]);
     expect(lists.activities.find((i) => i.name === "Boating").detail).toBe(
       "1 a week · 2 time blocks long · Seniors only"
     );
@@ -126,15 +129,8 @@ describe("Import last year, as the walkthrough tells it", () => {
     const review = questionCards(proposal, terms, answers).filter(
       (c) => c.stage === "review" && !c.flag
     );
-    expect(review.map((c) => c.title)).toEqual([
-      "Is “Library time” at a set time, or an activity?"
-    ]);
-    expect(review[0].options.map((o) => o.label)).toEqual([
-      "A recurring activity",
-      "An activity",
-      "Leave it out for now"
-    ]);
-    answers[review[0].id] = "recurring";
+    // Library time is all of Juniors at one time on Wednesday: a recurring activity, not asked.
+    expect(review).toEqual([]);
 
     firstPlan = planFor(
       buildProposal({ files, existing: empty, terms, answers }),

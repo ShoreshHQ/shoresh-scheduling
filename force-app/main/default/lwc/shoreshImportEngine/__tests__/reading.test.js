@@ -226,9 +226,13 @@ describe("the three layouts", () => {
         "Period 6"
       ]);
       expect(proposal.fixed.map((f) => f.name)).toEqual(["Lunch"]);
-      expect(proposal.recurring.map((r) => r.name)).toEqual([
-        "Morning meeting"
-      ]);
+      // Library time is all of Juniors on Wednesday: recurring where the file shows the
+      // divisions (all camp); half the bunks once, with no divisions shown, is an activity.
+      expect(proposal.recurring.map((r) => r.name)).toEqual(
+        filter === "all-camp"
+          ? ["Library time", "Morning meeting"]
+          : ["Morning meeting"]
+      );
       expect(proposal.noted.map((n) => [n.name, n.kind])).toEqual([
         ["Field day", "D"],
         ["Zoo trip", "T"]

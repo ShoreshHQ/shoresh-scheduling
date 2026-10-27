@@ -98,7 +98,13 @@ function timetableFacts(t, usable, specialDays, divisionOf) {
     ])
   );
   const groups = [...new Set(here.map((p) => p.group))];
-  return { groups, divisionOf, daysByWeek, weeks };
+  const groupsByWeek = new Map(
+    weeks.map((w) => [
+      w,
+      [...new Set(here.filter((p) => p.week === w).map((p) => p.group))]
+    ])
+  );
+  return { groups, groupsByWeek, divisionOf, daysByWeek, weeks };
 }
 
 // ---------- what the camp already has ----------
@@ -250,27 +256,30 @@ function whoOf(groups, facts, keyOf, programKey) {
   };
 }
 
+/**
+ * A new fixed activity's key: by name, and by its time block when the name is fixed at several
+ * (Carpool in the morning and the afternoon).
+ */
+export function fixedKey(t, name, block) {
+  return block === null ? `F|${t.key}|${name}` : `F|${t.key}|${name}|${block}`;
+}
+
 export function setTimeRecords(decision, keyOf) {
   const t = decision.timetable;
   const place = onePlace(decision.cells);
   if (decision.kind === "fixed") {
-    const p =
-      decision.patterns.find(
-        (x) => x.groups.length === decision.facts.groups.length
-      ) || decision.patterns[0];
-    return [
-      {
-        kind: "fixed",
-        key: `F|${t.key}|${decision.name}`,
-        name: decision.name,
-        timetable: t,
-        programKey: t.key,
-        block: p.block,
-        blockKey: blockRecordKey(t, p.block),
-        length: p.length,
-        place
-      }
-    ];
+    const several = decision.patterns.length > 1;
+    return decision.patterns.map((p) => ({
+      kind: "fixed",
+      key: fixedKey(t, decision.name, several ? p.block : null),
+      name: decision.name,
+      timetable: t,
+      programKey: t.key,
+      block: p.block,
+      blockKey: blockRecordKey(t, p.block),
+      length: p.length,
+      place
+    }));
   }
   return decision.patterns.map((p) => ({
     kind: "recurring",
