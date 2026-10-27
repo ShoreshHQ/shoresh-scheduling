@@ -1,10 +1,11 @@
 import { compareText } from "./setup";
 
 /**
- * Protocol rule 9.10 (docs/engine/protocol.md): an activity's name, Id and place in the list never
- * change where anything is placed; only its settings, groups and location do. Greg's swap test
- * (__tests__/swap.test.js): Sports deleted and an identical Adventure Baseball added gives the
- * same week with Sports' cells now Adventure Baseball.
+ * Protocol rule 9.10 (docs/engine/protocol.md): a fresh build never depends on an activity's place
+ * in the list or its Id; between activities with identical settings (twins) the name breaks the
+ * tie. Replacing one activity without moving anything else is guaranteed by the minimal-change
+ * rebuild (pending, Greg 2026-10-27), not here. Greg's swap test (__tests__/swap.test.js): Sports,
+ * which has no twin, swapped for an identical Adventure Baseball gives the same week.
  *
  * So a build never sees the list's order: it works through the activities in settings-key order
  * (settingsKeys), and everything that goes through them in turn follows that order: the
@@ -15,9 +16,8 @@ import { compareText } from "./setup";
  * takes it as that limit on groups at once (a field that fits 2 for an activity of 2 at once is
  * the same as no place at all).
  *
- * Two activities whose keys are the same are ordered by name (then Id, only for two with the
- * same name too). This is the one place a name counts, and only between activities nothing else
- * tells apart.
+ * Two activities whose keys are the same (twins) are ordered by name (then Id, only for two with
+ * the same name too): renaming one can move cells. This is the one place a name counts.
  */
 
 function sharedPlaces(model) {
@@ -42,14 +42,22 @@ function sharedPlaces(model) {
 }
 
 /**
- * Map activity id -> its settings key: what it asks for (length, weekly minimum and maximum, same
- * division only, priority, early-week goal) and who it is for. How many it can take at once (groups
- * at once, its place, other programs there) is left out: those are limits the rules check
- * wherever the activity goes, so a smaller place changes only the cells it can no longer take.
+ * Map activity id -> its settings key: length, weekly minimum and maximum, groups at once (lowered
+ * to the groups that fit at a place it has to itself), same division only, priority, early-week
+ * goal, who it is for, and a place it shares with others.
  */
 export function settingsKeys(model) {
   const keys = new Map();
+  const { users, outside } = sharedPlaces(model);
   for (const a of model.acts) {
+    const loc = a.locationId;
+    const fit =
+      loc && model.fit && model.fit.has(loc) ? model.fit.get(loc) : null;
+    const shared = fit != null && (users.get(loc) > 1 || outside.has(loc));
+    let atOnce = a.atOnce == null ? "any" : a.atOnce;
+    if (fit != null && !shared) {
+      atOnce = atOnce === "any" ? fit : Math.min(atOnce, fit);
+    }
     const groups = model.groupIds
       .filter((g) => model.eligibility.get(a.id).has(g))
       .join(",");
@@ -59,6 +67,8 @@ export function settingsKeys(model) {
         a.span,
         a.min,
         a.max == null ? "any" : a.max,
+        atOnce,
+        shared ? `at:${loc}` : "",
         a.sameDivision ? "same" : "",
         a.priority,
         a.early ? `${a.early.count}by${a.early.byDay}` : "",

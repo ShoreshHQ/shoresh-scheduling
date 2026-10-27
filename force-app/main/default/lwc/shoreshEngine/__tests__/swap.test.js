@@ -231,10 +231,18 @@ function cellsByName(result) {
  * a new, later Id and no sort order) with Sports' settings and eligibility. at: its location
  * ({ name, fit } or null for Sports' own); keepPlace: Sports' place in the list, for the control.
  */
-function swapped(records, { at = null, keepPlace = false } = {}) {
+function swapped(
+  records,
+  {
+    at = null,
+    keepPlace = false,
+    from = "Sports",
+    to = "Adventure Baseball"
+  } = {}
+) {
   const A = FIELD.Activity;
   const E = FIELD.ActivityEligibility;
-  const sports = records.activities.find((a) => a.Name === "Sports");
+  const sports = records.activities.find((a) => a.Name === from);
   const sortOrder = keepPlace ? sports[A.SortOrder] : null;
   const newId = "a0A999999999999AAA";
   const locations = [...records.locations];
@@ -255,7 +263,7 @@ function swapped(records, { at = null, keepPlace = false } = {}) {
       {
         ...sports,
         Id: newId,
-        Name: "Adventure Baseball",
+        Name: to,
         [A.Location]: locationId,
         [A.SortOrder]: sortOrder
       }
@@ -269,10 +277,10 @@ function swapped(records, { at = null, keepPlace = false } = {}) {
 }
 
 /** The cells that moved between A and B, with Sports read as Adventure Baseball. */
-function moves(a, b) {
+function moves(a, b, from = "Sports", to = "Adventure Baseball") {
   const out = [];
   for (const [key, was] of a) {
-    const want = was === "Sports" ? "Adventure Baseball" : was;
+    const want = was === from ? to : was;
     const got = b.get(key);
     if (got !== want) {
       out.push(`${key}: A had ${was || "Open"}, B has ${got || "Open"}`);
@@ -328,6 +336,20 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
     const b = run(swapped(records, { at }));
     const moved = moves(aCells, cellsByName(b));
     explain(label, a, b, moved);
+    expect(moved).toEqual([]);
+  });
+
+  // Twins: an activity with the same settings as others (Drama as Arts and Crafts, Clay and Music;
+  // Gaga Field as Big Playground; Gaga Pit, at 2 at once, is no twin). A fresh build breaks the tie between twins
+  // by name (rule 9.10), so a renamed twin can trade places with the others.
+  // KNOWN FAILURE (it.failing): twins: pending minimal-change rebuild (Greg 2026-10-27).
+  it.failing.each([
+    ["Drama", "Adventure Baseball"],
+    ["Gaga Field", "Aaa"]
+  ])("puts %s's replacement %s exactly where it was (a twin)", (from, to) => {
+    const b = run(swapped(records, { from, to }));
+    const moved = moves(aCells, cellsByName(b), from, to);
+    explain(`twin ${from} -> ${to}`, a, b, moved);
     expect(moved).toEqual([]);
   });
 

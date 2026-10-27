@@ -536,7 +536,8 @@ export function* moveAcrossDays(st, at, outOfWork, trade = false) {
 /**
  * The cells a last-resort chain left Open, kept with the group and activity they were left for.
  * A chain may also fill a cell that was Open; then one cell it left Open is that Open cell moved,
- * not a new one (the same day and time block first, else the chain's first), and keeps its own
+ * not a new one (the same day and time block first, then the same group, else the chain's first),
+ * and keeps its own
  * reason: only the Open cells the chain added say "Open, so Bunk 3 gets Swim" (protocol 8.31).
  */
 function noteTrades(st, g, need, moves) {
@@ -544,8 +545,10 @@ function noteTrades(st, g, need, moves) {
   const moved = new Set();
   for (const f of moves.filter((m) => m.from == null && m.to != null)) {
     const free = opened.filter((m) => !moved.has(m));
-    const same = free.find((m) => m.d === f.d && m.b === f.b);
-    const pick = same || free[0];
+    const pick =
+      free.find((m) => m.d === f.d && m.b === f.b) ||
+      free.find((m) => m.g === f.g) ||
+      free[0];
     if (pick) {
       moved.add(pick);
     }
