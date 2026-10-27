@@ -7,6 +7,7 @@ import { generateWeek } from "c/shoreshEngine";
 import { FIELD } from "c/shoreshSchema";
 import { mulberry32 } from "../random";
 import { activity, block, camp, cellsOf, dateAt, group } from "./data/camp";
+import { problems } from "./data/check";
 
 const spec = {
   groups: [
@@ -64,19 +65,20 @@ const spec = {
 
 // The pinned week, captured from this engine when it was written (ADR 0010). A change that
 // reorders a call, a draw from the stream, or an input's order breaks it. Re-capture only for a
-// deliberate change to how weeks are built, and say why in the commit.
+// deliberate change to how weeks are built, and say why in the commit. Re-captured 2026-10-27:
+// rule 9.10 builds in settings order, not the list's (the week still keeps every rule, below).
 const PINNED_ROWS = [
   {
-    items: "A:hike A:swim F:lunch A:climb A:music A:arts A:tennis",
-    rows: ["1,^,2,3,4", "5,4,2,3,6", "2,1,^,3,6", "6,2,7,,"]
+    items: "A:hike A:arts F:lunch A:swim A:climb A:tennis",
+    rows: ["1,^,2,3,4", "1,^,2,3,4", "2,4,5,3,6", "2,4,6,,"]
   },
   {
-    items: "A:climb A:music A:tennis F:lunch A:arts A:hike A:swim",
-    rows: ["1,2,3,4,5", "6,^,1,4,3", "3,1,7,4,5", "6,^,5,,"]
+    items: "A:swim A:music A:arts F:lunch A:climb A:tennis A:hike",
+    rows: ["1,2,3,4,5", "5,6,1,4,3", "1,7,^,4,3", "7,^,5,,"]
   },
   {
-    items: "A:swim A:arts A:music F:lunch A:tennis A:climb",
-    rows: ["1,2,3,4,5", "1,2,3,4,5", "2,1,5,4,6", "2,1,6,,"]
+    items: "A:tennis A:arts A:swim F:lunch A:music A:climb",
+    rows: ["1,2,3,4,5", "3,2,5,4,6", "3,6,2,4,1", "6,3,2,,"]
   }
 ];
 
@@ -150,6 +152,7 @@ describe("determinism", () => {
   it("pins the week this engine builds for a fixed camp", () => {
     const result = generateWeek(camp(spec));
     expect(rowsOf(result)).toEqual(PINNED_ROWS);
+    expect(problems(spec, camp(spec), result)).toEqual([]);
   });
 
   // CORE-5.8

@@ -5,6 +5,8 @@
  * object; none keeps ledgers of its own.
  */
 
+import { actsAsBuilt } from "./sameness";
+
 /** Block id -> ids of the day's blocks whose clock times overlap it (touching ones don't). */
 function overlappingPeers(blocks) {
   const peers = new Map();
@@ -25,7 +27,9 @@ function overlappingPeers(blocks) {
 }
 
 export function createWeekState(model) {
-  const { days, groups, acts } = model;
+  const { days, groups } = model;
+  // Rule 9.10: worked through in settings order, never the list's (sameness.js).
+  const { acts } = actsAsBuilt(model);
   const actById = new Map(acts.map((a) => [a.id, a]));
   const cellKey = (g, d, b) => `${g}|${d}|${b}`;
   const blocksOf = (d) => days[d].blocks;

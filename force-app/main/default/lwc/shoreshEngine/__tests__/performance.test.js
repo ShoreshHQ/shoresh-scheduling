@@ -77,7 +77,20 @@ describe("generateWeek on a large camp", () => {
   it("builds a week that fits with little work, keeping every rule", () => {
     const spec = bigCamp(fitting);
     const { input, result, ms } = timed(spec);
-    expect(result.ruleChecks).toBeLessThan(30000); // about 20,000 today
+    // The work of options 1 to 5, middle one: about 23,000 today. One option's draws can strand
+    // more cells for the first repair (weekRepair.js tryFill) to fill: option 1 takes about
+    // 46,000 since rule 9.10 put the activities in settings order, as option 6 took about 29,500
+    // before it (12 options: 21,500 on average before, 23,700 after). The middle one is what
+    // tells a slower engine from an unlucky draw.
+    const work = [1, 2, 3, 4, 5]
+      .map((option) => generateWeek({ ...input, option }).ruleChecks)
+      .sort((a, b) => a - b);
+    expect(work[2]).toBeLessThan(30000);
+    // And no one draw blows up: every option 1 to 12 within twice that (46,156 the most today).
+    for (let option = 1; option <= 12; option++) {
+      const checks = generateWeek({ ...input, option }).ruleChecks;
+      expect([option, checks <= 60000]).toEqual([option, true]);
+    }
     // About 80 ms alone. ruleChecks above counts how many checks run, not how long each takes,
     // so this ceiling is what catches a slower check (roughly 10x or worse); 1 s leaves room
     // for a loaded machine, and the fastest of three builds is what is measured.

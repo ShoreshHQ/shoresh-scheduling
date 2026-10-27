@@ -29,7 +29,7 @@ jest.mock("../weekAcross", () => {
 // The differential's camps (data/sharedCamp.js): CI checks the first 60, the full run 200.
 const SEEDS = sampled(200, 60);
 // Differential camps where a group's minimum is met only by moving sessions between days.
-const ACROSS_SEEDS = [123, 210];
+const ACROSS_SEEDS = [123, 58];
 
 /** Sessions per "group|activity" and per "group|day|activity", from the grid alone. */
 function countsOf(days) {
@@ -75,11 +75,12 @@ describe("moves between days for a weekly minimum", () => {
   );
 
   it("pins what it reaches on those camps (fewer groups short than before it)", () => {
-    // Before this pass: camp 123 had 11 lines still needed, camp 210 had 9.
+    // Before this pass: camp 123 had 11 lines still needed. Camp 58 replaced camp 210 when rule
+    // 9.10 put the activities in settings order (2026-10-27): 210 no longer needs the moves.
     const short = ACROSS_SEEDS.map(
       (seed) => generateWeek(camp(sharedCamp(seed))).stillNeededBy.length
     );
-    expect(short).toEqual([10, 8]);
+    expect(short).toEqual([10, 5]);
   });
 });
 
@@ -224,6 +225,45 @@ describe("with and without the moves between days", () => {
       expect([seed, moreOpen]).toEqual([seed, []]);
     }
     expect(fewer).toBeGreaterThan(0);
+  });
+});
+
+// Camp 40: a last-resort chain filled an Open cell (Bunk g1, b1) and left Bunk g4's cell at the
+// same time Open instead: that Open cell moved, it isn't a new one, so only the cell the chain
+// added says it is Open for Bunk g5's minimum (protocol 8.31). Before, both said so: two Open
+// cells "for" one session.
+describe("a last-resort chain's Open cells", () => {
+  it("camp 40: each says it is Open for a minimum only if the chain added it", () => {
+    const spec = sharedCamp(40);
+    mockAcross.off = true;
+    const without = generateWeek(camp(spec));
+    mockAcross.off = false;
+    const withIt = generateWeek(camp(spec));
+    const before = countsOf(without.days).week;
+    const after = countsOf(withIt.days).week;
+    // The minimum repair's own such cells, Open without the moves too, aside.
+    const cell = (c) => `${c.date}|${c.groupId}|${c.blockId}`;
+    const openWithout = new Set(without.openCells.map(cell));
+    const trades = new Map();
+    for (const c of withIt.openCells.filter(
+      (x) => x.why === "trade" && !openWithout.has(cell(x))
+    )) {
+      const k = `${c.shortGroupId}|${c.shortActivityId}`;
+      trades.set(k, (trades.get(k) || 0) + 1);
+    }
+    for (const [k, n] of trades) {
+      const gained = (after.get(k) || 0) - (before.get(k) || 0);
+      expect([k, n <= gained]).toEqual([k, true]);
+    }
+    expect(
+      withIt.openCells.some(
+        (c) =>
+          c.why === "trade" &&
+          c.date === "2026-07-08" &&
+          c.groupId === "g4" &&
+          c.blockId === "b1"
+      )
+    ).toBe(false);
   });
 });
 
