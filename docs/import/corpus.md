@@ -59,6 +59,12 @@ Busses), recurring and activities all read right. Still wrong: CIT's division, a
 spelling questions are answered "Lunch2" and "Swim Returning" stay two activities of one cell
 each (answered, everything reads right).
 
+After the review refinements (absent groups keep fixed, one name one kind, genuine splits asked,
+two days of evidence; 2026-10-27): unchanged. Still no "set time or activity?"; Lunch 4 and 5
+(one division once) are recurring by their numbered siblings, Swim and Swim Return by being
+staggered across the camp. Level 1 unchanged (318 of 320, no questions); level 2 unchanged
+(148 of 320, no "set time or activity?", recurring wrong 0).
+
 ## Level 2
 
 320 camps (`scripts/import-corpus/level2.js`), 2 to 6 weeks, Monday to Friday, each week rotating

@@ -448,6 +448,7 @@ export function buildProposal(input) {
     updates: { fixed: [], recurring: [], activities: [] },
     specialDays: noted.specialDays,
     divisionOf: people.divisionOf,
+    baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
     noted: noted.kinds
   };
   const decisions = decideKinds(usable, ctx);

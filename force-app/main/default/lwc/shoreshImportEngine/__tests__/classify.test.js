@@ -86,14 +86,16 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.recurring[0].who.keys).toEqual([]);
   });
 
-  it("rule 2: one division on one day of one week is a recurring activity, not asked", () => {
-    const p = propose((g, d, b) => {
+  it("rule 3: one division once in a one-week file is asked; answered, it is recurring", () => {
+    const cell = (g, d, b) => {
       return d === 2 && b === 3 && g < 2 ? "Library" : rotation(g, d, b);
-    });
+    };
+    const asked = propose(cell).asks.find((a) => a.id === "kind|Library");
+    expect(asked.facts.reason).toBe("split");
+    const p = propose(cell, { "kind|Library": "recurring" });
     expect(kindOf(p, "Library")).toBe("recurring");
     expect(p.recurring[0]).toMatchObject({ block: 3, days: ["Wednesday"] });
     expect(p.recurring[0].who.names).toEqual(["Juniors"]);
-    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
@@ -274,6 +276,167 @@ describe("fixed, then recurring, then activities", () => {
     expect(trip.noted.map((n) => [n.name, n.kind])).toEqual([
       ["Museum Trip", "T"]
     ]);
+  });
+});
+
+describe("review findings: the rules refined (docs/import/classification.md)", () => {
+  // Fillers that are never "Art" or "Sports", and differ between any two bunks at once.
+  const FILL = ["Swim", "Soccer", "Drama", "Music"];
+  const fill = (g, d, b) => FILL[(g + b + d) % FILL.length];
+  const kindAsks = (p) => p.asks.filter((a) => a.type === "kind");
+
+  it.each([
+    ["on a trip", "Zoo trip"],
+    ["with no cells", ""],
+    ["off", "Off"]
+  ])(
+    "rule 1: a bunk %s on Wednesday does not break a fixed Carpool",
+    (_, away) => {
+      const p = propose((g, d, b) => {
+        if (g === 2 && d === 2) return away;
+        return b === 0 ? "Carpool" : rotation(g, d, b);
+      });
+      expect(kindOf(p, "Carpool")).toBe("fixed");
+      expect(p.fixed).toHaveLength(1);
+      expect(kindAsks(p)).toEqual([]);
+    }
+  );
+
+  it("rule 1: another activity in the slot for one bunk one day does break fixed", () => {
+    const p = propose((g, d, b) => {
+      if (g === 2 && d === 2 && b === 0) return "Drama";
+      return b === 0 ? "Carpool" : rotation(g, d, b);
+    });
+    expect(kindOf(p, "Carpool")).not.toBe("fixed");
+  });
+
+  it("rule 2: one bunk's steady Sports does not make Sports recurring when the others rotate it", () => {
+    const sports = {
+      1: [
+        [0, 1],
+        [2, 1],
+        [4, 1]
+      ],
+      0: [
+        [0, 0],
+        [1, 3],
+        [3, 1]
+      ],
+      2: [
+        [1, 0],
+        [2, 3],
+        [4, 1]
+      ],
+      3: [
+        [0, 3],
+        [3, 0],
+        [4, 0]
+      ]
+    };
+    const p = propose((g, d, b) => {
+      if (b === 2) return "Lunch";
+      return sports[g].some(([sd, sb]) => sd === d && sb === b)
+        ? "Sports"
+        : fill(g, d, b);
+    });
+    expect(kindOf(p, "Sports")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 2: Juniors together for Art once does not make Art recurring when Seniors rotate it", () => {
+    const art = {
+      0: [[0, 0]],
+      1: [[0, 0]],
+      2: [
+        [1, 1],
+        [2, 3],
+        [3, 0]
+      ],
+      3: [
+        [1, 3],
+        [3, 1],
+        [4, 0]
+      ]
+    };
+    const p = propose((g, d, b) => {
+      return art[g].some(([ad, ab]) => ad === d && ab === b)
+        ? "Art"
+        : fill(g, d, b);
+    });
+    expect(kindOf(p, "Art")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: a division together at different times on two days, nobody else, is asked", () => {
+    const cell = (g, d, b) => {
+      return g < 2 && ((d === 0 && b === 0) || (d === 2 && b === 3))
+        ? "Art"
+        : fill(g, d, b);
+    };
+    const ask = kindAsks(propose(cell)).find((a) => a.name === "Art");
+    expect(ask.facts.reason).toBe("split");
+    expect(kindOf(propose(cell, { "kind|Art": "recurring" }), "Art")).toBe(
+      "recurring"
+    );
+  });
+
+  it("rule 4: a one-day file reads nothing as fixed; everyone together is recurring", () => {
+    const p = propose((g, d, b) => {
+      if (d !== 0) return "";
+      return b === 2 ? "Lunch" : rotation(g, d, b);
+    });
+    expect(kindOf(p, "Lunch")).toBe("recurring");
+    expect(p.fixed).toEqual([]);
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 4: with three groups, two bunks of different divisions together once is an activity", () => {
+    const three = GROUPS.slice(0, 3);
+    const p = buildProposal({
+      files: byGroupFiles(three, (g, d, b) => {
+        return d === 2 && b === 3 && g > 0 ? "Library" : fill(g, d, b);
+      }),
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(kindOf(p, "Library")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  describe("rule 5: a week without the name is not a change of time", () => {
+    const week = (n, cell) =>
+      GROUPS.map((g, gi) =>
+        csv(`Week ${n} - ${g}.csv`, [
+          ["Time", ...DAYS],
+          ...["Period 1 9:00-9:45", "Period 2 9:50-10:35"].map((b, bi) => [
+            b,
+            ...DAYS.map((_, d) => cell(gi, d, bi))
+          ])
+        ])
+      );
+    const read = (second) =>
+      buildProposal({
+        files: [
+          ...week(1, (g, d, b) => (b === 0 ? "Flag" : rotation(g, d, b))),
+          ...week(2, second)
+        ],
+        existing: null,
+        terms,
+        answers: {}
+      });
+
+    it("empty that week: still fixed, not asked", () => {
+      const p = read((g, d, b) => (b === 0 ? "" : rotation(g, d, b)));
+      expect(kindOf(p, "Flag")).toBe("fixed");
+      expect(kindAsks(p)).toEqual([]);
+    });
+
+    it("other activities there that week: a set time, not asked", () => {
+      const p = read((g, d, b) => rotation(g, d, b + 1));
+      expect(kindOf(p, "Flag")).toBe("recurring");
+      expect(kindAsks(p)).toEqual([]);
+    });
   });
 });
 

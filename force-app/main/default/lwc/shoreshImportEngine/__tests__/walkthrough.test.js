@@ -95,6 +95,14 @@ describe("Import last year, as the walkthrough tells it", () => {
       "Are “Music” and “Musik” the same activity?"
     ]);
     const answers = { [similar[0].id]: "a" };
+    // Library time is all of Juniors once, in a one-week file: a genuine split (rule 3), asked.
+    const asked = questionCards(
+      buildProposal({ files, existing: empty, terms, answers }),
+      terms,
+      answers
+    ).filter((c) => c.stage === "review" && !c.flag);
+    expect(asked.map((c) => c.subject)).toEqual(["Library time"]);
+    answers[asked[0].id] = "recurring";
 
     const proposal = buildProposal({ files, existing: empty, terms, answers });
     const lists = Object.fromEntries(
@@ -129,8 +137,8 @@ describe("Import last year, as the walkthrough tells it", () => {
     const review = questionCards(proposal, terms, answers).filter(
       (c) => c.stage === "review" && !c.flag
     );
-    // Library time is all of Juniors at one time on Wednesday: a recurring activity, not asked.
-    expect(review).toEqual([]);
+    // Answered: nothing left to ask.
+    expect(review.filter((c) => !(c.id in answers))).toEqual([]);
 
     firstPlan = planFor(
       buildProposal({ files, existing: empty, terms, answers }),

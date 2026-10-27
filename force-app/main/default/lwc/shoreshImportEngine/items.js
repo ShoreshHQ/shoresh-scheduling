@@ -7,7 +7,7 @@
 import { classifyName, notedKindByWords, specialDayNames } from "./classify";
 import { deletedActivity } from "./deleted";
 import { LEAVE_OUT } from "./reading";
-import { WEEKDAYS } from "./text";
+import { looseKey, WEEKDAYS } from "./text";
 
 // ---------- usable placements ----------
 
@@ -82,7 +82,28 @@ function notedNames(usable, timetables, terms, electiveTexts) {
   return { kinds, specialDays };
 }
 
-function timetableFacts(t, usable, specialDays, divisionOf) {
+/** "Off" and "away" cells: nothing scheduled for that group then. */
+const OFF = /^(off|away|day off|absent|no camp|closed)$/;
+
+/**
+ * What is scheduled where: Map("week|group|day|block" -> name), leaving out noted names (trips,
+ * special events) and off cells, which never break a fixed activity (rule 1).
+ */
+function busyMap(here, noted) {
+  const busy = new Map();
+  for (const p of here) {
+    if (noted.has(p.text) || OFF.test(looseKey(p.text))) {
+      continue;
+    }
+    for (let b = p.blockIndex; b < p.blockIndex + p.span; b++) {
+      busy.set(`${p.week}|${p.group}|${p.day}|${b}`, p.text);
+    }
+  }
+  return busy;
+}
+
+function timetableFacts(t, usable, ctx) {
+  const { specialDays, divisionOf } = ctx;
   const here = usable.filter((p) => p.timetable === t.index);
   const weeks = [...new Set(here.map((p) => p.week))].sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true })
@@ -104,7 +125,8 @@ function timetableFacts(t, usable, specialDays, divisionOf) {
       [...new Set(here.filter((p) => p.week === w).map((p) => p.group))]
     ])
   );
-  return { groups, groupsByWeek, divisionOf, daysByWeek, weeks };
+  const busy = busyMap(here, ctx.noted);
+  return { groups, groupsByWeek, divisionOf, daysByWeek, weeks, busy };
 }
 
 // ---------- what the camp already has ----------
@@ -141,8 +163,7 @@ function existingKind(name, t, camp) {
 
 // ---------- one name ----------
 
-function verdictFor(name, t, facts, cells, ctx) {
-  const decided = classifyName(cells, facts);
+function verdictFor(name, t, facts, decided, ctx) {
   const known = existingKind(name, t, ctx.camp);
   if (known) {
     return { ...decided, kind: known, existing: true };
@@ -181,33 +202,138 @@ function verdictFor(name, t, facts, cells, ctx) {
   };
 }
 
+/** A name without its trailing number: "Lunch 4" and "Lunch 1" are one staggered family. */
+function familyOf(name) {
+  return name.replace(/\s*\d+$/, "");
+}
+
+/**
+ * Rule 3's other evidence: a name held but not repeated ("Lunch 4" for one division once) is a
+ * set time when a numbered sibling in the same timetable is one ("Lunch 1" every day).
+ */
+function withFamilies(decisions) {
+  const families = new Set(
+    [...decisions]
+      .filter(
+        ([name, d]) => d.verdict === "recurring" && name !== familyOf(name)
+      )
+      .map(([name]) => familyOf(name))
+  );
+  return decisions.map(([name, d]) => {
+    const sibling =
+      d.reason === "split" &&
+      name !== familyOf(name) &&
+      families.has(familyOf(name));
+    return [
+      name,
+      sibling ? { ...d, verdict: "recurring", reason: undefined } : d
+    ];
+  });
+}
+
+/** The group sets a decision places the name for: ["g1,g2", ..]. */
+function groupSets(d) {
+  return d.patterns.concat(d.strays).map((p) => [...p.groups].sort().join(","));
+}
+
+/**
+ * Rule 3's other evidence the other way: a name held but not repeated is an activity when another
+ * activity (or another such name) goes to the very same groups together: they take turns, as a
+ * rotation does (Art and Ropes Course for the same two cabins at shifting times).
+ */
+function withRotations(decisions) {
+  const loose = decisions.filter(
+    ([, d]) => d.verdict === "activity" || d.reason === "split"
+  );
+  return decisions.map(([name, d]) => {
+    if (d.reason !== "split") {
+      return [name, d];
+    }
+    const mine = new Set(groupSets(d));
+    const turns = loose.some(
+      ([other, o]) => other !== name && groupSets(o).some((k) => mine.has(k))
+    );
+    return [name, turns ? { ...d, verdict: "activity", reason: undefined } : d];
+  });
+}
+
+/** The cells of each name in one timetable, names in order: [[name, cells]]. */
+function cellsByName(usable, t, noted) {
+  const byName = new Map();
+  for (const p of usable.filter(
+    (x) => x.timetable === t.index && !noted.has(x.text)
+  )) {
+    if (!byName.has(p.text)) {
+      byName.set(p.text, []);
+    }
+    byName.get(p.text).push(p);
+  }
+  return [...byName].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function oneDay(facts) {
+  return new Set([...facts.daysByWeek.values()].flat()).size <= 1;
+}
+
+function sameSlot(a, b) {
+  const at = (r, p) => `${r.timetable.blocks[p.block].start}|${p.length}`;
+  const theirs = new Set(b.patterns.map((p) => at(b, p)));
+  return a.patterns.every((p) => theirs.has(at(a, p)));
+}
+
+/**
+ * Rule 4's two days of evidence may come from the same groups' other timetable: everyone at one
+ * time on a one-day timetable is fixed when the name is fixed at that time in another timetable
+ * that has those groups (a Friday read as a program of its own). baseOf: Map(group -> the group it
+ * is in every program).
+ */
+function withOtherDays(results, baseOf) {
+  const base = (g) => (baseOf && baseOf.get(g)) || g;
+  return results.map((r) => {
+    if (
+      r.kind !== "recurring" ||
+      r.existing ||
+      !r.fixedShaped ||
+      !oneDay(r.facts)
+    ) {
+      return r;
+    }
+    const fixedElsewhere = results.some(
+      (o) =>
+        o.timetable !== r.timetable &&
+        o.name === r.name &&
+        o.kind === "fixed" &&
+        r.facts.groups.every((g) =>
+          o.facts.groups.map(base).includes(base(g))
+        ) &&
+        sameSlot(r, o)
+    );
+    return fixedElsewhere ? { ...r, kind: "fixed", verdict: "fixed" } : r;
+  });
+}
+
 /** Each name in each timetable: { name, timetable, kind, patterns, strays, existing, leftOut }. */
 export function decideKinds(usable, ctx) {
   const results = [];
   for (const t of ctx.timetables.filter((x) => !x.leftOut)) {
-    const facts = timetableFacts(t, usable, ctx.specialDays, ctx.divisionOf);
-    const byName = new Map();
-    for (const p of usable.filter(
-      (x) => x.timetable === t.index && !ctx.noted.has(x.text)
-    )) {
-      if (!byName.has(p.text)) {
-        byName.set(p.text, []);
-      }
-      byName.get(p.text).push(p);
-    }
-    for (const [name, cells] of [...byName].sort((a, b) =>
-      a[0].localeCompare(b[0])
-    )) {
+    const facts = timetableFacts(t, usable, ctx);
+    const named = cellsByName(usable, t, ctx.noted);
+    const decided = withRotations(
+      withFamilies(
+        named.map(([name, cells]) => [name, classifyName(cells, facts)])
+      )
+    );
+    decided.forEach(([name, d], i) => {
       results.push({
         name,
         timetable: t,
         facts,
-        cells,
-        ...verdictFor(name, t, facts, cells, ctx)
+        cells: named[i][1],
+        ...verdictFor(name, t, facts, d, ctx)
       });
-    }
+    });
   }
-  return results;
+  return withOtherDays(results, ctx.baseOf);
 }
 
 // ---------- records ----------
