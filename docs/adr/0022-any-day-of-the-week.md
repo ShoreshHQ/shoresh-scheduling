@@ -32,11 +32,16 @@ parts of ADRs 0004, 0006, 0007, 0014, 0015 and 0018, and protocol rule 3.12's co
    recurring activity, every day its program runs). A dash spanning five days or more is a range
    without asking.
 
-5. **Early-week goal "by <day>" counts from the week's first day up to that day** (Sunday-start
-   week, by Tuesday = Sunday, Monday, Tuesday), still in days of the run (special days and days a
-   group isn't in are skipped, not counted against it). The week's first day is its first date,
-   a special day too (`model.weekStart`). This drops the false "short by" notes a Sunday start
-   gave.
+5. **Early-week goal "by <day>" counts from the camp's own first day of the week.** The rule
+   stays Greg's (2026-10-25): the first N days of this week's run, counted from the week's own
+   first day. Only N changes: it is the named day's place counted from the camp's normal first day
+   (where Fill in weeks starts its weeks: Monday for Monday to Friday, Sunday for Sunday to
+   Thursday, the season's first day for a camp that runs every day), not always from Monday. So a
+   Monday-to-Friday camp is exactly as before (by Tuesday = the first 2 days; a short
+   Wednesday-Friday week counts Wednesday and Thursday; a Tuesday-Friday holiday week "by Monday"
+   counts Tuesday), and a Sunday-to-Thursday camp's by Tuesday = Sunday, Monday, Tuesday. The
+   screens pass it to the engine as `firstDay` (`c/shoreshImportEngine` campFirstDay). This drops
+   the false "short by" notes a Sunday start gave.
 
 6. **A new program starts on the days the camp's other programs run** (Monday to Friday for the
    first), as Fill in weeks does.

@@ -484,7 +484,7 @@ function stillToPlace(ctx) {
         .filter((day) => (day.groups || []).some((grp) => grp.id === groupId))
         .map((day) => day.dateValue),
       act.early.byDay,
-      ctx.weekStart
+      ctx.firstDay
     );
   groups.forEach((groupName, groupId) => {
     activities.forEach((act) => {
@@ -610,8 +610,8 @@ export function checkWeek(days, model, words) {
     isAway: model.isAway || (() => false),
     isLockedOpen: model.isLockedOpen || (() => false),
     locked: model.locked || new Set(),
-    // The week's first day, a special day too: an early-week goal counts from it.
-    weekStart: model.weekStart || null,
+    // The camp's normal first day of the week: an early-week goal's days count from it.
+    firstDay: model.firstDay || 1,
     // Other programs' groups (G5): kind "place" or "activity", its Id, and "d|b". Both schedules
     // pass them (the engine's checkModel, Manual Build through otherProgramsAt).
     others: (kind, id, at) => {

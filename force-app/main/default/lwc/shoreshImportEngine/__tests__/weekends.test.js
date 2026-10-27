@@ -3,8 +3,13 @@
 import { buildProposal, planFor, unplacedLines } from "./data/engine";
 import { FIELD } from "c/shoreshSchema";
 import { csv, existingSetup, terms } from "./data/samples";
-import { programDays, weeksOf } from "c/shoreshImportEngine";
-import { firstDayOf, weekOrder } from "../text";
+import {
+  campFirstDay,
+  programDays,
+  weeksOf,
+  weeksToFill
+} from "c/shoreshImportEngine";
+import { dayOf, firstDayOf, weekOrder } from "../text";
 import { dayList } from "../questions";
 
 const ROWS = [
@@ -101,6 +106,61 @@ describe("weeks of any days", () => {
       "Wednesday",
       "Thursday",
       "Sunday"
+    ]);
+  });
+});
+
+describe("a camp's own week", () => {
+  const sunThuCamp = (start, end) => {
+    const record = { Id: "p1", Name: "Main camp" };
+    EVERY_DAY.forEach((d) => {
+      record[FIELD.Program[d]] = SUN_THU.includes(d);
+    });
+    const camp = dated(start, end);
+    return { ...camp, programs: [{ program: record }] };
+  };
+
+  it("grids that name no day fill the programs' weeks, as the save does", () => {
+    const camp = sunThuCamp("2027-06-27", "2027-07-08");
+    const asSaved = weeksToFill(camp, terms);
+    expect(asSaved.map((w) => w.StartDate__c)).toEqual([
+      "2027-06-27",
+      "2027-07-04"
+    ]);
+    expect(weeksToFill(camp, terms, [])).toEqual(asSaved);
+  });
+
+  it("starts where Fill in weeks starts it: an early-week goal counts from it", () => {
+    expect(campFirstDay(existingSetup())).toBe(1);
+    expect(campFirstDay(sunThuCamp("2027-06-27", "2027-07-08"))).toBe(7);
+    // Every day: the season's first day (a Saturday).
+    const record = { Id: "p1", Name: "Main camp" };
+    EVERY_DAY.forEach((d) => {
+      record[FIELD.Program[d]] = true;
+    });
+    const everyDay = {
+      ...dated("2027-06-26", "2027-07-09"),
+      programs: [{ program: record }]
+    };
+    expect(campFirstDay(everyDay)).toBe(6);
+  });
+});
+
+describe("reading a day's name", () => {
+  it("one letter is not a day (S could be Saturday or Sunday; T, Tuesday or Thursday)", () => {
+    ["S", "T", "M", "W", "F", "s.", "t"].forEach((word) =>
+      expect([word, dayOf(word)]).toEqual([word, null])
+    );
+  });
+
+  it("three letters or more read, weekends included", () => {
+    expect(["Sat", "Sun", "Thu", "Tue", "Tues", "Thurs"].map(dayOf)).toEqual([
+      "Saturday",
+      "Sunday",
+      "Thursday",
+      "Tuesday",
+      "Tuesday",
+      "Thursday"
     ]);
   });
 });

@@ -280,7 +280,7 @@ export function readEarlyGoals(st) {
         const counts = earlyDates(
           own.map((day) => day.date),
           act.early.byDay,
-          st.model.weekStart
+          st.model.firstDay
         );
         st.earlyDays.set(
           `${act.id}|${g}`,

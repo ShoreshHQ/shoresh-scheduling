@@ -1337,41 +1337,48 @@ describe("early-week goals count the first days of this week's run (Greg, 2026-1
   const goal = (day, count = 1) =>
     activity("climb", { name: "Climbing", early: { count, day }, max: null });
 
-  it("by Tuesday counts from the week's first day up to Tuesday (Greg, 2026-10-27)", () => {
-    // A Sunday-start week: Sunday, Monday, and Tuesday.
-    const sunday = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
-    expect([...earlyDates(sunday, 2)]).toEqual([
-      "2026-07-05",
-      "2026-07-06",
-      "2026-07-07"
-    ]);
-    // A Saturday-start changeover week: Saturday to Tuesday.
-    const saturday = [4, 5, 6, 7, 8, 9, 10].map(
-      (n) => `2026-07-${String(n).padStart(2, "0")}`
-    );
-    expect([...earlyDates(saturday, 2)]).toEqual([
-      "2026-07-04",
-      "2026-07-05",
-      "2026-07-06",
-      "2026-07-07"
-    ]);
+  it("by Tuesday is the first 2 days of a Monday-Friday camp's run, whatever day it starts", () => {
     // A Monday-start week: Monday and Tuesday.
     expect([...earlyDates([0, 1, 2, 3].map(dateAt), 2)]).toEqual([
       dateAt(0),
       dateAt(1)
     ]);
-    // A Wednesday-Friday week: Tuesday comes after it, so all three.
-    expect(earlyDates([2, 3, 4].map(dateAt), 2).size).toBe(3);
+    // A short Wednesday-Friday week: Wednesday and Thursday.
+    expect([...earlyDates([2, 3, 4].map(dateAt), 2, 1)]).toEqual([
+      dateAt(2),
+      dateAt(3)
+    ]);
+    // A Tuesday-Friday holiday week, by Monday: Tuesday only.
+    expect([...earlyDates([1, 2, 3, 4].map(dateAt), 1, 1)]).toEqual([
+      dateAt(1)
+    ]);
   });
 
-  it("counts from the week's first day even when the group isn't in that day", () => {
-    // A Sunday-start week whose group starts Monday: by Tuesday is 3 days of its run.
-    const own = ["2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"];
-    expect([...earlyDates(own, 2, "2026-07-05")]).toEqual([
+  it("counts from the camp's own first day: a Sunday-Thursday camp's by Tuesday is 3 days (ADR 0022)", () => {
+    const sunday = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08"];
+    expect([...earlyDates(sunday, 2, 7)]).toEqual([
+      "2026-07-05",
       "2026-07-06",
-      "2026-07-07",
-      "2026-07-08"
+      "2026-07-07"
     ]);
+    // Through the engine: the camp's first day comes with the week (firstDay).
+    const input = camp({
+      days: 4,
+      groups: [group("g1")],
+      blocks: [block(0)],
+      activities: [goal("Tuesday", 3), activity("arts", { max: null })]
+    });
+    input.days.forEach((day, i) => {
+      day.dateValue = sunday[i];
+    });
+    input.firstDay = 7;
+    const result = generateWeek(input);
+    expect([0, 1, 2].map((d) => at(result, d, "g1", 0))).toEqual([
+      "climb",
+      "climb",
+      "climb"
+    ]);
+    expect(result.spread).toEqual([]);
   });
 
   it("counts days of the run, not the calendar: a missing weekday doesn't shorten it", () => {
