@@ -1,5 +1,9 @@
 # The week engine's protocol, rule by rule
 
+> **Sub-protocol GEN** of the [Shoresh protocol](../protocol/README.md). It sits on CORE layers
+> 1-6 ([core.md](../protocol/core.md)) and never overrides them. Rule n.m here is statement
+> `GEN-n.m`; n is the build step, not a CORE layer.
+
 Every rule `c/shoreshEngine` applies when it builds a week, in plain words, one line each: the
 protocol step it belongs to (Greg's nine steps, wiki `projects/shoresh-sf-engine-care-plan.md`),
 the file it lives in, and the test that covers it. Paths are under

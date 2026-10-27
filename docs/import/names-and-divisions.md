@@ -1,5 +1,9 @@
 # Import: divisions of one, and names spelled two ways
 
+> **Sub-protocol INGEST** of the [Shoresh protocol](../protocol/README.md). It sits on CORE
+> layers 1-3 and 6 ([core.md](../protocol/core.md)) and is part of reading (layer 2). Rule n
+> here is statement `INGEST-2.n`.
+
 How "Import last year" reads a group the file gives no division, and two spellings of one name,
 without asking. Settled by Greg on 2026-10-27 from his own camp (`scripts/import-corpus/
 fixtures/plant-camp.xlsx`): divisions come from each sheet's heading, CIT is its own division,

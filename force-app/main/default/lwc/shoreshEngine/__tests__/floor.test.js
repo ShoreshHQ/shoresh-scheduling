@@ -33,6 +33,7 @@ const fuller = [
 ];
 
 describe("never emptier than the imported week (step 8's floor)", () => {
+  // CORE-5.6
   it("builds from the imported week when it is fuller, and is never emptier", () => {
     const plain = generateWeek(camp(tight));
     expect(plain.floor.used).toBe("none");

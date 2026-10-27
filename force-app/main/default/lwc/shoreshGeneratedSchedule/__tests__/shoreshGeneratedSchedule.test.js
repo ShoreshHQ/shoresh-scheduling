@@ -958,6 +958,7 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
+  // CORE-6.2
   it("a gap no activity fits stays Open, with the engine's reason in the Why list", async () => {
     // Every activity takes two blocks; Period 3 (afternoon) is a one-block gap for Bunk 1.
     const inputs = camp({

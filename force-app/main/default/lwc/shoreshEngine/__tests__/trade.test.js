@@ -88,6 +88,7 @@ function grid(result, spec) {
 describe("minimums first, as a last resort", () => {
   const result = generateWeek(camp(pool));
 
+  // CORE-5.5
   it("gives Bunk 3 its Swim and leaves Bunk 5's cell Open, naming the trade", () => {
     expect(result.ok).toBe(true);
     expect(grid(result, pool)).toEqual({
@@ -163,6 +164,7 @@ describe("minimums first, as a last resort", () => {
     );
   });
 
+  // CORE-5.5
   it("leaves nothing Open when a way that keeps every cell filled exists", () => {
     // Crafts gives Bunk 5 something else allowed then: Bunk 3 still gets Swim, no cell Open.
     const spec = {

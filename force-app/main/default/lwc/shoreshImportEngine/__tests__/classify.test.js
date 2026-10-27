@@ -47,6 +47,7 @@ function kindOf(proposal, name) {
 }
 
 describe("fixed, then recurring, then activities", () => {
+  // CORE-3.3, INGEST-3.1
   it("every group, same time block, every day, nowhere else: a fixed activity, not asked", () => {
     const p = propose((g, d, b) => {
       return b === 2 ? "Lunch" : rotation(g, d, b);
@@ -56,6 +57,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // INGEST-3.6
   it("a rotation is activities, not asked", () => {
     const p = propose((g, d, b) => {
       return b === 2 ? "Lunch" : rotation(g, d, b);
@@ -68,6 +70,7 @@ describe("fixed, then recurring, then activities", () => {
     ]);
   });
 
+  // CORE-3.4, INGEST-3.3
   it("staggered by division every day: recurring activities for each division, not asked", () => {
     const p = propose((g, d, b) => {
       if (b === 2) return g < 2 ? "Lunch" : rotation(g, d, b);
@@ -84,6 +87,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // INGEST-3.3
   it("everyone on one day at the same time: a recurring activity, not asked", () => {
     const p = propose((g, d, b) => {
       return d === 0 && b === 0 ? "Flag" : rotation(g, d, b);
@@ -93,6 +97,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.recurring[0].who.keys).toEqual([]);
   });
 
+  // INGEST-3.7
   it("rule 7: one division once in a one-week file is recurring, not asked (Greg 2026-10-27)", () => {
     const p = propose((g, d, b) => {
       return d === 2 && b === 3 && g < 2 ? "Library" : rotation(g, d, b);
@@ -103,6 +108,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // CORE-2.3
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
     const cell = (g, d, b) => {
       if (b === 2) return "Swim";
@@ -130,6 +136,7 @@ describe("fixed, then recurring, then activities", () => {
     ).toBeNull();
   });
 
+  // INGEST-3.1
   it("rule 1: fixed at two times a day (Carpool morning and afternoon) is two fixed activities", () => {
     const p = propose((g, d, b) => {
       return b === 0 || b === 3 ? "Carpool" : rotation(g, d, b);
@@ -143,6 +150,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // INGEST-3.3
   it("rule 2: everyone but one group at one time twice a week is a recurring activity", () => {
     const p = propose((g, d, b) => {
       return (d === 1 || d === 3) && b === 3 && g < 3
@@ -169,6 +177,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // INGEST-3.3
   it("rule 3: one group at the same time on most days is its recurring activity", () => {
     const p = propose((g, d, b) => {
       return g === 3 && b === 1 && d < 4 ? "CIT Block" : rotation(g, d, b);
@@ -191,6 +200,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  // INGEST-3.2
   it("rule 5: a division together, but at three or more different times a week, is an activity", () => {
     const pairs = ["Art", "Soccer", "Drama"];
     const p = propose((g, d, b) => {
@@ -214,6 +224,7 @@ describe("fixed, then recurring, then activities", () => {
     expect(kindOf(p, "Field day")).toBeNull();
   });
 
+  // INGEST-3.5
   it("weeks in the files must agree before a set time is sure", () => {
     const week = (n, cell) =>
       GROUPS.map((g, gi) =>
@@ -307,6 +318,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     }
   );
 
+  // INGEST-3.1
   it("rule 1: another activity in the slot for one bunk one day does break fixed", () => {
     const p = propose((g, d, b) => {
       if (g === 2 && d === 2 && b === 0) return "Drama";
@@ -315,6 +327,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindOf(p, "Carpool")).not.toBe("fixed");
   });
 
+  // INGEST-3.2
   it("rule 2: one bunk's steady Sports does not make Sports recurring when the others rotate it", () => {
     const sports = {
       1: [
@@ -348,6 +361,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.2
   it("rule 2: Juniors together for Art once does not make Art recurring when Seniors rotate it", () => {
     const art = {
       0: [[0, 0]],
@@ -372,6 +386,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.7
   it("rule 7: a division together at different times on two days, nobody else, is recurring", () => {
     const p = propose((g, d, b) => {
       return g < 2 && ((d === 0 && b === 0) || (d === 2 && b === 3))
@@ -382,6 +397,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.4
   it("rule 4: a one-day file reads nothing as fixed; everyone together is recurring", () => {
     const p = propose((g, d, b) => {
       if (d !== 0) return "";
@@ -392,6 +408,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.4
   it("rule 4: with three groups, two bunks of different divisions together once is an activity", () => {
     const three = GROUPS.slice(0, 3);
     const p = buildProposal({
@@ -406,6 +423,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.7
   it("rule 7: one division's single Lunch 4 beside Lunch 1 is recurring, not asked", () => {
     const p = propose((g, d, b) => {
       if (g < 2 && b === 2) return "Lunch 1";
@@ -417,6 +435,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.7
   it("rule 7: Juniors' Library Wednesday and Campfire Thursday, once each, are both recurring", () => {
     const p = propose((g, d, b) => {
       if (g < 2 && d === 2 && b === 0) return "Library";
@@ -428,6 +447,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.7
   it("rule 2 before rule 7: a name a division has at three or more times is an activity everywhere", () => {
     // Juniors together at Hike in Periods 1, 2 and 4 over the week; Seniors once.
     const hike = ["0|0", "1|1", "3|3"];
@@ -508,6 +528,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindOf(p, "Swimming")).not.toBe("recurring");
   });
 
+  // INGEST-3.1
   it("rule 1: a group that never has the name in its slot is not fixed (Carpool for three bunks of four)", () => {
     const p = propose((g, d, b) => {
       if (b === 0) return g === 3 ? fill(g, d, b) : "Carpool";
@@ -521,6 +542,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindOf(blank, "Carpool")).not.toBe("fixed");
   });
 
+  // INGEST-3.1
   it("rule 1: a cell spelled otherwise does not break a fixed Lunch (lunch, LUNCH)", () => {
     const p = propose((g, d, b) => {
       if (b === 2) {
@@ -535,6 +557,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  // INGEST-3.6
   it("rule 6: a division is every group of it in the program, a cell spelled otherwise counting until answered", () => {
     // Swim Return: Juniors Monday and Wednesday in Period 2; Bunk 2's Wednesday cell says
     // "Swim Returning". Bunk 1 with Bunk 3 the same way is no division.
@@ -596,6 +619,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       return g < 2 && b === 0 ? "Flag" : rotation(g, d, b);
     };
 
+    // INGEST-3.5
     it("rule 5: a bunk on a trip one day in week 2 is not a change of time", () => {
       const p = twoWeeks(juniorsFlag, (g, d, b) => {
         return g === 1 && d === 2 ? "Zoo trip" : juniorsFlag(g, d, b);
@@ -604,6 +628,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       expect(kindAsks(p)).toEqual([]);
     });
 
+    // INGEST-3.5
     it("rule 5: the slot taken by another activity in week 2 is still asked", () => {
       const p = twoWeeks(juniorsFlag, (g, d, b) => {
         return g === 1 && d === 2 && b === 0 ? "Drama" : juniorsFlag(g, d, b);
@@ -613,6 +638,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       ]);
     });
 
+    // INGEST-3.3
     it("rule 3: the same slot in two weeks is enough repetition (Juniors' Library, Wednesday only)", () => {
       const library = (g, d, b) => {
         return g < 2 && d === 2 && b === 1 ? "Library" : rotation(g, d, b);
@@ -622,6 +648,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       expect(kindAsks(p)).toEqual([]);
     });
 
+    // INGEST-3.6
     it("rule 6: two bunks of different divisions together in both weeks are an activity", () => {
       const library = (g, d, b) => {
         const together = (g === 1 || g === 2) && d === 2 && b === 1;
@@ -633,6 +660,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     });
   });
 
+  // INGEST-3.4
   it("rule 4: Lunch for everyone on a Friday of its own is fixed when fixed at that time Monday to Thursday", () => {
     const friday = ["Period 1 9:00-10:00", "Lunch 11:30-12:15"];
     const files = [
@@ -671,6 +699,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     return b === 2 ? "Lunch" : NAMES[(v + b + d * 3) % NAMES.length];
   };
 
+  // INGEST-3.8
   it("reads each always-together division as one group, and says so", () => {
     const p = propose(travel);
     expect(p.groups.filter((g) => !g.leftOut).map((g) => g.name)).toEqual([
@@ -691,6 +720,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     ]);
   });
 
+  // INGEST-3.8
   it("a division whose bunks differ in one time block stays a division of bunks", () => {
     const p = propose((g, d, b) => {
       return g === 1 && d === 4 && b === 3 ? "Ropes" : travel(g, d, b);
@@ -711,6 +741,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
       answers
     });
 
+  // INGEST-3.8
   it("rule 8: bunks the camp already has stay as they are, matched, with a note", () => {
     const existing = existingSetup({
       programs: [
@@ -762,6 +793,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
       programs: [program("p1", "Main", { blocks: BLOCK_TIMES, divisions })]
     });
 
+  // INGEST-3.8
   it("rule 8: re-importing the same file matches the group read as one last time", () => {
     const p = read(savedAsOne());
     expect(p.timetables[0].program.id).toBe("p1");
@@ -773,6 +805,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     expect(p.reading.splitAsks).toEqual([]);
   });
 
+  // INGEST-3.8
   it("rule 8: re-imported with the bunks now differing, it asks to split, keeping the group until answered", () => {
     const differ = (g, d, b) => {
       return g === 1 && d === 4 && b === 3 ? "Ropes" : travel(g, d, b);
@@ -793,11 +826,13 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     expect(groupNames(split)).toEqual(["Bunk 1", "Bunk 2", "Seniors"]);
   });
 
+  // INGEST-3.8
   it("rule 8: a bunk of the same name in another division of the camp does not stop the merge", () => {
     const p = read(savedAsOne([["d2", "Seniors", [["g7", "Bunk 1"]]]]));
     expect(groupNames(p)).toContain("Juniors");
   });
 
+  // INGEST-3.8
   it("rule 8: a one-day file and a one-block file keep their bunks, with no note", () => {
     const oneDay = buildProposal({
       files: byGroupFiles(GROUPS, (g, d, b) => {

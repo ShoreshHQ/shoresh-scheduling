@@ -1,5 +1,9 @@
 # Import: fixed, recurring, or activity
 
+> **Sub-protocol INGEST** of the [Shoresh protocol](../protocol/README.md). It sits on CORE
+> layers 1-3 and 6 ([core.md](../protocol/core.md)) and carries out CORE layer 3. Rule n here
+> is statement `INGEST-3.n`.
+
 How "Import last year" decides what each name in a schedule is. The definitions are Greg's
 (wiki `decisions/0004-fixed-and-recurring-events-stay-separate.md`, the glossary, and the
 ingestion plan's classification protocol, 2026-10-27):

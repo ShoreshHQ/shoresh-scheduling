@@ -46,6 +46,7 @@ const handEdited = (spec) =>
   });
 
 describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
+  // CORE-4.1
   it("never places an activity the group isn't set up for: the cell stays Open, saying so", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -88,6 +89,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
+  // CORE-4.2
   it("never repeats an activity in a day: the cell stays Open, saying so (Greg, 2026-10-25)", () => {
     const result = run({
       blocks: [block(0), block(1)],
@@ -99,6 +101,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
+  // CORE-4.8
   it("a hand edit twice in a day is dotted on both", () => {
     const result = handEdited({
       blocks: [block(0), block(1)],
@@ -115,6 +118,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
+  // CORE-4.3
   it("never puts one group too many at an activity: the cell stays Open, everything taken, in camp words", () => {
     const result = generateWeek({
       ...camp({
@@ -144,6 +148,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
+  // CORE-4.3
   it("never over-fills a place", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -182,6 +187,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
+  // CORE-4.3
   it("counts other programs as full: the cell stays Open", () => {
     const result = run({
       blocks: [block(0)],
@@ -204,6 +210,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     );
   });
 
+  // CORE-4.7
   it("goes over the weekly max before leaving a cell Open, though a limit stops everything else", () => {
     const result = run({
       days: 2,
@@ -380,6 +387,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     );
   });
 
+  // CORE-4.4
   it("leaves Open only a cell nothing can go in: the group is busy at an overlapping time", () => {
     const result = run({
       blocks: [block(0), block(1, { startTime: "08:30", endTime: "09:15" })],
@@ -543,6 +551,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       expect(result.stillNeeded).toEqual([]);
     });
 
+    // CORE-4.4
     it("a two-block activity never runs through two blocks that overlap in time", () => {
       // Wake-up 8:00-8:30 and P1 8:00-9:00 are one stretch of time, not two periods.
       const result = run({
@@ -606,6 +615,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.openCells.map((c) => c.blockId)).toEqual(["b0", "b1"]);
   });
 
+  // CORE-4.5
   it("never shortens an activity: a gap no activity's length fits stays Open, saying so (Greg)", () => {
     const spec = {
       mode: "fillOpen",
@@ -743,6 +753,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
 });
 
 describe("what is never touched", () => {
+  // CORE-5.1
   it("keeps fixed activities, and counts a fixed activity's place against its capacity", () => {
     const spec = {
       groups: [group("g1"), group("g2")],
@@ -806,6 +817,7 @@ describe("what is never touched", () => {
     expect(at(result, 0, "g2", 0)).toBe("swim");
   });
 
+  // CORE-4.6
   it("leaves a not-at-camp cell Open, even though nothing else is blank", () => {
     const result = run({
       groups: [group("g1", { availability: "MorningOnly" })],
@@ -828,6 +840,7 @@ describe("what is never touched", () => {
     expect(at(run({ ...spec, mode: "fillOpen" }), 0, "g1", 0)).toBe("arts");
   });
 
+  // CORE-5.1
   it("keeps a locked cell in a full build and replaces an unlocked one", () => {
     const spec = {
       days: 1,
@@ -862,6 +875,7 @@ describe("what is never touched", () => {
     expect(cells[2]).toEqual({ kind: "A", id: "hike", head: false });
   });
 
+  // CORE-4.6
   it("a locked Open cell stays Open", () => {
     const result = run({
       blocks: [block(0), block(1)],
@@ -924,6 +938,7 @@ describe("what is never touched", () => {
 });
 
 describe("the hard rules", () => {
+  // CORE-4.5
   it("multi-block activities fill consecutive at-camp blocks, as one session", () => {
     const result = run({
       blocks: [block(0), block(1), block(2)],
@@ -1282,6 +1297,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     return generateWeek(input);
   };
 
+  // CORE-3.6
   it("a blank groups at once: one group at a time, never blocking the build, and a line naming it", () => {
     const result = blanked(
       {
@@ -1300,6 +1316,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     expect(result.flags).toEqual([]);
   });
 
+  // CORE-3.6
   it("a blank groups that fit: one group at the place, a line naming the place", () => {
     const result = blanked(
       {
@@ -1511,6 +1528,7 @@ describe("soft goals and what is still to place", () => {
     );
   });
 
+  // CORE-5.3
   it("high priority is placed before low when there isn't room for both", () => {
     const result = run({
       days: 1,
