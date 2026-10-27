@@ -319,14 +319,9 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
     expect(moved).toEqual([]);
   });
 
-  // KNOWN FAILURE (it.failing, 2026-10-27): the week is not the same. Name and Id don't matter
-  // (the control passes); the activity's place in the list does. weekOptions.js drawTieKeys
-  // draws each cell's tie-break numbers one after another in activity-list order, so a new
-  // activity added at the end (no sort order) shifts every later activity's tie-breaks and the
-  // whole week reshuffles. A location (even one that fits as many groups) moves more cells
-  // through the place-capacity paths. Remove .failing once the engine is fixed.
+  // Rule 9.10 (docs/engine/protocol.md): name, Id and place in the list never change the week.
   // As a director does it: Sports deleted, a new activity added at the end of the list.
-  it.failing.each([
+  it.each([
     ["(a) the same location", null],
     ["(b) a new location that fits as many groups", { name: "Diamond", fit: 2 }]
   ])("puts Adventure Baseball exactly where Sports was, at %s", (label, at) => {
@@ -337,7 +332,15 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
   });
 
   // (c) The new location fits fewer groups than Sports ran at once (2): a change is allowed only
-  // where Adventure Baseball can't have the cells Sports had, and the build says why.
+  // where Adventure Baseball can't have the cells Sports had (two groups at once there in A), and
+  // each one must be in the build's Why notes (a dot, an Open cell's reason, or a search move).
+  //
+  // KNOWN FAILURE (it.failing): pending minimal-change rebuild (Greg 2026-10-27). Fresh builds
+  // cascade: a session Sports' replacement loses at a crowded time is needed elsewhere (weekly
+  // minimum 2), taking that cell moves what was there, and so on, and nothing compares with the
+  // week before to explain it. Greg decided a rebuild after a setup change keeps the current week
+  // and moves only the cells the change forces, each explained ("Try another" stays a fresh
+  // build); that comes in its own PR.
   it.failing(
     "(c) a smaller location: only forced changes, each with a reason",
     () => {
@@ -345,8 +348,8 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
       const bCells = cellsByName(b);
       const moved = moves(aCells, bCells);
       explain("(c) smaller location", a, b, moved);
-      // Where Sports had two groups at once, at most one can stay; the rest must be explained.
-      const crowded = new Set();
+      expect(b.ok).toBe(true);
+      // Where Sports had two groups at once.
       const byTime = new Map();
       for (const [key, name] of aCells) {
         if (name === "Sports") {
@@ -355,16 +358,30 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
           byTime.set(t, (byTime.get(t) || 0) + 1);
         }
       }
-      for (const [t, n] of byTime) {
-        if (n > 1) {
-          crowded.add(t);
-        }
+      const crowded = new Set(
+        [...byTime].filter(([, n]) => n > 1).map(([t]) => t)
+      );
+      // The cells the build says something about, by the same names as the cells.
+      const names = new Map();
+      for (const day of b.days) {
+        day.groups.forEach((g) => names.set(g.id, g.name));
+        day.blocks.forEach((x) => names.set(x.id, x.name));
       }
+      const said = new Set(
+        [...(b.flags || []), ...(b.openCells || []), ...(b.moved || [])].map(
+          (c) => `${c.date}|${names.get(c.groupId)}|${names.get(c.blockId)}`
+        )
+      );
+      const cellOf = (line) => line.split(": ")[0];
       const unforced = moved.filter((line) => {
-        const [date, , block] = line.split(":")[0].split("|");
+        const [date, , block] = cellOf(line).split("|");
         return !crowded.has(`${date}|${block}`);
       });
-      expect(unforced).toEqual([]);
+      const unexplained = moved.filter((line) => !said.has(cellOf(line)));
+      expect({ unforced, unexplained }).toEqual({
+        unforced: [],
+        unexplained: []
+      });
     }
   );
 });
