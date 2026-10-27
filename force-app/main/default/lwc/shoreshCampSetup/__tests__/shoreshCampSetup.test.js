@@ -1044,6 +1044,7 @@ describe("c-shoresh-camp-setup", () => {
         );
       });
 
+      // CORE-1.21
       it("a blank priority is Low; High shows only while it holds an activity", async () => {
         const element = await renderWith(withPriorities(undefined, "Low"));
         await openScreen(element, "activities");

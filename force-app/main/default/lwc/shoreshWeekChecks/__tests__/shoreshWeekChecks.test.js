@@ -64,6 +64,7 @@ describe("c-shoresh-week-checks: the counter", () => {
     }
   });
 
+  // CORE-6.5
   it("is one rail item, '4 of 10 placed', with the corner when anything is off target", async () => {
     const element = render();
     await flush();
@@ -91,6 +92,7 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(word(element).getAttribute("aria-label")).toBe("2 of 2 placed");
   });
 
+  // CORE-6.5
   it("opens: the bar, still needed, under, over, and what else needs a look", async () => {
     const element = render();
     await flush();

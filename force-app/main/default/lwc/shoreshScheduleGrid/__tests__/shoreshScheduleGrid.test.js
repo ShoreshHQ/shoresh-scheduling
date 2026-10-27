@@ -463,6 +463,7 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     expect(plain.shadowRoot.querySelector('[data-id="legend"]')).toBeNull();
   });
 
+  // CORE-6.3
   it("a cell given a check's words draws no mark: the Why list says them (engine care plan Q18)", () => {
     const cells = LOOK.cells.map((c) => {
       return c.key === "0-0" ? { ...c, dot: "Twice in a day" } : c;

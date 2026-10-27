@@ -45,6 +45,7 @@ const notesOf = (p) => importNotes(p, terms).map((n) => n.key);
 const names = (p) => [...new Set(p.usable.map((x) => x.text))].sort();
 
 describe("rule 1: a division of one", () => {
+  // INGEST-2.1
   it("a group with no division beside divided groups is its own division, said in the notes", () => {
     const files = campWeek(
       null,
@@ -62,6 +63,7 @@ describe("rule 1: a division of one", () => {
     expect(notesOf(p)).toContain("ownDivision|CIT");
   });
 
+  // INGEST-2.1
   it("counter-case: a file with no divisions anywhere keeps its groups undivided", () => {
     const groups = [
       { name: "Bunk 1", division: null, timetable: 0 },
@@ -75,6 +77,7 @@ describe("rule 1: a division of one", () => {
 });
 
 describe("rule 2: the same name spelled with other spacing, capitals or punctuation", () => {
+  // INGEST-2.2
   it("Lunch2 once among Lunch 2 is read as Lunch 2, not asked, said in the notes", () => {
     const p = propose(
       week(
@@ -88,6 +91,7 @@ describe("rule 2: the same name spelled with other spacing, capitals or punctuat
     expect(sameSpelling("Arts&Crafts", "Arts & Crafts")).toBe(true);
   });
 
+  // INGEST-2.2
   it("counter-case: different numbers never merge", () => {
     expect(sameSpelling("Lunch 2", "Lunch 3")).toBe(false);
     expect(sameSpelling("Bunk 1 2", "Bunk 12")).toBe(false);
@@ -113,6 +117,7 @@ describe("rule 3: the same name with another ending, in the same place", () => {
     return g === 0 && d === 2 ? rare : "Swim Return";
   };
 
+  // INGEST-2.3
   it("Swim Returning once where every other group has Swim Return is read as Swim Return", () => {
     const p = propose(week(swimReturn("Swim Returning")));
     expect(p.reading.pairs).toEqual([]);
@@ -132,6 +137,7 @@ describe("rule 3: the same name with another ending, in the same place", () => {
     expect(p.deleted.map((d) => d.name)).toEqual(["Swim Return"]);
   });
 
+  // INGEST-2.3
   it("counter-case: Swim and Swimming both common are asked", () => {
     const p = propose(week((g) => (g < 2 ? "Swim" : "Swimming")));
     expect(p.reading.pairs.map((x) => [x.a, x.b])).toEqual([
@@ -139,6 +145,7 @@ describe("rule 3: the same name with another ending, in the same place", () => {
     ]);
   });
 
+  // INGEST-2.3
   it("counter-case: the rare form at an unrelated time is asked", () => {
     const placements = [
       ...GROUPS.map((group) => ({
@@ -170,6 +177,7 @@ describe("rule 3: the same name with another ending, in the same place", () => {
     expect(readWithoutAsking([pair], placements).asked).toEqual([pair]);
   });
 
+  // INGEST-2.3
   it("counter-case: never across different words", () => {
     expect(plainEnding("Swim Returning", "Swim Return")).toBe(true);
     expect(plainEnding("Free Swimming", "Swim Return")).toBe(false);
@@ -191,6 +199,7 @@ const kindOf = (p, name) => {
 };
 
 describe("rule 1 with answers and camp-wide columns", () => {
+  // INGEST-2.1
   it("a remembered division answer replaces rule 1, and the note is not shown", () => {
     const files = campWeek(null, [...DIVIDED, "CIT"], rotate);
     const p = propose(files, { "division|CIT": "Seniors" });
@@ -198,6 +207,7 @@ describe("rule 1 with answers and camp-wide columns", () => {
     expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
   });
 
+  // INGEST-2.1
   it("an All Camp, Everyone or Staff column is never a division of one", () => {
     for (const column of ["All Camp", "everyone", "STAFF", "Counselors"]) {
       const p = propose(campWeek(null, [...DIVIDED, column], rotate));
@@ -224,6 +234,7 @@ describe("rule 4: a division spelled like another is asked, never a division of 
       rotate
     );
 
+  // INGEST-2.4
   it("Junoirs beside Juniors is asked as a similar division name", () => {
     const p = propose(files());
     expect(p.reading.pairs.map((x) => [x.kind, x.a, x.b])).toEqual([
@@ -233,6 +244,7 @@ describe("rule 4: a division spelled like another is asked, never a division of 
     expect(card.title).toContain("Division".toLowerCase());
   });
 
+  // INGEST-2.4
   it("answered the same, Bunk 4 is in Juniors", () => {
     const first = propose(files());
     const p = propose(files(), { [first.reading.pairs[0].id]: "a" });
@@ -241,6 +253,7 @@ describe("rule 4: a division spelled like another is asked, never a division of 
 });
 
 describe("rules 2 and 3: a question both of whose names are read as one is not asked", () => {
+  // INGEST-2.5
   it("lunch 2 and Lunch-2, both read as Lunch 2", () => {
     const p = propose(
       week(
@@ -257,6 +270,7 @@ describe("rules 2 and 3: a question both of whose names are read as one is not a
     expect(names(p).filter((n) => /lunch/i.test(n))).toEqual(["Lunch 2"]);
   });
 
+  // INGEST-2.5
   it("swim and Swims, both read as Swim", () => {
     const pairs = [
       {
