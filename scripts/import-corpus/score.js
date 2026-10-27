@@ -10,6 +10,7 @@ export const QUESTION_KINDS = [
   "similar",
   "ampm",
   "whichGroup",
+  "split",
   "cross",
   "week",
   "kind",
@@ -68,6 +69,7 @@ function kindsById(proposal) {
   add(proposal.reading.pairs, () => "similar");
   add(proposal.reading.timeAsks, () => "ampm");
   add(proposal.reading.groupAsks, () => "whichGroup");
+  add(proposal.reading.splitAsks || [], () => "split");
   add(proposal.reading.disagreements, () => "cross");
   add(proposal.asks, (ask) => ask.type);
   return kinds;

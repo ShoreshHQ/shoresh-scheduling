@@ -177,6 +177,7 @@ export function answersToKeep(proposal, answers) {
     ...proposal.reading.pairs.map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),
     ...proposal.reading.groupAsks.map((x) => x.id),
+    ...(proposal.reading.splitAsks || []).map((x) => x.id),
     ...proposal.reading.timeAsks.map((x) => x.id),
     ...proposal.asks.map((x) => x.id),
     ...proposal.offeredPlaces.map((x) => x.id)
@@ -518,7 +519,7 @@ export function unplacedLines(proposal, t) {
 /** Why an always-together division stays as its bunks (rule 8), as the note says it. */
 const KEPT = {
   existing: "but the camp already has them, so they stay as they are",
-  name: "but a group already has their division's name, so they stay as they are",
+  name: "but another group in the files has their division's name, so they stay as they are",
   remembered: "but an answer about them is remembered, so they stay as they are"
 };
 

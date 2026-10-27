@@ -737,19 +737,90 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     expect(keptNote(p).text).toContain("the camp already has them");
   });
 
-  it("rule 8: a camp group already named as the division keeps the bunks, with a note", () => {
-    const existing = existingSetup({
-      programs: [
-        program("p1", "Main", {
-          blocks: [],
-          divisions: [["d1", "Older", [["g9", "Juniors"]]]]
-        })
+  const at = (h, m = 0) => h * 60 + m;
+  const BLOCK_TIMES = [
+    ["tb1", "Period 1", at(9), at(9, 45)],
+    ["tb2", "Period 2", at(9, 50), at(10, 35)],
+    ["tb3", "Lunch", at(11, 30), at(12, 15)],
+    ["tb4", "Period 3", at(13), at(13, 45)]
+  ];
+  // The camp as the first import of the travelling file saved it: Juniors and Seniors as groups.
+  const savedAsOne = (
+    divisions = [
+      [
+        "d1",
+        "Main",
+        [
+          ["g1", "Juniors"],
+          ["g2", "Seniors"]
+        ]
       ]
+    ]
+  ) =>
+    existingSetup({
+      programs: [program("p1", "Main", { blocks: BLOCK_TIMES, divisions })]
     });
-    const p = read(existing);
-    expect(groupNames(p)).toEqual(expect.arrayContaining(["Bunk 1", "Bunk 2"]));
-    expect(groupNames(p)).not.toContain("Juniors");
-    expect(keptNote(p).text).toContain("already has their division's name");
+
+  it("rule 8: re-importing the same file matches the group read as one last time", () => {
+    const p = read(savedAsOne());
+    expect(p.timetables[0].program.id).toBe("p1");
+    expect(groupNames(p)).toEqual(["Juniors", "Seniors"]);
+    expect(p.groups.every((g) => g.isNew === false)).toBe(true);
+    expect(NAMES.map((n) => kindOf(p, n)).filter(Boolean)).not.toContain(
+      "recurring"
+    );
+    expect(p.reading.splitAsks).toEqual([]);
+  });
+
+  it("rule 8: re-imported with the bunks now differing, it asks to split, keeping the group until answered", () => {
+    const differ = (g, d, b) => {
+      return g === 1 && d === 4 && b === 3 ? "Ropes" : travel(g, d, b);
+    };
+    const files = byGroupFiles(GROUPS, differ);
+    const reread = (answers) =>
+      buildProposal({ files, existing: savedAsOne(), terms, answers });
+    const p = reread({});
+    expect(p.reading.splitAsks.map((a) => a.group)).toEqual(["Juniors"]);
+    const card = questionCards(p, terms, {}).find((c) =>
+      c.id.startsWith("split|Juniors")
+    );
+    expect(card.answer).toBeNull();
+    expect(card.subtitle).toContain("moved together last time");
+    expect(groupNames(p)).toEqual(["Juniors", "Seniors"]);
+    expect(p.groups.find((g) => g.name === "Juniors").isNew).toBe(false);
+    const split = reread({ [card.id]: "split" });
+    expect(groupNames(split)).toEqual(["Bunk 1", "Bunk 2", "Seniors"]);
+  });
+
+  it("rule 8: a bunk of the same name in another division of the camp does not stop the merge", () => {
+    const p = read(savedAsOne([["d2", "Seniors", [["g7", "Bunk 1"]]]]));
+    expect(groupNames(p)).toContain("Juniors");
+  });
+
+  it("rule 8: a one-day file and a one-block file keep their bunks, with no note", () => {
+    const oneDay = buildProposal({
+      files: byGroupFiles(GROUPS, (g, d, b) => {
+        return d === 1 ? travel(g, d, b) : "";
+      }),
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(groupNames(oneDay)).toEqual(GROUPS.map((g) => g.split(" - ")[1]));
+    expect(keptNote(oneDay)).toBeUndefined();
+    const oneBlock = buildProposal({
+      files: byGroupFiles(GROUPS, (g, d, b) => (b === 0 ? "Color War" : "")),
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(groupNames(oneBlock)).toEqual(GROUPS.map((g) => g.split(" - ")[1]));
+    expect(keptNote(oneBlock)).toBeUndefined();
+  });
+
+  it("rule 8: a remembered answer that is not about a group's identity does not stop the merge", () => {
+    const p = read(null, { "cross|Bunk 1|Monday|Period 1": "Art" });
+    expect(groupNames(p)).toContain("Juniors");
   });
 
   it("rule 8: a remembered answer about a bunk (deleted) keeps the bunks, and still applies", () => {

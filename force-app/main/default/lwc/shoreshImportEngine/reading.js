@@ -38,12 +38,18 @@ function campNames(existing) {
     ...programs.flatMap((p) => p.fixedActivities || []),
     ...programs.flatMap((p) => p.recurringActivities || [])
   ].map((r) => r.Name);
-  const groups = programs.flatMap((p) =>
-    (p.divisions || []).flatMap((d) => (d.groups || []).map((g) => g.Name))
+  const placed = programs.flatMap((p) =>
+    (p.divisions || []).flatMap((d) =>
+      (d.groups || []).map((g) => ({
+        name: g.Name,
+        division: d.division ? d.division.Name : null
+      }))
+    )
   );
   return {
     activityLike: [...new Set(activityLike)],
-    groups: [...new Set(groups)]
+    groups: [...new Set(placed.map((g) => g.name))],
+    placed
   };
 }
 
@@ -255,7 +261,7 @@ export function readImport(input) {
   const together = oneGroupDivisions(
     settleCells(byCell, answers, disagreements),
     collectGroups(identified.groups, timetableOfPage),
-    { campGroups: camp.groups, answers }
+    { campGroups: camp.placed, answers }
   );
   return {
     pages: read.info,
@@ -263,8 +269,11 @@ export function readImport(input) {
     pairs,
     disagreements,
     timetables,
-    ...together,
+    placements: together.placements,
+    groups: together.groups,
+    notes: together.notes,
     groupAsks: identified.asks,
+    splitAsks: together.asks,
     timeAsks,
     identities: identified.rules
   };

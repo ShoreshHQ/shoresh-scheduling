@@ -129,14 +129,24 @@ example, test.
    the same thing at the same time, so Juniors is set up as one group"). A division whose bunks
    differ in even one block stays a division of bunks. Rule 7 then applies only to real
    divisions: a travelling division's activity met once or twice a week is an activity.
-   Not merged, with a note saying why, when: the camp already has one of the bunks (its setup
-   wins; they are matched as usual); a group in the camp or the file already has the division's
-   name; or an answer is remembered about one of the bunks (a deleted group, its division, a
-   spelling), so that answer still applies.
+   Evidence first, as rule 4 for fixed: the division has cells on two days or more and in three
+   time blocks or more; a one-day or one-block file keeps its bunks, with no note.
+   Not merged, with a note saying why, when: the camp already has one of the bunks in that
+   division (its setup wins; they are matched as usual; a bunk of that name in another division
+   does not count); another group in the files has the division's name; or a remembered answer
+   about one of the bunks' identity (a deleted group, its division, which group, a group
+   spelling) would otherwise stop applying. Other remembered answers (a cell the files disagree
+   on) do not count.
+   Re-import: a camp group named as the division (rule 8's reading last time) is matched again,
+   so the same file gives the same groups. If the bunks now differ, the director is asked "Split
+   Juniors into its groups?"; until answered Juniors stays one group, with its first bunk's
+   schedule, never split silently.
    Code: `together.js`, applied in `reading.js` before classification.
    Test: "rule 8: …" (one group with its note; one differing block keeps the bunks; the
-   travelling camp's activities are activities; bunks the camp already has; a camp group named
-   as the division; a remembered deleted bunk).
+   travelling camp's activities are activities; bunks the camp already has; a bunk of that name
+   in another division; re-importing the same file; re-imported with the bunks differing; a
+   one-day and a one-block file; a remembered deleted bunk; a remembered answer not about
+   identity).
 
 ## Asked, because the grid supports both readings
 

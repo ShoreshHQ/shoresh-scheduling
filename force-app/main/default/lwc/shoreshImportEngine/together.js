@@ -44,65 +44,129 @@ function alwaysTogether(names, placements) {
 }
 
 /**
- * Why an always-together division is kept as its bunks, or null to read it as one group: the
- * camp already has one of the bunks (its setup wins), a group already has the division's name,
- * or an answer is remembered about one of the bunks (a deleted group, a division, a spelling).
+ * Rule 8 needs evidence, as rule 4 does for fixed: the division has cells on two days or more and
+ * in three time blocks or more. A one-day or one-block file keeps its bunks.
+ */
+function enoughEvidence(names, placements) {
+  const mine = placements.filter((p) => names.includes(p.group));
+  const days = new Set(
+    mine.map((p) => `${p.timetable}|${p.week || ""}|${p.day}`)
+  );
+  const blocks = new Set(mine.map((p) => `${p.timetable}|${p.blockKey}`));
+  return days.size >= 2 && blocks.size >= 3;
+}
+
+const same = (a, b) =>
+  String(a || "").toLowerCase() === String(b || "").toLowerCase();
+
+/** Remembered answers about a group's identity: deleted, its division, which one, a spelling. */
+const IDENTITY_ANSWER =
+  /^(deleted\|(Program)?Group\||division\||whichGroup\||similar\|group\|)/;
+
+/**
+ * Why a division stays as its bunks, or null to read it as one group: the camp already has one
+ * of the bunks in that division (its setup wins), another group in the files has the division's
+ * name, or an answer about one of the bunks' identity is remembered (so it still applies).
  */
 function keptBecause(division, names, others, context) {
-  const camp = new Set(context.campGroups || []);
-  if (names.some((n) => camp.has(n))) {
+  const camp = context.campGroups || [];
+  if (
+    names.some((n) =>
+      camp.some(
+        (g) => g.name === n && (!g.division || same(g.division, division))
+      )
+    )
+  ) {
     return "existing";
   }
-  if (camp.has(division) || others.some((g) => g.name === division)) {
+  if (others.some((g) => g.name === division)) {
     return "name";
   }
-  const remembered = Object.keys(context.answers || {}).some((key) =>
-    key.split("|").some((part) => names.includes(part))
+  const remembered = Object.keys(context.answers || {}).some(
+    (key) =>
+      IDENTITY_ANSWER.test(key) &&
+      key.split("|").some((part) => names.includes(part))
   );
   return remembered ? "remembered" : null;
 }
 
 /**
- * The placements and groups with each always-together division read as one group, and a note
- * for each such division: { placements, groups, notes: [{ type: "oneGroup", group, bunks,
- * kept }] } (kept: why it stays as its bunks, or null). context: { campGroups, answers }.
+ * What rule 8 does with one division: { merge, note, ask }. A camp group named as the division
+ * (rule 8's own reading last time) is matched again: merged as before, and when the bunks now
+ * differ, asked whether to split it, kept as one group until answered.
+ */
+function decide(division, names, placements, context, others) {
+  if (names.length < 2 || !enoughEvidence(names, placements)) {
+    return { merge: false };
+  }
+  const together = alwaysTogether(names, placements);
+  const kept = keptBecause(division, names, others, context);
+  const before =
+    !kept && (context.campGroups || []).some((g) => g.name === division);
+  if (before && !together) {
+    const id = `split|${division}|${names.join(",")}`;
+    const split = (context.answers || {})[id] === "split";
+    return {
+      merge: !split,
+      ask: { id, type: "split", group: division, bunks: names }
+    };
+  }
+  if (!together) {
+    return { merge: false };
+  }
+  return {
+    merge: !kept,
+    note: { type: "oneGroup", group: division, bunks: names, kept }
+  };
+}
+
+/**
+ * The placements and groups with each always-together division read as one group (rule 8):
+ * { placements, groups, notes: [{ type: "oneGroup", group, bunks, kept }], asks: [{ id, type:
+ * "split", group, bunks }] }. context: { campGroups: [{ name, division }], answers }.
  */
 export function oneGroupDivisions(placements, groups, context = {}) {
   const merged = new Map();
   const notes = [];
+  const asks = [];
   for (const [key, members] of divisionsOf(groups)) {
     const names = members.map((g) => g.name);
     const division = key.slice(key.indexOf("|") + 1);
-    if (names.length >= 2 && alwaysTogether(names, placements)) {
-      const others = groups.filter((g) => !names.includes(g.name));
-      const kept = keptBecause(division, names, others, context);
-      if (!kept) {
-        names.forEach((n) => merged.set(n, division));
-      }
-      notes.push({ type: "oneGroup", group: division, bunks: names, kept });
+    const others = groups.filter((g) => !names.includes(g.name));
+    const d = decide(division, names, placements, context, others);
+    if (d.merge) {
+      names.forEach((n) => merged.set(n, { to: division, first: names[0] }));
+    }
+    if (d.note) {
+      notes.push(d.note);
+    }
+    if (d.ask) {
+      asks.push(d.ask);
     }
   }
   if (!merged.size) {
-    return { placements, groups, notes };
+    return { placements, groups, notes, asks };
   }
-  const seen = new Set();
-  const kept = [];
-  for (const p of placements) {
-    const to = merged.get(p.group);
-    if (!to) {
-      kept.push(p);
-      continue;
-    }
-    const key = `${slotKey(p)}|${p.text}|${to}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      kept.push({ ...p, group: to, recordName: to, base: to, division: null });
-    }
-  }
+  return { ...regroup(placements, groups, merged), notes, asks };
+}
+
+/** The placements and groups with the merged bunks as their division's one group. */
+function regroup(placements, groups, merged) {
+  // The division's first bunk's cells: the same as every bunk's when they move together, and
+  // the ones kept until answered when a group kept as one now differs.
+  const firsts = new Set([...merged.values()].map((m) => m.first));
+  const kept = placements
+    .filter((p) => !merged.has(p.group) || firsts.has(p.group))
+    .map((p) => {
+      const m = merged.get(p.group);
+      return m
+        ? { ...p, group: m.to, recordName: m.to, base: m.to, division: null }
+        : p;
+    });
   const named = new Set();
   const regrouped = [];
   for (const g of groups) {
-    const to = merged.get(g.name);
+    const to = merged.has(g.name) ? merged.get(g.name).to : null;
     if (!to) {
       regrouped.push(g);
     } else if (!named.has(to)) {
@@ -120,7 +184,6 @@ export function oneGroupDivisions(placements, groups, context = {}) {
   }
   return {
     placements: kept,
-    groups: regrouped.map((g, order) => ({ ...g, order })),
-    notes
+    groups: regrouped.map((g, order) => ({ ...g, order }))
   };
 }
