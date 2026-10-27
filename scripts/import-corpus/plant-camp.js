@@ -7,8 +7,8 @@
 // "Time"; then 12 time blocks, 08:40 to 16:00, written "12:55–01:35" (no am/pm: the afternoon is
 // 1, 2, 3 and 4 o'clock). The heading is the group's name, never a day, block or activity.
 //
-// Groups: 13 in five plant-name divisions (the division is the first word of the group name), plus
-// CIT, a group of its own with no division.
+// Groups: 13 in five plant-name divisions (the division is the first word of the sheet's heading),
+// plus CIT, its own division (Greg, 2026-10-27).
 //
 // The file as written, kept as it is (real data): "Swim " with a trailing space; "Swim Returning"
 // once (Arazim 2, Wednesday) where every other sheet says "Swim Return"; "Lunch2" once (Tamarim 1,
@@ -18,7 +18,7 @@ import { hm } from "./camps";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-const DIVISIONS = ["Pirchim", "Garinim", "Shkedim", "Arazim", "Tamarim"];
+const DIVISIONS = ["Pirchim", "Garinim", "Shkedim", "Arazim", "Tamarim", "CIT"];
 
 // [start, end] in minutes after midnight, as the director means them (01:35 is 13:35).
 const at = (h, m) => h * 60 + m;

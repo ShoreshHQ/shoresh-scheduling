@@ -155,11 +155,19 @@ describe("Import last year on Greg's camp", () => {
   });
 
   // Baseline 2026-10-27: the two spelling slips are asked about, Carpool (twice a day) and the
-  // set times that are not the same every day are asked, CIT has no division.
+  // set times that are not the same every day are asked; CIT is its own division (Greg) but is
+  // not read as one yet.
   it("asks and reads wrong no more than it did", () => {
     const ceiling = {
       questions: { similar: 2, division: 1, kind: 11 },
-      wrong: { fixed: 2, recurring: 8, activities: 11, cells: 2 }
+      wrong: {
+        divisions: 1,
+        groups: 2,
+        fixed: 2,
+        recurring: 8,
+        activities: 11,
+        cells: 2
+      }
     };
     expect(result.error).toBeUndefined();
     for (const key of ["questions", "wrong"]) {

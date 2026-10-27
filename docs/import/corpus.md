@@ -45,7 +45,7 @@ the same thing at the same time every day. No typos, no double periods, no trips
 ## Greg's camp
 
 `scripts/import-corpus/fixtures/plant-camp.xlsx` is a real camp's schedule made fictional with
-Greg's approval: a sheet per group (13 groups in five plant-name divisions, plus CIT), a heading
+Greg's approval: a sheet per group (13 groups in five plant-name divisions, plus CIT, its own division), a heading
 with the group's name on row 1 and the days on row 3, times without am/pm. Its truth is written by
 hand in `scripts/import-corpus/plant-camp.js`. It is scored on its own line under level 1, with a
 check that each heading becomes its group (never data), the days come from the lower row, and no
