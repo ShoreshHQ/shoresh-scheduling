@@ -739,7 +739,9 @@ describe("c-shoresh-program", () => {
         Tuesday__c: false,
         Wednesday__c: false,
         Thursday__c: false,
-        Friday__c: false
+        Friday__c: false,
+        Saturday__c: false,
+        Sunday__c: false
       });
     });
 

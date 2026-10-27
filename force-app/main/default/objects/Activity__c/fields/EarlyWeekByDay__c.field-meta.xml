@@ -36,6 +36,16 @@
                     <default>false</default>
                     <label>Friday</label>
                 </value>
+                <value>
+                    <fullName>Saturday</fullName>
+                    <default>false</default>
+                    <label>Saturday</label>
+                </value>
+                <value>
+                    <fullName>Sunday</fullName>
+                    <default>false</default>
+                    <label>Sunday</label>
+                </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

@@ -236,7 +236,6 @@ export function readImport(input) {
     answers,
     timetableOfPage
   });
-  const weekend = identified.kept.filter((p) => !WEEKDAYS.includes(p.day));
   const placed = identified.kept
     .filter((p) => WEEKDAYS.includes(p.day))
     .map((p) => ({
@@ -256,7 +255,6 @@ export function readImport(input) {
     unread,
     pairs,
     disagreements,
-    weekend,
     timetables,
     placements: settleCells(byCell, answers, disagreements),
     groups: collectGroups(identified.groups, timetableOfPage),

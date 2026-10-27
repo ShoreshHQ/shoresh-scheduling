@@ -127,7 +127,8 @@ wins.
   season.
 - `Length__c` counts time blocks, starting at `TimeBlock__c`; `LastTimeBlock__c` (clear on
   delete) remembers where it ended when saved.
-- Recurring days are five checkboxes, Monday to Friday (day camps only, decision 0001).
+- Recurring days are five checkboxes, Monday to Friday (day camps only, decision 0001). Seven
+  since ADR 0022: Saturday and Sunday too.
 - No coverage rows means everyone in the program (no `AllGroups__c`).
 - The restrict-delete lookups: time block, location, coverage targets, and week exceptions'
   new targets.

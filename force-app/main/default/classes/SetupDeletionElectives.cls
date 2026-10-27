@@ -5,7 +5,7 @@
  *
  * A linked choice (electives slice E9) is remembered by what it links, not its name (a name can
  * be changed, and two may share one): "deleted|LinkedChoice|<set>|<activity>|<weekdays>|<time
- * blocks>", weekdays Monday to Friday and time blocks by start, each joined with "+", as Import
+ * blocks>", weekdays Monday to Sunday and time blocks by start, each joined with "+", as Import
  * last year names one a double period would make again (c/shoreshImportEngine electives.js).
  */
 public with sharing class SetupDeletionElectives {
@@ -14,7 +14,9 @@ public with sharing class SetupDeletionElectives {
     'Tuesday',
     'Wednesday',
     'Thursday',
-    'Friday'
+    'Friday',
+    'Saturday',
+    'Sunday'
   };
 
   public class Found {

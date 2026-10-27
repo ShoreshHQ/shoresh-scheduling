@@ -15,7 +15,7 @@ export { blockFromLabel } from "./structure";
 
 export { buildProposal, LEAVE_OUT } from "./proposal";
 export { LAYOUTS } from "./layouts";
-export { weekdayWeeks, weeksToFill } from "./weeks";
+export { campFirstDay, programDays, weeksOf, weeksToFill } from "./weeks";
 
 /** A comma-separated file as a file of one sheet. */
 export function csvFile(name, text) {
@@ -79,6 +79,9 @@ export {
 export { similarity, foldName, similarPairs, mergesFrom } from "./names";
 export {
   WEEKDAYS,
+  MONDAY_TO_FRIDAY,
+  firstDayOf,
+  weekOrder,
   tidy,
   looseKey,
   dayOf,

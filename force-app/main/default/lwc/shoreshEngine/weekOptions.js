@@ -279,7 +279,8 @@ export function readEarlyGoals(st) {
         const own = st.days.filter((day) => day.tokens.has(g));
         const counts = earlyDates(
           own.map((day) => day.date),
-          act.early.byDay
+          act.early.byDay,
+          st.model.firstDay
         );
         st.earlyDays.set(
           `${act.id}|${g}`,

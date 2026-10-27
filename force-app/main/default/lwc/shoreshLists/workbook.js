@@ -674,7 +674,8 @@ function readWeeks(sheet, setup, answers, t) {
   // for the lists and Runs in read after.
   result.fillWeeks = toFill.map((w) => ({
     start: w[WEEK.StartDate],
-    name: nameOf(w)
+    name: nameOf(w),
+    days: w.days.join("+")
   }));
   result.fillRecords = toFill.map((w) => ({
     kind: "Week",

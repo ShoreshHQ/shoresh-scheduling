@@ -21,6 +21,7 @@ import {
   whyOf
 } from "c/shoreshEngine";
 import { electivesOf } from "c/shoreshElectiveDetails";
+import { campFirstDay } from "c/shoreshImportEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -706,6 +707,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       // The season's offerings: an elective set on the grid takes up their places (ADR 0018
       // slice E5).
       electiveOfferings: electivesOf(this._setup).offerings,
+      // The camp's normal first day of the week: an early-week goal counts from it.
+      firstDay: campFirstDay(this._setup),
       ...extra
     };
   }

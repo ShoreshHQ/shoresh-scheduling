@@ -51,6 +51,7 @@ export const BLOCKS = [
   "Period 3 1:00-1:45"
 ];
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const EVERY_DAY = [...DAYS, "Saturday", "Sunday"];
 
 /**
  * One by-group CSV per group: cell(group, day, block) -> text. groups: [names].
@@ -96,7 +97,7 @@ export function program(
   { blocks = [], divisions = [], fixed = [], recurring = [], days = DAYS } = {}
 ) {
   const record = { Id: id, Name: name };
-  DAYS.forEach((d) => {
+  EVERY_DAY.forEach((d) => {
     record[`${d}__c`] = days.includes(d);
   });
   return {

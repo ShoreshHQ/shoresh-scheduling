@@ -17,7 +17,9 @@ public with sharing class LinkedChoiceSaves {
     'Tuesday',
     'Wednesday',
     'Thursday',
-    'Friday'
+    'Friday',
+    'Saturday',
+    'Sunday'
   };
 
   /** What one gesture changes. Blank parts are left as they are. */

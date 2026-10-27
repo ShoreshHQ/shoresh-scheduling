@@ -147,6 +147,8 @@ public with sharing class SeasonCopier {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         SortOrder__c
       FROM Program__c
       WHERE Season__c = :source.Id

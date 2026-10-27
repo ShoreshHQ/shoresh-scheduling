@@ -4,7 +4,16 @@ import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { leftField } from "c/shoreshSavedMark";
 import { rainPlanChoices } from "c/shoreshSetupRules";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+// The days an early-week goal can be by (EarlyWeekByDay__c).
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
+];
 const ACTIVITY = FIELD.Activity;
 const WHO = FIELD.ActivityEligibility;
 // "Who can do it", beside the rule fields, in what is changed and not saved yet.

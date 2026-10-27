@@ -3,6 +3,7 @@ import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { electivesOf, openCount } from "c/shoreshElectiveDetails";
+import { campFirstDay } from "c/shoreshImportEngine";
 import {
   activityCards,
   activityGrid,
@@ -653,6 +654,8 @@ export default class ShoreshWeekEditor extends LightningElement {
           ])
         ),
         isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
+        // The camp's normal first day of the week: an early-week goal counts from it.
+        firstDay: campFirstDay(this.setup),
         ...otherProgramsAt(readOtherPrograms(draft.otherPrograms), weekDays)
       },
       { t: this.t, dayName: (dateValue) => this.dayNameOf(dateValue) }
