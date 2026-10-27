@@ -219,6 +219,7 @@ private class SetupMatchTest {
     }
   }
 
+  // CLOSE-6.1
   @IsTest
   static void anActivityClosedThisWeekGetsADotInTheCampsWords() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -248,6 +249,7 @@ private class SetupMatchTest {
     }
   }
 
+  // CLOSE-6.1
   @IsTest
   static void anActivityClosedByItsPlaceGetsADotNamingThePlace() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -619,6 +621,7 @@ private class SetupMatchTest {
     }
   }
 
+  // CLOSE-6.1
   @IsTest
   static void aGroupAwayThisWeekIsOneChangeForTheDayNamingWhatGoes() {
     System.runAs(ShoreshTestData.scheduler()) {

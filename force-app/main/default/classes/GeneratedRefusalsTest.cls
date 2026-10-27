@@ -333,6 +333,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // CLOSE-6.1
   @IsTest
   static void aGroupMarkedAwayBeforeTheFirstGenerateIsAConflictThatSaysSo() {
     Map<String, Id> ids = camp();
@@ -347,6 +348,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // CLOSE-4.1 CLOSE-4.2
   @IsTest
   static void nothingNewForAGroupAwayOrWhatIsClosedThisWeek() {
     Map<String, Id> ids = camp();
@@ -401,6 +403,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // CLOSE-6.1
   @IsTest
   static void leftoversOfAGroupAwayOrOfWhatIsClosedMayStayOrGo() {
     Map<String, Id> ids = camp();
@@ -457,6 +460,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // SPECIAL-1.2
   @IsTest
   static void somethingNotSetUpYetStaysWhereItIs() {
     System.runAs(KeptCamp.scheduler(camp())) {
@@ -877,6 +881,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // LOCK-4.6
   @IsTest
   static void aFixedActivityClearedByHandStaysOpenThroughABuild() {
     Map<String, Id> ids = camp();

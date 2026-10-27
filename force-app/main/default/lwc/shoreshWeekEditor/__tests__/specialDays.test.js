@@ -128,6 +128,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     }
   });
 
+  // SPECIAL-6.1
   it("names the special day on its day's pill", async () => {
     const { element } = await render();
     const pills = [
@@ -142,6 +143,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     );
   });
 
+  // SPECIAL-6.1
   it("shows a replaced day's own schedule read-only, its line, and no counter", async () => {
     const { element } = await render();
     const opened = jest.fn();
@@ -183,6 +185,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     ).toBe("Take off Tuesday");
   });
 
+  // SPECIAL-4.2
   it("takes the special day off: the day's own cells are back, said, focus on its pill", async () => {
     const host = {};
     const takeOffWith = jest.fn(() => {
@@ -232,6 +235,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(q(element, '[data-id="special-line"]')).not.toBeNull();
   });
 
+  // SPECIAL-6.2
   it("leaves a replaced day out of the checks and counts", async () => {
     // Swim twice on Tuesday in Bunk 1 would be over its weekly limit of 2 with Monday's.
     const tuesday = {
@@ -386,6 +390,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(sentRuns(saveRuns, 0).map((r) => r.groupId)).toEqual(["g1", "g2"]);
   });
 
+  // SPECIAL-4.4
   it("puts an event over a fixed activity by hand (Greg, 2026-10-26: a hand edit is always made)", async () => {
     const { element, saveRuns } = await render();
     await fromGrid(element, "cellfocus", { key: "0-0" });
@@ -404,6 +409,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     ]);
   });
 
+  // SPECIAL-1.2
   it("offers Set it up on a cell a file noted as an event", async () => {
     const setUpWith = jest
       .fn()
@@ -552,6 +558,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(q(element, '[data-id="set-up-offer"]')).toBeNull();
   });
 
+  // SPECIAL-4.3
   it("Clear week leaves a replaced day as it is, and says so", async () => {
     const tuesday = { items: [FLAGPOLE, SWIM], rows: ["1,2,", "1,,"] };
     const { element, saveRuns } = await render(
@@ -575,6 +582,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     ).toMatch(/Tuesday is Visiting Day: left as it is\./);
   });
 
+  // SPECIAL-4.3
   it("Copy day to refuses copying from a replaced day", async () => {
     const { element, saveRuns } = await render();
     element.runTool({

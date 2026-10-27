@@ -133,6 +133,7 @@ describe("c-shoresh-schedules: special days and events", () => {
     jest.clearAllMocks();
   });
 
+  // SPECIAL-6.1
   it("shows a replaced day as its special day: its pill, its own time blocks, its line", async () => {
     const element = await render();
     // "Tue" with the special day's flag, named in full.
@@ -219,6 +220,7 @@ describe("c-shoresh-schedules: special days and events", () => {
     ]);
   });
 
+  // SPECIAL-6.1
   it("takes the special day and the event's schedule into the Excel file and the printout", async () => {
     const element = await render();
     q(element, '[data-id="export"]').click();

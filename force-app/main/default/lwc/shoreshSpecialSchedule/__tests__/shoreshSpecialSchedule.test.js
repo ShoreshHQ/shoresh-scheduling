@@ -168,6 +168,7 @@ describe("c-shoresh-special-schedule", () => {
     jest.clearAllMocks();
   });
 
+  // SPECIAL-1.1
   it("opens a special day: its name on the rail, the bunks across, its own periods down", async () => {
     const { element } = await render(dayPlan());
     expect(openPlan).toHaveBeenCalledWith({ itemId: "sd1" });

@@ -4,7 +4,7 @@
  */
 const { protocolIndex, counts } = require("../protocol-index.js");
 
-const ENCODED_FLOOR = 37;
+const ENCODED_FLOOR = 76;
 
 describe("the protocol's conformance index", () => {
   const statements = protocolIndex();
@@ -13,7 +13,14 @@ describe("the protocol's conformance index", () => {
     const ids = statements.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     const prefixes = new Set(ids.map((id) => id.split("-")[0]));
-    expect([...prefixes].sort()).toEqual(["CORE", "GEN", "INGEST"]);
+    expect([...prefixes].sort()).toEqual([
+      "CLOSE",
+      "CORE",
+      "GEN",
+      "INGEST",
+      "LOCK",
+      "SPECIAL"
+    ]);
   });
 
   it("never has fewer statements named by a test than the floor", () => {

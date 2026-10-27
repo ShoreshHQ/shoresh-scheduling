@@ -89,6 +89,7 @@ describe("lockChoices", () => {
     });
   });
 
+  // LOCK-1.3
   it("never offers a fixed or recurring activity's cell", () => {
     const flag = cell("g1", "b1", "Bunk 1 · Monday · Flag", "Bunk 1");
     expect(

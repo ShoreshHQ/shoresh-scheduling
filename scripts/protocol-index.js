@@ -47,8 +47,37 @@ const DOCUMENTS = [
     }
   },
   numberedRules("docs/import/names-and-divisions.md", "INGEST-2"),
-  numberedRules("docs/import/classification.md", "INGEST-3")
+  numberedRules("docs/import/classification.md", "INGEST-3"),
+  statementTable("docs/protocol/special.md", "SPECIAL"),
+  statementTable("docs/protocol/close.md", "CLOSE"),
+  statementTable("docs/protocol/lock.md", "LOCK")
 ];
+
+/** A sub-protocol's table, "| PREFIX-n.m | statement | source | test |"; a test named maps it. */
+function statementTable(file, prefix) {
+  const row = new RegExp(`^\\| (${prefix}-\\d+\\.\\d+) +\\|`);
+  return {
+    file,
+    read(text) {
+      const out = [];
+      for (const line of text.split("\n")) {
+        const m = row.exec(line);
+        if (m) {
+          const cells = line
+            .split("|")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          const test = cells[cells.length - 1];
+          out.push({
+            id: m[1],
+            mapped: !/^(not yet tested|none)\b/i.test(test)
+          });
+        }
+      }
+      return out;
+    }
+  };
+}
 
 /** Rules written "1. **Title**", each with a "Test:" line in its paragraph. */
 function numberedRules(file, prefix) {

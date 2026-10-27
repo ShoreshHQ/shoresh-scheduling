@@ -77,6 +77,7 @@ function opened({ plan = FIELD_DAY_PLAN, events = [] } = {}) {
 }
 
 describe("c/shoreshScheduleViews: special days on the Schedules page", () => {
+  // SPECIAL-1.1
   it("puts a special day's own schedule in its day's place, marked with its name and notes", () => {
     const view = opened();
     const shown = withSpecials(view);
@@ -146,6 +147,7 @@ describe("c/shoreshScheduleViews: special days on the Schedules page", () => {
     expect(tuesday[0].title).toBe("Field Day: Special day");
   });
 
+  // SPECIAL-6.2
   it("counts nothing on a replaced day in Activity View, and names it in the activity's grid", () => {
     const shown = withSpecials(opened());
     const archery = activityCards(shown, [], t).find((c) => c.key === "act2");

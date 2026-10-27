@@ -17,6 +17,7 @@ describe("c-shoresh-lock", () => {
     }
   });
 
+  // LOCK-6.1
   it("draws the one padlock, hidden from screen readers", () => {
     const element = render();
     const lock = q(element, '[data-id="lock"]');

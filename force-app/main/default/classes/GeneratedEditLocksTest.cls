@@ -41,6 +41,7 @@ private class GeneratedEditLocksTest {
     'A:a2'
   };
 
+  // LOCK-1.1
   @IsTest
   static void theServerLocksWhatTheEditorWorksOut() {
     for (String spec : LOCK_CASES) {

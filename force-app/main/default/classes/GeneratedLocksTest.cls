@@ -87,6 +87,7 @@ private class GeneratedLocksTest {
     return result;
   }
 
+  // LOCK-1.1
   @IsTest
   static void aHandEditLocksWhatItFillsAndUnlocksWhatItLeavesOpen() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -139,6 +140,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-1.3
   @IsTest
   static void theShortcutsLockFilledCellsButNeverAFixedActivity() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -190,6 +192,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.1
   @IsTest
   static void aLockOnOneBlockOfALongerActivityLocksAllOfIt() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -225,6 +228,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.3
   @IsTest
   static void aBuildThatChangesALockedCellIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -267,6 +271,7 @@ private class GeneratedLocksTest {
     return draftId;
   }
 
+  // LOCK-4.3
   @IsTest
   static void aBuildAroundALockedCellIsSavedAndKeepsTheLock() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -308,6 +313,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.4
   @IsTest
   static void aStaleScreenNeitherLocksNorGoesOnFromSomeoneElsesSave() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -362,6 +368,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.4
   @IsTest
   static void aHandEditOverALockItDidNotSeeIsAConflict() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -405,6 +412,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-1.3
   @IsTest
   static void aHandEditLocksWholePlacementsButNeverAFixedActivity() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -460,6 +468,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.2
   @IsTest
   static void fillTheOpenCellsLeavesALockedOpenCellOpen() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -551,6 +560,7 @@ private class GeneratedLocksTest {
     Assert.areEqual(NONE, seen[1]);
   }
 
+  // LOCK-1.2
   @IsTest
   static void manualBuildNeverLocksAndGeneratedEditsDoNotReachIt() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -604,6 +614,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-5.1
   @IsTest
   static void startOverClearsTheLocksAfterKeepingAVersionThatHasThem() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -778,6 +789,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-5.2
   @IsTest
   static void undoAndRedoRestoreTheLocksFromBeforeTheirStep() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -845,6 +857,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-1.1
   @IsTest
   static void onlyTheCellsAHandEditChangesAreLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -875,6 +888,7 @@ private class GeneratedLocksTest {
     }
   }
 
+  // LOCK-4.1
   @IsTest
   static void anActivityMadeShorterByHandIsLockedAsItIsLeft() {
     System.runAs(ShoreshTestData.scheduler()) {

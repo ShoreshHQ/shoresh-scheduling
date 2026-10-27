@@ -78,6 +78,7 @@ describe("c-shoresh-engine: special days and events", () => {
     });
   });
 
+  // SPECIAL-6.2
   it("leaves a replaced day out of the check, but shows it", () => {
     const input = withEventName(camp(spec));
     const week = checkGeneratedWeek({ ...input, replacedDates: [dateAt(1)] });
