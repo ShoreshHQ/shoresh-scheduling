@@ -9,6 +9,7 @@ import { mulberry32 } from "../random";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { problems } from "./data/check";
 import { camp166, camp93 } from "./data/repairCamps";
+import { randomCamp } from "./data/randomCamp";
 import { sampled } from "shoresh-jest/sample";
 
 const run = (spec) => generateWeek(camp(spec));
@@ -268,18 +269,25 @@ describe("no activity left below its minimum when the week can hold it", () => {
     const result = run(camp166);
     expect(result.flags).toEqual([]);
     // 26 before step 8's search (PR 4a); it meets two more by rearranging days, and one more
-    // by moving sessions between days.
-    expect(result.stillNeeded).toHaveLength(23);
+    // by moving sessions between days; 22 since rule 9.10's settings order (2026-10-27).
+    expect(result.stillNeeded).toHaveLength(22);
   });
 
-  it("camp 93: the week without the leniency has fewer bends for the same minimums", () => {
-    // Lenient alone: two sessions past their weekly limits; without it, one. Step 8's search
-    // (PR 4a) then meets the last minimum by rearranging a day.
+  it("camp 93: every minimum met with no bends", () => {
+    // Since rule 9.10's settings order (2026-10-27) the lenient build already has no bends, so
+    // the week without the leniency isn't needed here; random camp 775 shows it now (below).
     const result = run(camp93);
+    expect(result.stillNeeded).toHaveLength(0);
+    expect(result.flags).toEqual([]);
+  });
+
+  it("random camp 775: the week without the leniency has fewer bends for the same minimums", () => {
+    // Lenient alone: two sessions past their weekly limits; without it, one, every minimum met.
+    const result = generateWeek(camp(randomCamp(775)));
     expect(result.stillNeeded).toHaveLength(0);
     expect(
       result.flags.map((f) => [f.groupId, f.activityId, f.reason])
-    ).toEqual([["g1", "a3", "Over its weekly limit"]]);
+    ).toEqual([["g0", "a0", "Over its weekly limit"]]);
   });
 
   // The desktop's acceptance rule in miniature: build a full week, read the rules off it the way

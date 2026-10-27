@@ -174,12 +174,13 @@ describe("what the build says it is doing", () => {
 
   it("says every kind of step somewhere across many camps, each naming the camp's own records", () => {
     const seen = new Set();
-    // Moves by the repairs are rare: two camps where they happen (seeds 86 and 266).
+    // Moves by the repairs are rare: camps where they happen (seeds 86 and 266; 163, with its
+    // history, says a place is full, since rule 9.10's settings order, 2026-10-27).
     const inputs = [
       ...Array.from({ length: 60 }, (_, i) =>
         camp(withHistory(randomCamp(i + 1), i + 1))
       ),
-      ...[86, 266].flatMap((seed) => [
+      ...[86, 163, 266].flatMap((seed) => [
         camp(randomCamp(seed)),
         camp(withHistory(randomCamp(seed), seed))
       ])
