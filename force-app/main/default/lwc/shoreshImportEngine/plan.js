@@ -582,6 +582,23 @@ export function importNotes(proposal, t) {
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
       })
     );
+  // names-and-divisions.md rules 1-3: read without asking, and said here.
+  proposal.notes
+    .filter((n) => n.type === "readAs")
+    .forEach((n) =>
+      notes.push({
+        key: `readAs|${n.kind}|${n.from}`,
+        text: `“${n.from}” is read as “${n.to}”: ${n.rule === "spelling" ? "only the spacing, capitals or punctuation differ" : "it is the same name with another ending, in the same place"}.`
+      })
+    );
+  proposal.notes
+    .filter((n) => n.type === "ownDivision")
+    .forEach((n) =>
+      notes.push({
+        key: `ownDivision|${n.group}`,
+        text: `${n.group} has no ${t.sIn("Division")} in the file while the other ${t.pIn("Group")} do, so it is its own ${t.sIn("Division")}, ${n.group}.`
+      })
+    );
   proposal.notes
     .filter((n) => n.type === "oneGroup")
     .forEach((n) =>

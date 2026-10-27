@@ -78,13 +78,20 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
    Part 2 notes them in the imported version as "not set up yet".
    _Electives are set up since electives slice E9 (choice 23); trips, special events and special
    days are still noted._
-8. **Similar names, always asked, never merged on their own** (Greg): capitals, spacing, and
+8. **Similar names asked, except plain slips** (Greg): capitals, spacing, and
    punctuation, "and" / "&" / "+"; endings (Swim / Swimming, including a doubled last letter);
    **one letter changed, added, dropped, or swapped** (Music / Musik). Numbers keep names apart
    (Lunch 1 / Lunch 2, Bunk 3A / Bunk 3B). Raised among the file's names and against the camp's
    (activity, fixed, recurring, and group names); a name the camp already has is asked about as
    the camp's ("Same: use Music" / "Different: add Musik"). Asked on the first screen, as the
-   desktop does, because the answers change everything after.
+   desktop does, because the answers change everything after. _Refined (Greg, 2026-10-27):
+   two kinds of slip among the file's own names are read, not asked, and shown in the import's
+   notes: names that differ only by spacing, capitals or punctuation with the same numbers
+   (Lunch2 / Lunch 2, read as the more common form), and a rare form (at most 2 cells and at
+   most a fifth of the common one) that adds -s, -es, -ing or -ed to the common name's last word
+   and sits where the common form does (Swim Returning / Swim Return). Everything else, and
+   anything against a name the camp already has, is still asked. Rules 2 and 3 of
+   `docs/import/names-and-divisions.md`._
 9. **Existing setup: add only, matched by name** (Greg). Programs by their groups (or the
    camp's only program; otherwise asked); time blocks by their times (one overlapping at
    different times is asked: keep, change to the file's times, or leave out); divisions and
