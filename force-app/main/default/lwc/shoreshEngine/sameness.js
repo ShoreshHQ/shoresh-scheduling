@@ -3,8 +3,8 @@ import { compareText } from "./setup";
 /**
  * Protocol rule 9.10 (docs/engine/protocol.md): a fresh build never depends on an activity's place
  * in the list or its Id; between activities with identical settings (twins) the name breaks the
- * tie. Replacing one activity without moving anything else is guaranteed by the minimal-change
- * rebuild (pending, Greg 2026-10-27), not here. Greg's swap test (__tests__/swap.test.js): Sports,
+ * tie. Replacing one activity without moving anything else is guaranteed by Rebuild keeping the
+ * week (weekKeep.js, protocol section 10, Greg 2026-10-27), not here. Greg's swap test (__tests__/swap.test.js): Sports,
  * which has no twin, swapped for an identical Adventure Baseball gives the same week.
  *
  * So a build never sees the list's order: it works through the activities in settings-key order
@@ -32,6 +32,12 @@ function sharedPlaces(model) {
   }
   for (const key of (model.otherPlace || new Map()).keys()) {
     outside.add(key.split("|")[0]);
+  }
+  // Another program doing an activity counts against its groups at once, not its place: folding
+  // the place into groups at once would count those groups against the place too (seed 198).
+  const placeOf = new Map(model.acts.map((a) => [a.id, a.locationId]));
+  for (const key of (model.otherActivity || new Map()).keys()) {
+    outside.add(placeOf.get(key.split("|")[0]));
   }
   for (const list of (model.electivePlaces || new Map()).values()) {
     for (const p of list || []) {

@@ -568,7 +568,9 @@ describe("c-shoresh-generated-schedule", () => {
     expect(dialog.getAttribute("role")).toBe("alertdialog");
     expect(dialog.textContent).toContain("Rebuild this schedule?");
     const body = q(element, '[data-id="confirm-body"]').textContent;
-    expect(body).toBe("Builds Week 1 again from your setup.");
+    expect(body).toBe(
+      "Updates Week 1 to your setup, keeping everything that still fits."
+    );
     // Hand edits are locks and stay (decision 2): never "replaces your edits". Locks come in G4.
     expect(body).not.toMatch(/your edits|replaces|lock/i);
     expect(q(element, '[data-id="confirm-note"]').textContent).toBe(
@@ -994,6 +996,25 @@ describe("c-shoresh-generated-schedule", () => {
     await generate(element);
     expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
       "Swim: Groups at once is blank, so it counts as 1"
+    ]);
+  });
+
+  // Greg 2026-10-27 (protocol section 10): Rebuild keeps the week and changes only what setup
+  // forces, saying so in the Why list; Try another stays a fresh build (above).
+  it("Rebuild keeps the week as it is when setup hasn't changed, and says so in the Why list", async () => {
+    const inputs = camp(SMALL);
+    const element = await render(inputs);
+    await generate(element);
+    const first = sent(0).days.map((d) => d.rows);
+    action(element, "Rebuild").click();
+    await flush();
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    q(element, '[data-id="confirm-go"]').click();
+    await settle(element);
+    expect(sent(1).action).toBe("Rebuild");
+    expect(sent(1).days.map((d) => d.rows)).toEqual(first);
+    expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
+      "Nothing in setup needed a change, so everything was kept as it was."
     ]);
   });
 
