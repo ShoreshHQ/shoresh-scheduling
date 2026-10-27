@@ -1,10 +1,17 @@
 // "Import last year" against made-up level-1 camps (docs/import/corpus.md). Today's numbers are a
 // ceiling: a change may ask fewer questions or read fewer things wrong, never more. When a change
 // improves them, lower the numbers here (npm run score:import prints the full corpus).
+import { readFileSync } from "fs";
+import { join } from "path";
 import * as XLSX from "xlsx";
 import * as engine from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
+import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
+import {
+  headingReport,
+  plantCamp
+} from "../../../../../../scripts/import-corpus/plant-camp";
 import {
   scoreCamp,
   summarise,
@@ -61,6 +68,116 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
         kind,
         n: Math.min(n, CEILING.wrong[kind] || 0)
       });
+    }
+  });
+});
+
+// Level 2: schedules that differ from week to week. The first 40 camps, five of each layout.
+const SAMPLE_2 = 40;
+
+// Baseline 2026-10-27, on these 40 camps. Every kind not listed is 0.
+const CEILING_2 = {
+  perfectAtLeast: 16,
+  weeksExactAtLeast: 30,
+  errors: 0,
+  questions: { kind: 130, cross: 2023 },
+  wrong: {
+    programs: 51,
+    weeks: 48,
+    days: 55,
+    blocks: 8,
+    groups: 4,
+    fixed: 13,
+    activities: 27,
+    cells: 27516
+  }
+};
+
+describe("Import last year on made-up camps whose weeks differ (level 2)", () => {
+  const results = variedCamps(SAMPLE_2).map((camp) =>
+    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps, and their weeks, as well as it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_2.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_2.perfectAtLeast);
+    expect(
+      results.filter((r) => r.wrong.weeks === 0).length
+    ).toBeGreaterThanOrEqual(CEILING_2.weeksExactAtLeast);
+  });
+
+  it("asks no more and reads nothing more wrong, kind by kind, than it did", () => {
+    for (const [kind, n] of Object.entries(totals.questions)) {
+      expect({ kind, n }).toEqual({
+        kind,
+        n: Math.min(n, CEILING_2.questions[kind] || 0)
+      });
+    }
+    for (const [kind, n] of Object.entries(totals.wrong)) {
+      expect({ kind, n }).toEqual({
+        kind,
+        n: Math.min(n, CEILING_2.wrong[kind] || 0)
+      });
+    }
+  });
+});
+
+// Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx), the real ordinary baseline.
+describe("Import last year on Greg's camp", () => {
+  const bytes = readFileSync(
+    join(
+      __dirname,
+      "../../../../../../scripts/import-corpus/fixtures/plant-camp.xlsx"
+    )
+  );
+  const camp = plantCamp(bytes);
+  const result = scoreCamp(camp, {
+    engine,
+    XLSX,
+    terms: buildTerms([]),
+    keepProposal: true
+  });
+
+  it("reads each sheet's heading as its group and finds the days on the lower row", () => {
+    const h = headingReport(camp, result);
+    expect(h.headingAsGroup).toBe(14);
+    expect(h.headingAsData).toEqual([]);
+    expect(h.daysFound).toEqual([
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ]);
+    expect(h.firstBlock).toBe("08:40");
+    expect(h.shifted).toBe(0);
+  });
+
+  // Baseline 2026-10-27: the two spelling slips are asked about, Carpool (twice a day) and the
+  // set times that are not the same every day are asked; CIT is its own division (Greg) but is
+  // not read as one yet.
+  it("asks and reads wrong no more than it did", () => {
+    const ceiling = {
+      questions: { similar: 2, division: 1, kind: 11 },
+      wrong: {
+        divisions: 1,
+        groups: 2,
+        fixed: 2,
+        recurring: 8,
+        activities: 11,
+        cells: 2
+      }
+    };
+    expect(result.error).toBeUndefined();
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(result[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, ceiling[key][kind] || 0)
+        });
+      }
     }
   });
 });

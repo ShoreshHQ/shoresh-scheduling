@@ -6,7 +6,11 @@
  *
  *   npm run score:import                 the full corpus, the summary table
  *   npm run score:import -- --camps      also one line per camp that is not read perfectly
+ *   npm run score:import -- --level 2    level 2: schedules that differ from week to week
+ *
+ * Level 1 also scores Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx) on its own line.
  */
+import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -48,24 +52,64 @@ const engine = await import("c/shoreshImportEngine");
 const { buildTerms } = await import("c/shoreshTerms");
 const XLSX = await import("xlsx");
 const { CORPUS_SIZE, ordinaryCamps } = await import("./import-corpus/camps.js");
-const { scoreCamp, summaryTable } = await import("./import-corpus/score.js");
+const { LEVEL2_SIZE, variedCamps } = await import("./import-corpus/level2.js");
+const { headingReport, plantCamp } =
+  await import("./import-corpus/plant-camp.js");
+const { scoreCamp, summaryTable, weekTable } =
+  await import("./import-corpus/score.js");
 
 const deps = { engine, XLSX, terms: buildTerms([]) };
 const started = Date.now();
-const results = ordinaryCamps(CORPUS_SIZE).map((camp) => scoreCamp(camp, deps));
+const levelAt = process.argv.indexOf("--level");
+const level = levelAt > 0 ? Number(process.argv[levelAt + 1]) : 1;
 
-console.log(`Level 1 (ordinary): ${results.length} made-up camps\n`);
-console.log(summaryTable(results));
-if (process.argv.includes("--camps")) {
+const shown = (o) =>
+  Object.entries(o)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(", ") || "none";
+
+if (level === 2) {
+  const results = variedCamps(LEVEL2_SIZE).map((camp) => scoreCamp(camp, deps));
+  console.log(
+    `Level 2 (schedules that differ week to week): ${results.length} made-up camps\n`
+  );
+  console.log(summaryTable(results));
+  console.log(`\nWeeks:\n${weekTable(results)}`);
+  printCamps(results);
+} else {
+  const results = ordinaryCamps(CORPUS_SIZE).map((camp) =>
+    scoreCamp(camp, deps)
+  );
+  console.log(`Level 1 (ordinary): ${results.length} made-up camps\n`);
+  console.log(summaryTable(results));
+  printCamps(results);
+  const bytes = readFileSync(
+    join(ROOT, "scripts/import-corpus/fixtures/plant-camp.xlsx")
+  );
+  const camp = plantCamp(bytes);
+  const r = scoreCamp(camp, { ...deps, keepProposal: true });
+  console.log(
+    `\n${camp.name}: ${r.perfect ? "perfect" : "not perfect"}${r.error ? `; error ${r.error}` : ""}`
+  );
+  console.log(`  asks: ${shown(r.questions)}\n  wrong: ${shown(r.wrong)}`);
+  if (!r.error) {
+    const h = headingReport(camp, r);
+    console.log(
+      `  headings used as group names: ${h.headingAsGroup} of ${camp.headings.length}; headings read as data: ${h.headingAsData.join(", ") || "none"}`
+    );
+    console.log(
+      `  days found: ${h.daysFound.join(", ") || "none"}; earliest block: ${h.firstBlock}; cells shifted a row: ${h.shifted}`
+    );
+  }
+}
+
+function printCamps(results) {
+  if (!process.argv.includes("--camps")) return;
   console.log("\nCamps not read perfectly:");
   for (const r of results.filter((x) => !x.perfect)) {
-    const shown = (o) =>
-      Object.entries(o)
-        .filter(([, v]) => v)
-        .map(([k, v]) => `${k} ${v}`)
-        .join(", ") || "none";
     console.log(
-      `  ${r.camp.id} ${r.camp.layout}/${r.camp.format}/${r.camp.split} ${r.camp.groups.length} groups: asks ${shown(r.questions)}; wrong ${shown(r.wrong)}${r.error ? `; error ${r.error}` : ""}`
+      `  ${r.camp.id} ${r.camp.layout}/${r.camp.format}/${r.camp.split} ${(r.camp.variations || []).join("+")}: asks ${shown(r.questions)}; wrong ${shown(r.wrong)}${r.error ? `; error ${r.error}` : ""}`
     );
   }
 }

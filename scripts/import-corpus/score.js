@@ -3,7 +3,8 @@
 // what it would ask and save is compared with the camp's true answer.
 //
 // The engine is passed in ({ engine, XLSX, terms }), so Jest and the node script share this file.
-import { campFiles } from "./camps";
+import { campFiles, hm } from "./camps";
+import { variedCampFiles } from "./level2";
 
 export const QUESTION_KINDS = [
   "similar",
@@ -25,6 +26,7 @@ export const QUESTION_KINDS = [
 ];
 export const WRONG_KINDS = [
   "programs",
+  "weeks",
   "days",
   "blocks",
   "divisions",
@@ -49,7 +51,9 @@ const EMPTY_SEASON = {
 };
 
 function readFiles(camp, { engine, XLSX }) {
-  return campFiles(camp).map((f) =>
+  const files =
+    camp.files || (camp.level === 2 ? variedCampFiles(camp) : campFiles(camp));
+  return files.map((f) =>
     f.csv !== undefined
       ? engine.csvFile(f.name, f.csv)
       : engine.workbookFile(XLSX, f.name, f.data)
@@ -79,22 +83,36 @@ function mismatches(want, got) {
   );
 }
 
-const hm = (m) =>
-  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-
-/** What the camp's week shows, cell by cell: "group|day|start" -> activity. */
-function trueCells(camp) {
+/** A level-1 camp's true answer, from its one repeating week (camps.js). */
+function ordinaryTruth(camp) {
   const cells = new Map();
   camp.groups.forEach((g, gi) =>
     camp.days.forEach((day, d) =>
       camp.blocks.forEach((block, b) =>
-        cells.set(`${g.name}|${day}|${hm(block.start)}`, camp.cell(gi, d, b))
+        cells.set(`|${g.name}|${day}|${hm(block.start)}`, camp.cell(gi, d, b))
       )
     )
   );
-  return cells;
+  const startOf = (name) => hm(camp.blocks.find((b) => b.fixed === name).start);
+  return {
+    weeks: [{ label: "", cells }],
+    days: camp.days,
+    blocks: camp.blocks.map((b) => `${hm(b.start)}-${hm(b.end)}`),
+    divisions: camp.divisions.map((d) => d.name),
+    groups: camp.groups,
+    fixed: camp.fixed.map((f) => `${f}|${startOf(f)}`),
+    recurring: [],
+    activities: camp.activities,
+    divisionsInFile: camp.divisionsInFile
+  };
 }
 
+/** The camp's true answer: its own (level 2, Greg's camp) or built from its week (level 1). */
+export function truthOf(camp) {
+  return camp.truth || ordinaryTruth(camp);
+}
+
+/** What the engine read, cell by cell: "week|group|day|start" -> activity. */
 function readCells(proposal) {
   const cells = new Map();
   for (const p of proposal.usable) {
@@ -102,65 +120,85 @@ function readCells(proposal) {
     for (let i = 0; i < p.span; i++) {
       const block = blocks[p.blockIndex + i];
       if (block && block.start !== null) {
-        cells.set(`${p.group}|${p.day}|${hm(block.start)}`, p.text);
+        cells.set(
+          `${p.week || ""}|${p.group}|${p.day}|${hm(block.start)}`,
+          p.text
+        );
       }
     }
   }
   return cells;
 }
 
-function wrongCells(camp, proposal) {
-  const want = trueCells(camp);
-  const got = readCells(proposal);
-  let wrong = 0;
-  for (const [key, name] of want) {
-    if (got.get(key) !== name) wrong++;
-  }
-  for (const key of got.keys()) {
-    if (!want.has(key)) wrong++;
-  }
-  return wrong;
+/** Week by week: { label, found, cells, wrong }; extra cells in weeks the camp has not, as "?". */
+function weekReads(truth, got) {
+  const gotWeeks = new Set([...got.keys()].map((k) => k.split("|")[0]));
+  const known = new Set(truth.weeks.map((w) => w.label));
+  const weeks = truth.weeks.map((w) => {
+    let wrong = 0;
+    for (const [key, name] of w.cells) {
+      if (got.get(key) !== name) wrong++;
+    }
+    for (const key of got.keys()) {
+      if (key.startsWith(`${w.label}|`) && !w.cells.has(key)) wrong++;
+    }
+    return {
+      label: w.label,
+      found: gotWeeks.has(w.label),
+      cells: w.cells.size,
+      wrong
+    };
+  });
+  const extra = [...got.keys()].filter(
+    (k) => !known.has(k.split("|")[0])
+  ).length;
+  return { weeks, extra, gotWeeks: [...gotWeeks] };
 }
 
-function wrongReads(camp, proposal, plan) {
+function wrongReads(truth, proposal, plan) {
   const divisionName = new Map(plan.divisions.map((d) => [d.key, d.name]));
   const blockStart = new Map(plan.timeBlocks.map((b) => [b.key, b.start]));
-  const startOf = (name) => {
-    const block = camp.blocks.find((b) => b.fixed === name);
-    return hm(block.start);
-  };
   const program = plan.programs.length === 1 ? plan.programs[0] : null;
-  const named = camp.divisionsInFile;
-  return {
+  const named = truth.divisionsInFile;
+  const read = weekReads(truth, readCells(proposal));
+  const wrong = {
     programs: Math.abs(plan.programs.length - 1),
-    days: program ? mismatches(camp.days, program.days) : camp.days.length,
+    weeks: mismatches(
+      truth.weeks.map((w) => w.label),
+      read.gotWeeks
+    ),
+    days: program ? mismatches(truth.days, program.days) : truth.days.length,
     blocks: mismatches(
-      camp.blocks.map((b) => `${hm(b.start)}-${hm(b.end)}`),
+      truth.blocks,
       plan.timeBlocks.map((b) => `${b.start}-${b.end}`)
     ),
     divisions: named
       ? mismatches(
-          camp.divisions.map((d) => d.name),
+          truth.divisions,
           plan.divisions.map((d) => d.name)
         )
       : 0,
     groups: mismatches(
-      camp.groups.map((g) => `${named ? g.division : ""}|${g.name}`),
+      truth.groups.map((g) => `${named ? g.division : ""}|${g.name}`),
       plan.groups.map(
-        (g) => `${named ? divisionName.get(g.divisionKey) : ""}|${g.name}`
+        (g) => `${named ? divisionName.get(g.divisionKey) || "" : ""}|${g.name}`
       )
     ),
     fixed: mismatches(
-      camp.fixed.map((f) => `${f}|${startOf(f)}`),
+      truth.fixed,
       plan.fixedActivities.map((f) => `${f.name}|${blockStart.get(f.blockKey)}`)
     ),
-    recurring: plan.recurringActivities.length,
+    recurring: mismatches(
+      truth.recurring,
+      plan.recurringActivities.map((a) => a.name)
+    ),
     activities: mismatches(
-      camp.activities,
+      truth.activities,
       plan.activities.map((a) => a.name)
     ),
-    cells: wrongCells(camp, proposal)
+    cells: read.weeks.reduce((n, w) => n + w.wrong, read.extra)
   };
+  return { wrong, weeks: read.weeks };
 }
 
 /**
@@ -186,16 +224,26 @@ export function scoreCamp(camp, deps) {
       }
     }
     const plan = deps.engine.planFor(proposal, EMPTY_SEASON, "season");
-    const wrong = wrongReads(camp, proposal, plan);
+    const { wrong, weeks } = wrongReads(truthOf(camp), proposal, plan);
     const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
     return {
       camp,
       questions,
       wrong,
+      weeks,
+      proposal: deps.keepProposal ? proposal : undefined,
+      plan: deps.keepProposal ? plan : undefined,
       perfect: total(questions) === 0 && total(wrong) === 0
     };
   } catch (error) {
-    return { camp, questions, wrong: {}, perfect: false, error: String(error) };
+    return {
+      camp,
+      questions,
+      wrong: {},
+      weeks: [],
+      perfect: false,
+      error: String(error)
+    };
   }
 }
 
@@ -261,6 +309,55 @@ export function summaryTable(results) {
   for (const kind of WRONG_KINDS) {
     const camps = results.filter((r) => r.wrong[kind] > 0).length;
     lines.push(`  ${pad(kind, 12)}${pad(s.wrong[kind] || 0, 8)}${camps}`);
+  }
+  return lines.join("\n");
+}
+
+function weekLine(label, list) {
+  const exact = list.filter((r) => r.wrong.weeks === 0).length;
+  const none = list.filter((r) => r.weeks.every((w) => !w.found)).length;
+  const cells = list.reduce((n, r) => n + (r.wrong.cells || 0), 0);
+  const perfect = list.filter((r) => r.perfect).length;
+  return `${pad(label, 34)}${pad(list.length, 7)}${pad(exact, 13)}${pad(none, 12)}${pad(perfect, 9)}${cells}`;
+}
+
+/**
+ * Level 2: how the weeks were read. Per layout and per kind of difference: camps whose weeks were
+ * found exactly, camps where none of the weeks was found (read as one undated week, or not at
+ * all), and wrong cells; then wrong cells by week number.
+ */
+export function weekTable(results) {
+  const lines = [
+    `${pad("Layout", 34)}${pad("Camps", 7)}${pad("Weeks exact", 13)}${pad("No weeks", 12)}${pad("Perfect", 9)}Wrong cells`
+  ];
+  const byKey = (keyOf) => {
+    const groups = new Map();
+    for (const r of results) {
+      for (const key of keyOf(r)) {
+        groups.set(key, [...(groups.get(key) || []), r]);
+      }
+    }
+    return [...groups].sort();
+  };
+  for (const [key, list] of byKey((r) => [
+    `${r.camp.layout} ${r.camp.format} ${r.camp.split}`
+  ])) {
+    lines.push(weekLine(key, list));
+  }
+  lines.push(weekLine("All", results), "", "By what differs between weeks:");
+  for (const [key, list] of byKey((r) => r.camp.variations || [])) {
+    lines.push(weekLine(`  ${key}`, list));
+  }
+  lines.push("", "Wrong cells by week (wrong of cells):");
+  const byWeek = new Map();
+  for (const r of results) {
+    for (const w of r.weeks) {
+      const [wrong, cells] = byWeek.get(w.label) || [0, 0];
+      byWeek.set(w.label, [wrong + w.wrong, cells + w.cells]);
+    }
+  }
+  for (const [label, [wrong, cells]] of byWeek) {
+    lines.push(`  ${pad(label || "(one week)", 12)}${wrong} of ${cells}`);
   }
   return lines.join("\n");
 }
