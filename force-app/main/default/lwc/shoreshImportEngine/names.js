@@ -1,7 +1,9 @@
 /*
- * Names that may be the same thing spelled two ways. Every pair found is asked about; nothing is
- * merged without the director's answer (Greg, 2026-10-16). Three kinds, each raised against the
- * other names in the files and against names already set up in the camp:
+ * Names that may be the same thing spelled two ways. Every pair found is asked about, nothing
+ * merged without the director's answer (Greg, 2026-10-16), except the slips rules 2 and 3 of
+ * docs/import/names-and-divisions.md read without asking and show in the notes (Greg,
+ * 2026-10-27). Three kinds, each raised against the other names in the files and against names
+ * already set up in the camp:
  * - capitals, spacing, and punctuation ("Arts & Crafts" / "arts and crafts");
  * - different endings ("Swim" / "Swimming");
  * - one letter different, missing, extra, or swapped ("Music" / "Musik"), which the desktop missed.
@@ -219,4 +221,136 @@ export function mergesFrom(pairs, answers) {
     members.filter((m) => m !== kept).forEach((m) => resolved.set(m, kept));
   }
   return resolved;
+}
+
+// ---------- read, not asked (docs/import/names-and-divisions.md, rules 2 and 3) ----------
+
+const PLAIN_ENDING = /^(s|es|ing|ed)$/;
+
+function wordsOf(name) {
+  return String(name || "")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+/** Rule 2: the same letters and the same numbers, written with other spacing, capitals or punctuation. */
+export function sameSpelling(a, b) {
+  return (
+    similarity(a, b) === "spelling" &&
+    digitsOf(String(a)) === digitsOf(String(b))
+  );
+}
+
+/** Rule 3's words: the same words but the last, which only adds -s, -es, -ing or -ed. */
+export function plainEnding(rare, common) {
+  const r = wordsOf(rare);
+  const c = wordsOf(common);
+  if (
+    r.length !== c.length ||
+    r.slice(0, -1).join() !== c.slice(0, -1).join()
+  ) {
+    return false;
+  }
+  const [short, long] = [c[c.length - 1], r[r.length - 1]].sort(
+    (x, y) => x.length - y.length
+  );
+  if (short.length < 3 || !long.startsWith(short)) {
+    return false;
+  }
+  const tail = long.slice(short.length);
+  const doubled = tail.charAt(0) === short.charAt(short.length - 1);
+  return (
+    PLAIN_ENDING.test(tail) || (doubled && /^(ing|ed)$/.test(tail.slice(1)))
+  );
+}
+
+const sameSlot = (x, y) =>
+  x.week === y.week &&
+  x.day === y.day &&
+  String(x.block).trim() === String(y.block).trim();
+const sameBlock = (x, y) =>
+  x.week === y.week && String(x.block).trim() === String(y.block).trim();
+
+/**
+ * Rule 3's place: every cell of the rare form is where the common form is, in the same block on
+ * the same day for another group, or in the same block on another day for the same group.
+ * placements: [{ text, group, week, day, block }].
+ */
+export function sitsLike(rare, common, placements) {
+  const commons = placements.filter((p) => p.text === common);
+  return placements
+    .filter((p) => p.text === rare)
+    .every((r) =>
+      commons.some(
+        (c) =>
+          (sameSlot(c, r) && c.group !== r.group) ||
+          (sameBlock(c, r) && c.group === r.group && c.day !== r.day)
+      )
+    );
+}
+
+function readAs(pair, placements) {
+  if (pair.existing) {
+    return null;
+  }
+  const [rare, common] =
+    pair.aCount < pair.bCount
+      ? [pair.a, pair.b]
+      : pair.bCount < pair.aCount
+        ? [pair.b, pair.a]
+        : [null, null];
+  if (!rare) {
+    return null;
+  }
+  const rareCount = Math.min(pair.aCount, pair.bCount);
+  const commonCount = Math.max(pair.aCount, pair.bCount);
+  if (sameSpelling(rare, common)) {
+    return { from: rare, to: common, rule: "spelling" };
+  }
+  const ending =
+    pair.kind === "activity" &&
+    rareCount <= 2 &&
+    rareCount * 5 <= commonCount &&
+    plainEnding(rare, common) &&
+    sitsLike(rare, common, placements);
+  return ending ? { from: rare, to: common, rule: "ending" } : null;
+}
+
+/**
+ * The similar pairs read without asking (rules 2 and 3) and the rest, still asked:
+ * { asked: [pair], read: [{ pair, kind, from, to, rule, answer }] }. A name that rules 2 or 3
+ * would read as two different names is asked about instead. placements: the activity cells.
+ */
+export function readWithoutAsking(pairs, placements) {
+  const found = pairs.map((pair) => ({ pair, as: readAs(pair, placements) }));
+  const targets = new Map();
+  found
+    .filter((f) => f.as)
+    .forEach((f) => {
+      const key = `${f.pair.kind}|${f.as.from}`;
+      targets.set(key, (targets.get(key) || 0) + 1);
+    });
+  const read = [];
+  const asked = [];
+  for (const { pair, as } of found) {
+    if (as && targets.get(`${pair.kind}|${as.from}`) === 1) {
+      read.push({
+        pair,
+        kind: pair.kind,
+        ...as,
+        answer: as.to === pair.a ? "a" : "b"
+      });
+    } else {
+      asked.push(pair);
+    }
+  }
+  // A question whose two names are both already read as one name answers itself ("lunch 2"
+  // and "Lunch-2", both Lunch 2): not asked.
+  const readName = new Map(read.map((r) => [`${r.kind}|${r.from}`, r.to]));
+  const as = (kind, name) => readName.get(`${kind}|${name}`) || name;
+  return {
+    asked: asked.filter((p) => as(p.kind, p.a) !== as(p.kind, p.b)),
+    read
+  };
 }

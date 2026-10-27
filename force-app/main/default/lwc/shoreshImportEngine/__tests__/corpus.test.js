@@ -188,20 +188,11 @@ describe("Import last year on Greg's camp", () => {
     expect(h.shifted).toBe(0);
   });
 
-  // Baseline 2026-10-27, after the classification rules: fixed, recurring and activities all
-  // read right with no "set time or activity?" question. Still asked: the two spelling slips
-  // (until answered, "Lunch2" and "Swim Returning" stay apart, two activities and two cells
-  // wrong); CIT is its own division (Greg) but is not read as one yet.
-  it("asks and reads wrong no more than it did", () => {
-    const ceiling = {
-      questions: { similar: 2, division: 1 },
-      wrong: {
-        divisions: 1,
-        groups: 2,
-        activities: 2,
-        cells: 2
-      }
-    };
+  // 2026-10-27, after the classification rules and docs/import/names-and-divisions.md: read
+  // perfectly, nothing asked. CIT is its own division (rule 1); "Lunch2" and "Swim Returning"
+  // are read as Lunch 2 and Swim Return and shown in the notes (rules 2 and 3).
+  it("reads it perfectly and asks nothing", () => {
+    const ceiling = { questions: {}, wrong: {} };
     expect(result.error).toBeUndefined();
     for (const key of ["questions", "wrong"]) {
       for (const [kind, n] of Object.entries(result[key])) {

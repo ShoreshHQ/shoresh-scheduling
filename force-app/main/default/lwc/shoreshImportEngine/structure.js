@@ -6,6 +6,7 @@
  * (a row of ten minutes or less with nothing in it is passing time, not a time block) and
  * src/ingest/orderTimeBlocks.js (ordering, via text.timeRange).
  */
+import { foldName } from "./names";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./text";
 
 export const CHANGE_OVER_MAX_MINUTES = 10;
@@ -263,26 +264,56 @@ export function collectGroups(noted, timetableOfPage) {
     ...listed.filter((g) => !g.onlyInCells),
     ...listed.filter((g) => g.onlyInCells).sort(natural)
   ];
-  return ordered.map((group, order) => {
-    let division = null;
-    let best = 0;
-    for (const [name, count] of group.votes) {
-      if (count > best) {
-        division = name;
-        best = count;
+  return ownDivisions(
+    ordered.map((group, order) => {
+      let division = null;
+      let best = 0;
+      for (const [name, count] of group.votes) {
+        if (count > best) {
+          division = name;
+          best = count;
+        }
       }
-    }
-    return {
-      name: group.name,
-      recordName: group.recordName,
-      base: group.base,
-      hint: group.hint,
-      division,
-      // Its division only a file's name gave: a guess (ADR 0006 §21).
-      divisionGuessed: !!division && !group.stated.has(division),
-      timetable: group.timetable,
-      order
-    };
+      return {
+        name: group.name,
+        recordName: group.recordName,
+        base: group.base,
+        hint: group.hint,
+        division,
+        // Its division only a file's name gave: a guess (ADR 0006 §21).
+        divisionGuessed: !!division && !group.stated.has(division),
+        timetable: group.timetable,
+        order
+      };
+    })
+  );
+}
+
+/**
+ * Rule 1 (names-and-divisions.md, Greg 2026-10-27): where the file shows divisions for the other
+ * groups of a timetable, a group it names with no division is its own division, named after it
+ * (CIT beside Pirchim 1 and Garinim 1 is division CIT), marked `ownDivision` for the notes. A
+ * file with no divisions at all keeps its groups undivided.
+ */
+// Columns for everyone or for no group (All Camp, Staff, Notes) are never a division of one:
+// left to the division question.
+const CAMP_WIDE =
+  /^(all|allcamp|wholecamp|entirecamp|everyone|everybody|camp|staff|counsell?ors?|notes?|totals?|other|misc)$/;
+
+export function ownDivisions(groups) {
+  const withDivision = groups.filter((g) => g.division);
+  const divided = new Set(withDivision.map((g) => g.timetable));
+  // A name the files give a division elsewhere (Bunk 1 in Juniors, in another program) is that
+  // division's group, still asked about, not a division of its own.
+  const named = new Set(withDivision.map((g) => g.recordName));
+  const alone = (g) =>
+    !g.division &&
+    !CAMP_WIDE.test(foldName(g.name)) &&
+    !g.hint &&
+    divided.has(g.timetable) &&
+    !named.has(g.recordName);
+  return groups.map((g) => {
+    return alone(g) ? { ...g, division: g.name, ownDivision: true } : g;
   });
 }
 

@@ -249,6 +249,10 @@ function unitChoice(group, here, fileDivisions, ctx) {
   if (!answer || !options.includes(answer)) {
     return { ...newGroup(group, { key: null, name: null }), unanswered: true };
   }
+  if (group.ownDivision && !chosen) {
+    // Rule 1, said only when no answer replaced it (names-and-divisions.md).
+    ctx.notes.push({ type: "ownDivision", group: group.name });
+  }
   return {
     ...newGroup(group, here.get(answer)),
     // Left as the file's name suggested, not chosen: marked for a look after the import.

@@ -11,7 +11,7 @@ import {
   pageWeek,
   readPage
 } from "./layouts";
-import { mergesFrom, similarPairs } from "./names";
+import { mergesFrom, readWithoutAsking, similarPairs } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
 import { WEEKDAYS, looseKey, withoutWeek } from "./text";
@@ -119,9 +119,40 @@ function readPages(pages, keys, existing, layouts) {
   return { info, placements, noted, pages: named };
 }
 
+/**
+ * A division only one group has, spelled like another division ("Junoirs" beside Juniors):
+ * asked as a similar name (names-and-divisions.md, rule 4), never a silent division of one.
+ * Counts are groups, not cells.
+ */
+function divisionPairs(noted, campPlaced) {
+  const groupsOf = new Map();
+  noted
+    .filter((g) => g.division && !g.weakDivision)
+    .forEach((g) =>
+      groupsOf.set(
+        g.division,
+        new Set([...(groupsOf.get(g.division) || []), g.name])
+      )
+    );
+  const counts = [...groupsOf].map(([name, set]) => ({
+    name,
+    count: set.size
+  }));
+  const campDivisions = [
+    ...new Set(campPlaced.map((g) => g.division).filter(Boolean))
+  ];
+  return similarPairs("division", counts, campDivisions).filter(
+    (p) => Math.min(p.aCount, p.existing ? p.aCount : p.bCount) === 1
+  );
+}
+
 /** Which names the answers leave out: both spellings of a pair answered "leave it out". */
 function leftOutByPairs(pairs, answers) {
-  const names = { activity: new Set(), group: new Set() };
+  const names = {
+    activity: new Set(),
+    group: new Set(),
+    division: new Set()
+  };
   for (const pair of pairs) {
     if (answers[pair.id] === LEAVE_OUT) {
       names[pair.kind].add(pair.a);
@@ -139,14 +170,24 @@ function applyNames(placements, noted, merges, leftOut) {
     .map((p) => ({
       ...p,
       text: rename(merges.activity, p.text),
-      group: rename(merges.group, p.group)
+      group: rename(merges.group, p.group),
+      division: p.division && rename(merges.division, p.division)
     }))
     .filter(
-      (p) => !leftOut.activity.has(p.text) && !leftOut.group.has(p.group)
+      (p) =>
+        !leftOut.activity.has(p.text) &&
+        !leftOut.group.has(p.group) &&
+        !leftOut.division.has(p.division)
     );
   const groups = noted
-    .map((g) => ({ ...g, name: rename(merges.group, g.name) }))
-    .filter((g) => !leftOut.group.has(g.name));
+    .map((g) => ({
+      ...g,
+      name: rename(merges.group, g.name),
+      division: g.division && rename(merges.division, g.division)
+    }))
+    .filter(
+      (g) => !leftOut.group.has(g.name) && !leftOut.division.has(g.division)
+    );
   return { kept, groups };
 }
 
@@ -181,6 +222,11 @@ function settleCells(byCell, answers, disagreements) {
   return result;
 }
 
+/** The answers rules 2 and 3 give: each pair read as its common name. */
+function answersFor(readAsNames) {
+  return Object.fromEntries(readAsNames.map((r) => [r.pair.id, r.answer]));
+}
+
 /** Files by name; two of the same name by what is in them, so the order never depends on how they were chosen. */
 function byNameThenContent(a, b) {
   const content = (f) =>
@@ -211,16 +257,28 @@ export function readImport(input) {
       "group",
       counted(read.noted.map((g) => g.name)),
       camp.groups
-    )
+    ),
+    ...divisionPairs(read.noted, camp.placed)
   ];
+  // Rules 2 and 3 (names-and-divisions.md): a spelling or ending slip is read as the common
+  // name and said in the notes; a remembered answer about the pair still wins.
+  const { asked, read: readAsNames } = readWithoutAsking(
+    pairs,
+    read.placements
+  );
+  const settled = { ...answersFor(readAsNames), ...answers };
   const merges = {
     activity: mergesFrom(
       pairs.filter((p) => p.kind === "activity"),
-      answers
+      settled
     ),
     group: mergesFrom(
       pairs.filter((p) => p.kind === "group"),
-      answers
+      settled
+    ),
+    division: mergesFrom(
+      pairs.filter((p) => p.kind === "division"),
+      settled
     )
   };
   const named = applyNames(
@@ -266,12 +324,21 @@ export function readImport(input) {
   return {
     pages: read.info,
     unread,
-    pairs,
+    pairs: asked,
     disagreements,
     timetables,
     placements: together.placements,
     groups: together.groups,
-    notes: together.notes,
+    notes: [
+      ...readAsNames.map(({ kind, from, to, rule }) => ({
+        type: "readAs",
+        kind,
+        from,
+        to,
+        rule
+      })),
+      ...together.notes
+    ],
     groupAsks: identified.asks,
     splitAsks: together.asks,
     timeAsks,
