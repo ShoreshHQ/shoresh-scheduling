@@ -193,13 +193,17 @@ describe("Import last year on Greg's camp", () => {
   // read right with no "set time or activity?" question. Still asked: the two spelling slips
   // (until answered, "Lunch2" and "Swim Returning" stay apart, two activities and two cells
   // wrong); CIT is its own division (Greg) but is not read as one yet.
+  // Third review (2026-10-27): Swim and Swim Return are asked (genuine splits: divisions
+  // together once at different times, no repetition), and until answered count as two
+  // activities read wrong, not recurring.
   it("asks and reads wrong no more than it did", () => {
     const ceiling = {
-      questions: { similar: 2, division: 1 },
+      questions: { similar: 2, division: 1, kind: 2 },
       wrong: {
         divisions: 1,
         groups: 2,
-        activities: 2,
+        recurring: 2,
+        activities: 4,
         cells: 2
       }
     };

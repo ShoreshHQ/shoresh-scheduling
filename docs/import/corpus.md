@@ -84,13 +84,13 @@ two days of evidence; 2026-10-27): unchanged. Still no "set time or activity?"; 
 staggered across the camp. Level 1 unchanged (318 of 320, no questions); level 2 unchanged
 (148 of 320, no "set time or activity?", recurring wrong 0).
 
-After the second review (a weak clue never decides silently; 2026-10-27): unchanged, still no
-"set time or activity?". Lunch 4 and 5 are recurring by their numbered siblings (Lunch is a
-set-time word, and every decided sibling is a set time; "Lunch2" in one cell is no evidence);
-Swim and Swim Return because two or three whole divisions have them together; Swim Return's
-Wednesday counts Arazim 2's "Swim Returning" cell, still asked as a similar name, toward the
-division. Level 1 unchanged (318 of 320, no questions); level 2 unchanged (148 of 320, no "set time
-or activity?", recurring wrong 0, fixed 24, activities 121).
+After the second and third reviews (a weak clue never decides silently; 2026-10-27): Lunch 4 and 5
+recurring by their numbered siblings ("Lunch2" in one cell is no evidence). Swim and Swim Return
+are now asked ("set time or activity?", 2 questions): the grid shows Swim only as Garinim and
+Pirchim in Period 6 and Shkedim and Tamarim in Period 7 on Monday, and Arazim, Garinim and
+Pirchim in Period 8 on Wednesday (Swim Return the period after each). Several divisions together
+once is no longer read as repetition. Unanswered they count as activities (2 recurring wrong).
+Level 1 and level 2 unchanged.
 
 ## Level 2
 

@@ -281,27 +281,11 @@ function allCamp(pattern, facts, week) {
 }
 
 /**
- * Two or more whole divisions of the program together at once (Swim for Garinim and Pirchim):
- * divisions that travel apart do not share an activity at one time.
- */
-function severalDivisions(pattern, facts, week) {
-  const divisions = new Set(pattern.groups.map((g) => facts.divisionOf.get(g)));
-  return (
-    divisions.size >= 2 &&
-    wholeDivisions(pattern.groups, facts, groupsIn(facts, week))
-  );
-}
-
-/**
- * Rule 3: repetition the grid shows: the same groups in the same slot on two days or more, an
- * all-camp moment (even once), or two or more whole divisions together.
+ * Rule 3: repetition the grid shows: the same groups in the same slot on two days or more, or an
+ * all-camp moment (even once). Several divisions together once is not repetition.
  */
 function isSetShaped(pattern, facts, week) {
-  return (
-    pattern.days.length >= 2 ||
-    allCamp(pattern, facts, week) ||
-    severalDivisions(pattern, facts, week)
-  );
+  return pattern.days.length >= 2 || allCamp(pattern, facts, week);
 }
 
 function cellCount(patterns) {

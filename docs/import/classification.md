@@ -64,8 +64,9 @@ example, test.
    Clue: every placement is held (whole divisions of the program, most groups at once, or one
    group in its one slot on most days), the same in every week that has it, and the grid shows
    repetition: the same groups in the same slot on two days or more; every group together (or most
-   of them: an all-camp moment, even once a week); two or more whole divisions together at once;
-   the same slots in two weeks or more; or a numbered sibling that is a set time.
+   of them: an all-camp moment, even once a week); the same slots in two weeks or more; or a
+   numbered sibling that is a set time. Several divisions together once is not repetition (third
+   review): it is asked, or an activity by rule 2 or turn-taking.
    - **A stagger counts only when it repeats.** Swim for one division in Period 2 and the next in
      Period 3, every day, repeats (each division in its slot on two days or more). The same once
      (Juniors at Hike in Period 1, Seniors in Period 2, on Monday only) is divisions taking turns
@@ -77,12 +78,12 @@ example, test.
      grid decided it (a set time, or placed at varying times by rule 2); siblings that disagree
      leave the single one asked.
      One record per pattern.
-     Example: Lunch 1 to 5, Menucha, Swim, Swim Return, Ruach, Shabbat, All Camp Activity, CIT's
-     blocks (plant camp). Swim and Swim Return there are recurring because two or three whole
-     divisions have them together (Garinim and Pirchim on Monday).
+     Example: Lunch 1 to 5, Menucha, Ruach, Shabbat, All Camp Activity, CIT's blocks (plant
+     camp). Swim and Swim Return there are asked: divisions together once or twice at different
+     times, no repetition.
      Test: "staggered by division"; "everyone on one day"; "rule 2: everyone but one group";
-     "rule 3: one group at the same time on most days"; "rule 3: two whole divisions together once
-     is a set time"; "rule 3: the same slot in two weeks is enough repetition"; "rule 3: a numbered
+     "rule 3: one group at the same time on most days"; "rule 3: several divisions together
+     without repetition is never a set time" (three grids); "rule 3: the same slot in two weeks is enough repetition"; "rule 3: a numbered
      sibling at a set time …"; "rule 3: a numbered sibling joins its set-time word whatever its
      case"; "rule 3: a numbered sibling joins only a set-time word …"; "rule 3: numbered siblings
      that disagree …".
@@ -168,5 +169,4 @@ Only these three. Each card offers set time, activity, or leave it out.
 - Divisions that take turns at every activity only once or twice a week, with no activity at
   three or more times, leave each activity asked as a genuine split (two camps of the "divisions
   travel together" corpus, 13 questions each).
-- Two or more whole divisions together once is read as a set time. Divisions that pair up for a
-  rotation activity would be misread; the corpus does not yet have that shape.
+- Greg's camp: Swim and Swim Return are asked as genuine splits (see the corpus notes).

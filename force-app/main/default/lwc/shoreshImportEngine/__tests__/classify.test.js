@@ -506,8 +506,8 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     ).toEqual(["split"]);
   });
 
-  it("rule 3: two whole divisions together once is a set time (Swim for two of four divisions)", () => {
-    const four = [
+  describe("rule 3: several divisions together without repetition is never a set time", () => {
+    const EIGHT = [
       "Aleph - Bunk 1",
       "Aleph - Bunk 2",
       "Bet - Bunk 3",
@@ -517,18 +517,59 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
       "Daled - Bunk 7",
       "Daled - Bunk 8"
     ];
-    const names = ["Art", "Soccer", "Drama", "Music", "Gaga", "Nature"];
-    const p = buildProposal({
-      files: byGroupFiles(four, (g, d, b) => {
-        if (d === 0 && b === 1 && g < 4) return "Swim";
-        return names[(g + b + d) % names.length];
-      }),
-      existing: null,
-      terms,
-      answers: {}
+    const SIX = ["Art", "Soccer", "Drama", "Music", "Gaga", "Nature"];
+    const read = (name, at) =>
+      buildProposal({
+        files: byGroupFiles(EIGHT, (g, d, b) => {
+          return at(g, d, b) ? name : SIX[(g + b + d) % SIX.length];
+        }),
+        existing: null,
+        terms,
+        answers: {}
+      });
+
+    it("Aleph and Bet at Color War Practice once, Tuesday Period 2, is asked", () => {
+      const p = read("Color War Practice", (g, d, b) => {
+        return g < 4 && d === 1 && b === 1;
+      });
+      expect(kindOf(p, "Color War Practice")).not.toBe("recurring");
+      expect(
+        kindAsks(p)
+          .filter((a) => a.name === "Color War Practice")
+          .map((a) => a.facts.reason)
+      ).toEqual(["split"]);
     });
-    expect(kindOf(p, "Swim")).toBe("recurring");
-    expect(kindAsks(p)).toEqual([]);
+
+    it("Sports for Aleph and Bet Monday Period 1, Gimmel and Daled Wednesday Period 3, is not recurring", () => {
+      const p = read("Sports", (g, d, b) => {
+        return (g < 4 && d === 0 && b === 0) || (g >= 4 && d === 2 && b === 3);
+      });
+      expect(kindOf(p, "Sports")).not.toBe("recurring");
+    });
+
+    it("Sports for Aleph and Bet Monday Period 1 and Thursday Period 3 is not recurring", () => {
+      const p = read("Sports", (g, d, b) => {
+        return g < 4 && ((d === 0 && b === 0) || (d === 3 && b === 3));
+      });
+      expect(kindOf(p, "Sports")).not.toBe("recurring");
+    });
+  });
+
+  it("similar names: Swim and Swimming for one bunk each are asked, and answered different neither is recurring through the other", () => {
+    const cell = (g, d, b) => {
+      if ((d === 0 || d === 2) && b === 0 && g < 2) {
+        return g === 0 ? "Swim" : "Swimming";
+      }
+      return fill(g, d, b) === "Swim" ? "Drama" : fill(g, d, b);
+    };
+    const asked = propose(cell);
+    const pair = asked.reading.pairs.find(
+      (x) => [x.a, x.b].sort().join("|") === "Swim|Swimming"
+    );
+    expect(pair).toBeDefined();
+    const p = propose(cell, { [pair.id]: "different" });
+    expect(kindOf(p, "Swim")).not.toBe("recurring");
+    expect(kindOf(p, "Swimming")).not.toBe("recurring");
   });
 
   it("rule 1: a group that never has the name in its slot is not fixed (Carpool for three bunks of four)", () => {
