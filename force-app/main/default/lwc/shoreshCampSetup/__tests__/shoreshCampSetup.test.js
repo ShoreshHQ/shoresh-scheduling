@@ -1388,6 +1388,7 @@ describe("c-shoresh-camp-setup", () => {
     await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
   });
 
+  // WEEK-2.2
   it("fills in weeks from the season dates", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
@@ -1547,6 +1548,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(q(element, '[data-id="add-program"]')).toBeNull();
     });
 
+    // PROG-1.3
     it("adds a program from the blank row, in this season, last, on the days the others run", async () => {
       getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
       const element = await render();
@@ -1604,6 +1606,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(onDeleted).toHaveBeenCalled();
     });
 
+    // PROG-6.2
     it("stays in the menu with one program (decision 56)", async () => {
       getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();

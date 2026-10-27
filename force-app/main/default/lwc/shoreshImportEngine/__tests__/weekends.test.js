@@ -57,6 +57,7 @@ function imported(days, existing) {
 }
 
 describe("weeks of any days", () => {
+  // WEEK-1.2
   it("start on the first day after the days off", () => {
     expect(firstDayOf(SUN_THU)).toBe(6);
     expect(firstDayOf(["Monday", "Friday"])).toBe(4);
@@ -68,6 +69,7 @@ describe("weeks of any days", () => {
     ]);
   });
 
+  // WEEK-1.2
   it("are said in the order the week runs", () => {
     expect(dayList(SUN_THU)).toBe("Sunday to Thursday");
     expect(dayList(EVERY_DAY)).toBe("every day");
@@ -75,6 +77,7 @@ describe("weeks of any days", () => {
     expect(dayList(EVERY_DAY.slice(0, 5))).toBe("Monday to Friday");
   });
 
+  // WEEK-2.1
   it("Monday to Friday weeks are as before: short first and last weeks kept", () => {
     expect(weeksOf("2026-07-01", "2026-07-12", EVERY_DAY.slice(0, 5))).toEqual([
       { start: "2026-07-01", end: "2026-07-03" },
@@ -82,6 +85,7 @@ describe("weeks of any days", () => {
     ]);
   });
 
+  // WEEK-2.1
   it("a Sunday-to-Thursday camp gets Sunday-to-Thursday weeks", () => {
     expect(weeksOf("2026-06-28", "2026-07-09", SUN_THU)).toEqual([
       { start: "2026-06-28", end: "2026-07-02" },
@@ -89,6 +93,7 @@ describe("weeks of any days", () => {
     ]);
   });
 
+  // WEEK-2.1
   it("a camp that runs every day gets 7-day weeks from its first day", () => {
     expect(weeksOf("2026-06-27", "2026-07-08", EVERY_DAY)).toEqual([
       { start: "2026-06-27", end: "2026-07-03" },
@@ -96,6 +101,7 @@ describe("weeks of any days", () => {
     ]);
   });
 
+  // WEEK-2.1
   it("without a grid, follow the days the programs run; Monday to Friday when none", () => {
     expect(programDays(existingSetup())).toEqual(EVERY_DAY.slice(0, 5));
     // Its day fields as the package names them (namespaced or not).
@@ -124,6 +130,7 @@ describe("a camp's own week", () => {
     return { ...camp, programs: [{ program: record }] };
   };
 
+  // WEEK-2.3
   it("grids that name no day fill the programs' weeks, as the save does", () => {
     const camp = sunThuCamp("2027-06-27", "2027-07-08");
     const asSaved = weeksToFill(camp, terms);
@@ -134,6 +141,7 @@ describe("a camp's own week", () => {
     expect(weeksToFill(camp, terms, [])).toEqual(asSaved);
   });
 
+  // WEEK-4.1
   it("starts where Fill in weeks starts it: an early-week goal counts from it", () => {
     expect(campFirstDay(existingSetup())).toBe(1);
     expect(campFirstDay(sunThuCamp("2027-06-27", "2027-07-08"))).toBe(7);
@@ -151,6 +159,7 @@ describe("a camp's own week", () => {
 });
 
 describe("reading a day's name", () => {
+  // WEEK-2.5
   it("one letter is not a day (S could be Saturday or Sunday; T, Tuesday or Thursday)", () => {
     ["S", "T", "M", "W", "F", "s.", "t"].forEach((word) =>
       expect([word, dayOf(word)]).toEqual([word, null])
@@ -170,6 +179,7 @@ describe("reading a day's name", () => {
 });
 
 describe("importing a grid that runs on weekends", () => {
+  // WEEK-2.3
   it("a Sunday-to-Thursday grid keeps every day and adds Sunday-to-Thursday weeks", () => {
     const { proposal, answers } = imported(
       SUN_THU,
@@ -201,6 +211,7 @@ describe("importing a grid that runs on weekends", () => {
     ]);
   });
 
+  // WEEK-2.3
   it("a 7-day grid keeps Saturday and Sunday and adds 7-day weeks", () => {
     const { proposal, answers } = imported(
       EVERY_DAY,

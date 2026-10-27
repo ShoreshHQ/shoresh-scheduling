@@ -685,6 +685,7 @@ describe("coordinator's review of PR D", () => {
     return s;
   }
 
+  // WEEK-2.2
   it("fills the season's weeks from its dates, pairs by order, and says so", () => {
     const from = camp();
     const p = propose(

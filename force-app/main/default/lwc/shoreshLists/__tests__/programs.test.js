@@ -87,6 +87,7 @@ function read(screenKey, rows, answers = {}, s = setup()) {
 const row = (p, name) => p.rows.find((r) => r.name === name);
 
 describe("program days", () => {
+  // WEEK-1.1
   it("adds a program, compares days, and reads a weekend-only program", () => {
     const p = read("programs", [
       ["Program", "Runs on"],

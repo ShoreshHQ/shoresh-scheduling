@@ -146,6 +146,7 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["1|1"]);
   });
 
+  // PROG-4.1
   it("counts other programs' groups in the place at that time", () => {
     const result = plan(
       [",1,", ",,", ",,", ",,"],

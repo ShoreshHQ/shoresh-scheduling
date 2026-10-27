@@ -149,6 +149,7 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // WEEK-2.2
   @IsTest
   static void weeksFromSeasonDatesUseTheCampsWordAndOnlyFillAnEmptySeason() {
     System.runAs(ShoreshTestData.scheduler()) {

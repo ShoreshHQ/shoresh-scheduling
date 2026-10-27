@@ -150,6 +150,7 @@ private class SeasonCopierTest {
     }
   }
 
+  // WEEK-1.4
   @IsTest
   static void copyLeavesTheOriginalExactlyUnchanged() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -178,6 +179,7 @@ private class SeasonCopierTest {
     }
   }
 
+  // WEEK-1.4
   @IsTest
   static void everyWeekMovesByTheSameNumberOfDays() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -196,6 +198,7 @@ private class SeasonCopierTest {
     }
   }
 
+  // WEEK-1.4
   @IsTest
   static void programsDivisionsGroupsAndBlocksAreLinkedCopies() {
     System.runAs(ShoreshTestData.scheduler()) {

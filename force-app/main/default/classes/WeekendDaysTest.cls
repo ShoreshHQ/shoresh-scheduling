@@ -67,6 +67,7 @@ private class WeekendDaysTest {
     return rest.Id;
   }
 
+  // WEEK-1.1
   @IsTest
   static void aSundayToThursdayProgramsBlankWeekStartsOnSunday() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -102,6 +103,7 @@ private class WeekendDaysTest {
     }
   }
 
+  // WEEK-1.1
   @IsTest
   static void aProgramThatRunsEveryDayHasSevenDaysAndItsSaturdayItems() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -196,6 +198,7 @@ private class WeekendDaysTest {
     ];
   }
 
+  // WEEK-2.1
   @IsTest
   static void fillInWeeksFollowsASundayToThursdayProgram() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -217,6 +220,7 @@ private class WeekendDaysTest {
     }
   }
 
+  // WEEK-2.1
   @IsTest
   static void fillInWeeksGivesASevenDayProgramSevenDayWeeks() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -276,6 +280,7 @@ private class WeekendDaysTest {
     return plan;
   }
 
+  // WEEK-2.3
   @IsTest
   static void importingASundayToThursdayGridAddsSundayWeeksAndKeepsSunday() {
     System.runAs(ShoreshTestData.scheduler()) {

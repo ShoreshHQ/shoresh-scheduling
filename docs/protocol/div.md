@@ -1,0 +1,28 @@
+# DIV: Divisions
+
+> **Sub-protocol DIV** of the [Shoresh protocol](README.md). It sits on CORE layers 1, 3 and 4
+> ([core.md](core.md)) and never overrides them: it uses Group (CORE-1.7), Division (CORE-1.8),
+> "who can do it" (CORE-3.5) and the limits (CORE-4.x) as CORE defines them.
+
+How groups belong to divisions, and the one limit a division adds: "Same division only". Reading
+divisions out of a camp's file belongs to INGEST; DIV states what those readings mean and points
+to the INGEST rule that does them.
+
+Statement `DIV-n.m`: n is the CORE layer it sits on. A test proves a statement by naming its ID
+(README). In the Test column, **gap** means no test names it yet; **not built** and
+**contradicted** say the code does not do it today.
+
+| ID      | Statement                                                                                                                                                                                | Source                                  | Test                                                                                                                                                                             |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DIV-1.1 | Every group MUST be in exactly one division, or in none when its division is read as the group itself (DIV-3.2).                                                                         | Greg 2026-10-27; CORE-1.7               | contradicted in part: a group is always saved under a division (`Group__c.Division__c` is master-detail), so a group read as its whole division is asked for one, or put in Main |
+| DIV-1.2 | A group MAY move to another division of its own program, never to another program's; Shoresh MUST say what the move changes (lists it leaves and joins, placements no longer set up).    | Greg 2026-10-16 (wiki protocol E 20)    | shoreshProgram.test.js "lets a group move to another division of its program"; groupMoves.test.js                                                                                |
+| DIV-1.3 | A division MUST belong to one program: the same division name in two programs is two divisions, and the same group name in each is two groups.                                           | CORE-1.8                                | identity.test.js "the same division and name in two programs are two groups"                                                                                                     |
+| DIV-3.1 | A group the file gives no division, beside groups it does, MUST be its own division, named after it, and said in the notes. This is INGEST-2.1 (CIT is division CIT).                    | Greg 2026-10-27; INGEST-2.1             | names.test.js "a group with no division beside divided groups is its own division"                                                                                               |
+| DIV-3.2 | A division whose groups always do the same thing at the same time MUST be one group, named as the division, said in the notes; one differing block keeps its groups. This is INGEST-3.8. | Greg 2026-10-27; INGEST-3.8             | classify.test.js "reads each always-together division as one group"; "stays a division of bunks"                                                                                 |
+| DIV-4.1 | For an activity set "Same division only", Shoresh MUST NOT place groups of two divisions in that activity, or in its location, at the same time; the first division there holds it.      | Greg 2026-10-17 (ADR 0010 d5); CORE-4.3 | rules.test.js "same division only: two divisions never share…"; "same division only holds whoever arrived first"                                                                 |
+| DIV-4.2 | A person's placement that puts two divisions together in a "Same division only" activity or its location MAY stand and MUST be shown (CORE-4.8).                                         | Greg 2026-10-26 (CORE-4.8)              | checks.test.js "a one-division activity at a place shares it with no other division"; "a one-division activity with no place"                                                    |
+
+## Not here
+
+- "Who can do it" with a division ticked covers its groups: CORE-3.5.
+- A division spelled like another is asked, never a division of one: INGEST-2.4.

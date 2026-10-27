@@ -47,8 +47,40 @@ const DOCUMENTS = [
     }
   },
   numberedRules("docs/import/names-and-divisions.md", "INGEST-2"),
-  numberedRules("docs/import/classification.md", "INGEST-3")
+  numberedRules("docs/import/classification.md", "INGEST-3"),
+  statementTable("docs/protocol/div.md", "DIV"),
+  statementTable("docs/protocol/prog.md", "PROG"),
+  statementTable("docs/protocol/week.md", "WEEK")
 ];
+
+/**
+ * A sub-protocol's table, one statement a row: "| DIV-1.1 | statement | source | test |". Its Test
+ * cell maps it unless it says gap, not built or contradicted.
+ */
+function statementTable(file, prefix) {
+  const row = new RegExp(`^\\| (${prefix}-\\d+\\.\\d+) +\\|`);
+  return {
+    file,
+    read(text) {
+      const out = [];
+      for (const line of text.split("\n")) {
+        const m = row.exec(line);
+        if (m) {
+          const cells = line
+            .split("|")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          const test = cells[cells.length - 1];
+          out.push({
+            id: m[1],
+            mapped: !/^(gap|not built|contradicted)\b/i.test(test)
+          });
+        }
+      }
+      return out;
+    }
+  };
+}
 
 /** Rules written "1. **Title**", each with a "Test:" line in its paragraph. */
 function numberedRules(file, prefix) {

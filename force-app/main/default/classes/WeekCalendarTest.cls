@@ -38,6 +38,7 @@ private class WeekCalendarTest {
     Assert.areEqual(Date.newInstance(2026, 8, 7), weeks[5].endDate);
   }
 
+  // WEEK-2.1
   @IsTest
   static void shortFirstAndLastWeeksAreKept() {
     // Wednesday 1 July to Tuesday 14 July.
@@ -78,6 +79,7 @@ private class WeekCalendarTest {
     );
   }
 
+  // WEEK-1.2
   @IsTest
   static void aWeekStartsAfterTheDaysOff() {
     Assert.areEqual(6, WeekCalendar.firstDayOf(SUNDAY_TO_THURSDAY, 0));
