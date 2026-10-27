@@ -9,6 +9,7 @@
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:namespaced": "sfdx-lwc-jest -- --config jest.namespaced.config.js",
     "test:engine:full": "sfdx-lwc-jest -- --config jest.full.config.js force-app/main/default/lwc/shoreshEngine",
+    "score:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-corpus-score.mjs",
     "time:engine:browser": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/engine-browser-timing.mjs",
     "test:unit:watch": "sfdx-lwc-jest --watch",
     "test:unit:debug": "sfdx-lwc-jest --debug",
