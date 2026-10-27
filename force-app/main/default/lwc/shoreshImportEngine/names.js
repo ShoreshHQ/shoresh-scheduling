@@ -345,5 +345,12 @@ export function readWithoutAsking(pairs, placements) {
       asked.push(pair);
     }
   }
-  return { asked, read };
+  // A question whose two names are both already read as one name answers itself ("lunch 2"
+  // and "Lunch-2", both Lunch 2): not asked.
+  const readName = new Map(read.map((r) => [`${r.kind}|${r.from}`, r.to]));
+  const as = (kind, name) => readName.get(`${kind}|${name}`) || name;
+  return {
+    asked: asked.filter((p) => as(p.kind, p.a) !== as(p.kind, p.b)),
+    read
+  };
 }

@@ -6,6 +6,7 @@
  * (a row of ten minutes or less with nothing in it is passing time, not a time block) and
  * src/ingest/orderTimeBlocks.js (ordering, via text.timeRange).
  */
+import { foldName } from "./names";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./text";
 
 export const CHANGE_OVER_MAX_MINUTES = 10;
@@ -294,6 +295,11 @@ export function collectGroups(noted, timetableOfPage) {
  * (CIT beside Pirchim 1 and Garinim 1 is division CIT), marked `ownDivision` for the notes. A
  * file with no divisions at all keeps its groups undivided.
  */
+// Columns for everyone or for no group (All Camp, Staff, Notes) are never a division of one:
+// left to the division question.
+const CAMP_WIDE =
+  /^(all|allcamp|wholecamp|entirecamp|everyone|everybody|camp|staff|counsell?ors?|notes?|totals?|other|misc)$/;
+
 export function ownDivisions(groups) {
   const withDivision = groups.filter((g) => g.division);
   const divided = new Set(withDivision.map((g) => g.timetable));
@@ -302,6 +308,7 @@ export function ownDivisions(groups) {
   const named = new Set(withDivision.map((g) => g.recordName));
   const alone = (g) =>
     !g.division &&
+    !CAMP_WIDE.test(foldName(g.name)) &&
     !g.hint &&
     divided.has(g.timetable) &&
     !named.has(g.recordName);

@@ -119,9 +119,40 @@ function readPages(pages, keys, existing, layouts) {
   return { info, placements, noted, pages: named };
 }
 
+/**
+ * A division only one group has, spelled like another division ("Junoirs" beside Juniors):
+ * asked as a similar name (names-and-divisions.md, rule 4), never a silent division of one.
+ * Counts are groups, not cells.
+ */
+function divisionPairs(noted, campPlaced) {
+  const groupsOf = new Map();
+  noted
+    .filter((g) => g.division && !g.weakDivision)
+    .forEach((g) =>
+      groupsOf.set(
+        g.division,
+        new Set([...(groupsOf.get(g.division) || []), g.name])
+      )
+    );
+  const counts = [...groupsOf].map(([name, set]) => ({
+    name,
+    count: set.size
+  }));
+  const campDivisions = [
+    ...new Set(campPlaced.map((g) => g.division).filter(Boolean))
+  ];
+  return similarPairs("division", counts, campDivisions).filter(
+    (p) => Math.min(p.aCount, p.existing ? p.aCount : p.bCount) === 1
+  );
+}
+
 /** Which names the answers leave out: both spellings of a pair answered "leave it out". */
 function leftOutByPairs(pairs, answers) {
-  const names = { activity: new Set(), group: new Set() };
+  const names = {
+    activity: new Set(),
+    group: new Set(),
+    division: new Set()
+  };
   for (const pair of pairs) {
     if (answers[pair.id] === LEAVE_OUT) {
       names[pair.kind].add(pair.a);
@@ -139,14 +170,24 @@ function applyNames(placements, noted, merges, leftOut) {
     .map((p) => ({
       ...p,
       text: rename(merges.activity, p.text),
-      group: rename(merges.group, p.group)
+      group: rename(merges.group, p.group),
+      division: p.division && rename(merges.division, p.division)
     }))
     .filter(
-      (p) => !leftOut.activity.has(p.text) && !leftOut.group.has(p.group)
+      (p) =>
+        !leftOut.activity.has(p.text) &&
+        !leftOut.group.has(p.group) &&
+        !leftOut.division.has(p.division)
     );
   const groups = noted
-    .map((g) => ({ ...g, name: rename(merges.group, g.name) }))
-    .filter((g) => !leftOut.group.has(g.name));
+    .map((g) => ({
+      ...g,
+      name: rename(merges.group, g.name),
+      division: g.division && rename(merges.division, g.division)
+    }))
+    .filter(
+      (g) => !leftOut.group.has(g.name) && !leftOut.division.has(g.division)
+    );
   return { kept, groups };
 }
 
@@ -216,7 +257,8 @@ export function readImport(input) {
       "group",
       counted(read.noted.map((g) => g.name)),
       camp.groups
-    )
+    ),
+    ...divisionPairs(read.noted, camp.placed)
   ];
   // Rules 2 and 3 (names-and-divisions.md): a spelling or ending slip is read as the common
   // name and said in the notes; a remembered answer about the pair still wins.
@@ -232,6 +274,10 @@ export function readImport(input) {
     ),
     group: mergesFrom(
       pairs.filter((p) => p.kind === "group"),
+      settled
+    ),
+    division: mergesFrom(
+      pairs.filter((p) => p.kind === "division"),
       settled
     )
   };
@@ -291,9 +337,6 @@ export function readImport(input) {
         to,
         rule
       })),
-      ...together.groups
-        .filter((g) => g.ownDivision)
-        .map((g) => ({ type: "ownDivision", group: g.name })),
       ...together.notes
     ],
     groupAsks: identified.asks,

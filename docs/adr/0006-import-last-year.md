@@ -90,7 +90,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
    (Lunch2 / Lunch 2, read as the more common form), and a rare form (at most 2 cells and at
    most a fifth of the common one) that adds -s, -es, -ing or -ed to the common name's last word
    and sits where the common form does (Swim Returning / Swim Return). Everything else, and
-   anything against a name the camp already has, is still asked. Rules 2 and 3 of
+   anything against a name the camp already has, is still asked; so is a division only one
+   group has that is spelled like another. Rules 2 to 5 of
    `docs/import/names-and-divisions.md`._
 9. **Existing setup: add only, matched by name** (Greg). Programs by their groups (or the
    camp's only program; otherwise asked); time blocks by their times (one overlapping at
