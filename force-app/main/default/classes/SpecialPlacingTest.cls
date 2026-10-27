@@ -41,6 +41,7 @@ private class SpecialPlacingTest {
     ];
   }
 
+  // SPECIAL-4.1
   @IsTest
   static void aSpecialDayGoesOnADayAndAsksBeforeReplacingAnother() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -115,6 +116,7 @@ private class SpecialPlacingTest {
     return held;
   }
 
+  // SPECIAL-4.2
   @IsTest
   static void takingASpecialDayOffGivesTheDayBackAsItWas() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -187,6 +189,7 @@ private class SpecialPlacingTest {
     }
   }
 
+  // SPECIAL-4.2
   @IsTest
   static void takingOffLeavesAnotherSpecialDayWhereItIs() {
     System.runAs(ShoreshTestData.scheduler()) {

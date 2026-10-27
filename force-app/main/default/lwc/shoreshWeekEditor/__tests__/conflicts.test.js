@@ -129,6 +129,7 @@ describe("keep theirs or use yours: the cases a review found", () => {
     ]);
   });
 
+  // LOCK-4.4
   it("a move, theirs longer, Use yours, then a third change: the second question lists all of it", () => {
     // Soccer (a1) moves from Bunk 1 · t2 to Bunk 2 · t2.
     const seenDay = dayOf(

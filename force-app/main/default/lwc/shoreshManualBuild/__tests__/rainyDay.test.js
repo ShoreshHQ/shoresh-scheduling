@@ -174,6 +174,7 @@ describe("c-shoresh-manual-build: rainy day", () => {
     expect(q(element, '[data-id="rainy-day"]')).toBeNull();
   });
 
+  // CLOSE-5.2
   it("keeps the week as Before rainy Monday first, then switches the day as one edit with its marks", async () => {
     // Both bunks have Soccer in Period 2; the Gym fits one, so Bunk 2's rain plan is full.
     const element = await render(week(["1,2,", "1,2,"]));
@@ -226,6 +227,7 @@ describe("c-shoresh-manual-build: rainy day", () => {
     expect(toolNotice(element)).toBeNull();
   });
 
+  // CLOSE-6.3
   it("a mark goes once its cell changes", async () => {
     const element = await render(week(["1,3,", "1,2,"], ["g2|t2|a3"]));
     expect(dots(element)).toContain("Rain plan full: choose another");
@@ -253,6 +255,7 @@ describe("c-shoresh-manual-build: rainy day", () => {
     expect(saveSlots).not.toHaveBeenCalled();
   });
 
+  // CLOSE-5.2
   it("when the version can't be kept, nothing is switched and it says why", async () => {
     const element = await render(week(["1,2,", "1,,"]));
     saveRainyVersion.mockRejectedValueOnce({

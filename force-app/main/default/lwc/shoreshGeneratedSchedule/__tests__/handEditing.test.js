@@ -397,6 +397,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
   });
 
+  // LOCK-6.1
   it("shows the locks the week has, each lock with its words (it needs no legend)", async () => {
     const element = await render(savedWeek({ locks: [[",1,,", ",,,"]] }));
     expect(lockAt(element, "0-1")).toBe("Locked");
@@ -448,6 +449,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
   });
 
+  // LOCK-5.2
   it("a Lock chosen from the menu after a hand edit stays when the edit is undone", async () => {
     const element = await render(savedWeek({ rows: ["1,,,", "1,,,"] }));
     const swimAt = ["1,,2,", "1,,,"];

@@ -128,6 +128,7 @@ private class RainyDayTest {
     );
   }
 
+  // CLOSE-5.2
   @IsTest
   static void theVersionIsKeptFirstAsAutoSaved() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -385,6 +386,7 @@ private class RainyDayTest {
     }
   }
 
+  // CLOSE-6.4
   @IsTest
   static void publishCarriesTheMarksToTheSchedulesPage() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -510,6 +512,7 @@ private class RainyDayTest {
     }
   }
 
+  // CLOSE-6.4
   @IsTest
   static void aVersionKeepsTheMarksAndRestoreBringsThemBack() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -548,6 +551,7 @@ private class RainyDayTest {
     }
   }
 
+  // CLOSE-6.4
   @IsTest
   static void startingFromAnotherWeekCopiesTheCellsButStartsDry() {
     System.runAs(ShoreshTestData.scheduler()) {

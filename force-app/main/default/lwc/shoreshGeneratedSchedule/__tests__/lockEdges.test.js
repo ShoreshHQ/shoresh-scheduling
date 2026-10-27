@@ -129,6 +129,7 @@ afterEach(() => {
 });
 
 describe("a cell locked empty, and a lock left where a bunk is now away", () => {
+  // LOCK-4.2 LOCK-6.1
   it("a cell locked empty reads as kept empty: no Open, Locked empty for a screen reader", async () => {
     const element = await render(savedWeek([[",,1,", ",,,"]]));
     const kept = cellAt(element, "0-2");
@@ -147,6 +148,7 @@ describe("a cell locked empty, and a lock left where a bunk is now away", () => 
     ).toBe("Locked");
   });
 
+  // LOCK-6.2
   it("a lock left where the bunk is now away can still be unlocked, never locked", async () => {
     // Bunk 2 (mornings only) has a lock on its afternoon Period 3, empty.
     const element = await render(savedWeek([[",,,", ",,,1"]]));

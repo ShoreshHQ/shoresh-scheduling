@@ -130,6 +130,7 @@ describe("c-shoresh-special-details: put on a day", () => {
     expect(q(element, "place-week")).toBeNull();
   });
 
+  // SPECIAL-4.1
   it("asks before replacing another special day, and replaces it on Use", async () => {
     putOnDay
       .mockResolvedValueOnce({

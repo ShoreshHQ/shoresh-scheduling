@@ -34,6 +34,7 @@ private class RunsInTest {
     return result;
   }
 
+  // CLOSE-1.1
   @IsTest
   static void aNewRowIsSavedWithTheWeeksItDoesNotRunIn() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -75,6 +76,7 @@ private class RunsInTest {
     }
   }
 
+  // CLOSE-1.1
   @IsTest
   static void ticksOnSavedRowsAddAndRemoveWeekExceptions() {
     System.runAs(ShoreshTestData.scheduler()) {

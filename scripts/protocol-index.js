@@ -50,10 +50,14 @@ const DOCUMENTS = [
   numberedRules("docs/import/classification.md", "INGEST-3"),
   statementTable("docs/protocol/elect.md", "ELECT"),
   statementTable("docs/protocol/pub.md", "PUB"),
-  statementTable("docs/protocol/memo.md", "MEMO")
+  statementTable("docs/protocol/memo.md", "MEMO"),
+  statementTable("docs/protocol/special.md", "SPECIAL"),
+  statementTable("docs/protocol/close.md", "CLOSE"),
+  statementTable("docs/protocol/lock.md", "LOCK")
 ];
 
-/** A table of "| PREFIX-n.m | statement | source | test |"; a test cell starting "gap" names none. */
+/** A sub-protocol's table, "| PREFIX-n.m | statement | source | test |"; a test cell starting
+ * "gap", "not yet tested" or "none" names no test. */
 function statementTable(file, prefix) {
   const row = new RegExp(`^\\| (${prefix}-\\d+\\.\\d+) +\\|`);
   return {
@@ -68,7 +72,10 @@ function statementTable(file, prefix) {
             .map((c) => c.trim())
             .filter(Boolean);
           const test = cells[cells.length - 1];
-          out.push({ id: m[1], mapped: !/^gap\b/i.test(test) });
+          out.push({
+            id: m[1],
+            mapped: !/^(gap|not yet tested|none)/i.test(test)
+          });
         }
       }
       return out;

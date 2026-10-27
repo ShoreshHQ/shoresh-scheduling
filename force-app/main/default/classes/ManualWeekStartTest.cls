@@ -205,6 +205,7 @@ private class ManualWeekStartTest {
     }
   }
 
+  // CLOSE-4.2
   @IsTest
   static void anActivityClosedThatWeekIsLeftOut() {
     System.runAs(ShoreshTestData.scheduler()) {

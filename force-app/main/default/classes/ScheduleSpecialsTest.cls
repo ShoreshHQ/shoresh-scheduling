@@ -131,6 +131,7 @@ private class ScheduleSpecialsTest {
     ];
   }
 
+  // SPECIAL-6.3
   @IsTest
   static void publishCarriesTheSpecialDayAndTheEventsOwnSchedules() {
     // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
@@ -270,6 +271,7 @@ private class ScheduleSpecialsTest {
     }
   }
 
+  // SPECIAL-6.3
   @IsTest
   static void aDayReplacedOrNoLongerReplacedIsAChangeToPublish() {
     // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
