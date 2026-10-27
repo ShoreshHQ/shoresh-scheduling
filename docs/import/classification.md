@@ -119,6 +119,20 @@ example, test.
    before rule 7 …"; "rule 7: whole divisions together are a set time, even once" (three grids,
    and two bunks of different divisions: activity).
 
+8. **A division whose bunks always move together is one group (Greg 2026-10-27).**
+   Greg: "if all groups in a division are moving at the same time to activities, then there is
+   really 1 group in the division. So they really just don't have divisions, they have groups."
+   Clue, read before anything above: every bunk of a division has the same cell in every time
+   block of the files (blocks where the whole division has nothing do not count). Then the
+   division is read as one group, named as the division ("Juniors", clearer than "Bunk 1, Bunk
+   2"), with no division of its own, and the import's notes say so ("Bunk 1, Bunk 2 always do
+   the same thing at the same time, so Juniors is set up as one group"). A division whose bunks
+   differ in even one block stays a division of bunks. Rule 7 then applies only to real
+   divisions: a travelling division's activity met once or twice a week is an activity.
+   Code: `together.js`, applied in `reading.js` before classification.
+   Test: "rule 8: …" (one group with its note; one differing block keeps the bunks; the
+   travelling camp's activities are activities).
+
 ## Asked, because the grid supports both readings
 
 Only these two. Each card offers set time, activity, or leave it out.
@@ -146,9 +160,6 @@ Only these two. Each card offers set time, activity, or leave it out.
   Spacing is already tidied when the file is read. The variant does not break the main name's
   fixed slot or division (rules 1 and 6), but its cells are not counted as the main name's: a
   case-only difference is never merged silently.
-- With no divisions in the file, four of six groups together twice reads as most of the camp
-  (recurring) even when they are one division taking turns (one camp of the "divisions travel
-  together" corpus).
-- Camps whose divisions travel together through a rotation, meeting an activity only once or
-  twice a week (never at three or more times), read those activities as recurring by rule 7: 20
-  of the 40 "divisions travel together" corpus camps, 102 activities. Taken to Greg.
+- Without divisions in the file (a by-activity file of animal-named groups), rule 8 cannot see a
+  division moving together: four of six bunks together twice reads as most of the camp
+  (recurring), in one camp of the "divisions travel together" corpus.

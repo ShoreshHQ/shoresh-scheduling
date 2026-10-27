@@ -1,4 +1,9 @@
-import { buildProposal, LEAVE_OUT, questionCards } from "./data/engine";
+import {
+  buildProposal,
+  importNotes,
+  LEAVE_OUT,
+  questionCards
+} from "./data/engine";
 import { mergesFrom, similarity, similarPairs } from "../names";
 import {
   byGroupFiles,
@@ -644,6 +649,62 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(p.timetables.filter((t) => !t.leftOut)).toHaveLength(2);
     expect(p.fixed.filter((f) => f.name === "Lunch")).toHaveLength(2);
     expect(p.recurring.filter((r) => r.name === "Lunch")).toEqual([]);
+  });
+});
+
+describe("rule 8: a division whose bunks always move together is one group (Greg 2026-10-27)", () => {
+  // Each division together all day, rotating through more activities than periods.
+  const NAMES = [
+    "Archery",
+    "Art",
+    "Soccer",
+    "Drama",
+    "Music",
+    "Gaga",
+    "Nature"
+  ];
+  const travel = (g, d, b) => {
+    const v = g < 2 ? 0 : 1;
+    return b === 2 ? "Lunch" : NAMES[(v + b + d * 3) % NAMES.length];
+  };
+
+  it("reads each always-together division as one group, and says so", () => {
+    const p = propose(travel);
+    expect(p.groups.filter((g) => !g.leftOut).map((g) => g.name)).toEqual([
+      "Juniors",
+      "Seniors"
+    ]);
+    expect(
+      importNotes(p, terms).filter((n) => n.key.startsWith("oneGroup|"))
+    ).toEqual([
+      {
+        key: "oneGroup|Juniors",
+        text: expect.stringContaining("Bunk 1, Bunk 2 always do the same thing")
+      },
+      {
+        key: "oneGroup|Seniors",
+        text: expect.stringContaining("Seniors is set up as one")
+      }
+    ]);
+  });
+
+  it("a division whose bunks differ in one time block stays a division of bunks", () => {
+    const p = propose((g, d, b) => {
+      return g === 1 && d === 4 && b === 3 ? "Ropes" : travel(g, d, b);
+    });
+    const names = p.groups.filter((g) => !g.leftOut).map((g) => g.name);
+    expect(names).toEqual(["Bunk 1", "Bunk 2", "Seniors"]);
+  });
+
+  it("a travelling division's activity met once or twice a week is an activity, not a set time", () => {
+    // As camp L1T-011: Juniors at Archery Monday Period 2; Seniors Monday Period 1 and
+    // Thursday Period 3 (rule 7 no longer applies: Juniors is one group, not a division).
+    const p = propose(travel);
+    const kinds = NAMES.map((n) => kindOf(p, n)).filter(Boolean);
+    expect(kinds.length).toBeGreaterThan(3);
+    expect(new Set(kinds)).toEqual(new Set(["activity"]));
+    expect(kindOf(p, "Lunch")).toBe("fixed");
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 });
 

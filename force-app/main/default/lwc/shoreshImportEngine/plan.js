@@ -575,6 +575,14 @@ export function importNotes(proposal, t) {
       })
     );
   proposal.notes
+    .filter((n) => n.type === "oneGroup")
+    .forEach((n) =>
+      notes.push({
+        key: `oneGroup|${n.group}`,
+        text: `${n.bunks.join(", ")} always do the same thing at the same time, so ${n.group} is set up as one ${t.sIn("Group")}.`
+      })
+    );
+  proposal.notes
     .filter((n) => n.type === "otherProgram")
     .forEach((n) =>
       notes.push({

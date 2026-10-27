@@ -16,6 +16,7 @@ import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
 import { WEEKDAYS, looseKey, withoutWeek } from "./text";
 import { identifyGroups } from "./identity";
+import { oneGroupDivisions } from "./together";
 
 export { LEAVE_OUT } from "./reading-constants";
 import { LEAVE_OUT } from "./reading-constants";
@@ -250,14 +251,18 @@ export function readImport(input) {
     return block ? block.name : p.block;
   };
   const { disagreements, byCell } = crossCheck(placed, blockName);
+  // Rule 8: a division whose bunks always do the same thing is one group.
+  const together = oneGroupDivisions(
+    settleCells(byCell, answers, disagreements),
+    collectGroups(identified.groups, timetableOfPage)
+  );
   return {
     pages: read.info,
     unread,
     pairs,
     disagreements,
     timetables,
-    placements: settleCells(byCell, answers, disagreements),
-    groups: collectGroups(identified.groups, timetableOfPage),
+    ...together,
     groupAsks: identified.asks,
     timeAsks,
     identities: identified.rules

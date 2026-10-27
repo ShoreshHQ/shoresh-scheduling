@@ -460,7 +460,7 @@ export function buildProposal(input) {
     answers,
     deletions,
     asks: [],
-    notes: [...people.notes],
+    notes: [...reading.notes, ...people.notes],
     updates: { fixed: [], recurring: [], activities: [] },
     specialDays: noted.specialDays,
     divisionOf: people.divisionOf,

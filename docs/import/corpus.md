@@ -48,8 +48,10 @@ This shape was missing, which is how one-off staggers and single division placem
 read as set times without a question. Baselines (2026-10-27): before the second review, 21 of 40
 perfect, 82 rotation activities read as recurring; after it, 37 perfect, 28 questions, 1 wrong.
 With Greg's rule 7 (whole divisions together are a set time, even once): 20 of 40 perfect, 2
-questions, 102 rotation activities read as recurring in 20 camps. Rule 7 reads a travelling
-division's once-or-twice activity as a set time; taken to Greg.
+questions, 102 rotation activities read as recurring in 20 camps. With Greg's rule 8 (a division
+whose bunks always move together is one group) and the truth to match (each such division is one
+group, where the file shows divisions): 39 of 40 perfect; the one left is a by-activity file with
+no divisions shown (2 "mostly at a set time" questions, one name read as recurring).
 
 ## What is scored
 

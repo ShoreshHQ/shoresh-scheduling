@@ -73,14 +73,15 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
   });
 });
 
-// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 with Greg's
-// rule 7 (whole divisions together are a set time, even once): a division's activity met only
-// once or twice a week reads as recurring (102 in 20 camps), taken to Greg.
+// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 with rule 8
+// (Greg: a division whose bunks always move together is one group): 39 perfect. Still wrong: one
+// by-activity camp with no divisions in the file (four of six bunks together twice read as most
+// of the camp), and its two "mostly at a set time" questions.
 const CEILING_T = {
-  perfectAtLeast: 20,
+  perfectAtLeast: 39,
   errors: 0,
   questions: { kind: 2 },
-  wrong: { recurring: 102, activities: 102 }
+  wrong: { recurring: 1, activities: 1 }
 };
 
 describe("Import last year on made-up camps whose divisions travel together (level 1)", () => {

@@ -75,7 +75,9 @@ export function travellingCamp(seed) {
     blocks,
     divisions: groupNames(r, divisions, style),
     fixed: blocks.filter((b) => b.fixed).map((b) => b.fixed),
-    recurring: swim ? ["Lunch", "Swim"] : ["Lunch"]
+    recurring: swim ? ["Lunch", "Swim"] : ["Lunch"],
+    // Every bunk of a division always at the same thing: one group each (rule 8, Greg).
+    oneGroupPerDivision: true
   };
   camp.groups = camp.divisions.flatMap((d) =>
     d.groups.map((g) => ({ name: g, division: d.name }))
