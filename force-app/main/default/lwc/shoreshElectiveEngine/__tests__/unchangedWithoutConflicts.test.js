@@ -47,6 +47,7 @@ function hasLinkedConflict(input) {
 }
 
 describe("seats without a linked-choice conflict", () => {
+  // ELECT-4.3
   it("are what they were before linked choices stopped being refused", () => {
     let h = 0x811c9dc5;
     let camps = 0;

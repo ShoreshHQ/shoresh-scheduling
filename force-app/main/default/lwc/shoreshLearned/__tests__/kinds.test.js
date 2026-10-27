@@ -119,6 +119,7 @@ describe("each remembered question in camp words", () => {
     expect(r.choices).toHaveLength(choices);
   });
 
+  // MEMO-4.4
   it("offers the same choices the server accepts", () => {
     expect(
       kindOf("kind|Lunch", "fixed", t).choices.map((c) => c.value)
@@ -148,6 +149,7 @@ describe("each remembered question in camp words", () => {
 });
 
 describe("who, when, groups and search", () => {
+  // MEMO-6.2
   it("says who answered and when", () => {
     expect(row("kind|Lunch", "fixed").who).toBe("Answered by you on 3 Jul");
     expect(row("kind|Lunch", "fixed", { byYou: false }).who).toBe(
@@ -159,6 +161,7 @@ describe("who, when, groups and search", () => {
     expect(shortDate("bad")).toBe("");
   });
 
+  // MEMO-6.2
   it("says a former user when whoever answered is no longer here", () => {
     const former = { byYou: false, byName: null };
     expect(row("kind|Lunch", "fixed", former).who).toBe(
@@ -294,6 +297,7 @@ describe("similar names: each choice keeps what the import keeps", () => {
   });
 });
 
+// MEMO-6.3
 describe("never an Id or an internal name", () => {
   it("names the item and its weeks for runs-in", () => {
     const spell = speller({

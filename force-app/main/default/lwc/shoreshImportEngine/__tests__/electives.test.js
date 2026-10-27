@@ -457,6 +457,7 @@ describe("the camp's sets, and things deleted stay deleted", () => {
     ).toContain(key);
   });
 
+  // MEMO-4.2
   it("an offering, an activity or a linked choice deleted before is not added again", () => {
     const answers = {
       [`deleted|Offering|${LIST_SET}|Fishing`]: "deleted",

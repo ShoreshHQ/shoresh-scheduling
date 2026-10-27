@@ -251,6 +251,7 @@ describe("c-shoresh-list-import", () => {
     }
   });
 
+  // MEMO-6.2
   it("a column remembered from before says whose answer it was and when", async () => {
     getAnswers.mockResolvedValue([
       {
