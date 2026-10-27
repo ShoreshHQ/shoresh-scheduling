@@ -515,6 +515,13 @@ export function unplacedLines(proposal, t) {
 }
 
 /** Things the director should know that are not questions: [{ key, text }]. */
+/** Why an always-together division stays as its bunks (rule 8), as the note says it. */
+const KEPT = {
+  existing: "but the camp already has them, so they stay as they are",
+  name: "but a group already has their division's name, so they stay as they are",
+  remembered: "but an answer about them is remembered, so they stay as they are"
+};
+
 export function importNotes(proposal, t) {
   const notes = [];
   const r = proposal.reading;
@@ -579,7 +586,7 @@ export function importNotes(proposal, t) {
     .forEach((n) =>
       notes.push({
         key: `oneGroup|${n.group}`,
-        text: `${n.bunks.join(", ")} always do the same thing at the same time, so ${n.group} is set up as one ${t.sIn("Group")}.`
+        text: `${n.bunks.join(", ")} always do the same thing at the same time, ${KEPT[n.kept] || `so ${n.group} is set up as one ${t.sIn("Group")}`}.`
       })
     );
   proposal.notes

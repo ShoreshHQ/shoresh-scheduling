@@ -44,22 +44,42 @@ function alwaysTogether(names, placements) {
 }
 
 /**
- * The placements and groups with each always-together division read as one group:
- * { placements, groups, notes: [{ type: "oneGroup", group, bunks }] }.
+ * Why an always-together division is kept as its bunks, or null to read it as one group: the
+ * camp already has one of the bunks (its setup wins), a group already has the division's name,
+ * or an answer is remembered about one of the bunks (a deleted group, a division, a spelling).
  */
-export function oneGroupDivisions(placements, groups) {
+function keptBecause(division, names, others, context) {
+  const camp = new Set(context.campGroups || []);
+  if (names.some((n) => camp.has(n))) {
+    return "existing";
+  }
+  if (camp.has(division) || others.some((g) => g.name === division)) {
+    return "name";
+  }
+  const remembered = Object.keys(context.answers || {}).some((key) =>
+    key.split("|").some((part) => names.includes(part))
+  );
+  return remembered ? "remembered" : null;
+}
+
+/**
+ * The placements and groups with each always-together division read as one group, and a note
+ * for each such division: { placements, groups, notes: [{ type: "oneGroup", group, bunks,
+ * kept }] } (kept: why it stays as its bunks, or null). context: { campGroups, answers }.
+ */
+export function oneGroupDivisions(placements, groups, context = {}) {
   const merged = new Map();
   const notes = [];
   for (const [key, members] of divisionsOf(groups)) {
     const names = members.map((g) => g.name);
     const division = key.slice(key.indexOf("|") + 1);
-    // A name already a group elsewhere would join two different groups: left as it is.
-    const clash = groups.some(
-      (g) => g.name === division && !names.includes(g.name)
-    );
-    if (names.length >= 2 && !clash && alwaysTogether(names, placements)) {
-      names.forEach((n) => merged.set(n, division));
-      notes.push({ type: "oneGroup", group: division, bunks: names });
+    if (names.length >= 2 && alwaysTogether(names, placements)) {
+      const others = groups.filter((g) => !names.includes(g.name));
+      const kept = keptBecause(division, names, others, context);
+      if (!kept) {
+        names.forEach((n) => merged.set(n, division));
+      }
+      notes.push({ type: "oneGroup", group: division, bunks: names, kept });
     }
   }
   if (!merged.size) {

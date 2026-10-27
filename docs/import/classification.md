@@ -129,9 +129,14 @@ example, test.
    the same thing at the same time, so Juniors is set up as one group"). A division whose bunks
    differ in even one block stays a division of bunks. Rule 7 then applies only to real
    divisions: a travelling division's activity met once or twice a week is an activity.
+   Not merged, with a note saying why, when: the camp already has one of the bunks (its setup
+   wins; they are matched as usual); a group in the camp or the file already has the division's
+   name; or an answer is remembered about one of the bunks (a deleted group, its division, a
+   spelling), so that answer still applies.
    Code: `together.js`, applied in `reading.js` before classification.
    Test: "rule 8: …" (one group with its note; one differing block keeps the bunks; the
-   travelling camp's activities are activities).
+   travelling camp's activities are activities; bunks the camp already has; a camp group named
+   as the division; a remembered deleted bunk).
 
 ## Asked, because the grid supports both readings
 

@@ -9,6 +9,8 @@ import {
   byGroupFiles,
   csv,
   DAYS,
+  existingSetup,
+  program,
   samples,
   terms,
   findSamplesFrom
@@ -694,6 +696,68 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     });
     const names = p.groups.filter((g) => !g.leftOut).map((g) => g.name);
     expect(names).toEqual(["Bunk 1", "Bunk 2", "Seniors"]);
+  });
+
+  const keptNote = (p) =>
+    importNotes(p, terms).find((n) => n.key === "oneGroup|Juniors");
+  const groupNames = (p) =>
+    p.groups.filter((g) => !g.leftOut).map((g) => g.name);
+  const read = (existing, answers = {}) =>
+    buildProposal({
+      files: byGroupFiles(GROUPS, travel),
+      existing,
+      terms,
+      answers
+    });
+
+  it("rule 8: bunks the camp already has stay as they are, matched, with a note", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: [],
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"]
+              ]
+            ]
+          ]
+        })
+      ]
+    });
+    const p = read(existing);
+    expect(groupNames(p)).toEqual(["Bunk 1", "Bunk 2", "Seniors"]);
+    expect(p.groups.filter((g) => g.name.startsWith("Bunk"))).toEqual([
+      expect.objectContaining({ isNew: false }),
+      expect.objectContaining({ isNew: false })
+    ]);
+    expect(keptNote(p).text).toContain("the camp already has them");
+  });
+
+  it("rule 8: a camp group already named as the division keeps the bunks, with a note", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: [],
+          divisions: [["d1", "Older", [["g9", "Juniors"]]]]
+        })
+      ]
+    });
+    const p = read(existing);
+    expect(groupNames(p)).toEqual(expect.arrayContaining(["Bunk 1", "Bunk 2"]));
+    expect(groupNames(p)).not.toContain("Juniors");
+    expect(keptNote(p).text).toContain("already has their division's name");
+  });
+
+  it("rule 8: a remembered answer about a bunk (deleted) keeps the bunks, and still applies", () => {
+    const deleted = "deleted|Group|Main|Bunk 2";
+    const p = read(null, { [deleted]: "deleted" });
+    expect(keptNote(p).text).toContain("an answer about them is remembered");
+    expect(p.groups.find((g) => g.name === "Bunk 2").leftOut).toBe(true);
+    expect(groupNames(p)).not.toContain("Juniors");
   });
 
   it("a travelling division's activity met once or twice a week is an activity, not a set time", () => {

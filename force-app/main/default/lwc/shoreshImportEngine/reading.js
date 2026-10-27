@@ -254,7 +254,8 @@ export function readImport(input) {
   // Rule 8: a division whose bunks always do the same thing is one group.
   const together = oneGroupDivisions(
     settleCells(byCell, answers, disagreements),
-    collectGroups(identified.groups, timetableOfPage)
+    collectGroups(identified.groups, timetableOfPage),
+    { campGroups: camp.groups, answers }
   );
   return {
     pages: read.info,
