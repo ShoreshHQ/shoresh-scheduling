@@ -407,19 +407,28 @@ describe("what the save sends", () => {
 describe("review findings", () => {
   const times = ["9:00-9:45", "9:50-10:35", "12:00-12:45"];
   const other = ["9:00-9:50", "9:55-10:40", "12:00-12:45"];
-  const day = (rows, groups) => (name) =>
-    csv(`${name}.csv`, [
-      ["Time", ...groups],
-      ...rows.map((b, i) => [
-        b,
-        ...groups.map((g, gi) => {
-          return i === 2 ? "Lunch" : ["Swim", "Art", "Soccer"][(gi + i) % 3];
-        })
-      ])
-    ]);
+  const day =
+    (rows, groups, d = 0) =>
+    (name) =>
+      csv(`${name}.csv`, [
+        ["Time", ...groups],
+        ...rows.map((b, i) => [
+          b,
+          ...groups.map((g, gi) => {
+            return i === 2
+              ? "Lunch"
+              : ["Swim", "Art", "Soccer"][(gi + i + d) % 3];
+          })
+        ])
+      ]);
   const week = (rows, groups, prefix) =>
     ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d) =>
       day(rows, groups)(`${prefix} ${d}`)
+    );
+  // Activities that move from day to day, as a rotation does.
+  const rotatingWeek = (rows, groups, prefix) =>
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d, di) =>
+      day(rows, groups, di)(`${prefix} ${d}`)
     );
   const blocksOf = (rows) =>
     rows.map((r, i) => {
@@ -525,7 +534,7 @@ describe("review findings", () => {
         ])
       ]);
     const files = [
-      ...week(times, ["Bunk 1", "Bunk 2", "Bunk 3"], "A"),
+      ...rotatingWeek(times, ["Bunk 1", "Bunk 2", "Bunk 3"], "A"),
       ...["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d) =>
         fixedSwim(`B ${d}`)
       )

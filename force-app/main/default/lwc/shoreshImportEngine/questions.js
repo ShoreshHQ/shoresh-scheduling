@@ -379,6 +379,33 @@ function whichGroupCard(ask, t) {
   };
 }
 
+/**
+ * Rule 8: a group read last time as one (its bunks always moved together) whose bunks now do
+ * different things. Kept as one group until answered.
+ */
+function splitCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `Split ${ask.group} into its ${t.pIn("Group")}?`,
+    subject: ask.group,
+    subtitle: `${ask.group} moved together last time; this file has ${ask.bunks.join(" and ")} doing different things.`,
+    options: [
+      {
+        value: "split",
+        label: `Split into ${ask.bunks.join(", ")}`,
+        description: `Each is its own ${t.sIn("Group")} from now on.`
+      },
+      {
+        value: "keep",
+        label: `Keep ${ask.group} as one ${t.sIn("Group")}`,
+        description: `Its schedule from this file is ${ask.bunks[0]}'s.`
+      }
+    ]
+  };
+}
+
 /** The fields of the item a set-time change card is about: fixed or recurring. */
 function itemFields(ask) {
   return ask.type === "recurring"
@@ -621,6 +648,7 @@ export function questionCards(proposal, t, answers) {
     ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
     ...proposal.reading.timeAsks.map(ampmCard),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
+    ...(proposal.reading.splitAsks || []).map((ask) => splitCard(ask, t)),
     ...proposal.reading.disagreements.map(crossCard),
     ...proposal.asks.map((ask) => CARDS[ask.type](ask, t, proposal))
   ];

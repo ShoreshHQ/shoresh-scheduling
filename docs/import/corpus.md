@@ -33,13 +33,34 @@ times as "9:00 - 9:45", "9:00 AM - 9:45 AM" or "09:00-09:45", in their own colum
 period name, or alone; days written in full or short ("Mon"). Activities rotate so no group has
 the same thing at the same time every day. No typos, no double periods, no trips or special days.
 
+### Divisions travel together
+
+40 more level-1 camps (`scripts/import-corpus/travel.js`), five in each of the eight layouts,
+scored on their own table in the level-1 report. Two to four divisions of two to four groups each;
+every group of a division at the same activity, rotating through more activities than the day has
+periods, so a division may have an activity only once or twice a week, and divisions take turns at
+one activity a period apart. Set times are by division: Lunch in two sittings every day (the Lunch
+block for the first divisions, the next period for the rest), and in half the camps Swim at its
+own period for each division every day; an opening event every day as in level 1. Truth: Lunch
+(and Swim) recurring, the opening fixed, everything else an activity.
+
+This shape was missing, which is how one-off staggers and single division placements came to be
+read as set times without a question. Baselines (2026-10-27): before the second review, 21 of 40
+perfect, 82 rotation activities read as recurring; after it, 37 perfect, 28 questions, 1 wrong.
+With Greg's rule 7 (whole divisions together are a set time, even once): 20 of 40 perfect, 2
+questions, 102 rotation activities read as recurring in 20 camps. With Greg's rule 8 (a division
+whose bunks always move together is one group) and the truth to match (each such division is one
+group, where the file shows divisions): 39 of 40 perfect; the one left is a by-activity file with
+no divisions shown (2 "mostly at a set time" questions, one name read as recurring).
+
 ## What is scored
 
 - **Questions**: every card the director would have to answer (cards that come with a default
   answer already chosen are not counted), by kind.
 - **Wrong reads**, compared with the truth, each missing or extra item counting one: programs,
   days, time blocks (by start and end), divisions (only where the file shows them), groups,
-  fixed events (name and time), recurring activities (level 1 has none), activities, and grid
+  fixed events (name and time), recurring activities (by name; only the "divisions travel
+  together" camps and Greg's camp have them), activities, and grid
   cells (group, day, time block: the right activity).
 
 ## Greg's camp
@@ -52,6 +73,23 @@ check that each heading becomes its group (never data), the days come from the l
 cell is read a row off. Baseline (2026-10-27): headings, days and rows all read right; asks 14
 (2 spelling slips, CIT's division, 11 "set time or activity?"); wrong: Carpool not set at its two
 times, 8 set-time names left as activities, the two misspelled cells.
+
+After the classification rules (`docs/import/classification.md`, 2026-10-27): asks 3 (2 spelling
+slips, CIT's division), no "set time or activity?"; fixed (Carpool twice, Group Time, Mifkad,
+Busses), recurring and activities all read right. Still wrong: CIT's division, and until the
+spelling questions are answered "Lunch2" and "Swim Returning" stay two activities of one cell
+each (answered, everything reads right).
+
+After the review refinements (absent groups keep fixed, one name one kind, genuine splits asked,
+two days of evidence; 2026-10-27): unchanged. Still no "set time or activity?"; Lunch 4 and 5
+(one division once) are recurring by their numbered siblings, Swim and Swim Return by being
+staggered across the camp. Level 1 unchanged (318 of 320, no questions); level 2 unchanged
+(148 of 320, no "set time or activity?", recurring wrong 0).
+
+After the second and third reviews and Greg's rule 7 (whole divisions together are a set time,
+even once; 2026-10-27): no "set time or activity?"; Lunch 4 and 5, Swim and Swim Return
+recurring by rule 7 (Swim: Garinim and Pirchim in Period 6 and Shkedim and Tamarim in Period 7 on
+Monday, Arazim, Garinim and Pirchim in Period 8 on Wednesday). Level 1 and level 2 unchanged.
 
 ## Level 2
 
@@ -69,6 +107,12 @@ with different blocks splits every group in two ("Cabin 1 (schedule 1)"); a "Wee
 is not read at all; by-group files with the week only in the file name lose the week, so every
 cell becomes a "the files disagree" question; a fixed event in a camp whose groups change between
 sessions is asked about.
+
+After the classification rules (2026-10-27): 148 of 320 perfect (was 98); "set time or
+activity?" questions 0 (was 1410); fixed events wrong 24 (was 105), activities wrong 121 (was
+330), grid cells wrong 426582 (unchanged), recurring wrong 0 (unchanged). Each name the import
+decides on, in every timetable it reads, now gets the kind its truth says; the fixed events and
+activities still wrong come from the weeks, programs and Friday splits above.
 
 ## How to run
 

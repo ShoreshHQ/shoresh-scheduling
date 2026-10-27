@@ -8,6 +8,7 @@ import * as engine from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
+import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import {
   headingReport,
   plantCamp
@@ -72,23 +73,56 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
   });
 });
 
+// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 with rule 8
+// (Greg: a division whose bunks always move together is one group): 39 perfect. Still wrong: one
+// by-activity camp with no divisions in the file (four of six bunks together twice read as most
+// of the camp), and its two "mostly at a set time" questions.
+const CEILING_T = {
+  perfectAtLeast: 39,
+  errors: 0,
+  questions: { kind: 2 },
+  wrong: { recurring: 1, activities: 1 }
+};
+
+describe("Import last year on made-up camps whose divisions travel together (level 1)", () => {
+  const results = travellingCamps(40).map((camp) =>
+    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps perfectly, asks and reads wrong no more than it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_T.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_T.perfectAtLeast);
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(totals[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, CEILING_T[key][kind] || 0)
+        });
+      }
+    }
+  });
+});
+
 // Level 2: schedules that differ from week to week. The first 40 camps, five of each layout.
 const SAMPLE_2 = 40;
 
-// Baseline 2026-10-27, on these 40 camps. Every kind not listed is 0.
+// Baseline 2026-10-27, on these 40 camps, after the classification rules
+// (docs/import/classification.md). Every kind not listed is 0.
 const CEILING_2 = {
-  perfectAtLeast: 16,
+  perfectAtLeast: 23,
   weeksExactAtLeast: 30,
   errors: 0,
-  questions: { kind: 130, cross: 2023 },
+  questions: { cross: 2023 },
   wrong: {
     programs: 51,
     weeks: 48,
     days: 55,
     blocks: 8,
     groups: 4,
-    fixed: 13,
-    activities: 27,
+    fixed: 2,
+    activities: 8,
     cells: 27516
   }
 };
@@ -154,18 +188,17 @@ describe("Import last year on Greg's camp", () => {
     expect(h.shifted).toBe(0);
   });
 
-  // Baseline 2026-10-27: the two spelling slips are asked about, Carpool (twice a day) and the
-  // set times that are not the same every day are asked; CIT is its own division (Greg) but is
-  // not read as one yet.
+  // Baseline 2026-10-27, after the classification rules: fixed, recurring and activities all
+  // read right with no "set time or activity?" question. Still asked: the two spelling slips
+  // (until answered, "Lunch2" and "Swim Returning" stay apart, two activities and two cells
+  // wrong); CIT is its own division (Greg) but is not read as one yet.
   it("asks and reads wrong no more than it did", () => {
     const ceiling = {
-      questions: { similar: 2, division: 1, kind: 11 },
+      questions: { similar: 2, division: 1 },
       wrong: {
         divisions: 1,
         groups: 2,
-        fixed: 2,
-        recurring: 8,
-        activities: 11,
+        activities: 2,
         cells: 2
       }
     };

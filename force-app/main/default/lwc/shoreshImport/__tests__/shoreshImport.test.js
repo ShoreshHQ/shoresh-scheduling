@@ -193,11 +193,9 @@ describe("c-shoresh-import", () => {
       "Check these first"
     );
     const rows = $$(element, '[data-id="questions"] [data-card]');
-    expect(rows.map((r) => r.dataset.card)).toEqual([
-      similarId(element),
-      "kind|Library time"
-    ]);
-    expect(questions.querySelector("h3").textContent).toContain("2");
+    // Library time (all of Juniors on Wednesday) is recurring (rule 7, Greg 2026-10-27), not asked.
+    expect(rows.map((r) => r.dataset.card)).toEqual([similarId(element)]);
+    expect(questions.querySelector("h3").textContent).toContain("1");
     // What Shoresh chose itself (the program, each bunk's unit) is listed below, changeable,
     // not asked.
     expect(
@@ -237,16 +235,14 @@ describe("c-shoresh-import", () => {
 
     // Every question needs an answer before Add.
     expect(add(element).disabled).toBe(true);
-    expect(add(element).textContent.trim()).toBe("2 questions left");
-    await answer(element, similarId(element), "a");
     expect(add(element).textContent.trim()).toBe("1 question left");
+    await answer(element, similarId(element), "a");
     // Answered: the choice is pressed and raised, and the row loses its mark.
     const similar = $(element, `[data-card="${similarId(element)}"]`);
     const pressed = similar.querySelector('button[aria-pressed="true"]');
     expect(pressed.textContent).toContain("Same: call it");
     expect(pressed.classList).toContain("shoresh-raised");
     expect(similar.querySelector(".corner")).toBeNull();
-    await answer(element, "kind|Library time", "recurring");
 
     // Comes in: a count per kind, and Add says the total.
     const tiles = $$(element, "[data-tile]");
@@ -377,7 +373,6 @@ describe("c-shoresh-import", () => {
       // Another choice in the same row changes the answer.
       await answer(element, similarId(element), "b");
       expect(focused.pop().dataset.key).toBe(`${similarId(element)}::b`);
-      await answer(element, "kind|Library time", "recurring");
       add(element).click();
       await flush();
       await flush();
@@ -398,7 +393,6 @@ describe("c-shoresh-import", () => {
     await flush();
     await expect(element).toBeAccessible();
     await answer(element, similarId(element), "a");
-    await answer(element, "kind|Library time", "recurring");
     add(element).click();
     await flush();
     await flush();
@@ -425,13 +419,11 @@ describe("c-shoresh-import", () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
     await answer(element, similarId(element), "leaveOut");
-    await answer(element, "kind|Library time", "leaveOut");
     add(element).click();
     await flush();
     await flush();
     const leftOut = $(element, '[data-id="left-out"]').textContent;
     expect(leftOut).toContain("Music and Musik");
-    expect(leftOut).toContain("Library time");
   });
 
   it("asks which file is right where two files disagree", async () => {
@@ -456,7 +448,6 @@ describe("c-shoresh-import", () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
     await answer(element, similarId(element), "a");
-    await answer(element, "kind|Library time", "activity");
     add(element).click();
     await flush();
     await flush();
@@ -469,15 +460,14 @@ describe("c-shoresh-import", () => {
   it("a choice's reason is in its words for screen readers and its tooltip", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    const id = similarId(element);
     const leave = $(
       element,
-      `[data-card="kind|Library time"] button[data-key="kind|Library time::leaveOut"]`
+      `[data-card="${id}"] button[data-key="${id}::leaveOut"]`
     );
-    expect(leave.getAttribute("title")).toMatch(
-      /^.Library time. is not added this time\.$/
-    );
+    expect(leave.getAttribute("title")).toBe("Neither is added this time.");
     expect(leave.querySelector(".slds-assistive-text").textContent).toContain(
-      "is not added this time."
+      "Neither is added this time."
     );
   });
 
@@ -542,11 +532,11 @@ describe("c-shoresh-import", () => {
     }
 
     it("answers from an earlier import are filled in, marked remembered, and can be changed", async () => {
+      const music = "similar|activity|music|musik|Music|Musik";
       getAnswers.mockResolvedValue([
-        { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
         {
-          key: "kind|Library time",
-          answer: "recurring",
+          key: music,
+          answer: "a",
           byYou: true,
           byName: "Greg",
           answeredOn: "2026-07-03"
@@ -555,16 +545,16 @@ describe("c-shoresh-import", () => {
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
-      const library = $(element, '[data-card="kind|Library time"]');
-      expect(library.querySelector(".tag").textContent).toBe(
+      const similar = $(element, `[data-card="${music}"]`);
+      expect(similar.querySelector(".tag").textContent).toBe(
         "Remembered from your answer on 3 Jul"
       );
-      expect(library.querySelector(".corner")).toBeNull();
+      expect(similar.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
-      await answer(element, "kind|Library time", "activity");
-      expect(
-        $(element, '[data-card="kind|Library time"]').textContent
-      ).not.toContain("Remembered");
+      await answer(element, music, "b");
+      expect($(element, `[data-card="${music}"]`).textContent).not.toContain(
+        "Remembered"
+      );
       expect(add(element).disabled).toBe(false);
       expect(add(element).textContent.trim()).toMatch(/^Add \d+$/);
     });
@@ -717,15 +707,17 @@ describe("c-shoresh-import", () => {
         { key: "deleted|Activity||Art", answer: "deleted" }
       ]);
       const element = await renderWith(WITH_WEEK);
-      const rows = [
-        "Time,Bunk 1,Bunk 2",
-        "9:00-9:45,Swim,Art",
-        "10:00-10:45,Art,Swim",
-        "12:00-12:45,Lunch,Lunch"
-      ].join("\n");
+      // Art for everyone at 9:00, and once more for Bunk 2 on Tuesday: a question once back.
+      const rows = (bunk2) =>
+        [
+          "Time,Bunk 1,Bunk 2",
+          "9:00-9:45,Art,Art",
+          "10:00-10:45,Lunch,Lunch",
+          `11:00-11:45,Swim,${bunk2}`
+        ].join("\n");
       await choose(element, ["Monday.csv", "Tuesday.csv"], {
-        "Monday.csv": rows,
-        "Tuesday.csv": rows
+        "Monday.csv": rows("Swim"),
+        "Tuesday.csv": rows("Art")
       });
       expect(
         $(element, '[data-deleted="deleted|Activity||Art"]').textContent
@@ -747,8 +739,7 @@ describe("c-shoresh-import", () => {
 
     it("the summary says where last year's schedule went, and the import can be undone", async () => {
       getAnswers.mockResolvedValue([
-        { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
-        { key: "kind|Library time", answer: "recurring" }
+        { key: "similar|activity|music|musik|Music|Musik", answer: "a" }
       ]);
       saveSetup.mockResolvedValue({
         added: { Version: 1 },
@@ -768,7 +759,9 @@ describe("c-shoresh-import", () => {
       await flush();
       const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
       expect(plan.versions).toHaveLength(1);
-      expect(plan.remember.map((r) => r.key)).toContain("kind|Library time");
+      expect(plan.remember.map((r) => r.key)).toContain(
+        "similar|activity|music|musik|Music|Musik"
+      );
       const version = $(element, '[data-id="version"]');
       expect(version.textContent).toContain(
         "Imported from maple-grove-2026-all-camp.xlsx"

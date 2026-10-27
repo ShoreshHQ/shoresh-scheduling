@@ -407,14 +407,13 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
    pick `maple-grove-2026-all-camp.xlsx`. (Or drag the file onto the well. You can pick
    several files at once.)
 4. One page now shows what Shoresh found. Nothing is added yet. The file's name is at the top,
-   and on the right **Start again** and a green button, _2 questions left_, greyed out.
-   - **Check these first 2**: one row per question, each with a small dark corner at its top
+   and on the right **Start again** and a green button, _1 question left_, greyed out.
+   - **Check these first 1**: one row per question, each with a small dark corner at its top
      right until it is answered. _Are “Music” and “Musik” the same activity?_ (Musik is a
      planted typo.) Click **Same: call it “Music”**: it stays, raised, and the corner goes.
-     Clicking another answer in the row changes it. The other question: _Is “Library time”
-     at a set time, or an activity?_ (Juniors had it at Period 4 on Wednesday, in one week
-     only, so Shoresh cannot be sure.) Click **A recurring activity**. Point at an answer to
-     see what it means.
+     Clicking another answer in the row changes it. Point at an answer to see what it means.
+     Library time is not asked: all of Juniors have it at Period 4 on Wednesday, so it comes
+     in as a recurring activity (docs/import/classification.md, rule 2).
    - **Comes in**: a tile per kind with how many will be added: 6 bunks, 2 units, 7 time
      blocks, 7 activities, 1 fixed activity, 2 recurring activities, 1 elective set, 1 program.
      Click a tile to see its names under the tiles (click it again to close them).

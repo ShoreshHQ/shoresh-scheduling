@@ -10,6 +10,7 @@ export const QUESTION_KINDS = [
   "similar",
   "ampm",
   "whichGroup",
+  "split",
   "cross",
   "week",
   "kind",
@@ -68,6 +69,7 @@ function kindsById(proposal) {
   add(proposal.reading.pairs, () => "similar");
   add(proposal.reading.timeAsks, () => "ampm");
   add(proposal.reading.groupAsks, () => "whichGroup");
+  add(proposal.reading.splitAsks || [], () => "split");
   add(proposal.reading.disagreements, () => "cross");
   add(proposal.asks, (ask) => ask.type);
   return kinds;
@@ -83,13 +85,31 @@ function mismatches(want, got) {
   );
 }
 
+/**
+ * The groups as the camp really has them: where the file shows divisions whose bunks always move
+ * together (the "divisions travel together" camps), each such division is one group (rule 8).
+ */
+function trueGroups(camp) {
+  const asOne = camp.oneGroupPerDivision && camp.divisionsInFile;
+  if (!asOne) {
+    return camp.groups.map((g, gi) => ({ ...g, gi }));
+  }
+  return camp.divisions.map((d) => ({
+    name: d.name,
+    division: null,
+    gi: camp.groups.findIndex((g) => g.division === d.name)
+  }));
+}
+
 /** A level-1 camp's true answer, from its one repeating week (camps.js). */
 function ordinaryTruth(camp) {
   const cells = new Map();
-  camp.groups.forEach((g, gi) =>
+  const groups = trueGroups(camp);
+  const asOne = groups.length !== camp.groups.length;
+  groups.forEach((g) =>
     camp.days.forEach((day, d) =>
       camp.blocks.forEach((block, b) =>
-        cells.set(`|${g.name}|${day}|${hm(block.start)}`, camp.cell(gi, d, b))
+        cells.set(`|${g.name}|${day}|${hm(block.start)}`, camp.cell(g.gi, d, b))
       )
     )
   );
@@ -98,12 +118,12 @@ function ordinaryTruth(camp) {
     weeks: [{ label: "", cells }],
     days: camp.days,
     blocks: camp.blocks.map((b) => `${hm(b.start)}-${hm(b.end)}`),
-    divisions: camp.divisions.map((d) => d.name),
-    groups: camp.groups,
+    divisions: asOne ? [] : camp.divisions.map((d) => d.name),
+    groups: groups.map(({ name, division }) => ({ name, division })),
     fixed: camp.fixed.map((f) => `${f}|${startOf(f)}`),
-    recurring: [],
+    recurring: camp.recurring || [],
     activities: camp.activities,
-    divisionsInFile: camp.divisionsInFile
+    divisionsInFile: camp.divisionsInFile && !asOne
   };
 }
 

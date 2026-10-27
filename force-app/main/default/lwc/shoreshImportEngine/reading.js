@@ -16,6 +16,7 @@ import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
 import { WEEKDAYS, looseKey, withoutWeek } from "./text";
 import { identifyGroups } from "./identity";
+import { oneGroupDivisions } from "./together";
 
 export { LEAVE_OUT } from "./reading-constants";
 import { LEAVE_OUT } from "./reading-constants";
@@ -37,12 +38,18 @@ function campNames(existing) {
     ...programs.flatMap((p) => p.fixedActivities || []),
     ...programs.flatMap((p) => p.recurringActivities || [])
   ].map((r) => r.Name);
-  const groups = programs.flatMap((p) =>
-    (p.divisions || []).flatMap((d) => (d.groups || []).map((g) => g.Name))
+  const placed = programs.flatMap((p) =>
+    (p.divisions || []).flatMap((d) =>
+      (d.groups || []).map((g) => ({
+        name: g.Name,
+        division: d.division ? d.division.Name : null
+      }))
+    )
   );
   return {
     activityLike: [...new Set(activityLike)],
-    groups: [...new Set(groups)]
+    groups: [...new Set(placed.map((g) => g.name))],
+    placed
   };
 }
 
@@ -250,15 +257,23 @@ export function readImport(input) {
     return block ? block.name : p.block;
   };
   const { disagreements, byCell } = crossCheck(placed, blockName);
+  // Rule 8: a division whose bunks always do the same thing is one group.
+  const together = oneGroupDivisions(
+    settleCells(byCell, answers, disagreements),
+    collectGroups(identified.groups, timetableOfPage),
+    { campGroups: camp.placed, answers }
+  );
   return {
     pages: read.info,
     unread,
     pairs,
     disagreements,
     timetables,
-    placements: settleCells(byCell, answers, disagreements),
-    groups: collectGroups(identified.groups, timetableOfPage),
+    placements: together.placements,
+    groups: together.groups,
+    notes: together.notes,
     groupAsks: identified.asks,
+    splitAsks: together.asks,
     timeAsks,
     identities: identified.rules
   };
