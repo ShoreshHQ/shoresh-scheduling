@@ -45,11 +45,11 @@ own period for each division every day; an opening event every day as in level 1
 (and Swim) recurring, the opening fixed, everything else an activity.
 
 This shape was missing, which is how one-off staggers and single division placements came to be
-read as set times without a question. Baseline (2026-10-27), before and after the second review's
-refinements: before, 21 of 40 perfect, 82 rotation activities read as recurring with no question,
-2 questions; after, 37 of 40 perfect, 28 "set time or activity?" questions in 3 camps (two camps
-whose divisions meet every activity once or twice a week, 13 each; one with an activity mostly at
-a set time), and one wrong read (four of six groups together twice, no divisions in the file).
+read as set times without a question. Baselines (2026-10-27): before the second review, 21 of 40
+perfect, 82 rotation activities read as recurring; after it, 37 perfect, 28 questions, 1 wrong.
+With Greg's rule 7 (whole divisions together are a set time, even once): 20 of 40 perfect, 2
+questions, 102 rotation activities read as recurring in 20 camps. Rule 7 reads a travelling
+division's once-or-twice activity as a set time; taken to Greg.
 
 ## What is scored
 
@@ -84,13 +84,10 @@ two days of evidence; 2026-10-27): unchanged. Still no "set time or activity?"; 
 staggered across the camp. Level 1 unchanged (318 of 320, no questions); level 2 unchanged
 (148 of 320, no "set time or activity?", recurring wrong 0).
 
-After the second and third reviews (a weak clue never decides silently; 2026-10-27): Lunch 4 and 5
-recurring by their numbered siblings ("Lunch2" in one cell is no evidence). Swim and Swim Return
-are now asked ("set time or activity?", 2 questions): the grid shows Swim only as Garinim and
-Pirchim in Period 6 and Shkedim and Tamarim in Period 7 on Monday, and Arazim, Garinim and
-Pirchim in Period 8 on Wednesday (Swim Return the period after each). Several divisions together
-once is no longer read as repetition. Unanswered they count as activities (2 recurring wrong).
-Level 1 and level 2 unchanged.
+After the second and third reviews and Greg's rule 7 (whole divisions together are a set time,
+even once; 2026-10-27): no "set time or activity?"; Lunch 4 and 5, Swim and Swim Return
+recurring by rule 7 (Swim: Garinim and Pirchim in Period 6 and Shkedim and Tamarim in Period 7 on
+Monday, Arazim, Garinim and Pirchim in Period 8 on Wednesday). Level 1 and level 2 unchanged.
 
 ## Level 2
 

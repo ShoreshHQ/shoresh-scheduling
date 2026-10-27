@@ -95,14 +95,14 @@ describe("Import last year, as the walkthrough tells it", () => {
       "Are “Music” and “Musik” the same activity?"
     ]);
     const answers = { [similar[0].id]: "a" };
-    // Library time is all of Juniors once, in a one-week file: a genuine split (rule 3), asked.
+    // Library time is all of Juniors once, in a one-week file: a set time (rule 7, Greg
+    // 2026-10-27), not asked.
     const asked = questionCards(
       buildProposal({ files, existing: empty, terms, answers }),
       terms,
       answers
     ).filter((c) => c.stage === "review" && !c.flag);
-    expect(asked.map((c) => c.subject)).toEqual(["Library time"]);
-    answers[asked[0].id] = "recurring";
+    expect(asked.map((c) => c.subject)).toEqual([]);
 
     const proposal = buildProposal({ files, existing: empty, terms, answers });
     const lists = Object.fromEntries(

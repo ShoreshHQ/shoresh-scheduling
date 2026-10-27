@@ -73,16 +73,14 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
   });
 });
 
-// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 after the
-// second review (a weak clue never decides silently): before it, 21 perfect and 82 rotation
-// activities read as recurring with no question; now 37 perfect, one read wrong (four of six
-// groups together twice, with no divisions in the file, read as most of the camp), and two camps
-// whose divisions take turns at every activity once or twice a week asked (13 each).
+// Level 1, divisions travel together (travel.js): all 40 camps. Baseline 2026-10-27 with Greg's
+// rule 7 (whole divisions together are a set time, even once): a division's activity met only
+// once or twice a week reads as recurring (102 in 20 camps), taken to Greg.
 const CEILING_T = {
-  perfectAtLeast: 37,
+  perfectAtLeast: 20,
   errors: 0,
-  questions: { kind: 28 },
-  wrong: { recurring: 1, activities: 1 }
+  questions: { kind: 2 },
+  wrong: { recurring: 102, activities: 102 }
 };
 
 describe("Import last year on made-up camps whose divisions travel together (level 1)", () => {
@@ -193,17 +191,13 @@ describe("Import last year on Greg's camp", () => {
   // read right with no "set time or activity?" question. Still asked: the two spelling slips
   // (until answered, "Lunch2" and "Swim Returning" stay apart, two activities and two cells
   // wrong); CIT is its own division (Greg) but is not read as one yet.
-  // Third review (2026-10-27): Swim and Swim Return are asked (genuine splits: divisions
-  // together once at different times, no repetition), and until answered count as two
-  // activities read wrong, not recurring.
   it("asks and reads wrong no more than it did", () => {
     const ceiling = {
-      questions: { similar: 2, division: 1, kind: 2 },
+      questions: { similar: 2, division: 1 },
       wrong: {
         divisions: 1,
         groups: 2,
-        recurring: 2,
-        activities: 4,
+        activities: 2,
         cells: 2
       }
     };

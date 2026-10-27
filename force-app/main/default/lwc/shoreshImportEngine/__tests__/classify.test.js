@@ -86,16 +86,14 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.recurring[0].who.keys).toEqual([]);
   });
 
-  it("rule 3: one division once in a one-week file is asked; answered, it is recurring", () => {
-    const cell = (g, d, b) => {
+  it("rule 7: one division once in a one-week file is recurring, not asked (Greg 2026-10-27)", () => {
+    const p = propose((g, d, b) => {
       return d === 2 && b === 3 && g < 2 ? "Library" : rotation(g, d, b);
-    };
-    const asked = propose(cell).asks.find((a) => a.id === "kind|Library");
-    expect(asked.facts.reason).toBe("split");
-    const p = propose(cell, { "kind|Library": "recurring" });
+    });
     expect(kindOf(p, "Library")).toBe("recurring");
     expect(p.recurring[0]).toMatchObject({ block: 3, days: ["Wednesday"] });
     expect(p.recurring[0].who.names).toEqual(["Juniors"]);
+    expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
@@ -367,17 +365,14 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: a division together at different times on two days, nobody else, is asked", () => {
-    const cell = (g, d, b) => {
+  it("rule 7: a division together at different times on two days, nobody else, is recurring", () => {
+    const p = propose((g, d, b) => {
       return g < 2 && ((d === 0 && b === 0) || (d === 2 && b === 3))
         ? "Art"
         : fill(g, d, b);
-    };
-    const ask = kindAsks(propose(cell)).find((a) => a.name === "Art");
-    expect(ask.facts.reason).toBe("split");
-    expect(kindOf(propose(cell, { "kind|Art": "recurring" }), "Art")).toBe(
-      "recurring"
-    );
+    });
+    expect(kindOf(p, "Art")).toBe("recurring");
+    expect(kindAsks(p)).toEqual([]);
   });
 
   it("rule 4: a one-day file reads nothing as fixed; everyone together is recurring", () => {
@@ -404,7 +399,7 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: a numbered sibling at a set time makes one division's single Lunch 4 recurring, not asked", () => {
+  it("rule 7: one division's single Lunch 4 beside Lunch 1 is recurring, not asked", () => {
     const p = propose((g, d, b) => {
       if (g < 2 && b === 2) return "Lunch 1";
       if (g >= 2 && d === 2 && b === 3) return "Lunch 4";
@@ -415,98 +410,30 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: a numbered sibling joins only a set-time word: one division's single Sports 2 is asked", () => {
-    const sports1 = [
-      [0, 0],
-      [1, 1],
-      [3, 3]
-    ];
-    const p = propose((g, d, b) => {
-      if (g === 0 && sports1.some(([sd, sb]) => sd === d && sb === b)) {
-        return "Sports 1";
-      }
-      if (g >= 2 && d === 2 && b === 3) return "Sports 2";
-      return fill(g, d, b);
-    });
-    expect(kindOf(p, "Sports 1")).toBe("activity");
-    expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
-      ["Sports 2", "split"]
-    ]);
-  });
-
-  it("rule 3: a numbered sibling joins its set-time word whatever its case (lunch 4 with Lunch 1)", () => {
-    const p = propose((g, d, b) => {
-      if (g < 2 && b === 2) return "Lunch 1";
-      if (g >= 2 && d === 2 && b === 3) return "lunch 4";
-      return fill(g, d, b);
-    });
-    expect(kindOf(p, "lunch 4")).toBe("recurring");
-    expect(kindAsks(p)).toEqual([]);
-  });
-
-  it("rule 3: numbered siblings that disagree leave the single one asked, never one winning", () => {
-    // Lunch 1 for Juniors every day; Lunch 2 for Bunk 3 at three different times (rule 2).
-    const lunch2 = [
-      [0, 0],
-      [1, 1],
-      [3, 3]
-    ];
-    const p = propose((g, d, b) => {
-      if (g < 2 && b === 2) return "Lunch 1";
-      if (g === 2 && lunch2.some(([sd, sb]) => sd === d && sb === b)) {
-        return "Lunch 2";
-      }
-      if (g >= 2 && d === 4 && b === 3) return "Lunch 4";
-      return fill(g, d, b);
-    });
-    expect(kindOf(p, "Lunch 1")).toBe("recurring");
-    expect(kindOf(p, "Lunch 2")).toBe("activity");
-    expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
-      ["Lunch 4", "split"]
-    ]);
-  });
-
-  it("rule 3: two genuine splits for the same division (Library Wednesday, Campfire Thursday) are both asked", () => {
+  it("rule 7: Juniors' Library Wednesday and Campfire Thursday, once each, are both recurring", () => {
     const p = propose((g, d, b) => {
       if (g < 2 && d === 2 && b === 0) return "Library";
       if (g < 2 && d === 3 && b === 3) return "Campfire";
       return fill(g, d, b);
     });
-    expect(
-      kindAsks(p)
-        .map((a) => [a.name, a.facts.reason])
-        .sort()
-    ).toEqual([
-      ["Campfire", "split"],
-      ["Library", "split"]
-    ]);
+    expect(kindOf(p, "Library")).toBe("recurring");
+    expect(kindOf(p, "Campfire")).toBe("recurring");
+    expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: divisions travelling together, taking turns at Hike once (Juniors Period 1, Seniors Period 2), is an activity", () => {
-    // Each division together all day, rotating; Hike once each on Monday, one period apart.
+  it("rule 2 before rule 7: a name a division has at three or more times is an activity everywhere", () => {
+    // Juniors together at Hike in Periods 1, 2 and 4 over the week; Seniors once.
+    const hike = ["0|0", "1|1", "3|3"];
     const p = propose((g, d, b) => {
-      const v = g < 2 ? 0 : 1;
-      if (d === 0 && b === v) return "Hike";
-      return FILL[(v + b + d) % FILL.length];
+      if (g < 2 && hike.includes(`${d}|${b}`)) return "Hike";
+      if (g >= 2 && d === 4 && b === 0) return "Hike";
+      return fill(g, d, b);
     });
     expect(kindOf(p, "Hike")).toBe("activity");
     expect(kindAsks(p)).toEqual([]);
   });
 
-  it("rule 3: the same one-off stagger with nothing else for those divisions is asked, not a set time", () => {
-    const p = propose((g, d, b) => {
-      if (d === 0 && b === (g < 2 ? 0 : 1)) return "Hike";
-      return fill(g, d, b);
-    });
-    expect(kindOf(p, "Hike")).not.toBe("recurring");
-    expect(
-      kindAsks(p)
-        .filter((a) => a.name === "Hike")
-        .map((a) => a.facts.reason)
-    ).toEqual(["split"]);
-  });
-
-  describe("rule 3: several divisions together without repetition is never a set time", () => {
+  describe("rule 7: whole divisions together are a set time, even once", () => {
     const EIGHT = [
       "Aleph - Bunk 1",
       "Aleph - Bunk 2",
@@ -528,30 +455,32 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
         answers: {}
       });
 
-    it("Aleph and Bet at Color War Practice once, Tuesday Period 2, is asked", () => {
-      const p = read("Color War Practice", (g, d, b) => {
-        return g < 4 && d === 1 && b === 1;
-      });
-      expect(kindOf(p, "Color War Practice")).not.toBe("recurring");
-      expect(
-        kindAsks(p)
-          .filter((a) => a.name === "Color War Practice")
-          .map((a) => a.facts.reason)
-      ).toEqual(["split"]);
+    it.each([
+      [
+        "Aleph and Bet at Color War Practice once, Tuesday Period 2",
+        (g, d, b) => g < 4 && d === 1 && b === 1
+      ],
+      [
+        "Sports for Aleph and Bet Monday Period 1, Gimmel and Daled Wednesday Period 3",
+        (g, d, b) =>
+          (g < 4 && d === 0 && b === 0) || (g >= 4 && d === 2 && b === 3)
+      ],
+      [
+        "Sports for Aleph and Bet Monday Period 1 and Thursday Period 3",
+        (g, d, b) => g < 4 && ((d === 0 && b === 0) || (d === 3 && b === 3))
+      ]
+    ])("%s is recurring, not asked", (_, at) => {
+      const p = read("Practice", at);
+      expect(kindOf(p, "Practice")).toBe("recurring");
+      expect(kindAsks(p)).toEqual([]);
     });
 
-    it("Sports for Aleph and Bet Monday Period 1, Gimmel and Daled Wednesday Period 3, is not recurring", () => {
-      const p = read("Sports", (g, d, b) => {
-        return (g < 4 && d === 0 && b === 0) || (g >= 4 && d === 2 && b === 3);
+    it("Bunk 1 of Aleph with Bunk 3 of Bet once is an activity (rule 6)", () => {
+      const p = read("Practice", (g, d, b) => {
+        return (g === 0 || g === 2) && d === 1 && b === 1;
       });
-      expect(kindOf(p, "Sports")).not.toBe("recurring");
-    });
-
-    it("Sports for Aleph and Bet Monday Period 1 and Thursday Period 3 is not recurring", () => {
-      const p = read("Sports", (g, d, b) => {
-        return g < 4 && ((d === 0 && b === 0) || (d === 3 && b === 3));
-      });
-      expect(kindOf(p, "Sports")).not.toBe("recurring");
+      expect(kindOf(p, "Practice")).toBe("activity");
+      expect(kindAsks(p)).toEqual([]);
     });
   });
 

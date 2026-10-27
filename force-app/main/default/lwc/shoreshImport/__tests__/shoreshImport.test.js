@@ -118,11 +118,6 @@ const similarId = (element) =>
 
 const add = (element) => $(element, 'button[data-id="save"]');
 
-/** Library time is all of Juniors once in a one-week file: asked (rule 3), answered set time. */
-const LIBRARY = "kind|Library time";
-const answerLibrary = (element) => answer(element, LIBRARY, "recurring");
-const LIBRARY_REMEMBERED = { key: LIBRARY, answer: "recurring" };
-
 describe("c-shoresh-import", () => {
   beforeEach(() => {
     window.XLSX = XLSX;
@@ -198,12 +193,9 @@ describe("c-shoresh-import", () => {
       "Check these first"
     );
     const rows = $$(element, '[data-id="questions"] [data-card]');
-    // Library time (all of Juniors once, in a one-week file) is asked: set time or activity.
-    expect(rows.map((r) => r.dataset.card)).toEqual([
-      similarId(element),
-      LIBRARY
-    ]);
-    expect(questions.querySelector("h3").textContent).toContain("2");
+    // Library time (all of Juniors on Wednesday) is recurring (rule 7, Greg 2026-10-27), not asked.
+    expect(rows.map((r) => r.dataset.card)).toEqual([similarId(element)]);
+    expect(questions.querySelector("h3").textContent).toContain("1");
     // What Shoresh chose itself (the program, each bunk's unit) is listed below, changeable,
     // not asked.
     expect(
@@ -243,8 +235,6 @@ describe("c-shoresh-import", () => {
 
     // Every question needs an answer before Add.
     expect(add(element).disabled).toBe(true);
-    expect(add(element).textContent.trim()).toBe("2 questions left");
-    await answerLibrary(element);
     expect(add(element).textContent.trim()).toBe("1 question left");
     await answer(element, similarId(element), "a");
     // Answered: the choice is pressed and raised, and the row loses its mark.
@@ -383,7 +373,6 @@ describe("c-shoresh-import", () => {
       // Another choice in the same row changes the answer.
       await answer(element, similarId(element), "b");
       expect(focused.pop().dataset.key).toBe(`${similarId(element)}::b`);
-      await answerLibrary(element);
       add(element).click();
       await flush();
       await flush();
@@ -430,7 +419,6 @@ describe("c-shoresh-import", () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
     await answer(element, similarId(element), "leaveOut");
-    await answerLibrary(element);
     add(element).click();
     await flush();
     await flush();
@@ -460,7 +448,6 @@ describe("c-shoresh-import", () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
     await answer(element, similarId(element), "a");
-    await answerLibrary(element);
     add(element).click();
     await flush();
     await flush();
@@ -553,8 +540,7 @@ describe("c-shoresh-import", () => {
           byYou: true,
           byName: "Greg",
           answeredOn: "2026-07-03"
-        },
-        LIBRARY_REMEMBERED
+        }
       ]);
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
@@ -753,8 +739,7 @@ describe("c-shoresh-import", () => {
 
     it("the summary says where last year's schedule went, and the import can be undone", async () => {
       getAnswers.mockResolvedValue([
-        { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
-        LIBRARY_REMEMBERED
+        { key: "similar|activity|music|musik|Music|Musik", answer: "a" }
       ]);
       saveSetup.mockResolvedValue({
         added: { Version: 1 },

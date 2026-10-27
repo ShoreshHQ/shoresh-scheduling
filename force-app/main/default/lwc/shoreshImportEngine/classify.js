@@ -515,13 +515,14 @@ function verdictOf(sorted, facts) {
   if (showsRepetition(sorted, facts)) {
     return { verdict: "recurring" };
   }
-  // Rule 3: a real division together, but nothing shows it repeats: a genuine split, asked.
+  // Rule 7 (Greg 2026-10-27): one or more whole divisions together at once is a set time,
+  // even once in a one-week file.
   return sorted[0].held.some(
     (p) =>
       p.groups.length >= 2 &&
       wholeDivisions(p.groups, facts, groupsIn(facts, sorted[0].week))
   )
-    ? { verdict: "ask", reason: "split" }
+    ? { verdict: "recurring" }
     : { verdict: "activity" };
 }
 

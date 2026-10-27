@@ -12,7 +12,7 @@ ingestion plan's classification protocol, 2026-10-27):
 - **Activity:** everything else, placed by the scheduler.
 
 They never overlap: one name has one kind in a program. The import tries fixed first, then
-the activity clue of rule 2, then recurring. Getting this wrong on an ordinary
+the activity clue of rule 2, then recurring (rules 3 and 7). Getting this wrong on an ordinary
 camp is a bug, not a question.
 
 Code: `force-app/main/default/lwc/shoreshImportEngine/classify.js` (`classifyName`). Tests:
@@ -64,44 +64,13 @@ example, test.
    Clue: every placement is held (whole divisions of the program, most groups at once, or one
    group in its one slot on most days), the same in every week that has it, and the grid shows
    repetition: the same groups in the same slot on two days or more; every group together (or most
-   of them: an all-camp moment, even once a week); the same slots in two weeks or more; or a
-   numbered sibling that is a set time. Several divisions together once is not repetition (third
-   review): it is asked, or an activity by rule 2 or turn-taking.
-   - **A stagger counts only when it repeats.** Swim for one division in Period 2 and the next in
-     Period 3, every day, repeats (each division in its slot on two days or more). The same once
-     (Juniors at Hike in Period 1, Seniors in Period 2, on Monday only) is divisions taking turns
-     at an activity: not a set time.
-   - **Numbered siblings** join only when the name before the number is a set-time word in
-     Shoresh's own list (Breakfast, Lunch, Dinner, Supper, Snack, Rest, Rest Hour, Menucha),
-     whatever its case or spacing: "Lunch 4" once beside "Lunch 1" every day is recurring. Never
-     for other words (Team, Bus, Period, Sports, a bare number). A sibling counts only when the
-     grid decided it (a set time, or placed at varying times by rule 2); siblings that disagree
-     leave the single one asked.
-     One record per pattern.
-     Example: Lunch 1 to 5, Menucha, Ruach, Shabbat, All Camp Activity, CIT's blocks (plant
-     camp). Swim and Swim Return there are asked: divisions together once or twice at different
-     times, no repetition.
-     Test: "staggered by division"; "everyone on one day"; "rule 2: everyone but one group";
-     "rule 3: one group at the same time on most days"; "rule 3: several divisions together
-     without repetition is never a set time" (three grids); "rule 3: the same slot in two weeks is enough repetition"; "rule 3: a numbered
-     sibling at a set time …"; "rule 3: a numbered sibling joins its set-time word whatever its
-     case"; "rule 3: a numbered sibling joins only a set-time word …"; "rule 3: numbered siblings
-     that disagree …".
-
-   **A real division together with no repetition → asked (a genuine split).** A whole division of
-   the timetable together at different blocks on different days, or once in a one-week file, with
-   none of the evidence above. Unless an activity placed at varying times (rule 2) goes to the
-   very same groups together: the division travels together through a rotation, so this is one
-   more activity of it. Another name that is itself only a split is no such evidence: both are
-   asked.
-   Example: Juniors' Art Monday Period 1 and Wednesday Period 3, nobody else has Art; Library time,
-   all of Juniors once on Wednesday (`walkthrough.test.js`); Juniors' Library Wednesday Period 1
-   and Campfire Thursday Period 3, nobody else has either (both asked).
-   Test: "rule 3: a division together at different times on two days, nobody else, is asked";
-   "rule 3: one division once in a one-week file is asked"; "rule 3: the same shape with nothing
-   else for those groups together is asked"; "rule 3: two genuine splits for the same division …
-   are both asked"; "rule 3: divisions travelling together, taking turns at Hike once …, is an
-   activity"; "rule 3: the same one-off stagger with nothing else for those divisions is asked".
+   of them: an all-camp moment, even once a week); or the same slots in two weeks or more. A
+   stagger repeats when each division has its slot on two days or more (Swim for one division in
+   Period 2 and the next in Period 3, every day). One record per pattern.
+   Example: Lunch 1 to 3, Menucha, Ruach, Shabbat, All Camp Activity, CIT's blocks (plant camp).
+   Test: "staggered by division"; "everyone on one day"; "rule 2: everyone but one group"; "rule
+   3: one group at the same time on most days"; "rule 3: the same slot in two weeks is enough
+   repetition".
 
 4. **Small grids need two days of evidence.**
    Clue: fixed, and recurring by repetition, need the name on two days or more. In a one-day file
@@ -131,11 +100,28 @@ example, test.
    Example: Sports, Water Play, Art, Clay (plant camp); every level-1 and level-2 rotation.
    Test: "a rotation is activities"; "two groups of different divisions together once"; "rule 6:
    two bunks of different divisions together in both weeks are an activity"; "rule 6: a division
-   is every group of it in the program, a cell spelled otherwise counting until answered".
+   is every group of it in the program, a cell spelled otherwise counting until answered"; "similar
+   names: Swim and Swimming …".
+
+7. **One or more whole divisions together at once → recurring, even once (Greg 2026-10-27).**
+   Greg: "multiple groups go at once. It's a recurring activity. If I had more than one week it
+   would show the same groups going every week at the same time." Clue: every placement is held,
+   the weeks agree, and some placement is every group of one or more divisions of the program
+   together, even once in a one-week file. This replaces the earlier "genuine split" question.
+   Rule 2 comes first (a name some group has at three or more times is an activity everywhere);
+   bunks of different divisions together that are not whole divisions are rule 6 (activity).
+   Example: Lunch 4 and 5, Swim and Swim Return (plant camp: Garinim and Pirchim at Swim on
+   Monday, Arazim, Garinim and Pirchim on Wednesday); Library time, all of Juniors once on
+   Wednesday (`walkthrough.test.js`); Aleph and Bet at Color War Practice once.
+   Test: "rule 7: one division once in a one-week file is recurring"; "rule 7: a division
+   together at different times on two days, nobody else, is recurring"; "rule 7: one division's
+   single Lunch 4 …"; "rule 7: Juniors' Library Wednesday and Campfire Thursday …"; "rule 2
+   before rule 7 …"; "rule 7: whole divisions together are a set time, even once" (three grids,
+   and two bunks of different divisions: activity).
 
 ## Asked, because the grid supports both readings
 
-Only these three. Each card offers set time, activity, or leave it out.
+Only these two. Each card offers set time, activity, or leave it out.
 
 - **A. Mostly at a set time, a few times elsewhere.** A strong set time (most days, or most
   groups) holds at least three quarters of the name's cells, and the rest are at other times
@@ -147,17 +133,14 @@ Only these three. Each card offers set time, activity, or leave it out.
   between the weeks that have the name (Flag in Period 1 in week 1, Period 2 in week 2). A week
   without the name does not count.
   Test: "weeks in the files must agree before a set time is sure".
-- **C. A genuine split** (rule 3): a real division together with no repetition the grid shows.
 
 ## Known limits
 
 - Without divisions in the file, half the groups together once (Library time in the by-group
   CSV samples) is an activity: no clue says set time. Where the file shows divisions, the same
-  cells are asked (rule 3).
+  cells are recurring (rule 7).
 - A division's set time at three or more different times a week (Swim Monday, Wednesday and
   Friday at different periods) reads as an activity (rule 2).
-- The numbered-sibling clue only strips a trailing number ("Lunch 4" → "Lunch"), and only for
-  the set-time words above. "Swim 2" beside "Swim 1" is judged on its own.
 - Two spellings of one name ("Lunch2", "Swim Returning", or "lunch" beside "Lunch") are still
   asked as similar names and stay two names until answered: the variant is its own activity.
   Spacing is already tidied when the file is read. The variant does not break the main name's
@@ -166,7 +149,6 @@ Only these three. Each card offers set time, activity, or leave it out.
 - With no divisions in the file, four of six groups together twice reads as most of the camp
   (recurring) even when they are one division taking turns (one camp of the "divisions travel
   together" corpus).
-- Divisions that take turns at every activity only once or twice a week, with no activity at
-  three or more times, leave each activity asked as a genuine split (two camps of the "divisions
-  travel together" corpus, 13 questions each).
-- Greg's camp: Swim and Swim Return are asked as genuine splits (see the corpus notes).
+- Camps whose divisions travel together through a rotation, meeting an activity only once or
+  twice a week (never at three or more times), read those activities as recurring by rule 7: 20
+  of the 40 "divisions travel together" corpus camps, 102 activities. Taken to Greg.
