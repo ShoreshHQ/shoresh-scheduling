@@ -2,9 +2,8 @@ import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
+import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { moveNote } from "./groupMoves";
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /** The element with focus, looking inside components (their shadow roots). */
 function focusedElement() {
@@ -205,7 +204,8 @@ export default class ShoreshProgram extends LightningElement {
    */
   get recurringColumns() {
     const program = this.entry.program;
-    const days = DAYS.filter((day) => program[PROGRAM[day]]).map((day) => ({
+    const runs = WEEKDAYS.filter((day) => program[PROGRAM[day]]);
+    const days = weekOrder(runs).map((day) => ({
       fieldName: RECURRING[day],
       label: day
     }));
@@ -367,7 +367,7 @@ export default class ShoreshProgram extends LightningElement {
       [RECURRING.Program]: this.programId,
       [RECURRING.Length]: 1
     };
-    DAYS.forEach((day) => {
+    WEEKDAYS.forEach((day) => {
       defaults[RECURRING[day]] = false;
     });
     return defaults;

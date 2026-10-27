@@ -475,7 +475,7 @@ private class SeasonSetupControllerTest {
         SeasonSetupController.addWeeksFromSeasonDates(season.Id);
         Assert.fail('Nothing to fill in is reported');
       } catch (AuraHandledException e) {
-        Assert.isTrue(errorOf(e).contains('have no weekdays'), errorOf(e));
+        Assert.isTrue(errorOf(e).contains('to fill in'), errorOf(e));
       }
     }
   }

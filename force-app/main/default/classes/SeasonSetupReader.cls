@@ -120,6 +120,8 @@ public with sharing class SeasonSetupReader {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         SortOrder__c
       FROM Program__c
       WHERE Season__c = :seasonId
@@ -201,6 +203,8 @@ public with sharing class SeasonSetupReader {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         SortOrder__c,
         (SELECT Id, Division__c, Group__c FROM Coverages__r)
       FROM RecurringActivity__c

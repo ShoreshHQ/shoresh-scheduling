@@ -7,8 +7,7 @@
  * item set up by this import (or already in the camp), an elective set by its record (slice E9),
  * or, for a special day, special event, or trip, the name as it was in the file, marked "not set
  * up yet". Placements
- * that cannot be placed (their group, time block, day, or name left out, a weekend, a week not
- * in the season, two things in one cell) are listed with the reason, never silently dropped.
+ * that cannot be placed (their group, time block, day, or name left out, a week not in the season, two things in one cell) are listed with the reason, never silently dropped.
  *
  * The grid names records by the keys the save uses (new records) or their Ids (records the camp
  * has); the server puts in the Ids once everything is saved.
@@ -18,12 +17,15 @@ import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 import { weeksToFill } from "./weeks";
 
+// Date.getUTCDay's number for each day.
 const DAY_NUMBER = {
+  Sunday: 0,
   Monday: 1,
   Tuesday: 2,
   Wednesday: 3,
   Thursday: 4,
-  Friday: 5
+  Friday: 5,
+  Saturday: 6
 };
 const MAX_NAME = 80;
 const WEEK = FIELD.Week;
@@ -235,6 +237,8 @@ function versionFor(t, week, label, context) {
       days.push({ date, grid: dayGrid(t, groups, onDay, context) });
     }
   }
+  // In date order: a week that starts on Sunday has its Sunday first.
+  days.sort((a, b) => a.date.localeCompare(b.date));
   return {
     key: `${t.key}|${week.Id}`,
     programKey: t.key,
@@ -277,6 +281,14 @@ function reasonFor(p, proposal) {
   return "dayNotRun";
 }
 
+/** The days the grids run between them, Monday first: the shape of the weeks an import adds. */
+function gridDays(proposal) {
+  const runs = new Set(
+    proposal.timetables.filter((t) => !t.leftOut).flatMap((t) => t.days)
+  );
+  return WEEKDAYS.filter((d) => runs.has(d));
+}
+
 /**
  * The versions to save, the placements that could not be placed (each with why), and the
  * week questions. Needs the proposal's usable placements and decisions.
@@ -290,7 +302,7 @@ export function versionsFor(proposal, input) {
   const filled =
     saved.length || !input.existing || !input.terms
       ? []
-      : weeksToFill(input.existing, input.terms);
+      : weeksToFill(input.existing, input.terms, gridDays(proposal));
   const weeks = saved.length ? saved : filled;
   const labels = [...new Set(proposal.usable.map((p) => p.week))].sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true })
@@ -305,9 +317,6 @@ export function versionsFor(proposal, input) {
   };
   context.unmatched.push(
     ...proposal.leftOutCells.map((p) => ({ ...p, why: reasonFor(p, proposal) }))
-  );
-  context.unmatched.push(
-    ...proposal.reading.weekend.map((p) => ({ ...p, why: "weekend" }))
   );
   const versions = [];
   for (const t of proposal.timetables.filter((x) => !x.leftOut)) {

@@ -13,6 +13,7 @@ import {
   isCsv,
   isReadable,
   undoMessage,
+  MONDAY_TO_FRIDAY,
   WEEKDAYS,
   workbookFile
 } from "c/shoreshImportEngine";
@@ -781,7 +782,7 @@ export default class ShoreshListImport extends LightningElement {
 
   draftDays(id) {
     const days = (this.drafts[id] || {}).days;
-    return days === undefined ? [...WEEKDAYS] : days;
+    return days === undefined ? [...MONDAY_TO_FRIDAY] : days;
   }
 
   handleDraft(event) {

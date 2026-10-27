@@ -138,7 +138,7 @@ public with sharing class SeasonSetupController {
     }
   }
 
-  /** Fills an empty season with Monday-to-Friday weeks covering its dates. */
+  /** Fills an empty season with weeks covering its dates, on the days its programs run. */
   @AuraEnabled
   public static void addWeeksFromSeasonDates(Id seasonId) {
     try {

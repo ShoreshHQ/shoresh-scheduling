@@ -22,7 +22,9 @@ public with sharing class ImportListRows {
       Program__c.Tuesday__c,
       Program__c.Wednesday__c,
       Program__c.Thursday__c,
-      Program__c.Friday__c
+      Program__c.Friday__c,
+      Program__c.Saturday__c,
+      Program__c.Sunday__c
     },
     'LocationType' => new Set<Schema.SObjectField>{ LocationType__c.Name },
     // Only a camp workbook (part D): weeks, and the weeks an item is off.
@@ -54,7 +56,9 @@ public with sharing class ImportListRows {
       RecurringActivity__c.Tuesday__c,
       RecurringActivity__c.Wednesday__c,
       RecurringActivity__c.Thursday__c,
-      RecurringActivity__c.Friday__c
+      RecurringActivity__c.Friday__c,
+      RecurringActivity__c.Saturday__c,
+      RecurringActivity__c.Sunday__c
     },
     'Division' => new Set<Schema.SObjectField>{ Division__c.Name },
     'Group' => new Set<Schema.SObjectField>{

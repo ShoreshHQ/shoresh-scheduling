@@ -475,7 +475,6 @@ than cut off, and a solid dot field for Roots' table._
   week" (how many, by which day), since a camp can ask for more than one early session (ADR 0013
   choice 15).
 - The earlier colour tokens are removed once no screen uses them.
-- Programs' week strip shows Monday to Friday only: a program has no Saturday or Sunday field
-  (`Program__c`), so the mock-up's weekend days need a data change first.
+- Programs' week strip shows all seven days since ADR 0022, in the order the camp's week runs.
 - The mock-up's chevron on a program's row (its details, as on Activities) is not built: every
   field a program has is already in its row.

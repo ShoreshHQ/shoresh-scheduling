@@ -10,7 +10,9 @@ public with sharing class ImportItemWrites {
     'Tuesday' => RecurringActivity__c.Tuesday__c,
     'Wednesday' => RecurringActivity__c.Wednesday__c,
     'Thursday' => RecurringActivity__c.Thursday__c,
-    'Friday' => RecurringActivity__c.Friday__c
+    'Friday' => RecurringActivity__c.Friday__c,
+    'Saturday' => RecurringActivity__c.Saturday__c,
+    'Sunday' => RecurringActivity__c.Sunday__c
   };
 
   private ImportPlan plan;

@@ -93,7 +93,8 @@ it or press **Escape**.
    (a row's trash can, a panel's ×), is grey at rest and turns green under the pointer or
    when Tab reaches it. On **Weeks**, click **Fill in weeks from the
    season dates**. Six weeks
-   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday. The **!** beside Weeks in the menu
+   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday (a camp's weeks follow the days its
+   programs run: a Sunday-to-Thursday camp gets Sunday-to-Thursday weeks). The **!** beside Weeks in the menu
    is now a **✓**.
 2. Try editing: change Week 6's end date and press **Enter**. It is saved. In the blank row,
    type _Week 7_, its dates, and press **Enter**: it is added, and the blank row is ready for
@@ -548,8 +549,8 @@ program can leave the column out. Made-up lists are in `docs/samples/lists` (aft
 in the _Import test_ season, in this order).
 
 1. **Program days** (`maple-grove-program-days.csv`): _Main_ is unchanged; _Teens_ is **New**
-   (Monday, Wednesday, Friday); _Review here_ shows _Weekend · Runs on: Saturday isn't a camp
-   day_. Click **Add 1**.
+   (Monday, Wednesday, Friday); _Weekend_ is **New** too (Saturday: a program can run any day,
+   weekends included). Click **Add 2**.
 2. **Units** (`maple-grove-units.csv`): _Middlers_ is new. _“Explorers” is a new program.
    Which days?_ Monday to Friday start ticked; untick Tuesday and Thursday and click **Use
    these days**; _Explorers_ then shows under **Also adding**,
@@ -564,10 +565,9 @@ in the _Import test_ season, in this order).
    under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
    Start and End and click **Use these times**.
 6. **Recurring activities** (`maple-grove-recurring.csv`): _Morning meeting · Runs on:
-   Monday → Monday, Wednesday_. _Rest hour_ is for Juniors and Middlers. _Campfire_ is under
-   **Review here** (Saturday). A day a program doesn't run is asked, not refused: _Main doesn't
-   run on Friday: …_ with **Add Friday to Main**, **Without Friday**, or **Leave it out for
-   now**.
+   Monday → Monday, Wednesday_. _Rest hour_ is for Juniors and Middlers. A day a program
+   doesn't run is asked, not refused: _Main doesn't run on Saturday: Campfire_ with **Add
+   Saturday to Main**, **Without Saturday**, or **Leave it out for now**.
 7. Each screen's import is undone on its own by **Undo this import**, or Roots' **Undo last
    import**, including a bunk moved and who a recurring activity covers.
 

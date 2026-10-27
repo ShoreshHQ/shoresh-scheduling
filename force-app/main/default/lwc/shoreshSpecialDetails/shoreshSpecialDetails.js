@@ -7,17 +7,25 @@ import { FIELD } from "c/shoreshSchema";
 const DAY = FIELD.SpecialDay;
 const EVENT = FIELD.SpecialEvent;
 const WEEK = FIELD.Week;
-// The weekdays a special day can be put on (SpecialDate__c.Day__c).
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+// The days a special day can be put on (SpecialDate__c.Day__c), Monday first.
+const WEEKDAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
+];
 
-/** The weekdays a week has, from its dates ("2026-06-29" to "2026-07-03"), Monday to Friday. */
+/** The days a week has, from its dates ("2026-06-28" to "2026-07-02"), in date order. */
 export function weekdaysOf(week) {
   const start = week && week[WEEK.StartDate];
   const end = week && week[WEEK.EndDate];
   if (!start || !end) {
     return [];
   }
-  const has = new Set();
+  const days = [];
   const [y, m, d] = start.split("-").map(Number);
   const last = end;
   for (let i = 0; i < 7; i++) {
@@ -26,9 +34,9 @@ export function weekdaysOf(week) {
     if (text > last) {
       break;
     }
-    has.add(WEEKDAYS[(date.getUTCDay() + 6) % 7]);
+    days.push(WEEKDAYS[(date.getUTCDay() + 6) % 7]);
   }
-  return WEEKDAYS.filter((day) => has.has(day));
+  return days;
 }
 // Short day names, as the mock-up writes them ("Wk 5 Thu").
 const SHORT_DAYS = {
@@ -36,7 +44,9 @@ const SHORT_DAYS = {
   Tuesday: "Tue",
   Wednesday: "Wed",
   Thursday: "Thu",
-  Friday: "Fri"
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
 };
 
 /** The season's special items (SpecialItems.Setup), or an empty one. */

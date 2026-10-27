@@ -16,7 +16,7 @@ import {
   electiveWord
 } from "./electives";
 import { LEAVE_OUT } from "./reading";
-import { WEEKDAYS, shortClock } from "./text";
+import { WEEKDAYS, shortClock, weekOrder } from "./text";
 
 function article(word) {
   return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
@@ -30,11 +30,19 @@ function quoted(name) {
   return `“${name}”`;
 }
 
-/** "Monday", "Monday and Wednesday", "Monday, Tuesday, and Friday", "Monday to Friday". */
+/**
+ * "Monday", "Monday and Wednesday", "Monday, Tuesday, and Friday", "Monday to Friday", "Sunday to
+ * Thursday", "every day": in the order the week runs, five or six days in a row as a range.
+ */
 export function dayList(days) {
-  const ordered = WEEKDAYS.filter((d) => days.includes(d));
-  if (ordered.length === 5) {
-    return "Monday to Friday";
+  const ordered = weekOrder(days);
+  if (ordered.length === 7) {
+    return "every day";
+  }
+  const first = WEEKDAYS.indexOf(ordered[0]);
+  const inARow = ordered.every((d, i) => WEEKDAYS[(first + i) % 7] === d);
+  if (ordered.length >= 5 && inARow) {
+    return `${ordered[0]} to ${ordered[ordered.length - 1]}`;
   }
   if (ordered.length <= 2) {
     return ordered.join(" and ");

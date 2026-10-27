@@ -85,6 +85,8 @@ public with sharing class OtherProgramUse {
           Wednesday__c,
           Thursday__c,
           Friday__c,
+          Saturday__c,
+          Sunday__c,
           (
             SELECT Id, StartTime__c, EndTime__c, PartOfDay__c
             FROM TimeBlocks__r
@@ -107,7 +109,9 @@ public with sharing class OtherProgramUse {
               Tuesday__c,
               Wednesday__c,
               Thursday__c,
-              Friday__c
+              Friday__c,
+              Saturday__c,
+              Sunday__c
             FROM RecurringActivities__r
             WHERE Location__c != NULL
             ORDER BY Id

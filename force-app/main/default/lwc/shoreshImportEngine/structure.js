@@ -286,7 +286,7 @@ export function collectGroups(noted, timetableOfPage) {
   });
 }
 
-/** Monday to Friday, in order, that the placements of a timetable fall on. */
+/** The days, Monday first, that the placements of a timetable fall on. */
 export function daysOf(placements) {
   const days = new Set(placements.map((p) => p.day));
   return WEEKDAYS.filter((day) => days.has(day));

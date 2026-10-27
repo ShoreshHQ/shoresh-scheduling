@@ -7,6 +7,8 @@
 import { checkWeek } from "../checks";
 import { buildTerms } from "c/shoreshTerms";
 import { dayName, dayOf } from "./data/checkWeeks";
+import { campFirstDay } from "c/shoreshImportEngine";
+import { FIELD } from "c/shoreshSchema";
 
 const SEEDS = 2000;
 const t = buildTerms([
@@ -18,6 +20,22 @@ const DATES = [
   "2026-07-01",
   "2026-07-02",
   "2026-07-03"
+];
+
+/** Camps' weeks, each in the order it runs (its first day first). */
+const CAMP_WEEKS = [
+  ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+  ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+  ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+];
+const CYCLE = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
 ];
 
 function random(seed) {
@@ -108,9 +126,22 @@ function camp(rnd) {
   if (rnd() < 0.1) {
     days[0] = { ...days[0], problem: "unreadable" };
   }
+  // The camp's days, its first day first. The model's first day is worked out from them as the
+  // app does (campFirstDay on the season setup); early-week goals count from that day.
+  const campDays = CAMP_WEEKS[int(CAMP_WEEKS.length)];
+  const program = {};
+  campDays.forEach((d) => {
+    program[FIELD.Program[d]] = true;
+  });
   return {
     days,
+    campDays,
     model: {
+      firstDay: campFirstDay({
+        programs: [{ program }],
+        // A Saturday: the first day of a camp that runs every day.
+        season: { [FIELD.Season.StartDate]: "2026-06-27" }
+      }),
       activities: new Map(activities.map((a) => [a.id, a])),
       locations,
       divisions,
@@ -161,7 +192,7 @@ function readPlacements(days) {
   return out;
 }
 
-function oracle(days, model) {
+function oracle(days, model, campDays) {
   const all = readPlacements(days);
   const acts = model.activities;
   const placeOf = (p) => {
@@ -388,7 +419,10 @@ function oracle(days, model) {
         });
       }
       const byDay = act.early && act.early.byDay;
-      // The first byDay days of the week's run the group is in (Greg, 2026-10-25).
+      // The first N days of this week's run the group is in, N the goal day's place counted
+      // from the camp's own first day (Greg, 2026-10-25; ADR 0022).
+      const from = CYCLE.indexOf(campDays[0]);
+      const n = byDay ? ((CYCLE.indexOf(NAMES[byDay]) - from + 7) % 7) + 1 : 0;
       const firstDays = new Set(
         days
           .filter(
@@ -397,7 +431,7 @@ function oracle(days, model) {
           )
           .map((day) => day.dateValue)
           .sort()
-          .slice(0, byDay || 0)
+          .slice(0, n)
       );
       if (byDay && firstDays.size) {
         const early = mine.filter((q) =>
@@ -475,9 +509,9 @@ describe("checks over generated weeks", () => {
       seen[r] = 0;
     });
     for (let seed = 1; seed <= SEEDS; seed++) {
-      const { days, model } = camp(random(seed));
+      const { days, model, campDays } = camp(random(seed));
       const got = checkWeek(days, model, { t, dayName });
-      const want = oracle(days, model);
+      const want = oracle(days, model, campDays);
       const gotFlags = JSON.stringify([...got.flags].sort());
       const wantFlags = JSON.stringify([...want.flags].sort());
       if (gotFlags !== wantFlags) {

@@ -13,7 +13,9 @@ public with sharing class SetTimePlan {
     'Tuesday',
     'Wednesday',
     'Thursday',
-    'Friday'
+    'Friday',
+    'Saturday',
+    'Sunday'
   };
   // The field for each day, on the objects that have days (a program, a recurring activity).
   private static final Map<Schema.SObjectType, Map<String, Schema.SObjectField>> DAY_FIELDS = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>{
@@ -22,14 +24,18 @@ public with sharing class SetTimePlan {
       'Tuesday' => Program__c.Tuesday__c,
       'Wednesday' => Program__c.Wednesday__c,
       'Thursday' => Program__c.Thursday__c,
-      'Friday' => Program__c.Friday__c
+      'Friday' => Program__c.Friday__c,
+      'Saturday' => Program__c.Saturday__c,
+      'Sunday' => Program__c.Sunday__c
     },
     RecurringActivity__c.SObjectType => new Map<String, Schema.SObjectField>{
       'Monday' => RecurringActivity__c.Monday__c,
       'Tuesday' => RecurringActivity__c.Tuesday__c,
       'Wednesday' => RecurringActivity__c.Wednesday__c,
       'Thursday' => RecurringActivity__c.Thursday__c,
-      'Friday' => RecurringActivity__c.Friday__c
+      'Friday' => RecurringActivity__c.Friday__c,
+      'Saturday' => RecurringActivity__c.Saturday__c,
+      'Sunday' => RecurringActivity__c.Sunday__c
     }
   };
   private static Map<Schema.SObjectType, ItemFields> itemFields;

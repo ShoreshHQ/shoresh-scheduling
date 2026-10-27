@@ -7,7 +7,13 @@
  * see NOTICE): a text cell that starts with = + - @ or a tab or line break is written with an
  * apostrophe in front, and the apostrophe is taken off again when the file is read back.
  */
-import { WEEKDAYS, dayOf, tidy, timeRange } from "c/shoreshImportEngine";
+import {
+  MONDAY_TO_FRIDAY,
+  WEEKDAYS,
+  dayOf,
+  tidy,
+  timeRange
+} from "c/shoreshImportEngine";
 
 const FORMULA_START = /^[=+\-@\t\r\n]/;
 
@@ -129,25 +135,27 @@ function early(text) {
       problem: `${quoted(text)} isn't like "2 by Wednesday"`
     };
   }
-  if (!WEEKDAYS.includes(day)) {
-    return { problem: `${day} isn't a camp day` };
-  }
   const count = whole(match[1], 1);
   return count.problem ? count : { value: { count: count.value, day } };
 }
 
-const EVERY_DAY = new Set([
+const WEEKDAY_WORDS = new Set([
   "weekdays",
-  "every day",
   "every weekday",
-  "everyday",
-  "daily",
-  "all",
-  "all week",
   "mon-fri",
   "monday-friday",
   "monday to friday"
 ]);
+// Every day of the week: for a recurring activity, every day its program runs (scope.js).
+const EVERY_DAY = new Set([
+  "every day",
+  "everyday",
+  "daily",
+  "all",
+  "all week"
+]);
+// A range this long is a camp's week ("M-F", "Sun-Thu"), never just its two ends.
+const WEEK_LONG = 5;
 
 /** Day letters, read only in a days cell: M, Tu, W, Th, F. A lone T is asked (TUE_OR_THU). */
 const LETTERS = {
@@ -209,18 +217,23 @@ const RANGE_WORD = "\uE000";
 const SEPARATOR = new Set(["-", RANGE_WORD]);
 
 /**
- * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon thru Fri", "M-F",
- * "Tue/Thu", "MWF", "Mon Wed Fri", "Mondays and Fridays", "weekdays".
+ * Days a cell names, Monday first: "Monday, Wednesday", "Mon thru Fri", "M-F", "Sun-Thu",
+ * "Tue/Thu", "MWF", "Mon Wed Fri", "Mondays and Fridays", "Sat/Sun", "weekdays" (Monday to
+ * Friday), "every day" (all seven).
  * - A lone T is Tuesday when the cell writes Thursday another way ("T/Th"), Thursday when it
  *   writes Tuesday another way, and otherwise asked ({ ask: "t" }) until said.t says.
  * - Two or more dashes are a list ("Mon-Wed-Fri"). One dash is a range when its days are next
- *   to each other or span the week ("Mon-Tue", "M-F"); otherwise asked ({ ask: "dash", from,
- *   to }) until said.dash is "range" or "list". "thru", "through", "to" are always ranges.
- * Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
+ *   to each other or span a week of five days or more ("Mon-Tue", "M-F", "Sun-Thu"); otherwise
+ *   asked ({ ask: "dash", from, to }) until said.dash is "range" or "list". "thru", "through",
+ *   "to" are always ranges. A range may run over the weekend ("Fri-Mon").
  */
 export function days(written, said = {}) {
   const text = plainDashes(written);
-  if (EVERY_DAY.has(text.toLowerCase().replace(/\s*-\s*/g, "-"))) {
+  const asWords = text.toLowerCase().replace(/\s*-\s*/g, "-");
+  if (WEEKDAY_WORDS.has(asWords)) {
+    return { value: [...MONDAY_TO_FRIDAY] };
+  }
+  if (EVERY_DAY.has(asWords)) {
     return { value: [...WEEKDAYS] };
   }
   const parts = [];
@@ -239,12 +252,6 @@ export function days(written, said = {}) {
     parts.push({ part, read, raw: words });
   }
   const all = parts.flatMap((p) => p.read).flat();
-  const weekend = all.find(
-    (d) => !SEPARATOR.has(d) && d !== TUE_OR_THU && !WEEKDAYS.includes(d)
-  );
-  if (weekend) {
-    return { problem: `${weekend} isn't a camp day` };
-  }
   // Each lone T in turn: two are Tuesday then Thursday ("MTWTF"); one follows the day the cell
   // writes another way, else the answer.
   const lone = all.filter((d) => d === TUE_OR_THU).length;
@@ -306,7 +313,10 @@ function readPart(part, words, raw, said) {
   if (seps.length >= 2 && seps.every((w) => w === "-")) {
     // "Mon-Wed-Fri": a list, in order.
     const listed = words.filter((w) => !SEPARATOR.has(w)).flat();
-    const index = listed.map((d) => WEEKDAYS.indexOf(d));
+    // Counted from the first day listed, so "Sun-Tue-Thu" runs forwards.
+    const index = listed.map(
+      (d) => (WEEKDAYS.indexOf(d) - WEEKDAYS.indexOf(listed[0]) + 7) % 7
+    );
     if (index.some((x, i) => i && x < index[i - 1])) {
       return { problem: `"${part}" goes backwards` };
     }
@@ -322,16 +332,15 @@ function readPart(part, words, raw, said) {
     const after = words[i + 1];
     const from = WEEKDAYS.indexOf(before[before.length - 1]);
     const to = WEEKDAYS.indexOf(after[0]);
-    if (to < from) {
-      return { problem: `"${part}" goes backwards` };
-    }
-    // Sure only when the days are next to each other or span the week; run-together letters
+    // A range can run over the weekend: "Sun-Thu", "Fri-Mon".
+    const span = ((to - from + 7) % 7) + 1;
+    // Sure only when the days are next to each other or span a week; run-together letters
     // ("MW-F") are no surer than single days.
     const ambiguous =
       words[i] === "-" &&
       TWO_DAY_DASH === "ask" &&
-      to - from > 1 &&
-      !(from === 0 && to === WEEKDAYS.length - 1);
+      span > 2 &&
+      span < WEEK_LONG;
     const dash = `${raw[i - 1]}-${raw[i + 1]}`;
     const answer = (said.dashes || {})[dashKeyOf(dash)];
     if (ambiguous && answer === "list") {
@@ -340,7 +349,9 @@ function readPart(part, words, raw, said) {
     if (ambiguous && answer !== "range") {
       unsure.push({ text: dash, from: WEEKDAYS[from], to: WEEKDAYS[to] });
     }
-    picked.push(...WEEKDAYS.slice(from, to + 1));
+    for (let d = 0; d < span; d++) {
+      picked.push(WEEKDAYS[(from + d) % 7]);
+    }
   }
   return { picked, unsure };
 }

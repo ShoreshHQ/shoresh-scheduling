@@ -246,7 +246,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       record; an elective, special day, special event, or trip as written, with no record (shown
       as "not set up yet" on the schedule page, ADR 0005); a two-block placement as `^` below it.
     - **Placements that cannot be placed are listed, never dropped** (Greg): on Saturday or
-      Sunday, a group, time block, program, or name left out, a day the program does not run, a
+      Sunday (until ADR 0022: now a day like any other), a group, time block, program, or name left out, a day the program does not run, a
       week not chosen or missing, a day the season's week does not have, or two things in one
       cell. The summary lists them by name, with how many, why, and up to three examples.
 18. **Undo last import** (Greg): on the import summary ("Undo this import") and on Roots ("Last

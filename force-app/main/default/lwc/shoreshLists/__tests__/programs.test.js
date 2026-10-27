@@ -87,7 +87,7 @@ function read(screenKey, rows, answers = {}, s = setup()) {
 const row = (p, name) => p.rows.find((r) => r.name === name);
 
 describe("program days", () => {
-  it("adds a program, compares days, and can't read Saturday", () => {
+  it("adds a program, compares days, and reads a weekend-only program", () => {
     const p = read("programs", [
       ["Program", "Runs on"],
       ["Main", "Mon-Fri"],
@@ -101,9 +101,7 @@ describe("program days", () => {
       ]
     ]);
     expect(row(p, "Teens").status).toBe("new");
-    expect(row(p, "Weekend").problems).toEqual([
-      "Runs on: Saturday isn't a camp day"
-    ]);
+    expect(row(p, "Weekend").problems).toEqual([]);
     const plan = listPlan(p, {}, "s1", "f");
     expect(plan.records).toEqual([
       {
@@ -115,7 +113,24 @@ describe("program days", () => {
           Tuesday__c: false,
           Wednesday__c: true,
           Thursday__c: false,
-          Friday__c: false
+          Friday__c: false,
+          Saturday__c: false,
+          Sunday__c: false
+        },
+        refs: {}
+      },
+      {
+        kind: "Program",
+        key: "Program:Weekend",
+        fields: {
+          Name: "Weekend",
+          Monday__c: false,
+          Tuesday__c: false,
+          Wednesday__c: false,
+          Thursday__c: false,
+          Friday__c: false,
+          Saturday__c: true,
+          Sunday__c: false
         },
         refs: {}
       }
@@ -451,7 +466,9 @@ describe("fixed and recurring activities", () => {
           Tuesday__c: true,
           Wednesday__c: true,
           Thursday__c: true,
-          Friday__c: true
+          Friday__c: true,
+          Saturday__c: false,
+          Sunday__c: false
         }
       },
       {
@@ -462,7 +479,9 @@ describe("fixed and recurring activities", () => {
           Tuesday__c: false,
           Wednesday__c: false,
           Thursday__c: false,
-          Friday__c: true
+          Friday__c: true,
+          Saturday__c: false,
+          Sunday__c: false
         },
         refs: {},
         who: ["d2"]
@@ -649,7 +668,7 @@ describe("the walkthrough's sample lists for a program (docs/samples/lists)", ()
     expect(statuses(p)).toEqual([
       ["Main", "unchanged"],
       ["Teens", "new"],
-      ["Weekend", "unreadable"]
+      ["Weekend", "new"]
     ]);
   });
 
@@ -702,10 +721,11 @@ describe("the walkthrough's sample lists for a program (docs/samples/lists)", ()
     expect(statuses(p)).toEqual([
       ["Morning meeting", "changed"],
       ["Rest hour", "asked"],
-      ["Campfire", "unreadable"]
+      ["Campfire", "asked"]
     ]);
     expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
-      "“Middlers” is new in Main. What is it?"
+      "“Middlers” is new in Main. What is it?",
+      "Main doesn't run on Saturday: Campfire"
     ]);
   });
 });

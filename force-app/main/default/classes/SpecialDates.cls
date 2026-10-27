@@ -24,7 +24,7 @@ public with sharing class SpecialDates {
   /** The season's special days and events on days, by week start then weekday. */
   public static List<Placement> forSeason(Id seasonId) {
     List<Placement> result = new List<Placement>();
-    // A picklist sorts in its own order (Monday to Friday); a day's special day comes first.
+    // A picklist sorts in its own order (Monday to Sunday); a day's special day comes first.
     for (SpecialDate__c row : [
       SELECT
         Id,
