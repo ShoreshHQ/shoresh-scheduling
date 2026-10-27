@@ -286,6 +286,26 @@ private class LinkedChoicesTest {
   }
 
   @IsTest
+  static void aLinkedChoiceCanSpanTheWeekend() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      LinkedChoiceSaves.Edit edit = new LinkedChoiceSaves.Edit();
+      edit.offeringId = menu.dramaId;
+      edit.name = 'Drama weekend';
+      edit.periodsOn.add(menu.period('Saturday', 'Period 1'));
+      edit.periodsOn.add(menu.period('Sunday', 'Period 1'));
+      Test.startTest();
+      Id choiceId = save(edit);
+      Test.stopTest();
+      List<String> days = new List<String>();
+      for (LinkedChoiceTime__c at : saved(choiceId).Times__r) {
+        days.add(at.Weekday__c);
+      }
+      Assert.areEqual(new List<String>{ 'Saturday', 'Sunday' }, days);
+    }
+  }
+
+  @IsTest
   static void whatCantBeSavedIsRefusedAndNothingIsWritten() {
     System.runAs(ShoreshTestData.scheduler()) {
       Menu menu = new Menu();
@@ -299,13 +319,14 @@ private class LinkedChoicesTest {
         refusalOf(blank)
       );
 
-      LinkedChoiceSaves.Edit weekend = new LinkedChoiceSaves.Edit();
-      weekend.offeringId = menu.dramaId;
-      weekend.name = 'Drama';
-      weekend.periodsOn.add(menu.period('Saturday', 'Period 1'));
+      // Saturday is a day like any other (ADR 0022); a day that isn't one is refused.
+      LinkedChoiceSaves.Edit funday = new LinkedChoiceSaves.Edit();
+      funday.offeringId = menu.dramaId;
+      funday.name = 'Drama';
+      funday.periodsOn.add(menu.period('Funday', 'Period 1'));
       Assert.areEqual(
         'That period could not be sent. Try again.',
-        refusalOf(weekend)
+        refusalOf(funday)
       );
 
       LinkedChoiceSaves.Edit nothing = new LinkedChoiceSaves.Edit();

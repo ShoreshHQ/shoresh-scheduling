@@ -18,14 +18,15 @@ public with sharing class ImportWorkbookExtras {
   /**
    * The season's weeks filled from its dates, as "Fill in weeks" makes them (SeasonWeeks), for
    * another season's workbook to pair with (coordinator, following Greg's "copy the weeks,
-   * update the dates"): entries [{ start, name }] in order, as the preview showed them. Added
-   * like any week the import adds, so Undo removes them unless used or edited since.
+   * update the dates"): entries [{ start, name, days }] in order, as the preview showed them,
+   * days the week's shape ("Sunday+Monday+..."; the programs' days when blank). Added like any
+   * week the import adds, so Undo removes them unless used or edited since.
    */
   public void fillWeeks(List<ImportPlan.Entry> entries) {
     if (entries.isEmpty()) {
       return;
     }
-    List<Week__c> weeks = weeksToFill();
+    List<Week__c> weeks = weeksToFill(daysOf(entries[0]));
     if (weeks.size() != entries.size()) {
       throw datesChanged();
     }
@@ -45,7 +46,7 @@ public with sharing class ImportWorkbookExtras {
    * The weeks "Fill in weeks" would add now. Weeks added since the preview are said plainly
    * (not "add one at a time"); dates changed since are said as such.
    */
-  private List<Week__c> weeksToFill() {
+  private List<Week__c> weeksToFill(Set<String> days) {
     if (
       [SELECT COUNT() FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE] >
       0
@@ -57,10 +58,23 @@ public with sharing class ImportWorkbookExtras {
       );
     }
     try {
-      return SeasonWeeks.toFill(seasonId);
+      return SeasonWeeks.toFill(seasonId, days);
     } catch (SeasonWeeks.WeeksException e) {
       throw datesChanged();
     }
+  }
+
+  /** The days a filled week runs ("Sunday+Monday"), only days Shoresh plans; null when none. */
+  private static Set<String> daysOf(ImportPlan.Entry entry) {
+    String text = entry.text('days');
+    if (String.isBlank(text)) {
+      return null;
+    }
+    Set<String> days = new Set<String>(text.split('\\+'));
+    if (!new Set<String>(SetTimePlan.WEEKDAYS).containsAll(days)) {
+      throw ImportListSaves.unreadable();
+    }
+    return days;
   }
 
   private ShoreshException datesChanged() {

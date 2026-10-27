@@ -45,6 +45,8 @@ public with sharing class SetTimePlanReader {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         (SELECT Week__c FROM WeekExceptions__r),
         (SELECT Division__c, Group__c FROM Coverages__r)
       FROM RecurringActivity__c
@@ -144,6 +146,8 @@ public with sharing class SetTimePlanReader {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         (
           SELECT Id, Name, StartTime__c, EndTime__c, PartOfDay__c
           FROM TimeBlocks__r

@@ -16,6 +16,9 @@ import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { nsRecord } from "shoresh-jest/namespace";
 import { withRecords } from "../workbook";
 
+// The weeks filled in run as the season's programs do: Monday to Friday here.
+const MON_FRI = "Monday+Tuesday+Wednesday+Thursday+Friday";
+
 function file(sheets) {
   const wb = XLSX.utils.book_new();
   sheets.forEach(({ name, rows }) =>
@@ -704,9 +707,9 @@ describe("coordinator's review of PR D", () => {
     expect(lists.untouched).toEqual([]);
     const plan = workbookPlan(p, {});
     expect(plan.fillWeeks).toEqual([
-      { start: "2028-06-26", name: "Week 1" },
-      { start: "2028-07-03", name: "Week 2" },
-      { start: "2028-07-10", name: "Week 3" }
+      { start: "2028-06-26", name: "Week 1", days: MON_FRI },
+      { start: "2028-07-03", name: "Week 2", days: MON_FRI },
+      { start: "2028-07-10", name: "Week 3", days: MON_FRI }
     ]);
     expect(plan.records.filter((r) => r.kind === "Week")).toEqual([]);
     expect(linksResolve(plan)).toEqual([]);
@@ -736,7 +739,8 @@ describe("coordinator's review of PR D", () => {
     const p = propose(s, file(sheets), answers);
     expect(workbookPlan(p, answers).fillWeeks[0]).toEqual({
       start: "2028-06-26",
-      name: "Opening week"
+      name: "Opening week",
+      days: MON_FRI
     });
     expect(p.weeks.lists[0].lines[0].pairing).toBe(
       "Opening week (Jun 26 2028)"

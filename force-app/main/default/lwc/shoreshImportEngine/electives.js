@@ -41,7 +41,9 @@ const SHORT_DAYS = {
   Tuesday: "Tue",
   Wednesday: "Wed",
   Thursday: "Thu",
-  Friday: "Fri"
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
 };
 
 function byText(a, b) {

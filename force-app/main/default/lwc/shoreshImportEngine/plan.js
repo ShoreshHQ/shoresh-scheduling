@@ -271,7 +271,8 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
     // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
     fillWeeks: (proposal.fillWeeks || []).map((w) => ({
       start: w[FIELD.Week.StartDate],
-      name: w.Name
+      name: w.Name,
+      days: w.days.join("+")
     })),
     versions: proposal.versions.map((v) => ({
       programKey: v.programKey,
@@ -477,7 +478,6 @@ const UNPLACED_WHY = {
   groupLeftOut: (t) => `its ${t.sIn("Group")} is left out`,
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,
   dayNotRun: (t) => `its ${t.sIn("Program")} does not run that day`,
-  weekend: () => "Shoresh plans Monday to Friday",
   dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
   noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
@@ -532,12 +532,6 @@ export function importNotes(proposal, t) {
         text: `${p.file}, ${p.sheet}: it does not say which day it is, so nothing was read from it. Put the day in the sheet's name or title.`
       })
     );
-  if (r.weekend.length) {
-    notes.push({
-      key: "weekend",
-      text: `${r.weekend.length} placements on Saturday or Sunday are left out: Shoresh plans Monday to Friday.`
-    });
-  }
   for (const x of usedTimetables(proposal)) {
     x.blocks
       .filter((b) => b.untimed)

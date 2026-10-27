@@ -71,10 +71,18 @@ function weekProblems(setup, terms) {
   return problems;
 }
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const WEEKDAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
+];
 const MS_PER_MINUTE = 60000;
 
-/** The weekdays (Monday to Friday) a week's dates include. */
+/** The days a week's dates include. */
 function weekdaysIn(week) {
   const start = week[WEEK.StartDate];
   const end = week[WEEK.EndDate];
@@ -659,10 +667,8 @@ export function rainPlanChoices(activities, held) {
     .map(rainPlanOption);
 }
 
-const RUN_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
 function runsOnADay(program) {
-  return RUN_DAYS.some((day) => program[FIELD.Program[day]]);
+  return WEEKDAYS.some((day) => program[FIELD.Program[day]]);
 }
 
 /**

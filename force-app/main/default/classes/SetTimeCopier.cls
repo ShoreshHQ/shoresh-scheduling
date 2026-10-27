@@ -47,6 +47,8 @@ public with sharing class SetTimeCopier {
         Wednesday__c,
         Thursday__c,
         Friday__c,
+        Saturday__c,
+        Sunday__c,
         SortOrder__c
       FROM RecurringActivity__c
       WHERE Program__r.Season__c = :sourceSeasonId

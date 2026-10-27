@@ -43,7 +43,7 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
    "Week 2" already has the special day "Field Day". Take it off first, or choose another day.").
    Asking before replacing one comes with the screens (slice 4).
 4. **Put on a week and a weekday, not a date.** `SpecialDate__c` has `Week__c` (required,
-   restrict-delete) and `Day__c` (Monday to Friday, the days a program can run), as the desktop
+   restrict-delete) and `Day__c` (Monday to Friday, the days a program can run; Saturday and Sunday too since ADR 0022), as the desktop
    binds to (week, day). A week whose dates are moved keeps its special days on the same
    weekdays. `SpecialDates.dateOf` gives the date in the week today; a weekday the week no longer
    has is refused on save ("Short week" has no Monday.) and, after a move, is null (shown under

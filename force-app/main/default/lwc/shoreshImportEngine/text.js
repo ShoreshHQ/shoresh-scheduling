@@ -8,14 +8,18 @@
  * (day abbreviations). See the NOTICE file at the repository root.
  */
 
+// Every day Shoresh plans, Monday first: the order keys and saved records use.
 export const WEEKDAYS = [
   "Monday",
   "Tuesday",
   "Wednesday",
   "Thursday",
-  "Friday"
+  "Friday",
+  "Saturday",
+  "Sunday"
 ];
-const ALL_DAYS = ["Sunday", ...WEEKDAYS, "Saturday"];
+// Monday to Friday: the days a camp runs when nothing says otherwise.
+export const MONDAY_TO_FRIDAY = WEEKDAYS.slice(0, 5);
 const DAY_ALIASES = {
   weds: "Wednesday",
   tues: "Tuesday",
@@ -52,7 +56,37 @@ export function dayOf(text) {
   if (word.length < 3) {
     return null;
   }
-  return ALL_DAYS.find((day) => day.toLowerCase().startsWith(word)) || null;
+  return WEEKDAYS.find((day) => day.toLowerCase().startsWith(word)) || null;
+}
+
+/**
+ * Where a week of these days starts (0 = Monday ... 6 = Sunday): the first day after the longest
+ * run of days off, so Sunday to Thursday starts on Sunday. Every day of the week: allDays.
+ * WeekCalendar.firstDayOf does the same for the save.
+ */
+export function firstDayOf(days, allDays = 0) {
+  const on = WEEKDAYS.map((d) => days.includes(d));
+  let best = -1;
+  let longest = 0;
+  for (let i = 0; i < 7; i++) {
+    let gap = 0;
+    while (gap < 7 && on[i] && !on[(i + 6 - gap) % 7]) {
+      gap++;
+    }
+    if (gap > longest) {
+      best = i;
+      longest = gap;
+    }
+  }
+  return best < 0 ? allDays : best;
+}
+
+/** The days in the order a week of them runs: Sunday first for Sunday to Thursday. */
+export function weekOrder(days) {
+  const first = firstDayOf(days);
+  return [...WEEKDAYS.slice(first), ...WEEKDAYS.slice(0, first)].filter((d) =>
+    days.includes(d)
+  );
 }
 
 /** The first day a title names among its words ("Monday - All Camp", "Week 2 Tue"), or null. */

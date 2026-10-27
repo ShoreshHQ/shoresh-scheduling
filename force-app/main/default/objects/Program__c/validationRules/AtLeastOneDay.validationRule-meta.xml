@@ -2,8 +2,9 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>AtLeastOneDay</fullName>
     <active>true</active>
-    <description>A program runs on at least one weekday.</description>
+    <description>A program runs on at least one day of the week.</description>
     <errorConditionFormula
-  >NOT(Monday__c || Tuesday__c || Wednesday__c || Thursday__c || Friday__c)</errorConditionFormula>
+  >NOT(Monday__c || Tuesday__c || Wednesday__c || Thursday__c || Friday__c ||
+  Saturday__c || Sunday__c)</errorConditionFormula>
     <errorMessage>Choose at least one day it runs.</errorMessage>
 </ValidationRule>

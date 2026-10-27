@@ -500,7 +500,17 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Program__c.Saturday__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Program__c.SortOrder__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Program__c.Sunday__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -550,7 +560,17 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RecurringActivity__c.Saturday__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RecurringActivity__c.SortOrder__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RecurringActivity__c.Sunday__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

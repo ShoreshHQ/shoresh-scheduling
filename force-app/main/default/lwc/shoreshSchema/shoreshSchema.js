@@ -166,8 +166,10 @@ import programObject from "@salesforce/schema/Program__c";
 import programCopiedFrom from "@salesforce/schema/Program__c.CopiedFrom__c";
 import programFriday from "@salesforce/schema/Program__c.Friday__c";
 import programMonday from "@salesforce/schema/Program__c.Monday__c";
+import programSaturday from "@salesforce/schema/Program__c.Saturday__c";
 import programSeason from "@salesforce/schema/Program__c.Season__c";
 import programSortOrder from "@salesforce/schema/Program__c.SortOrder__c";
+import programSunday from "@salesforce/schema/Program__c.Sunday__c";
 import programThursday from "@salesforce/schema/Program__c.Thursday__c";
 import programTuesday from "@salesforce/schema/Program__c.Tuesday__c";
 import programWednesday from "@salesforce/schema/Program__c.Wednesday__c";
@@ -189,7 +191,9 @@ import recurringActivityLength from "@salesforce/schema/RecurringActivity__c.Len
 import recurringActivityLocation from "@salesforce/schema/RecurringActivity__c.Location__c";
 import recurringActivityMonday from "@salesforce/schema/RecurringActivity__c.Monday__c";
 import recurringActivityProgram from "@salesforce/schema/RecurringActivity__c.Program__c";
+import recurringActivitySaturday from "@salesforce/schema/RecurringActivity__c.Saturday__c";
 import recurringActivitySortOrder from "@salesforce/schema/RecurringActivity__c.SortOrder__c";
+import recurringActivitySunday from "@salesforce/schema/RecurringActivity__c.Sunday__c";
 import recurringActivityThursday from "@salesforce/schema/RecurringActivity__c.Thursday__c";
 import recurringActivityTimeBlock from "@salesforce/schema/RecurringActivity__c.TimeBlock__c";
 import recurringActivityTuesday from "@salesforce/schema/RecurringActivity__c.Tuesday__c";
@@ -490,8 +494,10 @@ export const FIELD = Object.freeze({
     CopiedFrom: programCopiedFrom.fieldApiName,
     Friday: programFriday.fieldApiName,
     Monday: programMonday.fieldApiName,
+    Saturday: programSaturday.fieldApiName,
     Season: programSeason.fieldApiName,
     SortOrder: programSortOrder.fieldApiName,
+    Sunday: programSunday.fieldApiName,
     Thursday: programThursday.fieldApiName,
     Tuesday: programTuesday.fieldApiName,
     Wednesday: programWednesday.fieldApiName
@@ -515,7 +521,9 @@ export const FIELD = Object.freeze({
     Location: recurringActivityLocation.fieldApiName,
     Monday: recurringActivityMonday.fieldApiName,
     Program: recurringActivityProgram.fieldApiName,
+    Saturday: recurringActivitySaturday.fieldApiName,
     SortOrder: recurringActivitySortOrder.fieldApiName,
+    Sunday: recurringActivitySunday.fieldApiName,
     Thursday: recurringActivityThursday.fieldApiName,
     TimeBlock: recurringActivityTimeBlock.fieldApiName,
     Tuesday: recurringActivityTuesday.fieldApiName,

@@ -213,6 +213,9 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   const setupNotes = setupBlank.map((b) => blankSetupNote(b.field, b.name, t));
   const model = {
     days,
+    // The camp's normal first day of the week (1 Monday ... 7 Sunday): an early-week goal's
+    // days are counted from it.
+    firstDay: input.firstDay || 1,
     groups,
     groupIds: groupOrder(groups, days),
     acts: activities.running,
@@ -468,6 +471,9 @@ export function checkGeneratedWeek(input) {
   const days = readDays(checkedDays, readPartsOfDay(input.timeBlocks));
   const model = {
     days,
+    // The camp's normal first day of the week (1 Monday ... 7 Sunday): an early-week goal's
+    // days are counted from it.
+    firstDay: input.firstDay || 1,
     groups,
     groupIds: groupOrder(groups, days),
     acts: activities.running,
@@ -648,7 +654,8 @@ export function checkModel(input, model, state) {
         `${id}|${d}|${blockId}`
       ) || 0,
     otherNamesAt: (locationId, d, blockId) =>
-      model.otherPlaceNames.get(`${locationId}|${d}|${blockId}`) || []
+      model.otherPlaceNames.get(`${locationId}|${d}|${blockId}`) || [],
+    firstDay: model.firstDay
   };
 }
 

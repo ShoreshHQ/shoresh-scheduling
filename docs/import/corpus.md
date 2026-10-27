@@ -53,6 +53,9 @@ When a change improves them, lower the ceiling in that test and update the basel
 
 ## Baseline (2026-10-27, all 320 camps)
 
+After weekends (ADR 0022): read perfectly 318 of 320, questions 0; the 2 left are the by-activity
+camps below (groups 33, fixed 2, activities 31, cells 801). First baseline, before weekends:
+
 Read perfectly: 254 of 320. Questions: 0. Camps with any wrong read: 66.
 
 | Wrong read                             | Total | Camps |
