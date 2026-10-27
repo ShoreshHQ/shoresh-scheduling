@@ -134,7 +134,7 @@
                   <template lwc:if={card.answered}>
                     <span class="card-done">✓ {card.answerLabel}</span>
                     <template lwc:if={card.fromMemory}>
-                      <span class="list-tag">Remembered</span>
+                      <span class="list-tag">{card.memoryNote}</span>
                     </template>
                     <span class="import-quiet">{card.title}</span>
                     <button

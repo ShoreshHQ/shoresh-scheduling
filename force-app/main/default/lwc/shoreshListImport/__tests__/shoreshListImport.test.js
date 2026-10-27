@@ -251,6 +251,35 @@ describe("c-shoresh-list-import", () => {
     }
   });
 
+  it("a column remembered from before says whose answer it was and when", async () => {
+    getAnswers.mockResolvedValue([
+      {
+        key: "columns|activities|colour",
+        answer: "unused",
+        byYou: false,
+        byName: "Dana Levi",
+        answeredOn: "2026-07-03"
+      },
+      {
+        key: "columns|activities|notes",
+        answer: "unused",
+        byYou: false,
+        byName: null,
+        answeredOn: "2026-08-14"
+      }
+    ]);
+    const element = await openWith(
+      ["Activity,Notes,Colour", "Archery,,red"].join("\n")
+    );
+    $(element, 'button[data-id="columns"]').click();
+    await flush();
+    expect($$(element, ".list-heading").map((h) => h.textContent)).toEqual([
+      "“Activity”",
+      "“Notes”Remembered from a former user's answer on 14 Aug",
+      "“Colour”Remembered from Dana's answer on 3 Jul"
+    ]);
+  });
+
   it("shows the columns, what is new, what differs, and waits for Keep or Change", async () => {
     const element = await openWith(
       [

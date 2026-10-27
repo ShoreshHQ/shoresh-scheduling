@@ -544,13 +544,21 @@ describe("c-shoresh-import", () => {
     it("answers from an earlier import are filled in, marked remembered, and can be changed", async () => {
       getAnswers.mockResolvedValue([
         { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
-        { key: "kind|Library time", answer: "recurring" }
+        {
+          key: "kind|Library time",
+          answer: "recurring",
+          byYou: true,
+          byName: "Greg",
+          answeredOn: "2026-07-03"
+        }
       ]);
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
       const library = $(element, '[data-card="kind|Library time"]');
-      expect(library.textContent).toContain("Remembered");
+      expect(library.querySelector(".tag").textContent).toBe(
+        "Remembered from your answer on 3 Jul"
+      );
       expect(library.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
       await answer(element, "kind|Library time", "activity");
@@ -562,7 +570,15 @@ describe("c-shoresh-import", () => {
     });
 
     it("a place ticked at an earlier import is ticked again and marked remembered", async () => {
-      getAnswers.mockResolvedValue([{ key: "place|Pool", answer: "add" }]);
+      getAnswers.mockResolvedValue([
+        {
+          key: "place|Pool",
+          answer: "add",
+          byYou: false,
+          byName: "",
+          answeredOn: "2026-10-26"
+        }
+      ]);
       const element = await renderWith(WITH_WEEK);
       const rows = [
         "Time,Bunk 1,Bunk 2",
@@ -575,7 +591,9 @@ describe("c-shoresh-import", () => {
       });
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
-      expect(pool.textContent).toContain("Remembered");
+      expect(pool.querySelector(".tag").textContent).toBe(
+        "Remembered from a former user's answer on 26 Oct"
+      );
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);
       expect(artRoom.textContent).not.toContain("Remembered");

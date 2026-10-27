@@ -159,6 +159,19 @@ describe("who, when, groups and search", () => {
     expect(shortDate("bad")).toBe("");
   });
 
+  it("says a former user when whoever answered is no longer here", () => {
+    const former = { byYou: false, byName: null };
+    expect(row("kind|Lunch", "fixed", former).who).toBe(
+      "Answered by a former user on 3 Jul"
+    );
+    expect(row("deleted|Activity||Riflery", "deleted", former).who).toBe(
+      "Deleted by a former user on 3 Jul"
+    );
+    expect(row("guessed|a0S|Activity||Archery|often", "3", former).who).toBe(
+      "Guessed in an import by a former user on 3 Jul"
+    );
+  });
+
   it("orders groups as the desktop does, rows newest first", () => {
     const rows = [
       row("deleted|Activity||A", "deleted"),

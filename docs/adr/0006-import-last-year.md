@@ -288,7 +288,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     program's name), so they still work after a season is copied. The save remembers every answer
     given and forgets any answered "Leave it out for now" (the next import asks again). The next
     import fills in remembered answers; their cards (and ticked places) show "remembered" and can
-    be changed. One
+    be changed (since ADR 0021 choice 9 with who and when: "Remembered from your answer on 3 Jul";
+    a different answer replaces the record, so its Created By and date stay true). One
     answer per camp and question (`Key__c`, unique: the camp and a SHA-256 digest of the key; the
     full key is in `QuestionKey__c`).
 

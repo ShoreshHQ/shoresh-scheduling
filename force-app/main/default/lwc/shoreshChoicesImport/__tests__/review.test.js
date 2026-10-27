@@ -193,15 +193,35 @@ describe("card 2: what needs a person", () => {
     const answers = rememberedAnswers(
       reading().newNames,
       [
-        { key: "choiceName|potterywheel", answer: "same|Pottery" },
-        { key: "choiceName|photoclub", answer: "leave" },
+        {
+          key: "choiceName|potterywheel",
+          answer: "same|Pottery",
+          byYou: false,
+          byName: "Dana",
+          answeredOn: "2026-07-03"
+        },
+        {
+          key: "choiceName|photoclub",
+          answer: "leave",
+          byYou: true,
+          answeredOn: "2026-10-26"
+        },
         { key: "choiceName|other", answer: "same|Gone" }
       ],
       ACTIVITIES
     );
     expect(answers).toEqual({
-      potterywheel: { kind: "same", activityId: "a3", remembered: true },
-      photoclub: { kind: "leave", remembered: true }
+      potterywheel: {
+        kind: "same",
+        activityId: "a3",
+        remembered: true,
+        note: "Remembered from Dana's answer on 3 Jul"
+      },
+      photoclub: {
+        kind: "leave",
+        remembered: true,
+        note: "Remembered from your answer on 26 Oct"
+      }
     });
     expect(
       rememberedAnswers(

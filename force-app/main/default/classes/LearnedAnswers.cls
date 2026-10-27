@@ -23,10 +23,10 @@ public with sharing class LearnedAnswers {
     /** The person reading is who answered it. */
     @AuraEnabled
     public Boolean byYou;
-    /** Who answered it: their first name (else their name). */
+    /** Who answered it: their first name (else their name); none for a former user. */
     @AuraEnabled
     public String byName;
-    /** When, as a date in the reader's own time zone. */
+    /** When, as a date in the camp's time zone (else the reader's). */
     @AuraEnabled
     public Date answeredOn;
   }
@@ -42,7 +42,9 @@ public with sharing class LearnedAnswers {
         CreatedDate,
         CreatedById,
         CreatedBy.FirstName,
-        CreatedBy.Name
+        CreatedBy.Name,
+        CreatedBy.IsActive,
+        Camp__r.TimeZone__c
       FROM ImportAnswer__c
       WHERE Camp__c = :campId
       WITH USER_MODE
@@ -115,10 +117,8 @@ public with sharing class LearnedAnswers {
     learned.question = row.QuestionKey__c;
     learned.answer = row.Answer__c;
     learned.byYou = row.CreatedById == UserInfo.getUserId();
-    learned.byName = String.isBlank(row.CreatedBy.FirstName)
-      ? row.CreatedBy.Name
-      : row.CreatedBy.FirstName;
-    learned.answeredOn = row.CreatedDate.date();
+    learned.byName = ImportAnswers.byNameOf(row);
+    learned.answeredOn = ImportAnswers.answeredOnOf(row);
     return learned;
   }
 }

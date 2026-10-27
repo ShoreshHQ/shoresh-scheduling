@@ -425,6 +425,7 @@ export default class ShoreshChoicesImport extends LightningElement {
           : "row row_look shoresh-raised",
         unsettled: !answer,
         remembered: !!(answer && answer.remembered),
+        rememberedNote: (answer && answer.note) || "Remembered",
         proposal,
         proposalLabel: proposal ? `Same as ${proposal.name}` : null,
         proposalPressed: proposal ? pressed("same", proposal.id) : "false",

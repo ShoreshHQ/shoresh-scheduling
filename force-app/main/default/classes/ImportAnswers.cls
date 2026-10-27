@@ -5,77 +5,93 @@
  * import asks again.
  */
 public with sharing class ImportAnswers {
-  /** One remembered answer. */
+  // Tests only: the save refused after the old answers were deleted.
+  @TestVisible
+  private static Boolean refuseSave = false;
+
+  /** One remembered answer, with who gave it and when (the record's Created By and date; sent only, never read back). */
   public class Answer {
     @AuraEnabled
     public String key { get; set; }
     @AuraEnabled
     public String answer { get; set; }
+    /** The person reading is who answered it. */
+    @AuraEnabled
+    public Boolean byYou;
+    /** Who answered it: their first name (else their name); none for a former user. */
+    @AuraEnabled
+    public String byName;
+    /** When, as a date in the camp's time zone. */
+    @AuraEnabled
+    public Date answeredOn;
   }
 
+  /** The camp's remembered answers. One query, whatever the number. */
   public static List<Answer> forCamp(Id campId) {
     List<Answer> result = new List<Answer>();
     for (ImportAnswer__c row : [
-      SELECT QuestionKey__c, Answer__c
+      SELECT
+        QuestionKey__c,
+        Answer__c,
+        CreatedDate,
+        CreatedById,
+        CreatedBy.FirstName,
+        CreatedBy.Name,
+        CreatedBy.IsActive,
+        Camp__r.TimeZone__c
       FROM ImportAnswer__c
       WHERE Camp__c = :campId
       WITH USER_MODE
       ORDER BY CreatedDate
       LIMIT 5000
     ]) {
-      Answer answer = new Answer();
-      answer.key = row.QuestionKey__c;
-      answer.answer = row.Answer__c;
-      result.add(answer);
+      result.add(answerOf(row));
     }
     return result;
   }
 
+  private static Answer answerOf(ImportAnswer__c row) {
+    Answer answer = new Answer();
+    answer.key = row.QuestionKey__c;
+    answer.answer = row.Answer__c;
+    answer.byYou = row.CreatedById == UserInfo.getUserId();
+    answer.byName = byNameOf(row);
+    answer.answeredOn = answeredOnOf(row);
+    return answer;
+  }
+
+  /**
+   * Who answered (the row read with CreatedBy.FirstName, Name, IsActive): their first name, else
+   * their name; none when their user is inactive (the screens say "a former user").
+   */
+  public static String byNameOf(ImportAnswer__c row) {
+    if (row.CreatedBy.IsActive != true) {
+      return null;
+    }
+    return String.isBlank(row.CreatedBy.FirstName)
+      ? row.CreatedBy.Name
+      : row.CreatedBy.FirstName;
+  }
+
+  /** When (the row read with CreatedDate, Camp__r.TimeZone__c): in the camp's time zone, else the reader's. */
+  public static Date answeredOnOf(ImportAnswer__c row) {
+    String zone = row.Camp__r.TimeZone__c;
+    return String.isBlank(zone)
+      ? row.CreatedDate.date()
+      : Date.valueOf(row.CreatedDate.format('yyyy-MM-dd', zone));
+  }
+
   /** Remembers the answers given and forgets the ones left out. */
   public static void save(Id campId, ImportPlan plan) {
-    Map<String, String> remember = new Map<String, String>();
+    List<ImportAnswer__c> wanted = new List<ImportAnswer__c>();
     for (ImportPlan.Entry entry : plan.entries('remember')) {
-      remember.put(keyOf(campId, entry.key()), entry.text('answer'));
-    }
-    Map<String, String> questions = new Map<String, String>();
-    for (ImportPlan.Entry entry : plan.entries('remember')) {
-      questions.put(keyOf(campId, entry.key()), entry.key());
+      wanted.add(rowOf(campId, entry.key(), entry.text('answer')));
     }
     Set<String> forget = new Set<String>();
     for (String question : plan.texts('forget')) {
       forget.add(keyOf(campId, question));
     }
-    Set<String> all = new Set<String>(remember.keySet());
-    all.addAll(forget);
-    Map<String, ImportAnswer__c> saved = new Map<String, ImportAnswer__c>();
-    for (ImportAnswer__c row : [
-      SELECT Id, Key__c
-      FROM ImportAnswer__c
-      WHERE Key__c IN :all
-      WITH USER_MODE
-    ]) {
-      saved.put(row.Key__c, row);
-    }
-    List<ImportAnswer__c> writes = new List<ImportAnswer__c>();
-    for (String key : remember.keySet()) {
-      ImportAnswer__c row = saved.containsKey(key)
-        ? new ImportAnswer__c(Id = saved.get(key).Id)
-        : new ImportAnswer__c(
-            Camp__c = campId,
-            Key__c = key,
-            QuestionKey__c = questions.get(key)
-          );
-      row.Answer__c = remember.get(key).left(255);
-      writes.add(row);
-    }
-    List<ImportAnswer__c> deletes = new List<ImportAnswer__c>();
-    for (String key : forget) {
-      if (saved.containsKey(key)) {
-        deletes.add(saved.get(key));
-      }
-    }
-    UserModeWrites.save(writes);
-    Database.delete(deletes, true, AccessLevel.USER_MODE);
+    write(wanted, forget);
   }
 
   /**
@@ -97,40 +113,88 @@ public with sharing class ImportAnswers {
 
   /**
    * Remembers an answer per question for the camp, outside an import's questions: what an import
-   * guessed, with the value it saved (SetupGuesses). Two queries at most: the rows there are, then
-   * the write.
+   * guessed, with the value it saved (SetupGuesses), and the names a choices import was told
+   * about. Two queries at most: the rows there are, then the write.
    */
   public static void rememberEach(Id campId, Map<String, String> answerOf) {
     if (answerOf.isEmpty()) {
       return;
     }
-    Map<String, String> questionOf = new Map<String, String>();
+    List<ImportAnswer__c> wanted = new List<ImportAnswer__c>();
     for (String question : answerOf.keySet()) {
-      questionOf.put(keyOf(campId, question), question);
+      wanted.add(rowOf(campId, question, answerOf.get(question)));
     }
-    Set<String> keys = questionOf.keySet();
-    Map<String, Id> saved = new Map<String, Id>();
-    for (ImportAnswer__c row : [
-      SELECT Id, Key__c
+    write(wanted, new Set<String>());
+  }
+
+  private static ImportAnswer__c rowOf(
+    Id campId,
+    String question,
+    String answer
+  ) {
+    return new ImportAnswer__c(
+      Camp__c = campId,
+      Key__c = keyOf(campId, question),
+      QuestionKey__c = question,
+      Answer__c = answer.left(255)
+    );
+  }
+
+  /**
+   * Saves the wanted answers and forgets the rest, so who answered and when (the record's Created
+   * By and date, ADR 0021) stays true: an answer already remembered the same is left as it is;
+   * one remembered differently is replaced (deleted first, as the key is unique, then saved new),
+   * never edited. A guess given again the same is the exception: it is saved again unchanged, so
+   * its Last Modified says when it was last guessed, which marks a record made since then
+   * (SetupGuessStanding), and its Created By and date stay. One query, then the writes.
+   */
+  private static void write(List<ImportAnswer__c> wanted, Set<String> forget) {
+    Map<String, ImportAnswer__c> byKey = new Map<String, ImportAnswer__c>();
+    for (ImportAnswer__c row : wanted) {
+      byKey.put(row.Key__c, row);
+    }
+    Set<String> all = new Set<String>(byKey.keySet());
+    all.addAll(forget);
+    List<ImportAnswer__c> deletes = new List<ImportAnswer__c>();
+    List<ImportAnswer__c> touches = new List<ImportAnswer__c>();
+    for (ImportAnswer__c saved : [
+      SELECT Id, Key__c, Answer__c
       FROM ImportAnswer__c
-      WHERE Key__c IN :keys
+      WHERE Key__c IN :all
       WITH USER_MODE
     ]) {
-      saved.put(row.Key__c, row.Id);
-    }
-    List<ImportAnswer__c> writes = new List<ImportAnswer__c>();
-    for (String key : questionOf.keySet()) {
-      ImportAnswer__c row = saved.containsKey(key)
-        ? new ImportAnswer__c(Id = saved.get(key))
-        : new ImportAnswer__c(
-            Camp__c = campId,
-            Key__c = key,
-            QuestionKey__c = questionOf.get(key)
+      ImportAnswer__c given = byKey.get(saved.Key__c);
+      if (given != null && given.Answer__c.equals(saved.Answer__c)) {
+        byKey.remove(saved.Key__c);
+        if (given.QuestionKey__c.startsWith(SetupGuessValues.PREFIX)) {
+          touches.add(
+            new ImportAnswer__c(Id = saved.Id, Answer__c = saved.Answer__c)
           );
-      row.Answer__c = answerOf.get(questionOf.get(key)).left(255);
-      writes.add(row);
+        }
+      } else if (given != null || forget.contains(saved.Key__c)) {
+        deletes.add(saved);
+      }
     }
-    UserModeWrites.save(writes);
+    touches.addAll(byKey.values());
+    commitAll(deletes, touches);
+  }
+
+  /** Deletes, then saves (new and unchanged), all or none: a refused save puts the old answers back. */
+  private static void commitAll(
+    List<ImportAnswer__c> deletes,
+    List<ImportAnswer__c> saves
+  ) {
+    Savepoint before = Database.setSavepoint();
+    try {
+      Database.delete(deletes, true, AccessLevel.USER_MODE);
+      if (refuseSave) {
+        throw new ShoreshException('Refused.');
+      }
+      UserModeWrites.save(saves);
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
   }
 
   /** Forgets answers for the camp (a guess the director says looks right). Two queries at most. */
@@ -147,6 +211,7 @@ public with sharing class ImportAnswers {
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */
+  @TestVisible
   private static String keyOf(Id campId, String question) {
     return campId +
       ':' +

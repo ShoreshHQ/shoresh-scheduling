@@ -11,6 +11,7 @@
 import { foldName } from "c/shoreshImportEngine";
 import { CHOICE_KINDS, sheetLayout } from "c/shoreshChoicesReader";
 import { FIELD } from "c/shoreshSchema";
+import { rememberedNote } from "c/shoreshRemembered";
 
 const { RANKED, UNORDERED } = CHOICE_KINDS;
 
@@ -300,26 +301,30 @@ export function proposalFor(name, activities) {
 
 /**
  * Answers the camp gave before for names on this sheet (ImportAnswers): "same|Pottery" or
- * "leave". Shown as already answered, marked Remembered, and still changeable: never applied
+ * "leave". Shown as already answered, marked with who gave it and when ("Remembered from your
+ * answer on 3 Jul"), and still changeable: never applied
  * without being seen.
  */
 export function rememberedAnswers(newNames, answers, activities) {
   const byFold = activitiesByFold(activities);
-  const byKey = new Map((answers || []).map((a) => [a.key, a.answer || ""]));
+  const byKey = new Map((answers || []).map((a) => [a.key, a]));
   const result = {};
   for (const item of newNames || []) {
     const key = foldName(item.name);
-    const answer = byKey.get(`${ANSWER_PREFIX}${key}`);
+    const row = byKey.get(`${ANSWER_PREFIX}${key}`);
+    const answer = (row && row.answer) || "";
     if (!answer) continue;
+    const note = rememberedNote(row);
     if (answer === "leave") {
-      result[key] = { kind: "leave", remembered: true };
+      result[key] = { kind: "leave", remembered: true, note };
     } else if (answer.startsWith("same|")) {
       const activity = byFold.get(foldName(answer.slice(5)));
       if (activity) {
         result[key] = {
           kind: "same",
           activityId: activity.id,
-          remembered: true
+          remembered: true,
+          note
         };
       }
     }

@@ -37,6 +37,7 @@ import { screenLabels } from "c/shoreshScreens";
 import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { rememberedByKey } from "c/shoreshRemembered";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { importTable } from "./table";
@@ -119,6 +120,7 @@ export default class ShoreshListImport extends LightningElement {
   sheet;
   answers = {};
   remembered = {};
+  rememberedNotes = {};
   proposal;
   error;
   result;
@@ -378,11 +380,9 @@ export default class ShoreshListImport extends LightningElement {
       // Without them the list still reads: everything is asked.
       saved = [];
     }
-    const answers = {};
-    (saved || []).forEach((row) => {
-      answers[row.key] = row.answer;
-    });
+    const { answers, notes } = rememberedByKey(saved);
     this.remembered = { ...answers };
+    this.rememberedNotes = notes;
     return answers;
   }
 
@@ -596,7 +596,7 @@ export default class ShoreshListImport extends LightningElement {
       } else if (h.how === "clash") {
         note = "Not sure";
       } else if (remembered) {
-        note = "Remembered";
+        note = this.rememberedNotes[h.key] || "Remembered";
       }
       const attention = h.how === "unknown" || h.how === "clash";
       return {
@@ -640,6 +640,7 @@ export default class ShoreshListImport extends LightningElement {
         answered: !!chosen,
         answerLabel: chosen ? chosen.label : "",
         fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+        memoryNote: this.rememberedNotes[card.id] || "Remembered",
         // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
         draftDays: this.draftDays(card.id),
         draftProblem: (this.drafts[card.id] || {}).problem || "",
