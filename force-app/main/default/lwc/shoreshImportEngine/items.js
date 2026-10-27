@@ -209,25 +209,31 @@ function familyOf(name) {
 
 /**
  * Rule 3's other evidence: a name held but not repeated ("Lunch 4" for one division once) is a
- * set time when a numbered sibling in the same timetable is one ("Lunch 1" every day).
+ * set time when a numbered sibling in the same timetable is one ("Lunch 1" every day), and an
+ * activity when a numbered sibling is an activity ("Sports 1" rotating).
  */
-function withFamilies(decisions) {
-  const families = new Set(
-    [...decisions]
-      .filter(
-        ([name, d]) => d.verdict === "recurring" && name !== familyOf(name)
-      )
+function familyKinds(decisions, verdict) {
+  return new Set(
+    decisions
+      .filter(([name, d]) => d.verdict === verdict && name !== familyOf(name))
       .map(([name]) => familyOf(name))
   );
+}
+
+function withFamilies(decisions) {
+  const recurring = familyKinds(decisions, "recurring");
+  const activity = familyKinds(decisions, "activity");
   return decisions.map(([name, d]) => {
-    const sibling =
-      d.reason === "split" &&
-      name !== familyOf(name) &&
-      families.has(familyOf(name));
-    return [
-      name,
-      sibling ? { ...d, verdict: "recurring", reason: undefined } : d
-    ];
+    const family = familyOf(name);
+    if (d.reason !== "split" || name === family) {
+      return [name, d];
+    }
+    if (recurring.has(family)) {
+      return [name, { ...d, verdict: "recurring", reason: undefined }];
+    }
+    return activity.has(family)
+      ? [name, { ...d, verdict: "activity", reason: undefined }]
+      : [name, d];
   });
 }
 

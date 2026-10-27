@@ -59,7 +59,8 @@ Refined 2026-10-27 after an independent review; each rule is clue, meaning, exam
    (or most of them: an all-camp moment, even once a week); staggered across the camp (on one day
    its placements together reach most groups, as Swim does for two divisions a period); the same
    slots in two weeks or more; or a numbered sibling that is a set time ("Lunch 4" once, beside
-   "Lunch 1" every day). One record per pattern.
+   "Lunch 1" every day; a sibling that is an activity, "Sports 2" beside rotating "Sports 1",
+   makes it an activity). One record per pattern.
    Example: Lunch 1 to 5, Menucha, Swim, Swim Return, Ruach, Shabbat, All Camp Activity, CIT's
    blocks (plant camp).
    Test: "staggered by division"; "everyone on one day"; "rule 2: everyone but one group";
@@ -72,7 +73,9 @@ Refined 2026-10-27 after an independent review; each rule is clue, meaning, exam
    Example: Juniors' Art Monday Period 1 and Wednesday Period 3, nobody else has Art; Library time,
    all of Juniors once on Wednesday (`walkthrough.test.js`).
    Test: "rule 3: a division together at different times on two days, nobody else, is asked";
-   "rule 3: one division once in a one-week file is asked".
+   "rule 3: one division once in a one-week file is asked"; "rule 3: a numbered sibling at a set
+   time …"; "rule 3: a numbered sibling that rotates …"; "rule 3: the same groups taking turns …";
+   "rule 3: the same shape with nothing else for those groups together is asked".
 
 4. **Small grids need two days of evidence.**
    Clue: fixed, and recurring by repetition, need the name on two days or more. In a one-day file

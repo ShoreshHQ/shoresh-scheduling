@@ -404,6 +404,60 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     expect(kindAsks(p)).toEqual([]);
   });
 
+  it("rule 3: a numbered sibling at a set time makes one division's single Lunch 4 recurring, not asked", () => {
+    const p = propose((g, d, b) => {
+      if (g < 2 && b === 2) return "Lunch 1";
+      if (g >= 2 && d === 2 && b === 3) return "Lunch 4";
+      return fill(g, d, b);
+    });
+    expect(kindOf(p, "Lunch 1")).toBe("recurring");
+    expect(kindOf(p, "Lunch 4")).toBe("recurring");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: a numbered sibling that rotates makes one division's single Sports 2 an activity, not asked", () => {
+    const sports1 = [
+      [0, 0],
+      [1, 1],
+      [3, 3]
+    ];
+    const p = propose((g, d, b) => {
+      if (g === 0 && sports1.some(([sd, sb]) => sd === d && sb === b)) {
+        return "Sports 1";
+      }
+      if (g >= 2 && d === 2 && b === 3) return "Sports 2";
+      return fill(g, d, b);
+    });
+    expect(kindOf(p, "Sports 1")).toBe("activity");
+    expect(kindOf(p, "Sports 2")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: the same groups taking turns at Art and Ropes Course at shifting times are activities, not asked", () => {
+    const turns = {
+      "1|3": "Art",
+      "2|0": "Art",
+      "0|1": "Ropes",
+      "3|2": "Ropes"
+    };
+    const p = propose((g, d, b) => {
+      return (g < 2 && turns[`${d}|${b}`]) || fill(g, d, b);
+    });
+    expect(kindOf(p, "Art")).toBe("activity");
+    expect(kindOf(p, "Ropes")).toBe("activity");
+    expect(kindAsks(p)).toEqual([]);
+  });
+
+  it("rule 3: the same shape with nothing else for those groups together is asked", () => {
+    const turns = { "1|3": "Art", "2|0": "Art" };
+    const p = propose((g, d, b) => {
+      return (g < 2 && turns[`${d}|${b}`]) || fill(g, d, b);
+    });
+    expect(kindAsks(p).map((a) => [a.name, a.facts.reason])).toEqual([
+      ["Art", "split"]
+    ]);
+  });
+
   describe("rule 5: a week without the name is not a change of time", () => {
     const week = (n, cell) =>
       GROUPS.map((g, gi) =>
