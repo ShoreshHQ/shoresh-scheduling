@@ -113,6 +113,7 @@ describe("reading", () => {
     ]);
   });
 
+  // ELECT-2.1
   it("keeps comments out of the campers", () => {
     const reading = read(
       lines("Camper Name,#1,Comments", "Maya Fernwood,Archery,A note from home")
@@ -126,6 +127,7 @@ describe("reading", () => {
 
   // Greg, 2026-10-22: Shoresh has no opt-outs; a camp places such a camper itself. An opt-out
   // column is one more column the reader does not use.
+  // ELECT-2.2
   it("never reads an opt-out column", () => {
     const reading = read(
       lines(

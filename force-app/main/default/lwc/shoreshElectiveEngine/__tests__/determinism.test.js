@@ -60,6 +60,7 @@ function pinnedCamp() {
 }
 
 describe("determinism", () => {
+  // ELECT-5.1
   it("gives identical seats for 20 shuffled orders of the same camp", () => {
     for (const input of [pinnedCamp(), randomElectiveCamp(19)]) {
       const expected = assignSeats(input);

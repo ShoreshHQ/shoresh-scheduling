@@ -95,6 +95,7 @@ private class GeneratedPublishTest {
     return messages;
   }
 
+  // PUB-4.1
   @IsTest
   static void publishingCopiesTheGeneratedWeekLocksAndAll() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -293,6 +294,7 @@ private class GeneratedPublishTest {
     }
   }
 
+  // PUB-1.1
   @IsTest
   static void oneWeekHasOnePublishedScheduleWhicheverScheduleIsPublished() {
     System.runAs(ShoreshTestData.scheduler()) {

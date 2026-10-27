@@ -96,6 +96,7 @@ describe("things you delete stay deleted", () => {
     ).toEqual(["deleted|Activity||Swim"]);
   });
 
+  // MEMO-4.2
   it("leaves out a deleted activity, group, and place, and lists each once as deleted before", () => {
     const before = propose({});
     const program = before.timetables[0].name;

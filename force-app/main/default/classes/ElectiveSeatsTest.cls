@@ -421,6 +421,7 @@ private class ElectiveSeatsTest {
     }
   }
 
+  // ELECT-4.1
   @IsTest
   static void blankOrZeroSeatsAreNoLimit() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -450,6 +451,7 @@ private class ElectiveSeatsTest {
     }
   }
 
+  // ELECT-4.4
   @IsTest
   static void assignRefusesMoreCampersThanSeats() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -555,6 +557,7 @@ private class ElectiveSeatsTest {
     }
   }
 
+  // ELECT-5.3
   @IsTest
   static void assignAgainKeepsEveryLock() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -616,6 +619,7 @@ private class ElectiveSeatsTest {
 
   // ---------------------------------------------------------------- by hand
 
+  // ELECT-4.5
   @IsTest
   static void aMoveByHandMayGoOverSeatsAndThePadlockUnlocks() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -985,6 +989,7 @@ private class ElectiveSeatsTest {
 
   // ---------------------------------------------------------------- Start a new version
 
+  // ELECT-5.3
   @IsTest
   static void aNewVersionCarriesChoicesLocksAndHandMoves() {
     System.runAs(ShoreshTestData.scheduler()) {
