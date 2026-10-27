@@ -101,6 +101,7 @@ private class SchedulePublishTest {
     ];
   }
 
+  // PUB-4.1
   @IsTest
   static void theFirstPublishCopiesTheDraftAsTheWeeksPublishedSchedule() {
     User scheduler = ShoreshTestData.scheduler();
@@ -164,6 +165,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-4.2
   @IsTest
   static void laterEditsDontTouchThePublishedCopy() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -184,6 +186,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-6.3
   @IsTest
   static void publishingAgainShowsWhatChangesThenKeepsTheOldOneAsHistory() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -236,6 +239,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-6.1
   @IsTest
   static void aReplacedPublishedScheduleIsKeptAsHistory() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -344,6 +348,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-4.4
   @IsTest
   static void aWeekChangedSinceThePreviewIsNotPublished() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -367,6 +372,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-4.4
   @IsTest
   static void aWeekSomeoneElsePublishedSinceThePreviewIsNotReplaced() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -446,6 +452,7 @@ private class SchedulePublishTest {
     }
   }
 
+  // PUB-6.1
   @IsTest
   static void unpublishKeepsThePublishedScheduleAsHistoryAndLeavesTheWeekWithNone() {
     System.runAs(ShoreshTestData.scheduler()) {

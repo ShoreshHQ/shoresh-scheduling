@@ -17,6 +17,7 @@ const offering = (timeId, activityId, more = {}) => ({
 });
 
 describe("seat limits", () => {
+  // ELECT-4.1
   it("places an offering with blank seats as no limit and says so, once per offering", () => {
     const out = assignSeats({
       campers: campers(3),
@@ -60,6 +61,7 @@ describe("seat limits", () => {
     expect(out.findings).toEqual([]);
   });
 
+  // ELECT-4.1
   it("places an offering with 0 seats as no limit and says so (0 is not closed)", () => {
     const out = assignSeats({
       campers: campers(2),
@@ -96,6 +98,7 @@ describe("times", () => {
 });
 
 describe("findings", () => {
+  // ELECT-6.2
   it("use the camp's word for division", () => {
     const terms = buildTerms([
       { term: "Division", singular: "Edah", plural: "Edot", isCustom: true }
@@ -118,6 +121,7 @@ describe("findings", () => {
     ]);
   });
 
+  // ELECT-6.2
   it("name an offering by its name, not its key", () => {
     const out = assignSeats({
       campers: campers(1),
@@ -224,6 +228,7 @@ describe("a double period linked for every choice (slice E9)", () => {
     ]);
   });
 
+  // ELECT-4.3
   it("two linked choices of one offering at one time: the first by name is kept, the other flagged", () => {
     const out = assignSeats(
       both({
@@ -271,6 +276,7 @@ describe("a double period linked for every choice (slice E9)", () => {
     ]);
   });
 
+  // ELECT-4.3
   it("which set is kept doesn't depend on the order the linked choices arrive in", () => {
     const input = both({
       linkedChoices: [
@@ -324,6 +330,7 @@ describe("a linked choice with a period this run can't give it", () => {
     ...more
   });
 
+  // ELECT-4.2
   it("is kept whole over the periods it has, and says which it couldn't give", () => {
     const out = assignSeats(input());
     expect(out.findings).toEqual([

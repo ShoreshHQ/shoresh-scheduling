@@ -73,6 +73,7 @@ private class PublishedGuardTest {
     ];
   }
 
+  // PUB-4.3
   @IsTest
   static void thePublishedScheduleCantBeChangedOrDeletedDirectly() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -115,6 +116,7 @@ private class PublishedGuardTest {
     }
   }
 
+  // PUB-6.1
   @IsTest
   static void oneKeptAsHistoryCantBeChangedOrDeletedDirectlyEvenByAnAdmin() {
     Id historyId;
@@ -195,6 +197,7 @@ private class PublishedGuardTest {
     }
   }
 
+  // PUB-4.3
   @IsTest
   static void aScheduleIsMadePublishedOnlyByPublish() {
     System.runAs(ShoreshTestData.scheduler()) {

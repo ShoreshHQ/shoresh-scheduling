@@ -24,6 +24,7 @@ private class ImportAnswersTest {
     ];
   }
 
+  // MEMO-2.1
   @IsTest
   static void anImportAnsweringDifferentlyReplacesTheAnswerAsItsOwn() {
     User first = ShoreshTestData.scheduler();
@@ -54,6 +55,7 @@ private class ImportAnswersTest {
     }
   }
 
+  // MEMO-2.1
   @IsTest
   static void theSameAnswerAgainKeepsWhoGaveItFirstAndWhen() {
     User first = ShoreshTestData.scheduler();

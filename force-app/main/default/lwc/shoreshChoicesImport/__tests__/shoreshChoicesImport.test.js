@@ -345,6 +345,7 @@ describe("c-shoresh-choices-import", () => {
     expect(choicesSetup).toHaveBeenCalledTimes(2);
   });
 
+  // MEMO-6.1
   it("Leave out and Add are answers too; a remembered answer shows as answered and marked", async () => {
     const element = await render({
       ...SITUATION,

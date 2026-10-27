@@ -106,6 +106,7 @@ describe("buildElectiveAssignments", () => {
   });
 
   // R3 again, at its hardest: nothing the camper ranked is left.
+  // ELECT-5.4
   it("places a camper into something they never asked for rather than leaving them out", () => {
     const out = buildElectiveAssignments({
       campers: [{ id: "c1" }],
@@ -122,6 +123,7 @@ describe("buildElectiveAssignments", () => {
     expect(unranked.flags).toContain("NOT_REQUESTED");
   });
 
+  // ELECT-5.4
   it("leaves a camper unplaced only when no offering has room, and says so", () => {
     const out = buildElectiveAssignments({
       campers: [{ id: "c1" }, { id: "c2" }],
@@ -170,6 +172,7 @@ describe("buildElectiveAssignments", () => {
 
   // Determinism is the property buildSchedule is held to, for the same reason:
   // a director regenerating must not get a different week.
+  // ELECT-5.1
   it("is deterministic regardless of input array order", () => {
     const inputs = {
       campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
@@ -233,6 +236,7 @@ describe("buildElectiveAssignments", () => {
   // group has no campers at all, NO_CAMPERS fires exactly as it does for the
   // pre-existing "malformed map" case above — the solver does not need to
   // know WHY a camper is ineligible, only that the map says so.
+  // ELECT-4.6
   it("does not place a camper the attendance map excludes for that occurrence, and fires NO_CAMPERS when the occurrence's only carrying group has no campers", () => {
     const out = buildElectiveAssignments({
       // c1 is in the group that created o1 (attends o1 only); c2 is in the
@@ -279,6 +283,7 @@ describe("buildElectiveAssignments", () => {
     activityId
   });
 
+  // ELECT-5.2
   it("never re-decides a locked seat, whatever the preferences and offering order say", () => {
     const solve = (preferences, offerings) =>
       buildElectiveAssignments({
@@ -610,6 +615,7 @@ describe("buildElectiveAssignments", () => {
   // camper ends up holding the linked set. Tier 1 solves the choice first
   // (capacity min(1,1) = 1), gives the whole set to one camper, and leaves the
   // other to tier 2.
+  // ELECT-4.2
   it("keeps a linked choice whole where per-occurrence solving would split it", () => {
     const base = {
       campers: [{ id: "a" }, { id: "b" }],

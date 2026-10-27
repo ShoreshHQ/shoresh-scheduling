@@ -135,6 +135,7 @@ describe("c/shoreshPublish", () => {
     });
   });
 
+  // PUB-6.3
   it("asks before publishing again, listing what changes, even for a finished week", () => {
     const question = publishQuestion({
       preview: AGAIN,
