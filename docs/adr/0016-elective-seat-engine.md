@@ -22,7 +22,7 @@ no objects: nothing uses the module yet, so nothing a director sees changes.
    camper didn't ask for costs more than any rank and less than no seat, so everyone gets a seat
    if one exists (desktop owner ruling R3). Then minimum to run: the offering furthest below its
    minimum is dropped, its campers moved, one offering a round, until everything left meets its
-   minimum; an offering holding a taken seat is kept and reported. Per-time choices count only at
+   minimum; an offering holding a taken seat is kept and reported. Every dropped offering is listed to the director by name (confirmed, Greg 2026-10-27: ELECT-6.1). Per-time choices count only at
    their time; a whole-week choice counts at every time without its own; the best rank wins when
    rows repeat. Repeats are allowed and each time is scored on its own (owner ruling Q3). Two
    linked choices sharing a time are refused and placed one time at a time, a known limit (D8);

@@ -339,6 +339,28 @@ describe("the board", () => {
     expect(board.problems.dropped).toHaveLength(1);
   });
 
+  // ELECT-6.1
+  it("lists every offering that didn't run, by name, with what it had", () => {
+    const board = buildBoard(
+      readRun(
+        assignedView({
+          dropped: JSON.stringify([
+            { t: `${MONDAY}|b1|d1`, a: "a3", h: 2, m: 3 }
+          ])
+        })
+      ),
+      t
+    );
+    const section = problemSections(board, t).find((s) => s.key === "dropped");
+    expect(section.head).toBe("1 dropped below minimum");
+    expect(section.rows).toEqual([
+      expect.objectContaining({
+        text: "Pottery",
+        aside: expect.stringContaining("2 of 3")
+      })
+    ]);
+  });
+
   it("counts who is placed, and lists every problem in the counter's words", () => {
     const board = buildBoard(readRun(assignedView()), t);
     expect(board.counter).toEqual({ placed: 3, total: 4 });
