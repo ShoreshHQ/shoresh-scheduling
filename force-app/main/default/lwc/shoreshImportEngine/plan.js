@@ -145,7 +145,8 @@ function activityRecords(proposal, existing) {
   const changed = proposal.updates.activities.map((u) => ({
     key: u.id,
     id: u.id,
-    length: u.length
+    length: u.length,
+    ...(u.auto ? { auto: true, name: u.name } : {})
   }));
   return [...added, ...changed];
 }
@@ -165,9 +166,19 @@ function setTimeRecords(records, updates, withDays) {
     id: u.id,
     blockKey: u.blockKey,
     length: u.length,
-    ...(withDays ? { days: u.days } : {})
+    ...(withDays ? { days: u.days } : {}),
+    // review.md INGEST-5.7: made without asking, so the server checks it is still the import's.
+    ...(u.auto ? { auto: true, name: u.name } : {})
   }));
   return [...added, ...changed];
+}
+
+/** The keys a "Read as" line answers with its one-click change. */
+function readAsIds(proposal) {
+  return [
+    ...(proposal.decisions || []).map((d) => d.readAs),
+    ...proposal.notes.map((n) => n.id)
+  ].filter(Boolean);
 }
 
 /**
@@ -182,7 +193,9 @@ export function answersToKeep(proposal, answers) {
     ...(proposal.reading.splitAsks || []).map((x) => x.id),
     ...proposal.reading.timeAsks.map((x) => x.id),
     ...proposal.asks.map((x) => x.id),
-    ...proposal.offeredPlaces.map((x) => x.id)
+    ...proposal.offeredPlaces.map((x) => x.id),
+    // A change made under "Read as" (review.md INGEST-5.1 to 5.4) is remembered like an answer.
+    ...readAsIds(proposal)
   ]);
   const remember = [];
   const forget = [];
@@ -270,6 +283,9 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
   return {
     seasonId,
     files: (extra.fileNames || []).join(", ").slice(0, 255),
+    // review.md INGEST-5.5: questions kept for later, and the files as read to answer them.
+    open: extra.open || [],
+    ...(extra.fileData ? { fileData: extra.fileData } : {}),
     ...answersToKeep(proposal, extra.answers || {}),
     // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
     fillWeeks: (proposal.fillWeeks || []).map((w) => ({
@@ -293,6 +309,10 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       day: d.day,
       grid: d.grid
     })),
+    // review.md INGEST-5.8: what an earlier import brought in, removed as the director chose.
+    removals: (proposal.missing || [])
+      .filter((m) => m.answer === "remove")
+      .map((m) => ({ id: m.id, name: m.name })),
     programs: programRecords(proposal, existing),
     timeBlocks: blockRecords(proposal),
     divisions: divisionRecords(proposal, existing),
@@ -598,23 +618,7 @@ export function importNotes(proposal, t) {
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
       })
     );
-  // names-and-divisions.md rules 1-3: read without asking, and said here.
-  proposal.notes
-    .filter((n) => n.type === "readAs")
-    .forEach((n) =>
-      notes.push({
-        key: `readAs|${n.kind}|${n.from}`,
-        text: `“${n.from}” is read as “${n.to}”: ${n.rule === "spelling" ? "only the spacing, capitals or punctuation differ" : "it is the same name with another ending, in the same place"}.`
-      })
-    );
-  proposal.notes
-    .filter((n) => n.type === "ownDivision")
-    .forEach((n) =>
-      notes.push({
-        key: `ownDivision|${n.group}`,
-        text: `${n.group} has no ${t.sIn("Division")} in the file while the other ${t.pIn("Group")} do, so it is its own ${t.sIn("Division")}, ${n.group}.`
-      })
-    );
+  // names-and-divisions.md rules 1-3 are listed under "Read as" (review.md INGEST-5.2, 5.3).
   proposal.notes
     .filter((n) => n.type === "oneGroup")
     .forEach((n) =>
@@ -623,15 +627,7 @@ export function importNotes(proposal, t) {
         text: `${n.bunks.join(", ")} always do the same thing at the same time, ${KEPT[n.kept] || `so ${n.group} is set up as one ${t.sIn("Group")}`}.`
       })
     );
-  // weeks.md INGEST-4.3: one week's day with its own blocks stays in its program.
-  proposal.notes
-    .filter((n) => n.type === "weekDay")
-    .forEach((n) =>
-      notes.push({
-        key: `weekDay|${n.week}|${n.day}`,
-        text: `${n.week ? `${n.week}'s ` : ""}${n.day} comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
-      })
-    );
+  // weeks.md INGEST-4.3: listed under "Read as" (review.md INGEST-5.4).
   // weeks.md INGEST-4.6: the camp's own special day on that day wins.
   proposal.notes
     .filter((n) => n.type === "specialDayTaken")

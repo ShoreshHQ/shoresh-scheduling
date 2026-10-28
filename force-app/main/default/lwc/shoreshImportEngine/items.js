@@ -175,6 +175,26 @@ function existingKind(name, t, camp) {
 
 // ---------- one name ----------
 
+/**
+ * The kinds a name read without asking may be changed to (review.md INGEST-5.1): fixed only
+ * when everyone holds it at one time, recurring only when it has a set-time pattern; an
+ * activity always.
+ */
+export function kindsThatFit(decided) {
+  const kinds = [];
+  if (
+    decided.verdict === "fixed" ||
+    (decided.fixedShaped && decided.patterns.length)
+  ) {
+    kinds.push("fixed");
+  }
+  if (decided.patterns.length) {
+    kinds.push("recurring");
+  }
+  kinds.push("activity");
+  return kinds;
+}
+
 function verdictFor(name, t, facts, decided, ctx) {
   const known = existingKind(name, t, ctx.camp);
   if (known) {
@@ -190,11 +210,18 @@ function verdictFor(name, t, facts, decided, ctx) {
       deleted: gone
     };
   }
-  if (decided.verdict !== "ask") {
-    return { ...decided, kind: decided.verdict };
-  }
   const several = ctx.timetables.filter((x) => !x.leftOut).length > 1;
   const id = `kind|${name}${several ? `|${t.name}` : ""}`;
+  if (decided.verdict !== "ask") {
+    // review.md INGEST-5.1: read without asking, and listed under "Read as" with a one-click
+    // change; a change that fits the name's pattern is the director's.
+    const changed = ctx.answers[id];
+    const kind =
+      changed && kindsThatFit(decided).includes(changed)
+        ? changed
+        : decided.verdict;
+    return { ...decided, kind, readAs: id, several };
+  }
   ctx.asks.push({
     id,
     type: "kind",

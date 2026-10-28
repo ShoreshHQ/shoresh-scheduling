@@ -6,6 +6,8 @@ import ShoreshImport from "c/shoreshImport";
 import saveSetup from "@salesforce/apex/ImportController.saveSetup";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
+import getImported from "@salesforce/apex/ImportController.getImported";
+import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
 import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
@@ -24,6 +26,16 @@ jest.mock(
   {
     virtual: true
   }
+);
+jest.mock(
+  "@salesforce/apex/ImportController.getImported",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ImportController.getOpenFiles",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
 );
 jest.mock(
   "@salesforce/apex/ImportController.undoImport",
@@ -233,9 +245,9 @@ describe("c-shoresh-import", () => {
     ).toBe("Electives");
     expect(chugim.querySelector(".corner")).toBeNull();
 
-    // Every question needs an answer before Add.
-    expect(add(element).disabled).toBe(true);
-    expect(add(element).textContent.trim()).toBe("1 question left");
+    // INGEST-5.5: Add can keep an open question for later, and says so.
+    expect(add(element).disabled).toBe(false);
+    expect(add(element).textContent.trim()).toMatch(/^Add \d+, 1 for later$/);
     await answer(element, similarId(element), "a");
     // Answered: the choice is pressed and raised, and the row loses its mark.
     const similar = $(element, `[data-card="${similarId(element)}"]`);
@@ -316,6 +328,12 @@ describe("c-shoresh-import", () => {
     ).toBe(false);
     const tile = (kind) =>
       $$(element, "[data-tile]").find((x) => x.dataset.tile === kind);
+    // The bunk's unit is still open: nothing of it is guessed, so nothing of it comes in yet.
+    expect(tile("ElectiveSet")).toBeUndefined();
+    $(element, 'lightning-combobox[data-id="division|Bunk 1"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Camp" } })
+    );
+    await flush();
     expect(tile("ElectiveSet").textContent).toContain("1");
     expect(tile("Offering").textContent).toContain("3");
     expect(tile("LinkedChoice").textContent).toContain("3");
@@ -347,6 +365,270 @@ describe("c-shoresh-import", () => {
     groups.click();
     await flush();
     expect($(element, '[data-id="names"]')).toBeNull();
+  });
+
+  it("INGEST-5.1: Shoresh read these as: counts that open into lines, one click changes a line and keeps the cursor", async () => {
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    const section = $(element, '[data-id="read-as"]');
+    expect(section.querySelector("h3").textContent).toContain(
+      "Shoresh read these as"
+    );
+    const tiles = $$(element, "button[data-read-as]");
+    expect(tiles.map((t) => t.dataset.readAs)).toEqual(
+      expect.arrayContaining(["activity", "fixed"])
+    );
+    expect($(element, '[data-id="read-as-lines"]')).toBeNull();
+    const fixed = $(element, 'button[data-read-as="fixed"]');
+    fixed.click();
+    await flush();
+    expect(fixed.getAttribute("aria-expanded")).toBe("true");
+    const row = $(element, '[data-id="read-as-lines"] [data-line]');
+    const name = row.querySelector(".n").textContent.trim();
+    expect(
+      row.querySelector('button[aria-pressed="true"]').textContent.trim()
+    ).not.toBe("Activity");
+    const toActivity = [...row.querySelectorAll("button")].find(
+      (b) => b.textContent.trim() === "Activity"
+    );
+    const key = toActivity.dataset.key;
+    toActivity.click();
+    await flush();
+    // The line moved to the activities, which opened, and the button pressed keeps the cursor.
+    expect(
+      $(element, 'button[data-read-as="activity"]').getAttribute(
+        "aria-expanded"
+      )
+    ).toBe("true");
+    const moved = $(element, `button[data-key="${key}"]`);
+    expect(moved.getAttribute("aria-pressed")).toBe("true");
+    expect(element.shadowRoot.activeElement).toBe(moved);
+    expect(
+      $$(element, '[data-id="read-as-lines"] .n').map((n) =>
+        n.textContent.trim()
+      )
+    ).toContain(name);
+  });
+
+  describe("review.md: questions for later, and a second import", () => {
+    beforeEach(() => {
+      saveSetup.mockClear();
+      getImported.mockResolvedValue({ untouched: [], inUse: {} });
+      getAnswers.mockResolvedValue([]);
+    });
+
+    it("INGEST-5.5: Add saves what is settled; the open question is kept with the files, and nothing it decides is guessed", async () => {
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const open = similarId(element);
+      // The two names asked about, from the question: "Are “Musik” and “Music” the same …?"
+      const title = $(element, `[data-card="${open}"] .n`).textContent;
+      const pair = [...title.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
+      expect(pair).toHaveLength(2);
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.open).toEqual([
+        { key: open, title: expect.stringContaining("the same") }
+      ]);
+      expect(JSON.parse(plan.fileData).map((f) => f.name)).toEqual([
+        "maple-grove-2026-all-camp.xlsx"
+      ]);
+      // "Neither is added this time" until it is answered: neither name is guessed.
+      const names = plan.activities.map((a) => a.name);
+      expect(names.length).toBeGreaterThan(0);
+      pair.forEach((name) => expect(names).not.toContain(name));
+      expect(plan.remember.map((r) => r.key)).not.toContain(open);
+      expect(plan.forget).not.toContain(open);
+      expect($(element, '[data-id="later"] h3').textContent.trim()).toBe(
+        "1 import question left"
+      );
+    });
+
+    it("INGEST-5.6: answering later opens the same files, asks only what is left, and Add applies it", async () => {
+      const first = await render();
+      await choose(first, ["maple-grove-2026-all-camp.xlsx"]);
+      const open = similarId(first);
+      add(first).click();
+      await flush();
+      await flush();
+      const saved = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      saveSetup.mockClear();
+      document.body.removeChild(first);
+
+      getOpenFiles.mockResolvedValue(saved.fileData);
+      const element = await render();
+      element.resume("im1");
+      await flush();
+      await flush();
+      expect(getOpenFiles).toHaveBeenCalledWith({ importId: "im1" });
+      expect(
+        $$(element, '[data-id="questions"] [data-card]').map(
+          (r) => r.dataset.card
+        )
+      ).toEqual([open]);
+      await answer(element, open, "a");
+      expect(add(element).textContent.trim()).not.toMatch(/for later/);
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.open).toEqual([]);
+      expect(plan.fileData).toBeUndefined();
+      expect(plan.remember).toContainEqual({ key: open, answer: "a" });
+    });
+
+    it("INGEST-5.5: Add says how many come in and how many wait: Add N, M for later", async () => {
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const total = $$(element, "[data-tile]").reduce(
+        (sum, tile) => sum + Number(tile.querySelector("b").textContent),
+        0
+      );
+      expect(add(element).textContent.trim()).toBe(`Add ${total}, 1 for later`);
+    });
+
+    it("INGEST-5.5 and 5.7: after Add, questions that did not fit and updates left as they were are said", async () => {
+      saveSetup.mockResolvedValue({
+        added: { Activity: 1 },
+        changed: {},
+        removed: {},
+        leftAsIs: ["Swim"],
+        openNotKept: 12
+      });
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      add(element).click();
+      await flush();
+      await flush();
+      expect($(element, '[data-id="left-as-is"]').textContent).toContain(
+        "Swim was changed since you opened the files; it was left as it is."
+      );
+      expect($(element, '[data-id="not-kept"]').textContent).toBe(
+        "12 more questions will be asked next time you import these files."
+      );
+    });
+
+    it("INGEST-5.8: Remove says the cells it also takes out of a superseded imported week", async () => {
+      getImported.mockResolvedValue({
+        untouched: ["a2"],
+        inUse: {},
+        versionUses: {
+          a2: [
+            {
+              scheduleId: "s0",
+              dayId: "sd0",
+              programId: "p1",
+              weekId: "w1",
+              name: "last import's Week 1"
+            }
+          ]
+        }
+      });
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({
+        ...SETUP,
+        weeks: [
+          {
+            Id: "w1",
+            Name: "Week 1",
+            StartDate__c: "2027-06-28",
+            EndDate__c: "2027-07-02"
+          }
+        ],
+        programs: [
+          {
+            program: {
+              Id: "p1",
+              Name: "Main",
+              Monday__c: true,
+              Tuesday__c: true,
+              Wednesday__c: true,
+              Thursday__c: true,
+              Friday__c: true
+            },
+            timeBlocks: [],
+            divisions: [],
+            fixedActivities: [],
+            recurringActivities: []
+          }
+        ],
+        activities: [{ Id: "a2", Name: "Arhcery", Length__c: 1 }]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const row = $(element, '[data-id="missing"] [data-missing]');
+      expect(row.textContent).toContain("Arhcery");
+      expect(row.textContent).toContain(
+        "also taken out of last import's Week 1"
+      );
+      expect(row.querySelectorAll("button")).toHaveLength(2);
+    });
+
+    it("INGEST-5.8: something still uses it: kept with why, no Remove", async () => {
+      getImported.mockResolvedValue({
+        untouched: ["a2"],
+        inUse: { a2: "Pottery is Swim's rain plan" }
+      });
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({
+        ...SETUP,
+        activities: [{ Id: "a2", Name: "Pottery", Length__c: 1 }]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const row = $(element, '[data-id="missing"] [data-missing]');
+      expect(row.textContent).toContain(
+        "Pottery is Swim's rain plan, so it stays"
+      );
+      expect(row.querySelectorAll("button")).toHaveLength(0);
+    });
+
+    it("INGEST-5.8: what an earlier import brought in and these files lack: Keep pressed, Remove one click, sent with Add", async () => {
+      getImported.mockResolvedValue({ untouched: ["a2"], inUse: {} });
+      saveSetup.mockResolvedValue({
+        added: {},
+        changed: {},
+        removed: { Activity: 1 }
+      });
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({
+        ...SETUP,
+        activities: [{ Id: "a2", Name: "Pottery", Length__c: 1 }]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const row = $(element, '[data-id="missing"] [data-missing]');
+      expect(row.textContent).toContain("Pottery");
+      expect(
+        row.querySelector('button[aria-pressed="true"]').textContent.trim()
+      ).toBe("Keep");
+      const remove = [...row.querySelectorAll("button")].find(
+        (b) => b.textContent.trim() === "Remove"
+      );
+      remove.click();
+      await flush();
+      const pressed = $(
+        element,
+        '[data-id="missing"] button[aria-pressed="true"]'
+      );
+      expect(pressed.textContent.trim()).toBe("Remove");
+      expect(element.shadowRoot.activeElement).toBe(pressed);
+      await answer(element, similarId(element), "a");
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.removals).toEqual([{ id: "a2", name: "Pottery" }]);
+      expect($(element, '[data-id="removed"]').textContent).toContain("1");
+    });
   });
 
   it("keeps the cursor on the way: the first question, the choice pressed, Add, then the summary; and says what happens", async () => {
@@ -471,7 +753,7 @@ describe("c-shoresh-import", () => {
     );
   });
 
-  it("Add waits for the program and division choices too", async () => {
+  it("INGEST-5.5: an open division choice can wait for later, and its bunk is not guessed", async () => {
     const element = createElement("c-shoresh-import", { is: ShoreshImport });
     element.setup = nsRecord({
       ...SETUP,
@@ -505,7 +787,10 @@ describe("c-shoresh-import", () => {
     // The dropdown sits in its question's row, marked until it is chosen.
     const row = choice.closest("[data-card]");
     expect(row.querySelector(".corner")).not.toBeNull();
-    expect(add(element).disabled).toBe(true);
+    expect(add(element).disabled).toBe(false);
+    expect(add(element).textContent.trim()).toMatch(/, 1 for later$/);
+    // Bunk 1's unit is open: Bunk 1 does not come in.
+    expect($(element, 'button[data-tile="Group"]')).toBeNull();
   });
 
   describe("part 2: version, remembered answers, undo", () => {

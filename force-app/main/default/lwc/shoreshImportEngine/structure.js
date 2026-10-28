@@ -298,10 +298,19 @@ function weekDayShapes(timetables, placements, blockAt, context) {
             timetableShape(other, placements),
             blockAt
           );
+        // review.md INGEST-5.4: one day of its own is read as a special day, listed under
+        // "Read as", where "A second program" keeps it a program of its own.
+        const oneDayId = found
+          ? `ownDays|${found.days[0].split("|")[0]}`
+          : null;
         const answer =
           found && found.twoInAWeek
             ? twoDaysAsk(timetableShape(main, placements), found, context)
-            : "special";
+            : (found && context.answers[oneDayId]) || "special";
+        if (found && !found.twoInAWeek && answer === "program") {
+          const [week, day] = found.days[0].split("|");
+          notes.push({ type: "weekDay", week, day, id: oneDayId, answer });
+        }
         const join = found && (answer === "special" || answer === LEAVE_OUT);
         const days = join ? found.days : null;
         if (days) {
@@ -320,7 +329,13 @@ function weekDayShapes(timetables, placements, blockAt, context) {
               { week, day, leftOut: answer === LEAVE_OUT }
             ];
             if (answer !== LEAVE_OUT) {
-              notes.push({ type: "weekDay", week, day });
+              notes.push({
+                type: "weekDay",
+                week,
+                day,
+                id: found.twoInAWeek ? null : oneDayId,
+                answer
+              });
             }
           });
           merged = true;

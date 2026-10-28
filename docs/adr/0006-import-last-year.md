@@ -126,11 +126,21 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     Low), and the summary says where to set them. Places named in cells ("Swim (Pool)",
     "Art @ Art room") are offered with a tick, unticked, as on the desktop; a ticked one fits as
     many groups as the file has there at once, so it never causes a clash on its own.
-11. **Every question must be answered before saving, and every question can be answered
-    "Leave it out for now"** (Greg, 2026-10-16). That item is not added, the summary lists it
-    under "Left out for now", and the next import asks again (part 2 remembers the other
-    answers). The desktop instead let a director save with questions open ("keep N for later");
-    without stored open questions that would mean a silent drop.
+11. ~~**Every question must be answered before saving**~~ (Greg, 2026-10-16), **replaced by
+    Greg, 2026-10-27 (wiki ingestion plan, decision Q4): the director may save with questions
+    open.** What is settled is saved; each open question is kept with the import and waits on
+    Roots as "N import questions left"; nothing whose question is open is guessed (it is saved
+    as "Leave it out for now" would save it, and stays out until answered); answering later
+    opens the same files and applies it. The desktop's "keep N for later", now with the open
+    questions stored, so nothing is dropped silently. `docs/import/review.md` rules 5 and 6.
+    Every question can still be answered "Leave it out for now": that item is not added, the
+    summary lists it under "Left out for now", and the next import asks again. A second import
+    of a season an import filled updates what that import brought in and no one changed since,
+    and lists what the new file lacks with Keep or Remove (review.md rules 7 and 8; Greg,
+    decisions Q2 and Q3); this refines choice 9's "add only" for those items only.
+    _The files kept for open questions_ (review of #177): only files the director uploaded, kept
+    only while questions are open (deleted by a newer import or the import's Undo), linked to the
+    import record only, so visible to users who can see the season.
 12. **Saving.** `ImportController.saveSetup(plan)` takes the reviewed plan (JSON: programs, time
     blocks, divisions, groups, locations, activities with who, fixed activities, recurring
     activities with who, in that order). New records refer to each other by keys the screen

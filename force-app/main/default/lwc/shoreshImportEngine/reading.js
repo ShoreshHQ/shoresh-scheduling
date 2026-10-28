@@ -342,12 +342,16 @@ export function readImport(input) {
     placements: together.placements,
     groups: together.groups,
     notes: [
-      ...readAsNames.map(({ kind, from, to, rule }) => ({
+      ...readAsNames.map(({ pair, kind, from, to, rule, answer }) => ({
         type: "readAs",
         kind,
         from,
         to,
-        rule
+        rule,
+        // review.md INGEST-5.2: "Keep apart" answers the pair "different".
+        id: pair.id,
+        same: answer,
+        answer: answers[pair.id] || answer
       })),
       ...together.notes,
       ...weekDayNotes

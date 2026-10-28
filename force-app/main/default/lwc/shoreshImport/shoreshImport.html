@@ -207,6 +207,108 @@
           </section>
         </template>
 
+        <template lwc:if={hasReadAs}>
+          <!-- review.md INGEST-5: what Shoresh read without asking, each with a one-click change. -->
+          <section class="section" data-id="read-as">
+            <h3 class="section-head">Shoresh read these as</h3>
+            <div class="tiles">
+              <template for:each={readAsTiles} for:item="group">
+                <button
+                  key={group.key}
+                  type="button"
+                  class={group.className}
+                  aria-expanded={group.expanded}
+                  aria-controls="read-as-lines"
+                  data-read-as={group.key}
+                  onclick={handleReadAsTile}
+                >
+                  <span class="slds-assistive-text">{group.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{group.count}</b>
+                  <span aria-hidden="true">{group.label}</span>
+                </button>
+              </template>
+            </div>
+            <template lwc:if={openReadAsGroup}>
+              <div
+                id="read-as-lines"
+                role="group"
+                aria-label={openReadAsGroup.label}
+                data-id="read-as-lines"
+              >
+                <template for:each={openReadAsGroup.lines} for:item="line">
+                  <div
+                    key={line.key}
+                    class="row shoresh-raised"
+                    data-line={line.id}
+                  >
+                    <span class="n">{line.name}</span>
+                    <span class="d">{line.detail}</span>
+                    <span class="options">
+                      <template lwc:if={line.select}>
+                        <lightning-combobox
+                          class="pick"
+                          label={line.name}
+                          variant="label-hidden"
+                          value={line.answer}
+                          options={line.comboOptions}
+                          data-id={line.id}
+                          onchange={handleChoice}
+                        ></lightning-combobox>
+                      </template>
+                      <template lwc:else>
+                        <template for:each={line.options} for:item="option">
+                          <button
+                            key={option.key}
+                            type="button"
+                            class={option.className}
+                            aria-pressed={option.pressed}
+                            data-key={option.key}
+                            onclick={handleReadAs}
+                          >
+                            {option.label}
+                          </button>
+                        </template>
+                      </template>
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasMissing}>
+          <!-- review.md INGEST-5.8: what an earlier import brought in that these files lack. -->
+          <section class="section" data-id="missing">
+            <h3 class="section-head">
+              Not in these files
+              <span class="shoresh-num">{missingRows.length}</span>
+            </h3>
+            <template for:each={missingRows} for:item="row">
+              <div
+                key={row.key}
+                class="row shoresh-raised"
+                data-missing={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">{row.detail}</span>
+                <span class="options">
+                  <template for:each={row.options} for:item="option">
+                    <button
+                      key={option.key}
+                      type="button"
+                      class={option.className}
+                      aria-pressed={option.pressed}
+                      data-key={option.key}
+                      onclick={handleMissing}
+                    >
+                      {option.label}
+                    </button>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </section>
+        </template>
         <template lwc:if={hasComingIn}>
           <section class="section" data-id="coming-in">
             <h3 class="section-head">Comes in</h3>
@@ -539,6 +641,44 @@
                 </template>
               </tbody>
             </table>
+          </section>
+        </template>
+        <template lwc:if={hasRemoved}>
+          <section class="section" data-id="removed">
+            <h3 class="section-head">Removed, as you chose</h3>
+            <div class="tiles">
+              <template for:each={removedTiles} for:item="tile">
+                <div key={tile.key} class="tile shoresh-raised">
+                  <span class="slds-assistive-text">{tile.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
+                  <span aria-hidden="true">{tile.label}</span>
+                </div>
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasLeftAsIs}>
+          <!-- review.md INGEST-5.7: changed by hand since the files were read. -->
+          <section class="section" data-id="left-as-is">
+            <template for:each={leftAsIsLines} for:item="line">
+              <p key={line.key} class="d">{line.text}</p>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasLaterSection}>
+          <!-- review.md INGEST-5.5: kept for later; they wait on Roots. -->
+          <section class="section" data-id="later">
+            <template lwc:if={hasLater}>
+              <h3 class="section-head">{laterTitle}</h3>
+              <div class="chips">
+                <template for:each={laterLines} for:item="line">
+                  <span key={line.key} class="chip">{line.text}</span>
+                </template>
+              </div>
+            </template>
+            <template lwc:if={notKeptLine}>
+              <p class="d" data-id="not-kept">{notKeptLine}</p>
+            </template>
           </section>
         </template>
         <template lwc:if={hasLeftOut}>

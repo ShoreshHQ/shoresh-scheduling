@@ -288,9 +288,15 @@ function unitChoice(group, here, fileDivisions, ctx) {
   if (!answer || !options.includes(answer)) {
     return { ...newGroup(group, { key: null, name: null }), unanswered: true };
   }
-  if (group.ownDivision && !chosen) {
-    // Rule 1, said only when no answer replaced it (names-and-divisions.md).
-    ctx.notes.push({ type: "ownDivision", group: group.name });
+  if (group.ownDivision) {
+    // Rule 1 (names-and-divisions.md), listed under "Read as" with its dropdown (review.md
+    // INGEST-5.3), also once the director changed it.
+    ctx.notes.push({
+      type: "ownDivision",
+      group: group.name,
+      id,
+      changed: !!chosen
+    });
   }
   return {
     ...newGroup(group, here.get(answer)),

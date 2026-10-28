@@ -3,6 +3,7 @@
 import {
   buildProposal,
   importNotes,
+  readAsGroups,
   planFor,
   questionCards
 } from "./data/engine";
@@ -263,7 +264,9 @@ describe("INGEST-4.3: one week's day with its own time blocks", () => {
     expect(p.reading.notes).toContainEqual({
       type: "weekDay",
       week: "Week 2",
-      day: "Friday"
+      day: "Friday",
+      id: "ownDays|Week 2",
+      answer: "special"
     });
     expect(
       p.reading.placements.some(
@@ -273,11 +276,12 @@ describe("INGEST-4.3: one week's day with its own time blocks", () => {
           /^Activity A/.test(x.block)
       )
     ).toBe(true);
-    expect(importNotes(p, terms).map((n) => n.text)).toContainEqual(
-      expect.stringMatching(
-        /^Week 2's Friday comes in as a special day with its own times/
-      )
-    );
+    // Listed under "Read as" (review.md INGEST-5.4), no longer in the notes.
+    expect(
+      readAsGroups(p, terms, [])
+        .find((g) => g.key === "specialDay")
+        .lines.map((l) => [l.name, l.answer])
+    ).toEqual([["Week 2's Friday", "special"]]);
     expect(
       questionCards(p, terms, {}).filter((c) => c.answer === null)
     ).toEqual([]);

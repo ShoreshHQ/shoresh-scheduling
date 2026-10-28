@@ -49,6 +49,29 @@ public with sharing class ImportController {
     }
   }
 
+  /**
+   * The items an earlier import brought in that no one has changed since (INGEST-5.7, 5.8): a
+   * second import updates them without asking and lists them when its file lacks them.
+   */
+  @AuraEnabled
+  public static ImportProvenance.Standing getImported(Id seasonId) {
+    try {
+      return ImportProvenance.standing(seasonId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** The files of the last import, while it has questions open, to answer them now (INGEST-5.5). */
+  @AuraEnabled
+  public static String getOpenFiles(Id importId) {
+    try {
+      return ImportLog.openFiles(importId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
   /** Undo last import: removes what it created and puts back what it changed, keeping edits. */
   @AuraEnabled
   public static ImportUndo.Result undoImport(Id importId) {

@@ -688,6 +688,19 @@ export default class ShoreshCampSetup extends LightningElement {
       screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
     this.openSpecialItem(event.detail.specialItemId);
+    this.resumeImport(event.detail.resumeImport);
+  }
+
+  /** Roots' "N import questions left": Import last year opens on them (review.md INGEST-5.5). */
+  resumeImport(importId) {
+    if (importId) {
+      Promise.resolve().then(() => {
+        const screen = this.template.querySelector("c-shoresh-import");
+        if (screen) {
+          screen.resume(importId);
+        }
+      });
+    }
   }
 
   /**
