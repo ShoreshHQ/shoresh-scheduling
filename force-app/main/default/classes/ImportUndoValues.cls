@@ -85,4 +85,29 @@ public with sharing class ImportUndoValues {
       )
     );
   }
+
+  /**
+   * The records with the given fields, their names and when each was last saved
+   * (ImportProvenance, INGEST-5.7), in user mode. Only fields ImportFields lists are queried.
+   */
+  public static List<SObject> readSaved(
+    Schema.SObjectType type,
+    Set<String> fields,
+    Set<Id> ids
+  ) {
+    ImportFields.check(type, fields);
+    Set<String> columns = new Set<String>{ 'Name', 'LastModifiedDate' };
+    for (String name : fields) {
+      columns.add(ShoreshSchema.queryName(ImportFields.field(type, name)));
+    }
+    return Database.queryWithBinds(
+      'SELECT Id, ' +
+        String.join(new List<String>(columns), ', ') +
+        ' FROM ' +
+        ShoreshSchema.queryName(type) +
+        ' WHERE Id IN :ids',
+      new Map<String, Object>{ 'ids' => ids },
+      AccessLevel.USER_MODE
+    );
+  }
 }

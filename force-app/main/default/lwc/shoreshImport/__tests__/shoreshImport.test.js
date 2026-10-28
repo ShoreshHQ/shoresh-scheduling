@@ -413,7 +413,7 @@ describe("c-shoresh-import", () => {
   describe("review.md: questions for later, and a second import", () => {
     beforeEach(() => {
       saveSetup.mockClear();
-      getImported.mockResolvedValue([]);
+      getImported.mockResolvedValue({ untouched: [], inUse: {} });
       getAnswers.mockResolvedValue([]);
     });
 
@@ -479,8 +479,60 @@ describe("c-shoresh-import", () => {
       expect(plan.remember).toContainEqual({ key: open, answer: "a" });
     });
 
+    it("INGEST-5.5: Add says how many come in and how many wait: Add N, M for later", async () => {
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const total = $$(element, "[data-tile]").reduce(
+        (sum, tile) => sum + Number(tile.querySelector("b").textContent),
+        0
+      );
+      expect(add(element).textContent.trim()).toBe(`Add ${total}, 1 for later`);
+    });
+
+    it("INGEST-5.5 and 5.7: after Add, questions that did not fit and updates left as they were are said", async () => {
+      saveSetup.mockResolvedValue({
+        added: { Activity: 1 },
+        changed: {},
+        removed: {},
+        leftAsIs: ["Swim"],
+        openNotKept: 12
+      });
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      add(element).click();
+      await flush();
+      await flush();
+      expect($(element, '[data-id="left-as-is"]').textContent).toContain(
+        "Swim was changed since you opened the files; it was left as it is."
+      );
+      expect($(element, '[data-id="not-kept"]').textContent).toBe(
+        "12 more questions will be asked next time you import these files."
+      );
+    });
+
+    it("INGEST-5.8: something still uses it: kept with why, no Remove", async () => {
+      getImported.mockResolvedValue({
+        untouched: ["a2"],
+        inUse: { a2: "Pottery is Swim's rain plan" }
+      });
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({
+        ...SETUP,
+        activities: [{ Id: "a2", Name: "Pottery", Length__c: 1 }]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const row = $(element, '[data-id="missing"] [data-missing]');
+      expect(row.textContent).toContain(
+        "Pottery is Swim's rain plan, so it stays"
+      );
+      expect(row.querySelectorAll("button")).toHaveLength(0);
+    });
+
     it("INGEST-5.8: what an earlier import brought in and these files lack: Keep pressed, Remove one click, sent with Add", async () => {
-      getImported.mockResolvedValue(["a2"]);
+      getImported.mockResolvedValue({ untouched: ["a2"], inUse: {} });
       saveSetup.mockResolvedValue({
         added: {},
         changed: {},

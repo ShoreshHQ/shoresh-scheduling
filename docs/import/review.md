@@ -65,7 +65,14 @@ Each rule is clue, meaning, example, test.
    answered later); they are not remembered as answers. The page after Add lists them under "3
    import questions left", and Roots shows "3 import questions left" beside the last import
    while that import is the season's last and not undone. A question without "Leave it out for
-   now" (one group split in two, `splitCard`) still has to be answered before Add.
+   now" (one group split in two, `splitCard`) still has to be answered before Add. Questions
+   that do not fit with the import are counted, and the page after Add says "12 more questions
+   will be asked next time you import these files"; Roots counts only the ones kept.
+   **The kept file** (review of #177): only the files the director chose, as read, linked to the
+   import's record only (no other sharing), so it is visible to users who can see the season
+   (an import is a detail of its season). It is kept only while its questions are open: it is
+   deleted when a newer import of the season is saved (which also answers them, rule 6) and when
+   the import is undone.
    Test: "INGEST-5.5: Add saves what is settled; the open question is kept with the files, and
    nothing it decides is guessed"; "INGEST-5.5: an open division choice can wait for later, and
    its bunk is not guessed"; Roots "INGEST-5.5: the last import's questions kept for later wait
@@ -89,11 +96,17 @@ Each rule is clue, meaning, example, test.
    block, length or days (ADR 0006 §9), for one the camp has.
    Meaning: an item an earlier import (not undone) created and no one has changed since
    (`ImportProvenance`: its fields still hold what the last import to write them wrote,
-   compared by value from the imports' own logs, as Undo compares) is updated from the file
+   compared by value from the imports' own logs; it has not been saved since that import, so a
+   value changed by hand and set back by hand still counts as changed; and none of its attached
+   records, who can do it, who it covers, weeks off, was added, changed or deleted by hand;
+   only the season's newest 200 imports are read) is updated from the file
    without a question, and listed under "updated from the file" with **Update** (pressed) and
    **Keep as it is**. Anything else, made by hand or changed by hand since (on any screen, the
    record page, a list import), is asked as before. Read when the files are read
-   (`ImportController.getImported`); if it cannot be read, everything is asked.
+   (`ImportController.getImported`); if it cannot be read, everything is asked. The save checks
+   again: an update made without asking to an item changed since the files were read is left
+   out, and the page after Add says "Swim was changed since you opened the files; it was left as
+   it is."
    Example: Lunch an import added at Period 4, untouched, and the new file has it at Lunch: it
    moves to Lunch, listed, one click to keep it at Period 4.
    Test: "INGEST-5.7: untouched since the earlier import: updated without asking, and listed
@@ -107,11 +120,17 @@ Each rule is clue, meaning, example, test.
 8. **What an earlier import brought in that the new file lacks is listed, Keep or Remove.**
    Clue: an activity, or a fixed or recurring activity of a program the files cover, that rule
    7 counts as the import's, and whose name (spaces and capitals aside) is nowhere in the files
-   (not a cell, not a name read, not an elective's choice).
+   (not a cell, not a name read, not an elective's choice). Something still using it keeps it:
+   another activity's rain plan or copy, an elective's choices, weeks it is off, or a cell in any
+   of the season's schedules (drafts, versions, published; `ImportItemUses`). Such an item is
+   listed as kept with why ("Arts & Crafts is Swim's rain plan, so it stays") and no Remove.
+   Because a version holds the week it was imported from, an item placed in an earlier import's
+   week is always kept this way.
    Meaning: listed under "Not in these files" with **Keep** (pressed, the default) and
    **Remove**; nothing is removed unasked. Removed ones go in the same all-or-none save, in user
-   mode, after the server checks each is still the import's (`ImportRemovals`; anything else
-   refuses the whole import); the page after Add counts them under "Removed, as you chose", and
+   mode, after the server checks each is still the import's and nothing uses it
+   (`ImportRemovals`; anything else refuses the whole import with the plain reason, so nothing
+   pointing at a removed item is ever cleared); the page after Add counts them under "Removed, as you chose", and
    Undo of that import brings them back with what went with them (`ImportUndoRemovals`, from the
    Recycle Bin; one no longer there is named as deleted since). Something made or changed by
    hand is never listed.

@@ -93,6 +93,8 @@ export default class ShoreshImport extends LightningElement {
   openReadAs = null;
   // Items an earlier import brought in, untouched since (INGEST-5.7, 5.8).
   imported = [];
+  // Why any of them is still in use: kept, never offered for removal (INGEST-5.8).
+  inUse = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
@@ -244,7 +246,9 @@ export default class ShoreshImport extends LightningElement {
   /** The files read: what the camp answered before, what earlier imports brought in, the page. */
   async startReview() {
     this.answers = await this.rememberedAnswers();
-    this.imported = await this.importedBefore();
+    const before = await this.importedBefore();
+    this.imported = before.untouched || [];
+    this.inUse = before.inUse || {};
     this.layouts = {};
     this.openKind = null;
     this.openReadAs = null;
@@ -276,13 +280,13 @@ export default class ShoreshImport extends LightningElement {
   /** What earlier imports brought in and no one changed since; none if it cannot be read. */
   async importedBefore() {
     if (!this.seasonId) {
-      return [];
+      return {};
     }
     try {
-      return (await getImported({ seasonId: this.seasonId })) || [];
+      return (await getImported({ seasonId: this.seasonId })) || {};
     } catch {
       // Without it, everything the camp has is asked about and nothing is listed: never changed.
-      return [];
+      return {};
     }
   }
 
@@ -335,7 +339,8 @@ export default class ShoreshImport extends LightningElement {
       terms: this.terms,
       answers,
       layouts: this.layouts,
-      imported: this.imported
+      imported: this.imported,
+      inUse: this.inUse
     });
   }
 
@@ -834,6 +839,7 @@ export default class ShoreshImport extends LightningElement {
     this.openKind = null;
     this.openReadAs = null;
     this.imported = [];
+    this.inUse = {};
     this.savedOpen = [];
     this.answers = {};
     this.layouts = {};
@@ -909,12 +915,34 @@ export default class ShoreshImport extends LightningElement {
   get hasLeftOut() {
     return this.leftOutLines.length > 0;
   }
+  /** Updates the server left out: changed by hand since the files were read (INGEST-5.7). */
+  get leftAsIsLines() {
+    return ((this.result && this.result.leftAsIs) || []).map((name) => ({
+      key: name,
+      text: `${name} was changed since you opened the files; it was left as it is.`
+    }));
+  }
+  get hasLeftAsIs() {
+    return this.leftAsIsLines.length > 0;
+  }
+  /** Open questions that did not fit with the import (INGEST-5.5). */
+  get notKeptLine() {
+    const n = (this.result && this.result.openNotKept) || 0;
+    if (!n) {
+      return null;
+    }
+    return `${n} more ${n === 1 ? "question" : "questions"} will be asked next time you import these files.`;
+  }
+
   /** The questions kept for later: they wait on Roots (INGEST-5.5). */
   get laterLines() {
     return this.savedOpen.map((q) => ({ key: q.key, text: q.title }));
   }
   get hasLater() {
     return this.laterLines.length > 0;
+  }
+  get hasLaterSection() {
+    return this.hasLater || !!this.notKeptLine;
   }
   get laterTitle() {
     const n = this.laterLines.length;
@@ -934,11 +962,17 @@ export default class ShoreshImport extends LightningElement {
     const t = this.terms;
     return ((this.proposal && this.proposal.missing) || []).map((m) => ({
       ...m,
-      detail: `${t.sIn(m.kind)}${m.program ? ` · ${m.program}` : ""}`,
-      options: [
-        { value: "keep", label: "Keep" },
-        { value: "remove", label: "Remove" }
-      ].map((o) => {
+      // Still used by something else: kept, with why, and no Remove.
+      detail: m.inUse
+        ? `${m.inUse}, so it stays`
+        : `${t.sIn(m.kind)}${m.program ? ` · ${m.program}` : ""}`,
+      options: (m.inUse
+        ? []
+        : [
+            { value: "keep", label: "Keep" },
+            { value: "remove", label: "Remove" }
+          ]
+      ).map((o) => {
         const pressed = o.value === m.answer;
         return {
           ...o,

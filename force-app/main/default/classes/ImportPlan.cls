@@ -35,6 +35,59 @@ public with sharing class ImportPlan {
     return value == null ? null : String.valueOf(value);
   }
 
+  /**
+   * Leaves out the changes the screen made without asking (INGEST-5.7, `auto`) to items no longer
+   * the import's since the files were read: those stay as they are. Returns their names.
+   */
+  public List<String> dropAutoChanges(Set<Id> stillImported) {
+    List<String> left = new List<String>();
+    for (
+      String listName : new List<String>{
+        'activities',
+        'fixedActivities',
+        'recurringActivities'
+      }
+    ) {
+      Object value = raw.get(listName);
+      if (!(value instanceof List<Object>)) {
+        continue;
+      }
+      List<Object> kept = new List<Object>();
+      for (Object item : (List<Object>) value) {
+        Map<String, Object> entry = (Map<String, Object>) item;
+        Object recordId = entry.get('id');
+        if (
+          entry.get('auto') == true &&
+          (recordId == null || !stillImported.contains((Id) (String) recordId))
+        ) {
+          left.add(String.valueOf(entry.get('name')));
+        } else {
+          kept.add(item);
+        }
+      }
+      raw.put(listName, kept);
+    }
+    return left;
+  }
+
+  /** Whether the screen sent any change it made without asking (INGEST-5.7). */
+  public Boolean hasAutoChanges() {
+    for (
+      String listName : new List<String>{
+        'activities',
+        'fixedActivities',
+        'recurringActivities'
+      }
+    ) {
+      for (Entry entry : entries(listName)) {
+        if (entry.has('auto')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /** The entries of one list ("programs", "timeBlocks", ...); none when it is missing. */
   public List<Entry> entries(String listName) {
     List<Entry> result = new List<Entry>();

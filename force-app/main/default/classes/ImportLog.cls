@@ -9,6 +9,11 @@
 public with sharing class ImportLog {
   // Import__c.Open__c's length.
   private static final Integer OPEN_LIMIT = 131072;
+  // Imports of a season whose kept files are looked for: more than a season ever has.
+  private static final Integer MAX_IMPORTS = 200;
+
+  /** Open questions of the last import recorded that did not fit in it (INGEST-5.5). */
+  public static Integer openNotKept { get; private set; }
 
   /** Records an import into a season the person can edit. */
   public static Id record(ImportPlan plan, String created, String changed) {
@@ -23,6 +28,8 @@ public with sharing class ImportLog {
       Open__c = open
     );
     Database.insert(done, AccessLevel.SYSTEM_MODE);
+    // Files kept for earlier imports' questions are no longer needed: this import supersedes them.
+    deleteFiles(earlierImports(plan.seasonId, done.Id));
     String read = plan.text('fileData');
     if (open != null && !String.isBlank(read)) {
       // The files as read, so the open questions can be answered later (INGEST-5.5). Kept
@@ -55,11 +62,13 @@ public with sharing class ImportLog {
         }
       );
     }
+    Integer asked = open.size();
     String text = JSON.serialize(open);
     while (!open.isEmpty() && text.length() > OPEN_LIMIT) {
       open.remove(open.size() - 1);
       text = JSON.serialize(open);
     }
+    openNotKept = asked - open.size();
     return open.isEmpty() ? null : text;
   }
 
@@ -105,10 +114,54 @@ public with sharing class ImportLog {
     // An import is controlled by its season (and schedulers have no edit on imports
     // themselves): the season is what the person must be able to edit.
     requireEditAccess(done.Season__c);
+    // Its kept files go with it (INGEST-5.5).
+    deleteFiles(new Set<Id>{ done.Id });
     Database.update(
       new Import__c(Id = done.Id, UndoneAt__c = Datetime.now()),
       AccessLevel.SYSTEM_MODE
     );
+  }
+
+  /** The season's other imports (the newest), whose kept files a new import supersedes. */
+  private static Set<Id> earlierImports(Id seasonId, Id newest) {
+    return new Map<Id, Import__c>(
+        [
+          SELECT Id
+          FROM Import__c
+          WHERE Season__c = :seasonId AND Id != :newest
+          WITH USER_MODE
+          ORDER BY CreatedDate DESC
+          LIMIT :MAX_IMPORTS
+        ]
+      )
+      .keySet();
+  }
+
+  /**
+   * Deletes the files kept with these imports (INGEST-5.5): kept only while their questions are
+   * open. In system mode, as they were kept: the person deleting may not be the one who saved
+   * them, and their edit access to the season was checked first.
+   */
+  private static void deleteFiles(Set<Id> importIds) {
+    if (importIds.isEmpty()) {
+      return;
+    }
+    Set<Id> documents = new Set<Id>();
+    for (ContentDocumentLink link : [
+      SELECT ContentDocumentId
+      FROM ContentDocumentLink
+      WHERE LinkedEntityId IN :importIds
+      WITH SYSTEM_MODE
+    ]) {
+      documents.add(link.ContentDocumentId);
+    }
+    List<ContentDocument> files = new List<ContentDocument>();
+    for (Id documentId : documents) {
+      files.add(new ContentDocument(Id = documentId));
+    }
+    if (!files.isEmpty()) {
+      Database.delete(files, AccessLevel.SYSTEM_MODE);
+    }
   }
 
   /**

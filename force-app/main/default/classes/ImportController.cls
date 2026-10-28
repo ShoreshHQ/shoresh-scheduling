@@ -54,9 +54,9 @@ public with sharing class ImportController {
    * second import updates them without asking and lists them when its file lacks them.
    */
   @AuraEnabled
-  public static List<Id> getImported(Id seasonId) {
+  public static ImportProvenance.Standing getImported(Id seasonId) {
     try {
-      return new List<Id>(ImportProvenance.untouched(seasonId));
+      return ImportProvenance.standing(seasonId);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }

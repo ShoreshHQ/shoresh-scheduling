@@ -15,6 +15,12 @@ public with sharing class ImportSetupSaves {
     /** What an earlier import brought in that the director chose to remove (INGEST-5.8). */
     @AuraEnabled
     public Map<String, Integer> removed { get; set; }
+    /** Updates left out: changed by hand since the files were read (INGEST-5.7). */
+    @AuraEnabled
+    public List<String> leftAsIs { get; set; }
+    /** Open questions that did not fit with the import: asked next time (INGEST-5.5). */
+    @AuraEnabled
+    public Integer openNotKept { get; set; }
     /** The import's record, for Undo last import. */
     @AuraEnabled
     public Id importId { get; set; }
@@ -23,6 +29,8 @@ public with sharing class ImportSetupSaves {
       added = new Map<String, Integer>();
       changed = new Map<String, Integer>();
       removed = new Map<String, Integer>();
+      leftAsIs = new List<String>();
+      openNotKept = 0;
     }
 
     public void countRemoved(String term) {
@@ -66,6 +74,12 @@ public with sharing class ImportSetupSaves {
       CampLabels.forCamp(seasons[0].Camp__c)
     );
     ImportWriter writer = new ImportWriter(keys);
+    // INGEST-5.7: an update made without asking is applied only to what is still the import's.
+    if (plan.hasAutoChanges()) {
+      writer.result.leftAsIs = plan.dropAutoChanges(
+        ImportProvenance.untouched(plan.seasonId)
+      );
+    }
     SetTimeGuard.defer();
     Savepoint beforeSave = Database.setSavepoint();
     try {
@@ -87,6 +101,7 @@ public with sharing class ImportSetupSaves {
       // What it guessed rather than read, with the values saved: marked for a look on setup.
       SetupGuesses.rememberFromPlan(seasons[0].Camp__c, plan, keys);
       writer.result.importId = record(plan, writer);
+      writer.result.openNotKept = ImportLog.openNotKept;
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;

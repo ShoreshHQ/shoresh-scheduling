@@ -75,11 +75,12 @@ describe("INGEST-5.7: a second import updates what an earlier import brought in"
       ["Boating", "change"]
     ]);
     const plan = planFor(p, camp(), "s");
+    // Marked as made without asking, so the server checks it is still the import's.
     expect(plan.fixedActivities).toEqual([
-      { id: "f1", blockKey: "tb4", length: 1 }
+      { id: "f1", blockKey: "tb4", length: 1, auto: true, name: "Lunch" }
     ]);
     expect(plan.activities.find((a) => a.id === "a1")).toEqual(
-      expect.objectContaining({ id: "a1", length: 2 })
+      expect.objectContaining({ id: "a1", length: 2, auto: true })
     );
   });
 
@@ -117,6 +118,28 @@ describe("INGEST-5.8: what an earlier import brought in that the new file lacks"
     expect(planFor(removed, camp(), "s").removals).toEqual([
       { id: "a2", name: "Pottery" }
     ]);
+  });
+
+  it("INGEST-5.8 counter-case: something still uses it: kept with why, and Remove is not taken", () => {
+    const reason = "Pottery is in Chugim's choices";
+    const run = (answers) =>
+      buildProposal({
+        files: samples("all-camp"),
+        existing: camp(),
+        terms,
+        answers,
+        imported: ["a2"],
+        inUse: { a2: reason }
+      });
+    const listed = run({}).missing[0];
+    expect([listed.name, listed.inUse, listed.answer]).toEqual([
+      "Pottery",
+      reason,
+      "keep"
+    ]);
+    const tried = run({ [listed.key]: "remove" });
+    expect(tried.missing[0].answer).toBe("keep");
+    expect(planFor(tried, camp(), "s").removals).toEqual([]);
   });
 
   it("INGEST-5.8 counter-case: made or changed by hand is never listed", () => {

@@ -138,6 +138,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     of a season an import filled updates what that import brought in and no one changed since,
     and lists what the new file lacks with Keep or Remove (review.md rules 7 and 8; Greg,
     decisions Q2 and Q3); this refines choice 9's "add only" for those items only.
+    _The files kept for open questions_ (review of #177): only files the director uploaded, kept
+    only while questions are open (deleted by a newer import or the import's Undo), linked to the
+    import record only, so visible to users who can see the season.
 12. **Saving.** `ImportController.saveSetup(plan)` takes the reviewed plan (JSON: programs, time
     blocks, divisions, groups, locations, activities with who, fixed activities, recurring
     activities with who, in that order). New records refer to each other by keys the screen

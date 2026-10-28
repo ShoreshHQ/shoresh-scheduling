@@ -143,7 +143,8 @@ function activityRecords(proposal, existing) {
   const changed = proposal.updates.activities.map((u) => ({
     key: u.id,
     id: u.id,
-    length: u.length
+    length: u.length,
+    ...(u.auto ? { auto: true, name: u.name } : {})
   }));
   return [...added, ...changed];
 }
@@ -163,7 +164,9 @@ function setTimeRecords(records, updates, withDays) {
     id: u.id,
     blockKey: u.blockKey,
     length: u.length,
-    ...(withDays ? { days: u.days } : {})
+    ...(withDays ? { days: u.days } : {}),
+    // review.md INGEST-5.7: made without asking, so the server checks it is still the import's.
+    ...(u.auto ? { auto: true, name: u.name } : {})
   }));
   return [...added, ...changed];
 }

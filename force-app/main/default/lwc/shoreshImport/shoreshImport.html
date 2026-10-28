@@ -657,15 +657,28 @@
             </div>
           </section>
         </template>
-        <template lwc:if={hasLater}>
+        <template lwc:if={hasLeftAsIs}>
+          <!-- review.md INGEST-5.7: changed by hand since the files were read. -->
+          <section class="section" data-id="left-as-is">
+            <template for:each={leftAsIsLines} for:item="line">
+              <p key={line.key} class="d">{line.text}</p>
+            </template>
+          </section>
+        </template>
+        <template lwc:if={hasLaterSection}>
           <!-- review.md INGEST-5.5: kept for later; they wait on Roots. -->
           <section class="section" data-id="later">
-            <h3 class="section-head">{laterTitle}</h3>
-            <div class="chips">
-              <template for:each={laterLines} for:item="line">
-                <span key={line.key} class="chip">{line.text}</span>
-              </template>
-            </div>
+            <template lwc:if={hasLater}>
+              <h3 class="section-head">{laterTitle}</h3>
+              <div class="chips">
+                <template for:each={laterLines} for:item="line">
+                  <span key={line.key} class="chip">{line.text}</span>
+                </template>
+              </div>
+            </template>
+            <template lwc:if={notKeptLine}>
+              <p class="d" data-id="not-kept">{notKeptLine}</p>
+            </template>
           </section>
         </template>
         <template lwc:if={hasLeftOut}>

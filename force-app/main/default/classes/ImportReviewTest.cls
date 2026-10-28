@@ -113,7 +113,11 @@ private class ImportReviewTest {
       second.put(
         'removals',
         new List<Object>{
-          new Map<String, Object>{ 'id' => boating.Id, 'name' => 'Boating' }
+          new Map<String, Object>{ 'id' => boating.Id, 'name' => 'Boating' },
+          new Map<String, Object>{
+            'id' => activityNamed(season.Id, 'Swim').Id,
+            'name' => 'Swim'
+          }
         }
       );
       Test.startTest();
@@ -130,22 +134,13 @@ private class ImportReviewTest {
       ];
       ImportUndo.Result undone = ImportController.undoImport(result.importId);
       Test.stopTest();
-      Assert.areEqual(1, result.removed.get('Activity'));
+      Assert.areEqual(2, result.removed.get('Activity'), 'two in one save');
       Assert.areEqual(0, leftAfterRemove, 'removed');
-      Assert.areEqual(1, undone.restored, 'brought back by Undo');
+      Assert.areEqual(2, undone.restored, 'brought back by Undo');
       Assert.areEqual(
         1,
         [SELECT COUNT() FROM Activity__c WHERE Id = :boating.Id WITH USER_MODE],
         'back, with its who list'
-      );
-      Assert.isTrue(
-        [
-          SELECT COUNT()
-          FROM ActivityEligibility__c
-          WHERE Activity__c = :boating.Id
-          WITH USER_MODE
-        ] > 0,
-        'what went with it (who can do it) came back too'
       );
       Assert.isTrue(
         queries < 40,
@@ -234,6 +229,267 @@ private class ImportReviewTest {
       }
       Test.stopTest();
       Assert.isNotNull(refusal, 'no questions were left open');
+    }
+  }
+
+  private static Map<String, Object> removing(Id seasonId, Activity__c item) {
+    Map<String, Object> plan = ImportTestPlans.emptyPlan(seasonId);
+    plan.put(
+      'removals',
+      new List<Object>{
+        new Map<String, Object>{ 'id' => item.Id, 'name' => item.Name }
+      }
+    );
+    return plan;
+  }
+
+  private static String refusalOf(Map<String, Object> plan) {
+    try {
+      ImportController.saveSetup(JSON.serialize(plan));
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
+  @IsTest
+  static void ingest58AnItemInUseIsKeptWithWhyAndItsRemovalRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c boating = activityNamed(season.Id, 'Boating');
+      // Made by hand: Swim's rain plan is Boating, so Boating is in use.
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      Activity__c crafts = ShoreshTestData.activity(season.Id, 'Crafts', null);
+      crafts.RainPlan__c = boating.Id;
+      insert as user crafts;
+      Test.startTest();
+      ImportProvenance.Standing standing = ImportController.getImported(
+        season.Id
+      );
+      String refusal = refusalOf(removing(season.Id, boating));
+      Test.stopTest();
+      Assert.areEqual(
+        'Boating is Crafts\'s rain plan',
+        standing.inUse.get(boating.Id)
+      );
+      Assert.isFalse(standing.inUse.containsKey(swim.Id), 'nothing uses Swim');
+      Assert.isTrue(
+        refusal.contains('Boating is Crafts\'s rain plan'),
+        refusal
+      );
+      Assert.areEqual(
+        boating.Id,
+        [
+          SELECT RainPlan__c
+          FROM Activity__c
+          WHERE Id = :crafts.Id
+          WITH USER_MODE
+        ]
+        .RainPlan__c,
+        'nothing pointing at it was cleared'
+      );
+    }
+  }
+
+  @IsTest
+  static void ingest58AnItemOnAScheduleIsInUse() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      List<Week__c> weeks = ShoreshTestData.weeks(season.Id, 1);
+      Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
+      ImportTestPlans.addVersion(plan, weeks[0]);
+      ImportController.saveSetup(JSON.serialize(plan));
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      Test.startTest();
+      ImportProvenance.Standing standing = ImportController.getImported(
+        season.Id
+      );
+      Test.stopTest();
+      Assert.isTrue(
+        standing.inUse.get(swim.Id).startsWith('Swim is on '),
+        String.valueOf(standing.inUse)
+      );
+    }
+  }
+
+  @IsTest
+  static void ingest57AHandChangeToAttachedRecordsIsAChange() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c boating = activityNamed(season.Id, 'Boating');
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      // Who can do Boating: a row deleted by hand.
+      delete as user [
+        SELECT Id
+        FROM ActivityEligibility__c
+        WHERE Activity__c = :boating.Id
+        WITH USER_MODE
+      ];
+      Test.startTest();
+      Set<Id> after = untouched(season.Id);
+      String refusal = refusalOf(removing(season.Id, boating));
+      Test.stopTest();
+      Assert.isFalse(
+        after.contains(boating.Id),
+        'its who list changed by hand'
+      );
+      Assert.isTrue(after.contains(swim.Id), 'Swim untouched');
+      Assert.isNotNull(refusal, 'never removed');
+    }
+  }
+
+  @IsTest
+  static void ingest57ChangedAndChangedBackStillCountsAsChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      ImportSetupSaves.Result first = firstImport(season.Id);
+      // The import was saved an hour ago; the director edits now, then sets it back.
+      Test.setCreatedDate(first.importId, Datetime.now().addHours(-1));
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      Decimal length = swim.Length__c;
+      swim.Length__c = length + 1;
+      update as user swim;
+      swim.Length__c = length;
+      update as user swim;
+      Test.startTest();
+      Set<Id> after = untouched(season.Id);
+      Test.stopTest();
+      Assert.isFalse(after.contains(swim.Id), 'saved since the import');
+    }
+  }
+
+  @IsTest
+  static void ingest57AnUpdateMadeWithoutAskingIsCheckedAgainAtSave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      // Changed by hand after the screen read the files.
+      swim.Length__c = 3;
+      update as user swim;
+      Map<String, Object> second = ImportTestPlans.emptyPlan(season.Id);
+      ImportTestPlans.add(
+        second,
+        'activities',
+        new Map<String, Object>{
+          'key' => swim.Id,
+          'id' => swim.Id,
+          'length' => 2,
+          'auto' => true,
+          'name' => 'Swim'
+        }
+      );
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(second)
+      );
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Swim' }, result.leftAsIs);
+      Assert.areEqual(3, activityNamed(season.Id, 'Swim').Length__c);
+    }
+  }
+
+  @IsTest
+  static void ingest57OnlyTheNewestImportsAreRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      ImportController.saveSetup(
+        JSON.serialize(ImportTestPlans.emptyPlan(season.Id))
+      );
+      Test.startTest();
+      Set<Id> all = untouched(season.Id);
+      ImportProvenance.maxImports = 1;
+      Set<Id> newest = untouched(season.Id);
+      Test.stopTest();
+      Assert.isTrue(all.contains(swim.Id));
+      Assert.isFalse(
+        newest.contains(swim.Id),
+        'its import is older than the newest one'
+      );
+    }
+  }
+
+  private static Integer filesOf(Id importId) {
+    return [
+      SELECT COUNT()
+      FROM ContentDocumentLink
+      WHERE LinkedEntityId = :importId
+      WITH SYSTEM_MODE
+    ];
+  }
+
+  private static Map<String, Object> withOpen(
+    Map<String, Object> plan,
+    Integer count,
+    Integer titleLength
+  ) {
+    List<Object> open = new List<Object>();
+    for (Integer i = 0; i < count; i++) {
+      open.add(
+        new Map<String, Object>{
+          'key' => 'kind|Archery ' + i,
+          'title' => 'Is Archery ' +
+          i +
+          ' at a set time? '.rightPad(titleLength, '.')
+        }
+      );
+    }
+    plan.put('open', open);
+    plan.put('fileData', '[{"name":"maple-grove.xlsx","sheets":[]}]');
+    return plan;
+  }
+
+  @IsTest
+  static void ingest55KeptFilesGoOnceANewerImportOrUndoSupersedesThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      ImportSetupSaves.Result first = ImportController.saveSetup(
+        JSON.serialize(withOpen(ImportTestPlans.newCamp(season.Id), 1, 40))
+      );
+      Integer keptAtFirst = filesOf(first.importId);
+      Test.startTest();
+      ImportSetupSaves.Result second = ImportController.saveSetup(
+        JSON.serialize(withOpen(ImportTestPlans.emptyPlan(season.Id), 1, 40))
+      );
+      Integer firstAfterNewer = filesOf(first.importId);
+      String refusal;
+      try {
+        ImportController.getOpenFiles(first.importId);
+      } catch (AuraHandledException e) {
+        refusal = e.getMessage();
+      }
+      ImportController.undoImport(second.importId);
+      Test.stopTest();
+      Assert.areEqual(1, keptAtFirst, 'kept while its questions are open');
+      Assert.areEqual(0, firstAfterNewer, 'a newer import supersedes it');
+      Assert.isNotNull(refusal, 'reopening after a newer import is refused');
+      Assert.areEqual(0, filesOf(second.importId), 'gone with its Undo');
+    }
+  }
+
+  @IsTest
+  static void ingest55QuestionsThatDoNotFitAreCountedAndRootsCountIsTrue() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Map<String, Object> plan = withOpen(
+        ImportTestPlans.newCamp(season.Id),
+        150,
+        1000
+      );
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Import__c last = SeasonSetupReader.read(season.Id).lastImport;
+      Test.stopTest();
+      Integer kept = ((List<Object>) JSON.deserializeUntyped(last.Open__c))
+        .size();
+      Assert.isTrue(result.openNotKept > 0, 'some did not fit');
+      Assert.areEqual(150, kept + result.openNotKept, 'every question counted');
     }
   }
 }

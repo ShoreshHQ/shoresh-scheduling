@@ -38,25 +38,46 @@ public with sharing class ImportRemovals {
   }
 
   /**
-   * The records to remove, each still the import's (ImportProvenance), named as the screen
-   * named it (for the log and Undo's message only); anything else refuses the whole import.
+   * The records to remove, each still the import's (ImportProvenance) and used by nothing else
+   * (ImportItemUses), named as the screen named it (for the log and Undo's message only);
+   * anything else refuses the whole import with its reason.
    */
   private List<SObject> checked(List<ImportPlan.Entry> entries) {
     Set<Id> allowed = ImportProvenance.untouched(plan.seasonId);
+    Map<Id, String> names = new Map<Id, String>();
     List<SObject> records = new List<SObject>();
     for (ImportPlan.Entry entry : entries) {
       Id recordId = entry.id();
-      String name = entry.has('name') ? entry.text('name') : 'An item';
+      String name = nameOf(entry);
       if (recordId == null || !allowed.contains(recordId)) {
         throw new ShoreshException(
           name +
           ' was made or changed by hand, so this import does not remove it. Nothing was saved.'
         );
       }
+      names.put(recordId, name);
       SObject record = recordId.getSObjectType().newSObject(recordId);
       record.put('Name', name);
       records.add(record);
     }
+    refuseInUse(names);
     return records;
+  }
+
+  /**
+   * In use since the files were read: refused with the reason, so nothing pointing at it is ever
+   * cleared (INGEST-5.8).
+   */
+  private void refuseInUse(Map<Id, String> names) {
+    Map<Id, String> inUse = ImportItemUses.reasons(plan.seasonId, names);
+    if (!inUse.isEmpty()) {
+      throw new ShoreshException(
+        inUse.values()[0] + ', so it can\'t be removed. Nothing was saved.'
+      );
+    }
+  }
+
+  private static String nameOf(ImportPlan.Entry entry) {
+    return entry.has('name') ? entry.text('name') : 'An item';
   }
 }

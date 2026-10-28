@@ -23,6 +23,7 @@ export function missingKey(kind, program, name) {
 export function missingItems({
   existing,
   imported,
+  inUse = {},
   answers,
   usable,
   decisions,
@@ -49,7 +50,9 @@ export function missingItems({
       kind,
       name: record.Name,
       program,
-      answer: answers[key] === REMOVE ? REMOVE : "keep"
+      // Still used by something else: kept, with why; never offered for removal.
+      inUse: inUse[record.Id] || null,
+      answer: answers[key] === REMOVE && !inUse[record.Id] ? REMOVE : "keep"
     };
   };
   const listed = (existing.activities || [])

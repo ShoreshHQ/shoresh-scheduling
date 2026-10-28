@@ -126,6 +126,7 @@ function compareFixed(decision, record, ctx) {
   if (changeOrAsk(id, record, ask, ctx)) {
     ctx.updates.fixed.push({
       id: record.Id,
+      auto: ctx.imported.has(record.Id),
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
       name: decision.name
@@ -175,6 +176,7 @@ function compareRecurring(decision, record, ctx) {
   if (changeOrAsk(id, record, ask, ctx)) {
     ctx.updates.recurring.push({
       id: record.Id,
+      auto: ctx.imported.has(record.Id),
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
       days,
@@ -197,7 +199,12 @@ function compareActivity(name, cells, record, ctx) {
   if (
     changeOrAsk(id, record, { id, type: "activity", name, record, length }, ctx)
   ) {
-    ctx.updates.activities.push({ id: record.Id, length, name });
+    ctx.updates.activities.push({
+      id: record.Id,
+      length,
+      name,
+      auto: ctx.imported.has(record.Id)
+    });
   }
 }
 
@@ -489,6 +496,8 @@ export function buildProposal(input) {
     camp,
     // Items an earlier import brought in, untouched since (ImportController.getImported).
     imported: new Set(input.imported || []),
+    // Why an untouched item is still in use (ImportController.getImported): never removed.
+    inUse: input.inUse || {},
     timetables: programs.timetables,
     answers,
     deletions,
@@ -560,6 +569,7 @@ export function buildProposal(input) {
   proposal.missing = missingItems({
     existing: input.existing,
     imported: ctx.imported,
+    inUse: ctx.inUse,
     answers,
     usable,
     decisions,
