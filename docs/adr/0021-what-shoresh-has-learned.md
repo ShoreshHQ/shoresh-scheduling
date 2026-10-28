@@ -151,8 +151,12 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
     (`Shape__c`: a kind question's why-asked, everyone-or-some and one-or-more blocks; a similar
     pair's file-or-camp name; a list's or a split's two-or-more). A question of another shape,
     or answers of mixed or unknown shape (all saved before this PR), is held at Suggested
-    (MEMO-3.3). A Change on this screen keeps the shape and counts as picked without a
-    suggestion. A workbook import's sheets show no suggestions (its save does not say which
+    (MEMO-3.3). Answers saved together have no order among them: if the newest import's answers
+    disagree, the pattern asks, and a run stops before an import whose answers disagree. A
+    Change on this screen keeps the shape and is marked (`FromLearned__c`): it agrees or
+    disagrees like any answer, but adds no import and no answer picked yourself. Guessed rules
+    (`guessed|`) are no pattern's answers. Both reads (`ImportAnswers.forCamp`,
+    `LearnedAnswers.forCamp`) are newest first, so past 5000 only the oldest are left out. A workbook import's sheets show no suggestions (its save does not say which
     were followed).
 
 12. **Suggested in the import cards** (MEMO-6.5, MEMO-6.6; desktop `suggestedReason`): setup
@@ -167,13 +171,13 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
     answers it saw): a marker record, `pattern|<template>|<antecedent>` answered "forgotten",
     after which answers saved until then do not count toward that pattern. The answers stay
     (each still fills its own question); answers saved later build it again only by clearing
-    the bar again. A second Forget replaces the marker. Undo deletes the new marker (and brings
+    the bar again. Each part is escaped ("\\" and "|" after a "\\", `keyPart` / `partOf`, the same both ways). A second Forget replaces the marker. Undo deletes the new marker (and brings
     an earlier one back, as Undo of a Change). The server takes only a template from the fixed
     list (`LearnedAnswers.forgetPattern`). Markers are no answers: the screen lists none.
 
 14. **A pattern row** (MEMO-6.7; desktop `patternRow`, `progressLine`, `patternFlag`): "A
     recurring activity: Lunch 1, Lunch 2 and Lunch 3", a flag for what it does next import
-    ("Suggested", "Pre-selects for you", "Still asks"), three dots and the progress line in
+    ("Suggested", "Steady: suggested every time", "Still asks"; until PR 4 an Established pattern is only suggested, and the row says so), three dots and the progress line in
     counts ("2 of 3 answers - needs one more import", "needs one answer you picked yourself",
     "Your latest answer disagrees - 2 more agreeing answers to suggest again"; never a
     percentage), who answered and the latest date, and Forget pattern. A pattern needs two
@@ -186,6 +190,14 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
     3.2, 3.3, 3.7, 3.6; INGEST-2.2, 2.3, 3.8, 2.1), under "Shoresh already knew", then
     "Learned from you": patterns, then answers. Read-only, no count; shown even before any
     answer, under the empty state. No new screen or group.
+
+## Known breadth, for Greg to review
+
+As on the desktop: the meal template matches any meal name (Lunch, Menucha, Breakfast, Dinner,
+Snack, numbered or not) across the program, and the similar-names template pools every pair of
+one kind (activity, group, division) with the same kind of difference (spelling, ending, one
+letter). So answers about "Arts & Crafts" can suggest for "Lunch2" / "Lunch 2". The bar,
+demotion and the shape check limit it; narrower templates are a product call.
 
 ## Not in this PR
 

@@ -216,4 +216,29 @@ private class ImportAnswersTest {
       );
     }
   }
+
+  @IsTest
+  static void readsNewestFirstAsTheLearnedScreenDoes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Old' => 'activity' }
+      );
+      Id old = [SELECT Id FROM ImportAnswer__c WHERE Camp__c = :willow.Id].Id;
+      Test.setCreatedDate(old, Datetime.newInstance(2026, 7, 3, 12, 0, 0));
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'pattern|numbered|lunch' => 'forgotten' }
+      );
+      Test.startTest();
+      List<ImportAnswers.Answer> rows = ImportAnswers.forCamp(willow.Id);
+      List<LearnedAnswers.Learned> learned = LearnedAnswers.forCamp(willow.Id);
+      Test.stopTest();
+      // Past 5000 the oldest are left out: never the newest answer or marker.
+      Assert.areEqual('pattern|numbered|lunch', rows[0].key);
+      Assert.areEqual('kind|Old', rows[1].key);
+      Assert.areEqual(learned[0].question, rows[0].key, 'the same order');
+    }
+  }
 }

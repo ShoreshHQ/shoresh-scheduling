@@ -33,9 +33,16 @@ public with sharing class ImportAnswers {
     /** It agreed with the suggestion its question showed (repo ADR 0021 choice 11). */
     @AuraEnabled
     public Boolean fromSuggestion;
+    /** Changed on "What Shoresh has learned", not answered in an import. */
+    @AuraEnabled
+    public Boolean fromLearned;
   }
 
-  /** The camp's remembered answers. One query, whatever the number. */
+  /**
+   * The camp's remembered answers, newest first (as LearnedAnswers reads them), so past 5000 the
+   * oldest are the ones left out, never a recent answer or a forgotten pattern's marker. One
+   * query, whatever the number.
+   */
   public static List<Answer> forCamp(Id campId) {
     List<Answer> result = new List<Answer>();
     for (ImportAnswer__c row : [
@@ -44,6 +51,7 @@ public with sharing class ImportAnswers {
         Answer__c,
         Shape__c,
         FromSuggestion__c,
+        FromLearned__c,
         CreatedDate,
         CreatedById,
         CreatedBy.FirstName,
@@ -53,7 +61,7 @@ public with sharing class ImportAnswers {
       FROM ImportAnswer__c
       WHERE Camp__c = :campId
       WITH USER_MODE
-      ORDER BY CreatedDate
+      ORDER BY CreatedDate DESC, Id DESC
       LIMIT 5000
     ]) {
       result.add(answerOf(row));
@@ -71,6 +79,7 @@ public with sharing class ImportAnswers {
     answer.savedAt = row.CreatedDate;
     answer.shape = row.Shape__c;
     answer.fromSuggestion = row.FromSuggestion__c == true;
+    answer.fromLearned = row.FromLearned__c == true;
     return answer;
   }
 

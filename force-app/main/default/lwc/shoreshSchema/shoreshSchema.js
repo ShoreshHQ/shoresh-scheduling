@@ -107,6 +107,7 @@ import groupSortOrder from "@salesforce/schema/Group__c.SortOrder__c";
 import importAnswerObject from "@salesforce/schema/ImportAnswer__c";
 import importAnswerAnswer from "@salesforce/schema/ImportAnswer__c.Answer__c";
 import importAnswerCamp from "@salesforce/schema/ImportAnswer__c.Camp__c";
+import importAnswerFromLearned from "@salesforce/schema/ImportAnswer__c.FromLearned__c";
 import importAnswerFromSuggestion from "@salesforce/schema/ImportAnswer__c.FromSuggestion__c";
 import importAnswerKey from "@salesforce/schema/ImportAnswer__c.Key__c";
 import importAnswerQuestionKey from "@salesforce/schema/ImportAnswer__c.QuestionKey__c";
@@ -431,6 +432,7 @@ export const FIELD = Object.freeze({
   ImportAnswer: Object.freeze({
     Answer: importAnswerAnswer.fieldApiName,
     Camp: importAnswerCamp.fieldApiName,
+    FromLearned: importAnswerFromLearned.fieldApiName,
     FromSuggestion: importAnswerFromSuggestion.fieldApiName,
     Key: importAnswerKey.fieldApiName,
     QuestionKey: importAnswerQuestionKey.fieldApiName,

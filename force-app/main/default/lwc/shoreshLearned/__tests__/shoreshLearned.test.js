@@ -437,15 +437,15 @@ describe("patterns, and what Shoresh already knew", () => {
       {
         template: "meal",
         title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
-        flag: "Pre-selects for you",
-        progress: "3 of 3 answers - pre-selected, and you still confirm",
+        flag: "Steady: suggested every time",
+        progress: "3 of 3 answers - suggested every time",
         who: "Answered by Dana and you, latest 10 Jul"
       },
       {
         template: "numbered",
         title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
-        flag: "Pre-selects for you",
-        progress: "3 of 3 answers - pre-selected, and you still confirm",
+        flag: "Steady: suggested every time",
+        progress: "3 of 3 answers - suggested every time",
         who: "Answered by Dana and you, latest 10 Jul"
       }
     ]);

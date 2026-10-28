@@ -50,6 +50,9 @@ public with sharing class LearnedAnswers {
     /** It agreed with the suggestion its question showed (repo ADR 0021 choice 11). */
     @AuraEnabled
     public Boolean fromSuggestion;
+    /** Changed here, not answered in an import (adds no import and no self-pick). */
+    @AuraEnabled
+    public Boolean fromLearned;
   }
 
   /** The camp's remembered answers, newest first. One query, whatever the number. */
@@ -62,6 +65,7 @@ public with sharing class LearnedAnswers {
         Answer__c,
         Shape__c,
         FromSuggestion__c,
+        FromLearned__c,
         CreatedDate,
         CreatedById,
         CreatedBy.FirstName,
@@ -100,7 +104,9 @@ public with sharing class LearnedAnswers {
       Answer__c = answer,
       // The question's shape stays; an answer picked here was picked without a suggestion.
       Shape__c = row.Shape__c,
-      FromSuggestion__c = false
+      FromSuggestion__c = false,
+      // Changed here, not in an import: it agrees with a pattern, but adds no import or self-pick.
+      FromLearned__c = true
     );
     Savepoint before = Database.setSavepoint();
     try {
@@ -146,7 +152,7 @@ public with sharing class LearnedAnswers {
     ) {
       throw new ShoreshException('That isn\'t a pattern Shoresh knows.');
     }
-    String question = PATTERN + template + '|' + antecedent;
+    String question = markerOf(template, antecedent);
     String key = ImportAnswers.keyOf(campId, question);
     List<ImportAnswer__c> before = [
       SELECT Id
@@ -176,6 +182,21 @@ public with sharing class LearnedAnswers {
     return result;
   }
 
+  /** The marker's key: "pattern|<template>|<antecedent>", each part escaped (partOf). */
+  @TestVisible
+  private static String markerOf(String template, String antecedent) {
+    return PATTERN + partOf(template) + '|' + partOf(antecedent);
+  }
+
+  /**
+   * One part of a key, as c/shoreshPatterns keyPart writes it: "\" and "|" each after a "\", so
+   * the screen reads the part back whole.
+   */
+  @TestVisible
+  private static String partOf(String value) {
+    return value.replace('\\', '\\\\').replace('|', '\\|');
+  }
+
   private static ImportAnswer__c rowOf(Id campId, Id answerId) {
     List<ImportAnswer__c> rows = [
       SELECT Id, Key__c, QuestionKey__c, Shape__c
@@ -198,6 +219,7 @@ public with sharing class LearnedAnswers {
     learned.savedAt = row.CreatedDate;
     learned.shape = row.Shape__c;
     learned.fromSuggestion = row.FromSuggestion__c == true;
+    learned.fromLearned = row.FromLearned__c == true;
     return learned;
   }
 }

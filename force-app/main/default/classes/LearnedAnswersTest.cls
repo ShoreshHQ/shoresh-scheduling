@@ -525,4 +525,36 @@ private class LearnedAnswersTest {
       );
     }
   }
+
+  // MEMO-4.5
+  @IsTest
+  static void aPatternMarkerEscapesItsPartsAsTheScreenReadsThem() {
+    Test.startTest();
+    String marker = LearnedAnswers.markerOf(
+      'numbered',
+      'lunch|day\\|camp\\\\1'
+    );
+    Test.stopTest();
+    // c/shoreshPatterns shoreshPatterns.test.js expects this same string.
+    Assert.areEqual('pattern|numbered|lunch\\|day\\\\\\|camp\\\\\\\\1', marker);
+  }
+
+  // MEMO-3.2
+  @IsTest
+  static void aChangeHereIsMarkedAsNoImport() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Test.startTest();
+      LearnedController.changeLearned(willow.Id, only(willow.Id).Id, 'fixed');
+      Test.stopTest();
+      LearnedAnswers.Learned row = LearnedController.getLearned(willow.Id)[0];
+      Assert.isTrue(row.fromLearned);
+      Assert.isFalse(ImportAnswers.forCamp(willow.Id)[0].fromSuggestion);
+      Assert.isTrue(ImportAnswers.forCamp(willow.Id)[0].fromLearned);
+    }
+  }
 }

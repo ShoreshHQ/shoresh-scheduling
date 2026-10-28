@@ -179,7 +179,8 @@ export function progressLine(p) {
   }
   const still = missing.map((m) => MISSING_TEXT[m]).filter(Boolean);
   if (band === "established" && still.length === 0) {
-    return `${count} - pre-selected, and you still confirm`;
+    // Until Shoresh applies anything on its own (MEMO-5.1, PR 4), steady means suggested.
+    return `${count} - suggested every time`;
   }
   return still.length ? `${count} - ${still.join(", ")}` : count;
 }
@@ -187,7 +188,7 @@ export function progressLine(p) {
 /** The pattern's band as a flag: what it does at the next import. */
 export function patternFlag(band) {
   if (band === "established") {
-    return "Pre-selects for you";
+    return "Steady: suggested every time";
   }
   return band === "suggest" ? "Suggested" : "Still asks";
 }
@@ -198,9 +199,11 @@ function whoOf(row) {
 
 /** One pattern (c/shoreshPatterns patternsOf) as a row of its group. */
 export function patternRow(p, t) {
-  const names = inOrder(p.supporters.map((r) => r.name));
-  const authors = [...new Set(p.supporters.map(whoOf))];
-  const latest = p.supporters.reduce(
+  // A pattern whose latest import disagrees has no supporters: it names what was answered.
+  const shown = p.supporters.length ? p.supporters : p.instances;
+  const names = inOrder(shown.map((r) => r.name));
+  const authors = [...new Set(shown.map(whoOf))];
+  const latest = shown.reduce(
     (m, r) => (String(r.answeredOn || "") > m ? String(r.answeredOn) : m),
     ""
   );

@@ -46,6 +46,21 @@ const MEAL = /^(lunch|menucha|breakfast|dinner|snack)(\s*\d+)?$/i;
 const MIN_STEM = 3;
 
 /** The parts of a key; "\|" and "\\" stand for themselves (c/shoreshLists adds.js keyPart). */
+/**
+ * One part of a key, escaped so a "|" or "\\" in a name can't run into the next part (c/shoreshLists
+ * adds.js keyPart; LearnedAnswers.cls partOf does the same). keyParts reads it back.
+ */
+export function keyPart(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|");
+}
+
+/** A forgotten pattern's marker key, as the server saves it (LearnedAnswers.forgetPattern). */
+export function patternKey(template, antecedent) {
+  return `${PATTERN_PREFIX}${keyPart(template)}|${keyPart(antecedent)}`;
+}
+
 export function keyParts(key) {
   const parts = [];
   let part = "";
@@ -115,17 +130,24 @@ export function templatesOf(question, answer) {
   const key = String(question || "");
   const p = keyParts(key);
   const out = [];
+  // A kind key is written unescaped (items.js): the name to the first "|", then the program.
+  if (key.startsWith("kind|")) {
+    const rest = key.slice(5);
+    const cut = rest.indexOf("|");
+    p[1] = cut < 0 ? rest : rest.slice(0, cut);
+    p[2] = cut < 0 ? "" : rest.slice(cut + 1);
+  }
   if (p[0] === "kind" && p[1]) {
     const verdict = ["fixed", "recurring", "activity"].includes(answer)
       ? answer
       : null;
-    const program = p[2] ? `|${loose(p[2])}` : "";
+    const program = p[2] ? `|${keyPart(loose(p[2]))}` : "";
     const name = p[2] ? `${p[1]} (${p[2]})` : p[1];
     const s = stem(p[1]);
     if (s) {
       out.push({
         template: "numbered",
-        antecedent: `${s}${program}`,
+        antecedent: `${keyPart(s)}${program}`,
         verdict,
         name
       });
@@ -191,8 +213,8 @@ function forgottenAt(rows) {
   for (const row of rows) {
     const q = questionOf(row);
     if (q.startsWith(PATTERN_PREFIX)) {
-      const [, template, ...rest] = keyParts(q);
-      at.set(groupKey(template, rest.join("|")), time(row));
+      const [, template, antecedent] = keyParts(q);
+      at.set(groupKey(template, antecedent), time(row));
     }
   }
   return at;
@@ -241,14 +263,27 @@ export function evaluate(group) {
   const { instances } = group;
   const newest = instances[0];
   const verdict = newest.verdict;
+  // Answers saved together have no order: the newest import's answers must all agree, and a
+  // run stops before an import whose answers disagree (MEMO-4.1), whatever their keys' order.
   let run = 0;
-  while (run < instances.length && instances[run].verdict === verdict) {
-    run += 1;
+  while (run < instances.length) {
+    const at = time(instances[run]);
+    let end = run;
+    while (end < instances.length && time(instances[end]) === at) {
+      end += 1;
+    }
+    if (instances.slice(run, end).some((r) => r.verdict !== verdict)) {
+      break;
+    }
+    run = end;
   }
   const supporters = instances.slice(0, run);
   const window = supporters.slice(0, LEARNING_BAR.instances);
-  const imports = new Set(window.map(time)).size;
-  const explicit = window.filter((r) => !r.fromSuggestion).length;
+  // Only an import's answers count as imports and as picked yourself: a change on "What
+  // Shoresh has learned" agrees, but adds neither (fromLearned).
+  const imported = window.filter((r) => !r.fromLearned);
+  const imports = new Set(imported.map(time)).size;
+  const explicit = imported.filter((r) => !r.fromSuggestion).length;
   let band = "ask";
   if (instances.length >= 2 && run >= 2) {
     band =

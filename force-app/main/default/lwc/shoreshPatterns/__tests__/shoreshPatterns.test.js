@@ -4,6 +4,8 @@ import {
   TEMPLATES,
   evaluate,
   isMeal,
+  keyParts,
+  patternKey,
   patternGroups,
   patternsOf,
   stem,
@@ -368,5 +370,76 @@ describe("suggestions on the import's cards", () => {
         suggestions
       )
     ).toEqual([{ key: card("a").id, answer: "b", shape: "file" }]);
+  });
+});
+
+describe("review fixes", () => {
+  // MEMO-4.1
+  it("answers saved together that disagree demote, whatever their keys' order", () => {
+    const mixed = [
+      lunch(1, "recurring", "2026-07-10"),
+      lunch(2, "recurring", "2026-07-10"),
+      lunch(3, "activity", "2026-07-10")
+    ];
+    const ev = evaluate(patternGroups(mixed)[0]);
+    expect(ev.band).toBe("ask");
+    expect(ev.disagree).toBeGreaterThan(0);
+    // "Lunch 10" sorts before "Lunch 2": the disagreement still shows.
+    const ten = [
+      lunch(1, "recurring", "2026-07-10"),
+      lunch(10, "activity", "2026-07-10"),
+      lunch(2, "recurring", "2026-07-10")
+    ];
+    expect(evaluate(patternGroups(ten)[0]).band).toBe("ask");
+    expect(suggestionFor(kindCard("Lunch 4"), ten)).toBeNull();
+    // An earlier import that disagreed within itself stops the run.
+    const later = [
+      ...ten,
+      lunch(4, "recurring", "2026-07-17"),
+      lunch(5, "recurring", "2026-07-17")
+    ];
+    const run = evaluate(patternGroups(later)[0]);
+    expect(run.progress.agreeing).toBe(2);
+    expect(run.band).toBe("suggest");
+  });
+
+  // MEMO-3.2
+  it("a change on What Shoresh has learned adds no import and no answer picked yourself", () => {
+    const rows = [
+      lunch(1, "recurring", "2026-07-03", { fromSuggestion: true }),
+      lunch(2, "recurring", "2026-07-03", { fromSuggestion: true }),
+      lunch(3, "recurring", "2026-07-10", { fromLearned: true })
+    ];
+    const ev = evaluate(patternGroups(rows)[0]);
+    expect(ev.progress.agreeing).toBe(3);
+    expect(ev.band).toBe("suggest");
+    expect(ev.progress.missing).toEqual(["another_import", "explicit"]);
+  });
+
+  // MEMO-4.5
+  it("a forgotten pattern's key escapes a program with | and \\ both ways", () => {
+    const key = "kind|Lunch 1|Day|Camp\\1";
+    const [t] = templatesOf(key, "recurring");
+    expect(t.antecedent).toBe("lunch|day\\|camp\\\\1");
+    const marker = patternKey(t.template, t.antecedent);
+    // The same string LearnedAnswersTest expects the server to save.
+    expect(marker).toBe("pattern|numbered|lunch\\|day\\\\\\|camp\\\\\\\\1");
+    expect(keyParts(marker)).toEqual(["pattern", "numbered", t.antecedent]);
+    const rows = [
+      row(key, "recurring", "2026-07-03"),
+      row("kind|Lunch 2|Day|Camp\\1", "recurring", "2026-07-03"),
+      { key: marker, answer: "forgotten", savedAt: "2026-07-04T00:00:00.000Z" }
+    ];
+    expect(
+      patternGroups(rows).find((g) => g.template === "numbered")
+    ).toBeUndefined();
+  });
+
+  // MEMO-3.1
+  it("a rule Shoresh guessed is no answer of a pattern", () => {
+    const guesses = [1, 2, 3].map((n) =>
+      row(`guessed|se1|fixed|Main|Lunch ${n}|often`, "2-3", "2026-07-03")
+    );
+    expect(patternsOf(guesses)).toEqual([]);
   });
 });
