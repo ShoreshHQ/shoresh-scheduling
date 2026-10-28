@@ -650,6 +650,7 @@ private class SetTimeClashesTest {
     }
   }
 
+  // CLOSE-4.4
   @IsTest
   static void aBunkAwayThatWeekIsNotCountedAtALocation() {
     Map<String, Id> ids = camp();
@@ -692,6 +693,7 @@ private class SetTimeClashesTest {
     }
   }
 
+  // CLOSE-4.4
   @IsTest
   static void aLocationClosedThatWeekIsNoClash() {
     Map<String, Id> ids = camp();

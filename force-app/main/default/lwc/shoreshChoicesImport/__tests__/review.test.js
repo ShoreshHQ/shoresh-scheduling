@@ -253,6 +253,7 @@ describe("card 2: what needs a person", () => {
     ]);
   });
 
+  // ELECT-2.1
   it("keeps each comment with its camper, and says what to check", () => {
     expect(keptCommentRows(reading())).toEqual([
       {

@@ -107,6 +107,7 @@ const plan = (rows, options, extra) => {
 const at = (list) => list.map(({ g, b }) => `${g}|${b}`);
 
 describe("planRain", () => {
+  // CLOSE-4.5
   it("switches an outdoor activity to its rain plan where there is room", () => {
     const result = plan([",1,", ",,", ",,", ",,"]);
     expect(result.switches).toEqual([
@@ -115,6 +116,7 @@ describe("planRain", () => {
     expect(result.full).toEqual([]);
   });
 
+  // CLOSE-4.6
   it("marks full once the rain plan's place is full, counting what switched before it", () => {
     // The Gym fits 2: Bunk 1 and Bunk 2 switch (block by block, bunk by bunk); Bunk 3 can't.
     const result = plan([",1,", ",1,", ",1,", ",,"]);
@@ -122,6 +124,7 @@ describe("planRain", () => {
     expect(result.full).toEqual([{ g: 2, b: 1, activityId: "soccer" }]);
   });
 
+  // CLOSE-4.6
   it("counts what stays in the place: a fixed activity there and the rain plan already placed", () => {
     // Assembly (in the Gym) for Bunk 4 and Gym games for Bunk 3 fill the Gym in Period 2.
     const result = plan([",1,", ",,", ",2,", ",6,"]);
@@ -129,6 +132,7 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["0|1"]);
   });
 
+  // CLOSE-4.6
   it("marks full when the rain plan's groups at once are taken", () => {
     const one = nsRecord({ GroupsAtOnce__c: 1 });
     const records = RECORDS.activities.map((r) => {
@@ -146,7 +150,7 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["1|1"]);
   });
 
-  // PROG-4.1
+  // PROG-4.1, CLOSE-4.6
   it("counts other programs' groups in the place at that time", () => {
     const result = plan(
       [",1,", ",,", ",,", ",,"],
@@ -169,6 +173,7 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["0|1"]);
   });
 
+  // CLOSE-4.5
   it("leaves a longer one, one without a rain plan, and one whose rain plan is outdoors, and says each", () => {
     const result = plan(["4,^,3", ",5,", ",,", ",,"]);
     expect(at(result.spans)).toEqual(["0|0"]);
@@ -176,6 +181,7 @@ describe("planRain", () => {
     expect(result.switches).toEqual([]);
   });
 
+  // CLOSE-4.5
   it("never touches a fixed activity, an event, an elective or an indoor activity", () => {
     const result = plan(["6,7,8", ",2,", ",,", ",,"]);
     expect(result).toEqual({
@@ -187,6 +193,7 @@ describe("planRain", () => {
     });
   });
 
+  // CLOSE-4.5 LOCK-4.5
   it("leaves a locked cell, someone else's, and one where the bunk isn't at camp", () => {
     const result = plan([",1,", ",1,", ",1,", ",,"], {
       isLocked: (g, b) => g === 0 && b === 1,
@@ -198,6 +205,7 @@ describe("planRain", () => {
     expect(result.full).toEqual([]);
   });
 
+  // CLOSE-5.1
   it("the same day always gives the same switch", () => {
     const rows = [",1,", ",1,", ",1,", ",1,"];
     expect(plan(rows)).toEqual(plan(rows));
@@ -205,6 +213,7 @@ describe("planRain", () => {
 });
 
 describe("the receipt and the marks", () => {
+  // CLOSE-6.3
   it("says what the desktop says", () => {
     expect(
       rainReceipt("Rainy Monday", {
@@ -308,6 +317,7 @@ describe("the rainy day as a tool", () => {
     ]);
   });
 
+  // CLOSE-4.5
   it("only the day chosen changes", () => {
     const days = [
       day([",1,", ",,", ",,", ",,"]),

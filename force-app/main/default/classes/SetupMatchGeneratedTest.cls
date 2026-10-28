@@ -103,6 +103,7 @@ private class SetupMatchGeneratedTest {
     }
   }
 
+  // LOCK-5.3
   @IsTest
   static void aDeletedActivityIsShownAndUpdateKeepsEveryOtherLock() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -183,6 +184,7 @@ private class SetupMatchGeneratedTest {
     }
   }
 
+  // LOCK-5.3
   @IsTest
   static void aWholeDayChangeKeepsTheLocksOfWhatItCarries() {
     System.runAs(ShoreshTestData.scheduler()) {

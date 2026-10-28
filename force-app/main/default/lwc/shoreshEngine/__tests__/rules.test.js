@@ -1544,6 +1544,7 @@ describe("soft goals and what is still to place", () => {
     expect(at(result, 0, "g1", 0)).toBe("high");
   });
 
+  // CLOSE-4.2
   it("an activity closed this week, or at a place closed this week, isn't placed", () => {
     const result = run({
       days: 2,

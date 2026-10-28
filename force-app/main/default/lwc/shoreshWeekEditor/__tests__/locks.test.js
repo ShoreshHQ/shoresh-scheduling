@@ -33,6 +33,7 @@ function runTo(before, after) {
 }
 
 describe("foldRun: a hand edit", () => {
+  // LOCK-1.1
   it("locks a placed activity, and unlocks a cell left Open", () => {
     const placed = runTo(",,", ["", "A:a1", ""]);
     expect(foldRun(new Set(), placed)).toEqual(locked(2));
@@ -40,6 +41,7 @@ describe("foldRun: a hand edit", () => {
     expect(foldRun(locked(2), cleared)).toEqual(new Set());
   });
 
+  // LOCK-4.1
   it("lengthening an unlocked activity locks the whole of it, not only the added block", () => {
     const run = runTo(",2,", ["", "A:a1", "^A:a1"]);
     expect(foldRun(new Set(), run)).toEqual(locked(2, 3));
@@ -57,6 +59,7 @@ describe("foldRun: a hand edit", () => {
     expect(foldRun(new Set(), added)).toEqual(locked(2, 3));
   });
 
+  // LOCK-4.1
   it("shortening locks what is left, and leaves the freed block unlocked", () => {
     const run = runTo(",2,^", ["", "A:a1", ""]);
     expect(foldRun(new Set(), run)).toEqual(locked(2));
@@ -90,6 +93,7 @@ describe("foldRun: a hand edit", () => {
     expect(foldRun(locked(2, 3), run)).toEqual(new Set());
   });
 
+  // LOCK-1.3
   it("a fixed or recurring activity is never locked", () => {
     const run = runTo(",,", ["F:f2", "", ""]);
     expect(foldRun(new Set(), run)).toEqual(new Set());

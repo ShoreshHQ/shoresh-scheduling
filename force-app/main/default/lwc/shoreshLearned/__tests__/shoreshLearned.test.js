@@ -154,6 +154,7 @@ describe("c-shoresh-learned", () => {
     expect($$(element, '[data-id="title"]')).toHaveLength(1);
   });
 
+  // MEMO-6.4
   it("forgets, says so, puts the cursor on Undo, and Undo remembers it again", async () => {
     const element = await mount([
       answer("2", "deleted|Activity||Riflery", "deleted")
@@ -196,6 +197,7 @@ describe("c-shoresh-learned", () => {
     expect(element.shadowRoot.activeElement.dataset.id).toBe("forget");
   });
 
+  // MEMO-6.4
   it("changes an answer to another of its choices", async () => {
     const element = await mount([answer("1", "kind|Lunch", "activity")]);
     $(element, '[data-id="change"]').click();
@@ -259,6 +261,7 @@ describe("c-shoresh-learned", () => {
     expect(element.shadowRoot.activeElement.dataset.id).toBe("change");
   });
 
+  // MEMO-4.3
   it("an Undo of a Change over a newer answer shows the latest instead", async () => {
     const element = await mount([answer("1", "kind|Lunch", "activity")]);
     $(element, '[data-id="change"]').click();
@@ -333,6 +336,7 @@ describe("c-shoresh-learned", () => {
     expect($(element, '[data-id="flag"]').textContent).toBe("Forgotten");
   });
 
+  // MEMO-4.3
   it("an Undo that would overwrite a newer answer shows the latest instead", async () => {
     const element = await mount([answer("1", "kind|Lunch", "fixed")]);
     forgetLearned.mockResolvedValue(true);

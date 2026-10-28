@@ -133,6 +133,7 @@ describe("Paste", () => {
     ).toEqual([]);
   });
 
+  // LOCK-4.4
   it("leaves a cell someone else changed as it is, and counts it", () => {
     const days = week(["1,,", "1,4,"], ["1,,", "1,,"]);
     const skip = (d, g, b) => d === 0 && g === 1 && b === 1;
@@ -162,6 +163,7 @@ describe("Paste", () => {
       expect(result.missed).toBe(1);
     });
 
+    // LOCK-4.5
     it("a pasted placement with one locked cell is left out whole, and named as locked", () => {
       const tool = paste([item(TUE, "g1", ["t2", "t3"], "A:a2", "Boating")]);
       const seen = week(["1,,", "1,,"], ["1,,", "1,,"]);

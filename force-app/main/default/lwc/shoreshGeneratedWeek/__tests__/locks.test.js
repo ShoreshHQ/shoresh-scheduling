@@ -127,6 +127,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
     expect(locksOf([{ ...DAY, locks: undefined }])).toEqual([]);
   });
 
+  // LOCK-4.3
   it("hands the locks to the engine, which keeps a locked cell in every option", async () => {
     getInputs.mockResolvedValue(nsRecord(SERVER_INPUTS));
     const loaded = await loadWeek("a0P000000000001AAA", "a0K000000000001AAA");
@@ -282,6 +283,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
     expect(added.id).toBe(SWIM);
   });
 
+  // LOCK-5.1
   it("builds Start over without locks and every other build with them", () => {
     expect(inputFor(LOADED, ACTION.START_OVER).locks).toEqual([]);
     expect(inputFor(LOADED, ACTION.REBUILD).locks).toEqual(LOADED.input.locks);
@@ -318,6 +320,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
     ]);
   });
 
+  // LOCK-4.2
   it("doesn't count a cell locked empty as still to fill", async () => {
     // Bunk 2's Period 2 is Open and locked: kept empty on purpose.
     getInputs.mockResolvedValue(

@@ -23,6 +23,7 @@ private class WeekExceptionsTest {
     .Id;
   }
 
+  // CLOSE-1.1
   @IsTest
   static void marksAreAddedAndClearedTogether() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -209,6 +210,7 @@ private class WeekExceptionsTest {
     }
   }
 
+  // CLOSE-1.1
   @IsTest
   static void markingTheSameGroupAndWeekTwiceKeepsOneMark() {
     System.runAs(ShoreshTestData.scheduler()) {

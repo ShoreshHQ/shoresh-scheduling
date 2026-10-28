@@ -147,6 +147,7 @@ describe("c-shoresh-week-editor: rainy day", () => {
     }
   });
 
+  // CLOSE-4.7
   it("doesn't offer a day a special day replaces", async () => {
     const { element } = await render(week(["1,2,", "1,2,"]));
     q(element, '[data-id="rainy-day"]').click();
@@ -177,6 +178,7 @@ describe("c-shoresh-week-editor: rainy day", () => {
     );
   });
 
+  // LOCK-4.5
   it("leaves a locked cell as it is and says so (Generated)", async () => {
     const { element, saveRuns } = await render(week(["1,2,", "1,2,"]), {
       locks: [`${MONDAY}|g1|t2`]

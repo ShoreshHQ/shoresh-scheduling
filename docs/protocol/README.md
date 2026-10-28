@@ -35,8 +35,8 @@ CORE  layers 1-6                                 docs/protocol/core.md
  '- PUB     Publishing                           uses CORE 1, 6; reads any finished week
 ```
 
-ELECT, SPECIAL, CLOSE, LOCK, MEMO and PUB are sketched in the wiki
-(`projects/shoresh-protocol.md`, section D) and are not yet written here.
+Every sub-protocol is written here: docs/protocol/{elect,special,close,lock,memo,pub,div,prog,week}.md,
+plus GEN (docs/engine/protocol.md) and INGEST (docs/import/*.md).
 
 ## Statements and their numbers
 

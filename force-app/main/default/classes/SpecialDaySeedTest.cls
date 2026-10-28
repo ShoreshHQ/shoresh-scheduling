@@ -32,6 +32,7 @@ private class SpecialDaySeedTest {
     return result;
   }
 
+  // SPECIAL-2.1
   @IsTest
   static void aNewSpecialDayStartsFromTheRegularDay() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -127,6 +128,7 @@ private class SpecialDaySeedTest {
     }
   }
 
+  // SPECIAL-5.1
   @IsTest
   static void theSameSetupAlwaysGivesTheSamePlan() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -143,6 +145,7 @@ private class SpecialDaySeedTest {
     }
   }
 
+  // SPECIAL-2.1
   @IsTest
   static void withNoTimeBlocksItStartsEmpty() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -155,6 +158,7 @@ private class SpecialDaySeedTest {
     }
   }
 
+  // SPECIAL-2.1
   @IsTest
   static void aMorningOnlyGroupKeepsItsAfternoonOpen() {
     System.runAs(ShoreshTestData.scheduler()) {

@@ -212,6 +212,7 @@ describe("minimum headcount to run an offering", () => {
 
   // A cascade can push a surviving offering over its capacity — the displaced
   // campers are placed into REMAINING capacity, never past it.
+  // ELECT-4.4
   it("never pushes a surviving offering past its capacity to absorb a cascade", () => {
     const out = buildElectiveAssignments({
       campers: campers("c1", "c2", "c3"),
@@ -331,6 +332,7 @@ describe("minimum headcount to run an offering", () => {
 
   // A locked seat is a director's decision and is never re-decided (T246). It
   // COUNTS toward the minimum, and a cancellation never moves it.
+  // ELECT-5.2
   it("counts a locked seat toward the minimum and never moves it", () => {
     const out = buildElectiveAssignments({
       campers: campers("c1", "c2", "c3"),

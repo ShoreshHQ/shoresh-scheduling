@@ -168,6 +168,7 @@ describe("c-shoresh-special-details: take off a day", () => {
     expect(q(element, "put-back")).toBeNull();
   });
 
+  // SPECIAL-4.1
   it("asks before putting back over a special day put there since", async () => {
     takeOffDay.mockResolvedValue({ said: "off" });
     putOnDay.mockResolvedValue({

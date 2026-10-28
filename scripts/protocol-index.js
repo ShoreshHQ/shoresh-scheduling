@@ -48,15 +48,19 @@ const DOCUMENTS = [
   },
   numberedRules("docs/import/names-and-divisions.md", "INGEST-2"),
   numberedRules("docs/import/classification.md", "INGEST-3"),
+  statementTable("docs/protocol/elect.md", "ELECT"),
+  statementTable("docs/protocol/pub.md", "PUB"),
+  statementTable("docs/protocol/memo.md", "MEMO"),
+  statementTable("docs/protocol/special.md", "SPECIAL"),
+  statementTable("docs/protocol/close.md", "CLOSE"),
+  statementTable("docs/protocol/lock.md", "LOCK"),
   statementTable("docs/protocol/div.md", "DIV"),
   statementTable("docs/protocol/prog.md", "PROG"),
   statementTable("docs/protocol/week.md", "WEEK")
 ];
 
-/**
- * A sub-protocol's table, one statement a row: "| DIV-1.1 | statement | source | test |". Its Test
- * cell maps it unless it says gap, not built or contradicted.
- */
+/** A sub-protocol's table, "| PREFIX-n.m | statement | source | test |"; a test cell starting
+ * "gap", "not yet tested", "none", "not built" or "contradicted" names no test. */
 function statementTable(file, prefix) {
   const row = new RegExp(`^\\| (${prefix}-\\d+\\.\\d+) +\\|`);
   return {
@@ -73,7 +77,9 @@ function statementTable(file, prefix) {
           const test = cells[cells.length - 1];
           out.push({
             id: m[1],
-            mapped: !/^(gap|not built|contradicted)\b/i.test(test)
+            mapped: !/^(gap|not yet tested|none|not built|contradicted)/i.test(
+              test
+            )
           });
         }
       }
