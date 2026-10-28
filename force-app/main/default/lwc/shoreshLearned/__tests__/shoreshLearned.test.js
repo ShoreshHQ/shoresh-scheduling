@@ -484,6 +484,24 @@ describe("patterns, and what Shoresh already knew", () => {
     );
   });
 
+  // MEMO-5.1
+  it("a steady fixed-activity pattern says it fills in on its own, with Undo in the import", async () => {
+    const fixed = lunches().map((r) => ({ ...r, answer: "fixed" }));
+    const element = await mount(fixed);
+    const rows = patternRows(element);
+    expect(rows.map((r) => [r.flag, r.progress])).toEqual([
+      [
+        "Steady: fills in on its own; Undo in the import",
+        "3 of 3 answers - fills in on its own"
+      ],
+      [
+        "Steady: fills in on its own; Undo in the import",
+        "3 of 3 answers - fills in on its own"
+      ]
+    ]);
+    await expect(element).toBeAccessible();
+  });
+
   // MEMO-4.5
   it("Forget pattern keeps its answers, with Undo", async () => {
     const element = await mount(lunches());

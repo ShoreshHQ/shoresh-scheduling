@@ -2,6 +2,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   TEMPLATES,
+  appliesOnItsOwn,
+  autoAnswersFor,
   evaluate,
   isMeal,
   keyParts,
@@ -441,5 +443,113 @@ describe("review fixes", () => {
       row(`guessed|se1|fixed|Main|Lunch ${n}|often`, "2-3", "2026-07-03")
     );
     expect(patternsOf(guesses)).toEqual([]);
+  });
+});
+
+describe("filled in on its own (MEMO-5.1)", () => {
+  const spec = (n, answer, day, extra) =>
+    row(`kind|Specialty ${n}`, answer, day, extra);
+  const steady = (answer) => [
+    spec(1, answer, "2026-07-03"),
+    spec(2, answer, "2026-07-03", { fromSuggestion: true }),
+    spec(3, answer, "2026-07-10", { fromSuggestion: true })
+  ];
+  const card = kindCard("Specialty 4");
+
+  // MEMO-5.1
+  it("a steady pattern that a name is a fixed activity fills it in, saying whose answers", () => {
+    expect(autoAnswersFor([card], steady("fixed"))).toEqual({
+      "kind|Specialty 4": expect.objectContaining({
+        value: "fixed",
+        band: "established",
+        template: "numbered",
+        text: "Filled in on its own from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+      })
+    });
+  });
+
+  // MEMO-5.1
+  it("nothing else fills in: another answer, a pattern only suggested, another shape, another question", () => {
+    expect(autoAnswersFor([card], steady("recurring"))).toEqual({});
+    expect(autoAnswersFor([card], steady("fixed").slice(0, 2))).toEqual({});
+    expect(
+      autoAnswersFor([kindCard("Specialty 4", "days|all|one")], steady("fixed"))
+    ).toEqual({});
+    // Still suggested where it does not fill in.
+    expect(suggestionFor(card, steady("recurring")).band).toBe("established");
+    expect(
+      appliesOnItsOwn(
+        { id: "list|A; B" },
+        { band: "established", value: "fixed", template: "numbered" }
+      )
+    ).toBe(false);
+    expect(
+      appliesOnItsOwn(
+        { id: "split|Bunk A" },
+        { band: "established", value: "fixed", template: "together" }
+      )
+    ).toBe(false);
+  });
+
+  // MEMO-5.1
+  it("an answered question, or one undone in this import, is not filled in", () => {
+    expect(
+      autoAnswersFor([{ ...card, answer: "activity" }], steady("fixed"))
+    ).toEqual({});
+    expect(
+      autoAnswersFor([card], steady("fixed"), {}, ["kind|Specialty 4"])
+    ).toEqual({});
+  });
+
+  // MEMO-5.1, MEMO-4.1
+  it("one later disagreement stops it", () => {
+    const later = [...steady("fixed"), spec(5, "activity", "2026-07-17")];
+    expect(autoAnswersFor([card], later)).toEqual({});
+  });
+
+  // MEMO-5.1, MEMO-4.5
+  it("Forget pattern stops it", () => {
+    const forgotten = [
+      ...steady("fixed"),
+      {
+        key: "pattern|numbered|specialty",
+        answer: "forgotten",
+        savedAt: "2026-07-10T13:00:00.000Z"
+      }
+    ];
+    expect(autoAnswersFor([card], forgotten)).toEqual({});
+  });
+
+  // MEMO-5.1
+  it("an answer filled in on its own is not saved as anyone's answer, so a pattern never feeds itself", () => {
+    const auto = autoAnswersFor([card], steady("fixed"));
+    const saved = withLearning(
+      [
+        { key: "kind|Specialty 4", answer: "fixed" },
+        { key: "kind|Specialty 5", answer: "fixed" }
+      ],
+      [card, kindCard("Specialty 5")],
+      auto,
+      auto
+    );
+    expect(saved.map((e) => e.key)).toEqual(["kind|Specialty 5"]);
+    // Changed by a person: theirs, and saved.
+    expect(
+      withLearning(
+        [{ key: "kind|Specialty 4", answer: "activity" }],
+        [card],
+        auto,
+        auto
+      )
+    ).toHaveLength(1);
+  });
+
+  // MEMO-5.1, MEMO-3.4
+  it("the same answers fill in the same questions, in any order", () => {
+    const cards = [card, kindCard("Specialty 6"), kindCard("Lunch 2")];
+    const rows = steady("fixed");
+    expect(autoAnswersFor([...cards].reverse(), [...rows].reverse())).toEqual(
+      autoAnswersFor(cards, rows)
+    );
   });
 });

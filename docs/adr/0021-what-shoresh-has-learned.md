@@ -162,7 +162,7 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
 12. **Suggested in the import cards** (MEMO-6.5, MEMO-6.6; desktop `suggestedReason`): setup
     and list imports mark the pattern's answer on a question that has no remembered answer of
     its own. Marked, not chosen: the question stays open with its needs-a-look corner until
-    someone presses an answer, and Established only pre-selects too until PR 4. The line says
+    someone presses an answer. Established only pre-selects too, except choice 16. The line says
     whose answers and when, as PR 2 words one answer: "Suggested from your answers for Lunch
     1, Lunch 2 and Lunch 3 on 3 Jul and 10 Jul"; when people differ, "Suggested from answers
     for ... (Dana's 10 Jul, yours 3 Jul)". Up to three names, then "and N more".
@@ -177,7 +177,7 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
 
 14. **A pattern row** (MEMO-6.7; desktop `patternRow`, `progressLine`, `patternFlag`): "A
     recurring activity: Lunch 1, Lunch 2 and Lunch 3", a flag for what it does next import
-    ("Suggested", "Steady: suggested every time", "Still asks"; until PR 4 an Established pattern is only suggested, and the row says so), three dots and the progress line in
+    ("Suggested", "Steady: suggested every time", "Still asks"; a steady fixed-activity pattern says "Steady: fills in on its own; Undo in the import", choice 16), three dots and the progress line in
     counts ("2 of 3 answers - needs one more import", "needs one answer you picked yourself",
     "Your latest answer disagrees - 2 more agreeing answers to suggest again"; never a
     percentage), who answered and the latest date, and Forget pattern. A pattern needs two
@@ -191,6 +191,24 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
     "Learned from you": patterns, then answers. Read-only, no count; shown even before any
     answer, under the empty state. No new screen or group.
 
+16. **Filled in on its own** (MEMO-5.1; Greg 2026-10-26; desktop `AUTO_APPLY_ELIGIBLE`, only
+    the accepting answer on fixed events, and its "Auto-applied: N" with "Undo for this
+    import"): in the setup import only, an Established numbered or meal pattern whose answer is
+    "a fixed activity", on a kind question of the same shape, answers that question when the
+    review opens (`autoAnswersFor`). Every other pattern, and every other answer of these, only
+    suggests. The review lists them under "Auto-applied" with the answer and "Filled in on its
+    own from your answers for ... on ...", each with Undo, and "Undo for this import"; the card
+    is pressed and says the same. Undo clears the answer, nothing is forgotten or demoted, and
+    the question is not filled in again in this import (the undone list resets with Start
+    again). Pressing any answer on the card makes it the person's own. An answer filled in on
+    its own is left out of what is remembered (`withLearning`'s `auto`): no one gave it, so it
+    adds no example and the pattern cannot feed itself; the next import works it out again from
+    the same answers. So a later disagreeing answer demotes it (MEMO-4.1) and Forget pattern
+    stops it (MEMO-4.5) at the next import. How often it fires: since INGEST's rules decide
+    fixed, recurring and activity by themselves (#165), a kind question is asked only when the
+    rules cannot tell, so this fills in rarely. The list import asks no kind question and is
+    unchanged. No Apex or field change.
+
 ## Known breadth, for Greg to review
 
 As on the desktop: the meal template matches any meal name (Lunch, Menucha, Breakfast, Dinner,
@@ -201,6 +219,5 @@ demotion and the shape check limit it; narrower templates are a product call.
 
 ## Not in this PR
 
-Automatic use (PR 4, MEMO-5.1). The
-desktop's "Remembered on this computer only" and its import-permission line do not apply
+The desktop's "Remembered on this computer only" and its import-permission line do not apply
 (plan). The desktop's per-viewer memory of which groups were open is not ported.

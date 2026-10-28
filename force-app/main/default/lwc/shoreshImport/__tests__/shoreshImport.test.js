@@ -903,6 +903,119 @@ describe("c-shoresh-import", () => {
       });
     });
 
+    // MEMO-5.1
+    describe("a steady fixed-activity pattern fills in on its own", () => {
+      const spec = "kind|Specialty 4";
+      const earlier = (n, day, extra = {}) => ({
+        key: `kind|Specialty ${n}`,
+        answer: "fixed",
+        byYou: true,
+        byName: "Greg",
+        answeredOn: day,
+        savedAt: `${day}T12:00:00.000Z`,
+        shape: "scattered|everyone|one",
+        fromSuggestion: false,
+        ...extra
+      });
+      const steady = [
+        earlier(1, "2026-07-03"),
+        earlier(2, "2026-07-03", { fromSuggestion: true }),
+        earlier(3, "2026-07-10", { fromSuggestion: true })
+      ];
+      const open = async (rows) => {
+        getAnswers.mockResolvedValue(rows);
+        const element = await renderWith(WITH_WEEK);
+        const day = (bunk2) =>
+          [
+            "Time,Bunk 1,Bunk 2",
+            "9:00-9:45,Specialty 4,Specialty 4",
+            "10:00-10:45,Lunch,Lunch",
+            `11:00-11:45,Swim,${bunk2}`
+          ].join("\n");
+        await choose(element, ["Monday.csv", "Tuesday.csv"], {
+          "Monday.csv": day("Swim"),
+          "Tuesday.csv": day("Specialty 4")
+        });
+        return element;
+      };
+      const pressed = (element) =>
+        [...$(element, `[data-card="${spec}"]`).querySelectorAll("button")]
+          .filter((b) => b.getAttribute("aria-pressed") === "true")
+          .map((b) => b.dataset.key);
+      const saved = async (element) => {
+        add(element).click();
+        await flush();
+        await flush();
+        return JSON.parse(saveSetup.mock.calls[0][0].plan);
+      };
+
+      it("is listed as Auto-applied with whose answers and when, and is not saved as anyone's answer", async () => {
+        const element = await open(steady);
+        const section = $(element, '[data-id="auto"]');
+        expect(section.querySelector(".shoresh-num").textContent).toBe("1");
+        const row = section.querySelector(`[data-auto="${spec}"]`);
+        expect(row.textContent).toContain("A fixed activity");
+        expect(row.querySelector(".tag").textContent).toBe(
+          "Filled in on its own from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+        );
+        expect(pressed(element)).toEqual([`${spec}::fixed`]);
+        expect(
+          $(element, `[data-card="${spec}"] [data-id="auto-note"]`)
+        ).not.toBeNull();
+        await expect(element).toBeAccessible();
+        const plan = await saved(element);
+        expect(plan.remember.map((r) => r.key)).not.toContain(spec);
+      });
+
+      it("Undo asks the question again, and it is not filled in again in this import", async () => {
+        const element = await open(steady);
+        $(element, `[data-auto="${spec}"] button`).click();
+        await flush();
+        expect($(element, '[data-id="auto"]')).toBeNull();
+        expect(pressed(element)).toEqual([]);
+        expect(
+          $(element, `[data-card="${spec}"] [data-id="suggested"]`)
+        ).not.toBeNull();
+        // Answered by a person now: theirs, and saved as theirs.
+        await answer(element, spec, "activity");
+        await answer(element, spec, "fixed");
+        expect($(element, '[data-id="auto"]')).toBeNull();
+        const plan = await saved(element);
+        expect(plan.remember).toContainEqual(
+          expect.objectContaining({ key: spec, answer: "fixed" })
+        );
+      });
+
+      it("Undo for this import undoes them all", async () => {
+        const element = await open(steady);
+        $(element, '[data-id="undo-auto"]').click();
+        await flush();
+        expect($(element, '[data-id="auto"]')).toBeNull();
+        expect(pressed(element)).toEqual([]);
+      });
+
+      it("a changed answer is the person's own, no longer listed", async () => {
+        const element = await open(steady);
+        await answer(element, spec, "recurring");
+        expect($(element, '[data-id="auto"]')).toBeNull();
+        const plan = await saved(element);
+        expect(plan.remember).toContainEqual(
+          expect.objectContaining({ key: spec, answer: "recurring" })
+        );
+      });
+
+      it("only a steady fixed-activity pattern: a recurring one is suggested and still asks", async () => {
+        const element = await open(
+          steady.map((r) => ({ ...r, answer: "recurring" }))
+        );
+        expect($(element, '[data-id="auto"]')).toBeNull();
+        expect(pressed(element)).toEqual([]);
+        expect(
+          $(element, `[data-card="${spec}"] [data-id="suggested"]`)
+        ).not.toBeNull();
+      });
+    });
+
     it("a place ticked at an earlier import is ticked again and marked remembered", async () => {
       getAnswers.mockResolvedValue([
         {
