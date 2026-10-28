@@ -6,13 +6,13 @@ Everything in the corpus is invented.
 
 ## Levels
 
-| Level                          | What the camps are like                                         | Status  |
-| ------------------------------ | --------------------------------------------------------------- | ------- |
-| 1 Ordinary                     | One schedule that repeats every week, clean data                | Built   |
-| 2 Different schedules per week | Week 2 differs from week 1, special weeks                       | Built   |
-| 3 Hard                         | Doubles, trips, special days, typos, several files that overlap | Not yet |
-| 4 Very hard                    | Messy real-world layouts, notes in cells, mixed layouts         | Not yet |
-| 5 Really weird                 | Anything a camp has actually sent that breaks the rules         | Not yet |
+| Level                          | What the camps are like                                     | Status  |
+| ------------------------------ | ----------------------------------------------------------- | ------- |
+| 1 Ordinary                     | One schedule that repeats every week, clean data            | Built   |
+| 2 Different schedules per week | Week 2 differs from week 1, special weeks                   | Built   |
+| 3 Hard                         | Doubles, trips, half days, gaps, spelling slips, note lines | Built   |
+| 4 Very hard                    | Messy real-world layouts, notes in cells, mixed layouts     | Not yet |
+| 5 Really weird                 | Anything a camp has actually sent that breaks the rules     | Not yet |
 
 ## What level 1 contains
 
@@ -134,6 +134,46 @@ Then (2026-10-27) the odd Friday is saved as a special day on that week's Friday
 blocks, and the scorer checks it: time blocks are the saved plan's program blocks (the odd
 Friday's are no longer in the truth's blocks), and a new kind, special days, compares the
 week's days read as special days with the truth. Still 320 of 320, both kinds 0.
+
+## Level 3
+
+320 camps (`scripts/import-corpus/level3.js`), each an ordinary one-week camp of level 1 (same
+eight layouts, 40 each) with two or three of the untidy things almost every real camp file has:
+
+- **double**: a group has one activity two periods running (a cell merged down in Excel, the name
+  written twice in a CSV, the group listed in both blocks by activity).
+- **trip**: one division (or the whole camp) on a Field Trip one afternoon, merged down the
+  afternoon in Excel. Trips are noted, not set up: not an activity, but kept in the imported week.
+- **halfDay**: the youngest division goes home after Lunch; its afternoon cells are blank. It
+  stays in the camp's one program (see the open question below).
+- **gaps**: a few blank cells in ordinary periods: nothing scheduled then.
+- **spelling**: a cell or two spelled otherwise ("archery", "ARCHERY", "Arts&Crafts"); the truth is
+  the usual spelling (INGEST-2.2). Not in by-activity files, which write a name once.
+- **notes**: a line under each title ("Updated June 2 - subject to change", "DRAFT v3") and
+  footnotes under each grid ("Rain plan: ...", "* Bring a water bottle").
+
+Left for level 4: several programs in one file, evening blocks, weekends with their own blocks,
+specials mid-week, several weeks together with these traits.
+
+    npm run score:import -- --level 3
+
+The report adds a line per trait (a camp counts under each of its traits). Unsure layouts, which
+the screen marks for the director to pick (INGEST-2.6), are now counted as a "layout" question
+on every level (none on levels 1 and 2).
+
+Baseline (2026-10-28): 223 of 320 perfect; questions 973 (966 "the files disagree", 4 layout, 2
+list, 1 kind); 97 camps with wrong reads. Causes: a note line under the title was taken as the
+page's name, so stacked days lost their day ("Updated June 2" even read as a week) and a sheet or
+file per group was named by the note, every group the same, every cell a disagreement (94 camps,
+all with notes); and a by-activity page whose blocks did not call the full roll was unsure (4).
+
+After INGEST-2.7 (a note line written above every page names none of them) and INGEST-2.8 (an
+unsure page takes its file's sure layout): **317 of 320 perfect**; questions 5 (3 layout, 2 list);
+the 3 left are by-activity files of animal-named groups with a half-day division, every page
+unsure, the layout asked (unanswered they read all-camp: groups 71, activities 67, cells 1469).
+By trait, perfect before → after: notes 52 → 145 of 146, trip 115 → 147 of 147, double 111 → 149
+of 150, gaps 106 → 142 of 143, spelling 72 → 100 of 100, halfDay 95 → 111 of 114. Levels 1 and
+2 (320 of 320 each), the travel camps (39 of 40) and Greg's camp (perfect) unchanged.
 
 ## How to run
 

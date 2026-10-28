@@ -93,11 +93,42 @@ function seasonWeekCount(existing) {
   return ((existing && existing.weeks) || []).length;
 }
 
+/**
+ * INGEST-2.8: a page whose layout is unsure takes the layout its file's other pages surely have,
+ * when they all have the same one (a by-activity file where one day's blocks do not call the full
+ * roll). A file with no sure page, or sure pages that differ, stays unsure and is asked.
+ */
+function sameLayoutPerFile(pages, detected) {
+  const sure = new Map();
+  pages.forEach((page, i) => {
+    const d = detected[i];
+    if (d.confident) {
+      const ways = sure.get(page.file) || new Set();
+      ways.add(`${d.layout}|${d.daysAcross}`);
+      sure.set(page.file, ways);
+    }
+  });
+  return detected.map((d, i) => {
+    const ways = sure.get(pages[i].file);
+    if (d.confident || !ways || ways.size !== 1) {
+      return d;
+    }
+    const [layout, daysAcross] = [...ways][0].split("|");
+    if (String(d.daysAcross) !== daysAcross) {
+      return d;
+    }
+    return { ...d, layout, confident: true };
+  });
+}
+
 function readPages(pages, keys, existing, layouts) {
   const known = {
     groups: new Set(campNames(existing).groups.map(looseKey))
   };
-  const detected = pages.map((page) => detectLayout(page, known));
+  const detected = sameLayoutPerFile(
+    pages,
+    pages.map((page) => detectLayout(page, known))
+  );
   const found = detected.map((d, i) => ({
     ...d,
     layout: LAYOUTS.includes(layouts[keys[i]]) ? layouts[keys[i]] : d.layout

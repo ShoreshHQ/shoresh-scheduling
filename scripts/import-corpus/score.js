@@ -5,6 +5,7 @@
 // The engine is passed in ({ engine, XLSX, terms }), so Jest and the node script share this file.
 import { campFiles, hm } from "./camps";
 import { variedCampFiles } from "./level2";
+import { hardCampFiles } from "./level3";
 
 export const QUESTION_KINDS = [
   "similar",
@@ -23,7 +24,8 @@ export const QUESTION_KINDS = [
   "recurring",
   "activity",
   "elective",
-  "list"
+  "list",
+  "layout"
 ];
 export const WRONG_KINDS = [
   "programs",
@@ -53,8 +55,8 @@ const EMPTY_SEASON = {
 };
 
 function readFiles(camp, { engine, XLSX }) {
-  const files =
-    camp.files || (camp.level === 2 ? variedCampFiles(camp) : campFiles(camp));
+  const writers = { 2: variedCampFiles, 3: hardCampFiles };
+  const files = camp.files || (writers[camp.level] || campFiles)(camp);
   return files.map((f) =>
     f.csv !== undefined
       ? engine.csvFile(f.name, f.csv)
@@ -253,6 +255,12 @@ export function scoreCamp(camp, deps) {
         questions[kind] = (questions[kind] || 0) + 1;
       }
     }
+    // A file with a page whose layout is unsure is marked on the screen for the director to pick
+    // its layout (INGEST-2.6): one question per file, as the screen's fileRows shows it.
+    const unsure = new Set(
+      proposal.reading.pages.filter((p) => !p.confident).map((p) => p.file)
+    );
+    if (unsure.size) questions.layout = unsure.size;
     const plan = deps.engine.planFor(proposal, EMPTY_SEASON, "season");
     const { wrong, weeks } = wrongReads(truthOf(camp), proposal, plan);
     const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
@@ -390,4 +398,30 @@ export function weekTable(results) {
     lines.push(`  ${pad(label || "(one week)", 12)}${wrong} of ${cells}`);
   }
   return lines.join("\n");
+}
+
+/**
+ * Level 3: one line per trait (a camp has two or three, so it counts under each): camps, read
+ * perfectly, questions, and wrong reads by kind.
+ */
+export function traitTable(results) {
+  const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  const lines = [
+    `${pad("Trait", 12)}${pad("Camps", 7)}${pad("Perfect", 9)}${pad("Questions", 11)}Wrong reads`
+  ];
+  const traits = [...new Set(results.flatMap((r) => r.camp.variations || []))];
+  for (const trait of traits.sort()) {
+    const s = summarise(
+      results.filter((r) => r.camp.variations.includes(trait))
+    );
+    lines.push(
+      `${pad(trait, 12)}${pad(s.camps, 7)}${pad(s.perfect, 9)}${pad(total(s.questions), 11)}${shownKinds(s.wrong)}`
+    );
+  }
+  return lines.join("\n");
+}
+
+function shownKinds(o) {
+  const parts = Object.entries(o).map(([k, v]) => `${k} ${v}`);
+  return parts.length ? parts.join(", ") : "0";
 }

@@ -9,6 +9,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
 import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
+import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
 import {
   headingReport,
   plantCamp
@@ -145,6 +146,39 @@ describe("Import last year on made-up camps whose weeks differ (level 2)", () =>
         kind,
         n: Math.min(n, CEILING_2.wrong[kind] || 0)
       });
+    }
+  });
+});
+
+// Level 3, hard: doubles, trips, half days, gaps, spelling slips, note lines. The first 80 camps,
+// ten of each layout. Baseline 2026-10-28 after INGEST-2.7 and 2.8 (was 60 perfect, 171 "the
+// files disagree" questions, before them): 79 perfect. Still wrong: L3-030, a by-activity file
+// whose afternoon blocks miss the half-day division on every day, so every page is unsure and its
+// layout is asked (rule 6); unanswered, it is read all-camp.
+const CEILING_3 = {
+  perfectAtLeast: 79,
+  errors: 0,
+  questions: { layout: 1 },
+  wrong: { groups: 23, fixed: 2, activities: 21, cells: 406 }
+};
+
+describe("Import last year on hard made-up camps (level 3)", () => {
+  const results = hardCamps(80).map((camp) =>
+    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps perfectly, asks and reads wrong no more than it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_3.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_3.perfectAtLeast);
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(totals[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, CEILING_3[key][kind] || 0)
+        });
+      }
     }
   });
 });

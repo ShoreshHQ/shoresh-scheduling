@@ -316,6 +316,158 @@ describe("the three layouts", () => {
     });
   });
 
+  describe("INGEST-2.7: a note line written above every page names none of them", () => {
+    const groupPage = (name, note) =>
+      csv(`Camp - ${name}.csv`, [
+        [name],
+        [note],
+        ["Time", "Monday", "Tuesday"],
+        ["9:00-9:45", "Archery", "Drama"],
+        ["10:00-10:45", "Drama", "Archery"],
+        [""],
+        ["Rain plan: indoor activities in the gym"]
+      ]);
+
+    it("INGEST-2.7: a page per group with a note under each title keeps each group's name", () => {
+      const note = "Updated June 2 - subject to change";
+      const proposal = read([
+        groupPage("Otters", note),
+        groupPage("Wolves", note)
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "Wolves"
+      ]);
+      // "June 2" in the note is not read as the week.
+      expect(proposal.reading.pages.map((p) => p.week)).toEqual(["", ""]);
+    });
+
+    it("INGEST-2.7: days stacked on one sheet, a note and footnotes on each, keep their days", () => {
+      const day = (d) => [
+        [`Camp - ${d}`],
+        ["DRAFT v3"],
+        ["Time", "Bunk 1", "Bunk 2"],
+        ["9:00-9:45", "Archery", "Drama"],
+        ["10:00-10:45", "Drama", "Archery"],
+        [""],
+        ["Rain plan: indoor activities in the gym"],
+        [""]
+      ];
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday"),
+          ...day("Tuesday"),
+          ...day("Wednesday")
+        ])
+      ]);
+      expect(proposal.reading.pages.map((p) => p.day)).toEqual([
+        "Monday",
+        "Tuesday",
+        "Wednesday"
+      ]);
+    });
+
+    it("INGEST-2.7: a sheet per group whose only line is the shared note is named by its sheet", () => {
+      const proposal = read([
+        {
+          name: "Camp.xlsx",
+          sheets: ["Otters", "Wolves"].map((name) => ({
+            name,
+            merges: [],
+            rows: [
+              ["Questions? Ask the head counselor"],
+              ["Time", "Monday", "Tuesday"],
+              ["9:00-9:45", "Archery", "Drama"],
+              ["10:00-10:45", "Drama", "Archery"]
+            ]
+          }))
+        }
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "Wolves"
+      ]);
+    });
+
+    it("INGEST-2.7: counter-case: one group's only title, the same in a file per week, is still its name", () => {
+      const week = (w) =>
+        csv(`Camp - Week ${w}.csv`, [
+          ["Otters"],
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"]
+        ]);
+      const proposal = read([week(1), week(2)]);
+      expect(proposal.groups.map((g) => g.name)).toEqual(["Otters"]);
+    });
+
+    it("INGEST-2.7: counter-case: the same only title on sheets named for weeks is still the name", () => {
+      const proposal = read([
+        {
+          name: "Otters 2026.xlsx",
+          sheets: ["Week 1", "Week 2"].map((name) => ({
+            name,
+            merges: [],
+            rows: [
+              ["Otters"],
+              ["Time", "Monday", "Tuesday"],
+              ["9:00-9:45", "Archery", "Drama"],
+              ["10:00-10:45", "Drama", "Archery"]
+            ]
+          }))
+        }
+      ]);
+      expect(proposal.groups.map((g) => g.name)).toEqual(["Otters"]);
+    });
+
+    it("INGEST-2.7: counter-case: one page's two title lines keep the last, as before", () => {
+      const proposal = read([groupPage("Otters", "Herons")]);
+      expect(proposal.groups.map((g) => g.name)).toEqual(["Herons"]);
+    });
+  });
+
+  describe("INGEST-2.8: a page whose layout is unsure takes its file's sure layout", () => {
+    const sure = (d) => [
+      [`Camp - ${d}`],
+      ["Time", "Archery", "Canoeing", "Drama", "Gaga"],
+      ["9:00-9:45", "Otters", "", "Wolves", "Herons"],
+      ["10:00-10:45", "", "Herons", "Otters", "Wolves"],
+      ["11:00-11:45", "Wolves", "Otters", "", "Herons"],
+      ["12:00-12:45", "Herons", "Wolves", "", "Otters"],
+      ["13:00-13:45", "Otters", "Herons", "Wolves", ""],
+      [""]
+    ];
+    // Herons left early: two of five blocks do not call the full roll.
+    const unsure = (d) => [
+      [`Camp - ${d}`],
+      ["Time", "Archery", "Canoeing", "Drama", "Gaga"],
+      ["9:00-9:45", "Otters", "", "Wolves", "Herons"],
+      ["10:00-10:45", "", "Herons", "Otters", "Wolves"],
+      ["11:00-11:45", "Wolves", "Otters", "", "Herons"],
+      ["12:00-12:45", "", "Wolves", "", "Otters"],
+      ["13:00-13:45", "Otters", "", "Wolves", ""],
+      [""]
+    ];
+
+    it("INGEST-2.8: Tuesday's short roll follows Monday's sure by-activity page in the same file", () => {
+      const pages = read([
+        csv("Camp.csv", [...sure("Monday"), ...unsure("Tuesday")])
+      ]).reading.pages;
+      expect(pages.map((p) => [p.day, p.layout, p.confident])).toEqual([
+        ["Monday", "byActivity", true],
+        ["Tuesday", "byActivity", true]
+      ]);
+    });
+
+    it("INGEST-2.8: counter-case: alone in its file it is still unsure, and asked", () => {
+      const pages = read([
+        csv("Monday.csv", sure("Monday")),
+        csv("Tuesday.csv", unsure("Tuesday"))
+      ]).reading.pages;
+      expect(pages.map((p) => p.confident)).toEqual([true, false]);
+    });
+  });
+
   it("a page that does not say its day is read as nothing, and said so", () => {
     const proposal = read([
       csv("Camp.csv", [

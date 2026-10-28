@@ -15,7 +15,12 @@ import {
   looksLikeBlockLabel,
   tidy
 } from "./text";
-import { isWeekHeading, weekInFileName, weekValue } from "./weekLabels";
+import {
+  isWeekHeading,
+  weekInFileName,
+  weekValue,
+  withoutWeek
+} from "./weekLabels";
 
 const FOOTNOTE = /^\s*\*/;
 const GENERIC_SHEET = /^(sheet|page|tab|table)\s*\d*$/i;
@@ -198,6 +203,8 @@ function carriedAcross(row, from, width) {
 function newSection(title) {
   return {
     title,
+    // Every title line above the grid, top to bottom (INGEST-2.7 picks the page's name).
+    titles: title ? [title] : [],
     header: null,
     above: null,
     rows: [],
@@ -273,6 +280,7 @@ class SectionReader {
         this.start(row.find((c) => c !== ""));
       } else {
         this.current.title = row.find((c) => c !== "");
+        this.current.titles.push(this.current.title);
       }
       this.previousRow = row;
       return;
@@ -331,6 +339,7 @@ function sectionToPage(section, sheet, labelColumns) {
   return {
     sheet: sheet.name,
     title: tidy(section.title || ""),
+    titles: section.titles.map(tidy),
     corner: tidy(header.slice(0, labelColumns).join(" ")),
     columns,
     divisions,
@@ -440,9 +449,9 @@ export function sheetToPages(sheet) {
   const unmerged = { ...sheet, merges: split.merges };
   return sections
     .filter((section) => section.header)
-    .flatMap((section) =>
+    .flatMap((section, index) =>
       byWeek(
-        sectionToPage(section, unmerged, labelColumns),
+        { ...sectionToPage(section, unmerged, labelColumns), section: index },
         section.rawIndexes.map((i) => split.weekOf[i])
       )
     )
@@ -465,8 +474,7 @@ export function sheetHasContent(sheet) {
 export function filesToPages(files, options = {}) {
   const pages = [];
   const unread = [];
-  for (const file of files || []) {
-    const fileTitle = baseName(file.name);
+  const perFile = (files || []).map((file) => {
     const read = [];
     for (const sheet of file.sheets || []) {
       const found = sheetToPages(sheet);
@@ -475,6 +483,13 @@ export function filesToPages(files, options = {}) {
       }
       found.forEach((page) => read.push(page));
     }
+    return { file, read };
+  });
+  const notes = notesAboveEveryPage(perFile);
+  for (const { file, read: found } of perFile) {
+    const fileTitle = baseName(file.name);
+    const named = sheetsNameTheirPages(found, options.maxWeek);
+    const read = found.map((page) => withoutNotes(page, notes, named));
     const severalSheets = new Set(read.map((p) => p.sheet)).size > 1;
     read.forEach((page) => {
       // Where the page's name may come from, most specific first: a title line above the
@@ -495,4 +510,64 @@ export function filesToPages(files, options = {}) {
     });
   }
   return { pages, unread };
+}
+
+// ---------- a note written above every page (INGEST-2.7) ----------
+
+/**
+ * Title lines written above every schedule of the files ("Updated June 2", "DRAFT v3"), when
+ * there are two schedules or more: notes, which name no one page. A Set of lines.
+ */
+function notesAboveEveryPage(perFile) {
+  const sections = [];
+  for (const { read } of perFile) {
+    // A page split by a week column is still one schedule.
+    const seen = new Set();
+    for (const page of read) {
+      const key = `${page.sheet}|${page.section}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        sections.push(page.titles);
+      }
+    }
+  }
+  if (sections.length < 2) {
+    return new Set();
+  }
+  const [first, ...rest] = sections;
+  return new Set(
+    first.filter((line) => rest.every((titles) => titles.includes(line)))
+  );
+}
+
+/**
+ * Whether a file's sheets name its pages instead: several sheets, each with its own name, none
+ * "Sheet1" and none only a day or a week ("Monday", "Week 2").
+ */
+function sheetsNameTheirPages(read, maxWeek) {
+  const names = [...new Set(read.map((p) => p.sheet))];
+  const onlyDayOrWeek = (name) =>
+    withoutWeek(name, { maxWeek })
+      .split(/[^A-Za-z]+/)
+      .every((w) => !w || dayOf(w));
+  return (
+    names.length > 1 &&
+    names.every((n) => !isGenericTitle(n) && !onlyDayOrWeek(n))
+  );
+}
+
+/**
+ * The page named by its last title line that is not a note. A note is dropped only where the page
+ * keeps a name: another title line, or a sheet of its own naming it (a sheet per group); else
+ * the lines are kept as they were (one title shared by every page, "Otters" in a file per week).
+ */
+function withoutNotes(page, notes, sheetsName) {
+  const kept = page.titles.filter((line) => !notes.has(line));
+  if (kept.length === page.titles.length) {
+    return page;
+  }
+  if (kept.length) {
+    return { ...page, title: kept[kept.length - 1] };
+  }
+  return sheetsName ? { ...page, title: "" } : page;
 }
