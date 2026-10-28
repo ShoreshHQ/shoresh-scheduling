@@ -2727,8 +2727,35 @@ async function importLastYear() {
       `Focus on ${formatFocus(await focus())}.`
     );
   }
-  const tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
-  if (!tile) throw new Error("No Comes in count was reached with Tab.");
+  // The first counts are "Shoresh read these as" (docs/import/review.md INGEST-5.1), then
+  // Comes in: each opens by keyboard, the read-as ones into their lines with one-click changes.
+  let tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
+  if (tile && (await focusedAttr("data-read-as"))) {
+    await press("Enter", 500);
+    const lines = await shown(
+      'c-shoresh-import [data-id="read-as-lines"] [data-line]'
+    ).count();
+    if ((await focusedAttr("aria-expanded")) === "true" && lines > 0)
+      results.pass(
+        S,
+        "A Read as count opens into its lines, the cursor kept",
+        `${lines} lines.`
+      );
+    else {
+      await shot(S, "read as opened");
+      results.fail(
+        S,
+        "A Read as count opens into its lines, the cursor kept",
+        `Focus on ${formatFocus(await focus())}; ${lines} lines.`
+      );
+    }
+    await press("Enter", 300);
+    for (let i = 0; tile && i < 12 && !(await focusedAttr("data-tile")); i++) {
+      tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
+    }
+  }
+  if (!tile || !(await focusedAttr("data-tile")))
+    throw new Error("No Comes in count was reached with Tab.");
   await press("Enter", 500);
   if ((await focusedAttr("aria-expanded")) === "true")
     results.pass(
