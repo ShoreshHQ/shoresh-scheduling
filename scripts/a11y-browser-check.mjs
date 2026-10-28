@@ -2727,6 +2727,21 @@ async function importLastYear() {
       `Focus on ${formatFocus(await focus())}.`
     );
   }
+  // The file's other question (its two bunks' names) is answered too: since INGEST-5.5 an open
+  // question is kept for later and what it decides comes in only once answered, so with it open
+  // Comes in would count nothing (docs/import/review.md).
+  const answeredCard = String((await focusedAttr("data-key")) || "").split(
+    "::"
+  )[0];
+  for (let i = 0; i < 6; i++) {
+    const next = await tabTo(named(/^Same\b/, { tag: "button" }), { max: 20 });
+    const card = String((await focusedAttr("data-key")) || "").split("::")[0];
+    if (!next) break;
+    if (card && card !== answeredCard) {
+      await press("Enter", 800);
+      break;
+    }
+  }
   // The first counts are "Shoresh read these as" (docs/import/review.md INGEST-5.1), then
   // Comes in: each opens by keyboard, the read-as ones into their lines with one-click changes.
   let tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
