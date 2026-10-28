@@ -293,7 +293,7 @@ private class ImportReviewTest {
   }
 
   @IsTest
-  static void ingest58AnItemOnAScheduleIsInUse() {
+  static void ingest58AnItemOnlyInItsImportedWeekIsCollectedApart() {
     System.runAs(ShoreshTestData.scheduler()) {
       Season__c season = newSeason();
       List<Week__c> weeks = ShoreshTestData.weeks(season.Id, 1);
@@ -306,9 +306,14 @@ private class ImportReviewTest {
         season.Id
       );
       Test.stopTest();
-      Assert.isTrue(
-        standing.inUse.get(swim.Id).startsWith('Swim is on '),
-        String.valueOf(standing.inUse)
+      // Only in its own import's week: kept apart, for the next import to supersede or not.
+      Assert.isFalse(
+        standing.inUse.containsKey(swim.Id),
+        'not a use by itself'
+      );
+      Assert.areEqual(
+        'Imported from maple-grove.xlsx',
+        standing.versionUses.get(swim.Id)[0].name
       );
     }
   }
