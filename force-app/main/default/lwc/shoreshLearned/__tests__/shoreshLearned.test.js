@@ -145,7 +145,7 @@ describe("c-shoresh-learned: one running list", () => {
     getLearned.mockResolvedValueOnce([answer("1", "kind|Lunch", "fixed")]);
     $(element, '[data-id="retry-load"]').click();
     await flush();
-    expect(text(line(element), "title")).toBe("Lunch: A fixed activity");
+    expect(text(line(element), "title")).toBe("Lunch is a fixed activity");
   });
 
   // MEMO-7.2, MEMO-6.2
@@ -159,14 +159,14 @@ describe("c-shoresh-learned: one running list", () => {
     ]);
     expect(lines(element)).toEqual([
       [
-        "Swim: An activity",
+        "Swim is an activity",
         "From a former user's answer in an import",
         "12 Jul",
         null
       ],
       ["Riflery: Activity deleted", "Deleted by you", "10 Jul", null],
       [
-        "Carpool: A fixed activity",
+        "Carpool is a fixed activity",
         "From Dana's answer in an import",
         "3 Jul",
         null
@@ -351,9 +351,9 @@ describe("c-shoresh-learned: one running list", () => {
       answer: "fixed"
     });
     expect(lines(element)).toEqual([
-      ["Lunch: A fixed activity", "Changed by you", "26 Oct", null],
+      ["Lunch is a fixed activity", "Changed by you", "26 Oct", null],
       [
-        "Lunch: An activity",
+        "Lunch is an activity",
         "From Dana's answer in an import",
         "3 Jul",
         "Updated"
@@ -362,7 +362,7 @@ describe("c-shoresh-learned: one running list", () => {
     expect($(element, '[data-id="said"]').textContent.trim()).toBe("Updated.");
     expect(element.shadowRoot.activeElement.dataset.id).toBe("undo");
     expect(element.shadowRoot.activeElement.getAttribute("aria-label")).toBe(
-      "Undo changing Lunch: A fixed activity"
+      "Undo changing Lunch is a fixed activity"
     );
 
     undoChangeLearned.mockResolvedValue(true);
@@ -384,10 +384,10 @@ describe("c-shoresh-learned: one running list", () => {
       oldId: "1"
     });
     expect(lines(element)).toEqual([
-      ["Lunch: An activity", "Undone by you", "26 Oct", null],
-      ["Lunch: A fixed activity", "Changed by you", "26 Oct", "Undone"],
+      ["Lunch is an activity", "Undone by you", "26 Oct", null],
+      ["Lunch is a fixed activity", "Changed by you", "26 Oct", "Undone"],
       [
-        "Lunch: An activity",
+        "Lunch is an activity",
         "From Dana's answer in an import",
         "3 Jul",
         "Updated"
@@ -439,7 +439,7 @@ describe("c-shoresh-learned: one running list", () => {
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Someone else changed this just now. Showing the latest."
     );
-    expect(text(line(element), "title")).toBe("Lunch: A recurring activity");
+    expect(text(line(element), "title")).toBe("Lunch is a recurring activity");
   });
 
   // MEMO-4.3
@@ -459,7 +459,7 @@ describe("c-shoresh-learned: one running list", () => {
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Someone else changed this just now. Showing the latest."
     );
-    expect(text(line(element), "title")).toBe("Lunch: An activity");
+    expect(text(line(element), "title")).toBe("Lunch is an activity");
   });
 
   it("closes Change with Escape, the cursor back on Change", async () => {
@@ -561,7 +561,7 @@ describe("c-shoresh-learned: one running list", () => {
     );
     expect(lines(element)).toEqual([
       [
-        "Specialty 4: A fixed activity",
+        "Specialty 4 is a fixed activity",
         "Auto-applied in the 17 Jul import",
         "17 Jul",
         null
@@ -616,13 +616,13 @@ describe("patterns, and what Shoresh already knew", () => {
     const element = await mount(lunches());
     expect(patternLines(element)).toEqual([
       {
-        title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
+        title: "Lunch 1, Lunch 2 and Lunch 3 are recurring activities",
         how: "Became Steady (after 3 answers)",
         flag: "Steady: suggested every time",
         progress: "3 of 3 answers - suggested every time"
       },
       {
-        title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
+        title: "Lunch 1, Lunch 2 and Lunch 3 are recurring activities",
         how: "Became Steady (after 3 answers)",
         flag: "Steady: suggested every time",
         progress: "3 of 3 answers - suggested every time"
@@ -723,7 +723,7 @@ describe("patterns, and what Shoresh already knew", () => {
       antecedent: "lunch"
     });
     expect(lines(element)[0]).toEqual([
-      "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
+      "Lunch 1, Lunch 2 and Lunch 3 are recurring activities",
       "Forgotten by you",
       "11 Jul",
       null

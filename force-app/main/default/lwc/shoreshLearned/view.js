@@ -95,6 +95,17 @@ export function speller(setup) {
   return spell;
 }
 
+/**
+ * What was learned, as a sentence where the answer is a kind (Greg 2026-10-28): "Lunch is a
+ * fixed activity", the camp's word kept as written. Other answers keep "name: answer".
+ */
+function whatLearned(kind) {
+  const answer = String(kind.answer || "");
+  return /^(A|An) /.test(answer)
+    ? `${kind.name} is ${answer.charAt(0).toLowerCase()}${answer.slice(1)}`
+    : `${kind.name}: ${answer}`;
+}
+
 /** One answer from the server ({ id, question, answer, byYou, byName, answeredOn }) as a row. */
 export function learnedRow(row, t, spell) {
   const kind = describe(row.question, row.answer, t, spell);
@@ -104,7 +115,7 @@ export function learnedRow(row, t, spell) {
     answer: row.answer,
     group: kind.group,
     name: kind.name,
-    title: `${kind.name}: ${kind.answer}`,
+    title: whatLearned(kind),
     who: whoLine(row, kind.group),
     choices: kind.choices,
     forgotten: kind.forgotten,
@@ -209,6 +220,26 @@ function whoOf(row) {
   return row.byYou ? "you" : row.byName || "a former user";
 }
 
+const KIND_TERM = {
+  fixed: "FixedActivity",
+  recurring: "RecurringActivity",
+  activity: "Activity"
+};
+
+/**
+ * A pattern as a sentence when its answers say a kind: "Lunch 1, Lunch 2 and Lunch 3 are
+ * recurring activities" (camp words, plural); else "what the answers say: names".
+ */
+function patternTitle(p, names, t) {
+  const term = KIND_TERM[p.verdict];
+  if ((p.template === "numbered" || p.template === "meal") && term) {
+    return names.length > 1
+      ? `${joinNames(names)} are ${t.pIn(term)}`
+      : `${joinNames(names)} is ${article(t.sIn(term))}`;
+  }
+  return `${verdictWords(p.template, p.verdict, t)}: ${joinNames(names)}`;
+}
+
 /** One pattern (c/shoreshPatterns patternsOf) as a row of its group. */
 export function patternRow(p, t) {
   // A pattern whose latest import disagrees has no supporters: it names what was answered.
@@ -226,7 +257,7 @@ export function patternRow(p, t) {
     template: p.template,
     antecedent: p.antecedent,
     group: PATTERN_GROUP[p.template],
-    title: `${verdictWords(p.template, p.verdict, t)}: ${joinNames(names)}`,
+    title: patternTitle(p, names, t),
     who: `Answered by ${joinNames(authors)}, latest ${shortDate(latest)}`,
     progress: progressLine(p),
     confidence: `${p.agree} agree${disagree}`,

@@ -57,7 +57,7 @@ describe("the running list", () => {
     );
     expect(view(historyLines(events, answers, t, spell))).toEqual([
       [
-        "Swim: An activity",
+        "Swim is an activity",
         "From a former user's answer in an import",
         "12 Jul",
         "",
@@ -65,7 +65,7 @@ describe("the running list", () => {
       ],
       ["Riflery: Activity deleted", "Deleted by you", "10 Jul", "", true],
       [
-        "Carpool: A fixed activity",
+        "Carpool is a fixed activity",
         "From Dana's answer in an import",
         "3 Jul",
         "",
@@ -84,7 +84,7 @@ describe("the running list", () => {
     );
     expect(view(lines)).toEqual([
       [
-        "Lunch: A fixed activity",
+        "Lunch is a fixed activity",
         "From your answer in an import",
         "3 Jul",
         "",
@@ -107,9 +107,9 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch: A fixed activity", "Changed by you", "20 Jul", "", true],
+      ["Lunch is a fixed activity", "Changed by you", "20 Jul", "", true],
       [
-        "Lunch: An activity",
+        "Lunch is an activity",
         "From Dana's answer in an import",
         "3 Jul",
         "Updated",
@@ -140,23 +140,23 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch: A fixed activity", "Undone by you", "11 Jul", "", true],
+      ["Lunch is a fixed activity", "Undone by you", "11 Jul", "", true],
       [
-        "Lunch: A fixed activity",
+        "Lunch is a fixed activity",
         "Forgotten by you",
         "11 Jul",
         "Undone",
         false
       ],
       [
-        "Lunch: A fixed activity",
+        "Lunch is a fixed activity",
         "From Dana's answer in an import",
         "10 Jul",
         "Forgotten",
         false
       ],
       [
-        "Lunch: An activity",
+        "Lunch is an activity",
         "From Dana's answer in an import",
         "3 Jul",
         "Replaced",
@@ -179,7 +179,7 @@ describe("the running list", () => {
     );
     expect(view(lines)).toEqual([
       [
-        "Specialty 4: A fixed activity",
+        "Specialty 4 is a fixed activity",
         "Auto-applied in the 17 Jul import",
         "17 Jul",
         "",
@@ -212,7 +212,7 @@ describe("the patterns' steps, worked out from the history", () => {
     ]);
     const current = lines.find((l) => l.current && l.template === "numbered");
     expect(current.title).toBe(
-      "A recurring activity: Lunch 1, Lunch 2 and Lunch 3"
+      "Lunch 1, Lunch 2 and Lunch 3 are recurring activities"
     );
     expect(current.patternNow.progress).toBe(
       "3 of 3 answers - suggested every time"
@@ -302,7 +302,7 @@ describe("the patterns' steps, worked out from the history", () => {
     const lines = historyLines(events, answersOf(events), t, spell);
     const top = lines[0];
     expect([top.title, top.how, top.pattern]).toEqual([
-      "A recurring activity: Lunch 1 and Lunch 2",
+      "Lunch 1 and Lunch 2 are recurring activities",
       "Forgotten by you",
       "pattern:numbered:lunch"
     ]);

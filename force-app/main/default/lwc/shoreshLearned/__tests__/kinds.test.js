@@ -24,8 +24,8 @@ const row = (question, answer, extra = {}) =>
 
 describe("each remembered question in camp words", () => {
   it.each([
-    ["kind|Lunch", "fixed", "classify", "Lunch: A fixed activity", 3],
-    ["kind|Swim|Main", "activity", "classify", "Swim (Main): An activity", 3],
+    ["kind|Lunch", "fixed", "classify", "Lunch is a fixed activity", 3],
+    ["kind|Swim|Main", "activity", "classify", "Swim (Main) is an activity", 3],
     [
       "similar|activity|archery|archry|Archery|Archry",
       "different",
@@ -103,7 +103,7 @@ describe("each remembered question in camp words", () => {
       "whoAdd|main|cits",
       "division|Main",
       "other",
-      "cits: A division in Main",
+      "cits is a division in Main",
       0
     ],
     ["unknown|thing", "x", "other", "thing: x", 0]
@@ -172,7 +172,7 @@ describe("who, when, groups and search", () => {
 
   it("matches a line's what, how, when or mark", () => {
     const r = {
-      title: "Lunch: A fixed activity",
+      title: "Lunch is a fixed activity",
       how: "From Dana's answer in an import",
       when: "3 Jul",
       flag: "Updated"

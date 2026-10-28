@@ -14,8 +14,9 @@ suggestions and auto-apply stands.
    ("Settings", with the list named "What Shoresh has learned" above it) change.
 
 2. **One running list, newest first.** The grouped-by-kind view and its kind filter go. Each line
-   is what was learned in the camp's words (the same words ADR 0021 used for a row: "Carpool: A
-   fixed activity"), when (a date in the camp's time zone), and how:
+   is what was learned in the camp's words as a sentence where the answer is a kind (Greg 2026-10-28: "Carpool is a fixed
+   activity", "Lunch 1, Lunch 2 and Lunch 3 are recurring activities"; other answers keep ADR
+   0021's "name: answer"; the import's own rules keep their wording), when (a date in the camp's time zone), and how:
    - "From your / Dana's / a former user's answer in an import"; "Deleted by ..." and "Guessed in
      an import by ..." for the answers setup screens and guesses remember;
    - "Changed by ...", "Forgotten by ...", "Undone by ...";
