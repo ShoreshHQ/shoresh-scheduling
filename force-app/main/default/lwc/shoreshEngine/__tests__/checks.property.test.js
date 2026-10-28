@@ -486,6 +486,7 @@ function oracle(days, model, campDays) {
 }
 
 describe("checks over generated weeks", () => {
+  // GEN-9.1
   it(`agree with an independent oracle over ${SEEDS} weeks`, () => {
     const failures = [];
     // How often each rule is met, so the generator is known to reach every one.

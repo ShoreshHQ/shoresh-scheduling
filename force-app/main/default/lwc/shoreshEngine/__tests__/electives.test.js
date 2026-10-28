@@ -88,6 +88,7 @@ describe("c-shoresh-engine: elective sets", () => {
     expect(day.g1[0]).toEqual({ kind: "E", id: SET, head: true });
   });
 
+  // GEN-2.2
   it("knows the set has the place: no bunk is sent there, and the cell says it is full", () => {
     // Archery alone, at the Range that fits one bunk: g2's Period 2 could get it only by bending
     // the place's limit, since Chugim (g1) has the Range then, so it stays Open (care plan step 7).

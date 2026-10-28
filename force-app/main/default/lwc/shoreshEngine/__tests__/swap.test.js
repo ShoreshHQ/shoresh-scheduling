@@ -333,6 +333,7 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
 
   // Rule 9.10 (docs/engine/protocol.md): name, Id and place in the list never change the week.
   // As a director does it: Sports deleted, a new activity added at the end of the list.
+  // GEN-9.10
   it.each([
     ["(a) the same location", null],
     ["(b) a new location that fits as many groups", { name: "Diamond", fit: 2 }]
@@ -345,11 +346,13 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
 
   // Rebuild (rules 10.1-10.3): with setup unchanged nothing moves; with Sports swapped (a, b),
   // Adventure Baseball lands exactly where Sports was, as on a fresh build.
+  // GEN-10.1
   it("a Rebuild with setup unchanged keeps week A exactly", () => {
     const b = rebuild(records);
     expect(moves(aCells, cellsByName(b), "-", "-")).toEqual([]);
     expect(b.keep.changed).toBe(0);
   });
+  // GEN-9.10, GEN-10.3
   it.each([
     ["(a) the same location", null],
     ["(b) a new location that fits as many groups", { name: "Diamond", fit: 2 }]
@@ -365,6 +368,7 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
   // Gaga Field as Big Playground; Gaga Pit, at 2 at once, is no twin). A fresh build breaks the
   // tie between twins by name (rule 9.10), so a renamed twin could trade places with the others;
   // a Rebuild keeps the week (rules 10.1-10.3), so the replacement lands exactly where it was.
+  // GEN-9.10, GEN-10.3
   it.each([
     ["Drama", "Adventure Baseball"],
     ["Gaga Field", "Aaa"]
@@ -384,6 +388,7 @@ describe("Swapping one activity for an identical one after the import (Greg's ca
   //
   // A fresh build cascades (a session lost at a crowded time is needed elsewhere, and so on);
   // Rebuild keeps the week and moves only what the change forces (Greg 2026-10-27, section 10).
+  // GEN-10.6
   it("(c) a smaller location: only forced changes, each with a reason", () => {
     const b = rebuild(
       swapped(records, { at: { name: "Small field", fit: 1 } })

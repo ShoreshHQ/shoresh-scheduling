@@ -49,6 +49,7 @@ describe("repair pass fills a tight but feasible week", () => {
     )
   };
 
+  // GEN-8.1
   it("bends nothing and keeps every hard rule", () => {
     const input = camp(spec);
     const result = generateWeek(input);
@@ -72,6 +73,7 @@ describe("repair pass fills a tight but feasible week", () => {
     expect(short(run(withMins)).stillNeeded).toBe(0);
   });
 
+  // GEN-8.2
   it("never lifts an activity below its minimum to fill another group", () => {
     // h holds A (min 1) in the one shared place; g can only do C there.
     const result = run({
@@ -109,6 +111,7 @@ describe("capped activities in an exactly fitting week (T380)", () => {
     ...over
   });
 
+  // GEN-4.4
   it("8 groups x 8 cells x 8 one-group-at-a-time activities: nothing short on options 1..100", () => {
     const bad = [];
     for (let option = 1; option <= 100; option++) {
@@ -120,6 +123,7 @@ describe("capped activities in an exactly fitting week (T380)", () => {
     expect(bad).toEqual([]);
   });
 
+  // GEN-8.7
   it("never moves a locked cell", () => {
     const cells = [{ day: 2, group: "g3", block: "b2", act: "a5" }];
     const locks = [{ date: dateAt(2), groupId: "g3", blockId: "b2" }];
@@ -265,6 +269,7 @@ describe("no activity left below its minimum when the week can hold it", () => {
 
   // ADR 0010: when the minimum repair left a cell for never-blank, the engine keeps that week only
   // if it is no worse than the week built without the leniency.
+  // GEN-8.4
   it("camp 166 (coordinator's review): no extra bends from the minimum repair", () => {
     const result = run(camp166);
     expect(result.flags).toEqual([]);
@@ -281,6 +286,7 @@ describe("no activity left below its minimum when the week can hold it", () => {
     expect(result.flags).toEqual([]);
   });
 
+  // GEN-8.4, GEN-8.5
   it("random camp 775: the week without the leniency has fewer bends for the same minimums", () => {
     // Lenient alone: two sessions past their weekly limits; without it, one, every minimum met.
     const result = generateWeek(camp(randomCamp(775)));
@@ -352,6 +358,7 @@ describe("no activity left below its minimum when the week can hold it", () => {
     };
   }
 
+  // GEN-8.3
   it("places every minimum on 1000 seeded weeks known to be feasible", () => {
     const misses = [];
     for (let seed = 1; seed <= 1000; seed++) {
@@ -483,6 +490,7 @@ describe("multi-block activities are placed first, contiguously, as one session"
     }
   );
 
+  // GEN-4.3
   it("keeps an early-in-the-week goal: both sessions by Tuesday when there is room", () => {
     const early = a("ropes", {
       span: 2,
@@ -514,6 +522,7 @@ describe("time-overlapping blocks", () => {
   const filled = (result, g) =>
     cellsOf(result.days)[0][g].filter(Boolean).length;
 
+  // GEN-3.9
   it("never places a group in both of two overlapping blocks", () => {
     const result = run(base);
     expect([filled(result, "g1"), filled(result, "g2")]).toEqual([1, 1]);
@@ -547,6 +556,7 @@ describe("time-overlapping blocks", () => {
     expect(at(result, 0, "g1", 1)).toBeNull();
   });
 
+  // GEN-3.9
   it("treats blocks that merely touch as not overlapping", () => {
     const touching = block(1, {
       id: "t",

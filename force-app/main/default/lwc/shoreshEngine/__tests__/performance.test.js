@@ -98,6 +98,7 @@ describe("generateWeek on a large camp", () => {
     expect(problems(spec, input, result)).toEqual([]);
   });
 
+  // GEN-8.8
   it("gives up on a week that can't fit within its work budget, still leaving nothing blank", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
@@ -116,6 +117,7 @@ describe("generateWeek on a large camp", () => {
     expect(result.stillNeeded.length).toBeGreaterThan(0);
   });
 
+  // GEN-8.8
   it("counts the same work every time (it doesn't depend on the machine)", () => {
     const spec = bigCamp(overfull);
     expect(generateWeek(camp(spec)).ruleChecks).toBe(
