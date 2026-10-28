@@ -240,3 +240,44 @@
     transition: none;
   }
 }
+
+/* What Shoresh already knew, then what it learned from the camp: two quiet sub-heads. */
+.sub {
+  margin: var(--shoresh-s2) 0 var(--shoresh-s1);
+  font-size: var(--shoresh-font-size);
+  font-weight: 500;
+  color: var(--shoresh-text-2);
+}
+
+.knew {
+  margin: 0 0 var(--shoresh-s3);
+  padding: 0;
+  list-style: none;
+}
+
+.rule {
+  padding: var(--shoresh-s1) 0;
+  color: var(--shoresh-text-2);
+}
+
+/* A pattern's progress: three dots, filled as answers agree (the words say the same). */
+.meter {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--shoresh-text-2);
+}
+
+.dot_on {
+  background: var(--shoresh-primary);
+  box-shadow: none;
+}
+
+.line_progress {
+  justify-content: flex-start;
+}

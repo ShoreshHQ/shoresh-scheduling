@@ -4,10 +4,20 @@ import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
 import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
+import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
+import { patternsOf } from "c/shoreshPatterns";
 import { GROUPS } from "./kinds";
-import { learnedGroups, learnedRow, matches, speller } from "./view";
+import { builtInRows } from "./builtIn";
+import {
+  isAnswer,
+  learnedGroups,
+  learnedRow,
+  matches,
+  patternRow,
+  speller
+} from "./view";
 
 const PAGE = 25;
 const SEARCH_AT = 15;
@@ -20,7 +30,10 @@ const STALE = "Someone else changed this just now. Showing the latest.";
  * answer the camp's imports and setup screens remember, in groups, newest first, each with who
  * last answered it and when. Change picks another of its choices; Forget makes the next import
  * ask again (a deleted item can come back), with Undo on the row until the screen is next opened.
- * Past 15 answers a search and a kind filter show in the rail.
+ * Past 15 answers a search and a kind filter show in the rail. A group with questions the import
+ * reads by its own rules shows them first, as what Shoresh already knew (MEMO-6.8), then what
+ * it learned from the camp: its patterns, each with how close it is (MEMO-6.7) and Forget
+ * pattern (MEMO-4.5), then its answers.
  *
  * campId: the camp shown. terms: the camp's words (c/shoreshTerms). setup: the open season's
  * setup, if any (names a key keeps in lower case show as the camp writes them). active: shown;
@@ -36,6 +49,8 @@ export default class ShoreshLearned extends LightningElement {
   status = "loading";
   loadError = "";
   answers = [];
+  // The patterns in the answers (c/shoreshPatterns), as rows.
+  patterns = [];
   // Per row: { mode: "editing" | "forgotten", choice, pending, error, retry }.
   states = {};
   // Rows changed or remembered again, until the next read: their result word.
@@ -91,7 +106,12 @@ export default class ShoreshLearned extends LightningElement {
     try {
       const answers = await getLearned({ campId: this.campId });
       const spell = speller(this.setup);
-      this.answers = (answers || []).map((a) => learnedRow(a, this.t, spell));
+      this.answers = (answers || [])
+        .filter(isAnswer)
+        .map((a) => learnedRow(a, this.t, spell));
+      this.patterns = patternsOf(answers || []).map((p) =>
+        patternRow(p, this.t)
+      );
       this.status = "ready";
       if (after) {
         after();
@@ -131,6 +151,11 @@ export default class ShoreshLearned extends LightningElement {
     return this.status === "ready" && this.answers.length > 0;
   }
 
+  /** The groups show once read, even with no answers: what Shoresh already knew. */
+  get showsGroups() {
+    return this.status === "ready";
+  }
+
   /** Answers still remembered (a forgotten one waiting on Undo no longer counts). */
   get remembered() {
     return this.answers.filter((r) => this.stateOf(r.id).mode !== "forgotten");
@@ -149,7 +174,9 @@ export default class ShoreshLearned extends LightningElement {
   }
 
   get kindOptions() {
-    const present = new Set(this.answers.map((r) => r.group));
+    const present = new Set(
+      [...this.answers, ...this.patterns].map((r) => r.group)
+    );
     return [
       { value: "all", label: "All kinds", selected: this.kind === "all" },
       ...GROUPS.filter((g) => present.has(g.key)).map((g) => ({
@@ -167,10 +194,15 @@ export default class ShoreshLearned extends LightningElement {
   get groups() {
     const q = this.searching ? this.query : "";
     const kind = this.searching ? this.kind : "all";
-    return learnedGroups(this.answers)
+    return learnedGroups(this.answers, this.patterns, builtInRows(this.t))
       .filter((g) => kind === "all" || g.key === kind)
-      .map((g) => ({ ...g, rows: g.rows.filter((r) => matches(r, q)) }))
-      .filter((g) => g.rows.length > 0)
+      .map((g) => ({
+        ...g,
+        knew: g.knew.filter((r) => matches(r, q)),
+        patterns: g.patterns.filter((r) => matches(r, q)),
+        rows: g.rows.filter((r) => matches(r, q))
+      }))
+      .filter((g) => g.rows.length + g.patterns.length + g.knew.length > 0)
       .map((g) => this.groupView(g, q.trim() !== ""));
   }
 
@@ -186,13 +218,20 @@ export default class ShoreshLearned extends LightningElement {
   groupView(g, searched) {
     const open = searched || !this.closed[g.key];
     const limit = searched ? g.rows.length : this.limits[g.key] || PAGE;
-    const left = g.rows.filter(
+    const left = [...g.patterns, ...g.rows].filter(
       (r) => this.stateOf(r.id).mode !== "forgotten"
     ).length;
+    const learned = g.patterns.length + g.rows.length > 0;
     return {
       key: g.key,
       label: g.label,
       count: left,
+      knew: g.knew,
+      hasKnew: g.knew.length > 0,
+      hasLearned: learned,
+      // Headed apart only beside what Shoresh already knew.
+      learnedHead: learned && g.knew.length > 0,
+      patterns: g.patterns.map((r) => this.patternView(r)),
       open,
       expanded: open ? "true" : "false",
       panelId: `learned-${g.key}`,
@@ -205,6 +244,29 @@ export default class ShoreshLearned extends LightningElement {
 
   stateOf(id) {
     return this.states[id] || {};
+  }
+
+  patternView(r) {
+    const state = this.stateOf(r.id);
+    const forgotten = state.mode === "forgotten";
+    return {
+      ...r,
+      forgottenNow: forgotten,
+      idle: !forgotten,
+      flag: forgotten ? "Forgotten" : this.flashes[r.id] || r.flag,
+      dots: [0, 1, 2].map((i) => ({
+        key: `${r.id}:${i}`,
+        className: i < r.meter ? "dot dot_on" : "dot"
+      })),
+      forgetLabel: `Forget pattern ${r.title}`,
+      undoLabel: `Undo forgetting pattern ${r.title}`,
+      busy: !!state.pending,
+      forgetText:
+        state.pending === "forget" ? "Forgetting..." : "Forget pattern",
+      undoText: state.pending === "undo" ? "Undoing..." : "Undo",
+      error: state.error || "",
+      liClass: forgotten ? "row row_forgotten" : "row"
+    };
   }
 
   rowView(r) {
@@ -277,7 +339,7 @@ export default class ShoreshLearned extends LightningElement {
 
   rowOf(event) {
     const id = event.currentTarget.dataset.row;
-    return this.answers.find((r) => r.id === id);
+    return [...this.answers, ...this.patterns].find((r) => r.id === id);
   }
 
   setState(id, state) {
@@ -353,6 +415,10 @@ export default class ShoreshLearned extends LightningElement {
 
   handleForget(event) {
     const row = this.rowOf(event);
+    if (row.pattern) {
+      this.forgetPattern(row);
+      return;
+    }
     this.write(row, "forget", () =>
       forgetLearned({ campId: this.campId, answerId: row.id })
     ).then((found) => {
@@ -364,8 +430,51 @@ export default class ShoreshLearned extends LightningElement {
     });
   }
 
+  /**
+   * Forget pattern: it stops suggesting; its answers stay (MEMO-4.5). The row stays, flagged,
+   * with Undo until the screen is next opened.
+   */
+  forgetPattern(row) {
+    this.write(row, "forget", () =>
+      forgetLearnedPattern({
+        campId: this.campId,
+        template: row.template,
+        antecedent: row.antecedent
+      })
+    ).then((ids) => {
+      if (ids && ids.length) {
+        this.setState(row.id, { mode: "forgotten", undo: ids });
+        this.announcement = `Forgotten. ${row.forgotten}`;
+        this.focusAfter = `[data-id="undo"][data-row="${row.id}"]`;
+      }
+    });
+  }
+
+  /** Undo of Forget pattern: the marker it saved goes, and an earlier one comes back. */
+  undoPattern(row) {
+    const [newId, oldId] = this.stateOf(row.id).undo || [];
+    this.write(row, "undo", () => {
+      return oldId
+        ? undoChangeLearned({ campId: this.campId, newId, oldId })
+        : forgetLearned({ campId: this.campId, answerId: newId });
+    }).then((done) => {
+      if (done) {
+        this.announcement = "Remembered again.";
+        this.load(() => {
+          this.setState(row.id, {});
+          this.flashes = { ...this.flashes, [row.id]: "Remembered again" };
+          this.focusAfter = `[data-id="forget"][data-row="${row.id}"]`;
+        });
+      }
+    });
+  }
+
   handleUndo(event) {
     const row = this.rowOf(event);
+    if (row.pattern) {
+      this.undoPattern(row);
+      return;
+    }
     this.write(row, "undo", () =>
       restoreLearned({ campId: this.campId, answerId: row.id })
     ).then((found) => {

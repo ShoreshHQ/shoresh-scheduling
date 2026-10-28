@@ -210,6 +210,11 @@
   color: var(--shoresh-text-2);
 }
 
+/* A pattern's suggestion (MEMO-6.5): marked, not pressed; the question is still open. */
+.choice_suggested {
+  box-shadow: inset 0 0 0 1px var(--shoresh-primary);
+}
+
 /* The needs-a-look corner: top right, as on a grid cell, until the row is answered. */
 .corner {
   position: absolute;

@@ -201,9 +201,15 @@
                         <lightning-button
                           key={option.key}
                           label={option.label}
+                          variant={option.variant}
                           data-key={option.key}
                           onclick={handleCardAnswer}
                         ></lightning-button>
+                      </template>
+                      <template lwc:if={card.suggestedText}>
+                        <span class="list-tag" data-id="suggested"
+                          >{card.suggestedText}</span
+                        >
                       </template>
                     </div>
                   </template>

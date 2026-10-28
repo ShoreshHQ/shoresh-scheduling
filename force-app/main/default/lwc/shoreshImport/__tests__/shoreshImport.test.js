@@ -476,7 +476,9 @@ describe("c-shoresh-import", () => {
       const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
       expect(plan.open).toEqual([]);
       expect(plan.fileData).toBeUndefined();
-      expect(plan.remember).toContainEqual({ key: open, answer: "a" });
+      expect(plan.remember).toContainEqual(
+        expect.objectContaining({ key: open, answer: "a" })
+      );
     });
 
     it("INGEST-5.5: Add says how many come in and how many wait: Add N, M for later", async () => {
@@ -843,6 +845,62 @@ describe("c-shoresh-import", () => {
       );
       expect(add(element).disabled).toBe(false);
       expect(add(element).textContent.trim()).toMatch(/^Add \d+$/);
+    });
+
+    // MEMO-6.5, MEMO-6.6, MEMO-3.2
+    it("a pattern in earlier answers suggests one: marked, still asked, and saved as followed", async () => {
+      const music = "similar|activity|music|musik|Music|Musik";
+      const earlier = (key, day, byYou, byName) => ({
+        key,
+        answer: "a",
+        byYou,
+        byName,
+        answeredOn: day,
+        savedAt: `${day}T12:00:00.000Z`,
+        shape: "file"
+      });
+      getAnswers.mockResolvedValue([
+        earlier(
+          "similar|activity|potery|pottery|Potery|Pottery",
+          "2026-07-03",
+          true,
+          "Greg"
+        ),
+        earlier(
+          "similar|activity|archary|archery|Archary|Archery",
+          "2026-07-10",
+          false,
+          "Dana"
+        )
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const card = $(element, `[data-card="${music}"]`);
+      expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
+        "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's 10 Jul, yours 3 Jul)"
+      );
+      // Marked, not chosen: the question is still open, nothing pressed.
+      expect(card.querySelector(".corner")).not.toBeNull();
+      expect(card.querySelector(".choice_suggested")).not.toBeNull();
+      expect(
+        [...card.querySelectorAll("button")].filter(
+          (b) => b.getAttribute("aria-pressed") === "true"
+        )
+      ).toHaveLength(0);
+      const suggested = card
+        .querySelector(".choice_suggested")
+        .dataset.key.split("::")[1];
+      await answer(element, music, suggested);
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.remember).toContainEqual({
+        key: music,
+        answer: suggested,
+        shape: "file",
+        suggested: true
+      });
     });
 
     it("a place ticked at an earlier import is ticked again and marked remembered", async () => {

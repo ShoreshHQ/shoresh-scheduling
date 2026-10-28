@@ -43,7 +43,12 @@ export function similarCards(proposal, t, answers) {
       answer:
         pair.existing && answers[pair.id] === "a"
           ? "b"
-          : answers[pair.id] || null
+          : answers[pair.id] || null,
+      // For the pattern layer (c/shoreshPatterns, MEMO-3.3), as Import last year's cards.
+      learn: {
+        shape: pair.existing ? "camp" : "file",
+        same: pair.existing || pair.bCount > pair.aCount ? "b" : "a"
+      }
     };
     const leaveOut = {
       value: LEAVE_OUT,

@@ -24,6 +24,15 @@ public with sharing class ImportAnswers {
     /** When, as a date in the camp's time zone. */
     @AuraEnabled
     public Date answeredOn;
+    /** When it was saved: one import's answers are saved together (the patterns' imports). */
+    @AuraEnabled
+    public Datetime savedAt;
+    /** The question's shape when it was answered (c/shoreshPatterns), or none. */
+    @AuraEnabled
+    public String shape;
+    /** It agreed with the suggestion its question showed (repo ADR 0021 choice 11). */
+    @AuraEnabled
+    public Boolean fromSuggestion;
   }
 
   /** The camp's remembered answers. One query, whatever the number. */
@@ -33,6 +42,8 @@ public with sharing class ImportAnswers {
       SELECT
         QuestionKey__c,
         Answer__c,
+        Shape__c,
+        FromSuggestion__c,
         CreatedDate,
         CreatedById,
         CreatedBy.FirstName,
@@ -57,6 +68,9 @@ public with sharing class ImportAnswers {
     answer.byYou = row.CreatedById == UserInfo.getUserId();
     answer.byName = byNameOf(row);
     answer.answeredOn = answeredOnOf(row);
+    answer.savedAt = row.CreatedDate;
+    answer.shape = row.Shape__c;
+    answer.fromSuggestion = row.FromSuggestion__c == true;
     return answer;
   }
 
@@ -85,7 +99,13 @@ public with sharing class ImportAnswers {
   public static void save(Id campId, ImportPlan plan) {
     List<ImportAnswer__c> wanted = new List<ImportAnswer__c>();
     for (ImportPlan.Entry entry : plan.entries('remember')) {
-      wanted.add(rowOf(campId, entry.key(), entry.text('answer')));
+      ImportAnswer__c row = rowOf(campId, entry.key(), entry.text('answer'));
+      // What the pattern layer reads (repo ADR 0021 choice 11): the question's shape, and
+      // whether the answer agreed with a suggestion. Words only, cut to the field.
+      String shape = entry.text('shape');
+      row.Shape__c = String.isBlank(shape) ? null : shape.left(64);
+      row.FromSuggestion__c = entry.text('suggested') == 'true';
+      wanted.add(row);
     }
     Set<String> forget = new Set<String>();
     for (String question : plan.texts('forget')) {
@@ -211,8 +231,7 @@ public with sharing class ImportAnswers {
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */
-  @TestVisible
-  private static String keyOf(Id campId, String question) {
+  public static String keyOf(Id campId, String question) {
     return campId +
       ':' +
       EncodingUtil.convertToHex(

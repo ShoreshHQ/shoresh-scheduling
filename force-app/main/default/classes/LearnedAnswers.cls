@@ -12,6 +12,18 @@ public with sharing class LearnedAnswers {
   @TestVisible
   private static Boolean refuseSave = false;
 
+  /** The pattern templates (c/shoreshPatterns TEMPLATES): a forgotten pattern names one. */
+  private static final Set<String> TEMPLATES = new Set<String>{
+    'numbered',
+    'meal',
+    'spelling',
+    'list',
+    'together'
+  };
+  private static final String PATTERN = 'pattern|';
+  private static final String FORGOTTEN = 'forgotten';
+  private static final Integer MAX_ANTECEDENT = 1000;
+
   /** One remembered answer, as the screen shows it (sent only, never read back). */
   public class Learned {
     @AuraEnabled
@@ -29,6 +41,15 @@ public with sharing class LearnedAnswers {
     /** When, as a date in the camp's time zone (else the reader's). */
     @AuraEnabled
     public Date answeredOn;
+    /** When it was saved: one import's answers are saved together (the patterns' imports). */
+    @AuraEnabled
+    public Datetime savedAt;
+    /** The question's shape when it was answered (c/shoreshPatterns), or none. */
+    @AuraEnabled
+    public String shape;
+    /** It agreed with the suggestion its question showed (repo ADR 0021 choice 11). */
+    @AuraEnabled
+    public Boolean fromSuggestion;
   }
 
   /** The camp's remembered answers, newest first. One query, whatever the number. */
@@ -39,6 +60,8 @@ public with sharing class LearnedAnswers {
         Id,
         QuestionKey__c,
         Answer__c,
+        Shape__c,
+        FromSuggestion__c,
         CreatedDate,
         CreatedById,
         CreatedBy.FirstName,
@@ -74,7 +97,10 @@ public with sharing class LearnedAnswers {
       Camp__c = campId,
       Key__c = row.Key__c,
       QuestionKey__c = row.QuestionKey__c,
-      Answer__c = answer
+      Answer__c = answer,
+      // The question's shape stays; an answer picked here was picked without a suggestion.
+      Shape__c = row.Shape__c,
+      FromSuggestion__c = false
     );
     Savepoint before = Database.setSavepoint();
     try {
@@ -100,9 +126,59 @@ public with sharing class LearnedAnswers {
     return true;
   }
 
+  /**
+   * Forgets a pattern (repo ADR 0021 choice 13; desktop "Forget this pattern"): a marker saved
+   * for the camp, "pattern|<template>|<antecedent>", after which the answers saved until now no
+   * longer count toward it. The answers themselves stay. A marker from an earlier Forget is
+   * replaced (it stays in the recycle bin), so the new one says when. Returns the new marker's
+   * Id, then the replaced one's when there was one: Undo deletes the new and brings the old back.
+   * The marker is no answer: it names a template from the fixed list, never a record Id.
+   */
+  public static List<Id> forgetPattern(
+    Id campId,
+    String template,
+    String antecedent
+  ) {
+    if (
+      !TEMPLATES.contains(template) ||
+      String.isBlank(antecedent) ||
+      antecedent.length() > MAX_ANTECEDENT
+    ) {
+      throw new ShoreshException('That isn\'t a pattern Shoresh knows.');
+    }
+    String question = PATTERN + template + '|' + antecedent;
+    String key = ImportAnswers.keyOf(campId, question);
+    List<ImportAnswer__c> before = [
+      SELECT Id
+      FROM ImportAnswer__c
+      WHERE Key__c = :key AND Camp__c = :campId
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    ImportAnswer__c marker = new ImportAnswer__c(
+      Camp__c = campId,
+      Key__c = key,
+      QuestionKey__c = question,
+      Answer__c = FORGOTTEN
+    );
+    Savepoint start = Database.setSavepoint();
+    try {
+      Database.delete(before, true, AccessLevel.USER_MODE);
+      UserModeWrites.save(new List<ImportAnswer__c>{ marker });
+    } catch (Exception e) {
+      Database.rollback(start);
+      throw e;
+    }
+    List<Id> result = new List<Id>{ marker.Id };
+    if (!before.isEmpty()) {
+      result.add(before[0].Id);
+    }
+    return result;
+  }
+
   private static ImportAnswer__c rowOf(Id campId, Id answerId) {
     List<ImportAnswer__c> rows = [
-      SELECT Id, Key__c, QuestionKey__c
+      SELECT Id, Key__c, QuestionKey__c, Shape__c
       FROM ImportAnswer__c
       WHERE Id = :answerId AND Camp__c = :campId
       WITH USER_MODE
@@ -119,6 +195,9 @@ public with sharing class LearnedAnswers {
     learned.byYou = row.CreatedById == UserInfo.getUserId();
     learned.byName = ImportAnswers.byNameOf(row);
     learned.answeredOn = ImportAnswers.answeredOnOf(row);
+    learned.savedAt = row.CreatedDate;
+    learned.shape = row.Shape__c;
+    learned.fromSuggestion = row.FromSuggestion__c == true;
     return learned;
   }
 }

@@ -196,6 +196,11 @@
                   <template lwc:if={card.fromMemory}>
                     <span class="tag">{card.memoryNote}</span>
                   </template>
+                  <template lwc:if={card.suggested}>
+                    <span class="tag" data-id="suggested"
+                      >{card.suggestedText}</span
+                    >
+                  </template>
                 </span>
                 <template lwc:if={card.open}>
                   <span class="corner" role="img" aria-label="Needs an answer"

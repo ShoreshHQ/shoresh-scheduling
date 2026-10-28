@@ -39,6 +39,7 @@ import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
+import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { importTable } from "./table";
@@ -122,6 +123,8 @@ export default class ShoreshListImport extends LightningElement {
   answers = {};
   remembered = {};
   rememberedNotes = {};
+  // The camp's remembered answers as read before this import's answers: the patterns' source.
+  savedRows = [];
   proposal;
   error;
   result;
@@ -384,6 +387,7 @@ export default class ShoreshListImport extends LightningElement {
     const { answers, notes } = rememberedByKey(saved);
     this.remembered = { ...answers };
     this.rememberedNotes = notes;
+    this.savedRows = saved || [];
     return answers;
   }
 
@@ -625,6 +629,7 @@ export default class ShoreshListImport extends LightningElement {
     const cards = this.workbook
       ? workbookCards(this.proposal, this.answers)
       : questionCards(this.proposal, this.terms, this.answers);
+    const suggestions = this.suggestionsOf(cards);
     return cards.map((card) => {
       let chosen = card.options.find((o) => o.value === card.answer);
       if (!chosen && card.answer && card.daysQuestion) {
@@ -642,17 +647,34 @@ export default class ShoreshListImport extends LightningElement {
         answerLabel: chosen ? chosen.label : "",
         fromMemory: !!chosen && this.remembered[card.id] === card.answer,
         memoryNote: this.rememberedNotes[card.id] || "Remembered",
+        suggestedText: suggestions[card.id] ? suggestions[card.id].text : "",
         // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
         draftDays: this.draftDays(card.id),
         draftProblem: (this.drafts[card.id] || {}).problem || "",
         options: card.options.map((o) => ({
           ...o,
-          key: `${card.id}::${o.value}`
+          key: `${card.id}::${o.value}`,
+          // A pattern's suggestion (MEMO-6.5): marked, not chosen; the question is still open.
+          variant:
+            suggestions[card.id] && suggestions[card.id].value === o.value
+              ? "brand-outline"
+              : "neutral"
         })),
         className: chosen ? "list-card list-card_done" : "list-card"
       };
     });
   }
+  /**
+   * What a pattern in the camp's answers suggests for each question (MEMO-6.5): pre-selected,
+   * still asked. From the answers as read before this import, so it stays while answering.
+   */
+  suggestionsOf(cards) {
+    // A workbook's sheets are not marked (its save does not say which answers were suggested).
+    return this.workbook
+      ? {}
+      : suggestionsFor(cards, this.savedRows, this.remembered);
+  }
+
   /** Questions still to answer (the heading never shows an attention zero: answered cards fold). */
   get openCount() {
     return this.cards.filter((c) => !c.answered).length;
@@ -1014,6 +1036,12 @@ export default class ShoreshListImport extends LightningElement {
           this.answers,
           this.setup.season.Id,
           `${this.file.name} (${this.screenName})`
+        );
+        const cards = questionCards(this.proposal, this.terms, this.answers);
+        plan.remember = withLearning(
+          plan.remember,
+          cards,
+          this.suggestionsOf(cards)
         );
         this.result = await saveList({ plan: JSON.stringify(plan) });
       }

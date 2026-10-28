@@ -1,6 +1,7 @@
 /**
  * The "What Shoresh has learned" screen's server side (c/shoreshLearned, repo ADR 0021): read
- * the camp's remembered answers, and change, forget or (Undo) remember again one at a time.
+ * the camp's remembered answers, and change, forget or (Undo) remember again one at a time;
+ * forget a pattern.
  */
 public with sharing class LearnedController {
   @AuraEnabled
@@ -47,6 +48,23 @@ public with sharing class LearnedController {
   public static Boolean undoChangeLearned(Id campId, Id newId, Id oldId) {
     try {
       return LearnedUndo.change(campId, newId, oldId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Forget a pattern: its answers stay. The new marker's Id, then the one it replaced if any
+   * (Undo: forgetLearned on the new one, or undoChangeLearned with both).
+   */
+  @AuraEnabled
+  public static List<Id> forgetLearnedPattern(
+    Id campId,
+    String template,
+    String antecedent
+  ) {
+    try {
+      return LearnedAnswers.forgetPattern(campId, template, antecedent);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

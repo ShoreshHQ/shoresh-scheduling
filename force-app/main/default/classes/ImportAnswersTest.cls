@@ -169,4 +169,51 @@ private class ImportAnswersTest {
       Assert.areEqual('activity', kept.Answer__c);
     }
   }
+
+  // MEMO-3.2, MEMO-3.3
+  @IsTest
+  static void savesTheQuestionsShapeAndWhetherItFollowedASuggestion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportPlan given = new ImportPlan(
+        JSON.serialize(
+          new Map<String, Object>{
+            'remember' => new List<Object>{
+              new Map<String, Object>{
+                'key' => 'kind|Lunch 1',
+                'answer' => 'recurring',
+                'shape' => 'weeks|some|one',
+                'suggested' => true
+              },
+              new Map<String, Object>{
+                'key' => 'kind|Lunch 2',
+                'answer' => 'recurring'
+              }
+            }
+          }
+        )
+      );
+      Test.startTest();
+      ImportAnswers.save(willow.Id, given);
+      List<ImportAnswers.Answer> rows = ImportAnswers.forCamp(willow.Id);
+      Test.stopTest();
+      Map<String, ImportAnswers.Answer> byKey = new Map<String, ImportAnswers.Answer>();
+      for (ImportAnswers.Answer row : rows) {
+        byKey.put(row.key, row);
+      }
+      Assert.areEqual('weeks|some|one', byKey.get('kind|Lunch 1').shape);
+      Assert.isTrue(byKey.get('kind|Lunch 1').fromSuggestion);
+      Assert.isNull(byKey.get('kind|Lunch 2').shape);
+      Assert.isFalse(
+        byKey.get('kind|Lunch 2').fromSuggestion,
+        'picked without a suggestion'
+      );
+      Assert.isNotNull(byKey.get('kind|Lunch 1').savedAt, 'when it was saved');
+      Assert.areEqual(
+        byKey.get('kind|Lunch 1').savedAt,
+        byKey.get('kind|Lunch 2').savedAt,
+        'one import\'s answers are saved together'
+      );
+    }
+  }
 }
