@@ -508,16 +508,28 @@ private class LearnedAnswersTest {
       Assert.areEqual(first[0], second[1]);
       Assert.isTrue(undone, 'Undo brings the earlier marker back');
       Assert.isTrue(refused, 'only a template from the fixed list');
-      List<ImportAnswer__c> rows = [
+      // A long text can't be sorted in a query: by question here (keys are unique per camp).
+      Map<String, ImportAnswer__c> byQuestion = new Map<String, ImportAnswer__c>();
+      for (ImportAnswer__c saved : [
         SELECT Id, QuestionKey__c, Answer__c
         FROM ImportAnswer__c
         WHERE Camp__c = :willow.Id
-        ORDER BY QuestionKey__c
-      ];
-      Assert.areEqual(3, rows.size(), 'both answers stay, with one marker');
-      Assert.areEqual('kind|Lunch 1', rows[0].QuestionKey__c);
-      Assert.areEqual('pattern|numbered|lunch', rows[2].QuestionKey__c);
-      Assert.areEqual(first[0], rows[2].Id);
+        ORDER BY Id
+      ]) {
+        byQuestion.put(saved.QuestionKey__c, saved);
+      }
+      List<String> questions = new List<String>(byQuestion.keySet());
+      questions.sort();
+      Assert.areEqual(
+        new List<String>{
+          'kind|Lunch 1',
+          'kind|Lunch 2',
+          'pattern|numbered|lunch'
+        },
+        questions,
+        'both answers stay, with one marker'
+      );
+      Assert.areEqual(first[0], byQuestion.get('pattern|numbered|lunch').Id);
       Assert.areEqual(
         0,
         [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :cedar.Id],
