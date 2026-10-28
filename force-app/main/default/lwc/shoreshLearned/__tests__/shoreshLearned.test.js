@@ -486,20 +486,30 @@ describe("patterns, and what Shoresh already knew", () => {
 
   // MEMO-5.1
   it("a steady fixed-activity pattern says it fills in on its own, with Undo in the import", async () => {
-    const fixed = lunches().map((r) => ({ ...r, answer: "fixed" }));
+    const fixed = lunches().map((r) => ({
+      ...r,
+      answer: "fixed",
+      shape: "scattered|everyone|one"
+    }));
     const element = await mount(fixed);
     const rows = patternRows(element);
     expect(rows.map((r) => [r.flag, r.progress])).toEqual([
       [
-        "Steady: fills in on its own; Undo in the import",
-        "3 of 3 answers - fills in on its own"
+        "Steady: auto-applied where the name sits the same way; Undo in the import",
+        "3 of 3 answers - auto-applied where the name sits the same way"
       ],
       [
-        "Steady: fills in on its own; Undo in the import",
-        "3 of 3 answers - fills in on its own"
+        "Steady: auto-applied where the name sits the same way; Undo in the import",
+        "3 of 3 answers - auto-applied where the name sits the same way"
       ]
     ]);
     await expect(element).toBeAccessible();
+    document.body.removeChild(element);
+    // Answers of mixed shapes never auto-apply: the row promises only a suggestion.
+    const mixed = await mount(
+      fixed.map((r, i) => ({ ...r, shape: i ? r.shape : "days|all|one" }))
+    );
+    expect(patternRows(mixed)[0].flag).toBe("Steady: suggested every time");
   });
 
   // MEMO-4.5

@@ -181,7 +181,7 @@ export function progressLine(p) {
   const still = missing.map((m) => MISSING_TEXT[m]).filter(Boolean);
   if (band === "established" && still.length === 0) {
     // MEMO-5.1: only a steady "fixed activity" pattern fills in on its own; the rest suggest.
-    return `${count} - ${fillsIn(p) ? "fills in on its own" : "suggested every time"}`;
+    return `${count} - ${fillsIn(p) ? "auto-applied where the name sits the same way" : "suggested every time"}`;
   }
   return still.length ? `${count} - ${still.join(", ")}` : count;
 }
@@ -190,7 +190,8 @@ export function progressLine(p) {
 function fillsIn(p) {
   return (
     (p.template === "numbered" || p.template === "meal") &&
-    p.verdict === AUTO_ANSWER
+    p.verdict === AUTO_ANSWER &&
+    !!p.shape
   );
 }
 
@@ -198,7 +199,7 @@ function fillsIn(p) {
 export function patternFlag(band, p = {}) {
   if (band === "established") {
     return fillsIn(p)
-      ? "Steady: fills in on its own; Undo in the import"
+      ? "Steady: auto-applied where the name sits the same way; Undo in the import"
       : "Steady: suggested every time";
   }
   return band === "suggest" ? "Suggested" : "Still asks";

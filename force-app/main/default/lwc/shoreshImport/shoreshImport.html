@@ -164,6 +164,7 @@
                     type="button"
                     class="shoresh-item choice"
                     data-id={row.id}
+                    aria-label={row.undoLabel}
                     onclick={handleUndoAuto}
                   >
                     Undo
@@ -285,7 +286,13 @@
                     data-line={line.id}
                   >
                     <span class="n">{line.name}</span>
-                    <span class="d">{line.detail}</span>
+                    <span class="d"
+                      >{line.detail}<template lwc:if={line.auto}>
+                        <span class="tag" data-id="auto-mark"
+                          >Auto-applied</span
+                        ></template
+                      ></span
+                    >
                     <span class="options">
                       <template lwc:if={line.select}>
                         <lightning-combobox
@@ -369,6 +376,11 @@
                   <span class="slds-assistive-text">{tile.spoken}</span>
                   <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
                   <span aria-hidden="true">{tile.label}</span>
+                  <template lwc:if={tile.autoLabel}>
+                    <span class="tag" aria-hidden="true" data-id="auto-mark"
+                      >{tile.autoLabel}</span
+                    >
+                  </template>
                 </button>
               </template>
             </div>
@@ -381,7 +393,11 @@
               >
                 <template for:each={openTile.nameItems} for:item="item">
                   <li key={item.key} class="name shoresh-raised">
-                    {item.name}
+                    {item.name}<template lwc:if={item.auto}>
+                      <span class="tag" data-id="auto-mark"
+                        >Auto-applied</span
+                      ></template
+                    >
                   </li>
                 </template>
               </ul>

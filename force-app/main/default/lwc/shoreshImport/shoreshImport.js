@@ -29,6 +29,7 @@ import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
 import {
   autoAnswersFor,
+  staleAuto,
   suggestionsFor,
   withLearning
 } from "c/shoreshPatterns";
@@ -94,6 +95,8 @@ export default class ShoreshImport extends LightningElement {
   // questions undone here: asked again, never filled in again in this import.
   autoApplied = {};
   autoUndone = [];
+  // What screen readers hear about auto-applied answers (WCAG 4.1.3).
+  autoSaid = "";
   dragging = false;
   sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
@@ -197,7 +200,7 @@ export default class ShoreshImport extends LightningElement {
     if (this.stage === "done") {
       return this.undone || `Imported from ${this.fileNames}.`;
     }
-    return "";
+    return this.stage === "review" ? this.autoSaid : "";
   }
 
   // ---------- reading the files ----------
@@ -268,13 +271,18 @@ export default class ShoreshImport extends LightningElement {
     this.openReadAs = null;
     this.autoApplied = {};
     this.autoUndone = [];
+    this.autoSaid = "";
     this.recompute();
     this.applyOnItsOwn();
+    const n = this.autoCount;
+    if (n) {
+      this.autoSaid = `${n} ${n === 1 ? "answer" : "answers"} auto-applied from earlier answers.`;
+    }
   }
 
   /**
    * MEMO-5.1: a steady pattern that a name is a fixed activity fills in its kind question, listed
-   * under "Filled in on its own" with Undo. An answer can open another question, so this
+   * under "Auto-applied" with Undo. An answer can open another question, so this
    * follows a few deep. Same answers, same file, same result.
    */
   applyOnItsOwn() {
@@ -309,7 +317,7 @@ export default class ShoreshImport extends LightningElement {
     }
   }
 
-  /** The answers filled in on its own and still standing, as rows for "Filled in on its own". */
+  /** The answers filled in on its own and still standing, as rows for "Auto-applied". */
   get autoRows() {
     if (!this.proposal) {
       return [];
@@ -331,6 +339,8 @@ export default class ShoreshImport extends LightningElement {
         return {
           id,
           title: card.title,
+          name: card.subject || card.title,
+          undoLabel: `Undo ${card.subject || card.title}`,
           answer: option ? option.label : this.answers[id],
           text: this.autoApplied[id].text
         };
@@ -345,6 +355,9 @@ export default class ShoreshImport extends LightningElement {
 
   /** Undo for this import (MEMO-5.1): the question is asked again; nothing is forgotten. */
   undoAuto(ids) {
+    const names = this.autoRows
+      .filter((r) => ids.includes(r.id))
+      .map((r) => r.name);
     const answers = { ...this.answers };
     const rest = { ...this.autoApplied };
     ids.forEach((id) => {
@@ -355,6 +368,14 @@ export default class ShoreshImport extends LightningElement {
     this.autoApplied = rest;
     this.autoUndone = [...new Set([...this.autoUndone, ...ids])].sort();
     this.recompute();
+    if (names.length) {
+      this.autoSaid = `Undone: ${names.join(", ")}. Asked again.`;
+    }
+  }
+
+  /** The names whose kind was auto-applied and still stands, for the marks where they show. */
+  get autoNames() {
+    return new Set(this.autoRows.map((r) => r.name));
   }
   handleUndoAuto(event) {
     const id = event.currentTarget.dataset.id;
@@ -460,6 +481,25 @@ export default class ShoreshImport extends LightningElement {
 
   recompute() {
     this.proposal = this.proposalWith(this.answers);
+    // An auto-applied answer whose question went away with another goes too: none stays hidden.
+    for (let depth = 0; depth < 5; depth++) {
+      const stale = staleAuto(
+        this.autoApplied,
+        questionCards(this.proposal, this.terms, this.answers)
+      );
+      if (stale.length === 0) {
+        break;
+      }
+      const answers = { ...this.answers };
+      const rest = { ...this.autoApplied };
+      stale.forEach((id) => {
+        delete answers[id];
+        delete rest[id];
+      });
+      this.answers = answers;
+      this.autoApplied = rest;
+      this.proposal = this.proposalWith(this.answers);
+    }
     this.plan = this.planNow();
   }
 
@@ -640,6 +680,9 @@ export default class ShoreshImport extends LightningElement {
           : "tile tile_button shoresh-raised",
         lines: g.lines.map((line) => ({
           ...line,
+          auto:
+            !!this.autoApplied[line.id] &&
+            this.autoApplied[line.id].value === line.answer,
           comboOptions: line.options.map((o) => ({
             label: o.label,
             value: o.value
@@ -725,14 +768,20 @@ export default class ShoreshImport extends LightningElement {
   // ---------- what comes in ----------
 
   get comingInTiles() {
-    return comingIn(this.plan, this.terms).map((tile) => ({
-      ...tile,
-      expanded: tile.key === this.openKind ? "true" : "false",
-      className:
-        tile.key === this.openKind
-          ? "tile tile_button shoresh-raised tile_open"
-          : "tile tile_button shoresh-raised"
-    }));
+    const autoNames = this.autoNames;
+    return comingIn(this.plan, this.terms).map((tile) => {
+      const auto = tile.names.filter((name) => autoNames.has(name)).length;
+      return {
+        ...tile,
+        autoLabel: auto ? `${auto} auto-applied` : "",
+        spoken: auto ? `${tile.spoken}, ${auto} auto-applied` : tile.spoken,
+        expanded: tile.key === this.openKind ? "true" : "false",
+        className:
+          tile.key === this.openKind
+            ? "tile tile_button shoresh-raised tile_open"
+            : "tile tile_button shoresh-raised"
+      };
+    });
   }
   get hasComingIn() {
     return this.comingInTiles.length > 0;
@@ -754,7 +803,8 @@ export default class ShoreshImport extends LightningElement {
           ...tile,
           nameItems: tile.names.map((name, i) => ({
             key: `${i}|${name}`,
-            name
+            name,
+            auto: this.autoNames.has(name)
           }))
         }
       : null;
@@ -984,6 +1034,7 @@ export default class ShoreshImport extends LightningElement {
     this.answers = {};
     this.autoApplied = {};
     this.autoUndone = [];
+    this.autoSaid = "";
     this.layouts = {};
     this.error = null;
   }

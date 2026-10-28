@@ -5,6 +5,7 @@ import {
   appliesOnItsOwn,
   autoAnswersFor,
   evaluate,
+  staleAuto,
   isMeal,
   keyParts,
   patternKey,
@@ -463,7 +464,7 @@ describe("filled in on its own (MEMO-5.1)", () => {
         value: "fixed",
         band: "established",
         template: "numbered",
-        text: "Filled in on its own from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+        text: "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
       })
     });
   });
@@ -551,5 +552,31 @@ describe("filled in on its own (MEMO-5.1)", () => {
     expect(autoAnswersFor([...cards].reverse(), [...rows].reverse())).toEqual(
       autoAnswersFor(cards, rows)
     );
+  });
+
+  // MEMO-5.1
+  it("says each person's answers and when, when more than one answered", () => {
+    const rows = [
+      spec(1, "fixed", "2026-07-03"),
+      spec(2, "fixed", "2026-07-03", { fromSuggestion: true }),
+      spec(3, "fixed", "2026-07-10", {
+        fromSuggestion: true,
+        byYou: false,
+        byName: "Dana Levi"
+      })
+    ];
+    expect(autoAnswersFor([card], rows)["kind|Specialty 4"].text).toBe(
+      "Auto-applied from answers for Specialty 1, Specialty 2 and Specialty 3 (Dana's 10 Jul, yours 3 Jul)"
+    );
+  });
+
+  // MEMO-5.1
+  it("an auto-applied answer whose question went away is found, so none stays hidden", () => {
+    const auto = { "kind|Specialty 4": {}, "kind|Specialty 7": {} };
+    expect(staleAuto(auto, [card])).toEqual(["kind|Specialty 7"]);
+    expect(staleAuto(auto, [])).toEqual([
+      "kind|Specialty 4",
+      "kind|Specialty 7"
+    ]);
   });
 });

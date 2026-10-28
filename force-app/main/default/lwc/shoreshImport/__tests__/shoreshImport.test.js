@@ -956,7 +956,7 @@ describe("c-shoresh-import", () => {
         const row = section.querySelector(`[data-auto="${spec}"]`);
         expect(row.textContent).toContain("A fixed activity");
         expect(row.querySelector(".tag").textContent).toBe(
-          "Filled in on its own from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+          "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
         );
         expect(pressed(element)).toEqual([`${spec}::fixed`]);
         expect(
@@ -984,6 +984,52 @@ describe("c-shoresh-import", () => {
         expect(plan.remember).toContainEqual(
           expect.objectContaining({ key: spec, answer: "fixed" })
         );
+      });
+
+      it("is marked Auto-applied where it comes in, never as simply read", async () => {
+        const element = await open(steady);
+        const tile = [
+          ...element.shadowRoot.querySelectorAll("[data-tile]")
+        ].find((t) => t.querySelector('[data-id="auto-mark"]'));
+        expect(tile.querySelector('[data-id="auto-mark"]').textContent).toBe(
+          "1 auto-applied"
+        );
+        expect(tile.querySelector(".slds-assistive-text").textContent).toMatch(
+          /, 1 auto-applied$/
+        );
+        tile.click();
+        await flush();
+        const name = [
+          ...element.shadowRoot.querySelectorAll('[data-id="names"] li')
+        ].find((li) => li.textContent.includes("Specialty 4"));
+        expect(name.querySelector('[data-id="auto-mark"]').textContent).toBe(
+          "Auto-applied"
+        );
+        // Not among what Shoresh read without asking.
+        const readAs = $(element, '[data-id="read-as"]');
+        expect(readAs ? readAs.textContent : "").not.toContain("Specialty 4");
+      });
+
+      it("names each Undo, and says when answers are auto-applied and undone", async () => {
+        const element = await open(steady);
+        const status = () =>
+          $(element, '[data-id="status"]').textContent.trim();
+        expect(status()).toBe("1 answer auto-applied from earlier answers.");
+        const undo = $(element, `[data-auto="${spec}"] button`);
+        expect(undo.getAttribute("aria-label")).toBe("Undo Specialty 4");
+        undo.click();
+        await flush();
+        expect(status()).toBe("Undone: Specialty 4. Asked again.");
+      });
+
+      it("Undo leaves no auto-applied answer hidden", async () => {
+        const element = await open(steady);
+        $(element, '[data-id="undo-auto"]').click();
+        await flush();
+        const plan = await saved(element);
+        // Asked again and left open: nothing of it saved as answered.
+        expect(plan.remember.map((r) => r.key)).not.toContain(spec);
+        expect(plan.open.map((o) => o.key)).toContain(spec);
       });
 
       it("Undo for this import undoes them all", async () => {

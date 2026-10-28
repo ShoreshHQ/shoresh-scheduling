@@ -517,10 +517,21 @@ export function autoAnswersFor(cards, rows, remembered = {}, undone = []) {
   for (const card of cards || []) {
     const s = suggestions[card.id];
     if (!card.answer && !skip.has(card.id) && appliesOnItsOwn(card, s)) {
-      out[card.id] = { ...s, text: `Filled in on its own from ${s.from}` };
+      out[card.id] = { ...s, text: `Auto-applied from ${s.from}` };
     }
   }
   return out;
+}
+
+/**
+ * The auto-applied answers whose question is no longer asked (it only came from another auto
+ * answer that was undone or changed): their ids, sorted. None may stay hidden in the answers.
+ */
+export function staleAuto(auto, cards) {
+  const asked = new Set((cards || []).map((c) => c.id));
+  return Object.keys(auto || {})
+    .filter((id) => !asked.has(id))
+    .sort();
 }
 
 /**

@@ -177,7 +177,7 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
 
 14. **A pattern row** (MEMO-6.7; desktop `patternRow`, `progressLine`, `patternFlag`): "A
     recurring activity: Lunch 1, Lunch 2 and Lunch 3", a flag for what it does next import
-    ("Suggested", "Steady: suggested every time", "Still asks"; a steady fixed-activity pattern says "Steady: fills in on its own; Undo in the import", choice 16), three dots and the progress line in
+    ("Suggested", "Steady: suggested every time", "Still asks"; a steady fixed-activity pattern whose answers share one shape says "Steady: auto-applied where the name sits the same way; Undo in the import", choice 16), three dots and the progress line in
     counts ("2 of 3 answers - needs one more import", "needs one answer you picked yourself",
     "Your latest answer disagrees - 2 more agreeing answers to suggest again"; never a
     percentage), who answered and the latest date, and Forget pattern. A pattern needs two
@@ -191,14 +191,17 @@ ROWS`) and undeletes it in user mode; Undo of a Change first checks the new reco
     "Learned from you": patterns, then answers. Read-only, no count; shown even before any
     answer, under the empty state. No new screen or group.
 
-16. **Filled in on its own** (MEMO-5.1; Greg 2026-10-26; desktop `AUTO_APPLY_ELIGIBLE`, only
+16. **Auto-applied** (MEMO-5.1; Greg 2026-10-26; desktop `AUTO_APPLY_ELIGIBLE`, only
     the accepting answer on fixed events, and its "Auto-applied: N" with "Undo for this
     import"): in the setup import only, an Established numbered or meal pattern whose answer is
     "a fixed activity", on a kind question of the same shape, answers that question when the
     review opens (`autoAnswersFor`). Every other pattern, and every other answer of these, only
-    suggests. The review lists them under "Auto-applied" with the answer and "Filled in on its
-    own from your answers for ... on ...", each with Undo, and "Undo for this import"; the card
-    is pressed and says the same. Undo clears the answer, nothing is forgotten or demoted, and
+    suggests. The review lists them under "Auto-applied" with the answer and "Auto-applied from
+    your answers for ... on ..." (each person's, with dates, when several answered), each with Undo, and "Undo for this import"; the card
+    is pressed and says the same. Where the name comes in, its tile and name say "Auto-applied" too. Each Undo is named for
+    its name ("Undo Specialty 4"), and the status line says when answers are auto-applied and
+    undone. Undo also clears any auto-applied answer whose question only came from it, so none
+    stays hidden. Undo clears the answer, nothing is forgotten or demoted, and
     the question is not filled in again in this import (the undone list resets with Start
     again). Pressing any answer on the card makes it the person's own. An answer filled in on
     its own is left out of what is remembered (`withLearning`'s `auto`): no one gave it, so it
