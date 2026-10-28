@@ -54,6 +54,14 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 Each definition is the test: a screen, import or build that uses the word for anything else
 breaks the term.
 
+Contradicted by the code today (2026-10-27; tests in `shoreshEngine/__tests__/core.test.js`,
+behaviour unchanged):
+
+- CORE-1.30, contradicted: an Open cell's reason can read "No activity fits this gap"
+  (`shoreshEngine/words.js`, the camp term "Gap"), an Avoid word.
+- CORE-1.33, contradicted: the week's measures (`shoreshEngine/measure.js`) are placed of
+  total, still needed, under and over; there is no "priorities met" count.
+
 ## Layer 2: Reading
 
 - **CORE-2.1** Shoresh MUST read the same input in the same order every time: by sort order,
@@ -117,7 +125,8 @@ These never bend for Shoresh.
   live in the one Why list beside the grid (Greg 2026-10-25).
 - **CORE-6.4** Measures MUST be minimums met, priorities met (High, then Low, as counts) and
   spread across the week (a count, reported only). Shoresh MUST NOT call a week "fair" or an
-  activity "popular" (Greg 2026-10-27).
+  activity "popular" (Greg 2026-10-27). Contradicted: `measure.js` has no "priorities met"
+  count (see CORE-1.33).
 - **CORE-6.5** Counters MUST use "N of M placed", "still needed", "under", "over"; never
   "Filled" or "Overlapping".
 - **CORE-6.6** Screens MUST NOT add help text or banners, or show ids, field names or machinery;
