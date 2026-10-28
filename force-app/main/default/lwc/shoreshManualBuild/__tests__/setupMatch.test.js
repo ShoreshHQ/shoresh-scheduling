@@ -582,6 +582,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
   });
 
+  // GEN-9.9
   describe("a hand edit is made, and reminded of in the Why list (Greg, 2026-10-26)", () => {
     const typeInto = async (element, key, text) => {
       cell(element, key).dispatchEvent(

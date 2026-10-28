@@ -40,6 +40,19 @@ export function campFirstDay(setup) {
 }
 
 /**
+ * The camp's "In a short week" choice (WEEK-4.2) and its normal week's length, the days its
+ * programs run (ADR 0022): { shrink (false, keep each minimum, unless the season says lower),
+ * campDays }. The engine's input shortWeek.
+ */
+export function campShortWeek(setup) {
+  const season = (setup && setup.season) || {};
+  return {
+    shrink: Boolean(season[SEASON.ShrinkShortWeek]),
+    campDays: programDays(setup).length
+  };
+}
+
+/**
  * The weeks covering the season's dates, as "Fill in weeks" makes them (WeekCalendar.weeksOf,
  * which the save uses): each week starts on the first of the days (firstDayOf; the season's own
  * first day when it runs every day) and holds the days that fall in the season, so short first

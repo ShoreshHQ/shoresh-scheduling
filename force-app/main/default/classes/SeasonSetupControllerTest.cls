@@ -394,6 +394,46 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // WEEK-4.2: the camp's short-week choice starts at keep, saves from the season box, reaches
+  // the screens' setup (the engine's input) and is carried to a copied season.
+  @IsTest
+  static void theShortWeekChoiceSavesReachesTheScreenAndIsCopied() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Assert.isFalse(
+        SeasonSetupController.getSeasonSetupInCamp(camp.Id, season.Id)
+          .season.ShrinkShortWeek__c,
+        'Keep is the default'
+      );
+      SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Season__c(Id = season.Id, ShrinkShortWeek__c = true)
+        }
+      );
+      Assert.isTrue(
+        SeasonSetupController.getSeasonSetupInCamp(camp.Id, season.Id)
+          .season.ShrinkShortWeek__c,
+        'The choice reaches the screen'
+      );
+      Id copyId = SeasonSetupController.copySeason(
+        season.Id,
+        'Summer 2027',
+        Date.newInstance(2027, 6, 28)
+      );
+      Assert.isTrue(
+        [
+          SELECT ShrinkShortWeek__c
+          FROM Season__c
+          WHERE Id = :copyId
+          WITH SYSTEM_MODE
+        ]
+        .ShrinkShortWeek__c,
+        'A copied season keeps the choice'
+      );
+    }
+  }
+
   @IsTest
   static void anySchedulerCanChangeCampWords() {
     User creator = ShoreshTestData.scheduler();

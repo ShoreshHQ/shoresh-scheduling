@@ -21,7 +21,7 @@ import {
   whyOf
 } from "c/shoreshEngine";
 import { electivesOf } from "c/shoreshElectiveDetails";
-import { campFirstDay } from "c/shoreshImportEngine";
+import { campFirstDay, campShortWeek } from "c/shoreshImportEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -722,6 +722,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       electiveOfferings: electivesOf(this._setup).offerings,
       // The camp's normal first day of the week: an early-week goal counts from it.
       firstDay: campFirstDay(this._setup),
+      // The camp's "In a short week" choice: keep each weekly minimum, or lower it (WEEK-4.2).
+      shortWeek: campShortWeek(this._setup),
       ...extra
     };
   }
@@ -779,7 +781,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       checked: {
         ...week.checked,
         openCells: open,
-        notes: engineWhy ? engineWhy.notes : []
+        // A short week's lowered minimums first (WEEK-4.2), then the engine's own notes.
+        notes: [...week.shortWeek, ...(engineWhy ? engineWhy.notes : [])]
       }
     };
   }

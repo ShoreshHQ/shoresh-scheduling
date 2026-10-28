@@ -78,6 +78,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(weekA.keep).toBeNull();
   });
 
+  // GEN-10.1
   it("10.1: with setup unchanged, a Rebuild changes nothing and says so", () => {
     const b = rebuild();
     expect(changes(weekA, b)).toEqual([]);
@@ -90,6 +91,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     });
   });
 
+  // GEN-10.2, GEN-10.3, GEN-10.5
   it("10.2-10.3: an activity removed empties only its cells, each said, and refilled where anything allowed fits", () => {
     const b = rebuild({
       activities: spec().activities.filter((a) => a.id !== "drama")
@@ -116,6 +118,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     }
   });
 
+  // GEN-10.3
   it("10.3: an activity swapped for a new one lands where the old one was", () => {
     const b = rebuild({
       activities: [
@@ -132,6 +135,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     }
   });
 
+  // GEN-10.6
   it("10.4-10.5: a raised minimum changes only the cells it must, each said", () => {
     const raised = withChange("swim", { min: 4, max: 4 });
     const b = rebuild({ activities: raised });
@@ -148,6 +152,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(b.keep.moved.length).toBeGreaterThan(0);
   });
 
+  // GEN-10.2
   it("10.2: a closure added empties and refills only that place's cells", () => {
     const b = rebuild({
       weekExceptions: [{ Id: "we1", Week__c: "week1", Location__c: "pool" }]
@@ -160,6 +165,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect([...cells(b).values()]).not.toContain("swim");
   });
 
+  // GEN-10.2
   it("10.2: a lowered limit empties only the sessions over it, the later ones", () => {
     const lowered = withChange("gaga", { atOnce: 1 });
     const b = rebuild({ activities: lowered });
@@ -172,6 +178,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     ).toEqual([]);
   });
 
+  // GEN-10.8
   it("10.8: locks and hand edits never move", () => {
     const locks = [
       { date: dateAt(0), groupId: "g1", blockId: "b0" },
@@ -190,6 +197,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(b.keep.emptied.map(keyOf)).not.toContain("2|g3|2");
   });
 
+  // GEN-10.10
   it("10.9: the same Rebuild twice gives the same week, word for word", () => {
     const over = {
       activities: spec()
@@ -199,6 +207,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(JSON.stringify(rebuild(over))).toBe(JSON.stringify(rebuild(over)));
   });
 
+  // GEN-10.1
   it("10.1: a week with no activity in it is built in full, as Generate builds it", () => {
     const blank = camp(spec());
     const keep = generateWeek({ ...blank, mode: MODE.KEEP });
@@ -207,6 +216,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(keep.keep).toBeNull();
   });
 
+  // GEN-10.3
   it("10.3: two added activities share a deleted one's cells, fewest first", () => {
     const b = rebuild({
       activities: [
@@ -223,6 +233,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(n("chess")).toBeGreaterThan(0);
   });
 
+  // GEN-10.2
   it("10.2: an activity whose place was deleted is emptied, saying so", () => {
     const b = rebuild({ locations: [] });
     const swimCells = [...cells(weekA)]
@@ -246,6 +257,7 @@ describe("Rebuild keeps the week (protocol section 10)", () => {
     expect(saved.stillNeededBy.some((x) => x.activityId === "swim")).toBe(true);
   });
 
+  // GEN-10.9
   it("10.9: a kept week emptier than the imported week is built fresh, and says so", () => {
     // One bunk, one day, three periods: the saved week has Solo in the middle, so a two-period
     // Hike fits nowhere; the imported week has Hike then Solo.

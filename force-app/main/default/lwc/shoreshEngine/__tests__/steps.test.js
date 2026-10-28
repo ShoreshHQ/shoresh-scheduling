@@ -47,6 +47,7 @@ const overfull = camp({
 });
 
 describe("generateWeekSteps", () => {
+  // GEN-9.8
   it("builds the same week as generateWeek, a week that can't fit included", () => {
     const { result, progress } = runSteps(overfull);
     expect(result).toEqual(generateWeek(overfull));
@@ -198,6 +199,7 @@ describe("checkGeneratedWeek", () => {
     expect(locked).toBeGreaterThan(0);
   });
 
+  // GEN-9.2
   it("the weekly-limit dot goes on the unlocked session: Swim locked Friday, not Monday, limit 1", () => {
     const input = camp({
       groups: [group("g1")],

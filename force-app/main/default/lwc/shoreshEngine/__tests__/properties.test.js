@@ -130,6 +130,7 @@ function dotsOf(result) {
 }
 
 describe("generateWeek on random small camps", () => {
+  // GEN-1.9, GEN-6.1
   it(`keeps every rule, never leaves a cell blank, and is deterministic (${SEEDS} seeds)`, () => {
     const bad = [];
     let flagged = 0;
@@ -211,6 +212,7 @@ describe("generateWeek on random small camps", () => {
  * day). Counts only grow as the week fills, so the finished week shows what was available.
  */
 describe("going over weekly maximums, on random camps", () => {
+  // GEN-7.3
   it(`never puts a bunk 2+ over on an activity while one 1 over was free for the cell (${SEEDS} seeds)`, () => {
     const bad = [];
     let twoOver = 0;

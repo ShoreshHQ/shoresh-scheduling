@@ -6,12 +6,23 @@
 import { FIELD } from "c/shoreshSchema";
 import {
   readActivities as readCatalog,
-  readLocations as readPlaces
+  readLocations as readPlaces,
+  shortWeekMinimums
 } from "./setup";
 
-/** Each activity by Id, in SortOrder then Id order, as the engine reads it. */
-export function readActivities(records) {
-  return new Map(readCatalog(records, [], null).running.map((a) => [a.id, a]));
+/**
+ * Each activity by Id, in SortOrder then Id order, as the engine reads it; with shortWeek (the
+ * camp's choice, campShortWeek) and the week's number of days, each weekly minimum as this
+ * week has it (WEEK-4.2, shortWeekMinimums).
+ */
+export function readActivities(records, shortWeek = null, weekDays = 0) {
+  return new Map(
+    shortWeekMinimums(
+      readCatalog(records, [], null).running,
+      shortWeek,
+      weekDays
+    ).map((a) => [a.id, a])
+  );
 }
 
 /** Each place by Id: { name, fit } (how many groups fit at once, at least 1). */

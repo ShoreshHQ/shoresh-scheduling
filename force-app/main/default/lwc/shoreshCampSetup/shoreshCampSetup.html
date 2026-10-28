@@ -230,6 +230,25 @@
                       </div>
                     </template>
                   </div>
+                  <div class="season-field">
+                    <lightning-radio-group
+                      data-id="short-week"
+                      type="button"
+                      label={shortWeekLabel}
+                      options={shortWeekOptions}
+                      value={shortWeek}
+                      onchange={handleShortWeek}
+                    ></lightning-radio-group>
+                    <template lwc:if={shortWeekError}>
+                      <div
+                        class="slds-form-element__help slds-text-color_error"
+                        role="alert"
+                        data-error="season-short-week"
+                      >
+                        {shortWeekError}
+                      </div>
+                    </template>
+                  </div>
                   <template lwc:if={copiedFromName}>
                     <p class="season-note" data-id="copied-from">
                       {labels.copiedFrom}
