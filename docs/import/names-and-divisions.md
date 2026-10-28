@@ -73,6 +73,22 @@ Each rule is clue, meaning, example, test.
    Meaning: the pair answers itself; nothing is asked.
    Test: "lunch 2 and Lunch-2, both read as Lunch 2", "swim and Swims, both read as Swim".
 
+6. **Which way round a page is, without numbers in the names** (2026-10-28).
+   Clue: a page whose days are not across and that the camp's group names, lists of names in
+   cells, or a name repeated across a block do not already settle. A group is in one place at a
+   time, so: a block naming one thing twice (everyone at Lunch) means the cells are activities,
+   groups across (all-camp). Every block naming the same set of names, each exactly once (at
+   least four fifths of the blocks with names), and not simply one per column, means the cells
+   are groups, activities across (by-activity): the blank cells are activities nobody had then.
+   Meaning: the layout is read that way and shown, as every layout is. A page that reads both
+   ways (each block one name per column, the same names every block) is not guessed: it is
+   marked unsure and the director picks its layout, one question for the file.
+   Example: Archery, Canoeing, Drama, Gaga, Lunch across, Otters, Wolves and Little Herons once
+   in each block, the three listed together under Lunch: by-activity (corpus L1-055, L1-286).
+   Test: `reading.test.js` "rule 6: …" (the by-activity page; counter-case, animal groups across
+   with everyone at Lunch is all-camp; a page that reads both ways is left unsure). Code:
+   `layouts.js` `blocksCallTheRoll`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

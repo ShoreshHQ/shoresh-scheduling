@@ -146,8 +146,12 @@ When a change improves them, lower the ceiling in that test and update the basel
 
 ## Baseline (2026-10-27, all 320 camps)
 
-After weekends (ADR 0022): read perfectly 318 of 320, questions 0; the 2 left are the by-activity
-camps below (groups 33, fixed 2, activities 31, cells 801). First baseline, before weekends:
+With INGEST-2.6 (a by-activity page told by every block naming each group once; 2026-10-28):
+read perfectly 320 of 320, questions 0, nothing read wrong. Level 2 (320 of 320), the travel
+camps (39 of 40; L1T-023 is the classification limit above, not its layout) and Greg's camp
+(perfect) unchanged. After weekends (ADR 0022): read perfectly 318 of 320, questions 0; the 2
+left were the by-activity camps of cause 2 below (groups 33, fixed 2, activities 31, cells 801).
+First baseline, before weekends:
 
 Read perfectly: 254 of 320. Questions: 0. Camps with any wrong read: 66.
 
@@ -168,4 +172,4 @@ Causes:
    one, but today nothing tells the director.
 2. **By-activity pages with groups that have no numbers** (2 camps, e.g. L1-286: groups named
    Otters, Wolves, Little Herons). The page is read as all-camp: the activities become groups and
-   the groups become activities.
+   the groups become activities. Fixed by INGEST-2.6 (names-and-divisions.md, rule 6).
