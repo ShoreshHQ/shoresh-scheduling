@@ -118,7 +118,10 @@ function readRows(rows, start, used) {
     const problems = [];
     const requiredBlanks = [];
     used.forEach(({ column, index }) => {
-      const read = readCell(column, row[index]);
+      // DIV-1.1: "No division" in a group's division cell is the same as blank.
+      const read = noneWritten(column, row[index])
+        ? { blank: true }
+        : readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
       } else if (read.ask) {
@@ -164,6 +167,16 @@ function readRows(rows, start, used) {
     });
   }
   return result;
+}
+
+/** DIV-1.1: whether a cell says "No division" (or "No Unit", in the camp's word). */
+function noneWritten(column, raw) {
+  const said = looseKey(String(raw ?? ""));
+  return (
+    !!column.blankWhenNone &&
+    (said === looseKey("No division") ||
+      said === looseKey(`No ${column.heading}`))
+  );
 }
 
 function usable(row) {
@@ -759,7 +772,13 @@ function settleBlanks(rows) {
       r.requiredBlanks.filter(none).forEach((column) => {
         r.blanks.add(column.key);
       });
-      const left = r.requiredBlanks.filter((column) => !none(column));
+      // A new group with no division is saved in none, as on the groups screen.
+      if (!r.existing && r.requiredBlanks.some((c) => c.blankWhenNone)) {
+        r.noDivision = true;
+      }
+      const left = r.requiredBlanks.filter(
+        (column) => !none(column) && !(column.blankWhenNone && !r.existing)
+      );
       if (r.existing || left.some((column) => column.newValue === undefined)) {
         left.forEach((column) => {
           r.problems.push(`${column.heading} is blank`);
@@ -1552,6 +1571,8 @@ function describeRow(r, used, screen, setup, answers, deletions) {
     droppedPlan: r.droppedPlan || null,
     droppedPlace: r.droppedPlace || null,
     startingValues: r.startingValues || [],
+    // DIV-1.1: a new group added in no division.
+    ...(r.noDivision ? { noDivision: true } : {}),
     targets: r.targets || {},
     programId: r.program ? r.program.id : null,
     programName: r.program ? r.program.name : null

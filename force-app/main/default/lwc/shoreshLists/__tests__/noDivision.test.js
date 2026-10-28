@@ -7,6 +7,7 @@ import { nsRecord } from "shoresh-jest/namespace";
 import { whoTargets } from "../who";
 import {
   campWorkbookSheets,
+  listPlan,
   listProposal,
   listRows,
   sheetName
@@ -76,5 +77,42 @@ describe("a group in no division in lists (DIV-1.1)", () => {
       answers: {}
     });
     expect(p.rows.filter((r) => r.status !== "unchanged")).toEqual([]);
+  });
+
+  const fileOf = (rows) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet(rows),
+      sheetName("List")
+    );
+    const data = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    return workbookFile(XLSX, "camp.xlsx", new Uint8Array(data));
+  };
+
+  // DIV-1.1
+  ["", "No division", "No Unit"].forEach((cell) => {
+    it(`a new group with "${cell}" as its division is added in no division`, () => {
+      const rows = listRows("groups", camp(), terms);
+      const tent = [...rows[1]];
+      tent[rows[0].indexOf("Unit")] = cell;
+      tent[rows[0].findIndex((h) => /Bunk|Group/.test(h))] = "Tent 1";
+      const p = listProposal({
+        screenKey: "groups",
+        file: fileOf([...rows, tent]),
+        setup: camp(),
+        terms,
+        answers: {}
+      });
+      const row = p.rows.find((r) => r.name === "Tent 1");
+      expect([row.status, row.problems]).toEqual(["new", []]);
+      const plan = listPlan(p, {}, "s1", "camp.xlsx");
+      const holder = plan.records.find((r) => r.kind === "Division");
+      expect(holder.fields).toEqual({ Name: "Tent 1", NoDivision__c: true });
+      const group = plan.records.find(
+        (r) => r.kind === "Group" && r.fields.Name === "Tent 1"
+      );
+      expect(group.refs.Division__c).toBe(holder.key);
+    });
   });
 });

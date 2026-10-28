@@ -124,4 +124,32 @@ private class NoDivisionsTest {
       Assert.isFalse(kept.NoDivision__c);
     }
   }
+
+  // DIV-1.1
+  @IsTest
+  static void aGuessedGroupInNoDivisionIsRememberedInNone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c program = ShoreshTestData.program(season.Id, 'Main');
+      Division__c holder = new Division__c(
+        Program__c = program.Id,
+        Name = 'Holding record',
+        NoDivision__c = true
+      );
+      insert as user holder;
+      Group__c tent = ShoreshTestData.groupIn(holder.Id, 'Tent 1');
+      Test.startTest();
+      SetupGuessRecords.remember(
+        camp.Id,
+        new Map<Id, Set<String>>{
+          tent.Id => new Set<String>{ SetupGuessValues.DIVISION }
+        }
+      );
+      Test.stopTest();
+      for (ImportAnswers.Answer answer : ImportController.getAnswers(camp.Id)) {
+        Assert.areNotEqual('Holding record', answer.answer);
+      }
+    }
+  }
 }
