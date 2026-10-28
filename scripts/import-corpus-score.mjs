@@ -7,6 +7,7 @@
  *   npm run score:import                 the full corpus, the summary table
  *   npm run score:import -- --camps      also one line per camp that is not read perfectly
  *   npm run score:import -- --level 2    level 2: schedules that differ from week to week
+ *   npm run score:import -- --level 3    level 3: hard (doubles, trips, half days, gaps, slips, notes)
  *
  * Level 1 also scores the "divisions travel together" camps (scripts/import-corpus/travel.js), and
  * Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx) on its own line.
@@ -58,7 +59,8 @@ const { TRAVEL_SIZE, travellingCamps } =
   await import("./import-corpus/travel.js");
 const { headingReport, plantCamp } =
   await import("./import-corpus/plant-camp.js");
-const { scoreCamp, summaryTable, weekTable } =
+const { LEVEL3_SIZE, hardCamps } = await import("./import-corpus/level3.js");
+const { scoreCamp, summaryTable, traitTable, weekTable } =
   await import("./import-corpus/score.js");
 
 const deps = { engine, XLSX, terms: buildTerms([]) };
@@ -72,7 +74,13 @@ const shown = (o) =>
     .map(([k, v]) => `${k} ${v}`)
     .join(", ") || "none";
 
-if (level === 2) {
+if (level === 3) {
+  const results = hardCamps(LEVEL3_SIZE).map((camp) => scoreCamp(camp, deps));
+  console.log(`Level 3 (hard): ${results.length} made-up camps\n`);
+  console.log(summaryTable(results));
+  console.log(`\nBy trait:\n${traitTable(results)}`);
+  printCamps(results);
+} else if (level === 2) {
   const results = variedCamps(LEVEL2_SIZE).map((camp) => scoreCamp(camp, deps));
   console.log(
     `Level 2 (schedules that differ week to week): ${results.length} made-up camps\n`

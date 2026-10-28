@@ -51,7 +51,7 @@ The existing sub-protocol documents keep their own numbers, read with a prefix:
 | `docs/protocol/core.md`              | CORE-layer.n      | as written   |
 | `docs/engine/protocol.md`            | rule n.m, by step | `GEN-n.m`    |
 | `docs/import/classification.md`      | rules 1-10        | `INGEST-3.n` |
-| `docs/import/names-and-divisions.md` | rules 1-6         | `INGEST-2.n` |
+| `docs/import/names-and-divisions.md` | rules 1-8         | `INGEST-2.n` |
 | `docs/import/weeks.md`               | rules 1-9         | `INGEST-4.n` |
 | `docs/import/review.md`              | rules 1-8         | `INGEST-5.n` |
 | `docs/protocol/div.md`               | DIV-layer.n       | as written   |

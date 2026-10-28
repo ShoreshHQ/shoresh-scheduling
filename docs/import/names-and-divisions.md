@@ -89,6 +89,36 @@ Each rule is clue, meaning, example, test.
    with everyone at Lunch is all-camp; a page that reads both ways is left unsure). Code:
    `layouts.js` `blocksCallTheRoll`.
 
+7. **A note line written above every page names none of them** (level-3 corpus, 2026-10-28).
+   Clue: a line alone in its row above a grid (a title line) that is written the same above
+   every schedule of the files, when there are two schedules or more ("Updated June 2 - subject
+   to change", "DRAFT v3", "Questions? Ask the head counselor"; a footnote of the page before,
+   "Rain plan: ...", when it repeats above each). A page split by a week column is one schedule.
+   Meaning: it is a note, not the page's name: the page is named by its last other title line.
+   A page whose only title lines are notes is named by its sheet when its file has several
+   sheets, each named, none "Sheet1" and none only a day or week (a sheet per group); otherwise
+   its lines are kept as before, so one group's own title repeated in a file per week ("Otters")
+   stays its name. A date in a dropped note ("June 2") is not read as the page's week.
+   Example: a sheet per group, each starting "Questions? Ask the head counselor": the groups are
+   named by their sheets; days stacked on one sheet, "DRAFT v3" under each day's title: each
+   page keeps its day.
+   Test: `reading.test.js` "INGEST-2.7: …" (a page per group with a note; days stacked with a
+   note and footnotes; a sheet per group whose only line is the note). Counter-cases
+   ("INGEST-2.7: counter-case: …"): one group's only title, the same in a file per week, or on
+   sheets named for weeks, is still its name; a single page's two title lines keep the last, as
+   before (known limit below). Code: `sheets.js` `notesAboveEveryPage`.
+
+8. **A page whose layout is unsure takes its file's sure layout** (level-3 corpus, 2026-10-28).
+   Clue: a page rule 6 leaves unsure (its blocks do not call the full roll: a group gone home
+   after Lunch, a blank cell), in a file whose other pages are sure of their layout, all the
+   same one (and days across or not alike).
+   Meaning: the page is read in that layout, as the rest of its file, and is not asked. A file
+   with no sure page, or sure pages that differ, is asked as before (rule 6).
+   Example: a by-activity CSV, days stacked, where Monday has a blank cell for one group: Monday
+   is by-activity like Tuesday to Friday.
+   Test: `reading.test.js` "INGEST-2.8: …" (counter-case: alone in its file it is still
+   unsure). Code: `reading.js` `sameLayoutPerFile`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
@@ -103,6 +133,11 @@ Each rule is clue, meaning, example, test.
 - Rule 3 reads a plain plural too: "Arts" twice where "Art" is used ten times in the same blocks
   is read as Art. It is shown in the notes; a camp that means two activities answers nothing
   today and must rename one on the activities screen.
+
+- Rule 7 needs two schedules or more: a single page with a note line under its title is still
+  named by the note (the last title line). Every page of a by-activity file whose afternoon
+  blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
+  three camps).
 
 ## What stays the same
 
