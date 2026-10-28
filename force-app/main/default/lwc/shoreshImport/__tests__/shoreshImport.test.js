@@ -349,6 +349,49 @@ describe("c-shoresh-import", () => {
     expect($(element, '[data-id="names"]')).toBeNull();
   });
 
+  it("INGEST-5.1: Shoresh read these as: counts that open into lines, one click changes a line and keeps the cursor", async () => {
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    const section = $(element, '[data-id="read-as"]');
+    expect(section.querySelector("h3").textContent).toContain(
+      "Shoresh read these as"
+    );
+    const tiles = $$(element, "button[data-read-as]");
+    expect(tiles.map((t) => t.dataset.readAs)).toEqual(
+      expect.arrayContaining(["activity", "fixed"])
+    );
+    expect($(element, '[data-id="read-as-lines"]')).toBeNull();
+    const fixed = $(element, 'button[data-read-as="fixed"]');
+    fixed.click();
+    await flush();
+    expect(fixed.getAttribute("aria-expanded")).toBe("true");
+    const row = $(element, '[data-id="read-as-lines"] [data-line]');
+    const name = row.querySelector(".n").textContent.trim();
+    expect(
+      row.querySelector('button[aria-pressed="true"]').textContent.trim()
+    ).not.toBe("Activity");
+    const toActivity = [...row.querySelectorAll("button")].find(
+      (b) => b.textContent.trim() === "Activity"
+    );
+    const key = toActivity.dataset.key;
+    toActivity.click();
+    await flush();
+    // The line moved to the activities, which opened, and the button pressed keeps the cursor.
+    expect(
+      $(element, 'button[data-read-as="activity"]').getAttribute(
+        "aria-expanded"
+      )
+    ).toBe("true");
+    const moved = $(element, `button[data-key="${key}"]`);
+    expect(moved.getAttribute("aria-pressed")).toBe("true");
+    expect(element.shadowRoot.activeElement).toBe(moved);
+    expect(
+      $$(element, '[data-id="read-as-lines"] .n').map((n) =>
+        n.textContent.trim()
+      )
+    ).toContain(name);
+  });
+
   it("keeps the cursor on the way: the first question, the choice pressed, Add, then the summary; and says what happens", async () => {
     const focused = [];
     const spy = jest

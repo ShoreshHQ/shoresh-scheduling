@@ -168,6 +168,14 @@ function setTimeRecords(records, updates, withDays) {
   return [...added, ...changed];
 }
 
+/** The keys a "Read as" line answers with its one-click change. */
+function readAsIds(proposal) {
+  return [
+    ...(proposal.decisions || []).map((d) => d.readAs),
+    ...proposal.notes.map((n) => n.id)
+  ].filter(Boolean);
+}
+
 /**
  * The answers to remember for this camp (Greg: exact answers, so a similar file does not ask
  * again), and those to forget: "Leave it out for now" means the next import asks again.
@@ -180,7 +188,9 @@ export function answersToKeep(proposal, answers) {
     ...(proposal.reading.splitAsks || []).map((x) => x.id),
     ...proposal.reading.timeAsks.map((x) => x.id),
     ...proposal.asks.map((x) => x.id),
-    ...proposal.offeredPlaces.map((x) => x.id)
+    ...proposal.offeredPlaces.map((x) => x.id),
+    // A change made under "Read as" (review.md INGEST-5.1 to 5.4) is remembered like an answer.
+    ...readAsIds(proposal)
   ]);
   const remember = [];
   const forget = [];
@@ -596,23 +606,7 @@ export function importNotes(proposal, t) {
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
       })
     );
-  // names-and-divisions.md rules 1-3: read without asking, and said here.
-  proposal.notes
-    .filter((n) => n.type === "readAs")
-    .forEach((n) =>
-      notes.push({
-        key: `readAs|${n.kind}|${n.from}`,
-        text: `“${n.from}” is read as “${n.to}”: ${n.rule === "spelling" ? "only the spacing, capitals or punctuation differ" : "it is the same name with another ending, in the same place"}.`
-      })
-    );
-  proposal.notes
-    .filter((n) => n.type === "ownDivision")
-    .forEach((n) =>
-      notes.push({
-        key: `ownDivision|${n.group}`,
-        text: `${n.group} has no ${t.sIn("Division")} in the file while the other ${t.pIn("Group")} do, so it is its own ${t.sIn("Division")}, ${n.group}.`
-      })
-    );
+  // names-and-divisions.md rules 1-3 are listed under "Read as" (review.md INGEST-5.2, 5.3).
   proposal.notes
     .filter((n) => n.type === "oneGroup")
     .forEach((n) =>
@@ -621,15 +615,7 @@ export function importNotes(proposal, t) {
         text: `${n.bunks.join(", ")} always do the same thing at the same time, ${KEPT[n.kept] || `so ${n.group} is set up as one ${t.sIn("Group")}`}.`
       })
     );
-  // weeks.md INGEST-4.3: one week's day with its own blocks stays in its program.
-  proposal.notes
-    .filter((n) => n.type === "weekDay")
-    .forEach((n) =>
-      notes.push({
-        key: `weekDay|${n.week}|${n.day}`,
-        text: `${n.week ? `${n.week}'s ` : ""}${n.day} comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
-      })
-    );
+  // weeks.md INGEST-4.3: listed under "Read as" (review.md INGEST-5.4).
   // weeks.md INGEST-4.6: the camp's own special day on that day wins.
   proposal.notes
     .filter((n) => n.type === "specialDayTaken")

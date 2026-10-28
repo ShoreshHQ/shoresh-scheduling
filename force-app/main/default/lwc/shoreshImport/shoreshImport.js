@@ -17,6 +17,7 @@ import {
   isReadable,
   planFor,
   questionCards,
+  readAsGroups,
   undoMessage,
   unplacedLines,
   workbookFile
@@ -81,6 +82,8 @@ export default class ShoreshImport extends LightningElement {
   plan = null;
   // The Comes in tile opened into its names (its kind), or null.
   openKind = null;
+  // The "Read as" group opened into its lines (its key), or null.
+  openReadAs = null;
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
   // the next question still open after { after }), { question }, { bringBack } or { selector }.
   focusNext = null;
@@ -381,7 +384,79 @@ export default class ShoreshImport extends LightningElement {
     return this.programChoices.length > 0;
   }
   get unitChoices() {
-    return this.cards.filter((c) => c.select === "division" && c.preselected);
+    // A division of one is listed under "Read as" instead (review.md INGEST-5.3).
+    const ownDivision = new Set(
+      (this.proposal ? this.proposal.notes : [])
+        .filter((n) => n.type === "ownDivision")
+        .map((n) => n.id)
+    );
+    return this.cards.filter(
+      (c) => c.select === "division" && c.preselected && !ownDivision.has(c.id)
+    );
+  }
+
+  // ---------- read as (review.md, INGEST-5) ----------
+
+  /** What Shoresh read without asking, grouped, as counts that open into their lines. */
+  get readAsTiles() {
+    if (!this.proposal) {
+      return [];
+    }
+    return readAsGroups(this.proposal, this.terms, this.cards).map((g) => {
+      const open = g.key === this.openReadAs;
+      return {
+        ...g,
+        spoken: g.label,
+        expanded: open ? "true" : "false",
+        className: open
+          ? "tile tile_button shoresh-raised tile_open"
+          : "tile tile_button shoresh-raised",
+        lines: g.lines.map((line) => ({
+          ...line,
+          comboOptions: line.options.map((o) => ({
+            label: o.label,
+            value: o.value
+          })),
+          options: line.options.map((o) => {
+            const pressed = o.value === line.answer;
+            return {
+              ...o,
+              key: `${line.id}::${o.value}`,
+              pressed: pressed ? "true" : "false",
+              className: pressed
+                ? "shoresh-item choice shoresh-raised"
+                : "shoresh-item choice"
+            };
+          })
+        }))
+      };
+    });
+  }
+  get hasReadAs() {
+    return this.readAsTiles.length > 0;
+  }
+  get openReadAsGroup() {
+    return this.readAsTiles.find((g) => g.key === this.openReadAs) || null;
+  }
+
+  handleReadAsTile(event) {
+    const key = event.currentTarget.dataset.readAs;
+    this.openReadAs = this.openReadAs === key ? null : key;
+  }
+
+  /** A one-click change: the line may move to another group, which opens with the cursor kept. */
+  handleReadAs(event) {
+    const key = event.currentTarget.dataset.key;
+    const [id, value] = key.split("::");
+    this.answers = { ...this.answers, [id]: value };
+    this.recompute();
+    const moved = this.readAsTiles.find((g) =>
+      g.lines.some((line) => line.id === id)
+    );
+    if (moved) {
+      this.openReadAs = moved.key;
+    }
+    this.focusNext = { selector: `button[data-key="${key}"]` };
   }
   get hasUnitChoices() {
     return this.unitChoices.length > 0;
@@ -663,6 +738,7 @@ export default class ShoreshImport extends LightningElement {
     this.proposal = null;
     this.plan = null;
     this.openKind = null;
+    this.openReadAs = null;
     this.answers = {};
     this.layouts = {};
     this.error = null;

@@ -207,6 +207,75 @@
           </section>
         </template>
 
+        <template lwc:if={hasReadAs}>
+          <!-- review.md INGEST-5: what Shoresh read without asking, each with a one-click change. -->
+          <section class="section" data-id="read-as">
+            <h3 class="section-head">Shoresh read these as</h3>
+            <div class="tiles">
+              <template for:each={readAsTiles} for:item="group">
+                <button
+                  key={group.key}
+                  type="button"
+                  class={group.className}
+                  aria-expanded={group.expanded}
+                  aria-controls="read-as-lines"
+                  data-read-as={group.key}
+                  onclick={handleReadAsTile}
+                >
+                  <span class="slds-assistive-text">{group.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{group.count}</b>
+                  <span aria-hidden="true">{group.label}</span>
+                </button>
+              </template>
+            </div>
+            <template lwc:if={openReadAsGroup}>
+              <div
+                id="read-as-lines"
+                role="group"
+                aria-label={openReadAsGroup.label}
+                data-id="read-as-lines"
+              >
+                <template for:each={openReadAsGroup.lines} for:item="line">
+                  <div
+                    key={line.key}
+                    class="row shoresh-raised"
+                    data-line={line.id}
+                  >
+                    <span class="n">{line.name}</span>
+                    <span class="d">{line.detail}</span>
+                    <span class="options">
+                      <template lwc:if={line.select}>
+                        <lightning-combobox
+                          class="pick"
+                          label={line.name}
+                          variant="label-hidden"
+                          value={line.answer}
+                          options={line.comboOptions}
+                          data-id={line.id}
+                          onchange={handleChoice}
+                        ></lightning-combobox>
+                      </template>
+                      <template lwc:else>
+                        <template for:each={line.options} for:item="option">
+                          <button
+                            key={option.key}
+                            type="button"
+                            class={option.className}
+                            aria-pressed={option.pressed}
+                            data-key={option.key}
+                            onclick={handleReadAs}
+                          >
+                            {option.label}
+                          </button>
+                        </template>
+                      </template>
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </section>
+        </template>
         <template lwc:if={hasComingIn}>
           <section class="section" data-id="coming-in">
             <h3 class="section-head">Comes in</h3>

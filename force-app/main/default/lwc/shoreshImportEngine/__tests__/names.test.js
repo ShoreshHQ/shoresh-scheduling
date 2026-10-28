@@ -1,6 +1,11 @@
 // docs/import/names-and-divisions.md: a division of one (rule 1), and names read as the same
 // without asking (rules 2 and 3), each with its counter-case.
-import { buildProposal, importNotes, questionCards } from "./data/engine";
+import {
+  buildProposal,
+  importNotes,
+  questionCards,
+  readAsGroups
+} from "./data/engine";
 import { csv, terms } from "./data/samples";
 import {
   plainEnding,
@@ -42,6 +47,13 @@ const propose = (files, answers = {}) =>
 const unanswered = (p) =>
   questionCards(p, terms, {}).filter((c) => c.answer === null);
 const notesOf = (p) => importNotes(p, terms).map((n) => n.key);
+// review.md INGEST-5: what was read without asking is listed under "Read as", not in the notes.
+const readAsLines = (p, answers = {}) =>
+  readAsGroups(p, terms, questionCards(p, terms, answers)).flatMap((g) =>
+    g.lines.map((l) => ({ group: g.key, name: l.name, answer: l.answer }))
+  );
+const readAsOf = (p, answers) =>
+  readAsLines(p, answers).map((l) => `${l.group}|${l.name}`);
 const names = (p) => [...new Set(p.usable.map((x) => x.text))].sort();
 
 describe("rule 1: a division of one", () => {
@@ -60,7 +72,8 @@ describe("rule 1: a division of one", () => {
       ["CIT", "CIT"]
     ]);
     expect(unanswered(p).filter((c) => c.select === "division")).toEqual([]);
-    expect(notesOf(p)).toContain("ownDivision|CIT");
+    expect(readAsOf(p)).toContain("division|CIT");
+    expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
   });
 
   // INGEST-2.1
@@ -72,7 +85,7 @@ describe("rule 1: a division of one", () => {
     expect(ownDivisions(groups)).toEqual(groups);
     const p = propose(week((g) => ACTIVITIES[(g + 1) % 4]));
     expect(p.reading.groups.some((g) => g.ownDivision)).toBe(false);
-    expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
+    expect(readAsOf(p).some((k) => k.startsWith("division|"))).toBe(false);
   });
 });
 
@@ -87,7 +100,7 @@ describe("rule 2: the same name spelled with other spacing, capitals or punctuat
     );
     expect(p.reading.pairs).toEqual([]);
     expect(names(p)).not.toContain("Lunch2");
-    expect(notesOf(p)).toContain("readAs|activity|Lunch2");
+    expect(readAsOf(p)).toContain("joined|Lunch2 → Lunch 2");
     expect(sameSpelling("Arts&Crafts", "Arts & Crafts")).toBe(true);
   });
 
@@ -122,7 +135,7 @@ describe("rule 3: the same name with another ending, in the same place", () => {
     const p = propose(week(swimReturn("Swim Returning")));
     expect(p.reading.pairs).toEqual([]);
     expect(names(p)).not.toContain("Swim Returning");
-    expect(notesOf(p)).toContain("readAs|activity|Swim Returning");
+    expect(readAsOf(p)).toContain("joined|Swim Returning → Swim Return");
   });
 
   it("a deleted name is matched by the read name: Swim Returning goes with Swim Return", () => {
@@ -200,11 +213,14 @@ const kindOf = (p, name) => {
 
 describe("rule 1 with answers and camp-wide columns", () => {
   // INGEST-2.1
-  it("a remembered division answer replaces rule 1, and the note is not shown", () => {
+  it("a remembered division answer replaces rule 1, and its Read as line shows the answer", () => {
     const files = campWeek(null, [...DIVIDED, "CIT"], rotate);
-    const p = propose(files, { "division|CIT": "Seniors" });
+    const answers = { "division|CIT": "Seniors" };
+    const p = propose(files, answers);
     expect(p.groups.find((g) => g.name === "CIT").division).toBe("Seniors");
-    expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
+    expect(readAsLines(p, answers).find((l) => l.group === "division")).toEqual(
+      { group: "division", name: "CIT", answer: "Seniors" }
+    );
   });
 
   // INGEST-2.1
@@ -216,7 +232,7 @@ describe("rule 1 with answers and camp-wide columns", () => {
         column,
         own: false
       });
-      expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
+      expect(readAsOf(p).some((k) => k.startsWith("division|"))).toBe(false);
     }
   });
 });
@@ -365,8 +381,7 @@ describe("rules 1-3 with rule 7 (whole divisions at once) and rule 8 (one group)
       ["Seniors", null],
       ["CIT", "CIT"]
     ]);
-    expect(notesOf(p)).toEqual(
-      expect.arrayContaining(["ownDivision|CIT", "oneGroup|Juniors"])
-    );
+    expect(notesOf(p)).toContain("oneGroup|Juniors");
+    expect(readAsOf(p)).toContain("division|CIT");
   });
 });
