@@ -173,6 +173,26 @@ example, test.
    decided, the director is asked"; "rule 9: not everyone on most days … is not asked as fixed";
    "rule 9: rule 2 comes first …".
 
+10. **What Shoresh already knew: a tiebreaker on a question, never a rule (Greg 2026-10-28).**
+    Shoresh ships knowing some common camp names and their usual kind (fixed activity, recurring
+    activity or activity): the list is `shoreshPatterns/campWords.js`, one reviewable file. It is
+    used only where rules 1-9 above already ask (A, B or C below), and only as a Suggestion on
+    that card: the usual kind's button is marked and the card says "Suggested from what Shoresh
+    already knew". It is never chosen for the director and never applied on its own. The grid
+    always wins: a camp word never changes a kind the grid decided, never adds, removes or answers
+    a question, and never changes what the import reads. A kind the card does not offer (Carpool
+    usually fixed, on a card that has no fixed answer) is not suggested. A camp's own remembered
+    answer, and its answers to names of the same pattern ("Carpool 1" for "Carpool 3"), come
+    first, even a single one (MEMO-6.5, MEMO-6.10).
+    Matching: the whole name, with capitals, accents, spacing and punctuation ignored, "&" read as "and",
+    and a trailing number dropped: "CARPOOL", "Carpool 2", "Carpool2" and "car pool" are Carpool;
+    "Carpool Duty" is not. Each entry may list other spellings ("Busses" for Buses).
+    Names that are often more than one kind are left out: Swim, Clean Up, and the meals and rest
+    (Lunch, Snack, Rest Hour), whole-camp at some camps and staggered at others.
+    Code: `builtInSuggestion` in `shoreshPatterns.js`. Test: `shoreshPatterns.test.js` "INGEST-3.10:
+    …"; `classify.test.js` "INGEST-3.10: camp words never change the reading"; the measure on
+    asked cases is `shoreshPatterns/__tests__/campWordsMeasure.test.js`.
+
 ## Asked, because the grid supports both readings
 
 Only these three. Each card offers set time, activity, or leave it out.

@@ -24,6 +24,9 @@
  * to learn from.
  */
 import { similarity } from "c/shoreshImportEngine";
+import { CAMP_WORDS } from "./campWords";
+
+export { CAMP_WORDS };
 
 /** The bar (desktop LEARNING_BAR, Greg 2026-10-11: three, not four). */
 export const LEARNING_BAR = Object.freeze({
@@ -468,16 +471,92 @@ function suggest(card, groups) {
 }
 
 /**
+ * A camp word's key (INGEST-3.10): capitals, accents, spacing and punctuation ignored ("Line-Up",
+ * "line up" and "LINE UP" are one), "&" read as "and", and a trailing number dropped ("Lunch 2",
+ * "Lunch2" are "lunch"). Only a whole name matches: "Lunch Duty" is not "Lunch".
+ */
+export function wordKey(name) {
+  return String(name ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s*\d+$/, "")
+    .trim();
+}
+
+const BUILT_IN = (() => {
+  const map = new Map();
+  for (const word of CAMP_WORDS) {
+    for (const spelling of [word.name, ...word.also]) {
+      map.set(wordKey(spelling), word);
+    }
+  }
+  return map;
+})();
+
+/** The built-in camp word a name is (CAMP_WORDS), or null. */
+export function campWordOf(name) {
+  const key = wordKey(name);
+  return (key && BUILT_IN.get(key)) || null;
+}
+
+/**
+ * Whether the camp has answered a question of the same pattern as this card, even once or in
+ * disagreement: its own answers then come first, and what Shoresh already knew stays quiet
+ * (MEMO-6.10), so the list never marks a kind against the camp's own answer.
+ */
+function ownAnswersFor(card, groups) {
+  return templatesOf(card.id, null).some((t) =>
+    groups.has(groupKey(t.template, t.antecedent))
+  );
+}
+
+/** What a built-in suggestion says on its card (MEMO-6.9). */
+export const KNEW_TEXT = "Suggested from what Shoresh already knew";
+
+/**
+ * What Shoresh already knew suggests for a card, or null (INGEST-3.10, MEMO-6.9): only on a kind
+ * question the import already asks, only a kind the card offers. A tiebreaker shown, never
+ * applied: its band is "knew", which nothing applies on its own (MEMO-5.1).
+ */
+export function builtInSuggestion(card) {
+  const id = String((card && card.id) || "");
+  if (!id.startsWith("kind|")) {
+    return null;
+  }
+  const rest = id.slice(5);
+  const cut = rest.indexOf("|");
+  const word = campWordOf(cut < 0 ? rest : rest.slice(0, cut));
+  if (!word || !(card.options || []).some((o) => o.value === word.kind)) {
+    return null;
+  }
+  return {
+    value: word.kind,
+    band: "knew",
+    template: "knew",
+    antecedent: word.name,
+    from: "what Shoresh already knew",
+    text: KNEW_TEXT
+  };
+}
+
+/**
  * The cards' suggestions, by card id: only for a card not answered yet (a remembered exact
  * answer is the card's own and wins). rows: the camp's remembered answers as this import read
- * them before any answer was given here, so a suggestion stays the same while answering.
+ * them before any answer was given here, so a suggestion stays the same while answering. A
+ * pattern in the camp's own answers comes before what Shoresh already knew (MEMO-6.10).
  */
 export function suggestionsFor(cards, rows, remembered = {}) {
   const out = {};
   const groups = groupsByKey(rows);
   for (const card of cards || []) {
     if (remembered[card.id] === undefined) {
-      const s = suggest(card, groups);
+      const s =
+        suggest(card, groups) ||
+        (ownAnswersFor(card, groups) ? null : builtInSuggestion(card));
       if (s) {
         out[card.id] = s;
       }

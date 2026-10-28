@@ -1095,3 +1095,47 @@ describe("similar-name answers merge sets, never swap names (review finding 6)",
     ).toBe(0);
   });
 });
+
+describe("what Shoresh already knew never changes the reading", () => {
+  // INGEST-3.10, MEMO-6.9: the camp words are only a suggestion on the card (c/shoreshPatterns).
+  it("INGEST-3.10: camp words never change the reading: same kinds, same questions, any name", () => {
+    const shapes = {
+      // Every group, every day: fixed, whatever the word usually is (Shabbat is usually recurring).
+      fixed: (name) => (g, d, b) => {
+        return b === 2 ? name : rotation(g, d, b);
+      },
+      // Rule 9: everyone most days, one bunk one day something else: asked.
+      nearFixed: (name) => (g, d, b) => {
+        if (b !== 0) return rotation(g, d, b);
+        return g === 2 && d === 2 ? "Drama" : name;
+      }
+    };
+    for (const [shape, cellsOf] of Object.entries(shapes)) {
+      const read = (name) => {
+        const p = propose(cellsOf(name));
+        const asks = p.asks
+          .filter((a) => a.type === "kind")
+          .map((a) => a.id.replace(name, "X"));
+        return { kind: kindOf(p, name), asks };
+      };
+      const plain = read("Zorbel");
+      expect(plain.asks.length).toBe(shape === "nearFixed" ? 1 : 0);
+      for (const word of ["Lunch", "Carpool", "Gaga", "Shabbat"]) {
+        expect([shape, read(word)]).toEqual([shape, plain]);
+      }
+    }
+  });
+
+  it("INGEST-3.10: the import engine does not read the camp words", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const dir = path.join(__dirname, "..");
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".js"))) {
+      const source = fs.readFileSync(path.join(dir, file), "utf8");
+      expect([
+        file,
+        /from\s+["'](c\/shoreshPatterns|[^"']*campWords)/.test(source)
+      ]).toEqual([file, false]);
+    }
+  });
+});

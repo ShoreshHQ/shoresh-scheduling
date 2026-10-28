@@ -1065,6 +1065,46 @@ describe("c-shoresh-import", () => {
       });
     });
 
+    // INGEST-3.10, MEMO-6.9: a common camp name's usual kind, on a question already asked.
+    it("INGEST-3.10 / MEMO-6.9: a camp word is a suggestion on the card the grid asks, marked, not chosen", async () => {
+      getAnswers.mockResolvedValue([]);
+      const element = await renderWith(WITH_WEEK);
+      const day = (bunk2) =>
+        [
+          "Time,Bunk 1,Bunk 2",
+          "9:00-9:45,Gaga,Gaga",
+          "10:00-10:45,Lunch,Lunch",
+          `11:00-11:45,Swim,${bunk2}`
+        ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": day("Swim"),
+        "Tuesday.csv": day("Gaga")
+      });
+      const spec = "kind|Gaga";
+      const card = $(element, `[data-card="${spec}"]`);
+      expect(card).not.toBeNull();
+      expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
+        "Suggested from what Shoresh already knew"
+      );
+      const marked = card.querySelector(".choice_suggested");
+      expect(marked.dataset.key).toBe(`${spec}::activity`);
+      // Marked, never chosen: nothing pressed, and the card still needs an answer.
+      expect(
+        [...card.querySelectorAll("button")].filter(
+          (b) => b.getAttribute("aria-pressed") === "true"
+        )
+      ).toEqual([]);
+      expect($(element, '[data-id="auto"]')).toBeNull();
+      await expect(element).toBeAccessible();
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.open.map((o) => o.key)).toContain(spec);
+      expect(plan.remember.map((r) => r.key)).not.toContain(spec);
+      expect(plan.autoApplied).toEqual([]);
+    });
+
     it("a place ticked at an earlier import is ticked again and marked remembered", async () => {
       getAnswers.mockResolvedValue([
         {

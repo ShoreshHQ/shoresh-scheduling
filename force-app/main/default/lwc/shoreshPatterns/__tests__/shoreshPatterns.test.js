@@ -1,8 +1,13 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
+  CAMP_WORDS,
+  KNEW_TEXT,
   TEMPLATES,
   appliesOnItsOwn,
+  builtInSuggestion,
+  campWordOf,
+  wordKey,
   autoAppliedIn,
   autoAnswersFor,
   evaluate,
@@ -595,5 +600,143 @@ describe("filled in on its own (MEMO-5.1)", () => {
       "kind|Specialty 4",
       "kind|Specialty 7"
     ]);
+  });
+});
+
+describe("what Shoresh already knew: common camp names as a tiebreaker", () => {
+  const card = (
+    name,
+    values = ["fixed", "recurring", "activity", "leaveOut"]
+  ) => ({
+    id: `kind|${name}`,
+    options: values.map((value) => ({ value })),
+    learn: { shape: "nearFixed|everyone|one" }
+  });
+
+  it("INGEST-3.10 / MEMO-6.9: a kind question the import asks shows the usual kind as a suggestion, marked, not chosen", () => {
+    const s = suggestionsFor([card("Carpool")], [], {});
+    expect(s["kind|Carpool"]).toMatchObject({
+      value: "fixed",
+      band: "knew",
+      text: "Suggested from what Shoresh already knew"
+    });
+    expect(KNEW_TEXT).toBe("Suggested from what Shoresh already knew");
+    expect(
+      suggestionsFor([card("Shabbat|Juniors")], [], {})["kind|Shabbat|Juniors"]
+        .value
+    ).toBe("recurring");
+  });
+
+  it("MEMO-6.9: never applied on its own, and not counted as an answer picked yourself", () => {
+    const cards = [card("Carpool"), card("Mifkad")];
+    expect(autoAnswersFor(cards, [], {})).toEqual({});
+    const s = suggestionsFor(cards, [], {});
+    expect(appliesOnItsOwn(cards[0], s["kind|Carpool"])).toBe(false);
+    const saved = withLearning(
+      [
+        { key: "kind|Carpool", answer: "fixed" },
+        { key: "kind|Mifkad", answer: "activity" }
+      ],
+      cards,
+      s
+    );
+    expect(saved[0].suggested).toBe(true);
+    expect(saved[1].suggested).toBeUndefined();
+  });
+
+  it("MEMO-6.9: only a kind the card offers, only on kind questions", () => {
+    expect(
+      builtInSuggestion(card("Carpool", ["recurring", "activity", "leaveOut"]))
+    ).toBeNull();
+    expect(
+      builtInSuggestion({
+        id: "similar|activity|x|y|Lunch|Lunch2",
+        options: [{ value: "a" }]
+      })
+    ).toBeNull();
+    expect(builtInSuggestion(card("Quidditch"))).toBeNull();
+  });
+
+  it("MEMO-6.10: the camp's own remembered answer, then a pattern in its answers, come first", () => {
+    expect(
+      suggestionsFor([card("Carpool 3")], [], { "kind|Carpool 3": "fixed" })
+    ).toEqual({});
+    const rows = [
+      row("kind|Carpool 1", "activity", "2026-07-03"),
+      row("kind|Carpool 2", "activity", "2026-07-03")
+    ];
+    const s = suggestionsFor([card("Carpool 3")], rows, {});
+    expect(s["kind|Carpool 3"].value).toBe("activity");
+    expect(s["kind|Carpool 3"].band).not.toBe("knew");
+    expect(
+      suggestionsFor([card("Carpool 3")], [], {})["kind|Carpool 3"]
+    ).toMatchObject({ value: "fixed", band: "knew" });
+    // One earlier answer (not yet a suggestion), or two that disagree: still the camp's own,
+    // so the built-in word does not mark a kind against it.
+    expect(
+      suggestionsFor(
+        [card("Carpool 3")],
+        [row("kind|Carpool 1", "activity", "2026-07-03")],
+        {}
+      )
+    ).toEqual({});
+    expect(
+      suggestionsFor(
+        [card("Carpool 3")],
+        [
+          row("kind|Carpool 1", "activity", "2026-07-03"),
+          row("kind|Carpool 2", "fixed", "2026-07-10")
+        ],
+        {}
+      )
+    ).toEqual({});
+  });
+
+  it("MEMO-6.11: whole names only, ignoring capitals, spacing, punctuation, & and a trailing number", () => {
+    for (const name of [
+      "Carpool",
+      "CARPOOL",
+      "  carpool ",
+      "Carpool 2",
+      "Carpool2",
+      "Car-Pool 3"
+    ]) {
+      expect(campWordOf(name) && campWordOf(name).name).toBe("Carpool");
+    }
+    expect(campWordOf("Line-Up").name).toBe("Line Up");
+    expect(campWordOf("Arts & Crafts").name).toBe("Arts and Crafts");
+    expect(campWordOf("Busses 2").name).toBe("Buses");
+    for (const name of [
+      "Carpool Duty",
+      "Swim Carpool",
+      "Swim",
+      "Lunch",
+      "",
+      "12",
+      null
+    ]) {
+      expect(campWordOf(name)).toBeNull();
+    }
+    expect(wordKey("Rest   Hour!")).toBe("rest hour");
+    expect(campWordOf("Rúach").name).toBe("Ruach");
+  });
+
+  it("MEMO-6.11: the same name always gives the same suggestion, and no spelling names two words", () => {
+    const seen = new Map();
+    for (const word of CAMP_WORDS) {
+      expect(["fixed", "recurring", "activity"]).toContain(word.kind);
+      expect(word.why).toBeTruthy();
+      for (const spelling of [word.name, ...word.also]) {
+        const key = wordKey(spelling);
+        expect(key).toBeTruthy();
+        expect(seen.get(key) || word.name).toBe(word.name);
+        seen.set(key, word.name);
+      }
+    }
+    expect(CAMP_WORDS.length).toBeGreaterThanOrEqual(20);
+    expect(CAMP_WORDS.length).toBeLessThanOrEqual(40);
+    const a = suggestionsFor([card("Snack"), card("Gaga")], [], {});
+    const b = suggestionsFor([card("Gaga"), card("Snack")], [], {});
+    expect(a).toEqual(b);
   });
 });
