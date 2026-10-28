@@ -46,7 +46,7 @@ const handEdited = (spec) =>
   });
 
 describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
-  // CORE-4.1
+  // CORE-4.1, GEN-3.1, GEN-7.2, GEN-7.8
   it("never places an activity the group isn't set up for: the cell stays Open, saying so", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -59,6 +59,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     );
   });
 
+  // GEN-7.2
   it("never bends who an activity is for, even when something else allowed is full", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -89,7 +90,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
-  // CORE-4.2
+  // CORE-4.2, GEN-3.3
   it("never repeats an activity in a day: the cell stays Open, saying so (Greg, 2026-10-25)", () => {
     const result = run({
       blocks: [block(0), block(1)],
@@ -118,7 +119,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
-  // CORE-4.3
+  // CORE-4.3, GEN-7.1, GEN-7.8
   it("never puts one group too many at an activity: the cell stays Open, everything taken, in camp words", () => {
     const result = generateWeek({
       ...camp({
@@ -148,7 +149,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
-  // CORE-4.3
+  // CORE-4.3, GEN-7.1
   it("never over-fills a place", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -168,6 +169,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
+  // GEN-7.1
   it("never shares a same-division activity across divisions", () => {
     const result = run({
       groups: [group("g1"), group("g2", { division: "div2" })],
@@ -188,6 +190,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
   });
 
   // CORE-4.3 PROG-4.1
+  // GEN-7.1
   it("counts other programs as full: the cell stays Open", () => {
     const result = run({
       blocks: [block(0)],
@@ -210,7 +213,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     );
   });
 
-  // CORE-4.7
+  // CORE-4.7, GEN-7.3
   it("goes over the weekly max before leaving a cell Open, though a limit stops everything else", () => {
     const result = run({
       days: 2,
@@ -226,6 +229,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ).toBe(true);
   });
 
+  // GEN-3.6
   it("names what another program is doing at the place, and says so for groups at once", () => {
     const other = (extra) => ({
       date: dateAt(0),
@@ -328,6 +332,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
 
   // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
   // exactly that rule there. Taking them away one at a time walks the order rules give way in.
+  // GEN-7.1
   describe("only the weekly max gives way; nothing else ever", () => {
     const candidates = {
       [RULE.WEEKLY_MAX]: activity("x", { max: 0, atOnce: null }),
@@ -387,7 +392,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     );
   });
 
-  // CORE-4.4
+  // CORE-4.4, GEN-7.5, GEN-9.6
   it("leaves Open only a cell nothing can go in: the group is busy at an overlapping time", () => {
     const result = run({
       blocks: [block(0), block(1, { startTime: "08:30", endTime: "09:15" })],
@@ -512,6 +517,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
+  // GEN-3.10
   describe("the overlap choice looks at activity lengths (coordinator's review)", () => {
     // Wake-up 8:00-8:30 overlaps P1 8:00-9:00; P2 9:00-10:00 follows P1.
     const blocks = [
@@ -584,6 +590,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       ]);
     });
 
+    // GEN-7.6
     it("a cell left out is filled after all when the overlapping one stays Open", () => {
       // Only a four-block activity: it fits nowhere, so Wake-up, left out for P1, isn't busy
       // after all, and every cell says no activity fits.
@@ -615,7 +622,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.openCells.map((c) => c.blockId)).toEqual(["b0", "b1"]);
   });
 
-  // CORE-4.5
+  // CORE-4.5, GEN-7.5, GEN-9.6
   it("never shortens an activity: a gap no activity's length fits stays Open, saying so (Greg)", () => {
     const spec = {
       mode: "fillOpen",
@@ -718,6 +725,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
+  // GEN-1.3
   it("says so clearly when there are no activities at all, and returns no grid", () => {
     expect(run({ activities: [] })).toEqual({
       ok: false,
@@ -725,6 +733,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
+  // GEN-1.3
   it("says so when every activity is closed this week", () => {
     const result = run({
       activities: [activity("swim")],
@@ -752,8 +761,9 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
   });
 });
 
+// GEN-7.7
 describe("what is never touched", () => {
-  // CORE-5.1
+  // CORE-5.1, GEN-2.1, GEN-2.9
   it("keeps fixed activities, and counts a fixed activity's place against its capacity", () => {
     const spec = {
       groups: [group("g1"), group("g2")],
@@ -775,6 +785,7 @@ describe("what is never touched", () => {
     expect(problems(spec, input, result)).toEqual([]);
   });
 
+  // GEN-2.1
   it("a recurring activity's place counts against its capacity, read from its own field", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -817,7 +828,7 @@ describe("what is never touched", () => {
     expect(at(result, 0, "g2", 0)).toBe("swim");
   });
 
-  // CORE-4.6
+  // CORE-4.6, GEN-2.6
   it("leaves a not-at-camp cell Open, even though nothing else is blank", () => {
     const result = run({
       groups: [group("g1", { availability: "MorningOnly" })],
@@ -840,7 +851,7 @@ describe("what is never touched", () => {
     expect(at(run({ ...spec, mode: "fillOpen" }), 0, "g1", 0)).toBe("arts");
   });
 
-  // CORE-5.1
+  // CORE-5.1, GEN-2.3
   it("keeps a locked cell in a full build and replaces an unlocked one", () => {
     const spec = {
       days: 1,
@@ -859,6 +870,7 @@ describe("what is never touched", () => {
     expect(result.flags).toEqual([]);
   });
 
+  // GEN-2.3
   it("a lock on any cell of a multi-block placement keeps all of it", () => {
     const spec = {
       blocks: [block(0), block(1), block(2)],
@@ -875,7 +887,7 @@ describe("what is never touched", () => {
     expect(cells[2]).toEqual({ kind: "A", id: "hike", head: false });
   });
 
-  // CORE-4.6
+  // CORE-4.6, GEN-2.5
   it("a locked Open cell stays Open", () => {
     const result = run({
       blocks: [block(0), block(1)],
@@ -886,6 +898,7 @@ describe("what is never touched", () => {
     expect(at(result, 0, "g1", 0)).not.toBeNull();
   });
 
+  // GEN-2.4
   it("fill the open cells keeps every filled cell and fills only the Open ones", () => {
     const spec = {
       mode: "fillOpen",
@@ -908,6 +921,7 @@ describe("what is never touched", () => {
     );
   });
 
+  // GEN-2.7
   it("keeps the row of a group setup no longer has, exactly as it was", () => {
     const input = camp({
       groups: [group("g1"), group("gone")],
@@ -938,7 +952,7 @@ describe("what is never touched", () => {
 });
 
 describe("the hard rules", () => {
-  // CORE-4.5
+  // CORE-4.5, GEN-3.8
   it("multi-block activities fill consecutive at-camp blocks, as one session", () => {
     const result = run({
       blocks: [block(0), block(1), block(2)],
@@ -952,6 +966,7 @@ describe("the hard rules", () => {
     expect(hike.map((c) => c.head)).toEqual([true, false]);
   });
 
+  // GEN-3.8
   it("a multi-block activity never runs into a block where the group isn't at camp", () => {
     const result = run({
       groups: [group("g1", { availability: "MorningOnly" })],
@@ -964,6 +979,7 @@ describe("the hard rules", () => {
     ]);
   });
 
+  // GEN-1.7
   it("an activity with no weekly maximum is placed (NoWeeklyMax)", () => {
     const result = run({
       days: 3,
@@ -977,6 +993,7 @@ describe("the hard rules", () => {
     ]);
   });
 
+  // GEN-3.4
   it("a place shared by two activities holds its groups that fit in total, not per activity", () => {
     const result = run({
       groups: ["g1", "g2", "g3", "g4"].map((id) => group(id)),
@@ -1015,6 +1032,7 @@ describe("the hard rules", () => {
     expect(result.flags).toEqual([]);
   });
 
+  // GEN-3.5
   it("a place nobody set up (a location not in the list) has no limit", () => {
     const result = run({
       groups: [group("g1"), group("g2")],
@@ -1028,7 +1046,7 @@ describe("the hard rules", () => {
     expect(result.flags).toEqual([]);
   });
 
-  // DIV-4.1
+  // DIV-4.1, GEN-3.7
   it("same division only: two divisions never share the activity or its place unflagged", () => {
     const spec = {
       groups: [group("g1"), group("g2", { division: "div2" }), group("g3")],
@@ -1085,6 +1103,7 @@ describe("the hard rules", () => {
   });
 
   // DIV-4.1
+  // DIV-4.1, GEN-3.7
   it("same division only holds whoever arrived first: another activity can't bring a second division into the place", () => {
     const result = run({
       mode: "fillOpen",
@@ -1104,6 +1123,7 @@ describe("the hard rules", () => {
     expect(at(result, 0, "g2", 0)).toBe("arts");
   });
 
+  // GEN-3.2
   it("weekly maximum and once a day hold in a week that fits", () => {
     const spec = {
       groups: [group("g1"), group("g2")],
@@ -1330,7 +1350,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     return generateWeek(input);
   };
 
-  // CORE-3.6
+  // CORE-3.6, GEN-1.5
   it("a blank groups at once: one group at a time, never blocking the build, and a line naming it", () => {
     const result = blanked(
       {
@@ -1349,7 +1369,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
     expect(result.flags).toEqual([]);
   });
 
-  // CORE-3.6
+  // CORE-3.6, GEN-1.6
   it("a blank groups that fit: one group at the place, a line naming the place", () => {
     const result = blanked(
       {
@@ -1383,6 +1403,7 @@ describe("a blank setup field counts as 1, and is said (care plan step 1)", () =
   });
 });
 
+// GEN-3.12
 describe("early-week goals count the first days of this week's run (Greg, 2026-10-25)", () => {
   const goal = (day, count = 1) =>
     activity("climb", { name: "Climbing", early: { count, day }, max: null });
@@ -1475,6 +1496,7 @@ describe("early-week goals count the first days of this week's run (Greg, 2026-1
     expect(result.spread).toEqual([]);
   });
 
+  // GEN-9.5
   it("places it in the first days of a week that starts mid-week, and never says a week has no early days", () => {
     // Wednesday to Friday, by Tuesday: Wednesday and Thursday count.
     const result = run({
@@ -1515,6 +1537,7 @@ describe("soft goals and what is still to place", () => {
     expect(result.spread).toEqual([]);
   });
 
+  // GEN-3.13
   it("a session later in the week doesn't count toward an early goal", () => {
     const misses = [];
     for (let option = 1; option <= 20; option++) {
@@ -1561,7 +1584,7 @@ describe("soft goals and what is still to place", () => {
     );
   });
 
-  // CORE-5.3
+  // CORE-5.3, GEN-4.1
   it("high priority is placed before low when there isn't room for both", () => {
     const result = run({
       days: 1,
@@ -1573,7 +1596,7 @@ describe("soft goals and what is still to place", () => {
     expect(at(result, 0, "g1", 0)).toBe("high");
   });
 
-  // CLOSE-4.2
+  // CLOSE-4.2, GEN-1.2
   it("an activity closed this week, or at a place closed this week, isn't placed", () => {
     const result = run({
       days: 2,
@@ -1597,6 +1620,7 @@ describe("soft goals and what is still to place", () => {
 });
 
 describe("Try another", () => {
+  // GEN-1.11
   it("refuses an option of 0, a fraction or anything that isn't a number", () => {
     const spec = { activities: [activity("swim")] };
     for (const option of [
@@ -1626,6 +1650,7 @@ describe("Try another", () => {
     expect(first).toEqual(generateWeek(camp({ ...spec, option: 1 })));
   });
 
+  // GEN-1.11
   it("takes the option as a number or as text", () => {
     const spec = {
       days: 3,
@@ -1691,6 +1716,7 @@ describe("the grid it returns", () => {
 });
 
 // Manual Build's dots reuse these words (ADR 0010): pinned here so a change is deliberate.
+// GEN-9.3
 describe("the hover reasons, shared with Manual Build", () => {
   const terms = buildTerms([
     { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },

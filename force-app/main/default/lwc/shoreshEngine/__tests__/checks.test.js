@@ -42,6 +42,7 @@ const WED = "2026-07-01";
 const THU = "2026-07-02";
 
 describe("checks: the bronze dots", () => {
+  // GEN-9.2
   it("over its weekly limit dots only the sessions past it, the latest in the week; at the limit, none", () => {
     const days = weekOf({
       [MON]: [
@@ -102,6 +103,7 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.size).toBe(2);
   });
 
+  // GEN-3.3
   it("a multi-block placement is one placement, not twice in a day", () => {
     const days = weekOf({
       [MON]: [
@@ -411,6 +413,7 @@ describe("checks: the bronze dots", () => {
 });
 
 describe("checks: still to place and the counters", () => {
+  // GEN-9.4
   it("still needed: each activity and bunk short of its minimum; a long placement counts once", () => {
     const days = weekOf({
       [MON]: [
@@ -454,7 +457,7 @@ describe("checks: still to place and the counters", () => {
     ]);
   });
 
-  // WEEK-4.1
+  // WEEK-4.1, GEN-9.4
   it("spread across the week: short of its early-week goal, by that day inclusive", () => {
     const early = { count: 1, byDay: 3 };
     const thursday = weekOf(
@@ -473,7 +476,7 @@ describe("checks: still to place and the counters", () => {
     ).toEqual([]);
   });
 
-  // WEEK-4.1
+  // WEEK-4.1, GEN-3.12, GEN-9.5
   it("a week that starts after the goal's day counts its own first days (Greg, 2026-10-25)", () => {
     // A Thursday-only week, by Wednesday: its first day counts, and it is short.
     const days = weekOf({ [THU]: [[""]] }, { width: 1 });

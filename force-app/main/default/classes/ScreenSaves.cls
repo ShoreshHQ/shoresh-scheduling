@@ -12,7 +12,8 @@ public with sharing class ScreenSaves {
       Season__c.Name,
       Season__c.StartDate__c,
       Season__c.EndDate__c,
-      Season__c.Status__c
+      Season__c.Status__c,
+      Season__c.ShrinkShortWeek__c
     },
     Week__c.SObjectType => new Set<Schema.SObjectField>{
       Week__c.Name,

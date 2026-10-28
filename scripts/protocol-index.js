@@ -40,7 +40,7 @@ const DOCUMENTS = [
             .map((c) => c.trim())
             .filter(Boolean);
           const test = cells[cells.length - 1];
-          out.push({ id: `GEN-${m[1]}`, mapped: !/^gap\b/i.test(test) });
+          out.push({ id: `GEN-${m[1]}`, mapped: namesATest(test) });
         }
       }
       return out;
@@ -59,8 +59,12 @@ const DOCUMENTS = [
   statementTable("docs/protocol/week.md", "WEEK")
 ];
 
-/** A sub-protocol's table, "| PREFIX-n.m | statement | source | test |"; a test cell starting
- * "gap", "not yet tested", "none", "not built" or "contradicted" names no test. */
+/** A test cell starting "gap", "not yet tested", "none", "not built" or "contradicted" names no test. */
+function namesATest(cell) {
+  return !/^(gap|not yet tested|none|not built|contradicted)/i.test(cell);
+}
+
+/** A sub-protocol's table, "| PREFIX-n.m | statement | source | test |". */
 function statementTable(file, prefix) {
   const row = new RegExp(`^\\| (${prefix}-\\d+\\.\\d+) +\\|`);
   return {

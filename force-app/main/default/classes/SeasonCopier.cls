@@ -19,7 +19,7 @@ public with sharing class SeasonCopier {
     List<Season__c> found = new List<Season__c>();
     if (Schema.sObjectType.Season__c.isAccessible()) {
       found = [
-        SELECT Id, Name, Camp__c, StartDate__c, EndDate__c
+        SELECT Id, Name, Camp__c, StartDate__c, EndDate__c, ShrinkShortWeek__c
         FROM Season__c
         WHERE Id = :sourceSeasonId
         WITH USER_MODE
@@ -79,6 +79,7 @@ public with sharing class SeasonCopier {
         StartDate__c = source.StartDate__c.addDays(shiftDays),
         EndDate__c = source.EndDate__c.addDays(shiftDays),
         Status__c = 'Planning',
+        ShrinkShortWeek__c = source.ShrinkShortWeek__c,
         CopiedFrom__c = source.Id
       );
       Database.insert(season, AccessLevel.USER_MODE);

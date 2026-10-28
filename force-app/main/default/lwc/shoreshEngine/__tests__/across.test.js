@@ -53,6 +53,7 @@ function countsOf(days) {
 const minimumMoves = (result) =>
   result.moved.filter((m) => m.why === "minimum");
 
+// GEN-8.24
 describe("moves between days for a weekly minimum", () => {
   it.each(ACROSS_SEEDS)(
     "camp %i: a group's sessions move between days so it meets a minimum",
@@ -101,6 +102,7 @@ describe("the rules it keeps", () => {
     expect(rows.length).toBeGreaterThan(3);
   });
 
+  // GEN-8.25, GEN-8.26
   it("never breaks once a day or any other limit; only a weekly max may bend", () => {
     for (const { seed, spec, input, result } of rows) {
       const { day } = countsOf(result.days);
@@ -190,6 +192,7 @@ function openByDate(result) {
 }
 
 describe("with and without the moves between days", () => {
+  // GEN-8.25, GEN-8.26
   it("never leaves a group newly or further short, never a day with more Open cells but the last resort's", () => {
     let fewer = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
@@ -282,6 +285,7 @@ describe("kept cells never move", () => {
       act: m.from
     }));
 
+  // GEN-8.25
   it("leaves a locked hand edit where the director put it", () => {
     expect(handEdits.length).toBeGreaterThan(0);
     const locked = {
@@ -308,6 +312,7 @@ describe("kept cells never move", () => {
     }
   });
 
+  // GEN-8.25
   it("in fill the open cells, keeps every filled cell as it was", () => {
     // The built week with the cells it moved emptied: every other cell is kept.
     const moved = new Set(

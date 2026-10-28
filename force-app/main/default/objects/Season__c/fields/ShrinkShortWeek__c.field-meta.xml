@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShrinkShortWeek__c</fullName>
+    <description
+  >In a short week (fewer days than the camp's programs run), lower each activity's weekly minimum to match the days. Off: each minimum is kept (WEEK-4.2).</description>
+    <defaultValue>false</defaultValue>
+    <label>Lower Minimums In A Short Week</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

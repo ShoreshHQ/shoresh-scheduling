@@ -32,8 +32,9 @@ const fuller = [
   { day: 0, group: "g2", block: "b0", act: "arts" }
 ];
 
+// GEN-8.9
 describe("never emptier than the imported week (step 8's floor)", () => {
-  // CORE-5.6
+  // CORE-5.6, GEN-8.19
   it("builds from the imported week when it is fuller, and is never emptier", () => {
     const plain = generateWeek(camp(tight));
     expect(plain.floor.used).toBe("none");
@@ -56,6 +57,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(result.cells.filled).toBe(3);
   });
 
+  // GEN-8.21, GEN-8.23
   it("skips an imported cell a limit no longer allows: it is never placed", () => {
     // Arts is now only for g2; the imported week had g1 at Arts.
     const spec = {
@@ -96,6 +98,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(result.openCells.every((c) => c.reason)).toBe(true);
   });
 
+  // GEN-8.21
   it("keeps a locked cell over the imported week", () => {
     const spec = {
       ...tight,
@@ -116,6 +119,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     );
   });
 
+  // GEN-8.20
   it("doesn't compare an imported week whose set-up has changed, and says so", () => {
     const imported = importOf(
       { ...tight, blocks: [block(0), block(1), block(2)] },
@@ -132,6 +136,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     );
   });
 
+  // GEN-8.23
   it("builds the same week with no import as before, and with one no fuller", () => {
     const a = generateWeek(camp(tight));
     const b = generateWeek({ ...camp(tight), imported: [] });
@@ -144,6 +149,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(c.floor.used).toBe("none");
   });
 
+  // GEN-8.19
   it("leaves fill-the-open-cells builds to the director's cells", () => {
     const result = generateWeek({
       ...camp({ ...tight, mode: "fillOpen" }),
@@ -152,6 +158,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(result.floor.used).toBe("none");
   });
 
+  // GEN-8.19
   it("counts the imported week only where this week counts: a fixed activity there now", () => {
     // Flagpole now holds g2's Period 1, where the imported week had Arts.
     const spec = {
@@ -174,6 +181,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     );
   });
 
+  // GEN-8.21
   it("puts a double period back whole, and skips one whose length has changed", () => {
     const spec = {
       ...tight,
@@ -212,6 +220,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
     expect(single.flags).toEqual([]);
   });
 
+  // GEN-8.22
   it("gives the build from the imported week its own part of the bar", () => {
     const steps = generateWeekSteps({
       ...camp(tight),
@@ -230,6 +239,7 @@ describe("never emptier than the imported week (step 8's floor)", () => {
   });
 });
 
+// GEN-8.22
 describe("which build is kept (step 8's floor)", () => {
   const week = ({ filled, short = [], maxBends = 0 }) => ({
     cells: { filled },

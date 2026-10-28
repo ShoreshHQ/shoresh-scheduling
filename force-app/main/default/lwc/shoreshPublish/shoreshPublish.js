@@ -4,7 +4,7 @@
  * week's checks (c/shoreshEngine checkWeek, as the counters show them). Problems are shown, never
  * a reason to refuse: a week with Open cells or dots can still be published (Greg, Manual Build
  * round 1 #2 to #4: never blocked). It uses the counters' own words, the same on both screens
- * (Greg's decision 3, 2026-10-20): Filled, Overlapping, Still needed, Spread across the week.
+ * (PUB-6.2, CORE-6.5): "7 of 10 placed", Conflicts (CORE-1.29), Still needed, Spread across the week.
  *
  * publishQuestion returns one of:
  *   { kind: "same" }: the published schedule already is the week; nothing to do.
@@ -62,7 +62,7 @@ function changeWords(preview, t) {
 }
 
 /**
- * What is still to do: Filled while cells are still Open, then what the Why list shows; without
+ * What is still to do: "N of M placed" while cells are still Open, then what the Why list shows; without
  * the list, the counters instead (each line only when it is above 0). counts: what the counters count now
  * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
  * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it: every row in it
@@ -76,7 +76,7 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   const lines = [];
   const { filled, total } = checked.cells || { filled: 0, total: 0 };
   if (total > filled) {
-    lines.push(`Filled: ${filled} of ${total}`);
+    lines.push(`${filled} of ${total} placed`);
   }
   const rows = measure
     ? (measure.open || []).length +
@@ -108,7 +108,7 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
     spread: checked.hasSpreadTargets ? (checked.spread || []).length : 0
   };
   if (overlapping > 0) {
-    lines.push(`Overlapping: ${overlapping}`);
+    lines.push(`Conflicts: ${overlapping}`);
   }
   if (stillNeeded > 0) {
     lines.push(`Still needed: ${stillNeeded}`);

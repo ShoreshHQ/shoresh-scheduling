@@ -3,7 +3,7 @@ import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { electivesOf, openCount } from "c/shoreshElectiveDetails";
-import { campFirstDay } from "c/shoreshImportEngine";
+import { campFirstDay, campShortWeek } from "c/shoreshImportEngine";
 import {
   activityCards,
   activityGrid,
@@ -605,7 +605,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.checkWith,
       this.lockBase,
       this._queue,
-      this.electivePlaces
+      this.electivePlaces,
+      // The camp's short-week choice is the season's (WEEK-4.2).
+      this.setup
     ];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
@@ -628,6 +630,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     // A day a special day replaces is not checked or counted (ADR 0014 slice 4).
     const replaced = this.replaced;
+    // The week's own length, a replaced day too: a short week is one with fewer days (WEEK-4.2).
+    const dayCount = weekDays.length;
     weekDays = weekDays.filter((day) => !replaced.has(day.dateValue));
     const draft = this.draft || {};
     const entry = {
@@ -642,7 +646,11 @@ export default class ShoreshWeekEditor extends LightningElement {
     return checkWeek(
       weekDays,
       {
-        activities: readActivities(draft.activityRecords),
+        activities: readActivities(
+          draft.activityRecords,
+          campShortWeek(this.setup),
+          dayCount
+        ),
         locations: readLocations(draft.locationRecords),
         ...readProgram(entry),
         // An elective set takes up its offerings' places (ADR 0018 slice E5).

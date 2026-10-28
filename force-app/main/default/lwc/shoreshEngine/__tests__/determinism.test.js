@@ -155,7 +155,7 @@ describe("determinism", () => {
     expect(problems(spec, camp(spec), result)).toEqual([]);
   });
 
-  // CORE-5.8
+  // CORE-5.8, GEN-9.8
   it("builds the same week twice, byte for byte", () => {
     const a = generateWeek(camp(spec));
     const b = generateWeek(camp(spec));
@@ -172,7 +172,7 @@ describe("determinism", () => {
     }
   });
 
-  // CORE-2.1
+  // CORE-2.1, GEN-1.1
   it("breaks a tie in sort order by Id, whatever order the records arrive in", () => {
     // Every activity and group with the same SortOrder (or none): only the Id decides.
     const tied = (input) => ({
@@ -204,7 +204,7 @@ describe("determinism", () => {
     }
   });
 
-  // CORE-5.7
+  // CORE-5.7, GEN-3.11
   it("never asks Math.random", () => {
     const spy = jest.spyOn(Math, "random").mockImplementation(() => {
       throw new Error("Math.random was called");
