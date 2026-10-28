@@ -60,6 +60,35 @@ function cellSignals(page) {
   };
 }
 
+/**
+ * INGEST-2.6: whether every time block calls the same roll. A group is in one place at a time, so
+ * on a by-activity page each block names every group once (a full roll, the blank cells being
+ * activities nobody had), while an all-camp page fills one cell per group column with whatever
+ * each did. True when no block names anything twice, at least four fifths of the blocks with
+ * names name every one of the page's cell names, and those blocks do not simply fill one cell
+ * per column (then the page reads both ways and is left unsure).
+ */
+function blocksCallTheRoll(page) {
+  const rows = page.rows
+    .map((row) => ({
+      names: row.cells.flatMap((cell) => listedNames(cell)).map(looseKey),
+      filled: row.cells.filter(Boolean).length
+    }))
+    .filter((row) => row.names.length > 0);
+  const all = new Set(rows.flatMap((row) => row.names));
+  if (rows.length < 2 || all.size < 2) {
+    return false;
+  }
+  const full = rows.filter(
+    (row) =>
+      new Set(row.names).size === all.size && row.names.length === all.size
+  );
+  const oneCellPerColumn = full.every(
+    (row) => row.filled === page.columns.filter(Boolean).length
+  );
+  return share(full.length, rows.length) >= 0.8 && !oneCellPerColumn;
+}
+
 function knownShare(names, known) {
   const named = names.filter(Boolean);
   return share(
@@ -84,6 +113,14 @@ function cellsAreGroups(page, headings, known) {
     return false;
   }
   if (signals.listCells >= 0.2) {
+    return true;
+  }
+  // INGEST-2.6: a group cannot be in two places in one block, so a name twice in a row is an
+  // activity (everyone at Lunch); every block calling the same roll once is groups.
+  if (signals.repeatRows > 0) {
+    return false;
+  }
+  if (blocksCallTheRoll(page)) {
     return true;
   }
   const numberedHeadings = share(
