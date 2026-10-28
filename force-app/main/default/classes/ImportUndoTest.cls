@@ -461,6 +461,75 @@ private class ImportUndoTest {
     }
   }
 
+  // DIV-1.1: the import record names a holding record's flag; Undo reads it and removes both.
+  @IsTest
+  static void aGroupImportedInNoDivisionIsUndone() {
+    System.runAs(scheduler(KeptCamp.keptIds())) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        LIMIT 1
+      ];
+      Map<String, Object> plan = ImportTestPlans.emptyPlan(season.Id);
+      ImportTestPlans.add(
+        plan,
+        'divisions',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            'N|Tent 1',
+            'programKey',
+            main.Id,
+            'name',
+            'Tent 1',
+            'sortOrder',
+            3,
+            'noDivision',
+            true
+          }
+        )
+      );
+      ImportTestPlans.add(
+        plan,
+        'groups',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            'G|Tent 1',
+            'name',
+            'Tent 1',
+            'divisionKey',
+            'N|Tent 1',
+            'sortOrder',
+            9
+          }
+        )
+      );
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Assert.isTrue(
+        [SELECT Division__r.NoDivision__c FROM Group__c WHERE Name = 'Tent 1']
+        .Division__r.NoDivision__c
+      );
+      Test.startTest();
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(0, [SELECT COUNT() FROM Group__c WHERE Name = 'Tent 1']);
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Division__c
+          WHERE Name = 'Tent 1' AND Program__c = :main.Id
+        ]
+      );
+    }
+  }
+
   // DIV-1.1
   @IsTest
   static void aGroupMovedOutOfNoDivisionGoesBackIntoNoDivision() {

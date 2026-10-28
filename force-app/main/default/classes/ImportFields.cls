@@ -51,7 +51,9 @@ public with sharing class ImportFields {
     Division__c.SObjectType => new Set<Schema.SObjectField>{
       Division__c.Name,
       Division__c.Program__c,
-      Division__c.SortOrder__c
+      Division__c.SortOrder__c,
+      // DIV-1.1: a holding record of a group in no division.
+      Division__c.NoDivision__c
     },
     Group__c.SObjectType => new Set<Schema.SObjectField>{
       Group__c.Name,
