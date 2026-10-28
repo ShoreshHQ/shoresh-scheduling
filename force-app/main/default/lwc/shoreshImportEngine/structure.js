@@ -47,12 +47,20 @@ function overlaps(a, b) {
   return a.start < bEnd && b.start < aEnd;
 }
 
+/**
+ * Whether a page's blocks clash with a timetable's: one of them, not already in the timetable,
+ * overlaps one of the timetable's at other times. A page whose blocks are all the timetable's
+ * joins it, even when they overlap each other (a by-group page with a week's short Friday).
+ */
 function conflicts(blocksA, blocksB) {
-  return blocksA.some((a) =>
-    blocksB.some(
-      (b) => blockKey(a) !== blockKey(b) && !sameTimes(a, b) && overlaps(a, b)
-    )
-  );
+  const keysA = new Set(blocksA.map(blockKey));
+  return blocksB
+    .filter((b) => !keysA.has(blockKey(b)))
+    .some((b) =>
+      blocksA.some(
+        (a) => blockKey(a) !== blockKey(b) && !sameTimes(a, b) && overlaps(a, b)
+      )
+    );
 }
 
 /** The rows of each page that are time blocks: a short row with nothing starting in it is not. */
@@ -182,6 +190,95 @@ function orderedBlocks(blocks, context) {
   return result;
 }
 
+/** What one timetable's pages hold: its groups, its week|day pairs, and its block keys. */
+function timetableShape(t, placements) {
+  const pages = new Set(t.pages);
+  const here = placements.filter((p) => pages.has(p.page));
+  return {
+    groups: new Set(here.map((p) => p.group)),
+    cells: new Set(here.map((p) => `${p.group}|${p.week || ""}|${p.day}`)),
+    weekDays: new Set(here.map((p) => `${p.week || ""}|${p.day}`)),
+    keys: new Set(t.raw.map((b) => b.key)),
+    here
+  };
+}
+
+/**
+ * INGEST-4.3 (weeks.md): the week|day pairs of `other` whose cells sit in time blocks `main`
+ * does not have, when `other` is only a few days' own shape of `main`'s program, else null.
+ * It is when: the files have two weeks or more; it covers groups and days `main` does not have
+ * for them; its blocks differ on at most one day of a week, on fewer than half of all the days,
+ * and not in every week; and its groups are `main`'s, or (new groups, a second session) its
+ * other days use only `main`'s blocks. Different groups on different blocks most days: a
+ * program. One week alone cannot tell a week's own day from every week's (INGEST-3.4 reads that
+ * Friday as a program of its own).
+ */
+function ownDayShape(main, other, blockAt) {
+  if (
+    other.cells.size === 0 ||
+    [...other.cells].some((c) => main.cells.has(c))
+  ) {
+    return null;
+  }
+  const differing = new Set(
+    other.here
+      .filter((p) => !main.keys.has(blockAt.get(`${p.page}|${p.row}`)))
+      .map((p) => `${p.week || ""}|${p.day}`)
+  );
+  const weeks = [...differing].map((wd) => wd.split("|")[0]);
+  const allWeeks = new Set(
+    [...main.weekDays, ...other.weekDays].map((wd) => wd.split("|")[0])
+  );
+  const total = new Set([...main.weekDays, ...other.weekDays]).size;
+  const sameGroups = [...other.groups].every((g) => main.groups.has(g));
+  const sameOtherDays = [...other.weekDays].some((wd) => !differing.has(wd));
+  const shape =
+    differing.size > 0 &&
+    new Set(weeks).size === weeks.length &&
+    differing.size * 2 < total &&
+    allWeeks.size >= 2 &&
+    new Set(weeks).size < allWeeks.size &&
+    (sameGroups || sameOtherDays);
+  return shape ? [...differing] : null;
+}
+
+/**
+ * Timetables that are only one day's own blocks in some week (a short Friday in week 2) join
+ * the program whose groups they share, instead of reading as a second program (INGEST-4.3).
+ * Changes `timetables` in place; returns a note for each such day.
+ */
+function weekDayShapes(timetables, placements, blockAt) {
+  const notes = [];
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < timetables.length && !merged; i++) {
+      for (let j = 0; j < timetables.length && !merged; j++) {
+        const main = timetables[i];
+        const other = timetables[j];
+        const days =
+          i !== j &&
+          ownDayShape(
+            timetableShape(main, placements),
+            timetableShape(other, placements),
+            blockAt
+          );
+        if (days) {
+          main.pages.push(...other.pages);
+          main.raw.push(...other.raw);
+          timetables.splice(j, 1);
+          days.forEach((wd) => {
+            const [week, day] = wd.split("|");
+            notes.push({ type: "weekDay", week, day });
+          });
+          merged = true;
+        }
+      }
+    }
+  }
+  return notes;
+}
+
 /**
  * Pages that share a set of time blocks become one timetable (one program). Pages whose blocks
  * overlap at different times (9:00-9:45 against 9:00-9:50) go to separate timetables. Returns
@@ -205,6 +302,11 @@ export function buildTimetables(pages, placements, answers = {}) {
     target.raw.push(...blocks);
     timetableOfPage.set(pageIndex, target.index);
   });
+  const notes = weekDayShapes(timetables, placements, blockAt);
+  timetables.forEach((t, index) => {
+    t.index = index;
+    t.pages.forEach((page) => timetableOfPage.set(page, index));
+  });
   timetables.forEach((t) => {
     t.blocks = orderedBlocks(t.raw, context);
     for (const [key, value] of blockAt) {
@@ -217,7 +319,13 @@ export function buildTimetables(pages, placements, answers = {}) {
     }
     delete t.raw;
   });
-  return { timetables, blockAt, timetableOfPage, asks: context.asks };
+  return {
+    timetables,
+    blockAt,
+    timetableOfPage,
+    asks: context.asks,
+    notes
+  };
 }
 
 /**

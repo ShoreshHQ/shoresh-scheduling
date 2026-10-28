@@ -607,6 +607,15 @@ export function importNotes(proposal, t) {
         text: `${n.bunks.join(", ")} always do the same thing at the same time, ${KEPT[n.kept] || `so ${n.group} is set up as one ${t.sIn("Group")}`}.`
       })
     );
+  // weeks.md INGEST-4.3: one week's day with its own blocks stays in its program.
+  proposal.notes
+    .filter((n) => n.type === "weekDay")
+    .forEach((n) =>
+      notes.push({
+        key: `weekDay|${n.week}|${n.day}`,
+        text: `${n.day}${n.week ? ` of ${n.week}` : ""} has its own ${t.pIn("TimeBlock")}, so it is read as that day's own shape, not a second ${t.sIn("Program")}.`
+      })
+    );
   proposal.notes
     .filter((n) => n.type === "otherProgram")
     .forEach((n) =>

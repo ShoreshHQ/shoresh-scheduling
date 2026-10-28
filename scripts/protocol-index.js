@@ -48,6 +48,7 @@ const DOCUMENTS = [
   },
   numberedRules("docs/import/names-and-divisions.md", "INGEST-2"),
   numberedRules("docs/import/classification.md", "INGEST-3"),
+  numberedRules("docs/import/weeks.md", "INGEST-4"),
   statementTable("docs/protocol/elect.md", "ELECT"),
   statementTable("docs/protocol/pub.md", "PUB"),
   statementTable("docs/protocol/memo.md", "MEMO"),

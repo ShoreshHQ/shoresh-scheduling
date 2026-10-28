@@ -15,6 +15,7 @@ import {
   looksLikeBlockLabel,
   tidy
 } from "./text";
+import { isWeekHeading, weekInFileName, weekValue } from "./weekLabels";
 
 const FOOTNOTE = /^\s*\*/;
 const GENERIC_SHEET = /^(sheet|page|tab|table)\s*\d*$/i;
@@ -341,6 +342,89 @@ function sectionToPage(section, sheet, labelColumns) {
   };
 }
 
+// ---------- a week column (weeks.md, INGEST-4.1) ----------
+
+/** A column's cells in the rows under a heading row, title lines (one cell) left out. */
+function weekCells(table, from, column) {
+  return table
+    .slice(from + 1)
+    .filter((row) => filled(row) >= 2)
+    .map((row) => row[column] || "")
+    .filter((cell) => cell !== "" && !isWeekHeading(cell));
+}
+
+/**
+ * The column whose heading says week ("Week", "Wk", "Session", "Week of", "Dates") and whose
+ * cells below name weeks ("Week 2", "2", "7/6"), at least two of them and nearly all: { row,
+ * column } of the first such heading, or null.
+ */
+function findWeekColumn(table) {
+  for (let r = 0; r < table.length; r++) {
+    const row = table[r];
+    for (let c = 0; c < row.length; c++) {
+      if (!isWeekHeading(row[c]) || filled(row) < 3) {
+        continue;
+      }
+      const cells = weekCells(table, r, c);
+      const weeks = cells.filter((cell) => weekValue(cell, row[c]));
+      if (weeks.length >= 2 && weeks.length >= cells.length * 0.8) {
+        return { row: r, column: c, heading: row[c] };
+      }
+    }
+  }
+  return null;
+}
+
+/** Merged ranges with the week column taken out; one inside it is dropped. */
+function mergesWithout(merges, column) {
+  const shift = (c) => (c > column ? c - 1 : c);
+  return (merges || [])
+    .filter((m) => m && m.s && m.e && !(m.s.c === column && m.e.c === column))
+    .map((m) => ({
+      s: { r: m.s.r, c: shift(m.s.c) },
+      e: { r: m.e.r, c: shift(m.e.c) }
+    }));
+}
+
+/**
+ * A sheet with a week column: the column taken out of every row (a title line written in it is
+ * kept whole), and each row's week, carried down over blank cells. { table, merges, weekOf }
+ * (weekOf[row] a label, or ""); the sheet unchanged when it has no week column.
+ */
+export function splitWeekColumn(table, merges) {
+  const found = findWeekColumn(table);
+  if (!found) {
+    return { table, merges, weekOf: table.map(() => "") };
+  }
+  const { column, heading } = found;
+  let week = "";
+  const weekOf = [];
+  const rows = table.map((row, r) => {
+    const cell = row[column] || "";
+    const value = r > found.row ? weekValue(cell, heading) : null;
+    if (value) {
+      week = value;
+    }
+    weekOf.push(r > found.row ? week : "");
+    const isTitle = cell !== "" && !value && !isWeekHeading(cell);
+    return isTitle ? row : row.filter((_, c) => c !== column);
+  });
+  return { table: rows, merges: mergesWithout(merges, column), weekOf };
+}
+
+/** A page whose rows are for several weeks (a week column), split into one page per week. */
+function byWeek(page, weeks) {
+  const labels = [...new Set(weeks)];
+  if (labels.length === 1) {
+    return [labels[0] ? { ...page, week: labels[0] } : page];
+  }
+  return labels.map((week) => ({
+    ...page,
+    week,
+    rows: page.rows.filter((_, i) => weeks[i] === week)
+  }));
+}
+
 /**
  * One sheet as pages. `rows` are the sheet's cells (SheetJS `sheet_to_json(ws, { header: 1 })`,
  * or a parsed CSV); `merges` are SheetJS's merged ranges (0-based, inclusive), of which vertical
@@ -350,11 +434,18 @@ export function sheetToPages(sheet) {
   const table = (sheet.rows || []).map((row) => {
     return Array.isArray(row) ? row.map(cellText) : [];
   });
-  const labelColumns = labelColumnCount(table);
-  const sections = new SectionReader(table, labelColumns).read();
+  const split = splitWeekColumn(table, sheet.merges);
+  const labelColumns = labelColumnCount(split.table);
+  const sections = new SectionReader(split.table, labelColumns).read();
+  const unmerged = { ...sheet, merges: split.merges };
   return sections
     .filter((section) => section.header)
-    .map((section) => sectionToPage(section, sheet, labelColumns))
+    .flatMap((section) =>
+      byWeek(
+        sectionToPage(section, unmerged, labelColumns),
+        section.rawIndexes.map((i) => split.weekOf[i])
+      )
+    )
     .filter((page) => page.columns.some(Boolean) && page.rows.length > 0);
 }
 
@@ -395,6 +486,7 @@ export function filesToPages(files) {
           section: page.title,
           sheet: sheetTitle,
           file: fileTitle,
+          fileWeek: weekInFileName(fileTitle),
           severalSheets
         }
       });

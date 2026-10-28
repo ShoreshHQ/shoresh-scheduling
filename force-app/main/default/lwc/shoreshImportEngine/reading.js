@@ -14,7 +14,8 @@ import {
 import { mergesFrom, readWithoutAsking, similarPairs } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
-import { WEEKDAYS, looseKey, withoutWeek } from "./text";
+import { WEEKDAYS, looseKey } from "./text";
+import { withoutWeek } from "./weekLabels";
 import { identifyGroups } from "./identity";
 import { oneGroupDivisions } from "./together";
 
@@ -294,7 +295,8 @@ export function readImport(input) {
     timetables,
     blockAt,
     timetableOfPage,
-    asks: timeAsks
+    asks: timeAsks,
+    notes: weekDayNotes
   } = buildTimetables(read.pages, named.kept, answers);
   const identified = identifyGroups(named.kept, named.groups, {
     existing: input.existing,
@@ -337,7 +339,8 @@ export function readImport(input) {
         to,
         rule
       })),
-      ...together.notes
+      ...together.notes,
+      ...weekDayNotes
     ],
     groupAsks: identified.asks,
     splitAsks: together.asks,

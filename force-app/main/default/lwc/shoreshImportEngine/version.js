@@ -16,6 +16,7 @@ import { FIELD } from "c/shoreshSchema";
 import { fixedKey } from "./items";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
+import { labelDate } from "./weekLabels";
 import { weeksToFill } from "./weeks";
 
 // Date.getUTCDay's number for each day.
@@ -62,9 +63,26 @@ export function versionName(fileNames) {
   return name.length > MAX_NAME ? `${name.slice(0, MAX_NAME - 1)}…` : name;
 }
 
+/** The season week whose dates hold a month and day ("Week of 7/6"), any year; else undefined. */
+function weekOnDate(weeks, date) {
+  if (!date) {
+    return undefined;
+  }
+  const at = (iso) => {
+    const [, month, day] = String(iso || "")
+      .split("-")
+      .map(Number);
+    return month * 100 + day;
+  };
+  const wanted = date.month * 100 + date.day;
+  return weeks.find(
+    (w) => at(w[WEEK.StartDate]) <= wanted && wanted <= at(w[WEEK.EndDate])
+  );
+}
+
 /**
  * The season week each week of the files goes to: sure when the files and the season name the
- * same week ("Week 2"), or both have just one; otherwise asked (by the week's name, never its
+ * same week ("Week 2"), a date in one of its weeks ("Week of 7/6", INGEST-4.4), or both have just one; otherwise asked (by the week's name, never its
  * record Id). Returns Map(label -> week record, or null for none) and the questions.
  */
 function mapWeeks(labels, weeks, answers) {
@@ -72,7 +90,9 @@ function mapWeeks(labels, weeks, answers) {
   const asks = [];
   for (const label of labels) {
     const named =
-      label && weeks.find((w) => looseKey(w.Name) === looseKey(label));
+      label &&
+      (weeks.find((w) => looseKey(w.Name) === looseKey(label)) ||
+        weekOnDate(weeks, labelDate(label)));
     if (weeks.length === 0) {
       result.set(label, null);
     } else if (named) {

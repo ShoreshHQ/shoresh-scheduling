@@ -108,23 +108,15 @@ describe("Import last year on made-up camps whose divisions travel together (lev
 // Level 2: schedules that differ from week to week. The first 40 camps, five of each layout.
 const SAMPLE_2 = 40;
 
-// Baseline 2026-10-27, on these 40 camps, after the classification rules
-// (docs/import/classification.md). Every kind not listed is 0.
+// Baseline 2026-10-27, on these 40 camps, after the week rules (docs/import/weeks.md): all 40
+// read perfectly, nothing asked (was 23 perfect, 2023 "the files disagree" questions after the
+// classification rules). Every kind not listed is 0.
 const CEILING_2 = {
-  perfectAtLeast: 23,
-  weeksExactAtLeast: 30,
+  perfectAtLeast: 40,
+  weeksExactAtLeast: 40,
   errors: 0,
-  questions: { cross: 2023 },
-  wrong: {
-    programs: 51,
-    weeks: 48,
-    days: 55,
-    blocks: 8,
-    groups: 4,
-    fixed: 2,
-    activities: 8,
-    cells: 27516
-  }
+  questions: {},
+  wrong: {}
 };
 
 describe("Import last year on made-up camps whose weeks differ (level 2)", () => {

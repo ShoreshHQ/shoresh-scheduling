@@ -22,9 +22,9 @@ import {
   isNotAGroupColumn,
   listedNames,
   looseKey,
-  tidy,
-  weekInTitle
+  tidy
 } from "./text";
+import { weekInTitle, withoutWeek } from "./weekLabels";
 
 export const LAYOUTS = ["allCamp", "byGroup", "byActivity"];
 
@@ -130,14 +130,20 @@ export function pageDay(page) {
 /** The week a page is for, if its title, sheet, or file names one ("Week 2"); "" otherwise. */
 export function pageWeek(page) {
   const n = page.names || {};
+  // INGEST-4.1: a week column's week; INGEST-4.2: the file name's week, kept when the file's
+  // name is turned into a group's name.
   return (
-    weekInTitle(n.section) || weekInTitle(n.sheet) || weekInTitle(n.file) || ""
+    page.week ||
+    weekInTitle(n.section) ||
+    weekInTitle(n.sheet) ||
+    n.fileWeek ||
+    weekInTitle(n.file) ||
+    ""
   );
 }
 
 function isOnlyDayOrWeek(text) {
-  const rest = tidy(text)
-    .replace(/\bweek\s*#?\s*\d{1,2}\b/gi, "")
+  const rest = withoutWeek(text)
     .split(/[^A-Za-z]+/)
     .filter((w) => w && !dayOf(w));
   return rest.length === 0;
