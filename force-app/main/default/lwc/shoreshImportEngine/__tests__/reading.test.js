@@ -256,7 +256,7 @@ describe("the three layouts", () => {
     ]);
     expect(
       new Set(read(samples("Bunk")).groups.map((g) => g.division))
-    ).toEqual(new Set(["Main"]));
+    ).toEqual(new Set([null])); // DIV-1.1: no division, never "Main"
   });
 
   it("the layout can be changed by the director, and is then read that way", () => {

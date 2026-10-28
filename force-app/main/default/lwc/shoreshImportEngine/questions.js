@@ -16,6 +16,7 @@ import {
   electiveWord
 } from "./electives";
 import { LEAVE_OUT } from "./reading";
+import { NO_DIVISION } from "./reading-constants";
 import { WEEKDAYS, shortClock, weekOrder } from "./text";
 
 function article(word) {
@@ -353,6 +354,8 @@ function divisionCard(ask, t) {
           label: start ? `${name} (starts ${start})` : name
         };
       }),
+      // DIV-1.1: a group may be in no division.
+      { value: NO_DIVISION, label: `No ${t.sIn("Division")}` },
       { value: LEAVE_OUT, label: `Leave it out for now` }
     ],
     placeholder: `Choose a ${t.sIn("Division")}`

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NoDivision__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Holds one group that has no division (DIV-1.1). Never shown as a division.</description>
+    <label>Holds a Group with No Division</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

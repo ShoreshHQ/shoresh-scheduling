@@ -320,10 +320,13 @@ function whoOf(groups, facts, keyOf, programKey) {
   }
   const divisions = [...new Set(groups.map((g) => facts.divisionOf.get(g)))];
   const whole =
-    divisions.every((d) =>
-      facts.groups
-        .filter((g) => facts.divisionOf.get(g) === d)
-        .every((g) => groups.includes(g))
+    divisions.every(
+      (d) =>
+        // DIV-1.1: groups in no division are no division together.
+        d &&
+        facts.groups
+          .filter((g) => facts.divisionOf.get(g) === d)
+          .every((g) => groups.includes(g))
     ) && groups.every((g) => keyOf.coveredBy(keyOf.divisionOf(g), groups));
   if (whole) {
     return {
@@ -395,7 +398,8 @@ function whoOfPool(pool, divisionOf, keyOf) {
   // By division record, not name: two programs may each have a "Juniors".
   for (const key of [...new Set(pool.map((g) => keyOf.divisionOf(g)))]) {
     const here = pool.filter((g) => keyOf.divisionOf(g) === key);
-    if (keyOf.coveredBy(key, pool)) {
+    // DIV-1.1: a group in no division is named itself, never its holding record.
+    if (divisionOf.get(here[0]) && keyOf.coveredBy(key, pool)) {
       keys.push(key);
       names.push(divisionOf.get(here[0]));
     } else {
@@ -418,7 +422,9 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   const inDivisions = allGroups.filter((g) =>
     divisionKeys.includes(keyOf.divisionOf(g))
   );
+  // DIV-1.1: a group in no division is no division the activity could be for.
   const whole =
+    divisions.every(Boolean) &&
     inDivisions.length === doers.length &&
     inDivisions.length < allGroups.length &&
     doers.every((g) => keyOf.coveredBy(keyOf.divisionOf(g), doers));

@@ -195,7 +195,7 @@ public with sharing class SeasonCopier {
   ) {
     Map<Id, Division__c> copies = new Map<Id, Division__c>();
     for (Division__c division : [
-      SELECT Id, Name, Program__c, SortOrder__c
+      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c
       FROM Division__c
       WHERE Program__c IN :programCopies.keySet()
       WITH USER_MODE

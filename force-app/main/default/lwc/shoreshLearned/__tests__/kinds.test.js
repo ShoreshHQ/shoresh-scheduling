@@ -1,4 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { mergesFrom, similarPairs } from "c/shoreshImportEngine";
 import { describe as kindOf, keyParts } from "../kinds";
 import {
@@ -333,5 +334,28 @@ describe("never an Id or an internal name", () => {
     expect(row("deleted|ProgramGroup|Main|Bunk 3", "deleted").title).toBe(
       "Bunk 3 (Main): Bunk deleted"
     );
+  });
+});
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("its holding record is not a name the camp has set up", () => {
+    const spell = speller(
+      nsRecord({
+        programs: [
+          {
+            program: { Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d9", Name: "Tent 1", NoDivision__c: true },
+                groups: [{ Id: "g9", Name: "Tent 1" }]
+              }
+            ]
+          }
+        ]
+      })
+    );
+    expect(spell.nameOf("d9")).toBeNull();
+    expect(spell.nameOf("g9")).toBe("Tent 1");
   });
 });

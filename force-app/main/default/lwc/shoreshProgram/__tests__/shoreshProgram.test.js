@@ -165,6 +165,81 @@ describe("c-shoresh-program", () => {
     expect(table().heading).toBe("Main");
   });
 
+  const HELD = {
+    ...ENTRY,
+    divisions: [
+      ...ENTRY.divisions,
+      {
+        division: { Id: "d3", Name: "Seniors", NoDivision__c: true },
+        groups: [{ Id: "g9", Name: "Seniors", Division__c: "d3" }]
+      },
+      {
+        division: { Id: "d4", Name: "CIT" },
+        groups: [{ Id: "g8", Name: "CIT", Division__c: "d4" }]
+      }
+    ],
+    recurringActivities: []
+  };
+  const heldTables = (element) => [
+    ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+  ];
+
+  // DIV-1.1 DIV-3.1
+  it("shows a group in no division as No division; CIT alone in CIT stays a division", async () => {
+    const element = await render("groups", HELD);
+    expect(heldTables(element).map((t) => t.title)).toEqual([
+      "Bunks in Juniors",
+      "Bunks in CIT",
+      "No Unit"
+    ]);
+    // One "No division" per row: the row's own holding record, never another group's.
+    const none = heldTables(element)[2];
+    const move = none.columns.find(
+      (c) => c.fieldName === nsName("Division__c")
+    );
+    const seniors = nsRecord({ Id: "g9", Name: "Seniors", Division__c: "d3" });
+    expect(move.optionsFor(seniors)).toEqual([
+      { label: "Juniors", value: "d1" },
+      { label: "CIT", value: "d4" },
+      { label: "No Unit", value: "d3" }
+    ]);
+    const bunk = nsRecord({ Id: "g1", Name: "Bunk 1", Division__c: "d1" });
+    expect(move.optionsFor(bunk).map((o) => o.value)).toEqual([
+      "d1",
+      "d4",
+      "toNoDivision"
+    ]);
+  });
+
+  // DIV-1.1
+  it("never lists a holding record on the divisions screen", async () => {
+    const element = await render("divisions", HELD);
+    expect(heldTables(element)[0].rows.map((r) => r.Name)).toEqual([
+      "Juniors",
+      "CIT"
+    ]);
+  });
+
+  // DIV-1.1
+  it("a program with no divisions can add a group by hand, in no division", async () => {
+    const element = await render("groups", { ...ENTRY, divisions: [] });
+    const [table] = heldTables(element);
+    expect(table.title).toBe("No Unit");
+    expect(bareRecord(table.newRowDefaults)).toEqual({
+      Availability__c: "AllDay"
+    });
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    table.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { record: { Name: "Tent 1" }, extras: {} }
+      })
+    );
+    expect(handler.mock.calls[0][0].detail.extras).toEqual({
+      noDivisionProgram: "p1"
+    });
+  });
+
   // DIV-1.2
   it("lets a group move to another division of its program, saying what that changes", async () => {
     const twoUnits = {
@@ -195,9 +270,11 @@ describe("c-shoresh-program", () => {
       "Name",
       "Availability"
     ]);
+    // DIV-1.1: and "No division", a new holding record when the group is saved there.
     expect(unit.options).toEqual([
       { label: "Juniors", value: "d1" },
-      { label: "Seniors", value: "d2" }
+      { label: "Seniors", value: "d2" },
+      { label: "No Unit", value: "toNoDivision" }
     ]);
     const bunk = { Id: "g1", Name: "Bunk 1", Division__c: "d1" };
     expect(
@@ -508,30 +585,31 @@ describe("c-shoresh-program", () => {
     expect(bareName(divisions.objectApiName)).toBe("Division__c");
   });
 
-  it("offers no division choice when the program has one", async () => {
+  // DIV-1.1
+  it("with one division, a group can still move to No division, as it saves", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
-    expect(groups.columns.map((c) => bareName(c.fieldName))).toEqual([
-      "Name",
-      "Availability__c"
-    ]);
-  });
-
-  it("asks for divisions before groups", async () => {
-    const element = await render("groups", { ...ENTRY, divisions: [] });
-    expect(element.shadowRoot.querySelector("c-shoresh-editable-table")).toBe(
-      null
+    const move = groups.columns.find(
+      (c) => c.fieldName === nsName("Division__c")
     );
-    // An empty state and a way there, not a sentence of instructions.
-    expect(
-      element.shadowRoot.querySelector("c-shoresh-empty-state").title
-    ).toBe("No Units yet");
-    const go = element.shadowRoot.querySelector('[data-id="go-divisions"]');
-    expect(go.label).toBe("Units →");
+    const bunk = nsRecord({ Id: "g1", Name: "Bunk 1", Division__c: "d1" });
+    expect(move.optionsFor(bunk)).toEqual([
+      { label: "Juniors", value: "d1" },
+      { label: "No Unit", value: "toNoDivision" }
+    ]);
     const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    go.click();
-    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "divisions" });
+    element.addEventListener("save", handler);
+    groups.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          record: nsRecord({ Id: "g1", Division__c: "toNoDivision" }),
+          extras: {}
+        }
+      })
+    );
+    const sent = handler.mock.calls[0][0].detail;
+    expect(bareRecord(sent.record)).toEqual({ Id: "g1", Division__c: null });
+    expect(sent.extras).toEqual({ noDivisionProgram: "p1" });
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {

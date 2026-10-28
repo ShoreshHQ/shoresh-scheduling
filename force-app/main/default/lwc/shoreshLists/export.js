@@ -10,6 +10,7 @@
  */
 import { refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { shownDivisionName } from "c/shoreshImportEngine";
 import { screenLabels } from "c/shoreshScreens";
 import { sanitizeCell } from "./cells";
 import { LIST_SCREENS, cellText, listScreen } from "./screens";
@@ -120,7 +121,10 @@ function runsInRows(setup, t) {
   (setup.programs || []).forEach((entry) => {
     const program = entry.program.Name;
     (entry.divisions || []).forEach((d) =>
-      (d.groups || []).forEach((g) => add("Group", program, g, d.division.Name))
+      // DIV-1.1: a group in no division has no division in the export.
+      (d.groups || []).forEach((g) =>
+        add("Group", program, g, shownDivisionName(d))
+      )
     );
     (entry.fixedActivities || []).forEach((f) =>
       add("FixedActivity", program, f)

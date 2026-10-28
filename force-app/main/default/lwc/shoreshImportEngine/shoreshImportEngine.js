@@ -14,6 +14,7 @@ export { filesToPages } from "./sheets";
 export { blockFromLabel } from "./structure";
 
 export { buildProposal, LEAVE_OUT } from "./proposal";
+export { NO_DIVISION } from "./reading-constants";
 export { LAYOUTS } from "./layouts";
 export {
   campFirstDay,
@@ -97,3 +98,8 @@ export {
   cellName,
   hasClockTime
 } from "./text";
+export {
+  holdsNoDivision,
+  realDivisionsOf,
+  shownDivisionName
+} from "./noDivision";

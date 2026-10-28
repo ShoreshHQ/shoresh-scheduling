@@ -7,6 +7,7 @@
 import { FIELD } from "c/shoreshSchema";
 import { deletedAs, deletedPrograms, deletionsIn } from "./deleted";
 import { foldName } from "./names";
+import { identityDivision } from "./noDivision";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 
@@ -32,7 +33,9 @@ function existingPrograms(existing, rules) {
     })),
     // Group identities (identity.js), as the files' groups are named.
     groups: (entry.divisions || []).flatMap((d) =>
-      (d.groups || []).map((g) => rules.identityOf(g.Name, d.division.Name))
+      (d.groups || []).map((g) =>
+        rules.identityOf(g.Name, identityDivision(d.division))
+      )
     ),
     entry
   }));

@@ -927,3 +927,30 @@ describe("c-shoresh-activity-details", () => {
     });
   });
 });
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("is offered by its own name; its holding record is never a division", async () => {
+    const setup = {
+      ...SETUP,
+      programs: [
+        {
+          ...SETUP.programs[0],
+          divisions: [
+            ...SETUP.programs[0].divisions,
+            {
+              division: { Id: "d9", Name: "Tent 1", NoDivision__c: true },
+              groups: [{ Id: "g9", Name: "Tent 1" }]
+            }
+          ]
+        }
+      ]
+    };
+    const element = await render(setup);
+    const who = q(element, '[data-id="who-can-do-it"]');
+    const labels = who.options.map((o) => o.label);
+    expect(labels).toContain("Tent 1");
+    expect(labels).not.toContain("Unit: Tent 1");
+    expect(labels).not.toContain("Tent 1 (Tent 1)");
+  });
+});

@@ -1,6 +1,7 @@
 import {
   buildProposal,
   importNotes,
+  planFor,
   LEAVE_OUT,
   questionCards
 } from "./data/engine";
@@ -718,6 +719,26 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
         text: expect.stringContaining("Seniors is set up as one")
       }
     ]);
+  });
+
+  // DIV-1.1 INGEST-3.8
+  it("a division read as one group is in no division: not asked, never Main", () => {
+    const p = propose(travel);
+    const kept = p.groups.filter((g) => !g.leftOut);
+    expect(kept.map((g) => [g.name, g.division, g.noDivision])).toEqual([
+      ["Juniors", null, true],
+      ["Seniors", null, true]
+    ]);
+    expect(
+      questionCards(p, terms, {}).filter((c) => c.select === "division")
+    ).toEqual([]);
+    const plan = planFor(p, null, "s");
+    // Each is held alone in a record of its own name: they share a division with nobody.
+    expect(plan.divisions.map((d) => [d.name, d.noDivision])).toEqual([
+      ["Juniors", true],
+      ["Seniors", true]
+    ]);
+    expect(new Set(plan.groups.map((g) => g.divisionKey)).size).toBe(2);
   });
 
   // INGEST-3.8 DIV-3.2

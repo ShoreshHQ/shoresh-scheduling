@@ -362,13 +362,23 @@ export function listPlan(proposal, answers, seasonId, fileName) {
     });
   proposal.rows.forEach((row) => {
     if (row.status === "new") {
-      records.push(
-        recordFor(
-          screen,
-          row,
-          screen.columns.map((c) => c.key)
-        )
+      const record = recordFor(
+        screen,
+        row,
+        screen.columns.map((c) => c.key)
       );
+      if (screen.kind === "Group" && row.noDivision) {
+        // DIV-1.1: a new group in no division is held in its own flagged record.
+        const holder = `NoDivision:${row.programId}:${row.name}`;
+        records.push({
+          kind: "Division",
+          key: holder,
+          fields: { Name: row.name, [FIELD.Division.NoDivision]: true },
+          refs: { [FIELD.Division.Program]: row.programId }
+        });
+        record.refs[FIELD.Group.Division] = holder;
+      }
+      records.push(record);
     } else if (row.status === "changed") {
       const chosen = row.differences
         .filter((d) => d.answer === CHANGE)

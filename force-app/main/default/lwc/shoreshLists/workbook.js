@@ -20,7 +20,8 @@ import {
   foldName,
   looseKey,
   tidy,
-  weeksToFill
+  weeksToFill,
+  shownDivisionName
 } from "c/shoreshImportEngine";
 import { NONE, readCell, unescapeCell } from "./cells";
 import { headingRowIndex, mapHeadings } from "./headings";
@@ -903,7 +904,7 @@ function itemsOf(setup) {
     const program = e.program.Name;
     (e.divisions || []).forEach((d) =>
       (d.groups || []).forEach((g) =>
-        push("Group", g, program, d.division.Name)
+        push("Group", g, program, shownDivisionName(d))
       )
     );
     (e.fixedActivities || []).forEach((f) => push("FixedActivity", f, program));

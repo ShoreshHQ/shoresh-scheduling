@@ -26,7 +26,9 @@ import {
   WEEKDAYS,
   firstDayOf,
   programDays,
-  undoMessage
+  undoMessage,
+  holdsNoDivision,
+  realDivisionsOf
 } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
@@ -156,7 +158,8 @@ export function seasonContents(setup, t) {
   const counts = [
     ["Week", (setup.weeks || []).length],
     ["Program", programs.length],
-    ["Division", inPrograms((e) => (e.divisions || []).length)],
+    // DIV-1.1: holding records are not counted as divisions.
+    ["Division", inPrograms((e) => realDivisionsOf(e).length)],
     [
       "Group",
       inPrograms((e) =>
@@ -1144,7 +1147,7 @@ export default class ShoreshCampSetup extends LightningElement {
       const entry = entries.get(saved.Id);
       return entry ? String(pick(entry)) : "";
     };
-    const divisions = (entry) => (entry.divisions || []).length;
+    const divisions = (entry) => realDivisionsOf(entry).length;
     const groups = (entry) =>
       (entry.divisions || []).reduce(
         (sum, d) => sum + (d.groups || []).length,
@@ -1540,7 +1543,13 @@ export default class ShoreshCampSetup extends LightningElement {
     const names = new Map();
     ((this.setup && this.setup.programs) || []).forEach((entry) => {
       (entry.divisions || []).forEach((d) => {
-        names.set(d.division.Id, d.division.Name);
+        // DIV-1.1: a holding record reads as its group, never by its own name.
+        const named = holdsNoDivision(d.division)
+          ? ((d.groups || [])[0] || {}).Name
+          : d.division.Name;
+        if (named) {
+          names.set(d.division.Id, named);
+        }
         (d.groups || []).forEach((g) => names.set(g.Id, g.Name));
       });
     });
@@ -2085,7 +2094,7 @@ export default class ShoreshCampSetup extends LightningElement {
     const n = {
       weeks: (setup.weeks || []).length,
       programs: programs.length,
-      divisions: inPrograms((e) => (e.divisions || []).length),
+      divisions: inPrograms((e) => realDivisionsOf(e).length),
       groups: inPrograms((e) =>
         (e.divisions || []).reduce((sum, d) => sum + (d.groups || []).length, 0)
       ),

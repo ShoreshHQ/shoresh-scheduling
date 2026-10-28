@@ -60,7 +60,11 @@ public with sharing class ImportListRows {
       RecurringActivity__c.Saturday__c,
       RecurringActivity__c.Sunday__c
     },
-    'Division' => new Set<Schema.SObjectField>{ Division__c.Name },
+    // DIV-1.1: a new group in no division comes with its flagged holding record.
+    'Division' => new Set<Schema.SObjectField>{
+      Division__c.Name,
+      Division__c.NoDivision__c
+    },
     'Group' => new Set<Schema.SObjectField>{
       Group__c.Name,
       Group__c.Availability__c
