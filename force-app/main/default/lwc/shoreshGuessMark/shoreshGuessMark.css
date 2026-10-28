@@ -27,6 +27,26 @@
   cursor: pointer;
 }
 
+/* In a table cell (class "fill"), the mark and its open line take the cell's whole height:
+   the line then covers the cell's boxes entirely while it is open, instead of leaving slivers
+   of them too small to press (WCAG 2.5.8), and nothing is left under the mark. */
+:host(.fill) {
+  bottom: 0;
+}
+
+:host(.fill) .wrap,
+:host(.fill) .mark {
+  height: 100%;
+}
+
+:host(.fill) .mark {
+  align-items: flex-start;
+}
+
+:host(.fill) .pop {
+  bottom: 0;
+}
+
 .mark:focus-visible {
   outline: none;
   box-shadow: var(--shoresh-focus-ring);
