@@ -13,6 +13,8 @@ import { historyLines } from "./history";
 import { isAnswer, matches, speller } from "./view";
 
 const PAGE = 25;
+// LearnedEvents.forCamp reads the newest 5000: a full read means older ones were left out.
+const HISTORY_LIMIT = 5000;
 const SEARCH_AT = 15;
 const KNEW = "Shoresh already knew this";
 const UNDO_WORDS = { changed: "Undo changing", forgotten: "Undo forgetting" };
@@ -46,6 +48,8 @@ export default class ShoreshLearned extends LightningElement {
   // What is remembered now (answers, and forgotten patterns' markers).
   answers = [];
   lines = [];
+  // The history read was cut at its limit (MEMO-7.7).
+  capped = false;
   // Per line key: { mode: "editing", choice, pending, error, retry }.
   states = {};
   // What this visit's Forget and Change can undo, by "<kind>:<answer Id>" of the line they added.
@@ -107,6 +111,7 @@ export default class ShoreshLearned extends LightningElement {
         return;
       }
       this.answers = answers || [];
+      this.capped = (events || []).length >= HISTORY_LIMIT;
       this.lines = historyLines(
         events || [],
         this.answers,
@@ -208,6 +213,11 @@ export default class ShoreshLearned extends LightningElement {
     return this.q || this.more
       ? []
       : builtInRows(this.t).map((r) => ({ ...r, how: KNEW }));
+  }
+
+  /** Said at the end of the list, never left out silently (MEMO-7.7). */
+  get showsCapped() {
+    return this.capped && !this.q && !this.more;
   }
 
   get noMatches() {

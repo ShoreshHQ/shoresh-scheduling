@@ -228,6 +228,13 @@
             </div>
           </li>
         </template>
+        <template lwc:if={showsCapped}>
+          <li class="row row_knew" data-id="capped">
+            <div class="line1">
+              <span class="title">Older entries not shown</span>
+            </div>
+          </li>
+        </template>
       </ul>
       <template lwc:if={more}>
         <button

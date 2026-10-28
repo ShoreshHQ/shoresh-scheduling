@@ -524,6 +524,31 @@ describe("c-shoresh-learned: one running list", () => {
     );
   });
 
+  // MEMO-7.7
+  it("says older entries are not shown when the history read hits its limit", async () => {
+    const many = Array.from({ length: 5000 }, (_, i) =>
+      event(`e${i}`, "auto", `kind|Item ${i}`, "fixed", "2026-07-17", null)
+    );
+    const element = await mount([], many);
+    expect($(element, '[data-id="capped"]')).toBeNull();
+    while ($(element, '[data-id="more"]')) {
+      $(element, '[data-id="more"]').click();
+      await flush();
+    }
+    const all = $$(element, "li");
+    expect(all[all.length - 1].dataset.id).toBe("capped");
+    expect(all[all.length - 1].textContent.trim()).toBe(
+      "Older entries not shown"
+    );
+    document.body.removeChild(element);
+    const fewer = await mount([], many.slice(1));
+    while ($(fewer, '[data-id="more"]')) {
+      $(fewer, '[data-id="more"]').click();
+      await flush();
+    }
+    expect($(fewer, '[data-id="capped"]')).toBeNull();
+  });
+
   // MEMO-7.5
   it("says when an import auto-applied an answer, with nothing to change on that line", async () => {
     const element = await mount(

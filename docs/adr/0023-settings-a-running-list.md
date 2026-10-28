@@ -72,7 +72,7 @@ suggestions and auto-apply stands.
    as answered in an import when it was saved, so nothing remembered goes missing. Once such an
    answer is changed or forgotten, its first line is gone with it (there was nothing stored to keep
    it). Nothing is released and no camp uses it, so no back-fill is written. The history reads the newest 5000 events, as the answers'
-   read does; past that the oldest lines are left out (a camp would need years of imports).
+   read does; past that the oldest lines are left out, and the list ends with "Older entries not shown" (MEMO-7.7) so nothing is hidden silently.
 
 ## What was considered
 
