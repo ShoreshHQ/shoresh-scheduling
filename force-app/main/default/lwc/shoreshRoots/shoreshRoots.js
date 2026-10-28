@@ -39,6 +39,19 @@ const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
 const NUDGE = 950;
 const isHand = (key) => typeof key === "string" && key.startsWith("hand:");
 
+/** How many questions an import kept for later (Import__c.Open__c, JSON); 0 if none or unreadable. */
+function openQuestions(text) {
+  if (!text) {
+    return 0;
+  }
+  try {
+    const list = JSON.parse(text);
+    return Array.isArray(list) ? list.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Roots, the home screen: the canasta table (wiki decisions 60 to 68, approved 2026-10-24; repo
  * ADR 0020). Three melds, one per menu section (Camp; Activities & Events; Schedules), lie on a calm
@@ -424,13 +437,26 @@ export default class ShoreshRoots extends LightningElement {
       timeStyle: "short"
     });
     const what = `Last import: ${last[FIELD.Import.Files] || "a file"}`;
+    const open = openQuestions(last[FIELD.Import.Open]);
     return {
       id: last.Id,
       files: last[FIELD.Import.Files],
       what,
       when,
-      line: `${what}, ${when}`
+      line: `${what}, ${when}`,
+      // docs/import/review.md INGEST-5.5: the questions it kept for later wait here.
+      open,
+      openLabel: `${open} import ${open === 1 ? "question" : "questions"} left`
     };
+  }
+
+  /** Answer the last import's open questions: Import last year opens on them. */
+  handleOpenQuestions() {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: "import", resumeImport: this.lastImport.id }
+      })
+    );
   }
 
   // ---------- doing ----------

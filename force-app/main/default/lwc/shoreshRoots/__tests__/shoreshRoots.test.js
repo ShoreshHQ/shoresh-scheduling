@@ -554,6 +554,44 @@ describe("c-shoresh-roots: the camp's workbook", () => {
     });
   });
 
+  it("INGEST-5.5: the last import's questions kept for later wait on Roots, and open Import last year on them", async () => {
+    const element = await render({
+      ...SETUP,
+      lastImport: {
+        Id: "im1",
+        Files__c: "maple-grove.xlsx",
+        CreatedDate: "2027-06-20T14:00:00.000Z",
+        Open__c: JSON.stringify([
+          { key: "kind|Swim", title: "Is Swim at a set time?" },
+          { key: "division|CIT", title: "CIT" }
+        ])
+      }
+    });
+    const button = $(element, 'lightning-button[data-id="import-questions"]');
+    expect(button.label).toBe("2 import questions left");
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    button.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({
+      screen: "import",
+      resumeImport: "im1"
+    });
+  });
+
+  it("INGEST-5.5 counter-case: an import with no questions left shows none", async () => {
+    const element = await render({
+      ...SETUP,
+      lastImport: {
+        Id: "im1",
+        Files__c: "maple-grove.xlsx",
+        CreatedDate: "2027-06-20T14:00:00.000Z"
+      }
+    });
+    expect(
+      $(element, 'lightning-button[data-id="import-questions"]')
+    ).toBeNull();
+  });
+
   it("shows no last import when there is none", async () => {
     const element = await render();
     expect($(element, '[data-id="last-import"]')).toBeNull();

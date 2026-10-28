@@ -54,3 +54,71 @@ Each rule is clue, meaning, example, test.
    **A second program** (key `ownDays|<week>`, as weeks.md rule 8's question): the day's groups
    are then a program of their own. It is no longer a note.
    Test: "INGEST-5.4: listed as a day of its own; A second program keeps it one".
+
+5. **Add can keep questions for later; nothing they decide is guessed.**
+   Clue: Add pressed while questions are open (ADR 0006 §11 as changed by Greg, 2026-10-27).
+   Meaning: every open question that has "Leave it out for now" is saved as left out, so
+   whatever it decides stays out of the setup and the version (its placements are listed as not
+   placed), and a question that opens another is followed; what is settled is saved. Add says
+   it: "Add 58, 3 for later". The open questions are kept with the import (`Import__c.Open__c`:
+   key and title each) and the files as read (a file kept with the import, so they can be
+   answered later); they are not remembered as answers. The page after Add lists them under "3
+   import questions left", and Roots shows "3 import questions left" beside the last import
+   while that import is the season's last and not undone. A question without "Leave it out for
+   now" (one group split in two, `splitCard`) still has to be answered before Add.
+   Test: "INGEST-5.5: Add saves what is settled; the open question is kept with the files, and
+   nothing it decides is guessed"; "INGEST-5.5: an open division choice can wait for later, and
+   its bunk is not guessed"; Roots "INGEST-5.5: the last import's questions kept for later wait
+   on Roots"; Apex `ImportReviewTest` `ingest55OpenQuestionsAreKeptWithTheFilesAndShownOnRoots`.
+   Counter-case: "an import with no questions left shows none".
+
+6. **Answering later applies it.**
+   Clue: "N import questions left" pressed on Roots.
+   Meaning: Import last year opens on the same files as read, with every answer the camp gave
+   (remembered answers, ADR 0006 §19), so only the open questions are asked; Add saves what
+   their answers bring in, as a second import of the same files (rule 7), and keeps any still
+   open the same way. The files are given only for the season's last import while it has
+   questions open and is not undone (`ImportLog.openFiles`); a newer import or an Undo ends
+   them.
+   Test: "INGEST-5.6: answering later opens the same files, asks only what is left, and Add
+   applies it"; Apex `ingest56TheFilesAreOnlyForTheLastImportWithQuestionsOpen`.
+
+7. **A second import updates what an earlier import brought in; what was made or changed by hand
+   is never changed unasked.**
+   Clue: the file disagrees with an activity's length, or a fixed or recurring activity's time
+   block, length or days (ADR 0006 §9), for one the camp has.
+   Meaning: an item an earlier import (not undone) created and no one has changed since
+   (`ImportProvenance`: its fields still hold what the last import to write them wrote,
+   compared by value from the imports' own logs, as Undo compares) is updated from the file
+   without a question, and listed under "updated from the file" with **Update** (pressed) and
+   **Keep as it is**. Anything else, made by hand or changed by hand since (on any screen, the
+   record page, a list import), is asked as before. Read when the files are read
+   (`ImportController.getImported`); if it cannot be read, everything is asked.
+   Example: Lunch an import added at Period 4, untouched, and the new file has it at Lunch: it
+   moves to Lunch, listed, one click to keep it at Period 4.
+   Test: "INGEST-5.7: untouched since the earlier import: updated without asking, and listed
+   with Keep as it is"; "INGEST-5.7: Keep as it is leaves it as it is"; Apex `ImportReviewTest`
+   `ingest57WhatAnImportBroughtInIsItsUntilChangedByHand`,
+   `ingest57ASecondImportsUpdateKeepsItTheImports`, `ingest57AnUndoneImportBroughtInNothing`.
+   Counter-case: "made or changed by hand: asked, never changed unasked".
+   Not covered: time blocks, programs' days, groups' divisions and places are still asked
+   whoever made them.
+
+8. **What an earlier import brought in that the new file lacks is listed, Keep or Remove.**
+   Clue: an activity, or a fixed or recurring activity of a program the files cover, that rule
+   7 counts as the import's, and whose name (spaces and capitals aside) is nowhere in the files
+   (not a cell, not a name read, not an elective's choice).
+   Meaning: listed under "Not in these files" with **Keep** (pressed, the default) and
+   **Remove**; nothing is removed unasked. Removed ones go in the same all-or-none save, in user
+   mode, after the server checks each is still the import's (`ImportRemovals`; anything else
+   refuses the whole import); the page after Add counts them under "Removed, as you chose", and
+   Undo of that import brings them back with what went with them (`ImportUndoRemovals`, from the
+   Recycle Bin; one no longer there is named as deleted since). Something made or changed by
+   hand is never listed.
+   Test: "INGEST-5.8: listed with Keep, the default; Remove sends it to be removed"; screen
+   "INGEST-5.8: what an earlier import brought in and these files lack"; Apex `ImportReviewTest`
+   `ingest58RemovesWhatAnImportBroughtInAndUndoBringsItBack`,
+   `ingest58NeverRemovesWhatWasMadeOrChangedByHand`.
+   Counter-cases: "made or changed by hand is never listed"; "a program the files do not cover
+   is not listed". Not listed: groups, divisions, time blocks, places and programs (removing
+   them takes their schedules with them).

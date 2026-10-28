@@ -128,6 +128,13 @@
                 changed. Anything you have edited since stays as it is.
               </span>
             </div>
+            <template lwc:if={lastImport.open}>
+              <lightning-button
+                data-id="import-questions"
+                label={lastImport.openLabel}
+                onclick={handleOpenQuestions}
+              ></lightning-button>
+            </template>
             <lightning-button
               data-id="undo-import"
               label="Undo last import"

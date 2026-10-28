@@ -4,6 +4,7 @@
  * other (it goes through buildProposal again and is remembered by the save).
  */
 import { kindsThatFit } from "./items";
+import { dayList } from "./questions";
 
 const KIND_TERM = {
   activity: "Activity",
@@ -94,6 +95,32 @@ function specialDayLines(proposal, t) {
     }));
 }
 
+/** INGEST-5.7: an item an earlier import brought in, updated from the new file. */
+function updatedLines(proposal, t) {
+  const length = (n) =>
+    `${n} ${n === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
+  const detail = (n) => {
+    if (n.kind === "activity") {
+      return length(n.length);
+    }
+    const days = n.kind === "recurring" ? `, ${dayList(n.days)}` : "";
+    return `${n.block.name}, ${length(n.length)}${days}`;
+  };
+  return proposal.notes
+    .filter((n) => n.type === "updated")
+    .map((n) => ({
+      key: n.id,
+      id: n.id,
+      name: n.name,
+      detail: detail(n),
+      answer: n.answer,
+      options: [
+        { value: "change", label: "Update" },
+        { value: "keep", label: "Keep as it is" }
+      ]
+    }));
+}
+
 /**
  * The "Read as" groups, in order, each { key, label, lines }; a group with no line is left out.
  * cards: questionCards(proposal, t, answers) (a division of one is changed by its card).
@@ -134,6 +161,12 @@ export function readAsGroups(proposal, t, cards = []) {
           `${t.pIn("Division")} of one`
         ),
       lines: divisions
+    },
+    {
+      key: "updated",
+      label: (n) =>
+        counted(n, "updated from the file", "updated from the file"),
+      lines: updatedLines(proposal, t)
     },
     {
       key: "specialDay",

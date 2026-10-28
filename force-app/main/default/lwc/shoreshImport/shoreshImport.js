@@ -4,6 +4,8 @@ import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveSetup from "@salesforce/apex/ImportController.saveSetup";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
+import getImported from "@salesforce/apex/ImportController.getImported";
+import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
 import LightningConfirm from "lightning/confirm";
 import {
   BRING_BACK,
@@ -26,6 +28,11 @@ import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
 import { comingIn, countTiles, miniCells, total } from "./summary";
+
+/** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
+function leaveable(card) {
+  return card.options.some((o) => o.value === LEAVE_OUT);
+}
 
 /** Each layout in the camp's words. */
 function layoutWords(t) {
@@ -84,6 +91,10 @@ export default class ShoreshImport extends LightningElement {
   openKind = null;
   // The "Read as" group opened into its lines (its key), or null.
   openReadAs = null;
+  // Items an earlier import brought in, untouched since (INGEST-5.7, 5.8).
+  imported = [];
+  // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
+  savedOpen = [];
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
   // the next question still open after { after }), { question }, { bringBack } or { selector }.
   focusNext = null;
@@ -213,10 +224,7 @@ export default class ShoreshImport extends LightningElement {
     this.stage = "reading";
     try {
       this.files = await Promise.all(chosen.map((f) => this.readOne(f)));
-      this.answers = await this.rememberedAnswers();
-      this.layouts = {};
-      this.openKind = null;
-      this.recompute();
+      await this.startReview();
       this.stage = this.foundNothing ? "pick" : "review";
       if (this.foundNothing) {
         this.files = [];
@@ -230,6 +238,51 @@ export default class ShoreshImport extends LightningElement {
       this.stage = "pick";
       this.files = [];
       this.error = failed("That file could not be read.", e);
+    }
+  }
+
+  /** The files read: what the camp answered before, what earlier imports brought in, the page. */
+  async startReview() {
+    this.answers = await this.rememberedAnswers();
+    this.imported = await this.importedBefore();
+    this.layouts = {};
+    this.openKind = null;
+    this.openReadAs = null;
+    this.recompute();
+  }
+
+  /**
+   * The questions an earlier import left open, answered now (INGEST-5.5): its files as it read
+   * them, with every answer the camp gave, so only those questions are left; Add saves what
+   * their answers bring in, as a second import of the same files (INGEST-5.7).
+   */
+  @api
+  async resume(importId) {
+    this.handleStartAgain();
+    this.stage = "reading";
+    try {
+      this.files = JSON.parse(await getOpenFiles({ importId }));
+      await this.startReview();
+      this.stage = "review";
+      const open = this.cards.find((c) => !c.answered);
+      this.focusNext = open ? { question: open.id } : { after: null };
+    } catch (e) {
+      this.stage = "pick";
+      this.files = [];
+      this.error = failed("Those questions could not be opened.", e);
+    }
+  }
+
+  /** What earlier imports brought in and no one changed since; none if it cannot be read. */
+  async importedBefore() {
+    if (!this.seasonId) {
+      return [];
+    }
+    try {
+      return (await getImported({ seasonId: this.seasonId })) || [];
+    } catch {
+      // Without it, everything the camp has is asked about and nothing is listed: never changed.
+      return [];
     }
   }
 
@@ -275,26 +328,59 @@ export default class ShoreshImport extends LightningElement {
 
   // ---------- the proposal ----------
 
-  recompute() {
-    this.proposal = buildProposal({
+  proposalWith(answers) {
+    return buildProposal({
       files: this.files,
       existing: this.setup,
       terms: this.terms,
-      answers: this.answers,
-      layouts: this.layouts
+      answers,
+      layouts: this.layouts,
+      imported: this.imported
     });
+  }
+
+  recompute() {
+    this.proposal = this.proposalWith(this.answers);
     this.plan = this.planNow();
   }
 
+  /**
+   * INGEST-5.5: what Add saves while questions are open. Each open question that can be left out
+   * is left out, so nothing that depends on it is guessed (a question that opens another is
+   * followed, a few deep); { proposal, open: [card] }.
+   */
+  settled() {
+    const answers = { ...this.answers };
+    const open = new Map();
+    let proposal = this.proposal;
+    for (let depth = 0; depth < 5; depth++) {
+      const more = questionCards(proposal, this.terms, answers).filter(
+        (c) => !c.answer && !open.has(c.id) && leaveable(c)
+      );
+      if (more.length === 0) {
+        break;
+      }
+      more.forEach((c) => {
+        open.set(c.id, c);
+        answers[c.id] = LEAVE_OUT;
+      });
+      proposal = this.proposalWith(answers);
+    }
+    return { proposal, open: [...open.values()] };
+  }
+
   /** The plan Add would save, for the counts; null if it cannot be made yet. */
-  planNow() {
+  planNow(fileData) {
     if (!this.proposal || this.foundNothing) {
       return null;
     }
     try {
-      return planFor(this.proposal, this.setup, this.seasonId, {
+      const { proposal, open } = this.settled();
+      return planFor(proposal, this.setup, this.seasonId, {
         answers: this.answers,
-        fileNames: this.files.map((f) => f.name)
+        fileNames: this.files.map((f) => f.name),
+        open: open.map((c) => ({ key: c.id, title: c.title })),
+        fileData
       });
     } catch {
       return null;
@@ -456,7 +542,7 @@ export default class ShoreshImport extends LightningElement {
     if (moved) {
       this.openReadAs = moved.key;
     }
-    this.focusNext = { selector: `button[data-key="${key}"]` };
+    this.focusNext = { key };
   }
   get hasUnitChoices() {
     return this.unitChoices.length > 0;
@@ -469,6 +555,10 @@ export default class ShoreshImport extends LightningElement {
   }
   get openCount() {
     return this.cards.filter((c) => !c.answered).length;
+  }
+  /** Open questions Add cannot keep for later (no "Leave it out for now"): Add waits for them. */
+  get mustAnswerCount() {
+    return this.cards.filter((c) => !c.answered && !leaveable(c)).length;
   }
 
   handleAnswer(event) {
@@ -718,16 +808,20 @@ export default class ShoreshImport extends LightningElement {
     return this.files.map((f) => f.name).join(", ");
   }
 
-  /** The main button says what happens: "Add 61"; while a question is open, how many are. */
+  /**
+   * The main button says what happens: "Add 61"; with questions open, how many wait for later
+   * ("Add 58, 3 for later", INGEST-5.5); while one must be answered first, how many are left.
+   */
   get saveLabel() {
     const open = this.openCount;
-    if (open > 0) {
+    if (this.mustAnswerCount > 0) {
       return `${open} ${open === 1 ? "question" : "questions"} left`;
     }
-    return this.addCount > 0 ? `Add ${this.addCount}` : "Use this setup";
+    const base = this.addCount > 0 ? `Add ${this.addCount}` : "Use this setup";
+    return open > 0 ? `${base}, ${open} for later` : base;
   }
   get saveDisabled() {
-    return this.isSaving || this.openCount > 0;
+    return this.isSaving || this.mustAnswerCount > 0 || !this.plan;
   }
 
   handleStartAgain() {
@@ -739,6 +833,8 @@ export default class ShoreshImport extends LightningElement {
     this.plan = null;
     this.openKind = null;
     this.openReadAs = null;
+    this.imported = [];
+    this.savedOpen = [];
     this.answers = {};
     this.layouts = {};
     this.error = null;
@@ -756,11 +852,16 @@ export default class ShoreshImport extends LightningElement {
     this.stage = "saving";
     this.error = null;
     try {
-      const plan = planFor(this.proposal, this.setup, this.seasonId, {
-        answers: this.answers,
-        fileNames: this.files.map((f) => f.name)
-      });
+      // The files as read go with open questions, so they can be answered later.
+      const plan = this.planNow(JSON.stringify(this.files));
+      if (!plan) {
+        throw new Error("The plan could not be made.");
+      }
+      if (plan.open.length === 0) {
+        delete plan.fileData;
+      }
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
+      this.savedOpen = plan.open;
       this.stage = "done";
       this.focusNext = { selector: '[data-id="done"]' };
       this.dispatchEvent(new CustomEvent("imported"));
@@ -807,6 +908,59 @@ export default class ShoreshImport extends LightningElement {
   }
   get hasLeftOut() {
     return this.leftOutLines.length > 0;
+  }
+  /** The questions kept for later: they wait on Roots (INGEST-5.5). */
+  get laterLines() {
+    return this.savedOpen.map((q) => ({ key: q.key, text: q.title }));
+  }
+  get hasLater() {
+    return this.laterLines.length > 0;
+  }
+  get laterTitle() {
+    const n = this.laterLines.length;
+    return `${n} import ${n === 1 ? "question" : "questions"} left`;
+  }
+  get removedTiles() {
+    return countTiles(this.result && this.result.removed, this.terms);
+  }
+  get hasRemoved() {
+    return this.removedTiles.length > 0;
+  }
+
+  // ---------- not in the new file (review.md INGEST-5.8) ----------
+
+  /** What an earlier import brought in and these files lack: each Keep (pressed) or Remove. */
+  get missingRows() {
+    const t = this.terms;
+    return ((this.proposal && this.proposal.missing) || []).map((m) => ({
+      ...m,
+      detail: `${t.sIn(m.kind)}${m.program ? ` · ${m.program}` : ""}`,
+      options: [
+        { value: "keep", label: "Keep" },
+        { value: "remove", label: "Remove" }
+      ].map((o) => {
+        const pressed = o.value === m.answer;
+        return {
+          ...o,
+          key: `${m.key}::${o.value}`,
+          pressed: pressed ? "true" : "false",
+          className: pressed
+            ? "shoresh-item choice shoresh-raised"
+            : "shoresh-item choice"
+        };
+      })
+    }));
+  }
+  get hasMissing() {
+    return this.missingRows.length > 0;
+  }
+
+  handleMissing(event) {
+    const key = event.currentTarget.dataset.key;
+    const [id, value] = key.split("::");
+    this.answers = { ...this.answers, [id]: value };
+    this.recompute();
+    this.focusNext = { key };
   }
   get canUndo() {
     return (

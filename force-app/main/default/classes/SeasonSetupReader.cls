@@ -90,7 +90,7 @@ public with sharing class SeasonSetupReader {
     // The most recent import, for Roots' Undo last import; none once it is undone (Greg,
     // 2026-10-17: Undo goes back one import only, and comes back with the next import).
     List<Import__c> imports = [
-      SELECT Id, Files__c, CreatedDate, UndoneAt__c
+      SELECT Id, Files__c, CreatedDate, UndoneAt__c, Open__c
       FROM Import__c
       WHERE Season__c = :seasonId
       WITH USER_MODE

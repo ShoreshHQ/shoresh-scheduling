@@ -15,6 +15,7 @@ import {
 } from "./items";
 import { deletedAs, deletionsIn } from "./deleted";
 import { electiveRecords, readElectives } from "./electives";
+import { missingItems } from "./missing";
 import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
@@ -73,6 +74,21 @@ function keysFor(groups, existing, rules) {
 
 // ---------- names the camp already has: asked only where the file disagrees ----------
 
+/**
+ * review.md INGEST-5.7: an item an earlier import brought in and no one has changed since is
+ * updated from the new file without asking, and listed under "Read as" with "Keep as it is".
+ * Anything else the camp has is asked, as before. Returns whether to change it.
+ */
+function changeOrAsk(id, record, ask, ctx) {
+  if (!ctx.imported.has(record.Id)) {
+    ctx.asks.push(ask);
+    return ctx.answers[id] === "change";
+  }
+  const answer = ctx.answers[id] === "keep" ? "keep" : "change";
+  ctx.notes.push({ ...ask, type: "updated", kind: ask.type, answer });
+  return answer === "change";
+}
+
 function compareFixed(decision, record, ctx) {
   const t = decision.timetable;
   const p =
@@ -97,7 +113,7 @@ function compareFixed(decision, record, ctx) {
     return;
   }
   const id = `change|fixed|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}`;
-  ctx.asks.push({
+  const ask = {
     id,
     type: "fixed",
     name: decision.name,
@@ -106,8 +122,8 @@ function compareFixed(decision, record, ctx) {
     block: t.blocks[p.block],
     length: p.length,
     timetable: t
-  });
-  if (ctx.answers[id] === "change") {
+  };
+  if (changeOrAsk(id, record, ask, ctx)) {
     ctx.updates.fixed.push({
       id: record.Id,
       blockKey: blockRecordKey(t, p.block),
@@ -145,7 +161,7 @@ function compareRecurring(decision, record, ctx) {
   }
   const days = WEEKDAYS.filter((d) => p.days.includes(d));
   const id = `change|recurring|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}|${days.join(",")}`;
-  ctx.asks.push({
+  const ask = {
     id,
     type: "recurring",
     name: decision.name,
@@ -155,8 +171,8 @@ function compareRecurring(decision, record, ctx) {
     length: p.length,
     days,
     timetable: t
-  });
-  if (ctx.answers[id] === "change") {
+  };
+  if (changeOrAsk(id, record, ask, ctx)) {
     ctx.updates.recurring.push({
       id: record.Id,
       blockKey: blockRecordKey(t, p.block),
@@ -178,8 +194,9 @@ function compareActivity(name, cells, record, ctx) {
     return;
   }
   const id = `change|activity|${name}|${length}`;
-  ctx.asks.push({ id, type: "activity", name, record, length });
-  if (ctx.answers[id] === "change") {
+  if (
+    changeOrAsk(id, record, { id, type: "activity", name, record, length }, ctx)
+  ) {
     ctx.updates.activities.push({ id: record.Id, length, name });
   }
 }
@@ -470,6 +487,8 @@ export function buildProposal(input) {
   );
   const ctx = {
     camp,
+    // Items an earlier import brought in, untouched since (ImportController.getImported).
+    imported: new Set(input.imported || []),
     timetables: programs.timetables,
     answers,
     deletions,
@@ -537,6 +556,16 @@ export function buildProposal(input) {
     asks: [...programs.asks, ...people.asks, ...electives.asks, ...ctx.asks],
     decisions
   };
+  // review.md INGEST-5.8: what an earlier import brought in that these files lack.
+  proposal.missing = missingItems({
+    existing: input.existing,
+    imported: ctx.imported,
+    answers,
+    usable,
+    decisions,
+    electives,
+    timetables: programs.timetables
+  });
   const last = versionsFor(proposal, input);
   return {
     ...proposal,

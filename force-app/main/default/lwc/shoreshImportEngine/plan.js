@@ -278,6 +278,9 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
   return {
     seasonId,
     files: (extra.fileNames || []).join(", ").slice(0, 255),
+    // review.md INGEST-5.5: questions kept for later, and the files as read to answer them.
+    open: extra.open || [],
+    ...(extra.fileData ? { fileData: extra.fileData } : {}),
     ...answersToKeep(proposal, extra.answers || {}),
     // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
     fillWeeks: (proposal.fillWeeks || []).map((w) => ({
@@ -301,6 +304,10 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       day: d.day,
       grid: d.grid
     })),
+    // review.md INGEST-5.8: what an earlier import brought in, removed as the director chose.
+    removals: (proposal.missing || [])
+      .filter((m) => m.answer === "remove")
+      .map((m) => ({ id: m.id, name: m.name })),
     programs: programRecords(proposal, existing),
     timeBlocks: blockRecords(proposal),
     divisions: divisionRecords(proposal, existing),

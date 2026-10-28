@@ -1,5 +1,6 @@
 /**
- * Saves the setup an import proposes, once the director has answered every question (slice 4b):
+ * Saves the setup an import proposes (slice 4b); questions the director left open are kept, and
+ * nothing that depends on them is saved (docs/import/review.md INGEST-5.5):
  * everything is added (and the few changes the director chose are made) all or none, in user
  * mode, and fixed and recurring activities are checked for clashes once everything is written,
  * as a screen save is. Nothing is overwritten that the director did not choose to change.
@@ -11,6 +12,9 @@ public with sharing class ImportSetupSaves {
     public Map<String, Integer> added { get; set; }
     @AuraEnabled
     public Map<String, Integer> changed { get; set; }
+    /** What an earlier import brought in that the director chose to remove (INGEST-5.8). */
+    @AuraEnabled
+    public Map<String, Integer> removed { get; set; }
     /** The import's record, for Undo last import. */
     @AuraEnabled
     public Id importId { get; set; }
@@ -18,6 +22,14 @@ public with sharing class ImportSetupSaves {
     public Result() {
       added = new Map<String, Integer>();
       changed = new Map<String, Integer>();
+      removed = new Map<String, Integer>();
+    }
+
+    public void countRemoved(String term) {
+      removed.put(
+        term,
+        (removed.containsKey(term) ? removed.get(term) : 0) + 1
+      );
     }
 
     public void countAdded(String term) {
@@ -68,6 +80,8 @@ public with sharing class ImportSetupSaves {
       new ImportVersionWrites(plan, writer).run();
       // A week's day with its own time blocks, as a special day on that day (INGEST-4.3).
       new ImportSpecialDayWrites(plan, writer).run();
+      // What an earlier import brought in that the new file lacks, removed as chosen (INGEST-5.8).
+      new ImportRemovals(plan, writer).run();
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);
       // What it guessed rather than read, with the values saved: marked for a look on setup.
@@ -82,7 +96,10 @@ public with sharing class ImportSetupSaves {
     return writer.result;
   }
 
-  /** The import's own record: its files, and what it created and changed (for Undo). */
+  /**
+   * The import's own record: its files, what it created and changed (for Undo), and the
+   * questions left open with the files read, so they can be answered later (INGEST-5.5).
+   */
   private static Id record(ImportPlan plan, ImportWriter writer) {
     return ImportLog.record(
       plan,

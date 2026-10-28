@@ -161,6 +161,23 @@ public with sharing class ImportWriter {
     countChange(ImportFields.termOf(target.getSObjectType()), target);
   }
 
+  /**
+   * Records an earlier import brought in that this one removes (INGEST-5.8): logged for Undo to
+   * bring back from the Recycle Bin, and counted.
+   */
+  public void logRemoved(List<SObject> records) {
+    for (SObject record : records) {
+      changed.add(
+        new Map<String, Object>{
+          'removed' => record.Id,
+          'type' => ShoreshSchema.localName(record.getSObjectType()),
+          'name' => record.get('Name')
+        }
+      );
+      result.countRemoved(ImportFields.termOf(record.getSObjectType()));
+    }
+  }
+
   /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
   public class WhoChange {
     public SObject owner;

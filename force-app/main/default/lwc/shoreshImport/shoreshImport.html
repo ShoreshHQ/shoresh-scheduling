@@ -276,6 +276,39 @@
             </template>
           </section>
         </template>
+        <template lwc:if={hasMissing}>
+          <!-- review.md INGEST-5.8: what an earlier import brought in that these files lack. -->
+          <section class="section" data-id="missing">
+            <h3 class="section-head">
+              Not in these files
+              <span class="shoresh-num">{missingRows.length}</span>
+            </h3>
+            <template for:each={missingRows} for:item="row">
+              <div
+                key={row.key}
+                class="row shoresh-raised"
+                data-missing={row.key}
+              >
+                <span class="n">{row.name}</span>
+                <span class="d">{row.detail}</span>
+                <span class="options">
+                  <template for:each={row.options} for:item="option">
+                    <button
+                      key={option.key}
+                      type="button"
+                      class={option.className}
+                      aria-pressed={option.pressed}
+                      data-key={option.key}
+                      onclick={handleMissing}
+                    >
+                      {option.label}
+                    </button>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </section>
+        </template>
         <template lwc:if={hasComingIn}>
           <section class="section" data-id="coming-in">
             <h3 class="section-head">Comes in</h3>
@@ -608,6 +641,31 @@
                 </template>
               </tbody>
             </table>
+          </section>
+        </template>
+        <template lwc:if={hasRemoved}>
+          <section class="section" data-id="removed">
+            <h3 class="section-head">Removed, as you chose</h3>
+            <div class="tiles">
+              <template for:each={removedTiles} for:item="tile">
+                <div key={tile.key} class="tile shoresh-raised">
+                  <span class="slds-assistive-text">{tile.spoken}</span>
+                  <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
+                  <span aria-hidden="true">{tile.label}</span>
+                </div>
+              </template>
+            </div>
+          </section>
+        </template>
+        <template lwc:if={hasLater}>
+          <!-- review.md INGEST-5.5: kept for later; they wait on Roots. -->
+          <section class="section" data-id="later">
+            <h3 class="section-head">{laterTitle}</h3>
+            <div class="chips">
+              <template for:each={laterLines} for:item="line">
+                <span key={line.key} class="chip">{line.text}</span>
+              </template>
+            </div>
           </section>
         </template>
         <template lwc:if={hasLeftOut}>

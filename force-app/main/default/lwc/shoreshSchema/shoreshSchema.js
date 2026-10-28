@@ -112,6 +112,7 @@ import importObject from "@salesforce/schema/Import__c";
 import importChanged from "@salesforce/schema/Import__c.Changed__c";
 import importCreated from "@salesforce/schema/Import__c.Created__c";
 import importFiles from "@salesforce/schema/Import__c.Files__c";
+import importOpen from "@salesforce/schema/Import__c.Open__c";
 import importSeason from "@salesforce/schema/Import__c.Season__c";
 import importUndoneAt from "@salesforce/schema/Import__c.UndoneAt__c";
 import linkedChoiceTimeObject from "@salesforce/schema/LinkedChoiceTime__c";
@@ -433,6 +434,7 @@ export const FIELD = Object.freeze({
     Changed: importChanged.fieldApiName,
     Created: importCreated.fieldApiName,
     Files: importFiles.fieldApiName,
+    Open: importOpen.fieldApiName,
     Season: importSeason.fieldApiName,
     UndoneAt: importUndoneAt.fieldApiName
   }),
