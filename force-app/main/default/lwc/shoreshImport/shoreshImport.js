@@ -31,7 +31,8 @@ import {
   autoAnswersFor,
   staleAuto,
   suggestionsFor,
-  withLearning
+  withLearning,
+  autoAppliedIn
 } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 
@@ -1060,6 +1061,7 @@ export default class ShoreshImport extends LightningElement {
         delete plan.fileData;
       }
       const cards = questionCards(this.proposal, this.terms, this.answers);
+      plan.autoApplied = autoAppliedIn(plan.remember, this.autoApplied);
       plan.remember = withLearning(
         plan.remember,
         cards,

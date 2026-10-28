@@ -13,6 +13,16 @@ public with sharing class LearnedController {
     }
   }
 
+  /** What happened to what the camp remembers, newest first (repo ADR 0023). */
+  @AuraEnabled
+  public static List<LearnedEvents.Event> getLearnedHistory(Id campId) {
+    try {
+      return LearnedEvents.forCamp(campId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
   /** The new record's Id, or null when the answer is no longer there (the screen shows the latest). */
   @AuraEnabled
   public static Id changeLearned(Id campId, Id answerId, String answer) {

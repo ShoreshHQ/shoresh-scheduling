@@ -1,6 +1,6 @@
 /**
- * The rows and groups of "What Shoresh has learned" (desktop learnedView.js buildLearnedGroups,
- * matchesQuery): pure, so the same answers always show the same screen.
+ * The rows of "What Shoresh has learned" (desktop learnedView.js, matchesQuery): pure, so the same
+ * answers always show the same screen. history.js makes them one running list.
  */
 
 import { holdsNoDivision } from "c/shoreshImportEngine";
@@ -11,7 +11,7 @@ import {
   inOrder,
   joinNames
 } from "c/shoreshPatterns";
-import { GROUPS, describe } from "./kinds";
+import { describe } from "./kinds";
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
@@ -238,32 +238,17 @@ export function patternRow(p, t) {
   };
 }
 
-/**
- * The groups that have rows, in the desktop's order, each { key, label, knew (what Shoresh
- * knew before: its own rules), patterns, rows (answers, newest first, the server's order kept
- * for answers of one day) }.
- */
-export function learnedGroups(rows, patterns = [], knew = []) {
-  return GROUPS.map((g) => ({
-    ...g,
-    knew: knew.filter((r) => r.group === g.key),
-    patterns: patterns.filter((r) => r.group === g.key),
-    rows: rows
-      .filter((r) => r.group === g.key)
-      .map((r, i) => ({ r, i }))
-      .sort(
-        (x, y) =>
-          (x.r.answeredOn < y.r.answeredOn) -
-            (x.r.answeredOn > y.r.answeredOn) || x.i - y.i
-      )
-      .map((x) => x.r)
-  })).filter((g) => g.rows.length + g.patterns.length + g.knew.length > 0);
-}
-
-/** Whether a row matches what was typed in search: its title or who answered it. */
+/** Whether a line matches what was typed in search: what, how, when, or its mark. */
 export function matches(row, query) {
   const q = String(query || "")
     .trim()
     .toLowerCase();
-  return !q || [row.title, row.who].some((s) => s.toLowerCase().includes(q));
+  return (
+    !q ||
+    [row.title, row.how, row.when, row.flag].some((s) =>
+      String(s || "")
+        .toLowerCase()
+        .includes(q)
+    )
+  );
 }

@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import getLearned from "@salesforce/apex/LearnedController.getLearned";
+import getLearnedHistory from "@salesforce/apex/LearnedController.getLearnedHistory";
 import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
 import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
@@ -7,37 +8,31 @@ import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLear
 import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
-import { patternsOf } from "c/shoreshPatterns";
-import { GROUPS } from "./kinds";
 import { builtInRows } from "./builtIn";
-import {
-  isAnswer,
-  learnedGroups,
-  learnedRow,
-  matches,
-  patternRow,
-  speller
-} from "./view";
+import { historyLines } from "./history";
+import { isAnswer, matches, speller } from "./view";
 
 const PAGE = 25;
 const SEARCH_AT = 15;
+const KNEW = "Shoresh already knew this";
+const UNDO_WORDS = { changed: "Undo changing", forgotten: "Undo forgetting" };
 const NOT_LOADED = "Couldn't load what Shoresh has learned.";
 const NOT_SAVED = "Couldn't save that.";
 const STALE = "Someone else changed this just now. Showing the latest.";
 
 /**
- * What Shoresh has learned (repo ADR 0021; desktop LearnedScreen.jsx and LearnedRow.jsx): every
- * answer the camp's imports and setup screens remember, in groups, newest first, each with who
- * last answered it and when. Change picks another of its choices; Forget makes the next import
- * ask again (a deleted item can come back), with Undo on the row until the screen is next opened.
- * Past 15 answers a search and a kind filter show in the rail. A group with questions the import
- * reads by its own rules shows them first, as what Shoresh already knew (MEMO-6.8), then what
- * it learned from the camp: its patterns, each with how close it is (MEMO-6.7) and Forget
- * pattern (MEMO-4.5), then its answers.
+ * What Shoresh has learned, under Settings (repo ADR 0023, after ADR 0021; Greg 2026-10-28):
+ * one running list, newest first. Each line says what was learned in camp words, when, and how
+ * (from whose answer in an import, became Suggested or Steady, demoted, auto-applied, changed,
+ * forgotten, undone). A change adds a line; the line before it stays, marked. The line of an
+ * answer remembered now has Change and Forget; the newest line of a pattern there is now has its
+ * progress (MEMO-6.7) and Forget pattern (MEMO-4.5). What Shoresh already knew comes last
+ * (MEMO-6.8). Forget and Change add their line with Undo, until the screen is next opened
+ * (MEMO-6.4). Past 15 lines a search shows in the rail.
  *
  * campId: the camp shown. terms: the camp's words (c/shoreshTerms). setup: the open season's
  * setup, if any (names a key keeps in lower case show as the camp writes them). active: shown;
- * it reads the answers each time it is.
+ * it reads the history each time it is.
  * @api focusHeading(): the cursor to the screen's heading.
  */
 export default class ShoreshLearned extends LightningElement {
@@ -48,22 +43,19 @@ export default class ShoreshLearned extends LightningElement {
 
   status = "loading";
   loadError = "";
+  // What is remembered now (answers, and forgotten patterns' markers).
   answers = [];
-  // The patterns in the answers (c/shoreshPatterns), as rows.
-  patterns = [];
-  // Per row: { mode: "editing" | "forgotten", choice, pending, error, retry }.
+  lines = [];
+  // Per line key: { mode: "editing", choice, pending, error, retry }.
   states = {};
-  // Rows changed or remembered again, until the next read: their result word.
-  flashes = {};
-  // A Change saves a new record: its Id -> the Id of the one it replaced, for its Undo.
-  changedFrom = {};
-  closed = {};
-  limits = {};
+  // What this visit's Forget and Change can undo, by "<kind>:<answer Id>" of the line they added.
+  undos = {};
+  limit = PAGE;
   query = "";
-  kind = "all";
   announcement = "";
   notice = "";
   focusAfter = null;
+  reads = 0;
   _active = false;
 
   @api
@@ -75,9 +67,9 @@ export default class ShoreshLearned extends LightningElement {
     this._active = !!value;
     if (showing) {
       this.states = {};
-      this.flashes = {};
-      this.changedFrom = {};
+      this.undos = {};
       this.notice = "";
+      this.limit = PAGE;
       this.load();
     }
   }
@@ -103,20 +95,32 @@ export default class ShoreshLearned extends LightningElement {
     if (!after) {
       this.status = "loading";
     }
+    // Only the latest read shows: an earlier one answering late is dropped.
+    this.reads += 1;
+    const read = this.reads;
     try {
-      const answers = await getLearned({ campId: this.campId });
-      const spell = speller(this.setup);
-      this.answers = (answers || [])
-        .filter(isAnswer)
-        .map((a) => learnedRow(a, this.t, spell));
-      this.patterns = patternsOf(answers || []).map((p) =>
-        patternRow(p, this.t)
+      const [answers, events] = await Promise.all([
+        getLearned({ campId: this.campId }),
+        getLearnedHistory({ campId: this.campId })
+      ]);
+      if (read !== this.reads) {
+        return;
+      }
+      this.answers = answers || [];
+      this.lines = historyLines(
+        events || [],
+        this.answers,
+        this.t,
+        speller(this.setup)
       );
       this.status = "ready";
       if (after) {
         after();
       }
     } catch (error) {
+      if (read !== this.reads) {
+        return;
+      }
       this.loadError = failed(NOT_LOADED, error);
       this.status = "error";
     }
@@ -126,11 +130,22 @@ export default class ShoreshLearned extends LightningElement {
     if (!this.focusAfter) {
       return;
     }
-    const target = this.template.querySelector(this.focusAfter);
+    // A line paged or searched out of sight: the cursor goes to the heading, never lost.
+    const target =
+      this.template.querySelector(this.focusAfter) ||
+      this.template.querySelector("[data-heading]");
     this.focusAfter = null;
     if (target) {
       target.focus();
     }
+  }
+
+  /** Says a result in the live region, even the same words twice in a row. */
+  say(text) {
+    this.announcement = "";
+    Promise.resolve().then(() => {
+      this.announcement = text;
+    });
   }
 
   // ---------- what is shown ----------
@@ -143,163 +158,138 @@ export default class ShoreshLearned extends LightningElement {
     return this.status === "error";
   }
 
-  get isEmpty() {
-    return this.status === "ready" && this.answers.length === 0;
-  }
-
   get isReady() {
-    return this.status === "ready" && this.answers.length > 0;
-  }
-
-  /** The groups show once read, even with no answers: what Shoresh already knew. */
-  get showsGroups() {
     return this.status === "ready";
   }
 
-  /** Answers still remembered (a forgotten one waiting on Undo no longer counts). */
-  get remembered() {
-    return this.answers.filter((r) => this.stateOf(r.id).mode !== "forgotten");
+  get isEmpty() {
+    return this.isReady && this.lines.length === 0;
   }
 
   get count() {
-    return this.remembered.length;
+    return this.answers.filter(isAnswer).length;
   }
 
   get countWord() {
     return this.count === 1 ? "answer" : "answers";
   }
 
+  get hasCount() {
+    return this.isReady && this.lines.length > 0;
+  }
+
   get searching() {
-    return this.answers.length > SEARCH_AT;
+    return this.lines.length > SEARCH_AT;
   }
 
-  get kindOptions() {
-    const present = new Set(
-      [...this.answers, ...this.patterns].map((r) => r.group)
-    );
-    return [
-      { value: "all", label: "All kinds", selected: this.kind === "all" },
-      ...GROUPS.filter((g) => present.has(g.key)).map((g) => ({
-        value: g.key,
-        label: g.label,
-        selected: this.kind === g.key
-      }))
-    ];
+  get q() {
+    return this.searching ? this.query.trim() : "";
   }
 
-  get filtering() {
-    return this.searching && (this.query.trim() !== "" || this.kind !== "all");
+  get found() {
+    return this.lines.filter((line) => matches(line, this.q));
   }
 
-  get groups() {
-    const q = this.searching ? this.query : "";
-    const kind = this.searching ? this.kind : "all";
-    return learnedGroups(this.answers, this.patterns, builtInRows(this.t))
-      .filter((g) => kind === "all" || g.key === kind)
-      .map((g) => ({
-        ...g,
-        knew: g.knew.filter((r) => matches(r, q)),
-        patterns: g.patterns.filter((r) => matches(r, q)),
-        rows: g.rows.filter((r) => matches(r, q))
-      }))
-      .filter((g) => g.rows.length + g.patterns.length + g.knew.length > 0)
-      .map((g) => this.groupView(g, q.trim() !== ""));
+  get shown() {
+    const limit = this.q ? this.found.length : this.limit;
+    return this.found.slice(0, limit).map((line) => this.lineView(line));
+  }
+
+  get more() {
+    return !this.q && this.found.length > this.limit;
+  }
+
+  get moreLabel() {
+    return `Show ${PAGE} more`;
+  }
+
+  /** What Shoresh already knew: last (after every line shown), and not searched. */
+  get knew() {
+    return this.q || this.more
+      ? []
+      : builtInRows(this.t).map((r) => ({ ...r, how: KNEW }));
   }
 
   get noMatches() {
-    return this.filtering && this.groups.length === 0;
+    return !!this.q && this.found.length === 0;
   }
 
   get noMatchesText() {
-    const q = this.query.trim();
-    return q ? `Nothing matches “${q}”.` : "Nothing of this kind.";
+    return `Nothing matches “${this.q}”.`;
   }
 
-  groupView(g, searched) {
-    const open = searched || !this.closed[g.key];
-    const limit = searched ? g.rows.length : this.limits[g.key] || PAGE;
-    const left = [...g.patterns, ...g.rows].filter(
-      (r) => this.stateOf(r.id).mode !== "forgotten"
-    ).length;
-    const learned = g.patterns.length + g.rows.length > 0;
-    return {
-      key: g.key,
-      label: g.label,
-      count: left,
-      knew: g.knew,
-      hasKnew: g.knew.length > 0,
-      hasLearned: learned,
-      // Headed apart only beside what Shoresh already knew.
-      learnedHead: learned && g.knew.length > 0,
-      patterns: g.patterns.map((r) => this.patternView(r)),
-      open,
-      expanded: open ? "true" : "false",
-      panelId: `learned-${g.key}`,
-      chevronClass: open ? "chevron chevron_open" : "chevron",
-      rows: g.rows.slice(0, limit).map((r) => this.rowView(r)),
-      more: g.rows.length > limit,
-      moreLabel: `Show ${PAGE} more`
-    };
+  stateOf(key) {
+    return this.states[key] || {};
   }
 
-  stateOf(id) {
-    return this.states[id] || {};
+  /** What this visit can undo on a line: only the newest line its Forget or Change added. */
+  undoOf(line) {
+    if (!line.answerId) {
+      return null;
+    }
+    const undo = this.undos[`${line.kind}:${line.answerId}`];
+    if (!undo) {
+      return null;
+    }
+    const newest = this.lines.find(
+      (l) => l.kind === line.kind && l.answerId === line.answerId
+    );
+    return newest === line ? undo : null;
   }
 
-  patternView(r) {
-    const state = this.stateOf(r.id);
-    const forgotten = state.mode === "forgotten";
-    return {
-      ...r,
-      forgottenNow: forgotten,
-      idle: !forgotten,
-      flag: forgotten ? "Forgotten" : this.flashes[r.id] || r.flag,
-      dots: [0, 1, 2].map((i) => ({
-        key: `${r.id}:${i}`,
-        className: i < r.meter ? "dot dot_on" : "dot"
-      })),
-      forgetLabel: `Forget pattern ${r.title}`,
-      undoLabel: `Undo forgetting pattern ${r.title}`,
-      busy: !!state.pending,
-      forgetText:
-        state.pending === "forget" ? "Forgetting..." : "Forget pattern",
-      undoText: state.pending === "undo" ? "Undoing..." : "Undo",
-      error: state.error || "",
-      liClass: forgotten ? "row row_forgotten" : "row"
-    };
-  }
-
-  rowView(r) {
-    const state = this.stateOf(r.id);
-    const forgotten = state.mode === "forgotten";
+  lineView(line) {
+    const state = this.stateOf(line.key);
     const editing = state.mode === "editing";
-    const choice = state.choice ?? r.answer;
+    const undo = this.undoOf(line);
+    const answer = line.current ? line.answer : null;
+    const pattern = line.current ? line.patternNow : null;
+    const choice = state.choice ?? (answer ? answer.answer : null);
+    const busy = !!state.pending;
     return {
-      ...r,
-      forgottenNow: forgotten,
+      ...line,
+      liClass: line.flag ? "row row_past" : "row",
+      hasFlag: !!line.flag,
       editing,
-      idle: !forgotten && !editing,
-      flag: forgotten ? "Forgotten" : this.flashes[r.id] || "",
-      canChange: r.choices.length > 1,
-      changeLabel: `Change ${r.title}`,
-      forgetLabel: `Forget ${r.title}`,
-      undoLabel: `Undo forgetting ${r.title}`,
-      canUndoChange: !!this.changedFrom[r.id],
-      undoChangeLabel: `Undo changing ${r.title}`,
-      undoChangeText: state.pending === "undoChange" ? "Undoing..." : "Undo",
-      choiceViews: r.choices.map((c) => ({
-        ...c,
-        pressed: c.value === choice ? "true" : "false",
-        className:
-          c.value === choice ? "shoresh-item shoresh-raised" : "shoresh-item"
-      })),
-      canSave: choice !== r.answer,
-      busy: !!state.pending,
-      forgetText: state.pending === "forget" ? "Forgetting..." : "Forget",
-      saveText: state.pending === "change" ? "Saving..." : "Save",
+      // Change and Forget on the answer remembered now; Undo on what this visit just did.
+      canUndo: !!undo,
+      undoLabel: `${UNDO_WORDS[line.kind] || "Undo"} ${line.title}`,
       undoText: state.pending === "undo" ? "Undoing..." : "Undo",
-      error: state.error || "",
-      liClass: forgotten ? "row row_forgotten" : "row"
+      canChange: !!answer && !editing && answer.choices.length > 1,
+      changeLabel: `Change ${line.title}`,
+      canForget: !!(answer || pattern) && !editing,
+      forgetLabel: pattern
+        ? `Forget pattern ${line.title}`
+        : `Forget ${line.title}`,
+      forgetText:
+        state.pending === "forget"
+          ? "Forgetting..."
+          : pattern
+            ? "Forget pattern"
+            : "Forget",
+      hasActions: !!undo || !!answer || !!pattern,
+      isPattern: !!pattern,
+      progress: pattern ? pattern.progress : "",
+      patternFlag: pattern ? pattern.flag : "",
+      dots: pattern
+        ? [0, 1, 2].map((i) => ({
+            key: `${line.key}:${i}`,
+            className: i < pattern.meter ? "dot dot_on" : "dot"
+          }))
+        : [],
+      choiceViews: answer
+        ? answer.choices.map((c) => ({
+            ...c,
+            pressed: c.value === choice ? "true" : "false",
+            className:
+              c.value === choice
+                ? "shoresh-item shoresh-raised"
+                : "shoresh-item"
+          }))
+        : [],
+      canSave: !!answer && choice !== answer.answer,
+      saveText: state.pending === "change" ? "Saving..." : "Save",
+      busy,
+      error: state.error || ""
     };
   }
 
@@ -309,13 +299,8 @@ export default class ShoreshLearned extends LightningElement {
     this.query = event.target.value || "";
   }
 
-  handleKind(event) {
-    this.kind = event.target.value || "all";
-  }
-
   handleClear() {
     this.query = "";
-    this.kind = "all";
     this.focusAfter = '[data-id="search"]';
   }
 
@@ -323,222 +308,236 @@ export default class ShoreshLearned extends LightningElement {
     this.load();
   }
 
-  // ---------- groups ----------
-
-  handleToggle(event) {
-    const key = event.currentTarget.dataset.group;
-    this.closed = { ...this.closed, [key]: !this.closed[key] };
+  handleMore() {
+    this.limit += PAGE;
   }
 
-  handleMore(event) {
-    const key = event.currentTarget.dataset.group;
-    this.limits = { ...this.limits, [key]: (this.limits[key] || PAGE) + PAGE };
+  // ---------- a line ----------
+
+  lineOf(event) {
+    const key = event.currentTarget.dataset.line;
+    return this.lines.find((l) => l.key === key);
   }
 
-  // ---------- a row ----------
-
-  rowOf(event) {
-    const id = event.currentTarget.dataset.row;
-    return [...this.answers, ...this.patterns].find((r) => r.id === id);
-  }
-
-  setState(id, state) {
-    this.states = { ...this.states, [id]: state };
+  setState(key, state) {
+    this.states = { ...this.states, [key]: state };
   }
 
   handleChange(event) {
-    const row = this.rowOf(event);
-    this.setState(row.id, { mode: "editing", choice: row.answer });
-    this.focusAfter = `[data-choice-of="${row.id}"][aria-pressed="true"]`;
+    const line = this.lineOf(event);
+    if (!line) {
+      return;
+    }
+    this.setState(line.key, { mode: "editing", choice: line.answer.answer });
+    this.focusAfter = `[data-choice-of="${line.key}"][aria-pressed="true"]`;
   }
 
   handleChoice(event) {
-    const row = this.rowOf(event);
-    this.setState(row.id, {
-      ...this.stateOf(row.id),
+    const line = this.lineOf(event);
+    if (!line) {
+      return;
+    }
+    this.setState(line.key, {
+      ...this.stateOf(line.key),
       choice: event.currentTarget.dataset.value
     });
   }
 
   handleCancel(event) {
-    this.closeEditor(this.rowOf(event));
+    this.closeEditor(this.lineOf(event));
   }
 
   handleEditorKey(event) {
     if (event.key === "Escape") {
-      this.closeEditor(this.rowOf(event));
+      this.closeEditor(this.lineOf(event));
     }
   }
 
-  closeEditor(row) {
-    this.setState(row.id, {});
-    this.focusAfter = `[data-id="change"][data-row="${row.id}"]`;
+  closeEditor(line) {
+    this.setState(line.key, {});
+    this.focusAfter = `[data-id="change"][data-line="${line.key}"]`;
   }
 
+  /** Change adds a line, newest, with Undo; the line it replaced stays, marked Updated. */
   handleSave(event) {
-    const row = this.rowOf(event);
-    const answer = this.stateOf(row.id).choice;
-    this.write(row, "change", () =>
-      changeLearned({ campId: this.campId, answerId: row.id, answer })
-    ).then((newId) => {
-      if (newId) {
-        this.flashes = { ...this.flashes, [newId]: "Updated" };
-        this.changedFrom = { ...this.changedFrom, [newId]: row.id };
-        this.announcement = "Updated.";
-        this.load(() => {
-          this.focusAfter = `[data-id="undo-change"][data-row="${newId}"]`;
-        });
-      }
-    });
-  }
-
-  /** Undo of a Change: the answer it replaced comes back, with who answered it and when. */
-  handleUndoChange(event) {
-    const row = this.rowOf(event);
-    const oldId = this.changedFrom[row.id];
-    this.write(row, "undoChange", () =>
-      undoChangeLearned({ campId: this.campId, newId: row.id, oldId })
-    ).then((done) => {
-      if (done) {
-        const changedFrom = { ...this.changedFrom };
-        delete changedFrom[row.id];
-        this.changedFrom = changedFrom;
-        this.flashes = { ...this.flashes, [oldId]: "Changed back" };
-        this.announcement = "Changed back.";
-        this.load(() => {
-          this.setState(oldId, {});
-          this.focusAfter = `[data-id="change"][data-row="${oldId}"]`;
-        });
-      }
-    });
-  }
-
-  handleForget(event) {
-    const row = this.rowOf(event);
-    if (row.pattern) {
-      this.forgetPattern(row);
+    const line = this.lineOf(event);
+    if (!line) {
       return;
     }
-    this.write(row, "forget", () =>
-      forgetLearned({ campId: this.campId, answerId: row.id })
+    const answer = this.stateOf(line.key).choice;
+    this.write(line, "change", () =>
+      changeLearned({ campId: this.campId, answerId: line.answerId, answer })
+    ).then((newId) => {
+      if (newId) {
+        this.setState(line.key, {});
+        this.undos = {
+          ...this.undos,
+          [`changed:${newId}`]: { kind: "change", newId, oldId: line.answerId }
+        };
+        this.say("Updated.");
+        this.load(() => this.focusUndo("changed", newId));
+      }
+    });
+  }
+
+  /** Forget adds a "Forgotten by you" line with Undo (Forget pattern too: its answers stay). */
+  handleForget(event) {
+    const line = this.lineOf(event);
+    if (!line) {
+      return;
+    }
+    if (line.patternNow) {
+      this.forgetPattern(line);
+      return;
+    }
+    this.write(line, "forget", () =>
+      forgetLearned({ campId: this.campId, answerId: line.answerId })
     ).then((found) => {
       if (found) {
-        this.setState(row.id, { mode: "forgotten" });
-        this.announcement = `Forgotten. ${row.forgotten}`;
-        this.focusAfter = `[data-id="undo"][data-row="${row.id}"]`;
+        this.undos = {
+          ...this.undos,
+          [`forgotten:${line.answerId}`]: {
+            kind: "forget",
+            answerId: line.answerId
+          }
+        };
+        this.say(`Forgotten. ${line.answer.forgotten}`);
+        this.load(() => this.focusUndo("forgotten", line.answerId));
+      }
+    });
+  }
+
+  forgetPattern(line) {
+    const { template, antecedent } = line;
+    const forgotten = line.patternNow.forgotten;
+    this.write(line, "forget", () =>
+      forgetLearnedPattern({ campId: this.campId, template, antecedent })
+    ).then((ids) => {
+      if (ids && ids.length) {
+        this.undos = {
+          ...this.undos,
+          [`forgotten:${ids[0]}`]: { kind: "pattern", ids }
+        };
+        this.say(`Forgotten. ${forgotten}`);
+        this.load(() => this.focusUndo("forgotten", ids[0]));
+      }
+    });
+  }
+
+  focusUndo(kind, answerId) {
+    const line = this.lines.find(
+      (l) => l.kind === kind && l.answerId === answerId
+    );
+    if (line) {
+      this.focusAfter = `[data-id="undo"][data-line="${line.key}"]`;
+    }
+  }
+
+  /**
+   * Undo: the answer (or pattern) back as it was, with who answered it and when; it adds an
+   * "Undone by you" line. Never over a newer answer (MEMO-4.3): the latest shows instead.
+   */
+  handleUndo(event) {
+    const line = this.lineOf(event);
+    if (!line) {
+      return;
+    }
+    const undo = this.undoOf(line);
+    if (!undo) {
+      return;
+    }
+    const campId = this.campId;
+    let call;
+    if (undo.kind === "change") {
+      call = () =>
+        undoChangeLearned({ campId, newId: undo.newId, oldId: undo.oldId });
+    } else if (undo.kind === "forget") {
+      call = () => restoreLearned({ campId, answerId: undo.answerId });
+    } else {
+      const [newId, oldId] = undo.ids;
+      call = () => {
+        return oldId
+          ? undoChangeLearned({ campId, newId, oldId })
+          : forgetLearned({ campId, answerId: newId });
+      };
+    }
+    this.write(line, "undo", call).then((done) => {
+      if (done) {
+        const undos = { ...this.undos };
+        delete undos[`${line.kind}:${line.answerId}`];
+        this.undos = undos;
+        this.say(
+          undo.kind === "change" ? "Changed back." : "Remembered again."
+        );
+        this.load(() => this.focusNewest(line));
       }
     });
   }
 
   /**
-   * Forget pattern: it stops suggesting; its answers stay (MEMO-4.5). The row stays, flagged,
-   * with Undo until the screen is next opened.
+   * The cursor to the line that acts on what was undone (its Change, else its Forget), else the
+   * heading: the answer's line, or the pattern's newest step.
    */
-  forgetPattern(row) {
-    this.write(row, "forget", () =>
-      forgetLearnedPattern({
-        campId: this.campId,
-        template: row.template,
-        antecedent: row.antecedent
-      })
-    ).then((ids) => {
-      if (ids && ids.length) {
-        this.setState(row.id, { mode: "forgotten", undo: ids });
-        this.announcement = `Forgotten. ${row.forgotten}`;
-        this.focusAfter = `[data-id="undo"][data-row="${row.id}"]`;
-      }
-    });
-  }
-
-  /** Undo of Forget pattern: the marker it saved goes, and an earlier one comes back. */
-  undoPattern(row) {
-    const [newId, oldId] = this.stateOf(row.id).undo || [];
-    this.write(row, "undo", () => {
-      return oldId
-        ? undoChangeLearned({ campId: this.campId, newId, oldId })
-        : forgetLearned({ campId: this.campId, answerId: newId });
-    }).then((done) => {
-      if (done) {
-        this.announcement = "Remembered again.";
-        this.load(() => {
-          this.setState(row.id, {});
-          this.flashes = { ...this.flashes, [row.id]: "Remembered again" };
-          this.focusAfter = `[data-id="forget"][data-row="${row.id}"]`;
-        });
-      }
-    });
-  }
-
-  handleUndo(event) {
-    const row = this.rowOf(event);
-    if (row.pattern) {
-      this.undoPattern(row);
-      return;
-    }
-    this.write(row, "undo", () =>
-      restoreLearned({ campId: this.campId, answerId: row.id })
-    ).then((found) => {
-      if (found) {
-        this.announcement = "Remembered again.";
-        this.load(() => this.rememberedAgain(row));
-      }
-    });
-  }
-
-  /** Undo brings the answer back (usually the same record): flagged and given the cursor. */
-  rememberedAgain(row) {
-    const back = this.answers.find((r) => r.question === row.question);
-    if (back) {
-      this.setState(back.id, {});
-      this.flashes = { ...this.flashes, [back.id]: "Remembered again" };
-      this.focusAfter = `[data-id="forget"][data-row="${back.id}"]`;
-    }
+  focusNewest(undone) {
+    const line = this.lines.find(
+      (l) =>
+        l.current &&
+        (undone.pattern
+          ? l.pattern === undone.pattern
+          : l.question === undone.question)
+    );
+    this.focusAfter = line
+      ? `[data-line="${line.key}"] [data-id="change"], [data-line="${line.key}"] [data-id="forget"]`
+      : "[data-heading]";
   }
 
   handleRetry(event) {
-    const row = this.rowOf(event);
-    const retry = this.stateOf(row.id).retry;
+    const line = this.lineOf(event);
+    if (!line) {
+      return;
+    }
+    const retry = this.stateOf(line.key).retry;
     if (retry) {
       retry();
     }
   }
 
   /**
-   * One write for a row, its button saying what it is doing; a refusal stays on the row with
-   * Try again. Resolves true when done, false when the answer was already gone or changed
-   * elsewhere (the latest is read and shown), undefined when it failed.
+   * One write for a line, its button saying what it is doing; a refusal stays on the line with
+   * Try again. Resolves the answer when done, false when it was already gone or changed elsewhere
+   * (the latest is read and shown), undefined when it failed.
    */
-  async write(row, pending, call) {
-    const before = this.stateOf(row.id);
-    this.setState(row.id, { ...before, pending, error: "", retry: null });
+  async write(line, pending, call) {
+    const before = this.stateOf(line.key);
+    this.setState(line.key, { ...before, pending, error: "", retry: null });
     try {
       const found = await call();
-      this.setState(row.id, { ...before, pending: null });
+      this.setState(line.key, { ...before, pending: null });
       if (!found) {
         this.notice = STALE;
-        this.announcement = STALE;
-        this.load(() => {});
+        this.say(STALE);
+        this.load(() => {
+          this.focusAfter = "[data-heading]";
+        });
       }
       return found;
     } catch (error) {
-      this.setState(row.id, {
+      this.setState(line.key, {
         ...before,
         pending: null,
         error: failed(NOT_SAVED, error),
-        retry: () => this.retryOf(row, pending)
+        retry: () => this.retryOf(line, pending)
       });
       return undefined;
     }
   }
 
-  retryOf(row, pending) {
-    const fake = { currentTarget: { dataset: { row: row.id } } };
+  retryOf(line, pending) {
+    const fake = { currentTarget: { dataset: { line: line.key } } };
     if (pending === "change") {
       this.handleSave(fake);
     } else if (pending === "forget") {
       this.handleForget(fake);
-    } else if (pending === "undoChange") {
-      this.handleUndoChange(fake);
     } else {
       this.handleUndo(fake);
     }

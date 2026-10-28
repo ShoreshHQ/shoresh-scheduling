@@ -13,7 +13,14 @@ public with sharing class LearnedUndo {
   /** Undo of a Forget. False when it can't come back (see above). */
   public static Boolean forget(Id campId, Id answerId) {
     ImportAnswer__c old = forgotten(campId, answerId);
-    return old != null && undeleted(old.Id);
+    if (old == null) {
+      return false;
+    }
+    Savepoint before = Database.setSavepoint();
+    if (!undeleted(old.Id)) {
+      return false;
+    }
+    return kept(old, before);
   }
 
   /**
@@ -38,6 +45,19 @@ public with sharing class LearnedUndo {
       Database.rollback(before);
       return false;
     }
+    return kept(old, before);
+  }
+
+  /** The Undo kept as history (repo ADR 0023): the answer back, by whoever pressed Undo. */
+  private static Boolean kept(ImportAnswer__c old, Savepoint before) {
+    try {
+      LearnedEvents.save(
+        new List<LearnedEvent__c>{ LearnedEvents.of(LearnedEvents.UNDONE, old) }
+      );
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
     return true;
   }
 
@@ -50,7 +70,7 @@ public with sharing class LearnedUndo {
   /** This camp's answer in the recycle bin, or null. */
   private static ImportAnswer__c forgotten(Id campId, Id answerId) {
     List<ImportAnswer__c> rows = [
-      SELECT Id
+      SELECT Id, Camp__c, QuestionKey__c, Answer__c, Shape__c, FromSuggestion__c
       FROM ImportAnswer__c
       WHERE Id = :answerId AND Camp__c = :campId AND IsDeleted = TRUE
       WITH USER_MODE

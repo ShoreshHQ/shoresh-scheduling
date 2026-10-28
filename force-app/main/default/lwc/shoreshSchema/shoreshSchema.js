@@ -119,6 +119,14 @@ import importFiles from "@salesforce/schema/Import__c.Files__c";
 import importOpen from "@salesforce/schema/Import__c.Open__c";
 import importSeason from "@salesforce/schema/Import__c.Season__c";
 import importUndoneAt from "@salesforce/schema/Import__c.UndoneAt__c";
+import learnedEventObject from "@salesforce/schema/LearnedEvent__c";
+import learnedEventAnswerId from "@salesforce/schema/LearnedEvent__c.AnswerId__c";
+import learnedEventAnswer from "@salesforce/schema/LearnedEvent__c.Answer__c";
+import learnedEventCamp from "@salesforce/schema/LearnedEvent__c.Camp__c";
+import learnedEventFromSuggestion from "@salesforce/schema/LearnedEvent__c.FromSuggestion__c";
+import learnedEventQuestionKey from "@salesforce/schema/LearnedEvent__c.QuestionKey__c";
+import learnedEventShape from "@salesforce/schema/LearnedEvent__c.Shape__c";
+import learnedEventWhat from "@salesforce/schema/LearnedEvent__c.What__c";
 import linkedChoiceTimeObject from "@salesforce/schema/LinkedChoiceTime__c";
 import linkedChoiceTimeLinkedChoice from "@salesforce/schema/LinkedChoiceTime__c.LinkedChoice__c";
 import linkedChoiceTimeTimeBlock from "@salesforce/schema/LinkedChoiceTime__c.TimeBlock__c";
@@ -301,6 +309,7 @@ export const OBJECT = Object.freeze({
   Group: groupObject.objectApiName,
   ImportAnswer: importAnswerObject.objectApiName,
   Import: importObject.objectApiName,
+  LearnedEvent: learnedEventObject.objectApiName,
   LinkedChoiceTime: linkedChoiceTimeObject.objectApiName,
   LinkedChoice: linkedChoiceObject.objectApiName,
   LocationType: locationTypeObject.objectApiName,
@@ -445,6 +454,15 @@ export const FIELD = Object.freeze({
     Open: importOpen.fieldApiName,
     Season: importSeason.fieldApiName,
     UndoneAt: importUndoneAt.fieldApiName
+  }),
+  LearnedEvent: Object.freeze({
+    AnswerId: learnedEventAnswerId.fieldApiName,
+    Answer: learnedEventAnswer.fieldApiName,
+    Camp: learnedEventCamp.fieldApiName,
+    FromSuggestion: learnedEventFromSuggestion.fieldApiName,
+    QuestionKey: learnedEventQuestionKey.fieldApiName,
+    Shape: learnedEventShape.fieldApiName,
+    What: learnedEventWhat.fieldApiName
   }),
   LinkedChoiceTime: Object.freeze({
     LinkedChoice: linkedChoiceTimeLinkedChoice.fieldApiName,
@@ -684,6 +702,9 @@ export const PARENT = Object.freeze({
   Import: Object.freeze({
     Season: FIELD.Import.Season.replace(/__c$/, "__r")
   }),
+  LearnedEvent: Object.freeze({
+    Camp: FIELD.LearnedEvent.Camp.replace(/__c$/, "__r")
+  }),
   LinkedChoiceTime: Object.freeze({
     LinkedChoice: FIELD.LinkedChoiceTime.LinkedChoice.replace(/__c$/, "__r"),
     TimeBlock: FIELD.LinkedChoiceTime.TimeBlock.replace(/__c$/, "__r")
@@ -789,6 +810,7 @@ export const CHILDREN = Object.freeze({
   Camp: Object.freeze({
     CampLabels: `${NAMESPACE_PREFIX}CampLabels__r`,
     ImportAnswers: `${NAMESPACE_PREFIX}ImportAnswers__r`,
+    LearnedEvents: `${NAMESPACE_PREFIX}LearnedEvents__r`,
     Seasons: `${NAMESPACE_PREFIX}Seasons__r`
   }),
   Camper: Object.freeze({

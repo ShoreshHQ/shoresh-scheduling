@@ -35,7 +35,7 @@ export default class ShoreshMenu extends LightningElement {
     return (this.sections || []).map((section) => ({
       ...section,
       // Entries under a section title sit indented under it; Roots sits on its own.
-      // The foot section (What Shoresh has learned) sits at the bottom, under a hairline.
+      // The foot section (Settings) sits at the bottom, under a hairline.
       sectionClass: this.sectionClass(section),
       // A title that opens a screen (section.door): raised while its screen is shown, quieter
       // and saying why while it can't open, as an entry is.

@@ -1,11 +1,10 @@
 <template>
-  <!-- The rail (the setup screens' grammar): how many answers are remembered and, past 15, the
-       search and the kind filter. The screen's name is read out; the menu shows it. -->
+  <!-- The rail (the setup screens' grammar): the list's name, how many answers are remembered
+       and, past 15 lines, the search. The screen's name (Settings) is read out; the menu shows it. -->
+  <h2 class="slds-assistive-text" tabindex="-1" data-heading>Settings</h2>
   <div class="rail" data-id="rail">
-    <h2 class="slds-assistive-text" tabindex="-1" data-heading>
-      What Shoresh has learned
-    </h2>
-    <template lwc:if={isReady}>
+    <h3 class="rail-title" data-id="list-title">What Shoresh has learned</h3>
+    <template lwc:if={hasCount}>
       <span class="rail-count" data-id="count"
         ><b class="shoresh-num">{count}</b> {countWord}</span
       >
@@ -14,28 +13,12 @@
         <input
           type="search"
           class="well search"
-          aria-label="Search answers"
-          placeholder="Search answers"
+          aria-label="Search what Shoresh has learned"
+          placeholder="Search"
           value={query}
           data-id="search"
           oninput={handleSearch}
         />
-        <select
-          class="well kind"
-          aria-label="Kind"
-          data-id="kind"
-          onchange={handleKind}
-        >
-          <template for:each={kindOptions} for:item="option">
-            <option
-              key={option.value}
-              value={option.value}
-              selected={option.selected}
-            >
-              {option.label}
-            </option>
-          </template>
-        </select>
       </template>
     </template>
   </div>
@@ -68,7 +51,7 @@
         data-id="empty"
       ></c-shoresh-empty-state>
     </template>
-    <template lwc:if={showsGroups}>
+    <template lwc:if={isReady}>
       <template lwc:if={notice}>
         <p class="note" data-id="notice">{notice}</p>
       </template>
@@ -85,281 +68,176 @@
           </button>
         </p>
       </template>
-      <template for:each={groups} for:item="group">
-        <section key={group.key} class="group" data-group={group.key}>
-          <h3 class="group-head">
-            <button
-              type="button"
-              class="group-toggle"
-              aria-expanded={group.expanded}
-              aria-controls={group.panelId}
-              data-group={group.key}
-              data-id="group-toggle"
-              onclick={handleToggle}
-            >
-              <span>{group.label}</span>
-              <template lwc:if={group.hasLearned}>
-                <span class="group-count shoresh-num" data-id="group-count"
-                  >{group.count}</span
-                >
+      <ul class="rows" data-id="lines">
+        <template for:each={shown} for:item="line">
+          <li
+            key={line.key}
+            class={line.liClass}
+            data-line={line.key}
+            data-kind={line.kind}
+          >
+            <div class="line1">
+              <span class="title" data-id="title">{line.title}</span>
+              <template lwc:if={line.hasFlag}>
+                <span class="flag" data-id="flag">{line.flag}</span>
               </template>
-              <svg
-                class={group.chevronClass}
-                viewBox="0 0 12 12"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M4.5 2.5 8 6l-3.5 3.5"></path>
-              </svg>
-            </button>
-          </h3>
-          <div id={group.panelId} class="panel">
-            <template lwc:if={group.open}>
-              <template lwc:if={group.hasKnew}>
-                <h4 class="sub" data-id="knew-head">Shoresh already knew</h4>
-                <ul class="knew" data-id="knew">
-                  <template for:each={group.knew} for:item="rule">
-                    <li key={rule.id} class="rule" data-rule={rule.rule}>
-                      {rule.title}
-                    </li>
-                  </template>
-                </ul>
+              <template lwc:elseif={line.isPattern}>
+                <span class="flag" data-id="flag">{line.patternFlag}</span>
               </template>
-              <template lwc:if={group.learnedHead}>
-                <h4 class="sub" data-id="learned-head">Learned from you</h4>
-              </template>
-              <ul class="rows">
-                <template for:each={group.patterns} for:item="row">
-                  <li
-                    key={row.id}
-                    class={row.liClass}
-                    data-row={row.id}
-                    data-pattern={row.template}
-                  >
-                    <div class="line1">
-                      <span class="title" data-id="title">{row.title}</span>
-                      <span class="flag" data-id="flag">{row.flag}</span>
-                    </div>
-                    <template lwc:if={row.error}>
-                      <p class="row-error" role="alert" data-id="row-error">
-                        {row.error}
-                        <button
-                          type="button"
-                          class="shoresh-item link"
-                          data-row={row.id}
-                          data-id="retry"
-                          onclick={handleRetry}
-                        >
-                          Try again
-                        </button>
-                      </p>
-                    </template>
-                    <div class="line2 line_progress">
-                      <span class="meter" aria-hidden="true">
-                        <template for:each={row.dots} for:item="dot">
-                          <i key={dot.key} class={dot.className}></i>
-                        </template>
-                      </span>
-                      <span class="meta" data-id="progress"
-                        >{row.progress}</span
-                      >
-                    </div>
-                    <div class="line2">
-                      <template lwc:if={row.forgottenNow}>
-                        <span class="meta" data-id="forgotten"
-                          >{row.forgotten}</span
-                        >
-                        <button
-                          type="button"
-                          class="shoresh-item link"
-                          aria-label={row.undoLabel}
-                          aria-busy={row.busy}
-                          disabled={row.busy}
-                          data-row={row.id}
-                          data-id="undo"
-                          onclick={handleUndo}
-                        >
-                          {row.undoText}
-                        </button>
-                      </template>
-                      <template lwc:else>
-                        <span class="meta" data-id="who">{row.who}</span>
-                        <span class="actions">
-                          <button
-                            type="button"
-                            class="shoresh-item link link_forget"
-                            aria-label={row.forgetLabel}
-                            aria-busy={row.busy}
-                            disabled={row.busy}
-                            data-row={row.id}
-                            data-id="forget"
-                            onclick={handleForget}
-                          >
-                            {row.forgetText}
-                          </button>
-                        </span>
-                      </template>
-                    </div>
-                  </li>
-                </template>
-                <template for:each={group.rows} for:item="row">
-                  <li key={row.id} class={row.liClass} data-row={row.id}>
-                    <div class="line1">
-                      <span class="title" data-id="title">{row.title}</span>
-                      <template lwc:if={row.flag}>
-                        <span class="flag" data-id="flag">{row.flag}</span>
-                      </template>
-                    </div>
-                    <template lwc:if={row.error}>
-                      <p class="row-error" role="alert" data-id="row-error">
-                        {row.error}
-                        <button
-                          type="button"
-                          class="shoresh-item link"
-                          data-row={row.id}
-                          data-id="retry"
-                          onclick={handleRetry}
-                        >
-                          Try again
-                        </button>
-                      </p>
-                    </template>
-                    <div class="line2">
-                      <template lwc:if={row.forgottenNow}>
-                        <span class="meta" data-id="forgotten"
-                          >{row.forgotten}</span
-                        >
-                        <button
-                          type="button"
-                          class="shoresh-item link"
-                          aria-label={row.undoLabel}
-                          aria-busy={row.busy}
-                          disabled={row.busy}
-                          data-row={row.id}
-                          data-id="undo"
-                          onclick={handleUndo}
-                        >
-                          {row.undoText}
-                        </button>
-                      </template>
-                      <template lwc:else>
-                        <span class="meta" data-id="who">{row.who}</span>
-                        <template lwc:if={row.idle}>
-                          <span class="actions">
-                            <template lwc:if={row.canUndoChange}>
-                              <button
-                                type="button"
-                                class="shoresh-item link"
-                                aria-label={row.undoChangeLabel}
-                                aria-busy={row.busy}
-                                disabled={row.busy}
-                                data-row={row.id}
-                                data-id="undo-change"
-                                onclick={handleUndoChange}
-                              >
-                                {row.undoChangeText}
-                              </button>
-                            </template>
-                            <template lwc:if={row.canChange}>
-                              <button
-                                type="button"
-                                class="shoresh-item link"
-                                aria-label={row.changeLabel}
-                                data-row={row.id}
-                                data-id="change"
-                                onclick={handleChange}
-                              >
-                                Change
-                              </button>
-                            </template>
-                            <button
-                              type="button"
-                              class="shoresh-item link link_forget"
-                              aria-label={row.forgetLabel}
-                              aria-busy={row.busy}
-                              disabled={row.busy}
-                              data-row={row.id}
-                              data-id="forget"
-                              onclick={handleForget}
-                            >
-                              {row.forgetText}
-                            </button>
-                          </span>
-                        </template>
-                      </template>
-                    </div>
-                    <template lwc:if={row.editing}>
-                      <div
-                        class="editor"
-                        role="group"
-                        aria-label={row.changeLabel}
-                        data-row={row.id}
-                        data-id="editor"
-                        onkeydown={handleEditorKey}
-                      >
-                        <span class="choices">
-                          <template
-                            for:each={row.choiceViews}
-                            for:item="choice"
-                          >
-                            <button
-                              key={choice.value}
-                              type="button"
-                              class={choice.className}
-                              aria-pressed={choice.pressed}
-                              data-row={row.id}
-                              data-choice-of={row.id}
-                              data-value={choice.value}
-                              data-id="choice"
-                              onclick={handleChoice}
-                            >
-                              {choice.label}
-                            </button>
-                          </template>
-                        </span>
-                        <span class="actions">
-                          <template lwc:if={row.canSave}>
-                            <button
-                              type="button"
-                              class="shoresh-item shoresh-item_primary"
-                              aria-busy={row.busy}
-                              disabled={row.busy}
-                              data-row={row.id}
-                              data-id="save"
-                              onclick={handleSave}
-                            >
-                              {row.saveText}
-                            </button>
-                          </template>
-                          <button
-                            type="button"
-                            class="shoresh-item link"
-                            data-row={row.id}
-                            data-id="cancel"
-                            onclick={handleCancel}
-                          >
-                            Cancel
-                          </button>
-                        </span>
-                      </div>
-                    </template>
-                  </li>
-                </template>
-              </ul>
-              <template lwc:if={group.more}>
+            </div>
+            <template lwc:if={line.error}>
+              <p class="row-error" role="alert" data-id="row-error">
+                {line.error}
                 <button
                   type="button"
                   class="shoresh-item link"
-                  data-group={group.key}
-                  data-id="more"
-                  onclick={handleMore}
+                  data-line={line.key}
+                  data-id="retry"
+                  onclick={handleRetry}
                 >
-                  {group.moreLabel}
+                  Try again
                 </button>
-              </template>
+              </p>
             </template>
-          </div>
-        </section>
+            <template lwc:if={line.isPattern}>
+              <div class="line2 line_progress">
+                <span class="meter" aria-hidden="true">
+                  <template for:each={line.dots} for:item="dot">
+                    <i key={dot.key} class={dot.className}></i>
+                  </template>
+                </span>
+                <span class="meta" data-id="progress">{line.progress}</span>
+              </div>
+            </template>
+            <div class="line2">
+              <span class="meta"
+                ><span data-id="how">{line.how}</span
+                ><template lwc:if={line.when}
+                  ><span aria-hidden="true"> · </span
+                  ><span class="shoresh-num" data-id="when"
+                    >{line.when}</span
+                  ></template
+                ></span
+              >
+              <template lwc:if={line.hasActions}>
+                <span class="actions">
+                  <template lwc:if={line.canUndo}>
+                    <button
+                      type="button"
+                      class="shoresh-item link"
+                      aria-label={line.undoLabel}
+                      aria-busy={line.busy}
+                      disabled={line.busy}
+                      data-line={line.key}
+                      data-id="undo"
+                      onclick={handleUndo}
+                    >
+                      {line.undoText}
+                    </button>
+                  </template>
+                  <template lwc:if={line.canChange}>
+                    <button
+                      type="button"
+                      class="shoresh-item link"
+                      aria-label={line.changeLabel}
+                      data-line={line.key}
+                      data-id="change"
+                      onclick={handleChange}
+                    >
+                      Change
+                    </button>
+                  </template>
+                  <template lwc:if={line.canForget}>
+                    <button
+                      type="button"
+                      class="shoresh-item link link_forget"
+                      aria-label={line.forgetLabel}
+                      aria-busy={line.busy}
+                      disabled={line.busy}
+                      data-line={line.key}
+                      data-id="forget"
+                      onclick={handleForget}
+                    >
+                      {line.forgetText}
+                    </button>
+                  </template>
+                </span>
+              </template>
+            </div>
+            <template lwc:if={line.editing}>
+              <div
+                class="editor"
+                role="group"
+                aria-label={line.changeLabel}
+                data-line={line.key}
+                data-id="editor"
+                onkeydown={handleEditorKey}
+              >
+                <span class="choices">
+                  <template for:each={line.choiceViews} for:item="choice">
+                    <button
+                      key={choice.value}
+                      type="button"
+                      class={choice.className}
+                      aria-pressed={choice.pressed}
+                      data-line={line.key}
+                      data-choice-of={line.key}
+                      data-value={choice.value}
+                      data-id="choice"
+                      onclick={handleChoice}
+                    >
+                      {choice.label}
+                    </button>
+                  </template>
+                </span>
+                <span class="actions">
+                  <template lwc:if={line.canSave}>
+                    <button
+                      type="button"
+                      class="shoresh-item shoresh-item_primary"
+                      aria-busy={line.busy}
+                      disabled={line.busy}
+                      data-line={line.key}
+                      data-id="save"
+                      onclick={handleSave}
+                    >
+                      {line.saveText}
+                    </button>
+                  </template>
+                  <button
+                    type="button"
+                    class="shoresh-item link"
+                    data-line={line.key}
+                    data-id="cancel"
+                    onclick={handleCancel}
+                  >
+                    Cancel
+                  </button>
+                </span>
+              </div>
+            </template>
+          </li>
+        </template>
+        <template for:each={knew} for:item="rule">
+          <li key={rule.id} class="row row_knew" data-rule={rule.rule}>
+            <div class="line1">
+              <span class="title" data-id="title">{rule.title}</span>
+            </div>
+            <div class="line2">
+              <span class="meta" data-id="how">{rule.how}</span>
+            </div>
+          </li>
+        </template>
+      </ul>
+      <template lwc:if={more}>
+        <button
+          type="button"
+          class="shoresh-item link"
+          data-id="more"
+          onclick={handleMore}
+        >
+          {moreLabel}
+        </button>
       </template>
     </template>
   </div>

@@ -95,14 +95,17 @@ describe("c-shoresh-menu", () => {
       "Manual Build",
       "Elective seats",
       "Saved versions",
-      "What Shoresh has learned"
+      "Settings"
     ]);
   });
 
-  it("puts What Shoresh has learned at the foot, as the desktop's footer link", async () => {
+  // MEMO-7.1
+  it("puts Settings at the foot, as the desktop's footer link: it opens What Shoresh has learned", async () => {
     const element = await render(false, null);
     const foot = element.shadowRoot.querySelector(".section_foot");
-    expect(foot.querySelector("[data-item]").dataset.item).toBe("learned");
+    const items = [...foot.querySelectorAll("[data-item]")];
+    expect(items.map((i) => i.dataset.item)).toEqual(["learned"]);
+    expect(items[0].textContent).toBe("Settings");
     expect(foot.querySelector("h2")).toBeNull();
   });
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >One thing that happened to what a camp's imports remember, kept so "What Shoresh has learned" can list it as history: an answer given in an import, changed, forgotten, undone, or filled in on its own. Who and when are the record's Created By and date. Never edited (repo docs/adr/0023).</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Learned Event</label>
+    <nameField>
+        <displayFormat>LE-{000000}</displayFormat>
+        <label>Learned Event Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Learned Events</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

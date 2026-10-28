@@ -115,6 +115,11 @@ public with sharing class LearnedAnswers {
         throw new ShoreshException('Refused.');
       }
       UserModeWrites.save(new List<ImportAnswer__c>{ replaced });
+      LearnedEvents.save(
+        new List<LearnedEvent__c>{
+          LearnedEvents.of(LearnedEvents.CHANGED, replaced)
+        }
+      );
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
@@ -122,13 +127,31 @@ public with sharing class LearnedAnswers {
     return replaced.Id;
   }
 
-  /** Forgets one answer: the next import asks again. False when it was already gone. */
+  /**
+   * Forgets one answer: the next import asks again. False when it was already gone. A forgotten
+   * pattern's marker deleted is the Undo of Forget pattern, and is kept as that (repo ADR 0023).
+   */
   public static Boolean forget(Id campId, Id answerId) {
     ImportAnswer__c row = rowOf(campId, answerId);
     if (row == null) {
       return false;
     }
-    Database.delete(row, true, AccessLevel.USER_MODE);
+    LearnedEvent__c event = row.QuestionKey__c.startsWith(PATTERN)
+      ? LearnedEvents.of(
+          campId,
+          LearnedEvents.UNDONE,
+          row.QuestionKey__c,
+          row.Answer__c
+        )
+      : LearnedEvents.of(LearnedEvents.FORGOTTEN, row);
+    Savepoint before = Database.setSavepoint();
+    try {
+      Database.delete(row, true, AccessLevel.USER_MODE);
+      LearnedEvents.save(new List<LearnedEvent__c>{ event });
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
     return true;
   }
 
@@ -171,6 +194,11 @@ public with sharing class LearnedAnswers {
     try {
       Database.delete(before, true, AccessLevel.USER_MODE);
       UserModeWrites.save(new List<ImportAnswer__c>{ marker });
+      LearnedEvents.save(
+        new List<LearnedEvent__c>{
+          LearnedEvents.of(LearnedEvents.FORGOTTEN, marker)
+        }
+      );
     } catch (Exception e) {
       Database.rollback(start);
       throw e;
@@ -199,7 +227,14 @@ public with sharing class LearnedAnswers {
 
   private static ImportAnswer__c rowOf(Id campId, Id answerId) {
     List<ImportAnswer__c> rows = [
-      SELECT Id, Key__c, QuestionKey__c, Shape__c
+      SELECT
+        Id,
+        Camp__c,
+        Key__c,
+        QuestionKey__c,
+        Answer__c,
+        Shape__c,
+        FromSuggestion__c
       FROM ImportAnswer__c
       WHERE Id = :answerId AND Camp__c = :campId
       WITH USER_MODE

@@ -558,3 +558,15 @@ export function withLearning(remember, cards, suggestions, auto = {}) {
       };
     });
 }
+
+/**
+ * The answers Shoresh filled in on its own that this import saves (MEMO-5.1, MEMO-7.5): each
+ * { key, answer }, in key order. Never remembered as anyone's answer (withLearning leaves them
+ * out); sent only so "What Shoresh has learned" can list "Auto-applied in the ... import".
+ */
+export function autoAppliedIn(remember, auto = {}) {
+  return (remember || [])
+    .filter((e) => auto[e.key] && auto[e.key].value === e.answer)
+    .map((e) => ({ key: e.key, answer: e.answer }))
+    .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+}

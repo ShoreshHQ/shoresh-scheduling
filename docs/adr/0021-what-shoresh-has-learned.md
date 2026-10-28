@@ -1,6 +1,6 @@
 # 0021: What Shoresh has learned
 
-Status: proposed (2026-10-26). PR 1 #160 the screen (answers only); PR 2 #161 the who-and-when words in the import cards and an import's different answer replacing the record (choice 9); PR 3 the pattern layer (choices 10-15). Spec: the desktop's
+Status: proposed (2026-10-26); the screen's grouped view is replaced by ADR 0023 (a running list under Settings). PR 1 #160 the screen (answers only); PR 2 #161 the who-and-when words in the import cards and an import's different answer replacing the record (choice 9); PR 3 the pattern layer (choices 10-15). Spec: the desktop's
 `src/screens/LearnedScreen.jsx`, `src/screens/learned/LearnedRow.jsx`, `src/ingest/learnedView.js`
 and `docs/work/specs/2026-10-11-what-shoresh-has-learned-view.md`. Plan and decisions: wiki
 `projects/shoresh-sf-learned-plan.md` (binding). Builds on ADR 0006 §19-21 (remembered answers,
