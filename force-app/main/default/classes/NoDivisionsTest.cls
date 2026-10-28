@@ -152,4 +152,26 @@ private class NoDivisionsTest {
       }
     }
   }
+
+  // DIV-1.1
+  @IsTest
+  static void aGroupMovedByHandToNoDivisionGetsItsOwnHoldingRecord() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Program__c program = newProgram();
+      Division__c juniors = ShoreshTestData.division(program.Id, 'Juniors');
+      Group__c bunk = ShoreshTestData.groupIn(juniors.Id, 'Bunk 1');
+      ScreenSaves.Extras extras = new ScreenSaves.Extras();
+      extras.noDivisionProgram = program.Id;
+      Test.startTest();
+      ScreenSaves.save(
+        new List<SObject>{ new Group__c(Id = bunk.Id, Division__c = null) },
+        extras
+      );
+      Test.stopTest();
+      Division__c holder = divisionOf(bunk.Id);
+      Assert.isTrue(holder.NoDivision__c);
+      Assert.areEqual('Bunk 1', holder.Name);
+      Assert.areEqual(program.Id, holder.Program__c);
+    }
+  }
 }

@@ -16,6 +16,7 @@
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { deletedAs, deletionsIn } from "./deleted";
+import { groupDivisionName, identityDivision } from "./noDivision";
 import { LEAVE_OUT, NO_DIVISION } from "./reading-constants";
 import { looseKey } from "./text";
 
@@ -37,8 +38,9 @@ function campGroups(existing, rules) {
         const record = {
           id: g.Id,
           name: g.Name,
-          identity: rules.identityOf(g.Name, d.division.Name),
-          division: d.division.Name,
+          // DIV-1.1: a group in no division is its own identity ("Bunk 1 (no division)").
+          identity: rules.identityOf(g.Name, identityDivision(d.division)),
+          division: groupDivisionName(d.division),
           divisionId: d.division.Id,
           // DIV-1.1: held in a flagged record; never read from a name (CIT is a division).
           noDivision: !!d.division[FIELD.Division.NoDivision],

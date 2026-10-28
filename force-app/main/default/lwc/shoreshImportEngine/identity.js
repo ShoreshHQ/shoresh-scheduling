@@ -6,10 +6,14 @@
  * without its division, the director is asked which one (Greg: never decided silently).
  */
 import { FIELD } from "c/shoreshSchema";
+import { NO_DIVISION_NAME } from "./noDivision";
 import { LEAVE_OUT } from "./reading-constants";
 import { looseKey } from "./text";
 
-/** The camp's groups: [{ name, division }]. */
+// DIV-1.1: a group in no division is its own identity ("Bunk 1 (no division)").
+export { NO_DIVISION_NAME };
+
+/** The camp's groups: [{ name, division, noDivision }]. */
 export function campGroupList(existing) {
   const list = [];
   for (const entry of (existing && existing.programs) || []) {
@@ -20,6 +24,7 @@ export function campGroupList(existing) {
         list.push({
           name: g.Name,
           division: none ? null : d.division.Name,
+          noDivision: none,
           id: g.Id
         });
       }
@@ -61,7 +66,9 @@ export function groupIdentities(noted, existing) {
     }
   };
   noted.filter((g) => !g.weakDivision).forEach((g) => add(g.name, g.division));
-  campGroupList(existing).forEach((g) => add(g.name, g.division));
+  campGroupList(existing).forEach((g) =>
+    add(g.name, g.noDivision ? NO_DIVISION_NAME : g.division)
+  );
   // A division only hinted at by a file name ("Camp 2026 - Bunk 3") counts only when it is a
   // division the camp has or a page states, and nothing states another for that group.
   const stated = new Set([
@@ -104,7 +111,10 @@ export function divisionOfIdentity(name, identity) {
     return null;
   }
   const inside = identity.slice(name.length + 2, -1).split(", schedule ")[0];
-  return inside.startsWith("schedule ") ? null : inside;
+  // DIV-1.1: "(no division)" names no division.
+  return inside.startsWith("schedule ") || inside === NO_DIVISION_NAME
+    ? null
+    : inside;
 }
 
 /** The identity without its schedule: what the camp's records are matched against. */

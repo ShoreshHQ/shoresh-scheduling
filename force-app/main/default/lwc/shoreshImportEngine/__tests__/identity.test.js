@@ -7,6 +7,7 @@ import {
   planFor,
   questionCards
 } from "./data/engine";
+import { nsRecord } from "shoresh-jest/namespace";
 import { csv, existingSetup, program, terms } from "./data/samples";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -785,5 +786,58 @@ describe("PR 16 round 4", () => {
     const p = propose([bare, stated], null, { [card.id]: "morning" });
     expect(p.timetables[0].blocks[0].name).toBe("6:00 AM-6:30 AM");
     expect(p.timetables[0].blocks).toHaveLength(2);
+  });
+});
+
+// DIV-1.1
+describe("a group in no division is its own identity", () => {
+  const { groupIdentities, divisionOfIdentity } =
+    jest.requireActual("../identity");
+  const held = (id, name) => {
+    const entry = program("p1", "Main", {
+      divisions: [
+        ["d1", "Juniors", [["g1", "Bunk 1"]]],
+        ["d2", "Seniors", [["g2", "Bunk 1"]]],
+        ["d9", name, [[id, "Bunk 1"]]]
+      ]
+    });
+    entry.divisions[2].division.NoDivision__c = true;
+    return existingSetup({ programs: [entry] });
+  };
+
+  it("never collapses into Bunk 1 of a division, beside two divisions' Bunk 1", () => {
+    const rules = groupIdentities([], nsRecord(held("g9", "Bunk 1")));
+    expect(rules.choicesFor("Bunk 1")).toEqual([
+      "Bunk 1 (Juniors)",
+      "Bunk 1 (Seniors)",
+      "Bunk 1 (no division)"
+    ]);
+    expect(rules.identityOf("Bunk 1", "no division")).toBe(
+      "Bunk 1 (no division)"
+    );
+    expect(divisionOfIdentity("Bunk 1", "Bunk 1 (no division)")).toBeNull();
+  });
+
+  it("reads a camp's Bunk 1 in Juniors and its Bunk 1 in no division as two groups", () => {
+    const existing = existingSetup({
+      programs: [
+        (() => {
+          const entry = program("p1", "Main", {
+            divisions: [
+              ["d1", "Juniors", [["g1", "Bunk 1"]]],
+              ["d9", "Bunk 1", [["g9", "Bunk 1"]]]
+            ]
+          });
+          entry.divisions[1].division.NoDivision__c = true;
+          return entry;
+        })()
+      ]
+    });
+    const rules = groupIdentities([], nsRecord(existing));
+    expect(rules.ambiguous("Bunk 1")).toBe(true);
+    expect(rules.choicesFor("Bunk 1")).toEqual([
+      "Bunk 1 (Juniors)",
+      "Bunk 1 (no division)"
+    ]);
   });
 });

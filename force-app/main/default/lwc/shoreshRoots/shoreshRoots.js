@@ -5,6 +5,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { reasonOf } from "c/shoreshErrors";
 import { menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD } from "c/shoreshSchema";
+import { realDivisionsOf } from "c/shoreshImportEngine";
 import getTable from "@salesforce/apex/RootsController.getTable";
 import {
   MELD_REST,
@@ -386,7 +387,8 @@ export default class ShoreshRoots extends LightningElement {
       case "groups":
         return divisions.flatMap((d) => d.groups || []);
       case "divisions":
-        return divisions;
+        // DIV-1.1: a holding record is no division.
+        return programs.flatMap((entry) => realDivisionsOf(entry));
       case "timeBlocks":
         return programs.flatMap((entry) => entry.timeBlocks || []);
       default:

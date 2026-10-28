@@ -11,6 +11,9 @@ import { moveNote } from "./groupMoves";
  * CIT alone in division CIT is a division (DIV-3.1). Holding records never show as divisions.
  */
 const NO_DIVISION_TABLE = "none";
+// A saved group's "No division" choice when it is in a real division: moved into a new holding
+// record as it saves.
+const TO_NO_DIVISION = "toNoDivision";
 
 function isNoDivision(entry) {
   return !!entry.division[FIELD.Division.NoDivision];
@@ -453,7 +456,7 @@ export default class ShoreshProgram extends LightningElement {
    * A table's columns. A group moves to another division of its own program only (GroupMoves);
    * a group in no division may move into a real one (DIV-1.1). options: where its rows can go.
    */
-  groupColumnsFor(options) {
+  groupColumnsFor(options, optionsFor) {
     const move =
       options.length > 1
         ? [
@@ -465,7 +468,8 @@ export default class ShoreshProgram extends LightningElement {
               // A new row is added under its own unit; a saved one can move.
               savedOnly: true,
               more: true,
-              options
+              options,
+              optionsFor
             }
           ]
         : [];
@@ -491,7 +495,11 @@ export default class ShoreshProgram extends LightningElement {
   /** What moving a group changes, shown under its row before Save. */
   get groupMoveNote() {
     const context = {
-      divisions: this.divisionRecords,
+      // DIV-1.1: a holding record, or a new one, reads "No division".
+      divisions: this.moveChoices.all.map((o) => ({
+        Id: o.value,
+        Name: o.label
+      })),
       activities: this.activities,
       recurringActivities: this._entry.recurringActivities,
       placements: this.placements,
@@ -531,21 +539,50 @@ export default class ShoreshProgram extends LightningElement {
     return { [FIELD.Division.Program]: this.programId };
   }
 
+  /** The division choices: real divisions, then "No division" (DIV-1.1). */
+  get moveChoices() {
+    const entries = this.entry.divisions || [];
+    const none = `No ${this.terms.sIn("Division")}`;
+    const real = entries
+      .filter((d) => !isNoDivision(d))
+      .map((d) => ({ label: d.division.Name, value: d.division.Id }));
+    const held = entries
+      .filter((d) => isNoDivision(d))
+      .map((d) => ({ label: none, value: d.division.Id }));
+    const holds = new Set(held.map((o) => o.value));
+    return {
+      // Every value a row may hold, so each shows its name.
+      all: [...real, ...held, { label: none, value: TO_NO_DIVISION }],
+      // One row's: its own holding record, or a new one, as "No division".
+      forRow: (saved) => [
+        ...real,
+        {
+          label: none,
+          value: holds.has(saved[GROUP.Division])
+            ? saved[GROUP.Division]
+            : TO_NO_DIVISION
+        }
+      ],
+      real
+    };
+  }
+
   get divisions() {
     const program = this.sectioned ? `${this.entry.program.Name} · ` : "";
     const entries = this.entry.divisions || [];
     const real = entries.filter((d) => !isNoDivision(d));
     const held = entries.filter((d) => isNoDivision(d));
-    const realOptions = real.map((d) => ({
-      label: d.division.Name,
-      value: d.division.Id
-    }));
+    const choices = this.moveChoices;
+    // DIV-1.1: a group can move into a real division, or into no division, by hand.
+    const columns = choices.real.length
+      ? this.groupColumnsFor(choices.all, choices.forRow)
+      : this.groupColumnsFor([]);
     const tables = real.map((d) => ({
       id: d.division.Id,
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
       heading: `${program}${d.division.Name}`,
       groups: d.groups,
-      columns: this.groupColumnsFor(realOptions),
+      columns,
       defaults: {
         [GROUP.Division]: d.division.Id,
         [GROUP.Availability]: "AllDay"
@@ -561,10 +598,7 @@ export default class ShoreshProgram extends LightningElement {
         title: none,
         heading: `${program}${none}`,
         groups: held.flatMap((d) => d.groups || []),
-        columns: this.groupColumnsFor([
-          ...realOptions,
-          ...held.map((d) => ({ label: none, value: d.division.Id }))
-        ]),
+        columns,
         defaults: { [GROUP.Availability]: "AllDay" },
         namesElsewhere: this.namesElsewhere(NO_DIVISION_TABLE)
       });
@@ -645,19 +679,28 @@ export default class ShoreshProgram extends LightningElement {
     const held = this.isRecurring || this.isGroups ? this.focusedRow() : null;
     const onDone = detail.onDone;
     // DIV-1.1: a group added in the no-division table gets its holding record as it saves.
-    const noDivision =
+    const added =
       this.isGroups &&
       event.currentTarget &&
       event.currentTarget.dataset &&
       event.currentTarget.dataset.division === NO_DIVISION_TABLE &&
       detail.record &&
       !detail.record.Id;
-    const base = noDivision
-      ? {
-          ...detail,
-          extras: { ...detail.extras, noDivisionProgram: this.programId }
-        }
-      : detail;
+    // A saved group moved to "No division": its holding record is made as it saves.
+    const moved =
+      this.isGroups &&
+      detail.record &&
+      detail.record[GROUP.Division] === TO_NO_DIVISION;
+    const base =
+      added || moved
+        ? {
+            ...detail,
+            record: moved
+              ? { ...detail.record, [GROUP.Division]: null }
+              : detail.record,
+            extras: { ...detail.extras, noDivisionProgram: this.programId }
+          }
+        : detail;
     const sent =
       held && typeof onDone === "function"
         ? {

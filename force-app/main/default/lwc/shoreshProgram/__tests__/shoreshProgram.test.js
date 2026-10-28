@@ -192,16 +192,23 @@ describe("c-shoresh-program", () => {
       "Bunks in CIT",
       "No Unit"
     ]);
-    // It may move into a real division, never into another group's holding record.
+    // One "No division" per row: the row's own holding record, never another group's.
     const none = heldTables(element)[2];
     const move = none.columns.find(
       (c) => c.fieldName === nsName("Division__c")
     );
-    expect(move.options.map((o) => o.value)).toEqual(["d1", "d4", "d3"]);
-    const juniors = heldTables(element)[0].columns.find(
-      (c) => c.fieldName === nsName("Division__c")
-    );
-    expect(juniors.options.map((o) => o.value)).toEqual(["d1", "d4"]);
+    const seniors = nsRecord({ Id: "g9", Name: "Seniors", Division__c: "d3" });
+    expect(move.optionsFor(seniors)).toEqual([
+      { label: "Juniors", value: "d1" },
+      { label: "CIT", value: "d4" },
+      { label: "No Unit", value: "d3" }
+    ]);
+    const bunk = nsRecord({ Id: "g1", Name: "Bunk 1", Division__c: "d1" });
+    expect(move.optionsFor(bunk).map((o) => o.value)).toEqual([
+      "d1",
+      "d4",
+      "toNoDivision"
+    ]);
   });
 
   // DIV-1.1
@@ -263,9 +270,11 @@ describe("c-shoresh-program", () => {
       "Name",
       "Availability"
     ]);
+    // DIV-1.1: and "No division", a new holding record when the group is saved there.
     expect(unit.options).toEqual([
       { label: "Juniors", value: "d1" },
-      { label: "Seniors", value: "d2" }
+      { label: "Seniors", value: "d2" },
+      { label: "No Unit", value: "toNoDivision" }
     ]);
     const bunk = { Id: "g1", Name: "Bunk 1", Division__c: "d1" };
     expect(
@@ -576,13 +585,31 @@ describe("c-shoresh-program", () => {
     expect(bareName(divisions.objectApiName)).toBe("Division__c");
   });
 
-  it("offers no division choice when the program has one", async () => {
+  // DIV-1.1
+  it("with one division, a group can still move to No division, as it saves", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
-    expect(groups.columns.map((c) => bareName(c.fieldName))).toEqual([
-      "Name",
-      "Availability__c"
+    const move = groups.columns.find(
+      (c) => c.fieldName === nsName("Division__c")
+    );
+    const bunk = nsRecord({ Id: "g1", Name: "Bunk 1", Division__c: "d1" });
+    expect(move.optionsFor(bunk)).toEqual([
+      { label: "Juniors", value: "d1" },
+      { label: "No Unit", value: "toNoDivision" }
     ]);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    groups.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          record: nsRecord({ Id: "g1", Division__c: "toNoDivision" }),
+          extras: {}
+        }
+      })
+    );
+    const sent = handler.mock.calls[0][0].detail;
+    expect(bareRecord(sent.record)).toEqual({ Id: "g1", Division__c: null });
+    expect(sent.extras).toEqual({ noDivisionProgram: "p1" });
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {

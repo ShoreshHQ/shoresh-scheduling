@@ -1543,13 +1543,13 @@ export default class ShoreshCampSetup extends LightningElement {
     const names = new Map();
     ((this.setup && this.setup.programs) || []).forEach((entry) => {
       (entry.divisions || []).forEach((d) => {
-        // DIV-1.1: a holding record reads as its group.
-        names.set(
-          d.division.Id,
-          holdsNoDivision(d.division) && (d.groups || []).length
-            ? d.groups[0].Name
-            : d.division.Name
-        );
+        // DIV-1.1: a holding record reads as its group, never by its own name.
+        const named = holdsNoDivision(d.division)
+          ? ((d.groups || [])[0] || {}).Name
+          : d.division.Name;
+        if (named) {
+          names.set(d.division.Id, named);
+        }
         (d.groups || []).forEach((g) => names.set(g.Id, g.Name));
       });
     });

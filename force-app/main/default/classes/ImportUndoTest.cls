@@ -461,6 +461,65 @@ private class ImportUndoTest {
     }
   }
 
+  // DIV-1.1
+  @IsTest
+  static void aGroupMovedOutOfNoDivisionGoesBackIntoNoDivision() {
+    System.runAs(scheduler(KeptCamp.keptIds())) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Group__c groupA = [
+        SELECT Id, Division__c, Division__r.Program__c
+        FROM Group__c
+        WHERE Name = 'Group A' AND Division__r.Program__r.Season__c = :season.Id
+        LIMIT 1
+      ];
+      Id juniors = groupA.Division__c;
+      Division__c holder = new Division__c(
+        Program__c = groupA.Division__r.Program__c,
+        Name = 'Group A',
+        NoDivision__c = true
+      );
+      insert as user holder;
+      update as user new Group__c(Id = groupA.Id, Division__c = holder.Id);
+      Map<String, Object> plan = ImportTestPlans.emptyPlan(season.Id);
+      ImportTestPlans.add(
+        plan,
+        'groups',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            groupA.Id,
+            'id',
+            groupA.Id,
+            'divisionKey',
+            juniors
+          }
+        )
+      );
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Division__c WHERE Id = :holder.Id],
+        'the empty holding record went with the move'
+      );
+      Test.startTest();
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Group__c back = [
+        SELECT Division__r.NoDivision__c, Division__r.Program__c
+        FROM Group__c
+        WHERE Id = :groupA.Id
+      ];
+      Assert.isTrue(back.Division__r.NoDivision__c, 'back in no division');
+      Assert.areEqual(
+        groupA.Division__r.Program__c,
+        back.Division__r.Program__c
+      );
+    }
+  }
+
   @IsTest
   static void aGroupMovedIntoANewDivisionGoesHomeAndTheDivisionGoes() {
     // Its own camp (a full season), made by the scheduler setup made.

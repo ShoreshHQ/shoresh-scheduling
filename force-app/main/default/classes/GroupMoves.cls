@@ -23,7 +23,12 @@ public with sharing class GroupMoves {
     }
     Map<Id, Division__c> divisions = new Map<Id, Division__c>(
       [
-        SELECT Id, Program__c, NoDivision__c, Program__r.Season__r.Camp__c
+        SELECT
+          Id,
+          Program__c,
+          NoDivision__c,
+          Program__r.Season__r.Camp__c,
+          (SELECT Id FROM Groups__r)
         FROM Division__c
         WHERE Id IN :divisionIds
         WITH SYSTEM_MODE
@@ -42,7 +47,9 @@ public with sharing class GroupMoves {
         labelsByCamp.put(campId, CampLabels.forCamp(campId));
       }
       CampLabels labels = labelsByCamp.get(campId);
-      String problem = whyNot(target, origin, labels);
+      // DIV-1.1: another group's holding record is no division to join; an empty one, or the
+      // group's own, is (moved to no division, or an Undo putting it back).
+      String problem = whyNot(joinable(target, grp.Id), origin, labels);
       if (problem != null) {
         grp.addError(problem);
       }
@@ -55,8 +62,7 @@ public with sharing class GroupMoves {
     Division__c origin,
     CampLabels labels
   ) {
-    // DIV-1.1: another group's holding record is no division to join.
-    if (target == null || target.NoDivision__c) {
+    if (target == null) {
       // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
       return 'Pick its ' + labels.singularInSentence('Division') + '.';
     }
@@ -69,5 +75,22 @@ public with sharing class GroupMoves {
         '.';
     }
     return null;
+  }
+
+  /** The target, or null when it is another group's holding record. */
+  private static Division__c joinable(Division__c target, Id groupId) {
+    return target == null || heldByAnother(target, groupId) ? null : target;
+  }
+
+  private static Boolean heldByAnother(Division__c target, Id groupId) {
+    if (!target.NoDivision__c) {
+      return false;
+    }
+    for (Group__c held : target.Groups__r) {
+      if (held.Id != groupId) {
+        return true;
+      }
+    }
+    return false;
   }
 }

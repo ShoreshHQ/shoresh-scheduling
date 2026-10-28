@@ -6,6 +6,9 @@
  */
 import { FIELD } from "c/shoreshSchema";
 
+/** How a group in no division is told apart: "Bunk 1 (no division)". */
+export const NO_DIVISION_NAME = "no division";
+
 /** Whether a division record only holds a group that has no division. */
 export function holdsNoDivision(division) {
   return !!(division && division[FIELD.Division.NoDivision]);
@@ -21,4 +24,16 @@ export function realDivisionsOf(entry) {
 /** The division name to show for a group's entry: none for a holding record. */
 export function shownDivisionName(entry) {
   return holdsNoDivision(entry.division) ? "" : entry.division.Name;
+}
+
+/** A group's division name: null for a holding record, so its name is never a division. */
+export function groupDivisionName(division) {
+  return division && !holdsNoDivision(division) ? division.Name : null;
+}
+
+/** The division a group's identity is qualified by: "no division" for a holding record. */
+export function identityDivision(division) {
+  return holdsNoDivision(division)
+    ? NO_DIVISION_NAME
+    : groupDivisionName(division);
 }
