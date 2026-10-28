@@ -355,7 +355,7 @@ export function stacked(pages) {
 }
 
 /** The camp's pages as { file, sheets: [{ name, rows, merges }] } (before writing them out). */
-function pagesOf(camp) {
+export function pagesOf(camp) {
   const base = camp.name;
   if (camp.layout === "byGroup") {
     const pages = camp.groups.map((_, g) => byGroupPage(camp, g));
