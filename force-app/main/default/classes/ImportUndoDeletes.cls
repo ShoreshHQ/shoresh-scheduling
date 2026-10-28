@@ -6,6 +6,10 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
+    // A week's day the import made a special day (INGEST-4.3): its day first; its plan goes
+    // with it (SpecialItemTriggerHandler).
+    'SpecialDate',
+    'SpecialDay',
     // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
     'WeekException',
     'Schedule',
@@ -29,6 +33,8 @@ public with sharing class ImportUndoDeletes {
   };
   // What a week off or a who row belongs to: decided before those rows go.
   private static final Set<String> ITEMS = new Set<String>{
+    // Decided before its day goes: a special day kept keeps its day.
+    'SpecialDay',
     'RecurringActivity',
     'FixedActivity',
     'Activity',
@@ -51,7 +57,12 @@ public with sharing class ImportUndoDeletes {
     // A week added by a workbook that anything else now uses (a version, a week off) stays.
     'Week' => new List<Schema.SObjectField>{
       WeekException__c.Week__c,
-      Schedule__c.Week__c
+      Schedule__c.Week__c,
+      SpecialDate__c.Week__c
+    },
+    // A special day put on another day by hand: kept.
+    'SpecialDay' => new List<Schema.SObjectField>{
+      SpecialDate__c.SpecialDay__c
     },
     'TimeBlock' => new List<Schema.SObjectField>{
       FixedActivity__c.LastTimeBlock__c,
@@ -97,6 +108,9 @@ public with sharing class ImportUndoDeletes {
   private Set<Id> createdIds = new Set<Id>();
   // Records the import made that this Undo keeps (edited since, or in use).
   private Set<Id> keptIds = new Set<Id>();
+  // What a special day this Undo keeps uses (its groups, activities, places): kept with it, by
+  // the special day's name.
+  private Map<Id, String> usedByKeptDays = new Map<Id, String>();
 
   public ImportUndoDeletes(ImportUndo.Result result) {
     this.result = result;
@@ -123,7 +137,12 @@ public with sharing class ImportUndoDeletes {
       List<SObject> toDelete = decided.containsKey(term)
         ? decided.get(term)
         : decide(term, (Map<String, Object>) created.get(term));
-      deleteAll(withoutKeptItems(term, toDelete));
+      deleteAll(
+        withoutKeptItems(
+          term,
+          ImportUndoSpecialDays.withoutKept(term, toDelete, keptIds)
+        )
+      );
     }
   }
 
@@ -213,6 +232,10 @@ public with sharing class ImportUndoDeletes {
       rows.keySet()
     );
     Set<Id> holding = holdingOthers(term, now.keySet());
+    // A special day whose schedule the director saved since holds their work: kept.
+    holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
+    usedByKeptDays.putAll(ImportUndoSpecialDays.usedBy(keptIds, now.keySet()));
+    holding.addAll(usedByKeptDays.keySet());
     List<SObject> toDelete = new List<SObject>();
     for (SObject record : now.values()) {
       List<Object> row = rows.get(record.Id);
@@ -232,7 +255,12 @@ public with sharing class ImportUndoDeletes {
   private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
     keptIds.add(record.Id);
-    names.add(ImportFields.nameOf(record));
+    names.add(
+      ImportUndoSpecialDays.named(
+        ImportFields.nameOf(record),
+        usedByKeptDays.get(record.Id)
+      )
+    );
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */

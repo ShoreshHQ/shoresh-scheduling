@@ -66,6 +66,8 @@ public with sharing class ImportSetupSaves {
       // Electives read in the file (slice E9): after the activities, before the versions.
       new ImportElectiveWrites(plan, writer).run();
       new ImportVersionWrites(plan, writer).run();
+      // A week's day with its own time blocks, as a special day on that day (INGEST-4.3).
+      new ImportSpecialDayWrites(plan, writer).run();
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);
       // What it guessed rather than read, with the values saved: marked for a look on setup.

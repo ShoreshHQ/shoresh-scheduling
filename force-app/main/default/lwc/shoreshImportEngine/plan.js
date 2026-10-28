@@ -284,6 +284,15 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       name: v.name,
       days: v.days
     })),
+    // A week's day with its own blocks, as a special day on it (weeks.md INGEST-4.3).
+    specialDays: (proposal.specialDays || []).map((d) => ({
+      key: d.key,
+      name: d.name,
+      weekId: d.weekId,
+      weekKey: d.weekKey,
+      day: d.day,
+      grid: d.grid
+    })),
     programs: programRecords(proposal, existing),
     timeBlocks: blockRecords(proposal),
     divisions: divisionRecords(proposal, existing),
@@ -482,6 +491,11 @@ const UNPLACED_WHY = {
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,
   dayNotRun: (t) => `its ${t.sIn("Program")} does not run that day`,
   dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
+  specialDayClash: (t) =>
+    `another ${t.sIn("Program")} has its own times that day too, and a day holds one ${t.sIn("SpecialDay")}`,
+  ownDayLeftOut: () => "that day's own times were left out for now",
+  specialDayTaken: (t) =>
+    `that day already has a ${t.sIn("SpecialDay")}, which is kept`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
   noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
   twoAtOnce: () => "something else is already in that cell",
@@ -607,6 +621,42 @@ export function importNotes(proposal, t) {
       notes.push({
         key: `oneGroup|${n.group}`,
         text: `${n.bunks.join(", ")} always do the same thing at the same time, ${KEPT[n.kept] || `so ${n.group} is set up as one ${t.sIn("Group")}`}.`
+      })
+    );
+  // weeks.md INGEST-4.3: one week's day with its own blocks stays in its program.
+  proposal.notes
+    .filter((n) => n.type === "weekDay")
+    .forEach((n) =>
+      notes.push({
+        key: `weekDay|${n.week}|${n.day}`,
+        text: `${n.week ? `${n.week}'s ` : ""}${n.day} comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
+      })
+    );
+  // weeks.md INGEST-4.6: the camp's own special day on that day wins.
+  proposal.notes
+    .filter((n) => n.type === "specialDayTaken")
+    .forEach((n) =>
+      notes.push({
+        key: `specialDayTaken|${n.week}|${n.day}`,
+        text: `${n.week}'s ${n.day} already has ${n.name}, so the file's ${n.day} was left out.`
+      })
+    );
+  // weeks.md INGEST-4.7: a date of numbers only, read the one way that lands in a week.
+  proposal.notes
+    .filter((n) => n.type === "dateOrder")
+    .forEach((n) =>
+      notes.push({
+        key: `dateOrder|${n.label}`,
+        text: `${n.label} is read as ${n.date}, in ${n.week}: read the other way round, it is in none of the ${t.pIn("Week")}.`
+      })
+    );
+  // weeks.md INGEST-4.5: "Session 2" read as the season's second week.
+  proposal.notes
+    .filter((n) => n.type === "sessionWeek")
+    .forEach((n) =>
+      notes.push({
+        key: `sessionWeek|${n.label}`,
+        text: `${n.label} is read as ${n.week}: the ${t.pIn("Week")} are numbered.`
       })
     );
   proposal.notes

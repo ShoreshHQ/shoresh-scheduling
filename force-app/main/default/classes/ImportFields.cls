@@ -30,7 +30,10 @@ public with sharing class ImportFields {
     'Offering' => Offering__c.SObjectType,
     // Import last year's double periods (slice E9).
     'LinkedChoice' => LinkedChoice__c.SObjectType,
-    'LinkedChoiceTime' => LinkedChoiceTime__c.SObjectType
+    'LinkedChoiceTime' => LinkedChoiceTime__c.SObjectType,
+    // Import last year's week day with its own time blocks (INGEST-4.3).
+    'SpecialDay' => SpecialDay__c.SObjectType,
+    'SpecialDate' => SpecialDate__c.SObjectType
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
   // ImportStructureWrites, ImportElectiveWrites, ImportVersionWrites, ImportWhoKinds, and the
@@ -183,6 +186,16 @@ public with sharing class ImportFields {
       LinkedChoiceTime__c.LinkedChoice__c,
       LinkedChoiceTime__c.Weekday__c,
       LinkedChoiceTime__c.TimeBlock__c
+    },
+    SpecialDay__c.SObjectType => new Set<Schema.SObjectField>{
+      SpecialDay__c.Name,
+      SpecialDay__c.Season__c
+    },
+    SpecialDate__c.SObjectType => new Set<Schema.SObjectField>{
+      SpecialDate__c.Season__c,
+      SpecialDate__c.SpecialDay__c,
+      SpecialDate__c.Week__c,
+      SpecialDate__c.Day__c
     }
   };
 

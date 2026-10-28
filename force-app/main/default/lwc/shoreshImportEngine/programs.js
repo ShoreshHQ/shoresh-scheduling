@@ -234,6 +234,20 @@ function matchBlock(block, program, context) {
   };
 }
 
+/**
+ * A file block as the program's: left out by an answer, a special day's own (INGEST-4.3: never
+ * added to the program), or matched to the camp's blocks.
+ */
+function blockMatch(block, program, context) {
+  if (block.leftOutByAnswer) {
+    return { leftOut: true };
+  }
+  if (block.ownDay) {
+    return { ownDay: true };
+  }
+  return matchBlock(block, program, context);
+}
+
 function programDays(program, fileDays, answers, asks) {
   if (!program) {
     return { days: fileDays, addDays: [] };
@@ -330,7 +344,10 @@ export function mapPrograms(reading, existing, answers) {
       asks,
       deletions,
       programName: name,
-      shared: sharedBlocks(timetable.blocks, program)
+      shared: sharedBlocks(
+        timetable.blocks.filter((b) => !b.ownDay),
+        program
+      )
     };
     const blocks = timetable.blocks.map((block) => ({
       fileKey: block.key,
@@ -339,12 +356,11 @@ export function mapPrograms(reading, existing, answers) {
       end: block.end,
       guessedEnd: !!block.guessedEnd,
       readAsMorning: !!block.readAsMorning,
-      ...(block.leftOutByAnswer
-        ? { leftOut: true }
-        : matchBlock(block, program, context))
+      ...blockMatch(block, program, context)
     }));
     return {
       index: timetable.index,
+      ownDays: timetable.ownDays || [],
       key: program ? program.id : `P${timetable.index}`,
       program,
       name,

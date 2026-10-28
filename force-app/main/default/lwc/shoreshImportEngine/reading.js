@@ -14,7 +14,8 @@ import {
 import { mergesFrom, readWithoutAsking, similarPairs } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
-import { WEEKDAYS, looseKey, withoutWeek } from "./text";
+import { WEEKDAYS, looseKey } from "./text";
+import { withoutWeek } from "./weekLabels";
 import { identifyGroups } from "./identity";
 import { groupDivisionName } from "./noDivision";
 import { oneGroupDivisions } from "./together";
@@ -65,12 +66,13 @@ function counted(names) {
  * Pages that name their group (or activity) after their file get the part of the file name that
  * tells it apart from the other such files ("Camp 2026 - Bunk 1" -> "Bunk 1").
  */
-function nameFromFiles(pages, found) {
+function nameFromFiles(pages, found, maxWeek) {
   const named = pages.filter(
     (p, i) => found[i].layout === "byGroup" || found[i].daysAcross
   );
   // Files for several weeks ("Week 2 - Bunk 1") name the same group: the week is not its name.
-  const base = (page) => withoutWeek(baseName(page.file));
+  const base = (page) =>
+    withoutWeek(baseName(page.file), { bareDates: true, maxWeek });
   const prefix = sharedPrefix([...new Set(named.map(base))]);
   return pages.map((page) => {
     if (!named.includes(page)) {
@@ -86,6 +88,11 @@ function nameFromFiles(pages, found) {
   });
 }
 
+/** The season's number of weeks, or 0 when it has none yet. */
+function seasonWeekCount(existing) {
+  return ((existing && existing.weeks) || []).length;
+}
+
 function readPages(pages, keys, existing, layouts) {
   const known = {
     groups: new Set(campNames(existing).groups.map(looseKey))
@@ -95,7 +102,7 @@ function readPages(pages, keys, existing, layouts) {
     ...d,
     layout: LAYOUTS.includes(layouts[keys[i]]) ? layouts[keys[i]] : d.layout
   }));
-  const named = nameFromFiles(pages, found);
+  const named = nameFromFiles(pages, found, seasonWeekCount(existing));
   const placements = [];
   const noted = [];
   const info = named.map((page, i) => {
@@ -245,7 +252,9 @@ export function readImport(input) {
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
-  const { pages, unread } = filesToPages(files);
+  const { pages, unread } = filesToPages(files, {
+    maxWeek: seasonWeekCount(input.existing)
+  });
   const keys = pageKeys(pages);
   const read = readPages(pages, keys, input.existing, input.layouts || {});
   const camp = campNames(input.existing);
@@ -296,7 +305,8 @@ export function readImport(input) {
     timetables,
     blockAt,
     timetableOfPage,
-    asks: timeAsks
+    asks: timeAsks,
+    notes: weekDayNotes
   } = buildTimetables(read.pages, named.kept, answers);
   const identified = identifyGroups(named.kept, named.groups, {
     existing: input.existing,
@@ -339,7 +349,8 @@ export function readImport(input) {
         to,
         rule
       })),
-      ...together.notes
+      ...together.notes,
+      ...weekDayNotes
     ],
     groupAsks: identified.asks,
     splitAsks: together.asks,

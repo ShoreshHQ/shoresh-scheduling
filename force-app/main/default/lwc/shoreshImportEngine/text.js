@@ -100,21 +100,6 @@ export function dayInTitle(title) {
   return null;
 }
 
-/** "Week 3" from a title or file name that names a week, or null. */
-export function weekInTitle(title) {
-  const match = tidy(title).match(/\bweek\s*#?\s*(\d{1,2})\b/i);
-  return match ? `Week ${Number(match[1])}` : null;
-}
-
-/** A title without the week it names: "Week 2 - Bunk 1" -> "Bunk 1". */
-export function withoutWeek(title) {
-  return tidy(
-    tidy(title)
-      .replace(/\bweek\s*#?\s*\d{1,2}\b/i, " ")
-      .replace(/^[\s\-–—_:,]+|[\s\-–—_:,]+$/g, "")
-  );
-}
-
 // Excel stores a time as a fraction of a day: 9:15am is 0.3854166666666667.
 const FRACTION_OF_A_DAY = /^0?\.\d{6,}$/;
 

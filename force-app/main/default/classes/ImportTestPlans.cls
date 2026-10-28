@@ -36,6 +36,8 @@ public class ImportTestPlans {
         'fixedActivities',
         'recurringActivities',
         'versions',
+        // A week's day with its own time blocks, as a special day (INGEST-4.3).
+        'specialDays',
         'remember',
         'forget'
       }

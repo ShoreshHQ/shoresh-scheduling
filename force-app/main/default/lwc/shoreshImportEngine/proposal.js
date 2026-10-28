@@ -423,6 +423,20 @@ function unansweredSimilar(pairs, answers) {
   return similar;
 }
 
+/**
+ * The days set times leave out of "every day": the noted special days, and each week's day with
+ * its own time blocks (INGEST-4.3), which comes in as a special day.
+ */
+function withOwnDays(specialDays, timetables) {
+  const result = new Map(specialDays);
+  timetables.forEach((t) =>
+    (t.ownDays || []).forEach((o) =>
+      result.set(`${t.index}|${o.week}|${o.day}`, true)
+    )
+  );
+  return result;
+}
+
 export function buildProposal(input) {
   const answers = input.answers || {};
   const reading = readImport(input);
@@ -463,7 +477,7 @@ export function buildProposal(input) {
     asks: [],
     notes: [...reading.notes, ...people.notes],
     updates: { fixed: [], recurring: [], activities: [] },
-    specialDays: noted.specialDays,
+    specialDays: withOwnDays(noted.specialDays, programs.timetables),
     divisionOf: people.divisionOf,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
     noted: noted.kinds,
@@ -531,6 +545,8 @@ export function buildProposal(input) {
     unmatched: last.unmatched,
     noWeeks: last.noWeeks,
     fillWeeks: last.fillWeeks,
+    specialDays: last.specialDays,
+    notes: [...proposal.notes, ...last.notes],
     asks: [...proposal.asks, ...last.asks]
   };
 }

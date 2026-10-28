@@ -119,6 +119,22 @@ activity?" questions 0 (was 1410); fixed events wrong 24 (was 105), activities w
 decides on, in every timetable it reads, now gets the kind its truth says; the fixed events and
 activities still wrong come from the weeks, programs and Friday splits above.
 
+After the week rules (`docs/import/weeks.md`, INGEST-4.1 to 4.4; 2026-10-27): **320 of 320
+perfect, nothing asked** (was 148, 20,125 "the files disagree" questions). By layout, perfect
+before → after: allCamp csv weekColumn 0 → 40 (a "Week" column is read as each row's week);
+byGroup xlsx filePerWeek 0 → 40 (the week in the file's name is kept; no more disagreement
+questions); allCamp csv filePerWeek 25 → 40, allCamp xlsx filePerWeek 23 → 40, sheetPerWeek 24 →
+40, weeksStacked 23 → 40, byActivity filePerWeek 28 → 40, byGroup sheetPerGroupWeek 25 → 40 (a
+Friday with its own blocks in one week is that week's own day, not a second program). By what
+differs: oddFriday 0 → 118 of 118, session 49 → 97 of 97, weekActivities 76 → 160 of 160,
+rotation 148 → 320. Level 1 (318 of 320, no questions), the travel camps (39 of 40) and Greg's
+camp (perfect) unchanged on every count.
+
+Then (2026-10-27) the odd Friday is saved as a special day on that week's Friday with its own
+blocks, and the scorer checks it: time blocks are the saved plan's program blocks (the odd
+Friday's are no longer in the truth's blocks), and a new kind, special days, compares the
+week's days read as special days with the truth. Still 320 of 320, both kinds 0.
+
 ## How to run
 
     npm run score:import             the full corpus, summary table

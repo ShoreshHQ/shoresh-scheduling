@@ -493,6 +493,53 @@ function ampmCard(ask) {
   };
 }
 
+/** A question about the files' time blocks: morning or evening, or two days of their own. */
+function timeCard(ask, t) {
+  return ask.type === "ownDays" ? ownDaysCard(ask, t) : ampmCard(ask);
+}
+
+/** INGEST-4.8: a week with two days of their own times. */
+function ownDaysCard(ask, t) {
+  const days = dayList(ask.days);
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `Are ${days} of ${ask.week} ${t.pIn("SpecialDay")}, or a second ${t.sIn("Program")}?`,
+    subject: `${ask.week}: ${days}`,
+    subtitle: "Both days have their own times in the file.",
+    options: [
+      {
+        value: "special",
+        label: capital(t.pIn("SpecialDay")),
+        description: `Each comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
+      },
+      {
+        value: "program",
+        label: `A second ${t.sIn("Program")}`,
+        description: `Those days' ${t.pIn("Group")} are set up in a ${t.sIn("Program")} of their own.`
+      },
+      leaveOut("Those days are not added this time.")
+    ]
+  };
+}
+
+/** INGEST-4.9: two programs' own days on one week's day: a day holds one special day. */
+function specialDayClashCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `Which ${t.sIn("Program")}'s ${ask.day} is ${ask.week}'s ${t.sIn("SpecialDay")}?`,
+    subject: `${ask.week}'s ${ask.day}`,
+    subtitle: `${nameList(ask.options)} each have their own times that day; a day holds one ${t.sIn("SpecialDay")}.`,
+    options: [
+      ...ask.options.map((name) => ({ value: name, label: name })),
+      leaveOut(`${ask.week}'s ${ask.day} is not added this time.`)
+    ]
+  };
+}
+
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
 /** "2027-06-28" -> "Jun 28". */
@@ -633,6 +680,7 @@ function listCard(ask, t) {
 
 const CARDS = {
   week: weekCard,
+  specialDayClash: specialDayClashCard,
   kind: kindCard,
   program: programCard,
   move: moveCard,
@@ -651,7 +699,7 @@ const CARDS = {
 export function questionCards(proposal, t, answers) {
   const cards = [
     ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
-    ...proposal.reading.timeAsks.map(ampmCard),
+    ...proposal.reading.timeAsks.map((ask) => timeCard(ask, t)),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...(proposal.reading.splitAsks || []).map((ask) => splitCard(ask, t)),
     ...proposal.reading.disagreements.map(crossCard),
