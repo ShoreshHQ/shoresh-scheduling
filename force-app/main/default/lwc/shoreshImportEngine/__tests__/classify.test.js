@@ -319,13 +319,58 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
     }
   );
 
-  // INGEST-3.1
-  it("rule 1: another activity in the slot for one bunk one day does break fixed", () => {
+  // INGEST-3.1, INGEST-3.9
+  it.each([
+    ["another activity", "Drama"],
+    ["an empty cell", ""]
+  ])(
+    "rule 9: %s in the slot for one bunk one day: not decided, the director is asked",
+    (_, other) => {
+      const cell = (g, d, b) => {
+        if (g === 2 && d === 2 && b === 0) return other;
+        return b === 0 ? "Carpool" : rotation(g, d, b);
+      };
+      const p = propose(cell);
+      expect(kindOf(p, "Carpool")).not.toBe("fixed");
+      const asks = kindAsks(p);
+      expect(asks.map((a) => a.id)).toEqual(["kind|Carpool"]);
+      expect(asks[0].facts.reason).toBe("nearFixed");
+      const card = questionCards(p, terms, {}).find(
+        (c) => c.id === "kind|Carpool"
+      );
+      expect(card.options.map((o) => o.value)).toEqual(
+        expect.arrayContaining(["fixed", "recurring", "activity"])
+      );
+      expect(card.subtitle).toMatch(/not every day/);
+      expect(
+        kindOf(propose(cell, { "kind|Carpool": "fixed" }), "Carpool")
+      ).toBe("fixed");
+      expect(
+        kindOf(propose(cell, { "kind|Carpool": "activity" }), "Carpool")
+      ).toBe("activity");
+    }
+  );
+
+  // INGEST-3.9
+  it("rule 9: not everyone on most days (a bunk blank two days of five and elsewhere once) is not asked as fixed", () => {
     const p = propose((g, d, b) => {
-      if (g === 2 && d === 2 && b === 0) return "Drama";
+      if (g === 2 && b === 0 && d < 3) return d === 0 ? "Drama" : "";
       return b === 0 ? "Carpool" : rotation(g, d, b);
     });
     expect(kindOf(p, "Carpool")).not.toBe("fixed");
+    expect(kindAsks(p).map((a) => a.facts.reason)).not.toContain("nearFixed");
+  });
+
+  // INGEST-3.9, INGEST-3.2
+  it("rule 9: rule 2 comes first: a bunk with it at three times is an activity, not asked", () => {
+    const p = propose((g, d, b) => {
+      if (g === 2 && b === 0 && d >= 3) return "Swim";
+      if (g === 2 && b === 1 && d === 3) return "Carpool";
+      if (g === 2 && b === 3 && d === 4) return "Carpool";
+      return b === 0 ? "Carpool" : fill(g, d, b);
+    });
+    expect(kindOf(p, "Carpool")).toBe("activity");
+    expect(kindAsks(p).map((a) => a.name)).not.toContain("Carpool");
   });
 
   // INGEST-3.2

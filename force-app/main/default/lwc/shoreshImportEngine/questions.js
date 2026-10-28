@@ -203,6 +203,9 @@ function kindWhy(ask, t) {
   if (f.reason === "scattered") {
     return `At a set time (${set.join("; ")}), and ${times1(strays)} at other times.`;
   }
+  if (f.reason === "nearFixed") {
+    return `${set.join("; ")}, but not every day: some days it is empty or something else is there.`;
+  }
   if (f.reason === "weeks") {
     return `At a set time in some weeks of the files but not in others.`;
   }
