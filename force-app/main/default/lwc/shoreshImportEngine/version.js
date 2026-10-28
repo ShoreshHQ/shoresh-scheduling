@@ -15,7 +15,7 @@
 import { FIELD } from "c/shoreshSchema";
 import { fixedKey } from "./items";
 import { LEAVE_OUT } from "./reading";
-import { WEEKDAYS, clock, looseKey } from "./text";
+import { WEEKDAYS, clock, looseKey, tidy } from "./text";
 import { labelDate } from "./weekLabels";
 import { weeksToFill } from "./weeks";
 
@@ -63,6 +63,26 @@ export function versionName(fileNames) {
   return name.length > MAX_NAME ? `${name.slice(0, MAX_NAME - 1)}…` : name;
 }
 
+/**
+ * "Session 2" as the season's second week, when the season's weeks are numbered ("Week 1",
+ * "Week 2", ... one word and a number each, the same word): INGEST-4.5. undefined otherwise.
+ */
+function nthWeek(weeks, label) {
+  const session = /^Session (\d+)$/.exec(label || "");
+  const numbered = weeks.map((w) => /^(\D+?)\s*(\d+)$/.exec(tidy(w.Name)));
+  if (
+    !session ||
+    !numbered.length ||
+    numbered.some((m) => !m) ||
+    new Set(numbered.map((m) => looseKey(m[1]))).size !== 1 ||
+    looseKey(numbered[0][1]) === "session"
+  ) {
+    return undefined;
+  }
+  const n = Number(session[1]);
+  return weeks.find((_, i) => Number(numbered[i][2]) === n);
+}
+
 /** The season week whose dates hold a month and day ("Week of 7/6"), any year; else undefined. */
 function weekOnDate(weeks, date) {
   if (!date) {
@@ -88,11 +108,17 @@ function weekOnDate(weeks, date) {
 function mapWeeks(labels, weeks, answers) {
   const result = new Map();
   const asks = [];
+  const notes = [];
   for (const label of labels) {
+    const bySession = nthWeek(weeks, label);
+    if (bySession) {
+      notes.push({ type: "sessionWeek", label, week: bySession.Name });
+    }
     const named =
       label &&
       (weeks.find((w) => looseKey(w.Name) === looseKey(label)) ||
-        weekOnDate(weeks, labelDate(label)));
+        weekOnDate(weeks, labelDate(label)) ||
+        bySession);
     if (weeks.length === 0) {
       result.set(label, null);
     } else if (named) {
@@ -117,7 +143,7 @@ function mapWeeks(labels, weeks, answers) {
       );
     }
   }
-  return { byLabel: result, asks };
+  return { byLabel: result, asks, notes };
 }
 
 // ---------- what goes in a cell ----------
@@ -198,10 +224,20 @@ function itemKeyFinder(proposal) {
 
 // ---------- one day ----------
 
-function dayGrid(t, groups, placements, context) {
+/**
+ * One day's grid. A regular day has the program's blocks (not a special day's own); a special
+ * day (`own`, INGEST-4.3) has the blocks its cells use, with ids of its own ("b1", ADR 0014).
+ */
+function dayGrid(t, groups, placements, context, own) {
+  const used = new Set(
+    placements.flatMap((p) =>
+      Array.from({ length: p.span }, (_, k) => p.blockIndex + k)
+    )
+  );
   const blocks = t.blocks
     .map((b, index) => ({ ...b, index }))
-    .filter((b) => !b.leftOut && !b.untimed);
+    .filter((b) => !b.leftOut && !b.untimed)
+    .filter((b) => (own ? used.has(b.index) : !b.ownDay));
   const column = new Map(blocks.map((b, i) => [b.index, i]));
   const rows = groups.map(() => blocks.map(() => ""));
   const items = new Items();
@@ -229,8 +265,8 @@ function dayGrid(t, groups, placements, context) {
     }
   }
   return {
-    b: blocks.map((b) => [
-      b.id || `B|${t.key}|${b.fileKey}`,
+    b: blocks.map((b, i) => [
+      own ? `b${i + 1}` : b.id || `B|${t.key}|${b.fileKey}`,
       b.name,
       clock(b.change ? b.change.start : b.start),
       clock(b.change ? b.change.end : b.end)
@@ -252,7 +288,13 @@ function versionFor(t, week, label, context) {
   for (const day of WEEKDAYS.filter((d) => t.days.includes(d))) {
     const onDay = here.filter((p) => p.day === day);
     const date = dateIn(week, day);
-    if (!date) {
+    if (date && isOwnDay(t, label, day)) {
+      context.specialDays.push(
+        specialDayFor(t, week, day, label, {
+          grid: dayGrid(t, groups, onDay, context, true)
+        })
+      );
+    } else if (!date) {
       onDay.forEach((p) =>
         context.unmatched.push({ ...p, why: "dayNotInWeek" })
       );
@@ -272,6 +314,23 @@ function versionFor(t, week, label, context) {
     weekName: week.Name,
     name: context.name,
     days
+  };
+}
+
+function isOwnDay(t, label, day) {
+  return (t.ownDays || []).some((o) => o.week === label && o.day === day);
+}
+
+/** A week's day with its own blocks, saved as a special day on it (INGEST-4.3). */
+function specialDayFor(t, week, day, label, extra) {
+  return {
+    key: `SpecialDay:${t.key}|${label}|${day}`,
+    name: `${week.Name} ${day}`.slice(0, 80),
+    label,
+    day,
+    weekId: week.filled ? null : week.Id,
+    weekKey: week.filled ? week.Id : null,
+    ...extra
   };
 }
 
@@ -336,6 +395,7 @@ export function versionsFor(proposal, input) {
     groups: proposal.groups,
     usable: proposal.usable,
     unmatched: [],
+    specialDays: [],
     name: versionName((input.files || []).map((f) => f.name))
   };
   context.unmatched.push(
@@ -376,10 +436,14 @@ export function versionsFor(proposal, input) {
   }
   return {
     versions,
+    specialDays: context.specialDays,
+    notes: mapped.notes,
     unmatched: context.unmatched,
     asks: mapped.asks,
     noWeeks: weeks.length === 0,
     // Only when last year's week is kept in one of them.
-    fillWeeks: versions.some((v) => v.weekKey) ? filled : []
+    fillWeeks: [...versions, ...context.specialDays].some((v) => v.weekKey)
+      ? filled
+      : []
   };
 }

@@ -6,6 +6,10 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
+    // A week's day the import made a special day (INGEST-4.3): its plan and its day first.
+    'PlanPart',
+    'SpecialDate',
+    'SpecialDay',
     // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
     'WeekException',
     'Schedule',
@@ -51,7 +55,13 @@ public with sharing class ImportUndoDeletes {
     // A week added by a workbook that anything else now uses (a version, a week off) stays.
     'Week' => new List<Schema.SObjectField>{
       WeekException__c.Week__c,
-      Schedule__c.Week__c
+      Schedule__c.Week__c,
+      SpecialDate__c.Week__c
+    },
+    // A special day put on another day, or its plan saved again, by hand: kept.
+    'SpecialDay' => new List<Schema.SObjectField>{
+      SpecialDate__c.SpecialDay__c,
+      PlanPart__c.SpecialDay__c
     },
     'TimeBlock' => new List<Schema.SObjectField>{
       FixedActivity__c.LastTimeBlock__c,

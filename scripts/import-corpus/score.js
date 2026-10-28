@@ -30,6 +30,7 @@ export const WRONG_KINDS = [
   "weeks",
   "days",
   "blocks",
+  "specialDays",
   "divisions",
   "groups",
   "fixed",
@@ -191,6 +192,13 @@ function wrongReads(truth, proposal, plan) {
     blocks: mismatches(
       truth.blocks,
       plan.timeBlocks.map((b) => `${b.start}-${b.end}`)
+    ),
+    // A week's day with its own blocks comes in as a special day (INGEST-4.3).
+    specialDays: mismatches(
+      truth.specialDays || [],
+      proposal.timetables.flatMap((t) =>
+        (t.ownDays || []).map((o) => `${o.week}|${o.day}`)
+      )
     ),
     divisions: named
       ? mismatches(

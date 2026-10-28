@@ -11,7 +11,8 @@ grid (ADR 0022).
 
 Code: `force-app/main/default/lwc/shoreshImportEngine/` (`weekLabels.js`; `sheets.js`
 `splitWeekColumn`; `layouts.js` `pageWeek`; `structure.js` `weekDayShapes`; `version.js`
-`mapWeeks`; the note in `plan.js` `importNotes`). Tests: `__tests__/weeks.test.js`; the
+`mapWeeks`, `specialDayFor`; the note in `plan.js` `importNotes`; the save in Apex
+`ImportSpecialDayWrites`). Tests: `__tests__/weeks.test.js`; the
 level-2 corpus in `__tests__/corpus.test.js`.
 
 ## The rules
@@ -57,15 +58,21 @@ Each rule is clue, meaning, example, test.
    blocks the other lacks on at most one day of a week, on fewer than half of all the days of
    the files, and not in every week; and have only the other's groups, or (new groups, a second
    session starting that week) use only the other's blocks on their other days.
-   Meaning: those pages join the other's program; the groups stay one group each (no "(schedule
-   1)"/"(schedule 2)"), the day keeps its own blocks, and the notes say so ("Friday of Week 2 has
-   its own time blocks, so it is read as that day's own shape, not a second program"). A
-   by-group page that holds both shapes (the normal blocks and the short Friday's) is one
-   timetable.
+   Meaning: those pages join the other's program, and the groups stay one group each (no
+   "(schedule 1)"/"(schedule 2)"). The day comes in as a special day on that week's day (ADR
+   0014: it replaces that day for the whole camp), named after it ("Week 2 Friday"), with its
+   own time blocks (the blocks its cells use, ids of its own) and the file's cells in its
+   schedule. The program's time blocks never gain that day's; the week's version has no grid
+   for that day; set times do not count it as one of "every day". The notes say so ("Week 2's
+   Friday comes in as a special day with its own times"). A by-group page that holds both
+   shapes (the normal blocks and the short Friday's) is one timetable.
    Example: level 2 "oddFriday": week 2's Friday has Activity A and B after lunch where the other
    days have Activity 4 to 6.
    Test: "INGEST-4.3: a Friday with other blocks in week 2 is that week's own day"; "the same on
-   by-group pages".
+   by-group pages"; "a special day on Week 2's Friday, with its own blocks and the file's
+   cells"; "the program's blocks never gain the short Friday's"; Apex `ImportSpecialDayTest`
+   (saved as a special day with its own blocks; Undo takes it away). The corpus scorer checks
+   the saved plan's program blocks and the special days found.
    Counter-cases, still two programs: different groups on different blocks every day ("different
    groups on different blocks every day are two programs"); a Friday that differs in every week
    ("a Friday that differs in every week is not one week's day"); a one-week file, which cannot
@@ -80,14 +87,21 @@ Each rule is clue, meaning, example, test.
    Test: "INGEST-4.4: goes to the season's week holding that date, without asking";
    counter-case "a date in none of the season's weeks is asked".
 
+5. **"Session N" in a season of numbered weeks.**
+   Clue: a week read as "Session N" (rules 1 and 2), and the season's weeks all named one word
+   and a number, the same word, not Session ("Week 1", "Week 2", ...).
+   Meaning: Session N is the season's week numbered N, without asking, said in the notes
+   ("Session 2 is read as Week 2: the weeks are numbered.").
+   Test: "INGEST-4.5: Session 2 is the season's Week 2, without asking, said in the notes".
+   Counter-case: weeks not numbered ("Opening", "Color War") are asked, as before ("weeks not
+   numbered are asked, as before").
+
 ## Known limits
 
 - A day whose blocks differ in every week (a short Friday every week), or in a one-week file,
   still reads as a second program, with the groups split into "(schedule 1)" and "(schedule
   2)", as before.
-- The save does not yet store a week's own day shape: the program gets every block the files
-  show (the short Friday's too), and each day's saved grid lists all of them, blank where that
-  day has none. Planning a later week from that program sees all the blocks on every day. Storing
-  the shape needs a home for a day's own blocks in the data (a special day has none today).
-- "Session 1" is its own week label: a season whose weeks are named "Week 1" ... asks which week
-  it is.
+- A special day already on that week's day stops the save (a day holds one special day, ADR
+  0014 choice 3); the import does not yet check for it first.
+- Without season weeks (none, and no dates to fill them in), the special day has no day to go
+  on and its cells are left out, as a version's are.

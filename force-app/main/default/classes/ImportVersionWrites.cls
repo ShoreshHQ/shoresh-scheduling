@@ -49,7 +49,7 @@ public with sharing class ImportVersionWrites {
   }
 
   /** A season week by Id, or one this import filled in from the season's dates, by its key. */
-  private Id weekOf(ImportPlan.Entry entry) {
+  public Id weekOf(ImportPlan.Entry entry) {
     String key = entry.text('weekKey');
     if (String.isBlank(key)) {
       return writer.keys.existing((Id) entry.text('weekId'));
@@ -81,6 +81,22 @@ public with sharing class ImportVersionWrites {
     for (List<String> b : tuples(raw.get('b'))) {
       grid.blocks.add(new ScheduleGrid.Block(idOf(b[0]), b[1]).at(b[2], b[3]));
     }
+    return withRows(grid, raw);
+  }
+
+  /**
+   * A special day's grid (INGEST-4.3): its time blocks are its own (ids local to its plan, ADR
+   * 0014 choice 6), kept as sent; groups and items by their records' Ids.
+   */
+  public ScheduleGrid specialDayGrid(Map<String, Object> raw) {
+    ScheduleGrid grid = new ScheduleGrid();
+    for (List<String> b : tuples(raw.get('b'))) {
+      grid.blocks.add(new ScheduleGrid.Block(b[0], b[1]).at(b[2], b[3]));
+    }
+    return withRows(grid, raw);
+  }
+
+  private ScheduleGrid withRows(ScheduleGrid grid, Map<String, Object> raw) {
     for (List<String> g : tuples(raw.get('g'))) {
       grid.groups.add(new ScheduleGrid.GroupRef(idOf(g[0]), g[1]));
     }

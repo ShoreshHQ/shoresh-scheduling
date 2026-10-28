@@ -130,6 +130,11 @@ differs: oddFriday 0 → 118 of 118, session 49 → 97 of 97, weekActivities 76 
 rotation 148 → 320. Level 1 (318 of 320, no questions), the travel camps (39 of 40) and Greg's
 camp (perfect) unchanged on every count.
 
+Then (2026-10-27) the odd Friday is saved as a special day on that week's Friday with its own
+blocks, and the scorer checks it: time blocks are the saved plan's program blocks (the odd
+Friday's are no longer in the truth's blocks), and a new kind, special days, compares the
+week's days read as special days with the truth. Still 320 of 320, both kinds 0.
+
 ## How to run
 
     npm run score:import             the full corpus, summary table

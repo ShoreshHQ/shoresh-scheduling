@@ -184,10 +184,15 @@ function eachCell(week, visit) {
   week.groups.forEach((g, gi) =>
     week.days.forEach((day, d) =>
       week.blocksOn[d].forEach((block, b) =>
-        visit(g, day, block, week.cell(gi, d, b))
+        visit(g, day, block, week.cell(gi, d, b), d)
       )
     )
   );
+}
+
+/** A day whose blocks are not the week's usual ones (the odd Friday): a special day. */
+function isOwnDay(week, d) {
+  return week.blocksOn[d] !== week.blocksOn[0];
 }
 
 function truthOf(camp, style) {
@@ -196,12 +201,18 @@ function truthOf(camp, style) {
   const divisions = new Set();
   const activities = new Set();
   const fixed = new Set();
+  const specialDays = new Set();
   const weeks = camp.weeks.map((week) => {
     const cells = new Map();
     week.divisions.forEach((d) => divisions.add(d.name));
-    eachCell(week, (g, day, block, name) => {
+    eachCell(week, (g, day, block, name, d) => {
       cells.set(`${week.label}|${g.name}|${day}|${hm(block.start)}`, name);
-      blocks.add(`${hm(block.start)}-${hm(block.end)}`);
+      // The program's blocks; an odd Friday's own blocks are its special day's (INGEST-4.3).
+      if (isOwnDay(week, d)) {
+        specialDays.add(`${week.label}|${day}`);
+      } else {
+        blocks.add(`${hm(block.start)}-${hm(block.end)}`);
+      }
       groups.set(`${g.division}|${g.name}`, g);
       if (block.fixed) fixed.add(`${name}|${hm(block.start)}`);
       else activities.add(name);
@@ -212,6 +223,7 @@ function truthOf(camp, style) {
     weeks,
     days: DAYS,
     blocks: [...blocks],
+    specialDays: [...specialDays],
     divisions: [...divisions],
     groups: [...groups.values()],
     fixed: [...fixed],

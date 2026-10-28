@@ -198,7 +198,10 @@ function timetableShape(t, placements) {
     groups: new Set(here.map((p) => p.group)),
     cells: new Set(here.map((p) => `${p.group}|${p.week || ""}|${p.day}`)),
     weekDays: new Set(here.map((p) => `${p.week || ""}|${p.day}`)),
-    keys: new Set(t.raw.map((b) => b.key)),
+    // Its regular blocks: not those of a day joined as that day's own (INGEST-4.3).
+    keys: new Set(
+      t.raw.map((b) => b.key).filter((k) => !(t.ownKeys || new Set()).has(k))
+    ),
     here
   };
 }
@@ -264,11 +267,17 @@ function weekDayShapes(timetables, placements, blockAt) {
             blockAt
           );
         if (days) {
+          const regular = timetableShape(main, placements).keys;
+          main.ownKeys = new Set([
+            ...(main.ownKeys || []),
+            ...other.raw.map((b) => b.key).filter((k) => !regular.has(k))
+          ]);
           main.pages.push(...other.pages);
           main.raw.push(...other.raw);
           timetables.splice(j, 1);
           days.forEach((wd) => {
             const [week, day] = wd.split("|");
+            main.ownDays = [...(main.ownDays || []), { week, day }];
             notes.push({ type: "weekDay", week, day });
           });
           merged = true;
@@ -309,6 +318,12 @@ export function buildTimetables(pages, placements, answers = {}) {
   });
   timetables.forEach((t) => {
     t.blocks = orderedBlocks(t.raw, context);
+    // A block only a day's own shape has (INGEST-4.3) is that special day's, not the program's.
+    t.ownDays = t.ownDays || [];
+    t.blocks.forEach((b) => {
+      b.ownDay = !!(t.ownKeys && t.ownKeys.has(b.key));
+    });
+    delete t.ownKeys;
     for (const [key, value] of blockAt) {
       if (
         t.blocks.aliases.has(value) &&

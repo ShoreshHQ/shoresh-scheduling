@@ -282,6 +282,15 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       name: v.name,
       days: v.days
     })),
+    // A week's day with its own blocks, as a special day on it (weeks.md INGEST-4.3).
+    specialDays: (proposal.specialDays || []).map((d) => ({
+      key: d.key,
+      name: d.name,
+      weekId: d.weekId,
+      weekKey: d.weekKey,
+      day: d.day,
+      grid: d.grid
+    })),
     programs: programRecords(proposal, existing),
     timeBlocks: blockRecords(proposal),
     divisions: divisionRecords(proposal, existing),
@@ -613,7 +622,16 @@ export function importNotes(proposal, t) {
     .forEach((n) =>
       notes.push({
         key: `weekDay|${n.week}|${n.day}`,
-        text: `${n.day}${n.week ? ` of ${n.week}` : ""} has its own ${t.pIn("TimeBlock")}, so it is read as that day's own shape, not a second ${t.sIn("Program")}.`
+        text: `${n.week ? `${n.week}'s ` : ""}${n.day} comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
+      })
+    );
+  // weeks.md INGEST-4.5: "Session 2" read as the season's second week.
+  proposal.notes
+    .filter((n) => n.type === "sessionWeek")
+    .forEach((n) =>
+      notes.push({
+        key: `sessionWeek|${n.label}`,
+        text: `${n.label} is read as ${n.week}: the ${t.pIn("Week")} are numbered.`
       })
     );
   proposal.notes

@@ -1,6 +1,11 @@
 // Weeks in the files (docs/import/weeks.md, INGEST-4.n): a "Week" column, the week in a file's
 // name, one week's day with its own time blocks, and a week named by a date.
-import { buildProposal, importNotes, questionCards } from "./data/engine";
+import {
+  buildProposal,
+  importNotes,
+  planFor,
+  questionCards
+} from "./data/engine";
 import { existingSetup, terms } from "./data/samples";
 import { splitWeekColumn, sheetToPages } from "../sheets";
 import { weekInFileName, weekInTitle, withoutWeek } from "../weekLabels";
@@ -264,7 +269,9 @@ describe("INGEST-4.3: one week's day with its own time blocks", () => {
       )
     ).toBe(true);
     expect(importNotes(p, terms).map((n) => n.text)).toContainEqual(
-      expect.stringMatching(/^Friday of Week 2 has its own /)
+      expect.stringMatching(
+        /^Week 2's Friday comes in as a special day with its own times/
+      )
     );
     expect(
       questionCards(p, terms, {}).filter((c) => c.answer === null)
@@ -354,5 +361,118 @@ describe("INGEST-4.4: a week named by a date", () => {
       existingSetup({ weeks: [WEEK1, WEEK2] })
     );
     expect(asked(p, "week|").map((c) => c.id)).toEqual(["week|Week of 8/10"]);
+  });
+});
+
+describe("INGEST-4.3: the week's own day saves as a special day", () => {
+  const weeks = [
+    ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+    ["w2", "Week 2", "2027-07-05", "2027-07-09"],
+    ["w3", "Week 3", "2027-07-12", "2027-07-16"]
+  ].map(([Id, Name, start, end]) => ({
+    Id,
+    Name,
+    StartDate__c: start,
+    EndDate__c: end
+  }));
+  const files = [0, 1, 2].map((w) =>
+    file(`Camp - Week ${w + 1}.csv`, [
+      sheetOf(
+        `Week ${w + 1}`,
+        weekRows(w, (d) => (w === 1 && d === 4 ? SHORT_FRIDAY : BLOCKS))
+      )
+    ])
+  );
+  const existing = existingSetup({ weeks });
+  const p = propose(files, existing);
+  const plan = planFor(p, existing, "a00000000000001AAA");
+
+  it("INGEST-4.3: a special day on Week 2's Friday, with its own blocks and the file's cells", () => {
+    expect(plan.specialDays).toHaveLength(1);
+    const [day] = plan.specialDays;
+    expect(day).toMatchObject({
+      weekId: "w2",
+      day: "Friday",
+      name: "Week 2 Friday"
+    });
+    expect(day.grid.b.map((b) => [b[0], b[2], b[3]])).toEqual([
+      ["b1", "09:00", "09:45"],
+      ["b2", "09:50", "10:35"],
+      ["b3", "11:30", "12:15"],
+      ["b4", "13:00", "14:35"]
+    ]);
+    expect(day.grid.g.map((g) => g[1])).toEqual(GROUPS);
+    // Bunk 1's long afternoon block holds its file cell.
+    const row = day.grid.r[0].split(",");
+    const item = day.grid.i[Number(row[3]) - 1];
+    expect(item[2]).toBe(cellOf(1, 0, 4, 3, SHORT_FRIDAY[3]));
+  });
+
+  it("INGEST-4.3: the program's blocks never gain the short Friday's; the week's version has no Friday", () => {
+    expect(plan.timeBlocks.map((b) => `${b.start}-${b.end}`)).toEqual([
+      "09:00-09:45",
+      "09:50-10:35",
+      "11:30-12:15",
+      "13:00-13:45",
+      "13:50-14:35"
+    ]);
+    const week2 = plan.versions.find((v) => v.weekId === "w2");
+    expect(week2.days.map((d) => d.date)).toEqual([
+      "2027-07-05",
+      "2027-07-06",
+      "2027-07-07",
+      "2027-07-08"
+    ]);
+    week2.days.forEach((d) => expect(d.grid.b).toHaveLength(5));
+    const week1 = plan.versions.find((v) => v.weekId === "w1");
+    expect(week1.days).toHaveLength(5);
+  });
+
+  it("INGEST-4.3 counter-case: a week without its own day has no special day", () => {
+    const plain = [0, 1].map((w) =>
+      file(`Camp - Week ${w + 1}.csv`, [sheetOf(`Week ${w + 1}`, weekRows(w))])
+    );
+    const q = propose(plain, existing);
+    expect(planFor(q, existing, "a00000000000001AAA").specialDays).toEqual([]);
+  });
+});
+
+describe("INGEST-4.5: Session N in a season of numbered weeks", () => {
+  const weeks = [
+    ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+    ["w2", "Week 2", "2027-07-05", "2027-07-09"]
+  ].map(([Id, Name, start, end]) => ({
+    Id,
+    Name,
+    StartDate__c: start,
+    EndDate__c: end
+  }));
+  const sessionFiles = ["Camp Session 1", "Camp Session 2"].map((name, w) =>
+    file(
+      `${name}.xlsx`,
+      GROUPS.map((g, gi) => sheetOf(g, groupRows(w, gi)))
+    )
+  );
+
+  it("INGEST-4.5: Session 2 is the season's Week 2, without asking, said in the notes", () => {
+    const p = propose(sessionFiles, existingSetup({ weeks }));
+    expect(p.versions.map((v) => v.weekId).sort()).toEqual(["w1", "w2"]);
+    expect(asked(p, "week|")).toEqual([]);
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "Session 2 is read as Week 2: the weeks are numbered."
+    );
+  });
+
+  it("INGEST-4.5 counter-case: weeks not numbered are asked, as before", () => {
+    const named = weeks.map((w, i) => ({
+      ...w,
+      Name: ["Opening", "Color War"][i]
+    }));
+    const p = propose(sessionFiles, existingSetup({ weeks: named }));
+    expect(
+      asked(p, "week|")
+        .map((c) => c.id)
+        .sort()
+    ).toEqual(["week|Session 1", "week|Session 2"]);
   });
 });
