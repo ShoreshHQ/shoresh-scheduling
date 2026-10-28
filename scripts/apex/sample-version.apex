@@ -351,7 +351,13 @@ for (Integer d = 0; d < 5; d++) {
     new ScheduleDaySaves.DaySave(week.StartDate__c.addDays(d), grid, null)
   );
 }
-ScheduleDaySaves.write(version.Id, saves);
+// This seed stands in for an import, so it writes the imported week the way an import does.
+ImportedWeekGuard.allow();
+try {
+  ScheduleDaySaves.write(version.Id, saves);
+} finally {
+  ImportedWeekGuard.done();
+}
 System.debug(
   'SAMPLE_VERSION ' +
     version.Id +
