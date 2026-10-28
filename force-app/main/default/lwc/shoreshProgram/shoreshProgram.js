@@ -5,6 +5,21 @@ import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlaceme
 import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { moveNote } from "./groupMoves";
 
+/**
+ * DIV-1.1 (Greg 2026-10-27): a group may be in no division. It is held alone in a division of its
+ * own name (a group's division is how it knows its program), shown as "No division".
+ */
+function isNoDivision(entry) {
+  const groups = entry.groups || [];
+  const key = (name) =>
+    String(name || "")
+      .toLowerCase()
+      .replace(/\s+/g, "");
+  return (
+    groups.length === 1 && key(groups[0].Name) === key(entry.division.Name)
+  );
+}
+
 /** The element with focus, looking inside components (their shadow roots). */
 function focusedElement() {
   let element = document.activeElement;
@@ -340,13 +355,16 @@ export default class ShoreshProgram extends LightningElement {
     const divisions = [];
     const groups = [];
     (this.entry.divisions || []).forEach((d) => {
-      divisions.push({
-        label: `${t.s("Division")}: ${d.division.Name}`,
-        value: d.division.Id
-      });
+      const none = isNoDivision(d);
+      if (!none) {
+        divisions.push({
+          label: `${t.s("Division")}: ${d.division.Name}`,
+          value: d.division.Id
+        });
+      }
       (d.groups || []).forEach((grp) => {
         groups.push({
-          label: `${grp.Name} (${d.division.Name})`,
+          label: none ? grp.Name : `${grp.Name} (${d.division.Name})`,
           value: grp.Id
         });
       });
@@ -515,7 +533,9 @@ export default class ShoreshProgram extends LightningElement {
     const program = this.sectioned ? `${this.entry.program.Name} · ` : "";
     return (this.entry.divisions || []).map((d, index) => ({
       id: d.division.Id,
-      title: `${this.terms.p("Group")} in ${d.division.Name}`,
+      title: isNoDivision(d)
+        ? `No ${this.terms.sIn("Division")}`
+        : `${this.terms.p("Group")} in ${d.division.Name}`,
       heading: `${program}${d.division.Name}`,
       first: index === 0,
       groups: d.groups,

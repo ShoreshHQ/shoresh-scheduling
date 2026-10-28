@@ -176,7 +176,9 @@ function weekReads(truth, got) {
 }
 
 function wrongReads(truth, proposal, plan) {
-  const divisionName = new Map(plan.divisions.map((d) => [d.key, d.name]));
+  // DIV-1.1: a group in no division is held by a division record that is not a division.
+  const divisions = plan.divisions.filter((d) => !d.noDivision);
+  const divisionName = new Map(divisions.map((d) => [d.key, d.name]));
   const blockStart = new Map(plan.timeBlocks.map((b) => [b.key, b.start]));
   const program = plan.programs.length === 1 ? plan.programs[0] : null;
   const named = truth.divisionsInFile;
@@ -195,7 +197,7 @@ function wrongReads(truth, proposal, plan) {
     divisions: named
       ? mismatches(
           truth.divisions,
-          plan.divisions.map((d) => d.name)
+          divisions.map((d) => d.name)
         )
       : 0,
     groups: mismatches(

@@ -7,6 +7,7 @@ import { nsRecord } from "shoresh-jest/namespace";
 
 export {
   LEAVE_OUT,
+  NO_DIVISION,
   foundLists,
   importNotes,
   questionCards,

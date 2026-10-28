@@ -101,6 +101,12 @@ function divisionRecords(proposal, existing) {
   const used = new Set(
     proposal.groups.filter((g) => !g.leftOut).map((g) => g.divisionKey)
   );
+  // DIV-1.1: the record that holds a group in no division, marked so it is not read as one.
+  const none = new Set(
+    proposal.groups
+      .filter((g) => !g.leftOut && g.noDivision)
+      .map((g) => g.divisionKey)
+  );
   const count = new Map();
   return proposal.divisions
     .filter((d) => d.isNew && used.has(d.key))
@@ -118,7 +124,8 @@ function divisionRecords(proposal, existing) {
         id: null,
         programKey: d.programKey,
         name: d.name,
-        sortOrder: base + count.get(d.programKey)
+        sortOrder: base + count.get(d.programKey),
+        ...(none.has(d.key) ? { noDivision: true } : {})
       };
     });
 }

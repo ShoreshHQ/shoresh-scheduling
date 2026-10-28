@@ -3,6 +3,7 @@
 import {
   buildProposal,
   LEAVE_OUT,
+  NO_DIVISION,
   planFor,
   questionCards
 } from "./data/engine";
@@ -147,6 +148,7 @@ describe("division and program, shown for every new group and changeable (Greg)"
     expect(units[0].options.map((o) => o.value)).toEqual([
       "Juniors",
       "Seniors",
+      NO_DIVISION,
       LEAVE_OUT
     ]);
     const plan = planFor(
@@ -165,10 +167,14 @@ describe("division and program, shown for every new group and changeable (Greg)"
     ]);
   });
 
-  it("a camp with no divisions and a file naming none starts with Main, shown and changeable", () => {
+  // DIV-1.1
+  it("a camp with no divisions and a file naming none puts its groups in no division, unasked", () => {
     const p = propose(noUnits);
-    const units = cards(p).filter((c) => c.select === "division");
-    expect(units.map((c) => c.answer)).toEqual(["Main", "Main"]);
+    expect(cards(p).filter((c) => c.select === "division")).toEqual([]);
+    expect(p.groups.every((g) => g.noDivision)).toBe(true);
+    const plan = planFor(p, null, "s");
+    expect(plan.divisions.every((d) => d.noDivision)).toBe(true);
+    expect(plan.divisions.map((d) => d.name)).not.toContain("Main");
   });
 
   it("the program is shown preselected for the camp's only program, and can be changed", () => {
@@ -342,8 +348,9 @@ describe("who can do an imported activity (PR 15 review, finding 2)", () => {
     );
     const p = propose(files, existing, { [card.id]: "new" });
     const archery = p.activities.find((a) => a.name === "Archery");
-    expect(archery.who.names).toEqual(["Main"]);
-    expect(archery.who.keys).toEqual(["D|P0|Main"]);
+    // DIV-1.1: the new program's groups are in no division, so who names them.
+    expect(archery.who.names).toEqual(["Bunk 1", "Bunk 2"]);
+    expect(archery.who.keys).toEqual(["G|Bunk 1", "G|Bunk 2"]);
   });
 
   it("is everyone when the files cover every group in the season", () => {
@@ -408,7 +415,8 @@ describe("PR 16 reviews", () => {
     return b === 0 && (g + d) % 2 === 0 ? "Archery" : rotation(g, d, b);
   }
 
-  it("two new programs each with a division called Main: who names both (coordinator blocker)", () => {
+  // DIV-1.1: two new programs with no divisions: who names each program's groups.
+  it("two new programs with no divisions: who names both programs' groups (coordinator blocker)", () => {
     const files = [
       ...week("A", ["Red", "Blue"], morning, all),
       ...week("B", ["Green", "Gold"], later, all)
@@ -422,7 +430,7 @@ describe("PR 16 reviews", () => {
     const p = propose(files, teens, answers);
     const archery = p.activities.find((a) => a.name === "Archery");
     const keys = archery.who.keys;
-    expect(keys.sort()).toEqual(["D|P0|Main", "D|P1|Main"]);
+    expect(keys.sort()).toEqual(["G|Blue", "G|Gold", "G|Green", "G|Red"]);
   });
 
   // DIV-1.3
@@ -523,8 +531,8 @@ describe("PR 16 reviews", () => {
     expect(
       units.map((c) => [c.subject, c.answer, c.options.map((o) => o.value)])
     ).toEqual([
-      ["Bunk 1 (Juniors)", "Juniors", ["Juniors", LEAVE_OUT]],
-      ["Bunk 1 (Seniors)", "Seniors", ["Seniors", LEAVE_OUT]]
+      ["Bunk 1 (Juniors)", "Juniors", ["Juniors", NO_DIVISION, LEAVE_OUT]],
+      ["Bunk 1 (Seniors)", "Seniors", ["Seniors", NO_DIVISION, LEAVE_OUT]]
     ]);
   });
 
@@ -550,7 +558,11 @@ describe("PR 16 reviews", () => {
     );
     const p = propose([...a, ...b]);
     const unit = cards(p).find((c) => c.id === "division|Bunk 1 (schedule 2)");
-    expect(unit.options.map((o) => o.value)).toEqual(["Juniors", LEAVE_OUT]);
+    expect(unit.options.map((o) => o.value)).toEqual([
+      "Juniors",
+      NO_DIVISION,
+      LEAVE_OUT
+    ]);
   });
 
   it("a group of another program cannot be kept, only added anew or left out", () => {
@@ -620,7 +632,7 @@ describe("PR 16 round 3", () => {
     expect(unit.answer).toBeNull();
     expect(unit.options.map((o) => o.value)).toEqual([
       "Juniors",
-      "Main",
+      NO_DIVISION,
       LEAVE_OUT
     ]);
   });
@@ -636,6 +648,7 @@ describe("PR 16 round 3", () => {
     expect(unit.options.map((o) => o.value)).toEqual([
       "Seniors",
       "Juniors",
+      NO_DIVISION,
       LEAVE_OUT
     ]);
   });
@@ -688,7 +701,8 @@ describe("PR 16 round 3", () => {
 });
 
 describe("PR 16 round 4", () => {
-  it("a new camp can always choose Main, beside a unit a file name suggests", () => {
+  // DIV-1.1
+  it("a new camp can always choose no division, beside a unit a file name suggests", () => {
     const file = csv("Maple Grove 2026 - Bunk 1.csv", [
       ["Time", ...DAYS],
       ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => rotation(0, d, bi))])
@@ -697,7 +711,7 @@ describe("PR 16 round 4", () => {
     expect(unit.answer).toBeNull();
     expect(unit.options.map((o) => o.value)).toEqual([
       "Maple Grove 2026",
-      "Main",
+      NO_DIVISION,
       LEAVE_OUT
     ]);
   });

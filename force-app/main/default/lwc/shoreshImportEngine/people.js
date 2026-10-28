@@ -4,18 +4,29 @@
  * - a group the camp already has keeps its division, unless the director moves it;
  * - a new group gets the division the file names, preselected and changeable; where the file
  *   names none and the program already has divisions, nothing is preselected and the import
- *   waits for a choice (never a silent "Main"); only a program with no divisions at all, in a
- *   file that names none, starts with one division, Main, shown and changeable.
+ *   waits for a choice (never a silent "Main");
+ * - DIV-1.1 (Greg 2026-10-27): a group read as its whole division (INGEST-3.8), and a group of a
+ *   program with no divisions in a file that names none, is in no division and is not asked for
+ *   one. "No division" is saved as the group alone in a division of its own name (Group__c needs
+ *   a division: it is how a group knows its program), which is what no division means to every
+ *   rule: the group shares a division with nobody (noDivision.js).
  * A group is its division and its name (identity.js). Where the file shows a group the camp has
  * in another division (Bunk 3 in Seniors, set up in Juniors), the director chooses: move it,
  * keep it where it is, add a new one, or leave it out; the card says what moving changes.
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { deletedAs, deletionsIn } from "./deleted";
-import { LEAVE_OUT } from "./reading-constants";
+import { LEAVE_OUT, NO_DIVISION } from "./reading-constants";
 import { looseKey } from "./text";
 
-export const DEFAULT_DIVISION = "Main";
+/** DIV-1.1: a group in no division, saved alone in a division of its own name; never asked. */
+function noDivisionGroup(group, here) {
+  return {
+    ...newGroup(group, here.get(group.recordName)),
+    division: null,
+    noDivision: true
+  };
+}
 
 function campGroups(existing, rules) {
   const byIdentity = new Map();
@@ -29,6 +40,10 @@ function campGroups(existing, rules) {
           identity: rules.identityOf(g.Name, d.division.Name),
           division: d.division.Name,
           divisionId: d.division.Id,
+          // DIV-1.1: alone in a division of its own name is in no division.
+          noDivision:
+            (d.groups || []).length === 1 &&
+            looseKey(g.Name) === looseKey(d.division.Name),
           programId: entry.program.Id,
           programName: entry.program.Name
         };
@@ -128,7 +143,9 @@ function existingGroup(current, group) {
     id: current.id,
     isNew: false,
     divisionKey: current.divisionId,
-    division: current.division
+    ...(current.noDivision
+      ? { division: null, noDivision: true }
+      : { division: current.division })
   };
 }
 
@@ -199,10 +216,12 @@ function movedGroup(group, other, here, ctx) {
 function unitChoice(group, here, fileDivisions, ctx) {
   const id = `division|${group.name}`;
   const noUnits = here.known.length === 0 && fileDivisions.length === 0;
+  if (group.noDivision || (noUnits && !group.hint)) {
+    return noDivisionGroup(group, here);
+  }
   // A division only a lone file's name suggests is offered, never preselected; and Main is not
   // preselected over it (round 3): the director picks.
-  const preselected =
-    group.division || (noUnits && !group.hint ? DEFAULT_DIVISION : null);
+  const preselected = group.division || null;
   // A division that already has a group of this name is not offered: choosing it would make a
   // second one (Bunk 1 in Seniors when Seniors has its own Bunk 1).
   // Only this program's groups count: another program's Juniors is another division.
@@ -224,9 +243,7 @@ function unitChoice(group, here, fileDivisions, ctx) {
       ...here.known.map((d) => d.name),
       ...fileDivisions,
       ...(group.hint ? [group.hint] : []),
-      ...(preselected ? [preselected] : []),
-      // A program with no divisions can always start with Main (round 4).
-      ...(noUnits ? [DEFAULT_DIVISION] : [])
+      ...(preselected ? [preselected] : [])
     ])
   ].filter((d) => !taken.has(looseKey(d)));
   ctx.asks.push({
@@ -245,6 +262,9 @@ function unitChoice(group, here, fileDivisions, ctx) {
       leftOut: true,
       isNew: true
     };
+  }
+  if (answer === NO_DIVISION) {
+    return noDivisionGroup(group, here);
   }
   if (!answer || !options.includes(answer)) {
     return { ...newGroup(group, { key: null, name: null }), unanswered: true };

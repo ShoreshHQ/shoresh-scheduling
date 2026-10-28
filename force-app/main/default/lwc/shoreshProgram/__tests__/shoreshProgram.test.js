@@ -165,6 +165,30 @@ describe("c-shoresh-program", () => {
     expect(table().heading).toBe("Main");
   });
 
+  // DIV-1.1
+  it("shows a group in no division as No division, never as a division of its own", async () => {
+    const element = createElement("c-shoresh-program", { is: ShoreshProgram });
+    element.entry = nsRecord({
+      ...ENTRY,
+      divisions: [
+        ...ENTRY.divisions,
+        {
+          division: { Id: "d3", Name: "Seniors" },
+          groups: [{ Id: "g9", Name: "Seniors", Division__c: "d3" }]
+        }
+      ],
+      recurringActivities: []
+    });
+    element.terms = terms;
+    element.show = "groups";
+    document.body.appendChild(element);
+    await flush();
+    const tables = [
+      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+    ];
+    expect(tables.map((t) => t.title)).toEqual(["Bunks in Juniors", "No Unit"]);
+  });
+
   // DIV-1.2
   it("lets a group move to another division of its program, saying what that changes", async () => {
     const twoUnits = {

@@ -1055,6 +1055,35 @@ describe("the hard rules", () => {
     expect(problems(spec, input, result)).toEqual([]);
   });
 
+  // DIV-1.1 DIV-4.1
+  it("same division only: groups in no division share a division with nobody", () => {
+    // A group in no division is held alone in a division record of its own name.
+    const spec = {
+      groups: [
+        group("juniors", { division: "juniors" }),
+        group("seniors", { division: "seniors" })
+      ],
+      blocks: [block(0)],
+      locations: [{ id: "court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court",
+          min: 1
+        }),
+        activity("arts", { atOnce: null, priority: "Low" })
+      ]
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    const onCourt = ["juniors", "seniors"].filter(
+      (g) => at(result, 0, g, 0) === "tennis"
+    );
+    expect(onCourt.length).toBe(1);
+    expect(problems(spec, input, result)).toEqual([]);
+  });
+
   // DIV-4.1
   it("same division only holds whoever arrived first: another activity can't bring a second division into the place", () => {
     const result = run({
