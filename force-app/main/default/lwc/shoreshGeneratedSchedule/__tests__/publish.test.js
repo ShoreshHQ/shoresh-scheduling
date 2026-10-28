@@ -280,7 +280,7 @@ describe("Publish on the Generated Schedule screen", () => {
     previewPublish.mockResolvedValue(preview());
     await clickPublish(element);
     expect(ask(element).heading).toBe("Publish Week 1?");
-    expect(ask(element).lines.join(" ")).toMatch(/Filled: \d+ of \d+/);
+    expect(ask(element).lines.join(" ")).toMatch(/\d+ of \d+ placed/);
     // The counters' words (decision 3): never the old Open counter's.
     expect(ask(element).lines.join(" ")).not.toMatch(/Open/);
     expect(ask(element).confirmLabel).toBe("Publish");

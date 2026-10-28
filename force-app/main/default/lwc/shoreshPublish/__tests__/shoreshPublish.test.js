@@ -27,7 +27,7 @@ describe("c/shoreshPublish", () => {
     expect(problemLines(null)).toEqual([]);
   });
 
-  it("names Filled while cells are Open, dots and each counter above 0, in the counters' words", () => {
+  it("PUB-6.2: names N of M placed while cells are Open, dots and each counter above 0, in the counters' words", () => {
     expect(
       problemLines({
         ...CLEAN,
@@ -41,15 +41,15 @@ describe("c/shoreshPublish", () => {
         spread: ["c"]
       })
     ).toEqual([
-      "Filled: 7 of 10",
+      "7 of 10 placed",
       "2 activities need a look.",
-      "Overlapping: 1",
+      "Conflicts: 1",
       "Still needed: 2",
       "Spread across the week: 1"
     ]);
   });
 
-  it("with the Why list: Filled, then its rows counted once, and no counter beside them", () => {
+  it("with the Why list: N of M placed, then its rows counted once, and no counter beside them", () => {
     const row = { text: "x" };
     expect(
       problemLines(
@@ -71,7 +71,7 @@ describe("c/shoreshPublish", () => {
           notes: [row]
         }
       )
-    ).toEqual(["Filled: 7 of 10", "To look at: 5"]);
+    ).toEqual(["7 of 10 placed", "To look at: 5"]);
   });
 
   it("says one in the singular", () => {
@@ -81,7 +81,7 @@ describe("c/shoreshPublish", () => {
         cells: { filled: 0, total: 1 },
         flags: new Map([["k1", "x"]])
       })
-    ).toEqual(["Filled: 0 of 1", "1 activity needs a look."]);
+    ).toEqual(["0 of 1 placed", "1 activity needs a look."]);
   });
 
   it("leaves out a counter the camp has no targets for, as the screen does", () => {
@@ -130,7 +130,7 @@ describe("c/shoreshPublish", () => {
     expect(question).toEqual({
       kind: "ask",
       heading: "Publish Week 1?",
-      lines: ["Filled: 9 of 10"],
+      lines: ["9 of 10 placed"],
       confirmLabel: "Publish"
     });
   });
@@ -168,7 +168,7 @@ describe("c/shoreshPublish", () => {
       "This replaces the Posted plan. 31 cells change:",
       "Bunk 1 · Monday · Period 2: Swim → Soccer",
       "…and 30 more.",
-      "Overlapping: 2"
+      "Conflicts: 2"
     ]);
   });
 
