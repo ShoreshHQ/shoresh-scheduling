@@ -38,22 +38,23 @@ the grid really supports both readings the director is asked. Each rule is clue,
 example, test.
 
 1. **Every group present, same slot, every day → fixed.**
-   Clue: in each of the name's slots, no other activity is ever there, and every group has it on
-   most of its own days there (at least three times as many days as it is there with the slot
-   empty). Judged group by group: a day a group is away does not count (no cells that day, a trip
-   or special event, an "Off"/"Away" cell); a group that is there but never has the name in that
-   slot means it is not fixed (then the other rules decide). A cell spelled otherwise and still
-   asked as a similar name ("lunch" beside "Lunch") does not break it. A week without the name at
-   all (a travel week) only has to leave the slot free. A name fixed in two slots is two fixed
-   activities, one per block. Two days of evidence at least (rule 4).
+   Clue: in each of the name's slots, every group has it on every one of its own days there, and
+   no other activity is ever there. Judged group by group: a day a group is away does not count
+   (no cells that day, a trip or special event, an "Off"/"Away" cell); a group that is there but
+   never has the name in that slot means it is not fixed. A group that is there with the slot
+   empty, or with another activity in it, even once, means it is not decided as fixed: rule 9
+   asks (Greg 2026-10-28; this replaces the earlier silent tolerance of empty cells). A cell
+   spelled otherwise and still asked as a similar name ("lunch" beside "Lunch") does not break
+   it. A week without the name at all (a travel week) only has to leave the slot free. A name
+   fixed in two slots is two fixed activities, one per block. Two days of evidence at least
+   (rule 4).
    Example: Carpool at 08:40 and at 15:40, Group Time at 09:00 (plant camp); Carpool every day
    with Bunk 3 on the Zoo trip on Wednesday. Not fixed: Carpool for three bunks every day, the
    fourth bunk never (blank or at another activity then).
    Test: "every group, same time block, every day, nowhere else"; "rule 1: fixed at two times a
    day"; "rule 1: a bunk on a trip / with no cells / off on Wednesday does not break a fixed
-   Carpool"; "rule 1: another activity in the slot … does break fixed"; "rule 1: a group that
-   never has the name in its slot is not fixed"; "rule 1: a cell spelled otherwise, still asked,
-   does not break a fixed Lunch".
+   Carpool"; "rule 1: a group that never has the name in its slot is not fixed"; "rule 1: a cell
+   spelled otherwise, still asked, does not break a fixed Lunch".
 
 2. **One name, one kind: a group has it at three or more times → activity everywhere.**
    Clue: in one week some group has the name in three or more different slots. That is placed
@@ -152,9 +153,29 @@ example, test.
    one-day and a one-block file; a remembered deleted bunk; a remembered answer not about
    identity).
 
+9. **Looks like it is for everyone, but not on some day → asked what it is (Greg 2026-10-28).**
+   Greg: "if shoresh searches and sees 1 activity that looks like it is for everyone but on 1 day
+   it wasn't it should ask to clarify what the thing is first". Fixed means it does not move, is
+   there every day for all groups, and never changes.
+   Clue: in each of the name's slots, every group has it on most of its own days there (more days
+   with it than without), and on some day a group that is there has that slot empty or another
+   activity in it. Away days are excused as in rule 1 (no cells, a trip or special event,
+   "Off"/"Away") and never cause the question. Rule 2 comes first: a group with the name at three
+   or more times makes it an activity, not asked. A week without the name that puts another
+   activity in the slot is not asked about (rule 1's travel-week check; the other rules decide).
+   Then the director is asked (ask C): fixed, recurring, or activity, or leave it out. Until
+   answered it is not set up as fixed.
+   Example: Carpool every morning for all four bunks, except Bunk 3 on Wednesday, whose cell is
+   empty or says Drama. Not asked: Bunk 3 without Carpool on two days of five plus once at Drama
+   (fewer days with it than without), so it does not look like it is for everyone.
+   Code: `fixedness` in `classify.js`; the card's wording is `kindWhy` in `questions.js`.
+   Test: "rule 9: another activity / an empty cell in the slot for one bunk one day: not
+   decided, the director is asked"; "rule 9: not everyone on most days … is not asked as fixed";
+   "rule 9: rule 2 comes first …".
+
 ## Asked, because the grid supports both readings
 
-Only these two. Each card offers set time, activity, or leave it out.
+Only these three. Each card offers set time, activity, or leave it out.
 
 - **A. Mostly at a set time, a few times elsewhere.** A strong set time (most days, or most
   groups) holds at least three quarters of the name's cells, and the rest are at other times
@@ -166,6 +187,8 @@ Only these two. Each card offers set time, activity, or leave it out.
   between the weeks that have the name (Flag in Period 1 in week 1, Period 2 in week 2). A week
   without the name does not count.
   Test: "weeks in the files must agree before a set time is sure".
+- **C. Looks like everyone every day, but not on some day.** Rule 9. The card offers fixed,
+  recurring, activity, or leave it out.
 
 ## Known limits
 

@@ -373,22 +373,24 @@ function holdersAt(patterns, slot) {
 
 /**
  * Counts one slot over one week for rule 1, group by group (into `byGroup`): the days it has the
- * name there, and the days it is there but the slot is empty. A day the group is away (a trip,
- * off, no cells) counts for neither. Returns whether any other activity is ever in the slot.
+ * name there, and the days it is there without the name in the slot (empty, or another activity:
+ * a gap). A day the group is away (a trip, off, no cells) counts for neither. Returns whether
+ * another activity is ever in the slot.
  */
 function tallySlot(facts, week, patterns, slot, byGroup) {
   const has = holdersAt(patterns, slot);
   let broken = false;
   for (const group of groupsIn(facts, week)) {
-    const t = byGroup.get(group) || { held: 0, empty: 0 };
+    const t = byGroup.get(group) || { held: 0, gaps: 0 };
     byGroup.set(group, t);
     for (const day of facts.daysByWeek.get(week) || []) {
       if (has.has(group) && has.get(group).has(day)) {
         t.held++;
       } else if (!freeAt(facts, { week, group, day }, slot)) {
         broken = true;
+        t.gaps++;
       } else if (present(facts, week, group, day)) {
-        t.empty++;
+        t.gaps++;
       }
     }
   }
@@ -415,32 +417,40 @@ function evidenceDays(sorted) {
 }
 
 /**
- * Rule 1 over the weeks: in each of its slots, nothing else is ever there, and every group has
- * the name there on most of its own days present: at least three times as many as it is there
- * with the slot empty. A day a group is away (no cells, a trip, off) does not count; a group that
- * never has it there is not "every group". Two days of evidence at least (rule 4).
+ * Rule 1 over the weeks: "fixed", "near" or null. Fixed: in each of its slots every group has the
+ * name on every day it is there, and nothing else is ever there. Near (INGEST-3.9, Greg
+ * 2026-10-28): it looks like it is for everyone, but not quite: in each slot every group has it
+ * on most of its own days there (more days with it than without), and on some day a group's cell
+ * there is empty or another activity. Then the director is asked. A day a group is away (no
+ * cells, a trip, off) does not count; a group that never has it there is not "every group"; a
+ * week without the name (a travel week) must leave the slot free. Two days of evidence (rule 4).
  */
-function isFixed(sorted, facts) {
+function fixedness(sorted, facts) {
   if (evidenceDays(sorted) < 2) {
-    return false;
+    return null;
   }
   const byWeek = new Map(sorted.map((w) => [w.week, w.all]));
+  let gaps = 0;
   for (const slot of slotsOf(sorted)) {
     const byGroup = new Map();
     for (const week of facts.weeks) {
-      // A week without the name at all (a travel week) only has to leave the slot free.
-      const counted = byWeek.has(week) ? byGroup : new Map();
-      if (tallySlot(facts, week, byWeek.get(week) || [], slot, counted)) {
-        return false;
+      if (!byWeek.has(week)) {
+        // A week without the name at all (a travel week) only has to leave the slot free.
+        if (tallySlot(facts, week, [], slot, new Map())) {
+          return null;
+        }
+        continue;
       }
+      tallySlot(facts, week, byWeek.get(week), slot, byGroup);
     }
     for (const t of byGroup.values()) {
-      if (t.held === 0 || t.held < t.empty * 3) {
-        return false;
+      if (t.held === 0 || t.held <= t.gaps) {
+        return null;
       }
+      gaps += t.gaps;
     }
   }
-  return true;
+  return gaps === 0 ? "fixed" : "near";
 }
 
 /** A fixed name's records: one per slot, every group, from the first week. */
@@ -496,11 +506,16 @@ function showsRepetition(sorted, facts) {
 }
 
 function verdictOf(sorted, facts) {
-  if (isFixed(sorted, facts)) {
+  const shape = fixedness(sorted, facts);
+  if (shape === "fixed") {
     return { verdict: "fixed" };
   }
   if (movesAround(sorted)) {
     return { verdict: "activity", reason: "moves" };
+  }
+  // Ask C (rule 9, INGEST-3.9): everyone, same slot, nearly every day: what is it?
+  if (shape === "near") {
+    return { verdict: "ask", reason: "nearFixed" };
   }
   // Some placements are at no set time: an activity, unless ask A.
   if (sorted.some((w) => w.strays.length > 0)) {
@@ -543,7 +558,7 @@ export function classifyName(cells, timetable) {
   const sorted = sortWeeks(byWeek, weeks, facts);
   const first = sorted[0];
   const decided = verdictOf(sorted, facts);
-  const fixed = decided.verdict === "fixed";
+  const fixed = decided.verdict === "fixed" || decided.reason === "nearFixed";
   return {
     ...decided,
     patterns: fixed ? fixedPatterns(sorted) : first.held,
