@@ -17,6 +17,23 @@
       <p class="shoresh-pop-row" data-id="still-needed">
         <b>{stillNeeded}</b><span>still needed</span>
       </p>
+      <template for:each={priorityRows} for:item="row">
+        <p key={row.key} class="shoresh-pop-row" data-id={row.key}>
+          <span>{row.label}</span
+          ><span class="shoresh-pop-end"
+            ><b>{row.met}</b><span>of {row.total} minimums met</span></span
+          >
+        </p>
+      </template>
+      <template lwc:if={spread}>
+        <p class="shoresh-pop-row" data-id="spread">
+          <span>Spread across the week</span
+          ><span class="shoresh-pop-end"
+            ><b>{spread.days}</b
+            ><span>of {spread.sessions} on different days</span></span
+          >
+        </p>
+      </template>
       <template lwc:if={openRows.length}>
         <div class="shoresh-pop-divider" role="presentation"></div>
         <p class="shoresh-pop-row shoresh-pop-head" id="open" data-id="open">

@@ -18,7 +18,8 @@ import {
   looseKey,
   mergesFrom,
   similarPairs,
-  tidy
+  tidy,
+  realDivisionsOf
 } from "c/shoreshImportEngine";
 import { NONE, dashKeyOf, days as readDays, readCell } from "./cells";
 import {
@@ -116,8 +117,12 @@ function readRows(rows, start, used) {
     const dayAsks = {};
     const problems = [];
     const requiredBlanks = [];
+    let saidNone = false;
     used.forEach(({ column, index }) => {
-      const read = readCell(column, row[index]);
+      // DIV-1.1: "No division" in a group's division cell says the group is in none.
+      const none = noneWritten(column, row[index]);
+      saidNone = saidNone || none;
+      const read = none ? { blank: true } : readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
       } else if (read.ask) {
@@ -125,7 +130,7 @@ function readRows(rows, start, used) {
       } else if (
         read.blank &&
         column.requiredValue &&
-        column.newValue !== undefined
+        (column.newValue !== undefined || column.blankWhenNone)
       ) {
         // Settled once it is known whether the row is new (settleBlanks).
         requiredBlanks.push(column);
@@ -159,10 +164,21 @@ function readRows(rows, start, used) {
       unsure,
       dayAsks,
       requiredBlanks,
+      saidNone,
       problems
     });
   }
   return result;
+}
+
+/** DIV-1.1: whether a cell says "No division" (or "No Unit", in the camp's word). */
+function noneWritten(column, raw) {
+  const said = looseKey(String(raw ?? ""));
+  return (
+    !!column.blankWhenNone &&
+    (said === looseKey("No division") ||
+      said === looseKey(`No ${column.heading}`))
+  );
 }
 
 function usable(row) {
@@ -626,7 +642,7 @@ function resolveProgramRefs(leads, used, setup, context, kinds) {
         const records = !entry
           ? []
           : column.ref === "division"
-            ? (entry.divisions || []).map((d) => d.division)
+            ? realDivisionsOf(entry).map((d) => d.division)
             : entry.timeBlocks || [];
         result.pairs.push(
           ...resolveColumn(
@@ -676,7 +692,8 @@ function whoPrograms(setup, programIds) {
     .map((e) => ({
       id: e.program.Id,
       name: e.program.Name,
-      divisions: (e.divisions || []).map((d) => ({
+      // DIV-1.1: a holding record is no division a list can name.
+      divisions: realDivisionsOf(e).map((d) => ({
         id: d.division.Id,
         name: d.division.Name
       }))
@@ -745,16 +762,37 @@ function resolveAllWho(leads, used, screen, setup, answers, t, allTargets) {
  * added by hand does, tagged "starting value"; an item set up can't be cleared, so its row can't
  * be read ("Length is blank").
  */
-function settleBlanks(rows) {
+function settleBlanks(rows, setup) {
   rows
     .filter((r) => usable(r) && !r.open && r.requiredBlanks.length)
     .forEach((r) => {
-      if (r.existing) {
-        r.requiredBlanks.forEach((column) => {
+      // DIV-1.1: blank is what a group in no division writes, and reads back unchanged.
+      const none = (column) =>
+        column.blankWhenNone &&
+        !!r.existing &&
+        column.fromRecord(r.existing) === "";
+      r.requiredBlanks.filter(none).forEach((column) => {
+        r.blanks.add(column.key);
+      });
+      // A new group is saved in no division, as on the groups screen, when the director wrote
+      // "No division" or its program has no divisions (INGEST names-and-divisions rule 1); a
+      // blank beside real divisions stays unusable, never quietly in none.
+      const entry = r.program ? programEntry(setup, r.program.id) : null;
+      const inNone =
+        !r.existing &&
+        (r.saidNone || (!!entry && realDivisionsOf(entry).length === 0));
+      if (inNone && r.requiredBlanks.some((c) => c.blankWhenNone)) {
+        r.noDivision = true;
+      }
+      const left = r.requiredBlanks.filter(
+        (column) => !none(column) && !(column.blankWhenNone && inNone)
+      );
+      if (r.existing || left.some((column) => column.newValue === undefined)) {
+        left.forEach((column) => {
           r.problems.push(`${column.heading} is blank`);
         });
       } else {
-        r.startingValues = r.requiredBlanks.map((column) => column.heading);
+        r.startingValues = left.map((column) => column.heading);
       }
     });
 }
@@ -1259,7 +1297,7 @@ export function listProposal(input) {
       ? resolveProgramDays(leads, answers)
       : { cards: [], added: new Map() };
   result.cards.push(...days.cards);
-  settleBlanks(leads);
+  settleBlanks(leads, setup);
   checkNewLimits(leads, screen);
   leaveOutSkipped(leads, screen, answers, deletions);
   const rain = used.find(({ column }) => column.ref === "activity");
@@ -1541,6 +1579,8 @@ function describeRow(r, used, screen, setup, answers, deletions) {
     droppedPlan: r.droppedPlan || null,
     droppedPlace: r.droppedPlace || null,
     startingValues: r.startingValues || [],
+    // DIV-1.1: a new group added in no division.
+    ...(r.noDivision ? { noDivision: true } : {}),
     targets: r.targets || {},
     programId: r.program ? r.program.id : null,
     programName: r.program ? r.program.name : null

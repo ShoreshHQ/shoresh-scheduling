@@ -104,7 +104,7 @@ export function coveredBlocks(day, groupIndex, firstBlock) {
  * The cells left Open where the group is at camp (what the Open counter counts: Filled's "of"
  * less its filled), one line each, "Bunk 3 · Monday · Period 2", with the engine's reason when
  * the grid shows it (the same words, reasonFor): "Already busy then" when the group holds
- * something at an overlapping time; "No activity fits this gap" when the run of Open cells it is
+ * something at an overlapping time; "No activity fits here" when the run of Open cells it is
  * in is shorter than the shortest activity (shortest, in blocks). A cell Start over just cleared
  * has neither: something fits, it just isn't built yet. lockedOpen(dateValue, groupId, blockId)
  * says a cell is locked empty: it isn't listed and isn't room for an activity. Worked out from the

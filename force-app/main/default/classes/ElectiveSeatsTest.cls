@@ -363,6 +363,28 @@ private class ElectiveSeatsTest {
     }
   }
 
+  // DIV-1.1
+  @IsTest
+  static void aGroupInNoDivisionShowsNoDivisionName() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(2);
+      update as user new Division__c(
+        Id = camp.ids.get('Juniors'),
+        NoDivision__c = true
+      );
+
+      Test.startTest();
+      ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
+      Test.stopTest();
+
+      Assert.isFalse(view.groups.isEmpty());
+      Assert.isNull(
+        view.groups[0].divisionName,
+        'A holding record is no division'
+      );
+    }
+  }
+
   @IsTest
   static void anOfferingClosedToADivisionIsNotOfferedThere() {
     System.runAs(ShoreshTestData.scheduler()) {

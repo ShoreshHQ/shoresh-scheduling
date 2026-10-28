@@ -116,6 +116,7 @@ public with sharing class SetupGuessRecords {
         Id,
         Name,
         Division__r.Name,
+        Division__r.NoDivision__c,
         Division__r.Program__r.Name,
         Division__r.Program__r.Season__c
       FROM Group__c
@@ -131,7 +132,8 @@ public with sharing class SetupGuessRecords {
           ),
           SetupGuessValues.DIVISION
         ),
-        row.Division__r.Name
+        // DIV-1.1: a holding record is no division; the group is in none.
+        row.Division__r.NoDivision__c ? '' : row.Division__r.Name
       );
     }
     return result;

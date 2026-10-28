@@ -129,6 +129,6 @@ These never bend for Shoresh.
   count (see CORE-1.33).
 - **CORE-6.5** Counters MUST use "N of M placed", "still needed", "under", "over"; never
   "Filled" or "Overlapping".
-- **CORE-6.6** Screens MUST NOT add help text or banners, or show ids, field names or machinery;
-  one plain sentence only when Shoresh can't proceed.
+- **CORE-6.6** Screen text MUST NOT contain record Ids, API field names (`__c`), or explanation
+  paragraphs; the only sentence allowed is the one saying why Shoresh can't proceed.
 - **CORE-6.7** Problems MUST be computed from what is there, never stored.

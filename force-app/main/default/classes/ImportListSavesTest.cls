@@ -533,6 +533,55 @@ private class ImportListSavesTest {
     }
   }
 
+  // DIV-1.1
+  @IsTest
+  static void aGroupAddedInNoDivisionIsSavedInItsFlaggedHoldingRecord() {
+    Camp c = camp();
+    System.runAs(new User(Id = c.scheduler)) {
+      Id programId = [SELECT Program__c FROM Division__c WHERE Id = :c.seniors]
+      .Program__c;
+      String holder = 'NoDivision:' + programId + ':Tent 1';
+      Test.startTest();
+      ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Division',
+                'key' => holder,
+                'fields' => new Map<String, Object>{
+                  'Name' => 'Tent 1',
+                  'NoDivision__c' => true
+                },
+                'refs' => new Map<String, Object>{ 'Program__c' => programId }
+              },
+              new Map<String, Object>{
+                'kind' => 'Group',
+                'key' => 'Group:' +
+                programId +
+                '::Tent 1',
+                'fields' => new Map<String, Object>{
+                  'Name' => 'Tent 1',
+                  'Availability__c' => 'AllDay'
+                },
+                'refs' => new Map<String, Object>{ 'Division__c' => holder }
+              }
+            }
+          )
+        )
+      );
+      Test.stopTest();
+      Group__c tent = [
+        SELECT Division__r.NoDivision__c, Division__r.Program__c
+        FROM Group__c
+        WHERE Name = 'Tent 1'
+      ];
+      Assert.isTrue(tent.Division__r.NoDivision__c);
+      Assert.areEqual(programId, tent.Division__r.Program__c);
+    }
+  }
+
   @IsTest
   static void aRainPlanChangedToAnActivityTheListAddsIsUndone() {
     Camp c = camp();

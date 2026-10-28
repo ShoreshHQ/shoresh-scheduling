@@ -105,6 +105,19 @@ export default class ShoreshWeekChecks extends LightningElement {
   get stillNeeded() {
     return this.m.stillNeeded;
   }
+  /** Priorities met (CORE-6.4): "High priority 9 of 10 minimums met", then Low. Counts only. */
+  get priorityRows() {
+    return (this.m.priorities || []).map((row) => ({
+      ...row,
+      key: `priority-${row.priority}`,
+      label: row.priority === "high" ? "High priority" : "Low priority"
+    }));
+  }
+  /** Spread across the week (CORE-6.4): sessions on a day of their own, of repeated sessions. */
+  get spread() {
+    const spread = this.m.spread;
+    return spread && spread.sessions > 0 ? spread : null;
+  }
 
   /** Under, with a 0 when the camp has goals and none is short (the desktop's grey 0). */
   get showUnder() {

@@ -61,7 +61,7 @@ export function reasonFor(
         inUseBy && inUseBy.length ? `, in use by ${listed(inUseBy)}` : ""
       }`;
     case NO_FIT:
-      return `No ${t.sIn("Activity")} fits this ${t.sIn("Gap")}`;
+      return `No ${t.sIn("Activity")} fits here`;
     case BUSY:
       return "Already busy then";
     case FULL:

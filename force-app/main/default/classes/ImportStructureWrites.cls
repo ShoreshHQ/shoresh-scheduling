@@ -78,13 +78,17 @@ public with sharing class ImportStructureWrites {
     List<SObject> rows = new List<SObject>();
     List<ImportPlan.Entry> entries = plan.entries('divisions');
     for (ImportPlan.Entry entry : entries) {
-      rows.add(
-        new Division__c(
-          Program__c = keys.of(entry.text('programKey')),
-          Name = entry.text('name'),
-          SortOrder__c = entry.whole('sortOrder')
-        )
+      Division__c division = new Division__c(
+        Program__c = keys.of(entry.text('programKey')),
+        Name = entry.text('name'),
+        SortOrder__c = entry.whole('sortOrder')
       );
+      // DIV-1.1: the record holding a group that has no division (set only then, so an
+      // ordinary division's import record stays as it was).
+      if (entry.has('noDivision')) {
+        division.NoDivision__c = true;
+      }
+      rows.add(division);
     }
     writer.write('Division', entries, rows);
   }

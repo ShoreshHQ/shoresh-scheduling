@@ -541,3 +541,27 @@ describe("card 3: the count", () => {
     ]);
   });
 });
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("its holding record is no division a sheet can name", () => {
+    const groups = groupsOfProgram(
+      nsRecord({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d9", Name: "Tent 1", NoDivision__c: true },
+                groups: [{ Id: "g9", Name: "Tent 1" }]
+              }
+            ]
+          }
+        ]
+      }),
+      "p1"
+    );
+    expect([...groups.divisions.keys()]).toEqual([]);
+    expect(groups.byName.size).toBe(1);
+  });
+});

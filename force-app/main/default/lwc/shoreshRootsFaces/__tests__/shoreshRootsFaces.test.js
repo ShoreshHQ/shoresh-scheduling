@@ -611,3 +611,33 @@ describe("c/shoreshRootsFaces", () => {
     expect(nameWidth("mm")).toBeGreaterThan(nameWidth("ii"));
   });
 });
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("is drawn under No division, never as a division of its own", () => {
+    const camp = readCamp(
+      nsRecord({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [{ Name: "Bunk 1" }]
+              },
+              {
+                division: { Id: "d9", Name: "Tent 1", NoDivision__c: true },
+                groups: [{ Name: "Tent 1" }]
+              }
+            ]
+          }
+        ]
+      }),
+      {}
+    );
+    expect(camp.divisions.map((d) => [d.name, d.groups])).toEqual([
+      ["Juniors", ["Bunk 1"]],
+      ["No division", ["Tent 1"]]
+    ]);
+  });
+});

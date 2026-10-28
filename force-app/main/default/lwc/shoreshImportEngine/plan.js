@@ -118,7 +118,9 @@ function divisionRecords(proposal, existing) {
         id: null,
         programKey: d.programKey,
         name: d.name,
-        sortOrder: base + count.get(d.programKey)
+        sortOrder: base + count.get(d.programKey),
+        // DIV-1.1: the record that holds a group in no division (Division__c.NoDivision__c).
+        ...(d.noDivision ? { noDivision: true } : {})
       };
     });
 }

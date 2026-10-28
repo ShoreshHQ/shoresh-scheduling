@@ -1,6 +1,7 @@
 import { LightningElement, api } from "lwc";
 import LightningConfirm from "lightning/confirm";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
+import { holdsNoDivision } from "c/shoreshImportEngine";
 import { leftField } from "c/shoreshSavedMark";
 import { rainPlanChoices } from "c/shoreshSetupRules";
 
@@ -203,13 +204,19 @@ export default class ShoreshActivityDetails extends LightningElement {
     programs.forEach((entry) => {
       (entry.divisions || []).forEach((d) => {
         const where = severalPrograms ? ` (${entry.program.Name})` : "";
-        divisions.push({
-          label: `${t.s("Division")}: ${d.division.Name}${where}`,
-          value: d.division.Id
-        });
+        // DIV-1.1: a group in no division is offered by its own name only.
+        const none = holdsNoDivision(d.division);
+        if (!none) {
+          divisions.push({
+            label: `${t.s("Division")}: ${d.division.Name}${where}`,
+            value: d.division.Id
+          });
+        }
         (d.groups || []).forEach((grp) => {
           groups.push({
-            label: `${grp.Name} (${d.division.Name})`,
+            label: none
+              ? `${grp.Name}${where}`
+              : `${grp.Name} (${d.division.Name})`,
             value: grp.Id
           });
         });

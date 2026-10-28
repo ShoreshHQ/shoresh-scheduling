@@ -17,6 +17,7 @@ import { buildTimetables, collectGroups, crossCheck } from "./structure";
 import { WEEKDAYS, looseKey } from "./text";
 import { withoutWeek } from "./weekLabels";
 import { identifyGroups } from "./identity";
+import { groupDivisionName } from "./noDivision";
 import { oneGroupDivisions } from "./together";
 
 export { LEAVE_OUT } from "./reading-constants";
@@ -43,7 +44,8 @@ function campNames(existing) {
     (p.divisions || []).flatMap((d) =>
       (d.groups || []).map((g) => ({
         name: g.Name,
-        division: d.division ? d.division.Name : null
+        // DIV-1.1: a holding record's name is never the group's division.
+        division: groupDivisionName(d.division)
       }))
     )
   );
