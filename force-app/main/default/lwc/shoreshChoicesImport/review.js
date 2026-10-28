@@ -8,7 +8,7 @@
  * them apart, everything not read is listed); the cards are Greg's approved mock-ups
  * (design-research/electives-r1, import-read and import-names; decisions 48 and 53).
  */
-import { foldName } from "c/shoreshImportEngine";
+import { foldName, holdsNoDivision } from "c/shoreshImportEngine";
 import { CHOICE_KINDS, sheetLayout } from "c/shoreshChoicesReader";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedNote } from "c/shoreshRemembered";
@@ -342,7 +342,10 @@ export function groupsOfProgram(setup, programId) {
   for (const entry of (setup && setup.programs) || []) {
     if (entry.program.Id !== programId) continue;
     for (const d of entry.divisions || []) {
-      const divisionKey = foldName(d.division && d.division.Name);
+      // DIV-1.1: a holding record is no division a sheet can name.
+      const divisionKey = holdsNoDivision(d.division)
+        ? ""
+        : foldName(d.division && d.division.Name);
       if (divisionKey && !divisions.has(divisionKey)) {
         divisions.set(divisionKey, d.division);
       }

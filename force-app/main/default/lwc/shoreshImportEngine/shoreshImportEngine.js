@@ -92,3 +92,8 @@ export {
   cellName,
   hasClockTime
 } from "./text";
+export {
+  holdsNoDivision,
+  realDivisionsOf,
+  shownDivisionName
+} from "./noDivision";

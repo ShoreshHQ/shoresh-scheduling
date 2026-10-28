@@ -278,7 +278,10 @@ public with sharing class ElectiveSeats {
     made.id = grp.Id;
     made.name = grp.Name;
     made.divisionId = grp.Division__c;
-    made.divisionName = grp.Division__r?.Name;
+    // DIV-1.1: a group in no division has no division name to show.
+    made.divisionName = grp.Division__r?.NoDivision__c == true
+      ? null
+      : grp.Division__r?.Name;
     return made;
   }
 

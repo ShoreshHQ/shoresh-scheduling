@@ -5,7 +5,8 @@ import {
   WEEKDAYS,
   foldName,
   programDays,
-  weekOrder
+  weekOrder,
+  realDivisionsOf
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 
@@ -91,10 +92,11 @@ function blocksOf(setup) {
 }
 
 /** Every division of the season, in the season's order: [{ id, name }]. */
-function divisionsOf(setup) {
+export function divisionsOf(setup) {
   const result = [];
   ((setup && setup.programs) || []).forEach((entry) => {
-    (entry.divisions || []).forEach((d) =>
+    // DIV-1.1: a holding record is no division.
+    realDivisionsOf(entry).forEach((d) =>
       result.push({ id: d.division.Id, name: d.division.Name })
     );
   });

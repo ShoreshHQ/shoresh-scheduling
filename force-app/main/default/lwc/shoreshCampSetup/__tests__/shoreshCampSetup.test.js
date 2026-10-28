@@ -4798,3 +4798,25 @@ describe("c-shoresh-camp-setup", () => {
     });
   });
 });
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("counts its group, never its holding record as a division", () => {
+    const t = buildTerms(LABELS);
+    expect(
+      seasonContents(
+        nsRecord({
+          programs: [
+            {
+              divisions: [
+                { division: { Id: "d1" }, groups: [{}] },
+                { division: { Id: "d9", NoDivision__c: true }, groups: [{}] }
+              ]
+            }
+          ]
+        }),
+        t
+      )
+    ).toEqual(["1 Program", "1 Division", "2 Bunks"]);
+  });
+});

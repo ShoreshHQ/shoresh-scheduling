@@ -1,4 +1,5 @@
 import { FIELD } from "c/shoreshSchema";
+import { holdsNoDivision, realDivisionsOf } from "c/shoreshImportEngine";
 
 /**
  * Roots' card faces (repo ADR 0020; the approved mock-up design-research/roots-approved/table.js):
@@ -81,13 +82,28 @@ export function readCamp(setup, table) {
     now: !!tb.thisWeekId && w.Id === tb.thisWeekId
   }));
   const weekIndex = new Map(weeks.map((w) => [w.id, w]));
-  const divisions = programs.flatMap((entry) =>
-    (entry.divisions || []).map((d) => ({
+  // DIV-1.1: holding records are no division; their groups are drawn under "No division".
+  const divisions = programs.flatMap((entry) => {
+    const real = realDivisionsOf(entry).map((d) => ({
       name: nameOf(d.division),
       program: nameOf(entry.program),
       groups: (d.groups || []).map(nameOf)
-    }))
-  );
+    }));
+    const held = (entry.divisions || [])
+      .filter((d) => holdsNoDivision(d.division))
+      .flatMap((d) => (d.groups || []).map(nameOf));
+    return held.length
+      ? [
+          ...real,
+          {
+            name: "No division",
+            program: nameOf(entry.program),
+            groups: held,
+            noDivision: true
+          }
+        ]
+      : real;
+  });
   // The day drawn: the program with the most time blocks (the first of those).
   const dayProgram = programs.reduce((best, entry) => {
     return (entry.timeBlocks || []).length > (best?.timeBlocks || []).length
@@ -583,12 +599,13 @@ const G = {
   divisions(c) {
     // Each program's divisions as tiles, in their order.
     const shapes = [];
-    if (!c.divisions.length) {
+    const units = c.divisions.filter((d) => !d.noDivision);
+    if (!units.length) {
       for (let i = 0; i < 3; i++) shapes.push(dashed(i * 72, 50, 66, 24));
       return glimpse(shapes);
     }
     const byProgram = [];
-    c.divisions.forEach((d) => {
+    units.forEach((d) => {
       let lane = byProgram.find((l) => l.name === d.program);
       if (!lane) {
         lane = { name: d.program, list: [] };
@@ -1173,7 +1190,7 @@ const PIC = {
   },
 
   divisions(c, f) {
-    const list = c.divisions.slice(0, 4);
+    const list = c.divisions.filter((d) => !d.noDivision).slice(0, 4);
     const rh = f * 1.6;
     const gap = Math.max(4, (H - list.length * rh) / Math.max(list.length, 1));
     if (!list.length)

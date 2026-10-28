@@ -18,7 +18,8 @@ import {
   looseKey,
   mergesFrom,
   similarPairs,
-  tidy
+  tidy,
+  realDivisionsOf
 } from "c/shoreshImportEngine";
 import { NONE, dashKeyOf, days as readDays, readCell } from "./cells";
 import {
@@ -125,7 +126,7 @@ function readRows(rows, start, used) {
       } else if (
         read.blank &&
         column.requiredValue &&
-        column.newValue !== undefined
+        (column.newValue !== undefined || column.blankWhenNone)
       ) {
         // Settled once it is known whether the row is new (settleBlanks).
         requiredBlanks.push(column);
@@ -626,7 +627,7 @@ function resolveProgramRefs(leads, used, setup, context, kinds) {
         const records = !entry
           ? []
           : column.ref === "division"
-            ? (entry.divisions || []).map((d) => d.division)
+            ? realDivisionsOf(entry).map((d) => d.division)
             : entry.timeBlocks || [];
         result.pairs.push(
           ...resolveColumn(
@@ -676,7 +677,8 @@ function whoPrograms(setup, programIds) {
     .map((e) => ({
       id: e.program.Id,
       name: e.program.Name,
-      divisions: (e.divisions || []).map((d) => ({
+      // DIV-1.1: a holding record is no division a list can name.
+      divisions: realDivisionsOf(e).map((d) => ({
         id: d.division.Id,
         name: d.division.Name
       }))
@@ -749,12 +751,21 @@ function settleBlanks(rows) {
   rows
     .filter((r) => usable(r) && !r.open && r.requiredBlanks.length)
     .forEach((r) => {
-      if (r.existing) {
-        r.requiredBlanks.forEach((column) => {
+      // DIV-1.1: blank is what a group in no division writes, and reads back unchanged.
+      const none = (column) =>
+        column.blankWhenNone &&
+        !!r.existing &&
+        column.fromRecord(r.existing) === "";
+      r.requiredBlanks.filter(none).forEach((column) => {
+        r.blanks.add(column.key);
+      });
+      const left = r.requiredBlanks.filter((column) => !none(column));
+      if (r.existing || left.some((column) => column.newValue === undefined)) {
+        left.forEach((column) => {
           r.problems.push(`${column.heading} is blank`);
         });
       } else {
-        r.startingValues = r.requiredBlanks.map((column) => column.heading);
+        r.startingValues = left.map((column) => column.heading);
       }
     });
 }
