@@ -27,6 +27,7 @@ import {
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
+import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 
 /** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
@@ -83,6 +84,8 @@ export default class ShoreshImport extends LightningElement {
   undoing = false;
   remembered = {};
   rememberedNotes = {};
+  // The camp's remembered answers as read before this import's answers: the patterns' source.
+  savedRows = [];
   dragging = false;
   sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
@@ -307,6 +310,7 @@ export default class ShoreshImport extends LightningElement {
     const { answers, notes } = rememberedByKey(saved);
     this.remembered = { ...answers };
     this.rememberedNotes = notes;
+    this.savedRows = saved || [];
     return answers;
   }
 
@@ -409,13 +413,22 @@ export default class ShoreshImport extends LightningElement {
     if (!this.proposal) {
       return [];
     }
-    return questionCards(this.proposal, this.terms, this.answers).map((card) =>
-      this.cardView(card)
-    );
+    const cards = questionCards(this.proposal, this.terms, this.answers);
+    const suggestions = this.suggestionsOf(cards);
+    return cards.map((card) => this.cardView(card, suggestions[card.id]));
   }
 
-  cardView(card) {
+  /**
+   * What a pattern in the camp's answers suggests for each question (MEMO-6.5): pre-selected,
+   * still asked. From the answers as read before this import, so it stays while answering.
+   */
+  suggestionsOf(cards) {
+    return suggestionsFor(cards, this.savedRows, this.remembered);
+  }
+
+  cardView(card, suggestion) {
     const chosen = card.options.find((o) => o.value === card.answer);
+    const suggested = !chosen && suggestion ? suggestion.value : null;
     return {
       ...card,
       answered: !!chosen,
@@ -423,6 +436,8 @@ export default class ShoreshImport extends LightningElement {
       className: chosen ? "row shoresh-raised" : "row row_look shoresh-raised",
       fromMemory: !!chosen && this.remembered[card.id] === card.answer,
       memoryNote: this.rememberedNotes[card.id] || "Remembered",
+      suggested: !!suggested,
+      suggestedText: suggested ? suggestion.text : "",
       // A program or a division: a dropdown in the row.
       value: chosen ? card.answer : null,
       comboOptions: card.options.map((o) => ({
@@ -432,13 +447,17 @@ export default class ShoreshImport extends LightningElement {
       placeholder: card.placeholder || "Choose",
       options: card.options.map((o) => {
         const pressed = o.value === card.answer;
+        let className = pressed
+          ? "shoresh-item choice shoresh-raised"
+          : "shoresh-item choice";
+        if (o.value === suggested) {
+          className += " choice_suggested";
+        }
         return {
           ...o,
           key: `${card.id}::${o.value}`,
           pressed: pressed ? "true" : "false",
-          className: pressed
-            ? "shoresh-item choice shoresh-raised"
-            : "shoresh-item choice"
+          className
         };
       })
     };
@@ -871,6 +890,12 @@ export default class ShoreshImport extends LightningElement {
       if (plan.open.length === 0) {
         delete plan.fileData;
       }
+      const cards = questionCards(this.proposal, this.terms, this.answers);
+      plan.remember = withLearning(
+        plan.remember,
+        cards,
+        this.suggestionsOf(cards)
+      );
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.savedOpen = plan.open;
       this.stage = "done";

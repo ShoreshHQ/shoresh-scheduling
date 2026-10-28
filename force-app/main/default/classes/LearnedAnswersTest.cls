@@ -438,4 +438,135 @@ private class LearnedAnswersTest {
       Assert.isTrue(refused);
     }
   }
+
+  // MEMO-3.3
+  @IsTest
+  static void aChangeKeepsTheShapeAndIsPickedWithoutASuggestion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      insert new ImportAnswer__c(
+        Camp__c = willow.Id,
+        Key__c = ImportAnswers.keyOf(willow.Id, 'kind|Lunch'),
+        QuestionKey__c = 'kind|Lunch',
+        Answer__c = 'activity',
+        Shape__c = 'weeks|everyone|one',
+        FromSuggestion__c = true
+      );
+      Test.startTest();
+      Id changed = LearnedController.changeLearned(
+        willow.Id,
+        only(willow.Id).Id,
+        'fixed'
+      );
+      Test.stopTest();
+      LearnedAnswers.Learned row = LearnedController.getLearned(willow.Id)[0];
+      Assert.areEqual(changed, row.id);
+      Assert.areEqual('weeks|everyone|one', row.shape);
+      Assert.isFalse(row.fromSuggestion);
+      Assert.isNotNull(row.savedAt);
+    }
+  }
+
+  // MEMO-4.5
+  @IsTest
+  static void forgettingAPatternKeepsItsAnswersAndCanBeUndone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      Camp__c cedar = ShoreshTestData.camp('Camp Cedar');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{
+          'kind|Lunch 1' => 'recurring',
+          'kind|Lunch 2' => 'recurring'
+        }
+      );
+      Test.startTest();
+      List<Id> first = LearnedController.forgetLearnedPattern(
+        willow.Id,
+        'numbered',
+        'lunch'
+      );
+      List<Id> second = LearnedController.forgetLearnedPattern(
+        willow.Id,
+        'numbered',
+        'lunch'
+      );
+      Boolean undone = LearnedController.undoChangeLearned(
+        willow.Id,
+        second[0],
+        second[1]
+      );
+      Boolean refused = false;
+      try {
+        LearnedController.forgetLearnedPattern(willow.Id, 'search', 'lunch');
+      } catch (AuraHandledException e) {
+        refused = true;
+      }
+      Test.stopTest();
+      Assert.areEqual(1, first.size(), 'no marker before');
+      Assert.areEqual(2, second.size(), 'the earlier marker replaced');
+      Assert.areEqual(first[0], second[1]);
+      Assert.isTrue(undone, 'Undo brings the earlier marker back');
+      Assert.isTrue(refused, 'only a template from the fixed list');
+      // A long text can't be sorted in a query: by question here (keys are unique per camp).
+      Map<String, ImportAnswer__c> byQuestion = new Map<String, ImportAnswer__c>();
+      for (ImportAnswer__c saved : [
+        SELECT Id, QuestionKey__c, Answer__c
+        FROM ImportAnswer__c
+        WHERE Camp__c = :willow.Id
+        ORDER BY Id
+      ]) {
+        byQuestion.put(saved.QuestionKey__c, saved);
+      }
+      List<String> questions = new List<String>(byQuestion.keySet());
+      questions.sort();
+      Assert.areEqual(
+        new List<String>{
+          'kind|Lunch 1',
+          'kind|Lunch 2',
+          'pattern|numbered|lunch'
+        },
+        questions,
+        'both answers stay, with one marker'
+      );
+      Assert.areEqual(first[0], byQuestion.get('pattern|numbered|lunch').Id);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :cedar.Id],
+        'another camp untouched'
+      );
+    }
+  }
+
+  // MEMO-4.5
+  @IsTest
+  static void aPatternMarkerEscapesItsPartsAsTheScreenReadsThem() {
+    Test.startTest();
+    String marker = LearnedAnswers.markerOf(
+      'numbered',
+      'lunch|day\\|camp\\\\1'
+    );
+    Test.stopTest();
+    // c/shoreshPatterns shoreshPatterns.test.js expects this same string.
+    Assert.areEqual('pattern|numbered|lunch\\|day\\\\\\|camp\\\\\\\\1', marker);
+  }
+
+  // MEMO-3.2
+  @IsTest
+  static void aChangeHereIsMarkedAsNoImport() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      ImportAnswers.rememberEach(
+        willow.Id,
+        new Map<String, String>{ 'kind|Lunch' => 'activity' }
+      );
+      Test.startTest();
+      LearnedController.changeLearned(willow.Id, only(willow.Id).Id, 'fixed');
+      Test.stopTest();
+      LearnedAnswers.Learned row = LearnedController.getLearned(willow.Id)[0];
+      Assert.isTrue(row.fromLearned);
+      Assert.isFalse(ImportAnswers.forCamp(willow.Id)[0].fromSuggestion);
+      Assert.isTrue(ImportAnswers.forCamp(willow.Id)[0].fromLearned);
+    }
+  }
 }

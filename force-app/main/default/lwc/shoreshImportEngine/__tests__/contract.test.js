@@ -2,6 +2,7 @@
 // (ImportPlan, ImportStructureWrites, ImportItemWrites): every list and field name the Apex reads
 // must be one the plan sends (PR 15 review, test gap). Reads the Apex source itself, so a
 // rename on either side fails here.
+import { withLearning } from "c/shoreshPatterns";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { buildProposal, customKeys, planFor } from "./data/engine";
@@ -114,8 +115,16 @@ describe("the save request matches what the server reads", () => {
       customKeys({ a: [{ shoresh__X__c: 1, Name: 2, Y__r: {} }] })
     ).toEqual(["shoresh__X__c", "Y__r"]);
   });
+  // The screens add what the pattern layer needs to each answer (c/shoreshPatterns withLearning).
+  const learning = {
+    remember: withLearning(
+      [{ key: "kind|Lunch 2", answer: "recurring" }],
+      [{ id: "kind|Lunch 2", learn: { shape: "weeks|some|one" } }],
+      { "kind|Lunch 2": { value: "recurring" } }
+    )
+  };
   const sent = new Set(
-    [plan, placesPlan()].flatMap((one) =>
+    [plan, placesPlan(), learning].flatMap((one) =>
       Object.values(one)
         .filter(Array.isArray)
         .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))

@@ -5,6 +5,7 @@ import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
 import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
+import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
 
 jest.mock(
   "@salesforce/apex/LearnedController.getLearned",
@@ -23,6 +24,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/LearnedController.undoChangeLearned",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/LearnedController.forgetLearnedPattern",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -101,8 +107,10 @@ describe("c-shoresh-learned", () => {
       answer("2", "deleted|Activity||Riflery", "deleted")
     ]);
     const heads = $$(element, '[data-id="group-toggle"]');
+    // MEMO-6.8: Splits and merges shows what Shoresh already knew, with nothing learned to count.
     expect(heads.map((h) => h.textContent.trim())).toEqual([
       "Classification1",
+      "Splits and merges",
       "Things you deleted1"
     ]);
     expect($(element, '[data-id="who"]').textContent).toBe(
@@ -120,10 +128,12 @@ describe("c-shoresh-learned", () => {
       answer(String(i), `kind|Item ${i}`, "activity")
     );
     const element = await mount(many);
-    expect($$(element, '[data-id="title"]')).toHaveLength(25);
+    // The answers only: "Item 0" to "Item 29" are also one pattern, shown above them.
+    const answers = '[data-row]:not([data-pattern]) [data-id="title"]';
+    expect($$(element, answers)).toHaveLength(25);
     $(element, '[data-id="more"]').click();
     await flush();
-    expect($$(element, '[data-id="title"]')).toHaveLength(30);
+    expect($$(element, answers)).toHaveLength(30);
   });
 
   it("searches and filters by kind only past 15 answers", async () => {
@@ -365,5 +375,180 @@ describe("c-shoresh-learned", () => {
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Someone else changed this just now. Showing the latest."
     );
+  });
+});
+
+describe("patterns, and what Shoresh already knew", () => {
+  // Lunch 1 to 3: the numbered and the meal patterns, from two imports.
+  const lunches = (extra = {}) => [
+    {
+      ...answer("1", "kind|Lunch 1", "recurring", "2026-07-03"),
+      savedAt: "2026-07-03T12:00:00.000Z",
+      byYou: true,
+      ...extra
+    },
+    {
+      ...answer("2", "kind|Lunch 2", "recurring", "2026-07-03"),
+      savedAt: "2026-07-03T12:00:00.000Z"
+    },
+    {
+      ...answer("3", "kind|Lunch 3", "recurring", "2026-07-10"),
+      savedAt: "2026-07-10T12:00:00.000Z"
+    }
+  ];
+  const patternRows = (element) =>
+    $$(element, "[data-pattern]").map((li) => ({
+      template: li.dataset.pattern,
+      title: li.querySelector('[data-id="title"]').textContent,
+      flag: li.querySelector('[data-id="flag"]').textContent,
+      progress: li.querySelector('[data-id="progress"]').textContent,
+      who: li.querySelector('[data-id="who"]').textContent
+    }));
+
+  // MEMO-6.8
+  it("shows what Shoresh already knew apart from what it learned from you, even before any answer", async () => {
+    const element = await mount([]);
+    expect($(element, '[data-id="empty"]')).not.toBeNull();
+    const rules = $$(element, "[data-rule]").map((li) => li.textContent.trim());
+    expect(rules).toContain(
+      "Every group, the same time block, every day: a fixed activity"
+    );
+    expect(rules).toContain(
+      "Spelled with other spacing, capitals or punctuation: one name"
+    );
+    expect($(element, '[data-id="learned-head"]')).toBeNull();
+    // The rules are no answers: nothing to change or forget, and no count.
+    expect($(element, '[data-id="forget"]')).toBeNull();
+    expect($(element, '[data-id="group-count"]')).toBeNull();
+    await expect(element).toBeAccessible();
+
+    document.body.removeChild(element);
+    const learned = await mount([answer("1", "kind|Lunch", "fixed")]);
+    const classify = $(learned, '[data-group="classify"]');
+    expect(
+      [...classify.querySelectorAll("h4")].map((h) => h.textContent.trim())
+    ).toEqual(["Shoresh already knew", "Learned from you"]);
+  });
+
+  // MEMO-6.7
+  it("shows each pattern with its progress in counts, and who answered", async () => {
+    const element = await mount(lunches());
+    expect(patternRows(element)).toEqual([
+      {
+        template: "meal",
+        title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
+        flag: "Steady: suggested every time",
+        progress: "3 of 3 answers - suggested every time",
+        who: "Answered by Dana and you, latest 10 Jul"
+      },
+      {
+        template: "numbered",
+        title: "A recurring activity: Lunch 1, Lunch 2 and Lunch 3",
+        flag: "Steady: suggested every time",
+        progress: "3 of 3 answers - suggested every time",
+        who: "Answered by Dana and you, latest 10 Jul"
+      }
+    ]);
+    expect($$(element, '[data-pattern="meal"] .dot_on')).toHaveLength(3);
+    // The group counts the patterns with the answers.
+    expect(
+      $(element, '[data-group="classify"] [data-id="group-count"]').textContent
+    ).toBe("5");
+    await expect(element).toBeAccessible();
+  });
+
+  // MEMO-6.7, MEMO-4.1
+  it("says what is missing, and when the latest answer disagrees", async () => {
+    const one = await mount(lunches().slice(0, 2));
+    expect(patternRows(one)[0].flag).toBe("Suggested");
+    expect(patternRows(one)[0].progress).toBe(
+      "2 of 3 answers - needs one more import"
+    );
+    document.body.removeChild(one);
+    const followed = lunches().map((r) => ({ ...r, fromSuggestion: true }));
+    const element = await mount(followed);
+    expect(patternRows(element)[0].progress).toBe(
+      "3 of 3 answers - needs one answer you picked yourself"
+    );
+    document.body.removeChild(element);
+    const disagreed = await mount([
+      ...lunches(),
+      {
+        ...answer("4", "kind|Lunch 4", "activity", "2026-07-17"),
+        savedAt: "2026-07-17T12:00:00.000Z"
+      }
+    ]);
+    expect(patternRows(disagreed)[0].flag).toBe("Still asks");
+    expect(patternRows(disagreed)[0].progress).toBe(
+      "Your latest answer disagrees - 2 more agreeing answers to suggest again"
+    );
+  });
+
+  // MEMO-4.5
+  it("Forget pattern keeps its answers, with Undo", async () => {
+    const element = await mount(lunches());
+    forgetLearnedPattern.mockResolvedValue(["m1"]);
+    $(element, '[data-pattern="numbered"] [data-id="forget"]').click();
+    await flush();
+    expect(forgetLearnedPattern).toHaveBeenCalledWith({
+      campId: "a00",
+      template: "numbered",
+      antecedent: "lunch"
+    });
+    const row = $(element, '[data-pattern="numbered"]');
+    expect(row.querySelector('[data-id="flag"]').textContent).toBe("Forgotten");
+    expect(row.querySelector('[data-id="forgotten"]').textContent).toBe(
+      "It won't be suggested again. Its answers stay."
+    );
+    expect($(element, '[data-id="said"]').textContent.trim()).toBe(
+      "Forgotten. It won't be suggested again. Its answers stay."
+    );
+    // The answers stay listed.
+    expect($$(element, "li[data-row]:not([data-pattern])")).toHaveLength(3);
+    forgetLearned.mockResolvedValue(true);
+    row.querySelector('[data-id="undo"]').click();
+    await flush();
+    await flush();
+    expect(forgetLearned).toHaveBeenCalledWith({
+      campId: "a00",
+      answerId: "m1"
+    });
+    expect(
+      $(element, '[data-pattern="numbered"] [data-id="flag"]').textContent
+    ).toBe("Remembered again");
+  });
+
+  // MEMO-4.5
+  it("Undo of a second Forget pattern brings the first one back", async () => {
+    const element = await mount(lunches());
+    forgetLearnedPattern.mockResolvedValue(["m2", "m1"]);
+    $(element, '[data-pattern="meal"] [data-id="forget"]').click();
+    await flush();
+    undoChangeLearned.mockResolvedValue(true);
+    $(element, '[data-pattern="meal"] [data-id="undo"]').click();
+    await flush();
+    expect(undoChangeLearned).toHaveBeenCalledWith({
+      campId: "a00",
+      newId: "m2",
+      oldId: "m1"
+    });
+  });
+
+  // MEMO-4.5
+  it("a forgotten pattern's marker is no answer of its own", async () => {
+    const element = await mount([
+      ...lunches(),
+      {
+        ...answer("m", "pattern|numbered|lunch", "forgotten", "2026-07-11"),
+        savedAt: "2026-07-11T12:00:00.000Z"
+      }
+    ]);
+    expect(
+      $$(element, "[data-pattern]").map((li) => li.dataset.pattern)
+    ).toEqual(["meal"]);
+    expect($(element, '[data-id="count"]').textContent).toContain("3");
+    expect(
+      $$(element, '[data-id="title"]').map((t) => t.textContent)
+    ).not.toContain("pattern, numbered, lunch: forgotten");
   });
 });

@@ -8,6 +8,7 @@
  * only be forgotten, and the next import asks again.
  */
 import { UNUSED, listScreen } from "c/shoreshLists";
+import { keyParts } from "c/shoreshPatterns";
 
 export const GROUPS = [
   { key: "classify", label: "Classification" },
@@ -48,24 +49,8 @@ function withProgram(name, program) {
   return program ? `${name} (${program})` : name;
 }
 
-/** The parts of a key; "\|" and "\\" stand for themselves (c/shoreshLists adds.js keyPart). */
-export function keyParts(key) {
-  const parts = [];
-  let part = "";
-  for (let i = 0; i < key.length; i += 1) {
-    if (key[i] === "\\" && i + 1 < key.length) {
-      i += 1;
-      part += key[i];
-    } else if (key[i] === "|") {
-      parts.push(part);
-      part = "";
-    } else {
-      part += key[i];
-    }
-  }
-  parts.push(part);
-  return parts;
-}
+/** The parts of a key (c/shoreshPatterns, shared with the pattern layer). */
+export { keyParts };
 
 function classification(p, t) {
   const words = {

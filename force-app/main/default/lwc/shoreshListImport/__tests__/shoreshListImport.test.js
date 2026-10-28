@@ -251,6 +251,49 @@ describe("c-shoresh-list-import", () => {
     }
   });
 
+  // MEMO-6.5, MEMO-6.6
+  it("a pattern in earlier answers marks a suggested answer: still asked, saved as followed", async () => {
+    const earlier = (key, day) => ({
+      key,
+      answer: "different",
+      byYou: false,
+      byName: "Dana Levi",
+      answeredOn: day,
+      savedAt: `${day}T12:00:00.000Z`,
+      shape: "file"
+    });
+    getAnswers.mockResolvedValue([
+      earlier("similar|activity|potery|pottery|Potery|Pottery", "2026-07-03"),
+      earlier(
+        "similar|activity|canoing|canoeing|Canoing|Canoeing",
+        "2026-07-03"
+      )
+    ]);
+    const element = await openWith(["Activity", "Music", "Musik"].join("\n"));
+    const id = "similar|activity|music|musik|Music|Musik";
+    const card = $(element, `[data-card="${id}"]`);
+    expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
+      "Suggested from Dana's answers for “Canoing” / “Canoeing” and “Potery” / “Pottery” on 3 Jul"
+    );
+    const marked = [...card.querySelectorAll("lightning-button")].filter(
+      (b) => b.variant === "brand-outline"
+    );
+    expect(marked.map((b) => b.dataset.key)).toEqual([`${id}::different`]);
+    // Still a question: nothing answered until it is pressed.
+    expect(card.querySelector(".card-done")).toBeNull();
+    marked[0].click();
+    await flush();
+    saveOf(element).click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(plan.remember).toContainEqual({
+      key: id,
+      answer: "different",
+      shape: "file",
+      suggested: true
+    });
+  });
+
   // MEMO-6.2
   it("a column remembered from before says whose answer it was and when", async () => {
     getAnswers.mockResolvedValue([

@@ -4,6 +4,12 @@
  */
 
 import { holdsNoDivision } from "c/shoreshImportEngine";
+import {
+  LEARNING_BAR,
+  PATTERN_PREFIX,
+  inOrder,
+  joinNames
+} from "c/shoreshPatterns";
 import { GROUPS, describe } from "./kinds";
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
@@ -105,13 +111,131 @@ export function learnedRow(row, t, spell) {
   };
 }
 
+/** A forgotten pattern's marker (c/shoreshPatterns): no answer, never a row of its own. */
+export function isAnswer(row) {
+  return !String(row.question || "").startsWith(PATTERN_PREFIX);
+}
+
+// ---------- patterns (desktop learnedView.js patternRow, progressLine, patternFlag) ----------
+
+const PATTERN_GROUP = {
+  numbered: "classify",
+  meal: "classify",
+  spelling: "split",
+  list: "split",
+  together: "split"
+};
+
+const MISSING_TEXT = {
+  another_import: "needs one more import",
+  explicit: "needs one answer you picked yourself"
+};
+const SUGGEST_AGAIN_ANSWERS = 2;
+const PATTERN_FORGOTTEN = "It won't be suggested again. Its answers stay.";
+
+function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function article(word) {
+  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+}
+
+/** What a pattern's answers say, in the words the answers' own rows use (kinds.js). */
+function verdictWords(template, verdict, t) {
+  if (template === "numbered" || template === "meal") {
+    const term = {
+      fixed: "FixedActivity",
+      recurring: "RecurringActivity",
+      activity: "Activity"
+    }[verdict];
+    return capital(article(t.sIn(term)));
+  }
+  if (template === "spelling") {
+    return verdict === "same" ? "The same name" : "Different names";
+  }
+  if (template === "list") {
+    return verdict === "one"
+      ? `Kept as one ${t.sIn("Activity")}`
+      : "Split into choices";
+  }
+  return verdict === "split"
+    ? `Split into its ${t.pIn("Group")}`
+    : `Kept as one ${t.sIn("Group")}`;
+}
+
 /**
- * The groups that have rows, in the desktop's order, each { key, label, rows }, rows newest
- * first (the server's order kept for answers of one day).
+ * How close a pattern is to pre-selecting on its own merits (MEMO-6.7): counts and what is
+ * missing, in words, never a percentage. "2 of 3 answers - needs one more import".
  */
-export function learnedGroups(rows) {
+export function progressLine(p) {
+  const { agreeing, needed, missing, band } = p.progress;
+  const count =
+    agreeing > needed
+      ? `${agreeing} answers (${needed} needed)`
+      : `${agreeing} of ${needed} answers`;
+  if (band === "ask" && p.disagree > 0) {
+    return `Your latest answer disagrees - ${SUGGEST_AGAIN_ANSWERS} more agreeing answers to suggest again`;
+  }
+  const still = missing.map((m) => MISSING_TEXT[m]).filter(Boolean);
+  if (band === "established" && still.length === 0) {
+    // Until Shoresh applies anything on its own (MEMO-5.1, PR 4), steady means suggested.
+    return `${count} - suggested every time`;
+  }
+  return still.length ? `${count} - ${still.join(", ")}` : count;
+}
+
+/** The pattern's band as a flag: what it does at the next import. */
+export function patternFlag(band) {
+  if (band === "established") {
+    return "Steady: suggested every time";
+  }
+  return band === "suggest" ? "Suggested" : "Still asks";
+}
+
+function whoOf(row) {
+  return row.byYou ? "you" : row.byName || "a former user";
+}
+
+/** One pattern (c/shoreshPatterns patternsOf) as a row of its group. */
+export function patternRow(p, t) {
+  // A pattern whose latest import disagrees has no supporters: it names what was answered.
+  const shown = p.supporters.length ? p.supporters : p.instances;
+  const names = inOrder(shown.map((r) => r.name));
+  const authors = [...new Set(shown.map(whoOf))];
+  const latest = shown.reduce(
+    (m, r) => (String(r.answeredOn || "") > m ? String(r.answeredOn) : m),
+    ""
+  );
+  const disagree = p.disagree > 0 ? `, ${p.disagree} earlier disagreed` : "";
+  return {
+    id: `pattern:${p.template}:${p.antecedent}`,
+    pattern: true,
+    template: p.template,
+    antecedent: p.antecedent,
+    group: PATTERN_GROUP[p.template],
+    title: `${verdictWords(p.template, p.verdict, t)}: ${joinNames(names)}`,
+    who: `Answered by ${joinNames(authors)}, latest ${shortDate(latest)}`,
+    progress: progressLine(p),
+    confidence: `${p.agree} agree${disagree}`,
+    meter: Math.min(p.progress.agreeing, LEARNING_BAR.instances),
+    band: p.progress.band,
+    flag: patternFlag(p.progress.band),
+    forgotten: PATTERN_FORGOTTEN,
+    answeredOn: latest
+  };
+}
+
+/**
+ * The groups that have rows, in the desktop's order, each { key, label, knew (what Shoresh
+ * knew before: its own rules), patterns, rows (answers, newest first, the server's order kept
+ * for answers of one day) }.
+ */
+export function learnedGroups(rows, patterns = [], knew = []) {
   return GROUPS.map((g) => ({
     ...g,
+    knew: knew.filter((r) => r.group === g.key),
+    patterns: patterns.filter((r) => r.group === g.key),
     rows: rows
       .filter((r) => r.group === g.key)
       .map((r, i) => ({ r, i }))
@@ -121,7 +245,7 @@ export function learnedGroups(rows) {
             (x.r.answeredOn > y.r.answeredOn) || x.i - y.i
       )
       .map((x) => x.r)
-  })).filter((g) => g.rows.length > 0);
+  })).filter((g) => g.rows.length + g.patterns.length + g.knew.length > 0);
 }
 
 /** Whether a row matches what was typed in search: its title or who answered it. */

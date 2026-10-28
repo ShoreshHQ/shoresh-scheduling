@@ -68,7 +68,7 @@
         data-id="empty"
       ></c-shoresh-empty-state>
     </template>
-    <template lwc:if={isReady}>
+    <template lwc:if={showsGroups}>
       <template lwc:if={notice}>
         <p class="note" data-id="notice">{notice}</p>
       </template>
@@ -98,9 +98,11 @@
               onclick={handleToggle}
             >
               <span>{group.label}</span>
-              <span class="group-count shoresh-num" data-id="group-count"
-                >{group.count}</span
-              >
+              <template lwc:if={group.hasLearned}>
+                <span class="group-count shoresh-num" data-id="group-count"
+                  >{group.count}</span
+                >
+              </template>
               <svg
                 class={group.chevronClass}
                 viewBox="0 0 12 12"
@@ -113,7 +115,93 @@
           </h3>
           <div id={group.panelId} class="panel">
             <template lwc:if={group.open}>
+              <template lwc:if={group.hasKnew}>
+                <h4 class="sub" data-id="knew-head">Shoresh already knew</h4>
+                <ul class="knew" data-id="knew">
+                  <template for:each={group.knew} for:item="rule">
+                    <li key={rule.id} class="rule" data-rule={rule.rule}>
+                      {rule.title}
+                    </li>
+                  </template>
+                </ul>
+              </template>
+              <template lwc:if={group.learnedHead}>
+                <h4 class="sub" data-id="learned-head">Learned from you</h4>
+              </template>
               <ul class="rows">
+                <template for:each={group.patterns} for:item="row">
+                  <li
+                    key={row.id}
+                    class={row.liClass}
+                    data-row={row.id}
+                    data-pattern={row.template}
+                  >
+                    <div class="line1">
+                      <span class="title" data-id="title">{row.title}</span>
+                      <span class="flag" data-id="flag">{row.flag}</span>
+                    </div>
+                    <template lwc:if={row.error}>
+                      <p class="row-error" role="alert" data-id="row-error">
+                        {row.error}
+                        <button
+                          type="button"
+                          class="shoresh-item link"
+                          data-row={row.id}
+                          data-id="retry"
+                          onclick={handleRetry}
+                        >
+                          Try again
+                        </button>
+                      </p>
+                    </template>
+                    <div class="line2 line_progress">
+                      <span class="meter" aria-hidden="true">
+                        <template for:each={row.dots} for:item="dot">
+                          <i key={dot.key} class={dot.className}></i>
+                        </template>
+                      </span>
+                      <span class="meta" data-id="progress"
+                        >{row.progress}</span
+                      >
+                    </div>
+                    <div class="line2">
+                      <template lwc:if={row.forgottenNow}>
+                        <span class="meta" data-id="forgotten"
+                          >{row.forgotten}</span
+                        >
+                        <button
+                          type="button"
+                          class="shoresh-item link"
+                          aria-label={row.undoLabel}
+                          aria-busy={row.busy}
+                          disabled={row.busy}
+                          data-row={row.id}
+                          data-id="undo"
+                          onclick={handleUndo}
+                        >
+                          {row.undoText}
+                        </button>
+                      </template>
+                      <template lwc:else>
+                        <span class="meta" data-id="who">{row.who}</span>
+                        <span class="actions">
+                          <button
+                            type="button"
+                            class="shoresh-item link link_forget"
+                            aria-label={row.forgetLabel}
+                            aria-busy={row.busy}
+                            disabled={row.busy}
+                            data-row={row.id}
+                            data-id="forget"
+                            onclick={handleForget}
+                          >
+                            {row.forgetText}
+                          </button>
+                        </span>
+                      </template>
+                    </div>
+                  </li>
+                </template>
                 <template for:each={group.rows} for:item="row">
                   <li key={row.id} class={row.liClass} data-row={row.id}>
                     <div class="line1">

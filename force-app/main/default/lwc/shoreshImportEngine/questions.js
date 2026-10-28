@@ -92,6 +92,26 @@ function times1(n) {
   return n === 1 ? "once" : `${n} times`;
 }
 
+/**
+ * What the pattern layer reads from a question (c/shoreshPatterns, MEMO-3.3): its shape, and
+ * for similar names which option "same" is: the camp's name, else the spelling the file uses
+ * more (the first on a tie).
+ */
+function similarLearn(pair) {
+  return {
+    shape: pair.existing ? "camp" : "file",
+    same: pair.existing || pair.bCount > pair.aCount ? "b" : "a"
+  };
+}
+
+/** A kind question's shape: why it is asked, whether everyone has it, one block or more. */
+function kindShape(f) {
+  const length = f.patterns.length ? f.patterns[0].length : 1;
+  return `${f.reason || "once"}|${f.fixedShaped ? "everyone" : "some"}|${length > 1 ? "long" : "one"}`;
+}
+
+const twoOrMore = (n) => (n === 2 ? "two" : "more");
+
 export function similarCard(pair, t) {
   const term = t.sIn(
     { group: "Group", division: "Division" }[pair.kind] || "Activity"
@@ -102,7 +122,8 @@ export function similarCard(pair, t) {
     lane: "standard",
     title: `Are ${quoted(pair.a)} and ${quoted(pair.b)} the same ${term}?`,
     subject: pair.existing ? pair.a : `${pair.a} and ${pair.b}`,
-    detail: SIMILAR_WHY[pair.reason]
+    detail: SIMILAR_WHY[pair.reason],
+    learn: similarLearn(pair)
   };
   if (pair.existing) {
     return {
@@ -216,7 +237,8 @@ function kindCard(ask, t) {
     title: `Is ${quoted(ask.name)} at a set time, or ${article(t.sIn("Activity"))}?`,
     subject: ask.name,
     subtitle: `${ask.several ? `${ask.program}: ` : ""}${kindWhy(ask, t)}`,
-    options
+    options,
+    learn: { shape: kindShape(f) }
   };
 }
 
@@ -396,6 +418,7 @@ function splitCard(ask, t) {
     title: `Split ${ask.group} into its ${t.pIn("Group")}?`,
     subject: ask.group,
     subtitle: `${ask.group} moved together last time; this file has ${ask.bunks.join(" and ")} doing different things.`,
+    learn: { shape: twoOrMore(ask.bunks.length) },
     options: [
       {
         value: "split",
@@ -666,6 +689,7 @@ function listCard(ask, t) {
     title: `Is ${quoted(ask.name)} one ${t.sIn("Activity")} or a choice of ${orList(ask.parts)}?`,
     subject: ask.name,
     subtitle: `${ask.parts.length} names in one cell.`,
+    learn: { shape: twoOrMore(ask.parts.length) },
     options: [
       { value: ONE_ACTIVITY, label: `One ${t.sIn("Activity")}` },
       {

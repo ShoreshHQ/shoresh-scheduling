@@ -1305,9 +1305,11 @@ describe("PR 19 review, coordinator round 2", () => {
       terms,
       {}
     );
+    // learn: what the pattern layer reads (its shape, which option "same" is), never shown.
     expect(Object.keys(card).sort()).toEqual([
       "answer",
       "id",
+      "learn",
       "options",
       "title"
     ]);
