@@ -10,6 +10,7 @@ import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
 import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
+import { veryHardCamps } from "../../../../../../scripts/import-corpus/level4";
 import {
   headingReport,
   plantCamp
@@ -177,6 +178,39 @@ describe("Import last year on hard made-up camps (level 3)", () => {
           key,
           kind,
           n: Math.min(n, CEILING_3[key][kind] || 0)
+        });
+      }
+    }
+  });
+});
+
+// Level 4, very hard: two programs, overnight evenings, weekends, several weeks, a mid-week special
+// day, with level 3's traits. The first 80 camps, ten of each layout. Baseline 2026-10-28: 56
+// perfect. Still wrong: overnight camps whose times have no am/pm (Dinner asked; the Evening
+// Program and Cabin Time read as morning without asking), and a merged or doubled cell in a week
+// whose timetable also holds a special day's own blocks (the run lands on the wrong blocks).
+const CEILING_4 = {
+  perfectAtLeast: 56,
+  errors: 0,
+  questions: { ampm: 15 },
+  wrong: { blocks: 60, fixed: 30, cells: 9695 }
+};
+
+describe("Import last year on very hard made-up camps (level 4)", () => {
+  const results = veryHardCamps(80).map((camp) =>
+    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps perfectly, asks and reads wrong no more than it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_4.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_4.perfectAtLeast);
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(totals[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, CEILING_4[key][kind] || 0)
         });
       }
     }
