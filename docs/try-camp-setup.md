@@ -853,7 +853,7 @@ doesn't change this one.
    (_N of N_ when every cell is filled), **Open**, **Still needed**, and **Spread across the
    week** if an activity has an early-week goal. **Open** counts cells nothing could go in
    (expected to be 0 here); one that no activity is short enough for has the dot, _No activity
-   fits this gap_. A tile above 0 has a bronze border: click it to see only its lines
+   fits here_. A tile above 0 has a bronze border: click it to see only its lines
    in **Still to place**, and the cells they are about get a bronze outline on the grid. Click
    the tile again to turn that off. **Review all** shows every line. Click a line: the grid
    shows that bunk's week (Group View) and the outlines go.
