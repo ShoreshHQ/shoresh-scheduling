@@ -641,7 +641,7 @@ export function checkGeneratedWeek(input) {
     // The Why list's line for each minimum this short week lowered (WEEK-4.2).
     shortWeek: shortWeekLines(activities.running, t),
     // The fewest blocks any activity running this week takes: a gap shorter than this fits
-    // nothing (the engine's "No activity fits this gap"); null with none running.
+    // nothing (the engine's "No activity fits here"); null with none running.
     shortest: activities.running.length
       ? Math.min(...activities.running.map((a) => a.span))
       : null

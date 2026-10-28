@@ -761,7 +761,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     const element = await render(week);
     expectCleanGrid(element);
     expect(whyAt(element, "Bunk 1 · Monday · Period 3")).toBe(
-      "No activity fits this gap"
+      "No activity fits here"
     );
   });
 

@@ -71,10 +71,10 @@ describe("openCells", () => {
     ]);
   });
 
-  it("says No activity fits this gap when the run of Open cells is shorter than every activity", () => {
+  it("says No activity fits here when the run of Open cells is shorter than every activity", () => {
     // Bunk 2's Period 3 is a one-block gap; the shortest activity takes two.
     expect(openCells([DAY], atCamp, terms, 2)[0].text).toBe(
-      "Bunk 2 · Monday · Period 3: No activity fits this gap"
+      "Bunk 2 · Monday · Period 3: No activity fits here"
     );
     // One block fits a one-block activity: no reason (it is just not built yet).
     expect(openCells([DAY], atCamp, terms, 1)[0].reason).toBeNull();
@@ -111,7 +111,7 @@ describe("openCells", () => {
       groupId === "g2" && blockId === "b3";
     const open = openCells([day], atCamp, terms, 2, locked);
     expect(open.map((c) => c.blockId)).toEqual(["b4"]);
-    expect(open[0].reason).toBe("No activity fits this gap");
+    expect(open[0].reason).toBe("No activity fits here");
     // Without the lock, Periods 2 and 3 make room for it.
     expect(openCells([day], atCamp, terms, 2).every((c) => !c.reason)).toBe(
       true
