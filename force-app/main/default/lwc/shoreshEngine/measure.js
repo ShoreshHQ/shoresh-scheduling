@@ -14,6 +14,12 @@
  * - look: what needs a look that is neither under nor over: the cells whose placement breaks a
  *   rule shared with other cells (checkWeek's overlapping), then each bunk still short of an
  *   early-week goal (checkWeek's spread), each as checkWeek words it.
+ * - priorities met (CORE-6.4, CORE-1.33): for High, then Low, how many of the week's minimums
+ *   (one per activity with a minimum, per group it is set up for) are met. Counts only: reported,
+ *   never chased.
+ * - spread across the week (CORE-6.4, CORE-1.32): of the sessions of activities a group has more
+ *   than once, how many fall on a day of their own (per group and activity, its distinct days).
+ *   Back-to-back days count as different days. Reported only.
  */
 
 function groupIdsOf(days) {
@@ -39,7 +45,10 @@ function hasNumber(value) {
  * one closed this week, itself or by its place, has no goal or limit the week can be short of
  * or past, as the dots and Open reasons have none for it.
  *
- * Returns { placed, total, stillNeeded, hasGoals, hasLimits, under: { count, rows }, over:
+ * An activity's priority is its priority field ("high"/"low"; anything else reads as low).
+ *
+ * Returns { placed, priorities: [{ priority, met, total }] (High then Low, only those with a
+ * minimum), spread: { days, sessions }, total, stillNeeded, hasGoals, hasLimits, under: { count, rows }, over:
  * { count, rows }, look: [lines], byActivity: Map of activity Id -> { placed, goal, short,
  * extra } (placed: every placement of it this week, goal: its weekly goal for the camp, 0 for
  * none), offTarget }. Each row is { id, name, placed, goal }.
@@ -61,6 +70,25 @@ export function measureWeek(checked, list, days) {
     });
   const count = (groupId, id) => counts.get(`${groupId}|${id}`) || 0;
 
+  const onDays = new Map();
+  ((checked && checked.placements) || [])
+    .filter((p) => p.kind === "A")
+    .forEach((p) => {
+      const key = `${p.groupId}|${p.id}`;
+      if (!onDays.has(key)) {
+        onDays.set(key, new Set());
+      }
+      onDays.get(key).add(p.d);
+    });
+  const spread = { days: 0, sessions: 0 };
+  onDays.forEach((set, key) => {
+    if (counts.get(key) > 1) {
+      spread.days += set.size;
+      spread.sessions += counts.get(key);
+    }
+  });
+  const met = { high: { met: 0, total: 0 }, low: { met: 0, total: 0 } };
+
   const under = { count: 0, rows: [] };
   const over = { count: 0, rows: [] };
   const byActivity = new Map();
@@ -75,6 +103,11 @@ export function measureWeek(checked, list, days) {
       0
     );
     const short = goal - got;
+    if (min > 0) {
+      const tally = met[a.priority === "high" ? "high" : "low"];
+      tally.total += eligible.length;
+      tally.met += eligible.filter((id) => count(id, a.id) >= min).length;
+    }
     if (short > 0) {
       under.count += short;
       under.rows.push({ id: a.id, name: a.name, placed: got, goal });
@@ -127,6 +160,10 @@ export function measureWeek(checked, list, days) {
     hasLimits: activities.some((a) => hasNumber(a.maxPerWeek)),
     under,
     over,
+    priorities: ["high", "low"]
+      .filter((priority) => met[priority].total > 0)
+      .map((priority) => ({ priority, ...met[priority] })),
+    spread,
     look,
     byActivity,
     offTarget: under.count > 0 || over.count > 0 || look.length > 0

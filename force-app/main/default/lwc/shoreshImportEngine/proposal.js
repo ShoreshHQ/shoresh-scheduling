@@ -16,6 +16,7 @@ import {
 import { deletedAs, deletionsIn } from "./deleted";
 import { electiveRecords, readElectives } from "./electives";
 import { missingItems } from "./missing";
+import { identityDivision } from "./noDivision";
 import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
@@ -32,7 +33,7 @@ function campMembers(existing, rules) {
     const all = [];
     for (const d of entry.divisions || []) {
       const names = (d.groups || []).map((g) =>
-        rules.identityOf(g.Name, d.division.Name)
+        rules.identityOf(g.Name, identityDivision(d.division))
       );
       members.set(d.division.Id, names);
       all.push(...names);

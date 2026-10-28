@@ -348,9 +348,9 @@ describe("c-shoresh-week-checks: the counter", () => {
       ...MEASURE,
       open: [
         {
-          key: "open|2026-06-29|g2|t3|No activity fits this gap",
+          key: "open|2026-06-29|g2|t3|No activity fits here",
           kind: "open",
-          text: "Bunk 2 · Monday · Period 3: No activity fits this gap",
+          text: "Bunk 2 · Monday · Period 3: No activity fits here",
           groupId: "g2",
           dateValue: "2026-06-29",
           blockId: "t3"
@@ -377,7 +377,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(text(q(element, '[data-id="open"]'))).toBe("Open");
       expect(text(q(element, '[data-id="notes"]'))).toBe("Notes");
       expect(qa(element, "[data-line]").map(text)).toEqual([
-        "Bunk 2 · Monday · Period 3: No activity fits this gap",
+        "Bunk 2 · Monday · Period 3: No activity fits here",
         "Swim1of 4",
         "Soccer2of 1",
         "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
@@ -413,7 +413,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         qa(element, ".accept")
           .find((b) => b.getAttribute("aria-label") === label)
           .click();
-      accept("Accept: Bunk 2 · Monday · Period 3: No activity fits this gap");
+      accept("Accept: Bunk 2 · Monday · Period 3: No activity fits here");
       await flush();
       accept("Accept: Arts: Groups at once is blank, so it counts as 1");
       await flush();
@@ -478,5 +478,31 @@ describe("c-shoresh-week-checks: the counter", () => {
       await flush();
       expect(word(element).querySelector(".shoresh-look-mark")).not.toBeNull();
     });
+  });
+
+  // CORE-6.4 CORE-1.33
+  it("shows the week's measures under still needed: priorities met, then spread", async () => {
+    const element = render({
+      measure: {
+        ...MEASURE,
+        priorities: [
+          { priority: "high", met: 9, total: 10 },
+          { priority: "low", met: 4, total: 6 }
+        ],
+        spread: { days: 18, sessions: 20 }
+      }
+    });
+    await flush();
+    word(element).click();
+    await flush();
+    expect(text(q(element, '[data-id="priority-high"]'))).toBe(
+      "High priority9of 10 minimums met"
+    );
+    expect(text(q(element, '[data-id="priority-low"]'))).toBe(
+      "Low priority4of 6 minimums met"
+    );
+    expect(text(q(element, '[data-id="spread"]'))).toBe(
+      "Spread across the week18of 20 on different days"
+    );
   });
 });

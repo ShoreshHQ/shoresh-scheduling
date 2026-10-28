@@ -5,7 +5,12 @@
  * the file, requiredValue that a cell can't be blank (the item can't be without it).
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
-import { WEEKDAYS, clock } from "c/shoreshImportEngine";
+import {
+  WEEKDAYS,
+  clock,
+  realDivisionsOf,
+  shownDivisionName
+} from "c/shoreshImportEngine";
 
 const MS_PER_MINUTE = 60000;
 
@@ -155,7 +160,8 @@ export function divisionsScreen(t) {
     ],
     records: (setup) =>
       inPrograms(setup, (entry) =>
-        (entry.divisions || []).map((d) => d.division)
+        // DIV-1.1: a holding record is no division.
+        realDivisionsOf(entry).map((d) => d.division)
       )
   };
 }
@@ -177,6 +183,8 @@ export function groupsScreen(t) {
         required: true,
         requiredValue: true,
         refField: FIELD.Group.Division,
+        // DIV-1.1: a group in no division writes none, and a blank reads back as unchanged.
+        blankWhenNone: true,
         fromRecord: (r) => r._divisionName,
         // The screen's groups carry their division under the program's entry.
         fromId: (r) => r._divisionId
@@ -208,7 +216,8 @@ export function groupsScreen(t) {
           (d.groups || []).map((g) => ({
             ...g,
             _divisionId: d.division.Id,
-            _divisionName: d.division.Name
+            // DIV-1.1: a group in no division shows none.
+            _divisionName: shownDivisionName(d)
           }))
         )
       )

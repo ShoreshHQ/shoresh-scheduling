@@ -3,6 +3,7 @@
 import { createElement } from "lwc";
 import ShoreshElectiveDetails, {
   divisionsCovered,
+  divisionsOf,
   electivesOf,
   seatsNeedingLook,
   seatsLookWords,
@@ -789,5 +790,26 @@ describe("c-shoresh-elective-details", () => {
       expect([...shown.periods]).toEqual(["Tuesday|t2"]);
       expect([...shown.divisionIds]).toEqual(["d2"]);
     });
+  });
+});
+
+// DIV-1.1
+describe("a group in no division", () => {
+  it("its holding record is never one of the season's divisions", () => {
+    const setup = nsRecord({
+      programs: [
+        {
+          program: { Id: "p1", Name: "Main" },
+          divisions: [
+            { division: { Id: "d1", Name: "Inters" }, groups: [] },
+            {
+              division: { Id: "d9", Name: "Tent 1", NoDivision__c: true },
+              groups: [{ Id: "g9", Name: "Tent 1" }]
+            }
+          ]
+        }
+      ]
+    });
+    expect(divisionsOf(setup)).toEqual([{ id: "d1", name: "Inters" }]);
   });
 });

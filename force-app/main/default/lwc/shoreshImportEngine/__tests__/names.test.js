@@ -3,10 +3,11 @@
 import {
   buildProposal,
   importNotes,
+  planFor,
   questionCards,
   readAsGroups
 } from "./data/engine";
-import { csv, terms } from "./data/samples";
+import { csv, existingSetup, program, terms } from "./data/samples";
 import {
   plainEnding,
   readWithoutAsking,
@@ -74,6 +75,110 @@ describe("rule 1: a division of one", () => {
     expect(unanswered(p).filter((c) => c.select === "division")).toEqual([]);
     expect(readAsOf(p)).toContain("division|CIT");
     expect(notesOf(p).some((k) => k.startsWith("ownDivision|"))).toBe(false);
+  });
+
+  // DIV-1.1 DIV-3.1
+  it("CIT alone in division CIT is a division, never a group in no division", () => {
+    const files = campWeek(
+      null,
+      ["Juniors - Bunk 1", "Juniors - Bunk 2", "Seniors - Bunk 3", "CIT"],
+      (g, d, b) => (b === 2 ? "Lunch" : ACTIVITIES[(g + b + d) % 4])
+    );
+    const p = propose(files);
+    expect(p.groups.find((g) => g.name === "CIT").noDivision).toBeUndefined();
+    const plan = planFor(p, null, "s");
+    expect(plan.divisions.find((d) => d.name === "CIT").noDivision).toBe(
+      undefined
+    );
+    // Saved before as division CIT, unflagged: read again as that division.
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"]
+              ]
+            ],
+            ["d2", "Seniors", [["g3", "Bunk 3"]]],
+            ["d3", "CIT", [["g4", "CIT"]]]
+          ]
+        })
+      ]
+    });
+    const again = buildProposal({ files, existing, terms, answers: {} });
+    expect(
+      again.groups.map((g) => [g.name, g.division, !!g.noDivision])
+    ).toContainEqual(["CIT", "CIT", false]);
+  });
+
+  // DIV-1.1
+  it("a renamed group in no division never takes its holding record's old name as a division", () => {
+    const files = campWeek(
+      null,
+      ["Juniors - Bunk 1", "Juniors - Bunk 2", "Seniors - Bunk 3", "CIT"],
+      (g, d, b) => (b === 2 ? "Lunch" : ACTIVITIES[(g + b + d) % 4])
+    );
+    const setup = program("p1", "Main", {
+      divisions: [
+        [
+          "d1",
+          "Juniors",
+          [
+            ["g1", "Bunk 1"],
+            ["g2", "Bunk 2"]
+          ]
+        ],
+        ["d2", "Seniors", [["g3", "Bunk 3"]]],
+        ["d3", "Counselors", [["g4", "CIT"]]]
+      ]
+    });
+    setup.divisions[2].division.NoDivision__c = true;
+    const again = buildProposal({
+      files,
+      existing: existingSetup({ programs: [setup] }),
+      terms,
+      answers: {}
+    });
+    const cit = again.groups.find((g) => g.name === "CIT");
+    expect([cit.division, !!cit.noDivision]).toEqual([null, true]);
+    expect(again.groups.map((g) => g.division)).not.toContain("Counselors");
+  });
+
+  // DIV-1.1
+  it("a group saved in a flagged holding record is read again in no division", () => {
+    const files = campWeek(
+      null,
+      ["Juniors - Bunk 1", "Juniors - Bunk 2", "Seniors - Bunk 3", "CIT"],
+      (g, d, b) => (b === 2 ? "Lunch" : ACTIVITIES[(g + b + d) % 4])
+    );
+    const setup = program("p1", "Main", {
+      divisions: [
+        [
+          "d1",
+          "Juniors",
+          [
+            ["g1", "Bunk 1"],
+            ["g2", "Bunk 2"]
+          ]
+        ],
+        ["d2", "Seniors", [["g3", "Bunk 3"]]],
+        ["d3", "CIT", [["g4", "CIT"]]]
+      ]
+    });
+    setup.divisions[2].division.NoDivision__c = true;
+    const again = buildProposal({
+      files,
+      existing: existingSetup({ programs: [setup] }),
+      terms,
+      answers: {}
+    });
+    expect(
+      again.groups.map((g) => [g.name, g.division, !!g.noDivision])
+    ).toContainEqual(["CIT", null, true]);
   });
 
   // INGEST-2.1

@@ -2,6 +2,8 @@
  * The rows and groups of "What Shoresh has learned" (desktop learnedView.js buildLearnedGroups,
  * matchesQuery): pure, so the same answers always show the same screen.
  */
+
+import { holdsNoDivision } from "c/shoreshImportEngine";
 import { GROUPS, describe } from "./kinds";
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
@@ -49,7 +51,11 @@ function setupRecords(setup) {
       ...(p.recurringActivities || [])
     ]),
     ...programs.flatMap((p) =>
-      (p.divisions || []).flatMap((d) => [d.division, ...(d.groups || [])])
+      // DIV-1.1: a holding record is no division of its own.
+      (p.divisions || []).flatMap((d) => [
+        ...(holdsNoDivision(d.division) ? [] : [d.division]),
+        ...(d.groups || [])
+      ])
     ),
     ...(setup.locationTypes || []),
     ...(setup.locations || []),

@@ -68,6 +68,7 @@ import coverageRecurringActivity from "@salesforce/schema/Coverage__c.RecurringA
 import coverageSeason from "@salesforce/schema/Coverage__c.Season__c";
 import divisionObject from "@salesforce/schema/Division__c";
 import divisionCopiedFrom from "@salesforce/schema/Division__c.CopiedFrom__c";
+import divisionNoDivision from "@salesforce/schema/Division__c.NoDivision__c";
 import divisionProgram from "@salesforce/schema/Division__c.Program__c";
 import divisionSortOrder from "@salesforce/schema/Division__c.SortOrder__c";
 import electiveRunObject from "@salesforce/schema/ElectiveRun__c";
@@ -384,6 +385,7 @@ export const FIELD = Object.freeze({
   }),
   Division: Object.freeze({
     CopiedFrom: divisionCopiedFrom.fieldApiName,
+    NoDivision: divisionNoDivision.fieldApiName,
     Program: divisionProgram.fieldApiName,
     SortOrder: divisionSortOrder.fieldApiName
   }),

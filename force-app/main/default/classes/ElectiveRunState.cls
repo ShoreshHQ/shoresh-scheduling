@@ -132,6 +132,7 @@ public with sharing class ElectiveRunState {
         SortOrder__c,
         Division__c,
         Division__r.Name,
+        Division__r.NoDivision__c,
         Division__r.SortOrder__c
       FROM Group__c
       WHERE Division__r.Program__c = :run.Schedule__r.Program__c

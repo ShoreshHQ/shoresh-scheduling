@@ -178,7 +178,9 @@ function regroup(placements, groups, merged) {
         base: to,
         division: null,
         divisionGuessed: false,
-        hint: null
+        hint: null,
+        // DIV-1.1: the group is the whole division, so it is in none; never asked for one.
+        noDivision: true
       });
     }
   }

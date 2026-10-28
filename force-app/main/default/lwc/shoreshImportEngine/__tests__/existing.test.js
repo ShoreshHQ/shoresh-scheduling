@@ -1,6 +1,7 @@
 import {
   buildProposal,
   LEAVE_OUT,
+  NO_DIVISION,
   planFor,
   questionCards,
   foundLists,
@@ -263,6 +264,7 @@ describe("adding to a season that has setup already", () => {
     expect(cards[0].options.map((o) => o.value)).toEqual([
       "Juniors",
       "Seniors",
+      NO_DIVISION,
       LEAVE_OUT
     ]);
     const answers = Object.fromEntries(

@@ -156,4 +156,55 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
       byActivity: [...b.byActivity]
     });
   });
+
+  // CORE-6.4 CORE-1.33
+  it("priorities met: High then Low, minimums met as counts, per bunk set up for it", () => {
+    const high = { ...act("swim", "Swim", 2), priority: "high" };
+    const low = { ...act("art", "Art", 1, null, ["b3"]), priority: "low" };
+    const placements = [
+      p("b1", "swim"),
+      p("b1", "swim"),
+      p("b2", "swim"),
+      p("b1", "art")
+    ];
+    const m = measureWeek(
+      { cells: { filled: 4, total: 6 }, placements },
+      [low, high, act("none", "No goal", 0)],
+      DAYS
+    );
+    expect(m.priorities).toEqual([
+      { priority: "high", met: 1, total: 3 },
+      { priority: "low", met: 1, total: 2 }
+    ]);
+    // Same inputs, same output.
+    expect(
+      measureWeek(
+        { cells: { filled: 4, total: 6 }, placements },
+        [low, high],
+        DAYS
+      ).priorities
+    ).toEqual(m.priorities);
+  });
+
+  // CORE-6.4 CORE-1.32 CORE-1.33
+  it("spread across the week: repeated sessions on a day of their own, reported as a count", () => {
+    const at = (d, groupId, id) => ({ ...p(groupId, id), d });
+    const placements = [
+      at(0, "b1", "swim"),
+      at(1, "b1", "swim"),
+      at(0, "b2", "swim"),
+      at(0, "b2", "swim"),
+      at(0, "b3", "swim")
+    ];
+    const m = measureWeek(
+      { cells: { filled: 5, total: 6 }, placements },
+      [act("swim", "Swim", 2)],
+      DAYS
+    );
+    // b1: 2 sessions on 2 days; b2: 2 on 1 day; b3 has it once, so nothing to spread.
+    expect(m.spread).toEqual({ days: 3, sessions: 4 });
+    // Reported only: it never adds to what needs a look.
+    expect(m.offTarget).toBe(true);
+    expect(m.look).toEqual([]);
+  });
 });

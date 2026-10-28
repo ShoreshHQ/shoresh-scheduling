@@ -974,8 +974,8 @@ describe("c-shoresh-generated-schedule", () => {
     // Nothing on the grid (wiki engine care plan Q18): each Open cell is a line, in its words.
     expectCleanGrid(element);
     expect(checks(element).measure.open.map((l) => l.text)).toEqual([
-      "Bunk 1 · Monday · Period 3: No activity fits this gap",
-      "Bunk 1 · Tuesday · Period 3: No activity fits this gap"
+      "Bunk 1 · Monday · Period 3: No activity fits here",
+      "Bunk 1 · Tuesday · Period 3: No activity fits here"
     ]);
     // Placed counts them as not filled.
     expect(counterText(element)).not.toMatch(/^(\d+)of \1 placed$/);
@@ -1042,9 +1042,7 @@ describe("c-shoresh-generated-schedule", () => {
     await generate(element);
     const open = checks(element).measure.open.map((l) => l.text);
     const notes = checks(element).measure.notes.map((l) => l.text);
-    expect(open).toContain(
-      "Bunk 1 · Monday · Period 3: No activity fits this gap"
-    );
+    expect(open).toContain("Bunk 1 · Monday · Period 3: No activity fits here");
     expect(notes).toEqual(["Hike: Groups at once is blank, so it counts as 1"]);
     // Kept as codes and Ids, never sentences.
     const kept = sent().engineNotes;

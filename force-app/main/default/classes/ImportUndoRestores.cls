@@ -29,6 +29,8 @@ public with sharing class ImportUndoRestores {
     for (Schema.SObjectType kind : byKind.keySet()) {
       rows.addAll(restored(kind, byKind.get(kind)));
     }
+    // DIV-1.1: a group moved out of no division goes back into a new holding record.
+    NoDivisions.restoreHolders(rows);
     // Undo puts rain plans back as they were, even one made outdoors since (ADR 0006 §18).
     ActivityTriggerHandler.checkRainPlans = false;
     List<Database.SaveResult> outcomes;

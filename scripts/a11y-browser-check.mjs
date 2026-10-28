@@ -4908,8 +4908,10 @@ async function publish(S, openScreen) {
     await openScreen();
     if (!(await tabTo((f) => f.dataId === "publish")))
       throw new Error("Publish not reached.");
-    await press("Enter", 1500);
-    let f = await focus();
+    // The question comes after the server's preview: waited for, not a fixed pause (a slow
+    // round trip once left it opening after the check had moved on).
+    await press("Enter", 300);
+    let f = await waitFocus({ inDialog: true }, 8000);
     if (f && f.inDialog) {
       results.pass(
         S,
@@ -4921,7 +4923,8 @@ async function publish(S, openScreen) {
       await expectFocus(S, "Escape: focus back on Publish", {
         dataId: "publish"
       });
-      await press("Enter", 1500);
+      await press("Enter", 300);
+      await waitFocus({ inDialog: true }, 8000);
       if (!(await tabTo(named(/^Publish$/, { inDialog: true }), { max: 6 }))) {
         throw new Error("The question's Publish not reached.");
       }

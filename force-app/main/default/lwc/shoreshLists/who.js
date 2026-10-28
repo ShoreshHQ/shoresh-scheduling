@@ -5,7 +5,7 @@
  * program ("Bunk 1 (Juniors, Main)"). A name that still fits two records is not guessed: the row
  * says which spellings would be clear.
  */
-import { looseKey } from "c/shoreshImportEngine";
+import { looseKey, holdsNoDivision } from "c/shoreshImportEngine";
 
 const EVERYONE = new Set(["everyone", "everybody", "all", "all groups"]);
 
@@ -15,23 +15,29 @@ export function whoTargets(setup) {
   ((setup && setup.programs) || []).forEach((entry) => {
     const program = entry.program.Name;
     (entry.divisions || []).forEach((d) => {
+      // DIV-1.1: a holding record is no division; its group is named alone or with its program.
+      const none = holdsNoDivision(d.division);
       const division = d.division.Name;
-      targets.push({
-        id: d.division.Id,
-        kind: "Division",
-        programId: entry.program.Id,
-        spellings: [division, `${division} (${program})`]
-      });
+      if (!none) {
+        targets.push({
+          id: d.division.Id,
+          kind: "Division",
+          programId: entry.program.Id,
+          spellings: [division, `${division} (${program})`]
+        });
+      }
       (d.groups || []).forEach((g) => {
         targets.push({
           id: g.Id,
           kind: "Group",
           programId: entry.program.Id,
-          spellings: [
-            g.Name,
-            `${g.Name} (${division})`,
-            `${g.Name} (${division}, ${program})`
-          ]
+          spellings: none
+            ? [g.Name, `${g.Name} (${program})`]
+            : [
+                g.Name,
+                `${g.Name} (${division})`,
+                `${g.Name} (${division}, ${program})`
+              ]
         });
       });
     });

@@ -27,7 +27,7 @@
       object-api-name={objects.Division}
       flag-same-names
       columns={divisionColumns}
-      rows={divisionRecords}
+      rows={realDivisionRecords}
       add-label={labels.addDivision}
       empty-message={labels.noDivisions}
       new-row-defaults={divisionDefaults}
@@ -38,55 +38,38 @@
   </template>
 
   <template lwc:if={isGroups}>
-    <template lwc:if={hasDivisions}>
-      <template for:each={divisions} for:item="division">
-        <c-shoresh-editable-table
-          key={division.id}
-          data-id="groups"
-          title={division.title}
-          heading={division.heading}
-          show-columns={division.first}
-          object-api-name={objects.Group}
-          flag-same-names
-          same-name-scope={groupDivisionField}
-          same-names-elsewhere={division.namesElsewhere}
-          data-division={division.id}
-          onpendingnames={handlePendingNames}
-          columns={groupColumns}
-          rows={division.groups}
-          add-label={labels.addGroup}
-          empty-message={labels.noGroups}
-          new-row-defaults={division.defaults}
-          draft-note={groupMoveNote}
-          draft-note-heading={labels.moving}
-          weeks={weeks}
-          week-exceptions={weekExceptions}
-          weeks-heading={labels.weeksColumn}
-          week-words={weekWords}
-          before-week-off={beforeWeekOff}
-          week-phrase="runs in"
-          busy={busy}
-          guesses={guesses}
-          onsave={handleChildSave}
-          ondelete={handleChildDelete}
-          onconfirmguess={handleChildConfirmGuess}
-        ></c-shoresh-editable-table>
-      </template>
-    </template>
-    <template lwc:else>
-      <div class="slds-m-bottom_medium" data-id="needs-divisions">
-        <c-shoresh-empty-state
-          title={labels.noDivisions}
-        ></c-shoresh-empty-state>
-        <div class="slds-text-align_center">
-          <lightning-button
-            label={labels.toDivisions}
-            data-screen="divisions"
-            data-id="go-divisions"
-            onclick={handleGo}
-          ></lightning-button>
-        </div>
-      </div>
+    <template for:each={divisions} for:item="division">
+      <c-shoresh-editable-table
+        key={division.id}
+        data-id="groups"
+        title={division.title}
+        heading={division.heading}
+        show-columns={division.first}
+        object-api-name={objects.Group}
+        flag-same-names
+        same-name-scope={groupDivisionField}
+        same-names-elsewhere={division.namesElsewhere}
+        data-division={division.id}
+        onpendingnames={handlePendingNames}
+        columns={division.columns}
+        rows={division.groups}
+        add-label={labels.addGroup}
+        empty-message={labels.noGroups}
+        new-row-defaults={division.defaults}
+        draft-note={groupMoveNote}
+        draft-note-heading={labels.moving}
+        weeks={weeks}
+        week-exceptions={weekExceptions}
+        weeks-heading={labels.weeksColumn}
+        week-words={weekWords}
+        before-week-off={beforeWeekOff}
+        week-phrase="runs in"
+        busy={busy}
+        guesses={guesses}
+        onsave={handleChildSave}
+        ondelete={handleChildDelete}
+        onconfirmguess={handleChildConfirmGuess}
+      ></c-shoresh-editable-table>
     </template>
   </template>
 
