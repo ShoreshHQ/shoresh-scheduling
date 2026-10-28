@@ -558,6 +558,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
 
     // CORE-4.4
+    // CORE-1.30: an Open cell says why in plain words ("fits here", never "gap").
     it("a two-block activity never runs through two blocks that overlap in time", () => {
       // Wake-up 8:00-8:30 and P1 8:00-9:00 are one stretch of time, not two periods.
       const result = run({
@@ -567,8 +568,8 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       });
       expect(cellsOf(result.days)[0].g1).toEqual([null, null]);
       expect(result.openCells.map((c) => [c.blockId, c.reason])).toEqual([
-        ["wake", "No activity fits this gap"],
-        ["p1", "No activity fits this gap"]
+        ["wake", "No activity fits here"],
+        ["p1", "No activity fits here"]
       ]);
     });
 
@@ -584,9 +585,9 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
       });
       expect(cellsOf(result.days)[0].g1).toEqual([null, null, null]);
       expect(result.openCells.map((c) => c.reason)).toEqual([
-        "No activity fits this gap",
-        "No activity fits this gap",
-        "No activity fits this gap"
+        "No activity fits here",
+        "No activity fits here",
+        "No activity fits here"
       ]);
     });
 
@@ -600,9 +601,9 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
         activities: [activity("trek", { span: 4, atOnce: null })]
       });
       expect(result.openCells.map((c) => [c.blockId, c.reason])).toEqual([
-        ["wake", "No activity fits this gap"],
-        ["p1", "No activity fits this gap"],
-        ["p2", "No activity fits this gap"]
+        ["wake", "No activity fits here"],
+        ["p1", "No activity fits here"],
+        ["p2", "No activity fits here"]
       ]);
     });
   });
@@ -641,7 +642,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.openCells).toEqual([
       expect.objectContaining({
         blockId: "b1",
-        reason: "No activity fits this gap"
+        reason: "No activity fits here"
       })
     ]);
     expect(problems(spec, input, result)).toEqual([]);

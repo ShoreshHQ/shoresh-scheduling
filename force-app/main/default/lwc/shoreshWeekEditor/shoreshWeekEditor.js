@@ -76,6 +76,22 @@ import {
 const SET_TIME_BY_HAND = true;
 const NEVER_AWAY = () => false;
 
+/**
+ * The editor's activities, each with its priority from its record ("high" or "low"), so the
+ * week's measure can count priorities met (CORE-6.4).
+ */
+function withPriority(activities, records) {
+  const high = new Set(
+    (records || [])
+      .filter((r) => r[FIELD.Activity.Priority] === "High")
+      .map((r) => r.Id)
+  );
+  return (activities || []).map((a) => ({
+    ...a,
+    priority: high.has(a.id) ? "high" : "low"
+  }));
+}
+
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
   return String(text || "")
@@ -690,7 +706,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       memo.activities = activities;
       memo.setupDots = this.setupDots;
       memo.days = weekDays;
-      const measured = measureWeek(checked, activities || [], weekDays);
+      const measured = measureWeek(
+        checked,
+        withPriority(activities, this.draft && this.draft.activityRecords),
+        weekDays
+      );
       const why = this.whyRows(checked, weekDays);
       memo.result = {
         ...measured,
@@ -3851,7 +3871,10 @@ export default class ShoreshWeekEditor extends LightningElement {
       );
       memo.result = measureWeek(
         checked,
-        (this.draft && this.draft.activities) || [],
+        withPriority(
+          this.draft && this.draft.activities,
+          this.draft && this.draft.activityRecords
+        ),
         bunkDays
       );
     }
