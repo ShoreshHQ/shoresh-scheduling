@@ -39,6 +39,7 @@ describe("moveNote", () => {
     expect(moveNote({ ...BUNK }, BUNK, CONTEXT)).toBe(null);
   });
 
+  // DIV-1.2
   it("says which lists the group leaves and joins, for which division", () => {
     expect(moveNote({ ...BUNK, Division__c: "d2" }, BUNK, CONTEXT)).toBe(
       "Moves to Seniors: Bunk 3 is no longer in Swim (for Juniors) and is now in Archery and Morning circle (for Seniors)."

@@ -425,6 +425,7 @@ describe("PR 16 reviews", () => {
     expect(keys.sort()).toEqual(["D|P0|Main", "D|P1|Main"]);
   });
 
+  // DIV-1.3
   it("the same division and name in two programs are two groups", () => {
     const files = [
       ...DAYS.map((day, d) =>
@@ -527,6 +528,7 @@ describe("PR 16 reviews", () => {
     ]);
   });
 
+  // DIV-1.3
   it("another program's divisions do not hide this program's (round 2 repro)", () => {
     const a = DAYS.map((day, d) =>
       csv(`A ${day}.csv`, [

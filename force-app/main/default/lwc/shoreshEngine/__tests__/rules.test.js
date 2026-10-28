@@ -187,7 +187,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     ]);
   });
 
-  // CORE-4.3
+  // CORE-4.3 PROG-4.1
   it("counts other programs as full: the cell stays Open", () => {
     const result = run({
       blocks: [block(0)],
@@ -1028,6 +1028,7 @@ describe("the hard rules", () => {
     expect(result.flags).toEqual([]);
   });
 
+  // DIV-4.1
   it("same division only: two divisions never share the activity or its place unflagged", () => {
     const spec = {
       groups: [group("g1"), group("g2", { division: "div2" }), group("g3")],
@@ -1054,6 +1055,7 @@ describe("the hard rules", () => {
     expect(problems(spec, input, result)).toEqual([]);
   });
 
+  // DIV-4.1
   it("same division only holds whoever arrived first: another activity can't bring a second division into the place", () => {
     const result = run({
       mode: "fillOpen",
@@ -1090,6 +1092,7 @@ describe("the hard rules", () => {
 });
 
 describe("other programs count against capacity (G5 supplies them)", () => {
+  // PROG-4.1
   it("a place another program fills at that clock time is full for this one", () => {
     for (let option = 1; option <= 10; option++) {
       const result = run({
@@ -1116,6 +1119,7 @@ describe("other programs count against capacity (G5 supplies them)", () => {
     }
   });
 
+  // PROG-4.2
   it("another program's groups at an activity count against its groups at once", () => {
     for (let option = 1; option <= 10; option++) {
       const result = run({

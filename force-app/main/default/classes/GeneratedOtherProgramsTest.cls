@@ -274,6 +274,7 @@ private class GeneratedOtherProgramsTest {
     }
   }
 
+  // PROG-4.3
   @IsTest
   static void aPublishedScheduleCountsAtItsOwnTimesAndADraftDoesNot() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -293,6 +294,7 @@ private class GeneratedOtherProgramsTest {
     }
   }
 
+  // PROG-4.3
   @IsTest
   static void fixedAndRecurringActivitiesCountOnDaysWithoutAPublishedSchedule() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -433,6 +435,7 @@ private class GeneratedOtherProgramsTest {
     }
   }
 
+  // PROG-4.3
   @IsTest
   static void onlyTheNewestPublishedScheduleCountsNeverAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {

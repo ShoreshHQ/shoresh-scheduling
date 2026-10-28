@@ -45,7 +45,7 @@ const notesOf = (p) => importNotes(p, terms).map((n) => n.key);
 const names = (p) => [...new Set(p.usable.map((x) => x.text))].sort();
 
 describe("rule 1: a division of one", () => {
-  // INGEST-2.1
+  // INGEST-2.1 DIV-3.1
   it("a group with no division beside divided groups is its own division, said in the notes", () => {
     const files = campWeek(
       null,

@@ -622,6 +622,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     );
   });
 
+  // PROG-4.1
   it("another program at the Pool counts by clock time: only past what fits is listed", async () => {
     // Swim at the Pool, which fits 2; Bunk 1 swims Monday Period 2 (10:00 to 10:45).
     const pool = nsRecord({
@@ -684,6 +685,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     ]);
   });
 
+  // PROG-4.2
   it("another program doing Soccer counts against its bunks at once; one only at a place doesn't", async () => {
     // Soccer: one bunk at a time. Bunk 1 plays Monday Period 2 (10:00 to 10:45).
     const start = draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]);

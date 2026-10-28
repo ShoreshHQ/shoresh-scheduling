@@ -4,7 +4,7 @@
  */
 const { protocolIndex, counts } = require("../protocol-index.js");
 
-const ENCODED_FLOOR = 104;
+const ENCODED_FLOOR = 127;
 
 describe("the protocol's conformance index", () => {
   const statements = protocolIndex();
@@ -16,13 +16,16 @@ describe("the protocol's conformance index", () => {
     expect([...prefixes].sort()).toEqual([
       "CLOSE",
       "CORE",
+      "DIV",
       "ELECT",
       "GEN",
       "INGEST",
       "LOCK",
       "MEMO",
+      "PROG",
       "PUB",
-      "SPECIAL"
+      "SPECIAL",
+      "WEEK"
     ]);
   });
 

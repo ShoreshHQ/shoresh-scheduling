@@ -1,0 +1,22 @@
+# PROG: Programs
+
+> **Sub-protocol PROG** of the [Shoresh protocol](README.md). It sits on CORE layers 1 and 4
+> ([core.md](core.md)), with one screen statement on layer 6, and never overrides them: it uses
+> Program (CORE-1.3), Block (CORE-1.6), Location and groups fit (CORE-1.9, 1.10) and Published
+> (CORE-1.28) as CORE defines them.
+
+What a program owns, and what it shares with the camp's other programs.
+
+Statement `PROG-n.m`: n is the CORE layer it sits on. In the Test column, **gap** means no test
+names it yet; **not built** and **contradicted** say the code does not do it today.
+
+| ID       | Statement                                                                                                                                                                                         | Source                                       | Test                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| PROG-1.1 | Each program MUST have its own blocks, divisions and days; a week is built for one program at a time.                                                                                             | CORE-1.3; wiki protocol D                    | gap (structure: `TimeBlock__c`, `Division__c` belong to one program)                                                              |
+| PROG-1.2 | A program MUST run on at least one day; a program set to no day MUST be refused with one plain sentence.                                                                                          | `Program__c` rule AtLeastOneDay; ADR 0022 §1 | ProgramAndWeekRulesTest.aProgramThatRunsOnNoDayIsRefused                                                                          |
+| PROG-1.3 | A new program MUST start on the days the camp's other programs run (Monday to Friday for the first).                                                                                              | ADR 0022 §6 (Greg 2026-10-27)                | shoreshCampSetup.test.js "adds a program from the blank row, … on the days the others run"                                        |
+| PROG-4.1 | Locations MUST be shared across programs by clock time: another program's groups at a location count against its groups fit whenever their times overlap, whatever the blocks are called.         | ADR 0010 G5; CORE-1.10, CORE-4.3             | rules.test.js "counts other programs as full"; "a place another program fills at that clock time"; checking.test.js; rain.test.js |
+| PROG-4.2 | Another program's groups doing an activity MUST count against that activity's groups at once at the same clock time.                                                                              | ADR 0010 G5; CORE-1.11, CORE-4.3             | rules.test.js "another program's groups at an activity count against its groups at once"; checking.test.js                        |
+| PROG-4.3 | What counts for another program MUST be its published week, cell by cell; on a day it has none, its fixed and recurring activities where setup puts them; its drafts and versions MUST NOT count. | ADR 0010 G5                                  | GeneratedOtherProgramsTest (three methods)                                                                                        |
+| PROG-6.1 | Each program's week MUST publish on its own: exactly one published version per program and week, and publishing one program's week MUST NOT touch another's.                                      | CORE-1.28; decision 0002, 0007               | gap (code: `Schedule__c.PublishKey__c` is unique per program and week; no test publishes two programs' weeks)                     |
+| PROG-6.2 | Programs MUST always appear in the menu, even when the camp has one.                                                                                                                              | Decision 56 (2026-10-23)                     | shoreshCampSetup.test.js "stays in the menu with one program (decision 56)"                                                       |

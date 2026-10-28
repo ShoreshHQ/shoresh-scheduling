@@ -150,7 +150,7 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["1|1"]);
   });
 
-  // CLOSE-4.6
+  // PROG-4.1, CLOSE-4.6
   it("counts other programs' groups in the place at that time", () => {
     const result = plan(
       [",1,", ",,", ",,", ",,"],

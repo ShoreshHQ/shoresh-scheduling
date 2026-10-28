@@ -195,6 +195,7 @@ describe("checks: the bronze dots", () => {
     ]);
   });
 
+  // DIV-4.2
   it("a one-division activity at a place shares it with no other division", () => {
     const days = weekOf({
       [MON]: [
@@ -236,6 +237,7 @@ describe("checks: the bronze dots", () => {
     ]);
   });
 
+  // DIV-4.2
   it("a one-division activity with no place: two divisions at once", () => {
     const days = weekOf({
       [MON]: [
@@ -452,6 +454,7 @@ describe("checks: still to place and the counters", () => {
     ]);
   });
 
+  // WEEK-4.1
   it("spread across the week: short of its early-week goal, by that day inclusive", () => {
     const early = { count: 1, byDay: 3 };
     const thursday = weekOf(
@@ -470,6 +473,7 @@ describe("checks: still to place and the counters", () => {
     ).toEqual([]);
   });
 
+  // WEEK-4.1
   it("a week that starts after the goal's day counts its own first days (Greg, 2026-10-25)", () => {
     // A Thursday-only week, by Wednesday: its first day counts, and it is short.
     const days = weekOf({ [THU]: [[""]] }, { width: 1 });

@@ -165,6 +165,7 @@ describe("c-shoresh-program", () => {
     expect(table().heading).toBe("Main");
   });
 
+  // DIV-1.2
   it("lets a group move to another division of its program, saying what that changes", async () => {
     const twoUnits = {
       ...ENTRY,

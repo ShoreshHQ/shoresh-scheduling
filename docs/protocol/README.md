@@ -27,16 +27,16 @@ CORE  layers 1-6                                 docs/protocol/core.md
  |   |- ELECT    Electives                       sits on GEN's week (its sets are kept cells)
  |   |- SPECIAL  Special events and special days sits on GEN's week (a special day is its own day)
  |   '- CLOSE    Closures and away groups        feeds GEN layer 4
- |- DIV     Divisions                            uses CORE 1, 3, 4
- |- PROG    Programs                             uses CORE 1, 4
- |- WEEK    Weeks and seasons                    uses CORE 1, 2
+ |- DIV     Divisions                            uses CORE 1, 3, 4  docs/protocol/div.md
+ |- PROG    Programs                             uses CORE 1, 4, 6  docs/protocol/prog.md
+ |- WEEK    Weeks and seasons                    uses CORE 1, 2, 4, 6  docs/protocol/week.md
  |- LOCK    Locks and hand edits                 uses CORE 1, 4, 6; GEN obeys it
  |- MEMO    Remembered answers                   uses CORE 1, 6; serves INGEST
  '- PUB     Publishing                           uses CORE 1, 6; reads any finished week
 ```
 
-ELECT, SPECIAL, CLOSE, DIV, PROG, WEEK, LOCK, MEMO and PUB are sketched in the wiki
-(`projects/shoresh-protocol.md`, section D) and are not yet written here.
+Every sub-protocol is written here: docs/protocol/{elect,special,close,lock,memo,pub,div,prog,week}.md,
+plus GEN (docs/engine/protocol.md) and INGEST (docs/import/*.md).
 
 ## Statements and their numbers
 
@@ -52,6 +52,9 @@ The existing sub-protocol documents keep their own numbers, read with a prefix:
 | `docs/engine/protocol.md`            | rule n.m, by step | `GEN-n.m`    |
 | `docs/import/classification.md`      | rules 1-8         | `INGEST-3.n` |
 | `docs/import/names-and-divisions.md` | rules 1-5         | `INGEST-2.n` |
+| `docs/protocol/div.md`               | DIV-layer.n       | as written   |
+| `docs/protocol/prog.md`              | PROG-layer.n      | as written   |
+| `docs/protocol/week.md`              | WEEK-layer.n      | as written   |
 
 GEN's rule numbers follow the engine's nine build steps, not CORE's layers: `GEN-5.1` is build
 step 5's first rule. The wiki's sketch numbers for GEN and INGEST will be renumbered to these.

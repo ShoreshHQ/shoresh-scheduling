@@ -220,6 +220,7 @@ describe("the imported version", () => {
     expect(planFor(left, dated, "s", { answers }).fillWeeks).toEqual([]);
   });
 
+  // WEEK-2.4
   it("placements that cannot be placed are listed with the reason, never dropped (a Saturday in a Monday-to-Friday week)", () => {
     const rows = [
       ["Time", "Bunk 1", "Bunk 2"],

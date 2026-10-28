@@ -699,7 +699,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     return b === 2 ? "Lunch" : NAMES[(v + b + d * 3) % NAMES.length];
   };
 
-  // INGEST-3.8
+  // INGEST-3.8 DIV-3.2
   it("reads each always-together division as one group, and says so", () => {
     const p = propose(travel);
     expect(p.groups.filter((g) => !g.leftOut).map((g) => g.name)).toEqual([
@@ -720,7 +720,7 @@ describe("rule 8: a division whose bunks always move together is one group (Greg
     ]);
   });
 
-  // INGEST-3.8
+  // INGEST-3.8 DIV-3.2
   it("a division whose bunks differ in one time block stays a division of bunks", () => {
     const p = propose((g, d, b) => {
       return g === 1 && d === 4 && b === 3 ? "Ropes" : travel(g, d, b);
