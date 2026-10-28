@@ -30,6 +30,7 @@ describe("its proofs hold against an exhaustive search", () => {
     }
   });
 
+  // GEN-8.10
   it("builds the camps, and checks real proofs (the exhaustive search finishes on camps with gaps)", () => {
     expect(rows.length).toBeGreaterThan(SEEDS * 0.9);
     const checked = rows.filter(
@@ -47,6 +48,7 @@ describe("its proofs hold against an exhaustive search", () => {
     expect(bad.map((r) => [r.seed, r.found.gapIsABug])).toEqual([]);
   });
 
+  // GEN-8.15
   it("where every Open cell claims a proof, no week fills more within the hard limits", () => {
     const bad = rows.filter(
       (r) =>
@@ -56,12 +58,14 @@ describe("its proofs hold against an exhaustive search", () => {
     expect(bad.map((r) => [r.seed, r.found.gapIsABug])).toEqual([]);
   });
 
+  // GEN-8.11
   it("never breaks a hard limit to fill", () => {
     expect(
       rows.filter((r) => r.found.hardLimits.length).map((r) => r.seed)
     ).toEqual([]);
   });
 
+  // GEN-8.17, GEN-9.6
   it("says plainly when it ran out of work (never silent)", () => {
     for (const r of rows) {
       for (const c of r.result.openCells) {
@@ -71,6 +75,7 @@ describe("its proofs hold against an exhaustive search", () => {
     }
   });
 
+  // GEN-8.31
   it("says a trade only where it holds: the group that gained has the activity, no more than its minimum", () => {
     for (const { seed, spec, result } of rows) {
       const count = new Map();
@@ -151,6 +156,7 @@ describe("fills by rearranging what the earlier steps placed", () => {
     }
   });
 
+  // GEN-8.13
   it("never moves a locked cell or anything kept (fixed, set-time, special)", () => {
     for (const { spec, input, result } of moved) {
       const locked = new Set(

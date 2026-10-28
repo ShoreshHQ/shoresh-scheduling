@@ -186,6 +186,7 @@ describe("the engine's notes kept with the week", () => {
   });
 
   // Protocol 10.7 (Greg 2026-10-27): what a Rebuild that kept the week changed.
+  // GEN-10.7
   it("says what a Rebuild that kept the week changed, and reads it back", () => {
     const at = (blockId) => ({ date: "2026-06-29", groupId: "g1", blockId });
     const keep = {
@@ -269,6 +270,7 @@ describe("the engine's notes kept with the week", () => {
   });
 
   // Fix 4 and rule 10.9: the replacement is named; a week built fresh says so, never silent.
+  // GEN-10.9
   it("names the activity that took a deleted one's cells, and says when the week was built fresh", () => {
     const keep = {
       emptied: [

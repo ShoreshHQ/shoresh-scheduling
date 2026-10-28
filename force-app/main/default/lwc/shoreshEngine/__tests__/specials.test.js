@@ -37,6 +37,7 @@ function withEventName(input) {
 }
 
 describe("c-shoresh-engine: special days and events", () => {
+  // GEN-2.2
   it("keeps a placed event where it is, and builds around it", () => {
     const result = generateWeek(withEventName(camp(spec)));
     expect(result.ok).toBe(true);
@@ -56,6 +57,7 @@ describe("c-shoresh-engine: special days and events", () => {
     expect(week.checked.cells.filled).toBe(0);
   });
 
+  // GEN-2.8
   it("never builds on a day a special day replaces, and sends it back as it was", () => {
     const input = withEventName(camp(spec));
     const replaced = input.days[1];
@@ -94,6 +96,7 @@ describe("c-shoresh-engine: special days and events", () => {
     expect(week.checked.cells.total).toBe(8);
   });
 
+  // GEN-1.4
   it("says so when every day is a special day", () => {
     const input = withEventName(camp({ ...spec, days: 1, cells: [] }));
     const result = generateWeek({ ...input, replacedDates: [dateAt(0)] });

@@ -221,6 +221,7 @@ private class ActivitiesAndLocationsTest {
     }
   }
 
+  // GEN-1.10 (EarlyWeekComplete), GEN-1.12 (MaxAtLeastMin): the validation rules refuse these.
   @IsTest
   static void entriesThatMakeNoSenseAreRefused() {
     Map<String, Id> ids = new Map<String, Id>();

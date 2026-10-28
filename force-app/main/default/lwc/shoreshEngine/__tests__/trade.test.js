@@ -88,7 +88,7 @@ function grid(result, spec) {
 describe("minimums first, as a last resort", () => {
   const result = generateWeek(camp(pool));
 
-  // CORE-5.5
+  // CORE-5.5, GEN-8.29
   it("gives Bunk 3 its Swim and leaves Bunk 5's cell Open, naming the trade", () => {
     expect(result.ok).toBe(true);
     expect(grid(result, pool)).toEqual({
@@ -126,6 +126,7 @@ describe("minimums first, as a last resort", () => {
     ]);
   });
 
+  // GEN-8.31
   it("keeps the reason with the saved week, in the same words", () => {
     const notes = readNotes(JSON.stringify(notesOf(result)));
     expect(notes.open).toEqual([
@@ -135,6 +136,7 @@ describe("minimums first, as a last resort", () => {
     expect(why.open.get("2026-07-06|g5|b0")).toBe("Open, so Bunk 3 gets Swim");
   });
 
+  // GEN-8.31
   it("says the trade while it builds", () => {
     const watch = {};
     const steps = generateWeekSteps(camp(pool), watch);
@@ -164,7 +166,7 @@ describe("minimums first, as a last resort", () => {
     );
   });
 
-  // CORE-5.5
+  // CORE-5.5, GEN-8.30
   it("leaves nothing Open when a way that keeps every cell filled exists", () => {
     // Crafts gives Bunk 5 something else allowed then: Bunk 3 still gets Swim, no cell Open.
     const spec = {
@@ -185,6 +187,7 @@ describe("minimums first, as a last resort", () => {
     expect(r.cells.filled).toBe(12);
   });
 
+  // GEN-8.30
   it("never moves a locked hand edit for it", () => {
     // Bunk 5's Monday Swim locked where the director put it: it stays, and the trade (if any)
     // is another cell's, never the locked one.
@@ -207,6 +210,7 @@ describe("minimums first, as a last resort", () => {
     ).toBe(false);
   });
 
+  // GEN-8.32
   it("the imported week's floor still wins: a fuller imported week is kept", () => {
     // The imported week filled every cell (Bunk 3 short of Swim): the build from it is fuller
     // than the trade, so it is kept (8.22), and nothing is left Open.
@@ -298,6 +302,7 @@ describe("a trade is said only while it holds", () => {
     mockLose.on = false;
   });
 
+  // GEN-8.31
   it("falls back to the cell's own reason when the group that gained loses it again", () => {
     mockLose.on = true;
     const r = generateWeek(camp(pool));

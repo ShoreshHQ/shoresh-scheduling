@@ -958,7 +958,7 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
-  // CORE-6.2
+  // CORE-6.2, GEN-9.7
   it("a gap no activity fits stays Open, with the engine's reason in the Why list", async () => {
     // Every activity takes two blocks; Period 3 (afternoon) is a one-block gap for Bunk 1.
     const inputs = camp({
@@ -1002,6 +1002,7 @@ describe("c-shoresh-generated-schedule", () => {
 
   // Greg 2026-10-27 (protocol section 10): Rebuild keeps the week and changes only what setup
   // forces, saying so in the Why list; Try another stays a fresh build (above).
+  // GEN-10.7
   it("Rebuild keeps the week as it is when setup hasn't changed, and says so in the Why list", async () => {
     const inputs = camp(SMALL);
     const element = await render(inputs);
@@ -1019,6 +1020,7 @@ describe("c-shoresh-generated-schedule", () => {
     ]);
   });
 
+  // GEN-9.7
   it("the engine's reasons and notes are kept with the week: opened again, the Why list says the same", async () => {
     // Every activity takes two blocks (Period 3 is a gap none fits) and Hike's groups at once is
     // blank (a note with no cell).

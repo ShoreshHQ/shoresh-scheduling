@@ -313,7 +313,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     await clickPublish(element);
     expect(ask(element).heading).toBe("Publish Week 1?");
     expect(ask(element).confirmLabel).toBe("Publish");
-    expect(ask(element).lines).toContain("Filled: 1 of 6");
+    expect(ask(element).lines).toContain("1 of 6 placed");
     // Publish waits for the answer.
     expect(q(element, '[data-id="publish"]').disabled).toBe(true);
     await answer(element, false);
@@ -718,7 +718,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     await clickPublish(element);
     // A first publish of a finished week would go at once; this one asks about the Open cell.
     expect(publish).not.toHaveBeenCalled();
-    expect(ask(element).lines.join(" ")).toMatch(/Filled: \d+ of \d+/);
+    expect(ask(element).lines.join(" ")).toMatch(/\d+ of \d+ placed/);
     await answer(element, false);
   });
 
