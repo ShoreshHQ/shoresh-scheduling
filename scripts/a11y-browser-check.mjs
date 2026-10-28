@@ -2638,6 +2638,89 @@ function lastYearSheet() {
   ].join("\n");
 }
 
+/** The ids of the import's questions still open (marked with the needs-a-look corner). */
+async function openQuestionIds() {
+  return page.evaluate(() => {
+    const host = [...document.querySelectorAll("*")]
+      .map((el) => el.shadowRoot)
+      .filter(Boolean);
+    const find = (roots) => {
+      for (const root of roots) {
+        const screen = root.querySelector("c-shoresh-import");
+        if (screen) return screen;
+        const deeper = [...root.querySelectorAll("*")]
+          .map((el) => el.shadowRoot)
+          .filter(Boolean);
+        const found = deeper.length ? find(deeper) : null;
+        if (found) return found;
+      }
+      return null;
+    };
+    const screen = find(host);
+    if (!screen || !screen.shadowRoot) return [];
+    return [
+      ...screen.shadowRoot.querySelectorAll('[data-id="questions"] [data-card]')
+    ]
+      .filter((row) => row.querySelector(".corner"))
+      .map((row) => row.dataset.card);
+  });
+}
+
+/** Whether the element with focus sits in the question row with this id. */
+async function focusInCard(id) {
+  return page.evaluate((card) => {
+    let el = document.activeElement;
+    const chain = [];
+    while (el) {
+      chain.push(el);
+      el = el.shadowRoot ? el.shadowRoot.activeElement : null;
+    }
+    return chain.some((node) => {
+      for (let up = node; up; up = up.parentNode || up.host) {
+        if (up.dataset && up.dataset.card === card) return true;
+        if (up.nodeType === 11 && !up.host) break;
+      }
+      return false;
+    });
+  }, id);
+}
+
+/**
+ * Answers every open question of Import last year by keyboard: Tab to the first open row's first
+ * answer and press it, or open its dropdown and choose its first choice; again until none is
+ * open. Throws if a question cannot be reached.
+ */
+async function answerEveryQuestion(S) {
+  for (let round = 0; round < 40; round++) {
+    const open = await openQuestionIds();
+    if (open.length === 0) {
+      results.pass(
+        S,
+        "Every question answered by keyboard",
+        `${round} answered.`
+      );
+      return;
+    }
+    const id = open[0];
+    // Forward first, then back: the row may sit above the cursor.
+    let reached = false;
+    for (let i = 0; i < 300 && !reached; i++) {
+      await press(i < 120 ? "Tab" : "Shift+Tab", 20);
+      reached = await focusInCard(id);
+    }
+    if (!reached) throw new Error(`Question ${id} was not reached with Tab.`);
+    if ((await focusedAttr("data-key")) !== null) {
+      await press("Enter", 600);
+    } else {
+      // A dropdown (a unit): open it, the first choice, choose it.
+      await press("Enter", 400);
+      await press("ArrowDown", 200);
+      await press("Enter", 800);
+    }
+  }
+  throw new Error("Questions were still open after 40 answers.");
+}
+
 /** An attribute of the element with focus, through shadow roots; null when there is none. */
 async function focusedAttr(attr) {
   return page.evaluate((name) => {
@@ -2727,21 +2810,10 @@ async function importLastYear() {
       `Focus on ${formatFocus(await focus())}.`
     );
   }
-  // The file's other question (its two bunks' names) is answered too: since INGEST-5.5 an open
-  // question is kept for later and what it decides comes in only once answered, so with it open
-  // Comes in would count nothing (docs/import/review.md).
-  const answeredCard = String((await focusedAttr("data-key")) || "").split(
-    "::"
-  )[0];
-  for (let i = 0; i < 6; i++) {
-    const next = await tabTo(named(/^Same\b/, { tag: "button" }), { max: 20 });
-    const card = String((await focusedAttr("data-key")) || "").split("::")[0];
-    if (!next) break;
-    if (card && card !== answeredCard) {
-      await press("Enter", 800);
-      break;
-    }
-  }
+  // Every other open question is answered too, by keyboard, in whatever order the page shows
+  // them: since INGEST-5.5 an open question is kept for later and what it decides comes in only
+  // once answered, so with any open Comes in would count nothing (docs/import/review.md).
+  await answerEveryQuestion(S);
   // The first counts are "Shoresh read these as" (docs/import/review.md INGEST-5.1), then
   // Comes in: each opens by keyboard, the read-as ones into their lines with one-click changes.
   let tile = await tabTo(named(/^\d+ /, { tag: "button" }), { max: 60 });
@@ -4924,13 +4996,12 @@ async function versions(S, openScreen) {
       () => press("Enter")
     );
     await expectFocusKept(S, "Save version: focus not lost");
+    // Back past every version, as above: the list grows run after run (kept history), so the
+    // limit follows the versions shown, three stops each, rather than a fixed number.
+    const versionStops = (await shown("c-shoresh-versions button").count()) * 2;
     const rename = await tabTo(
       named(new RegExp(`rename.*${name}|${name}.*rename`, "i")),
-      {
-        back: true,
-        // Back past every version, as above.
-        max: 400
-      }
+      { back: true, max: Math.max(400, versionStops + 100) }
     );
     if (!rename) throw new Error("The new version's rename not reached.");
     await press("Enter", 500);
