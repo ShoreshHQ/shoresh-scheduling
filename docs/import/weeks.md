@@ -70,7 +70,9 @@ Each rule is clue, meaning, example, test.
    own time blocks (the blocks its cells use, ids of its own) and the file's cells in its
    schedule. One bigger than a schedule holds (40 time blocks, 150 groups) refuses the whole
    import, nothing saved. Undo removes it, unless the director has saved its schedule since
-   (then it stays, on its day, and Undo lists it as kept). The program's time blocks never gain that day's; the week's version has no grid
+   (then it stays, on its day, with every group, activity and place its schedule uses, and Undo
+   lists them as kept: "Swim (Week 2 Friday uses it)"). The program's time blocks never gain
+   that day's; the week's version has no grid
    for that day; set times do not count it as one of "every day". The notes say so ("Week 2's
    Friday comes in as a special day with its own times"). A by-group page that holds both
    shapes (the normal blocks and the short Friday's) is one timetable.
@@ -151,5 +153,3 @@ Each rule is clue, meaning, example, test.
   2)", as before.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.
-- A special day Undo keeps (its schedule saved since) can name groups and activities Undo
-  removed with the rest of the import; its schedule then shows them as gone.

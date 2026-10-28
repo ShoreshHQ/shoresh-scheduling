@@ -108,6 +108,9 @@ public with sharing class ImportUndoDeletes {
   private Set<Id> createdIds = new Set<Id>();
   // Records the import made that this Undo keeps (edited since, or in use).
   private Set<Id> keptIds = new Set<Id>();
+  // What a special day this Undo keeps uses (its groups, activities, places): kept with it, by
+  // the special day's name.
+  private Map<Id, String> usedByKeptDays = new Map<Id, String>();
 
   public ImportUndoDeletes(ImportUndo.Result result) {
     this.result = result;
@@ -231,6 +234,8 @@ public with sharing class ImportUndoDeletes {
     Set<Id> holding = holdingOthers(term, now.keySet());
     // A special day whose schedule the director saved since holds their work: kept.
     holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
+    usedByKeptDays.putAll(ImportUndoSpecialDays.usedBy(keptIds, now.keySet()));
+    holding.addAll(usedByKeptDays.keySet());
     List<SObject> toDelete = new List<SObject>();
     for (SObject record : now.values()) {
       List<Object> row = rows.get(record.Id);
@@ -250,7 +255,12 @@ public with sharing class ImportUndoDeletes {
   private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
     keptIds.add(record.Id);
-    names.add(ImportFields.nameOf(record));
+    names.add(
+      ImportUndoSpecialDays.named(
+        ImportFields.nameOf(record),
+        usedByKeptDays.get(record.Id)
+      )
+    );
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */

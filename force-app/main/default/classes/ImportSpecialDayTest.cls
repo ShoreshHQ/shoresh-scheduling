@@ -267,6 +267,34 @@ private class ImportSpecialDayTest {
         [SELECT COUNT() FROM SpecialDate__c WHERE SpecialDay__c = :day.Id],
         'it stays on its day'
       );
+      // What its schedule uses stays too, said so.
+      ScheduleGrid kept = SpecialPlans.read(day.Id).grid;
+      Assert.areEqual(
+        4,
+        [SELECT COUNT() FROM Group__c WHERE Id IN :groupIds(kept)],
+        'its groups are kept'
+      );
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM Activity__c
+          WHERE Name = 'Swim' AND Season__c = :season.Id
+        ],
+        'its activity is kept'
+      );
+      Assert.isTrue(
+        undone.keptInUse.contains('Swim (Week 1 Friday uses it)'),
+        String.valueOf(undone.keptInUse)
+      );
     }
+  }
+
+  private static Set<Id> groupIds(ScheduleGrid grid) {
+    Set<Id> ids = new Set<Id>();
+    for (ScheduleGrid.GroupRef groupRef : grid.groups) {
+      ids.add(groupRef.id);
+    }
+    return ids;
   }
 }
