@@ -278,6 +278,44 @@ describe("the three layouts", () => {
     expect(changed.groups.map((g) => g.name)).toContain("Swim");
   });
 
+  // INGEST-2.6
+  describe("rule 6: telling a by-activity page from an all-camp page without numbers", () => {
+    const layoutOf = (rows) => read([csv("Monday.csv", rows)]).reading.pages[0];
+
+    it("every block naming each animal group once is a by-activity page", () => {
+      const page = layoutOf([
+        ["Time", "Archery", "Canoeing", "Drama", "Gaga", "Lunch"],
+        ["9:00-9:45", "Otters", "", "Wolves", "Little Herons", ""],
+        ["10:00-10:45", "", "Little Herons", "Otters", "Wolves", ""],
+        ["11:00-11:45", "Wolves", "Otters", "", "Little Herons", ""],
+        ["12:00-12:45", "", "", "", "", "Otters; Wolves; Little Herons"]
+      ]);
+      expect(page).toMatchObject({ layout: "byActivity", confident: true });
+    });
+
+    it("counter-case: animal groups across, everyone at Lunch, is an all-camp page", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Wolves", "Little Herons"],
+        ["9:00-9:45", "Archery", "Drama", "Gaga"],
+        ["10:00-10:45", "Canoeing", "Archery", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "Canoeing"],
+        ["12:00-12:45", "Lunch", "Lunch", "Lunch"],
+        ["13:00-13:45", "Gaga", "Canoeing", "Archery"]
+      ]);
+      expect(page).toMatchObject({ layout: "allCamp", confident: true });
+    });
+
+    it("a page that reads both ways is left for the director to say", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Wolves", "Herons"],
+        ["9:00-9:45", "Archery", "Drama", "Gaga"],
+        ["10:00-10:45", "Gaga", "Archery", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+  });
+
   it("a page that does not say its day is read as nothing, and said so", () => {
     const proposal = read([
       csv("Camp.csv", [

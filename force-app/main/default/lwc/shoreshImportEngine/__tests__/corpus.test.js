@@ -24,10 +24,10 @@ const SAMPLE = 80;
 
 // Baseline 2026-10-27, on these 80 camps. Every kind not listed is 0.
 const CEILING = {
-  perfectAtLeast: 79,
+  perfectAtLeast: 80,
   errors: 0,
   questions: {},
-  wrong: { groups: 17, fixed: 1, activities: 16, cells: 455 }
+  wrong: {}
 };
 
 describe("Import last year on ordinary made-up camps (level 1)", () => {
