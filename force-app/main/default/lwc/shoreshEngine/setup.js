@@ -283,3 +283,37 @@ export function readDays(days, partsOfDay) {
       };
     });
 }
+
+/**
+ * Each activity's weekly minimum for this week (WEEK-4.2, Greg 2026-10-27). A week with fewer
+ * days than the camp's normal week (campDays: the days its programs run, ADR 0022) keeps every
+ * minimum unless the camp chose to shrink them (shortWeek.shrink, the season's "In a short week"
+ * choice; keep by default, CORE-5.9). Shrunk, a minimum is round(min x days / normal days),
+ * halves up, never below 1 when it was 1 or more and never above what it was. weekDays: how many
+ * days this week has. Each activity comes back with fullMin, the minimum as set up.
+ */
+export function shortWeekMinimums(acts, shortWeek, weekDays) {
+  const normal = (shortWeek && shortWeek.campDays) || 0;
+  const shrink =
+    Boolean(shortWeek && shortWeek.shrink) && weekDays > 0 && weekDays < normal;
+  return acts.map((a) => {
+    if (!shrink || a.min < 1) {
+      return { ...a, fullMin: a.min };
+    }
+    const min = Math.min(
+      a.min,
+      Math.max(1, Math.round((a.min * weekDays) / normal))
+    );
+    return { ...a, min, fullMin: a.min };
+  });
+}
+
+/** The Why list's line for each minimum a short week lowered: "Short week: Swim needs 1 this week, not 2". */
+export function shortWeekLines(acts, t) {
+  return acts
+    .filter((a) => a.fullMin !== a.min)
+    .map(
+      (a) =>
+        `Short ${t.sIn("Week")}: ${a.name} needs ${a.min} this ${t.sIn("Week")}, not ${a.fullMin}`
+    );
+}

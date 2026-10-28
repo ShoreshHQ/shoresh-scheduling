@@ -16,6 +16,8 @@ import {
   minutes,
   readActivities,
   readDays,
+  shortWeekLines,
+  shortWeekMinimums,
   readEligibility,
   readGroups,
   readLocations,
@@ -104,6 +106,8 @@ const RUN_WORK = 40000000;
  *     programs' groups in a place (or doing an activity) at a clock time; counted against
  *     groups that fit and groups at once
  *   terms: the camp's words (c/shoreshTerms), for the reasons
+ *   shortWeek: { shrink, campDays } (campShortWeek, c/shoreshImportEngine): a week with fewer
+ *     days than campDays keeps each weekly minimum unless shrink (WEEK-4.2, setup.js)
  *   replacedDates: the days ("YYYY-MM-DD") a special day replaces (ADR 0014 slice 4; desktop ADR
  *     2026-10-09 D4): nothing is built or counted there, and they come back exactly as sent
  *   electiveOfferings: the season's offerings (Offering__c, setup.electives.offerings): an elective
@@ -188,6 +192,12 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     input.activities,
     input.weekExceptions,
     weekId
+  );
+  // A short week's minimums, as the camp chose (WEEK-4.2).
+  activities.running = shortWeekMinimums(
+    activities.running,
+    input.shortWeek,
+    (input.days || []).length
   );
   if (!activities.running.length) {
     return {
@@ -559,8 +569,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
  * A Generated week as it stands (built, saved or cleared), checked by the same rules and model
  * the engine checks its own builds with: the screen's dots, counters and lines, worked out again
  * whenever the week is shown, never stored (ADR 0010 §11). input: generateWeek's (days are the
- * week to check; option and mode don't matter). Returns { days, checked, isAway, shortest }: the
- * days in date order (checkWeek's day numbers count in it), checkWeek's answer, whether a group
+ * week to check; option and mode don't matter). Returns { days, checked, isAway, shortWeek,
+ * shortest }: the days in date order (checkWeek's day numbers count in it), checkWeek's answer, whether a group
  * is away from camp in a block (the cells shown hatched; a group the server didn't send is away
  * in all of them), and the shortest activity running this week, in blocks.
  */
@@ -570,6 +580,11 @@ export function checkGeneratedWeek(input) {
     input.activities,
     input.weekExceptions,
     input.weekId || null
+  );
+  activities.running = shortWeekMinimums(
+    activities.running,
+    input.shortWeek,
+    (input.days || []).length
   );
   const groups = readGroups(input.groups);
   const { built: checkedDays, replaced } = splitReplaced(input);
@@ -623,6 +638,8 @@ export function checkGeneratedWeek(input) {
       { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" }
     ),
     isAway,
+    // The Why list's line for each minimum this short week lowered (WEEK-4.2).
+    shortWeek: shortWeekLines(activities.running, t),
     // The fewest blocks any activity running this week takes: a gap shorter than this fits
     // nothing (the engine's "No activity fits this gap"); null with none running.
     shortest: activities.running.length
