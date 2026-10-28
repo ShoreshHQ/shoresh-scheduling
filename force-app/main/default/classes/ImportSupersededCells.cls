@@ -74,17 +74,7 @@ public with sharing class ImportSupersededCells {
   @TestVisible
   private static String without(String text, Set<Id> items) {
     ScheduleGrid grid = ScheduleGrid.fromText(text);
-    Set<String> wanted = new Set<String>();
-    for (Id item : items) {
-      wanted.add(String.valueOf(item));
-    }
-    Set<String> numbers = new Set<String>();
-    for (Integer i = 0; i < grid.items.size(); i++) {
-      String itemId = grid.items[i].id;
-      if (String.isNotBlank(itemId) && wanted.contains(itemId)) {
-        numbers.add(String.valueOf(i + 1));
-      }
-    }
+    Set<String> numbers = numbersOf(grid, items);
     for (List<String> row : grid.rows) {
       Boolean emptied = false;
       for (Integer b = 0; b < row.size(); b++) {
@@ -100,6 +90,22 @@ public with sharing class ImportSupersededCells {
     }
     grid.dropUnusedItems();
     return grid.toText();
+  }
+
+  /** The grid's item numbers ("1", "2", ...) of the given items. */
+  private static Set<String> numbersOf(ScheduleGrid grid, Set<Id> items) {
+    Set<String> wanted = new Set<String>();
+    for (Id item : items) {
+      wanted.add(String.valueOf(item));
+    }
+    Set<String> numbers = new Set<String>();
+    for (Integer i = 0; i < grid.items.size(); i++) {
+      String itemId = grid.items[i].id;
+      if (String.isNotBlank(itemId) && wanted.contains(itemId)) {
+        numbers.add(String.valueOf(i + 1));
+      }
+    }
+    return numbers;
   }
 
   /** Undo: puts each day back as it was, unless it was changed since (then kept, named). */
