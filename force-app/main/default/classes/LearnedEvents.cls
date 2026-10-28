@@ -58,19 +58,43 @@ public with sharing class LearnedEvents {
     );
   }
 
-  /** An event about a question with no record of its own (auto, a marker gone). */
-  public static LearnedEvent__c of(
-    Id campId,
+  /** An event about a question with no record of its own: a pattern's marker gone. */
+  public static LearnedEvent__c gone(ImportAnswer__c row) {
+    LearnedEvent__c event = of(UNDONE, row);
+    event.AnswerId__c = null;
+    return event;
+  }
+
+  /** What an import filled in on its own (MEMO-5.1, plan list "autoApplied"): never saved as an answer. */
+  public static List<LearnedEvent__c> autoApplied(Id campId, ImportPlan plan) {
+    List<LearnedEvent__c> result = new List<LearnedEvent__c>();
+    for (ImportPlan.Entry entry : plan.entries('autoApplied')) {
+      if (String.isNotBlank(entry.key()) && entry.text('answer') != null) {
+        result.add(
+          of(
+            AUTO,
+            new ImportAnswer__c(
+              Camp__c = campId,
+              QuestionKey__c = entry.key(),
+              Answer__c = entry.text('answer')
+            )
+          )
+        );
+      }
+    }
+    return result;
+  }
+
+  /** One event of this kind for each answer. */
+  public static List<LearnedEvent__c> each(
     String what,
-    String question,
-    String answer
+    List<ImportAnswer__c> rows
   ) {
-    return new LearnedEvent__c(
-      Camp__c = campId,
-      What__c = what,
-      QuestionKey__c = question,
-      Answer__c = answer == null ? null : answer.left(255)
-    );
+    List<LearnedEvent__c> result = new List<LearnedEvent__c>();
+    for (ImportAnswer__c row : rows) {
+      result.add(of(what, row));
+    }
+    return result;
   }
 
   /** Saves events in user mode: one write, none when there are none. */

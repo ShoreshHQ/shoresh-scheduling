@@ -137,12 +137,7 @@ public with sharing class LearnedAnswers {
       return false;
     }
     LearnedEvent__c event = row.QuestionKey__c.startsWith(PATTERN)
-      ? LearnedEvents.of(
-          campId,
-          LearnedEvents.UNDONE,
-          row.QuestionKey__c,
-          row.Answer__c
-        )
+      ? LearnedEvents.gone(row)
       : LearnedEvents.of(LearnedEvents.FORGOTTEN, row);
     Savepoint before = Database.setSavepoint();
     try {

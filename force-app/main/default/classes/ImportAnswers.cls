@@ -121,20 +121,7 @@ public with sharing class ImportAnswers {
       forget.add(keyOf(campId, question));
     }
     // What the import filled in on its own (MEMO-5.1): never saved as an answer, only as history.
-    List<LearnedEvent__c> auto = new List<LearnedEvent__c>();
-    for (ImportPlan.Entry entry : plan.entries('autoApplied')) {
-      if (String.isNotBlank(entry.key()) && entry.text('answer') != null) {
-        auto.add(
-          LearnedEvents.of(
-            campId,
-            LearnedEvents.AUTO,
-            entry.key(),
-            entry.text('answer')
-          )
-        );
-      }
-    }
-    write(wanted, forget, auto);
+    write(wanted, forget, LearnedEvents.autoApplied(campId, plan));
   }
 
   /**
@@ -258,9 +245,7 @@ public with sharing class ImportAnswers {
         throw new ShoreshException('Refused.');
       }
       UserModeWrites.save(saves);
-      for (ImportAnswer__c row : fresh) {
-        events.add(LearnedEvents.of(LearnedEvents.ANSWERED, row));
-      }
+      events.addAll(LearnedEvents.each(LearnedEvents.ANSWERED, fresh));
       LearnedEvents.save(events);
     } catch (Exception e) {
       Database.rollback(before);
@@ -280,10 +265,10 @@ public with sharing class ImportAnswers {
       WHERE Key__c IN :keys
       WITH USER_MODE
     ];
-    List<LearnedEvent__c> events = new List<LearnedEvent__c>();
-    for (ImportAnswer__c row : rows) {
-      events.add(LearnedEvents.of(LearnedEvents.FORGOTTEN, row));
-    }
+    List<LearnedEvent__c> events = LearnedEvents.each(
+      LearnedEvents.FORGOTTEN,
+      rows
+    );
     Savepoint before = Database.setSavepoint();
     try {
       Database.delete(rows, true, AccessLevel.USER_MODE);
