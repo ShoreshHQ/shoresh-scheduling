@@ -1037,6 +1037,29 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.seasonForm[SEASON.EndDate];
   }
 
+  /**
+   * The camp's "In a short week" choice (WEEK-4.2): a week with fewer days than its programs run
+   * keeps each activity's weekly minimum (the default), or lowers it to match the days.
+   */
+  get shortWeekLabel() {
+    return `In a short ${this.terms.sIn("Week")}`;
+  }
+  get shortWeekOptions() {
+    return [
+      {
+        label: `Keep each ${this.terms.sIn("Activity")}'s minimum`,
+        value: "keep"
+      },
+      { label: "Lower it to match the days", value: "lower" }
+    ];
+  }
+  get shortWeek() {
+    return this.seasonForm[SEASON.ShrinkShortWeek] ? "lower" : "keep";
+  }
+  get shortWeekError() {
+    return this.seasonErrors.shortWeek;
+  }
+
   get copiedFromName() {
     const season = this.setup && this.setup.season;
     const from = season && season[PARENT.Season.CopiedFrom];
@@ -2343,6 +2366,45 @@ export default class ShoreshCampSetup extends LightningElement {
       // The season box is beside the picker, on every screen, until its pencil closes it.
       shown: () => this.showSeasonForm,
       // Another season picked since: the box no longer shows this one.
+      sameRecord: current
+    });
+  }
+
+  /** Saves the short-week choice as soon as it is picked (WEEK-4.2). */
+  handleShortWeek(event) {
+    const shrink = event.detail.value === "lower";
+    const seasonId = this.seasonForm.Id;
+    this.seasonForm = { ...this.seasonForm, [SEASON.ShrinkShortWeek]: shrink };
+    const current = () => this.seasonForm.Id === seasonId;
+    const showError = (message) => {
+      this.seasonErrors = { ...this.seasonErrors, shortWeek: message };
+    };
+    this.saveForm({
+      records: [
+        {
+          sobjectType: OBJECT.Season,
+          Id: seasonId,
+          [SEASON.ShrinkShortWeek]: shrink
+        }
+      ],
+      what: `${this.terms.s("Season")} not saved. Your changes are still here.`,
+      onSaved: () => {
+        if (current()) {
+          showError(null);
+          const mark = this.template.querySelector(
+            'c-shoresh-saved-mark[data-id="season-saved"]'
+          );
+          if (mark) {
+            mark.saved();
+          }
+        }
+      },
+      onFailure: (message) => {
+        if (current()) {
+          showError(message);
+        }
+      },
+      shown: () => this.showSeasonForm,
       sameRecord: current
     });
   }

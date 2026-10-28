@@ -37,6 +37,7 @@ public with sharing class SeasonSetupReader {
         StartDate__c,
         EndDate__c,
         Status__c,
+        ShrinkShortWeek__c,
         CopiedFrom__c,
         CopiedFrom__r.Name
       FROM Season__c

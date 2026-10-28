@@ -15,7 +15,13 @@ export { blockFromLabel } from "./structure";
 
 export { buildProposal, LEAVE_OUT } from "./proposal";
 export { LAYOUTS } from "./layouts";
-export { campFirstDay, programDays, weeksOf, weeksToFill } from "./weeks";
+export {
+  campFirstDay,
+  campShortWeek,
+  programDays,
+  weeksOf,
+  weeksToFill
+} from "./weeks";
 
 /** A comma-separated file as a file of one sheet. */
 export function csvFile(name, text) {

@@ -600,6 +600,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Season__c.ShrinkShortWeek__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>TimeBlock__c.CopiedFrom__c</field>
         <readable>true</readable>
     </fieldPermissions>
