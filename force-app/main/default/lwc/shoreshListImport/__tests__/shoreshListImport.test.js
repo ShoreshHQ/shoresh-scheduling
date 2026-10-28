@@ -688,6 +688,7 @@ describe("laid into the screen's own table (decision 56)", () => {
     expect(textOf($(element, 'button[data-id="close"]'))).toBe("Cancel");
   });
 
+  // DIV-1.1: the file's blank-division row stays unusable while the program has divisions.
   it("Leave out keeps a new row out of the save, and back in when pressed again", async () => {
     const focused = [];
     const spy = jest

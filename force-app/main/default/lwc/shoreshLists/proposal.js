@@ -117,11 +117,12 @@ function readRows(rows, start, used) {
     const dayAsks = {};
     const problems = [];
     const requiredBlanks = [];
+    let saidNone = false;
     used.forEach(({ column, index }) => {
-      // DIV-1.1: "No division" in a group's division cell is the same as blank.
-      const read = noneWritten(column, row[index])
-        ? { blank: true }
-        : readCell(column, row[index]);
+      // DIV-1.1: "No division" in a group's division cell says the group is in none.
+      const none = noneWritten(column, row[index]);
+      saidNone = saidNone || none;
+      const read = none ? { blank: true } : readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
       } else if (read.ask) {
@@ -163,6 +164,7 @@ function readRows(rows, start, used) {
       unsure,
       dayAsks,
       requiredBlanks,
+      saidNone,
       problems
     });
   }
@@ -760,7 +762,7 @@ function resolveAllWho(leads, used, screen, setup, answers, t, allTargets) {
  * added by hand does, tagged "starting value"; an item set up can't be cleared, so its row can't
  * be read ("Length is blank").
  */
-function settleBlanks(rows) {
+function settleBlanks(rows, setup) {
   rows
     .filter((r) => usable(r) && !r.open && r.requiredBlanks.length)
     .forEach((r) => {
@@ -772,12 +774,18 @@ function settleBlanks(rows) {
       r.requiredBlanks.filter(none).forEach((column) => {
         r.blanks.add(column.key);
       });
-      // A new group with no division is saved in none, as on the groups screen.
-      if (!r.existing && r.requiredBlanks.some((c) => c.blankWhenNone)) {
+      // A new group is saved in no division, as on the groups screen, when the director wrote
+      // "No division" or its program has no divisions (INGEST names-and-divisions rule 1); a
+      // blank beside real divisions stays unusable, never quietly in none.
+      const entry = r.program ? programEntry(setup, r.program.id) : null;
+      const inNone =
+        !r.existing &&
+        (r.saidNone || (!!entry && realDivisionsOf(entry).length === 0));
+      if (inNone && r.requiredBlanks.some((c) => c.blankWhenNone)) {
         r.noDivision = true;
       }
       const left = r.requiredBlanks.filter(
-        (column) => !none(column) && !(column.blankWhenNone && !r.existing)
+        (column) => !none(column) && !(column.blankWhenNone && inNone)
       );
       if (r.existing || left.some((column) => column.newValue === undefined)) {
         left.forEach((column) => {
@@ -1289,7 +1297,7 @@ export function listProposal(input) {
       ? resolveProgramDays(leads, answers)
       : { cards: [], added: new Map() };
   result.cards.push(...days.cards);
-  settleBlanks(leads);
+  settleBlanks(leads, setup);
   checkNewLimits(leads, screen);
   leaveOutSkipped(leads, screen, answers, deletions);
   const rain = used.find(({ column }) => column.ref === "activity");
