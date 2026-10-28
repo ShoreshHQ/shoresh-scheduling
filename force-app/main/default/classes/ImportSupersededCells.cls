@@ -74,10 +74,14 @@ public with sharing class ImportSupersededCells {
   @TestVisible
   private static String without(String text, Set<Id> items) {
     ScheduleGrid grid = ScheduleGrid.fromText(text);
+    Set<String> wanted = new Set<String>();
+    for (Id item : items) {
+      wanted.add(String.valueOf(item));
+    }
     Set<String> numbers = new Set<String>();
     for (Integer i = 0; i < grid.items.size(); i++) {
       String itemId = grid.items[i].id;
-      if (itemId != null && items.contains((Id) itemId)) {
+      if (String.isNotBlank(itemId) && wanted.contains(itemId)) {
         numbers.add(String.valueOf(i + 1));
       }
     }

@@ -57,7 +57,8 @@ public with sharing class ImportPlan {
         Map<String, Object> entry = (Map<String, Object>) item;
         Object recordId = entry.get('id');
         if (
-          entry.get('auto') == true &&
+          entry.get('auto') instanceof Boolean &&
+          (Boolean) entry.get('auto') &&
           (recordId == null || !stillImported.contains((Id) (String) recordId))
         ) {
           left.add(String.valueOf(entry.get('name')));

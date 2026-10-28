@@ -27,7 +27,7 @@ private class ImportReviewTest {
   }
 
   private static Set<Id> untouched(Id seasonId) {
-    return new Set<Id>(ImportController.getImported(seasonId));
+    return new Set<Id>(ImportController.getImported(seasonId).untouched);
   }
 
   @IsTest

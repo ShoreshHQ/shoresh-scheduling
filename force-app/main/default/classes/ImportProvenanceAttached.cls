@@ -5,7 +5,7 @@
  */
 public with sharing class ImportProvenanceAttached {
   // Attached records an import also makes: a hand change to one is a change to its item.
-  private static final List<String> ATTACHED = new List<String>{
+  private static final List<String> ATTACHED_TERMS = new List<String>{
     'ActivityEligibility',
     'Coverage',
     'WeekException'
@@ -16,7 +16,7 @@ public with sharing class ImportProvenanceAttached {
     Map<Id, Datetime> attached,
     Datetime at
   ) {
-    for (String term : ATTACHED) {
+    for (String term : ATTACHED_TERMS) {
       if (!created.containsKey(term)) {
         continue;
       }
@@ -97,60 +97,52 @@ public with sharing class ImportProvenanceAttached {
       return result;
     }
     List<SObject> rows = new List<SObject>();
-    rows.addAll(
-      [
-        SELECT Id, Activity__c
-        FROM ActivityEligibility__c
-        WHERE Id IN :made AND IsDeleted = TRUE
-        WITH SYSTEM_MODE
-        ALL ROWS
-      ]
-    );
-    rows.addAll(
-      [
-        SELECT Id, RecurringActivity__c
-        FROM Coverage__c
-        WHERE Id IN :made AND IsDeleted = TRUE
-        WITH SYSTEM_MODE
-        ALL ROWS
-      ]
-    );
-    rows.addAll(
-      [
-        SELECT Id, Activity__c, FixedActivity__c, RecurringActivity__c
-        FROM WeekException__c
-        WHERE Id IN :made AND IsDeleted = TRUE
-        WITH SYSTEM_MODE
-        ALL ROWS
-      ]
-    );
+    rows.addAll(deletedRows(ActivityEligibility__c.Activity__c, made));
+    rows.addAll(deletedRows(Coverage__c.RecurringActivity__c, made));
+    rows.addAll(deletedRows(WeekException__c.Activity__c, made));
+    rows.addAll(deletedRows(WeekException__c.FixedActivity__c, made));
+    rows.addAll(deletedRows(WeekException__c.RecurringActivity__c, made));
     for (SObject row : rows) {
       result.addAll(ownersOf(row, ids));
     }
     return result;
   }
 
-  /** The items among ids an attached row belongs to. */
-  private static Set<Id> ownersOf(SObject row, Set<Id> ids) {
-    List<Id> owners = new List<Id>();
-    if (row instanceof ActivityEligibility__c) {
-      owners.add(((ActivityEligibility__c) row).Activity__c);
-    } else if (row instanceof Coverage__c) {
-      owners.add(((Coverage__c) row).RecurringActivity__c);
-    } else {
-      WeekException__c off = (WeekException__c) row;
-      owners.addAll(
-        new List<Id>{
-          off.Activity__c,
-          off.FixedActivity__c,
-          off.RecurringActivity__c
-        }
-      );
+  /**
+   * The deleted rows among made, with the item they belonged to by one field (ALL ROWS reads the
+   * Recycle Bin, which only system mode allows; names come from the fields above).
+   */
+  private static List<SObject> deletedRows(
+    Schema.SObjectField owner,
+    Set<Id> made
+  ) {
+    String objectName = ShoreshSchema.queryName(ownerObject(owner));
+    return Database.queryWithBinds(
+      'SELECT Id, ' +
+        ShoreshSchema.queryName(owner) +
+        ' FROM ' +
+        objectName +
+        ' WHERE Id IN :made AND IsDeleted = TRUE ALL ROWS',
+      new Map<String, Object>{ 'made' => made },
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  private static Schema.SObjectType ownerObject(Schema.SObjectField owner) {
+    if (owner == ActivityEligibility__c.Activity__c) {
+      return ActivityEligibility__c.SObjectType;
     }
+    return owner == Coverage__c.RecurringActivity__c
+      ? Coverage__c.SObjectType
+      : WeekException__c.SObjectType;
+  }
+
+  /** The items among ids an attached row belongs to (by whichever owner fields it was read with). */
+  private static Set<Id> ownersOf(SObject row, Set<Id> ids) {
     Set<Id> result = new Set<Id>();
-    for (Id owner : owners) {
-      if (owner != null && ids.contains(owner)) {
-        result.add(owner);
+    for (Object value : row.getPopulatedFieldsAsMap().values()) {
+      if (value instanceof Id && ids.contains((Id) value)) {
+        result.add((Id) value);
       }
     }
     return result;

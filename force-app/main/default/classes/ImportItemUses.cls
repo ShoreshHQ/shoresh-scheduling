@@ -184,7 +184,8 @@ public with sharing class ImportItemUses {
 
   private static Boolean holds(String grid, Id item) {
     return !String.isBlank(grid) &&
-      (grid.contains(item) || grid.contains(String.valueOf(item).left(15)));
+      (grid.contains(String.valueOf(item)) ||
+      grid.contains(String.valueOf(item).left(15)));
   }
 
   /** The first reason found is the one said. */
