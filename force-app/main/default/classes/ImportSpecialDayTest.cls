@@ -149,4 +149,38 @@ private class ImportSpecialDayTest {
       );
     }
   }
+
+  // INGEST-4.6
+  @IsTest
+  static void theDirectorsSpecialDayOnThatDayWins() {
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      ShoreshTestData.weeks(season.Id, 1);
+      SpecialDay__c colorWar = new SpecialDay__c(
+        Season__c = season.Id,
+        Name = 'Color War'
+      );
+      insert as user colorWar;
+      SpecialDates.place(colorWar.Id, weekOf(season.Id).Id, 'Friday');
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(planWithSpecialDay(season))
+      );
+      Test.stopTest();
+      Assert.isNull(result.added.get('SpecialDay'));
+      List<SpecialDate__c> onFriday = [
+        SELECT SpecialDay__r.Name
+        FROM SpecialDate__c
+        WHERE Season__c = :season.Id
+      ];
+      Assert.areEqual(1, onFriday.size());
+      Assert.areEqual('Color War', onFriday[0].SpecialDay__r.Name);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM SpecialDay__c WHERE Season__c = :season.Id]
+      );
+    }
+  }
 }

@@ -489,6 +489,8 @@ const UNPLACED_WHY = {
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,
   dayNotRun: (t) => `its ${t.sIn("Program")} does not run that day`,
   dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
+  specialDayTaken: (t) =>
+    `that day already has a ${t.sIn("SpecialDay")}, which is kept`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
   noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
   twoAtOnce: () => "something else is already in that cell",
@@ -623,6 +625,15 @@ export function importNotes(proposal, t) {
       notes.push({
         key: `weekDay|${n.week}|${n.day}`,
         text: `${n.week ? `${n.week}'s ` : ""}${n.day} comes in as ${article(t.sIn("SpecialDay"))} with its own times.`
+      })
+    );
+  // weeks.md INGEST-4.6: the camp's own special day on that day wins.
+  proposal.notes
+    .filter((n) => n.type === "specialDayTaken")
+    .forEach((n) =>
+      notes.push({
+        key: `specialDayTaken|${n.week}|${n.day}`,
+        text: `${n.week}'s ${n.day} already has ${n.name}, so the file's ${n.day} was left out.`
       })
     );
   // weeks.md INGEST-4.5: "Session 2" read as the season's second week.

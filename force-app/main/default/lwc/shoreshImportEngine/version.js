@@ -288,7 +288,20 @@ function versionFor(t, week, label, context) {
   for (const day of WEEKDAYS.filter((d) => t.days.includes(d))) {
     const onDay = here.filter((p) => p.day === day);
     const date = dateIn(week, day);
-    if (date && isOwnDay(t, label, day)) {
+    const taken =
+      date && isOwnDay(t, label, day) && takenBy(context, week, day);
+    if (taken) {
+      // The director's special day on that day wins (INGEST-4.6): the file's day is left out.
+      context.notes.push({
+        type: "specialDayTaken",
+        week: week.Name,
+        day,
+        name: taken
+      });
+      onDay.forEach((p) =>
+        context.unmatched.push({ ...p, why: "specialDayTaken" })
+      );
+    } else if (date && isOwnDay(t, label, day)) {
       context.specialDays.push(
         specialDayFor(t, week, day, label, {
           grid: dayGrid(t, groups, onDay, context, true)
@@ -315,6 +328,17 @@ function versionFor(t, week, label, context) {
     name: context.name,
     days
   };
+}
+
+/** The name of the special day the camp already has on a season week's day, or null. */
+function takenBy(context, week, day) {
+  const special = (context.existing && context.existing.special) || {};
+  const brief = (special.briefs || []).find((b) =>
+    (b.days || []).some((d) => d.weekId === week.Id && d.day === day)
+  );
+  const item =
+    brief && (special.specialDays || []).find((x) => x.Id === brief.itemId);
+  return item ? item.Name : null;
 }
 
 function isOwnDay(t, label, day) {
@@ -394,8 +418,10 @@ export function versionsFor(proposal, input) {
     itemOf: itemKeyFinder(proposal),
     groups: proposal.groups,
     usable: proposal.usable,
+    existing: input.existing,
     unmatched: [],
     specialDays: [],
+    notes: [],
     name: versionName((input.files || []).map((f) => f.name))
   };
   context.unmatched.push(
@@ -437,7 +463,7 @@ export function versionsFor(proposal, input) {
   return {
     versions,
     specialDays: context.specialDays,
-    notes: mapped.notes,
+    notes: [...mapped.notes, ...context.notes],
     unmatched: context.unmatched,
     asks: mapped.asks,
     noWeeks: weeks.length === 0,

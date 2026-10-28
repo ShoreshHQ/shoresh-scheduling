@@ -428,6 +428,28 @@ describe("INGEST-4.3: the week's own day saves as a special day", () => {
     expect(week1.days).toHaveLength(5);
   });
 
+  // INGEST-4.6
+  it("INGEST-4.6: the camp's own special day on that day wins; the file's day is left out, said first", () => {
+    const withColorWar = {
+      ...existingSetup({ weeks }),
+      special: {
+        specialDays: [{ Id: "sd1", Name: "Color War" }],
+        specialEvents: [],
+        briefs: [{ itemId: "sd1", days: [{ weekId: "w2", day: "Friday" }] }]
+      }
+    };
+    const q = propose(files, withColorWar);
+    const saved = planFor(q, withColorWar, "a00000000000001AAA");
+    expect(saved.specialDays).toEqual([]);
+    expect(importNotes(q, terms).map((n) => n.text)).toContain(
+      "Week 2's Friday already has Color War, so the file's Friday was left out."
+    );
+    expect(
+      q.unmatched.filter((u) => u.why === "specialDayTaken").length
+    ).toBeGreaterThan(0);
+    expect(saved.timeBlocks).toHaveLength(5);
+  });
+
   it("INGEST-4.3 counter-case: a week without its own day has no special day", () => {
     const plain = [0, 1].map((w) =>
       file(`Camp - Week ${w + 1}.csv`, [sheetOf(`Week ${w + 1}`, weekRows(w))])

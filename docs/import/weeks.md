@@ -96,12 +96,20 @@ Each rule is clue, meaning, example, test.
    Counter-case: weeks not numbered ("Opening", "Color War") are asked, as before ("weeks not
    numbered are asked, as before").
 
+6. **The camp's own special day on that day wins.**
+   Clue: a week's own day (rule 3) on a season week's day that already holds one of the camp's
+   special days (a day holds one, ADR 0014 choice 3).
+   Meaning: the director's special day is kept; the file's day is left out, its cells listed as
+   not placed, and the notes say so before saving ("Week 2's Friday already has Color War, so
+   the file's Friday was left out."). The save never fails on it: one placed since the screen
+   read the camp is skipped too.
+   Test: "INGEST-4.6: the camp's own special day on that day wins"; Apex
+   `ImportSpecialDayTest` "theDirectorsSpecialDayOnThatDayWins".
+
 ## Known limits
 
 - A day whose blocks differ in every week (a short Friday every week), or in a one-week file,
   still reads as a second program, with the groups split into "(schedule 1)" and "(schedule
   2)", as before.
-- A special day already on that week's day stops the save (a day holds one special day, ADR
-  0014 choice 3); the import does not yet check for it first.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.

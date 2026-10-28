@@ -14,11 +14,14 @@ public with sharing class ImportSpecialDayWrites {
   }
 
   public void run() {
-    List<ImportPlan.Entry> entries = plan.entries('specialDays');
+    ImportVersionWrites versions = new ImportVersionWrites(plan, writer);
+    List<ImportPlan.Entry> entries = free(
+      plan.entries('specialDays'),
+      versions
+    );
     if (entries.isEmpty()) {
       return;
     }
-    ImportVersionWrites versions = new ImportVersionWrites(plan, writer);
     List<SpecialDay__c> days = new List<SpecialDay__c>();
     for (ImportPlan.Entry entry : entries) {
       days.add(
@@ -58,5 +61,34 @@ public with sharing class ImportSpecialDayWrites {
     }
     writer.saveTracked('SpecialDate', dates);
     writer.saveTracked('PlanPart', parts);
+  }
+
+  /**
+   * The entries whose week's day holds no special day yet (INGEST-4.6): the director's special
+   * day on that day wins, and the file's day is left out (the screen said so before saving).
+   */
+  private List<ImportPlan.Entry> free(
+    List<ImportPlan.Entry> entries,
+    ImportVersionWrites versions
+  ) {
+    if (entries.isEmpty()) {
+      return entries;
+    }
+    Set<String> taken = new Set<String>();
+    for (SpecialDate__c row : [
+      SELECT Week__c, Day__c
+      FROM SpecialDate__c
+      WHERE Season__c = :plan.seasonId AND SpecialDay__c != NULL
+      WITH USER_MODE
+    ]) {
+      taken.add(row.Week__c + '|' + row.Day__c);
+    }
+    List<ImportPlan.Entry> result = new List<ImportPlan.Entry>();
+    for (ImportPlan.Entry entry : entries) {
+      if (!taken.contains(versions.weekOf(entry) + '|' + entry.text('day'))) {
+        result.add(entry);
+      }
+    }
+    return result;
   }
 }
