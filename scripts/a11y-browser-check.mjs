@@ -373,6 +373,27 @@ System.debug('A11Y_WEEK[' + week.Name + ']');
 }
 
 /**
+ * Week 1 of the check's camp with placements in a Manual Build draft, so unticking a group's
+ * Week 1 on Groups asks first (askedAboutAWeek). Versions don't count as placements
+ * (PlacedInWeeks), and a fresh camp has only the seed's version there: the draft is started from
+ * that version, as "Start from another week" does (or blank, with its fixed and recurring
+ * activities, when there is none). Kept between runs; nothing is added once it is there.
+ */
+function seedPlacedWeek() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Season__c season = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY CreatedDate LIMIT 1];
+Week__c first = [SELECT Id FROM Week__c WHERE Season__c = :season.Id ORDER BY StartDate__c LIMIT 1];
+Program__c program = [SELECT Id FROM Program__c WHERE Season__c = :season.Id ORDER BY SortOrder__c LIMIT 1];
+if (ManualDrafts.find(program.Id, first.Id) == null) {
+  List<Schedule__c> versions = [SELECT Id FROM Schedule__c WHERE Program__c = :program.Id AND Week__c = :first.Id AND Status__c = 'Version' ORDER BY CreatedDate LIMIT 1];
+  if (versions.isEmpty()) ManualDrafts.start(program.Id, first.Id);
+  else ManualWeekStart.start(program.Id, first.Id, versions[0].Id);
+}
+`);
+}
+
+/**
  * An activity of the check's camp marked as an import marks what it guessed (SetupGuessRecords): its
  * how often, with the value it holds now, so the Activities screen shows the needs-a-look corner
  * on it. Looks right clears it in the check, so every run marks it again. Returns its name.
@@ -6795,6 +6816,7 @@ async function main() {
   refuseWhileCiRuns();
   week = seedCamp();
   guessed = seedGuess();
+  seedPlacedWeek();
   if (!only) seedHandEvent();
   const url = signInUrl();
   const browser = await chromium.launch({
