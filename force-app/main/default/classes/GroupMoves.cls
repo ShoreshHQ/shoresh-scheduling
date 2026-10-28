@@ -23,7 +23,7 @@ public with sharing class GroupMoves {
     }
     Map<Id, Division__c> divisions = new Map<Id, Division__c>(
       [
-        SELECT Id, Program__c, Program__r.Season__r.Camp__c
+        SELECT Id, Program__c, NoDivision__c, Program__r.Season__r.Camp__c
         FROM Division__c
         WHERE Id IN :divisionIds
         WITH SYSTEM_MODE
@@ -42,19 +42,32 @@ public with sharing class GroupMoves {
         labelsByCamp.put(campId, CampLabels.forCamp(campId));
       }
       CampLabels labels = labelsByCamp.get(campId);
-      if (target == null) {
-        // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
-        grp.addError('Pick its ' + labels.singularInSentence('Division') + '.');
-      } else if (target.Program__c != origin.Program__c) {
-        grp.addError(
-          labels.plural('Group') +
-            ' can move only to another ' +
-            labels.singularInSentence('Division') +
-            ' of their own ' +
-            labels.singularInSentence('Program') +
-            '.'
-        );
+      String problem = whyNot(target, origin, labels);
+      if (problem != null) {
+        grp.addError(problem);
       }
     }
+  }
+
+  /** Why a group can't move there, or null. */
+  private static String whyNot(
+    Division__c target,
+    Division__c origin,
+    CampLabels labels
+  ) {
+    // DIV-1.1: another group's holding record is no division to join.
+    if (target == null || target.NoDivision__c) {
+      // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
+      return 'Pick its ' + labels.singularInSentence('Division') + '.';
+    }
+    if (target.Program__c != origin.Program__c) {
+      return labels.plural('Group') +
+        ' can move only to another ' +
+        labels.singularInSentence('Division') +
+        ' of their own ' +
+        labels.singularInSentence('Program') +
+        '.';
+    }
+    return null;
   }
 }

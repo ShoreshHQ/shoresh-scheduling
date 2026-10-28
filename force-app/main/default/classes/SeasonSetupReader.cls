@@ -148,7 +148,7 @@ public with sharing class SeasonSetupReader {
     }
     Map<Id, DivisionSetup> divisions = new Map<Id, DivisionSetup>();
     for (Division__c division : [
-      SELECT Id, Name, Program__c, SortOrder__c
+      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c
       FROM Division__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE

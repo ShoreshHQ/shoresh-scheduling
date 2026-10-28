@@ -82,7 +82,9 @@ public with sharing class ImportStructureWrites {
         new Division__c(
           Program__c = keys.of(entry.text('programKey')),
           Name = entry.text('name'),
-          SortOrder__c = entry.whole('sortOrder')
+          SortOrder__c = entry.whole('sortOrder'),
+          // DIV-1.1: the record holding a group that has no division.
+          NoDivision__c = entry.has('noDivision')
         )
       );
     }

@@ -165,28 +165,72 @@ describe("c-shoresh-program", () => {
     expect(table().heading).toBe("Main");
   });
 
+  const HELD = {
+    ...ENTRY,
+    divisions: [
+      ...ENTRY.divisions,
+      {
+        division: { Id: "d3", Name: "Seniors", NoDivision__c: true },
+        groups: [{ Id: "g9", Name: "Seniors", Division__c: "d3" }]
+      },
+      {
+        division: { Id: "d4", Name: "CIT" },
+        groups: [{ Id: "g8", Name: "CIT", Division__c: "d4" }]
+      }
+    ],
+    recurringActivities: []
+  };
+  const heldTables = (element) => [
+    ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+  ];
+
+  // DIV-1.1 DIV-3.1
+  it("shows a group in no division as No division; CIT alone in CIT stays a division", async () => {
+    const element = await render("groups", HELD);
+    expect(heldTables(element).map((t) => t.title)).toEqual([
+      "Bunks in Juniors",
+      "Bunks in CIT",
+      "No Unit"
+    ]);
+    // It may move into a real division, never into another group's holding record.
+    const none = heldTables(element)[2];
+    const move = none.columns.find(
+      (c) => c.fieldName === nsName("Division__c")
+    );
+    expect(move.options.map((o) => o.value)).toEqual(["d1", "d4", "d3"]);
+    const juniors = heldTables(element)[0].columns.find(
+      (c) => c.fieldName === nsName("Division__c")
+    );
+    expect(juniors.options.map((o) => o.value)).toEqual(["d1", "d4"]);
+  });
+
   // DIV-1.1
-  it("shows a group in no division as No division, never as a division of its own", async () => {
-    const element = createElement("c-shoresh-program", { is: ShoreshProgram });
-    element.entry = nsRecord({
-      ...ENTRY,
-      divisions: [
-        ...ENTRY.divisions,
-        {
-          division: { Id: "d3", Name: "Seniors" },
-          groups: [{ Id: "g9", Name: "Seniors", Division__c: "d3" }]
-        }
-      ],
-      recurringActivities: []
+  it("never lists a holding record on the divisions screen", async () => {
+    const element = await render("divisions", HELD);
+    expect(heldTables(element)[0].rows.map((r) => r.Name)).toEqual([
+      "Juniors",
+      "CIT"
+    ]);
+  });
+
+  // DIV-1.1
+  it("a program with no divisions can add a group by hand, in no division", async () => {
+    const element = await render("groups", { ...ENTRY, divisions: [] });
+    const [table] = heldTables(element);
+    expect(table.title).toBe("No Unit");
+    expect(bareRecord(table.newRowDefaults)).toEqual({
+      Availability__c: "AllDay"
     });
-    element.terms = terms;
-    element.show = "groups";
-    document.body.appendChild(element);
-    await flush();
-    const tables = [
-      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
-    ];
-    expect(tables.map((t) => t.title)).toEqual(["Bunks in Juniors", "No Unit"]);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    table.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { record: { Name: "Tent 1" }, extras: {} }
+      })
+    );
+    expect(handler.mock.calls[0][0].detail.extras).toEqual({
+      noDivisionProgram: "p1"
+    });
   });
 
   // DIV-1.2
@@ -539,23 +583,6 @@ describe("c-shoresh-program", () => {
       "Name",
       "Availability__c"
     ]);
-  });
-
-  it("asks for divisions before groups", async () => {
-    const element = await render("groups", { ...ENTRY, divisions: [] });
-    expect(element.shadowRoot.querySelector("c-shoresh-editable-table")).toBe(
-      null
-    );
-    // An empty state and a way there, not a sentence of instructions.
-    expect(
-      element.shadowRoot.querySelector("c-shoresh-empty-state").title
-    ).toBe("No Units yet");
-    const go = element.shadowRoot.querySelector('[data-id="go-divisions"]');
-    expect(go.label).toBe("Units →");
-    const handler = jest.fn();
-    element.addEventListener("navigate", handler);
-    go.click();
-    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "divisions" });
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {

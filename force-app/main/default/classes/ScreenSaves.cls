@@ -153,6 +153,9 @@ public with sharing class ScreenSaves {
     /** A row save only: who the row covered when the director changed it (RowSaves). */
     @AuraEnabled
     public List<Id> seenWho { get; set; }
+    /** DIV-1.1: the program of a group added by hand with no division (NoDivisions). */
+    @AuraEnabled
+    public Id noDivisionProgram { get; set; }
   }
 
   /** Creates new records and updates existing ones, with their week ticks. Returns the Ids in order. */
@@ -175,6 +178,7 @@ public with sharing class ScreenSaves {
     SetTimeGuard.defer();
     Savepoint beforeSave = Database.setSavepoint();
     try {
+      NoDivisions.holdNew(rows, given.noDivisionProgram);
       RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
       SetTimeWho.save(rows, given.who);
       SetTimeGuard.checkPending();

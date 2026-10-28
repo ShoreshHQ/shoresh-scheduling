@@ -5,6 +5,7 @@
  * several is shown with its division, "Bunk 1 (Seniors)". Where a file names an ambiguous group
  * without its division, the director is asked which one (Greg: never decided silently).
  */
+import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading-constants";
 import { looseKey } from "./text";
 
@@ -14,7 +15,13 @@ export function campGroupList(existing) {
   for (const entry of (existing && existing.programs) || []) {
     for (const d of entry.divisions || []) {
       for (const g of d.groups || []) {
-        list.push({ name: g.Name, division: d.division.Name, id: g.Id });
+        // DIV-1.1: a holding record is no division.
+        const none = !!d.division[FIELD.Division.NoDivision];
+        list.push({
+          name: g.Name,
+          division: none ? null : d.division.Name,
+          id: g.Id
+        });
       }
     }
   }
@@ -24,7 +31,9 @@ export function campGroupList(existing) {
 /** Every division name the camp has, groups or not. */
 function campDivisionNames(existing) {
   return ((existing && existing.programs) || []).flatMap((entry) =>
-    (entry.divisions || []).map((d) => d.division.Name)
+    (entry.divisions || [])
+      .filter((d) => !d.division[FIELD.Division.NoDivision])
+      .map((d) => d.division.Name)
   );
 }
 

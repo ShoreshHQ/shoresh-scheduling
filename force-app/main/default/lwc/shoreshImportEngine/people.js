@@ -7,9 +7,9 @@
  *   waits for a choice (never a silent "Main");
  * - DIV-1.1 (Greg 2026-10-27): a group read as its whole division (INGEST-3.8), and a group of a
  *   program with no divisions in a file that names none, is in no division and is not asked for
- *   one. "No division" is saved as the group alone in a division of its own name (Group__c needs
- *   a division: it is how a group knows its program), which is what no division means to every
- *   rule: the group shares a division with nobody (noDivision.js).
+ *   one. "No division" is saved as the group alone in a division record flagged NoDivision__c
+ *   (Group__c needs a division: it is how a group knows its program), so every rule sees a group
+ *   that shares a division with nobody. Only the flag says so (CIT alone in CIT is a division).
  * A group is its division and its name (identity.js). Where the file shows a group the camp has
  * in another division (Bunk 3 in Seniors, set up in Juniors), the director chooses: move it,
  * keep it where it is, add a new one, or leave it out; the card says what moving changes.
@@ -22,7 +22,7 @@ import { looseKey } from "./text";
 /** DIV-1.1: a group in no division, saved alone in a division of its own name; never asked. */
 function noDivisionGroup(group, here) {
   return {
-    ...newGroup(group, here.get(group.recordName)),
+    ...newGroup(group, here.holder(group.recordName)),
     division: null,
     noDivision: true
   };
@@ -40,10 +40,8 @@ function campGroups(existing, rules) {
           identity: rules.identityOf(g.Name, d.division.Name),
           division: d.division.Name,
           divisionId: d.division.Id,
-          // DIV-1.1: alone in a division of its own name is in no division.
-          noDivision:
-            (d.groups || []).length === 1 &&
-            looseKey(g.Name) === looseKey(d.division.Name),
+          // DIV-1.1: held in a flagged record; never read from a name (CIT is a division).
+          noDivision: !!d.division[FIELD.Division.NoDivision],
           programId: entry.program.Id,
           programName: entry.program.Name
         };
@@ -63,10 +61,13 @@ function campDivisions(existing, programId) {
     (p) => p.program.Id === programId
   );
   return entry
-    ? (entry.divisions || []).map((d) => ({
-        id: d.division.Id,
-        name: d.division.Name
-      }))
+    ? (entry.divisions || [])
+        // DIV-1.1: a holding record is no division to offer or match.
+        .filter((d) => !d.division[FIELD.Division.NoDivision])
+        .map((d) => ({
+          id: d.division.Id,
+          name: d.division.Name
+        }))
     : [];
 }
 
@@ -90,6 +91,22 @@ class Divisions {
         programKey: this.timetable.key,
         name: found ? found.name : name,
         isNew: !found
+      });
+    }
+    return this.used.get(key);
+  }
+
+  /** DIV-1.1: a new holding record for one group in no division, never a division by name. */
+  holder(name) {
+    const key = `N|${looseKey(name)}`;
+    if (!this.used.has(key)) {
+      this.used.set(key, {
+        key: `N|${this.timetable.key}|${name}`,
+        id: null,
+        programKey: this.timetable.key,
+        name,
+        isNew: true,
+        noDivision: true
       });
     }
     return this.used.get(key);

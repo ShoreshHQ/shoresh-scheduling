@@ -1,7 +1,12 @@
 // docs/import/names-and-divisions.md: a division of one (rule 1), and names read as the same
 // without asking (rules 2 and 3), each with its counter-case.
-import { buildProposal, importNotes, questionCards } from "./data/engine";
-import { csv, terms } from "./data/samples";
+import {
+  buildProposal,
+  importNotes,
+  planFor,
+  questionCards
+} from "./data/engine";
+import { csv, existingSetup, program, terms } from "./data/samples";
 import {
   plainEnding,
   readWithoutAsking,
@@ -61,6 +66,77 @@ describe("rule 1: a division of one", () => {
     ]);
     expect(unanswered(p).filter((c) => c.select === "division")).toEqual([]);
     expect(notesOf(p)).toContain("ownDivision|CIT");
+  });
+
+  // DIV-1.1 DIV-3.1
+  it("CIT alone in division CIT is a division, never a group in no division", () => {
+    const files = campWeek(
+      null,
+      ["Juniors - Bunk 1", "Juniors - Bunk 2", "Seniors - Bunk 3", "CIT"],
+      (g, d, b) => (b === 2 ? "Lunch" : ACTIVITIES[(g + b + d) % 4])
+    );
+    const p = propose(files);
+    expect(p.groups.find((g) => g.name === "CIT").noDivision).toBeUndefined();
+    const plan = planFor(p, null, "s");
+    expect(plan.divisions.find((d) => d.name === "CIT").noDivision).toBe(
+      undefined
+    );
+    // Saved before as division CIT, unflagged: read again as that division.
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"]
+              ]
+            ],
+            ["d2", "Seniors", [["g3", "Bunk 3"]]],
+            ["d3", "CIT", [["g4", "CIT"]]]
+          ]
+        })
+      ]
+    });
+    const again = buildProposal({ files, existing, terms, answers: {} });
+    expect(
+      again.groups.map((g) => [g.name, g.division, !!g.noDivision])
+    ).toContainEqual(["CIT", "CIT", false]);
+  });
+
+  // DIV-1.1
+  it("a group saved in a flagged holding record is read again in no division", () => {
+    const files = campWeek(
+      null,
+      ["Juniors - Bunk 1", "Juniors - Bunk 2", "Seniors - Bunk 3", "CIT"],
+      (g, d, b) => (b === 2 ? "Lunch" : ACTIVITIES[(g + b + d) % 4])
+    );
+    const setup = program("p1", "Main", {
+      divisions: [
+        [
+          "d1",
+          "Juniors",
+          [
+            ["g1", "Bunk 1"],
+            ["g2", "Bunk 2"]
+          ]
+        ],
+        ["d2", "Seniors", [["g3", "Bunk 3"]]],
+        ["d3", "CIT", [["g4", "CIT"]]]
+      ]
+    });
+    setup.divisions[2].division.NoDivision__c = true;
+    const again = buildProposal({
+      files,
+      existing: existingSetup({ programs: [setup] }),
+      terms,
+      answers: {}
+    });
+    expect(
+      again.groups.map((g) => [g.name, g.division, !!g.noDivision])
+    ).toContainEqual(["CIT", null, true]);
   });
 
   // INGEST-2.1

@@ -6,18 +6,14 @@ import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { moveNote } from "./groupMoves";
 
 /**
- * DIV-1.1 (Greg 2026-10-27): a group may be in no division. It is held alone in a division of its
- * own name (a group's division is how it knows its program), shown as "No division".
+ * DIV-1.1 (Greg 2026-10-27): a group may be in no division. It is held alone in a division record
+ * flagged NoDivision__c (a group's division is how it knows its program). Only the flag says so:
+ * CIT alone in division CIT is a division (DIV-3.1). Holding records never show as divisions.
  */
+const NO_DIVISION_TABLE = "none";
+
 function isNoDivision(entry) {
-  const groups = entry.groups || [];
-  const key = (name) =>
-    String(name || "")
-      .toLowerCase()
-      .replace(/\s+/g, "");
-  return (
-    groups.length === 1 && key(groups[0].Name) === key(entry.division.Name)
-  );
+  return !!entry.division[FIELD.Division.NoDivision];
 }
 
 /** The element with focus, looking inside components (their shadow roots). */
@@ -68,6 +64,7 @@ export default class ShoreshProgram extends LightningElement {
   @api guesses = {};
 
   divisionRecords = [];
+  realDivisionRecords = [];
   // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
   pendingMoves = {};
   // What each bunk is placed in across its program's drafts (GroupPlacements), asked the first
@@ -86,6 +83,10 @@ export default class ShoreshProgram extends LightningElement {
     // One list per entry: a new list on every redraw would look like fresh rows to the table,
     // and wipe what was typed there while a save is under way.
     this.divisionRecords = (value.divisions || []).map((d) => d.division);
+    // The divisions screen: real divisions only, never a holding record (DIV-1.1).
+    this.realDivisionRecords = this.divisionRecords.filter(
+      (d) => !d[FIELD.Division.NoDivision]
+    );
     // A deleted unit's table is gone, and so are the bunk moves it had not saved.
     const units = new Set(this.divisionRecords.map((d) => d.Id));
     const stale = Object.keys(this.pendingMoves).filter((id) => !units.has(id));
@@ -113,9 +114,6 @@ export default class ShoreshProgram extends LightningElement {
   }
   get hasTimeBlocks() {
     return (this.entry.timeBlocks || []).length > 0;
-  }
-  get hasDivisions() {
-    return (this.entry.divisions || []).length > 0;
   }
 
   /** A program's own table (its time blocks, its divisions): headed with its name when sectioned. */
@@ -292,7 +290,11 @@ export default class ShoreshProgram extends LightningElement {
     const program = entry.program.Name;
     const prefix = this.sectioned ? `${program} · ` : "";
     const every = `Every ${t.sIn("Group")}`;
-    const divisions = (entry.divisions || []).map((d) => d.division);
+    // DIV-1.1: a group in no division has its section under its own name.
+    const divisions = (entry.divisions || []).map((d) => {
+      const held = isNoDivision(d) && (d.groups || []).length > 0;
+      return held ? { Id: d.division.Id, Name: d.groups[0].Name } : d.division;
+    });
     const divisionOf = new Map();
     (entry.divisions || []).forEach((d) => {
       divisionOf.set(d.division.Id, d.division.Id);
@@ -447,10 +449,13 @@ export default class ShoreshProgram extends LightningElement {
     return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
   }
 
-  get groupColumns() {
-    // A group moves to another division of its own program only (GroupMoves).
+  /**
+   * A table's columns. A group moves to another division of its own program only (GroupMoves);
+   * a group in no division may move into a real one (DIV-1.1). options: where its rows can go.
+   */
+  groupColumnsFor(options) {
     const move =
-      this.divisionRecords.length > 1
+      options.length > 1
         ? [
             {
               fieldName: GROUP.Division,
@@ -460,10 +465,7 @@ export default class ShoreshProgram extends LightningElement {
               // A new row is added under its own unit; a saved one can move.
               savedOnly: true,
               more: true,
-              options: this.divisionRecords.map((d) => ({
-                label: d.Name,
-                value: d.Id
-              }))
+              options
             }
           ]
         : [];
@@ -531,20 +533,43 @@ export default class ShoreshProgram extends LightningElement {
 
   get divisions() {
     const program = this.sectioned ? `${this.entry.program.Name} · ` : "";
-    return (this.entry.divisions || []).map((d, index) => ({
+    const entries = this.entry.divisions || [];
+    const real = entries.filter((d) => !isNoDivision(d));
+    const held = entries.filter((d) => isNoDivision(d));
+    const realOptions = real.map((d) => ({
+      label: d.division.Name,
+      value: d.division.Id
+    }));
+    const tables = real.map((d) => ({
       id: d.division.Id,
-      title: isNoDivision(d)
-        ? `No ${this.terms.sIn("Division")}`
-        : `${this.terms.p("Group")} in ${d.division.Name}`,
+      title: `${this.terms.p("Group")} in ${d.division.Name}`,
       heading: `${program}${d.division.Name}`,
-      first: index === 0,
       groups: d.groups,
+      columns: this.groupColumnsFor(realOptions),
       defaults: {
         [GROUP.Division]: d.division.Id,
         [GROUP.Availability]: "AllDay"
       },
       namesElsewhere: this.namesElsewhere(d.division.Id)
     }));
+    // DIV-1.1: one table for every group in no division, there too when the program has no
+    // divisions, so a group can be added by hand (its holding record is made as it saves).
+    if (held.length || !real.length) {
+      const none = `No ${this.terms.sIn("Division")}`;
+      tables.push({
+        id: NO_DIVISION_TABLE,
+        title: none,
+        heading: `${program}${none}`,
+        groups: held.flatMap((d) => d.groups || []),
+        columns: this.groupColumnsFor([
+          ...realOptions,
+          ...held.map((d) => ({ label: none, value: d.division.Id }))
+        ]),
+        defaults: { [GROUP.Availability]: "AllDay" },
+        namesElsewhere: this.namesElsewhere(NO_DIVISION_TABLE)
+      });
+    }
+    return tables.map((t, index) => ({ ...t, first: index === 0 }));
   }
 
   /**
@@ -585,7 +610,6 @@ export default class ShoreshProgram extends LightningElement {
       noDivisions: `No ${t.pIn("Division")} yet`,
       addGroup: `Add ${t.s("Group")}`,
       noGroups: `No ${t.pIn("Group")} yet`,
-      toDivisions: `${t.p("Division")} →`,
       fixed: `${t.p("FixedActivity")} in ${program}`,
       addFixed: `Add ${t.s("FixedActivity")}`,
       noFixed: `No ${t.pIn("FixedActivity")} yet`,
@@ -620,16 +644,30 @@ export default class ShoreshProgram extends LightningElement {
     // cursor follows it there.
     const held = this.isRecurring || this.isGroups ? this.focusedRow() : null;
     const onDone = detail.onDone;
+    // DIV-1.1: a group added in the no-division table gets its holding record as it saves.
+    const noDivision =
+      this.isGroups &&
+      event.currentTarget &&
+      event.currentTarget.dataset &&
+      event.currentTarget.dataset.division === NO_DIVISION_TABLE &&
+      detail.record &&
+      !detail.record.Id;
+    const base = noDivision
+      ? {
+          ...detail,
+          extras: { ...detail.extras, noDivisionProgram: this.programId }
+        }
+      : detail;
     const sent =
       held && typeof onDone === "function"
         ? {
-            ...detail,
+            ...base,
             onDone: () => {
               onDone();
               Promise.resolve().then(() => this.followMoved(held));
             }
           }
-        : detail;
+        : base;
     this.dispatchEvent(new CustomEvent("save", { detail: sent }));
   }
 
