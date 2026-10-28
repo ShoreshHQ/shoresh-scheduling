@@ -103,13 +103,12 @@ describe("INGEST-5.1: names read as activity, fixed or recurring", () => {
 
 describe("INGEST-5.2: two spellings read as one name", () => {
   const files = () =>
-    campWeek(GROUPS, (g, d, b) =>
-      b === 2 && g === 0 && d === 2
-        ? "Lunch2"
-        : b === 2
-          ? "Lunch 2"
-          : defaultCell(g, d, b)
-    );
+    campWeek(GROUPS, (g, d, b) => {
+      if (b !== 2) {
+        return defaultCell(g, d, b);
+      }
+      return g === 0 && d === 2 ? "Lunch2" : "Lunch 2";
+    });
 
   it("INGEST-5.2: listed as names joined, not in the notes; Keep apart keeps both", () => {
     const p = propose(files());
@@ -175,11 +174,11 @@ describe("INGEST-5.4: one week's day with its own times", () => {
             ["Time", ...G],
             ...blocks.map((b, bi) => [
               b,
-              ...G.map((_, g) =>
-                /^Lunch/.test(b)
+              ...G.map((_, g) => {
+                return /^Lunch/.test(b)
                   ? "Lunch"
-                  : R[(g + bi + d * 2 + w * 3) % R.length]
-              )
+                  : R[(g + bi + d * 2 + w * 3) % R.length];
+              })
             ]),
             []
           ];
