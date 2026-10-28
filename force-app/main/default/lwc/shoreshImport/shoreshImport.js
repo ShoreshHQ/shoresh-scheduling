@@ -95,6 +95,8 @@ export default class ShoreshImport extends LightningElement {
   imported = [];
   // Why any of them is still in use: kept, never offered for removal (INGEST-5.8).
   inUse = {};
+  // Their cells in imports' own weeks, which this import may supersede (INGEST-5.8).
+  versionUses = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
@@ -249,6 +251,7 @@ export default class ShoreshImport extends LightningElement {
     const before = await this.importedBefore();
     this.imported = before.untouched || [];
     this.inUse = before.inUse || {};
+    this.versionUses = before.versionUses || {};
     this.layouts = {};
     this.openKind = null;
     this.openReadAs = null;
@@ -340,7 +343,8 @@ export default class ShoreshImport extends LightningElement {
       answers,
       layouts: this.layouts,
       imported: this.imported,
-      inUse: this.inUse
+      inUse: this.inUse,
+      versionUses: this.versionUses
     });
   }
 
@@ -840,6 +844,7 @@ export default class ShoreshImport extends LightningElement {
     this.openReadAs = null;
     this.imported = [];
     this.inUse = {};
+    this.versionUses = {};
     this.savedOpen = [];
     this.answers = {};
     this.layouts = {};
@@ -965,7 +970,11 @@ export default class ShoreshImport extends LightningElement {
       // Still used by something else: kept, with why, and no Remove.
       detail: m.inUse
         ? `${m.inUse}, so it stays`
-        : `${t.sIn(m.kind)}${m.program ? ` · ${m.program}` : ""}`,
+        : `${t.sIn(m.kind)}${m.program ? ` · ${m.program}` : ""}${
+            m.alsoOut.length
+              ? ` · also taken out of ${m.alsoOut.join(", ")}`
+              : ""
+          }`,
       options: (m.inUse
         ? []
         : [

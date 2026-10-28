@@ -510,6 +510,64 @@ describe("c-shoresh-import", () => {
       );
     });
 
+    it("INGEST-5.8: Remove says the cells it also takes out of a superseded imported week", async () => {
+      getImported.mockResolvedValue({
+        untouched: ["a2"],
+        inUse: {},
+        versionUses: {
+          a2: [
+            {
+              scheduleId: "s0",
+              dayId: "sd0",
+              programId: "p1",
+              weekId: "w1",
+              name: "last import's Week 1"
+            }
+          ]
+        }
+      });
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({
+        ...SETUP,
+        weeks: [
+          {
+            Id: "w1",
+            Name: "Week 1",
+            StartDate__c: "2027-06-28",
+            EndDate__c: "2027-07-02"
+          }
+        ],
+        programs: [
+          {
+            program: {
+              Id: "p1",
+              Name: "Main",
+              Monday__c: true,
+              Tuesday__c: true,
+              Wednesday__c: true,
+              Thursday__c: true,
+              Friday__c: true
+            },
+            timeBlocks: [],
+            divisions: [],
+            fixedActivities: [],
+            recurringActivities: []
+          }
+        ],
+        activities: [{ Id: "a2", Name: "Arhcery", Length__c: 1 }]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const row = $(element, '[data-id="missing"] [data-missing]');
+      expect(row.textContent).toContain("Arhcery");
+      expect(row.textContent).toContain(
+        "also taken out of last import's Week 1"
+      );
+      expect(row.querySelectorAll("button")).toHaveLength(2);
+    });
+
     it("INGEST-5.8: something still uses it: kept with why, no Remove", async () => {
       getImported.mockResolvedValue({
         untouched: ["a2"],

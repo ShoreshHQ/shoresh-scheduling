@@ -8,18 +8,12 @@
 public with sharing class ImportItemUses {
   // Schedule days read for cells, at most: far more than a season holds.
   private static final Integer MAX_DAYS = 5000;
+  // Where cells in imports' own versions are collected during one reasons() call, or null.
+  private static Map<Id, List<VersionUse>> collecting;
 
   /** Why each item is in use ("Arts & Crafts is Swim's rain plan"), for those that are. */
   public static Map<Id, String> reasons(Id seasonId, Map<Id, String> names) {
-    Map<Id, String> result = new Map<Id, String>();
-    if (names.isEmpty()) {
-      return result;
-    }
-    rainPlansAndCopies(names, result);
-    offerings(names, result);
-    weeksOff(names, result);
-    cells(seasonId, names, result);
-    return result;
+    return reasons(seasonId, names, null);
   }
 
   private static void rainPlansAndCopies(
@@ -94,25 +88,98 @@ public with sharing class ImportItemUses {
     }
   }
 
-  /** A cell in any of the season's schedules: drafts, versions and published ones. */
+  /**
+   * A cell in any of the season's schedules: drafts, versions and published ones. A cell only in
+   * an import's own version (versionUses not null) is collected there instead, by version, for
+   * the screen and the save to decide whether this import supersedes it (INGEST-5.8).
+   */
   private static void cells(
     Id seasonId,
     Map<Id, String> names,
     Map<Id, String> result
   ) {
     for (ScheduleDay__c day : [
-      SELECT Grid__c, Schedule__r.Name
+      SELECT
+        Id,
+        Grid__c,
+        Schedule__c,
+        Schedule__r.Name,
+        Schedule__r.Status__c,
+        Schedule__r.Origin__c,
+        Schedule__r.Program__c,
+        Schedule__r.Week__c
       FROM ScheduleDay__c
       WHERE Schedule__r.Program__r.Season__c = :seasonId
       WITH USER_MODE
       LIMIT :MAX_DAYS
     ]) {
+      Boolean imported =
+        collecting != null && ImportedWeekGuard.isImported(day.Schedule__r);
       for (Id item : names.keySet()) {
-        if (holds(day.Grid__c, item)) {
+        if (!holds(day.Grid__c, item)) {
+          continue;
+        }
+        if (imported) {
+          collect(item, day);
+        } else {
           add(result, item, names.get(item) + ' is on ' + day.Schedule__r.Name);
         }
       }
     }
+  }
+
+  private static void collect(Id item, ScheduleDay__c day) {
+    if (!collecting.containsKey(item)) {
+      collecting.put(item, new List<VersionUse>());
+    }
+    collecting.get(item).add(new VersionUse(day));
+  }
+
+  /** An item's cells in one day of an import's own version. */
+  public class VersionUse {
+    @AuraEnabled
+    public Id scheduleId { get; set; }
+    @AuraEnabled
+    public Id dayId { get; set; }
+    @AuraEnabled
+    public Id programId { get; set; }
+    @AuraEnabled
+    public Id weekId { get; set; }
+    @AuraEnabled
+    public String name { get; set; }
+
+    public VersionUse(ScheduleDay__c day) {
+      scheduleId = day.Schedule__c;
+      dayId = day.Id;
+      programId = day.Schedule__r.Program__c;
+      weekId = day.Schedule__r.Week__c;
+      name = day.Schedule__r.Name;
+    }
+  }
+
+  /**
+   * Why each item is in use, with an import's own versions collected apart (versionUses): the
+   * screen and the save count those as uses unless this import supersedes them.
+   */
+  public static Map<Id, String> reasons(
+    Id seasonId,
+    Map<Id, String> names,
+    Map<Id, List<VersionUse>> versionUses
+  ) {
+    Map<Id, String> result = new Map<Id, String>();
+    if (names.isEmpty()) {
+      return result;
+    }
+    rainPlansAndCopies(names, result);
+    offerings(names, result);
+    weeksOff(names, result);
+    collecting = versionUses;
+    try {
+      cells(seasonId, names, result);
+    } finally {
+      collecting = null;
+    }
+    return result;
   }
 
   private static Boolean holds(String grid, Id item) {

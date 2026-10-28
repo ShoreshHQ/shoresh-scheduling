@@ -7,7 +7,8 @@ public with sharing class ImportUndoEntries {
     'who',
     'weekOn',
     'wordOff',
-    'removed'
+    'removed',
+    'cellsOut'
   };
 
   /** What the import changed, by how Undo puts it back ("changes" for records' values). */

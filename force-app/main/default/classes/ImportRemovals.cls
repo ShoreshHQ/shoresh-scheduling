@@ -8,6 +8,8 @@
 public with sharing class ImportRemovals {
   private ImportPlan plan;
   private ImportWriter writer;
+  // Days of superseded imported weeks holding a removed item's cells (INGEST-5.8).
+  private Set<Id> daysToClear = new Set<Id>();
 
   public ImportRemovals(ImportPlan plan, ImportWriter writer) {
     this.plan = plan;
@@ -20,6 +22,11 @@ public with sharing class ImportRemovals {
       return;
     }
     List<SObject> records = checked(entries);
+    ImportSupersededCells.takeOut(
+      daysToClear,
+      new Map<Id, SObject>(records).keySet(),
+      writer
+    );
     writer.logRemoved(records);
     List<Database.DeleteResult> outcomes = Database.delete(
       records,
@@ -69,7 +76,23 @@ public with sharing class ImportRemovals {
    * cleared (INGEST-5.8).
    */
   private void refuseInUse(Map<Id, String> names) {
-    Map<Id, String> inUse = ImportItemUses.reasons(plan.seasonId, names);
+    Map<Id, List<ImportItemUses.VersionUse>> versionUses = new Map<Id, List<ImportItemUses.VersionUse>>();
+    Map<Id, String> inUse = ImportItemUses.reasons(
+      plan.seasonId,
+      names,
+      versionUses
+    );
+    // Cells in an imported week this import supersedes go with it; any other is a use.
+    Set<Id> superseded = ImportSupersededCells.superseded(plan, writer);
+    for (Id item : versionUses.keySet()) {
+      for (ImportItemUses.VersionUse use : versionUses.get(item)) {
+        if (superseded.contains(use.scheduleId)) {
+          daysToClear.add(use.dayId);
+        } else if (!inUse.containsKey(item)) {
+          inUse.put(item, names.get(item) + ' is on ' + use.name);
+        }
+      }
+    }
     if (!inUse.isEmpty()) {
       throw new ShoreshException(
         inUse.values()[0] + ', so it can\'t be removed. Nothing was saved.'

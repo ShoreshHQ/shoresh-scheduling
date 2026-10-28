@@ -124,8 +124,15 @@ Each rule is clue, meaning, example, test.
    another activity's rain plan or copy, an elective's choices, weeks it is off, or a cell in any
    of the season's schedules (drafts, versions, published; `ImportItemUses`). Such an item is
    listed as kept with why ("Arts & Crafts is Swim's rain plan, so it stays") and no Remove.
-   Because a version holds the week it was imported from, an item placed in an earlier import's
-   week is always kept this way.
+   One use does not keep it (coordinator's decision on Greg's Q3 example, 2026-10-27: a
+   corrected file lacks "Arhcery", which the first import placed): cells only in earlier
+   imports' own imported weeks (not published) of a program and week this import brings in again,
+   since the newest imported week is the one that counts (engine protocol 8.9). Remove is then
+   offered and says so ("Arhcery · also taken out of Imported from maple.xlsx"); removing it
+   takes its cells out of those weeks (`ImportSupersededCells`), and Undo puts the item and those
+   days back exactly (a day changed since is kept and named). Any other imported week, a draft,
+   or a published schedule keeps it ("Arhcery is on Imported from maple.xlsx"). The save
+   checks the same.
    Meaning: listed under "Not in these files" with **Keep** (pressed, the default) and
    **Remove**; nothing is removed unasked. Removed ones go in the same all-or-none save, in user
    mode, after the server checks each is still the import's and nothing uses it
@@ -134,7 +141,11 @@ Each rule is clue, meaning, example, test.
    Undo of that import brings them back with what went with them (`ImportUndoRemovals`, from the
    Recycle Bin; one no longer there is named as deleted since). Something made or changed by
    hand is never listed.
-   Test: "INGEST-5.8: listed with Keep, the default; Remove sends it to be removed"; screen
+   Test: "INGEST-5.8: listed with Keep, the default; Remove sends it to be removed"; "a week
+   this import brings in again supersedes it"; counter-case "an imported week this import does
+   not bring in keeps it, with why"; Apex
+   `ingest58CellsOnlyInASupersededImportedWeekGoWithTheItemAndUndoPutsThemBack`,
+   `ingest58AnImportedWeekNotBroughtInAgainKeepsTheItem`; screen
    "INGEST-5.8: what an earlier import brought in and these files lack"; Apex `ImportReviewTest`
    `ingest58RemovesWhatAnImportBroughtInAndUndoBringsItBack`,
    `ingest58NeverRemovesWhatWasMadeOrChangedByHand`.

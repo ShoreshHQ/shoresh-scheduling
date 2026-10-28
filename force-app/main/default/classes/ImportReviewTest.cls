@@ -492,4 +492,104 @@ private class ImportReviewTest {
       Assert.areEqual(150, kept + result.openNotKept, 'every question counted');
     }
   }
+
+  /** A first import with its week kept as a version (Swim in it), and the week. */
+  private static Week__c importedWeek(Season__c season) {
+    List<Week__c> weeks = ShoreshTestData.weeks(season.Id, 1);
+    Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
+    ImportTestPlans.addVersion(plan, weeks[0]);
+    ImportController.saveSetup(JSON.serialize(plan));
+    return weeks[0];
+  }
+
+  /** A second import removing Swim, bringing the same week in again (or not). */
+  private static Map<String, Object> removingSwim(
+    Season__c season,
+    Week__c week,
+    Boolean sameWeek
+  ) {
+    Activity__c swim = activityNamed(season.Id, 'Swim');
+    Map<String, Object> plan = removing(season.Id, swim);
+    if (sameWeek) {
+      Id programId = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        WITH USER_MODE
+        LIMIT 1
+      ]
+      .Id;
+      ImportTestPlans.add(
+        plan,
+        'versions',
+        new Map<String, Object>{
+          'programKey' => programId,
+          'weekId' => week.Id,
+          'name' => 'Imported from corrected.xlsx',
+          'days' => new List<Object>()
+        }
+      );
+    }
+    return plan;
+  }
+
+  private static String firstWeekGrid(Id seasonId) {
+    return [
+      SELECT Grid__c
+      FROM ScheduleDay__c
+      WHERE
+        Schedule__r.Program__r.Season__c = :seasonId
+        AND Schedule__r.Name = 'Imported from maple-grove.xlsx'
+      WITH USER_MODE
+      LIMIT 1
+    ]
+    .Grid__c;
+  }
+
+  @IsTest
+  static void ingest58CellsOnlyInASupersededImportedWeekGoWithTheItemAndUndoPutsThemBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Week__c week = importedWeek(season);
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      String gridBefore = firstWeekGrid(season.Id);
+      Test.startTest();
+      ImportProvenance.Standing standing = ImportController.getImported(
+        season.Id
+      );
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(removingSwim(season, week, true))
+      );
+      String gridAfter = firstWeekGrid(season.Id);
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.isFalse(
+        standing.inUse.containsKey(swim.Id),
+        'only its imported week'
+      );
+      Assert.areEqual(1, standing.versionUses.get(swim.Id).size());
+      Assert.isTrue(gridBefore.contains(swim.Id));
+      Assert.isFalse(gridAfter.contains(swim.Id), 'taken out of that week');
+      Assert.areEqual(gridBefore, firstWeekGrid(season.Id), 'put back exactly');
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Activity__c WHERE Id = :swim.Id WITH USER_MODE]
+      );
+    }
+  }
+
+  @IsTest
+  static void ingest58AnImportedWeekNotBroughtInAgainKeepsTheItem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Week__c week = importedWeek(season);
+      Test.startTest();
+      String refusal = refusalOf(removingSwim(season, week, false));
+      Test.stopTest();
+      Assert.isTrue(
+        refusal.contains('Swim is on Imported from maple-grove.xlsx'),
+        refusal
+      );
+    }
+  }
 }

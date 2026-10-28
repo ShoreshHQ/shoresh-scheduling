@@ -61,6 +61,7 @@ public with sharing class ImportUndo {
         lockCamp(campId);
       }
       new ImportUndoRemovals(result).run(sorted.get('removed'));
+      ImportSupersededCells.putBack(sorted.get('cellsOut'), result);
       new ImportUndoRestores(result).run(changes);
       new ImportUndoWho(result).run(sorted.get('who'));
       new ImportUndoWeeksOff(result, done.Season__c).run(sorted.get('weekOn'));

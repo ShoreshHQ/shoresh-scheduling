@@ -29,6 +29,9 @@ public with sharing class ImportProvenance {
     public List<Id> untouched { get; set; }
     @AuraEnabled
     public Map<Id, String> inUse { get; set; }
+    /** Cells only in imports' own versions, by item: uses unless this import supersedes them. */
+    @AuraEnabled
+    public Map<Id, List<ImportItemUses.VersionUse>> versionUses { get; set; }
   }
 
   /** One created record: its fields and fingerprint, then what later imports changed. */
@@ -49,7 +52,8 @@ public with sharing class ImportProvenance {
     Set<Id> ids = untouchedNamed(seasonId, names);
     Standing result = new Standing();
     result.untouched = new List<Id>(ids);
-    result.inUse = ImportItemUses.reasons(seasonId, names);
+    result.versionUses = new Map<Id, List<ImportItemUses.VersionUse>>();
+    result.inUse = ImportItemUses.reasons(seasonId, names, result.versionUses);
     return result;
   }
 

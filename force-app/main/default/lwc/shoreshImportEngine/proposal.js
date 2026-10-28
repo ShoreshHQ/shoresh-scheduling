@@ -565,6 +565,7 @@ export function buildProposal(input) {
     asks: [...programs.asks, ...people.asks, ...electives.asks, ...ctx.asks],
     decisions
   };
+  const last = versionsFor(proposal, input);
   // review.md INGEST-5.8: what an earlier import brought in that these files lack.
   proposal.missing = missingItems({
     existing: input.existing,
@@ -574,9 +575,10 @@ export function buildProposal(input) {
     usable,
     decisions,
     electives,
-    timetables: programs.timetables
+    timetables: programs.timetables,
+    versionUses: input.versionUses || {},
+    versions: last.versions
   });
-  const last = versionsFor(proposal, input);
   return {
     ...proposal,
     versions: last.versions,

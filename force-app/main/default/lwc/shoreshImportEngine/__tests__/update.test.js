@@ -142,6 +142,59 @@ describe("INGEST-5.8: what an earlier import brought in that the new file lacks"
     expect(planFor(tried, camp(), "s").removals).toEqual([]);
   });
 
+  describe("cells only in an earlier import's own week", () => {
+    const withWeek = () => {
+      const existing = camp();
+      existing.weeks = [
+        {
+          Id: "w1",
+          Name: "Week 1",
+          StartDate__c: "2027-06-28",
+          EndDate__c: "2027-07-02"
+        }
+      ];
+      return existing;
+    };
+    const use = (programId, weekId) => ({
+      scheduleId: "s0",
+      dayId: "sd0",
+      programId,
+      weekId,
+      name: "Imported from maple.xlsx"
+    });
+    const run = (uses, answers = {}) =>
+      buildProposal({
+        files: samples("all-camp"),
+        existing: withWeek(),
+        terms,
+        answers,
+        imported: ["a2"],
+        versionUses: { a2: uses }
+      });
+
+    it("INGEST-5.8: a week this import brings in again supersedes it: Remove offered, its cells taken out with it", () => {
+      const p = run([use("p1", "w1")]);
+      expect(p.versions.map((v) => [v.programKey, v.weekId])).toEqual([
+        ["p1", "w1"]
+      ]);
+      const pottery = p.missing[0];
+      expect([pottery.inUse, pottery.alsoOut]).toEqual([
+        null,
+        ["Imported from maple.xlsx"]
+      ]);
+      const removed = run([use("p1", "w1")], { [pottery.key]: "remove" });
+      expect(planFor(removed, withWeek(), "s").removals).toEqual([
+        { id: "a2", name: "Pottery" }
+      ]);
+    });
+
+    it("INGEST-5.8 counter-case: an imported week this import does not bring in keeps it, with why", () => {
+      const pottery = run([use("p1", "w9")]).missing[0];
+      expect(pottery.inUse).toBe("Pottery is on Imported from maple.xlsx");
+      expect(pottery.alsoOut).toEqual([]);
+    });
+  });
+
   it("INGEST-5.8 counter-case: made or changed by hand is never listed", () => {
     expect(propose([]).missing).toEqual([]);
     expect(propose(["a1"]).missing).toEqual([]);

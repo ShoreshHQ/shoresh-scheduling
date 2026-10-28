@@ -24,6 +24,8 @@ export function missingItems({
   existing,
   imported,
   inUse = {},
+  versionUses = {},
+  versions = [],
   answers,
   usable,
   decisions,
@@ -42,8 +44,21 @@ export function missingItems({
       ...(s.offerings || []).map((o) => foldName(o.activityName || ""))
     ])
   ]);
+  // The imported weeks this import brings in again: an earlier import's own week of the same
+  // program and week is superseded, so cells only there go with the item (coordinator, Q3).
+  const brought = new Set(versions.map((v) => `${v.programKey}|${v.weekId}`));
+  const usesOf = (record) => {
+    const uses = versionUses[record.Id] || [];
+    const kept = uses.find((u) => !brought.has(`${u.programId}|${u.weekId}`));
+    return {
+      reason:
+        inUse[record.Id] || (kept ? `${record.Name} is on ${kept.name}` : null),
+      alsoOut: [...new Set(uses.map((u) => u.name))]
+    };
+  };
   const item = (kind, record, program) => {
     const key = missingKey(kind, program, record.Name);
+    const uses = usesOf(record);
     return {
       id: record.Id,
       key,
@@ -51,8 +66,10 @@ export function missingItems({
       name: record.Name,
       program,
       // Still used by something else: kept, with why; never offered for removal.
-      inUse: inUse[record.Id] || null,
-      answer: answers[key] === REMOVE && !inUse[record.Id] ? REMOVE : "keep"
+      inUse: uses.reason,
+      // Its cells in superseded imported weeks, taken out with it.
+      alsoOut: uses.reason ? [] : uses.alsoOut,
+      answer: answers[key] === REMOVE && !uses.reason ? REMOVE : "keep"
     };
   };
   const listed = (existing.activities || [])
