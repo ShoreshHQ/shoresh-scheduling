@@ -597,4 +597,44 @@ private class ImportReviewTest {
       );
     }
   }
+
+  @IsTest
+  static void ingest58AnItemOnAManualScheduleIsInUseAndNeverRemoved() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Week__c week = importedWeek(season);
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      ScheduleDay__c imported = [
+        SELECT Date__c, GridFormatVersion__c, Grid__c, Schedule__r.Program__c
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Program__r.Season__c = :season.Id
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      // The director's own schedule of that week, with Swim in it.
+      Schedule__c manual = ShoreshTestData.savedVersion(
+        imported.Schedule__r.Program__c,
+        week.Id,
+        'Week 1 by hand'
+      );
+      Database.insert(
+        new ScheduleDay__c(
+          Schedule__c = manual.Id,
+          Date__c = imported.Date__c,
+          GridFormatVersion__c = imported.GridFormatVersion__c,
+          Grid__c = imported.Grid__c
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      ImportProvenance.Standing standing = ImportController.getImported(
+        season.Id
+      );
+      // Even bringing the imported week in again: the manual schedule keeps it.
+      String refusal = refusalOf(removingSwim(season, week, true));
+      Test.stopTest();
+      Assert.areEqual('Swim is on Week 1 by hand', standing.inUse.get(swim.Id));
+      Assert.isTrue(refusal.contains('Swim is on Week 1 by hand'), refusal);
+    }
+  }
 }
