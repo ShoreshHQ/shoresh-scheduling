@@ -8,7 +8,12 @@ import {
 } from "./data/engine";
 import { existingSetup, terms } from "./data/samples";
 import { splitWeekColumn, sheetToPages } from "../sheets";
-import { weekInFileName, weekInTitle, withoutWeek } from "../weekLabels";
+import {
+  labelDates,
+  weekInFileName,
+  weekInTitle,
+  withoutWeek
+} from "../weekLabels";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const GROUPS = ["Bunk 1", "Bunk 2", "Bunk 3"];
@@ -141,8 +146,8 @@ describe("INGEST-4.1: a week column", () => {
       "Week of 7/6"
     ]);
     expect(read("Dates", ["July 6", "July 13"])).toEqual([
-      "Week of 7/13",
-      "Week of 7/6"
+      "Week of Jul 13",
+      "Week of Jul 6"
     ]);
   });
 
@@ -180,7 +185,7 @@ describe("INGEST-4.2: the week in a file's name", () => {
     expect(weekInFileName("Camp 2026 - W2")).toBe("Week 2");
     expect(weekInFileName("Camp 2026 - Session 1")).toBe("Session 1");
     expect(weekInFileName("Camp 2026 - 7-6-2026")).toBe("Week of 7/6");
-    expect(weekInFileName("Camp - week of July 6th")).toBe("Week of 7/6");
+    expect(weekInFileName("Camp - week of July 6th")).toBe("Week of Jul 6");
     expect(weekInFileName("Camp 2026 - Monday 6-30")).toBeNull();
     expect(weekInTitle("Monday 6/30")).toBeNull();
     // A group named like a month is not a date.
@@ -496,5 +501,211 @@ describe("INGEST-4.5: Session N in a season of numbered weeks", () => {
         .map((c) => c.id)
         .sort()
     ).toEqual(["week|Session 1", "week|Session 2"]);
+  });
+});
+
+describe("review of PR 176: only what surely names a week", () => {
+  // INGEST-4.2
+  it("INGEST-4.2: a range or a version number in a name is not a week, and the name is kept whole", () => {
+    for (const name of [
+      "Grades 3-5",
+      "Ages 8-10",
+      "Camp 10.2 final",
+      "Swim 7-6"
+    ]) {
+      expect(weekInFileName(name)).toBeNull();
+      expect(withoutWeek(name, { bareDates: true })).toBe(name);
+    }
+    // Counter-cases: with the word week, a month, or a full date with its year, it is a week.
+    expect(weekInTitle("Week of 7-6")).toBe("Week of 7/6");
+    expect(weekInFileName("Camp Jul 6")).toBe("Week of Jul 6");
+    expect(weekInFileName("Camp 7-6-2026")).toBe("Week of 7/6");
+  });
+
+  // INGEST-4.2
+  it("INGEST-4.2: a bare W2 is a week only alone and within the season's weeks", () => {
+    expect(weekInFileName("Bunk W2")).toBeNull();
+    expect(weekInFileName("W12 Girls")).toBeNull();
+    expect(weekInFileName("Cabin 4 W2")).toBeNull();
+    expect(weekInFileName("Camp 2026 - W2", 6)).toBe("Week 2");
+    expect(weekInFileName("Camp 2026 - W5", 3)).toBeNull();
+    expect(weekInFileName("Camp 2026 - W13")).toBeNull();
+    expect(withoutWeek("Bunk W2")).toBe("Bunk W2");
+    // The words Week and Wk always count.
+    expect(weekInFileName("Wk 2 Girls")).toBe("Week 2");
+  });
+
+  // INGEST-4.7
+  it("INGEST-4.7: a date of numbers may be read either way; the readings are both kept", () => {
+    expect(labelDates("Week of 7/6")).toEqual([
+      { month: 7, day: 6 },
+      { month: 6, day: 7 }
+    ]);
+    expect(labelDates("Week of 7/7")).toEqual([{ month: 7, day: 7 }]);
+    expect(labelDates("Week of 7/13")).toEqual([{ month: 7, day: 13 }]);
+    expect(labelDates("Week of Jul 6")).toEqual([{ month: 7, day: 6 }]);
+  });
+
+  const seasonOf = (list) =>
+    existingSetup({
+      weeks: list.map(([Id, Name, start, end]) => ({
+        Id,
+        Name,
+        StartDate__c: start,
+        EndDate__c: end
+      }))
+    });
+
+  // INGEST-4.7
+  it("INGEST-4.7: only one reading lands in a season week: that week, said in the notes", () => {
+    const existing = seasonOf([
+      ["w1", "Week 1", "2027-07-05", "2027-07-09"],
+      ["w2", "Week 2", "2027-07-12", "2027-07-16"]
+    ]);
+    const rows = weekColumnSheet("Week of", ["6/7", "13/7"]);
+    const p = propose([file("Camp.csv", [sheetOf("Camp", rows)])], existing);
+    expect(p.versions.map((v) => v.weekId).sort()).toEqual(["w1", "w2"]);
+    expect(asked(p, "week|")).toEqual([]);
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "Week of 6/7 is read as July 6, in Week 1: read the other way round, it is in none of the weeks."
+    );
+  });
+
+  // INGEST-4.7
+  it("INGEST-4.7 counter-case: both readings land in season weeks: asked", () => {
+    const existing = seasonOf([
+      ["w1", "Week 1", "2027-06-07", "2027-06-11"],
+      ["w2", "Week 2", "2027-07-05", "2027-07-09"]
+    ]);
+    const rows = weekColumnSheet("Week of", ["6/7", "7/13"]);
+    const p = propose([file("Camp.csv", [sheetOf("Camp", rows)])], existing);
+    expect(asked(p, "week|").map((c) => c.id)).toContain("week|Week of 6/7");
+  });
+
+  // INGEST-4.5
+  it("INGEST-4.5: the session note only when the session decided; Session 2 Week 1 is asked", () => {
+    const existing = seasonOf([
+      ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+      ["w2", "Week 2", "2027-07-05", "2027-07-09"]
+    ]);
+    const filesNamed = (names) =>
+      names.map((name, w) =>
+        file(
+          `${name}.xlsx`,
+          GROUPS.map((g, gi) => sheetOf(g, groupRows(w, gi)))
+        )
+      );
+    const plain = propose(filesNamed(["Camp Week 1", "Camp Week 2"]), existing);
+    expect(plain.notes.some((n) => n.type === "sessionWeek")).toBe(false);
+    const both = propose(
+      filesNamed(["Camp Session 2 Week 1", "Camp Session 2 Week 2"]),
+      existing
+    );
+    expect(
+      asked(both, "week|")
+        .map((c) => c.id)
+        .sort()
+    ).toEqual(["week|Session 2, Week 1", "week|Session 2, Week 2"]);
+    expect(both.notes.some((n) => n.type === "sessionWeek")).toBe(false);
+  });
+});
+
+describe("review of PR 176: days of their own that clash", () => {
+  const twoOdd = (blocksOn) =>
+    [0, 1, 2].map((w) =>
+      file(`Camp - Week ${w + 1}.csv`, [
+        sheetOf(
+          `Week ${w + 1}`,
+          weekRows(w, (d) => blocksOn(w, d))
+        )
+      ])
+    );
+  const thursday = [...BLOCKS.slice(0, 3), "Activity B 1:00-2:00"];
+
+  // INGEST-4.8
+  it("INGEST-4.8: two days of their own in one week are asked: special days or a second program", () => {
+    const files = twoOdd((w, d) => {
+      if (w === 1 && d === 4) return SHORT_FRIDAY;
+      if (w === 1 && d === 3) return thursday;
+      return BLOCKS;
+    });
+    const p = propose(files);
+    const card = questionCards(p, terms, {}).find(
+      (c) => c.id === "ownDays|Week 2"
+    );
+    expect(card.title).toBe(
+      "Are Thursday and Friday of Week 2 special days, or a second program?"
+    );
+    expect(card.answer).toBeNull();
+    expect(p.reading.timetables.length).toBeGreaterThan(1);
+    const answered = propose(files, existingSetup(), {
+      "ownDays|Week 2": "special"
+    });
+    expect(answered.reading.timetables).toHaveLength(1);
+    expect(answered.timetables[0].ownDays.map((o) => o.day).sort()).toEqual([
+      "Friday",
+      "Thursday"
+    ]);
+  });
+
+  // INGEST-4.8
+  it("INGEST-4.8 counter-case: one day of its own in a week is not asked", () => {
+    const p = propose(
+      twoOdd((w, d) => (w === 1 && d === 4 ? SHORT_FRIDAY : BLOCKS))
+    );
+    expect(
+      questionCards(p, terms, {}).some((c) => c.id.startsWith("ownDays|"))
+    ).toBe(false);
+  });
+
+  // INGEST-4.9
+  it("INGEST-4.9: two programs' own Fridays in one week: which is asked, never two special days", () => {
+    const weeks = [
+      ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+      ["w2", "Week 2", "2027-07-05", "2027-07-09"],
+      ["w3", "Week 3", "2027-07-12", "2027-07-16"]
+    ].map(([Id, Name, start, end]) => ({
+      Id,
+      Name,
+      StartDate__c: start,
+      EndDate__c: end
+    }));
+    const existing = existingSetup({ weeks });
+    const late = [
+      "Period 1 9:15-10:00",
+      "Period 2 10:05-10:50",
+      "Lunch 12:15-1:00",
+      "Period 3 1:05-1:50",
+      "Period 4 1:55-2:40"
+    ];
+    const lateShort = [...late.slice(0, 3), "Activity C 1:05-2:40"];
+    const seniors = ["Senior 1", "Senior 2"];
+    const files = [0, 1, 2].flatMap((w) => [
+      file(`Juniors - Week ${w + 1}.csv`, [
+        sheetOf(
+          "J",
+          weekRows(w, (d) => (w === 1 && d === 4 ? SHORT_FRIDAY : BLOCKS))
+        )
+      ]),
+      file(`Seniors - Week ${w + 1}.csv`, [
+        sheetOf(
+          "S",
+          weekRows(w, (d) => (w === 1 && d === 4 ? lateShort : late), seniors)
+        )
+      ])
+    ]);
+    const p = propose(files, existing);
+    const clash = questionCards(p, terms, {}).find((c) =>
+      c.id.startsWith("specialDayClash|")
+    );
+    expect(clash.id).toBe("specialDayClash|Week 2|Friday");
+    expect(planFor(p, existing, "a00000000000001AAA").specialDays).toEqual([]);
+    const program = clash.options[0].value;
+    const answered = propose(files, existing, { [clash.id]: program });
+    const saved = planFor(answered, existing, "a00000000000001AAA").specialDays;
+    expect(saved).toHaveLength(1);
+    expect(answered.unmatched.some((u) => u.why === "specialDayClash")).toBe(
+      true
+    );
   });
 });

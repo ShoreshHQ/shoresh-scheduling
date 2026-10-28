@@ -457,11 +457,12 @@ export function sheetHasContent(sheet) {
 }
 
 /**
- * Every file's pages. files: [{ name, sheets: [{ name, rows, merges }] }]. Each page knows its
+ * Every file's pages. files: [{ name, sheets: [{ name, rows, merges }] }]; options.maxWeek, the
+ * season's number of weeks (a bare "W2" is a week only up to it, INGEST-4.2). Each page knows its
  * file and where its title came from; sheets with something in them but no schedule are
  * listed in `unread`, so the director is told what was not read.
  */
-export function filesToPages(files) {
+export function filesToPages(files, options = {}) {
   const pages = [];
   const unread = [];
   for (const file of files || []) {
@@ -486,7 +487,8 @@ export function filesToPages(files) {
           section: page.title,
           sheet: sheetTitle,
           file: fileTitle,
-          fileWeek: weekInFileName(fileTitle),
+          fileWeek: weekInFileName(fileTitle, options.maxWeek),
+          maxWeek: options.maxWeek,
           severalSheets
         }
       });

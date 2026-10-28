@@ -489,6 +489,9 @@ const UNPLACED_WHY = {
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,
   dayNotRun: (t) => `its ${t.sIn("Program")} does not run that day`,
   dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
+  specialDayClash: (t) =>
+    `another ${t.sIn("Program")} has its own times that day too, and a day holds one ${t.sIn("SpecialDay")}`,
+  ownDayLeftOut: () => "that day's own times were left out for now",
   specialDayTaken: (t) =>
     `that day already has a ${t.sIn("SpecialDay")}, which is kept`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
@@ -634,6 +637,15 @@ export function importNotes(proposal, t) {
       notes.push({
         key: `specialDayTaken|${n.week}|${n.day}`,
         text: `${n.week}'s ${n.day} already has ${n.name}, so the file's ${n.day} was left out.`
+      })
+    );
+  // weeks.md INGEST-4.7: a date of numbers only, read the one way that lands in a week.
+  proposal.notes
+    .filter((n) => n.type === "dateOrder")
+    .forEach((n) =>
+      notes.push({
+        key: `dateOrder|${n.label}`,
+        text: `${n.label} is read as ${n.date}, in ${n.week}: read the other way round, it is in none of the ${t.pIn("Week")}.`
       })
     );
   // weeks.md INGEST-4.5: "Session 2" read as the season's second week.

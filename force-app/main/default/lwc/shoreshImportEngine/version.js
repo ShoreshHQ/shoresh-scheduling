@@ -16,7 +16,7 @@ import { FIELD } from "c/shoreshSchema";
 import { fixedKey } from "./items";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey, tidy } from "./text";
-import { labelDate } from "./weekLabels";
+import { labelDates } from "./weekLabels";
 import { weeksToFill } from "./weeks";
 
 // Date.getUTCDay's number for each day.
@@ -83,11 +83,8 @@ function nthWeek(weeks, label) {
   return weeks.find((_, i) => Number(numbered[i][2]) === n);
 }
 
-/** The season week whose dates hold a month and day ("Week of 7/6"), any year; else undefined. */
+/** The season week whose dates hold a month and day, any year; else undefined. */
 function weekOnDate(weeks, date) {
-  if (!date) {
-    return undefined;
-  }
   const at = (iso) => {
     const [, month, day] = String(iso || "")
       .split("-")
@@ -101,28 +98,82 @@ function weekOnDate(weeks, date) {
 }
 
 /**
+ * A "Week of" label's season week (INGEST-4.4, 4.7): { week } when its dates land in one season
+ * week, with `readAs` (the date it was read as) when a date of numbers only could be read day
+ * first too and only that reading lands; { split } when both land in different weeks (asked);
+ * null when none lands.
+ */
+function datedWeek(weeks, label) {
+  const dates = labelDates(label);
+  const landed = dates
+    .map((date) => ({ date, week: weekOnDate(weeks, date) }))
+    .filter((x) => x.week);
+  const distinct = [...new Set(landed.map((x) => x.week))];
+  if (distinct.length > 1) {
+    return { split: true };
+  }
+  if (!distinct.length) {
+    return null;
+  }
+  return {
+    week: distinct[0],
+    readAs: dates.length > 1 ? landed[0].date : null
+  };
+}
+
+const MONTH_NAMES =
+  "January February March April May June July August September October November December".split(
+    " "
+  );
+
+/** The week a label goes to without asking, and the note it gives (or null). */
+function sureWeek(weeks, label) {
+  const byName = weeks.find((w) => looseKey(w.Name) === looseKey(label));
+  if (byName) {
+    return { week: byName };
+  }
+  const dated = datedWeek(weeks, label);
+  if (dated && dated.split) {
+    return null;
+  }
+  if (dated) {
+    const note = dated.readAs && {
+      type: "dateOrder",
+      label,
+      week: dated.week.Name,
+      date: `${MONTH_NAMES[dated.readAs.month - 1]} ${dated.readAs.day}`
+    };
+    return { week: dated.week, note };
+  }
+  const bySession = nthWeek(weeks, label);
+  return bySession
+    ? {
+        week: bySession,
+        note: { type: "sessionWeek", label, week: bySession.Name }
+      }
+    : null;
+}
+
+/**
  * The season week each week of the files goes to: sure when the files and the season name the
- * same week ("Week 2"), a date in one of its weeks ("Week of 7/6", INGEST-4.4), or both have just one; otherwise asked (by the week's name, never its
- * record Id). Returns Map(label -> week record, or null for none) and the questions.
+ * same week ("Week 2"), a date in one of its weeks ("Week of 7/6", INGEST-4.4 and 4.7), a
+ * session of numbered weeks (INGEST-4.5), or both have just one; otherwise asked (by the week's
+ * name, never its record Id). Returns Map(label -> week record, or null for none), the
+ * questions, and the notes of what was read without asking.
  */
 function mapWeeks(labels, weeks, answers) {
   const result = new Map();
   const asks = [];
   const notes = [];
   for (const label of labels) {
-    const bySession = nthWeek(weeks, label);
-    if (bySession) {
-      notes.push({ type: "sessionWeek", label, week: bySession.Name });
-    }
-    const named =
-      label &&
-      (weeks.find((w) => looseKey(w.Name) === looseKey(label)) ||
-        weekOnDate(weeks, labelDate(label)) ||
-        bySession);
+    const sure = label && weeks.length ? sureWeek(weeks, label) : null;
     if (weeks.length === 0) {
       result.set(label, null);
-    } else if (named) {
-      result.set(label, named);
+    } else if (sure) {
+      result.set(label, sure.week);
+      if (sure.note) {
+        notes.push(sure.note);
+      }
     } else if (weeks.length === 1 && labels.length === 1) {
       result.set(label, weeks[0]);
     } else {
@@ -288,9 +339,13 @@ function versionFor(t, week, label, context) {
   for (const day of WEEKDAYS.filter((d) => t.days.includes(d))) {
     const onDay = here.filter((p) => p.day === day);
     const date = dateIn(week, day);
-    const taken =
-      date && isOwnDay(t, label, day) && takenBy(context, week, day);
-    if (taken) {
+    const own = date && ownDayOf(t, label, day);
+    const taken = own && takenBy(context, week, day);
+    if (own && own.leftOut) {
+      onDay.forEach((p) =>
+        context.unmatched.push({ ...p, why: "ownDayLeftOut" })
+      );
+    } else if (taken) {
       // The director's special day on that day wins (INGEST-4.6): the file's day is left out.
       context.notes.push({
         type: "specialDayTaken",
@@ -301,10 +356,12 @@ function versionFor(t, week, label, context) {
       onDay.forEach((p) =>
         context.unmatched.push({ ...p, why: "specialDayTaken" })
       );
-    } else if (date && isOwnDay(t, label, day)) {
+    } else if (own) {
       context.specialDays.push(
         specialDayFor(t, week, day, label, {
-          grid: dayGrid(t, groups, onDay, context, true)
+          grid: dayGrid(t, groups, onDay, context, true),
+          program: t.name,
+          cells: onDay
         })
       );
     } else if (!date) {
@@ -330,6 +387,46 @@ function versionFor(t, week, label, context) {
   };
 }
 
+/**
+ * INGEST-4.9: two programs' own days on the same week's day: a day holds one special day, so
+ * which one is asked; until answered (or left out) neither is made, never two.
+ */
+function oneSpecialDayADay(context, answers) {
+  const byDay = new Map();
+  for (const d of context.specialDays) {
+    const at = `${d.weekId || d.weekKey}|${d.day}`;
+    byDay.set(at, [...(byDay.get(at) || []), d]);
+  }
+  const kept = [];
+  for (const list of byDay.values()) {
+    if (list.length === 1) {
+      kept.push(list[0]);
+      continue;
+    }
+    const { weekName, day } = list[0];
+    const id = `specialDayClash|${weekName}|${day}`;
+    context.asks.push({
+      id,
+      type: "specialDayClash",
+      week: weekName,
+      day,
+      options: list.map((d) => d.program)
+    });
+    const chosen = list.find((d) => d.program === answers[id]);
+    if (chosen) {
+      kept.push(chosen);
+    }
+    list
+      .filter((d) => d !== chosen)
+      .forEach((d) =>
+        d.cells.forEach((p) =>
+          context.unmatched.push({ ...p, why: "specialDayClash" })
+        )
+      );
+  }
+  return kept;
+}
+
 /** The name of the special day the camp already has on a season week's day, or null. */
 function takenBy(context, week, day) {
   const special = (context.existing && context.existing.special) || {};
@@ -341,8 +438,8 @@ function takenBy(context, week, day) {
   return item ? item.Name : null;
 }
 
-function isOwnDay(t, label, day) {
-  return (t.ownDays || []).some((o) => o.week === label && o.day === day);
+function ownDayOf(t, label, day) {
+  return (t.ownDays || []).find((o) => o.week === label && o.day === day);
 }
 
 /** A week's day with its own blocks, saved as a special day on it (INGEST-4.3). */
@@ -350,6 +447,7 @@ function specialDayFor(t, week, day, label, extra) {
   return {
     key: `SpecialDay:${t.key}|${label}|${day}`,
     name: `${week.Name} ${day}`.slice(0, 80),
+    weekName: week.Name,
     label,
     day,
     weekId: week.filled ? null : week.Id,
@@ -422,6 +520,7 @@ export function versionsFor(proposal, input) {
     unmatched: [],
     specialDays: [],
     notes: [],
+    asks: [],
     name: versionName((input.files || []).map((f) => f.name))
   };
   context.unmatched.push(
@@ -460,12 +559,13 @@ export function versionsFor(proposal, input) {
       }
     }
   }
+  const specialDays = oneSpecialDayADay(context, answers);
   return {
     versions,
-    specialDays: context.specialDays,
+    specialDays,
     notes: [...mapped.notes, ...context.notes],
     unmatched: context.unmatched,
-    asks: mapped.asks,
+    asks: [...mapped.asks, ...context.asks],
     noWeeks: weeks.length === 0,
     // Only when last year's week is kept in one of them.
     fillWeeks: [...versions, ...context.specialDays].some((v) => v.weekKey)

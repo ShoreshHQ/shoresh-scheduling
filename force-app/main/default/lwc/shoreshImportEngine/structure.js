@@ -7,6 +7,7 @@
  * src/ingest/orderTimeBlocks.js (ordering, via text.timeRange).
  */
 import { foldName } from "./names";
+import { LEAVE_OUT } from "./reading-constants";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./text";
 
 export const CHANGE_OVER_MAX_MINUTES = 10;
@@ -198,6 +199,7 @@ function timetableShape(t, placements) {
     groups: new Set(here.map((p) => p.group)),
     cells: new Set(here.map((p) => `${p.group}|${p.week || ""}|${p.day}`)),
     weekDays: new Set(here.map((p) => `${p.week || ""}|${p.day}`)),
+    ownDays: t.ownDays || [],
     // Its regular blocks: not those of a day joined as that day's own (INGEST-4.3).
     keys: new Set(
       t.raw.map((b) => b.key).filter((k) => !(t.ownKeys || new Set()).has(k))
@@ -229,6 +231,9 @@ function ownDayShape(main, other, blockAt) {
       .map((p) => `${p.week || ""}|${p.day}`)
   );
   const weeks = [...differing].map((wd) => wd.split("|")[0]);
+  // A week with another day of its own already (INGEST-4.8): asked, never decided.
+  const already = main.ownDays.map((o) => o.week);
+  const counted = [...weeks, ...already];
   const allWeeks = new Set(
     [...main.weekDays, ...other.weekDays].map((wd) => wd.split("|")[0])
   );
@@ -237,12 +242,39 @@ function ownDayShape(main, other, blockAt) {
   const sameOtherDays = [...other.weekDays].some((wd) => !differing.has(wd));
   const shape =
     differing.size > 0 &&
-    new Set(weeks).size === weeks.length &&
     differing.size * 2 < total &&
     allWeeks.size >= 2 &&
     new Set(weeks).size < allWeeks.size &&
     (sameGroups || sameOtherDays);
-  return shape ? [...differing] : null;
+  if (!shape) {
+    return null;
+  }
+  return {
+    days: [...differing],
+    twoInAWeek: new Set(counted).size !== counted.length
+  };
+}
+
+/**
+ * INGEST-4.8: a week with two days of their own times could be two special days or a second
+ * program: asked. Unanswered (or "A second program") the days stay a program of their own, as
+ * before; "Special days" joins them; "Leave it out" joins them, left out.
+ */
+function twoDaysAsk(main, found, context) {
+  const all = [
+    ...main.ownDays,
+    ...found.days.map((wd) => {
+      const [week, day] = wd.split("|");
+      return { week, day };
+    })
+  ];
+  const week = found.days[0].split("|")[0];
+  const days = all.filter((o) => o.week === week).map((o) => o.day);
+  const id = `ownDays|${week}`;
+  if (!context.asks.some((a) => a.id === id)) {
+    context.asks.push({ id, type: "ownDays", week, days });
+  }
+  return context.answers[id];
 }
 
 /**
@@ -250,7 +282,7 @@ function ownDayShape(main, other, blockAt) {
  * the program whose groups they share, instead of reading as a second program (INGEST-4.3).
  * Changes `timetables` in place; returns a note for each such day.
  */
-function weekDayShapes(timetables, placements, blockAt) {
+function weekDayShapes(timetables, placements, blockAt, context) {
   const notes = [];
   let merged = true;
   while (merged) {
@@ -259,13 +291,19 @@ function weekDayShapes(timetables, placements, blockAt) {
       for (let j = 0; j < timetables.length && !merged; j++) {
         const main = timetables[i];
         const other = timetables[j];
-        const days =
+        const found =
           i !== j &&
           ownDayShape(
             timetableShape(main, placements),
             timetableShape(other, placements),
             blockAt
           );
+        const answer =
+          found && found.twoInAWeek
+            ? twoDaysAsk(timetableShape(main, placements), found, context)
+            : "special";
+        const join = found && (answer === "special" || answer === LEAVE_OUT);
+        const days = join ? found.days : null;
         if (days) {
           const regular = timetableShape(main, placements).keys;
           main.ownKeys = new Set([
@@ -277,8 +315,13 @@ function weekDayShapes(timetables, placements, blockAt) {
           timetables.splice(j, 1);
           days.forEach((wd) => {
             const [week, day] = wd.split("|");
-            main.ownDays = [...(main.ownDays || []), { week, day }];
-            notes.push({ type: "weekDay", week, day });
+            main.ownDays = [
+              ...(main.ownDays || []),
+              { week, day, leftOut: answer === LEAVE_OUT }
+            ];
+            if (answer !== LEAVE_OUT) {
+              notes.push({ type: "weekDay", week, day });
+            }
           });
           merged = true;
         }
@@ -311,7 +354,7 @@ export function buildTimetables(pages, placements, answers = {}) {
     target.raw.push(...blocks);
     timetableOfPage.set(pageIndex, target.index);
   });
-  const notes = weekDayShapes(timetables, placements, blockAt);
+  const notes = weekDayShapes(timetables, placements, blockAt, context);
   timetables.forEach((t, index) => {
     t.index = index;
     t.pages.forEach((page) => timetableOfPage.set(page, index));

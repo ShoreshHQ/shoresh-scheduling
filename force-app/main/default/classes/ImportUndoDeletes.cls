@@ -6,8 +6,8 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
-    // A week's day the import made a special day (INGEST-4.3): its plan and its day first.
-    'PlanPart',
+    // A week's day the import made a special day (INGEST-4.3): its day first; its plan goes
+    // with it (SpecialItemTriggerHandler).
     'SpecialDate',
     'SpecialDay',
     // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
@@ -33,6 +33,8 @@ public with sharing class ImportUndoDeletes {
   };
   // What a week off or a who row belongs to: decided before those rows go.
   private static final Set<String> ITEMS = new Set<String>{
+    // Decided before its day goes: a special day kept keeps its day.
+    'SpecialDay',
     'RecurringActivity',
     'FixedActivity',
     'Activity',
@@ -58,10 +60,9 @@ public with sharing class ImportUndoDeletes {
       Schedule__c.Week__c,
       SpecialDate__c.Week__c
     },
-    // A special day put on another day, or its plan saved again, by hand: kept.
+    // A special day put on another day by hand: kept.
     'SpecialDay' => new List<Schema.SObjectField>{
-      SpecialDate__c.SpecialDay__c,
-      PlanPart__c.SpecialDay__c
+      SpecialDate__c.SpecialDay__c
     },
     'TimeBlock' => new List<Schema.SObjectField>{
       FixedActivity__c.LastTimeBlock__c,
@@ -133,7 +134,12 @@ public with sharing class ImportUndoDeletes {
       List<SObject> toDelete = decided.containsKey(term)
         ? decided.get(term)
         : decide(term, (Map<String, Object>) created.get(term));
-      deleteAll(withoutKeptItems(term, toDelete));
+      deleteAll(
+        withoutKeptItems(
+          term,
+          ImportUndoSpecialDays.withoutKept(term, toDelete, keptIds)
+        )
+      );
     }
   }
 
@@ -223,6 +229,8 @@ public with sharing class ImportUndoDeletes {
       rows.keySet()
     );
     Set<Id> holding = holdingOthers(term, now.keySet());
+    // A special day whose schedule the director saved since holds their work: kept.
+    holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
     List<SObject> toDelete = new List<SObject>();
     for (SObject record : now.values()) {
       List<Object> row = rows.get(record.Id);

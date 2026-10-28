@@ -134,16 +134,16 @@ export function pageWeek(page) {
   // name is turned into a group's name.
   return (
     page.week ||
-    weekInTitle(n.section) ||
-    weekInTitle(n.sheet) ||
+    weekInTitle(n.section, { maxWeek: n.maxWeek }) ||
+    weekInTitle(n.sheet, { maxWeek: n.maxWeek }) ||
     n.fileWeek ||
-    weekInTitle(n.file) ||
+    weekInTitle(n.file, { maxWeek: n.maxWeek, bareDates: true }) ||
     ""
   );
 }
 
-function isOnlyDayOrWeek(text) {
-  const rest = withoutWeek(text)
+function isOnlyDayOrWeek(text, maxWeek) {
+  const rest = withoutWeek(text, { maxWeek })
     .split(/[^A-Za-z]+/)
     .filter((w) => w && !dayOf(w));
   return rest.length === 0;
@@ -158,7 +158,9 @@ export function pageName(page) {
     n.file,
     n.sheet
   ];
-  return tidy(candidates.find((c) => c && !isOnlyDayOrWeek(c)) || n.file || "");
+  return tidy(
+    candidates.find((c) => c && !isOnlyDayOrWeek(c, n.maxWeek)) || n.file || ""
+  );
 }
 
 // ---------- what each cell says ----------

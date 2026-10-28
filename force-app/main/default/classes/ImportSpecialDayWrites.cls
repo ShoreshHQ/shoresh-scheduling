@@ -2,7 +2,9 @@
  * Saves one week's day with its own time blocks (docs/import/weeks.md INGEST-4.3, a short Friday
  * in week 2) as a special day (ADR 0014): the special day, its plan with the file's own time
  * blocks and the file's cells (the groups and activities by the Ids just saved), and its place on
- * that week's day. The program's own time blocks are not touched. All three are kept for Undo.
+ * that week's day. The program's own time blocks are not touched. The special day and its day
+ * are kept for Undo; its plan goes with it. All or nothing: a plan bigger than one schedule
+ * holds, or a day that has a special day the screen did not know about, refuses the import.
  */
 public with sharing class ImportSpecialDayWrites {
   private ImportPlan plan;
@@ -14,14 +16,20 @@ public with sharing class ImportSpecialDayWrites {
   }
 
   public void run() {
-    ImportVersionWrites versions = new ImportVersionWrites(plan, writer);
-    List<ImportPlan.Entry> entries = free(
-      plan.entries('specialDays'),
-      versions
-    );
+    List<ImportPlan.Entry> entries = plan.entries('specialDays');
     if (entries.isEmpty()) {
       return;
     }
+    ImportVersionWrites versions = new ImportVersionWrites(plan, writer);
+    List<ScheduleGrid> grids = new List<ScheduleGrid>();
+    List<Id> weekIds = new List<Id>();
+    for (ImportPlan.Entry entry : entries) {
+      ScheduleGrid grid = versions.specialDayGrid(entry.valuesOf('grid'));
+      SpecialImportCheck.checkSize(grid.blocks.size(), grid.groups.size());
+      grids.add(grid);
+      weekIds.add(versions.weekOf(entry));
+    }
+    checkFree(entries, weekIds);
     List<SpecialDay__c> days = new List<SpecialDay__c>();
     for (ImportPlan.Entry entry : entries) {
       days.add(
@@ -40,55 +48,67 @@ public with sharing class ImportSpecialDayWrites {
         new SpecialDate__c(
           Season__c = plan.seasonId,
           SpecialDay__c = days[i].Id,
-          Week__c = versions.weekOf(entries[i]),
+          Week__c = weekIds[i],
           Day__c = entries[i].text('day')
         )
       );
-      ScheduleGrid grid = versions.specialDayGrid(entries[i].valuesOf('grid'));
-      List<String> texts = ScheduleGridParts.split(grid);
-      for (Integer p = 0; p < texts.size(); p++) {
-        parts.add(
-          new PlanPart__c(
-            Season__c = plan.seasonId,
-            SpecialDay__c = days[i].Id,
-            Part__c = p + 1,
-            Plan__c = texts[p],
-            GridFormatVersion__c = ScheduleGridLocks.formatOf(grid),
-            Revision__c = 1
-          )
-        );
-      }
+      parts.addAll(partsOf(days[i].Id, grids[i]));
     }
     writer.saveTracked('SpecialDate', dates);
-    writer.saveTracked('PlanPart', parts);
+    UserModeWrites.save(parts);
+  }
+
+  private List<PlanPart__c> partsOf(Id dayId, ScheduleGrid grid) {
+    List<PlanPart__c> parts = new List<PlanPart__c>();
+    List<String> texts = ScheduleGridParts.split(grid);
+    for (Integer p = 0; p < texts.size(); p++) {
+      parts.add(
+        new PlanPart__c(
+          Season__c = plan.seasonId,
+          SpecialDay__c = dayId,
+          Part__c = p + 1,
+          Plan__c = texts[p],
+          GridFormatVersion__c = ScheduleGridLocks.formatOf(grid),
+          // Revision 1 is the import's: a later save is the director's (Undo keeps it).
+          Revision__c = 1
+        )
+      );
+    }
+    return parts;
   }
 
   /**
-   * The entries whose week's day holds no special day yet (INGEST-4.6): the director's special
-   * day on that day wins, and the file's day is left out (the screen said so before saving).
+   * Refuses the import when one of its days, or two of its entries, would hold two special days
+   * (INGEST-4.6, 4.9): the screen leaves out a day the camp's special day already has, so one
+   * found here was added since the files were read.
    */
-  private List<ImportPlan.Entry> free(
-    List<ImportPlan.Entry> entries,
-    ImportVersionWrites versions
-  ) {
-    if (entries.isEmpty()) {
-      return entries;
-    }
-    Set<String> taken = new Set<String>();
+  private void checkFree(List<ImportPlan.Entry> entries, List<Id> weekIds) {
+    Map<String, String> taken = new Map<String, String>();
     for (SpecialDate__c row : [
-      SELECT Week__c, Day__c
+      SELECT Week__c, Day__c, SpecialDay__r.Name
       FROM SpecialDate__c
       WHERE Season__c = :plan.seasonId AND SpecialDay__c != NULL
       WITH USER_MODE
     ]) {
-      taken.add(row.Week__c + '|' + row.Day__c);
+      taken.put(row.Week__c + '|' + row.Day__c, row.SpecialDay__r.Name);
     }
-    List<ImportPlan.Entry> result = new List<ImportPlan.Entry>();
-    for (ImportPlan.Entry entry : entries) {
-      if (!taken.contains(versions.weekOf(entry) + '|' + entry.text('day'))) {
-        result.add(entry);
+    Set<String> seen = new Set<String>();
+    for (Integer i = 0; i < entries.size(); i++) {
+      String day = entries[i].text('day');
+      String at = weekIds[i] + '|' + day;
+      if (taken.containsKey(at)) {
+        throw new ShoreshException(
+          day +
+            ' of that week now has ' +
+            taken.get(at) +
+            ', added after these files were read. Nothing was saved: read the files again to see it, then save.'
+        );
+      }
+      if (!seen.add(at)) {
+        throw new ShoreshException(
+          'Two of the files\' days would be the same day\'s special day. Nothing was saved: answer which one it is, then save.'
+        );
       }
     }
-    return result;
   }
 }

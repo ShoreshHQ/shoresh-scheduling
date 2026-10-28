@@ -12,16 +12,21 @@ public with sharing class SpecialImportCheck {
     if (!hasBoth(imported)) {
       throw new ShoreshException('No schedule could be read out of that file.');
     }
-    if (
-      imported.blocks.size() > MAX_BLOCKS ||
-      imported.columns.size() > MAX_COLUMNS
-    ) {
+    checkSize(imported.blocks.size(), imported.columns.size());
+    checkTimes(imported.blocks);
+    checkColumns(imported);
+  }
+
+  /**
+   * Refuses more time blocks or columns than one schedule holds (also for Import last year's
+   * special days, INGEST-4.3).
+   */
+  public static void checkSize(Integer blocks, Integer columns) {
+    if (blocks > MAX_BLOCKS || columns > MAX_COLUMNS) {
       throw new ShoreshException(
         'That file is too big to be one schedule. Check it is the right file.'
       );
     }
-    checkTimes(imported.blocks);
-    checkColumns(imported);
   }
 
   /** Time blocks and columns, at least one of each. */

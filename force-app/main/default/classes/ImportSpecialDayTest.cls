@@ -150,14 +150,29 @@ private class ImportSpecialDayTest {
     }
   }
 
+  /** A season with one week, and the import's plan for it. */
+  private static Season__c season() {
+    Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+    ShoreshTestData.weeks(season.Id, 1);
+    return season;
+  }
+
+  private static String refusal(Map<String, Object> plan) {
+    try {
+      ImportController.saveSetup(JSON.serialize(plan));
+    } catch (Exception e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
   // INGEST-4.6
   @IsTest
-  static void theDirectorsSpecialDayOnThatDayWins() {
+  static void aSpecialDayAddedSinceTheFilesWereReadRefusesTheWholeImport() {
     User scheduler = ShoreshTestData.scheduler();
     System.runAs(scheduler) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
-      ShoreshTestData.weeks(season.Id, 1);
+      Season__c season = season();
       SpecialDay__c colorWar = new SpecialDay__c(
         Season__c = season.Id,
         Name = 'Color War'
@@ -165,21 +180,92 @@ private class ImportSpecialDayTest {
       insert as user colorWar;
       SpecialDates.place(colorWar.Id, weekOf(season.Id).Id, 'Friday');
       Test.startTest();
-      ImportSetupSaves.Result result = ImportController.saveSetup(
-        JSON.serialize(planWithSpecialDay(season))
-      );
+      String message = refusal(planWithSpecialDay(season));
       Test.stopTest();
-      Assert.isNull(result.added.get('SpecialDay'));
-      List<SpecialDate__c> onFriday = [
-        SELECT SpecialDay__r.Name
-        FROM SpecialDate__c
-        WHERE Season__c = :season.Id
-      ];
-      Assert.areEqual(1, onFriday.size());
-      Assert.areEqual('Color War', onFriday[0].SpecialDay__r.Name);
+      Assert.isNotNull(message, 'the import is refused, not cut short');
+      Assert.isTrue(message.contains('Color War'), message);
       Assert.areEqual(
         1,
         [SELECT COUNT() FROM SpecialDay__c WHERE Season__c = :season.Id]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Program__c WHERE Season__c = :season.Id],
+        'nothing of the import is saved'
+      );
+    }
+  }
+
+  // INGEST-4.3
+  @IsTest
+  static void aSpecialDayBiggerThanOneScheduleRefusesTheWholeImport() {
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      Season__c season = season();
+      Map<String, Object> plan = planWithSpecialDay(season);
+      Map<String, Object> entry = (Map<String, Object>) ((List<Object>) plan.get(
+        'specialDays'
+      ))[0];
+      Map<String, Object> grid = (Map<String, Object>) entry.get('grid');
+      List<Object> blocks = new List<Object>();
+      for (Integer i = 0; i < 41; i++) {
+        blocks.add(
+          new List<Object>{
+            'b' + (i + 1),
+            'Block ' + (i + 1),
+            String.valueOf(i / 4 + 6).leftPad(2, '0') +
+            ':' +
+            String.valueOf(Math.mod(i, 4) * 15).leftPad(2, '0'),
+            String.valueOf(i / 4 + 6).leftPad(2, '0') +
+            ':' +
+            String.valueOf(Math.mod(i, 4) * 15 + 10).leftPad(2, '0')
+          }
+        );
+      }
+      grid.put('b', blocks);
+      Test.startTest();
+      String message = refusal(plan);
+      Test.stopTest();
+      Assert.isTrue(message.contains('too big'), message);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Program__c WHERE Season__c = :season.Id]
+      );
+    }
+  }
+
+  // INGEST-4.3
+  @IsTest
+  static void undoKeepsASpecialDayWhosePlanTheDirectorSavedSince() {
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      Season__c season = season();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(planWithSpecialDay(season))
+      );
+      SpecialDay__c day = [
+        SELECT Id
+        FROM SpecialDay__c
+        WHERE Season__c = :season.Id
+      ];
+      SpecialPlans.Plan plan = SpecialPlans.read(day.Id);
+      plan.grid.rows[0][0] = '';
+      SpecialPlans.write(day.Id, plan.grid, plan.revision);
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.isTrue(
+        undone.keptInUse.contains('Week 1 Friday'),
+        String.valueOf(undone.keptInUse)
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM SpecialDay__c WHERE Season__c = :season.Id]
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM SpecialDate__c WHERE SpecialDay__c = :day.Id],
+        'it stays on its day'
       );
     }
   }
