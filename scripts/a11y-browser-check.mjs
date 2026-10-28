@@ -4984,7 +4984,15 @@ async function versions(S, openScreen) {
     await press("Enter", 600);
     // Past every version in the list: three stops each, and the week keeps the schedules each
     // run published (kept history), so the list grows run after run.
-    if (!(await tabTo((f) => f.dataId === "save-name", { max: 400 }))) {
+    // The list grows run after run (kept history): the limit is its own focusable stops, counted.
+    const listStops = await shown(
+      "c-shoresh-versions button, c-shoresh-versions input"
+    ).count();
+    if (
+      !(await tabTo((f) => f.dataId === "save-name", {
+        max: Math.max(400, listStops + 100)
+      }))
+    ) {
       throw new Error("Name current version… not reached.");
     }
     const name = `Keyboard check ${new Date().toISOString().slice(11, 19)}`;
