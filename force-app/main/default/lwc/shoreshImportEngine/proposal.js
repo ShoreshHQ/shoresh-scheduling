@@ -13,6 +13,7 @@ import {
   setTimeRecords,
   usablePlacements
 } from "./items";
+import { readAvailability } from "./availability";
 import { deletedAs, deletionsIn } from "./deleted";
 import { electiveRecords, readElectives } from "./electives";
 import { missingItems } from "./missing";
@@ -476,6 +477,13 @@ export function buildProposal(input) {
     programs.timetables,
     people.groups
   );
+  // INGEST-2.9: a new group here only for the morning (or the afternoon).
+  const availability = readAvailability(
+    usable,
+    programs.timetables,
+    people.groups,
+    answers
+  );
   const camp = campItems(input.existing);
   const deletions = deletionsIn(answers);
   // Electives first (slice E9): an elective set is not a fixed, recurring or activity name.
@@ -507,6 +515,7 @@ export function buildProposal(input) {
     updates: { fixed: [], recurring: [], activities: [] },
     specialDays: withOwnDays(noted.specialDays, programs.timetables),
     divisionOf: people.divisionOf,
+    availability,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
     noted: noted.kinds,
     similar: unansweredSimilar(reading.pairs, answers)
@@ -546,6 +555,7 @@ export function buildProposal(input) {
     notedKinds: noted.kinds,
     timetables: programs.timetables,
     groups: people.groups,
+    availability,
     divisions: people.divisions,
     fixed: setTime.filter((r) => r.kind === "fixed"),
     recurring: setTime.filter((r) => r.kind === "recurring"),

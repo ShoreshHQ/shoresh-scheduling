@@ -119,6 +119,27 @@ Each rule is clue, meaning, example, test.
    Test: `reading.test.js` "INGEST-2.8: …" (counter-case: alone in its file it is still
    unsure). Code: `reading.js` `sameLayoutPerFile`.
 
+9. **A group here only for the morning comes in Morning only** (Greg, 2026-10-28: "they are a
+   morning only group").
+   Clue: a new group (not one the camp has, not left out) whose cells are all in the morning, on
+   two days or more, in a timetable that has a morning and an afternoon: every afternoon cell
+   blank on every day it is in the files. The morning and afternoon are the time blocks' part of
+   the day, as the engine reads it (`shoreshEngine/setup.js` `atCamp`): the camp's own for a
+   block it has, else the import's (a block starting before noon is in the morning, `plan.js`).
+   The mirror: all its cells in the afternoon.
+   Meaning: the group comes in Morning only (Afternoon only), the same choice as on the Groups
+   screen, and is listed under "Shoresh read these as" with All day (review.md rule 9); nothing
+   is asked. Its blank half of the day is not a gap: it is away then, so an item every group
+   there has in one afternoon slot is still read as fixed (classification rule 1).
+   Example: the Minnows go home after a morning Lunch; their cells from noon on are blank every
+   day: the Minnows' bunks come in Morning only.
+   Test: `availability.test.js` "INGEST-2.9: …" (Morning only; Afternoon only; the blanks are
+   not gaps). Counter-cases ("INGEST-2.9 counter-case: …"): blank on some afternoons only, or in
+   the files one day only, changes nothing; a group at a Lunch at noon or later and blank after
+   it stays all day, since Morning only would drop its Lunch (known limit below). Apex
+   `ImportSetupSavesTest` `ingest29AGroupHereForTheMorningComesInMorningOnly`. Code:
+   `availability.js`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
@@ -138,6 +159,11 @@ Each rule is clue, meaning, example, test.
   named by the note (the last title line). Every page of a by-activity file whose afternoon
   blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
   three camps).
+
+- Rule 9 needs every cell a group has to be on its side of noon: a division that eats a Lunch at
+  12:15 and then goes home stays all day (its afternoon cells are blank, not a gap question), so
+  the director sets it on the Groups screen (level-3 corpus: 26 of 114 half-day camps). Rule 9
+  reads only new groups: a group the camp has keeps its own choice.
 
 ## What stays the same
 

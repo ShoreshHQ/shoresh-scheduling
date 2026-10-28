@@ -164,7 +164,7 @@ const CEILING_3 = {
   perfectAtLeast: 79,
   errors: 0,
   questions: { layout: 1 },
-  wrong: { groups: 23, fixed: 2, activities: 21, cells: 406 }
+  wrong: { groups: 23, fixed: 2, activities: 21, availability: 2, cells: 406 }
 };
 
 describe("Import last year on hard made-up camps (level 3)", () => {

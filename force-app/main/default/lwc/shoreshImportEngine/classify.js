@@ -381,6 +381,10 @@ function tallySlot(facts, week, patterns, slot, byGroup) {
   const has = holdersAt(patterns, slot);
   let broken = false;
   for (const group of groupsIn(facts, week)) {
+    // INGEST-2.9: a group here only for the other part of the day is away in this slot.
+    if (facts.atCamp && !facts.atCamp(group, slot.block)) {
+      continue;
+    }
     const t = byGroup.get(group) || { held: 0, gaps: 0 };
     byGroup.set(group, t);
     for (const day of facts.daysByWeek.get(week) || []) {
@@ -546,7 +550,8 @@ function verdictOf(sorted, facts) {
  * { groups: [names], groupsByWeek: Map(week -> groups), divisionOf: Map(group -> division),
  * daysByWeek: Map(week -> days it runs, special days left out), weeks: [..], busy:
  * Map("week|group|day|block" -> name) of what is scheduled there, noted and off cells left out,
- * present: Set("week|group|day") of the days each group has anything in busy }.
+ * present: Set("week|group|day") of the days each group has anything in busy, atCamp: (group,
+ * block) -> whether the group is here then, by its part of the day (INGEST-2.9) }.
  * Returns { verdict: "fixed" | "recurring" | "activity" | "ask", patterns (the set-time ones,
  * from the first week: one per fixed slot, or the recurring patterns), strays (placements outside
  * them), fixedShaped, reason }.

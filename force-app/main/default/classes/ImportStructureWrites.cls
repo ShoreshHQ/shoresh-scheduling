@@ -103,7 +103,10 @@ public with sharing class ImportStructureWrites {
           ? new Group__c(
               Division__c = keys.of(entry.text('divisionKey')),
               Name = entry.text('name'),
-              Availability__c = 'AllDay',
+              // INGEST-2.9: a group the file shows here for part of the day.
+              Availability__c = entry.has('availability')
+                ? entry.text('availability')
+                : 'AllDay',
               SortOrder__c = entry.whole('sortOrder')
             )
           : new Group__c(

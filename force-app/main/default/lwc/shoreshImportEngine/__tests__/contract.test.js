@@ -101,6 +101,21 @@ function placesPlan() {
   );
 }
 
+/** A new camp whose Bunk 2 is here only for the morning (INGEST-2.9): a group's availability. */
+function halfDayPlan() {
+  const rows = [
+    ["Time", "Bunk 1", "Bunk 2"],
+    ["9:00-9:45", "Swim", "Art"],
+    ["12:00-12:45", "Art", ""]
+  ];
+  const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+  return planFor(
+    buildProposal({ files, existing: null, terms, answers: {} }),
+    null,
+    "s"
+  );
+}
+
 describe("the save request matches what the server reads", () => {
   const plan = fullPlan();
 
@@ -128,7 +143,7 @@ describe("the save request matches what the server reads", () => {
     })
   };
   const sent = new Set(
-    [plan, placesPlan(), learning].flatMap((one) =>
+    [plan, placesPlan(), halfDayPlan(), learning].flatMap((one) =>
       Object.values(one)
         .filter(Array.isArray)
         .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))

@@ -60,7 +60,8 @@ no divisions shown (2 "mostly at a set time" questions, one name read as recurri
 - **Wrong reads**, compared with the truth, each missing or extra item counting one: programs,
   days, time blocks (by start and end), divisions (only where the file shows them), groups,
   fixed events (name and time), recurring activities (by name; only the "divisions travel
-  together" camps and Greg's camp have them), activities, and grid
+  together" camps and Greg's camp have them), activities, groups here part of the day (INGEST-2.9;
+  only level 3's half days have them), and grid
   cells (group, day, time block: the right activity).
 
 ## Greg's camp
@@ -145,7 +146,9 @@ eight layouts, 40 each) with two or three of the untidy things almost every real
 - **trip**: one division (or the whole camp) on a Field Trip one afternoon, merged down the
   afternoon in Excel. Trips are noted, not set up: not an activity, but kept in the imported week.
 - **halfDay**: the youngest division goes home after Lunch; its afternoon cells are blank. It
-  stays in the camp's one program (see the open question below).
+  stays in the camp's one program (see the open question below). Its groups are Morning only
+  (INGEST-2.9) when all they have is before noon and the day has blocks from noon; a Lunch at
+  noon or later keeps them all day (26 of 114 camps).
 - **gaps**: a few blank cells in ordinary periods: nothing scheduled then.
 - **spelling**: a cell or two spelled otherwise ("archery", "ARCHERY", "Arts&Crafts"); the truth is
   the usual spelling (INGEST-2.2). Not in by-activity files, which write a name once.
@@ -174,6 +177,11 @@ unsure, the layout asked (unanswered they read all-camp: groups 71, activities 6
 By trait, perfect before → after: notes 52 → 145 of 146, trip 115 → 147 of 147, double 111 → 149
 of 150, gaps 106 → 142 of 143, spelling 72 → 100 of 100, halfDay 95 → 111 of 114. Levels 1 and
 2 (320 of 320 each), the travel camps (39 of 40) and Greg's camp (perfect) unchanged.
+
+Groups here part of the day scored (INGEST-2.9, 2026-10-28): 88 half-day camps expect 423 groups
+Morning only; 86 are read right. The rest are the 3 by-activity camps above, whose groups are
+misread (availability 9 wrong reads). Still 317 of 320 perfect; levels 1 and 2, the travel
+camps and Greg's camp unchanged (no group read part of the day).
 
 ## Level 5
 
