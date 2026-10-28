@@ -611,6 +611,28 @@ describe("patterns, and what Shoresh already knew", () => {
     expect(all[all.length - 1].dataset.rule).toBeDefined();
   });
 
+  // MEMO-7.8, INGEST-3.10
+  it("MEMO-7.8: lists the common camp names Shoresh already knew under each usual kind", async () => {
+    const element = await mount([]);
+    const titles = $$(element, '[data-rule="INGEST-3.10"]').map((li) =>
+      text(li, "title")
+    );
+    expect(titles).toHaveLength(3);
+    expect(titles[0]).toMatch(
+      /^Usually a fixed activity, suggested when asked: Arrival, Boker Tov, Buses, Carpool/
+    );
+    expect(titles[1]).toMatch(
+      /^Usually a recurring activity, suggested when asked: .*Shabbat/
+    );
+    expect(titles[2]).toMatch(
+      /^Usually an activity, suggested when asked: Archery/
+    );
+    expect(
+      $$(element, '[data-rule="INGEST-3.10"]').map((li) => text(li, "how"))
+    ).toEqual(titles.map(() => "Shoresh already knew this"));
+    await expect(element).toBeAccessible();
+  });
+
   // MEMO-6.7, MEMO-7.4
   it("shows each pattern's steps, the newest with its progress in counts", async () => {
     const element = await mount(lunches());
