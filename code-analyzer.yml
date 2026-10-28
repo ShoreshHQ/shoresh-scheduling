@@ -24,6 +24,10 @@ suppressions:
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
       reason: "Names which import question was answered, not a secret."
+  "main/default/objects/LearnedEvent__c/fields/QuestionKey__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Names which import question a learned event is about, not a secret."
   "main/default/objects/LocationType__c/fields/Key__c.field-meta.xml":
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1

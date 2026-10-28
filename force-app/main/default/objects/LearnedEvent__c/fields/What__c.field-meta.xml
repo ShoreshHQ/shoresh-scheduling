@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>What__c</fullName>
+    <description
+  >What happened: answered (in an import or on a setup screen), changed, forgotten, undone, or auto (filled in on its own in an import).</description>
+    <externalId>false</externalId>
+    <label>What</label>
+    <length>16</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

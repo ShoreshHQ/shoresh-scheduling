@@ -3,8 +3,9 @@
  * desktop's sidebar (navSections.js): Roots (home), then Camp, then Activities & Events, then
  * Schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
  * are equal and the order means nothing), Elective seats, and Saved versions (key "schedules").
- * Section titles are the desktop's NAV_SECTIONS titles. At the foot, What Shoresh has learned
- * (repo ADR 0021), where the desktop has its footer link. Every label is in the camp's own words.
+ * Section titles are the desktop's NAV_SECTIONS titles. At the foot, Settings, where the desktop
+ * has its footer link: it holds only What Shoresh has learned for now (repo ADR 0023, Greg
+ * 2026-10-28; the screen keeps its key, "learned"). Every label is in the camp's own words.
  * Screens not built yet are listed as coming, not hidden.
  *
  * The Schedules title is itself a doorway (wiki decision 61): it opens the season's weeks
@@ -47,7 +48,7 @@ export function screenLabels(t) {
     schedules: "Saved versions",
     scheduleWeeks: "Schedules",
     import: "Import last year",
-    learned: "What Shoresh has learned"
+    learned: "Settings"
   };
 }
 
@@ -84,7 +85,8 @@ const SECTIONS = [
     screens: ["generatedSchedule", "manualBuild", "electiveSeats", "schedules"]
   },
   // At the foot of the menu, as the desktop's sidebar footer link (Sidebar.jsx): no title.
-  { key: "learned", foot: true, screens: ["learned"] }
+  // Settings, which opens straight onto What Shoresh has learned (repo ADR 0023).
+  { key: "settings", foot: true, screens: ["learned"] }
 ];
 
 export function isComing(screen) {

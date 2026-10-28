@@ -1,6 +1,6 @@
 /**
- * The rows and groups of "What Shoresh has learned" (desktop learnedView.js buildLearnedGroups,
- * matchesQuery): pure, so the same answers always show the same screen.
+ * The rows of "What Shoresh has learned" (desktop learnedView.js, matchesQuery): pure, so the same
+ * answers always show the same screen. history.js makes them one running list.
  */
 
 import { holdsNoDivision } from "c/shoreshImportEngine";
@@ -11,7 +11,7 @@ import {
   inOrder,
   joinNames
 } from "c/shoreshPatterns";
-import { GROUPS, describe } from "./kinds";
+import { describe } from "./kinds";
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
@@ -95,6 +95,17 @@ export function speller(setup) {
   return spell;
 }
 
+/**
+ * What was learned, as a sentence where the answer is a kind (Greg 2026-10-28): "Lunch is a
+ * fixed activity", the camp's word kept as written. Other answers keep "name: answer".
+ */
+function whatLearned(kind) {
+  const answer = String(kind.answer || "");
+  return /^(A|An) /.test(answer)
+    ? `${kind.name} is ${answer.charAt(0).toLowerCase()}${answer.slice(1)}`
+    : `${kind.name}: ${answer}`;
+}
+
 /** One answer from the server ({ id, question, answer, byYou, byName, answeredOn }) as a row. */
 export function learnedRow(row, t, spell) {
   const kind = describe(row.question, row.answer, t, spell);
@@ -104,7 +115,7 @@ export function learnedRow(row, t, spell) {
     answer: row.answer,
     group: kind.group,
     name: kind.name,
-    title: `${kind.name}: ${kind.answer}`,
+    title: whatLearned(kind),
     who: whoLine(row, kind.group),
     choices: kind.choices,
     forgotten: kind.forgotten,
@@ -209,6 +220,26 @@ function whoOf(row) {
   return row.byYou ? "you" : row.byName || "a former user";
 }
 
+const KIND_TERM = {
+  fixed: "FixedActivity",
+  recurring: "RecurringActivity",
+  activity: "Activity"
+};
+
+/**
+ * A pattern as a sentence when its answers say a kind: "Lunch 1, Lunch 2 and Lunch 3 are
+ * recurring activities" (camp words, plural); else "what the answers say: names".
+ */
+function patternTitle(p, names, t) {
+  const term = KIND_TERM[p.verdict];
+  if ((p.template === "numbered" || p.template === "meal") && term) {
+    return names.length > 1
+      ? `${joinNames(names)} are ${t.pIn(term)}`
+      : `${joinNames(names)} is ${article(t.sIn(term))}`;
+  }
+  return `${verdictWords(p.template, p.verdict, t)}: ${joinNames(names)}`;
+}
+
 /** One pattern (c/shoreshPatterns patternsOf) as a row of its group. */
 export function patternRow(p, t) {
   // A pattern whose latest import disagrees has no supporters: it names what was answered.
@@ -226,7 +257,7 @@ export function patternRow(p, t) {
     template: p.template,
     antecedent: p.antecedent,
     group: PATTERN_GROUP[p.template],
-    title: `${verdictWords(p.template, p.verdict, t)}: ${joinNames(names)}`,
+    title: patternTitle(p, names, t),
     who: `Answered by ${joinNames(authors)}, latest ${shortDate(latest)}`,
     progress: progressLine(p),
     confidence: `${p.agree} agree${disagree}`,
@@ -238,32 +269,17 @@ export function patternRow(p, t) {
   };
 }
 
-/**
- * The groups that have rows, in the desktop's order, each { key, label, knew (what Shoresh
- * knew before: its own rules), patterns, rows (answers, newest first, the server's order kept
- * for answers of one day) }.
- */
-export function learnedGroups(rows, patterns = [], knew = []) {
-  return GROUPS.map((g) => ({
-    ...g,
-    knew: knew.filter((r) => r.group === g.key),
-    patterns: patterns.filter((r) => r.group === g.key),
-    rows: rows
-      .filter((r) => r.group === g.key)
-      .map((r, i) => ({ r, i }))
-      .sort(
-        (x, y) =>
-          (x.r.answeredOn < y.r.answeredOn) -
-            (x.r.answeredOn > y.r.answeredOn) || x.i - y.i
-      )
-      .map((x) => x.r)
-  })).filter((g) => g.rows.length + g.patterns.length + g.knew.length > 0);
-}
-
-/** Whether a row matches what was typed in search: its title or who answered it. */
+/** Whether a line matches what was typed in search: what, how, when, or its mark. */
 export function matches(row, query) {
   const q = String(query || "")
     .trim()
     .toLowerCase();
-  return !q || [row.title, row.who].some((s) => s.toLowerCase().includes(q));
+  return (
+    !q ||
+    [row.title, row.how, row.when, row.flag].some((s) =>
+      String(s || "")
+        .toLowerCase()
+        .includes(q)
+    )
+  );
 }

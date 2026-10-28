@@ -2,13 +2,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { mergesFrom, similarPairs } from "c/shoreshImportEngine";
 import { describe as kindOf, keyParts } from "../kinds";
-import {
-  learnedGroups,
-  learnedRow,
-  matches,
-  shortDate,
-  speller
-} from "../view";
+import { learnedRow, matches, shortDate, speller } from "../view";
 
 const t = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -30,8 +24,8 @@ const row = (question, answer, extra = {}) =>
 
 describe("each remembered question in camp words", () => {
   it.each([
-    ["kind|Lunch", "fixed", "classify", "Lunch: A fixed activity", 3],
-    ["kind|Swim|Main", "activity", "classify", "Swim (Main): An activity", 3],
+    ["kind|Lunch", "fixed", "classify", "Lunch is a fixed activity", 3],
+    ["kind|Swim|Main", "activity", "classify", "Swim (Main) is an activity", 3],
     [
       "similar|activity|archery|archry|Archery|Archry",
       "different",
@@ -109,7 +103,7 @@ describe("each remembered question in camp words", () => {
       "whoAdd|main|cits",
       "division|Main",
       "other",
-      "cits: A division in Main",
+      "cits is a division in Main",
       0
     ],
     ["unknown|thing", "x", "other", "thing: x", 0]
@@ -176,24 +170,17 @@ describe("who, when, groups and search", () => {
     );
   });
 
-  it("orders groups as the desktop does, rows newest first", () => {
-    const rows = [
-      row("deleted|Activity||A", "deleted"),
-      row("kind|Old", "fixed", { answeredOn: "2026-06-01" }),
-      row("kind|New", "fixed", { answeredOn: "2026-07-09" })
-    ];
-    const groups = learnedGroups(rows);
-    expect(groups.map((g) => g.label)).toEqual([
-      "Classification",
-      "Things you deleted"
-    ]);
-    expect(groups[0].rows.map((r) => r.name)).toEqual(["New", "Old"]);
-  });
-
-  it("matches the title or who answered", () => {
-    const r = row("kind|Lunch", "fixed", { byYou: false });
+  it("matches a line's what, how, when or mark", () => {
+    const r = {
+      title: "Lunch is a fixed activity",
+      how: "From Dana's answer in an import",
+      when: "3 Jul",
+      flag: "Updated"
+    };
     expect(matches(r, "lunch")).toBe(true);
     expect(matches(r, "dana")).toBe(true);
+    expect(matches(r, "3 jul")).toBe(true);
+    expect(matches(r, "updated")).toBe(true);
     expect(matches(r, "swim")).toBe(false);
   });
 });

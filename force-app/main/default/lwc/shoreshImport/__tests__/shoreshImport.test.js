@@ -965,6 +965,8 @@ describe("c-shoresh-import", () => {
         await expect(element).toBeAccessible();
         const plan = await saved(element);
         expect(plan.remember.map((r) => r.key)).not.toContain(spec);
+        // MEMO-7.5: sent apart, so the history can say it was auto-applied in this import.
+        expect(plan.autoApplied).toEqual([{ key: spec, answer: "fixed" }]);
       });
 
       it("Undo asks the question again, and it is not filled in again in this import", async () => {
@@ -984,6 +986,7 @@ describe("c-shoresh-import", () => {
         expect(plan.remember).toContainEqual(
           expect.objectContaining({ key: spec, answer: "fixed" })
         );
+        expect(plan.autoApplied).toEqual([]);
       });
 
       it("is marked Auto-applied where it comes in, never as simply read", async () => {

@@ -2,7 +2,7 @@
 // (ImportPlan, ImportStructureWrites, ImportItemWrites): every list and field name the Apex reads
 // must be one the plan sends (PR 15 review, test gap). Reads the Apex source itself, so a
 // rename on either side fails here.
-import { withLearning } from "c/shoreshPatterns";
+import { autoAppliedIn, withLearning } from "c/shoreshPatterns";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { buildProposal, customKeys, planFor } from "./data/engine";
@@ -121,7 +121,11 @@ describe("the save request matches what the server reads", () => {
       [{ key: "kind|Lunch 2", answer: "recurring" }],
       [{ id: "kind|Lunch 2", learn: { shape: "weeks|some|one" } }],
       { "kind|Lunch 2": { value: "recurring" } }
-    )
+    ),
+    // The setup import adds what it auto-applied (MEMO-7.5), apart from the answers.
+    autoApplied: autoAppliedIn([{ key: "kind|Lunch 3", answer: "fixed" }], {
+      "kind|Lunch 3": { value: "fixed" }
+    })
   };
   const sent = new Set(
     [plan, placesPlan(), learning].flatMap((one) =>
@@ -141,7 +145,7 @@ describe("the save request matches what the server reads", () => {
 
   it("every list the server reads is in the plan", () => {
     for (const list of readByApex(/plan\.entries\('(\w+)'\)/g)) {
-      expect(Object.keys(plan)).toContain(list);
+      expect([...Object.keys(plan), ...Object.keys(learning)]).toContain(list);
     }
   });
 

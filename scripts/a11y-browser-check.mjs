@@ -145,6 +145,8 @@
  *   word the same, with the menu then reading it for Electives and Elective seats (decision 66,
  *   ADR 0018 choice 62); Copy this season
  *   draws the weeks twice, as many above as below;
+ * - Settings (ADR 0023): opened from the menu's foot, What Shoresh has learned shows as one
+ *   running list, no groups, each line saying how, what Shoresh already knew last;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -2992,6 +2994,11 @@ async function campSetup() {
   );
   await step(
     S,
+    "Settings: what Shoresh has learned, one running list",
+    settingsList
+  );
+  await step(
+    S,
     "Locations: Same location? merges a place typed twice",
     async () => {
       await openFromMenu("Locations", /^Locations\b/);
@@ -3466,6 +3473,54 @@ async function programRow() {
   await expectFocusKept(P, "After the delete: focus stays in the table");
   if ((await names()).includes(NAME))
     throw new Error(`"${NAME}" was not deleted: delete it by hand.`);
+}
+
+/**
+ * Settings (repo ADR 0023): opened from the menu's foot by keyboard, it shows What Shoresh has
+ * learned straight away as one running list: no groups, every line saying how it came to be
+ * (what Shoresh already knew comes last), then axe.
+ */
+async function settingsList() {
+  const S = "Settings";
+  await openFromMenu(S, /^Settings/, /^Settings$/);
+  await axe(S);
+  const list = "c-shoresh-learned";
+  const title = await shown(`${list} [data-id="list-title"]`)
+    .first()
+    .textContent()
+    .catch(() => "");
+  const lines = shown(`${list} li[data-line], ${list} li[data-rule]`);
+  const count = await lines.count();
+  const hows = await shown(`${list} li [data-id="how"]`).allTextContents();
+  // One list: a single ul of lines, no headed groups inside it.
+  const lists = await shown(`${list} ul[data-id="lines"]`).count();
+  const groups =
+    (await shown(`${list} .list h3, ${list} .list h4`).count()) +
+    (lists === 1 ? 0 : 1);
+  const lastHow = hows[hows.length - 1] || "";
+  // Past 25 lines the rest wait behind "Show 25 more", what Shoresh already knew with them.
+  const more = await shown(`${list} [data-id="more"]`).count();
+  if (
+    title.trim() === "What Shoresh has learned" &&
+    count > 0 &&
+    hows.length === count &&
+    hows.every((h) => h.trim()) &&
+    groups === 0 &&
+    (more > 0 || lastHow.trim() === "Shoresh already knew this")
+  ) {
+    results.pass(
+      S,
+      "One running list, each line saying how",
+      `${count} lines, no groups; the last: "${lastHow.trim()}".`
+    );
+  } else {
+    await shot(S, "list");
+    results.fail(
+      S,
+      "One running list, each line saying how",
+      `Title "${title.trim()}", ${count} lines, ${hows.length} with how, ${groups} groups, last how "${lastHow.trim()}".`
+    );
+  }
 }
 
 /**

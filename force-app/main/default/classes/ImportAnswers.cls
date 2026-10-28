@@ -120,7 +120,8 @@ public with sharing class ImportAnswers {
     for (String question : plan.texts('forget')) {
       forget.add(keyOf(campId, question));
     }
-    write(wanted, forget);
+    // What the import filled in on its own (MEMO-5.1): never saved as an answer, only as history.
+    write(wanted, forget, LearnedEvents.autoApplied(campId, plan));
   }
 
   /**
@@ -153,7 +154,7 @@ public with sharing class ImportAnswers {
     for (String question : answerOf.keySet()) {
       wanted.add(rowOf(campId, question, answerOf.get(question)));
     }
-    write(wanted, new Set<String>());
+    write(wanted, new Set<String>(), new List<LearnedEvent__c>());
   }
 
   private static ImportAnswer__c rowOf(
@@ -177,7 +178,11 @@ public with sharing class ImportAnswers {
    * its Last Modified says when it was last guessed, which marks a record made since then
    * (SetupGuessStanding), and its Created By and date stay. One query, then the writes.
    */
-  private static void write(List<ImportAnswer__c> wanted, Set<String> forget) {
+  private static void write(
+    List<ImportAnswer__c> wanted,
+    Set<String> forget,
+    List<LearnedEvent__c> events
+  ) {
     Map<String, ImportAnswer__c> byKey = new Map<String, ImportAnswer__c>();
     for (ImportAnswer__c row : wanted) {
       byKey.put(row.Key__c, row);
@@ -187,7 +192,14 @@ public with sharing class ImportAnswers {
     List<ImportAnswer__c> deletes = new List<ImportAnswer__c>();
     List<ImportAnswer__c> touches = new List<ImportAnswer__c>();
     for (ImportAnswer__c saved : [
-      SELECT Id, Key__c, Answer__c
+      SELECT
+        Id,
+        Camp__c,
+        Key__c,
+        QuestionKey__c,
+        Answer__c,
+        Shape__c,
+        FromSuggestion__c
       FROM ImportAnswer__c
       WHERE Key__c IN :all
       WITH USER_MODE
@@ -202,17 +214,30 @@ public with sharing class ImportAnswers {
         }
       } else if (given != null || forget.contains(saved.Key__c)) {
         deletes.add(saved);
+        if (given == null) {
+          events.add(LearnedEvents.of(LearnedEvents.FORGOTTEN, saved));
+        }
       }
     }
     touches.addAll(byKey.values());
-    commitAll(deletes, touches);
+    commitAll(deletes, touches, events);
   }
 
-  /** Deletes, then saves (new and unchanged), all or none: a refused save puts the old answers back. */
+  /**
+   * Deletes, then saves (new and unchanged), all or none: a refused save puts the old answers
+   * back. Each new answer, and each given event, is kept as history (LearnedEvents).
+   */
   private static void commitAll(
     List<ImportAnswer__c> deletes,
-    List<ImportAnswer__c> saves
+    List<ImportAnswer__c> saves,
+    List<LearnedEvent__c> events
   ) {
+    List<ImportAnswer__c> fresh = new List<ImportAnswer__c>();
+    for (ImportAnswer__c row : saves) {
+      if (row.Id == null) {
+        fresh.add(row);
+      }
+    }
     Savepoint before = Database.setSavepoint();
     try {
       Database.delete(deletes, true, AccessLevel.USER_MODE);
@@ -220,6 +245,8 @@ public with sharing class ImportAnswers {
         throw new ShoreshException('Refused.');
       }
       UserModeWrites.save(saves);
+      events.addAll(LearnedEvents.each(LearnedEvents.ANSWERED, fresh));
+      LearnedEvents.save(events);
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
@@ -232,11 +259,24 @@ public with sharing class ImportAnswers {
     for (String question : questions) {
       keys.add(keyOf(campId, question));
     }
-    Database.delete(
-      [SELECT Id FROM ImportAnswer__c WHERE Key__c IN :keys WITH USER_MODE],
-      true,
-      AccessLevel.USER_MODE
+    List<ImportAnswer__c> rows = [
+      SELECT Id, Camp__c, QuestionKey__c, Answer__c, Shape__c, FromSuggestion__c
+      FROM ImportAnswer__c
+      WHERE Key__c IN :keys
+      WITH USER_MODE
+    ];
+    List<LearnedEvent__c> events = LearnedEvents.each(
+      LearnedEvents.FORGOTTEN,
+      rows
     );
+    Savepoint before = Database.setSavepoint();
+    try {
+      Database.delete(rows, true, AccessLevel.USER_MODE);
+      LearnedEvents.save(events);
+    } catch (Exception e) {
+      Database.rollback(before);
+      throw e;
+    }
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */

@@ -3,6 +3,7 @@ import { join } from "path";
 import {
   TEMPLATES,
   appliesOnItsOwn,
+  autoAppliedIn,
   autoAnswersFor,
   evaluate,
   staleAuto,
@@ -543,6 +544,22 @@ describe("filled in on its own (MEMO-5.1)", () => {
         auto
       )
     ).toHaveLength(1);
+  });
+
+  // MEMO-7.5
+  it("sends what was auto-applied apart from the answers, in key order, for the history", () => {
+    const auto = autoAnswersFor([card], steady("fixed"));
+    const remember = [
+      { key: "kind|Specialty 5", answer: "fixed" },
+      { key: "kind|Specialty 4", answer: "fixed" }
+    ];
+    expect(autoAppliedIn(remember, auto)).toEqual([
+      { key: "kind|Specialty 4", answer: "fixed" }
+    ]);
+    // Changed by a person: theirs, so no longer auto-applied.
+    expect(
+      autoAppliedIn([{ key: "kind|Specialty 4", answer: "activity" }], auto)
+    ).toEqual([]);
   });
 
   // MEMO-5.1, MEMO-3.4
