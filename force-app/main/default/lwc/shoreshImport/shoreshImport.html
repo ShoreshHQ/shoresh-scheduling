@@ -147,6 +147,42 @@
           ></lightning-spinner>
         </template>
 
+        <template lwc:if={hasAuto}>
+          <!-- MEMO-5.1: what a steady pattern filled in on its own, each with Undo for this import. -->
+          <section class="section" data-id="auto">
+            <h3 class="section-head">
+              Auto-applied
+              <span class="shoresh-num">{autoCount}</span>
+            </h3>
+            <template for:each={autoRows} for:item="row">
+              <div key={row.id} class="row shoresh-raised" data-auto={row.id}>
+                <span class="n">{row.title}</span>
+                <span class="d">{row.answer}</span>
+                <span class="options">
+                  <span class="tag">{row.text}</span>
+                  <button
+                    type="button"
+                    class="shoresh-item choice"
+                    data-id={row.id}
+                    aria-label={row.undoLabel}
+                    onclick={handleUndoAuto}
+                  >
+                    Undo
+                  </button>
+                </span>
+              </div>
+            </template>
+            <button
+              type="button"
+              class="shoresh-item choice"
+              data-id="undo-auto"
+              onclick={handleUndoAllAuto}
+            >
+              Undo for this import
+            </button>
+          </section>
+        </template>
+
         <template lwc:if={hasQuestions}>
           <section class="section" data-id="questions">
             <h3 class="section-head">
@@ -195,6 +231,9 @@
                   </template>
                   <template lwc:if={card.fromMemory}>
                     <span class="tag">{card.memoryNote}</span>
+                  </template>
+                  <template lwc:if={card.autoText}>
+                    <span class="tag" data-id="auto-note">{card.autoText}</span>
                   </template>
                   <template lwc:if={card.suggested}>
                     <span class="tag" data-id="suggested"
@@ -247,7 +286,13 @@
                     data-line={line.id}
                   >
                     <span class="n">{line.name}</span>
-                    <span class="d">{line.detail}</span>
+                    <span class="d"
+                      >{line.detail}<template lwc:if={line.auto}>
+                        <span class="tag" data-id="auto-mark"
+                          >Auto-applied</span
+                        ></template
+                      ></span
+                    >
                     <span class="options">
                       <template lwc:if={line.select}>
                         <lightning-combobox
@@ -331,6 +376,11 @@
                   <span class="slds-assistive-text">{tile.spoken}</span>
                   <b class="shoresh-num" aria-hidden="true">{tile.count}</b>
                   <span aria-hidden="true">{tile.label}</span>
+                  <template lwc:if={tile.autoLabel}>
+                    <span class="tag" aria-hidden="true" data-id="auto-mark"
+                      >{tile.autoLabel}</span
+                    >
+                  </template>
                 </button>
               </template>
             </div>
@@ -343,7 +393,11 @@
               >
                 <template for:each={openTile.nameItems} for:item="item">
                   <li key={item.key} class="name shoresh-raised">
-                    {item.name}
+                    {item.name}<template lwc:if={item.auto}>
+                      <span class="tag" data-id="auto-mark"
+                        >Auto-applied</span
+                      ></template
+                    >
                   </li>
                 </template>
               </ul>

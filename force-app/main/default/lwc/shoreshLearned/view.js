@@ -5,6 +5,7 @@
 
 import { holdsNoDivision } from "c/shoreshImportEngine";
 import {
+  AUTO_ANSWER,
   LEARNING_BAR,
   PATTERN_PREFIX,
   inOrder,
@@ -179,16 +180,27 @@ export function progressLine(p) {
   }
   const still = missing.map((m) => MISSING_TEXT[m]).filter(Boolean);
   if (band === "established" && still.length === 0) {
-    // Until Shoresh applies anything on its own (MEMO-5.1, PR 4), steady means suggested.
-    return `${count} - suggested every time`;
+    // MEMO-5.1: only a steady "fixed activity" pattern fills in on its own; the rest suggest.
+    return `${count} - ${fillsIn(p) ? "auto-applied where the name sits the same way" : "suggested every time"}`;
   }
   return still.length ? `${count} - ${still.join(", ")}` : count;
 }
 
+/** Whether a steady pattern fills in its questions on its own (MEMO-5.1, c/shoreshPatterns). */
+function fillsIn(p) {
+  return (
+    (p.template === "numbered" || p.template === "meal") &&
+    p.verdict === AUTO_ANSWER &&
+    !!p.shape
+  );
+}
+
 /** The pattern's band as a flag: what it does at the next import. */
-export function patternFlag(band) {
+export function patternFlag(band, p = {}) {
   if (band === "established") {
-    return "Steady: suggested every time";
+    return fillsIn(p)
+      ? "Steady: auto-applied where the name sits the same way; Undo in the import"
+      : "Steady: suggested every time";
   }
   return band === "suggest" ? "Suggested" : "Still asks";
 }
@@ -220,7 +232,7 @@ export function patternRow(p, t) {
     confidence: `${p.agree} agree${disagree}`,
     meter: Math.min(p.progress.agreeing, LEARNING_BAR.instances),
     band: p.progress.band,
-    flag: patternFlag(p.progress.band),
+    flag: patternFlag(p.progress.band, p),
     forgotten: PATTERN_FORGOTTEN,
     answeredOn: latest
   };

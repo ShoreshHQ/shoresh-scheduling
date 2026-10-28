@@ -27,7 +27,12 @@ import {
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
-import { suggestionsFor, withLearning } from "c/shoreshPatterns";
+import {
+  autoAnswersFor,
+  staleAuto,
+  suggestionsFor,
+  withLearning
+} from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 
 /** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
@@ -86,6 +91,12 @@ export default class ShoreshImport extends LightningElement {
   rememberedNotes = {};
   // The camp's remembered answers as read before this import's answers: the patterns' source.
   savedRows = [];
+  // What Shoresh filled in on its own in this import (MEMO-5.1), by question id, and the
+  // questions undone here: asked again, never filled in again in this import.
+  autoApplied = {};
+  autoUndone = [];
+  // What screen readers hear about auto-applied answers (WCAG 4.1.3).
+  autoSaid = "";
   dragging = false;
   sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
@@ -189,7 +200,7 @@ export default class ShoreshImport extends LightningElement {
     if (this.stage === "done") {
       return this.undone || `Imported from ${this.fileNames}.`;
     }
-    return "";
+    return this.stage === "review" ? this.autoSaid : "";
   }
 
   // ---------- reading the files ----------
@@ -258,7 +269,123 @@ export default class ShoreshImport extends LightningElement {
     this.layouts = {};
     this.openKind = null;
     this.openReadAs = null;
+    this.autoApplied = {};
+    this.autoUndone = [];
+    this.autoSaid = "";
     this.recompute();
+    this.applyOnItsOwn();
+    const n = this.autoCount;
+    if (n) {
+      this.autoSaid = `${n} ${n === 1 ? "answer" : "answers"} auto-applied from earlier answers.`;
+    }
+  }
+
+  /**
+   * MEMO-5.1: a steady pattern that a name is a fixed activity fills in its kind question, listed
+   * under "Auto-applied" with Undo. An answer can open another question, so this
+   * follows a few deep. Same answers, same file, same result.
+   */
+  applyOnItsOwn() {
+    for (let depth = 0; depth < 5 && this.proposal; depth++) {
+      const cards = questionCards(this.proposal, this.terms, this.answers);
+      const auto = autoAnswersFor(
+        cards,
+        this.savedRows,
+        this.remembered,
+        this.autoUndone
+      );
+      const ids = Object.keys(auto);
+      if (ids.length === 0) {
+        return;
+      }
+      const answers = { ...this.answers };
+      ids.forEach((id) => {
+        answers[id] = auto[id].value;
+      });
+      this.answers = answers;
+      this.autoApplied = { ...this.autoApplied, ...auto };
+      this.recompute();
+    }
+  }
+
+  /** A question a person answers is theirs from then on, not filled in on its own. */
+  ownAnswer(id) {
+    if (this.autoApplied[id]) {
+      const rest = { ...this.autoApplied };
+      delete rest[id];
+      this.autoApplied = rest;
+    }
+  }
+
+  /** The answers filled in on its own and still standing, as rows for "Auto-applied". */
+  get autoRows() {
+    if (!this.proposal) {
+      return [];
+    }
+    const byId = new Map(
+      questionCards(this.proposal, this.terms, this.answers).map((c) => [
+        c.id,
+        c
+      ])
+    );
+    return Object.keys(this.autoApplied)
+      .filter(
+        (id) => byId.has(id) && this.answers[id] === this.autoApplied[id].value
+      )
+      .sort()
+      .map((id) => {
+        const card = byId.get(id);
+        const option = card.options.find((o) => o.value === this.answers[id]);
+        return {
+          id,
+          title: card.title,
+          name: card.subject || card.title,
+          undoLabel: `Undo ${card.subject || card.title}`,
+          answer: option ? option.label : this.answers[id],
+          text: this.autoApplied[id].text
+        };
+      });
+  }
+  get hasAuto() {
+    return this.autoRows.length > 0;
+  }
+  get autoCount() {
+    return this.autoRows.length;
+  }
+
+  /** Undo for this import (MEMO-5.1): the question is asked again; nothing is forgotten. */
+  undoAuto(ids) {
+    const names = this.autoRows
+      .filter((r) => ids.includes(r.id))
+      .map((r) => r.name);
+    const answers = { ...this.answers };
+    const rest = { ...this.autoApplied };
+    ids.forEach((id) => {
+      delete answers[id];
+      delete rest[id];
+    });
+    this.answers = answers;
+    this.autoApplied = rest;
+    this.autoUndone = [...new Set([...this.autoUndone, ...ids])].sort();
+    this.recompute();
+    if (names.length) {
+      this.autoSaid = `Undone: ${names.join(", ")}. Asked again.`;
+    }
+  }
+
+  /** The names whose kind was auto-applied and still stands, for the marks where they show. */
+  get autoNames() {
+    return new Set(this.autoRows.map((r) => r.name));
+  }
+  handleUndoAuto(event) {
+    const id = event.currentTarget.dataset.id;
+    this.undoAuto([id]);
+    this.focusNext = { question: id };
+  }
+  handleUndoAllAuto() {
+    const ids = this.autoRows.map((r) => r.id);
+    this.undoAuto(ids);
+    this.focusNext = ids.length ? { question: ids[0] } : null;
   }
 
   /**
@@ -354,6 +481,25 @@ export default class ShoreshImport extends LightningElement {
 
   recompute() {
     this.proposal = this.proposalWith(this.answers);
+    // An auto-applied answer whose question went away with another goes too: none stays hidden.
+    for (let depth = 0; depth < 5; depth++) {
+      const stale = staleAuto(
+        this.autoApplied,
+        questionCards(this.proposal, this.terms, this.answers)
+      );
+      if (stale.length === 0) {
+        break;
+      }
+      const answers = { ...this.answers };
+      const rest = { ...this.autoApplied };
+      stale.forEach((id) => {
+        delete answers[id];
+        delete rest[id];
+      });
+      this.answers = answers;
+      this.autoApplied = rest;
+      this.proposal = this.proposalWith(this.answers);
+    }
     this.plan = this.planNow();
   }
 
@@ -426,6 +572,12 @@ export default class ShoreshImport extends LightningElement {
     return suggestionsFor(cards, this.savedRows, this.remembered);
   }
 
+  /** What a card filled in on its own says (MEMO-5.1), or "". */
+  autoNote(card) {
+    const auto = this.autoApplied[card.id];
+    return auto && card.answer === auto.value ? auto.text : "";
+  }
+
   cardView(card, suggestion) {
     const chosen = card.options.find((o) => o.value === card.answer);
     const suggested = !chosen && suggestion ? suggestion.value : null;
@@ -436,6 +588,7 @@ export default class ShoreshImport extends LightningElement {
       className: chosen ? "row shoresh-raised" : "row row_look shoresh-raised",
       fromMemory: !!chosen && this.remembered[card.id] === card.answer,
       memoryNote: this.rememberedNotes[card.id] || "Remembered",
+      autoText: this.autoNote(card),
       suggested: !!suggested,
       suggestedText: suggested ? suggestion.text : "",
       // A program or a division: a dropdown in the row.
@@ -527,6 +680,9 @@ export default class ShoreshImport extends LightningElement {
           : "tile tile_button shoresh-raised",
         lines: g.lines.map((line) => ({
           ...line,
+          auto:
+            !!this.autoApplied[line.id] &&
+            this.autoApplied[line.id].value === line.answer,
           comboOptions: line.options.map((o) => ({
             label: o.label,
             value: o.value
@@ -562,6 +718,7 @@ export default class ShoreshImport extends LightningElement {
   handleReadAs(event) {
     const key = event.currentTarget.dataset.key;
     const [id, value] = key.split("::");
+    this.ownAnswer(id);
     this.answers = { ...this.answers, [id]: value };
     this.recompute();
     const moved = this.readAsTiles.find((g) =>
@@ -592,6 +749,7 @@ export default class ShoreshImport extends LightningElement {
   handleAnswer(event) {
     const key = event.currentTarget.dataset.key;
     const [id, value] = key.split("::");
+    this.ownAnswer(id);
     this.answers = { ...this.answers, [id]: value };
     this.recompute();
     // The choice stays, pressed; if the answer took its row away, on to the next open question.
@@ -599,6 +757,7 @@ export default class ShoreshImport extends LightningElement {
   }
 
   handleChoice(event) {
+    this.ownAnswer(event.target.dataset.id);
     this.answers = {
       ...this.answers,
       [event.target.dataset.id]: event.detail.value
@@ -609,14 +768,20 @@ export default class ShoreshImport extends LightningElement {
   // ---------- what comes in ----------
 
   get comingInTiles() {
-    return comingIn(this.plan, this.terms).map((tile) => ({
-      ...tile,
-      expanded: tile.key === this.openKind ? "true" : "false",
-      className:
-        tile.key === this.openKind
-          ? "tile tile_button shoresh-raised tile_open"
-          : "tile tile_button shoresh-raised"
-    }));
+    const autoNames = this.autoNames;
+    return comingIn(this.plan, this.terms).map((tile) => {
+      const auto = tile.names.filter((name) => autoNames.has(name)).length;
+      return {
+        ...tile,
+        autoLabel: auto ? `${auto} auto-applied` : "",
+        spoken: auto ? `${tile.spoken}, ${auto} auto-applied` : tile.spoken,
+        expanded: tile.key === this.openKind ? "true" : "false",
+        className:
+          tile.key === this.openKind
+            ? "tile tile_button shoresh-raised tile_open"
+            : "tile tile_button shoresh-raised"
+      };
+    });
   }
   get hasComingIn() {
     return this.comingInTiles.length > 0;
@@ -638,7 +803,8 @@ export default class ShoreshImport extends LightningElement {
           ...tile,
           nameItems: tile.names.map((name, i) => ({
             key: `${i}|${name}`,
-            name
+            name,
+            auto: this.autoNames.has(name)
           }))
         }
       : null;
@@ -866,6 +1032,9 @@ export default class ShoreshImport extends LightningElement {
     this.versionUses = {};
     this.savedOpen = [];
     this.answers = {};
+    this.autoApplied = {};
+    this.autoUndone = [];
+    this.autoSaid = "";
     this.layouts = {};
     this.error = null;
   }
@@ -894,7 +1063,8 @@ export default class ShoreshImport extends LightningElement {
       plan.remember = withLearning(
         plan.remember,
         cards,
-        this.suggestionsOf(cards)
+        this.suggestionsOf(cards),
+        this.autoApplied
       );
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.savedOpen = plan.open;

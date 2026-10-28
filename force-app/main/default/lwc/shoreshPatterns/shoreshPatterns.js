@@ -462,6 +462,7 @@ function suggest(card, groups) {
     band: best.band,
     template: best.t.template,
     antecedent: best.t.antecedent,
+    from: fromAnswers(best.ev.supporters),
     text: `Suggested from ${fromAnswers(best.ev.supporters)}`
   };
 }
@@ -485,21 +486,75 @@ export function suggestionsFor(cards, rows, remembered = {}) {
   return out;
 }
 
+/** The only answer Shoresh fills in on its own (MEMO-5.1; desktop AUTO_APPLY_ELIGIBLE). */
+export const AUTO_ANSWER = "fixed";
+const AUTO_TEMPLATES = new Set(["numbered", "meal"]);
+
+/**
+ * Whether a suggestion is one Shoresh applies on its own (MEMO-5.1): only a steady
+ * (established, same-shape) pattern that a name is a fixed activity, on a kind question.
+ * Everything else stays a suggestion and still asks.
+ */
+export function appliesOnItsOwn(card, suggestion) {
+  return (
+    !!suggestion &&
+    String(card.id || "").startsWith("kind|") &&
+    suggestion.band === "established" &&
+    suggestion.value === AUTO_ANSWER &&
+    AUTO_TEMPLATES.has(suggestion.template)
+  );
+}
+
+/**
+ * The answers Shoresh fills in on its own for this import (MEMO-5.1), by card id: each
+ * { value, template, antecedent, from, text }. Only for a card not answered yet and not undone in
+ * this import (undone: ids). Same rows, same cards, same answers.
+ */
+export function autoAnswersFor(cards, rows, remembered = {}, undone = []) {
+  const skip = new Set(undone);
+  const suggestions = suggestionsFor(cards, rows, remembered);
+  const out = {};
+  for (const card of cards || []) {
+    const s = suggestions[card.id];
+    if (!card.answer && !skip.has(card.id) && appliesOnItsOwn(card, s)) {
+      out[card.id] = { ...s, text: `Auto-applied from ${s.from}` };
+    }
+  }
+  return out;
+}
+
+/**
+ * The auto-applied answers whose question is no longer asked (it only came from another auto
+ * answer that was undone or changed): their ids, sorted. None may stay hidden in the answers.
+ */
+export function staleAuto(auto, cards) {
+  const asked = new Set((cards || []).map((c) => c.id));
+  return Object.keys(auto || {})
+    .filter((id) => !asked.has(id))
+    .sort();
+}
+
 /**
  * The answers to remember, each with what the pattern layer needs: the question's shape when
  * it was answered, and whether the answer agreed with the suggestion its card showed (it then
  * does not count as an answer picked yourself, MEMO-3.2). remember: [{ key, answer }].
+ * auto: the answers Shoresh filled in on its own (autoAnswersFor), left out: an answer no one
+ * gave is no evidence, so a pattern never feeds itself (MEMO-5.1).
  */
-export function withLearning(remember, cards, suggestions) {
+export function withLearning(remember, cards, suggestions, auto = {}) {
   const byId = new Map((cards || []).map((c) => [c.id, c]));
-  return (remember || []).map((entry) => {
-    const card = byId.get(entry.key);
-    const shape = card && card.learn ? card.learn.shape : null;
-    const s = (suggestions || {})[entry.key];
-    return {
-      ...entry,
-      ...(shape ? { shape } : {}),
-      ...(s && s.value === entry.answer ? { suggested: true } : {})
-    };
-  });
+  return (remember || [])
+    .filter(
+      (entry) => !(auto[entry.key] && auto[entry.key].value === entry.answer)
+    )
+    .map((entry) => {
+      const card = byId.get(entry.key);
+      const shape = card && card.learn ? card.learn.shape : null;
+      const s = (suggestions || {})[entry.key];
+      return {
+        ...entry,
+        ...(shape ? { shape } : {}),
+        ...(s && s.value === entry.answer ? { suggested: true } : {})
+      };
+    });
 }
