@@ -68,6 +68,8 @@ const {
   LEVEL4_SIZE,
   decisionCamps,
   everyWeekCamps,
+  earlyEndCamps,
+  EARLY_END_SIZE,
   veryHardCamps
 } = await import("./import-corpus/level4.js");
 const {
@@ -116,6 +118,14 @@ if (level === 4) {
   );
   console.log(summaryTable(every));
   printCamps(every);
+  const early = earlyEndCamps(EARLY_END_SIZE).map((camp) =>
+    scoreCamp(camp, deps)
+  );
+  console.log(
+    `\nLevel 4, Greg's early end (the week's last day ends early): ${early.length} made-up camps\n`
+  );
+  console.log(summaryTable(early));
+  printCamps(early);
 } else if (level === 5) {
   const results = weirdCamps(LEVEL5_SIZE).map((camp) =>
     scoreWeirdCamp(camp, deps, scoreCamp)

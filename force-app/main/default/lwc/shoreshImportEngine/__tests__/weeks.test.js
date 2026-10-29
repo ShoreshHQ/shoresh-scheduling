@@ -9,6 +9,7 @@ import {
 } from "./data/engine";
 import { existingSetup, terms } from "./data/samples";
 import { splitWeekColumn, sheetToPages } from "../sheets";
+import { cellAt } from "../structure";
 import {
   labelDates,
   weekInFileName,
@@ -1016,5 +1017,103 @@ describe("INGEST-4.12: a day with its own times every week", () => {
       name: "Saturday"
     });
     expect(p.specialDays[0].also).toHaveLength(2);
+  });
+});
+
+describe("INGEST-4.13: the regular day ending early is the regular day", () => {
+  const DAY = [...BLOCKS, "Dismissal 2:40-3:00"];
+  const weeks = [
+    ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+    ["w2", "Week 2", "2027-07-05", "2027-07-09"]
+  ].map(([Id, Name, start, end]) => ({
+    Id,
+    Name,
+    StartDate__c: start,
+    EndDate__c: end
+  }));
+  const existing = existingSetup({ weeks });
+  /** Every group at Dismissal in a Dismissal row. */
+  const withDismissal = (grid) =>
+    grid.map((r) => {
+      if (!/^Dismissal/.test(r[0])) return r;
+      return [r[0], ...GROUPS.map(() => "Dismissal")];
+    });
+  /** Two weeks; Friday's grid made by `friday(grid)` from the regular day's. */
+  const files = (fridayBlocks, friday = (g) => g) =>
+    [0, 1].map((w) =>
+      file(`Camp - Week ${w + 1}.csv`, [
+        sheetOf(
+          `Week ${w + 1}`,
+          DAYS.flatMap((_, d) => [
+            ...(d === 4
+              ? friday(withDismissal(dayGrid(w, d, fridayBlocks)))
+              : withDismissal(dayGrid(w, d, DAY))),
+            []
+          ])
+        )
+      ])
+    );
+  const dismissal = (p) =>
+    p.reading.placements.filter(
+      (x) => x.day === "Friday" && x.group === "Bunk 1" && x.week === "Week 1"
+    );
+  const fridayDismissal = (plan) =>
+    plan.recurringActivities.find(
+      (r) => r.name === "Dismissal" && r.days.includes("Friday")
+    );
+
+  it("INGEST-4.13: prefix-early-end → regular: Dismissal on a shorter block of its own, nothing after, is the regular day", () => {
+    const fri = [...BLOCKS.slice(0, 4), "Dismissal 1:50-2:10"];
+    const p = propose(files(fri), existing);
+    expect(asked(p, "")).toEqual([]);
+    expect(p.specialDays).toEqual([]);
+    expect(p.timetables[0].blocks.map((b) => b.label)).toHaveLength(6);
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(plan.specialDays).toEqual([]);
+    // Dismissal holds the rest of Friday: from Period 4 to the day's end.
+    expect(fridayDismissal(plan)).toMatchObject({
+      days: ["Friday"],
+      length: 2
+    });
+    expect(
+      dismissal(p).find((x) => x.text === "Dismissal").blockKeys
+    ).toHaveLength(2);
+  });
+
+  it("INGEST-4.13: Dismissal written in the last period, the rest of the day blank, runs to the day's end", () => {
+    const p = propose(
+      files(DAY, (g) =>
+        g.map((r, i) => {
+          if (i < 2 || !/^Period 4|^Dismissal/.test(r[0])) return r;
+          const text = /^Period 4/.test(r[0]) ? "Dismissal at 1:50" : "";
+          return [r[0], ...GROUPS.map(() => text)];
+        })
+      ),
+      existing
+    );
+    expect(asked(p, "")).toEqual([]);
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(fridayDismissal(plan)).toMatchObject({ length: 2 });
+    expect(plan.activities.map((a) => a.name)).not.toContain(
+      "Dismissal at 1:50"
+    );
+  });
+
+  it("INGEST-4.13: a group renamed after reading (Bunk 1 in two divisions) keeps its early end", () => {
+    const read = { page: 0, row: 7, group: "Bunk 1", day: "Friday" };
+    const named = { ...read, recordName: "Bunk 1", group: "Bunk 1 (Juniors)" };
+    expect(cellAt(named)).toBe(cellAt(read));
+  });
+
+  it("INGEST-4.13 counter-case: truly different → special: a day of its own flow stays a special day", () => {
+    // Friday's afternoon recut into one long block, Dismissal at its usual time: not an early end.
+    const fri = [
+      ...BLOCKS.slice(0, 3),
+      "Activity A 1:00-2:35",
+      "Dismissal 2:40-3:00"
+    ];
+    const p = propose(files(fri), existing);
+    expect(p.specialDays).toHaveLength(1);
+    expect(p.specialDays[0].name).toBe("Friday");
   });
 });

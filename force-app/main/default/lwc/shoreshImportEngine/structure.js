@@ -464,6 +464,156 @@ function weekDayShapes(timetables, placements, blockAt, context) {
 }
 
 /**
+ * INGEST-4.13 (weeks.md): a day of its own times (INGEST-4.3, 4.12) that is only the regular day
+ * ending early is the regular day. Every week it has, its cells sit in the regular blocks that end
+ * by the time its one own block starts, and that last block holds, for every group, what the
+ * regular day's last block holds (Dismissal), starting earlier and ending by the day's end. Then
+ * it is no day of its own: that block's cells run from the regular block it starts in to the end
+ * of the day (dismissal holds the extra time), nothing is asked or noted. Changes `t`, `blockAt`
+ * and `context` in place; returns Map(cellAt -> { keys: the regular blocks it covers, text }).
+ */
+export const cellAt = (p) =>
+  `${p.page}|${p.row}|${p.recordName ?? p.group}|${p.day}`;
+
+function earlyEnds(t, placements, blockAt, context, notes) {
+  const found = new Map();
+  t.ownKeys = t.ownKeys || new Set();
+  const ownKeys = t.ownKeys;
+  const byKey = new Map(t.raw.map((b) => [b.key, b]));
+  const regular = [...byKey.values()]
+    .filter((b) => !ownKeys.has(b.key) && b.start !== null && b.end !== null)
+    .sort((a, b) => a.start - b.start);
+  if (regular.length < 2) {
+    return found;
+  }
+  const last = regular[regular.length - 1];
+  const pages = new Set(t.pages);
+  const here = placements
+    .filter((p) => pages.has(p.page))
+    .map((p) => ({ ...p, key: blockAt.get(`${p.page}|${p.row}`) }));
+  // What the regular day ends with: a text in the last block on most of the group-days.
+  const groupDays = new Set(here.map((p) => `${p.group}|${p.week}|${p.day}`));
+  const inLast = new Map();
+  here
+    .filter((p) => p.key === last.key)
+    .forEach((p) =>
+      inLast.set(looseKey(p.text), (inLast.get(looseKey(p.text)) || 0) + 1)
+    );
+  const lastHolds = [...inLast]
+    .filter(([text, n]) => text && n * 2 > groupDays.size)
+    .map(([text]) => text);
+  // "Dismissal at 12" (its time read off as a time: "Dismissal at") is the last block's Dismissal.
+  const dismissal = (text) => {
+    const key = looseKey(text);
+    return (
+      lastHolds.find(
+        (h) =>
+          key === h ||
+          (key.startsWith(h) && /^ at( |$)/.test(key.slice(h.length)))
+      ) || null
+    );
+  };
+  const days = [...new Set((t.ownDays || []).map((o) => o.day))];
+  for (const day of days) {
+    const entries = t.ownDays.filter((o) => o.day === day);
+    if (
+      entries.some((o) => o.leftOut) ||
+      context.asks.some(
+        (a) => a.type === "ownDays" && entries.some((o) => o.week === a.week)
+      )
+    ) {
+      continue;
+    }
+    const remap = new Map();
+    const early = entries.every((o) => {
+      const cells = here.filter(
+        (p) => p.day === day && (p.week || "") === o.week
+      );
+      const own = [...new Set(cells.map((p) => p.key))].filter((k) =>
+        t.ownKeys.has(k)
+      );
+      const block = own.length === 1 && byKey.get(own[0]);
+      if (!block || block.start === null || block.end === null) {
+        return false;
+      }
+      const inOwn = cells.filter((p) => p.key === own[0]);
+      const texts = new Set(inOwn.map((p) => dismissal(p.text)));
+      const groups = new Set(cells.map((p) => p.group));
+      const before = cells.filter((p) => p.key !== own[0]);
+      const ok =
+        texts.size === 1 &&
+        [...texts][0] !== null &&
+        new Set(inOwn.map((p) => p.group)).size === groups.size &&
+        block.end <= last.end &&
+        block.start < last.start &&
+        before.every((p) => {
+          const b = byKey.get(p.key);
+          return b && !t.ownKeys.has(p.key) && b.end <= block.start;
+        });
+      if (ok) {
+        const from = regular.findIndex((b) => b.end > block.start);
+        const keys = regular.slice(from).map((b) => b.key);
+        inOwn.forEach((p) => remap.set(cellAt(p), { keys, p }));
+      }
+      return ok;
+    });
+    if (!early) {
+      continue;
+    }
+    const weeks = new Set(entries.map((o) => o.week));
+    t.ownDays = t.ownDays.filter((o) => o.day !== day);
+    const gone = new Set();
+    for (const [at, { keys, p }] of remap) {
+      const row = `${p.page}|${p.row}`;
+      gone.add(p.key);
+      blockAt.set(row, keys[0]);
+      found.set(at, { keys, text: textOf(p) });
+    }
+    t.ownKeys = new Set([...t.ownKeys].filter((k) => !gone.has(k)));
+    t.raw = t.raw.filter((b) => !gone.has(b.key));
+    context.asks = context.asks.filter((a) => a.id !== `everyWeek|${day}`);
+    const kept = notes.filter(
+      (n) => !(n.type === "weekDay" && n.day === day && weeks.has(n.week))
+    );
+    notes.length = 0;
+    notes.push(...kept);
+  }
+  // Dismissal written in an earlier regular block for every group, the rest of the day blank
+  // (or one cell merged down to the day's end): it runs to the end of the day.
+  const order = new Map(regular.map((b, i) => [b.key, i]));
+  const byDay = new Map();
+  here
+    .filter((p) => order.has(p.key) && !found.has(cellAt(p)))
+    .forEach((p) => {
+      const wd = `${p.week || ""}|${p.day}`;
+      byDay.set(wd, [...(byDay.get(wd) || []), p]);
+    });
+  for (const cells of byDay.values()) {
+    const latest = Math.max(...cells.map((p) => order.get(p.key)));
+    const end = cells.filter((p) => order.get(p.key) === latest);
+    const groups = new Set(cells.map((p) => p.group));
+    if (
+      latest === regular.length - 1 ||
+      new Set(end.map((p) => p.group)).size !== groups.size ||
+      !end.every((p) => dismissal(p.text))
+    ) {
+      continue;
+    }
+    const keys = regular.slice(latest).map((b) => b.key);
+    end.forEach((p) => found.set(cellAt(p), { keys, text: textOf(p) }));
+  }
+  return found;
+
+  function textOf(p) {
+    const hold = dismissal(p.text);
+    const named = here.find(
+      (x) => x.key === last.key && looseKey(x.text) === hold
+    );
+    return named ? named.text : p.text;
+  }
+}
+
+/**
  * Pages that share a set of time blocks become one timetable (one program). Pages whose blocks
  * overlap at different times (9:00-9:45 against 9:00-9:50) go to separate timetables. Returns
  * { timetables: [{ index, pages, blocks }], blockAt: Map("page|row" -> block key),
@@ -490,6 +640,12 @@ export function buildTimetables(pages, placements, answers = {}) {
   timetables.forEach((t) =>
     ownWeekdays(t, placements, blockAt, context, notes)
   );
+  const early = new Map();
+  timetables.forEach((t) =>
+    earlyEnds(t, placements, blockAt, context, notes).forEach((keys, at) =>
+      early.set(at, keys)
+    )
+  );
   timetables.forEach((t, index) => {
     t.index = index;
     t.pages.forEach((page) => timetableOfPage.set(page, index));
@@ -510,12 +666,19 @@ export function buildTimetables(pages, placements, answers = {}) {
         blockAt.set(key, t.blocks.aliases.get(value));
       }
     }
+    // An early end's blocks, as merged by an answer (INGEST-4.13).
+    for (const [at, v] of early) {
+      if (t.pages.includes(Number(at.split("|")[0]))) {
+        v.keys = [...new Set(v.keys.map((k) => t.blocks.aliases.get(k) ?? k))];
+      }
+    }
     delete t.raw;
   });
   return {
     timetables,
     blockAt,
     timetableOfPage,
+    earlyEnds: early,
     asks: context.asks,
     notes
   };

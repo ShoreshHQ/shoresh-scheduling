@@ -200,6 +200,30 @@ Each rule is clue, meaning, example, test.
     `ImportSpecialDayTest` "oneSpecialDayOnEveryWeeksDay". Code: `structure.js` `everyWeek`,
     `ownWeekdays`; `version.js` `everyWeekDays`; the save `ImportSpecialDayWrites` (`also`).
 
+13. **The regular day ending early is the regular day, not a special day** (Greg, 2026-10-29:
+    "it just means that your camp ends a little earlier one day"; usually the week's last day,
+    a Friday, or a Saturday in a Sunday to Saturday camp, but any day of this shape reads the same).
+    Clue: on that day every group's cells sit in the regular day's blocks up to a point, then
+    every group has what the regular day's last block holds (Dismissal, also "Dismissal at 2"),
+    and nothing after it. Three ways a file shows it: Dismissal on a shorter block of its own
+    where a period starts ("1:50-2:10", no rows after); Dismissal in that period with the rest of
+    the day blank; or one cell merged from there to the day's end.
+    Meaning: the regular day. Dismissal holds the rest of it that day: it is placed from the
+    block it starts in to the end of the day, so nothing is scheduled after it. No special day,
+    no block of its own, nothing asked, no note. Dismissal at another time on that day is then
+    not every group at one time every day, so it comes in as recurring (one record for its usual
+    days, one for the early day), as a fixed activity cannot differ by day (ADR 0004). Same idea
+    as a group here only for the morning (names-and-divisions.md rule 9).
+    Counter-case: a day whose blocks really differ (another length or flow, Dismissal at its
+    usual time) stays a special day (rules 3, 12).
+    Example: level 4 `earlyEndCamps` (`L4X-001` to `L4X-012`).
+    Test: "INGEST-4.13: prefix-early-end → regular: Dismissal on a shorter block of its own,
+    nothing after, is the regular day"; "Dismissal written in the last period, the rest of the
+    day blank, runs to the day's end"; counter-case "INGEST-4.13 counter-case: truly different →
+    special: a day of its own flow stays a special day"; the corpus "reads every camp perfectly,
+    the early day the regular day". Code: `structure.js` `earlyEnds`; `reading.js` (the
+    placements it covers).
+
 ## Known limits
 
 - A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a
