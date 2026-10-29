@@ -32,10 +32,11 @@ CORE  layers 1-6                                 docs/protocol/core.md
  |- WEEK    Weeks and seasons                    uses CORE 1, 2, 4, 6  docs/protocol/week.md
  |- LOCK    Locks and hand edits                 uses CORE 1, 4, 6; GEN obeys it
  |- MEMO    Remembered answers                   uses CORE 1, 6; serves INGEST
- '- PUB     Publishing                           uses CORE 1, 6; reads any finished week
+ |- PUB     Publishing                           uses CORE 1, 6; reads any finished week
+ '- API     Data in and out                      uses CORE 1, 6; INGEST, PUB  docs/protocol/api.md
 ```
 
-Every sub-protocol is written here: docs/protocol/{elect,special,close,lock,memo,pub,div,prog,week}.md,
+Every sub-protocol is written here: docs/protocol/{elect,special,close,lock,memo,pub,div,prog,week,api}.md,
 plus GEN (docs/engine/protocol.md) and INGEST (docs/import/*.md).
 
 ## Statements and their numbers
@@ -57,6 +58,7 @@ The existing sub-protocol documents keep their own numbers, read with a prefix:
 | `docs/protocol/div.md`               | DIV-layer.n       | as written   |
 | `docs/protocol/prog.md`              | PROG-layer.n      | as written   |
 | `docs/protocol/week.md`              | WEEK-layer.n      | as written   |
+| `docs/protocol/api.md`               | API-layer.n       | as written   |
 
 GEN's rule numbers follow the engine's nine build steps, not CORE's layers: `GEN-5.1` is build
 step 5's first rule. The wiki's sketch numbers for GEN and INGEST will be renumbered to these.

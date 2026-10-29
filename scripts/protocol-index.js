@@ -58,7 +58,8 @@ const DOCUMENTS = [
   statementTable("docs/protocol/lock.md", "LOCK"),
   statementTable("docs/protocol/div.md", "DIV"),
   statementTable("docs/protocol/prog.md", "PROG"),
-  statementTable("docs/protocol/week.md", "WEEK")
+  statementTable("docs/protocol/week.md", "WEEK"),
+  statementTable("docs/protocol/api.md", "API")
 ];
 
 /** A test cell starting "gap", "not yet tested", "none", "not built" or "contradicted" names no test. */
@@ -83,9 +84,7 @@ function statementTable(file, prefix) {
           const test = cells[cells.length - 1];
           out.push({
             id: m[1],
-            mapped: !/^(gap|not yet tested|none|not built|contradicted)/i.test(
-              test
-            )
+            mapped: namesATest(test)
           });
         }
       }
