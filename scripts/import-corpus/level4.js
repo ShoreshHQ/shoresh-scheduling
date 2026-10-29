@@ -516,8 +516,33 @@ function truthOf(camp) {
     activities: [...activities],
     divisionsInFile:
       divisions.length > 1 &&
-      (camp.layout !== "byActivity" || camp.style === "divisionNumber")
+      (camp.layout !== "byActivity" || camp.style === "divisionNumber"),
+    availability: halfDayAvailability(camp)
   };
+}
+
+/**
+ * INGEST-2.9: "group|MorningOnly" for each half-day group, when on every day all it has is before
+ * noon and the week has blocks from noon (as level 3; a Lunch at noon or later keeps it all day;
+ * a special day with no afternoon of its own does not).
+ */
+function halfDayAvailability(camp) {
+  if (!camp.halfDay) return [];
+  const noon = 12 * 60;
+  const lined =
+    camp.programs[0].blocks.some((b) => b.start >= noon) &&
+    camp.weeks.every((_, w) =>
+      camp.days.every((_d, d) => {
+        const blocks = blocksOn(camp, 0, w, d);
+        const pm = new Set(afternoonOf(blocks));
+        return blocks.every((b, i) => pm.has(i) || b.start < noon);
+      })
+    );
+  return lined
+    ? camp.programs[0].groups
+        .filter((g) => g.division === camp.halfDay)
+        .map((g) => `${g.name}|MorningOnly`)
+    : [];
 }
 
 // ---------- writing the files as a director would ----------

@@ -3,6 +3,7 @@
  * reviewable list, grouped, each line with a one-click change. The change is an answer like any
  * other (it goes through buildProposal again and is remembered by the save).
  */
+import { availabilityKey } from "./availability";
 import { kindsThatFit } from "./items";
 import { dayList } from "./questions";
 
@@ -121,6 +122,30 @@ function updatedLines(proposal, t) {
     }));
 }
 
+const AVAILABILITY_LABEL = {
+  AllDay: "All day",
+  MorningOnly: "Morning only",
+  AfternoonOnly: "Afternoon only"
+};
+
+/** INGEST-5.9: a group here for part of the day; All day makes it all day. */
+function partOfDayLines(proposal) {
+  return [...(proposal.availability || new Map())].map(([group, a]) => {
+    const id = availabilityKey(group);
+    return {
+      key: id,
+      id,
+      name: group,
+      detail: "",
+      answer: a.availability,
+      options: [a.read, "AllDay"].map((value) => ({
+        value,
+        label: AVAILABILITY_LABEL[value]
+      }))
+    };
+  });
+}
+
 /**
  * The "Read as" groups, in order, each { key, label, lines }; a group with no line is left out.
  * cards: questionCards(proposal, t, answers) (a division of one is changed by its card).
@@ -172,6 +197,16 @@ export function readAsGroups(proposal, t, cards = []) {
       key: "specialDay",
       label: (n) => counted(n, `day of its own`, `days of their own`),
       lines: days
+    },
+    {
+      key: "partOfDay",
+      label: (n) =>
+        counted(
+          n,
+          `${t.sIn("Group")} here part of the day`,
+          `${t.pIn("Group")} here part of the day`
+        ),
+      lines: partOfDayLines(proposal)
     }
   ];
   return groups

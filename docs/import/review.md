@@ -13,7 +13,7 @@ nothing; a second import updates, and never changes what the director made or ch
 Code: `force-app/main/default/lwc/shoreshImportEngine/` (`review.js` `readAsGroups`; `items.js`
 `verdictFor`, `kindsThatFit`; `structure.js` `weekDayShapes`; `reading.js` and `people.js` for
 the notes the list reads); the screen `force-app/main/default/lwc/shoreshImport/`. Tests:
-`shoreshImportEngine/__tests__/review.test.js`, `shoreshImport/__tests__/shoreshImport.test.js`.
+`shoreshImportEngine/__tests__/review.test.js`, `__tests__/availability.test.js`, `shoreshImport/__tests__/shoreshImport.test.js`.
 
 ## The rules
 
@@ -152,3 +152,12 @@ Each rule is clue, meaning, example, test.
    Counter-cases: "made or changed by hand is never listed"; "a program the files do not cover
    is not listed". Not listed: groups, divisions, time blocks, places and programs (removing
    them takes their schedules with them).
+
+9. **A group here for part of the day is listed, with All day.**
+   Clue: names-and-divisions.md rule 9 reads a new group as Morning only (or Afternoon only).
+   Meaning: a line with the group's name under "groups here part of the day" (in the camp's word
+   for groups: "2 bunks here part of the day"), with **Morning only** (pressed) and **All day**.
+   A click is an answer (key `availability|<group>`): the group comes in all day and its blank
+   half of the day is read as before; the save remembers it like any answer.
+   Test: "INGEST-5.9: listed as here part of the day, with Morning only pressed and All day";
+   "INGEST-5.9: All day makes it all day, and the save remembers it".

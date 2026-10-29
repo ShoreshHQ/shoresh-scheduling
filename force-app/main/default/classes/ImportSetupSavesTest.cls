@@ -877,6 +877,33 @@ private class ImportSetupSavesTest {
   }
 
   @IsTest
+  static void ingest29AGroupHereForTheMorningComesInMorningOnly() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Map<String, Object> plan = newCampPlan(season.Id);
+      List<Object> entries = (List<Object>) plan.get('groups');
+      ((Map<String, Object>) entries[0]).put('availability', 'MorningOnly');
+      Test.startTest();
+      ImportController.saveSetup(JSON.serialize(plan));
+      Test.stopTest();
+      List<Group__c> groups = [
+        SELECT Name, Availability__c
+        FROM Group__c
+        WHERE Division__r.Program__r.Season__c = :season.Id
+        ORDER BY Name
+      ];
+      Assert.areEqual('Bunk 1', groups[0].Name);
+      Assert.areEqual('MorningOnly', groups[0].Availability__c);
+      Assert.areEqual(
+        'AllDay',
+        groups[1].Availability__c,
+        'a group with no availability in the plan stays all day'
+      );
+    }
+  }
+
+  @IsTest
   static void aGroupMovesToAnotherDivisionOfItsProgram() {
     Map<String, Id> ids = KeptCamp.keptIds();
     System.runAs(KeptCamp.scheduler(ids)) {

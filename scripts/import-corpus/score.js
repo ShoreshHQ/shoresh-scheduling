@@ -39,6 +39,7 @@ export const WRONG_KINDS = [
   "fixed",
   "recurring",
   "activities",
+  "availability",
   "cells"
 ];
 
@@ -250,6 +251,13 @@ function wrongReads(truth, proposal, plan) {
       truth.activities,
       plan.activities.map((a) => a.name).filter((n) => !ignored.has(n))
     ),
+    // INGEST-2.9: a group here for part of the day (only level 3's half days have one).
+    availability: mismatches(
+      truth.availability || [],
+      plan.groups
+        .filter((g) => g.availability && g.availability !== "AllDay")
+        .map((g) => `${g.name}|${g.availability}`)
+    ),
     cells: read.weeks.reduce((n, w) => n + w.wrong, read.extra)
   };
   return { wrong, weeks: read.weeks };
@@ -368,7 +376,7 @@ export function summaryTable(results) {
   lines.push("", "Wrong reads by kind (total, camps affected):");
   for (const kind of WRONG_KINDS) {
     const camps = results.filter((r) => r.wrong[kind] > 0).length;
-    lines.push(`  ${pad(kind, 12)}${pad(s.wrong[kind] || 0, 8)}${camps}`);
+    lines.push(`  ${pad(kind, 14)}${pad(s.wrong[kind] || 0, 8)}${camps}`);
   }
   return lines.join("\n");
 }

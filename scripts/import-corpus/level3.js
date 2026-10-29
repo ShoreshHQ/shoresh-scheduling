@@ -13,7 +13,9 @@
 //
 // The true answer: trips are noted, not set up (classify.js), so a trip is not an activity, but
 // its cells stay in the imported week as the trip (version.js); blank cells are not grid cells; a
-// slip is its usual spelling.
+// slip is its usual spelling; a half-day division's groups are Morning only (INGEST-2.9) when all
+// they have is in the morning as the import sets it (before noon) and the day has an afternoon;
+// a Lunch at noon or later would be dropped, so they stay all day.
 // Deterministic: the same seed always gives the same camp.
 import {
   filesOf,
@@ -199,8 +201,24 @@ function truthOf(camp) {
     ),
     recurring: [],
     activities: [...activities],
-    divisionsInFile: camp.divisionsInFile
+    divisionsInFile: camp.divisionsInFile,
+    availability: halfDayAvailability(camp)
   };
+}
+
+/** INGEST-2.9: "group|MorningOnly" for each half-day group, when all it has is before noon. */
+function halfDayAvailability(camp) {
+  if (!camp.halfDay) return [];
+  const lunch = camp.blocks.findIndex((b) => b.fixed === "Lunch");
+  const noon = 12 * 60;
+  const lined =
+    camp.blocks.every((b, i) => i > lunch || b.start < noon) &&
+    camp.blocks.some((b) => b.start >= noon);
+  return lined
+    ? camp.groups
+        .filter((g) => g.division === camp.halfDay)
+        .map((g) => `${g.name}|MorningOnly`)
+    : [];
 }
 
 // ---------- writing the files as a director would ----------

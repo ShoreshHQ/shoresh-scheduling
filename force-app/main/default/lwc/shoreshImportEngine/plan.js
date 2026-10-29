@@ -4,6 +4,7 @@
  * but not set up.
  */
 import { FIELD } from "c/shoreshSchema";
+import { availabilityKey } from "./availability";
 import { broughtBack } from "./deleted";
 import { clock, shortClock } from "./text";
 import { dayList, nameList } from "./questions";
@@ -87,6 +88,10 @@ function groupRecords(proposal, existing) {
       id: null,
       divisionKey: g.divisionKey,
       name: g.recordName || g.name,
+      // INGEST-2.9: here for part of the day (else the save's default, All day).
+      ...(proposal.availability && proposal.availability.has(g.name)
+        ? { availability: proposal.availability.get(g.name).availability }
+        : {}),
       sortOrder: base + i + 1
     }));
   // A group the director chose to move to another division.
@@ -177,7 +182,9 @@ function setTimeRecords(records, updates, withDays) {
 function readAsIds(proposal) {
   return [
     ...(proposal.decisions || []).map((d) => d.readAs),
-    ...proposal.notes.map((n) => n.id)
+    ...proposal.notes.map((n) => n.id),
+    // INGEST-5.9: a group's part of the day.
+    ...[...(proposal.availability || new Map()).keys()].map(availabilityKey)
   ].filter(Boolean);
 }
 

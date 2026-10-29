@@ -29,6 +29,7 @@ function existingPrograms(existing, rules) {
       name: b.Name,
       start: minutesOf(b[FIELD.TimeBlock.StartTime]),
       end: minutesOf(b[FIELD.TimeBlock.EndTime]),
+      partOfDay: b[FIELD.TimeBlock.PartOfDay] || null,
       sortOrder: b[FIELD.TimeBlock.SortOrder] || 0
     })),
     // Group identities (identity.js), as the files' groups are named.

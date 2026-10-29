@@ -5,6 +5,7 @@
  * where the file disagrees with them, the director is asked whether to change them.
  */
 import { classifyName, notedKindByWords, specialDayNames } from "./classify";
+import { atCampIn } from "./availability";
 import { deletedActivity } from "./deleted";
 import { LEAVE_OUT } from "./reading";
 import { looseKey, WEEKDAYS } from "./text";
@@ -137,6 +138,8 @@ function timetableFacts(t, usable, ctx) {
     weeks,
     busy,
     present,
+    // INGEST-2.9: a group here for part of the day is away the other part, not a gap.
+    atCamp: (group, block) => atCampIn(ctx.availability, t, group, block),
     similar: ctx.similar || new Map()
   };
 }
