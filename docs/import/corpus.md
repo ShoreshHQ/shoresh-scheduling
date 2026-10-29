@@ -183,7 +183,8 @@ Morning only; 86 are read right. The rest are the 3 by-activity camps above, who
 misread (availability 9 wrong reads). Still 317 of 320 perfect; levels 1 and 2, the travel
 camps and Greg's camp unchanged (no group read part of the day). Level 5: 113 of 320 still; 11 groups read part of the
 day in 2 oneGroup camps whose groups are already misread (L5-265, L5-315). Letter-code camps
-read no one part of the day: an afternoon where no group has anything read shows no one away.
+read no one part of the day: an afternoon where no group has anything read shows no one away. Level 4: its half-day groups have the same truth
+(`level4.js`); every one is read right, 204 of 320 perfect as before.
 
 ## Level 4
 
