@@ -93,6 +93,7 @@ global with sharing class IncomingGroup implements IncomingBatch.Capability {
     kind.parentField = 'division';
     kind.parentLink = Group__c.Division__c;
     kind.sortField = Group__c.SortOrder__c;
+    kind.loadDefaults = true;
     for (Division__c division : [
       SELECT Id, Name
       FROM Division__c

@@ -23,6 +23,8 @@ public with sharing class IncomingNamedPlan {
     // Where a new one goes in its list (none for an activity), and the season's field (activity).
     public Schema.SObjectField sortField;
     public Schema.SObjectField seasonField;
+    // A group needs its required availability; other kinds take only their name and place.
+    public Boolean loadDefaults = false;
     // The parents by folded name; a name two share is there as null (asked, not guessed).
     public Map<String, Id> parents = new Map<String, Id>();
     // What the season has: folded name -> [record], and each record's parent.
@@ -136,8 +138,8 @@ public with sharing class IncomingNamedPlan {
 
   private void add(Integer i, Named record, Id parentId) {
     Schema.SObjectType type = ImportFields.ofTerm(kind.term);
-    // Defaults loaded: a new group gets the camp's usual availability, as on the setup screen.
-    SObject row = type.newSObject(null, true);
+    // A new group gets the camp's usual availability, as on the setup screen.
+    SObject row = type.newSObject(null, kind.loadDefaults);
     row.put('Name', record.name.trim().left(80));
     if (kind.parentLink != null) {
       row.put(kind.parentLink, parentId);

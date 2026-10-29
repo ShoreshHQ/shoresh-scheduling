@@ -6,6 +6,15 @@
 @IsTest
 public class IncomingTestData {
   public static final String SYSTEM_NAME = 'Sign-up Form';
+  // Each web address's handler, by its plain name.
+  private static final Map<String, Door> DOORS = new Map<String, Door>{
+    'camper' => new CamperDoor(),
+    'camper_group' => new CamperGroupDoor(),
+    'camper_elective_choice' => new ChoiceDoor(),
+    'division' => new DivisionDoor(),
+    'group' => new GroupDoor(),
+    'activity' => new ActivityDoor()
+  };
   public Season__c season;
   public Map<String, Id> ids;
   public ElectiveRun__c run;
@@ -96,26 +105,7 @@ public class IncomingTestData {
     request.requestBody = Blob.valueOf(body);
     RestContext.request = request;
     RestContext.response = new RestResponse();
-    switch on address {
-      when 'camper' {
-        IncomingCamper.post();
-      }
-      when 'camper_group' {
-        IncomingCamperGroup.post();
-      }
-      when 'division' {
-        IncomingDivision.post();
-      }
-      when 'group' {
-        IncomingGroup.post();
-      }
-      when 'activity' {
-        IncomingActivity.post();
-      }
-      when else {
-        IncomingCamperElectiveChoice.post();
-      }
-    }
+    DOORS.get(address).post();
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -146,5 +136,39 @@ public class IncomingTestData {
       WITH SYSTEM_MODE
       ORDER BY CreatedDate DESC, Name DESC
     ];
+  }
+
+  private interface Door {
+    void post();
+  }
+  private class CamperDoor implements Door {
+    public void post() {
+      IncomingCamper.post();
+    }
+  }
+  private class CamperGroupDoor implements Door {
+    public void post() {
+      IncomingCamperGroup.post();
+    }
+  }
+  private class ChoiceDoor implements Door {
+    public void post() {
+      IncomingCamperElectiveChoice.post();
+    }
+  }
+  private class DivisionDoor implements Door {
+    public void post() {
+      IncomingDivision.post();
+    }
+  }
+  private class GroupDoor implements Door {
+    public void post() {
+      IncomingGroup.post();
+    }
+  }
+  private class ActivityDoor implements Door {
+    public void post() {
+      IncomingActivity.post();
+    }
   }
 }
