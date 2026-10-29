@@ -89,6 +89,10 @@ public with sharing class SetTimePlan {
     public List<String> days = new List<String>();
     public Set<Id> groupIds = new Set<Id>();
     public Set<Id> weekIds = new Set<Id>();
+    // A fixed activity's one day it starts earlier (an early dismissal), and by how many time
+    // blocks: that day it also holds those blocks, ending where it always does (CORE-3.7).
+    public String earlyDay;
+    public Integer early = 0;
 
     /** The days it really happens: ticked, and the program runs then. */
     public List<String> runDays() {
@@ -101,10 +105,16 @@ public with sharing class SetTimePlan {
       return result;
     }
 
-    // A fixed activity's one day it starts earlier (an early dismissal), and by how many time
-    // blocks: that day it also holds those blocks, ending where it always does (CORE-3.7).
-    public String earlyDay;
-    public Integer early = 0;
+    /** A fixed activity record's early day and blocks (nothing for a recurring one). */
+    public void readEarly(SObject record) {
+      if (record instanceof FixedActivity__c) {
+        FixedActivity__c fixed = (FixedActivity__c) record;
+        earlyDay = fixed.EarlyDay__c;
+        early = fixed.EarlyBlocks__c == null
+          ? 0
+          : fixed.EarlyBlocks__c.intValue();
+      }
+    }
 
     /** The time blocks it takes on a day ("Friday"): on its early day, from earlier. */
     public List<Integer> span(String day) {

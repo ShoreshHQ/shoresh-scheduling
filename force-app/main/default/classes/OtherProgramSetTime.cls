@@ -92,13 +92,7 @@ public with sharing class OtherProgramSetTime {
     item.length = length == null ? 1 : length.intValue();
     item.locationId = (Id) record.get(f.location);
     // A fixed activity's early day (CORE-3.7).
-    if (record instanceof FixedActivity__c) {
-      FixedActivity__c fixed = (FixedActivity__c) record;
-      item.earlyDay = fixed.EarlyDay__c;
-      item.early = fixed.EarlyBlocks__c == null
-        ? 0
-        : fixed.EarlyBlocks__c.intValue();
-    }
+    item.readEarly(record);
     return item;
   }
 

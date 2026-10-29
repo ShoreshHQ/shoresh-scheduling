@@ -222,7 +222,7 @@ Each rule is clue, meaning, example, test.
     nothing after, is the regular day"; "Dismissal written in the last period, the rest of the
     day blank, runs to the day's end"; counter-case "INGEST-4.13 counter-case: truly different →
     special: a day of its own flow stays a special day"; the corpus "reads every camp perfectly,
-    the early day the regular day"; Apex `ImportSetupSavesTest` "aFixedActivitysEarlyDayIsSaved".
+    the early day the regular day"; Apex `ImportEarlyDayTest` "aFixedActivitysEarlyDayIsSaved".
     Code: `structure.js` `earlyEnds`; `reading.js` (the placements it covers, `early`);
     `classify.js` `patternsOf` (read at its usual slot); `items.js` `earlyOf`.
 

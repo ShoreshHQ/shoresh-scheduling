@@ -322,33 +322,6 @@ private class ImportSetupSavesTest {
     }
   }
 
-  /**
-   * INGEST-4.13, CORE-3.7: a day ending early comes in as the fixed Dismissal's early day:
-   * Lunch here, starting one time block earlier on Friday.
-   */
-  @IsTest
-  static void aFixedActivitysEarlyDayIsSaved() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
-      Map<String, Object> plan = newCampPlan(season.Id);
-      Map<String, Object> lunch = (Map<String, Object>) ((List<Object>) plan.get(
-        'fixedActivities'
-      ))[0];
-      lunch.put('earlyDay', 'Friday');
-      lunch.put('earlyBlocks', 1);
-      Test.startTest();
-      ImportController.saveSetup(JSON.serialize(plan));
-      Test.stopTest();
-
-      FixedActivity__c saved = SeasonSetupController.getSeasonSetup(season.Id)
-        .programs[0]
-        .fixedActivities[0];
-      Assert.areEqual('Friday', saved.EarlyDay__c);
-      Assert.areEqual(1, saved.EarlyBlocks__c);
-    }
-  }
-
   @IsTest
   static void onlyWhatTheDirectorChoseChangesInAnExistingSeason() {
     Map<String, Id> ids = KeptCamp.keptIds();

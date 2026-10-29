@@ -214,10 +214,7 @@ public with sharing class SetTimePlanReader {
 
   private void addFixed(FixedActivity__c record) {
     SetTimePlan.Item item = itemFor(record, 'FixedActivity');
-    item.earlyDay = record.EarlyDay__c;
-    item.early = record.EarlyBlocks__c == null
-      ? 0
-      : record.EarlyBlocks__c.intValue();
+    item.readEarly(record);
     for (String day : SetTimePlan.WEEKDAYS) {
       if (item.program.days.contains(day)) {
         item.days.add(day);
