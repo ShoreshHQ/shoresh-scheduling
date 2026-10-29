@@ -533,6 +533,7 @@ describe("c-shoresh-learned: one running list", () => {
     expect($(element, '[data-id="capped"]')).toBeNull();
     while ($(element, '[data-id="more"]')) {
       $(element, '[data-id="more"]').click();
+      // eslint-disable-next-line no-await-in-loop -- each click must render before the next
       await flush();
     }
     const all = $$(element, "li");
@@ -544,6 +545,7 @@ describe("c-shoresh-learned: one running list", () => {
     const fewer = await mount([], many.slice(1));
     while ($(fewer, '[data-id="more"]')) {
       $(fewer, '[data-id="more"]').click();
+      // eslint-disable-next-line no-await-in-loop -- each click must render before the next
       await flush();
     }
     expect($(fewer, '[data-id="capped"]')).toBeNull();
