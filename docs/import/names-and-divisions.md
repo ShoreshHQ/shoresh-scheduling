@@ -141,6 +141,25 @@ Each rule is clue, meaning, example, test.
    `ImportSetupSavesTest` `ingest29AGroupHereForTheMorningComesInMorningOnly`. Code:
    `availability.js`.
 
+10. **A day's times run forward** (level-4 corpus, 2026-10-28).
+    Clue: a time block written without AM or PM ("7:00 - 8:00") whose morning reading would be
+    earlier than a block written above it on the same page.
+    Meaning: it is the afternoon or evening, read on in order, and not asked: Dinner "6:00 - 6:45"
+    under a 2:45 block is 6 in the evening, and the Evening Program "7:00 - 8:00" and Cabin Time
+    "8:15 - 9:00" under it are 7 and 8:15 in the evening, never the morning before the camp's day
+    starts. A time with nothing later above it is read by the camp-day rule (1 to 6 the afternoon,
+    7 to 11 the morning), and a 5 or 6 o'clock one is still asked, morning or evening (ADR 0006);
+    a 5 or 6 o'clock one still asked moves the day on only as its morning reading, so nothing
+    under it is read on from a guess. A time earlier than a block above it whichever way it is
+    read (written out of order) is asked.
+    Example: an overnight camp's day written 9:00 to 3:35, then Dinner, Evening Program and Cabin
+    Time without AM or PM (level 4, e.g. L4-009).
+    Test: `reading.test.js` "INGEST-2.10: …" (an evening runs on from the afternoon; a 6 o'clock
+    block under the morning is the evening). Counter-cases ("INGEST-2.10 counter-case: …"): a time
+    written out of order either way round is still asked; a time with nothing later above it keeps
+    the camp-day rule; `reading.test.js` "a 5 or 6 o'clock block without AM or PM is asked about"
+    (written first, it is asked). Code: `structure.js` `readForward`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

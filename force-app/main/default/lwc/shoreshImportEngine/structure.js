@@ -21,8 +21,37 @@ export function blockFromLabel(label) {
     name: name || tidy(label),
     start: range ? range.start : null,
     end: range ? range.end : null,
-    guessedPm: !!(range && range.guessedPm)
+    guessedPm: !!(range && range.guessedPm),
+    bare: !!(range && range.bare)
   };
+}
+
+/**
+ * INGEST-2.10: a page's day runs forward. A time with no AM or PM whose morning reading would be
+ * earlier than a block written above it is the afternoon or evening, read on in order and not
+ * asked: Dinner "6:00-6:45" under a 2:45 block, then Evening Program "7:00-8:00" (7 in the
+ * evening, never 7 in the morning before the day starts). Only a time with nothing later above it
+ * is read by the camp-day rule alone, and a 5 or 6 o'clock one asked. Changes the blocks in place.
+ */
+function readForward(blocks) {
+  let latest = null;
+  for (const b of blocks) {
+    if (b.start === null) {
+      continue;
+    }
+    const morning = b.start < 12 * 60 ? b.start : b.start - 12 * 60;
+    const evening = morning + 12 * 60;
+    if (b.bare && latest !== null && morning < latest) {
+      b.end = b.end === null ? null : b.end + evening - b.start;
+      b.start = evening;
+      // Still earlier than a block above, either way round (written out of order): asked.
+      b.guessedPm = evening < latest && evening >= 17 * 60;
+    }
+    // A time still asked (6:00 at the top: morning or evening?) moves the day on only as far as
+    // its earlier reading, so what follows is never read past it on a guess.
+    const at = b.guessedPm ? b.start - 12 * 60 : b.start;
+    latest = latest === null ? at : Math.max(latest, at);
+  }
 }
 
 function blockKey(block) {
@@ -69,9 +98,11 @@ function pageBlocks(page, pageIndex, placements) {
   const used = new Set(
     placements.filter((p) => p.page === pageIndex).map((p) => p.row)
   );
+  const read = page.rows.map((row) => blockFromLabel(row.label));
+  readForward(read);
   const blocks = [];
   page.rows.forEach((row, r) => {
-    const block = blockFromLabel(row.label);
+    const block = read[r];
     const short =
       block.start !== null &&
       block.end !== null &&

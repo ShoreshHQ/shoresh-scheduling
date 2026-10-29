@@ -198,7 +198,7 @@ function bareHourRange(text) {
     end = minutesOf(match[3], null, start >= 12 * 60 ? "p" : null);
   }
   return end > start
-    ? { start, end, guessedPm: from < MORNING_FROM_HOUR }
+    ? { start, end, guessedPm: from < MORNING_FROM_HOUR, bare: from < 12 }
     : null;
 }
 
@@ -239,7 +239,14 @@ export function timeRange(text) {
   const hour = Number(first[1]);
   const guessedPm =
     !first[3] && !firstMark && hour >= 1 && hour < MORNING_FROM_HOUR;
-  return { start, end: end !== null && end > start ? end : null, guessedPm };
+  // bare: no AM or PM settles the start, and it reads either way (not 12, not 24-hour).
+  const bare = !first[3] && !firstMark && hour >= 1 && hour < 12;
+  return {
+    start,
+    end: end !== null && end > start ? end : null,
+    guessedPm,
+    bare
+  };
 }
 
 /** The label with its times taken out: "Period 1 (9:00-9:45)" -> "Period 1". */

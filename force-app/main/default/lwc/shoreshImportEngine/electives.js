@@ -24,6 +24,7 @@ import { notedKindByWords } from "./classify";
 import { deletedAs } from "./deleted";
 import { foldName } from "./names";
 import { LEAVE_OUT } from "./reading";
+import { blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock } from "./text";
 
 export const ELECTIVES = "elective";
@@ -319,15 +320,15 @@ function doublePeriods(set, timetables) {
   const held = new Map();
   for (const p of set.cells) {
     const t = timetables[p.timetable];
-    for (let k = 0; k < p.span; k++) {
-      if (!usableBlock(t.blocks[p.blockIndex + k])) {
+    for (const b of blocksOf(p)) {
+      if (!usableBlock(t.blocks[b])) {
         continue;
       }
       const key = `${p.timetable}|${p.day}|${p.week}|${p.group}`;
       if (!held.has(key)) {
         held.set(key, new Set());
       }
-      held.get(key).add(p.blockIndex + k);
+      held.get(key).add(b);
     }
   }
   const runsByDay = new Map();

@@ -15,6 +15,7 @@
 import { FIELD } from "c/shoreshSchema";
 import { fixedKey } from "./items";
 import { LEAVE_OUT } from "./reading";
+import { blocksOf } from "./reading-constants";
 import { WEEKDAYS, clock, looseKey, tidy } from "./text";
 import { labelDates } from "./weekLabels";
 import { weeksToFill } from "./weeks";
@@ -280,22 +281,50 @@ function itemKeyFinder(proposal) {
  * day (`own`, INGEST-4.3) has the blocks its cells use, with ids of its own ("b1", ADR 0014).
  */
 function dayGrid(t, groups, placements, context, own) {
-  const used = new Set(
-    placements.flatMap((p) =>
-      Array.from({ length: p.span }, (_, k) => p.blockIndex + k)
-    )
-  );
-  const blocks = t.blocks
-    .map((b, index) => ({ ...b, index }))
-    .filter((b) => !b.leftOut && !b.untimed)
-    .filter((b) => (own ? used.has(b.index) : !b.ownDay));
-  const column = new Map(blocks.map((b, i) => [b.index, i]));
+  return gridOf([{ t, groups, placements }], context, own);
+}
+
+/**
+ * The grid of one day for one program's groups, or (a special day, INGEST-4.11) for several
+ * programs' together: the blocks each part's cells use, in time order, and every part's groups.
+ */
+function gridOf(parts, context, own) {
+  const blocks = parts
+    .flatMap(({ t, placements }, part) => {
+      const used = new Set(placements.flatMap((p) => blocksOf(p)));
+      return t.blocks
+        .map((b, index) => ({ ...b, index, part, t }))
+        .filter((b) => !b.leftOut && !b.untimed)
+        .filter((b) => (own ? used.has(b.index) : !b.ownDay));
+    })
+    .sort((a, b) => (parts.length > 1 ? a.start - b.start : 0));
+  // Two programs' blocks at the same times (a Dinner for everyone) are one column of the day.
+  const shared = new Map();
+  const kept = [];
+  const column = new Map();
+  for (const b of blocks) {
+    const at =
+      parts.length > 1 ? `${b.start}-${b.end}` : `${b.part}|${b.index}`;
+    if (!shared.has(at)) {
+      shared.set(at, kept.length);
+      kept.push(b);
+    }
+    column.set(`${b.part}|${b.index}`, shared.get(at));
+  }
+  blocks.length = 0;
+  blocks.push(...kept);
+  const groups = parts.flatMap((x) => x.groups);
   const rows = groups.map(() => blocks.map(() => ""));
   const items = new Items();
-  for (const p of placements) {
-    const g = groups.findIndex((x) => x.name === p.group);
+  const placed = parts.flatMap(({ t, placements }, part) =>
+    placements.map((p) => ({ p, t, part }))
+  );
+  for (const { p, t, part } of placed) {
+    const g = groups.findIndex(
+      (x) => x.name === p.group && x.timetable === t.index
+    );
     const item = context.itemOf(p, t);
-    const start = column.get(p.blockIndex);
+    const start = column.get(`${part}|${p.blockIndex}`);
     if (!item || item.deleted) {
       context.unmatched.push({ ...p, why: item ? "deleted" : "leftOut" });
     } else if (g < 0) {
@@ -305,8 +334,10 @@ function dayGrid(t, groups, placements, context, own) {
     } else {
       const number = items.number(item.kind, item.key, item.name || p.text);
       rows[g][start] = number;
-      for (let k = 1; k < p.span && column.has(p.blockIndex + k); k++) {
-        const c = column.get(p.blockIndex + k);
+      for (const b of blocksOf(p)
+        .slice(1)
+        .filter((x) => column.has(`${part}|${x}`))) {
+        const c = column.get(`${part}|${b}`);
         if (rows[g][c] === "") {
           // An elective set holds each time block on its own (ADR 0018 choice 21), so a double
           // period is the set in both blocks, not one cell carried on.
@@ -317,7 +348,7 @@ function dayGrid(t, groups, placements, context, own) {
   }
   return {
     b: blocks.map((b, i) => [
-      own ? `b${i + 1}` : b.id || `B|${t.key}|${b.fileKey}`,
+      own ? `b${i + 1}` : b.id || `B|${b.t.key}|${b.fileKey}`,
       b.name,
       clock(b.change ? b.change.start : b.start),
       clock(b.change ? b.change.end : b.end)
@@ -341,7 +372,21 @@ function versionFor(t, week, label, context) {
     const date = dateIn(week, day);
     const own = date && ownDayOf(t, label, day);
     const taken = own && takenBy(context, week, day);
-    if (own && own.leftOut) {
+    const joins =
+      date &&
+      !own &&
+      !takenBy(context, week, day) &&
+      context.ownerOf(label, day);
+    if (joins) {
+      // INGEST-4.11: another program's day of its own replaces the day for the whole camp, so
+      // this program's groups are in that special day, on their own blocks, not on a regular day.
+      context.joining.push({
+        at: `${joins.index}|${label}|${day}`,
+        t,
+        groups,
+        placements: onDay
+      });
+    } else if (own && own.leftOut) {
       onDay.forEach((p) =>
         context.unmatched.push({ ...p, why: "ownDayLeftOut" })
       );
@@ -359,7 +404,8 @@ function versionFor(t, week, label, context) {
     } else if (own) {
       context.specialDays.push(
         specialDayFor(t, week, day, label, {
-          grid: dayGrid(t, groups, onDay, context, true),
+          parts: [{ t, groups, placements: onDay }],
+          at: `${t.index}|${label}|${day}`,
           program: t.name,
           cells: onDay
         })
@@ -519,6 +565,16 @@ export function versionsFor(proposal, input) {
     existing: input.existing,
     unmatched: [],
     specialDays: [],
+    joining: [],
+    // INGEST-4.11: the program whose day of its own a week's day is, made as a special day.
+    ownerOf: (label, day) =>
+      proposal.timetables.find(
+        (x) =>
+          !x.leftOut &&
+          (x.ownDays || []).some(
+            (o) => o.week === label && o.day === day && !o.leftOut
+          )
+      ),
     notes: [],
     asks: [],
     name: versionName((input.files || []).map((f) => f.name))
@@ -557,6 +613,23 @@ export function versionsFor(proposal, input) {
       } else {
         versions.push(versionFor(t, week, label, context));
       }
+    }
+  }
+  for (const d of context.specialDays) {
+    for (const j of context.joining.filter((x) => x.at === d.at)) {
+      d.parts.push(j);
+      d.cells = [...d.cells, ...j.placements];
+    }
+    d.grid = gridOf(d.parts, context, true);
+    delete d.parts;
+    delete d.at;
+  }
+  // A program's day joined to a special day never made (its week asked, left out): cells not placed.
+  for (const j of context.joining) {
+    if (!context.specialDays.some((d) => d.cells.includes(j.placements[0]))) {
+      j.placements.forEach((p) =>
+        context.unmatched.push({ ...p, why: "ownDayLeftOut" })
+      );
     }
   }
   const specialDays = oneSpecialDayADay(context, answers);

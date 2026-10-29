@@ -16,7 +16,7 @@ import {
   electiveWord
 } from "./electives";
 import { LEAVE_OUT } from "./reading";
-import { NO_DIVISION } from "./reading-constants";
+import { NO_DIVISION, blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock, weekOrder } from "./text";
 
 function article(word) {
@@ -615,8 +615,8 @@ function electiveWhere(set, proposal, t) {
   const blocks = [];
   set.cells.forEach((p) => {
     // Every block it fills, the second of a double period too.
-    for (let k = 0; k < p.span; k++) {
-      const block = timetables[p.timetable].blocks[p.blockIndex + k];
+    for (const b of blocksOf(p)) {
+      const block = timetables[p.timetable].blocks[b];
       if (block && !blocks.includes(block.name)) {
         blocks.push(block.name);
       }

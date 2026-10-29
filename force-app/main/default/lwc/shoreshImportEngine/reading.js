@@ -241,6 +241,18 @@ function blockRowsIn(p, blockAt) {
   return Math.max(count, 1);
 }
 
+/** The time blocks a run's rows are, in order: the rows of its own page, never another day's. */
+function blockKeysIn(p, blockAt) {
+  const keys = [];
+  for (let r = p.row; r <= p.endRow; r++) {
+    const key = blockAt.get(`${p.page}|${r}`);
+    if (key !== undefined) {
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
 /** Each cell answered: the text chosen, or nothing if left out. One placement per cell. */
 function settleCells(byCell, answers, disagreements) {
   const asked = new Map(disagreements.map((d) => [d.cell, d.id]));
@@ -350,7 +362,8 @@ export function readImport(input) {
       ...p,
       blockKey: blockAt.get(`${p.page}|${p.row}`),
       timetable: timetableOfPage.get(p.page),
-      span: blockRowsIn(p, blockAt)
+      span: blockRowsIn(p, blockAt),
+      blockKeys: blockKeysIn(p, blockAt)
     }));
   const blockName = (p) => {
     const t = timetables[p.timetable];

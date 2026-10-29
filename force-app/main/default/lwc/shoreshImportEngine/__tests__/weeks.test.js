@@ -713,3 +713,168 @@ describe("review of PR 176: days of their own that clash", () => {
     );
   });
 });
+
+// INGEST-4.10
+describe("INGEST-4.10: a doubled cell in a week that has a day of its own", () => {
+  it("INGEST-4.10: a merge on Monday runs over Monday's blocks, not the short Friday's between them", () => {
+    const files = [0, 1, 2].map((w) =>
+      file(
+        `Camp 2026 - Week ${w + 1}.xlsx`,
+        GROUPS.map((g, gi) => {
+          const rows = groupRows(
+            w,
+            gi,
+            BLOCKS,
+            w === 1 ? SHORT_FRIDAY : BLOCKS
+          );
+          const sheet = sheetOf(g, rows);
+          if (w === 1 && gi === 0) {
+            // Bunk 1's Monday Period 3 doubled into Period 4: the merge covers the Activity A
+            // row between them (p3 + 1), which Monday does not have.
+            const p3 = rows.findIndex((r) => /^Period 3/.test(r[0]));
+            const p4 = rows.findIndex((r) => /^Period 4/.test(r[0]));
+            for (let r = p3 + 1; r <= p4; r++) rows[r][1] = "";
+            sheet.merges = [{ s: { r: p3, c: 1 }, e: { r: p4, c: 1 } }];
+          }
+          return sheet;
+        })
+      )
+    );
+    const week2 = groupRows(1, 0, BLOCKS, SHORT_FRIDAY).map((r) => r[0]);
+    expect(week2.slice(5, 8)).toEqual([
+      "Period 3 1:00-1:45",
+      "Activity A 1:00-2:35",
+      "Period 4 1:50-2:35"
+    ]);
+    const p = propose(files);
+    expect(p.reading.timetables).toHaveLength(1);
+    const t = p.timetables[0];
+    const run = p.usable.find(
+      (x) =>
+        x.week === "Week 2" &&
+        x.group === "Bunk 1" &&
+        x.day === "Monday" &&
+        /^Period 3/.test(x.block)
+    );
+    expect(run.blocks.map((i) => t.blocks[i].name)).toEqual([
+      "Period 3",
+      "Period 4"
+    ]);
+    // A double period: two blocks long, not the three rows the merge covers.
+    expect(run.span).toBe(2);
+  });
+
+  it("INGEST-4.10 counter-case: a doubled cell in a week with no day of its own runs on as before", () => {
+    const files = [0, 1].map((w) =>
+      file(`Camp 2026 - Week ${w + 1}.xlsx`, [
+        (() => {
+          const rows = groupRows(w, 0);
+          const sheet = sheetOf(GROUPS[0], rows);
+          const p3 = rows.findIndex((r) => /^Period 3/.test(r[0]));
+          rows[p3 + 1][1] = "";
+          sheet.merges = [{ s: { r: p3, c: 1 }, e: { r: p3 + 1, c: 1 } }];
+          return sheet;
+        })()
+      ])
+    );
+    const p = propose(files);
+    const t = p.timetables[0];
+    const run = p.usable.find(
+      (x) =>
+        x.group === "Bunk 1" && x.day === "Monday" && /^Period 3/.test(x.block)
+    );
+    expect(run.blocks.map((i) => t.blocks[i].name)).toEqual([
+      "Period 3",
+      "Period 4"
+    ]);
+  });
+});
+
+// INGEST-4.11
+describe("INGEST-4.11: a special day in a camp of two programs covers both", () => {
+  const weeks = [
+    ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+    ["w2", "Week 2", "2027-07-05", "2027-07-09"],
+    ["w3", "Week 3", "2027-07-12", "2027-07-16"]
+  ].map(([Id, Name, start, end]) => ({
+    Id,
+    Name,
+    StartDate__c: start,
+    EndDate__c: end
+  }));
+  const late = [
+    "Period 1 9:15-10:00",
+    "Period 2 10:05-10:50",
+    "Lunch 12:15-1:00",
+    "Period 3 1:05-1:50",
+    "Period 4 1:55-2:40"
+  ];
+  const seniors = ["Senior 1", "Senior 2"];
+  const files = [0, 1, 2].flatMap((w) => [
+    file(`Juniors - Week ${w + 1}.csv`, [
+      sheetOf(
+        "J",
+        weekRows(w, (d) => (w === 1 && d === 4 ? SHORT_FRIDAY : BLOCKS))
+      )
+    ]),
+    file(`Seniors - Week ${w + 1}.csv`, [
+      sheetOf(
+        "S",
+        weekRows(w, () => late, seniors)
+      )
+    ])
+  ]);
+
+  it("INGEST-4.11: the other program's groups are in the special day, on their own blocks, with nothing asked", () => {
+    const existing = existingSetup({ weeks });
+    const p = propose(files, existing);
+    expect(p.timetables).toHaveLength(2);
+    expect(
+      questionCards(p, terms, {}).filter((c) => c.answer === null)
+    ).toEqual([]);
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(plan.specialDays).toHaveLength(1);
+    const [day] = plan.specialDays;
+    expect(day.name).toBe("Week 2 Friday");
+    expect(day.grid.g.map(([, name]) => name)).toEqual([...GROUPS, ...seniors]);
+    // Both programs' blocks, in time order: the Juniors' short Friday and the Seniors' day.
+    expect(day.grid.b.map((b) => b[2])).toEqual([
+      "09:00",
+      "09:15",
+      "09:50",
+      "10:05",
+      "11:30",
+      "12:15",
+      "13:00",
+      "13:05",
+      "13:55"
+    ]);
+    // A Senior's Friday Period 1 is in their row, in their block.
+    const senior = day.grid.r[GROUPS.length].split(",");
+    const at915 = day.grid.b.findIndex((b) => b[2] === "09:15");
+    const item = day.grid.i[Number(senior[at915]) - 1];
+    expect(item[2]).toBe(cellOf(1, 0, 4, 0, late[0]));
+    expect(senior[0]).toBe("");
+    // The Seniors' Week 2 has no regular Friday: the special day replaces it.
+    const seniorWeek2 = plan.versions.find(
+      (v) => v.programKey === p.timetables[1].key && v.weekId === "w2"
+    );
+    expect(seniorWeek2.days.map((d) => d.date)).not.toContain("2027-07-09");
+    expect(
+      plan.versions
+        .find((v) => v.programKey === p.timetables[1].key && v.weekId === "w1")
+        .days.map((d) => d.date)
+    ).toContain("2027-07-02");
+  });
+
+  it("INGEST-4.11 counter-case: the day of its own left out leaves the other program's Friday as it is", () => {
+    const existing = existingSetup({ weeks });
+    const p = propose(files, existing, { "ownDays|Week 2": "leaveOut" });
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(plan.specialDays).toEqual([]);
+    const seniorWeek2 = plan.versions.find(
+      (v) => v.programKey === p.timetables[1].key && v.weekId === "w2"
+    );
+    expect(seniorWeek2.days.map((d) => d.date)).toContain("2027-07-09");
+  });
+});

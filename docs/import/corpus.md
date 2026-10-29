@@ -204,9 +204,14 @@ with two of five shapes (weekend brings overnight, special brings weeks) and one
 - **special**: in one week after the first, one mid-week day whose afternoon has fewer, longer
   blocks: that week's special day (INGEST-4.3).
 
-Left out because the true answer is a product decision not yet made (questions for Greg): a
-weekend with its own blocks every week (a Saturday schedule), a mid-week day with its own blocks in
-a one-week file, and a special day in a camp of two programs.
+Greg's level-4 decisions (2026-10-28): a special day in a camp of two programs covers both
+programs (INGEST-4.11): 80 more camps (`decisionCamps`, `L4D-001` to `L4D-080`, ten of each
+layout), two programs with a special day in program 1, scored on top of the 320 with every group
+of both programs expected in the special day (`truth.specialDayGroups`; the camp is read again
+with season weeks named as the files name them, since a special day is made only on a season
+week's day). Still left out, since a program's time blocks cannot differ by day yet (weeks.md,
+known limits): a weekend with its own blocks every week (decision 1) and a mid-week day with its
+own blocks in a one-week file (decision 2).
 
     npm run score:import -- --level 4
 
@@ -225,6 +230,13 @@ spelling 46 of 69, gaps 70 of 93, double 43 of 85, trip 41 of 95. Causes:
    Wednesday's own blocks; L4-130, a CSV double on Week 3 Sunday losing its second block). The run
    is counted along a timetable that also holds the special day's own blocks, so it lands on the
    wrong ones.
+
+After INGEST-2.10 (a day's times run forward) and INGEST-4.10 (a doubled cell runs over its own
+day's blocks): **320 of 320 perfect**, no questions, no wrong reads. The generator's by-group merges
+now end on the row of the run's last block (`runMerges`), as a director's would, where before a run
+whose rows had another day's own block between them ended a row short (L4-092). The 80 decision
+camps: 80 of 80 perfect (0 of 80 before INGEST-4.11: the other program's groups were missing from
+the special day). Levels 1, 2, 3 and 5, the travel camps and Greg's camp unchanged.
 
 ## Level 5
 

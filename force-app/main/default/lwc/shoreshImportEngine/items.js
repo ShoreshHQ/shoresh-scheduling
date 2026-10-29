@@ -8,6 +8,7 @@ import { classifyName, notedKindByWords, specialDayNames } from "./classify";
 import { atCampIn } from "./availability";
 import { deletedActivity } from "./deleted";
 import { LEAVE_OUT } from "./reading";
+import { blocksOf } from "./reading-constants";
 import { looseKey, WEEKDAYS } from "./text";
 
 // ---------- usable placements ----------
@@ -18,6 +19,21 @@ function blockIndexes(timetables) {
     t.blocks.forEach((b, i) => result.set(`${t.index}|${b.fileKey}`, i));
   }
   return result;
+}
+
+/**
+ * INGEST-4.10: the timetable's blocks a run covers, by the rows it spans on its own page. A
+ * timetable holds a week's own day's blocks among its regular ones (INGEST-4.3), so a doubled
+ * cell on another day never runs onto them, as counting on from its first block would.
+ */
+function coveredIndexes(p, t, indexes) {
+  const ownDay = (t.ownDays || []).some(
+    (o) => o.week === (p.week || "") && o.day === p.day
+  );
+  const found = (p.blockKeys || [])
+    .map((key) => indexes.get(`${t.index}|${key}`))
+    .filter((i) => i !== undefined && (ownDay || !t.blocks[i].ownDay));
+  return found.length ? found : [indexes.get(`${t.index}|${p.blockKey}`)];
 }
 
 /** Placements that can be set up: their timetable, group, and time block are all kept. */
@@ -40,7 +56,9 @@ export function usablePlacements(reading, timetables, groups) {
       !block.leftOut &&
       !block.untimed;
     if (ok && t.days.includes(p.day)) {
-      usable.push({ ...p, blockIndex });
+      const blocks = coveredIndexes(p, t, indexes);
+      // Its length is the blocks it covers, not the rows (another day's own rows between).
+      usable.push({ ...p, blockIndex, blocks, span: blocks.length });
     } else {
       leftOut.push(p);
     }
@@ -96,7 +114,7 @@ function busyMap(here, noted) {
     if (noted.has(p.text) || OFF.test(looseKey(p.text))) {
       continue;
     }
-    for (let b = p.blockIndex; b < p.blockIndex + p.span; b++) {
+    for (const b of blocksOf(p)) {
       busy.set(`${p.week}|${p.group}|${p.day}|${b}`, p.text);
     }
   }

@@ -5,6 +5,7 @@
  * screen sets and the engine reads (shoreshEngine/setup.js atCamp). Its blank half of the day is
  * then not a gap. Listed under "Shoresh read these as" with All day (review.md INGEST-5.9).
  */
+import { blocksOf } from "./reading-constants";
 
 const NOON = 12 * 60;
 const PARTS = { Morning: "MorningOnly", Afternoon: "AfternoonOnly" };
@@ -36,7 +37,7 @@ function partOf(timetable, block) {
 function partsOf(p, timetables) {
   const t = timetables[p.timetable];
   const parts = [];
-  for (let b = p.blockIndex; b < p.blockIndex + (p.span || 1); b++) {
+  for (const b of blocksOf(p)) {
     parts.push(partOf(t, t.blocks[b]));
   }
   return parts;
