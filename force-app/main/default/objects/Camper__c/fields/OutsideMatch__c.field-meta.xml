@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OutsideMatch__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description
+  >Season, source system and outside ID in one, filled by Shoresh, so a camper from another system is in a season once. An outside system can save a camper by it (upsert).</description>
+    <externalId>true</externalId>
+    <label>Outside Match</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

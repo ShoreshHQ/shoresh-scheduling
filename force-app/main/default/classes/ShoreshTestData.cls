@@ -307,15 +307,16 @@ public class ShoreshTestData {
 
   /** A Standard User with the Shoresh Scheduler permission set. */
   public static User scheduler() {
-    return standardUser(true);
+    return userWith('Shoresh_Scheduler');
   }
 
   /** A Standard User with no Shoresh permissions at all. */
   public static User outsider() {
-    return standardUser(false);
+    return userWith(null);
   }
 
-  private static User standardUser(Boolean withPermissionSet) {
+  /** A Standard User with only the named Shoresh permission set (an API access piece). */
+  public static User userWith(String permissionSetName) {
     Profile standard = [
       SELECT Id
       FROM Profile
@@ -337,11 +338,11 @@ public class ShoreshTestData {
     // Setup records go in their own context so tests can also insert camp records.
     System.runAs(new User(Id = UserInfo.getUserId())) {
       Database.insert(user, AccessLevel.SYSTEM_MODE);
-      if (withPermissionSet) {
+      if (permissionSetName != null) {
         PermissionSet ps = [
           SELECT Id
           FROM PermissionSet
-          WHERE Name = 'Shoresh_Scheduler'
+          WHERE Name = :permissionSetName
           LIMIT 1
         ];
         Database.insert(

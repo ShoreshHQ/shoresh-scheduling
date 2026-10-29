@@ -1062,10 +1062,15 @@ private class ElectiveSeatsTest {
         FROM Preference__c
         WHERE ElectiveRun__c = :camp.runId AND Camper__c = :camp.campers[0]
       ];
-      Database.update(
-        new Preference__c(Id = pref.Id, Group__c = null),
-        AccessLevel.USER_MODE
-      );
+      OutsideOwned.bringingIn = true; // as a sheet with no bunk brings it in
+      try {
+        Database.update(
+          new Preference__c(Id = pref.Id, Group__c = null),
+          AccessLevel.USER_MODE
+        );
+      } finally {
+        OutsideOwned.bringingIn = false;
+      }
 
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
 

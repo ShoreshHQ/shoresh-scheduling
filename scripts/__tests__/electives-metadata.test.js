@@ -91,12 +91,12 @@ function granted() {
 }
 
 // Master-detail and required fields are always readable and editable; Salesforce refuses field
-// permissions for them. Keys are filled by triggers and never set by a screen.
+// permissions for them. Keys and the outside match are filled by triggers, never by a screen.
 function needsPermission(field) {
   return (
     field.type !== "MasterDetail" &&
     !field.required &&
-    !field.name.endsWith(".Key__c")
+    !/(Key|Match)__c$/.test(field.name)
   );
 }
 
@@ -138,9 +138,10 @@ describe("electives data", () => {
   });
 
   it("has no separate electives permission set (decision 48.1)", () => {
-    expect(fs.readdirSync(PERMISSION_SETS)).toEqual([
-      "Shoresh_Scheduler.permissionset-meta.xml"
-    ]);
+    // The others are the API's access pieces, one per capability (api-access.test.js).
+    expect(
+      fs.readdirSync(PERMISSION_SETS).filter((f) => !/^(Send|Read)_/.test(f))
+    ).toEqual(["Shoresh_Scheduler.permissionset-meta.xml"]);
   });
 
   it("refuses deleting anything a set, offering, linked choice, run, choice or seat points at", () => {

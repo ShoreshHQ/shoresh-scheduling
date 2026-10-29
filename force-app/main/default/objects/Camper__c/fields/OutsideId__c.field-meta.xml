@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OutsideId__c</fullName>
+    <description
+  >The camper's ID in the system they came from (Source System). Shoresh matches the same camper on it, never on name or bunk.</description>
+    <externalId>false</externalId>
+    <label>Outside ID</label>
+    <length>80</length>
+    <required>false</required>
+    <securityClassification>Confidential</securityClassification>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
