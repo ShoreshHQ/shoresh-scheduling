@@ -323,20 +323,6 @@ describe("INGEST-4.3: one week's day with its own time blocks", () => {
     expect(p.reading.timetables).toHaveLength(2);
     expect(p.reading.notes.some((n) => n.type === "weekDay")).toBe(false);
   });
-
-  it("INGEST-4.3 counter-case: a Friday that differs in every week is not one week's day", () => {
-    const files = [0, 1].map((w) =>
-      file(`Camp - Week ${w + 1}.csv`, [
-        sheetOf(
-          `Week ${w + 1}`,
-          weekRows(w, (d) => (d === 4 ? SHORT_FRIDAY : BLOCKS))
-        )
-      ])
-    );
-    const p = propose(files);
-    expect(p.reading.timetables).toHaveLength(2);
-    expect(p.reading.notes.some((n) => n.type === "weekDay")).toBe(false);
-  });
 });
 
 describe("INGEST-4.4: a week named by a date", () => {
@@ -876,5 +862,159 @@ describe("INGEST-4.11: a special day in a camp of two programs covers both", () 
       (v) => v.programKey === p.timetables[1].key && v.weekId === "w2"
     );
     expect(seniorWeek2.days.map((d) => d.date)).toContain("2027-07-09");
+  });
+});
+
+describe("INGEST-4.12: a day with its own times every week", () => {
+  const weeks = [
+    ["w1", "Week 1", "2027-06-28", "2027-07-02"],
+    ["w2", "Week 2", "2027-07-05", "2027-07-09"],
+    ["w3", "Week 3", "2027-07-12", "2027-07-16"]
+  ].map(([Id, Name, start, end]) => ({
+    Id,
+    Name,
+    StartDate__c: start,
+    EndDate__c: end
+  }));
+  const existing = existingSetup({ weeks });
+  /** Week w's days stacked; its Friday on SHORT_FRIDAY, its cells week `fridayWeek(w)`'s. */
+  const shortFridayRows = (w, fridayWeek = () => 0) =>
+    DAYS.flatMap((_, d) => [
+      ...(d === 4
+        ? dayGrid(fridayWeek(w), d, SHORT_FRIDAY)
+        : dayGrid(w, d, BLOCKS)),
+      []
+    ]);
+  const weekFiles = (count, fridayWeek) =>
+    Array.from({ length: count }, (_, w) =>
+      file(`Camp - Week ${w + 1}.csv`, [
+        sheetOf(`Week ${w + 1}`, shortFridayRows(w, fridayWeek))
+      ])
+    );
+
+  it("INGEST-4.12: a Friday on its own times in every week is one special day, on each week's Friday", () => {
+    const p = propose(weekFiles(3), existing);
+    expect(p.reading.timetables).toHaveLength(1);
+    expect(asked(p, "")).toEqual([]);
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(plan.specialDays).toHaveLength(1);
+    const [day] = plan.specialDays;
+    expect(day).toMatchObject({ weekId: "w1", day: "Friday", name: "Friday" });
+    expect(day.also).toEqual([
+      { weekId: "w2", weekKey: null },
+      { weekId: "w3", weekKey: null }
+    ]);
+    expect(day.grid.b.map((b) => b[3])).toEqual([
+      "09:45",
+      "10:35",
+      "12:15",
+      "14:35"
+    ]);
+    expect(plan.timeBlocks).toHaveLength(5);
+    plan.versions.forEach((v) => expect(v.days).toHaveLength(4));
+  });
+
+  it("INGEST-4.12: a cell that differs from week to week is placed in no week, and listed", () => {
+    // Bunk 1's Friday differs each week (its rotation follows the week); the rest are the same.
+    const files = Array.from({ length: 2 }, (_, w) =>
+      file(`Camp - Week ${w + 1}.csv`, [
+        sheetOf(
+          `Week ${w + 1}`,
+          DAYS.flatMap((day, d) => {
+            const grid =
+              d === 4 ? dayGrid(0, d, SHORT_FRIDAY) : dayGrid(w, d, BLOCKS);
+            if (d === 4) grid[2][1] = w ? "Archery" : "Canoe";
+            return [...grid, []];
+          })
+        )
+      ])
+    );
+    const p = propose(files, existing);
+    const [day] = p.specialDays;
+    expect(day.also).toHaveLength(1);
+    expect(day.grid.r[0].split(",")[0]).toBe("");
+    expect(day.grid.r[1].split(",")[0]).not.toBe("");
+    const why = p.unmatched.filter((x) => x.why === "differsByWeek");
+    expect(why.every((x) => x.group === "Bunk 1")).toBe(true);
+    expect(why.map((x) => x.text).sort()).toEqual(
+      expect.arrayContaining(["Archery", "Canoe"])
+    );
+  });
+
+  it("INGEST-4.12: the same on by-group pages that hold every day's blocks", () => {
+    const files = [0, 1].map((w) =>
+      file(
+        `Camp 2026 - Week ${w + 1}.xlsx`,
+        GROUPS.map((g, gi) =>
+          sheetOf(g, groupRows(0, gi, BLOCKS, SHORT_FRIDAY))
+        )
+      )
+    );
+    const p = propose(files, existing);
+    expect(p.reading.timetables).toHaveLength(1);
+    expect(p.timetables[0].blocks.filter((b) => !b.ownDay)).toHaveLength(5);
+    expect(p.specialDays).toHaveLength(1);
+    expect(p.specialDays[0].also).toHaveLength(1);
+  });
+
+  it("INGEST-4.12: a one-week file's mid-week day asks Every week, or just this once?", () => {
+    const files = [file("Camp.csv", [sheetOf("Camp", shortFridayRows(0))])];
+    const one = existingSetup({ weeks: [weeks[0]] });
+    const p = propose(files, one);
+    const [card] = asked(p, "everyWeek|");
+    expect(card.title).toBe(
+      "Friday has its own times. Every week, or just this once?"
+    );
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Every week",
+      "Just this once"
+    ]);
+    expect(p.reading.timetables).toHaveLength(1);
+    // Unanswered or just this once: one special day.
+    expect(p.specialDays).toHaveLength(1);
+    expect(p.specialDays[0].also || []).toEqual([]);
+  });
+
+  it("INGEST-4.12: Every week puts that one special day on every week's day of the season", () => {
+    const files = [file("Camp.csv", [sheetOf("Camp", shortFridayRows(0))])];
+    const answers = {
+      "everyWeek|Friday": "every",
+      "week|the file's week": "Week 1"
+    };
+    const p = propose(files, existing, answers);
+    expect(p.specialDays).toHaveLength(1);
+    expect(p.specialDays[0].also.map((w) => w.weekId)).toEqual(["w2", "w3"]);
+    const once = propose(files, existing, {
+      ...answers,
+      "everyWeek|Friday": "once"
+    });
+    expect(once.specialDays[0].also || []).toEqual([]);
+  });
+
+  it("INGEST-4.12: a weekend day in a one-week file is every week, without asking", () => {
+    const SAT = ["Saturday"];
+    const rows = [...DAYS, ...SAT].flatMap((day, d) => {
+      const grid = dayGrid(0, d % 5, d === 5 ? SHORT_FRIDAY : BLOCKS);
+      grid[0] = [day];
+      return [...grid, []];
+    });
+    const satWeeks = weeks.map((w) => ({
+      ...w,
+      EndDate__c: w.EndDate__c.replace(/(\d\d)$/, (x) =>
+        String(Number(x) + 1).padStart(2, "0")
+      )
+    }));
+    const p = propose(
+      [file("Camp.csv", [sheetOf("Camp", rows)])],
+      existingSetup({ weeks: satWeeks }),
+      { "week|the file's week": "Week 1" }
+    );
+    expect(asked(p, "everyWeek|")).toEqual([]);
+    expect(p.specialDays).toHaveLength(1);
+    expect(p.specialDays[0]).toMatchObject({
+      day: "Saturday",
+      name: "Saturday"
+    });
+    expect(p.specialDays[0].also).toHaveLength(2);
   });
 });

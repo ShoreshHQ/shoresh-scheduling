@@ -314,6 +314,11 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       weekId: d.weekId,
       weekKey: d.weekKey,
       day: d.day,
+      // INGEST-4.12: the same special day on that day of these weeks too.
+      also: (d.also || []).map((w) => ({
+        weekId: w.weekId,
+        weekKey: w.weekKey
+      })),
       grid: d.grid
     })),
     // review.md INGEST-5.8: what an earlier import brought in, removed as the director chose.
@@ -521,6 +526,8 @@ const UNPLACED_WHY = {
   specialDayClash: (t) =>
     `another ${t.sIn("Program")} has its own times that day too, and a day holds one ${t.sIn("SpecialDay")}`,
   ownDayLeftOut: () => "that day's own times were left out for now",
+  differsByWeek: (t) =>
+    `it differs from ${t.sIn("Week")} to ${t.sIn("Week")}, and one ${t.sIn("SpecialDay")} has the same schedule every ${t.sIn("Week")}`,
   specialDayTaken: (t) =>
     `that day already has a ${t.sIn("SpecialDay")}, which is kept`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,

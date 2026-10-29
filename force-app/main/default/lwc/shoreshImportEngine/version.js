@@ -407,7 +407,8 @@ function versionFor(t, week, label, context) {
           parts: [{ t, groups, placements: onDay }],
           at: `${t.index}|${label}|${day}`,
           program: t.name,
-          cells: onDay
+          cells: onDay,
+          every: !!own.every
         })
       );
     } else if (!date) {
@@ -471,6 +472,103 @@ function oneSpecialDayADay(context, answers) {
       );
   }
   return kept;
+}
+
+/**
+ * INGEST-4.12: a weekday on its own times every week is one special day, on that day of each week
+ * of the files (a one-week file: of every season week, `allWeeks`, but one the camp's own
+ * special day already holds). A cell differs from week to week: not placed in any week (one
+ * special day has one schedule), never one week's chosen quietly.
+ */
+function everyWeekDays(specialDays, allWeeks, context) {
+  const kept = [];
+  const first = new Map();
+  for (const d of specialDays) {
+    const at = `${d.program}|${d.day}`;
+    const one = d.every && first.get(at);
+    const sameBlocks =
+      one && JSON.stringify(one.grid.b) === JSON.stringify(d.grid.b);
+    if (!d.every || !one || !sameBlocks) {
+      if (d.every && !one) {
+        first.set(at, d);
+        d.name = d.day;
+        d.also = [];
+      }
+      kept.push(d);
+      continue;
+    }
+    one.also.push(d);
+    one.grid.g.forEach(([key], g) => {
+      const other = d.grid.g.findIndex(([k]) => k === key);
+      if (cellsOf(one, g) !== cellsOf(d, other)) {
+        one.differs = [...(one.differs || []), key];
+      }
+    });
+    // A group only a later week has on that day differs too.
+    d.grid.g
+      .filter(([key]) => !one.grid.g.some(([k]) => k === key))
+      .forEach(([key, name]) => {
+        one.differs = [...(one.differs || []), key];
+        one.extraNames = { ...(one.extraNames || {}), [key]: name };
+      });
+  }
+  for (const one of first.values()) {
+    for (const w of allWeeks) {
+      const id = w.filled ? null : w.Id;
+      const key = w.filled ? w.Id : null;
+      const taken = takenBy(context, w, one.day);
+      if ((one.weekId || one.weekKey) === w.Id || !dateIn(w, one.day)) {
+        continue;
+      }
+      if (taken) {
+        context.notes.push({
+          type: "specialDayTaken",
+          week: w.Name,
+          day: one.day,
+          name: taken
+        });
+      } else {
+        one.also.push({
+          weekId: id,
+          weekKey: key,
+          weekName: w.Name,
+          cells: []
+        });
+      }
+    }
+    const differs = new Set(one.differs || []);
+    if (differs.size) {
+      const names = new Map([
+        ...one.grid.g.map(([key, name]) => [key, name]),
+        ...Object.entries(one.extraNames || {})
+      ]);
+      const gone = new Set([...differs].map((k) => names.get(k)));
+      [one, ...one.also].forEach((x) =>
+        x.cells
+          .filter((p) => gone.has(p.group))
+          .forEach((p) =>
+            context.unmatched.push({ ...p, why: "differsByWeek" })
+          )
+      );
+      one.grid.r = one.grid.r.map((r, g) => {
+        return differs.has(one.grid.g[g][0]) ? r.replace(/[^,]/g, "") : r;
+      });
+    }
+    delete one.differs;
+    delete one.extraNames;
+  }
+  return kept;
+}
+
+/** A special day grid's row g as the names in it, so two days' own item numbering compare. */
+function cellsOf(d, g) {
+  if (g < 0) {
+    return "";
+  }
+  return d.grid.r[g]
+    .split(",")
+    .map((c) => (/^\d+$/.test(c) ? d.grid.i[Number(c) - 1].join("|") : c))
+    .join(",");
 }
 
 /** The name of the special day the camp already has on a season week's day, or null. */
@@ -632,7 +730,11 @@ export function versionsFor(proposal, input) {
       );
     }
   }
-  const specialDays = oneSpecialDayADay(context, answers);
+  const specialDays = everyWeekDays(
+    oneSpecialDayADay(context, answers),
+    labels.length === 1 ? weeks : [],
+    context
+  );
   return {
     versions,
     specialDays,

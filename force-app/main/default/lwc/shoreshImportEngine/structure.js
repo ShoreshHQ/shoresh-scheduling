@@ -244,10 +244,9 @@ function timetableShape(t, placements) {
  * does not have, when `other` is only a few days' own shape of `main`'s program, else null.
  * It is when: the files have two weeks or more; it covers groups and days `main` does not have
  * for them; its blocks differ on at most one day of a week, on fewer than half of all the days,
- * and not in every week; and its groups are `main`'s, or (new groups, a second session) its
- * other days use only `main`'s blocks. Different groups on different blocks most days: a
- * program. One week alone cannot tell a week's own day from every week's (INGEST-3.4 reads that
- * Friday as a program of its own).
+ * and not in every week, unless it is the same weekday in every week or the files hold one week
+ * (INGEST-4.12, `every`); and its groups are `main`'s, or (new groups, a second session) its
+ * other days use only `main`'s blocks. Different groups on different blocks most days: a program.
  */
 function ownDayShape(main, other, blockAt) {
   if (
@@ -271,19 +270,103 @@ function ownDayShape(main, other, blockAt) {
   const total = new Set([...main.weekDays, ...other.weekDays]).size;
   const sameGroups = [...other.groups].every((g) => main.groups.has(g));
   const sameOtherDays = [...other.weekDays].some((wd) => !differing.has(wd));
+  // INGEST-4.12: the same weekday on its own times in every week of the files (one week too).
+  const every =
+    new Set([...differing].map((wd) => wd.split("|")[1])).size === 1 &&
+    new Set(weeks).size === allWeeks.size;
   const shape =
     differing.size > 0 &&
     differing.size * 2 < total &&
-    allWeeks.size >= 2 &&
-    new Set(weeks).size < allWeeks.size &&
+    (every || (allWeeks.size >= 2 && new Set(weeks).size < allWeeks.size)) &&
     (sameGroups || sameOtherDays);
   if (!shape) {
     return null;
   }
   return {
     days: [...differing],
+    every,
+    oneWeek: allWeeks.size === 1,
     twoInAWeek: new Set(counted).size !== counted.length
   };
+}
+
+const WEEKEND = ["Saturday", "Sunday"];
+
+/**
+ * INGEST-4.12: whether a weekday on its own times is that day in every week. In files of two
+ * weeks or more, or a weekend day, it is; a mid-week day in a one-week file is asked "Every week,
+ * or just this once?" (unanswered, just this once).
+ */
+function everyWeek(found, context) {
+  const day = found.days[0].split("|")[1];
+  if (!found.oneWeek || WEEKEND.includes(day)) {
+    return true;
+  }
+  const id = `everyWeek|${day}`;
+  if (!context.asks.some((a) => a.id === id)) {
+    context.asks.push({ id, type: "everyWeek", day });
+  }
+  return context.answers[id] === "every";
+}
+
+/**
+ * INGEST-4.12 on pages that hold every day's blocks (by-group pages): a weekday whose cells use
+ * blocks no other day uses, at times that overlap the other days' blocks, in every week it has,
+ * is that weekday on its own times. Marks its blocks as its own and its days as days of their own.
+ */
+function ownWeekdays(t, placements, blockAt, context, notes) {
+  const pages = new Set(t.pages);
+  const here = placements
+    .filter((p) => pages.has(p.page))
+    .map((p) => ({ ...p, key: blockAt.get(`${p.page}|${p.row}`) }));
+  const byKey = new Map(t.raw.map((b) => [b.key, b]));
+  const keysOn = (day) =>
+    new Set(here.filter((p) => p.day === day).map((p) => p.key));
+  const days = [...new Set(here.map((p) => p.day))];
+  const weeks = new Set(here.map((p) => p.week || ""));
+  for (const day of days) {
+    const others = new Set(
+      here
+        .filter((p) => p.day !== day && !(t.ownKeys || new Set()).has(p.key))
+        .map((p) => p.key)
+    );
+    const own = [...keysOn(day)].filter(
+      (k) =>
+        !others.has(k) &&
+        byKey.get(k) &&
+        [...others].some(
+          (o) =>
+            byKey.get(o) &&
+            !sameTimes(byKey.get(o), byKey.get(k)) &&
+            overlaps(byKey.get(o), byKey.get(k))
+        )
+    );
+    const ownSet = new Set(own);
+    const inWeeks = new Set(
+      here
+        .filter((p) => p.day === day && ownSet.has(p.key))
+        .map((p) => p.week || "")
+    );
+    if (
+      own.length === 0 ||
+      days.length < 3 ||
+      inWeeks.size !== weeks.size ||
+      (t.ownDays || []).some((o) => o.day === day)
+    ) {
+      continue;
+    }
+    const found = {
+      days: [...weeks].map((w) => `${w}|${day}`),
+      oneWeek: weeks.size === 1
+    };
+    const every = everyWeek(found, context);
+    t.ownKeys = new Set([...(t.ownKeys || []), ...own]);
+    t.ownDays = [
+      ...(t.ownDays || []),
+      ...[...weeks].map((week) => ({ week, day, every }))
+    ];
+    notes.push({ type: "weekDay", week: [...weeks][0], day, id: null, every });
+  }
 }
 
 /**
@@ -343,6 +426,7 @@ function weekDayShapes(timetables, placements, blockAt, context) {
           notes.push({ type: "weekDay", week, day, id: oneDayId, answer });
         }
         const join = found && (answer === "special" || answer === LEAVE_OUT);
+        const every = join && found.every && everyWeek(found, context);
         const days = join ? found.days : null;
         if (days) {
           const regular = timetableShape(main, placements).keys;
@@ -357,15 +441,17 @@ function weekDayShapes(timetables, placements, blockAt, context) {
             const [week, day] = wd.split("|");
             main.ownDays = [
               ...(main.ownDays || []),
-              { week, day, leftOut: answer === LEAVE_OUT }
+              { week, day, leftOut: answer === LEAVE_OUT, every }
             ];
-            if (answer !== LEAVE_OUT) {
+            // Every week: one note for the day, not one a week.
+            if (answer !== LEAVE_OUT && (!every || wd === days[0])) {
               notes.push({
                 type: "weekDay",
                 week,
                 day,
                 id: found.twoInAWeek ? null : oneDayId,
-                answer
+                answer,
+                ...(every ? { every } : {})
               });
             }
           });
@@ -401,6 +487,9 @@ export function buildTimetables(pages, placements, answers = {}) {
     timetableOfPage.set(pageIndex, target.index);
   });
   const notes = weekDayShapes(timetables, placements, blockAt, context);
+  timetables.forEach((t) =>
+    ownWeekdays(t, placements, blockAt, context, notes)
+  );
   timetables.forEach((t, index) => {
     t.index = index;
     t.pages.forEach((page) => timetableOfPage.set(page, index));

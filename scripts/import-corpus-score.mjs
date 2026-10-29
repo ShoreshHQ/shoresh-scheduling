@@ -62,8 +62,14 @@ const { TRAVEL_SIZE, travellingCamps } =
 const { headingReport, plantCamp } =
   await import("./import-corpus/plant-camp.js");
 const { LEVEL3_SIZE, hardCamps } = await import("./import-corpus/level3.js");
-const { DECISIONS_SIZE, LEVEL4_SIZE, decisionCamps, veryHardCamps } =
-  await import("./import-corpus/level4.js");
+const {
+  DECISIONS_SIZE,
+  EVERY_WEEK_SIZE,
+  LEVEL4_SIZE,
+  decisionCamps,
+  everyWeekCamps,
+  veryHardCamps
+} = await import("./import-corpus/level4.js");
 const {
   DECISIONS5_SIZE,
   LEVEL5_SIZE,
@@ -102,6 +108,14 @@ if (level === 4) {
   );
   console.log(summaryTable(decided));
   printCamps(decided);
+  const every = everyWeekCamps(EVERY_WEEK_SIZE).map((camp) =>
+    scoreCamp(camp, deps)
+  );
+  console.log(
+    `\nLevel 4, Greg's decisions 1 and 2 (a day on its own times every week): ${every.length} made-up camps\n`
+  );
+  console.log(summaryTable(every));
+  printCamps(every);
 } else if (level === 5) {
   const results = weirdCamps(LEVEL5_SIZE).map((camp) =>
     scoreWeirdCamp(camp, deps, scoreCamp)

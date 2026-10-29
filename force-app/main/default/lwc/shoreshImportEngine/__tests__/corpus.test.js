@@ -13,6 +13,7 @@ import { travellingCamps } from "../../../../../../scripts/import-corpus/travel"
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
 import {
   decisionCamps,
+  everyWeekCamps,
   veryHardCamps
 } from "../../../../../../scripts/import-corpus/level4";
 import {
@@ -250,6 +251,27 @@ describe("Import last year on two-program camps with a special day (level 4, Gre
     expect(totals.perfect).toBe(40);
     expect(results.every((r) => r.camp.programs.length === 2)).toBe(true);
     expect(results.every((r) => r.camp.special)).toBe(true);
+  });
+});
+
+// Greg's level-4 decisions 1 and 2 (2026-10-29, INGEST-4.12): a weekend day on its own times every
+// week, and a one-week file's mid-week day answered "Every week": one special day, on that day of
+// every week. All 16 camps, two of each layout.
+describe("Import last year on a day with its own times every week (level 4, Greg's decisions 1 and 2)", () => {
+  const results = everyWeekCamps(16).map((camp) =>
+    scoreCamp(camp, {
+      engine,
+      XLSX,
+      terms: buildTerms([]),
+      record: nsRecord
+    })
+  );
+  const totals = summarise(results);
+
+  it("INGEST-4.12: reads every camp perfectly, one special day on that day of every week", () => {
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(16);
+    expect(results.every((r) => r.camp.own)).toBe(true);
   });
 });
 

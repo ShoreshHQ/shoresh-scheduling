@@ -14,9 +14,10 @@
 //              and longer, blocks: that week's own day, a special day (INGEST-4.3).
 //
 // The true answer follows the settled rules only. Greg's level-4 decisions (2026-10-28): a special
-// day in a camp of two programs covers both (decisionCamps, INGEST-4.11). Still left out: a weekend
-// with its own blocks every week and a mid-week day with its own blocks in a one-week file, which
-// need a program's day with its own times (docs/import/corpus.md).
+// day in a camp of two programs covers both (decisionCamps, INGEST-4.11); decisions 1 and 2
+// (2026-10-29, "treat it like a special day"): a weekend day on its own times every week, and a
+// one-week file's mid-week day answered "Every week", are one special day on that day of every
+// week (everyWeekCamps, INGEST-4.12).
 // Deterministic: the same seed always gives the same camp.
 import {
   ACTIVITIES,
@@ -242,7 +243,7 @@ function rotationOf(r, program, weekCount) {
 }
 
 /** One level-4 camp and its true answer (camp.truth, as the scorer reads it). */
-export function veryHardCamp(seed, forced = null, prefix = "L4") {
+export function veryHardCamp(seed, forced = null, prefix = "L4", own = null) {
   const r = randomFrom(seed * 32452843 + 11);
   const [layout, format, split] = LAYOUT_CHOICES[seed % LAYOUT_CHOICES.length];
   const { shapes, messes } = traitsOf(r, layout, forced);
@@ -299,6 +300,22 @@ export function veryHardCamp(seed, forced = null, prefix = "L4") {
       };
     }
   }
+  // INGEST-4.12: program 1's Saturday (weekend) or a mid-week day (one week) on its own blocks
+  // every week, the same cells every week.
+  camp.own = null;
+  if (own) {
+    const blocks = recutAfternoon(programs[0].blocks);
+    const d =
+      own === "weekend" ? days.indexOf("Saturday") : r.int(1, days.length - 2);
+    if (blocks) camp.own = { d, blocks };
+    if (blocks && own === "midweek") {
+      camp.answers = {
+        [`everyWeek|${days[d]}`]: "every",
+        "week|the file's week": "Week 1"
+      };
+      camp.seasonWeeks = 3;
+    }
+  }
   fillGrid(r, camp, evenings);
   applyMesses(r, camp, messes);
   camp.truth = truthOf(camp);
@@ -322,17 +339,35 @@ export function decisionCamps(count) {
   );
 }
 
+/** How many camps Greg's level-4 decisions 1 and 2 add. */
+export const EVERY_WEEK_SIZE = 16;
+
+/**
+ * Greg's level-4 decisions 1 and 2 (2026-10-29): a weekend day on its own times every week, in
+ * files of two to four weeks; a one-week file's mid-week day on its own times, answered "Every
+ * week". Half each, every layout.
+ */
+export function everyWeekCamps(count) {
+  return Array.from({ length: count }, (_, i) =>
+    i % 2
+      ? veryHardCamp(i + 1, [], "L4E", "midweek")
+      : veryHardCamp(i + 1, ["weekend", "weeks"], "L4E", "weekend")
+  );
+}
+
 // ---------- the grid ----------
 
 /** The blocks program p has on week w's day d. */
 export function blocksOn(camp, p, w, d) {
   const s = camp.special;
   if (s && p === 0 && s.w === w && s.d === d) return s.blocks;
+  if (camp.own && p === 0 && camp.own.d === d) return camp.own.blocks;
   return camp.programs[p].blocks;
 }
 
 const isSpecial = (camp, p, w, d) =>
-  camp.special && p === 0 && camp.special.w === w && camp.special.d === d;
+  (camp.special && p === 0 && camp.special.w === w && camp.special.d === d) ||
+  (camp.own && p === 0 && camp.own.d === d);
 
 const gkey = (p, w, g, d) => `${p}|${w}|${g}|${d}`;
 
@@ -351,7 +386,8 @@ function fillGrid(r, camp, evenings) {
             blocks.map((block) => {
               if (block.fixed) return block.fixed;
               if (block.evening) return evenings[d % evenings.length];
-              const { step, shift } = weeks[w];
+              // A day of its own every week has the same cells every week (INGEST-4.12).
+              const { step, shift } = weeks[isSpecial(camp, p, w, d) ? 0 : w];
               return list[(g * step + period++ + d * 2 + shift) % list.length];
             })
           );
@@ -522,8 +558,18 @@ function truthOf(camp) {
   const specialDayGroups = [...specialDays].flatMap((at) =>
     camp.programs.flatMap((p) => p.groups.map((g) => `${at}|${g.name}`))
   );
+  // INGEST-4.12: the season weeks its one special day is on.
+  const seasonLabels = Array.from(
+    { length: Math.max(camp.weeks.length, camp.seasonWeeks || 0) },
+    (_, i) => camp.weeks[i] || `Week ${i + 1}`
+  );
+  const specialDayOn = camp.own
+    ? seasonLabels.map((w) => `${w}|${camp.days[camp.own.d]}`)
+    : null;
   return {
     weeks,
+    seasonWeeks: camp.seasonWeeks,
+    specialDayOn,
     programs: camp.programs.length,
     specialDayGroups,
     days: camp.days,

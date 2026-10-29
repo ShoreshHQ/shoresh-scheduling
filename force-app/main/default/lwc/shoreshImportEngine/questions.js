@@ -521,7 +521,35 @@ function ampmCard(ask) {
 
 /** A question about the files' time blocks: morning or evening, or two days of their own. */
 function timeCard(ask, t) {
+  if (ask.type === "everyWeek") {
+    return everyWeekCard(ask, t);
+  }
   return ask.type === "ownDays" ? ownDaysCard(ask, t) : ampmCard(ask);
+}
+
+/** INGEST-4.12: a mid-week day with its own times in a one-week file. */
+function everyWeekCard(ask, t) {
+  const one = t.sIn("SpecialDay");
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `${ask.day} has its own times. Every week, or just this once?`,
+    subject: ask.day,
+    subtitle: `It comes in as ${article(one)} with its own times.`,
+    options: [
+      {
+        value: "every",
+        label: "Every week",
+        description: `One ${one}, on every ${ask.day} of the season.`
+      },
+      {
+        value: "once",
+        label: "Just this once",
+        description: `One ${one}, on this week's ${ask.day} only.`
+      }
+    ]
+  };
 }
 
 /** INGEST-4.8: a week with two days of their own times. */

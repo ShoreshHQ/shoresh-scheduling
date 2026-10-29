@@ -722,7 +722,13 @@ describe("review findings: the rules refined (docs/import/classification.md)", (
         ])
       )
     ];
-    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    // Kept a second program (review.md INGEST-5.4), as one week's day could be (INGEST-4.12).
+    const p = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { "ownDays|": "program" }
+    });
     expect(p.timetables.filter((t) => !t.leftOut)).toHaveLength(2);
     expect(p.fixed.filter((f) => f.name === "Lunch")).toHaveLength(2);
     expect(p.recurring.filter((r) => r.name === "Lunch")).toEqual([]);
