@@ -91,6 +91,8 @@ public with sharing class OtherProgramSetTime {
     Decimal length = (Decimal) record.get(f.length);
     item.length = length == null ? 1 : length.intValue();
     item.locationId = (Id) record.get(f.location);
+    // A fixed activity's early day (CORE-3.7).
+    item.readEarly(record);
     return item;
   }
 
@@ -118,7 +120,7 @@ public with sharing class OtherProgramSetTime {
 
   /** Each time block it takes that day, with the groups there that aren't away. */
   private void addDay(SetTimePlan.Item item, Date day) {
-    for (Integer b : item.span()) {
+    for (Integer b : item.span(BlankWeek.weekdayOf(day))) {
       TimeBlock__c block = item.program.blocks[b];
       OtherProgramUse.Entry entry = OtherProgramUse.at(
         day,

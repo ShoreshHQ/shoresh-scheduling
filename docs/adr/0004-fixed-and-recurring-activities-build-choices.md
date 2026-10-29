@@ -133,3 +133,15 @@ wins.
 - The restrict-delete lookups: time block, location, coverage targets, and week exceptions'
   new targets.
 - Coverage rows are auto-numbered (`CV-000000`).
+
+## Addendum (Greg, 2026-10-29): a fixed activity's early day (CORE-3.7)
+
+A day that ends early (an early dismissal) is the regular day, and Dismissal stays one fixed
+activity. The smallest addition that holds it: two optional fields on the fixed activity,
+`EarlyDay__c` (one day of the week) and `EarlyBlocks__c` (how many time blocks before its own it
+starts that day). That day it takes those blocks too and still ends where it always does; other
+days nothing changes. A count, like `Length__c`, not a second time block: nothing new to keep
+when blocks are deleted. One day only (the case seen: the week's last day). The setup screen
+shows both in the row's details ("Starts earlier on", "Time blocks earlier"). Start a blank
+week and the clash checks (group and location) read the item's cells by day
+(`SetTimePlan.Item.span(day)`).

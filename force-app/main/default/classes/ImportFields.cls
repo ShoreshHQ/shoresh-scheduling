@@ -112,7 +112,9 @@ public with sharing class ImportFields {
       FixedActivity__c.Program__c,
       FixedActivity__c.TimeBlock__c,
       FixedActivity__c.Location__c,
-      FixedActivity__c.Length__c
+      FixedActivity__c.Length__c,
+      FixedActivity__c.EarlyDay__c,
+      FixedActivity__c.EarlyBlocks__c
     },
     RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{
       RecurringActivity__c.Name,

@@ -165,13 +165,15 @@ function setTimeRecords(records, updates, withDays) {
     blockKey: r.blockKey,
     length: r.length,
     locationKey: r.locationKey,
-    ...(withDays ? { days: r.days, who: r.who.keys } : {})
+    ...(withDays ? { days: r.days, who: r.who.keys } : {}),
+    ...(r.earlyDay ? { earlyDay: r.earlyDay, earlyBlocks: r.earlyBlocks } : {})
   }));
   const changed = updates.map((u) => ({
     id: u.id,
     blockKey: u.blockKey,
     length: u.length,
     ...(withDays ? { days: u.days } : {}),
+    ...(u.earlyDay ? { earlyDay: u.earlyDay, earlyBlocks: u.earlyBlocks } : {}),
     // review.md INGEST-5.7: made without asking, so the server checks it is still the import's.
     ...(u.auto ? { auto: true, name: u.name } : {})
   }));

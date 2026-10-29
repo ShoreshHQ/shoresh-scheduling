@@ -160,7 +160,7 @@ public with sharing class BlankWeek {
     BlankDay day = new BlankDay(blocks, groups);
     for (SetTimePlan.Item item : items) {
       if (item.runDays().contains(weekday)) {
-        day.place(item);
+        day.place(item, weekday);
       }
     }
     return day;

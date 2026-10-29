@@ -13,6 +13,7 @@ import { travellingCamps } from "../../../../../../scripts/import-corpus/travel"
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
 import {
   decisionCamps,
+  earlyEndCamps,
   everyWeekCamps,
   veryHardCamps
 } from "../../../../../../scripts/import-corpus/level4";
@@ -272,6 +273,26 @@ describe("Import last year on a day with its own times every week (level 4, Greg
     expect(totals.errors).toBe(0);
     expect(totals.perfect).toBe(16);
     expect(results.every((r) => r.camp.own)).toBe(true);
+  });
+});
+
+// Greg (2026-10-29, INGEST-4.13): the week's last day ending early is the regular day. All 12
+// camps: Dismissal merged down, written then blank, or on a shorter block of its own.
+describe("Import last year on camps whose last day ends early (level 4, INGEST-4.13)", () => {
+  const results = earlyEndCamps(12).map((camp) =>
+    scoreCamp(camp, {
+      engine,
+      XLSX,
+      terms: buildTerms([]),
+      record: nsRecord
+    })
+  );
+  const totals = summarise(results);
+
+  it("INGEST-4.13: reads every camp perfectly, the early day the regular day", () => {
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(12);
+    expect(results.every((r) => r.camp.early)).toBe(true);
   });
 });
 

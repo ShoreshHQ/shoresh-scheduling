@@ -475,6 +475,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>FixedActivity__c.EarlyBlocks__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>FixedActivity__c.EarlyDay__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>FixedActivity__c.Length__c</field>
         <readable>true</readable>
     </fieldPermissions>
