@@ -524,6 +524,15 @@ describe("c-shoresh-learned: one running list", () => {
     );
   });
 
+  // Clicks "more" until it is gone, letting each click render before the next.
+  const clickAllMore = async (el) => {
+    const more = $(el, '[data-id="more"]');
+    if (!more) return;
+    more.click();
+    await flush();
+    await clickAllMore(el);
+  };
+
   // MEMO-7.7
   it("says older entries are not shown when the history read hits its limit", async () => {
     const many = Array.from({ length: 5000 }, (_, i) =>
@@ -531,11 +540,7 @@ describe("c-shoresh-learned: one running list", () => {
     );
     const element = await mount([], many);
     expect($(element, '[data-id="capped"]')).toBeNull();
-    while ($(element, '[data-id="more"]')) {
-      $(element, '[data-id="more"]').click();
-      // eslint-disable-next-line no-await-in-loop -- each click must render before the next
-      await flush();
-    }
+    await clickAllMore(element);
     const all = $$(element, "li");
     expect(all[all.length - 1].dataset.id).toBe("capped");
     expect(all[all.length - 1].textContent.trim()).toBe(
@@ -543,11 +548,7 @@ describe("c-shoresh-learned: one running list", () => {
     );
     document.body.removeChild(element);
     const fewer = await mount([], many.slice(1));
-    while ($(fewer, '[data-id="more"]')) {
-      $(fewer, '[data-id="more"]').click();
-      // eslint-disable-next-line no-await-in-loop -- each click must render before the next
-      await flush();
-    }
+    await clickAllMore(fewer);
     expect($(fewer, '[data-id="capped"]')).toBeNull();
   });
 
