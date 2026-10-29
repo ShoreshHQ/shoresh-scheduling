@@ -180,6 +180,8 @@ public with sharing class SeasonSetupReader {
         Program__c,
         TimeBlock__c,
         Length__c,
+        EarlyDay__c,
+        EarlyBlocks__c,
         Location__c,
         LastTimeBlock__c,
         SortOrder__c

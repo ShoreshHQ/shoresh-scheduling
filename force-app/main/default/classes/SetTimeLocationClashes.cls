@@ -48,11 +48,16 @@ public with sharing class SetTimeLocationClashes {
       if (!result.containsKey(item.locationId)) {
         result.put(item.locationId, new List<Visit>());
       }
-      for (Integer block : item.span()) {
-        result.get(item.locationId)
-          .add(
-            new Visit(item, item.program.blocks[block], item.groupsIn(block))
-          );
+      Set<Integer> everyDay = new Set<Integer>(item.span());
+      for (Integer block : item.widest()) {
+        Visit visit = new Visit(
+          item,
+          item.program.blocks[block],
+          item.groupsIn(block)
+        );
+        // A block it holds only on its early day (CORE-3.7).
+        visit.onlyOn = everyDay.contains(block) ? null : item.earlyDay;
+        result.get(item.locationId).add(visit);
       }
     }
     return result;
@@ -65,7 +70,9 @@ public with sharing class SetTimeLocationClashes {
       if (
         visit.item.weekIds.contains(week) &&
         !plan.isOff(visit.item.locationId, week) &&
-        visit.item.runDays().contains(day)
+        visit.item.runDays().contains(day) &&
+        (visit.onlyOn == null ||
+        visit.onlyOn == day)
       ) {
         visit.count = 0;
         for (Group__c grp : visit.groups) {
@@ -124,6 +131,8 @@ public with sharing class SetTimeLocationClashes {
     List<Group__c> groups;
     // How many of its groups are there in the week being looked at.
     Integer count = 0;
+    // The one day it is there (a fixed activity's early day), or null for every day it runs.
+    String onlyOn;
 
     Visit(SetTimePlan.Item item, TimeBlock__c block, List<Group__c> groups) {
       this.item = item;

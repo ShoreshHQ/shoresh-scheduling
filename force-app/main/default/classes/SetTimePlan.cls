@@ -101,6 +101,30 @@ public with sharing class SetTimePlan {
       return result;
     }
 
+    // A fixed activity's one day it starts earlier (an early dismissal), and by how many time
+    // blocks: that day it also holds those blocks, ending where it always does (CORE-3.7).
+    public String earlyDay;
+    public Integer early = 0;
+
+    /** The time blocks it takes on a day ("Friday"): on its early day, from earlier. */
+    public List<Integer> span(String day) {
+      List<Integer> result = span();
+      if (day == null || day != earlyDay || early <= 0 || result.isEmpty()) {
+        return result;
+      }
+      List<Integer> before = new List<Integer>();
+      for (Integer i = Math.max(0, start - early); i < start; i++) {
+        before.add(i);
+      }
+      before.addAll(result);
+      return before;
+    }
+
+    /** Every time block it takes on any day: its early day's, the most. */
+    public List<Integer> widest() {
+      return span(earlyDay);
+    }
+
     /** The time blocks it takes, cut short at the end of the day. */
     public List<Integer> span() {
       List<Integer> result = new List<Integer>();

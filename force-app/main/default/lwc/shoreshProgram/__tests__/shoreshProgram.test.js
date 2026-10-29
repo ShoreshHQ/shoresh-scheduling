@@ -712,6 +712,18 @@ describe("c-shoresh-program", () => {
     const table = (element) =>
       element.shadowRoot.querySelector("c-shoresh-editable-table");
 
+    it("CORE-3.7: a fixed activity's details offer the day it starts earlier, among the program's days, and by how many time blocks", async () => {
+      const element = await render("fixedActivities", SET_TIME);
+      const fixed = table(element);
+      const [day, blocks] = fixed.columns.slice(-2);
+      expect(day).toMatchObject({ label: "Starts earlier on", more: true });
+      expect(day.options[0]).toEqual({ label: "No day", value: "" });
+      expect(day.options.length).toBeGreaterThan(1);
+      expect(day.options.slice(1).every((o) => o.label === o.value)).toBe(true);
+      expect(blocks).toMatchObject({ type: "number", min: 0, more: true });
+      expect(blocks.label).toMatch(/earlier$/);
+    });
+
     it("lists fixed activities with their time block, length, location, weeks, and who is left out", async () => {
       const element = await render("fixedActivities", SET_TIME);
       element.locations = nsRecord([{ Id: "l1", Name: "Pool" }]);
@@ -725,7 +737,9 @@ describe("c-shoresh-program", () => {
         "Name",
         "TimeBlock__c",
         "Length__c",
-        "Location__c"
+        "Location__c",
+        "EarlyDay__c",
+        "EarlyBlocks__c"
       ]);
       // One section, the whole camp's (docs/design/setup/fixed.html); length and location
       // are the row's details, not columns.
@@ -733,7 +747,7 @@ describe("c-shoresh-program", () => {
       expect(fixed.showColumns).toBe(true);
       expect(
         fixed.columns.filter((c) => c.more).map((c) => bareName(c.fieldName))
-      ).toEqual(["Length__c", "Location__c"]);
+      ).toEqual(["Length__c", "Location__c", "EarlyDay__c", "EarlyBlocks__c"]);
       expect(fixed.columns[1].options).toEqual([
         { label: "Period 1", value: "t1" }
       ]);

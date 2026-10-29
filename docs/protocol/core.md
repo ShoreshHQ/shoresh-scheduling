@@ -82,6 +82,10 @@ behaviour unchanged):
 - **CORE-3.5** "Who can do it" with nothing ticked MUST mean every group; a division ticked MUST
   cover its groups.
 - **CORE-3.6** A blank groups at once and a blank groups fit MUST be 1.
+- **CORE-3.7** A fixed activity MAY start earlier on one day of the week (its early day, Greg
+  2026-10-29: an early dismissal), by a number of time blocks, still ending where it always does.
+  That day it MUST hold those blocks for every group (nothing else placed there, CORE-4.6) and
+  only that day; it stays one fixed activity, never made recurring or a special day for it.
 
 ## Layer 4: Limits
 

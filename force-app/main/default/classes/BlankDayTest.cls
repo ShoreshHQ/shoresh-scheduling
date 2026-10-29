@@ -123,6 +123,64 @@ private class BlankDayTest {
     }
   }
 
+  /**
+   * CORE-3.7: on its early day a fixed activity starts that many time blocks earlier and still
+   * ends where it always does; other days it is where it always is.
+   */
+  @IsTest
+  static void aFixedActivityStartsEarlierOnItsEarlyDayOnly() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      SetTimePlan.ProgramPlan plan = new SetTimePlan.ProgramPlan(
+        new Program__c(
+          Id = ids.get('Main'),
+          Name = 'Main',
+          Monday__c = true,
+          Friday__c = true
+        )
+      );
+      TimeBlock__c period2 = new TimeBlock__c(
+        Id = ids.get('Period 2'),
+        Name = 'Period 2',
+        PartOfDay__c = 'Morning'
+      );
+      TimeBlock__c lunch = new TimeBlock__c(
+        Id = ids.get('Lunch'),
+        Name = 'Lunch',
+        PartOfDay__c = 'Afternoon'
+      );
+      plan.addBlock(period2);
+      plan.addBlock(lunch);
+      plan.groups.add(
+        new Group__c(
+          Id = ids.get('Group A'),
+          Name = 'Group A',
+          Availability__c = 'AllDay'
+        )
+      );
+      SetTimePlan.Item dismissal = item(
+        plan,
+        new FixedActivity__c(Name = 'Dismissal')
+      );
+      dismissal.start = 1;
+      dismissal.earlyDay = 'Friday';
+      dismissal.early = 1;
+      List<TimeBlock__c> blocks = new List<TimeBlock__c>{ period2, lunch };
+
+      BlankDay friday = new BlankDay(blocks, plan.groups);
+      friday.place(dismissal, 'Friday');
+      BlankDay monday = new BlankDay(blocks, plan.groups);
+      monday.place(dismissal, 'Monday');
+
+      Assert.areEqual(
+        new List<String>{ '1', ScheduleGrid.CARRIES_ON },
+        friday.grid.rows[0]
+      );
+      Assert.areEqual(new List<String>{ '', '1' }, monday.grid.rows[0]);
+      Assert.areEqual(new List<Integer>{ 0, 1 }, dismissal.widest());
+    }
+  }
+
   /** A one-block item in the plan's first block, for its first group. */
   private static SetTimePlan.Item item(
     SetTimePlan.ProgramPlan plan,

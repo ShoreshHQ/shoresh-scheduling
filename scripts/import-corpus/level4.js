@@ -625,9 +625,15 @@ function truthOf(camp) {
             const name = names[b];
             if (!name) return;
             cells.set(`${label}|${group.name}|${day}|${hm(block.start)}`, name);
-            // Dismissal at another time on the early day: recurring (INGEST-4.13).
-            if (camp.early && name === "Dismissal") recurring.add(name);
-            else if (block.fixed) fixed.add(`${name}|${hm(block.start)}`);
+            // Dismissal earlier on the early day: still the one fixed Dismissal, starting
+            // earlier that day (INGEST-4.13, CORE-3.7).
+            if (
+              camp.early &&
+              name === "Dismissal" &&
+              (block.early || !block.fixed)
+            )
+              return;
+            if (block.fixed) fixed.add(`${name}|${hm(block.start)}`);
             else if (block.evening) recurring.add(name);
             else if (name !== TRIP) activities.add(name);
           });

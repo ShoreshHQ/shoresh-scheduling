@@ -429,7 +429,9 @@ export function readImport(input) {
         ? {
             span: earlyEnds.get(cellAt(p)).keys.length,
             blockKeys: earlyEnds.get(cellAt(p)).keys,
-            text: earlyEnds.get(cellAt(p)).text
+            text: earlyEnds.get(cellAt(p)).text,
+            // The blocks it starts before its usual one (the day's last): CORE-3.7.
+            early: earlyEnds.get(cellAt(p)).keys.length - 1
           }
         : {})
     }));

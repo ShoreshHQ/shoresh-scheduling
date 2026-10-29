@@ -118,7 +118,9 @@ export function patternsOf(cells) {
       byWeek.set(c.week, new Map());
     }
     const slots = byWeek.get(c.week);
-    const slot = `${c.blockIndex}:${c.span}`;
+    // INGEST-4.13: a day ending early is the name at its usual slot, started earlier that day.
+    const early = c.early || 0;
+    const slot = `${c.blockIndex + early}:${c.span - early}`;
     if (!slots.has(slot)) {
       slots.set(slot, new Map());
     }

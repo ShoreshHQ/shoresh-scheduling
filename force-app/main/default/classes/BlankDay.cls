@@ -37,7 +37,12 @@ public with sharing class BlankDay {
    * setup saved around them, and the director is told rather than left to find it.
    */
   public void place(SetTimePlan.Item item) {
-    List<Integer> span = item.span();
+    place(item, null);
+  }
+
+  /** The same on a day of the week ("Friday"): a fixed activity's early day from earlier. */
+  public void place(SetTimePlan.Item item, String weekday) {
+    List<Integer> span = item.span(weekday);
     if (span.isEmpty()) {
       return;
     }

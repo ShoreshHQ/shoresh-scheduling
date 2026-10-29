@@ -93,6 +93,8 @@ import electiveSetKey from "@salesforce/schema/ElectiveSet__c.Key__c";
 import electiveSetSeason from "@salesforce/schema/ElectiveSet__c.Season__c";
 import fixedActivityObject from "@salesforce/schema/FixedActivity__c";
 import fixedActivityCopiedFrom from "@salesforce/schema/FixedActivity__c.CopiedFrom__c";
+import fixedActivityEarlyBlocks from "@salesforce/schema/FixedActivity__c.EarlyBlocks__c";
+import fixedActivityEarlyDay from "@salesforce/schema/FixedActivity__c.EarlyDay__c";
 import fixedActivityLastTimeBlock from "@salesforce/schema/FixedActivity__c.LastTimeBlock__c";
 import fixedActivityLength from "@salesforce/schema/FixedActivity__c.Length__c";
 import fixedActivityLocation from "@salesforce/schema/FixedActivity__c.Location__c";
@@ -425,6 +427,8 @@ export const FIELD = Object.freeze({
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: fixedActivityCopiedFrom.fieldApiName,
+    EarlyBlocks: fixedActivityEarlyBlocks.fieldApiName,
+    EarlyDay: fixedActivityEarlyDay.fieldApiName,
     LastTimeBlock: fixedActivityLastTimeBlock.fieldApiName,
     Length: fixedActivityLength.fieldApiName,
     Location: fixedActivityLocation.fieldApiName,

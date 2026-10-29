@@ -210,10 +210,11 @@ Each rule is clue, meaning, example, test.
     the day blank; or one cell merged from there to the day's end.
     Meaning: the regular day. Dismissal holds the rest of it that day: it is placed from the
     block it starts in to the end of the day, so nothing is scheduled after it. No special day,
-    no block of its own, nothing asked, no note. Dismissal at another time on that day is then
-    not every group at one time every day, so it comes in as recurring (one record for its usual
-    days, one for the early day), as a fixed activity cannot differ by day (ADR 0004). Same idea
-    as a group here only for the morning (names-and-divisions.md rule 9).
+    no block of its own, nothing asked, no note. Dismissal stays one fixed activity (Greg,
+    2026-10-29), at its usual time block, with that day as its early day and the blocks it starts
+    before its usual one (CORE-3.7: `earlyDay`, `earlyBlocks` in the plan; `EarlyDay__c`,
+    `EarlyBlocks__c` saved). Same idea as a group here only for the morning (names-and-divisions.md
+    rule 9).
     Counter-case: a day whose blocks really differ (another length or flow, Dismissal at its
     usual time) stays a special day (rules 3, 12).
     Example: level 4 `earlyEndCamps` (`L4X-001` to `L4X-012`).
@@ -221,8 +222,9 @@ Each rule is clue, meaning, example, test.
     nothing after, is the regular day"; "Dismissal written in the last period, the rest of the
     day blank, runs to the day's end"; counter-case "INGEST-4.13 counter-case: truly different →
     special: a day of its own flow stays a special day"; the corpus "reads every camp perfectly,
-    the early day the regular day". Code: `structure.js` `earlyEnds`; `reading.js` (the
-    placements it covers).
+    the early day the regular day"; Apex `ImportSetupSavesTest` "aFixedActivitysEarlyDayIsSaved".
+    Code: `structure.js` `earlyEnds`; `reading.js` (the placements it covers, `early`);
+    `classify.js` `patternsOf` (read at its usual slot); `items.js` `earlyOf`.
 
 ## Known limits
 

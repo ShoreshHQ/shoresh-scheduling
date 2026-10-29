@@ -104,6 +104,48 @@ private class SetTimeClashesTest {
     }
   }
 
+  /**
+   * CORE-3.7: a fixed activity's early day (an early dismissal) holds the time blocks before
+   * its own that day only: another item there that day is refused, on other days it is not.
+   */
+  @IsTest
+  static void aFixedActivitysEarlyDayHoldsTheEarlierBlocksThatDayOnly() {
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
+      FixedActivity__c dismissal = SetTimeTestData.fixed(
+        ids,
+        'Dismissal',
+        'Lunch'
+      );
+      dismissal.EarlyDay__c = 'Tuesday';
+      dismissal.EarlyBlocks__c = 1;
+      RecurringActivity__c swim = SetTimeTestData.recurring(
+        ids,
+        'Swim',
+        'Period 2'
+      );
+      // Swim in Period 2 on Monday only: Dismissal holds Period 2 on Tuesday, not Monday.
+      SetTimeTestData.save(new List<SObject>{ dismissal, swim });
+      Assert.areEqual(1, count('RecurringActivity__c'));
+
+      RecurringActivity__c art = SetTimeTestData.recurring(
+        ids,
+        'Art',
+        'Period 2'
+      );
+      art.Monday__c = false;
+      art.Tuesday__c = true;
+      String message = SetTimeTestData.refusal(new List<SObject>{ art });
+      Assert.isTrue(
+        message.contains('"Art"') &&
+          message.contains('"Dismissal"') &&
+          message.contains('Period 2 on Tuesday'),
+        message
+      );
+      Assert.areEqual(1, count('RecurringActivity__c'), 'Art not saved');
+    }
+  }
+
   @IsTest
   static void differentDaysWeeksOrGroupsDoNotClash() {
     Map<String, Id> ids = camp();

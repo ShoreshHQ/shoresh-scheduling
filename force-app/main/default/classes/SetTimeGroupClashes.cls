@@ -56,9 +56,9 @@ public with sharing class SetTimeGroupClashes {
   private static List<Cell> cells(SetTimePlan.Item item) {
     List<Cell> result = new List<Cell>();
     List<String> days = item.runDays();
-    for (Integer block : item.span()) {
-      for (Group__c grp : item.groupsIn(block)) {
-        for (String day : days) {
+    for (String day : days) {
+      for (Integer block : item.span(day)) {
+        for (Group__c grp : item.groupsIn(block)) {
           Cell cell = new Cell(grp, block, day);
           cell.item = item;
           result.add(cell);

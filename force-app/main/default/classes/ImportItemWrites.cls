@@ -104,6 +104,12 @@ public with sharing class ImportItemWrites {
         : new FixedActivity__c(Id = keys.existing(entry.id()));
       item.TimeBlock__c = keys.of(entry.text('blockKey'));
       item.Length__c = entry.whole('length');
+      // An early end (INGEST-4.13): that day it starts earlier, to its usual end. A change
+      // that names none leaves the director's own early day as it is.
+      if (entry.isNew() || entry.text('earlyDay') != null) {
+        item.EarlyDay__c = entry.text('earlyDay');
+        item.EarlyBlocks__c = entry.whole('earlyBlocks');
+      }
       rows.add(item);
     }
     writer.write('FixedActivity', entries, rows);

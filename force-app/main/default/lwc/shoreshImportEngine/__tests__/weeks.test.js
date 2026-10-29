@@ -1057,10 +1057,15 @@ describe("INGEST-4.13: the regular day ending early is the regular day", () => {
     p.reading.placements.filter(
       (x) => x.day === "Friday" && x.group === "Bunk 1" && x.week === "Week 1"
     );
-  const fridayDismissal = (plan) =>
-    plan.recurringActivities.find(
-      (r) => r.name === "Dismissal" && r.days.includes("Friday")
-    );
+  // CORE-3.7: Dismissal stays one fixed activity, starting earlier on Friday.
+  const fridayDismissal = (plan) => {
+    expect(
+      plan.recurringActivities.filter((r) => r.name === "Dismissal")
+    ).toEqual([]);
+    const fixed = plan.fixedActivities.filter((r) => r.name === "Dismissal");
+    expect(fixed).toHaveLength(1);
+    return fixed[0];
+  };
 
   it("INGEST-4.13: prefix-early-end → regular: Dismissal on a shorter block of its own, nothing after, is the regular day", () => {
     const fri = [...BLOCKS.slice(0, 4), "Dismissal 1:50-2:10"];
@@ -1072,8 +1077,9 @@ describe("INGEST-4.13: the regular day ending early is the regular day", () => {
     expect(plan.specialDays).toEqual([]);
     // Dismissal holds the rest of Friday: from Period 4 to the day's end.
     expect(fridayDismissal(plan)).toMatchObject({
-      days: ["Friday"],
-      length: 2
+      length: 1,
+      earlyDay: "Friday",
+      earlyBlocks: 1
     });
     expect(
       dismissal(p).find((x) => x.text === "Dismissal").blockKeys
@@ -1093,7 +1099,11 @@ describe("INGEST-4.13: the regular day ending early is the regular day", () => {
     );
     expect(asked(p, "")).toEqual([]);
     const plan = planFor(p, existing, "a00000000000001AAA");
-    expect(fridayDismissal(plan)).toMatchObject({ length: 2 });
+    expect(fridayDismissal(plan)).toMatchObject({
+      length: 1,
+      earlyDay: "Friday",
+      earlyBlocks: 1
+    });
     expect(plan.activities.map((a) => a.name)).not.toContain(
       "Dismissal at 1:50"
     );
