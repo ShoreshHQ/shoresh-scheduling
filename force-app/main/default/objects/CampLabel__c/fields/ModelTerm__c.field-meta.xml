@@ -206,11 +206,6 @@
                 <label>Conflict</label>
             </value>
             <value>
-                <fullName>Gap</fullName>
-                <default>false</default>
-                <label>Gap</label>
-            </value>
-            <value>
                 <fullName>Shortfall</fullName>
                 <default>false</default>
                 <label>Shortfall</label>
