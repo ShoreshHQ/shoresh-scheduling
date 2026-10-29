@@ -207,7 +207,8 @@ public with sharing class ElectiveRunState {
         ImportedChoices__c,
         ManualChange__c
       FROM Preference__c
-      WHERE ElectiveRun__c = :run.Id
+      // A camper withdrawn in the camp's other system is kept, but not seated (API-4.3).
+      WHERE ElectiveRun__c = :run.Id AND Camper__r.Withdrawn__c = FALSE
       WITH USER_MODE
       ORDER BY Camper__c
     ];

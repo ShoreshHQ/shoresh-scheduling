@@ -6,6 +6,9 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
+    // A batch from another system (IncomingBatch): choices before their campers.
+    'Preference',
+    'Camper',
     // A week's day the import made a special day (INGEST-4.3): its day first; its plan goes
     // with it (SpecialItemTriggerHandler).
     'SpecialDate',
@@ -46,6 +49,11 @@ public with sharing class ImportUndoDeletes {
   // anything there not made by the import, or kept by this Undo, keeps it.
   // Each is the child's field pointing at the kind; the parent's list of them is looked up.
   private static final Map<String, List<Schema.SObjectField>> INSIDE = new Map<String, List<Schema.SObjectField>>{
+    // A camper with choices or seats the batch didn't make keeps them.
+    'Camper' => new List<Schema.SObjectField>{
+      Preference__c.Camper__c,
+      Assignment__c.Camper__c
+    },
     'Program' => new List<Schema.SObjectField>{
       Division__c.Program__c,
       TimeBlock__c.Program__c,

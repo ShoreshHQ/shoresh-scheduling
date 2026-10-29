@@ -49,6 +49,41 @@ public with sharing class ImportLog {
   }
 
   /**
+   * Records a batch from another system (IncomingSave; API-2.3) as an import of the season, so
+   * Undo last import takes it back and Roots shows its questions. A sending key holds no access
+   * to imports and need not edit the season: it must only see it (it found it in user mode), and
+   * every record it changed was written in user mode before this.
+   */
+  public static Id recordIncoming(Import__c done) {
+    requireReadAccess(done.Season__c);
+    Database.insert(done, AccessLevel.SYSTEM_MODE);
+    return done.Id;
+  }
+
+  /** A batch's new questions, added to the last import (itself a batch), by the same rule. */
+  public static void updateIncomingQuestions(Import__c last) {
+    requireReadAccess(last.Season__c);
+    Database.update(
+      new Import__c(Id = last.Id, Open__c = last.Open__c),
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  private static void requireReadAccess(Id seasonId) {
+    List<UserRecordAccess> access = [
+      SELECT RecordId, HasReadAccess
+      FROM UserRecordAccess
+      WHERE UserId = :UserInfo.getUserId() AND RecordId = :seasonId
+      WITH SYSTEM_MODE
+    ];
+    if (access.isEmpty() || !access[0].HasReadAccess) {
+      throw new ShoreshException(
+        'This user can\'t see that season. Ask a Salesforce admin to share it.'
+      );
+    }
+  }
+
+  /**
    * The questions the director left open (INGEST-5.5), as JSON [{ key, title }], or null for
    * none. As many as the field holds; the rest wait for the next import of the same files.
    */

@@ -208,7 +208,7 @@ private class OutsideOwnedTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp camp = new Camp().withChoices();
       Assert.areEqual(
-        OutsideOwned.BUNK_REFUSAL,
+        OutsideOwned.groupRefusal(CampLabels.modelTermsOnly()),
         refusal(
           new Preference__c(
             Id = camp.choices.Id,

@@ -16,7 +16,8 @@ public with sharing class OutsideOwned {
   public static Boolean bringingIn = false;
 
   public static final String NAME_REFUSAL = 'Names come from the camp\'s sign-up list or other system. Change it there and bring it in again.';
-  public static final String BUNK_REFUSAL = 'Bunks come from the camp\'s sign-up list or other system. Change it there and bring it in again.';
+  // "Bunks come from ...", in the camp's own word for groups.
+  private static final String GROUP_REFUSAL = ' come from the camp\'s sign-up list or other system. Change it there and bring it in again.';
   public static final String NO_SYSTEM = 'Say which system this outside ID comes from.';
   public static final String ID_TAKEN = 'Another camper in this season has this outside ID from this system.';
 
@@ -109,10 +110,54 @@ public with sharing class OutsideOwned {
     if (before == null || bringingIn) {
       return;
     }
+    List<Preference__c> moved = new List<Preference__c>();
     for (Preference__c row : rows) {
       if (row.Group__c != before.get(row.Id).Group__c) {
-        row.Group__c.addError(BUNK_REFUSAL);
+        moved.add(row);
       }
     }
+    if (moved.isEmpty()) {
+      return;
+    }
+    Map<Id, CampLabels> labels = labelsByRun(moved);
+    for (Preference__c row : moved) {
+      CampLabels words = labels.get(row.ElectiveRun__c);
+      row.Group__c.addError(
+        groupRefusal(words == null ? CampLabels.modelTermsOnly() : words)
+      );
+    }
+  }
+
+  /**
+   * Each run's camp words. Only which camp is read, to say the camp's own word, whoever saves
+   * (like the keys above).
+   */
+  private static Map<Id, CampLabels> labelsByRun(List<Preference__c> rows) {
+    Set<Id> runIds = new Set<Id>();
+    for (Preference__c row : rows) {
+      runIds.add(row.ElectiveRun__c);
+    }
+    Map<Id, Id> campOf = new Map<Id, Id>();
+    for (ElectiveRun__c run : [
+      SELECT Id, Season__r.Camp__c
+      FROM ElectiveRun__c
+      WHERE Id IN :runIds
+      WITH SYSTEM_MODE
+    ]) {
+      campOf.put(run.Id, run.Season__r.Camp__c);
+    }
+    Map<Id, CampLabels> byCamp = CampLabels.forCamps(
+      new Set<Id>(campOf.values())
+    );
+    Map<Id, CampLabels> result = new Map<Id, CampLabels>();
+    for (Id runId : campOf.keySet()) {
+      result.put(runId, byCamp.get(campOf.get(runId)));
+    }
+    return result;
+  }
+
+  /** "Bunks come from the camp's sign-up list or other system...", in the camp's word. */
+  public static String groupRefusal(CampLabels labels) {
+    return labels.plural('Group') + GROUP_REFUSAL;
   }
 }

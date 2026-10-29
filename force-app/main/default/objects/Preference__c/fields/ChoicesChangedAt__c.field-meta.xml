@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ChoicesChangedAt__c</fullName>
+    <description
+  >When the camp's other system last changed these choices, as it said when it sent the change. An older change sent later is ignored.</description>
+    <label>Choices Changed At</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

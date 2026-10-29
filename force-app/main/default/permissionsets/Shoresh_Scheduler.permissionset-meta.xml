@@ -785,6 +785,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Camper__c.Withdrawn__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Camper__c.OutsideChangedAt__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ElectiveRun__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -856,6 +866,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Preference__c.ManualChange__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Preference__c.ChoicesChangedAt__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

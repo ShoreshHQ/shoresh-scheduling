@@ -25,6 +25,12 @@ public with sharing class ShoreshSchema {
     return simulatedPrefix != null ? simulatedPrefix : realPrefix();
   }
 
+  /** The package's namespace as the platform names it ("shoresh"), or null before it has one. */
+  public static String namespace() {
+    String real = realPrefix().removeEnd('__');
+    return String.isBlank(real) ? null : real;
+  }
+
   /** The org's real prefix for this package (simulating never changes what the org has). */
   private static String realPrefix() {
     if (realPrefix == null) {

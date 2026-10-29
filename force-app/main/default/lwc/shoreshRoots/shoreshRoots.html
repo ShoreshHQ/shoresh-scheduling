@@ -141,6 +141,13 @@
               onclick={handleUndoImport}
             ></lightning-button>
           </div>
+          <template lwc:if={showIncoming}>
+            <ul class="incoming-questions" data-id="incoming-questions">
+              <template for:each={lastImport.questions} for:item="question">
+                <li key={question.key}>{question.title}</li>
+              </template>
+            </ul>
+          </template>
         </template>
       </div>
     </div>

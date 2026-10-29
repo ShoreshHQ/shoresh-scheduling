@@ -58,11 +58,13 @@ import campTimeZone from "@salesforce/schema/Camp__c.TimeZone__c";
 import camperObject from "@salesforce/schema/Camper__c";
 import camperCamperNumber from "@salesforce/schema/Camper__c.CamperNumber__c";
 import camperKey from "@salesforce/schema/Camper__c.Key__c";
+import camperOutsideChangedAt from "@salesforce/schema/Camper__c.OutsideChangedAt__c";
 import camperOutsideId from "@salesforce/schema/Camper__c.OutsideId__c";
 import camperOutsideMatch from "@salesforce/schema/Camper__c.OutsideMatch__c";
 import camperParentComments from "@salesforce/schema/Camper__c.ParentComments__c";
 import camperSeason from "@salesforce/schema/Camper__c.Season__c";
 import camperSourceSystem from "@salesforce/schema/Camper__c.SourceSystem__c";
+import camperWithdrawn from "@salesforce/schema/Camper__c.Withdrawn__c";
 import coverageObject from "@salesforce/schema/Coverage__c";
 import coverageDivision from "@salesforce/schema/Coverage__c.Division__c";
 import coverageGroup from "@salesforce/schema/Coverage__c.Group__c";
@@ -174,6 +176,7 @@ import planPartSpecialDay from "@salesforce/schema/PlanPart__c.SpecialDay__c";
 import planPartSpecialEvent from "@salesforce/schema/PlanPart__c.SpecialEvent__c";
 import preferenceObject from "@salesforce/schema/Preference__c";
 import preferenceCamper from "@salesforce/schema/Preference__c.Camper__c";
+import preferenceChoicesChangedAt from "@salesforce/schema/Preference__c.ChoicesChangedAt__c";
 import preferenceChoices from "@salesforce/schema/Preference__c.Choices__c";
 import preferenceElectiveRun from "@salesforce/schema/Preference__c.ElectiveRun__c";
 import preferenceGroup from "@salesforce/schema/Preference__c.Group__c";
@@ -390,11 +393,13 @@ export const FIELD = Object.freeze({
   Camper: Object.freeze({
     CamperNumber: camperCamperNumber.fieldApiName,
     Key: camperKey.fieldApiName,
+    OutsideChangedAt: camperOutsideChangedAt.fieldApiName,
     OutsideId: camperOutsideId.fieldApiName,
     OutsideMatch: camperOutsideMatch.fieldApiName,
     ParentComments: camperParentComments.fieldApiName,
     Season: camperSeason.fieldApiName,
-    SourceSystem: camperSourceSystem.fieldApiName
+    SourceSystem: camperSourceSystem.fieldApiName,
+    Withdrawn: camperWithdrawn.fieldApiName
   }),
   Coverage: Object.freeze({
     Division: coverageDivision.fieldApiName,
@@ -522,6 +527,7 @@ export const FIELD = Object.freeze({
   }),
   Preference: Object.freeze({
     Camper: preferenceCamper.fieldApiName,
+    ChoicesChangedAt: preferenceChoicesChangedAt.fieldApiName,
     Choices: preferenceChoices.fieldApiName,
     ElectiveRun: preferenceElectiveRun.fieldApiName,
     Group: preferenceGroup.fieldApiName,
