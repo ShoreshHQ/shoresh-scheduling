@@ -122,8 +122,8 @@ Each rule is clue, meaning, example, test.
 9. **A group here only for the morning comes in Morning only** (Greg, 2026-10-28: "they are a
    morning only group").
    Clue: a new group (not one the camp has, not left out) whose cells are all in the morning, on
-   two days or more, in a timetable that has a morning and an afternoon: every afternoon cell
-   blank on every day it is in the files. The morning and afternoon are the time blocks' part of
+   two days or more, in a timetable where other groups have cells read in both the morning and
+   the afternoon: every afternoon cell blank on every day it is in the files. The morning and afternoon are the time blocks' part of
    the day, as the engine reads it (`shoreshEngine/setup.js` `atCamp`): the camp's own for a
    block it has, else the import's (a block starting before noon is in the morning, `plan.js`).
    The mirror: all its cells in the afternoon.
@@ -135,7 +135,8 @@ Each rule is clue, meaning, example, test.
    day: the Minnows' bunks come in Morning only.
    Test: `availability.test.js` "INGEST-2.9: …" (Morning only; Afternoon only; the blanks are
    not gaps). Counter-cases ("INGEST-2.9 counter-case: …"): blank on some afternoons only, or in
-   the files one day only, changes nothing; a group at a Lunch at noon or later and blank after
+   the files one day only, changes nothing; an afternoon no group has anything read in (letter
+   codes with a key, level-5 corpus) shows no one away; a group at a Lunch at noon or later and blank after
    it stays all day, since Morning only would drop its Lunch (known limit below). Apex
    `ImportSetupSavesTest` `ingest29AGroupHereForTheMorningComesInMorningOnly`. Code:
    `availability.js`.

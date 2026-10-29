@@ -32,27 +32,42 @@ function partOf(timetable, block) {
   return block.start < NOON ? "Morning" : "Afternoon";
 }
 
-/** The parts of the day a timetable's kept blocks are in. */
-function partsIn(timetable) {
-  return new Set(
-    timetable.blocks.filter((b) => !b.leftOut).map((b) => partOf(timetable, b))
-  );
+/** The parts of the day a placement covers. */
+function partsOf(p, timetables) {
+  const t = timetables[p.timetable];
+  const parts = [];
+  for (let b = p.blockIndex; b < p.blockIndex + (p.span || 1); b++) {
+    parts.push(partOf(t, t.blocks[b]));
+  }
+  return parts;
+}
+
+/**
+ * Each timetable's parts of the day that hold a cell read, for any group: Map(index -> Set). A
+ * half of the day no one has anything read in (a legend's codes, nothing to read) shows no one
+ * away.
+ */
+function heldParts(usable, timetables) {
+  const held = new Map();
+  for (const p of usable) {
+    const parts = held.get(p.timetable) || new Set();
+    partsOf(p, timetables).forEach((part) => parts.add(part));
+    held.set(p.timetable, parts);
+  }
+  return held;
 }
 
 /** What the cells of one group show: { read, days } or null when they show nothing. */
-function readGroup(cells, timetables) {
+function readGroup(cells, timetables, held) {
   const parts = new Set();
   const days = new Set();
   for (const p of cells) {
-    const t = timetables[p.timetable];
-    const both = partsIn(t);
-    // Only a timetable with a morning and an afternoon can show half of it blank.
+    const both = held.get(p.timetable);
+    // Only where other groups have both halves of the day can one half be blank for this one.
     if (!both.has("Morning") || !both.has("Afternoon")) {
       return null;
     }
-    for (let b = p.blockIndex; b < p.blockIndex + (p.span || 1); b++) {
-      parts.add(partOf(t, t.blocks[b]));
-    }
+    partsOf(p, timetables).forEach((part) => parts.add(part));
     days.add(`${p.timetable}|${p.week || ""}|${p.day}`);
   }
   // Two days at least: one day shows no pattern (classification rule 4).
@@ -72,9 +87,10 @@ export function readAvailability(usable, timetables, groups, answers) {
   for (const p of usable) {
     byGroup.set(p.group, [...(byGroup.get(p.group) || []), p]);
   }
+  const held = heldParts(usable, timetables);
   const result = new Map();
   for (const g of groups.filter((x) => x.isNew && !x.leftOut)) {
-    const found = readGroup(byGroup.get(g.name) || [], timetables);
+    const found = readGroup(byGroup.get(g.name) || [], timetables, held);
     if (!found) {
       continue;
     }

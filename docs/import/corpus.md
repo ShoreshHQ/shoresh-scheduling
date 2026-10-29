@@ -181,7 +181,9 @@ of 150, gaps 106 → 142 of 143, spelling 72 → 100 of 100, halfDay 95 → 111 
 Groups here part of the day scored (INGEST-2.9, 2026-10-28): 88 half-day camps expect 423 groups
 Morning only; 86 are read right. The rest are the 3 by-activity camps above, whose groups are
 misread (availability 9 wrong reads). Still 317 of 320 perfect; levels 1 and 2, the travel
-camps and Greg's camp unchanged (no group read part of the day).
+camps and Greg's camp unchanged (no group read part of the day). Level 5: 113 of 320 still; 11 groups read part of the
+day in 2 oneGroup camps whose groups are already misread (L5-265, L5-315). Letter-code camps
+read no one part of the day: an afternoon where no group has anything read shows no one away.
 
 ## Level 5
 

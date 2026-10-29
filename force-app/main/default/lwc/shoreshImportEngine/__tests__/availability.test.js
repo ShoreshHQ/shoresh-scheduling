@@ -91,6 +91,18 @@ describe("INGEST-2.9: a group here for part of the day", () => {
     expect(partOfDay(p)).toBeUndefined();
   });
 
+  it("INGEST-2.9 counter-case: an afternoon no group has anything read in shows no one away", () => {
+    const allMorning = (g, d, b) => {
+      return b >= PM ? "" : rotation(g, d, b);
+    };
+    expect(Object.values(availabilityOf(propose(week(allMorning))))).toEqual([
+      "AllDay",
+      "AllDay",
+      "AllDay",
+      "AllDay"
+    ]);
+  });
+
   it("INGEST-2.9 counter-case: a group in the files on one day only is not read", () => {
     const once = (g, d, b) => {
       return g === 0 && (b >= PM || d > 0) ? "" : rotation(g, d, b);
