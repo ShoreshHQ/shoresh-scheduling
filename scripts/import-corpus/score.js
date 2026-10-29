@@ -6,6 +6,7 @@
 import { campFiles, hm } from "./camps";
 import { variedCampFiles } from "./level2";
 import { hardCampFiles } from "./level3";
+import { veryHardCampFiles } from "./level4";
 
 export const QUESTION_KINDS = [
   "similar",
@@ -55,7 +56,11 @@ const EMPTY_SEASON = {
 };
 
 function readFiles(camp, { engine, XLSX }) {
-  const writers = { 2: variedCampFiles, 3: hardCampFiles };
+  const writers = {
+    2: variedCampFiles,
+    3: hardCampFiles,
+    4: veryHardCampFiles
+  };
   const files = camp.files || (writers[camp.level] || campFiles)(camp);
   return files.map((f) =>
     f.csv !== undefined
@@ -178,12 +183,20 @@ function weekReads(truth, got) {
   return { weeks, extra, gotWeeks: [...gotWeeks] };
 }
 
+/** Several programs, each running the camp's days: each program's days against them. */
+function programDays(truth, plan, count) {
+  if (plan.programs.length !== count) return truth.days.length;
+  return plan.programs.reduce((n, p) => n + mismatches(truth.days, p.days), 0);
+}
+
 function wrongReads(truth, proposal, plan) {
   // DIV-1.1: a group in no division is held by a division record that is not a division.
   const divisions = plan.divisions.filter((d) => !d.noDivision);
   const divisionName = new Map(divisions.map((d) => [d.key, d.name]));
   const blockStart = new Map(plan.timeBlocks.map((b) => [b.key, b.start]));
   const program = plan.programs.length === 1 ? plan.programs[0] : null;
+  // Level 4 may have several programs (truth.programs); the others have one.
+  const programCount = truth.programs || 1;
   const named = truth.divisionsInFile;
   // Level 5: cells only the director can explain are not compared, nor the names only they hold.
   const gotCells = readCells(proposal);
@@ -191,12 +204,17 @@ function wrongReads(truth, proposal, plan) {
   const ignored = new Set(truth.ignoreNames || []);
   const read = weekReads(truth, gotCells);
   const wrong = {
-    programs: Math.abs(plan.programs.length - 1),
+    programs: Math.abs(plan.programs.length - programCount),
     weeks: mismatches(
       truth.weeks.map((w) => w.label),
       read.gotWeeks
     ),
-    days: program ? mismatches(truth.days, program.days) : truth.days.length,
+    days:
+      programCount > 1
+        ? programDays(truth, plan, programCount)
+        : program
+          ? mismatches(truth.days, program.days)
+          : truth.days.length,
     blocks: mismatches(
       truth.blocks,
       plan.timeBlocks.map((b) => `${b.start}-${b.end}`)
@@ -405,7 +423,7 @@ export function weekTable(results) {
 }
 
 /**
- * Level 3: one line per trait (a camp has two or three, so it counts under each): camps, read
+ * Levels 3 and 4: one line per trait (a camp has two or three, so it counts under each): camps, read
  * perfectly, questions, and wrong reads by kind.
  */
 export function traitTable(results) {
