@@ -86,6 +86,9 @@ behaviour unchanged):
   2026-10-29: an early dismissal), by a number of time blocks, still ending where it always does.
   That day it MUST hold those blocks for every group (nothing else placed there, CORE-4.6) and
   only that day; it stays one fixed activity, never made recurring or a special day for it.
+- **CORE-3.8** An early day that cannot happen as saved (the program does not run that day, or
+  fewer time blocks come before it than it starts earlier by) MUST be shown on its row, never
+  ignored quietly; a re-import's question about it MUST name the early day.
 
 ## Layer 4: Limits
 

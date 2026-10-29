@@ -724,6 +724,23 @@ describe("c-shoresh-program", () => {
       expect(blocks.label).toMatch(/earlier$/);
     });
 
+    it("CORE-3.8: a fixed activity's early day that cannot happen is said on its row", async () => {
+      const element = await render("fixedActivities", {
+        ...SET_TIME,
+        fixedActivities: [
+          {
+            ...SET_TIME.fixedActivities[0],
+            EarlyDay__c: "Friday",
+            EarlyBlocks__c: 2
+          }
+        ]
+      });
+      // Main runs Monday only here: the Friday is named, beside who is left out.
+      expect(table(element).rowNotes.f1).toBe(
+        "Bunk 2 is afternoon only and is left out. Main doesn't run on Friday, so it never starts earlier."
+      );
+    });
+
     it("lists fixed activities with their time block, length, location, weeks, and who is left out", async () => {
       const element = await render("fixedActivities", SET_TIME);
       element.locations = nsRecord([{ Id: "l1", Name: "Pool" }]);

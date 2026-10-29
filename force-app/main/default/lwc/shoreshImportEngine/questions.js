@@ -456,6 +456,13 @@ function lengthText(length, t) {
   return length > 1 ? `, ${length} ${t.pIn("TimeBlock")} long` : "";
 }
 
+/** INGEST-4.13: ", 1 time block earlier on Friday" for a fixed activity's early day. */
+function earlyText(day, by, t) {
+  return day && by > 0
+    ? `, ${by} ${by === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")} earlier on ${day}`
+    : "";
+}
+
 function setTimeChangeCard(ask, t) {
   const recurring = ask.type === "recurring";
   const fields = itemFields(ask);
@@ -463,8 +470,18 @@ function setTimeChangeCard(ask, t) {
     ? ` on ${dayList(WEEKDAYS.filter((d) => ask.record[FIELD.RecurringActivity[d]]))}`
     : "";
   const fileDays = recurring ? ` on ${dayList(ask.days)}` : "";
-  const now = `${itemBlockName(ask)}${lengthText(ask.record[fields.Length], t)}${currentDays}`;
-  const file = `${ask.block.name}${lengthText(ask.length, t)}${fileDays}`;
+  const fixed = FIELD.FixedActivity;
+  const nowEarly = recurring
+    ? ""
+    : earlyText(ask.record[fixed.EarlyDay], ask.record[fixed.EarlyBlocks], t);
+  // A file without an early day keeps the one set up (INGEST-4.13): said on both sides.
+  const fileEarly = recurring
+    ? ""
+    : ask.earlyDay
+      ? earlyText(ask.earlyDay, ask.earlyBlocks, t)
+      : nowEarly;
+  const now = `${itemBlockName(ask)}${lengthText(ask.record[fields.Length], t)}${currentDays}${nowEarly}`;
+  const file = `${ask.block.name}${lengthText(ask.length, t)}${fileDays}${fileEarly}`;
   return {
     id: ask.id,
     stage: "review",

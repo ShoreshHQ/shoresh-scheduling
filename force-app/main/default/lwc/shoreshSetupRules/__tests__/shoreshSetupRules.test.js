@@ -667,6 +667,57 @@ describe("fixed and recurring activities", () => {
   });
 });
 
+describe("CORE-3.8: a fixed activity's early day that cannot happen is shown", () => {
+  const t = buildTerms([]);
+  const ENTRY = {
+    program: { Id: "p1", Name: "Main", Monday__c: true, Friday__c: true },
+    timeBlocks: [
+      { Id: "t1", Name: "Period 1" },
+      { Id: "t2", Name: "Period 2" },
+      { Id: "t3", Name: "Dismissal" }
+    ]
+  };
+  const note = (item) =>
+    rules.earlyNote(
+      nsRecord(ENTRY),
+      nsRecord({ TimeBlock__c: "t3", Length__c: 1, ...item }),
+      t
+    );
+
+  it("CORE-3.8: an early day the program doesn't run is named on the row", () => {
+    expect(note({ EarlyDay__c: "Tuesday", EarlyBlocks__c: 1 })).toBe(
+      "Main doesn't run on Tuesday, so it never starts earlier."
+    );
+  });
+
+  it("CORE-3.8: more time blocks earlier than come before it is named on the row", () => {
+    expect(note({ EarlyDay__c: "Friday", EarlyBlocks__c: 3 })).toBe(
+      "Only 2 time blocks before Dismissal, so on Friday it starts at Period 1."
+    );
+  });
+
+  it("CORE-3.8: an early day on the first time block is named on the row", () => {
+    expect(
+      rules.earlyNote(
+        nsRecord(ENTRY),
+        nsRecord({
+          TimeBlock__c: "t1",
+          EarlyDay__c: "Friday",
+          EarlyBlocks__c: 1
+        }),
+        t
+      )
+    ).toBe(
+      "Nothing comes before Period 1, so on Friday it never starts earlier."
+    );
+  });
+
+  it("CORE-3.8 counter-case: an early day that fits, or none, says nothing", () => {
+    expect(note({ EarlyDay__c: "Friday", EarlyBlocks__c: 2 })).toBe("");
+    expect(note({})).toBe("");
+  });
+});
+
 // ADR 0014 slice 6: a special day on a weekday its week no longer has, and one whose time blocks
 // no longer match the regular day's. Shown, never fixed.
 describe("special days", () => {
