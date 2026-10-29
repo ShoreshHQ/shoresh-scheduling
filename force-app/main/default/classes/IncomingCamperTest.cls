@@ -185,6 +185,59 @@ private class IncomingCamperTest {
     Assert.isTrue(((String) question.get('title')).contains('Eli Stone'));
   }
 
+  // API-2.2, 2.3: a batch that only asks adds its question to the last batch's import, so a
+  // question alone never takes Undo away from what came before.
+  @IsTest
+  static void aQuestionAloneJoinsTheLastBatch() {
+    IncomingTestData camp = new IncomingTestData();
+    Camper__c eli = camp.camper('Eli Stone', null);
+    System.runAs(camp.sender('Send_Campers')) {
+      send(
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'camper_id' => 'SYN-1',
+            'camper_name' => 'Maya Cohen'
+          }
+        }
+      );
+      send(
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'camper_id' => 'SYN-9',
+            'camper_name' => 'Eli Stone'
+          }
+        }
+      );
+    }
+    List<Import__c> imports = camp.imports();
+    Assert.areEqual(1, imports.size());
+    Assert.isTrue(imports[0].Open__c.contains('incoming|camper|' + eli.Id));
+  }
+
+  // API-2.5: a time still to come is refused, or every real change after it would look older.
+  @IsTest
+  static void aChangeTimeStillToComeIsAProblem() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Campers')) {
+      Assert.areEqual(
+        'problem: ' + IncomingCamperPlan.FUTURE,
+        IncomingTestData.said(
+          send(
+            new List<Map<String, Object>>{
+              new Map<String, Object>{
+                'camper_id' => 'SYN-1',
+                'camper_name' => 'Maya Cohen',
+                'changed_at' => '2099-01-01T00:00:00Z'
+              }
+            }
+          ),
+          1
+        )
+      );
+    }
+    Assert.areEqual(0, campers(camp.season.Id).size());
+  }
+
   // API-2.5: a change older than the last one taken for that camper is ignored, and said.
   @IsTest
   static void anOlderChangeIsIgnored() {

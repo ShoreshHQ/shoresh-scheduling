@@ -78,19 +78,9 @@ public with sharing class IncomingElectiveChoicePlan {
   }
 
   private String refusal() {
-    if (
-      String.isBlank(record.camper_id) && String.isBlank(record.camper_name)
-    ) {
-      return IncomingCampers.sayWho();
-    }
-    if (String.isBlank(record.elective) || String.isBlank(record.week)) {
-      return 'Say which elective (elective) and which week (week).';
-    }
-    if (campers.doubt(i)) {
-      return IncomingCampers.DOUBT;
-    }
-    if (campers.at(i) == null) {
-      return IncomingCampers.notFound();
+    String aboutCamper = camperRefusal();
+    if (aboutCamper != null) {
+      return aboutCamper;
     }
     if (run == null) {
       return 'There is no elective "' +
@@ -105,6 +95,25 @@ public with sharing class IncomingElectiveChoicePlan {
         ' are final, so choices were not changed.';
     }
     return null;
+  }
+
+  /** Who the record is about, and when it changed. */
+  private String camperRefusal() {
+    if (
+      String.isBlank(record.camper_id) && String.isBlank(record.camper_name)
+    ) {
+      return IncomingCampers.sayWho();
+    }
+    if (IncomingCamperPlan.isFuture(record.changed_at)) {
+      return IncomingCamperPlan.FUTURE;
+    }
+    if (String.isBlank(record.elective) || String.isBlank(record.week)) {
+      return 'Say which elective (elective) and which week (week).';
+    }
+    if (campers.doubt(i)) {
+      return IncomingCampers.DOUBT;
+    }
+    return campers.at(i) == null ? IncomingCampers.notFound() : null;
   }
 
   private void readOffered(List<IncomingCamperElectiveChoice.Record> records) {

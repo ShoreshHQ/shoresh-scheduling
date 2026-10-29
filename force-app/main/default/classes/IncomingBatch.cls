@@ -114,14 +114,27 @@ public with sharing class IncomingBatch {
   private static void requireAccess(Capability capability) {
     String namespace = ShoreshSchema.namespace();
     String setName = capability.permissionSet();
-    // The person's own assignments: the platform's answer about this person.
+    // The person's own assignments, the set itself or a group holding it: the platform's answer
+    // about this person.
+    Set<Id> groups = new Set<Id>();
+    for (PermissionSetGroupComponent part : [
+      SELECT PermissionSetGroupId
+      FROM PermissionSetGroupComponent
+      WHERE
+        PermissionSet.Name = :setName
+        AND PermissionSet.NamespacePrefix = :namespace
+      WITH SYSTEM_MODE
+    ]) {
+      groups.add(part.PermissionSetGroupId);
+    }
     Boolean holds = ![
         SELECT Id
         FROM PermissionSetAssignment
         WHERE
           AssigneeId = :UserInfo.getUserId()
-          AND PermissionSet.Name = :setName
-          AND PermissionSet.NamespacePrefix = :namespace
+          AND ((PermissionSet.Name = :setName
+          AND PermissionSet.NamespacePrefix = :namespace)
+          OR PermissionSetGroupId IN :groups)
         WITH SYSTEM_MODE
         LIMIT 1
       ]

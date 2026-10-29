@@ -120,20 +120,24 @@ public with sharing class IncomingSave {
     }
   }
 
-  /** The import's own record, unless the batch saved nothing and asks only what was asked. */
+  /**
+   * The import's own record. Every batch's record keeps its questions, none as [] (how Undo and
+   * Roots tell a batch from a file import). A batch that saved nothing records no import of its
+   * own: its new questions join the last import when that is a batch too (so a question alone
+   * never takes a director's Undo away), and are recorded on their own only when it isn't.
+   */
   private void record(ImportWriter writer) {
-    if (
-      batch.staged.isEmpty() && (batch.questions.isEmpty() || alreadyAsked())
-    ) {
+    if (batch.staged.isEmpty() && batch.questions.isEmpty()) {
+      return;
+    }
+    if (batch.staged.isEmpty() && IncomingQuestions.joinLastBatch(batch)) {
       return;
     }
     Import__c done = new Import__c(
       Season__c = batch.season.Id,
       Created__c = JSON.serialize(writer.created),
       Changed__c = JSON.serialize(writer.changed),
-      Open__c = batch.questions.isEmpty()
-        ? null
-        : JSON.serialize(batch.questions)
+      Open__c = IncomingQuestions.fitting(batch.questions)
     );
     if (
       done.Created__c.length() > LOG_LIMIT ||
@@ -150,30 +154,5 @@ public with sharing class IncomingSave {
       String.join(senders, ', '))
       .left(255);
     ImportLog.recordIncoming(done);
-  }
-
-  /**
-   * Whether the season's last import already asks every question. Read in system mode: a sending
-   * key cannot read imports; only the question keys are compared, and nothing is handed back.
-   */
-  private Boolean alreadyAsked() {
-    List<Import__c> last = [
-      SELECT Open__c, UndoneAt__c
-      FROM Import__c
-      WHERE Season__c = :batch.season.Id
-      WITH SYSTEM_MODE
-      ORDER BY CreatedDate DESC, Name DESC
-      LIMIT 1
-    ];
-    if (last.isEmpty() || last[0].UndoneAt__c != null) {
-      return false;
-    }
-    String asked = last[0].Open__c == null ? '' : last[0].Open__c;
-    for (Map<String, String> question : batch.questions) {
-      if (!asked.contains(JSON.serialize(question.get('key')))) {
-        return false;
-      }
-    }
-    return true;
   }
 }

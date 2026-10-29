@@ -55,10 +55,25 @@ public with sharing class ImportLog {
    * every record it changed was written in user mode before this.
    */
   public static Id recordIncoming(Import__c done) {
+    requireReadAccess(done.Season__c);
+    Database.insert(done, AccessLevel.SYSTEM_MODE);
+    return done.Id;
+  }
+
+  /** A batch's new questions, added to the last import (itself a batch), by the same rule. */
+  public static void updateIncomingQuestions(Import__c last) {
+    requireReadAccess(last.Season__c);
+    Database.update(
+      new Import__c(Id = last.Id, Open__c = last.Open__c),
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  private static void requireReadAccess(Id seasonId) {
     List<UserRecordAccess> access = [
       SELECT RecordId, HasReadAccess
       FROM UserRecordAccess
-      WHERE UserId = :UserInfo.getUserId() AND RecordId = :done.Season__c
+      WHERE UserId = :UserInfo.getUserId() AND RecordId = :seasonId
       WITH SYSTEM_MODE
     ];
     if (access.isEmpty() || !access[0].HasReadAccess) {
@@ -66,8 +81,6 @@ public with sharing class ImportLog {
         'This user can\'t see that season. Ask a Salesforce admin to share it.'
       );
     }
-    Database.insert(done, AccessLevel.SYSTEM_MODE);
-    return done.Id;
   }
 
   /**

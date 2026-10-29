@@ -48,8 +48,9 @@ public with sharing class ImportUndo {
     Result result = new Result();
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();
-    // Undoing a batch from another system puts a camper's name and bunk back (API-4.2).
-    OutsideOwned.bringingIn = true;
+    // Undoing a batch from another system puts a camper's name and bunk back (API-4.2); no other
+    // import may change them.
+    OutsideOwned.bringingIn = IncomingQuestions.isBatch(done.Open__c);
     try {
       // Put back first (a group moved into a division the import made goes home), then remove.
       Map<String, List<Object>> sorted = ImportUndoEntries.sorted(done);
@@ -119,7 +120,7 @@ public with sharing class ImportUndo {
       // A second Undo, or an import saving, in the same season waits here; read again after.
       lockSeason(found[0].Season__c);
       found = [
-        SELECT Id, Season__c, Created__c, Changed__c, UndoneAt__c
+        SELECT Id, Season__c, Created__c, Changed__c, UndoneAt__c, Open__c
         FROM Import__c
         WHERE Id = :importId
         WITH USER_MODE

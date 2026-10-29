@@ -9,6 +9,9 @@
  *   camper is ignored, and said in the answer (the sender's log of what was ignored).
  */
 public with sharing class IncomingCamperPlan {
+  /** A changed_at still to come would make every real change after it look older. */
+  public static final String FUTURE = 'changed_at is later than now. Send the time it was changed, like 2026-07-01T09:30:00Z.';
+
   private IncomingBatch batch;
   private IncomingCampers campers;
   private Map<Id, Camper__c> current;
@@ -51,6 +54,8 @@ public with sharing class IncomingCamperPlan {
       String.isBlank(record.camper_id) && String.isBlank(record.camper_name)
     ) {
       batch.problem(i, IncomingCampers.sayWho());
+    } else if (isFuture(record.changed_at)) {
+      batch.problem(i, FUTURE);
     } else if (campers.doubt(i)) {
       batch.problem(i, IncomingCampers.DOUBT);
       batch.ask('camper|' + campers.likely(i).Id, doubtQuestion(i));
@@ -167,6 +172,11 @@ public with sharing class IncomingCamperPlan {
   /** A value sent (not blank) that is not exactly what is saved. */
   private static Boolean differs(String sent, String saved) {
     return String.isNotBlank(sent) && !sent.trim().equals(saved);
+  }
+
+  /** More than five minutes from now (clocks differ a little). */
+  public static Boolean isFuture(Datetime sent) {
+    return sent != null && sent > Datetime.now().addMinutes(5);
   }
 
   /** Sent with a time older than the last one taken. */
