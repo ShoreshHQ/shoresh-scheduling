@@ -189,8 +189,9 @@ Each rule is clue, meaning, example, test.
     Clue: two lines or more one under another, each alone in its row, "A = Archery" (or "A:
     Archery", "A - Archery"; a code of one to three letters or digits), most of whose codes the
     grid's cells are written as.
-    Meaning: each cell that is exactly a code is its name; the key's lines, and a "Key:" or
-    "Legend" line over them, are not part of any schedule.
+    Meaning: each cell of a time-block row that is exactly a code is its name (a heading row,
+    "Time, 1, 2", is never rewritten); the key's lines, and a "Key:" or "Legend" line over
+    them, are not part of any schedule.
     Example: cells "A", "B", … with "Key: A = Art, B = Ropes Course, …" under the grid (L5-003).
     Test: `weird.test.js` "INGEST-2.13: …". Counter-case: one line alone that looks like a key
     line ("Bet - Bunk 3", a page's title) is a title. Code: `sheets.js` `readKey`.
@@ -199,19 +200,20 @@ Each rule is clue, meaning, example, test.
     Clue: two names the same but for one word, a single letter in each, in any script ("Bunk A"
     / "Bunk B", "ניצנים א" / "ניצנים ב").
     Meaning: lettered as "Bunk 1" / "Bunk 2" are numbered: two names, never asked as a slip.
-    Such a name's first words are its division, as "Yeladim 3"'s are.
+    Lettered with a letter outside A to Z, such a name's first words are its division, as
+    "Yeladim 3"'s are ("Schedule A" stays one name, as before).
     Test: `weird.test.js` "INGEST-2.14: …". Counter-case: a Latin typo one letter apart
     ("Archery" / "Archrey", "Music" / "Musik") is still raised. Code: `names.js`
     `letteredApart`, `text.js` `divisionInTitle`.
 
 15. **Two names one letter apart, both in wide use, are two names** (level-5 corpus, 2026-10-28).
     Clue: a pair one letter apart (rule 4's kind of slip, "letter") where each name is in at least
-    three cells and the rarer at least half as often as the other.
+    three cells, the rarer at least half as often as the other, and one file uses both.
     Meaning: a slip is the odd cell, not half the schedule: two names, not asked ("כדורגל" /
     "כדורסל", soccer and basketball, each all week).
     Test: `weird.test.js` "INGEST-2.15: …". Counter-case: a rare spelling beside a common one
-    ("Musik" twice, "Music" twenty times) is asked; a name the camp already has is asked as
-    before. Code: `names.js` `bothInUse`.
+    ("Musik" twice, "Music" twenty times) is asked; each spelling only in files of its own (one
+    counsellor's "Archary" all week) is asked; a name the camp already has is asked as before. Code: `names.js` `bothInUse`.
 
 16. **A title in any script names its page** (level-5 corpus, 2026-10-28).
     Clue: a sheet, title or file name written in letters other than A to Z (Hebrew).
@@ -244,21 +246,24 @@ Each rule is clue, meaning, example, test.
     `questions.js` `twoActivitiesCard`.
 
 19. **An activity shown only by colour is asked** (level-5 corpus, 2026-10-28).
-    Clue: a line alone in its row naming a colour ("Blue = Swim"), the colour no cell is
-    written as, and the name no cell holds.
+    Clue: a line alone in its row naming a colour ("Blue = Swim"; "Blue: Swim" or "Blue -
+    Swim" under a "Key" or "Legend" line), below a time block of a grid that has blank cells,
+    the colour no cell is written as, and the name no cell holds.
     Meaning: the activity was shown by its cells' colour, lost on export, so its cells are
     blank. Never read as free time without a word: asked "Where was Swim? The file showed it
     only in blue." "Add Swim with no times yet" brings it in as an activity with no times (0 to
     1 a week, everyone, to set on the setup screens); "Leave it out", or no answer, adds nothing.
     The card says how to bring its times in: type the name into those cells and upload again.
-    Test: `weird.test.js` "INGEST-2.19: …". Counter-case: a colour the cells are written as
-    ("Blue" a team) is not a colour key. Code: `sheets.js` `readColourKey`, `proposal.js`
+    Test: `weird.test.js` "INGEST-2.19: …". Counter-cases: a colour the cells are written as
+    ("Blue" a team) is not a colour key; a title above the grid ("Blue - Juniors") is a title;
+    a grid with no blank cell has no colour key. Code: `sheets.js` `readColourKey`, `proposal.js`
     `colourOnly`.
 
 20. **Emoji in a name** (Greg, 2026-10-28, level-5 decision 1).
     Clue: a cell or heading with emoji in it ("🏊 Swim").
     Meaning: read without them ("Swim"); the import's notes keep them ("🏊 Swim is read as
-    Swim."). A cell that is only emoji keeps them.
+    Swim."). A cell that is only emoji keeps them. ©, ® and ™ are part of a name ("Lego™
+    Club") unless drawn as emoji.
     Test: `weird.test.js` "INGEST-2.20: …". Code: `text.js` `withoutEmoji`, `reading.js`
     `emojiNotes`, `plan.js` `importNotes`.
 

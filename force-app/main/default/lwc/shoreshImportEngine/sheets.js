@@ -534,8 +534,8 @@ function onlyFirstCell(row) {
 
 /**
  * INGEST-2.13: cells written as short codes ("A", "B") with a key on the sheet, two lines or
- * more one under another, each alone in its row ("A = Archery", "B: Basketball"), most of whose codes the grid
- * uses: each cell that is exactly a code is read as its name, and the key's lines (and a
+ * more one under another, each alone in its row ("A = Archery", "B: Basketball"), most of whose
+ * codes the grid's time-block rows use: each such cell that is exactly a code is read as its name, and the key's lines (and a
  * "Key:" line over them) are not read as part of any schedule. A sheet with no such key is
  * unchanged. { table, key: [{ code, name }] }.
  */
@@ -551,8 +551,11 @@ export function readKey(table) {
   // A key is two lines or more one under another; a line alone ("Bet - Bunk 3") is a title.
   const next = new Set(found.map((l) => l.row));
   const lines = found.filter((l) => next.has(l.row - 1) || next.has(l.row + 1));
+  // Only the cells of time-block rows are codes, never a heading row ("Time, 1, 2").
+  const isBlockRow = (row) =>
+    looksLikeBlockLabel(row[0] || "") || hasClockTime(row[1] || "");
   const used = new Set(
-    table.flatMap((row) =>
+    table.filter(isBlockRow).flatMap((row) =>
       row
         .slice(1)
         .filter((c) => c !== "")
@@ -574,7 +577,10 @@ export function readKey(table) {
   const coded = (c, i) => {
     return i > 0 && codes.has(tidy(c)) ? codes.get(tidy(c)) : c;
   };
-  const read = table.map((row, r) => (keyRows.has(r) ? [] : row.map(coded)));
+  const read = table.map((row, r) => {
+    if (keyRows.has(r)) return [];
+    return isBlockRow(row) ? row.map(coded) : row;
+  });
   return {
     table: read,
     key: [...codes].map(([code, name]) => ({ code, name }))
@@ -583,25 +589,50 @@ export function readKey(table) {
 
 // ---------- a key of colours (INGEST-2.19) ----------
 
-const COLOUR_LINE =
-  /^\s*(red|orange|yellow|green|blue|purple|violet|pink|grey|gray|brown|black|teal|light\s+\w+|dark\s+\w+)\s*(?:=|:|–|—|\s-\s)\s*(\S.*?)\s*$/i;
+const COLOUR =
+  "(red|orange|yellow|green|blue|purple|violet|pink|grey|gray|brown|black|teal|light\\s+\\w+|dark\\s+\\w+)";
+const COLOUR_EQUALS = new RegExp(`^\\s*${COLOUR}\\s*=\\s*(\\S.*?)\\s*$`, "i");
+const COLOUR_LINE = new RegExp(
+  `^\\s*${COLOUR}\\s*(?:=|:|–|—|\\s-\\s)\\s*(\\S.*?)\\s*$`,
+  "i"
+);
+
+const lastFilled = (row) => row.reduce((n, c, i) => (c !== "" ? i : n), -1);
 
 /**
- * INGEST-2.19: a key line naming a colour ("Blue = Swim"), alone in its row, whose colour no
- * cell is written as: the activity was shown only by its cells' colour, which a file loses on
- * export, so its cells are blank. Never read as free time on its own: the director is asked
- * (proposal.js). The lines are not read as part of any schedule. { table, colours: [{ colour,
- * name }] }.
+ * INGEST-2.19: a key line naming a colour ("Blue = Swim"; "Blue: Swim" or "Blue - Swim" under a
+ * "Key" or "Legend" line), alone in its row, under a time block of a grid that has blank cells,
+ * whose colour no cell is written as: the activity was shown only by its cells' colour, which a
+ * file loses on export, so its cells are blank. Never read as free time on its own: the director
+ * is asked (proposal.js). The lines are not read as part of any schedule. A title above the grid
+ * ("Blue - Juniors") is not a key. { table, colours: [{ colour, name }] }.
  */
 export function readColourKey(table) {
   const used = new Set(
     table.flatMap((row) => row.filter((c) => c !== "").map(looseKey))
   );
+  const width = Math.max(-1, ...table.map(lastFilled));
+  const blockRows = [];
+  table.forEach((row, r) => {
+    if (looksLikeBlockLabel(row[0] || "") || hasClockTime(row[1] || "")) {
+      blockRows.push(r);
+    }
+  });
+  const gaps = blockRows.some((r) =>
+    Array.from({ length: width }, (_, c) => table[r][c + 1] || "").some(
+      (c) => c === ""
+    )
+  );
   const colours = [];
   const rows = new Set();
   table.forEach((row, r) => {
-    const m = COLOUR_LINE.exec(onlyFirstCell(row) || "");
-    if (m && !used.has(looseKey(m[1]))) {
+    const text = onlyFirstCell(row) || "";
+    const underKey =
+      r > 0 && KEY_HEADING.test(onlyFirstCell(table[r - 1]) || "");
+    const m = (underKey ? COLOUR_LINE : COLOUR_EQUALS).exec(text);
+    const underGrid = gaps && blockRows.some((b) => b < r);
+    if (m && underGrid && !used.has(looseKey(m[1]))) {
+      if (underKey) rows.add(r - 1);
       colours.push({ colour: tidy(m[1]), name: tidy(m[2]) });
       rows.add(r);
     }

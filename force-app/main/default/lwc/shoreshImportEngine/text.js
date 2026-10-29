@@ -312,8 +312,9 @@ const NOT_A_NAME = [
  * of the name ("Lunch 12:00" is Lunch). Null for an empty cell or one that names nothing.
  */
 // Emoji and the marks that join or style them (Greg, 2026-10-28, level-5 decision 1).
+// ©, ® and ™ are marks in a name ("Lego™ Club"), emoji only drawn as one (with U+FE0F).
 const EMOJI =
-  /(?:\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|[\u{1F3FB}-\u{1F3FF}]|\uFE0F|\u200D|\u20E3)+/gu;
+  /(?:[\u00A9\u00AE\u2122]\uFE0F|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|[\u{1F3FB}-\u{1F3FF}]|\uFE0F|\u200D|\u20E3)+/gu;
 
 /**
  * INGEST-2.20: a name with emoji in it ("🏊 Swim") without them: { text, emoji } ("Swim", "🏊"),
@@ -381,9 +382,10 @@ export function divisionInTitle(title) {
   if (split && split[1].length >= 2 && /\p{L}/u.test(split[1])) {
     return { division: tidy(split[1]), group: tidy(split[2]) };
   }
-  // Numbered ("Yeladim 3") or lettered with one letter of its own ("ניצנים א", INGEST-2.14).
+  // Numbered ("Yeladim 3") or lettered with one letter of its own outside A to Z ("ניצנים א",
+  // INGEST-2.14; "Schedule A" stays one name, as before).
   const numbered = text.match(
-    /^([\p{L}][\p{L}\s']*?)\s+(\d+[A-Za-z]?|\p{L})$/u
+    /^([\p{L}][\p{L}\s']*?)\s+(\d+[A-Za-z]?|(?![A-Za-z])\p{L})$/u
   );
   if (numbered && !/^(bunk|group|cabin|tent|team)$/i.test(tidy(numbered[1]))) {
     return { division: tidy(numbered[1]), group: text };

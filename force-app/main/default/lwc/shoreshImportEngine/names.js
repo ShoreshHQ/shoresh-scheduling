@@ -131,15 +131,19 @@ export function similarity(a, b) {
 
 /**
  * INGEST-2.15: two names one letter apart that are both in wide use (each in at least
- * BOTH_IN_USE cells, the rarer at least half as often as the other) are two names, not a slip:
- * a slip is the odd cell, not half the schedule ("כדורגל" / "כדורסל", soccer and basketball,
- * each all week). A rare one ("Musik" twice beside "Music" twenty times) is still asked.
+ * BOTH_IN_USE cells, the rarer at least half as often as the other) in the same file are two
+ * names, not a slip: a slip is the odd cell, not half of one writer's schedule ("כדורגל" /
+ * "כדורסל", soccer and basketball, each all week). A rare one ("Musik" twice beside "Music"
+ * twenty times), or each spelling in files of its own (one counsellor's "Archary" all week), is
+ * still asked.
  */
 export const BOTH_IN_USE = 3;
 
-function bothInUse(aCount, bCount) {
-  const [few, many] = [aCount || 0, bCount || 0].sort((x, y) => x - y);
-  return few >= BOTH_IN_USE && few * 2 >= many;
+function bothInUse(a, b) {
+  const [few, many] = [a.count || 0, b.count || 0].sort((x, y) => x - y);
+  const together =
+    !a.files || !b.files || [...a.files].some((f) => b.files.has(f));
+  return few >= BOTH_IN_USE && few * 2 >= many && together;
 }
 
 function pairId(kind, a, b) {
@@ -167,7 +171,7 @@ export function similarPairs(kind, fileNames, campNames) {
         reason &&
         !camp.has(files[i].name) &&
         !camp.has(files[j].name) &&
-        !(reason === "letter" && bothInUse(files[i].count, files[j].count))
+        !(reason === "letter" && bothInUse(files[i], files[j]))
       ) {
         pairs.push({
           id: pairId(kind, files[i].name, files[j].name),

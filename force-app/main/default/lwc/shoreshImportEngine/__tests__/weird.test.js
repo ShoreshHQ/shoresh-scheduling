@@ -4,7 +4,8 @@
 import { buildProposal, planFor, questionCards } from "./data/engine";
 import { importNotes } from "../plan";
 import { similarity, similarPairs } from "../names";
-import { divisionInTitle, timeRange } from "../text";
+import { cellName, divisionInTitle, timeRange } from "../text";
+import { readColourKey, readKey } from "../sheets";
 import { csv, terms } from "./data/samples";
 
 const at = (h, m = 0) => h * 60 + m;
@@ -182,6 +183,19 @@ describe("INGEST-2.13: letter codes with a key", () => {
   });
 });
 
+describe("INGEST-2.13 counter-case: headings are never codes", () => {
+  it("INGEST-2.13 counter-case: group headings written as numbers are not read through a key", () => {
+    const { table } = readKey([
+      ["Time", "1", "2"],
+      ["9:00-9:45", "1", "2"],
+      ["1 - Flag"],
+      ["2 - Lunch"]
+    ]);
+    expect(table[0]).toEqual(["Time", "1", "2"]);
+    expect(table[1]).toEqual(["9:00-9:45", "Flag", "Lunch"]);
+  });
+});
+
 describe("INGEST-2.14 to 2.16: Hebrew names", () => {
   it("INGEST-2.14: names apart only by a word of one letter are lettered, never a slip", () => {
     expect(similarity("ניצנים א", "ניצנים ב")).toBeNull();
@@ -195,6 +209,11 @@ describe("INGEST-2.14 to 2.16: Hebrew names", () => {
   it("INGEST-2.14 counter-case: a Latin typo one letter apart is still raised", () => {
     expect(similarity("Archery", "Archrey")).toBe("letter");
     expect(similarity("Music", "Musik")).toBe("letter");
+    // A Latin title ending in one letter is one name, as before: no division "Schedule".
+    expect(divisionInTitle("Schedule A")).toEqual({
+      division: null,
+      group: "Schedule A"
+    });
   });
 
   it("INGEST-2.15: two names one letter apart, each in wide use, are two names", () => {
@@ -207,6 +226,18 @@ describe("INGEST-2.14 to 2.16: Hebrew names", () => {
       []
     );
     expect(pairs).toEqual([]);
+  });
+
+  it("INGEST-2.15 counter-case: each spelling in files of its own is still asked", () => {
+    const pairs = similarPairs(
+      "activity",
+      [
+        { name: "Archery", count: 12, files: new Set(["Bunk 1.csv"]) },
+        { name: "Archary", count: 10, files: new Set(["Bunk 2.csv"]) }
+      ],
+      []
+    );
+    expect(pairs.map((x) => [x.a, x.b])).toEqual([["Archary", "Archery"]]);
   });
 
   it("INGEST-2.15 counter-case: a rare spelling beside a common one is still asked", () => {
@@ -359,6 +390,23 @@ describe("INGEST-2.19: an activity shown only by colour", () => {
     expect(left.activities.map((a) => a.name)).not.toContain("Swim");
   });
 
+  it("INGEST-2.19 counter-case: a title above the grid that starts with a colour is a title", () => {
+    const rows = [
+      ["Blue - Juniors"],
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "", "Art"],
+      ["Green: Week 2"]
+    ];
+    expect(readColourKey(rows).colours).toEqual([]);
+    const full = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["Blue = Swim"]
+    ];
+    // No blank cell: nothing can have been shown by colour alone.
+    expect(readColourKey(full).colours).toEqual([]);
+  });
+
   it("INGEST-2.19 counter-case: a colour the cells are written as is not a colour key", () => {
     const team = (name) =>
       csv(`Camp - ${name}.csv`, [
@@ -391,6 +439,14 @@ describe("INGEST-2.20 and 2.21: emoji and a place in brackets", () => {
     expect(importNotes(p, terms).map((n) => n.text)).toContain(
       "🏊 Swim is read as Swim."
     );
+  });
+
+  it("INGEST-2.20 counter-case: a trademark sign is part of the name, not an emoji", () => {
+    expect(cellName("Lego™ Club")).toMatchObject({
+      name: "Lego™ Club",
+      emoji: ""
+    });
+    expect(cellName("🏊 Swim")).toMatchObject({ name: "Swim", emoji: "🏊" });
   });
 
   it("INGEST-2.21: a place two activities are at is a place", () => {

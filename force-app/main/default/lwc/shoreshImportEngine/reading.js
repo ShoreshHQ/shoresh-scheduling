@@ -56,10 +56,16 @@ function campNames(existing) {
   };
 }
 
-function counted(names) {
+/** Each name once: how often it is used, and in which files (INGEST-2.15). */
+function counted(entries) {
   const counts = new Map();
-  names.forEach((n) => counts.set(n, (counts.get(n) || 0) + 1));
-  return [...counts].map(([name, count]) => ({ name, count }));
+  entries.forEach(({ name, file }) => {
+    const c = counts.get(name) || { name, count: 0, files: new Set() };
+    c.count++;
+    c.files.add(file);
+    counts.set(name, c);
+  });
+  return [...counts.values()];
 }
 
 /**
@@ -352,12 +358,12 @@ export function readImport(input) {
   const pairs = [
     ...similarPairs(
       "activity",
-      counted(read.placements.map((p) => p.text)),
+      counted(read.placements.map((p) => ({ name: p.text, file: p.file }))),
       camp.activityLike
     ),
     ...similarPairs(
       "group",
-      counted(read.noted.map((g) => g.name)),
+      counted(read.noted.map((g) => ({ name: g.name, file: g.file }))),
       camp.groups
     ),
     ...divisionPairs(read.noted, camp.placed)
