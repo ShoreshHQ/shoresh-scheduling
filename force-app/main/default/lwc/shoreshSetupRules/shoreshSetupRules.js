@@ -437,6 +437,35 @@ export function setTimeNote(entry, item, fields) {
     .join(" ");
 }
 
+/**
+ * CORE-3.8: a fixed activity's early day (CORE-3.7) that cannot happen as saved is shown on its
+ * row, never quietly ignored: the program does not run that day, or there are fewer time blocks
+ * before it than it starts earlier by. Empty when there is nothing to say.
+ */
+export function earlyNote(entry, item, terms) {
+  const fixed = FIELD.FixedActivity;
+  const day = item[fixed.EarlyDay];
+  const by = item[fixed.EarlyBlocks] || 0;
+  if (!day || by <= 0) {
+    return "";
+  }
+  const program = entry.program || {};
+  if (!program[FIELD.Program[day]]) {
+    return `${program.Name} doesn't run on ${day}, so it never starts earlier.`;
+  }
+  const blocks = entry.timeBlocks || [];
+  const start = blocks.findIndex((b) => b.Id === item[fixed.TimeBlock]);
+  if (start === 0) {
+    return `Nothing comes before ${blocks[0].Name}, so on ${day} it never starts earlier.`;
+  }
+  if (start > 0 && by > start) {
+    const before =
+      start === 1 ? terms.sIn("TimeBlock") : terms.pIn("TimeBlock");
+    return `Only ${start} ${before} before ${blocks[start].Name}, so on ${day} it starts at ${blocks[0].Name}.`;
+  }
+  return "";
+}
+
 /** "Period 1 – Lunch", or just "Period 1" for one block. */
 function range(first, last) {
   return first.Id === last.Id ? first.Name : `${first.Name} – ${last.Name}`;

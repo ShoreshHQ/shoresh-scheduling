@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
-import { setTimeNote, spanChange } from "c/shoreshSetupRules";
+import { earlyNote, setTimeNote, spanChange } from "c/shoreshSetupRules";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
 import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { moveNote } from "./groupMoves";
@@ -435,7 +435,10 @@ export default class ShoreshProgram extends LightningElement {
       const moved = spanChange(this.entry, item, this.terms, fields);
       notes[item.Id] = [
         moved ? moved.why : "",
-        setTimeNote(this.entry, item, fields)
+        setTimeNote(this.entry, item, fields),
+        fields === FIELD.FixedActivity
+          ? earlyNote(this.entry, item, this.terms)
+          : ""
       ]
         .filter((note) => note)
         .join(" ");

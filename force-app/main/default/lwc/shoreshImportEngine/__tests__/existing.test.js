@@ -703,7 +703,10 @@ describe("INGEST-4.13 on a season that has its Dismissal set up already", () => 
     const existing = withDismissal({});
     const p = propose(existing, {}, files);
     const card = cardsOf(p).find((c) => c.id.startsWith("change|fixed"));
-    expect(card).toBeDefined();
+    // The card names the early day (CORE-3.8): what changes is the Thursday.
+    expect(card.title).toBe(
+      "“Dismissal” is set up at Dismissal. The file has it at Dismissal, 1 time block earlier on Thursday."
+    );
     const plan = planFor(
       propose(existing, { [card.id]: "change" }, files),
       existing,
@@ -718,6 +721,23 @@ describe("INGEST-4.13 on a season that has its Dismissal set up already", () => 
         earlyBlocks: 1
       }
     ]);
+  });
+
+  it("CORE-3.8: a file with no early day keeps the one set up, and the card says so", () => {
+    const existing = withDismissal({
+      TimeBlock__c: "tb2",
+      EarlyDay__c: "Thursday",
+      EarlyBlocks__c: 1
+    });
+    const regular = ["Monday", "Tuesday", "Wednesday", "Thursday"].map((d) =>
+      csv(`${d}.csv`, day)
+    );
+    const card = cardsOf(propose(existing, {}, regular)).find((c) =>
+      c.id.startsWith("change|fixed")
+    );
+    expect(card.title).toBe(
+      "“Dismissal” is set up at Period 2, 1 time block earlier on Thursday. The file has it at Dismissal, 1 time block earlier on Thursday."
+    );
   });
 
   it("INGEST-4.13: a Dismissal already set up with that early day is not asked about", () => {
