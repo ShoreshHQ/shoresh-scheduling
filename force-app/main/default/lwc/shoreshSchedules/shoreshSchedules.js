@@ -439,6 +439,15 @@ export default class ShoreshSchedules extends LightningElement {
   get showGroupPicker() {
     return !!this.opened && !this.hasNoDays && this.isGroup;
   }
+  /** A special day's block in a week grid: its own schedule, on the Special events screen. */
+  handleOpenSpecial(event) {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: "specialEvents", specialItemId: event.detail.opens }
+      })
+    );
+  }
+
   get groupGrid() {
     return this.groupKey ? groupGrid(this.shown, this.groupKey, this.t) : null;
   }

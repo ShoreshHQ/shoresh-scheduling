@@ -202,8 +202,11 @@ describe("c-shoresh-schedules: special days and events", () => {
     );
   });
 
-  it("lays a replaced day on its own time blocks in Group View", async () => {
+  // SPECIAL-1.1
+  it("shows a replaced day as one block named for its special day in Group View, opening its schedule", async () => {
     const element = await render();
+    const navigate = jest.fn();
+    element.addEventListener("navigate", navigate);
     q(element, '[data-view="group"]').click();
     await flush();
     const grid = q(element, '[data-id="group-grid"]');
@@ -214,10 +217,20 @@ describe("c-shoresh-schedules: special days and events", () => {
     ]);
     expect(grid.grid.rows.map((r) => r.name)).toEqual([
       "Period 1",
-      "Relays",
       "Period 2",
       "Lunch"
     ]);
+    const tuesday = grid.grid.cells.filter((c) => c.column === 1);
+    expect(tuesday.map((c) => [c.text, c.length])).toEqual([["Field Day", 3]]);
+    const open = grid.shadowRoot.querySelector('[data-open="1-special"]');
+    expect(open.tagName).toBe("BUTTON");
+    expect(open.textContent.trim()).toBe("Field Day");
+    open.click();
+    expect(navigate.mock.calls[0][0].detail).toEqual({
+      screen: "specialEvents",
+      specialItemId: tuesday[0].opens
+    });
+    expect(tuesday[0].opens).toBeTruthy();
   });
 
   // SPECIAL-6.1

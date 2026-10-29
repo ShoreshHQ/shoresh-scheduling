@@ -233,6 +233,20 @@
   box-shadow: var(--shoresh-focus-ring);
 }
 
+/* A block that opens something (a special day's): the whole cell is its button. */
+.cell-open {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cell-open:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
 /* Selected (picked up from the keyboard or a click): the highlight outline. */
 .cell_picked .cell-inner {
   outline: 2px solid var(--shoresh-color-highlight);

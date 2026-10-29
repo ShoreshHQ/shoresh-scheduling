@@ -112,29 +112,22 @@ describe("c/shoreshScheduleViews: special days on the Schedules page", () => {
     ]);
   });
 
-  it("lays a replaced day on its own time blocks in Group View, sharing a row only at the same times", () => {
+  it("shows a replaced day as one block over the day in Group View, named for its special day", () => {
     const grid = groupGrid(withSpecials(opened()), "g2", t);
-    // Period 1 (the week's and Field Day's: the same times), Relays (Field Day's own), Period 2.
-    expect(grid.rows.map((r) => r.name)).toEqual([
-      "Period 1",
-      "Relays",
-      "Period 2"
-    ]);
-    expect(new Set(grid.rows.map((r) => r.key)).size).toBe(3);
+    // Field Day's own time blocks (Relays) add no rows.
+    expect(grid.rows.map((r) => r.name)).toEqual(["Period 1", "Period 2"]);
     expect(grid.columns.map((c) => c.label)).toEqual([
       "Monday",
       "Tuesday · Field Day"
     ]);
     const tuesday = grid.cells.filter((c) => c.column === 1);
-    expect(tuesday.map((c) => [c.row, c.length, c.text])).toEqual([
-      [0, 1, "Open"],
-      [1, 1, "Archery"]
+    expect(tuesday.map((c) => [c.row, c.length, c.text, c.opens])).toEqual([
+      [0, 2, "Field Day", "sd1"]
     ]);
-    // Monday's Period 2 runs in the week's own row.
     const monday = grid.cells.filter((c) => c.column === 0);
     expect(monday.map((c) => [c.row, c.text])).toEqual([
       [0, "Swim"],
-      [2, "Carnival"]
+      [1, "Carnival"]
     ]);
   });
 

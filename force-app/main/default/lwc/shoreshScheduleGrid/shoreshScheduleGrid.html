@@ -179,6 +179,17 @@
                         ><span class={cell.nameClass}>{cell.text}</span></span
                       ><span class="slds-assistive-text">{rainSaid}</span>
                     </template>
+                    <template lwc:elseif={cell.opens}>
+                      <button
+                        type="button"
+                        class="cell-open"
+                        data-open={cell.key}
+                        aria-label={cell.title}
+                        onclick={handleOpen}
+                      >
+                        {cell.text}
+                      </button>
+                    </template>
                     <template lwc:elseif={cell.setMark}>
                       <!-- An elective set (decision 53.2; mock-up electives-r1 grid-a): its mark
                            before the name, "Chugim (4)". -->
