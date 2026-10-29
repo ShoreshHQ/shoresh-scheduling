@@ -14,7 +14,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Camper__c.OutsideKey__c</field>
+        <field>Camper__c.OutsideMatch__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

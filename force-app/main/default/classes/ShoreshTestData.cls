@@ -307,24 +307,16 @@ public class ShoreshTestData {
 
   /** A Standard User with the Shoresh Scheduler permission set. */
   public static User scheduler() {
-    return standardUser(true);
+    return userWith('Shoresh_Scheduler');
   }
 
   /** A Standard User with no Shoresh permissions at all. */
   public static User outsider() {
-    return standardUser(false);
+    return userWith(null);
   }
 
   /** A Standard User with only the named Shoresh permission set (an API access piece). */
   public static User userWith(String permissionSetName) {
-    return standardUser(permissionSetName);
-  }
-
-  private static User standardUser(Boolean withPermissionSet) {
-    return standardUser(withPermissionSet ? 'Shoresh_Scheduler' : null);
-  }
-
-  private static User standardUser(String permissionSetName) {
     Profile standard = [
       SELECT Id
       FROM Profile

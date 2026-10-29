@@ -90,14 +90,14 @@ private class OutsideOwnedTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp camp = new Camp();
       Camper__c saved = [
-        SELECT OutsideKey__c
+        SELECT OutsideMatch__c
         FROM Camper__c
         WHERE Id = :camp.maya.Id
         WITH SYSTEM_MODE
       ];
       Assert.areEqual(
         camp.season.Id + '|sign-up form|SYN-77',
-        saved.OutsideKey__c
+        saved.OutsideMatch__c
       );
 
       Database.SaveResult again = Database.insert(
@@ -167,10 +167,10 @@ private class OutsideOwnedTest {
         OutsideId__c = 'SYN-77',
         SourceSystem__c = 'Sign-up Form'
       );
-      fixed.OutsideKey__c = OutsideOwned.outsideKey(fixed);
+      fixed.OutsideMatch__c = OutsideOwned.outsideKey(fixed);
       Database.UpsertResult result = Database.upsert(
         fixed,
-        Camper__c.OutsideKey__c,
+        Camper__c.OutsideMatch__c,
         true,
         AccessLevel.SYSTEM_MODE
       );

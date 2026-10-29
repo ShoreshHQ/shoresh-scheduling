@@ -91,12 +91,12 @@ function granted() {
 }
 
 // Master-detail and required fields are always readable and editable; Salesforce refuses field
-// permissions for them. Keys are filled by triggers and never set by a screen.
+// permissions for them. Keys and the outside match are filled by triggers, never by a screen.
 function needsPermission(field) {
   return (
     field.type !== "MasterDetail" &&
     !field.required &&
-    !/Key__c$/.test(field.name)
+    !/(Key|Match)__c$/.test(field.name)
   );
 }
 

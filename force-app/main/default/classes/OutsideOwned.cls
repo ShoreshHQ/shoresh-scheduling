@@ -5,7 +5,7 @@
  *   bringing-in (the choices sheet today, the Shoresh API later) may change them; it sets
  *   bringingIn while it saves. Anyone else, by any screen or Salesforce's own pages, is refused.
  * - API-2.1: a camper from another system carries that system's name and its own ID. Shoresh
- *   fills OutsideKey__c (season, system, ID) so that camper is in a season once; an outside
+ *   fills OutsideMatch__c (season, system, ID) so that camper is in a season once; an outside
  *   system can save by it (upsert). Shoresh's own record IDs never change.
  *
  * Its read is in system mode on purpose, like ElectiveRunTriggers: it reads only hidden keys to
@@ -24,44 +24,62 @@ public with sharing class OutsideOwned {
     List<Camper__c> campers,
     Map<Id, Camper__c> before
   ) {
+    refuseRenames(campers, before);
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
     for (Camper__c camper : campers) {
+      camper.OutsideMatch__c = outsideKey(camper);
       if (
-        before != null &&
-        !bringingIn &&
-        !camper.Name.equals(before.get(camper.Id).Name)
-      ) {
-        camper.Name.addError(NAME_REFUSAL);
-      }
-      camper.OutsideKey__c = outsideKey(camper);
-      if (
-        String.isNotBlank(camper.OutsideId__c) && camper.OutsideKey__c == null
+        String.isNotBlank(camper.OutsideId__c) && camper.OutsideMatch__c == null
       ) {
         camper.SourceSystem__c.addError(NO_SYSTEM);
       }
-      if (camper.OutsideKey__c != null) {
-        keys.add(camper.OutsideKey__c);
+      if (camper.OutsideMatch__c != null) {
+        keys.add(camper.OutsideMatch__c);
       }
       if (camper.Id != null) {
         savingIds.add(camper.Id);
       }
     }
-    if (keys.isEmpty()) {
-      return;
+    if (!keys.isEmpty()) {
+      refuseTakenKeys(campers, keys, savingIds);
     }
+  }
+
+  /** An outside key another camper already has, or that two in this save share, is refused. */
+  private static void refuseTakenKeys(
+    List<Camper__c> campers,
+    Set<String> keys,
+    Set<Id> savingIds
+  ) {
     Set<String> taken = new Set<String>();
     for (Camper__c existing : [
-      SELECT OutsideKey__c
+      SELECT OutsideMatch__c
       FROM Camper__c
-      WHERE OutsideKey__c IN :keys AND Id NOT IN :savingIds
+      WHERE OutsideMatch__c IN :keys AND Id NOT IN :savingIds
       WITH SYSTEM_MODE
     ]) {
-      taken.add(existing.OutsideKey__c);
+      taken.add(existing.OutsideMatch__c);
     }
     for (Camper__c camper : campers) {
-      if (camper.OutsideKey__c != null && !taken.add(camper.OutsideKey__c)) {
+      if (
+        camper.OutsideMatch__c != null && !taken.add(camper.OutsideMatch__c)
+      ) {
         camper.OutsideId__c.addError(ID_TAKEN);
+      }
+    }
+  }
+
+  private static void refuseRenames(
+    List<Camper__c> campers,
+    Map<Id, Camper__c> before
+  ) {
+    if (before == null || bringingIn) {
+      return;
+    }
+    for (Camper__c camper : campers) {
+      if (!camper.Name.equals(before.get(camper.Id).Name)) {
+        camper.Name.addError(NAME_REFUSAL);
       }
     }
   }
