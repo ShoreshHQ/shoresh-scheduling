@@ -96,12 +96,25 @@ public class IncomingTestData {
     request.requestBody = Blob.valueOf(body);
     RestContext.request = request;
     RestContext.response = new RestResponse();
-    if (address == 'camper') {
-      IncomingCamper.post();
-    } else if (address == 'camper_group') {
-      IncomingCamperGroup.post();
-    } else {
-      IncomingCamperElectiveChoice.post();
+    switch on address {
+      when 'camper' {
+        IncomingCamper.post();
+      }
+      when 'camper_group' {
+        IncomingCamperGroup.post();
+      }
+      when 'division' {
+        IncomingDivision.post();
+      }
+      when 'group' {
+        IncomingGroup.post();
+      }
+      when 'activity' {
+        IncomingActivity.post();
+      }
+      when else {
+        IncomingCamperElectiveChoice.post();
+      }
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
