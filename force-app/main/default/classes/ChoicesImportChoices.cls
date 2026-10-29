@@ -158,7 +158,13 @@ public with sharing class ChoicesImportChoices {
       }
       rows.add(change);
     }
-    UserModeWrites.save(rows);
+    // The sheet is the outside source of each camper's bunk (API-4.2).
+    OutsideOwned.bringingIn = true;
+    try {
+      UserModeWrites.save(rows);
+    } finally {
+      OutsideOwned.bringingIn = false;
+    }
     return handKept;
   }
 

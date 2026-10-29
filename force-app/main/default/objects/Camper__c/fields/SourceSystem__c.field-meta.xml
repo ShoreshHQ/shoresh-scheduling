@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SourceSystem__c</fullName>
+    <description
+  >The name of the system this camper came from, as the camp calls it. The Outside ID is that system's ID.</description>
+    <externalId>false</externalId>
+    <label>Source System</label>
+    <length>40</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

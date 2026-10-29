@@ -58,8 +58,11 @@ import campTimeZone from "@salesforce/schema/Camp__c.TimeZone__c";
 import camperObject from "@salesforce/schema/Camper__c";
 import camperCamperNumber from "@salesforce/schema/Camper__c.CamperNumber__c";
 import camperKey from "@salesforce/schema/Camper__c.Key__c";
+import camperOutsideId from "@salesforce/schema/Camper__c.OutsideId__c";
+import camperOutsideKey from "@salesforce/schema/Camper__c.OutsideKey__c";
 import camperParentComments from "@salesforce/schema/Camper__c.ParentComments__c";
 import camperSeason from "@salesforce/schema/Camper__c.Season__c";
+import camperSourceSystem from "@salesforce/schema/Camper__c.SourceSystem__c";
 import coverageObject from "@salesforce/schema/Coverage__c";
 import coverageDivision from "@salesforce/schema/Coverage__c.Division__c";
 import coverageGroup from "@salesforce/schema/Coverage__c.Group__c";
@@ -385,8 +388,11 @@ export const FIELD = Object.freeze({
   Camper: Object.freeze({
     CamperNumber: camperCamperNumber.fieldApiName,
     Key: camperKey.fieldApiName,
+    OutsideId: camperOutsideId.fieldApiName,
+    OutsideKey: camperOutsideKey.fieldApiName,
     ParentComments: camperParentComments.fieldApiName,
-    Season: camperSeason.fieldApiName
+    Season: camperSeason.fieldApiName,
+    SourceSystem: camperSourceSystem.fieldApiName
   }),
   Coverage: Object.freeze({
     Division: coverageDivision.fieldApiName,
