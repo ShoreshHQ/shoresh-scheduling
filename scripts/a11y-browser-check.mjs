@@ -81,7 +81,9 @@
  *   check (by Apex) with a special day on Tuesday and an event on Monday, the Tuesday pill names
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
- *   Open again; axe on both. The special day, the event and the version are deleted after;
+ *   Open again; axe on both. In Group View, Tuesday is one block named for the special day, and
+ *   Enter on it opens that special day's own schedule (Greg 2026-10-29). The special day, the
+ *   event and the version are deleted after;
  * - the Saved versions page's rail (ADR 0005 §14): Versions naming the version on screen, Excel and
  *   Print reached by Tab in that order, Print the filled button; Group View's bunk chosen on the
  *   rail with its grid shown; an activity's card in Activity View opening its grid with focus on
@@ -5246,6 +5248,19 @@ ScheduleDaySaves.write(version.Id, saves);
 `);
 }
 
+/** Loads the app again (and its camp), so what the check just made by Apex is in what it read. */
+async function reloadApp() {
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.locator(APP).locator("c-shoresh-menu").waitFor({ timeout: 60000 });
+  await pause(3000);
+  if (await exists('lightning-combobox[data-id="camp"]')) {
+    if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
+      throw new Error("The Camp picker was not reached with Tab.");
+    await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
+    await pause(4000);
+  }
+}
+
 /**
  * The Saved versions page (ADR 0014 slice 5), on the version seedSpecials makes: the Tuesday pill
  * names the special day, and chosen, its line shows under the grid (axe); Monday's event is
@@ -5257,6 +5272,8 @@ async function schedulesPage() {
   await step(S, "A special day and an event's own schedule", async () => {
     seedSpecials();
     try {
+      // The special day must be in the camp's setup the app read, for its block to open it.
+      await reloadApp();
       await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       // "Tue" and the special day's flag on the rail, named "Tuesday, Jun 30, <special day>".
@@ -5311,6 +5328,33 @@ async function schedulesPage() {
         tag: "button",
         name: new RegExp(`^Open ${CHECK_EVENT}$`)
       });
+      // Group View (Greg 2026-10-29): Tuesday is one block named for the special day; Enter on
+      // it opens that special day's own schedule.
+      if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
+        throw new Error("The Group view was not reached with Tab.");
+      await press("Enter", 800);
+      const block = named(new RegExp(`^${CHECK_DAY}: `), { tag: "button" });
+      if (!(await tabTo(block, { max: 80 })))
+        throw new Error(
+          `No block named for "${CHECK_DAY}" was reached with Tab in Group View.`
+        );
+      await axe("Saved versions, a special day's block in Group View");
+      await schedulesShot("schedules-group-special-day");
+      await press("Enter", 1500);
+      if (await exists('[data-id="special-schedule"]')) {
+        results.pass(
+          S,
+          "Group View: a replaced day is one block; Enter opens its special day's schedule",
+          `"${CHECK_DAY}" opened on Special events.`
+        );
+      } else {
+        await shot(S, "A special day's block opened");
+        results.fail(
+          S,
+          "Group View: a replaced day is one block; Enter opens its special day's schedule",
+          "Enter on the block did not open the special day's schedule."
+        );
+      }
     } finally {
       clearSpecials();
     }
@@ -5514,18 +5558,7 @@ async function schedulesRain() {
     try {
       // The page keeps the week's versions as it read them: load it again, so the version just
       // made is in Versions and opens as the newest.
-      await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
-      await page
-        .locator(APP)
-        .locator("c-shoresh-menu")
-        .waitFor({ timeout: 60000 });
-      await pause(3000);
-      if (await exists('lightning-combobox[data-id="camp"]')) {
-        if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
-          throw new Error("The Camp picker was not reached with Tab.");
-        await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
-        await pause(4000);
-      }
+      await reloadApp();
       await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       const monday = await tabTo(

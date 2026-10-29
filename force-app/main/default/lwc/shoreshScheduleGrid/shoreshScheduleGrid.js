@@ -644,6 +644,14 @@ export default class ShoreshScheduleGrid extends LightningElement {
     return this.editable && target ? target.dataset.cell : null;
   }
 
+  /** A cell that opens something (a special day's block): "cellopen" { key, opens }. */
+  handleOpen(event) {
+    event.stopPropagation();
+    const key = event.currentTarget.dataset.open;
+    const cell = this.drawnCells.find((c) => c.key === key);
+    this.send("cellopen", { key, opens: cell && cell.opens });
+  }
+
   handleClick(event) {
     if (this.swallowClick) {
       this.swallowClick = false;

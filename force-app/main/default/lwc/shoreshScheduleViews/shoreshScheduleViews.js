@@ -257,9 +257,8 @@ export function groups(view) {
 
 /**
  * Every time block in the week, in the order of the day (a block may be on some days only), and
- * the row each day's block is in. A special day's own time block shares the row of the week's
- * block at the same times; one at other times has a row of its own (shared by special days at
- * those times), in time order.
+ * the row each day's block is in. A day a special day replaces is one block over the whole day,
+ * so its own time blocks add no rows.
  */
 function weekRows(view) {
   const seen = new Map();
@@ -271,44 +270,13 @@ function weekRows(view) {
       }
     })
   );
-  const timeOf = (block) => {
-    return block.startTime ? `${block.startTime}|${block.endTime}` : null;
-  };
-  const atTime = new Map();
-  seen.forEach((block, key) => {
-    const time = timeOf(block);
-    if (time && !atTime.has(time)) {
-      atTime.set(time, key);
-    }
-  });
-  const ownKey = new Map();
-  readable(view)
-    .filter((day) => day.special)
-    .forEach((day) =>
-      day.blocks.forEach((block) => {
-        const time = timeOf(block);
-        let key = time && atTime.get(time);
-        if (!key) {
-          key = time ? `at:${time}` : `${day.dateValue}:${refKey(block)}`;
-          if (!seen.has(key)) {
-            seen.set(key, block);
-          }
-        }
-        ownKey.set(`${day.dateValue}|${refKey(block)}`, key);
-      })
-    );
   const blocks = [...seen.entries()]
     .map(([rowKey, block]) => ({ ...block, rowKey }))
     .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
   const index = new Map(blocks.map((block, i) => [block.rowKey, i]));
-  const keyOf = (day, block) => {
-    return day.special
-      ? ownKey.get(`${day.dateValue}|${refKey(block)}`)
-      : refKey(block);
-  };
   return {
     blocks,
-    rowOf: (day, blockIndex) => index.get(keyOf(day, day.blocks[blockIndex]))
+    rowOf: (day, blockIndex) => index.get(refKey(day.blocks[blockIndex]))
   };
 }
 
@@ -520,8 +488,8 @@ export function dailyGrid(view, dayIndex, t) {
 }
 
 /**
- * A day a special day replaces where its own schedule isn't drawn (Activity View, or one with no
- * time blocks yet): its whole column is one quiet cell named for it.
+ * A day a special day replaces, in a week grid (Group View, Activity View): its whole column is
+ * one cell named for it, which opens its own schedule (Greg 2026-10-29).
  */
 function specialCell(dayIndex, rowCount, special, t) {
   const length = Math.max(rowCount, 1);
@@ -534,7 +502,9 @@ function specialCell(dayIndex, rowCount, special, t) {
     text: special.name,
     className: "cell cell_plan",
     note: null,
-    title: t ? `${special.name}: ${t.s("SpecialDay")}` : special.name
+    title: t ? `${special.name}: ${t.s("SpecialDay")}` : special.name,
+    // Opens the special day's own schedule (Greg 2026-10-29).
+    opens: special.id
   };
 }
 
@@ -558,7 +528,7 @@ export function groupGrid(view, groupKey, t) {
       cells.push(problemCell(dayIndex, blocks.length));
       return;
     }
-    if (day.special && !day.blocks.length) {
+    if (day.special) {
       cells.push(specialCell(dayIndex, blocks.length, day.special, t));
       return;
     }
