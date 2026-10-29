@@ -136,6 +136,7 @@ function compareFixed(decision, record, ctx) {
     record,
     block: t.blocks[p.block],
     length: p.length,
+    ...early,
     timetable: t
   };
   if (changeOrAsk(id, record, ask, ctx)) {
