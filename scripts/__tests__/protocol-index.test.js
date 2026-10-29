@@ -14,6 +14,7 @@ describe("the protocol's conformance index", () => {
     expect(new Set(ids).size).toBe(ids.length);
     const prefixes = new Set(ids.map((id) => id.split("-")[0]));
     expect([...prefixes].sort()).toEqual([
+      "API",
       "CLOSE",
       "CORE",
       "DIV",
