@@ -198,7 +198,11 @@ function wrongReads(truth, proposal, plan) {
   // Level 4 may have several programs (truth.programs); the others have one.
   const programCount = truth.programs || 1;
   const named = truth.divisionsInFile;
-  const read = weekReads(truth, readCells(proposal));
+  // Level 5: cells only the director can explain are not compared, nor the names only they hold.
+  const gotCells = readCells(proposal);
+  for (const key of truth.unknownCells || []) gotCells.delete(key);
+  const ignored = new Set(truth.ignoreNames || []);
+  const read = weekReads(truth, gotCells);
   const wrong = {
     programs: Math.abs(plan.programs.length - programCount),
     weeks: mismatches(
@@ -244,7 +248,7 @@ function wrongReads(truth, proposal, plan) {
     ),
     activities: mismatches(
       truth.activities,
-      plan.activities.map((a) => a.name)
+      plan.activities.map((a) => a.name).filter((n) => !ignored.has(n))
     ),
     cells: read.weeks.reduce((n, w) => n + w.wrong, read.extra)
   };

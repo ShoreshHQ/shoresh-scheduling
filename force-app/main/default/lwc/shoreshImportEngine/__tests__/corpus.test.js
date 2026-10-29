@@ -12,6 +12,11 @@ import { travellingCamps } from "../../../../../../scripts/import-corpus/travel"
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
 import { veryHardCamps } from "../../../../../../scripts/import-corpus/level4";
 import {
+  scoreWeirdCamp,
+  weirdCamp,
+  weirdCamps
+} from "../../../../../../scripts/import-corpus/level5";
+import {
   headingReport,
   plantCamp
 } from "../../../../../../scripts/import-corpus/plant-camp";
@@ -214,6 +219,67 @@ describe("Import last year on very hard made-up camps (level 4)", () => {
         });
       }
     }
+  });
+});
+
+// Level 5, really weird: one weird trait per camp (level5.js). The first 40 camps, four of each
+// trait. Baseline 2026-10-28, before any engine change for them: 14 perfect (hugeCamp, longDay,
+// multiActivity, some oneGroup). Wrong: transposed grids, times in cells (Monday lost), letter
+// codes read as activities, Hebrew sheet names, one-day set times read as recurring, and the
+// color-only camps read on without asking ("silent").
+const CEILING_5 = {
+  perfectAtLeast: 14,
+  errors: 0,
+  questions: { division: 2, cross: 41, layout: 2, list: 4, similar: 30 },
+  wrong: {
+    programs: 3,
+    weeks: 3,
+    days: 19,
+    blocks: 32,
+    divisions: 9,
+    groups: 128,
+    fixed: 84,
+    activities: 80,
+    cells: 5798,
+    recurring: 6,
+    silent: 4
+  }
+};
+
+describe("Import last year on really weird made-up camps (level 5)", () => {
+  const deps = { engine, XLSX, terms: buildTerms([]) };
+  const results = weirdCamps(40).map((camp) =>
+    scoreWeirdCamp(camp, deps, scoreCamp)
+  );
+  const totals = summarise(results);
+
+  it("reads at least as many camps right, asks and reads wrong no more than it did", () => {
+    expect(totals.errors).toBeLessThanOrEqual(CEILING_5.errors);
+    expect(totals.perfect).toBeGreaterThanOrEqual(CEILING_5.perfectAtLeast);
+    for (const key of ["questions", "wrong"]) {
+      for (const [kind, n] of Object.entries(totals[key])) {
+        expect({ key, kind, n }).toEqual({
+          key,
+          kind,
+          n: Math.min(n, CEILING_5[key][kind] || 0)
+        });
+      }
+    }
+  });
+
+  it("scores asking as the right read where only the director can say", () => {
+    const camp = weirdCamp(10); // multiActivity: "Swim/Art" cells
+    expect(camp.truth.mustAsk).toBe(true);
+    const asked = scoreWeirdCamp(camp, deps, () => ({
+      questions: { similar: 1 },
+      wrong: { cells: 0 }
+    }));
+    expect(asked.perfect).toBe(true);
+    const silent = scoreWeirdCamp(camp, deps, () => ({
+      questions: {},
+      wrong: { cells: 0 }
+    }));
+    expect(silent).toMatchObject({ perfect: false, wrong: { silent: 1 } });
   });
 });
 

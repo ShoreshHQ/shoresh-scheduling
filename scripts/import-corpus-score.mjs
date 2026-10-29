@@ -9,6 +9,7 @@
  *   npm run score:import -- --level 2    level 2: schedules that differ from week to week
  *   npm run score:import -- --level 3    level 3: hard (doubles, trips, half days, gaps, slips, notes)
  *   npm run score:import -- --level 4    level 4: very hard (programs, evenings, weekends, weeks, specials)
+ *   npm run score:import -- --level 5    level 5: really weird (transposed, codes, Hebrew, 1 or 150 groups...)
  *
  * Level 1 also scores the "divisions travel together" camps (scripts/import-corpus/travel.js), and
  * Greg's camp (scripts/import-corpus/fixtures/plant-camp.xlsx) on its own line.
@@ -63,6 +64,8 @@ const { headingReport, plantCamp } =
 const { LEVEL3_SIZE, hardCamps } = await import("./import-corpus/level3.js");
 const { LEVEL4_SIZE, veryHardCamps } =
   await import("./import-corpus/level4.js");
+const { LEVEL5_SIZE, scoreWeirdCamp, weirdCamps, weirdTable } =
+  await import("./import-corpus/level5.js");
 const { scoreCamp, summaryTable, traitTable, weekTable } =
   await import("./import-corpus/score.js");
 
@@ -84,6 +87,14 @@ if (level === 4) {
   console.log(`Level 4 (very hard): ${results.length} made-up camps\n`);
   console.log(summaryTable(results));
   console.log(`\nBy trait:\n${traitTable(results)}`);
+  printCamps(results);
+} else if (level === 5) {
+  const results = weirdCamps(LEVEL5_SIZE).map((camp) =>
+    scoreWeirdCamp(camp, deps, scoreCamp)
+  );
+  console.log(`Level 5 (really weird): ${results.length} made-up camps\n`);
+  console.log(summaryTable(results));
+  console.log(`\nBy trait:\n${weirdTable(results)}`);
   printCamps(results);
 } else if (level === 3) {
   const results = hardCamps(LEVEL3_SIZE).map((camp) => scoreCamp(camp, deps));

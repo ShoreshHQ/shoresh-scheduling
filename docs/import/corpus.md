@@ -6,13 +6,13 @@ Everything in the corpus is invented.
 
 ## Levels
 
-| Level                          | What the camps are like                                     | Status  |
-| ------------------------------ | ----------------------------------------------------------- | ------- |
-| 1 Ordinary                     | One schedule that repeats every week, clean data            | Built   |
-| 2 Different schedules per week | Week 2 differs from week 1, special weeks                   | Built   |
-| 3 Hard                         | Doubles, trips, half days, gaps, spelling slips, note lines | Built   |
-| 4 Very hard                    | Two programs, evenings, weekends, specials, several weeks   | Built   |
-| 5 Really weird                 | Anything a camp has actually sent that breaks the rules     | Not yet |
+| Level                          | What the camps are like                                     | Status |
+| ------------------------------ | ----------------------------------------------------------- | ------ |
+| 1 Ordinary                     | One schedule that repeats every week, clean data            | Built  |
+| 2 Different schedules per week | Week 2 differs from week 1, special weeks                   | Built  |
+| 3 Hard                         | Doubles, trips, half days, gaps, spelling slips, note lines | Built  |
+| 4 Very hard                    | Two programs, evenings, weekends, specials, several weeks   | Built  |
+| 5 Really weird                 | Anything a camp has actually sent that breaks the rules     | Built  |
 
 ## What level 1 contains
 
@@ -214,6 +214,85 @@ spelling 46 of 69, gaps 70 of 93, double 43 of 85, trip 41 of 95. Causes:
    Wednesday's own blocks; L4-130, a CSV double on Week 3 Sunday losing its second block). The run
    is counted along a timetable that also holds the special day's own blocks, so it lands on the
    wrong ones.
+
+## Level 5
+
+320 camps (`scripts/import-corpus/level5.js`), each an ordinary one-week camp with exactly one
+weird trait (weird files are rare; they rarely come two at a time), 32 per trait:
+
+- **transposed**: an all-camp grid on its side, a row per group and a column per time block.
+- **timeInCell**: a page per group with no time column; each cell carries its time ("9-9:45 Art").
+- **legend**: cells are letter codes ("A") with a key under the grid ("A = Archery").
+- **hebrew**: groups, divisions, activities, Lunch and the opening named in Hebrew.
+- **oneGroup**: the whole camp is one group.
+- **hugeCamp**: 100 to 160 groups in six to eight divisions.
+- **oneDay**: a one-day program; the file has a single day, and that day is the program.
+- **longDay**: 11 to 15 half-hour periods.
+- **colorOnly**: one activity was shown only by cell color; exported, its cells are blank and only
+  "Blue = Swim" is left under the grid.
+- **multiActivity**: a few cells name two activities ("Swim/Art").
+
+For the last two only the director knows the answer, so **asking is the right read**: those cells
+are not compared (`truth.unknownCells`, and names only they hold, `truth.ignoreNames`), and the camp
+is correct only if the import asks; reading on silently counts one wrong read, "silent". Today any
+question counts as asking (no question kind is for this yet).
+
+Left out, because the right reading is Greg's call: emoji in names ("🏊 Swim"), an activity and
+its place in one cell ("Art (Barn)").
+
+    npm run score:import -- --level 5
+
+Baseline (2026-10-28, before any engine change for these): **113 of 320 correct**; 78 camps asked
+something (1,367 questions: 1,091 "similar", 194 "the files disagree", 52 list, 18 layout, 12
+division); 181 camps with wrong reads.
+
+| Trait         | Camps | Correct | Asked | Questions | Camps wrong | Main wrong reads                                     |
+| ------------- | ----- | ------- | ----- | --------- | ----------- | ---------------------------------------------------- |
+| transposed    | 32    | 0       | 0     | 0         | 32          | groups 461, activities 240, blocks 225, cells 14,925 |
+| timeInCell    | 32    | 0       | 0     | 0         | 32          | days 32, activities 192, cells 5,008                 |
+| legend        | 32    | 0       | 0     | 0         | 32          | activities 256, cells 12,895                         |
+| hebrew        | 32    | 0       | 32    | 1,293     | 15          | groups 359, fixed 304, cells 9,317                   |
+| oneGroup      | 32    | 17      | 14    | 22        | 6           | groups 29, cells 396                                 |
+| hugeCamp      | 32    | 32      | 0     | 0         | 0           | none                                                 |
+| oneDay        | 32    | 0       | 0     | 0         | 32          | fixed 55, recurring 55                               |
+| longDay       | 32    | 32      | 0     | 0         | 0           | none                                                 |
+| colorOnly     | 32    | 0       | 0     | 0         | 32          | silent 32                                            |
+| multiActivity | 32    | 32      | 32    | 52        | 0           | none (asked "similar")                               |
+
+Causes, biggest first:
+
+1. **A grid on its side is not recognised** (32 camps, e.g. L5-001): the time blocks are read as
+   groups and the groups as blocks; nearly everything is wrong.
+2. **Letter codes are read as activities and the key is ignored** (32, e.g. L5-003): activities
+   "A" to "H", every cell a letter.
+3. **A single day's set times are read as recurring** (32, e.g. L5-007): with one day the opening
+   and Lunch are each one time, so they come in as recurring, not fixed.
+4. **Times in the cells: Monday is taken as the label column** (32, e.g. L5-002): the first day is
+   lost, and where the time is short ("9-9:45") some cells keep it in the activity's name.
+5. **Color-only meaning is read on silently** (32, e.g. L5-009): the blank cells are read as free
+   time; nothing asks what "Blue = Swim" meant.
+6. **Hebrew names a letter apart are asked as spelling slips** (32 asked, e.g. L5-034: "ניצנים א"
+   and "ניצנים ב"); and a sheet or file per group with Hebrew titles is read as one group named
+   after the file, every cell a disagreement (15 camps, e.g. L5-004).
+7. **One group**: a one-sheet by-group workbook names the group after the file (L5-115); a
+   one-column all-camp page has its layout asked (L5-035); one-group by-activity pages misread
+   (L5-265).
+
+"Swim/Art" camps count as correct only because the import asks whether "Swim/Art" is a slip of
+another name; the question it should ask is open (below). Levels 1 to 3, the travel camps and
+Greg's camp unchanged.
+
+Open questions for Greg (the corpus follows the recommendation where it scores at all):
+
+- **Emoji in names** (not scored): keep "🏊 Swim" as written, or read it as Swim. Recommended:
+  Swim, with the emoji dropped and shown in the notes, so it matches the same activity elsewhere.
+- **Activity and place in one cell** (not scored): "Art (Barn)" as activity Art at place Barn,
+  as one activity "Art (Barn)", or ask. Recommended: Art at the Barn, shown, when the bracket
+  holds a place used for more than one activity.
+- **A file with one day** (scored as recommended): a one-day program, or a sample day that repeats
+  every day. Recommended: that day only, shown, as the file says.
+- **Two activities in one cell** (scored as "asks anything"): what to ask. Recommended: "Swim/Art:
+  half the period each, or the group splits?".
 
 ## How to run
 
