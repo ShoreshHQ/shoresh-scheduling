@@ -85,7 +85,7 @@ global with sharing class IncomingCamperElectiveChoice implements IncomingBatch.
     )
     global Datetime changed_at;
 
-    List<String> choices() {
+    public List<String> choices() {
       List<String> named = new List<String>();
       for (
         String choice : new List<String>{
