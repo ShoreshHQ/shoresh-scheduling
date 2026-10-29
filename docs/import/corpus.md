@@ -6,13 +6,13 @@ Everything in the corpus is invented.
 
 ## Levels
 
-| Level                          | What the camps are like                                     | Status  |
-| ------------------------------ | ----------------------------------------------------------- | ------- |
-| 1 Ordinary                     | One schedule that repeats every week, clean data            | Built   |
-| 2 Different schedules per week | Week 2 differs from week 1, special weeks                   | Built   |
-| 3 Hard                         | Doubles, trips, half days, gaps, spelling slips, note lines | Built   |
-| 4 Very hard                    | Messy real-world layouts, notes in cells, mixed layouts     | Not yet |
-| 5 Really weird                 | Anything a camp has actually sent that breaks the rules     | Built   |
+| Level                          | What the camps are like                                     | Status |
+| ------------------------------ | ----------------------------------------------------------- | ------ |
+| 1 Ordinary                     | One schedule that repeats every week, clean data            | Built  |
+| 2 Different schedules per week | Week 2 differs from week 1, special weeks                   | Built  |
+| 3 Hard                         | Doubles, trips, half days, gaps, spelling slips, note lines | Built  |
+| 4 Very hard                    | Two programs, evenings, weekends, specials, several weeks   | Built  |
+| 5 Really weird                 | Anything a camp has actually sent that breaks the rules     | Built  |
 
 ## What level 1 contains
 
@@ -185,6 +185,46 @@ camps and Greg's camp unchanged (no group read part of the day). Level 5: 113 of
 day in 2 oneGroup camps whose groups are already misread (L5-265, L5-315). Letter-code camps
 read no one part of the day: an afternoon where no group has anything read shows no one away.
 
+## Level 4
+
+320 camps (`scripts/import-corpus/level4.js`), the same eight layouts as level 1 (40 each), each
+with two of five shapes (weekend brings overnight, special brings weeks) and one or two of level
+3's traits:
+
+- **programs**: a second program in the same files (Teen Travel, Leadership), its own two
+  divisions and groups on its own time blocks every day: two programs (INGEST-4.3 counter-case).
+- **overnight**: Dinner and Cabin Time every night (fixed), and between them an Evening Program
+  the whole camp does together, a different one each night (Campfire, Talent Show): an all-camp
+  moment, so recurring (classification rule 3).
+- **weekend**: an overnight camp running all seven days, Saturday and Sunday on the same blocks
+  (ADR 0022: a day like any other).
+- **weeks**: two to four weeks, each rotating differently (as level 2); a "Week n" in each page's
+  title, sheet or file name.
+- **special**: in one week after the first, one mid-week day whose afternoon has fewer, longer
+  blocks: that week's special day (INGEST-4.3).
+
+Left out because the true answer is a product decision not yet made (questions for Greg): a
+weekend with its own blocks every week (a Saturday schedule), a mid-week day with its own blocks in
+a one-week file, and a special day in a camp of two programs.
+
+    npm run score:import -- --level 4
+
+Baseline (2026-10-28): 204 of 320 perfect; questions 75 (all am/pm); 116 camps with wrong reads
+(blocks 300, fixed 150, cells 40,715; programs, weeks, days, special days, divisions, groups,
+recurring and activities 0). By trait, perfect: programs 101 of 118, overnight 119 of 220,
+weekend 74 of 129, weeks 148 of 237, special 44 of 104; halfDay 22 of 24, notes 79 of 112,
+spelling 46 of 69, gaps 70 of 93, double 43 of 85, trip 41 of 95. Causes:
+
+1. **Evening times without am/pm** (75 camps, every overnight camp written "6:00 - 6:45"; 40,426
+   of the wrong cells; e.g. L4-009). Dinner is asked am or pm; the Evening Program (7:00 - 8:00)
+   and Cabin Time (8:15 - 9:00) are read as morning, before the camp's first block, without
+   asking, so both blocks, their fixed Cabin Time and every evening cell are wrong.
+2. **A merged or doubled cell in a week that also has a special day** (41 camps, 289 cells; e.g.
+   L4-012, a Field Trip merged down Week 1 Tuesday afternoon of a by-group sheet, read onto Week 3
+   Wednesday's own blocks; L4-130, a CSV double on Week 3 Sunday losing its second block). The run
+   is counted along a timetable that also holds the special day's own blocks, so it lands on the
+   wrong ones.
+
 ## Level 5
 
 320 camps (`scripts/import-corpus/level5.js`), each an ordinary one-week camp with exactly one
@@ -208,8 +248,7 @@ is correct only if the import asks; reading on silently counts one wrong read, "
 question counts as asking (no question kind is for this yet).
 
 Left out, because the right reading is Greg's call: emoji in names ("🏊 Swim"), an activity and
-its place in one cell ("Art (Barn)"). Left to level 4: several programs, evening blocks, weekends
-with own blocks, mid-week specials, several weeks.
+its place in one cell ("Art (Barn)").
 
     npm run score:import -- --level 5
 
