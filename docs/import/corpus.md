@@ -260,8 +260,8 @@ are not compared (`truth.unknownCells`, and names only they hold, `truth.ignoreN
 is correct only if the import asks; reading on silently counts one wrong read, "silent". Today any
 question counts as asking (no question kind is for this yet).
 
-Left out, because the right reading is Greg's call: emoji in names ("🏊 Swim"), an activity and
-its place in one cell ("Art (Barn)").
+Emoji in names ("🏊 Swim") and an activity and its place in one cell ("Art (Barn)") are scored in
+the decision camps (below).
 
     npm run score:import -- --level 5
 
@@ -301,21 +301,29 @@ Causes, biggest first:
    one-column all-camp page has its layout asked (L5-035); one-group by-activity pages misread
    (L5-265).
 
-"Swim/Art" camps count as correct only because the import asks whether "Swim/Art" is a slip of
-another name; the question it should ask is open (below). Levels 1 to 3, the travel camps and
-Greg's camp unchanged.
+"Swim/Art" camps counted as correct only because the import asked whether "Swim/Art" was one
+activity or a choice. Levels 1 to 3, the travel camps and Greg's camp unchanged.
 
-Open questions for Greg (the corpus follows the recommendation where it scores at all):
+Greg's level-5 decisions (2026-10-28, wiki `projects/shoresh-sf-ingestion-plan.md`): "🏊 Swim"
+is Swim, the emoji kept in the notes; "Art (Barn)" is Art at the Barn when more than one activity
+is there, otherwise one name; a file with one day is a one-day program, nothing read as fixed from
+one day (INGEST-3.4), so the level-5 truth that expected the opening and Lunch fixed now expects
+them recurring (`level5.js` `truthOf`; with that alone, 145 of 320); "Swim/Art" asks "Half the
+period each, or does the group split?".
 
-- **Emoji in names** (not scored): keep "🏊 Swim" as written, or read it as Swim. Recommended:
-  Swim, with the emoji dropped and shown in the notes, so it matches the same activity elsewhere.
-- **Activity and place in one cell** (not scored): "Art (Barn)" as activity Art at place Barn,
-  as one activity "Art (Barn)", or ask. Recommended: Art at the Barn, shown, when the bracket
-  holds a place used for more than one activity.
-- **A file with one day** (scored as recommended): a one-day program, or a sample day that repeats
-  every day. Recommended: that day only, shown, as the file says.
-- **Two activities in one cell** (scored as "asks anything"): what to ask. Recommended: "Swim/Art:
-  half the period each, or the group splits?".
+Decisions 1 and 2 add **64 decision camps** (`decisionCamps5`, `L5D-001` to `L5D-064`, emoji and
+place alternately, half the place camps with two activities at the place), scored on their own:
+the read names, the places offered (`truth.places`, wrong kind "places") and the emoji notes
+(`truth.emojiNotes`, wrong kind "notes"). Before the engine read them: 16 of 64 (only the
+one-name brackets).
+
+After INGEST-2.11 to 2.21 (`names-and-divisions.md` rules 11 to 21): **320 of 320 correct**, 64
+camps asked (84 questions: 32 colour keys, 52 "Swim/Art"), no wrong reads; the 64 decision camps
+64 of 64, nothing asked. By trait, correct before and after: transposed 0 to 32, timeInCell 0 to
+32, legend 0 to 32, hebrew 0 to 32 (1,293 questions to 0), oneGroup 17 to 32, oneDay 0 to 32
+(truth corrected), colorOnly 0 to 32 (now asked), multiActivity 32 to 32 (asked Greg's question
+instead of "one activity or a choice"), hugeCamp and longDay 32 to 32. Levels 1 to 4, the
+decision-3 set, the travel camps and Greg's camp unchanged.
 
 ## How to run
 

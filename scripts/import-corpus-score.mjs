@@ -64,8 +64,14 @@ const { headingReport, plantCamp } =
 const { LEVEL3_SIZE, hardCamps } = await import("./import-corpus/level3.js");
 const { DECISIONS_SIZE, LEVEL4_SIZE, decisionCamps, veryHardCamps } =
   await import("./import-corpus/level4.js");
-const { LEVEL5_SIZE, scoreWeirdCamp, weirdCamps, weirdTable } =
-  await import("./import-corpus/level5.js");
+const {
+  DECISIONS5_SIZE,
+  LEVEL5_SIZE,
+  decisionCamps5,
+  scoreWeirdCamp,
+  weirdCamps,
+  weirdTable
+} = await import("./import-corpus/level5.js");
 const { scoreCamp, summaryTable, traitTable, weekTable } =
   await import("./import-corpus/score.js");
 
@@ -104,6 +110,15 @@ if (level === 4) {
   console.log(summaryTable(results));
   console.log(`\nBy trait:\n${weirdTable(results)}`);
   printCamps(results);
+  const decided = decisionCamps5(DECISIONS5_SIZE).map((camp) =>
+    scoreWeirdCamp(camp, deps, scoreCamp)
+  );
+  console.log(
+    `\nLevel 5, Greg's decisions (emoji, an activity's place in brackets): ${decided.length} made-up camps\n`
+  );
+  console.log(summaryTable(decided));
+  console.log(`\nBy trait:\n${weirdTable(decided)}`);
+  printCamps(decided);
 } else if (level === 3) {
   const results = hardCamps(LEVEL3_SIZE).map((camp) => scoreCamp(camp, deps));
   console.log(`Level 3 (hard): ${results.length} made-up camps\n`);

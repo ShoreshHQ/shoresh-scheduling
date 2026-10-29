@@ -625,6 +625,15 @@ export function importNotes(proposal, t) {
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
       })
     );
+  // INGEST-2.20: a name written with emoji is read without them, the emoji kept here.
+  proposal.notes
+    .filter((n) => n.type === "emoji")
+    .forEach((n) =>
+      notes.push({
+        key: `emoji|${n.emoji}|${n.name}`,
+        text: `${n.emoji} ${n.name} is read as ${n.name}.`
+      })
+    );
   // names-and-divisions.md rules 1-3 are listed under "Read as" (review.md INGEST-5.2, 5.3).
   proposal.notes
     .filter((n) => n.type === "oneGroup")

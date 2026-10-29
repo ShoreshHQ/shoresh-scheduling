@@ -9,3 +9,6 @@ export function blocksOf(p) {
     p.blocks || Array.from({ length: p.span || 1 }, (_, k) => p.blockIndex + k)
   );
 }
+
+/** INGEST-2.19: the answer that adds an activity shown only by colour, with no times yet. */
+export const COLOUR_ADD = "add";

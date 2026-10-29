@@ -40,6 +40,8 @@ export const WRONG_KINDS = [
   "recurring",
   "activities",
   "availability",
+  "places",
+  "notes",
   "cells"
 ];
 
@@ -287,6 +289,22 @@ function wrongReads(truth, proposal, plan, withWeeks) {
         .filter((g) => g.availability && g.availability !== "AllDay")
         .map((g) => `${g.name}|${g.availability}`)
     ),
+    // Level 5, Greg's decisions: the places read from "Art (Barn)", and the emoji kept in the
+    // notes for "🏊 Swim" (only where the truth says).
+    places: truth.places
+      ? mismatches(
+          truth.places,
+          proposal.offeredPlaces.map((p) => p.name)
+        )
+      : 0,
+    notes: truth.emojiNotes
+      ? mismatches(
+          truth.emojiNotes,
+          proposal.reading.notes
+            .filter((n) => n.type === "emoji")
+            .map((n) => `${n.emoji} ${n.name}`)
+        )
+      : 0,
     cells: read.weeks.reduce((n, w) => n + w.wrong, read.extra)
   };
   return { wrong, weeks: read.weeks };

@@ -1118,7 +1118,7 @@ describe("c-shoresh-import", () => {
       const element = await renderWith(WITH_WEEK);
       const rows = [
         "Time,Bunk 1,Bunk 2",
-        "9:00-9:45,Swim (Pool),Art (Art room)",
+        "9:00-9:45,Swim @ Pool,Art @ Art room",
         "12:00-12:45,Lunch,Lunch"
       ].join("\n");
       await choose(element, ["Monday.csv", "Tuesday.csv"], {
@@ -1150,7 +1150,7 @@ describe("c-shoresh-import", () => {
       const element = await renderWith(WITH_WEEK);
       const rows = [
         "Time,Bunk 1,Bunk 2",
-        "9:00-9:45,Swim (Pool),Art (Art room)",
+        "9:00-9:45,Swim @ Pool,Art @ Art room",
         "12:00-12:45,Lunch,Lunch"
       ].join("\n");
       await choose(element, ["Monday.csv", "Tuesday.csv"], {
@@ -1219,8 +1219,8 @@ describe("c-shoresh-import", () => {
         });
         const rows = [
           "Time,Bunk 1,Bunk 2",
-          "9:00-9:45,Swim (Pool),Art",
-          "10:00-10:45,Art,Swim (Pool)",
+          "9:00-9:45,Swim @ Pool,Art",
+          "10:00-10:45,Art,Swim @ Pool",
           "12:00-12:45,Lunch,Lunch"
         ].join("\n");
         await choose(element, ["Monday.csv", "Tuesday.csv"], {

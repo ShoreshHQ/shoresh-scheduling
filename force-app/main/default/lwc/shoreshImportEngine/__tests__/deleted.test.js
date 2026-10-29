@@ -37,9 +37,9 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 function files() {
   const rows = [
     ["Time", "Bunk 1", "Bunk 2", "Bunk 3"],
-    ["9:00-9:45", "Swim (Pool)", "Art (Art room)", "Swim (Pool)"],
-    ["10:00-10:45", "Art (Art room)", "Swim (Pool)", "Archery"],
-    ["12:00-12:45", "Lunch (Hall)", "Lunch (Hall)", "Lunch (Hall)"]
+    ["9:00-9:45", "Swim @ Pool", "Art @ Art room", "Swim @ Pool"],
+    ["10:00-10:45", "Art @ Art room", "Swim @ Pool", "Archery"],
+    ["12:00-12:45", "Lunch @ Hall", "Lunch @ Hall", "Lunch @ Hall"]
   ];
   return DAYS.map((d) => csv(`${d}.csv`, rows));
 }

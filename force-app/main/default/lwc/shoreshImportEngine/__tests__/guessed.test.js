@@ -11,8 +11,8 @@ const BLOCKS = ["9:00-9:45", "9:50-10:35", "12:00-12:45"];
 
 function rotation(g, d, b) {
   return b === 2
-    ? "Lunch (Hall)"
-    : ["Swim (Pool)", "Art", "Soccer", "Music"][(g + b + d) % 4];
+    ? "Lunch @ Hall"
+    : ["Swim @ Pool", "Art", "Soccer", "Music"][(g + b + d) % 4];
 }
 
 /** One group's week in one file, days across. */

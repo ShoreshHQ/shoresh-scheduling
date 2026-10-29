@@ -56,10 +56,16 @@ function campNames(existing) {
   };
 }
 
-function counted(names) {
+/** Each name once: how often it is used, and in which files (INGEST-2.15). */
+function counted(entries) {
   const counts = new Map();
-  names.forEach((n) => counts.set(n, (counts.get(n) || 0) + 1));
-  return [...counts].map(([name, count]) => ({ name, count }));
+  entries.forEach(({ name, file }) => {
+    const c = counts.get(name) || { name, count: 0, files: new Set() };
+    c.count++;
+    c.files.add(file);
+    counts.set(name, c);
+  });
+  return [...counts.values()];
 }
 
 /**
@@ -156,7 +162,55 @@ function readPages(pages, keys, existing, layouts) {
       placements: read.placements.length
     };
   });
-  return { info, placements, noted, pages: named };
+  return {
+    info,
+    placements: placesInBrackets(placements, existing),
+    noted,
+    pages: named
+  };
+}
+
+/**
+ * INGEST-2.21 (Greg, 2026-10-28, level-5 decision 2): "Art (Barn)" is Art at the Barn when the
+ * bracket names a place more than one activity is at in the files, or one the camp has;
+ * otherwise the bracket is part of the name ("Art (Barn)" is one activity). "@" always names a
+ * place ("Art @ Barn").
+ */
+function placesInBrackets(placements, existing) {
+  const campPlaces = new Set(
+    ((existing && existing.locations) || []).map((l) => looseKey(l.Name))
+  );
+  const namesAt = new Map();
+  for (const p of placements.filter((x) => x.place)) {
+    const key = looseKey(p.place);
+    namesAt.set(key, new Set([...(namesAt.get(key) || []), looseKey(p.text)]));
+  }
+  const isPlace = (place) =>
+    campPlaces.has(looseKey(place)) || namesAt.get(looseKey(place)).size > 1;
+  return placements.map((p) => {
+    if (!p.bracket || isPlace(p.place)) {
+      return p;
+    }
+    return {
+      ...p,
+      text: `${p.text} (${p.place})`,
+      place: null,
+      bracket: false
+    };
+  });
+}
+
+/** INGEST-2.20: each name written with emoji, once: a note of what was read. */
+function emojiNotes(placements) {
+  const seen = new Map();
+  for (const p of placements.filter((x) => x.emoji)) {
+    seen.set(`${p.emoji}|${p.text}`, {
+      type: "emoji",
+      emoji: p.emoji,
+      name: p.text
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -295,7 +349,7 @@ export function readImport(input) {
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
-  const { pages, unread } = filesToPages(files, {
+  const { pages, unread, colours } = filesToPages(files, {
     maxWeek: seasonWeekCount(input.existing)
   });
   const keys = pageKeys(pages);
@@ -304,12 +358,12 @@ export function readImport(input) {
   const pairs = [
     ...similarPairs(
       "activity",
-      counted(read.placements.map((p) => p.text)),
+      counted(read.placements.map((p) => ({ name: p.text, file: p.file }))),
       camp.activityLike
     ),
     ...similarPairs(
       "group",
-      counted(read.noted.map((g) => g.name)),
+      counted(read.noted.map((g) => ({ name: g.name, file: g.file }))),
       camp.groups
     ),
     ...divisionPairs(read.noted, camp.placed)
@@ -380,6 +434,7 @@ export function readImport(input) {
   return {
     pages: read.info,
     unread,
+    colours,
     pairs: asked,
     disagreements,
     timetables,
@@ -398,7 +453,8 @@ export function readImport(input) {
         answer: answers[pair.id] || answer
       })),
       ...together.notes,
-      ...weekDayNotes
+      ...weekDayNotes,
+      ...emojiNotes(together.placements)
     ],
     groupAsks: identified.asks,
     splitAsks: together.asks,

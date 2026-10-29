@@ -161,7 +161,19 @@ function timeTokens(text) {
     const startsRange = RANGE_NEXT.test(
       clean.slice(match.index + match[0].length)
     );
-    if (match[2] || match[3] || (tokens.length === 0 && startsRange)) {
+    // A bare hour ending a range whose start is a time ("10:20-11"): the end, 11:00.
+    const prev = tokens[tokens.length - 1];
+    const endsRange =
+      tokens.length === 1 &&
+      /^\s*(?:-|–|—|to)\s*$/i.test(
+        clean.slice(prev.index + prev[0].length, match.index)
+      );
+    if (
+      match[2] ||
+      match[3] ||
+      (tokens.length === 0 && startsRange) ||
+      endsRange
+    ) {
       tokens.push(match);
     }
   }
@@ -299,23 +311,50 @@ const NOT_A_NAME = [
  * "Art @ Art room" -> { name: "Art", place: "Art room" }. Times written in the cell are left out
  * of the name ("Lunch 12:00" is Lunch). Null for an empty cell or one that names nothing.
  */
+// Emoji and the marks that join or style them (Greg, 2026-10-28, level-5 decision 1).
+// ©, ® and ™ are marks in a name ("Lego™ Club"), emoji only drawn as one (with U+FE0F).
+const EMOJI =
+  /(?:[\u00A9\u00AE\u2122]\uFE0F|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|[\u{1F3FB}-\u{1F3FF}]|\uFE0F|\u200D|\u20E3)+/gu;
+
+/**
+ * INGEST-2.20: a name with emoji in it ("🏊 Swim") without them: { text, emoji } ("Swim", "🏊"),
+ * emoji "" when it has none. A cell that is only emoji keeps them (nothing else names it).
+ */
+export function withoutEmoji(value) {
+  const text = tidy(value);
+  const found = text.match(EMOJI);
+  const rest = tidy(text.replace(EMOJI, " "));
+  return found && /[\p{L}\p{N}]/u.test(rest)
+    ? { text: rest, emoji: found.join("") }
+    : { text, emoji: "" };
+}
+
 export function cellName(value) {
-  let text = tidy(value);
+  const plain = withoutEmoji(value);
+  let text = plain.text;
   let place = null;
+  let bracket = false;
   const at = text.match(/^(.+?)\s+@\s+(.+)$/);
-  const bracket = text.match(/^(.+?)\s*\(([^()]+)\)\s*$/);
+  const inBrackets = text.match(/^(.+?)\s*\(([^()]+)\)\s*$/);
   if (at) {
     text = at[1];
     place = tidy(at[2]);
-  } else if (bracket && !hasClockTime(bracket[2])) {
-    text = bracket[1];
-    place = tidy(bracket[2]);
+  } else if (inBrackets && !hasClockTime(inBrackets[2])) {
+    text = inBrackets[1];
+    place = tidy(inBrackets[2]);
+    bracket = true;
   }
   const name = withoutTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
   if (name.length < 2 || NOT_A_NAME.some((pattern) => pattern.test(name))) {
     return null;
   }
-  return { name, place: place || null };
+  return {
+    name,
+    place: place || null,
+    // Where the place came from: "Art (Barn)" (INGEST-2.21), and any emoji left off.
+    bracket: bracket && !!place,
+    emoji: plain.emoji
+  };
 }
 
 /**
@@ -340,10 +379,14 @@ export function listedNames(value) {
 export function divisionInTitle(title) {
   const text = tidy(title);
   const split = text.match(/^(.+?)(?:\s+[-–—:]\s*|[-–—:]\s+)(.+)$/);
-  if (split && split[1].length >= 2 && /[A-Za-z]/.test(split[1])) {
+  if (split && split[1].length >= 2 && /\p{L}/u.test(split[1])) {
     return { division: tidy(split[1]), group: tidy(split[2]) };
   }
-  const numbered = text.match(/^([\p{L}][\p{L}\s']*?)\s+(\d+[A-Za-z]?)$/u);
+  // Numbered ("Yeladim 3") or lettered with one letter of its own outside A to Z ("ניצנים א",
+  // INGEST-2.14; "Schedule A" stays one name, as before).
+  const numbered = text.match(
+    /^([\p{L}][\p{L}\s']*?)\s+(\d+[A-Za-z]?|(?![A-Za-z])\p{L})$/u
+  );
   if (numbered && !/^(bunk|group|cabin|tent|team)$/i.test(tidy(numbered[1]))) {
     return { division: tidy(numbered[1]), group: text };
   }

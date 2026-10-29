@@ -9,7 +9,8 @@
 // - hebrew:       groups, divisions, activities and set times named in Hebrew.
 // - oneGroup:     the whole camp is one group.
 // - hugeCamp:     100 to 160 groups in six to eight divisions.
-// - oneDay:       a one-day program: the file has a single day.
+// - oneDay:       a one-day program: the file has a single day. Nothing is fixed from one day
+//                 (INGEST-3.4): what every group does together is recurring (Greg, 2026-10-28).
 // - longDay:      11 to 15 half-hour periods, a very long file.
 // - colorOnly:    one activity was shown only by a cell color; exported, its cells are blank and
 //                 only a color legend ("Blue = Swim") is left. Only the director can say.
@@ -19,8 +20,12 @@
 // The true answer is the camp's own week, with two additions for the last two traits: the cells
 // only the director can explain (truth.unknownCells) are not compared, and the camp must ask
 // (truth.mustAsk): asking is the right read there, and reading on silently is wrong ("silent").
-// Not in the corpus, because the right reading is Greg's call (corpus.md lists the questions):
-// emoji in names, an activity and its place in one cell ("Art (Barn)").
+// Greg's level-5 decisions (2026-10-28) add decisionCamps (L5D-001 on), scored on their own:
+// - emoji:  a few activities written with an emoji ("🏊 Swim"): read as Swim, the emoji kept in
+//           the import's notes (truth.emojiNotes).
+// - place:  an activity and its place in one cell ("Art (Barn)"). Where two activities are at
+//           that place, it is a place (truth.places) and the activities keep their names; where
+//           only one is, "Art (Barn)" is one activity's name.
 // Deterministic: the same seed always gives the same camp.
 import {
   ACTIVITIES,
@@ -36,6 +41,37 @@ import {
 
 /** How many camps the full level-5 corpus has. */
 export const LEVEL5_SIZE = 320;
+/** How many camps Greg's level-5 decisions add (emoji, an activity's place in brackets). */
+export const DECISIONS5_SIZE = 64;
+export const DECISION_TRAITS = ["emoji", "place"];
+
+const EMOJI = {
+  Swim: "🏊",
+  Archery: "🏹",
+  Art: "🎨",
+  Soccer: "⚽",
+  Basketball: "🏀",
+  Music: "🎵",
+  Drama: "🎭",
+  Nature: "🌲",
+  Tennis: "🎾",
+  Cooking: "🍳",
+  Climbing: "🧗",
+  Canoeing: "🛶",
+  Dance: "💃",
+  Science: "🔬",
+  Photography: "📷",
+  Yoga: "🧘",
+  Softball: "🥎",
+  Gymnastics: "🤸",
+  "Arts & Crafts": "✂️",
+  Ceramics: "🏺",
+  Woodshop: "🪚",
+  Gaga: "🔵",
+  "Ultimate Frisbee": "🥏",
+  "Ropes Course": "🪢"
+};
+const PLACES = ["Barn", "Lake", "Field House", "Pavilion", "Big Tent"];
 
 export const TRAITS = [
   "transposed",
@@ -121,14 +157,14 @@ function regroup(camp, divisions) {
 }
 
 /** One level-5 camp and its true answer (camp.truth, as the scorer reads it). */
-export function weirdCamp(seed) {
-  const trait = TRAITS[(seed - 1) % TRAITS.length];
-  const r = randomFrom(seed * 104729 + 5);
-  const base = ordinaryCamp(16000 + seed);
+export function weirdCamp(seed, decision) {
+  const trait = decision || TRAITS[(seed - 1) % TRAITS.length];
+  const r = randomFrom(seed * 104729 + (decision ? 11 : 5));
+  const base = ordinaryCamp((decision ? 17000 : 16000) + seed);
   const [layout, format, split] = r.pick(layoutsFor(trait));
   const camp = {
     ...base,
-    id: `L5-${String(seed).padStart(3, "0")}`,
+    id: `${decision ? "L5D" : "L5"}-${String(seed).padStart(3, "0")}`,
     level: 5,
     layout,
     format,
@@ -210,6 +246,27 @@ export function weirdCamp(seed) {
     rotate(camp, step);
   }
 
+  // Greg's decision 2: one activity at its own place is named with it ("Art (Barn)").
+  const choosable = [...new Set(camp.activityList)];
+  let shared = [];
+  let place = null;
+  if (trait === "place") {
+    place = r.pick(PLACES);
+    if (seed % 4 === 0) {
+      shared = r.shuffle(choosable).slice(0, 2);
+    } else {
+      const one = r.pick(choosable);
+      camp.activityList = camp.activityList.map((a) =>
+        a === one ? `${a} (${place})` : a
+      );
+      rotate(camp, step);
+    }
+  }
+  const withEmoji =
+    trait === "emoji"
+      ? r.shuffle(choosable.filter((a) => EMOJI[a])).slice(0, r.int(1, 3))
+      : [];
+
   // What each cell truly is, and what the file writes there.
   const truthCell = camp.cell;
   const unknown = new Set();
@@ -256,6 +313,19 @@ export function weirdCamp(seed) {
     }
     written = (g, d, b) => doubled.get(`${g}|${d}|${b}`) || truthCell(g, d, b);
   }
+  // How the file writes an activity's name (a by-activity page heads its column so).
+  const writtenName = (text) => {
+    if (withEmoji.includes(text)) return `${EMOJI[text]} ${text}`;
+    if (shared.includes(text)) return `${text} (${place})`;
+    return text;
+  };
+  if (withEmoji.length || shared.length) {
+    const plain = written;
+    written = (g, d, b) => writtenName(plain(g, d, b));
+  }
+  camp.writtenName = writtenName;
+  camp.withEmoji = withEmoji;
+  camp.places = shared.length ? [place] : [];
   camp.written = written;
   camp.doubled = doubled;
   camp.legendLines = legendLines;
@@ -269,6 +339,13 @@ export function weirdCamp(seed) {
 
 export function weirdCamps(count) {
   return Array.from({ length: count }, (_, i) => weirdCamp(i + 1));
+}
+
+/** Greg's level-5 decisions: emoji and an activity's place in brackets, alternately. */
+export function decisionCamps5(count) {
+  return Array.from({ length: count }, (_, i) =>
+    weirdCamp(i + 1, DECISION_TRAITS[i % DECISION_TRAITS.length])
+  );
 }
 
 // ---------- the true answer ----------
@@ -302,17 +379,27 @@ function truthOf(camp, cellOf, unknown, trait) {
     blocks: camp.blocks.map((b) => `${hm(b.start)}-${hm(b.end)}`),
     divisions: camp.divisions.map((d) => d.name),
     groups: camp.groups,
-    fixed: camp.fixed.map(
-      (f) => `${f}|${hm(camp.blocks.find((b) => b.fixed === f).start)}`
-    ),
-    recurring: [],
+    // A one-day program (Greg, 2026-10-28, level-5 decision 3): nothing is read as fixed from
+    // one day (INGEST-3.4); what every group does together that day is recurring.
+    fixed:
+      trait === "oneDay"
+        ? []
+        : camp.fixed.map(
+            (f) => `${f}|${hm(camp.blocks.find((b) => b.fixed === f).start)}`
+          ),
+    recurring: trait === "oneDay" ? [...camp.fixed] : [],
     activities: [...activities],
     divisionsInFile:
       camp.divisions.length > 1 &&
       (camp.layout !== "byActivity" || trait === "hebrew"),
     unknownCells,
     ignoreNames,
-    mustAsk: unknown.size > 0
+    mustAsk: unknown.size > 0,
+    // Greg's decisions: the places read (decision 2), the emoji kept in the notes (decision 1).
+    ...(trait === "place" ? { places: camp.places } : {}),
+    ...(trait === "emoji"
+      ? { emojiNotes: camp.withEmoji.map((a) => `${EMOJI[a]} ${a}`).sort() }
+      : {})
   };
 }
 
@@ -433,7 +520,9 @@ function weirdPages(camp) {
   const writing = {
     ...camp,
     cell: camp.written,
-    activities: [...new Set(camp.activityList)]
+    activities: [...new Set(camp.activityList)].map(
+      camp.writtenName || ((x) => x)
+    )
   };
   return withLegend(camp, pagesOf(writing));
 }
@@ -489,7 +578,7 @@ export function weirdTable(results) {
         .join(", ") || "0";
     return `${pad(label, 15)}${pad(list.length, 7)}${pad(list.filter((r) => r.perfect).length, 9)}${pad(asked, 7)}${pad(q, 11)}${pad(wrongCamps.length, 7)}${shown}${errors ? `; errors ${errors}` : ""}${example}`;
   };
-  for (const trait of TRAITS) {
+  for (const trait of [...TRAITS, ...DECISION_TRAITS]) {
     const list = results.filter((r) => r.camp.variations[0] === trait);
     if (list.length) lines.push(row(trait, list));
   }

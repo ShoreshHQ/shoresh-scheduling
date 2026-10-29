@@ -85,8 +85,8 @@ function fullPlan() {
 function placesPlan() {
   const rows = [
     ["Time", "Bunk 1", "Bunk 2"],
-    ["9:00-9:45", "Swim (Pool)", "Art (Art room)"],
-    ["12:00-12:45", "Lunch (Hall)", "Lunch (Hall)"]
+    ["9:00-9:45", "Swim @ Pool", "Art @ Art room"],
+    ["12:00-12:45", "Lunch @ Hall", "Lunch @ Hall"]
   ];
   const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
   const answers = {

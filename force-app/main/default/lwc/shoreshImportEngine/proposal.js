@@ -21,7 +21,8 @@ import { identityDivision } from "./noDivision";
 import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
-import { WEEKDAYS } from "./text";
+import { COLOUR_ADD } from "./reading-constants";
+import { WEEKDAYS, looseKey } from "./text";
 import { versionsFor } from "./version";
 
 const MS_PER_MINUTE = 60000;
@@ -271,6 +272,45 @@ function activitiesFrom(decisions, usable, groups, ctx, keyOf) {
       compareActivity(name, cells, existing, ctx);
     } else {
       added.push(activityRecord(name, cells, pool, divisionOf, keyOf));
+    }
+  }
+  return added;
+}
+
+/**
+ * INGEST-2.19: an activity a file showed only by colour ("Blue = Swim" under the grid, its cells
+ * blank on export) is asked, never read as free time without a word. "Add" brings it in as an
+ * activity with no times yet (its cells stay empty, to place on the schedule); "Leave it out",
+ * or no answer yet, adds nothing. A name the files also write in cells, or the camp has, is not
+ * asked. Returns the activities added.
+ */
+function colourOnly(reading, usable, ctx) {
+  const written = new Set(usable.map((p) => looseKey(p.text)));
+  const added = [];
+  const seen = new Set();
+  for (const key of reading.colours || []) {
+    const id = `colour|${key.name}`;
+    if (
+      seen.has(id) ||
+      written.has(looseKey(key.name)) ||
+      ctx.camp.activities.has(key.name)
+    ) {
+      continue;
+    }
+    seen.add(id);
+    ctx.asks.push({ id, type: "colour", ...key });
+    if (ctx.answers[id] === COLOUR_ADD) {
+      added.push({
+        kind: "activity",
+        name: key.name,
+        length: 1,
+        lengthsVary: false,
+        min: 0,
+        max: 1,
+        groupsAtOnce: 1,
+        who: { keys: [], names: [] },
+        place: null
+      });
     }
   }
   return added;
@@ -542,6 +582,7 @@ export function buildProposal(input) {
     activityRecord
   });
   activities.push(...electiveAdds.activities);
+  activities.push(...colourOnly(reading, usable, ctx));
   const places = placesFor(
     [...setTime, ...activities],
     input.existing,
