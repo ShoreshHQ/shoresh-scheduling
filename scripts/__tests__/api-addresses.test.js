@@ -9,6 +9,9 @@ const path = require("path");
 const DIR = path.resolve(__dirname, "../../force-app/main/default/classes");
 // API-1.1: what comes in, by its plain name.
 const INCOMING = {
+  IncomingDivision: "division",
+  IncomingGroup: "group",
+  IncomingActivity: "activity",
   IncomingCamper: "camper",
   IncomingCamperGroup: "camper_group",
   IncomingCamperElectiveChoice: "camper_elective_choice"
@@ -56,6 +59,7 @@ describe("the API's addresses", () => {
     for (const cls of [
       ...Object.keys(INCOMING),
       "IncomingCamperPlan",
+      "IncomingNamedPlan",
       "IncomingCamperGroupPlan",
       "IncomingElectiveChoicePlan",
       "IncomingBatch",

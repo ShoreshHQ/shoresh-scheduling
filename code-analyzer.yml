@@ -160,3 +160,15 @@ suppressions:
     - rule_selector: "pmd:AvoidGlobalModifier"
       max_suppressed_violations: 1
       reason: "The Flow actions' answer: global so a camp's Flows can read it."
+  "main/default/classes/IncomingDivision.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingGroup.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingActivity.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Record fields are the API's plain-English names (API-1.5)."
