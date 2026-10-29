@@ -356,12 +356,12 @@ describe("what the save sends", () => {
 
   it("places named in the file are added only when ticked, with room for everyone there at once", () => {
     const rows = [["Time", "Bunk 1", "Bunk 2", "Bunk 3"]];
-    rows.push(["9:00-9:45", "Swim (Pool)", "Swim (Pool)", "Art (Art room)"]);
+    rows.push(["9:00-9:45", "Swim @ Pool", "Swim @ Pool", "Art @ Art room"]);
     rows.push([
       "12:00-12:45",
-      "Lunch (Dining hall)",
-      "Lunch (Dining hall)",
-      "Lunch (Dining hall)"
+      "Lunch @ Dining hall",
+      "Lunch @ Dining hall",
+      "Lunch @ Dining hall"
     ]);
     const files = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(
       (d) => csv(`${d}.csv`, rows)

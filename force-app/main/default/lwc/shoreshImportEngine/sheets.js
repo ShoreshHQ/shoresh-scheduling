@@ -12,8 +12,10 @@ import {
   cellText,
   dayOf,
   hasClockTime,
+  looseKey,
   looksLikeBlockLabel,
-  tidy
+  tidy,
+  timeRange
 } from "./text";
 import {
   isWeekHeading,
@@ -134,13 +136,13 @@ export function distinctName(fileName, prefix) {
   let name =
     prefix && full.startsWith(prefix) ? full.slice(prefix.length) : full;
   name = tidy(name.replace(/^[\s\-–—_]+/, ""));
-  if (prefix && /^[A-Za-z0-9]{1,3}$/.test(name)) {
+  if (prefix && /^[\p{L}\p{N}]{1,3}$/u.test(name)) {
     // "Camp - Juniors - Bunk " + "1": keep the last part of the shared start, "Bunk 1".
     const parts = prefix.split(/\s+[-–—]\s+|_/);
     const last = parts[parts.length - 1].replace(/[-–—_]+$/, "");
     // "camp-bunk-" (no spaces): its last word, "bunk".
     const before = tidy(/\s/.test(last) ? last : last.split(/[-–—]/).pop());
-    if (before && /[A-Za-z]/.test(before)) {
+    if (before && /\p{L}/u.test(before)) {
       name = `${before} ${name}`;
     }
   }
@@ -421,6 +423,240 @@ export function splitWeekColumn(table, merges) {
   return { table: rows, merges: mergesWithout(merges, column), weekOf };
 }
 
+// ---------- a grid on its side (INGEST-2.11) ----------
+
+const isTimedLabel = (cell) => looksLikeBlockLabel(cell) && hasClockTime(cell);
+
+/**
+ * How many leading cells of a heading row name its rows ("Division", "Group") when the cells
+ * after them are time blocks, at least two and every one of them: the grid is on its side.
+ * 0 when the row is not such a heading.
+ */
+function sidewaysLead(row) {
+  const last = row.reduce((n, c, i) => (c !== "" ? i : n), -1);
+  const lead = row.findIndex((c) => isTimedLabel(c));
+  if (lead < 1 || lead > 2 || last - lead < 1) {
+    return 0;
+  }
+  const rest = row.slice(lead, last + 1);
+  const leadCells = row.slice(0, lead);
+  return rest.every((c) => c === "" || isTimedLabel(c)) &&
+    rest.filter(Boolean).length >= 2 &&
+    leadCells.every((c) => !looksLikeBlockLabel(c))
+    ? lead
+    : 0;
+}
+
+/**
+ * INGEST-2.11: a grid on its side, a row per group and a column per time block ("Division,
+ * Group, Period 1 (8:30 - 9:15), ..."), stood upright: the time blocks become rows, the groups
+ * columns, and a division column the division row above them (written once per division, as
+ * a merged heading is). Title lines and anything else on the sheet stay where they are; a cell
+ * merged across time blocks runs down its group's column. The sheet unchanged when no grid is
+ * on its side.
+ */
+export function standUpright(table, merges) {
+  const out = [];
+  // Where each row that is not turned lands, and each turned cell: "row|column" -> [row, column].
+  const rowTo = new Map();
+  const cellTo = new Map();
+  let turned = false;
+  for (let r = 0; r < table.length; r++) {
+    const lead = sidewaysLead(table[r]);
+    const body = [];
+    for (let b = r + 1; lead && b < table.length; b++) {
+      const row = table[b];
+      if (filled(row) < 2 || looksLikeBlockLabel(row[0] || "")) break;
+      body.push(row);
+    }
+    if (!lead || body.length === 0) {
+      rowTo.set(r, out.length);
+      out.push(table[r]);
+      continue;
+    }
+    turned = true;
+    const header = table[r];
+    const top = r + 1;
+    if (lead === 2) {
+      let last = null;
+      out.push([
+        "",
+        ...body.map((row) => {
+          const division = row[0] || "";
+          const shown = division && division !== last ? division : "";
+          last = division || last;
+          return shown;
+        })
+      ]);
+    }
+    out.push(["", ...body.map((row) => row[lead - 1] || "")]);
+    for (let c = lead; c < header.length; c++) {
+      if (header[c] !== "") {
+        const at = out.length;
+        body.forEach((_, i) => cellTo.set(`${top + i}|${c}`, [at, i + 1]));
+        out.push([header[c], ...body.map((row) => row[c] || "")]);
+      }
+    }
+    r += body.length;
+  }
+  if (!turned) {
+    return { table, merges };
+  }
+  // A merge across two time blocks of a group's row runs down its column once turned.
+  const moved = (merges || []).flatMap((m) => {
+    if (!m || !m.s || !m.e) return [];
+    if (rowTo.has(m.s.r) && rowTo.has(m.e.r)) {
+      return [
+        {
+          s: { ...m.s, r: rowTo.get(m.s.r) },
+          e: { ...m.e, r: rowTo.get(m.e.r) }
+        }
+      ];
+    }
+    const from = cellTo.get(`${m.s.r}|${m.s.c}`);
+    const to = cellTo.get(`${m.e.r}|${m.e.c}`);
+    return from && to && m.s.r === m.e.r
+      ? [{ s: { r: from[0], c: from[1] }, e: { r: to[0], c: to[1] } }]
+      : [];
+  });
+  return { table: out, merges: moved };
+}
+
+// ---------- a key of letter codes (INGEST-2.13) ----------
+
+const KEY_LINE = /^\s*([A-Za-z0-9]{1,3})\s*(?:=|:|–|—|\s-\s)\s*(\S.*?)\s*$/;
+const KEY_HEADING = /^\s*(key|legend|codes?)\s*:?\s*$/i;
+
+/** A row with only its first cell filled: that cell, else null. */
+function onlyFirstCell(row) {
+  return (row[0] || "") !== "" && filled(row) === 1 ? row[0] : null;
+}
+
+/**
+ * INGEST-2.13: cells written as short codes ("A", "B") with a key on the sheet, two lines or
+ * more one under another, each alone in its row ("A = Archery", "B: Basketball"), most of whose codes the grid
+ * uses: each cell that is exactly a code is read as its name, and the key's lines (and a
+ * "Key:" line over them) are not read as part of any schedule. A sheet with no such key is
+ * unchanged. { table, key: [{ code, name }] }.
+ */
+export function readKey(table) {
+  const found = [];
+  table.forEach((row, r) => {
+    const text = onlyFirstCell(row);
+    const m = text && KEY_LINE.exec(text);
+    if (m) {
+      found.push({ row: r, code: m[1], name: tidy(m[2]) });
+    }
+  });
+  // A key is two lines or more one under another; a line alone ("Bet - Bunk 3") is a title.
+  const next = new Set(found.map((l) => l.row));
+  const lines = found.filter((l) => next.has(l.row - 1) || next.has(l.row + 1));
+  const used = new Set(
+    table.flatMap((row) =>
+      row
+        .slice(1)
+        .filter((c) => c !== "")
+        .map(tidy)
+    )
+  );
+  const codes = new Map(lines.map((l) => [l.code, l.name]));
+  const inGrid = [...codes.keys()].filter((code) => used.has(code));
+  if (codes.size < 2 || inGrid.length * 2 < codes.size) {
+    return { table, key: [] };
+  }
+  const keyRows = new Set(lines.map((l) => l.row));
+  lines.forEach((l) => {
+    const above = l.row - 1;
+    if (above >= 0 && KEY_HEADING.test(onlyFirstCell(table[above]) || "")) {
+      keyRows.add(above);
+    }
+  });
+  const coded = (c, i) => {
+    return i > 0 && codes.has(tidy(c)) ? codes.get(tidy(c)) : c;
+  };
+  const read = table.map((row, r) => (keyRows.has(r) ? [] : row.map(coded)));
+  return {
+    table: read,
+    key: [...codes].map(([code, name]) => ({ code, name }))
+  };
+}
+
+// ---------- a key of colours (INGEST-2.19) ----------
+
+const COLOUR_LINE =
+  /^\s*(red|orange|yellow|green|blue|purple|violet|pink|grey|gray|brown|black|teal|light\s+\w+|dark\s+\w+)\s*(?:=|:|–|—|\s-\s)\s*(\S.*?)\s*$/i;
+
+/**
+ * INGEST-2.19: a key line naming a colour ("Blue = Swim"), alone in its row, whose colour no
+ * cell is written as: the activity was shown only by its cells' colour, which a file loses on
+ * export, so its cells are blank. Never read as free time on its own: the director is asked
+ * (proposal.js). The lines are not read as part of any schedule. { table, colours: [{ colour,
+ * name }] }.
+ */
+export function readColourKey(table) {
+  const used = new Set(
+    table.flatMap((row) => row.filter((c) => c !== "").map(looseKey))
+  );
+  const colours = [];
+  const rows = new Set();
+  table.forEach((row, r) => {
+    const m = COLOUR_LINE.exec(onlyFirstCell(row) || "");
+    if (m && !used.has(looseKey(m[1]))) {
+      colours.push({ colour: tidy(m[1]), name: tidy(m[2]) });
+      rows.add(r);
+    }
+  });
+  return {
+    table: colours.length
+      ? table.map((row, r) => (rows.has(r) ? [] : row))
+      : table,
+    colours
+  };
+}
+
+// ---------- the time written in every cell (INGEST-2.12) ----------
+
+const LEADING_TIME =
+  /^\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:[ap]\.?m\.?)?\s*(?:-|–|—|to)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:[ap]\.?m\.?)?)\s+(\S.*)$/i;
+
+/** A row whose cells after the first all start with the same time range: that time, else null. */
+function sharedCellTime(row) {
+  const cells = row.slice(1).filter((c) => c !== "");
+  if (cells.length < 2) {
+    return null;
+  }
+  const times = cells.map((c) => LEADING_TIME.exec(c));
+  if (times.some((m) => !m || !timeRange(m[1]))) {
+    return null;
+  }
+  const first = tidy(times[0][1]);
+  return times.every((m) => tidy(m[1]) === first) ? first : null;
+}
+
+/**
+ * INGEST-2.12: a page with no time column whose cells each carry their block's time ("9-9:45
+ * Art", "12:00-12:45 Lunch"): the time, the same across a row, is that row's time block, and the
+ * cell is the rest ("Art"). The first column keeps its name ("Period 1 (9-9:45)"). Read only when
+ * two rows or more are written so; a row whose cells give different times is left as it is.
+ */
+export function timesOutOfCells(table) {
+  const times = table.map(sharedCellTime);
+  if (times.filter(Boolean).length < 2) {
+    return table;
+  }
+  return table.map((row, r) => {
+    const time = times[r];
+    if (!time) {
+      return row;
+    }
+    const label = row[0] ? `${row[0]} (${time})` : time;
+    return [
+      label,
+      ...row.slice(1).map((c) => (c === "" ? c : LEADING_TIME.exec(c)[2]))
+    ];
+  });
+}
+
 /** A page whose rows are for several weeks (a week column), split into one page per week. */
 function byWeek(page, weeks) {
   const labels = [...new Set(weeks)];
@@ -439,11 +675,17 @@ function byWeek(page, weeks) {
  * or a parsed CSV); `merges` are SheetJS's merged ranges (0-based, inclusive), of which vertical
  * ones become blocks spanned. A sheet may hold several schedules one under another.
  */
-export function sheetToPages(sheet) {
+export function sheetToPages(sheet, options = {}) {
   const table = (sheet.rows || []).map((row) => {
     return Array.isArray(row) ? row.map(cellText) : [];
   });
-  const split = splitWeekColumn(table, sheet.merges);
+  const keyed = readKey(readColourKey(table).table);
+  const cellsRead = timesOutOfCells(keyed.table);
+  // A caller that turns sheets itself (a special day's schedule, c/shoreshSpecialSchedule).
+  const upright = options.asWritten
+    ? { table: cellsRead, merges: sheet.merges }
+    : standUpright(cellsRead, sheet.merges);
+  const split = splitWeekColumn(upright.table, upright.merges);
   const labelColumns = labelColumnCount(split.table);
   const sections = new SectionReader(split.table, labelColumns).read();
   const unmerged = { ...sheet, merges: split.merges };
@@ -474,10 +716,17 @@ export function sheetHasContent(sheet) {
 export function filesToPages(files, options = {}) {
   const pages = [];
   const unread = [];
+  const colours = [];
   const perFile = (files || []).map((file) => {
     const read = [];
     for (const sheet of file.sheets || []) {
-      const found = sheetToPages(sheet);
+      const rows = (sheet.rows || []).map((row) => {
+        return Array.isArray(row) ? row.map(cellText) : [];
+      });
+      readColourKey(rows).colours.forEach((c) =>
+        colours.push({ ...c, file: file.name })
+      );
+      const found = sheetToPages(sheet, options);
       if (found.length === 0 && sheetHasContent(sheet)) {
         unread.push({ file: file.name, sheet: sheet.name });
       }
@@ -495,6 +744,11 @@ export function filesToPages(files, options = {}) {
       // Where the page's name may come from, most specific first: a title line above the
       // grid, the sheet's name (unless it is "Sheet1"), the file's name.
       const sheetTitle = isGenericTitle(page.sheet) ? "" : page.sheet;
+      // A comma-separated file's one sheet is named after the file: no name of its own.
+      const ownSheet =
+        !!sheetTitle &&
+        (file.sheets || []).length === 1 &&
+        page.sheet !== file.name;
       pages.push({
         ...page,
         file: file.name,
@@ -504,12 +758,13 @@ export function filesToPages(files, options = {}) {
           file: fileTitle,
           fileWeek: weekInFileName(fileTitle, options.maxWeek),
           maxWeek: options.maxWeek,
-          severalSheets
+          severalSheets,
+          ownSheet
         }
       });
     });
   }
-  return { pages, unread };
+  return { pages, unread, colours };
 }
 
 // ---------- a note written above every page (INGEST-2.7) ----------
@@ -548,7 +803,7 @@ function sheetsNameTheirPages(read, maxWeek) {
   const names = [...new Set(read.map((p) => p.sheet))];
   const onlyDayOrWeek = (name) =>
     withoutWeek(name, { maxWeek })
-      .split(/[^A-Za-z]+/)
+      .split(/[^\p{L}]+/u)
       .every((w) => !w || dayOf(w));
   return (
     names.length > 1 &&

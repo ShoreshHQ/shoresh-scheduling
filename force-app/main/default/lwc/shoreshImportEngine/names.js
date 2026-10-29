@@ -88,8 +88,28 @@ function oneLetterApart(a, b) {
 }
 
 /** Why two names may be the same ("spelling", "ending", "letter"), or null. */
+/**
+ * INGEST-2.14: names that differ only in a word of one letter ("Bunk A" / "Bunk B", "ניצנים א" /
+ * "ניצנים ב") are lettered, as "Bunk 1" / "Bunk 2" are numbered: two names, never a slip.
+ */
+function letteredApart(a, b) {
+  const words = (x) => String(x).trim().toLowerCase().split(/\s+/);
+  const wa = words(a);
+  const wb = words(b);
+  if (wa.length !== wb.length) {
+    return false;
+  }
+  const differ = wa.filter((w, i) => w !== wb[i]);
+  return (
+    differ.length === 1 &&
+    wa.every(
+      (w, i) => w === wb[i] || (/^\p{L}$/u.test(w) && /^\p{L}$/u.test(wb[i]))
+    )
+  );
+}
+
 export function similarity(a, b) {
-  if (a === b) {
+  if (a === b || letteredApart(a, b)) {
     return null;
   }
   const fa = foldName(a);
@@ -107,6 +127,19 @@ export function similarity(a, b) {
     return "ending";
   }
   return oneLetterApart(fa, fb) ? "letter" : null;
+}
+
+/**
+ * INGEST-2.15: two names one letter apart that are both in wide use (each in at least
+ * BOTH_IN_USE cells, the rarer at least half as often as the other) are two names, not a slip:
+ * a slip is the odd cell, not half the schedule ("כדורגל" / "כדורסל", soccer and basketball,
+ * each all week). A rare one ("Musik" twice beside "Music" twenty times) is still asked.
+ */
+export const BOTH_IN_USE = 3;
+
+function bothInUse(aCount, bCount) {
+  const [few, many] = [aCount || 0, bCount || 0].sort((x, y) => x - y);
+  return few >= BOTH_IN_USE && few * 2 >= many;
 }
 
 function pairId(kind, a, b) {
@@ -130,7 +163,12 @@ export function similarPairs(kind, fileNames, campNames) {
     for (let j = i + 1; j < files.length; j++) {
       const reason = similarity(files[i].name, files[j].name);
       // A name the camp already has is asked about as the camp's (below), not as a file name.
-      if (reason && !camp.has(files[i].name) && !camp.has(files[j].name)) {
+      if (
+        reason &&
+        !camp.has(files[i].name) &&
+        !camp.has(files[j].name) &&
+        !(reason === "letter" && bothInUse(files[i].count, files[j].count))
+      ) {
         pairs.push({
           id: pairId(kind, files[i].name, files[j].name),
           kind,

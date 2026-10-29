@@ -2652,14 +2652,22 @@ async function rootsHand() {
  * is read as an elective set (electives slice E9), said with its one escape, Not electives.
  */
 function lastYearSheet() {
+  // Two activities in one cell and a colour key (INGEST-2.18, 2.19): their questions are shown,
+  // answered by keyboard and checked by axe with the rest.
   return [
     "Time,Check bunk A,Check bunk B",
     "9:00-9:45,Music,Check pottery",
     "10:00-10:45,Check pottery,Musik",
     "12:00-12:45,Lunch,Lunch",
-    "1:00-1:45,Chugim,Chugim"
+    "1:00-1:45,Chugim,Chugim",
+    "2:00-2:45,Music/Check pottery,",
+    "",
+    "Blue = Check canoe"
   ].join("\n");
 }
+
+/** The level-5 questions the check's file asks (INGEST-2.18, 2.19), by id. */
+const WEIRD_QUESTIONS = ["list|Music/Check pottery", "colour|Check canoe"];
 
 /** The ids of the import's questions still open (marked with the needs-a-look corner). */
 async function openQuestionIds() {
@@ -2814,6 +2822,20 @@ async function importLastYear() {
     );
   }
   await axe(`${S}: the one page`);
+  const asked = await openQuestionIds();
+  const missing = WEIRD_QUESTIONS.filter((id) => !asked.includes(id));
+  if (missing.length === 0)
+    results.pass(
+      S,
+      "Two activities in a cell and a colour key are asked",
+      WEIRD_QUESTIONS.join("; ")
+    );
+  else
+    results.fail(
+      S,
+      "Two activities in a cell and a colour key are asked",
+      `Not asked: ${missing.join("; ")}; open: ${asked.join("; ")}.`
+    );
   if (args.includes("--shots")) {
     await page.mouse.move(2, 2);
     await page.screenshot({ path: join(shotsDir, "import-review.png") });

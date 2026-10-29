@@ -61,10 +61,12 @@ function turned(sheet) {
  * is read as it is.
  */
 export function pagesOf(file) {
-  const down = filesToPages([file]).pages;
-  const across = filesToPages([
-    { ...file, sheets: (file.sheets || []).map(turned) }
-  ]).pages;
+  // Read as written: this reader turns the file itself (the import stands grids up, INGEST-2.11).
+  const down = filesToPages([file], { asWritten: true }).pages;
+  const across = filesToPages(
+    [{ ...file, sheets: (file.sheets || []).map(turned) }],
+    { asWritten: true }
+  ).pages;
   const timed = (pages) =>
     pages.length > 0 && timesAlong(pages[0].rows.map((row) => row.label));
   if (timed(down) && timed(across)) {

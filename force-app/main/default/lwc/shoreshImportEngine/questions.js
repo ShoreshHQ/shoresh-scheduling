@@ -16,7 +16,7 @@ import {
   electiveWord
 } from "./electives";
 import { LEAVE_OUT } from "./reading";
-import { NO_DIVISION, blocksOf } from "./reading-constants";
+import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock, weekOrder } from "./text";
 
 function article(word) {
@@ -685,6 +685,9 @@ function electiveCard(ask, t, proposal) {
 
 /** A cell that looks like a list but not surely one (desktop D3-C): asked once. */
 function listCard(ask, t) {
+  if (ask.twoActivities) {
+    return twoActivitiesCard(ask, t);
+  }
   return {
     id: ask.id,
     stage: "review",
@@ -705,7 +708,60 @@ function listCard(ask, t) {
   };
 }
 
+/**
+ * INGEST-2.18: two activities in one cell ("Swim/Art"), Greg's wording (2026-10-28). Half the
+ * period each comes in as one activity named as the cell (a period is not split in two); the
+ * group splitting is a choice of the two, as "A choice of" is.
+ */
+function twoActivitiesCard(ask, t) {
+  const [a, b] = ask.parts;
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `Half the period each, or does the ${t.sIn("Group")} split?`,
+    subject: ask.name,
+    subtitle: `${quoted(ask.name)}: ${ask.group}, ${ask.day}.`,
+    learn: { shape: "two" },
+    options: [
+      {
+        value: ONE_ACTIVITY,
+        label: "Half the period each",
+        description: `${a}, then ${b}: comes in as one ${t.sIn("Activity")}, ${quoted(ask.name)}.`
+      },
+      {
+        value: SEVERAL,
+        label: `The ${t.sIn("Group")} splits`,
+        description: `${capital(electiveWord(t))}, with ${a} and ${b} proposed as choices.`
+      },
+      leaveOut(`${quoted(ask.name)} is not added this time.`)
+    ]
+  };
+}
+
+/** INGEST-2.19: an activity shown only by colour, whose cells came in blank. */
+function colourCard(ask) {
+  const name = quoted(ask.name);
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `Where was ${name}? The file showed it only in ${ask.colour.toLowerCase()}.`,
+    subject: ask.name,
+    subtitle: `The colour did not come through, so its cells are blank. To bring its times in, type ${ask.name} into those cells and upload the file again.`,
+    options: [
+      {
+        value: COLOUR_ADD,
+        label: `Add ${name} with no times yet`,
+        description: `Its cells stay empty; place it on the schedule after.`
+      },
+      leaveOut(`${name} is not added; its cells stay empty.`)
+    ]
+  };
+}
+
 const CARDS = {
+  colour: colourCard,
   week: weekCard,
   specialDayClash: specialDayClashCard,
   kind: kindCard,

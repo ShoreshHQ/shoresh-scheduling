@@ -16,6 +16,7 @@ import {
   veryHardCamps
 } from "../../../../../../scripts/import-corpus/level4";
 import {
+  decisionCamps5,
   scoreWeirdCamp,
   weirdCamp,
   weirdCamps
@@ -253,27 +254,15 @@ describe("Import last year on two-program camps with a special day (level 4, Gre
 });
 
 // Level 5, really weird: one weird trait per camp (level5.js). The first 40 camps, four of each
-// trait. Baseline 2026-10-28, before any engine change for them: 14 perfect (hugeCamp, longDay,
-// multiActivity, some oneGroup). Wrong: transposed grids, times in cells (Monday lost), letter
-// codes read as activities, Hebrew sheet names, one-day set times read as recurring, and the
-// color-only camps read on without asking ("silent").
+// trait. Baseline 2026-10-28, before any engine change for them: 14 perfect. After INGEST-2.11 to
+// 2.19 (a grid on its side, times in cells, letter codes, Hebrew names, one group, a colour key,
+// two activities in a cell) and the one-day truth corrected (Greg's decision 3, INGEST-3.4): all
+// 40 right, asking only where the director must say (a colour key, "Swim/Art").
 const CEILING_5 = {
-  perfectAtLeast: 14,
+  perfectAtLeast: 40,
   errors: 0,
-  questions: { division: 2, cross: 41, layout: 2, list: 4, similar: 30 },
-  wrong: {
-    programs: 3,
-    weeks: 3,
-    days: 19,
-    blocks: 32,
-    divisions: 9,
-    groups: 128,
-    fixed: 84,
-    activities: 80,
-    cells: 5798,
-    recurring: 6,
-    silent: 4
-  }
+  questions: { colour: 4, list: 4 },
+  wrong: {}
 };
 
 describe("Import last year on really weird made-up camps (level 5)", () => {
@@ -310,6 +299,27 @@ describe("Import last year on really weird made-up camps (level 5)", () => {
       wrong: { cells: 0 }
     }));
     expect(silent).toMatchObject({ perfect: false, wrong: { silent: 1 } });
+  });
+});
+
+// Greg's level-5 decisions 1 and 2 (2026-10-28): "🏊 Swim" is Swim with the emoji kept in the
+// notes (INGEST-2.20); "Art (Barn)" is Art at the Barn when two activities are there, else one
+// name (INGEST-2.21). The first 32 such camps, half of each: 8 of 32 right before the engine read
+// them (only the one-name brackets), every one now.
+describe("Import last year on emoji and places in brackets (level 5, Greg's decisions)", () => {
+  const deps = { engine, XLSX, terms: buildTerms([]) };
+  const results = decisionCamps5(32).map((camp) =>
+    scoreWeirdCamp(camp, deps, scoreCamp)
+  );
+  const totals = summarise(results);
+
+  it("reads every camp right: plain names, the emoji in the notes, shared places as places", () => {
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(32);
+    expect(totals.questions).toEqual({});
+    const traits = results.map((r) => r.camp.variations[0]);
+    expect(traits.filter((t) => t === "emoji")).toHaveLength(16);
+    expect(results.some((r) => (r.camp.truth.places || []).length)).toBe(true);
   });
 });
 

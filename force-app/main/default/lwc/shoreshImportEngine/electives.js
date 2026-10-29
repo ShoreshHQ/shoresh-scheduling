@@ -191,6 +191,7 @@ export function readElectives(usable, ctx) {
   const deleted = [];
   const texts = new Map();
   const found = new Map();
+  const named = new Set(usable.map((p) => foldName(p.text)));
   for (const text of [...new Set(usable.map((p) => p.text))].sort(byText)) {
     const cells = usable.filter((p) => p.text === text);
     let reading = readingOf(text, t);
@@ -199,7 +200,21 @@ export function readElectives(usable, ctx) {
     }
     if (reading.ask) {
       const id = `list|${text}`;
-      asks.push({ id, type: "list", name: text, parts: reading.parts });
+      // INGEST-2.18 (Greg, 2026-10-28, level-5 decision 4): two activities the files name on
+      // their own elsewhere ("Swim/Art") are asked as half the period each, or the group split.
+      const twoActivities =
+        reading.parts.length === 2 &&
+        reading.parts.every((part) => named.has(foldName(part)));
+      const where = cells[0];
+      asks.push({
+        id,
+        type: "list",
+        name: text,
+        parts: reading.parts,
+        twoActivities,
+        group: where.group,
+        day: where.day
+      });
       const answer = answers[id];
       if (answer === ONE_ACTIVITY) {
         continue;

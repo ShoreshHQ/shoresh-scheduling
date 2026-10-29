@@ -146,7 +146,7 @@ function median(values) {
 function morningOrEvening(blocks, context) {
   for (const b of blocks.filter((x) => x.guessedPm && x.start >= 17 * 60)) {
     // A block that is only a time is named by what it holds.
-    const name = /[A-Za-z]/.test(b.name) ? b.name : b.holds || "This block";
+    const name = /\p{L}/u.test(b.name) ? b.name : b.holds || "This block";
     // Per time and what it holds: two programs' "6:00-6:30" rows are separate questions.
     const id = `ampm|${b.label}|${name}`;
     context.asks.push({

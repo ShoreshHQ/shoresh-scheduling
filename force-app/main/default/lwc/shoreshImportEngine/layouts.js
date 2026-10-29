@@ -76,7 +76,18 @@ function blocksCallTheRoll(page) {
     }))
     .filter((row) => row.names.length > 0);
   const all = new Set(rows.flatMap((row) => row.names));
-  if (rows.length < 2 || all.size < 2) {
+  // INGEST-2.17: one group alone, under a different activity block to block, calls a roll of
+  // one; the same name in one column all day is an activity (an all-camp page of one group).
+  const columnsUsed = new Set(
+    page.rows.flatMap((row) =>
+      row.cells.map((cell, c) => (cell ? c : -1)).filter((c) => c >= 0)
+    )
+  );
+  if (
+    rows.length < 2 ||
+    all.size < 1 ||
+    (all.size < 2 && columnsUsed.size < 2)
+  ) {
     return false;
   }
   const full = rows.filter(
@@ -142,6 +153,10 @@ function cellsAreGroups(page, headings, known) {
  */
 export function detectLayout(page, known) {
   const daysAcross = columnsAreDays(page);
+  // INGEST-2.17: one column, not days: one group's day (a by-activity page names many).
+  if (!daysAcross && page.columns.filter(Boolean).length === 1) {
+    return { layout: "allCamp", daysAcross, confident: true };
+  }
   const headings = daysAcross ? [pageName(page)] : page.columns;
   const groups = cellsAreGroups(page, headings, known);
   if (daysAcross) {
@@ -180,8 +195,9 @@ export function pageWeek(page) {
 }
 
 function isOnlyDayOrWeek(text, maxWeek) {
+  // Any script's letters: a Hebrew title is a name, not nothing (INGEST-2.16).
   const rest = withoutWeek(text, { maxWeek })
-    .split(/[^A-Za-z]+/)
+    .split(/[^\p{L}]+/u)
     .filter((w) => w && !dayOf(w));
   return rest.length === 0;
 }
@@ -189,9 +205,11 @@ function isOnlyDayOrWeek(text, maxWeek) {
 /** The name a page-per-group (or page-per-activity) page gives its group: title, sheet, or file. */
 export function pageName(page) {
   const n = page.names || {};
+  // INGEST-2.17: a workbook's one sheet with a name of its own ("Bunk 1") names its page; the
+  // file's name is most often the camp's.
   const candidates = [
     n.section,
-    n.severalSheets ? n.sheet : "",
+    n.severalSheets || n.ownSheet ? n.sheet : "",
     n.file,
     n.sheet
   ];
@@ -270,6 +288,8 @@ function readCampPage(reader, page, day) {
           day,
           text: named.name,
           place: named.place,
+          bracket: named.bracket,
+          emoji: named.emoji,
           span: row.spans[c]
         });
       }
@@ -300,6 +320,8 @@ function readGroupPage(reader, page) {
           day,
           text: named.name,
           place: named.place,
+          bracket: named.bracket,
+          emoji: named.emoji,
           span: row.spans[c]
         });
       }
@@ -331,6 +353,8 @@ function readActivityPage(reader, page, day, daysAcross) {
         day: columnDay,
         text: named.name,
         place: named.place,
+        bracket: named.bracket,
+        emoji: named.emoji,
         span: row.spans[c]
       });
     });

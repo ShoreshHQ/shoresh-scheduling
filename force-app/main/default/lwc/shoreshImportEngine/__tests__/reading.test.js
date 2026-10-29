@@ -69,12 +69,21 @@ describe("reading a cell", () => {
   });
 
   it("reads a name and its place, and skips what names nothing", () => {
-    expect(cellName("Swim (Pool)")).toEqual({ name: "Swim", place: "Pool" });
-    expect(cellName("Art @ Art room")).toEqual({
-      name: "Art",
-      place: "Art room"
+    // A bracket's place is kept only where two activities are there (INGEST-2.21, reading.js).
+    expect(cellName("Swim (Pool)")).toMatchObject({
+      name: "Swim",
+      place: "Pool",
+      bracket: true
     });
-    expect(cellName("Lunch 12:00")).toEqual({ name: "Lunch", place: null });
+    expect(cellName("Art @ Art room")).toMatchObject({
+      name: "Art",
+      place: "Art room",
+      bracket: false
+    });
+    expect(cellName("Lunch 12:00")).toMatchObject({
+      name: "Lunch",
+      place: null
+    });
     expect(cellName("")).toBeNull();
     expect(cellName("-")).toBeNull();
     expect(cellName("Change")).toBeNull();
