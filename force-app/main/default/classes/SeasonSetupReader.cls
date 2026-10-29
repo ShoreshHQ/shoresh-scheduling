@@ -8,6 +8,8 @@
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
+  // Outside systems whose last batch Roots offers to undo: more than a camp ever connects.
+  private static final Integer MAX_SOURCES = 20;
   /**
    * The season for the setup screen; refused when it is gone or out of reach, in the words of the
    * camp the screen is showing (the season's own camp cannot be read when it is out of reach).
@@ -87,19 +89,25 @@ public with sharing class SeasonSetupReader {
       WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ];
-    // The most recent import, for Roots' Undo last import; none once it is undone (Greg,
-    // 2026-10-17: Undo goes back one import only, and comes back with the next import).
-    List<Import__c> imports = [
-      SELECT Id, Files__c, CreatedDate, UndoneAt__c, Open__c
+    // The director's most recent import, for Roots' Undo last import; none once it is undone
+    // (Greg, 2026-10-17: Undo goes back one import only, and comes back with the next import).
+    // Each outside system's last batch has its own Undo, by the same rule (API-2.6).
+    result.lastImport = lastStanding(seasonId, null);
+    result.lastFromOutside = new List<Import__c>();
+    for (AggregateResult source : [
+      SELECT Source__c sent
       FROM Import__c
-      WHERE Season__c = :seasonId
+      WHERE Season__c = :seasonId AND Source__c != NULL
       WITH USER_MODE
-      ORDER BY CreatedDate DESC, Name DESC
-      LIMIT 1
-    ];
-    result.lastImport = imports.isEmpty() || imports[0].UndoneAt__c != null
-      ? null
-      : imports[0];
+      GROUP BY Source__c
+      ORDER BY Source__c
+      LIMIT :MAX_SOURCES
+    ]) {
+      Import__c last = lastStanding(seasonId, (String) source.get('sent'));
+      if (last != null) {
+        result.lastFromOutside.add(last);
+      }
+    }
     // The Special events screen's items, plans in brief and days (ADR 0014 choice 11).
     result.special = SpecialItems.forSeason(seasonId);
     // The Electives screen's sets, offerings and linked choices (repo ADR 0018, slice E4).
@@ -108,6 +116,21 @@ public with sharing class SeasonSetupReader {
     // What an import guessed and no one has looked at or changed since (ADR 0006 §21).
     result.guesses = SetupGuesses.forSetup(result);
     return result;
+  }
+
+  /** The season's last import from one source (null: the director's own), unless it is undone. */
+  private static Import__c lastStanding(Id seasonId, String source) {
+    List<Import__c> imports = [
+      SELECT Id, Files__c, CreatedDate, UndoneAt__c, Open__c, Source__c
+      FROM Import__c
+      WHERE Season__c = :seasonId AND Source__c = :source
+      WITH USER_MODE
+      ORDER BY CreatedDate DESC, Name DESC
+      LIMIT 1
+    ];
+    return imports.isEmpty() || imports[0].UndoneAt__c != null
+      ? null
+      : imports[0];
   }
 
   private static List<ProgramSetup> readPrograms(Id seasonId) {
@@ -297,6 +320,9 @@ public with sharing class SeasonSetupReader {
     public List<CampLabels.TermLabel> labels;
     @AuraEnabled
     public Import__c lastImport;
+    /** Each outside system's last batch that stands, by source (API-2.6). */
+    @AuraEnabled
+    public List<Import__c> lastFromOutside;
     @AuraEnabled
     public List<SetupGuesses.Guess> guesses;
     @AuraEnabled

@@ -3,7 +3,8 @@
  * and puts back what it changed, but keeps anything edited since or still in use, and says
  * which. Only the season's most recent import can be undone, and only once (Greg, 2026-10-17):
  * once it is undone, no earlier import can be undone until the next import. Setup lists
- * imported on a screen (slice 4c) are imports too.
+ * imported on a screen (slice 4c) are imports too. The director's imports and each outside
+ * system's batches each have their own last import, undone on its own (API-2.6).
  */
 public with sharing class ImportUndo {
   /** What Undo did, for the screen. */
@@ -33,7 +34,7 @@ public with sharing class ImportUndo {
   private static void deleteCreated(Result result, Import__c done) {
     ImportedWeekGuard.allow();
     try {
-      new ImportUndoDeletes(result)
+      new ImportUndoDeletes(result, new ImportUndoLater(done))
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
     } finally {
       ImportedWeekGuard.done();
@@ -120,7 +121,15 @@ public with sharing class ImportUndo {
       // A second Undo, or an import saving, in the same season waits here; read again after.
       lockSeason(found[0].Season__c);
       found = [
-        SELECT Id, Season__c, Created__c, Changed__c, UndoneAt__c, Open__c
+        SELECT
+          Id,
+          Season__c,
+          Created__c,
+          Changed__c,
+          UndoneAt__c,
+          Open__c,
+          Source__c,
+          CreatedDate
         FROM Import__c
         WHERE Id = :importId
         WITH USER_MODE
@@ -132,7 +141,7 @@ public with sharing class ImportUndo {
       );
     }
     Import__c done = found[0];
-    if (latest(done.Season__c) != done.Id) {
+    if (latestFrom(done.Season__c, done.Source__c) != done.Id) {
       throw new ShoreshException('Only the last import can be undone.');
     }
     return done;
@@ -218,6 +227,25 @@ public with sharing class ImportUndo {
       ORDER BY CreatedDate DESC, Name DESC
       LIMIT 1
     ];
+    return imports.isEmpty() ? null : imports[0].Id;
+  }
+
+  /**
+   * The season's most recent import from one source, undone or not (API-2.6): the director's own
+   * (source blank) or one outside system's. Each has its own Undo, so a batch from another system
+   * never takes the director's Undo away, nor the director's import a system's.
+   */
+  public static Id latestFrom(Id seasonId, String source) {
+    String key = String.isBlank(source) ? null : source;
+    List<Import__c> imports = [
+      SELECT Id
+      FROM Import__c
+      WHERE Season__c = :seasonId AND Source__c = :key
+      WITH USER_MODE
+      ORDER BY CreatedDate DESC, Name DESC
+      LIMIT 1
+    ];
+    // Text is compared without case: "CampMinder" and "campminder" are one system.
     return imports.isEmpty() ? null : imports[0].Id;
   }
 }

@@ -417,6 +417,29 @@
                   active={learnedActive}
                 ></c-shoresh-learned>
               </template>
+              <!-- Each outside system's last batch, with its own Undo (API-2.6) -->
+              <template for:each={lastFromOutside} for:item="last">
+                <div key={last.id} data-id="outside-undo">
+                  <div class="outside-undo">
+                    <span class="outside-what">{last.what}</span>
+                    <lightning-button
+                      data-id="undo-outside"
+                      data-import-id={last.id}
+                      data-files={last.files}
+                      label="Undo"
+                      onclick={handleUndoOutside}
+                    ></lightning-button>
+                  </div>
+                  <!-- Its questions and conflicts, for a person to settle (API-2.2, 4.1) -->
+                  <template lwc:if={last.questions.length}>
+                    <ul class="outside-questions" data-id="outside-questions">
+                      <template for:each={last.questions} for:item="question">
+                        <li key={question.key}>{question.title}</li>
+                      </template>
+                    </ul>
+                  </template>
+                </div>
+              </template>
             </div>
 
             <template lwc:if={setup}>

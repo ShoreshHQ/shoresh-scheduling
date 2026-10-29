@@ -113,7 +113,7 @@ public with sharing class ImportLog {
    */
   public static String openFiles(Id importId) {
     List<Import__c> found = [
-      SELECT Id, Season__c, Open__c, UndoneAt__c
+      SELECT Id, Season__c, Open__c, UndoneAt__c, Source__c
       FROM Import__c
       WHERE Id = :importId
       WITH USER_MODE
@@ -122,7 +122,7 @@ public with sharing class ImportLog {
       found.isEmpty() ||
       found[0].UndoneAt__c != null ||
       String.isBlank(found[0].Open__c) ||
-      ImportUndo.latest(found[0].Season__c) != importId
+      ImportUndo.latestFrom(found[0].Season__c, found[0].Source__c) != importId
     ) {
       throw new ShoreshException(
         'Those questions were answered or undone since. Open Import last year again from Roots.'

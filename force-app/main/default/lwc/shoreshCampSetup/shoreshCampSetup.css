@@ -282,3 +282,21 @@
   padding: 0 var(--shoresh-space-control-x);
   color: var(--shoresh-text-2);
 }
+
+.outside-undo {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s4);
+  padding: var(--shoresh-space-pad);
+}
+
+.outside-what {
+  flex: 1;
+  min-width: 0;
+}
+
+.outside-questions {
+  margin: 0;
+  padding: 0 var(--shoresh-s4) var(--shoresh-s2) calc(var(--shoresh-s4) * 2);
+  list-style: disc;
+}

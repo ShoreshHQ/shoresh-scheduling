@@ -227,6 +227,18 @@ function andList(parts) {
     : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
+/** A batch's questions kept on its import (JSON [{ key, title }]), for the screen. */
+function outsideQuestions(open) {
+  try {
+    const list = JSON.parse(open || "[]");
+    return Array.isArray(list)
+      ? list.map((q, i) => ({ key: `${i}`, title: q && q.title }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
   campId;
@@ -2542,6 +2554,24 @@ export default class ShoreshCampSetup extends LightningElement {
       await this.loadSeason();
       this.seasons = await getSeasons({ campId: this.campId });
     }, this.openFailed);
+  }
+
+  /** In Settings, each outside system's last batch that stands (API-2.6). */
+  get lastFromOutside() {
+    return ((this.setup && this.setup.lastFromOutside) || []).map((last) => ({
+      id: last.Id,
+      files: last[FIELD.Import.Files],
+      what: `Last from ${last[FIELD.Import.Source]}: ${
+        String(last[FIELD.Import.Files] || "").split(" from ")[0]
+      }`,
+      questions: outsideQuestions(last[FIELD.Import.Open])
+    }));
+  }
+
+  /** Settings' Undo of an outside system's last batch: the same as Roots' Undo. */
+  handleUndoOutside(event) {
+    const { importId, files } = event.currentTarget.dataset;
+    return this.handleUndoImport({ detail: { importId, files } });
   }
 
   /** Roots' Undo last import, confirmed first (desktop wording). */

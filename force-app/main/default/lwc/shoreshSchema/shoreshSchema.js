@@ -125,6 +125,7 @@ import importCreated from "@salesforce/schema/Import__c.Created__c";
 import importFiles from "@salesforce/schema/Import__c.Files__c";
 import importOpen from "@salesforce/schema/Import__c.Open__c";
 import importSeason from "@salesforce/schema/Import__c.Season__c";
+import importSource from "@salesforce/schema/Import__c.Source__c";
 import importUndoneAt from "@salesforce/schema/Import__c.UndoneAt__c";
 import learnedEventObject from "@salesforce/schema/LearnedEvent__c";
 import learnedEventAnswerId from "@salesforce/schema/LearnedEvent__c.AnswerId__c";
@@ -468,6 +469,7 @@ export const FIELD = Object.freeze({
     Files: importFiles.fieldApiName,
     Open: importOpen.fieldApiName,
     Season: importSeason.fieldApiName,
+    Source: importSource.fieldApiName,
     UndoneAt: importUndoneAt.fieldApiName
   }),
   LearnedEvent: Object.freeze({

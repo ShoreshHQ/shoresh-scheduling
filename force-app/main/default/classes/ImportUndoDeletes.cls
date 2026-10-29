@@ -120,8 +120,12 @@ public with sharing class ImportUndoDeletes {
   // the special day's name.
   private Map<Id, String> usedByKeptDays = new Map<Id, String>();
 
-  public ImportUndoDeletes(ImportUndo.Result result) {
+  // What later imports from another source changed (API-2.6): theirs too now, so kept.
+  private ImportUndoLater later;
+
+  public ImportUndoDeletes(ImportUndo.Result result, ImportUndoLater later) {
     this.result = result;
+    this.later = later;
   }
 
   public void run(Map<String, Object> created) {
@@ -248,7 +252,7 @@ public with sharing class ImportUndoDeletes {
     for (SObject record : now.values()) {
       List<Object> row = rows.get(record.Id);
       List<String> written = fieldsets[(Integer) row[1]];
-      if (ImportUndoLog.digest(record, written) != (String) row[2]) {
+      if (later.edited(record, written, (String) row[2])) {
         keep(record, result.keptEdited);
       } else if (holding.contains(record.Id)) {
         keep(record, result.keptInUse);

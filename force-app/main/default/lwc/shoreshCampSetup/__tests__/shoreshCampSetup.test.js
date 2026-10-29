@@ -3548,6 +3548,45 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
   });
 
+  it("API-2.6: Settings shows each outside system's last batch with its own Undo", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          lastFromOutside: [
+            {
+              Id: "i2",
+              Files__c: "Campers from CampMinder",
+              Source__c: "CampMinder",
+              Open__c: JSON.stringify([
+                {
+                  key: "incoming|camper|c1",
+                  title: "Which Maya Cohen is this?"
+                }
+              ])
+            }
+          ]
+        })
+      )
+    );
+    LightningConfirm.open.mockResolvedValue(nsRecord(true));
+    undoImport.mockResolvedValue({ removed: 1, restored: 0, kept: [] });
+    const element = await render();
+    const line = q(element, '[data-id="outside-undo"]');
+    expect(line.closest('[data-screen="learned"]')).not.toBeNull();
+    expect(line.textContent).toContain("Last from CampMinder: Campers");
+    expect(q(element, '[data-id="outside-questions"]').textContent).toContain(
+      "Which Maya Cohen is this?"
+    );
+    q(element, 'lightning-button[data-id="undo-outside"]').click();
+    await flush();
+    expect(LightningConfirm.open.mock.calls.at(-1)[0].label).toBe(
+      "Undo the import of Campers from CampMinder?"
+    );
+    expect(undoImport).toHaveBeenCalledWith({ importId: "i2" });
+  });
+
   it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
