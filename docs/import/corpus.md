@@ -209,9 +209,12 @@ programs (INGEST-4.11): 80 more camps (`decisionCamps`, `L4D-001` to `L4D-080`, 
 layout), two programs with a special day in program 1, scored on top of the 320 with every group
 of both programs expected in the special day (`truth.specialDayGroups`; the camp is read again
 with season weeks named as the files name them, since a special day is made only on a season
-week's day). Still left out, since a program's time blocks cannot differ by day yet (weeks.md,
-known limits): a weekend with its own blocks every week (decision 1) and a mid-week day with its
-own blocks in a one-week file (decision 2).
+week's day). Greg's decisions 1 and 2 (2026-10-29, "treat it like a special day", INGEST-4.12):
+16 more camps (`everyWeekCamps`, `L4E-001` to `L4E-016`, two of each layout), half an overnight
+camp of two to four weeks whose Saturday has its own blocks every week, half a one-week file
+whose mid-week day has its own blocks, answered "Every week" (read again with three season
+weeks); each scored with one special day on that day of every week (`truth.specialDayOn`) and
+every group in it. Baseline 2026-10-29: 16 of 16 perfect, nothing asked.
 
     npm run score:import -- --level 4
 

@@ -203,9 +203,10 @@ function programDays(truth, plan, count) {
 function weeksOf(truth) {
   const day = (n) =>
     new Date(Date.UTC(2027, 5, 27 + n)).toISOString().slice(0, 10);
-  return truth.weeks.map((w, i) => ({
+  const count = Math.max(truth.weeks.length, truth.seasonWeeks || 0);
+  return Array.from({ length: count }, (_, i) => ({
     Id: `a0W00000000000${String(i + 1).padStart(2, "0")}AAA`,
-    Name: w.label,
+    Name: (truth.weeks[i] && truth.weeks[i].label) || `Week ${i + 1}`,
     StartDate__c: day(i * 7),
     EndDate__c: day(i * 7 + 6)
   }));
@@ -253,8 +254,21 @@ function wrongReads(truth, proposal, plan, withWeeks) {
       (truth.specialDayGroups
         ? mismatches(
             truth.specialDayGroups,
+            // One special day on every week's day (INGEST-4.12): its groups on each of them.
             (withWeeks ? withWeeks.specialDays : []).flatMap((d) =>
-              d.grid.g.map(([, name]) => `${d.label}|${d.day}|${name}`)
+              [d, ...(d.also || [])]
+                .filter((x) => x.label !== undefined)
+                .flatMap((x) =>
+                  d.grid.g.map(([, name]) => `${x.label}|${d.day}|${name}`)
+                )
+            )
+          )
+        : 0) +
+      (truth.specialDayOn
+        ? mismatches(
+            truth.specialDayOn,
+            (withWeeks ? withWeeks.specialDays : []).flatMap((d) =>
+              [d, ...(d.also || [])].map((x) => `${x.weekName}|${d.day}`)
             )
           )
         : 0),
@@ -322,11 +336,15 @@ export function scoreCamp(camp, deps) {
       files,
       existing: EMPTY_SEASON,
       terms: deps.terms,
-      answers: {},
+      answers: camp.answers || {},
       layouts: {}
     });
     const kinds = kindsById(proposal);
-    for (const card of deps.engine.questionCards(proposal, deps.terms, {})) {
+    for (const card of deps.engine.questionCards(
+      proposal,
+      deps.terms,
+      camp.answers || {}
+    )) {
       if (card.answer === null) {
         const kind = kinds.get(card.id) || "other";
         questions[kind] = (questions[kind] || 0) + 1;
@@ -350,7 +368,7 @@ export function scoreCamp(camp, deps) {
               weeks: (deps.record || ((x) => x))(weeksOf(truth))
             },
             terms: deps.terms,
-            answers: {},
+            answers: camp.answers || {},
             layouts: {}
           })
         : null;

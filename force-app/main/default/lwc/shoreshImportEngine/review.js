@@ -86,7 +86,9 @@ function specialDayLines(proposal, t) {
     .map((n) => ({
       key: n.id,
       id: n.id,
-      name: `${n.week ? `${n.week}'s ` : ""}${n.day}`,
+      name: n.every
+        ? `Every ${n.day}`
+        : `${n.week ? `${n.week}'s ` : ""}${n.day}`,
       detail: "",
       answer: n.answer === "program" ? "program" : "special",
       options: [

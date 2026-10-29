@@ -121,6 +121,52 @@ private class ImportSpecialDayTest {
     }
   }
 
+  // INGEST-4.12
+  @IsTest
+  static void oneSpecialDayOnEveryWeeksDay() {
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      ShoreshTestData.weeks(season.Id, 3);
+      Map<String, Object> plan = planWithSpecialDay(season);
+      Id first = weekOf(season.Id).Id;
+      List<Object> also = new List<Object>();
+      for (Week__c w : [
+        SELECT Id
+        FROM Week__c
+        WHERE Season__c = :season.Id AND Id != :first
+        ORDER BY StartDate__c
+      ]) {
+        also.add(new Map<String, Object>{ 'weekId' => w.Id });
+      }
+      Map<String, Object> day = (Map<String, Object>) ((List<Object>) plan.get(
+        'specialDays'
+      ))[0];
+      day.put('also', also);
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Test.stopTest();
+      Assert.areEqual(1, result.added.get('SpecialDay'), 'one special day');
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM PlanPart__c WHERE Season__c = :season.Id],
+        'one plan, so its times are changed once for every week'
+      );
+      Assert.areEqual(
+        3,
+        [
+          SELECT COUNT()
+          FROM SpecialDate__c
+          WHERE Season__c = :season.Id AND Day__c = 'Friday'
+        ],
+        'on Friday of each of the three weeks'
+      );
+    }
+  }
+
   // INGEST-4.3
   @IsTest
   static void undoTakesTheSpecialDayAway() {

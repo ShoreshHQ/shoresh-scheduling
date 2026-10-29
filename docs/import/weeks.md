@@ -85,10 +85,10 @@ Each rule is clue, meaning, example, test.
    Undo keeps one whose schedule the director saved since). The corpus scorer checks
    the saved plan's program blocks and the special days found.
    Counter-cases, still two programs: different groups on different blocks every day ("different
-   groups on different blocks every day are two programs"); a Friday that differs in every week
-   ("a Friday that differs in every week is not one week's day"); a one-week file, which cannot
-   tell one week's Friday from every week's (`classify.test.js`, "rule 4: Lunch for everyone on
-   a Friday of its own is fixed when fixed at that time Monday to Thursday").
+   groups on different blocks every day are two programs"); a day of its own answered "A second
+   program" (`classify.test.js`, "rule 4: Lunch for everyone on a Friday of its own is fixed when
+   fixed at that time Monday to Thursday"). The same day in every week, or in a one-week file,
+   is rule 12.
 
 4. **A week named by a date goes to the season's week holding it.**
    Clue: a week read as "Week of month/day" (rules 1 and 2), and a season week whose start and
@@ -174,14 +174,35 @@ Each rule is clue, meaning, example, test.
     the other program's Friday as it is". The level-4 decision camps (`decisionCamps`) score every
     group of both programs in the special day. Code: `version.js` `gridOf`, `versionFor`.
 
+12. **A day with its own times every week is one special day on that day of every week**
+    (Greg, 2026-10-29, level-4 decisions 1 and 2: "treat it like a special day").
+    Clue: rule 3's clue, except that the day of its own is the same weekday in every week of the
+    files (a Saturday on its own Shabbat times every week), or the files hold one week; or, on
+    pages that hold every day's blocks (by-group pages), a weekday whose cells use blocks no
+    other day uses, at times that overlap the other days' blocks, in every week it has.
+    Meaning: one special day (named after the day, "Saturday"), with its own time blocks and the
+    file's cells, put on that day of every week of the files: one `SpecialDay__c` and one plan,
+    with a `SpecialDate__c` for each week, so changing its times once changes every week's. No
+    second program, the program's blocks never gain the day's. A one-week file: a weekend day is
+    every week without asking; a mid-week day is asked "Friday has its own times. Every week, or
+    just this once?" ("Every week": on that day of every week of the season; "Just this once",
+    or unanswered: one special day, as rule 3). A season week whose day already holds the camp's
+    own special day keeps it (rule 6, said in the notes). A cell that differs from week to week
+    is placed in no week, each listed as not placed ("it differs from week to week, and one
+    special day has the same schedule every week"), never one week's chosen quietly.
+    Example: level 4 `everyWeekCamps` (`L4E-001` to `L4E-016`).
+    Test: "INGEST-4.12: a Friday on its own times in every week is one special day, on each
+    week's Friday"; "a cell that differs from week to week is placed in no week, and listed";
+    "the same on by-group pages that hold every day's blocks"; "a one-week file's mid-week day
+    asks Every week, or just this once?"; "Every week puts that one special day on every week's
+    day of the season"; "a weekend day in a one-week file is every week, without asking"; the
+    corpus "reads every camp perfectly, one special day on that day of every week"; Apex
+    `ImportSpecialDayTest` "oneSpecialDayOnEveryWeeksDay". Code: `structure.js` `everyWeek`,
+    `ownWeekdays`; `version.js` `everyWeekDays`; the save `ImportSpecialDayWrites` (`also`).
+
 ## Known limits
 
-- A day whose blocks differ in every week (a short Friday every week), or in a one-week file,
-  still reads as a second program, with the groups split into "(schedule 1)" and "(schedule
-  2)", as before. Greg's level-4 decisions 1 and 2 (2026-10-28: a weekend day on its own times
-  every week is one program whose day has its own times; a one-week file's day of its own asks
-  "Every week, or just this once?") are not done: a program's time blocks are the same every day
-  it runs (`TimeBlock__c` belongs to a program, with no day), so "every week" has nowhere to be
-  saved yet.
+- A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a
+  second program, as before.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.

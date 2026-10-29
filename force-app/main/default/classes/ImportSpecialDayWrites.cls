@@ -5,6 +5,8 @@
  * that week's day. The program's own time blocks are not touched. The special day and its day
  * are kept for Undo; its plan goes with it. All or nothing: a plan bigger than one schedule
  * holds, or a day that has a special day the screen did not know about, refuses the import.
+ * A day with its own times every week (INGEST-4.12) is one special day and one plan, on that day
+ * of each of its weeks (`also`): a special date a week.
  */
 public with sharing class ImportSpecialDayWrites {
   private ImportPlan plan;
@@ -22,12 +24,18 @@ public with sharing class ImportSpecialDayWrites {
     }
     ImportVersionWrites versions = new ImportVersionWrites(plan, writer);
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
-    List<Id> weekIds = new List<Id>();
+    List<List<Id>> weekIds = new List<List<Id>>();
     for (ImportPlan.Entry entry : entries) {
       ScheduleGrid grid = versions.specialDayGrid(entry.valuesOf('grid'));
       SpecialImportCheck.checkSize(grid.blocks.size(), grid.groups.size());
       grids.add(grid);
-      weekIds.add(versions.weekOf(entry));
+      List<Id> weeks = new List<Id>{ versions.weekOf(entry) };
+      for (Object also : entry.objects('also')) {
+        weeks.add(
+          versions.weekOf(new ImportPlan.Entry((Map<String, Object>) also))
+        );
+      }
+      weekIds.add(weeks);
     }
     checkFree(entries, weekIds);
     List<SpecialDay__c> days = new List<SpecialDay__c>();
@@ -44,14 +52,16 @@ public with sharing class ImportSpecialDayWrites {
     List<PlanPart__c> parts = new List<PlanPart__c>();
     for (Integer i = 0; i < entries.size(); i++) {
       writer.result.countAdded('SpecialDay');
-      dates.add(
-        new SpecialDate__c(
-          Season__c = plan.seasonId,
-          SpecialDay__c = days[i].Id,
-          Week__c = weekIds[i],
-          Day__c = entries[i].text('day')
-        )
-      );
+      for (Id weekId : weekIds[i]) {
+        dates.add(
+          new SpecialDate__c(
+            Season__c = plan.seasonId,
+            SpecialDay__c = days[i].Id,
+            Week__c = weekId,
+            Day__c = entries[i].text('day')
+          )
+        );
+      }
       parts.addAll(partsOf(days[i].Id, grids[i]));
     }
     writer.saveTracked('SpecialDate', dates);
@@ -82,7 +92,10 @@ public with sharing class ImportSpecialDayWrites {
    * (INGEST-4.6, 4.9): the screen leaves out a day the camp's special day already has, so one
    * found here was added since the files were read.
    */
-  private void checkFree(List<ImportPlan.Entry> entries, List<Id> weekIds) {
+  private void checkFree(
+    List<ImportPlan.Entry> entries,
+    List<List<Id>> weekIds
+  ) {
     Map<String, String> taken = new Map<String, String>();
     for (SpecialDate__c row : [
       SELECT Week__c, Day__c, SpecialDay__r.Name
@@ -94,21 +107,30 @@ public with sharing class ImportSpecialDayWrites {
     }
     Set<String> seen = new Set<String>();
     for (Integer i = 0; i < entries.size(); i++) {
-      String day = entries[i].text('day');
-      String at = weekIds[i] + '|' + day;
-      if (taken.containsKey(at)) {
-        throw new ShoreshException(
-          day +
-            ' of that week now has ' +
-            taken.get(at) +
-            ', added after these files were read. Nothing was saved: read the files again to see it, then save.'
-        );
+      for (Id weekId : weekIds[i]) {
+        checkDay(weekId + '|' + entries[i].text('day'), taken, seen);
       }
-      if (!seen.add(at)) {
-        throw new ShoreshException(
-          'Two of the files\' days would be the same day\'s special day. Nothing was saved: answer which one it is, then save.'
-        );
-      }
+    }
+  }
+
+  private void checkDay(
+    String at,
+    Map<String, String> taken,
+    Set<String> seen
+  ) {
+    String day = at.substringAfter('|');
+    if (taken.containsKey(at)) {
+      throw new ShoreshException(
+        day +
+          ' of that week now has ' +
+          taken.get(at) +
+          ', added after these files were read. Nothing was saved: read the files again to see it, then save.'
+      );
+    }
+    if (!seen.add(at)) {
+      throw new ShoreshException(
+        'Two of the files\' days would be the same day\'s special day. Nothing was saved: answer which one it is, then save.'
+      );
     }
   }
 }
