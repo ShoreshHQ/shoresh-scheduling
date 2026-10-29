@@ -5248,6 +5248,19 @@ ScheduleDaySaves.write(version.Id, saves);
 `);
 }
 
+/** Loads the app again (and its camp), so what the check just made by Apex is in what it read. */
+async function reloadApp() {
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.locator(APP).locator("c-shoresh-menu").waitFor({ timeout: 60000 });
+  await pause(3000);
+  if (await exists('lightning-combobox[data-id="camp"]')) {
+    if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
+      throw new Error("The Camp picker was not reached with Tab.");
+    await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
+    await pause(4000);
+  }
+}
+
 /**
  * The Saved versions page (ADR 0014 slice 5), on the version seedSpecials makes: the Tuesday pill
  * names the special day, and chosen, its line shows under the grid (axe); Monday's event is
@@ -5259,6 +5272,8 @@ async function schedulesPage() {
   await step(S, "A special day and an event's own schedule", async () => {
     seedSpecials();
     try {
+      // The special day must be in the camp's setup the app read, for its block to open it.
+      await reloadApp();
       await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       // "Tue" and the special day's flag on the rail, named "Tuesday, Jun 30, <special day>".
@@ -5543,18 +5558,7 @@ async function schedulesRain() {
     try {
       // The page keeps the week's versions as it read them: load it again, so the version just
       // made is in Versions and opens as the newest.
-      await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
-      await page
-        .locator(APP)
-        .locator("c-shoresh-menu")
-        .waitFor({ timeout: 60000 });
-      await pause(3000);
-      if (await exists('lightning-combobox[data-id="camp"]')) {
-        if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
-          throw new Error("The Camp picker was not reached with Tab.");
-        await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
-        await pause(4000);
-      }
+      await reloadApp();
       await openFromMenu(S, /^Saved versions$/);
       await pickWeek();
       const monday = await tabTo(
