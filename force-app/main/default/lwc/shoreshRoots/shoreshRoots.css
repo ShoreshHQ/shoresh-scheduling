@@ -249,6 +249,13 @@
   color: var(--shoresh-text-2);
 }
 
+.incoming-questions {
+  flex: 1 1 100%;
+  margin: 0;
+  padding-left: var(--shoresh-s4);
+  list-style: disc;
+}
+
 /* ---------- the sheet a screen grows out of ---------- */
 
 .sheet {

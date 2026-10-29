@@ -48,6 +48,8 @@ public with sharing class ImportUndo {
     Result result = new Result();
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();
+    // Undoing a batch from another system puts a camper's name and bunk back (API-4.2).
+    OutsideOwned.bringingIn = true;
     try {
       // Put back first (a group moved into a division the import made goes home), then remove.
       Map<String, List<Object>> sorted = ImportUndoEntries.sorted(done);
@@ -73,6 +75,7 @@ public with sharing class ImportUndo {
       Database.rollback(beforeUndo);
       throw e;
     } finally {
+      OutsideOwned.bringingIn = false;
       SetTimeGuard.resume();
     }
     return result;

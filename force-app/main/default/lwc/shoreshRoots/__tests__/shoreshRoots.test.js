@@ -578,6 +578,36 @@ describe("c-shoresh-roots: the camp's workbook", () => {
     });
   });
 
+  it("API-2.2, API-4.1: a batch from another system shows its questions on Roots, with no file to reopen", async () => {
+    const element = await render({
+      ...SETUP,
+      lastImport: {
+        Id: "im2",
+        Files__c: "Elective choices from CampMinder",
+        CreatedDate: "2027-06-20T14:00:00.000Z",
+        Open__c: JSON.stringify([
+          {
+            key: "incoming|choices|a0X1",
+            title:
+              "Maya Cohen's choices for Chugim · Week 1 were changed in Shoresh."
+          }
+        ])
+      }
+    });
+    expect($(element, '[data-id="incoming-questions"]')).toBeNull();
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const button = $(element, 'lightning-button[data-id="import-questions"]');
+    expect(button.label).toBe("1 import question left");
+    button.click();
+    await Promise.resolve();
+    expect(handler).not.toHaveBeenCalled();
+    const list = $(element, '[data-id="incoming-questions"]');
+    expect(list.textContent).toContain(
+      "Maya Cohen's choices for Chugim · Week 1 were changed in Shoresh."
+    );
+  });
+
   it("INGEST-5.5 counter-case: an import with no questions left shows none", async () => {
     const element = await render({
       ...SETUP,

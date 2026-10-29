@@ -33,7 +33,10 @@ public with sharing class ImportFields {
     'LinkedChoiceTime' => LinkedChoiceTime__c.SObjectType,
     // Import last year's week day with its own time blocks (INGEST-4.3).
     'SpecialDay' => SpecialDay__c.SObjectType,
-    'SpecialDate' => SpecialDate__c.SObjectType
+    'SpecialDate' => SpecialDate__c.SObjectType,
+    // A batch from another system (IncomingBatch): campers, their choices and bunks.
+    'Camper' => Camper__c.SObjectType,
+    'Preference' => Preference__c.SObjectType
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
   // ImportStructureWrites, ImportElectiveWrites, ImportVersionWrites, ImportWhoKinds, and the
@@ -198,6 +201,23 @@ public with sharing class ImportFields {
       SpecialDate__c.SpecialDay__c,
       SpecialDate__c.Week__c,
       SpecialDate__c.Day__c
+    },
+    Camper__c.SObjectType => new Set<Schema.SObjectField>{
+      Camper__c.Name,
+      Camper__c.Season__c,
+      Camper__c.CamperNumber__c,
+      Camper__c.OutsideId__c,
+      Camper__c.SourceSystem__c,
+      Camper__c.Withdrawn__c,
+      Camper__c.OutsideChangedAt__c
+    },
+    Preference__c.SObjectType => new Set<Schema.SObjectField>{
+      Preference__c.ElectiveRun__c,
+      Preference__c.Camper__c,
+      Preference__c.Group__c,
+      Preference__c.Choices__c,
+      Preference__c.ImportedChoices__c,
+      Preference__c.ChoicesChangedAt__c
     }
   };
 

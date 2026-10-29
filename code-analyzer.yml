@@ -141,3 +141,22 @@ suppressions:
     - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
       max_suppressed_violations: 1
       reason: "Test fakes a real browser Cmd/Ctrl keydown, which is composed."
+  # The API's records (repo ADR 0024): their fields are the plain-English names an outside system
+  # and a Flow see (camper_name, first_choice), so they don't follow Apex's camelCase (API-1.5).
+  "main/default/classes/IncomingCamper.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 5
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingCamperGroup.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 3
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingCamperElectiveChoice.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 9
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  # A Flow action's answer in a managed package must be global for a camp's Flows to use it.
+  "main/default/classes/IncomingResult.cls":
+    - rule_selector: "pmd:AvoidGlobalModifier"
+      max_suppressed_violations: 1
+      reason: "The Flow actions' answer: global so a camp's Flows can read it."

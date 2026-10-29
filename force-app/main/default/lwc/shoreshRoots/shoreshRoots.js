@@ -42,16 +42,24 @@ const isHand = (key) => typeof key === "string" && key.startsWith("hand:");
 
 /** How many questions an import kept for later (Import__c.Open__c, JSON); 0 if none or unreadable. */
 function openQuestions(text) {
+  return questionList(text).length;
+}
+
+/** The import's open questions, [{ key, title }] (none when unreadable). */
+function questionList(text) {
   if (!text) {
-    return 0;
+    return [];
   }
   try {
     const list = JSON.parse(text);
-    return Array.isArray(list) ? list.length : 0;
+    return Array.isArray(list) ? list : [];
   } catch {
-    return 0;
+    return [];
   }
 }
+
+// What starts the key of a question a batch from another system kept (IncomingBatch).
+const INCOMING = "incoming|";
 
 /**
  * Roots, the home screen: the canasta table (wiki decisions 60 to 68, approved 2026-10-24; repo
@@ -75,6 +83,8 @@ function openQuestions(text) {
  */
 export default class ShoreshRoots extends LightningElement {
   downloading = false;
+  // The last import's questions from another system, open under its row.
+  showIncoming = false;
   /** The season setup from SeasonSetupController. */
   @api setup;
   @api terms;
@@ -440,6 +450,7 @@ export default class ShoreshRoots extends LightningElement {
     });
     const what = `Last import: ${last[FIELD.Import.Files] || "a file"}`;
     const open = openQuestions(last[FIELD.Import.Open]);
+    const questions = questionList(last[FIELD.Import.Open]);
     return {
       id: last.Id,
       files: last[FIELD.Import.Files],
@@ -448,12 +459,22 @@ export default class ShoreshRoots extends LightningElement {
       line: `${what}, ${when}`,
       // docs/import/review.md INGEST-5.5: the questions it kept for later wait here.
       open,
-      openLabel: `${open} import ${open === 1 ? "question" : "questions"} left`
+      openLabel: `${open} import ${open === 1 ? "question" : "questions"} left`,
+      // API-2.2, 4.1: a batch from another system has no file to reopen: its questions are
+      // shown here, for a person to settle where the camper or choice lives.
+      incoming:
+        open > 0 &&
+        questions.every((q) => String(q && q.key).startsWith(INCOMING)),
+      questions: questions.map((q, i) => ({ key: `${i}`, title: q && q.title }))
     };
   }
 
   /** Answer the last import's open questions: Import last year opens on them. */
   handleOpenQuestions() {
+    if (this.lastImport.incoming) {
+      this.showIncoming = !this.showIncoming;
+      return;
+    }
     this.dispatchEvent(
       new CustomEvent("navigate", {
         detail: { screen: "import", resumeImport: this.lastImport.id }
