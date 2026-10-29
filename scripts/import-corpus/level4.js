@@ -13,9 +13,10 @@
 // - special:   in one week (never the first), one mid-week day whose afternoon has its own, fewer
 //              and longer, blocks: that week's own day, a special day (INGEST-4.3).
 //
-// The true answer follows the settled rules only. Left out on purpose, as questions for Greg
-// (docs/import/corpus.md): a weekend with its own blocks every week, a mid-week day with its own
-// blocks in a one-week file, and a special day in a camp of two programs.
+// The true answer follows the settled rules only. Greg's level-4 decisions (2026-10-28): a special
+// day in a camp of two programs covers both (decisionCamps, INGEST-4.11). Still left out: a weekend
+// with its own blocks every week and a mid-week day with its own blocks in a one-week file, which
+// need a program's day with its own times (docs/import/corpus.md).
 // Deterministic: the same seed always gives the same camp.
 import {
   ACTIVITIES,
@@ -83,11 +84,12 @@ const gcd = (a, b) => (b ? gcd(b, a % b) : a);
 const isFree = (block) => !block.fixed && !block.evening;
 
 /** Which shapes and messes a camp has (implied shapes added: weekend needs overnight). */
-function traitsOf(r, layout) {
+function traitsOf(r, layout, forced) {
   let shapes = r.shuffle(SHAPES).slice(0, 2);
-  // A special day replaces its day for the whole camp (ADR 0014): with two programs that is a
-  // question for Greg, so not in the corpus.
-  if (shapes.includes("special") && shapes.includes("programs")) {
+  // The 320 keep the camps they had: a special day in a camp of two programs is decisionCamps'.
+  if (forced) {
+    shapes = forced;
+  } else if (shapes.includes("special") && shapes.includes("programs")) {
     shapes = shapes.map((s) => (s === "special" ? "weeks" : s));
   }
   if (shapes.includes("weekend")) shapes.push("overnight");
@@ -240,10 +242,10 @@ function rotationOf(r, program, weekCount) {
 }
 
 /** One level-4 camp and its true answer (camp.truth, as the scorer reads it). */
-export function veryHardCamp(seed) {
+export function veryHardCamp(seed, forced = null, prefix = "L4") {
   const r = randomFrom(seed * 32452843 + 11);
   const [layout, format, split] = LAYOUT_CHOICES[seed % LAYOUT_CHOICES.length];
-  const { shapes, messes } = traitsOf(r, layout);
+  const { shapes, messes } = traitsOf(r, layout, forced);
   const has = (t) => shapes.includes(t) || messes.includes(t);
   const style = r.pick(["Bunk", "Cabin", "Group", "divisionNumber"]);
   const programs = [firstProgram(r, shapes, style)];
@@ -270,7 +272,7 @@ export function veryHardCamp(seed) {
     p.rotation = rotationOf(r, p, weekCount);
   });
   const camp = {
-    id: `L4-${String(seed).padStart(3, "0")}`,
+    id: `${prefix}-${String(seed).padStart(3, "0")}`,
     level: 4,
     name: `${r.pick(CAMP_WORDS[0])} ${r.pick(CAMP_WORDS[1])} ${has("overnight") ? "Camp" : r.pick(CAMP_KINDS)}`,
     layout,
@@ -305,6 +307,19 @@ export function veryHardCamp(seed) {
 
 export function veryHardCamps(count) {
   return Array.from({ length: count }, (_, i) => veryHardCamp(i + 1));
+}
+
+/** How many camps Greg's level-4 decisions add. */
+export const DECISIONS_SIZE = 80;
+
+/**
+ * Greg's level-4 decision 3 (2026-10-28): a special day in a camp of two programs covers both
+ * programs. Camps of two programs, one of them with a week's mid-week special day (INGEST-4.11).
+ */
+export function decisionCamps(count) {
+  return Array.from({ length: count }, (_, i) =>
+    veryHardCamp(i + 1, ["programs", "special"], "L4D")
+  );
 }
 
 // ---------- the grid ----------
@@ -503,9 +518,14 @@ function truthOf(camp) {
   const divisions = camp.programs.flatMap((p) =>
     p.divisions.map((d) => d.name)
   );
+  // A special day replaces its day for the whole camp (ADR 0014; INGEST-4.11): every group in it.
+  const specialDayGroups = [...specialDays].flatMap((at) =>
+    camp.programs.flatMap((p) => p.groups.map((g) => `${at}|${g.name}`))
+  );
   return {
     weeks,
     programs: camp.programs.length,
+    specialDayGroups,
     days: camp.days,
     blocks: [...blocks],
     specialDays: [...specialDays],
@@ -586,7 +606,9 @@ function runMerges(camp, p, w, rowOf, colOf) {
     const c = colOf(g, d);
     const row = c === null ? null : rowOf(d, b);
     if (row === null) continue;
-    merges.push({ s: { r: row, c }, e: { r: row + n - 1, c } });
+    // To the row of the run's last block: a by-group page's rows between (another day's own
+    // blocks) are covered too, as a director's merge would.
+    merges.push({ s: { r: row, c }, e: { r: rowOf(d, b + n - 1), c } });
   }
   return merges;
 }

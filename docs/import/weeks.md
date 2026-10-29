@@ -146,10 +146,42 @@ Each rule is clue, meaning, example, test.
    Test: "INGEST-4.9: two programs' own Fridays in one week: which is asked, never two special
    days".
 
+10. **A doubled cell runs over its own day's blocks.**
+    Clue: a merged cell or a cell written twice down a page (a double period, a trip all
+    afternoon) in a program whose timetable also holds a week's own day's blocks (rule 3).
+    Meaning: the run covers the time blocks of the rows it spans on its own page, and on a day
+    that is not a day of its own never one of that day's own blocks; a by-group page whose rows
+    between are another day's own blocks (blank that day) is read over them. Before, the run was
+    counted on from its first block along every block of the timetable, so it landed on the
+    special day's.
+    Example: level 4 L4-012, a Field Trip merged down Week 1's Tuesday afternoon, in files whose
+    Week 3 Wednesday has its own blocks.
+    Test: "INGEST-4.10: a merge on Monday runs over Monday's blocks, not the short Friday's between
+    them"; counter-case "INGEST-4.10 counter-case: a doubled cell in a week with no day of its own
+    runs on as before". Code: `items.js` `coveredIndexes`, used through `blocksOf`.
+
+11. **A special day covers both programs** (Greg, 2026-10-28, level-4 decision 3).
+    Clue: one program's week's own day (rule 3), made as a special day, in files of two programs
+    or more, where another program has a regular day on that week's day.
+    Meaning: a special day replaces the day for the whole camp (ADR 0014), so that program's
+    groups are in the same special day, on their own blocks (both programs' blocks in time order,
+    each group's row blank in the other's), and that program's week has no regular grid for that
+    day. Nothing is asked. When the day of its own is left out, or the camp's own special day is on
+    it (rule 6), the other program's day stays as it was. Two programs each with a day of their own
+    on it is still asked (rule 9).
+    Test: "INGEST-4.11: the other program's groups are in the special day, on their own blocks,
+    with nothing asked"; counter-case "INGEST-4.11 counter-case: the day of its own left out leaves
+    the other program's Friday as it is". The level-4 decision camps (`decisionCamps`) score every
+    group of both programs in the special day. Code: `version.js` `gridOf`, `versionFor`.
+
 ## Known limits
 
 - A day whose blocks differ in every week (a short Friday every week), or in a one-week file,
   still reads as a second program, with the groups split into "(schedule 1)" and "(schedule
-  2)", as before.
+  2)", as before. Greg's level-4 decisions 1 and 2 (2026-10-28: a weekend day on its own times
+  every week is one program whose day has its own times; a one-week file's day of its own asks
+  "Every week, or just this once?") are not done: a program's time blocks are the same every day
+  it runs (`TimeBlock__c` belongs to a program, with no day), so "every week" has nowhere to be
+  saved yet.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.

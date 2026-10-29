@@ -62,7 +62,7 @@ const { TRAVEL_SIZE, travellingCamps } =
 const { headingReport, plantCamp } =
   await import("./import-corpus/plant-camp.js");
 const { LEVEL3_SIZE, hardCamps } = await import("./import-corpus/level3.js");
-const { LEVEL4_SIZE, veryHardCamps } =
+const { DECISIONS_SIZE, LEVEL4_SIZE, decisionCamps, veryHardCamps } =
   await import("./import-corpus/level4.js");
 const { LEVEL5_SIZE, scoreWeirdCamp, weirdCamps, weirdTable } =
   await import("./import-corpus/level5.js");
@@ -88,6 +88,14 @@ if (level === 4) {
   console.log(summaryTable(results));
   console.log(`\nBy trait:\n${traitTable(results)}`);
   printCamps(results);
+  const decided = decisionCamps(DECISIONS_SIZE).map((camp) =>
+    scoreCamp(camp, deps)
+  );
+  console.log(
+    `\nLevel 4, Greg's decisions (a special day in a camp of two programs): ${decided.length} made-up camps\n`
+  );
+  console.log(summaryTable(decided));
+  printCamps(decided);
 } else if (level === 5) {
   const results = weirdCamps(LEVEL5_SIZE).map((camp) =>
     scoreWeirdCamp(camp, deps, scoreCamp)

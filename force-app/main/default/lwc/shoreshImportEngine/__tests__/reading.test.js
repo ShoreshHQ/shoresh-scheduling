@@ -539,11 +539,12 @@ describe("times the review found misread (PR 15 review, finding 4)", () => {
   });
 
   it("a 5 or 6 o'clock block without AM or PM is asked about, never guessed (round 2)", () => {
+    // Written first, nothing above it settles it (INGEST-2.10: under the day it would be read on).
     const rows = [
       ["Time", "Bunk 1", "Bunk 2"],
+      ["6:00-6:30", "Late pickup", "Late pickup"],
       ["7:00-8:00", "Early care", "Early care"],
-      ["9:00-9:45", "Swim", "Art"],
-      ["6:00-6:30", "Late pickup", "Late pickup"]
+      ["9:00-9:45", "Swim", "Art"]
     ];
     const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
     const first = buildProposal({ files, existing: null, terms, answers: {} });
@@ -589,6 +590,80 @@ describe("times the review found misread (PR 15 review, finding 4)", () => {
       answers: { [card.id]: "leaveOut" }
     });
     expect(left.activities.map((x) => x.name)).not.toContain("Late pickup");
+  });
+
+  it("INGEST-2.10: an evening without AM or PM runs on from the afternoon, not asked", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["2:45-3:35", "Art", "Swim"],
+      ["6:00-6:45", "Dinner", "Dinner"],
+      ["7:00-8:00", "Campfire", "Campfire"],
+      ["8:15-9:00", "Cabin Time", "Cabin Time"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    expect(p.timetables[0].blocks.map((b) => [b.start, b.end])).toEqual([
+      [at(9), at(9, 45)],
+      [at(14, 45), at(15, 35)],
+      [at(18), at(18, 45)],
+      [at(19), at(20)],
+      [at(20, 15), at(21)]
+    ]);
+    expect(
+      questionCards(p, terms, {}).filter((c) => c.id.startsWith("ampm|"))
+    ).toEqual([]);
+  });
+
+  it("INGEST-2.10: a 6 o'clock block under the morning is the evening, not asked", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["7:00-8:00", "Early care", "Early care"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["6:00-6:30", "Late pickup", "Late pickup"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    expect(p.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(7),
+      at(9),
+      at(18)
+    ]);
+    expect(
+      questionCards(p, terms, {}).filter((c) => c.id.startsWith("ampm|"))
+    ).toEqual([]);
+  });
+
+  it("INGEST-2.10 counter-case: a time written out of order either way round is still asked", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["7:00-8:00", "Campfire", "Campfire"],
+      ["6:00-6:45", "Dinner", "Dinner"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    expect(
+      questionCards(p, terms, {})
+        .filter((c) => c.id.startsWith("ampm|"))
+        .map((c) => c.title)
+    ).toEqual(["Is Dinner 6:00\u20136:45 in the morning or the evening?"]);
+  });
+
+  it("INGEST-2.10 counter-case: a time with nothing later above it keeps the camp-day rule", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["7:30-8:15", "Breakfast", "Breakfast"],
+      ["8:30-9:15", "Swim", "Art"],
+      ["1:00-1:45", "Art", "Swim"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    expect(p.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(7, 30),
+      at(8, 30),
+      at(13)
+    ]);
   });
 
   it("Periods 1-2 and Period 1-2 are not times", () => {

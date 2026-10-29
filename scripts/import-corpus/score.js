@@ -146,8 +146,11 @@ function readCells(proposal) {
   const cells = new Map();
   for (const p of proposal.usable) {
     const blocks = proposal.timetables[p.timetable].blocks;
-    for (let i = 0; i < p.span; i++) {
-      const block = blocks[p.blockIndex + i];
+    // The blocks the engine says the run covers (INGEST-4.10), else counted on from the first.
+    const covered =
+      p.blocks || Array.from({ length: p.span }, (_, i) => p.blockIndex + i);
+    for (const index of covered) {
+      const block = blocks[index];
       if (block && block.start !== null) {
         cells.set(
           `${p.week || ""}|${p.group}|${p.day}|${hm(block.start)}`,
@@ -190,7 +193,23 @@ function programDays(truth, plan, count) {
   return plan.programs.reduce((n, p) => n + mismatches(truth.days, p.days), 0);
 }
 
-function wrongReads(truth, proposal, plan) {
+/**
+ * The season's weeks named as the files name them, seven days each from Sunday 2027-06-27: a
+ * special day is made only on a season week's day (INGEST-4.3), so the camp is read again with
+ * them to see who is in it.
+ */
+function weeksOf(truth) {
+  const day = (n) =>
+    new Date(Date.UTC(2027, 5, 27 + n)).toISOString().slice(0, 10);
+  return truth.weeks.map((w, i) => ({
+    Id: `a0W00000000000${String(i + 1).padStart(2, "0")}AAA`,
+    Name: w.label,
+    StartDate__c: day(i * 7),
+    EndDate__c: day(i * 7 + 6)
+  }));
+}
+
+function wrongReads(truth, proposal, plan, withWeeks) {
   // DIV-1.1: a group in no division is held by a division record that is not a division.
   const divisions = plan.divisions.filter((d) => !d.noDivision);
   const divisionName = new Map(divisions.map((d) => [d.key, d.name]));
@@ -220,13 +239,23 @@ function wrongReads(truth, proposal, plan) {
       truth.blocks,
       plan.timeBlocks.map((b) => `${b.start}-${b.end}`)
     ),
-    // A week's day with its own blocks comes in as a special day (INGEST-4.3).
-    specialDays: mismatches(
-      truth.specialDays || [],
-      proposal.timetables.flatMap((t) =>
-        (t.ownDays || []).map((o) => `${o.week}|${o.day}`)
-      )
-    ),
+    // A week's day with its own blocks comes in as a special day (INGEST-4.3), every group of
+    // the camp in it (INGEST-4.11), where the truth says which.
+    specialDays:
+      mismatches(
+        truth.specialDays || [],
+        proposal.timetables.flatMap((t) =>
+          (t.ownDays || []).map((o) => `${o.week}|${o.day}`)
+        )
+      ) +
+      (truth.specialDayGroups
+        ? mismatches(
+            truth.specialDayGroups,
+            (withWeeks ? withWeeks.specialDays : []).flatMap((d) =>
+              d.grid.g.map(([, name]) => `${d.label}|${d.day}|${name}`)
+            )
+          )
+        : 0),
     divisions: named
       ? mismatches(
           truth.divisions,
@@ -292,7 +321,22 @@ export function scoreCamp(camp, deps) {
     );
     if (unsure.size) questions.layout = unsure.size;
     const plan = deps.engine.planFor(proposal, EMPTY_SEASON, "season");
-    const { wrong, weeks } = wrongReads(truthOf(camp), proposal, plan);
+    const truth = truthOf(camp);
+    const withWeeks =
+      truth.specialDayGroups && truth.specialDays.length
+        ? deps.engine.buildProposal({
+            files,
+            // deps.record: the field names as the org sends them (namespaced in that Jest run).
+            existing: {
+              ...EMPTY_SEASON,
+              weeks: (deps.record || ((x) => x))(weeksOf(truth))
+            },
+            terms: deps.terms,
+            answers: {},
+            layouts: {}
+          })
+        : null;
+    const { wrong, weeks } = wrongReads(truth, proposal, plan, withWeeks);
     const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
     return {
       camp,

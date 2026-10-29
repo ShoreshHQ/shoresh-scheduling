@@ -6,11 +6,15 @@ import { join } from "path";
 import * as XLSX from "xlsx";
 import * as engine from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
 import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
-import { veryHardCamps } from "../../../../../../scripts/import-corpus/level4";
+import {
+  decisionCamps,
+  veryHardCamps
+} from "../../../../../../scripts/import-corpus/level4";
 import {
   scoreWeirdCamp,
   weirdCamp,
@@ -191,19 +195,23 @@ describe("Import last year on hard made-up camps (level 3)", () => {
 
 // Level 4, very hard: two programs, overnight evenings, weekends, several weeks, a mid-week special
 // day, with level 3's traits. The first 80 camps, ten of each layout. Baseline 2026-10-28: 56
-// perfect. Still wrong: overnight camps whose times have no am/pm (Dinner asked; the Evening
-// Program and Cabin Time read as morning without asking), and a merged or doubled cell in a week
-// whose timetable also holds a special day's own blocks (the run lands on the wrong blocks).
+// perfect (evenings without am/pm asked or read as morning; a doubled cell in a week with a
+// special day on the wrong blocks). After INGEST-2.10 and INGEST-4.10: all 80 perfect.
 const CEILING_4 = {
-  perfectAtLeast: 56,
+  perfectAtLeast: 80,
   errors: 0,
-  questions: { ampm: 15 },
-  wrong: { blocks: 60, fixed: 30, cells: 9695 }
+  questions: {},
+  wrong: {}
 };
 
 describe("Import last year on very hard made-up camps (level 4)", () => {
   const results = veryHardCamps(80).map((camp) =>
-    scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+    scoreCamp(camp, {
+      engine,
+      XLSX,
+      terms: buildTerms([]),
+      record: nsRecord
+    })
   );
   const totals = summarise(results);
 
@@ -219,6 +227,28 @@ describe("Import last year on very hard made-up camps (level 4)", () => {
         });
       }
     }
+  });
+});
+
+// Greg's level-4 decision 3 (2026-10-28): a special day in a camp of two programs covers both
+// programs (INGEST-4.11). The first 40 such camps, five of each layout: every one perfect, every
+// group of both programs in its special day.
+describe("Import last year on two-program camps with a special day (level 4, Greg's decisions)", () => {
+  const results = decisionCamps(40).map((camp) =>
+    scoreCamp(camp, {
+      engine,
+      XLSX,
+      terms: buildTerms([]),
+      record: nsRecord
+    })
+  );
+  const totals = summarise(results);
+
+  it("reads every camp perfectly, the special day covering both programs", () => {
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(40);
+    expect(results.every((r) => r.camp.programs.length === 2)).toBe(true);
+    expect(results.every((r) => r.camp.special)).toBe(true);
   });
 });
 
