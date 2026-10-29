@@ -20,6 +20,8 @@ public with sharing class SetTimePlanReader {
         Program__r.Season__c,
         TimeBlock__c,
         Length__c,
+        EarlyDay__c,
+        EarlyBlocks__c,
         Location__c,
         (SELECT Week__c FROM WeekExceptions__r)
       FROM FixedActivity__c
@@ -212,6 +214,7 @@ public with sharing class SetTimePlanReader {
 
   private void addFixed(FixedActivity__c record) {
     SetTimePlan.Item item = itemFor(record, 'FixedActivity');
+    item.readEarly(record);
     for (String day : SetTimePlan.WEEKDAYS) {
       if (item.program.days.contains(day)) {
         item.days.add(day);

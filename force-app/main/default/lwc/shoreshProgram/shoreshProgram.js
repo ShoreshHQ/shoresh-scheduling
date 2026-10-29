@@ -210,7 +210,36 @@ export default class ShoreshProgram extends LightningElement {
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       this.timeColumn(FIXED),
-      ...this.detailColumns(FIXED)
+      ...this.detailColumns(FIXED),
+      ...this.earlyColumns
+    ];
+  }
+
+  /**
+   * CORE-3.7: the one day a fixed activity starts earlier (an early dismissal) and by how many
+   * time blocks; it still ends where it always does. In the row's details, as its length is.
+   */
+  get earlyColumns() {
+    const program = this.entry.program;
+    const runs = weekOrder(WEEKDAYS.filter((day) => program[PROGRAM[day]]));
+    return [
+      {
+        fieldName: FIXED.EarlyDay,
+        label: "Starts earlier on",
+        type: "picklist",
+        more: true,
+        options: [
+          { label: "No day", value: "" },
+          ...runs.map((day) => ({ label: day, value: day }))
+        ]
+      },
+      {
+        fieldName: FIXED.EarlyBlocks,
+        label: `${this.terms.p("TimeBlock")} earlier`,
+        type: "number",
+        min: 0,
+        more: true
+      }
     ];
   }
 

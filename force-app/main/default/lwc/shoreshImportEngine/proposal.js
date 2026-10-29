@@ -9,6 +9,7 @@ import {
   blockRecordKey,
   campItems,
   decideKinds,
+  earlyOf,
   notedNames,
   setTimeRecords,
   usablePlacements
@@ -109,13 +110,24 @@ function compareFixed(decision, record, ctx) {
   }
   const blockId = t.blocks[p.block].id;
   const fixed = FIELD.FixedActivity;
+  // INGEST-4.13: a day ending early in the file is its early day (CORE-3.7); a file without one
+  // leaves the director's own as it is.
+  const early = earlyOf(decision.cells, p.block);
+  const sameEarly =
+    !early.earlyDay ||
+    (early.earlyDay === record[fixed.EarlyDay] &&
+      early.earlyBlocks === record[fixed.EarlyBlocks]);
   if (
     blockId === record[fixed.TimeBlock] &&
-    p.length === record[fixed.Length]
+    p.length === record[fixed.Length] &&
+    sameEarly
   ) {
     return;
   }
-  const id = `change|fixed|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}`;
+  const earlyWords = early.earlyDay
+    ? `|${early.earlyDay}|${early.earlyBlocks}`
+    : "";
+  const id = `change|fixed|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}${earlyWords}`;
   const ask = {
     id,
     type: "fixed",
@@ -132,6 +144,7 @@ function compareFixed(decision, record, ctx) {
       auto: ctx.imported.has(record.Id),
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
+      ...early,
       name: decision.name
     });
   }

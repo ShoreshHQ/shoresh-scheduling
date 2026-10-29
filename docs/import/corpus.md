@@ -215,6 +215,13 @@ camp of two to four weeks whose Saturday has its own blocks every week, half a o
 whose mid-week day has its own blocks, answered "Every week" (read again with three season
 weeks); each scored with one special day on that day of every week (`truth.specialDayOn`) and
 every group in it. Baseline 2026-10-29: 16 of 16 perfect, nothing asked.
+Greg's early end (2026-10-29, INGEST-4.13): 12 more camps (`earlyEndCamps`, `L4X-001` to
+`L4X-012`) whose every day ends with Dismissal and whose week's last day ends early, a third each
+with Dismissal merged down to the day's end (blank after it in a CSV), written in the last period
+with the rest blank (some "Dismissal at 2:00"), or on a shorter block of its own; a quarter of them
+Sunday to Saturday camps (Saturday ends early). The truth: the regular day, Dismissal one fixed
+activity covering the rest of that day (its early day, CORE-3.7). Before the engine change 2 of 12 perfect (special days, am/pm and
+kind questions); after: 12 of 12, nothing asked.
 
     npm run score:import -- --level 4
 

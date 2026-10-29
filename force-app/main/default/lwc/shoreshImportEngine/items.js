@@ -397,6 +397,15 @@ export function fixedKey(t, name, block) {
   return block === null ? `F|${t.key}|${name}` : `F|${t.key}|${name}|${block}`;
 }
 
+/**
+ * CORE-3.7 from INGEST-4.13: the day a fixed activity at `block` starts earlier (a day ending
+ * early) and by how many time blocks, or nothing.
+ */
+export function earlyOf(cells, block) {
+  const early = cells.find((c) => c.early && c.blockIndex + c.early === block);
+  return early ? { earlyDay: early.day, earlyBlocks: early.early } : {};
+}
+
 export function setTimeRecords(decision, keyOf) {
   const t = decision.timetable;
   const place = onePlace(decision.cells);
@@ -411,6 +420,7 @@ export function setTimeRecords(decision, keyOf) {
       block: p.block,
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
+      ...earlyOf(decision.cells, p.block),
       place
     }));
   }

@@ -93,7 +93,14 @@ public with sharing class OtherProgramUse {
             ORDER BY StartTime__c, SortOrder__c, Id
           ),
           (
-            SELECT Id, Name, TimeBlock__c, Length__c, Location__c
+            SELECT
+              Id,
+              Name,
+              TimeBlock__c,
+              Length__c,
+              EarlyDay__c,
+              EarlyBlocks__c,
+              Location__c
             FROM FixedActivities__r
             WHERE Location__c != NULL
             ORDER BY Id

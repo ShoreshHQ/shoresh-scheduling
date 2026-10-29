@@ -13,7 +13,12 @@ import {
 } from "./layouts";
 import { mergesFrom, readWithoutAsking, similarPairs } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
-import { buildTimetables, collectGroups, crossCheck } from "./structure";
+import {
+  buildTimetables,
+  cellAt,
+  collectGroups,
+  crossCheck
+} from "./structure";
 import { WEEKDAYS, looseKey } from "./text";
 import { withoutWeek } from "./weekLabels";
 import { identifyGroups } from "./identity";
@@ -402,6 +407,7 @@ export function readImport(input) {
     timetables,
     blockAt,
     timetableOfPage,
+    earlyEnds,
     asks: timeAsks,
     notes: weekDayNotes
   } = buildTimetables(read.pages, named.kept, answers);
@@ -417,7 +423,17 @@ export function readImport(input) {
       blockKey: blockAt.get(`${p.page}|${p.row}`),
       timetable: timetableOfPage.get(p.page),
       span: blockRowsIn(p, blockAt),
-      blockKeys: blockKeysIn(p, blockAt)
+      blockKeys: blockKeysIn(p, blockAt),
+      // INGEST-4.13: a day ending early, its last block running to the end of the day.
+      ...(earlyEnds.has(cellAt(p))
+        ? {
+            span: earlyEnds.get(cellAt(p)).keys.length,
+            blockKeys: earlyEnds.get(cellAt(p)).keys,
+            text: earlyEnds.get(cellAt(p)).text,
+            // The blocks it starts before its usual one (the day's last): CORE-3.7.
+            early: earlyEnds.get(cellAt(p)).keys.length - 1
+          }
+        : {})
     }));
   const blockName = (p) => {
     const t = timetables[p.timetable];

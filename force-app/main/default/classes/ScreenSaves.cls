@@ -82,6 +82,8 @@ public with sharing class ScreenSaves {
       FixedActivity__c.TimeBlock__c,
       FixedActivity__c.LastTimeBlock__c,
       FixedActivity__c.Length__c,
+      FixedActivity__c.EarlyDay__c,
+      FixedActivity__c.EarlyBlocks__c,
       FixedActivity__c.Location__c
     },
     RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{

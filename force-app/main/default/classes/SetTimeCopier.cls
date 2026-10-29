@@ -26,6 +26,8 @@ public with sharing class SetTimeCopier {
         Program__c,
         TimeBlock__c,
         Length__c,
+        EarlyDay__c,
+        EarlyBlocks__c,
         Location__c,
         SortOrder__c
       FROM FixedActivity__c

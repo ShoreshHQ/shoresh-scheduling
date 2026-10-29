@@ -17,7 +17,8 @@
 // day in a camp of two programs covers both (decisionCamps, INGEST-4.11); decisions 1 and 2
 // (2026-10-29, "treat it like a special day"): a weekend day on its own times every week, and a
 // one-week file's mid-week day answered "Every week", are one special day on that day of every
-// week (everyWeekCamps, INGEST-4.12).
+// week (everyWeekCamps, INGEST-4.12). Greg (2026-10-29): the week's last day ending early is the
+// regular day, Dismissal holding the rest of it (earlyEndCamps, INGEST-4.13).
 // Deterministic: the same seed always gives the same camp.
 import {
   ACTIVITIES,
@@ -243,10 +244,19 @@ function rotationOf(r, program, weekCount) {
 }
 
 /** One level-4 camp and its true answer (camp.truth, as the scorer reads it). */
-export function veryHardCamp(seed, forced = null, prefix = "L4", own = null) {
+export function veryHardCamp(
+  seed,
+  forced = null,
+  prefix = "L4",
+  own = null,
+  early = null
+) {
   const r = randomFrom(seed * 32452843 + 11);
   const [layout, format, split] = LAYOUT_CHOICES[seed % LAYOUT_CHOICES.length];
-  const { shapes, messes } = traitsOf(r, layout, forced);
+  const traits = traitsOf(r, layout, forced);
+  const shapes = traits.shapes;
+  // An early-end camp keeps to that one shape.
+  const messes = early ? [] : traits.messes;
   const has = (t) => shapes.includes(t) || messes.includes(t);
   const style = r.pick(["Bunk", "Cabin", "Group", "divisionNumber"]);
   const programs = [firstProgram(r, shapes, style)];
@@ -263,7 +273,14 @@ export function veryHardCamp(seed, forced = null, prefix = "L4", own = null) {
       d.groups.map((g) => ({ name: g, division: d.name }))
     );
   }
-  const days = has("weekend") ? ALL_DAYS : r.pick(WEEKS);
+  let days = has("weekend") ? ALL_DAYS : r.pick(WEEKS);
+  if (early) {
+    // Every day ends with Dismissal; a Sunday to Saturday camp ends its week on Saturday.
+    const b = programs[0].blocks;
+    const at = b.at(-1).end + 5;
+    b.push({ name: "Dismissal", start: at, end: at + 20, fixed: "Dismissal" });
+    if (early.week) days = ALL_DAYS;
+  }
   const weekCount = has("weeks") ? r.int(2, 4) : 1;
   const weeks = Array.from({ length: weekCount }, (_, w) =>
     weekCount > 1 ? `Week ${w + 1}` : ""
@@ -316,8 +333,51 @@ export function veryHardCamp(seed, forced = null, prefix = "L4", own = null) {
       camp.seasonWeeks = 3;
     }
   }
+  camp.early = null;
+  if (early) {
+    const blocks = programs[0].blocks;
+    const from = afternoonOf(blocks).at(-1);
+    camp.early = { ...early, d: days.length - 1, from };
+    if (early.style === "own") {
+      // Dismissal on its own, shorter, block where the last period starts: no rows after it.
+      const start = blocks[from].start;
+      camp.early.blocks = [
+        ...blocks.slice(0, from),
+        {
+          name: "Dismissal",
+          start,
+          end: start + 20,
+          fixed: "Dismissal",
+          early: true
+        }
+      ];
+    }
+  }
   fillGrid(r, camp, evenings);
+  if (camp.early && camp.early.style !== "own") {
+    // Dismissal in the last period, the rest of the day blank (merged down in Excel).
+    const { d, from } = camp.early;
+    const n = programs[0].blocks.length - from;
+    camp.weeks.forEach((_, w) =>
+      programs[0].groups.forEach((_g, g) => {
+        const cells = camp.grid.get(gkey(0, w, g, d));
+        cells.fill(null, from);
+        cells[from] = "Dismissal";
+        if (camp.early.style === "merged")
+          camp.runs.set(`0|${w}|${g}|${d}|${from}`, n);
+      })
+    );
+  }
   applyMesses(r, camp, messes);
+  if (camp.early && camp.early.say) {
+    const at = hm(programs[0].blocks[camp.early.from].start);
+    camp.weeks.forEach((_, w) =>
+      programs[0].groups.forEach((_g, g) => {
+        camp.written.get(gkey(0, w, g, camp.early.d))[camp.early.from] =
+          `Dismissal at ${at}`;
+      })
+    );
+  }
   camp.truth = truthOf(camp);
   return camp;
 }
@@ -355,6 +415,25 @@ export function everyWeekCamps(count) {
   );
 }
 
+/** How many camps Greg's early-end decision adds. */
+export const EARLY_END_SIZE = 12;
+
+/**
+ * Greg (2026-10-29): the week's last day ends early. Dismissal merged down to the day's end, or
+ * written in the last period with the rest blank ("Dismissal at 2:00" in some), or on a shorter
+ * block of its own; a third of them a Sunday to Saturday camp.
+ */
+export function earlyEndCamps(count) {
+  const styles = ["merged", "blank", "own"];
+  return Array.from({ length: count }, (_, i) =>
+    veryHardCamp(i + 1, [], "L4X", null, {
+      style: styles[i % 3],
+      say: i % 3 === 1 && i % 2 === 0,
+      week: i % 4 === 3
+    })
+  );
+}
+
 // ---------- the grid ----------
 
 /** The blocks program p has on week w's day d. */
@@ -362,6 +441,8 @@ export function blocksOn(camp, p, w, d) {
   const s = camp.special;
   if (s && p === 0 && s.w === w && s.d === d) return s.blocks;
   if (camp.own && p === 0 && camp.own.d === d) return camp.own.blocks;
+  const e = camp.early;
+  if (e && e.blocks && p === 0 && e.d === d) return e.blocks;
   return camp.programs[p].blocks;
 }
 
@@ -538,14 +619,35 @@ function truthOf(camp) {
           const names = camp.grid.get(gkey(p, w, g, d));
           dayBlocks.forEach((block, b) => {
             // The program's blocks; a special day's own blocks are its own (INGEST-4.3).
-            if (!own) blocks.add(`${hm(block.start)}-${hm(block.end)}`);
+            // An early end's Dismissal block is not one (INGEST-4.13).
+            if (!own && !block.early)
+              blocks.add(`${hm(block.start)}-${hm(block.end)}`);
             const name = names[b];
             if (!name) return;
             cells.set(`${label}|${group.name}|${day}|${hm(block.start)}`, name);
+            // Dismissal earlier on the early day: still the one fixed Dismissal, starting
+            // earlier that day (INGEST-4.13, CORE-3.7).
+            if (
+              camp.early &&
+              name === "Dismissal" &&
+              (block.early || !block.fixed)
+            )
+              return;
             if (block.fixed) fixed.add(`${name}|${hm(block.start)}`);
             else if (block.evening) recurring.add(name);
             else if (name !== TRIP) activities.add(name);
           });
+          // The early day's Dismissal holds the rest of the regular day (INGEST-4.13).
+          if (camp.early && p === 0 && d === camp.early.d) {
+            program.blocks
+              .slice(camp.early.from)
+              .forEach((block) =>
+                cells.set(
+                  `${label}|${group.name}|${day}|${hm(block.start)}`,
+                  "Dismissal"
+                )
+              );
+          }
         })
       )
     );
@@ -725,7 +827,7 @@ function byActivityPage(camp, p, w, d, title) {
   program.groups.forEach((_, g) =>
     blocks.forEach((block, b) => {
       const n = cells(g)[b];
-      if (n && !block.fixed) names.add(n);
+      if (n && !block.fixed && !fixed.includes(n)) names.add(n);
     })
   );
   const columns = [...fixed, ...[...names].sort()];

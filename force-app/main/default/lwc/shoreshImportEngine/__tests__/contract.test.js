@@ -116,6 +116,25 @@ function halfDayPlan() {
   );
 }
 
+/** A new camp whose Thursday ends early (INGEST-4.13): a fixed Dismissal's early day. */
+function earlyEndPlan() {
+  const day = [
+    ["Time", "Bunk 1", "Bunk 2"],
+    ["9:00-9:45", "Swim", "Art"],
+    ["10:00-10:45", "Art", "Swim"],
+    ["11:00-11:20", "Dismissal", "Dismissal"]
+  ];
+  const short = [...day.slice(0, 2), ["10:00-10:20", "Dismissal", "Dismissal"]];
+  const files = ["Monday", "Tuesday", "Wednesday", "Thursday"].map((d) =>
+    csv(`${d}.csv`, d === "Thursday" ? short : day)
+  );
+  return planFor(
+    buildProposal({ files, existing: null, terms, answers: {} }),
+    null,
+    "s"
+  );
+}
+
 describe("the save request matches what the server reads", () => {
   const plan = fullPlan();
 
@@ -143,10 +162,11 @@ describe("the save request matches what the server reads", () => {
     })
   };
   const sent = new Set(
-    [plan, placesPlan(), halfDayPlan(), learning].flatMap((one) =>
-      Object.values(one)
-        .filter(Array.isArray)
-        .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))
+    [plan, placesPlan(), halfDayPlan(), earlyEndPlan(), learning].flatMap(
+      (one) =>
+        Object.values(one)
+          .filter(Array.isArray)
+          .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))
     )
   );
 

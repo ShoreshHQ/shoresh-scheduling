@@ -653,3 +653,81 @@ describe("review findings", () => {
     expect(changed.partOfDay).toBeUndefined();
   });
 });
+
+describe("INGEST-4.13 on a season that has its Dismissal set up already", () => {
+  const BLOCKS = [
+    ["tb1", "Period 1", at(9), at(9, 45)],
+    ["tb2", "Period 2", at(10), at(10, 45)],
+    ["tb3", "Dismissal", at(11), at(11, 20)]
+  ];
+  const day = [
+    ["Time", "Bunk 1", "Bunk 2"],
+    ["9:00-9:45", "Swim", "Art"],
+    ["10:00-10:45", "Art", "Swim"],
+    ["11:00-11:20", "Dismissal", "Dismissal"]
+  ];
+  const short = [...day.slice(0, 2), ["10:00-10:20", "Dismissal", "Dismissal"]];
+  const files = ["Monday", "Tuesday", "Wednesday", "Thursday"].map((d) =>
+    csv(`${d}.csv`, d === "Thursday" ? short : day)
+  );
+  const withDismissal = (early) =>
+    existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: BLOCKS,
+          days: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"]
+              ]
+            ]
+          ],
+          fixed: [
+            {
+              Id: "f1",
+              Name: "Dismissal",
+              TimeBlock__c: "tb3",
+              Length__c: 1,
+              ...early
+            }
+          ]
+        })
+      ]
+    });
+
+  it("INGEST-4.13: the file's early Thursday is offered as the fixed Dismissal's early day (CORE-3.7)", () => {
+    const existing = withDismissal({});
+    const p = propose(existing, {}, files);
+    const card = cardsOf(p).find((c) => c.id.startsWith("change|fixed"));
+    expect(card).toBeDefined();
+    const plan = planFor(
+      propose(existing, { [card.id]: "change" }, files),
+      existing,
+      "s"
+    );
+    expect(plan.fixedActivities).toEqual([
+      {
+        id: "f1",
+        blockKey: "tb3",
+        length: 1,
+        earlyDay: "Thursday",
+        earlyBlocks: 1
+      }
+    ]);
+  });
+
+  it("INGEST-4.13: a Dismissal already set up with that early day is not asked about", () => {
+    const existing = withDismissal({
+      EarlyDay__c: "Thursday",
+      EarlyBlocks__c: 1
+    });
+    const p = propose(existing, {}, files);
+    expect(cardsOf(p).filter((c) => c.id.startsWith("change|fixed"))).toEqual(
+      []
+    );
+  });
+});
