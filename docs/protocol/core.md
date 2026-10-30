@@ -132,8 +132,7 @@ These never bend for Shoresh.
   live in the one Why list beside the grid (Greg 2026-10-25).
 - **CORE-6.4** Measures MUST be minimums met, priorities met (High, then Low, as counts) and
   spread across the week (a count, reported only). Shoresh MUST NOT call a week "fair" or an
-  activity "popular" (Greg 2026-10-27). Contradicted: `measure.js` has no "priorities met"
-  count (see CORE-1.33).
+  activity "popular" (Greg 2026-10-27).
 - **CORE-6.5** Counters MUST use "N of M placed", "still needed", "under", "over"; never
   "Filled" or "Overlapping".
 - **CORE-6.6** Screen text MUST NOT contain record Ids, API field names (`__c`), or explanation
