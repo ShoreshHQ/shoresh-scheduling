@@ -19,15 +19,16 @@ public with sharing class IncomingQuestions {
   }
 
   /**
-   * Adds the new questions to the season's last import when that is a standing batch; true when
-   * it was (also when it already asked them all). Read in system mode: a sending key cannot read
-   * imports; nothing read is handed back.
+   * Adds the new questions to the last import from the same systems when that is a standing
+   * batch; true when it was (also when it already asked them all). Read in system mode: a
+   * sending key cannot read imports; nothing read is handed back.
    */
   public static Boolean joinLastBatch(IncomingBatch batch) {
+    String source = IncomingSave.sourceOf(batch);
     List<Import__c> last = [
       SELECT Id, Season__c, Open__c, UndoneAt__c
       FROM Import__c
-      WHERE Season__c = :batch.season.Id
+      WHERE Season__c = :batch.season.Id AND Source__c = :source
       WITH SYSTEM_MODE
       ORDER BY CreatedDate DESC, Name DESC
       LIMIT 1

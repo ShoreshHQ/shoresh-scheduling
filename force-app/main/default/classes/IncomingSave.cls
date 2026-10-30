@@ -120,11 +120,18 @@ public with sharing class IncomingSave {
     }
   }
 
+  /** The systems a batch came from, sorted: its source, whose last batch has its own Undo. */
+  public static String sourceOf(IncomingBatch batch) {
+    List<String> senders = new List<String>(batch.systems);
+    senders.sort();
+    return String.join(senders, ', ').left(255);
+  }
+
   /**
    * The import's own record. Every batch's record keeps its questions, none as [] (how Undo and
    * Roots tell a batch from a file import). A batch that saved nothing records no import of its
-   * own: its new questions join the last import when that is a batch too (so a question alone
-   * never takes a director's Undo away), and are recorded on their own only when it isn't.
+   * own: its new questions join the last batch from the same systems while it stands (so a
+   * question alone never takes that batch's Undo away), and are recorded on their own otherwise.
    */
   private void record(ImportWriter writer) {
     if (batch.staged.isEmpty() && batch.questions.isEmpty()) {
@@ -147,11 +154,10 @@ public with sharing class IncomingSave {
         'This batch is too big to be undone later, so nothing was saved. Send it in smaller batches.'
       );
     }
-    List<String> senders = new List<String>(batch.systems);
-    senders.sort();
+    done.Source__c = sourceOf(batch);
     done.Files__c = (batch.capability.what() +
       ' from ' +
-      String.join(senders, ', '))
+      done.Source__c)
       .left(255);
     ImportLog.recordIncoming(done);
   }

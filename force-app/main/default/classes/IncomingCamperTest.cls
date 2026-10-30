@@ -352,6 +352,85 @@ private class IncomingCamperTest {
     Assert.areEqual('Maya Cohen', after[0].Name);
   }
 
+  // API-2.6: a batch from another system has its own Undo: the director's earlier import stays
+  // undoable beside it, Roots shows each, and either is undone without the other.
+  @IsTest
+  static void aBatchKeepsItsOwnUndoBesideTheDirectors() {
+    IncomingTestData camp = new IncomingTestData();
+    Import__c directors = new Import__c(
+      Season__c = camp.season.Id,
+      Files__c = 'maple-grove.xlsx',
+      Created__c = '{}',
+      Changed__c = '[]'
+    );
+    Database.insert(directors, AccessLevel.SYSTEM_MODE);
+    System.runAs(camp.sender('Send_Campers')) {
+      send(
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'camper_id' => 'SYN-1',
+            'camper_name' => 'Maya Cohen'
+          }
+        }
+      );
+    }
+    Id batchId = camp.imports()[0].Id;
+    Assert.areNotEqual(directors.Id, batchId);
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Test.startTest();
+      SeasonSetupReader.SeasonSetup setup = SeasonSetupReader.read(
+        camp.season.Id
+      );
+      Assert.areEqual(directors.Id, setup.lastImport.Id);
+      Assert.areEqual(1, setup.lastFromOutside.size());
+      Assert.areEqual(batchId, setup.lastFromOutside[0].Id);
+      Assert.areEqual(
+        IncomingTestData.SYSTEM_NAME,
+        setup.lastFromOutside[0].Source__c
+      );
+      // Either order: the director's Undo first, then the batch's, each still offered.
+      ImportUndo.undo(directors.Id);
+      ImportUndo.undo(batchId);
+      Test.stopTest();
+    }
+    Assert.isTrue(campers(camp.season.Id).isEmpty());
+  }
+
+  // API-2.6: undoing a batch keeps what it made that a later import of the director's changed.
+  @IsTest
+  static void undoingABatchKeepsWhatTheDirectorChangedSince() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Campers')) {
+      send(
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'camper_id' => 'SYN-1',
+            'camper_name' => 'Maya Cohen'
+          }
+        }
+      );
+    }
+    Id batchId = camp.imports()[0].Id;
+    Camper__c maya = campers(camp.season.Id)[0];
+    Database.insert(
+      new Import__c(
+        Season__c = camp.season.Id,
+        Files__c = 'maple-grove.xlsx',
+        Created__c = '{}',
+        Changed__c = JSON.serialize(
+          new List<Object>{ new Map<String, Object>{ 'id' => maya.Id } }
+        )
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      ImportUndo.Result undone = ImportUndo.undo(batchId);
+      Assert.areEqual(0, undone.removed);
+      Assert.areEqual(1, undone.keptEdited.size());
+    }
+    Assert.areEqual(1, campers(camp.season.Id).size());
+  }
+
   // API-4.4: a key reaches only what its permission sets allow; another piece is refused whole.
   @IsTest
   static void aKeyWithoutThisPermissionSetIsRefused() {
