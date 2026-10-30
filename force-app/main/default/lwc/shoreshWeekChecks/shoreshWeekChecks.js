@@ -47,6 +47,8 @@ export default class ShoreshWeekChecks extends LightningElement {
   accepted = [];
   // Which read of the week's accepts is the latest (an older answer is dropped).
   readTicket = 0;
+  // Accepts still on their way to the server ({ scheduleId, line }): a read meanwhile keeps them.
+  saving = [];
   // What Accept just said, for screen readers.
   acceptSaid = "";
   // After Accept: focus goes to the line now at this place in the list ({ index }).
@@ -73,16 +75,24 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
   set scheduleId(value) {
     if (value !== this._scheduleId) {
+      // The week's first save made its draft: what was accepted before is kept with it now.
+      const before = this._scheduleId ? [] : this.accepted;
       this._scheduleId = value;
-      this.readAgain();
+      this.readAgain(before);
+      before.forEach((a) => this.keep(a, a.said));
     }
   }
 
   /** The week's accepts as kept with it: none shown from another week meanwhile. */
-  async readAgain() {
+  async readAgain(carried = []) {
     const ticket = ++this.readTicket;
-    this.accepted = [];
     const scheduleId = this._scheduleId;
+    this.accepted = [
+      ...carried,
+      ...this.saving
+        .filter((s) => s.scheduleId === scheduleId)
+        .map((s) => s.line)
+    ];
     if (!scheduleId) {
       return;
     }
@@ -258,15 +268,13 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     const line = all[index];
-    this.accepted = [
-      ...this.accepted,
-      { key, same: line.same, size: line.size }
-    ];
     const said = line.text || `${line.name}, ${line.placed} of ${line.goal}`;
+    const accepted = { key, same: line.same, size: line.size, said };
+    this.accepted = [...this.accepted, accepted];
     this.acceptSaid = `Accepted: ${said}.`;
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
-    this.keep(line, said);
+    this.keep(accepted, said);
   }
 
   /** Keeps the accept with the week; if it can't be, says it lasts only until the week is left. */
@@ -275,6 +283,8 @@ export default class ShoreshWeekChecks extends LightningElement {
     if (!scheduleId) {
       return;
     }
+    const entry = { scheduleId, line };
+    this.saving = [...this.saving, entry];
     try {
       await keepAccepted({
         scheduleId,
@@ -286,6 +296,8 @@ export default class ShoreshWeekChecks extends LightningElement {
       });
     } catch {
       this.acceptSaid = `Accepted until you leave this week, not kept with it: ${said}.`;
+    } finally {
+      this.saving = this.saving.filter((e) => e !== entry);
     }
   }
 

@@ -503,6 +503,39 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(swimRow(element)).not.toBeNull();
     });
 
+    it("CORE-6.9: an Accept made before the week has a draft is kept once its first save makes one", async () => {
+      const element = await open({ measure: swimSoccer(["g1", "g2"], []) });
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(keepAccepted).not.toHaveBeenCalled();
+      element.scheduleId = "s1";
+      await flush();
+      expect(swimRow(element)).toBeNull();
+      expect(keepAccepted).toHaveBeenCalledWith({
+        scheduleId: "s1",
+        line: JSON.stringify({ k: "under|a1|2|4", s: "under|a1", n: 2 })
+      });
+    });
+
+    it("CORE-6.9: an Accept still being kept stays away through a read of the week meanwhile", async () => {
+      let done;
+      keepAccepted.mockReturnValue(new Promise((resolve) => (done = resolve)));
+      const element = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      // The same week shown again before the server answered: it doesn't know the accept yet.
+      element.resetKey = 2;
+      await flush();
+      word(element).click();
+      await flush();
+      expect(swimRow(element)).toBeNull();
+      done("[]");
+      await flush();
+    });
+
     it("CORE-6.9: an Accept that can't be kept says so", async () => {
       keepAccepted.mockRejectedValue(new Error("no access"));
       const element = await open({
