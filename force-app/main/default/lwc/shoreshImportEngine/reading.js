@@ -139,13 +139,12 @@ function sameLayoutPerFile(pages, detected) {
  * Gives { day, ask } for the page, or null when it is not one.
  */
 function singleDay(page, found, pageIndex, fileCount, answers) {
-  if (
-    fileCount !== 1 ||
-    found.layout === "byGroup" ||
-    found.daysAcross ||
-    pageDay(page)
-  ) {
+  if (fileCount !== 1 || found.layout === "byGroup" || found.daysAcross) {
     return null;
+  }
+  if (pageDay(page)) {
+    // Its day named: a special day only beside a regular schedule (INGEST-4.15).
+    return { day: pageDay(page), ask: null, named: true };
   }
   if (readPage(page, pageIndex, found, WEEKDAYS[0]).placements.length === 0) {
     return null;
@@ -171,17 +170,27 @@ function readPages(pages, keys, existing, layouts, answers) {
   const placements = [];
   const noted = [];
   const asks = [];
+  // INGEST-4.15: the season already has a regular schedule (a program with time blocks).
+  const regularSeason = ((existing && existing.programs) || []).some(
+    (entry) => (entry.timeBlocks || []).length > 0
+  );
   const perFile = new Map();
   named.forEach((page) =>
     perFile.set(page.file, (perFile.get(page.file) || 0) + 1)
   );
+  const ones = named.map((page, i) =>
+    singleDay(page, found[i], i, perFile.get(page.file), answers)
+  );
+  // A file per day of one week (each naming its day) is a week, not special days (INGEST-4.15).
+  const namedDays = new Set(ones.filter((o) => o && o.named).map((o) => o.day));
   const info = named.map((page, i) => {
-    const one = singleDay(page, found[i], i, perFile.get(page.file), answers);
+    const one = ones[i] && ones[i].named && namedDays.size > 1 ? null : ones[i];
     if (one && one.ask) {
       asks.push(one.ask);
     }
-    // Marked for buildTimetables: it comes in as a special day (INGEST-4.14).
-    page.oneDay = !!(one && one.day);
+    // Marked for buildTimetables: it may come in as a special day (INGEST-4.14, 4.15).
+    page.oneDay = one && one.day ? (one.named ? "named" : "asked") : false;
+    page.regularSeason = regularSeason;
     const read = readPage(page, i, found[i], one && one.day);
     placements.push(...read.placements);
     noted.push(...read.groups);

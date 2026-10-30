@@ -627,10 +627,25 @@ function singleDayFiles(timetables, pages, placements) {
         .filter((p) => t.pages.includes(p.page))
         .map((p) => `${p.week || ""}|${p.day}`)
     );
+    // INGEST-4.15: a file naming its day is a special day only beside a regular schedule (a
+    // timetable of two days or more in these files, or the season's own); alone, a one-day camp.
+    const named = t.pages.some((i) => pages[i].oneDay === "named");
+    const regular =
+      pages.some((p) => p.regularSeason) ||
+      timetables.some(
+        (x) =>
+          x !== t &&
+          new Set(
+            placements
+              .filter((p) => x.pages.includes(p.page))
+              .map((p) => `${p.week || ""}|${p.day}`)
+          ).size > 1
+      );
     if (
       wds.size !== 1 ||
       (t.ownDays || []).length ||
-      !t.pages.every((i) => pages[i].oneDay)
+      !t.pages.every((i) => pages[i].oneDay) ||
+      (named && !regular)
     ) {
       continue;
     }

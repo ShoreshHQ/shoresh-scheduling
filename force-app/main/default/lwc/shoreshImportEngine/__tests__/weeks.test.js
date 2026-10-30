@@ -8,7 +8,7 @@ import {
   planFor,
   questionCards
 } from "./data/engine";
-import { existingSetup, terms } from "./data/samples";
+import { existingSetup, program as programOf, terms } from "./data/samples";
 import { splitWeekColumn, sheetToPages } from "../sheets";
 import { cellAt } from "../structure";
 import {
@@ -1181,7 +1181,33 @@ describe("INGEST-4.14: a single-day file", () => {
     );
   });
 
-  it("INGEST-4.14 counter-case: a one-day file naming its day is read as that day, as before", () => {
+  it("INGEST-4.15 counter-case: a file per day, each day on its own times, into a season with a regular schedule, stays ordinary days", () => {
+    const regular = existingSetup({
+      weeks,
+      programs: [
+        programOf("p1", "Main", {
+          blocks: [["tb1", "Period 1", 9 * 60, 9 * 60 + 45]]
+        })
+      ]
+    });
+    // Each day's blocks start a few minutes later than the day before: no two days share them.
+    const files = DAYS.map((day, d) =>
+      file(`${day}.csv`, [
+        sheetOf("Sheet1", [
+          ["Time", ...GROUPS],
+          ...[9, 10, 11].map((h) => [
+            `${h}:0${d}-${h}:4${d}`,
+            ...GROUPS.map((_, g) => ROTATION[(g + h + d) % ROTATION.length])
+          ])
+        ])
+      ])
+    );
+    const p = propose(files, regular);
+    const plan = planFor(p, regular, "a00000000000001AAA");
+    expect(plan.specialDays).toEqual([]);
+  });
+
+  it("INGEST-4.15 counter-case: a one-day file naming its day, the only schedule, is an ordinary day (a one-day camp)", () => {
     const p = propose(fieldDay("color-war-wednesday.csv"), existing);
     expect(asked(p, "oneDay|")).toEqual([]);
     const plan = planFor(p, existing, "a00000000000001AAA");
@@ -1210,6 +1236,50 @@ describe("INGEST-4.14: a single-day file", () => {
     );
     const week = plan.versions.find((v) => v.days.length);
     expect(week.days).toHaveLength(4);
+  });
+
+  it("INGEST-4.15: a one-day file naming its day, beside a week's files, is a special day on that weekday", () => {
+    const files = [
+      file("Camp - Week 1.csv", [sheetOf("Week 1", weekRows(0))]),
+      ...fieldDay("color-war-wednesday.csv")
+    ];
+    const answers = { "week|the file's week": "Week 1" };
+    const p = propose(files, existing, answers);
+    expect(asked(p, "oneDay|")).toEqual([]);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekId: "w1",
+      day: "Wednesday"
+    });
+  });
+
+  it("INGEST-4.15: a one-day file naming its day, in a season with a regular schedule, is a special day on that weekday", () => {
+    const regular = existingSetup({
+      weeks,
+      programs: [
+        programOf("p1", "Main", {
+          blocks: [["tb1", "Period 1", 9 * 60, 10 * 60]],
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"]
+              ]
+            ]
+          ]
+        })
+      ]
+    });
+    const p = propose(fieldDay("color-war-wednesday.csv"), regular);
+    const plan = planFor(p, regular, "a00000000000001AAA");
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekId: "w1",
+      day: "Wednesday"
+    });
   });
 
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
