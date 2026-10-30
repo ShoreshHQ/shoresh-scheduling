@@ -536,17 +536,27 @@ describe("c-shoresh-week-checks: the counter", () => {
       await flush();
     });
 
-    it("CORE-6.9: an Accept that can't be kept says so", async () => {
+    it("CORE-6.9: an Accept that can't be kept says so on screen", async () => {
       keepAccepted.mockRejectedValue(new Error("no access"));
       const element = await open({
-        measure: swimSoccer(["g1", "g2"], []),
+        measure: swimSoccer(["g1", "g2"], ["g1", "g1", "g2", "g2"]),
         scheduleId: "s1"
       });
       q(element, '.accept[data-key^="under|a1|"]').click();
       await flush();
-      expect(q(element, '[data-id="accept-said"]').textContent).toBe(
+      // On screen, in the dropdown, not only for screen readers.
+      const problem = q(element, '[data-id="accept-problem"]');
+      expect(problem.textContent.trim()).toBe(
         "Couldn't keep this Accept with the week: Swim, 2 of 4."
       );
+      expect(problem.getAttribute("role")).toBe("alert");
+      expect(problem.classList.contains("slds-text-color_error")).toBe(true);
+      await expect(element).toBeAccessible();
+      // The next Accept that is kept clears it.
+      keepAccepted.mockResolvedValue("[]");
+      q(element, '.accept[data-key^="over|a2|"]').click();
+      await flush();
+      expect(q(element, '[data-id="accept-problem"]')).toBeNull();
     });
   });
   describe("the Why list's Open cells and notes", () => {

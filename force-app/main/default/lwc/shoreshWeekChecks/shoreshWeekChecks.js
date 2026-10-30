@@ -51,6 +51,9 @@ export default class ShoreshWeekChecks extends LightningElement {
   saving = [];
   // What Accept just said, for screen readers.
   acceptSaid = "";
+  // An Accept that couldn't be kept with the week, shown at the top of the dropdown (red text,
+  // as a field error) until the next Accept or the week is read again.
+  acceptProblem = "";
   // After Accept: focus goes to the line now at this place in the list ({ index }).
   focusAfterRender = null;
 
@@ -86,6 +89,7 @@ export default class ShoreshWeekChecks extends LightningElement {
   /** The week's accepts as kept with it: none shown from another week meanwhile. */
   async readAgain(carried = []) {
     const ticket = ++this.readTicket;
+    this.acceptProblem = "";
     const scheduleId = this._scheduleId;
     this.accepted = [
       ...carried,
@@ -272,6 +276,7 @@ export default class ShoreshWeekChecks extends LightningElement {
     const accepted = { key, same: line.same, size: line.size, said };
     this.accepted = [...this.accepted, accepted];
     this.acceptSaid = `Accepted: ${said}.`;
+    this.acceptProblem = "";
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
     this.keep(accepted, said);
@@ -295,7 +300,9 @@ export default class ShoreshWeekChecks extends LightningElement {
         })
       });
     } catch {
-      this.acceptSaid = `Couldn't keep this Accept with the week: ${said}.`;
+      // Shown in the dropdown, where role="alert" also says it: the live line stays quiet.
+      this.acceptSaid = "";
+      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}.`;
     } finally {
       this.saving = this.saving.filter((e) => e !== entry);
     }
