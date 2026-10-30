@@ -56,6 +56,7 @@ function runSf(args, stdin) {
       },
       (error, stdout) => resolve(stdout ?? "")
     );
+    child.stdin.on("error", () => {}); // sf missing: answered by the callback
     child.stdin.end(stdin ?? "");
   });
 }
@@ -69,7 +70,8 @@ function readResponse(stdout) {
   if (!status) return null;
   const lines = stdout.split(/\r?\n/).slice(1);
   let start = 0;
-  while (start < lines.length && /^[A-Za-z0-9-]+: /.test(lines[start])) start++;
+  while (start < lines.length && /^[A-Za-z0-9-]+:( |$)/.test(lines[start]))
+    start++;
   if (lines[start] === "") start++;
   return { status: Number(status[1]), body: lines.slice(start).join("\n") };
 }

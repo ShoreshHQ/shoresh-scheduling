@@ -120,7 +120,9 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toEqual({ status: 200, body: "ok" });
     // As sf prints it: no blank line before the answer.
     expect(
-      readResponse('HTTP/1.1 403\nx-request-id: 1\n{\n  "message": "No."\n}')
+      readResponse(
+        'HTTP/1.1 403\nx-empty:\nx-request-id: 1\n{\n  "message": "No."\n}'
+      )
     ).toEqual({ status: 403, body: '{\n  "message": "No."\n}' });
     await expect(
       call("read_elective_seats", {}, { org: "nobody", run: async () => "" })
