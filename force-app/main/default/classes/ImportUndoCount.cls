@@ -1,12 +1,14 @@
 /**
- * Undo's count of what it removed is the import's count of what it added: records saved with
- * what they belong to and never counted as added (a special day's day, who rows) are not counted
+ * Undo's count of what it removed is the import's count of what it added, as the screen's Added
+ * total shows it: records saved with what they belong to and never counted there (a special
+ * day's day, who rows, last year's schedule kept as a version, shown on its own) are not counted
  * either, and a holding record of a group with no division (DIV-1.1) the import made, which goes
  * with its last group (GroupTriggerHandler) before Undo reaches it, still is.
  */
 public with sharing class ImportUndoCount {
   private static final Set<String> UNCOUNTED = new Set<String>{
     'SpecialDate',
+    'Schedule',
     'Coverage',
     'ActivityEligibility',
     'LinkedChoiceTime'
