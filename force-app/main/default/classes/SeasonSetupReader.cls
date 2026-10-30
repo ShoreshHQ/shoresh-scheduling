@@ -108,6 +108,8 @@ public with sharing class SeasonSetupReader {
         result.lastFromOutside.add(last);
       }
     }
+    // Each send to a saved destination that failed last time, in its own sentence (API-6.3).
+    result.failedSends = SendLog.failedLast(seasonId);
     // The Special events screen's items, plans in brief and days (ADR 0014 choice 11).
     result.special = SpecialItems.forSeason(seasonId);
     // The Electives screen's sets, offerings and linked choices (repo ADR 0018, slice E4).
@@ -323,6 +325,9 @@ public with sharing class SeasonSetupReader {
     /** Each outside system's last batch that stands, by source (API-2.6). */
     @AuraEnabled
     public List<Import__c> lastFromOutside;
+    /** The last send of each thing to each destination, where it failed (API-6.3). */
+    @AuraEnabled
+    public List<String> failedSends;
     @AuraEnabled
     public List<SetupGuesses.Guess> guesses;
     @AuraEnabled

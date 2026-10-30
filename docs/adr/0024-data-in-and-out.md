@@ -3,7 +3,7 @@
 Status: proposed (2026-10-29). Product decision: Greg, 2026-10-29 (wiki `projects/shoresh-api.md`,
 "Greg's answers"; wiki decision 0009, "Data moves in and out freely"). The rules are numbered in
 [docs/protocol/api.md](../protocol/api.md) (API-n.m). Built so far: camper outside IDs and the access
-pieces (#197); all six coming in, by Flow action and web address (API piece 2).
+pieces (#197); all six coming in, by Flow action and web address (API piece 2); all four going out, by web address, Flow action and CSV (API piece 3).
 
 ## Why
 
@@ -70,7 +70,28 @@ permission sets allow is all the key can do.
 Docs pages on developer.salesforce.com refused direct fetching; "yes" above means the official page's
 text was confirmed through search excerpts.
 
+## Going out, as built (API piece 3, 2026-10-30)
+
+- **A saved destination is a Named Credential** the camp makes in Salesforce Setup; its name is the
+  `<system>` in `send_<thing>_to_<system>`. Salesforce keeps the address and the sign-in; Shoresh
+  stores no secret. The Flow action is `send_<thing>` with `to_system` set to that name.
+- **The camp's own Flow decides when.** Shoresh sends nothing by itself: a camp's Flow calls the
+  action on publish, on Finalize, on a schedule, or from a button. This sends anywhere a Named
+  Credential reaches, with no Shoresh change per system. Callouts from a record-triggered Flow run
+  on its "Run Asynchronously" path.
+- **A send carries the whole thing** (every record, JSON or CSV), not a notice and a link.
+- **Posted just after the Flow action** (a queued job), so a Flow can send several things in a
+  row: Salesforce allows no post after a save in the same go. The Flow is told at once what it can
+  be (no permission, week not published, no such destination name); the destination's own answer
+  shows on Settings.
+- **No retries.** A failed send is shown on Settings until a later send of
+  the same thing to the same destination goes through; the camp's Flow (or a person) sends again.
+- **Sending is reading:** the user a Flow runs as needs the same "Read ..." permission set as a
+  key, so a camp decides who can send each thing (a director included) the same way.
+- **Outside systems can also read** the same records at `GET /v1/<thing>?season=&week=`
+  (`format=csv` for a file), with a key holding the matching "Read ..." permission set.
+
 ## Not decided here
 
-How a camp names and saves a destination; whether a send is a notice plus a link to fetch, or the
-whole schedule; retries. These come with the build.
+A CSV download button on a Shoresh screen (CSV goes out today through the web address and the
+Flow action); a per-program or per-group narrowing.

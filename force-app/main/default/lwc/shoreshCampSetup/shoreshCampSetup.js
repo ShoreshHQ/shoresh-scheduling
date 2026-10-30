@@ -2568,6 +2568,14 @@ export default class ShoreshCampSetup extends LightningElement {
     }));
   }
 
+  /** Each send to a saved destination that failed last time (API-6.3). */
+  get failedSends() {
+    return ((this.setup && this.setup.failedSends) || []).map((said, i) => ({
+      key: `send-${i}`,
+      said
+    }));
+  }
+
   /** Settings' Undo of an outside system's last batch: the same as Roots' Undo. */
   handleUndoOutside(event) {
     const { importId, files } = event.currentTarget.dataset;

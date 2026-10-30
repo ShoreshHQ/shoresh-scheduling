@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >One send of a schedule, elective offerings or elective seats to a camp's saved destination (docs/protocol/api.md API-6.3): where it went, what it was, and why it failed if it did, so a failed send shows on a Shoresh screen. Written by Shoresh only.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Send</label>
+    <nameField>
+        <displayFormat>SE-{000000}</displayFormat>
+        <label>Send Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Sends</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

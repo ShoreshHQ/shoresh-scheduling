@@ -247,6 +247,11 @@ import seasonEndDate from "@salesforce/schema/Season__c.EndDate__c";
 import seasonShrinkShortWeek from "@salesforce/schema/Season__c.ShrinkShortWeek__c";
 import seasonStartDate from "@salesforce/schema/Season__c.StartDate__c";
 import seasonStatus from "@salesforce/schema/Season__c.Status__c";
+import sendObject from "@salesforce/schema/Send__c";
+import sendProblem from "@salesforce/schema/Send__c.Problem__c";
+import sendSeason from "@salesforce/schema/Send__c.Season__c";
+import sendSystem from "@salesforce/schema/Send__c.System__c";
+import sendWhat from "@salesforce/schema/Send__c.What__c";
 import specialDateObject from "@salesforce/schema/SpecialDate__c";
 import specialDateDay from "@salesforce/schema/SpecialDate__c.Day__c";
 import specialDateKey from "@salesforce/schema/SpecialDate__c.Key__c";
@@ -332,6 +337,7 @@ export const OBJECT = Object.freeze({
   ScheduleDay: scheduleDayObject.objectApiName,
   Schedule: scheduleObject.objectApiName,
   Season: seasonObject.objectApiName,
+  Send: sendObject.objectApiName,
   SpecialDate: specialDateObject.objectApiName,
   SpecialDay: specialDayObject.objectApiName,
   SpecialEvent: specialEventObject.objectApiName,
@@ -606,6 +612,12 @@ export const FIELD = Object.freeze({
     StartDate: seasonStartDate.fieldApiName,
     Status: seasonStatus.fieldApiName
   }),
+  Send: Object.freeze({
+    Problem: sendProblem.fieldApiName,
+    Season: sendSeason.fieldApiName,
+    System: sendSystem.fieldApiName,
+    What: sendWhat.fieldApiName
+  }),
   SpecialDate: Object.freeze({
     Day: specialDateDay.fieldApiName,
     Key: specialDateKey.fieldApiName,
@@ -783,6 +795,9 @@ export const PARENT = Object.freeze({
     Camp: FIELD.Season.Camp.replace(/__c$/, "__r"),
     CopiedFrom: FIELD.Season.CopiedFrom.replace(/__c$/, "__r")
   }),
+  Send: Object.freeze({
+    Season: FIELD.Send.Season.replace(/__c$/, "__r")
+  }),
   SpecialDate: Object.freeze({
     Season: FIELD.SpecialDate.Season.replace(/__c$/, "__r"),
     SpecialDay: FIELD.SpecialDate.SpecialDay.replace(/__c$/, "__r"),
@@ -919,6 +934,7 @@ export const CHILDREN = Object.freeze({
     Locations: `${NAMESPACE_PREFIX}Locations__r`,
     PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
     Programs: `${NAMESPACE_PREFIX}Programs__r`,
+    Sends: `${NAMESPACE_PREFIX}Sends__r`,
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
     SpecialDays: `${NAMESPACE_PREFIX}SpecialDays__r`,
     SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
