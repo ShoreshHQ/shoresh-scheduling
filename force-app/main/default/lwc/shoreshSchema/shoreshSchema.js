@@ -229,6 +229,7 @@ import scheduleDayRainyDay from "@salesforce/schema/ScheduleDay__c.RainyDay__c";
 import scheduleDayRevision from "@salesforce/schema/ScheduleDay__c.Revision__c";
 import scheduleDaySchedule from "@salesforce/schema/ScheduleDay__c.Schedule__c";
 import scheduleObject from "@salesforce/schema/Schedule__c";
+import scheduleAcceptedLines from "@salesforce/schema/Schedule__c.AcceptedLines__c";
 import scheduleEngineNotes from "@salesforce/schema/Schedule__c.EngineNotes__c";
 import scheduleEngineOption from "@salesforce/schema/Schedule__c.EngineOption__c";
 import scheduleOrigin from "@salesforce/schema/Schedule__c.Origin__c";
@@ -592,6 +593,7 @@ export const FIELD = Object.freeze({
     Schedule: scheduleDaySchedule.fieldApiName
   }),
   Schedule: Object.freeze({
+    AcceptedLines: scheduleAcceptedLines.fieldApiName,
     EngineNotes: scheduleEngineNotes.fieldApiName,
     EngineOption: scheduleEngineOption.fieldApiName,
     Origin: scheduleOrigin.fieldApiName,

@@ -1232,10 +1232,12 @@ Generated Schedule (ADR 0010) and the Schedules page get the same look.
    activity. They replace Generated's counter lighting its cells.
 9. **Accept returns** (decision 43, as decision 16 and the desktop's FindingsRail). Hovering or
    focusing a line in the counter's dropdown (an under or over row, or a line to look at) shows
-   **Accept**; it tucks that line away for this visit. It comes back when its numbers change or
-   a week is shown fresh. A cell that breaks a rule shared with other cells has no Accept, as on
+   **Accept**; it tucks that line away and keeps it with the week (`Schedule__c.AcceptedLines__c`,
+   Greg 2026-10-30), so it stays away for anyone who opens the week later. It comes back when it
+   gets worse (CORE-6.8); a Generated build (Rebuild, Try another, Start over) clears the week's
+   accepts, as the desktop's Rebuild clears set-aside findings. A cell that breaks a rule shared with other cells has no Accept, as on
    the desktop (`FindingsRail.jsx`: an overlap goes when the clash is moved). Keyboard: Accept is
-   the row after its line (Down), Enter accepts; it says _Accepted for this visit: Swim, 3 of 4._, the dropdown stays open, and focus moves to the next line (else the one before, else the
+   the row after its line (Down), Enter accepts; it says _Accepted: Swim, 3 of 4._, the dropdown stays open, and focus moves to the next line (else the one before, else the
    counter). The numbers stay the week's (the drawer shows the same ones); the counter's corner
    goes once every line is accepted, because each was looked at.
 10. **Group View and Activity View** use the same cells and headers: Group View's columns are

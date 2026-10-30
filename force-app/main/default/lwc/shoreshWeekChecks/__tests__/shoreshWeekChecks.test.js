@@ -1,6 +1,23 @@
 import { createElement } from "lwc";
 import ShoreshWeekChecks from "c/shoreshWeekChecks";
 import { measureWeek } from "c/shoreshEngine";
+import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
+import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
+
+jest.mock(
+  "@salesforce/apex/WeekAccepts.accepted",
+  () => ({ default: jest.fn() }),
+  {
+    virtual: true
+  }
+);
+jest.mock(
+  "@salesforce/apex/WeekAccepts.accept",
+  () => ({ default: jest.fn() }),
+  {
+    virtual: true
+  }
+);
 
 // The rail's counter on its own, given a week's measure (c/shoreshEngine measureWeek of a checked
 // week made by hand). The screens' own tests cover it with the real engine.
@@ -58,6 +75,13 @@ const word = (element) =>
 const text = (el) => el.textContent.replace(/\s+/g, " ").trim();
 
 describe("c-shoresh-week-checks: the counter", () => {
+  beforeEach(() => {
+    // Nothing kept with the week unless a test says so.
+    readAccepted.mockReset();
+    readAccepted.mockResolvedValue("[]");
+    keepAccepted.mockReset();
+    keepAccepted.mockResolvedValue("[]");
+  });
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
@@ -270,7 +294,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         goal: 4
       });
       expect(q(element, '[data-id="accept-said"]').textContent).toBe(
-        "Accepted for this visit: Swim, 1 of 4."
+        "Accepted: Swim, 1 of 4."
       );
       expect(word(element).getAttribute("aria-expanded")).toBe("true");
       expect(element.shadowRoot.activeElement).toBe(
@@ -392,17 +416,104 @@ describe("c-shoresh-week-checks: the counter", () => {
       );
     });
 
-    it("CORE-6.8: a week shown fresh shows every line again; one week's accepts never touch another's", async () => {
-      const element = await open({ measure: swimSoccer(["g1", "g2"], []) });
+    // The week's accepts as kept with it (WeekAccepts), as the server stores them.
+    const kept = (lines) =>
+      JSON.stringify(lines.map(([k, s, n]) => ({ k, s, n })));
+
+    it("CORE-6.9: an Accept is kept with the week, and a later visit reads it back: the line stays away", async () => {
+      const element = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
+      expect(readAccepted).toHaveBeenCalledWith({ scheduleId: "s1" });
       q(element, '.accept[data-key^="under|a1|"]').click();
       await flush();
+      expect(keepAccepted).toHaveBeenCalledWith({
+        scheduleId: "s1",
+        line: JSON.stringify({ k: "under|a1|2|4", s: "under|a1", n: 2 })
+      });
+      document.body.removeChild(element);
+      // Someone opens the week later: what was kept is read, and Swim 2 of 4 stays away.
+      readAccepted.mockResolvedValue(kept([["under|a1|2|4", "under|a1", 2]]));
+      const later = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
+      expect(swimRow(later)).toBeNull();
+    });
+
+    it("CORE-6.9: a kept accept still comes back when the week is worse than when it was accepted (CORE-6.8)", async () => {
+      readAccepted.mockResolvedValue(kept([["under|a1|2|4", "under|a1", 2]]));
+      const worse = await open({
+        measure: swimSoccer(["g1"], []),
+        scheduleId: "s1"
+      });
+      expect(text(swimRow(worse))).toBe("Swim1of 4");
+      document.body.removeChild(worse);
+      const better = await open({
+        measure: swimSoccer(["g1", "g2", "g2"], []),
+        scheduleId: "s1"
+      });
+      expect(swimRow(better)).toBeNull();
+    });
+
+    it("CORE-6.9: an over line and an early-week goal are kept the same way", async () => {
+      readAccepted.mockResolvedValue(
+        kept([
+          ["over|a2|4|2", "over|a2", 2],
+          ["x", "spread|g2|a1|Wednesday", 1]
+        ])
+      );
+      const element = await open({
+        measure: swimSoccer(["g1"], ["g1", "g1", "g2", "g2"], {
+          hasSpreadTargets: true,
+          spread: ["Swim · Bunk 2: 1 more needed by Wednesday"],
+          spreadBy: [
+            { groupId: "g2", activityId: "a1", missing: 1, byDay: "Wednesday" }
+          ]
+        }),
+        scheduleId: "s1"
+      });
+      expect(soccerRow(element)).toBeNull();
+      expect(q(element, ".look-row")).toBeNull();
+    });
+
+    it("CORE-6.9: a rebuild (shown again with nothing kept) shows every line; another week's accepts never touch this one (CORE-6.8)", async () => {
+      readAccepted.mockResolvedValue(kept([["under|a1|2|4", "under|a1", 2]]));
+      const element = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
       expect(swimRow(element)).toBeNull();
-      // Another week: the page shows it fresh with a new reset key, the same Swim numbers.
+      // Rebuilt: the server cleared the week's accepts, and the page shows it again.
+      readAccepted.mockResolvedValue("[]");
       element.resetKey = 2;
       await flush();
       word(element).click();
       await flush();
       expect(swimRow(element)).not.toBeNull();
+      // Another week, the same Swim numbers, nothing accepted there: this week's accept is not used.
+      readAccepted.mockImplementation(({ scheduleId }) =>
+        Promise.resolve(
+          scheduleId === "s1" ? kept([["under|a1|2|4", "under|a1", 2]]) : "[]"
+        )
+      );
+      element.scheduleId = "s2";
+      await flush();
+      expect(swimRow(element)).not.toBeNull();
+    });
+
+    it("CORE-6.9: an Accept that can't be kept says so", async () => {
+      keepAccepted.mockRejectedValue(new Error("no access"));
+      const element = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(q(element, '[data-id="accept-said"]').textContent).toBe(
+        "Accepted until you leave this week, not kept with it: Swim, 2 of 4."
+      );
     });
   });
   describe("the Why list's Open cells and notes", () => {
@@ -484,7 +595,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(q(element, '[data-id="open"]')).toBeNull();
       expect(q(element, '[data-id="notes"]')).toBeNull();
       expect(text(q(element, '[data-id="accept-said"]'))).toBe(
-        "Accepted for this visit: Arts: Groups at once is blank, so it counts as 1."
+        "Accepted: Arts: Groups at once is blank, so it counts as 1."
       );
     });
 

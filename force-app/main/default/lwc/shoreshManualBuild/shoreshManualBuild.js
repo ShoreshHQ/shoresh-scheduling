@@ -1138,6 +1138,12 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- views ----------
 
+  /** The week's draft, where the counter keeps accepted lines (CORE-6.8). */
+  get checksScheduleId() {
+    return this.schedule && this.schedule.schedule
+      ? this.schedule.schedule.id
+      : null;
+  }
   get schedule() {
     return this.draft ? this.draft.schedule : null;
   }

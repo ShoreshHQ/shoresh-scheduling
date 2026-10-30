@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AcceptedLines__c</fullName>
+    <description
+  >The week's counter lines a director accepted (CORE-6.8), kept with the week so they stay accepted for anyone who opens it: each line's key, what makes it the same line, and how far off it was when accepted. Written by the week's counter only (WeekAccepts); a Generated build clears it. Never shown as stored.</description>
+    <label>Accepted Lines</label>
+    <length>32768</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
