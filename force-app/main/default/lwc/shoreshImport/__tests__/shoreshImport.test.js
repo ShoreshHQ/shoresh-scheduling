@@ -190,6 +190,39 @@ describe("c-shoresh-import", () => {
     );
   });
 
+  it("INGEST-4.14: a one-day file naming no day is not refused; it asks which day", async () => {
+    const element = await render();
+    const text =
+      "Time,Bunk 1,Bunk 2\n9:00-10:00,Relay races,Tug of war\n10:00-11:00,Tug of war,Relay races\n";
+    await choose(element, ["field-day.csv"], { "field-day.csv": text });
+    expect($(element, '[data-id="error"]')).toBeNull();
+    const card = $(element, '[data-card="oneDay|field-day.csv"]');
+    expect(card.textContent).toContain(
+      "This looks like a single-day schedule. Which day is field-day.csv?"
+    );
+  });
+
+  it("INGEST-4.14: leaving out the only file goes back to choosing a file", async () => {
+    const element = await render();
+    const text =
+      "Time,Bunk 1,Bunk 2\n9:00-10:00,Relay races,Tug of war\n10:00-11:00,Tug of war,Relay races\n";
+    await choose(element, ["field-day.csv"], { "field-day.csv": text });
+    await answer(element, "oneDay|field-day.csv", "leaveOut");
+    expect($(element, 'input[data-id="files"]')).not.toBeNull();
+    expect($(element, '[data-card="oneDay|field-day.csv"]')).toBeNull();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "field-day.csv: left out, so nothing was imported."
+    );
+  });
+
+  it("a file with no schedule in it is still refused, and says so", async () => {
+    const element = await render();
+    await choose(element, ["notes.csv"], { "notes.csv": "Bring a hat\n" });
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "notes.csv: no schedule Shoresh could read was found. Nothing was imported."
+    );
+  });
+
   it("one page: the questions first, then what comes in as counts; Add says how many, then the summary", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);

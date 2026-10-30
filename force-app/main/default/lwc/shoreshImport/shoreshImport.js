@@ -247,7 +247,7 @@ export default class ShoreshImport extends LightningElement {
       this.stage = this.foundNothing ? "pick" : "review";
       if (this.foundNothing) {
         this.files = [];
-        this.error = `${chosen.map((f) => f.name).join(", ")}: no schedule found (no day columns or time rows). Nothing was imported.`;
+        this.error = `${chosen.map((f) => f.name).join(", ")}: no schedule Shoresh could read was found. Nothing was imported.`;
       } else {
         // The page changed under the cursor: to its first question, else Add.
         const open = this.cards.find((c) => !c.answered);
@@ -552,7 +552,14 @@ export default class ShoreshImport extends LightningElement {
   }
 
   get foundNothing() {
-    return !this.proposal || this.proposal.reading.placements.length === 0;
+    // A single-day file waiting for its day (INGEST-4.14) is something found.
+    return (
+      !this.proposal ||
+      (this.proposal.reading.placements.length === 0 &&
+        !this.proposal.reading.timeAsks.some(
+          (a) => a.type === "oneDay" && this.answers[a.id] !== LEAVE_OUT
+        ))
+    );
   }
 
   /** Every question, in the engine's order (the file's names first, then held ones, the rest). */
@@ -753,6 +760,13 @@ export default class ShoreshImport extends LightningElement {
     this.ownAnswer(id);
     this.answers = { ...this.answers, [id]: value };
     this.recompute();
+    if (this.foundNothing) {
+      // INGEST-4.14: the only file left out: back to choosing a file, nothing imported.
+      const names = this.files.map((f) => f.name).join(", ");
+      this.handleStartAgain();
+      this.error = `${names}: left out, so nothing was imported.`;
+      return;
+    }
     // The choice stays, pressed; if the answer took its row away, on to the next open question.
     this.focusNext = { key, after: id };
   }

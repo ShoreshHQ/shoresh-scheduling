@@ -362,6 +362,7 @@ export function mapPrograms(reading, existing, answers) {
     return {
       index: timetable.index,
       ownDays: timetable.ownDays || [],
+      oneDay: !!timetable.oneDay,
       key: program ? program.id : `P${timetable.index}`,
       program,
       name,

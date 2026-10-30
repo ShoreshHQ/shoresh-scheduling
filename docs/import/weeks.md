@@ -226,6 +226,50 @@ Each rule is clue, meaning, example, test.
     Code: `structure.js` `earlyEnds`; `reading.js` (the placements it covers, `early`);
     `classify.js` `patternsOf` (read at its usual slot); `items.js` `earlyOf`.
 
+14. **A one-day file naming no day is a single-day schedule, asked which day** (desktop:
+    "This looks like a single-day schedule", Build this special day).
+    Clue: a file of one grid, no days across, not a page per group, no day in its name or title,
+    whose rows hold a schedule when read as a day (time rows and cells).
+    Meaning: not refused. Asked "This looks like a single-day schedule. Which day is
+    field-day.csv?" (Monday to Sunday, or leave it out). Answered, the file is read as that day
+    and comes in as a special day on it, as rule 3 makes one (its own time blocks, the file's
+    cells), in the week the files go to; the program's blocks never gain its, no empty version
+    is kept, and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
+    in as a special day on Thursday, with its own times."). Beside other files, a program that
+    runs that day joins the special day (rule 11), and the week, if the files do not say it, is
+    asked as any week is. Unanswered, nothing is read from it; left out, and it is the only
+    file, the screen goes back to choosing a file ("field-day.csv: left out, so nothing was
+    imported.").
+    A file with no schedule in it at all is still refused ("notes.csv: no schedule Shoresh could
+    read was found. Nothing was imported.").
+    Counter-case: a one-day file naming its day is rule 15. A file of several pages that name no day
+    keeps the note "it does not say which day it is".
+    Test: "INGEST-4.14: a one-day file naming no day is not refused: which day is asked, and the
+    answer makes it a special day on that day"; "INGEST-4.14 counter-case: left out, nothing is read
+    from it"; "INGEST-4.14: beside a week's files, the answered day is the special day on the week
+    asked, and the week's groups join it"; the screen's "INGEST-4.14: a one-day file naming no day is not refused; it asks
+    which day", "INGEST-4.14: leaving out the only file goes back to choosing a file" and "a file with no schedule in it is still refused, and says so". Code:
+    `reading.js` `singleDay`; `structure.js` `singleDayFiles`; `questions.js` `oneDayCard`.
+
+15. **A one-day file naming its day is a special day beside a regular schedule; alone, a one-day
+    camp** (coordinator, 2026-10-29, after Greg's "one-day camps exist"; desktop: placed on the
+    weekday its name names).
+    Clue: a file of one grid, no days across, not a page per group, that names its day
+    ("color-war-wednesday.csv"), and its blocks are a timetable of that one day.
+    Meaning: when the import also has a regular schedule (a timetable of two days or more), or
+    the season already has one (a program with time blocks), it comes in as a special day on
+    that weekday, as rule 14 makes one, nothing asked, said in the notes. When it is the only
+    schedule (no other week file, no regular schedule in the season), it is an ordinary day: a
+    one-day camp (level 5 `oneDay`). Files that each name a different day (a file per day of a
+    week) are a week, never special days, whatever their blocks.
+    Test: "INGEST-4.15: a one-day file naming its day, beside a week's files, is a special day on
+    that weekday"; "INGEST-4.15: a one-day file naming its day, in a season with a regular
+    schedule, is a special day on that weekday"; counter-case "INGEST-4.15 counter-case: a
+    one-day file naming its day, the only schedule, is an ordinary day (a one-day camp)"; "INGEST-4.15
+    counter-case: a file per day, each day on its own times, into a season with a regular
+    schedule, stays ordinary days". Code:
+    `reading.js` `singleDay`; `structure.js` `singleDayFiles`.
+
 ## Known limits
 
 - A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a

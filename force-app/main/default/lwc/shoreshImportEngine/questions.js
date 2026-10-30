@@ -538,10 +538,29 @@ function ampmCard(ask) {
 
 /** A question about the files' time blocks: morning or evening, or two days of their own. */
 function timeCard(ask, t) {
+  if (ask.type === "oneDay") {
+    return oneDayCard(ask, t);
+  }
   if (ask.type === "everyWeek") {
     return everyWeekCard(ask, t);
   }
   return ask.type === "ownDays" ? ownDaysCard(ask, t) : ampmCard(ask);
+}
+
+/** INGEST-4.14: a single-day file whose name and title name no day: which day is it? */
+function oneDayCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `This looks like a single-day schedule. Which day is ${ask.file}?`,
+    subject: ask.file,
+    subtitle: `It comes in as ${article(t.sIn("SpecialDay"))} with its own times.`,
+    options: [
+      ...WEEKDAYS.map((day) => ({ value: day, label: day })),
+      leaveOut(`${ask.file} is not added this time.`)
+    ]
+  };
 }
 
 /** INGEST-4.12: a mid-week day with its own times in a one-week file. */

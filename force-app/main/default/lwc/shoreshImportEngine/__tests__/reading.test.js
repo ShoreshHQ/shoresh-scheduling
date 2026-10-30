@@ -477,12 +477,19 @@ describe("the three layouts", () => {
     });
   });
 
-  it("a page that does not say its day is read as nothing, and said so", () => {
+  it("a page that does not say its day is read as nothing, and said so (a file of several such pages)", () => {
     const proposal = read([
-      csv("Camp.csv", [
-        ["Time", "Bunk 1", "Bunk 2"],
-        ["9:00-9:45", "Swim", "Art"]
-      ])
+      {
+        name: "Camp.xlsx",
+        sheets: ["Sheet1", "Sheet2"].map((name) => ({
+          name,
+          merges: [],
+          rows: [
+            ["Time", "Bunk 1", "Bunk 2"],
+            ["9:00-9:45", "Swim", "Art"]
+          ]
+        }))
+      }
     ]);
     expect(proposal.reading.pages[0].noDay).toBe(true);
     expect(proposal.reading.placements).toHaveLength(0);

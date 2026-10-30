@@ -626,6 +626,15 @@ export function importNotes(proposal, t) {
         text: `${a.name} runs for different lengths in the file; it is set up as ${a.length} ${a.length === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}, the length it has most often.`
       })
     );
+  // INGEST-4.14: a single-day file comes in as a special day on its day.
+  proposal.notes
+    .filter((n) => n.type === "oneDay")
+    .forEach((n) =>
+      notes.push({
+        key: `oneDay|${n.files.join("|")}`,
+        text: `${n.files.join(", ")} looks like a single-day schedule, so it comes in as ${article(t.sIn("SpecialDay"))} on ${n.day}, with its own times.`
+      })
+    );
   proposal.notes
     .filter((n) => n.type === "kindDiffers")
     .forEach((n) =>

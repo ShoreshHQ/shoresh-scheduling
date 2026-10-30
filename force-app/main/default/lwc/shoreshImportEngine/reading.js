@@ -132,7 +132,29 @@ function sameLayoutPerFile(pages, detected) {
   });
 }
 
-function readPages(pages, keys, existing, layouts) {
+/**
+ * INGEST-4.14 (weeks.md): a file of one grid with time rows, no days across and no day in its
+ * name or title is a single-day schedule: which day is asked (`oneDay|file`), and the answer
+ * reads it as that day. One naming its day is read as that day, as before (level 5 `oneDay`).
+ * Gives { day, ask } for the page, or null when it is not one.
+ */
+function singleDay(page, found, pageIndex, fileCount, answers) {
+  if (fileCount !== 1 || found.layout === "byGroup" || found.daysAcross) {
+    return null;
+  }
+  if (pageDay(page)) {
+    // Its day named: a special day only beside a regular schedule (INGEST-4.15).
+    return { day: pageDay(page), ask: null, named: true };
+  }
+  if (readPage(page, pageIndex, found, WEEKDAYS[0]).placements.length === 0) {
+    return null;
+  }
+  const id = `oneDay|${page.file}`;
+  const answer = WEEKDAYS.includes(answers[id]) ? answers[id] : null;
+  return { day: answer, ask: { id, type: "oneDay", file: page.file } };
+}
+
+function readPages(pages, keys, existing, layouts, answers) {
   const known = {
     groups: new Set(campNames(existing).groups.map(looseKey))
   };
@@ -147,8 +169,29 @@ function readPages(pages, keys, existing, layouts) {
   const named = nameFromFiles(pages, found, seasonWeekCount(existing));
   const placements = [];
   const noted = [];
+  const asks = [];
+  // INGEST-4.15: the season already has a regular schedule (a program with time blocks).
+  const regularSeason = ((existing && existing.programs) || []).some(
+    (entry) => (entry.timeBlocks || []).length > 0
+  );
+  const perFile = new Map();
+  named.forEach((page) =>
+    perFile.set(page.file, (perFile.get(page.file) || 0) + 1)
+  );
+  const ones = named.map((page, i) =>
+    singleDay(page, found[i], i, perFile.get(page.file), answers)
+  );
+  // A file per day of one week (each naming its day) is a week, not special days (INGEST-4.15).
+  const namedDays = new Set(ones.filter((o) => o && o.named).map((o) => o.day));
   const info = named.map((page, i) => {
-    const read = readPage(page, i, found[i]);
+    const one = ones[i] && ones[i].named && namedDays.size > 1 ? null : ones[i];
+    if (one && one.ask) {
+      asks.push(one.ask);
+    }
+    // Marked for buildTimetables: it may come in as a special day (INGEST-4.14, 4.15).
+    page.oneDay = one && one.day ? (one.named ? "named" : "asked") : false;
+    page.regularSeason = regularSeason;
+    const read = readPage(page, i, found[i], one && one.day);
     placements.push(...read.placements);
     noted.push(...read.groups);
     return {
@@ -160,10 +203,11 @@ function readPages(pages, keys, existing, layouts) {
       confident:
         detected[i].confident && found[i].layout === detected[i].layout,
       daysAcross: detected[i].daysAcross,
-      day: pageDay(page),
+      day: pageDay(page) || (one && one.day),
       week: pageWeek(page),
       name: pageName(page),
-      noDay: read.noDay,
+      // Asked which day instead (INGEST-4.14), so not noted as unread.
+      noDay: read.noDay && !(one && one.ask),
       placements: read.placements.length
     };
   });
@@ -171,7 +215,8 @@ function readPages(pages, keys, existing, layouts) {
     info,
     placements: placesInBrackets(placements, existing),
     noted,
-    pages: named
+    pages: named,
+    asks
   };
 }
 
@@ -358,7 +403,13 @@ export function readImport(input) {
     maxWeek: seasonWeekCount(input.existing)
   });
   const keys = pageKeys(pages);
-  const read = readPages(pages, keys, input.existing, input.layouts || {});
+  const read = readPages(
+    pages,
+    keys,
+    input.existing,
+    input.layouts || {},
+    answers
+  );
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -474,7 +525,7 @@ export function readImport(input) {
     ],
     groupAsks: identified.asks,
     splitAsks: together.asks,
-    timeAsks,
+    timeAsks: [...read.asks, ...timeAsks],
     identities: identified.rules
   };
 }
