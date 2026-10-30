@@ -143,6 +143,9 @@ export function measureWeek(checked, list, days) {
           key: ["spread", e.groupId, e.activityId, e.missing, e.byDay].join(
             "|"
           ),
+          // Accept compares a spread line by who, what and by when, then how many are missing.
+          same: ["spread", e.groupId, e.activityId, e.byDay].join("|"),
+          size: e.missing,
           kind: "spread",
           text,
           groupId: e.groupId,

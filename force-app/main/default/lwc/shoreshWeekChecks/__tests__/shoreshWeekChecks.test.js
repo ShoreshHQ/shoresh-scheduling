@@ -312,33 +312,97 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(pop(element).shadowRoot.activeElement).toBe(word(element));
     });
 
-    it("a line whose numbers change comes back, and so does every line when a week is shown fresh", async () => {
-      const element = await open();
-      q(element, '.accept[data-key^="under|a1|"]').click();
-      await flush();
-      expect(q(element, 'button[data-activity="a1"]')).toBeNull();
-      // Bunk 2 gets a Swim: 2 of 4 now, a different line.
-      element.measure = measureWeek(
+    // A week whose Swim and Soccer counts are given: Swim needs 2 a bunk (goal 4), Soccer 1 a bunk.
+    const swimSoccer = (swims, soccers, spread) =>
+      measureWeek(
         {
           ...CHECKED,
+          overlapping: [],
           placements: [
-            ...CHECKED.placements,
-            { kind: "A", groupId: "g2", id: "a1" }
-          ]
+            ...swims.map((g) => ({ kind: "A", groupId: g, id: "a1" })),
+            ...soccers.map((g) => ({ kind: "A", groupId: g, id: "a2" }))
+          ],
+          ...(spread || {})
         },
         ACTIVITIES,
         DAYS
       );
-      await flush();
-      expect(text(q(element, 'button[data-activity="a1"]'))).toBe("Swim2of 4");
+    const swimRow = (element) => q(element, 'button[data-activity="a1"]');
+    const soccerRow = (element) => q(element, 'button[data-activity="a2"]');
+
+    it("CORE-6.8: an accepted under line comes back when it gets worse, and stays away when the same or better", async () => {
+      // Swim 2 of 4 accepted.
+      const element = await open({ measure: swimSoccer(["g1", "g2"], []) });
       q(element, '.accept[data-key^="under|a1|"]').click();
       await flush();
-      expect(q(element, 'button[data-activity="a1"]')).toBeNull();
+      expect(swimRow(element)).toBeNull();
+      // Better: 3 of 4. Still accepted.
+      element.measure = swimSoccer(["g1", "g2", "g2"], []);
+      await flush();
+      expect(swimRow(element)).toBeNull();
+      // Back to 2 of 4: the same as accepted. Still accepted.
+      element.measure = swimSoccer(["g1", "g2"], []);
+      await flush();
+      expect(swimRow(element)).toBeNull();
+      // Worse: 1 of 4. It comes back, no longer accepted.
+      element.measure = swimSoccer(["g1"], []);
+      await flush();
+      expect(text(swimRow(element))).toBe("Swim1of 4");
+      // Back to 2 of 4, what was accepted: tucked away again, as on the desktop.
+      element.measure = swimSoccer(["g1", "g2"], []);
+      await flush();
+      expect(swimRow(element)).toBeNull();
+    });
+
+    it("CORE-6.8: an accepted over line comes back when further over, and stays away when the same or better", async () => {
+      // Soccer 4 of 2, over by 2, accepted.
+      const element = await open({
+        measure: swimSoccer([], ["g1", "g1", "g2", "g2"])
+      });
+      expect(text(soccerRow(element))).toBe("Soccer4of 2");
+      q(element, '.accept[data-key^="over|a2|"]').click();
+      await flush();
+      expect(soccerRow(element)).toBeNull();
+      // Better: 3 of 2.
+      element.measure = swimSoccer([], ["g1", "g1", "g2"]);
+      await flush();
+      expect(soccerRow(element)).toBeNull();
+      // Worse: 5 of 2.
+      element.measure = swimSoccer([], ["g1", "g1", "g1", "g2", "g2"]);
+      await flush();
+      expect(text(soccerRow(element))).toBe("Soccer5of 2");
+    });
+
+    it("CORE-6.8: an accepted early-week goal comes back when more is missing by its day", async () => {
+      const by = (missing) => ({
+        hasSpreadTargets: true,
+        spread: [`Swim · Bunk 2: ${missing} more needed by Wednesday`],
+        spreadBy: [
+          { groupId: "g2", activityId: "a1", missing, byDay: "Wednesday" }
+        ]
+      });
+      const element = await open({ measure: swimSoccer(["g1"], [], by(1)) });
+      q(element, '.accept[data-key^="spread|"]').click();
+      await flush();
+      expect(q(element, ".look-row")).toBeNull();
+      element.measure = swimSoccer(["g1"], [], by(2));
+      await flush();
+      expect(text(q(element, ".look-row"))).toContain(
+        "2 more needed by Wednesday"
+      );
+    });
+
+    it("CORE-6.8: a week shown fresh shows every line again; one week's accepts never touch another's", async () => {
+      const element = await open({ measure: swimSoccer(["g1", "g2"], []) });
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(swimRow(element)).toBeNull();
+      // Another week: the page shows it fresh with a new reset key, the same Swim numbers.
       element.resetKey = 2;
       await flush();
       word(element).click();
       await flush();
-      expect(q(element, 'button[data-activity="a1"]')).not.toBeNull();
+      expect(swimRow(element)).not.toBeNull();
     });
   });
   describe("the Why list's Open cells and notes", () => {

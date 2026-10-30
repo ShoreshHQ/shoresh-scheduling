@@ -20,7 +20,10 @@ import { LightningElement, api } from "lwc";
  *
  * Accept (wiki decisions 16 and 43; desktop FindingsRail "Accept"): hovering or focusing an
  * under or over row, or a line to look at, shows Accept, which tucks that line away for this
- * visit; it comes back when its numbers change or a week is shown fresh. A cell that breaks a
+ * visit; it comes back when it gets worse in the same week (an under or over row further off,
+ * an early-week goal missing more: CORE-6.8), stays away when it is the same or better, and every
+ * line comes back when a week is shown fresh. A line with no size (an Open cell, a note, a rule
+ * bent) stays away until the week is shown fresh or the line itself changes. A cell that breaks a
  * rule shared with other cells has nothing to accept (the desktop's OVERLAP), as on the desktop:
  * it goes when the clash is moved. Accept reaches the keyboard as the row after its line (Down),
  * says what it hid, and moves focus to the next line. The numbers stay the week's (the drawer
@@ -34,7 +37,8 @@ import { LightningElement, api } from "lwc";
 export default class ShoreshWeekChecks extends LightningElement {
   @api measure;
   _resetKey;
-  // Lines accepted this visit (their keys carry their numbers, so a changed line comes back).
+  // Lines accepted this visit: { key, same, size }. A line is the same one when its same
+  // matches, and stays away while its size is no bigger than the size accepted (CORE-6.8).
   accepted = [];
   // What Accept just said, for screen readers.
   acceptSaid = "";
@@ -131,10 +135,12 @@ export default class ShoreshWeekChecks extends LightningElement {
       .map((row) => ({
         ...row,
         key: `under|${row.id}|${row.placed}|${row.goal}`,
+        same: `under|${row.id}`,
+        size: row.goal - row.placed,
         said: `${row.name}: ${row.placed} of ${row.goal}`,
         acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}`
       }))
-      .filter((row) => !this.accepted.includes(row.key));
+      .filter((row) => !this.tucked(row));
   }
   get showOver() {
     return this.m.hasLimits || this.m.over.count > 0;
@@ -147,22 +153,24 @@ export default class ShoreshWeekChecks extends LightningElement {
       .map((row) => ({
         ...row,
         key: `over|${row.id}|${row.placed}|${row.goal}`,
+        same: `over|${row.id}`,
+        size: row.placed - row.goal,
         said: `${row.name}: ${row.placed} of ${row.goal}, over`,
         acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}, over`
       }))
-      .filter((row) => !this.accepted.includes(row.key));
+      .filter((row) => !this.tucked(row));
   }
   /** Open cells and why (Generated: the engine's words). An Open cell can be accepted. */
   get openRows() {
     return (this.m.open || [])
       .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
-      .filter((line) => !this.accepted.includes(line.key));
+      .filter((line) => !this.tucked(line));
   }
   /** Lines with no cell to go to. */
   get noteRows() {
     return (this.m.notes || [])
       .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
-      .filter((line) => !this.accepted.includes(line.key));
+      .filter((line) => !this.tucked(line));
   }
   get lookRows() {
     return this.m.look
@@ -172,7 +180,17 @@ export default class ShoreshWeekChecks extends LightningElement {
         acceptable: line.kind !== "overlapping",
         acceptLabel: `Accept: ${line.text}`
       }))
-      .filter((line) => !this.accepted.includes(line.key));
+      .filter((line) => !this.tucked(line));
+  }
+
+  /** Accepted this visit and no worse since: the same line, its size no bigger (CORE-6.8). */
+  tucked(line) {
+    return this.accepted.some((a) => {
+      if (a.same === undefined || a.size === undefined) {
+        return a.key === line.key;
+      }
+      return a.same === line.same && line.size <= a.size;
+    });
   }
 
   /**
@@ -195,7 +213,10 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     const line = all[index];
-    this.accepted = [...this.accepted, key];
+    this.accepted = [
+      ...this.accepted,
+      { key, same: line.same, size: line.size }
+    ];
     this.acceptSaid = `Accepted for this visit: ${line.text || `${line.name}, ${line.placed} of ${line.goal}`}.`;
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));

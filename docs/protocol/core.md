@@ -138,3 +138,7 @@ These never bend for Shoresh.
 - **CORE-6.6** Screen text MUST NOT contain record Ids, API field names (`__c`), or explanation
   paragraphs; the only sentence allowed is the one saying why Shoresh can't proceed.
 - **CORE-6.7** Problems MUST be computed from what is there, never stored.
+- **CORE-6.8** An accepted line MUST come back when it gets worse in the same week (further under
+  or over, or more still needed by its day); the same or better MUST stay accepted. A week
+  shown fresh MUST show every line again, and one week's accepts MUST NOT touch another's
+  (desktop findingKey; Greg 2026-10-30).
