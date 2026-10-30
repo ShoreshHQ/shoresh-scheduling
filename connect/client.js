@@ -9,6 +9,9 @@ const { byName } = require("./capabilities");
 
 /** The person's sign-in from the sf CLI: { instanceUrl, accessToken }, kept in memory only. */
 function signIn(org, run = execFile) {
+  if ((org && !/^[\w.@-]+$/.test(org)) || org?.startsWith("-")) {
+    return Promise.reject(new Error("That isn't a Salesforce sign-in name."));
+  }
   const args = ["org", "display", "--json"];
   if (org) args.push("--target-org", org);
   return new Promise((resolve, reject) => {
@@ -24,6 +27,12 @@ function signIn(org, run = execFile) {
           new Error(
             `Not signed in to Salesforce${org ? ` as "${org}"` : ""}. Run: sf org login web${org ? ` --alias ${org}` : ""}`
           )
+        );
+        return;
+      }
+      if (!/^https:\/\/[^/]+$/.test(result.instanceUrl)) {
+        reject(
+          new Error("The Salesforce sign-in has no secure (https) address.")
         );
         return;
       }
@@ -64,6 +73,7 @@ async function call(name, input, { org, fetchFn = fetch, sign = signIn } = {}) {
   const request = requestFor(capability, input);
   const response = await fetchFn(`${instanceUrl}${request.path}`, {
     method: request.method,
+    redirect: "error",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json"

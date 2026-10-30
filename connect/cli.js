@@ -41,7 +41,12 @@ function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
   } else {
     if (!flags.file) throw new Error(`${name} needs --file <records.json>.`);
     const parsed = JSON.parse(readFile(flags.file));
-    input.records = Array.isArray(parsed) ? parsed : parsed.records;
+    input.records = Array.isArray(parsed) ? parsed : parsed?.records;
+    if (!Array.isArray(input.records)) {
+      throw new Error(
+        'The file needs JSON like {"records": [ { ... }, { ... } ]}.'
+      );
+    }
   }
   return { name, input, org: flags.org };
 }

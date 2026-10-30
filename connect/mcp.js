@@ -24,7 +24,7 @@ async function handle(message, { org, callFn = call } = {}) {
   switch (method) {
     case "initialize":
       return reply({
-        protocolVersion: params?.protocolVersion ?? "2025-06-18",
+        protocolVersion: "2025-06-18",
         capabilities: { tools: {} },
         serverInfo: { name: "shoresh", version: "1.0.0" }
       });
@@ -76,6 +76,9 @@ if (require.main === module) {
       try {
         message = JSON.parse(line);
       } catch {
+        process.stdout.write(
+          `${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Unreadable JSON." } })}\n`
+        );
         continue;
       }
       handle(message, { org }).then((answer) => {

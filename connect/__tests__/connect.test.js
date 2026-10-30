@@ -114,6 +114,27 @@ describe("Shoresh for AI tools and the command line", () => {
     await expect(signIn("nobody", run)).rejects.toThrow(
       'Not signed in to Salesforce as "nobody". Run: sf org login web --alias nobody'
     );
+    await expect(signIn("--json", run)).rejects.toThrow(
+      "That isn't a Salesforce sign-in name."
+    );
+    const plain = (cmd, args, opts, done) =>
+      done(
+        null,
+        JSON.stringify({
+          result: {
+            instanceUrl: "http://camp.example.test",
+            accessToken: TOKEN
+          }
+        })
+      );
+    await expect(signIn("my-camp", plain)).rejects.toThrow(/https/);
+    const seen = [];
+    await call(
+      "read_elective_seats",
+      { season: "S", week: "W" },
+      { sign: fakeSign, fetchFn: answering(200, "{}", seen) }
+    );
+    expect(seen[0].init.redirect).toBe("error");
     await signIn("nobody", run).catch((e) =>
       expect(e.message).not.toContain(TOKEN)
     );
@@ -171,13 +192,20 @@ describe("Shoresh for AI tools and the command line", () => {
       content: [{ type: "text", text: sentence }],
       isError: true
     });
-    const conflict = JSON.stringify([
-      {
-        row: 0,
-        outcome: "problem",
-        message: "Kept beside the hand edit: a conflict."
-      }
-    ]);
+    // The import's own answer (IncomingDoors): every record, each in one sentence.
+    const conflict = JSON.stringify({
+      saved: 0,
+      unchanged: 0,
+      problems: 1,
+      records: [
+        {
+          row: 0,
+          result: "problem",
+          message:
+            "Kept beside Pat Example's choice a person made: shown as a conflict."
+        }
+      ]
+    });
     const batch = await call(
       "bring_in_camper_elective_choices",
       { records: [{}] },
@@ -229,6 +257,9 @@ describe("Shoresh for AI tools and the command line", () => {
       org: "my-camp"
     });
     expect(() => parse(["delete_everything"])).toThrow(/Usage/);
+    expect(() =>
+      parse(["bring_in_campers", "--file", "x.json"], () => '{"campers":[]}')
+    ).toThrow('The file needs JSON like {"records": [ { ... }, { ... } ]}.');
     expect(orgFrom(["node", "mcp.js", "--org", "a"], {})).toBe("a");
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });
