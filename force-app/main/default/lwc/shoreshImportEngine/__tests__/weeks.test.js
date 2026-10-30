@@ -1282,6 +1282,63 @@ describe("INGEST-4.14: a single-day file", () => {
     });
   });
 
+  /** The keys the save refers to that it does not add: the server refuses any (ImportKeys). */
+  function unknownKeys(plan, ids = []) {
+    const added = new Set(ids);
+    Object.values(plan)
+      .filter(Array.isArray)
+      .flat()
+      .forEach((r) => r && r.key && added.add(r.key));
+    const refs = [
+      ...[
+        "timeBlocks",
+        "divisions",
+        "groups",
+        "fixedActivities",
+        "recurringActivities"
+      ]
+        .flatMap((list) => plan[list] || [])
+        .flatMap((r) => [r.programKey, r.divisionKey, r.blockKey]),
+      ...plan.specialDays.flatMap((d) => [
+        ...d.grid.g.map((g) => g[0]),
+        ...d.grid.i.map((i) => i[1])
+      ])
+    ];
+    return refs.filter((k) => k && !added.has(k));
+  }
+
+  it("INGEST-4.14: a single-day file's save refers only to records it adds, so Add saves it (Lunch at its own time is an activity of the day)", () => {
+    const answers = { "oneDay|field-day.csv": "Thursday" };
+    const p = propose(fieldDay(), existing, answers);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(unknownKeys(plan)).toEqual([]);
+    expect(plan.recurringActivities).toEqual([]);
+    expect(plan.fixedActivities).toEqual([]);
+    expect(plan.specialDays[0].grid.i).toContainEqual([
+      "A",
+      "A|Lunch",
+      "Lunch"
+    ]);
+  });
+
+  it("INGEST-4.15: a weekday-named one-day file beside a week's files: its save refers only to records it adds", () => {
+    const files = [
+      file("Camp - Week 1.csv", [sheetOf("Week 1", weekRows(0))]),
+      file("color-war-wednesday.csv", [
+        sheetOf("Sheet1", [
+          ["Time", ...GROUPS],
+          ["9:30-11:00", ...GROUPS.map(() => "Capture the flag")],
+          ["12:00-12:45", ...GROUPS.map(() => "Lunch")]
+        ])
+      ])
+    ];
+    const answers = { "week|the file's week": "Week 1" };
+    const p = propose(files, existing, answers);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.specialDays).toHaveLength(1);
+    expect(unknownKeys(plan, ["w1"])).toEqual([]);
+  });
+
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
     const answers = { "oneDay|field-day.csv": LEAVE_OUT };
     const p = propose(fieldDay(), existing, answers);

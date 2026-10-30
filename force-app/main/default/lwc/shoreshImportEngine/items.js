@@ -231,6 +231,15 @@ function verdictFor(name, t, facts, decided, ctx) {
       deleted: gone
     };
   }
+  // INGEST-4.3, 4.14: a special day's own blocks are never the program's, so nothing is fixed or
+  // recurring at them; a name only there is an activity of that day, as the special-schedule
+  // import makes them (SpecialScheduleImport).
+  const patterns = decided.patterns || [];
+  const regular = patterns.filter((p) => !t.blocks[p.block]?.ownDay);
+  if (patterns.length && !regular.length) {
+    return { ...decided, patterns: [], kind: "activity" };
+  }
+  decided = { ...decided, patterns: regular };
   const several = ctx.timetables.filter((x) => !x.leftOut).length > 1;
   const id = `kind|${name}${several ? `|${t.name}` : ""}`;
   if (decided.verdict !== "ask") {
