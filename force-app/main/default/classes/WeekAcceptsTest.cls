@@ -1,7 +1,7 @@
 /**
  * Accepted counter lines kept with the week (WeekAccepts, CORE-6.8), as a scheduler with the
  * Shoresh Scheduler permission set: an accept is read back by a later visit; accepting the same
- * line again replaces the earlier accept; a Rebuild clears them; lines of another shape are not
+ * line again replaces the earlier accept; a Rebuild clears them and a version keeps none; lines of another shape are not
  * read; a line with no key is refused. Camp and helpers: GeneratedTestData.
  */
 @IsTest
@@ -76,6 +76,21 @@ private class WeekAcceptsTest {
       );
       Test.stopTest();
       Assert.areEqual(0, read(draftId).size());
+      // The version the Rebuild kept first is history: only a draft keeps accepts.
+      Id versionId = [
+        SELECT Id
+        FROM Schedule__c
+        WHERE Status__c = 'Version'
+        WITH USER_MODE
+        LIMIT 1
+      ]
+      .Id;
+      try {
+        WeekAccepts.accept(versionId, line('under|a1|2|4', 'under|a1', 2));
+        Assert.fail('A version kept an accept.');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(0, read(versionId).size());
+      }
     }
   }
 

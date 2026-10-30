@@ -96,17 +96,17 @@ export default class ShoreshWeekChecks extends LightningElement {
     if (!scheduleId) {
       return;
     }
-    let text;
+    let lines;
     try {
-      text = await readAccepted({ scheduleId });
+      lines = JSON.parse((await readAccepted({ scheduleId })) || "[]");
     } catch {
       // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake).
       return;
     }
-    if (ticket !== this.readTicket || !text) {
+    if (ticket !== this.readTicket) {
       return;
     }
-    const kept = JSON.parse(text).map((line) => ({
+    const kept = lines.map((line) => ({
       key: line.k,
       same: line.s === null ? undefined : line.s,
       size: line.n === null ? undefined : line.n
@@ -295,7 +295,7 @@ export default class ShoreshWeekChecks extends LightningElement {
         })
       });
     } catch {
-      this.acceptSaid = `Accepted until you leave this week, not kept with it: ${said}.`;
+      this.acceptSaid = `Couldn't keep this Accept with the week: ${said}.`;
     } finally {
       this.saving = this.saving.filter((e) => e !== entry);
     }

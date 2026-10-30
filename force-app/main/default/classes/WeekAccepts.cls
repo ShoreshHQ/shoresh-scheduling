@@ -4,7 +4,8 @@
  * week later, and the line still comes back when it gets worse (c/shoreshWeekChecks decides that;
  * the server only keeps what it is sent). Each line is { k: its key, s: what makes it the same
  * line or null, n: how far off it was or null }. A Generated build clears them (GeneratedSaves),
- * as the desktop's Rebuild clears set-aside findings. Reads and writes run in user mode.
+ * as the desktop's Rebuild clears set-aside findings. Only a week's draft keeps them. Reads and
+ * writes run in user mode.
  */
 public with sharing class WeekAccepts {
   @TestVisible
@@ -44,7 +45,7 @@ public with sharing class WeekAccepts {
       List<Schedule__c> found = [
         SELECT AcceptedLines__c
         FROM Schedule__c
-        WHERE Id = :scheduleId
+        WHERE Id = :scheduleId AND Status__c = :ManualDrafts.DRAFT
         WITH USER_MODE
         FOR UPDATE
       ];

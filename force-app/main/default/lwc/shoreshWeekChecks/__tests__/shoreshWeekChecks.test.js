@@ -545,7 +545,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       q(element, '.accept[data-key^="under|a1|"]').click();
       await flush();
       expect(q(element, '[data-id="accept-said"]').textContent).toBe(
-        "Accepted until you leave this week, not kept with it: Swim, 2 of 4."
+        "Couldn't keep this Accept with the week: Swim, 2 of 4."
       );
     });
   });
