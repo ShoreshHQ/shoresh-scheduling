@@ -132,10 +132,15 @@ describe("c-shoresh-schedule-export", () => {
         P1,
         "Chugim (Archery, Drama)"
       ]);
-      // A set with no offerings named reads as its name alone.
-      expect(
-        sheet(scheduleSheets(view, CATALOGUE, t), "Monday").rows[1][2]
-      ).toBe("Chugim");
+      // A set with no offerings named reads as its name alone, unbracketed on All Groups too.
+      const bare = scheduleSheets(view, CATALOGUE, t);
+      expect(sheet(bare, "Monday").rows[1][2]).toBe("Chugim");
+      expect(sheet(bare, "All Bunks").rows).toContainEqual([
+        "Bunk 2",
+        "Monday",
+        P1,
+        "Chugim"
+      ]);
     });
 
     it("gives the same file for the same version, every time", () => {

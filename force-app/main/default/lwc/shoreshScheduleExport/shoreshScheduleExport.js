@@ -72,13 +72,14 @@ export function itemText(item, t, bracket = false) {
 /**
  * An elective set's cell lists its offerings, as the desktop's Excel export does
  * ("Chugim (Archery, Drama)"), on every sheet and with no kind in brackets (ELECT-6.3). offerings:
- * a Map of set Id to its offerings' names; a set with none, or one removed, reads as itemText.
+ * a Map of set Id to its offerings' names; a set with none reads as its name; one removed as itemText.
  */
 function cellText(item, t, offerings, bracket = false) {
-  const names = isElectiveItem(item) && !item.gone && offerings.get(item.id);
-  return names && names.length
-    ? `${item.name} (${names.join(", ")})`
-    : itemText(item, t, bracket);
+  if (!isElectiveItem(item) || item.gone) {
+    return itemText(item, t, bracket);
+  }
+  const names = offerings.get(item.id) || [];
+  return names.length ? `${item.name} (${names.join(", ")})` : item.name;
 }
 
 /** One group's day, one entry per time block: the item there (or null), carried-on blocks too. */
@@ -168,7 +169,7 @@ export function scheduleSheets(view, catalogue, t, offerings = new Map()) {
   // Each special event's own schedule: its time blocks down, its stations across.
   const eventSheets = events.map((event, i) => ({
     name: names[allDays.length + i],
-    rows: guarded(gridRows(event.plan, t)),
+    rows: guarded(gridRows(event.plan, t, offerings)),
     widths: [22, ...event.plan.groups.map(() => 16)]
   }));
 
