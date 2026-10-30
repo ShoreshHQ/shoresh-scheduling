@@ -139,6 +139,8 @@ These never bend for Shoresh.
   paragraphs; the only sentence allowed is the one saying why Shoresh can't proceed.
 - **CORE-6.7** Problems MUST be computed from what is there, never stored.
 - **CORE-6.8** An accepted line MUST come back when it gets worse in the same week (further under
-  or over, or more still needed by its day); the same or better MUST stay accepted. A week
-  shown fresh MUST show every line again, and one week's accepts MUST NOT touch another's
-  (desktop findingKey; Greg 2026-10-30).
+  or over, or more still needed by its day); the same or better MUST stay accepted. One week's
+  accepts MUST NOT touch another's (desktop findingKey; Greg 2026-10-30).
+- **CORE-6.9** An Accept MUST be kept with the week, so the line stays accepted for anyone who
+  opens that week later (still under CORE-6.8); a Generated build MUST clear the week's accepts
+  (desktop: Rebuild clears set-aside findings; Greg 2026-10-30).

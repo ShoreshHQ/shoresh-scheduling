@@ -787,6 +787,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     };
   }
 
+  /** The week's draft, where the counter keeps accepted lines (CORE-6.8). */
+  get checksScheduleId() {
+    return (this.loaded && this.loaded.scheduleId) || null;
+  }
   get schedule() {
     return this.week ? { days: this.week.days } : null;
   }

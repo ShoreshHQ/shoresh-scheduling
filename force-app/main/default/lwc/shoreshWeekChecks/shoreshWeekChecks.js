@@ -1,4 +1,6 @@
 import { LightningElement, api } from "lwc";
+import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
+import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
 
 /**
  * The week's counter on the rail (wiki decisions 38 and 41; ADR 0008 part 7), shared by Manual
@@ -15,15 +17,17 @@ import { LightningElement, api } from "lwc";
  * changed, rain plan full), then notes with no cell (a blank setting taken as 1, the imported week).
  * A row naming a cell takes the director there without changing it.
  *
- * measure: c/shoreshEngine measureWeek's answer for the week shown. resetKey: change it when a
- * different week is shown fresh; the dropdown closes.
+ * measure: c/shoreshEngine measureWeek's answer for the week shown. scheduleId: the week's draft,
+ * where accepts are kept (none yet: they last this visit only). resetKey: change it when a week is
+ * shown fresh or rebuilt; the dropdown closes and the week's accepts are read again.
  *
  * Accept (wiki decisions 16 and 43; desktop FindingsRail "Accept"): hovering or focusing an
- * under or over row, or a line to look at, shows Accept, which tucks that line away for this
- * visit; it comes back when it gets worse in the same week (an under or over row further off,
- * an early-week goal missing more: CORE-6.8), stays away when it is the same or better, and every
- * line comes back when a week is shown fresh. A line with no size (an Open cell, a note, a rule
- * bent) stays away until the week is shown fresh or the line itself changes. A cell that breaks a
+ * under or over row, or a line to look at, shows Accept, which tucks that line away and keeps it
+ * with the week (Apex WeekAccepts, Greg 2026-10-30), so it stays away for anyone who opens the week
+ * later; it comes back when it gets worse (an under or over row further off, an early-week goal
+ * missing more: CORE-6.8) and stays away when it is the same or better. A Generated build clears
+ * the week's accepts (the desktop's Rebuild). A line with no size (an Open cell, a note, a rule
+ * bent) stays away until the line itself changes. A cell that breaks a
  * rule shared with other cells has nothing to accept (the desktop's OVERLAP), as on the desktop:
  * it goes when the clash is moved. Accept reaches the keyboard as the row after its line (Down),
  * says what it hid, and moves focus to the next line. The numbers stay the week's (the drawer
@@ -37,11 +41,19 @@ import { LightningElement, api } from "lwc";
 export default class ShoreshWeekChecks extends LightningElement {
   @api measure;
   _resetKey;
-  // Lines accepted this visit: { key, same, size }. A line is the same one when its same
-  // matches, and stays away while its size is no bigger than the size accepted (CORE-6.8).
+  _scheduleId;
+  // Lines accepted, as kept with the week: { key, same, size }. A line is the same one when its
+  // same matches, and stays away while its size is no bigger than the size accepted (CORE-6.8).
   accepted = [];
+  // Which read of the week's accepts is the latest (an older answer is dropped).
+  readTicket = 0;
+  // Accepts still on their way to the server ({ scheduleId, line }): a read meanwhile keeps them.
+  saving = [];
   // What Accept just said, for screen readers.
   acceptSaid = "";
+  // An Accept that couldn't be kept with the week, shown at the top of the dropdown (red text,
+  // as a field error) until the next Accept or the week is read again.
+  acceptProblem = "";
   // After Accept: focus goes to the line now at this place in the list ({ index }).
   focusAfterRender = null;
 
@@ -55,9 +67,56 @@ export default class ShoreshWeekChecks extends LightningElement {
       if (pop) {
         pop.close();
       }
-      this.accepted = [];
+      this.readAgain();
     }
     this._resetKey = value;
+  }
+
+  @api
+  get scheduleId() {
+    return this._scheduleId;
+  }
+  set scheduleId(value) {
+    if (value !== this._scheduleId) {
+      // The week's first save made its draft: what was accepted before is kept with it now.
+      const before = this._scheduleId ? [] : this.accepted;
+      this._scheduleId = value;
+      this.readAgain(before);
+      before.forEach((a) => this.keep(a, a.said));
+    }
+  }
+
+  /** The week's accepts as kept with it: none shown from another week meanwhile. */
+  async readAgain(carried = []) {
+    const ticket = ++this.readTicket;
+    this.acceptProblem = "";
+    const scheduleId = this._scheduleId;
+    this.accepted = [
+      ...carried,
+      ...this.saving
+        .filter((s) => s.scheduleId === scheduleId)
+        .map((s) => s.line)
+    ];
+    if (!scheduleId) {
+      return;
+    }
+    let lines;
+    try {
+      lines = JSON.parse((await readAccepted({ scheduleId })) || "[]");
+    } catch {
+      // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake).
+      return;
+    }
+    if (ticket !== this.readTicket) {
+      return;
+    }
+    const kept = lines.map((line) => ({
+      key: line.k,
+      same: line.s === null ? undefined : line.s,
+      size: line.n === null ? undefined : line.n
+    }));
+    // Accepts made while it was read stay.
+    this.accepted = [...kept, ...this.accepted];
   }
 
   get m() {
@@ -213,13 +272,40 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     const line = all[index];
-    this.accepted = [
-      ...this.accepted,
-      { key, same: line.same, size: line.size }
-    ];
-    this.acceptSaid = `Accepted for this visit: ${line.text || `${line.name}, ${line.placed} of ${line.goal}`}.`;
+    const said = line.text || `${line.name}, ${line.placed} of ${line.goal}`;
+    const accepted = { key, same: line.same, size: line.size, said };
+    this.accepted = [...this.accepted, accepted];
+    this.acceptSaid = `Accepted: ${said}.`;
+    this.acceptProblem = "";
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
+    this.keep(accepted, said);
+  }
+
+  /** Keeps the accept with the week; if it can't be, says it lasts only until the week is left. */
+  async keep(line, said) {
+    const scheduleId = this._scheduleId;
+    if (!scheduleId) {
+      return;
+    }
+    const entry = { scheduleId, line };
+    this.saving = [...this.saving, entry];
+    try {
+      await keepAccepted({
+        scheduleId,
+        line: JSON.stringify({
+          k: line.key,
+          s: line.same === undefined ? null : line.same,
+          n: line.size === undefined ? null : line.size
+        })
+      });
+    } catch {
+      // Shown in the dropdown, where role="alert" also says it: the live line stays quiet.
+      this.acceptSaid = "";
+      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}.`;
+    } finally {
+      this.saving = this.saving.filter((e) => e !== entry);
+    }
   }
 
   renderedCallback() {

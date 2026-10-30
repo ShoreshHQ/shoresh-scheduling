@@ -11,6 +11,15 @@
     data-id="counter"
   >
     <div class="list" data-id="counter-list">
+      <template lwc:if={acceptProblem}>
+        <p
+          class="shoresh-pop-row slds-text-color_error"
+          role="alert"
+          data-id="accept-problem"
+        >
+          {acceptProblem}
+        </p>
+      </template>
       <div class="bar" aria-hidden="true" data-id="bar">
         <span class="bar-fill" style={barStyle}></span>
       </div>

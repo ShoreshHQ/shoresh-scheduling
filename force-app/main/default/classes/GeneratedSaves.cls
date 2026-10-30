@@ -121,12 +121,14 @@ public with sharing class GeneratedSaves {
       Id versionId = VERSION_FIRST.containsKey(request.action)
         ? saveVersion(draft, days)
         : null;
-      // The engine's notes are this build's: none kept from the week it replaces.
+      // The engine's notes are this build's: none kept from the week it replaces. Accepted
+      // lines go too (WeekAccepts, CORE-6.8), as the desktop's Rebuild clears set-aside findings.
       Database.update(
         new Schedule__c(
           Id = draft.Id,
           EngineOption__c = request.option,
-          EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes)
+          EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes),
+          AcceptedLines__c = null
         ),
         AccessLevel.USER_MODE
       );
