@@ -5,9 +5,9 @@
  *
  *   node connect/cli.js read_group_schedule --season "Summer 2026" --week "Week 2" [--csv]
  *   node connect/cli.js bring_in_campers --file campers.json
- *   node connect/cli.js change_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
+ *   node connect/cli.js change_schedule_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
  *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
- *   node connect/cli.js undo_last_change --season "Summer 2026" --week "Week 2"
+ *   node connect/cli.js undo_last_agent_change --season "Summer 2026" --week "Week 2"
  *   (--org <alias> picks a sf CLI sign-in; otherwise SHORESH_ORG, then the sf CLI's default.)
  */
 const fs = require("fs");

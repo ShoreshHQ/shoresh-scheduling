@@ -1,6 +1,6 @@
 /**
  * The person's own changes through an agent or the command line (docs/protocol/api.md API-1.11
- * to API-1.14): /v1/cell and /v1/undo on GeneratedTestData's camp, whose first Generate puts Gym
+ * to API-1.14): /v1/schedule_cell and /v1/undo_last_agent_change on GeneratedTestData's camp, whose first Generate puts Gym
  * games in every group's Period 2.
  */
 @IsTest
@@ -44,7 +44,7 @@ private class AgentChangesTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    if (address == 'cell') {
+    if (address == 'schedule_cell') {
       AgentCell.post();
     } else {
       AgentUndo.post();
@@ -81,7 +81,7 @@ private class AgentChangesTest {
       Test.startTest();
       Id draftId = GeneratedTestData.generated();
       Integer before = Limits.getQueries();
-      List<Object> answer = send('cell', cell('Gym games', 'Soccer'));
+      List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
       Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
@@ -110,7 +110,7 @@ private class AgentChangesTest {
       GeneratedTestData.camp();
       Test.startTest();
       Id draftId = GeneratedTestData.generated();
-      List<Object> answer = send('cell', cell('Archery', 'Soccer'));
+      List<Object> answer = send('schedule_cell', cell('Archery', 'Soccer'));
       Test.stopTest();
       Assert.areEqual(409, answer[0]);
       Assert.areEqual(
@@ -141,7 +141,7 @@ private class AgentChangesTest {
         new List<GeneratedWeek.LockChange>{ lock },
         GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
       );
-      List<Object> answer = send('cell', cell('Gym games', 'Soccer'));
+      List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
       Test.stopTest();
       Assert.areEqual(400, answer[0]);
       Assert.areEqual(WHERE_A + ' is locked.', answer[1]);
@@ -157,9 +157,15 @@ private class AgentChangesTest {
       GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
-      send('cell', cell('Gym games', 'Soccer'));
-      List<Object> undone = send('undo', week(new Map<String, Object>()));
-      List<Object> again = send('undo', week(new Map<String, Object>()));
+      send('schedule_cell', cell('Gym games', 'Soccer'));
+      List<Object> undone = send(
+        'undo_last_agent_change',
+        week(new Map<String, Object>())
+      );
+      List<Object> again = send(
+        'undo_last_agent_change',
+        week(new Map<String, Object>())
+      );
       Test.stopTest();
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual('Undid "Placed Soccer · ' + WHERE_A + '".', undone[1]);
@@ -186,7 +192,7 @@ private class AgentChangesTest {
       );
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
-      send('cell', cell('Gym games', 'Soccer'));
+      send('schedule_cell', cell('Gym games', 'Soccer'));
       // Then a hand edit on screen, of Group B's Monday Period 2.
       GeneratedTestData.handEdits(
         draftId,
@@ -203,7 +209,10 @@ private class AgentChangesTest {
         },
         GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
       );
-      List<Object> undone = send('undo', week(new Map<String, Object>()));
+      List<Object> undone = send(
+        'undo_last_agent_change',
+        week(new Map<String, Object>())
+      );
       Test.stopTest();
       Assert.areEqual(400, undone[0]);
       Assert.isTrue(
@@ -227,11 +236,95 @@ private class AgentChangesTest {
     }
     System.runAs(ShoreshTestData.outsider()) {
       Test.startTest();
-      List<Object> answer = send('cell', asked);
+      List<Object> answer = send('schedule_cell', asked);
       Test.stopTest();
       Assert.areEqual(400, answer[0]);
       Assert.areEqual(AgentWeeks.NO_ACCESS, answer[1]);
     }
     Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
+  }
+
+  // API-1.13
+  @IsTest
+  static void aChangedCellLosesItsBuildReasonAsOnScreen() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      String monday = String.valueOf(GeneratedTestData.MONDAY);
+      Database.update(
+        new Schedule__c(
+          Id = draftId,
+          EngineNotes__c = JSON.serialize(
+            new Map<String, Object>{
+              'v' => 1,
+              'open' => new List<Object>{
+                new List<String>{
+                  monday,
+                  ids.get('Group A'),
+                  ids.get('Period 2'),
+                  'full'
+                },
+                new List<String>{
+                  monday,
+                  ids.get('Group B'),
+                  ids.get('Period 2'),
+                  'full'
+                }
+              },
+              'blank' => new List<Object>(),
+              'floor' => new Map<String, Object>{ 'kind' => 'frame' }
+            }
+          )
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      Map<String, Object> notes = (Map<String, Object>) JSON.deserializeUntyped(
+        [
+          SELECT EngineNotes__c
+          FROM Schedule__c
+          WHERE Id = :draftId
+          WITH SYSTEM_MODE
+        ]
+        .EngineNotes__c
+      );
+      List<Object> open = (List<Object>) notes.get('open');
+      Assert.areEqual(1, open.size());
+      Assert.areEqual(ids.get('Group B'), ((List<Object>) open[0])[1]);
+      Assert.isNull(notes.get('floor'));
+    }
+  }
+
+  // API-1.13
+  @IsTest
+  static void lookAlikeNamesAreRefusedNamingBoth() {
+    Assert.areEqual(
+      1,
+      AgentFields.onlyOne(
+        new List<String>{ 'Bunk 1', 'Bunk 2' },
+        'bunk 2',
+        'group'
+      )
+    );
+    Assert.areEqual(
+      -1,
+      AgentFields.onlyOne(new List<String>{ 'Bunk 1' }, '', 'group')
+    );
+    try {
+      AgentFields.onlyOne(
+        new List<String>{ 'Bunk 1', 'bunk  1' },
+        'Bunk 1',
+        'group'
+      );
+      Assert.fail('Expected look-alike names to be refused');
+    } catch (ShoreshException e) {
+      Assert.areEqual(
+        '"Bunk 1" and "bunk  1" are both a group called that on that day, so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.',
+        e.getMessage()
+      );
+    }
   }
 }

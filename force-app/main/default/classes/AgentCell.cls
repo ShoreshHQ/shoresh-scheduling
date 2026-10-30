@@ -1,13 +1,13 @@
 /**
  * cell: change one cell of a program's Generated Schedule week, as the person, through an agent
- * or the command line (docs/protocol/api.md API-1.11 to API-1.13). Web address /v1/cell, POST
+ * or the command line (docs/protocol/api.md API-1.11 to API-1.13). Web address /v1/schedule_cell, POST
  * {season, week, program, group, day, time, was, activity}. The change is the screen's own hand
  * edit (GeneratedEngineNotes.saveHandEdits: the same save, conflicts and locking), made only when
  * the cell still holds what the agent says it saw (was), so someone else's change is never
  * replaced unseen; a locked cell is refused in the screen's words. A version marked "Through an
  * agent" is kept first, so the person sees it and Undo brings the week back (AgentUndo).
  */
-@RestResource(urlMapping='/v1/cell')
+@RestResource(urlMapping='/v1/schedule_cell')
 global with sharing class AgentCell implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -52,6 +52,15 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     request.scheduleId = week.draft.Id;
     request.revision = GeneratedDrafts.revisionOf(days);
     request.edits = new List<SlotEdits.Edit>{ editOf(target) };
+    // The cell's Open reason goes, as the screen drops it before saving a hand edit.
+    request.engineNotes = GeneratedEngineNotes.withoutCell(
+      week.draft.EngineNotes__c,
+      new List<String>{
+        String.valueOf(day),
+        grid.groups[g].id,
+        grid.blocks[b].id
+      }
+    );
     SlotEdits.Result result = GeneratedEngineNotes.saveHandEdits(request);
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(
@@ -120,12 +129,13 @@ global with sharing class AgentCell implements AgentWeeks.Action {
 
   private Integer groupIn(ScheduleGrid grid) {
     String asked = AgentFields.text(body, 'group');
-    for (Integer g = 0; g < grid.groups.size(); g++) {
-      if (
-        IncomingBatch.fold(grid.groups[g].name) == IncomingBatch.fold(asked)
-      ) {
-        return g;
-      }
+    List<String> names = new List<String>();
+    for (ScheduleGrid.GroupRef each : grid.groups) {
+      names.add(each.name);
+    }
+    Integer found = AgentFields.onlyOne(names, asked, 'group');
+    if (found >= 0) {
+      return found;
     }
     throw new ShoreshException(
       String.isBlank(asked)
@@ -137,15 +147,18 @@ global with sharing class AgentCell implements AgentWeeks.Action {
   /** The time block by its name ("Period 2") or its start ("09:00"). */
   private Integer blockIn(ScheduleGrid grid) {
     String asked = AgentFields.text(body, 'time');
-    for (Integer b = 0; b < grid.blocks.size(); b++) {
-      ScheduleGrid.Block block = grid.blocks[b];
-      if (
-        IncomingBatch.fold(block.name) == IncomingBatch.fold(asked) ||
-        (block.startTime != null &&
-        block.startTime.left(5) == asked)
-      ) {
-        return b;
-      }
+    List<String> names = new List<String>();
+    List<String> starts = new List<String>();
+    for (ScheduleGrid.Block block : grid.blocks) {
+      names.add(block.name);
+      starts.add(block.startTime == null ? '' : block.startTime.left(5));
+    }
+    Integer found = AgentFields.onlyOne(names, asked, 'time');
+    if (found < 0) {
+      found = AgentFields.onlyOne(starts, asked, 'time');
+    }
+    if (found >= 0) {
+      return found;
     }
     throw new ShoreshException(
       String.isBlank(asked)

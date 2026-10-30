@@ -170,8 +170,8 @@ const CAPABILITIES = [
     ]
   ),
   change(
-    "change_cell",
-    "cell",
+    "change_schedule_cell",
+    "schedule_cell",
     "Change one cell of a week's Generated Schedule: put an activity there, or Open to clear it.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
@@ -197,8 +197,8 @@ const CAPABILITIES = [
     ["group", "day", "time", "was", "activity"]
   ),
   change(
-    "undo_last_change",
-    "undo",
+    "undo_last_agent_change",
+    "undo_last_agent_change",
     "Undo your last change made through an agent in a week's Generated Schedule. It is refused if anyone saved the week since."
   )
 ];

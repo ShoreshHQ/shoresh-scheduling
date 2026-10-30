@@ -54,10 +54,10 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.6, API-1.5
-  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing> or undo_last_change, said without jargon", () => {
+  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing> or undo_last_agent_change, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_change)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_agent_change)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -184,7 +184,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.10
   // API-1.11
-  it("personsOwnChanges: change_cell and undo_last_change send the person's fields to /v1/cell and /v1/undo", async () => {
+  it("personsOwnChanges: change_schedule_cell and undo_last_agent_change send the person's fields to /v1/schedule_cell and /v1/undo_last_agent_change", async () => {
     const seen = [];
     const fields = {
       season: "Summer 2026",
@@ -196,18 +196,18 @@ describe("Shoresh for AI tools and the command line", () => {
       activity: "Soccer"
     };
     await call(
-      "change_cell",
+      "change_schedule_cell",
       { ...fields, records: [] },
       { run: sfAnswering(200, "{}", seen) }
     );
     expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/cell",
+      "/services/apexrest/v1/schedule_cell",
       "--method",
       "POST"
     ]);
     expect(JSON.parse(seen[0].stdin)).toEqual(fields);
     const undone = await call(
-      "undo_last_change",
+      "undo_last_agent_change",
       { season: "Summer 2026", week: "Week 1" },
       {
         run: sfAnswering(
@@ -219,7 +219,9 @@ describe("Shoresh for AI tools and the command line", () => {
         )
       }
     );
-    expect(seen[1].args[3]).toBe("/services/apexrest/v1/undo");
+    expect(seen[1].args[3]).toBe(
+      "/services/apexrest/v1/undo_last_agent_change"
+    );
     expect(undone).toEqual({
       ok: true,
       status: 200,
@@ -227,12 +229,12 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(
       parse([
-        "change_cell",
+        "change_schedule_cell",
         ...Object.entries(fields).flatMap(([k, v]) => [`--${k}`, v]),
         "--org",
         "my-camp"
       ])
-    ).toEqual({ name: "change_cell", input: fields, org: "my-camp" });
+    ).toEqual({ name: "change_schedule_cell", input: fields, org: "my-camp" });
   });
 
   it("sameNamesBothWays: the MCP tools and the command line take the same names", async () => {

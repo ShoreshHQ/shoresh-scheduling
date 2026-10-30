@@ -40,6 +40,36 @@ public with sharing class GeneratedEngineNotes {
   }
 
   /**
+   * The notes after a hand edit of one cell (date, group Id, block Id), as the screen trims them
+   * before it saves the edit (shoreshGeneratedSchedule dropEngineWhy, notes.js notesWithout): the
+   * cell's Open reason goes, and the floor and Rebuild counts go, since any hand edit makes them
+   * stale. Null when there are none to keep.
+   */
+  public static String withoutCell(String text, List<String> cell) {
+    if (kept(text) == null) {
+      return null;
+    }
+    Map<String, Object> notes = (Map<String, Object>) JSON.deserializeUntyped(
+      text
+    );
+    List<Object> open = new List<Object>();
+    for (Object row : (List<Object>) notes.get('open')) {
+      List<Object> parts = (List<Object>) row;
+      Boolean same =
+        parts[0] == cell[0] &&
+        SlotIds.indexOf(new List<String>{ (String) parts[1] }, cell[1]) == 0 &&
+        SlotIds.indexOf(new List<String>{ (String) parts[2] }, cell[2]) == 0;
+      if (!same) {
+        open.add(row);
+      }
+    }
+    notes.put('open', open);
+    notes.put('floor', null);
+    notes.put('keep', null);
+    return JSON.serialize(notes);
+  }
+
+  /**
    * Hand edits on the Generated draft (SlotSaves.saveOnGenerated), then the engine's notes they
    * carry (afterHandEdits), under the draft's lock.
    */

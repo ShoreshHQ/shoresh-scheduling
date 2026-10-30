@@ -46,4 +46,33 @@ public with sharing class AgentFields {
     }
     return ((String) value).normalizeSpace();
   }
+
+  /**
+   * Where the one name that reads as asked is (as camps type names), or -1 when none does. Two
+   * that read the same are refused, naming both: Shoresh never picks one silently.
+   */
+  public static Integer onlyOne(List<String> names, String asked, String what) {
+    Integer found = -1;
+    if (String.isBlank(asked)) {
+      return found;
+    }
+    for (Integer i = 0; i < names.size(); i++) {
+      if (IncomingBatch.fold(names[i]) != IncomingBatch.fold(asked)) {
+        continue;
+      }
+      if (found >= 0) {
+        throw new ShoreshException(
+          '"' +
+            names[found] +
+            '" and "' +
+            names[i] +
+            '" are both a ' +
+            what +
+            ' called that on that day, so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.'
+        );
+      }
+      found = i;
+    }
+    return found;
+  }
 }
