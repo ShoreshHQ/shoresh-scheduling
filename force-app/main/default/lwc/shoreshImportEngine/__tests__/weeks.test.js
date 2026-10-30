@@ -1373,6 +1373,33 @@ describe("INGEST-4.14: a single-day file", () => {
     expect(unknownKeys(plan, ["w1"])).toEqual([]);
   });
 
+  it("INGEST-4.16: two single-day files beside one week's file both join its program", () => {
+    const files = [
+      file("summer-week.csv", [sheetOf("Sheet1", weekRows(0))]),
+      ...fieldDay(),
+      file("color-war-wednesday.csv", [
+        sheetOf("Sheet1", [
+          ["Time", ...GROUPS],
+          ["9:30-11:00", ...GROUPS.map(() => "Capture the flag")],
+          ["12:00-12:45", ...GROUPS.map(() => "Lunch")]
+        ])
+      ])
+    ];
+    const answers = {
+      "oneDay|field-day.csv": "Thursday",
+      "week|the file's week": "Week 1"
+    };
+    const p = propose(files, existing, answers);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.programs).toHaveLength(1);
+    expect(plan.groups.map((g) => g.name).sort()).toEqual(GROUPS);
+    expect(plan.specialDays.map((d) => d.day).sort()).toEqual([
+      "Thursday",
+      "Wednesday"
+    ]);
+    expect(plan.versions[0].days).toHaveLength(3);
+  });
+
   it("INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow the season's own days", () => {
     const dated = {
       ...existingSetup(),

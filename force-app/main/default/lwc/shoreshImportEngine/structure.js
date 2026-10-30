@@ -695,7 +695,8 @@ function hostOf(t, timetables, pages, placements) {
   let best = null;
   let most = -1;
   for (const x of timetables) {
-    if (x === t || x.joined || x.pages.some((i) => pages[i].oneDay)) {
+    // Not another single-day file's own (a week's that one already joined still hosts).
+    if (x === t || x.joined || x.pages.every((i) => pages[i].oneDay)) {
       continue;
     }
     const shape = timetableShape(x, placements);

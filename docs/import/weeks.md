@@ -288,7 +288,8 @@ Each rule is clue, meaning, example, test.
     several programs of a week, it joins the one sharing the most groups with it. Regular
     multi-file grouping is unchanged.
     Test: "INGEST-4.16: a one-day special-day file on its own times joins the week file's
-    program: each group once, one program". Code: `structure.js` `singleDayFiles`, `hostOf`;
+    program: each group once, one program"; "two single-day files beside one week's file both join
+    its program". Code: `structure.js` `singleDayFiles`, `hostOf`;
     `version.js` `specialDayCells`.
 
 17. **A single-day file never decides the camp's days** (desktop `specialDayFile.js`: a
