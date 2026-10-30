@@ -1,26 +1,34 @@
 /**
  * Shoresh for AI tools (MCP) and the command line: connect/*.js (docs/protocol/api.md,
- * API-1.6 to API-1.10). No Salesforce here: the sign-in and the web are stand-ins.
+ * API-1.6 to API-1.10). No Salesforce here: the sf command line is a stand-in.
  */
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("../capabilities");
-const { signIn, requestFor, call } = require("../client");
+const { requestFor, sfArgs, readResponse, call } = require("../client");
 const { tools, handle, orgFrom } = require("../mcp");
 const { parse } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
-const TOKEN = "made-up-sign-in-123";
-const fakeSign = async () => ({
-  instanceUrl: "https://camp.example.test",
-  accessToken: TOKEN
-});
-const answering =
+
+/** A stand-in for `sf api request rest --include`: answers status and body, and records each call. */
+const sfAnswering =
   (status, body, seen = []) =>
-  async (url, init) => {
-    seen.push({ url, init });
-    return { ok: status < 300, status, text: async () => body };
+  async (args, stdin) => {
+    seen.push({ args, stdin });
+    return `HTTP/1.1 ${status}\ncontent-type: application/json\n\n${body}`;
   };
+
+const callTool = (name, args, run) =>
+  handle(
+    {
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name, arguments: args }
+    },
+    { callFn: (n, input, opts) => call(n, input, { ...opts, run }) }
+  );
 
 describe("Shoresh for AI tools and the command line", () => {
   // API-1.6
@@ -56,139 +64,92 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.7
-  it("actsAsThePerson: signs in through the person's own sf CLI sign-in and calls with it", async () => {
-    let asked;
-    const run = (cmd, args, opts, done) => {
-      asked = [cmd, ...args];
-      done(
-        null,
-        JSON.stringify({
-          result: {
-            instanceUrl: "https://camp.example.test",
-            accessToken: TOKEN
-          }
-        })
-      );
-    };
-    await expect(signIn("my-camp", run)).resolves.toEqual({
-      instanceUrl: "https://camp.example.test",
-      accessToken: TOKEN
-    });
-    expect(asked).toEqual([
-      "sf",
-      "org",
-      "display",
-      "--json",
-      "--target-org",
-      "my-camp"
-    ]);
+  it("actsAsThePerson: each action is the person's own sf CLI call to the API's address", async () => {
     const seen = [];
     await call(
       "read_group_schedule",
       { season: "Summer 2026", week: "Week 2" },
-      { sign: fakeSign, fetchFn: answering(200, "{}", seen) }
+      { org: "my-camp", run: sfAnswering(200, "{}", seen) }
     );
-    expect(seen[0].url).toBe(
-      "https://camp.example.test/services/apexrest/v1/group_schedule?season=Summer+2026&week=Week+2"
-    );
-    expect(seen[0].init.headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(seen[0].args).toEqual([
+      "api",
+      "request",
+      "rest",
+      "/services/apexrest/v1/group_schedule?season=Summer+2026&week=Week+2",
+      "--method",
+      "GET",
+      "--include",
+      "--target-org",
+      "my-camp"
+    ]);
     const posted = [];
     await call(
       "bring_in_campers",
       { records: [{ camper_name: "Pat Example" }] },
-      { sign: fakeSign, fetchFn: answering(200, "[]", posted) }
+      { run: sfAnswering(200, "{}", posted) }
     );
-    expect(posted[0].init.method).toBe("POST");
-    expect(JSON.parse(posted[0].init.body)).toEqual({
+    expect(posted[0].args).toEqual([
+      "api",
+      "request",
+      "rest",
+      "/services/apexrest/v1/camper",
+      "--method",
+      "POST",
+      "--include",
+      "--body",
+      "-"
+    ]);
+    expect(JSON.parse(posted[0].stdin)).toEqual({
       records: [{ camper_name: "Pat Example" }]
     });
+    expect(() => sfArgs({ path: "/x", method: "GET" }, "--json")).toThrow(
+      "That isn't a Salesforce sign-in name."
+    );
+    expect(() => sfArgs({ path: "/x", method: "GET" }, "a b")).toThrow(
+      "That isn't a Salesforce sign-in name."
+    );
   });
 
   // API-1.8
-  it("neverShowsTheSignIn: no sign-in in an answer, an error, or the tool list; none in a file", async () => {
-    const run = (cmd, args, opts, done) =>
-      done(
-        new Error(`failed with ${TOKEN}`),
-        `{"status":1,"message":"${TOKEN}"}`
-      );
-    await expect(signIn("nobody", run)).rejects.toThrow(
-      'Not signed in to Salesforce as "nobody". Run: sf org login web --alias nobody'
+  it("neverShowsTheSignIn: no sign-in passes through Shoresh's code, and none is written down", async () => {
+    // Only Shoresh's answer is kept from what sf prints; its headers are dropped.
+    expect(
+      readResponse(
+        "HTTP/1.1 200\nauthorization: secret\nset-cookie: sid=secret\n\nok"
+      )
+    ).toEqual({ status: 200, body: "ok" });
+    // As sf prints it: no blank line before the answer.
+    expect(
+      readResponse('HTTP/1.1 403\nx-request-id: 1\n{\n  "message": "No."\n}')
+    ).toEqual({ status: 403, body: '{\n  "message": "No."\n}' });
+    await expect(
+      call("read_elective_seats", {}, { org: "nobody", run: async () => "" })
+    ).rejects.toThrow(
+      'Couldn\'t reach Salesforce as "nobody". Sign in once with: sf org login web --alias nobody'
     );
-    await expect(signIn("--json", run)).rejects.toThrow(
-      "That isn't a Salesforce sign-in name."
-    );
-    const plain = (cmd, args, opts, done) =>
-      done(
-        null,
-        JSON.stringify({
-          result: {
-            instanceUrl: "http://camp.example.test",
-            accessToken: TOKEN
-          }
-        })
-      );
-    await expect(signIn("my-camp", plain)).rejects.toThrow(/https/);
-    const seen = [];
-    await call(
-      "read_elective_seats",
-      { season: "S", week: "W" },
-      { sign: fakeSign, fetchFn: answering(200, "{}", seen) }
-    );
-    expect(seen[0].init.redirect).toBe("error");
-    await signIn("nobody", run).catch((e) =>
-      expect(e.message).not.toContain(TOKEN)
-    );
-    const answer = await handle(
-      {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name: "read_elective_seats", arguments: {} }
-      },
-      {
-        callFn: (name, input, opts) =>
-          call(name, input, {
-            ...opts,
-            sign: fakeSign,
-            fetchFn: answering(500, "{}")
-          })
-      }
-    );
-    expect(JSON.stringify(answer)).not.toContain(TOKEN);
-    expect(JSON.stringify(tools())).not.toContain(TOKEN);
     for (const f of fs.readdirSync(path.resolve(__dirname, ".."))) {
       if (f.endsWith(".js")) {
-        expect(
-          fs.readFileSync(path.resolve(__dirname, "..", f), "utf8")
-        ).not.toMatch(/00D[A-Za-z0-9]{12}!|writeFile|appendFile|console\.log/);
+        const text = fs.readFileSync(path.resolve(__dirname, "..", f), "utf8");
+        expect([
+          f,
+          /accessToken|Bearer|org display|sfdxAuthUrl|writeFile|appendFile|createWriteStream|console\./.test(
+            text
+          )
+        ]).toEqual([f, false]);
       }
     }
   });
 
   // API-1.9
-  it("passesOnThePlainSentence: a refusal comes through as Shoresh's own sentence", async () => {
+  it("passesOnThePlainSentence: a refusal or a conflict comes through as Shoresh's own sentence", async () => {
     const sentence =
       'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
-    const answer = await handle(
-      {
-        jsonrpc: "2.0",
-        id: 7,
-        method: "tools/call",
-        params: {
-          name: "read_group_schedule",
-          arguments: { season: "Summer 2026", week: "Week 2" }
-        }
-      },
-      {
-        callFn: (name, input, opts) =>
-          call(name, input, {
-            ...opts,
-            sign: fakeSign,
-            fetchFn: answering(403, JSON.stringify({ message: sentence }))
-          })
-      }
+    const refused = await callTool(
+      "read_group_schedule",
+      { season: "Summer 2026", week: "Week 2" },
+      sfAnswering(403, JSON.stringify({ message: sentence }))
     );
-    expect(answer.result).toEqual({
+    expect(refused.result).toEqual({
       content: [{ type: "text", text: sentence }],
       isError: true
     });
@@ -206,12 +167,15 @@ describe("Shoresh for AI tools and the command line", () => {
         }
       ]
     });
-    const batch = await call(
+    const batch = await callTool(
       "bring_in_camper_elective_choices",
       { records: [{}] },
-      { sign: fakeSign, fetchFn: answering(200, conflict) }
+      sfAnswering(200, conflict)
     );
-    expect(batch).toEqual({ ok: true, status: 200, text: conflict });
+    expect(batch.result).toEqual({
+      content: [{ type: "text", text: conflict }],
+      isError: false
+    });
   });
 
   // API-1.10
@@ -220,19 +184,14 @@ describe("Shoresh for AI tools and the command line", () => {
       jsonrpc: "2.0",
       id: 0,
       method: "initialize",
-      params: { protocolVersion: "2025-06-18" }
+      params: { protocolVersion: "2099-01-01" }
     });
     expect(init.result.capabilities).toEqual({ tools: {} });
     expect(init.result.protocolVersion).toBe("2025-06-18");
     expect(
       await handle({ jsonrpc: "2.0", method: "notifications/initialized" })
     ).toBeNull();
-    const listed = await handle({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/list"
-    });
-    const names = listed.result.tools.map((t) => t.name);
+    const names = tools().map((t) => t.name);
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
       const words = name.startsWith("read_")
