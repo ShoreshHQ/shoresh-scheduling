@@ -100,6 +100,44 @@ describe("c-shoresh-schedule-export", () => {
       ).toEqual(["Monday", "Monday Jul 6", "Wednesday"]);
     });
 
+    it("ELECT-6.3: lists an elective set's offerings in its cell, as the desktop does, on no other activity's row", () => {
+      // The made-up week's Chugim, set up as an elective set with two offerings.
+      const view = JSON.parse(JSON.stringify(opened()));
+      const setUp = (node) => {
+        if (Array.isArray(node)) {
+          node.forEach(setUp);
+        } else if (node && typeof node === "object") {
+          if (node.kind === "E") {
+            node.id = "es1";
+          }
+          Object.values(node).forEach(setUp);
+        }
+      };
+      setUp(view);
+      const sheets = scheduleSheets(
+        view,
+        CATALOGUE,
+        t,
+        new Map([["es1", ["Archery", "Drama"]]])
+      );
+      expect(sheet(sheets, "Monday").rows[1]).toEqual([
+        P1,
+        "Swim",
+        "Chugim (Archery, Drama)"
+      ]);
+      // All Groups: the same words, no kind in brackets (desktop formatCellLabel).
+      expect(sheet(sheets, "All Bunks").rows).toContainEqual([
+        "Bunk 2",
+        "Monday",
+        P1,
+        "Chugim (Archery, Drama)"
+      ]);
+      // A set with no offerings named reads as its name alone.
+      expect(
+        sheet(scheduleSheets(view, CATALOGUE, t), "Monday").rows[1][2]
+      ).toBe("Chugim");
+    });
+
     it("gives the same file for the same version, every time", () => {
       expect(JSON.stringify(sheetsOf())).toBe(JSON.stringify(sheetsOf()));
     });

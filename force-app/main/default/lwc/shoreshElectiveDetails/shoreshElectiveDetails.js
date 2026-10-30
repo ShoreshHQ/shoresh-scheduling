@@ -54,6 +54,24 @@ export function openCount(offerings) {
 }
 
 /**
+ * Each set's confirmed offerings by name, by set Id, in the season's order: what its Excel cell
+ * lists ("Chugim (Archery, Drama)"), the same offerings openCount counts.
+ */
+export function offeringNames(setup) {
+  const names = new Map(
+    ((setup && setup.activities) || []).map((a) => [a.Id, a.Name])
+  );
+  const out = new Map();
+  electivesOf(setup)
+    .offerings.filter((o) => !o[OFFER.Proposed] && names.has(o[OFFER.Activity]))
+    .forEach((o) => {
+      const set = o[OFFER.ElectiveSet];
+      out.set(set, [...(out.get(set) || []), names.get(o[OFFER.Activity])]);
+    });
+  return out;
+}
+
+/**
  * Why a limited offering's seats need a look, or null: "blank" (not filled in yet) or "zero".
  * Either way the seat run places it with no limit and says so (engine care PR 8).
  */

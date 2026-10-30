@@ -8,6 +8,7 @@ import ShoreshElectiveDetails, {
   seatsNeedingLook,
   seatsLookWords,
   linkedNames,
+  offeringNames,
   openCount,
   withPending
 } from "c/shoreshElectiveDetails";
@@ -719,6 +720,34 @@ describe("c-shoresh-elective-details", () => {
     it("a set's count is its confirmed offerings: 0 or blank seats don't close one", () => {
       expect(openCount(offerings)).toBe(5);
       expect(openCount([])).toBe(0);
+    });
+
+    it("ELECT-6.3: a set's Excel cell names its confirmed offerings, in order", () => {
+      const names = offeringNames({
+        activities: [
+          { Id: "a1", Name: "Archery" },
+          { Id: "a2", Name: "Drama" },
+          { Id: "a3", Name: "Pottery" }
+        ],
+        electives: {
+          offerings: nsRecord([
+            { Id: "o1", ElectiveSet__c: "es1", Activity__c: "a1" },
+            {
+              Id: "o2",
+              ElectiveSet__c: "es1",
+              Activity__c: "a3",
+              Proposed__c: true
+            },
+            { Id: "o3", ElectiveSet__c: "es1", Activity__c: "a2" },
+            { Id: "o4", ElectiveSet__c: "es2", Activity__c: "a3" }
+          ])
+        }
+      });
+      expect([...names]).toEqual([
+        ["es1", ["Archery", "Drama"]],
+        ["es2", ["Pottery"]]
+      ]);
+      expect(offeringNames(null).size).toBe(0);
     });
 
     it("seats need a look when blank or 0 and limited", () => {
