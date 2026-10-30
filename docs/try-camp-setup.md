@@ -1268,14 +1268,14 @@ on **Weeks** first).
 Your other software (registration, a forms tool, a website) can send campers and bunks into
 Shoresh, read your published schedules, or be sent them by you. Nothing connects until you set
 it up here. These steps are done once per outside system, in Salesforce **Setup** (the gear,
-top right, then **Setup**; you need to be a Salesforce administrator to see it). Steps marked _(not checked)_ could not be confirmed against
-Salesforce's own pages; if the screen looks different, tell Claude what you see.
+top right, then **Setup**; you need to be a Salesforce administrator to see it). Salesforce sometimes renames buttons
+between releases; the names below are the ones on screen in October 2026.
 
 ### Let an outside system send data in
 
 1. **Make a connection user** (a login no person uses; the outside system signs in as it).
    In Setup, type _Users_ in **Quick Find**, click **Users**, then **New User**.
-   - **User License:** _Salesforce Integration_ (free; every Salesforce account includes a few. If it isn't in the list, tell Claude).
+   - **User License:** _Salesforce Integration_ (free; every Salesforce account includes a few).
    - **Profile:** _Minimum Access - API Only Integrations_.
    - Name it like _CampMinder connection_. Put your own address in **Email**, and in **Username**
      something that is not a real address, like _campminder@yourcamp.shoresh_. Click **Save**.
@@ -1295,16 +1295,20 @@ Salesforce's own pages; if the screen looks different, tell Claude what you see.
 
 4. **Share the season with it.** Seasons are private, so the connection user sees none until
    you share one. Open the season's Salesforce record (App Launcher, the nine dots at top left,
-   search _Seasons_, click the season's name). At the top right click the small **▾**, then
-   **Sharing**. In the box, search for the connection user, set access to **Read Only**, and
-   click **Save**. Do this for each season it
-   should reach. _(not checked: that the Sharing button shows on the Season page once Shoresh
-   is installed from AppExchange.)_
+   search _Seasons_, click the season's name). At the top right, beside **Edit**, click the small **▾**
+   (**Show more actions**), then **Sharing**. In the box, search for the connection user, set
+   access to **Read Only**, and click **Save**. Do this for each season it should reach.
+   This was seen on the test org's Season page; the installed AppExchange version may lay the
+   page out differently.
 5. **The key.** The outside system needs a key: a name-and-password pair just for software,
-   which signs in as the connection user. You make it once in Setup (Salesforce calls it an
-   **External Client App**). _(not checked: the exact clicks; Claude will go through the screens
-   with you the first time.)_ Give the key to the other company privately, never by email. It
-   can do only what step 3 allowed.
+   which signs in as the connection user. In Setup, type _External Client App_ in **Quick Find**,
+   click **External Client App Manager**, then **New External Client App**. Fill in
+   **External Client App Name** (like _CampMinder connection_), **Contact Email** (yours), leave
+   **Distribution State** as _Local_, open **API (Enable OAuth Settings)** and tick
+   **Enable OAuth**. The settings that follow (the client credentials sign-in, and **Run As** set
+   to the connection user) were not opened in the test org, since that means creating the app.
+   Give the key to the other company privately, never by email. It can do only what step 3
+   allowed.
 
 What comes in is treated like an import: it never overwrites anything you changed or locked
 (you'll see both, and decide), never deletes (a withdrawn camper is hidden, not removed), and
@@ -1335,18 +1339,20 @@ schedule, or from a button).
    after the other system, choose the sign-in type the other company told you to use (ask them
    in writing), paste in what they gave you, and **Save**. Then on the **Named Credentials** tab click **New**: give
    it a short **Name** with no spaces, like _formstack_, and the web address the other system
-   gave you. That name is what you'll pick in the Flow.
-   _(Checked against guides that quote Salesforce; button names can differ by release.)_
-2. Whoever the Flow runs as needs permission to use that saved sign-in _(not checked: the
-   exact clicks; Claude will show you the first time)_, **and** the matching **Read …** permission set
-   from the table above. No Read permission, no send.
+   gave you in **URL**, and pick the External Credential you just made under **External
+   Credential**. That name is what you'll pick in the Flow. The form also has **Allowed
+   Namespaces for Callouts** (under **Managed Package Access**); what Shoresh needs there once
+   installed from AppExchange is not yet known.
+2. Whoever the Flow runs as needs two things: the matching **Read …** permission set from the
+   table above (no Read permission, no send), and permission to use the saved sign-in. For
+   the second, in Setup type _Permission Sets_ in **Quick Find**, open (or create with **New**)
+   one of your own permission sets, click **External Credential Principal Access**, and add the sign-in you made in step 1. Assign that permission set too.
 3. In your Flow, add an **Action**, search **Shoresh**, and pick one of:
    **send_group_schedule**, **send_activity_schedule**, **send_elective_offerings**,
    **send_elective_seats**. Fill in **to_system** (the Named Credential's name), **season**
    (like _Summer 2026_), **week** (like _Week 1_), and **as_csv** (_True_ if the other system wants a
    spreadsheet file, _False_ if it wants data; ask them). If the Flow starts when a record is
    saved, add the action on the branch labelled **Run Asynchronously**, not the main path.
-   Never built a Flow? Ask Claude for the steps.
 
 The action answers at once (**sent**, and a one-sentence **message**) when it can't even start:
 no permission, week not published, no destination by that name.
