@@ -650,16 +650,62 @@ function singleDayFiles(timetables, pages, placements) {
       continue;
     }
     const [week, day] = [...wds][0].split("|");
-    t.ownKeys = new Set(t.raw.map((b) => b.key));
-    t.ownDays = [{ week, day, every: false }];
-    t.oneDay = true;
+    const host = hostOf(t, timetables, pages, placements);
+    if (host) {
+      // INGEST-4.16: on its own times beside a week's file, it is that program's special day,
+      // its groups the program's (never a second program, "Bunk 1 (schedule 2)").
+      const regularKeys = timetableShape(host, placements).keys;
+      host.ownKeys = new Set([
+        ...(host.ownKeys || []),
+        ...t.raw.map((b) => b.key).filter((k) => !regularKeys.has(k))
+      ]);
+      host.ownDays = [
+        ...(host.ownDays || []),
+        { week, day, every: false, pages: [...t.pages] }
+      ];
+      host.pages.push(...t.pages);
+      host.raw.push(...t.raw);
+      t.joined = true;
+    } else {
+      t.ownKeys = new Set(t.raw.map((b) => b.key));
+      t.ownDays = [{ week, day, every: false }];
+      t.oneDay = true;
+    }
     notes.push({
       type: "oneDay",
       day,
       files: [...new Set(t.pages.map((i) => pages[i].file))]
     });
   }
+  timetables.splice(
+    0,
+    timetables.length,
+    ...timetables.filter((t) => !t.joined)
+  );
   return notes;
+}
+
+/**
+ * INGEST-4.16: the week's program a single-day timetable joins: a timetable of the files' own
+ * week (two days or more, not a single-day file's), the one sharing the most groups with it
+ * (the first on a tie), or null when there is none.
+ */
+function hostOf(t, timetables, pages, placements) {
+  const groups = timetableShape(t, placements).groups;
+  let best = null;
+  let most = -1;
+  for (const x of timetables) {
+    if (x === t || x.joined || x.pages.some((i) => pages[i].oneDay)) {
+      continue;
+    }
+    const shape = timetableShape(x, placements);
+    const shared = [...shape.groups].filter((g) => groups.has(g)).length;
+    if (shape.weekDays.size > 1 && shared > most) {
+      best = x;
+      most = shared;
+    }
+  }
+  return best;
 }
 
 /**

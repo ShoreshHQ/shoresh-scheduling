@@ -113,6 +113,7 @@ public with sharing class ImportUndoDeletes {
   };
 
   private ImportUndo.Result result;
+  private ImportUndoCount count;
   private Set<Id> createdIds = new Set<Id>();
   // Records the import made that this Undo keeps (edited since, or in use).
   private Set<Id> keptIds = new Set<Id>();
@@ -130,6 +131,7 @@ public with sharing class ImportUndoDeletes {
 
   public void run(Map<String, Object> created) {
     collectCreated(created);
+    count = new ImportUndoCount(createdIds);
     // Who-can-do-it rows and weeks off are not removed on their own: they go with their item. An
     // item kept (edited since, or in use) keeps who it covers and the weeks it is off, so items
     // are decided (in ORDER, as a kept one can hold another) before those rows are removed.
@@ -150,6 +152,7 @@ public with sharing class ImportUndoDeletes {
         ? decided.get(term)
         : decide(term, (Map<String, Object>) created.get(term));
       deleteAll(
+        term,
         withoutKeptItems(
           term,
           ImportUndoSpecialDays.withoutKept(term, toDelete, keptIds)
@@ -243,6 +246,7 @@ public with sharing class ImportUndoDeletes {
       fields,
       rows.keySet()
     );
+    result.removed += count.goneHolders(rows.keySet(), now.keySet());
     Set<Id> holding = holdingOthers(term, now.keySet());
     // A special day whose schedule the director saved since holds their work: kept.
     holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
@@ -320,7 +324,7 @@ public with sharing class ImportUndoDeletes {
    * Deletes what it can. A record something still points at is kept, by name; any other refusal
    * (a rule, a permission) stops the whole Undo with its reason, so nothing is half undone.
    */
-  private void deleteAll(List<SObject> records) {
+  private void deleteAll(String term, List<SObject> records) {
     List<Database.DeleteResult> outcomes = Database.delete(
       records,
       false,
@@ -328,7 +332,7 @@ public with sharing class ImportUndoDeletes {
     );
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (outcomes[i].isSuccess()) {
-        result.removed++;
+        result.removed += ImportUndoCount.each(term);
         continue;
       }
       Database.Error error = outcomes[i].getErrors()[0];

@@ -71,8 +71,16 @@ private class ImportOneDayFileTest {
         ],
         'its blocks are the special day\'s own'
       );
-      ImportController.undoImport(result.importId);
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
       Test.stopTest();
+      // Undo's count is the import's: its holding records and the special day's day included
+      // as they were when added.
+      Integer added = 0;
+      for (Integer count : result.added.values()) {
+        added += count;
+      }
+      Assert.areEqual(13, added, 'what the import added');
+      Assert.areEqual(added, undone.removed, 'Undo removed as many');
       Assert.areEqual(
         0,
         [SELECT COUNT() FROM SpecialDay__c WHERE Season__c = :season.Id],

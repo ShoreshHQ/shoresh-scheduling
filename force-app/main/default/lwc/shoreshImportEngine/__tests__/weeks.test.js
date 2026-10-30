@@ -1339,6 +1339,75 @@ describe("INGEST-4.14: a single-day file", () => {
     expect(unknownKeys(plan, ["w1"])).toEqual([]);
   });
 
+  it("INGEST-4.16: a one-day special-day file on its own times joins the week file's program: each group once, one program", () => {
+    const files = [
+      file("summer-week.csv", [sheetOf("Sheet1", weekRows(0))]),
+      file("color-war-wednesday.csv", [
+        sheetOf("Sheet1", [
+          ["Time", ...GROUPS],
+          ["9:30-11:00", ...GROUPS.map(() => "Capture the flag")],
+          ["12:00-12:45", ...GROUPS.map(() => "Lunch")]
+        ])
+      ])
+    ];
+    const answers = { "week|the file's week": "Week 1" };
+    const p = propose(files, existing, answers);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.programs).toHaveLength(1);
+    expect(plan.groups.map((g) => g.name).sort()).toEqual(GROUPS);
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekId: "w1",
+      day: "Wednesday"
+    });
+    expect(plan.specialDays[0].grid.b).toHaveLength(2);
+    expect(plan.specialDays[0].grid.g.map((g) => g[1]).sort()).toEqual(GROUPS);
+    // The program's blocks are the week's; the week's version has no Wednesday.
+    expect(plan.timeBlocks).toHaveLength(BLOCKS.length);
+    expect(plan.versions[0].days).toHaveLength(4);
+    expect(
+      importNotes(p, terms)
+        .map((n) => n.text)
+        .join(" ")
+    ).not.toMatch(/Program 2|fixed activity in/);
+    expect(unknownKeys(plan, ["w1"])).toEqual([]);
+  });
+
+  it("INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow the season's own days", () => {
+    const dated = {
+      ...existingSetup(),
+      season: {
+        ...existingSetup().season,
+        StartDate__c: "2026-06-29",
+        EndDate__c: "2026-07-10"
+      }
+    };
+    const answers = {
+      "oneDay|field-day.csv": "Thursday",
+      "week|the file's week": "Week 1"
+    };
+    const p = propose(fieldDay(), dated, answers);
+    const plan = planFor(p, dated, "a00000000000001AAA", { answers });
+    expect(plan.fillWeeks).toEqual([
+      {
+        start: "2026-06-29",
+        name: "Week 1",
+        days: "Monday+Tuesday+Wednesday+Thursday+Friday"
+      },
+      {
+        start: "2026-07-06",
+        name: "Week 2",
+        days: "Monday+Tuesday+Wednesday+Thursday+Friday"
+      }
+    ]);
+    expect(plan.programs[0].days).toEqual(DAYS);
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekKey: "Week:2026-06-29",
+      day: "Thursday"
+    });
+  });
+
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
     const answers = { "oneDay|field-day.csv": LEAVE_OUT };
     const p = propose(fieldDay(), existing, answers);

@@ -402,12 +402,13 @@ function versionFor(t, week, label, context) {
         context.unmatched.push({ ...p, why: "specialDayTaken" })
       );
     } else if (own) {
+      const cells = specialDayCells(own, onDay, context);
       context.specialDays.push(
         specialDayFor(t, week, day, label, {
-          parts: [{ t, groups, placements: onDay }],
+          parts: [{ t, groups, placements: cells }],
           at: `${t.index}|${label}|${day}`,
           program: t.name,
-          cells: onDay,
+          cells,
           every: !!own.every
         })
       );
@@ -582,6 +583,22 @@ function takenBy(context, week, day) {
   return item ? item.Name : null;
 }
 
+/**
+ * INGEST-4.16: a single-day file's special day holds that file's cells; the week file's cells
+ * that day for the same groups are replaced by it (said in the not-placed list).
+ */
+function specialDayCells(own, onDay, context) {
+  if (!own.pages) {
+    return onDay;
+  }
+  const inFile = (p) => own.pages.includes(p.page);
+  const covered = new Set(onDay.filter(inFile).map((p) => p.group));
+  onDay
+    .filter((p) => !inFile(p) && covered.has(p.group))
+    .forEach((p) => context.unmatched.push({ ...p, why: "specialDayFile" }));
+  return onDay.filter((p) => inFile(p) || !covered.has(p.group));
+}
+
 function ownDayOf(t, label, day) {
   return (t.ownDays || []).find((o) => o.week === label && o.day === day);
 }
@@ -631,8 +648,12 @@ function reasonFor(p, proposal) {
 
 /** The days the grids run between them, Monday first: the shape of the weeks an import adds. */
 function gridDays(proposal) {
+  // INGEST-4.17: a single-day file's special day never decides the camp's days (desktop
+  // specialDayFile.js: it is not a week); with nothing else, the season's own days.
   const runs = new Set(
-    proposal.timetables.filter((t) => !t.leftOut).flatMap((t) => t.days)
+    proposal.timetables
+      .filter((t) => !t.leftOut && !t.oneDay)
+      .flatMap((t) => t.days)
   );
   return WEEKDAYS.filter((d) => runs.has(d));
 }
