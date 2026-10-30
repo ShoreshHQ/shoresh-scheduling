@@ -42,7 +42,7 @@ public with sharing class OutgoingRows {
         Object value = row.get(field);
         String text = value == null ? '' : String.valueOf(value);
         // A cell a spreadsheet would run as a formula is kept as text.
-        if (text.length() > 0 && '=+-@'.contains(text.left(1))) {
+        if (text.length() > 0 && '=+-@\t\r'.contains(text.left(1))) {
           text = '\'' + text;
         }
         cells.add(

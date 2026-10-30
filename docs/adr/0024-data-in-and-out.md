@@ -80,8 +80,14 @@ text was confirmed through search excerpts.
   Credential reaches, with no Shoresh change per system. Callouts from a record-triggered Flow run
   on its "Run Asynchronously" path.
 - **A send carries the whole thing** (every record, JSON or CSV), not a notice and a link.
-- **No retries.** A failed send is answered to the Flow and shown on Settings until a later send of
+- **Posted just after the Flow action** (a queued job), so a Flow can send several things in a
+  row: Salesforce allows no post after a save in the same go. The Flow is told at once what it can
+  be (no permission, week not published, no such destination name); the destination's own answer
+  shows on Settings.
+- **No retries.** A failed send is shown on Settings until a later send of
   the same thing to the same destination goes through; the camp's Flow (or a person) sends again.
+- **Sending is reading:** the user a Flow runs as needs the same "Read ..." permission set as a
+  key, so a camp decides who can send each thing (a director included) the same way.
 - **Outside systems can also read** the same records at `GET /v1/<thing>?season=&week=`
   (`format=csv` for a file), with a key holding the matching "Read ..." permission set.
 

@@ -14,6 +14,8 @@
  */
 public with sharing class OutgoingDoors {
   public static final String CSV = 'csv';
+  // Salesforce allows 100 sends to other systems in one go.
+  private static final Integer MOST_SENDS = 100;
   // A Named Credential's name: letters, numbers and single underscores, starting with a letter.
   private static final Pattern NAMED_CREDENTIAL = Pattern.compile(
     '^[A-Za-z](_?[A-Za-z0-9])*$'
@@ -105,14 +107,14 @@ public with sharing class OutgoingDoors {
   }
 
   /**
-   * The Flow action: each send's records posted to its destination, every send kept, and what
-   * happened answered. All sends are made before anything is saved (Salesforce allows no send
-   * after a save in the same go).
+   * The Flow action: each send's records read now, as this user, and posted to its destination
+   * just after (SendLog), where every send is kept. What can be told now is answered now.
    */
   public static List<OutgoingResult> bySend(
     Capability capability,
     List<Send> sends
   ) {
+    Sender sender = new Sender(capability);
     List<OutgoingResult> results = new List<OutgoingResult>();
     List<Send__c> kept = new List<Send__c>();
     for (Send each : sends) {
@@ -121,71 +123,135 @@ public with sharing class OutgoingDoors {
           ? null
           : each.toSystem.left(80),
         What__c = (capability.what() +
-          (String.isBlank(each.week) ? '' : ' for ' + each.week))
+          (String.isBlank(each.week)
+            ? ''
+            : ' for ' + each.week.normalizeSpace()))
           .left(255)
       );
-      results.add(sendOne(capability, each, log));
-      // A send for a season no one can find has nowhere on a screen to show; its Flow is told.
-      if (log.Season__c != null) {
+      OutgoingResult result = sender.send(each, log);
+      results.add(result);
+      // A send on its way is kept with its post. One refused now is kept as it is, unless no
+      // season was found: then it has nowhere on a screen to show, and its Flow is told.
+      if (!result.sent && log.Season__c != null) {
         kept.add(log);
       }
     }
-    SendLog.keep(kept);
+    SendLog.deliver(kept, sender.deliveries);
     return results;
   }
 
-  /** One send: its records posted, and what happened said (and kept on the log when it failed). */
-  private static OutgoingResult sendOne(
-    Capability capability,
-    Send each,
-    Send__c log
-  ) {
-    OutgoingResult result = new OutgoingResult();
-    try {
-      Season__c season = OutgoingRows.seasonCalled(each.season);
-      log.Season__c = season.Id;
-      List<Map<String, Object>> rows = capability.rows(season, each.week);
-      Boolean asCsv = each.asCsv == true;
-      post(
-        each.toSystem,
-        asCsv
-          ? OutgoingRows.csvOf(capability.fields(), rows)
-          : JSON.serialize(
-              new Map<String, Object>{
-                'what' => capability.name(),
-                'season' => season.Name,
-                'week' => each.week,
-                'records' => rows
-              }
-            ),
-        asCsv
-      );
-      result.sent = true;
-      result.message =
-        'Sent ' +
-        log.What__c +
-        ' to ' +
-        each.toSystem +
-        ' (' +
-        rows.size() +
-        (rows.size() == 1 ? ' record).' : ' records).');
-    } catch (Exception e) {
-      result.message =
-        'Couldn\'t send ' +
-        log.What__c +
-        ' to ' +
-        (String.isBlank(each.toSystem) ? 'a destination' : each.toSystem) +
-        ': ' +
-        (e instanceof ShoreshException
-          ? e.getMessage()
-          : ScreenErrors.of(e).getMessage());
-      log.Problem__c = result.message;
+  /**
+   * One Flow action's sends: the permission set checked once, and each season and week read once
+   * however many destinations they go to, so a big batch stays within Salesforce's limits.
+   */
+  private class Sender {
+    private Capability capability;
+    private Boolean allowed;
+    private Integer made = 0;
+    private Map<String, Season__c> seasons = new Map<String, Season__c>();
+    public List<SendLog.Delivery> deliveries = new List<SendLog.Delivery>();
+    private Map<String, List<Map<String, Object>>> rows = new Map<String, List<Map<String, Object>>>();
+
+    Sender(Capability capability) {
+      this.capability = capability;
+      // API-4.4: sending is reading, so a send needs the same permission set as the web address.
+      this.allowed = IncomingBatch.holds(capability.permissionSet());
     }
-    return result;
+
+    /** One send: its records read and made ready to post, or why not (kept on the log). */
+    OutgoingResult send(Send each, Send__c log) {
+      OutgoingResult result = new OutgoingResult();
+      try {
+        Season__c season = season(each.season);
+        log.Season__c = season.Id;
+        List<Map<String, Object>> records = records(season, each.week);
+        checkDestination(each.toSystem);
+        SendLog.Delivery delivery = new SendLog.Delivery();
+        delivery.log = log;
+        delivery.destination = each.toSystem;
+        delivery.body = bodyOf(each, season, records);
+        delivery.contentType = each.asCsv == true
+          ? 'text/csv'
+          : 'application/json';
+        deliveries.add(delivery);
+        result.sent = true;
+        result.message =
+          'Sending ' +
+          log.What__c +
+          ' to ' +
+          each.toSystem +
+          ' (' +
+          records.size() +
+          (records.size() == 1 ? ' record)' : ' records)') +
+          '. If it doesn\'t go through, Settings shows why.';
+      } catch (Exception e) {
+        result.message =
+          'Couldn\'t send ' +
+          log.What__c +
+          ' to ' +
+          (String.isBlank(each.toSystem) ? 'a destination' : each.toSystem) +
+          ': ' +
+          (e instanceof ShoreshException
+            ? e.getMessage()
+            : ScreenErrors.of(e).getMessage());
+        log.Problem__c = result.message;
+      }
+      return result;
+    }
+
+    private Season__c season(String name) {
+      String key = name == null ? '' : name.normalizeSpace();
+      if (!seasons.containsKey(key)) {
+        seasons.put(key, OutgoingRows.seasonCalled(name));
+      }
+      return seasons.get(key);
+    }
+
+    private List<Map<String, Object>> records(Season__c season, String week) {
+      if (!allowed) {
+        throw new ShoreshException(
+          'This user can\'t send ' +
+            capability.what() +
+            '. A Salesforce admin can give it the "' +
+            capability.permissionLabel() +
+            '" permission set.'
+        );
+      }
+      if (++made > MOST_SENDS) {
+        throw new ShoreshException(
+          'Shoresh sends at most ' +
+            MOST_SENDS +
+            ' at a time. Send this one again.'
+        );
+      }
+      String key = season.Id + '|' + IncomingBatch.fold(week);
+      if (!rows.containsKey(key)) {
+        rows.put(key, capability.rows(season, week));
+      }
+      return rows.get(key);
+    }
+
+    private String bodyOf(
+      Send each,
+      Season__c season,
+      List<Map<String, Object>> records
+    ) {
+      if (each.asCsv == true) {
+        return OutgoingRows.csvOf(capability.fields(), records);
+      }
+      return JSON.serialize(
+        new Map<String, Object>{
+          'what' => capability.name(),
+          'season' => season.Name,
+          'week' => each.week,
+          'records' => records
+        }
+      );
+    }
   }
 
-  /** Posts the body to the saved destination of this name; refused unless it takes it. */
-  private static void post(String destination, String body, Boolean asCsv) {
+  /** A saved destination's name, or refused in plain words. */
+  private static void checkDestination(String destination) {
     if (
       String.isBlank(destination) ||
       !NAMED_CREDENTIAL.matcher(destination).matches()
@@ -194,11 +260,16 @@ public with sharing class OutgoingDoors {
         'Say which saved destination to send to (to_system): the name of a Named Credential, letters, numbers and single underscores.'
       );
     }
+  }
+
+  /** Posts the body to the saved destination of this name; refused unless it takes it. */
+  public static void post(String destination, String body, String contentType) {
+    checkDestination(destination);
     HttpRequest request = new HttpRequest();
     request.setEndpoint('callout:' + destination);
     request.setMethod('POST');
     request.setTimeout(30000);
-    request.setHeader('Content-Type', asCsv ? 'text/csv' : 'application/json');
+    request.setHeader('Content-Type', contentType);
     request.setBody(body);
     HttpResponse response = new Http().send(request);
     if (response.getStatusCode() < 200 || response.getStatusCode() > 299) {
@@ -207,7 +278,7 @@ public with sharing class OutgoingDoors {
           ' answered ' +
           response.getStatusCode() +
           ' ' +
-          response.getStatus() +
+          String.valueOf(response.getStatus()).left(200) +
           '.'
       );
     }

@@ -5,7 +5,7 @@
  */
 @IsTest
 private class OutgoingTest {
-  /** A destination that answers with this status, keeping what it was sent. */
+  /** A destination that answers with this status (then OK), keeping what it was sent. */
   private class Destination implements HttpCalloutMock {
     private Integer status;
     private String statusText;
@@ -17,12 +17,35 @@ private class OutgoingTest {
     }
 
     public HttpResponse respond(HttpRequest request) {
-      received.add(request);
       HttpResponse response = new HttpResponse();
-      response.setStatusCode(status);
-      response.setStatus(statusText);
+      Boolean first = received.isEmpty();
+      response.setStatusCode(first ? status : 200);
+      response.setStatus(first ? statusText : 'OK');
+      received.add(request);
       return response;
     }
+  }
+
+  /** A sending user holding these read permission sets, shown the season. */
+  private static User reader(IncomingTestData camp, List<String> sets) {
+    User user = camp.sender(sets[0]);
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      List<PermissionSetAssignment> more = new List<PermissionSetAssignment>();
+      for (PermissionSet each : [
+        SELECT Id
+        FROM PermissionSet
+        WHERE Name IN :sets AND Name != :sets[0]
+      ]) {
+        more.add(
+          new PermissionSetAssignment(
+            AssigneeId = user.Id,
+            PermissionSetId = each.Id
+          )
+        );
+      }
+      Database.insert(more, AccessLevel.SYSTEM_MODE);
+    }
+    return user;
   }
 
   /** Week 1's first day, with Group A at Swim (two blocks) and Group B at Flagpole then Chugim. */
@@ -165,10 +188,14 @@ private class OutgoingTest {
       day +
       '; group=Group B; time_block=Lunch; start_time=09:00; end_time=09:45; activity=Chugim'
     };
+    User director = camp.sender('Read_Group_Schedules');
     Test.startTest();
-    List<OutgoingResult> sent = OutgoingGroupSchedule.send(
-      new List<OutgoingGroupSchedule.Request>{ request('formstack') }
-    );
+    List<OutgoingResult> sent;
+    System.runAs(director) {
+      sent = OutgoingGroupSchedule.send(
+        new List<OutgoingGroupSchedule.Request>{ request('formstack') }
+      );
+    }
     Test.stopTest();
     Map<String, Object> web;
     Map<String, String> asCsv = week1();
@@ -185,7 +212,7 @@ private class OutgoingTest {
     );
     Assert.isTrue(sent[0].sent, sent[0].message);
     Assert.areEqual(
-      'Sent the group schedule for Week 1 to formstack (3 records).',
+      'Sending the group schedule for Week 1 to formstack (3 records). If it doesn\'t go through, Settings shows why.',
       sent[0].message
     );
     Assert.areEqual('callout:formstack', formstack.received[0].getEndpoint());
@@ -249,8 +276,8 @@ private class OutgoingTest {
     );
   }
 
-  // API-6.2, API-4.5: a week only drafted goes out nowhere, and a published week goes out as
-  // published, not as its draft has it since.
+  // API-6.2, API-4.5: a week only drafted goes out nowhere, and once published, what goes out is
+  // the published schedule, never the draft beside it.
   @IsTest
   static void aDraftNeverGoesOut() {
     IncomingTestData camp = new IncomingTestData();
@@ -431,15 +458,19 @@ private class OutgoingTest {
       HttpCalloutMock.class,
       new Destination(503, 'Service Unavailable')
     );
-    Test.startTest();
-    List<OutgoingResult> failed = OutgoingDoors.bySend(
-      new OutgoingGroupSchedule(),
-      new List<OutgoingDoors.Send>{ sendTo('formstack') }
-    );
-    Test.stopTest();
+    User director = camp.sender('Read_Group_Schedules');
     String said = 'Couldn\'t send the group schedule for Week 1 to formstack: formstack answered 503 Service Unavailable.';
-    Assert.isFalse(failed[0].sent);
-    Assert.areEqual(said, failed[0].message);
+    Test.startTest();
+    List<OutgoingResult> failed;
+    System.runAs(director) {
+      failed = OutgoingDoors.bySend(
+        new OutgoingGroupSchedule(),
+        new List<OutgoingDoors.Send>{ sendTo('formstack') }
+      );
+    }
+    Test.stopTest();
+    // On its way when the Flow asked; the destination's refusal shows on Settings.
+    Assert.isTrue(failed[0].sent, failed[0].message);
     Assert.areEqual(
       new List<String>{ said },
       SendLog.failedLast(camp.season.Id)
@@ -448,16 +479,80 @@ private class OutgoingTest {
       new List<String>{ said },
       SeasonSetupReader.read(camp.season.Id).failedSends
     );
-    // A later send that goes through is the last one: nothing to show.
-    Database.insert(
-      new Send__c(
-        Season__c = camp.season.Id,
-        System__c = 'formstack',
-        What__c = 'the group schedule for Week 1'
+  }
+
+  // API-6.3: a later send of the same thing to the same destination that goes through is the
+  // last one, so the failure no longer shows (both sends made by one Flow run, in turn).
+  @IsTest
+  static void aSendThatGoesThroughClearsTheFailure() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    Test.setMock(
+      HttpCalloutMock.class,
+      new Destination(503, 'Service Unavailable')
+    );
+    User director = camp.sender('Read_Group_Schedules');
+    Test.startTest();
+    List<OutgoingResult> results;
+    System.runAs(director) {
+      results = OutgoingDoors.bySend(
+        new OutgoingGroupSchedule(),
+        new List<OutgoingDoors.Send>{ sendTo('formstack'), sendTo('formstack') }
+      );
+    }
+    Test.stopTest();
+    Assert.areEqual(new List<String>(), SendLog.failedLast(camp.season.Id));
+  }
+
+  // API-4.4: sending is reading, so a Flow's send needs the capability's read permission set too.
+  @IsTest
+  static void aSendWithoutTheReadPermissionSetIsRefused() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    List<OutgoingResult> results;
+    System.runAs(camp.sender('Read_Activity_Schedules')) {
+      results = OutgoingDoors.bySend(
+        new OutgoingGroupSchedule(),
+        new List<OutgoingDoors.Send>{ sendTo('formstack') }
+      );
+    }
+    Assert.areEqual(
+      'Couldn\'t send the group schedule for Week 1 to formstack: This user can\'t send the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
+      results[0].message
+    );
+  }
+
+  // API-6.3: a published day that can't be read is said, never left out of what goes out.
+  @IsTest
+  static void anUnreadablePublishedDayIsSaidNotHidden() {
+    IncomingTestData camp = new IncomingTestData();
+    Schedule__c published = schedule(camp, 'Published', grid(camp));
+    PublishedGuard.allow();
+    Database.update(
+      new ScheduleDay__c(
+        Id = [
+          SELECT Id
+          FROM ScheduleDay__c
+          WHERE Schedule__c = :published.Id
+          WITH SYSTEM_MODE
+        ]
+        .Id,
+        Grid__c = 'not a grid'
       ),
       AccessLevel.SYSTEM_MODE
     );
-    Assert.areEqual(new List<String>(), SendLog.failedLast(camp.season.Id));
+    PublishedGuard.done();
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Read_Group_Schedules')) {
+      answer = get(new OutgoingGroupSchedule(), week1());
+    }
+    Assert.areEqual(400, answer.get('status'), String.valueOf(answer));
+    Assert.areEqual(
+      'The published schedule for ' +
+        firstDay(camp).format() +
+        ' can\'t be read, so this week can\'t go out. Publish the week again.',
+      answer.get('message')
+    );
   }
 
   // API-6.3, API-1.5: a send to no saved destination, or of a week not published, fails in a
@@ -465,23 +560,32 @@ private class OutgoingTest {
   @IsTest
   static void aSendThatCantBeMadeSaysWhy() {
     IncomingTestData camp = new IncomingTestData();
-    List<OutgoingResult> results = OutgoingDoors.bySend(
-      new OutgoingGroupSchedule(),
-      new List<OutgoingDoors.Send>{ sendTo('formstack') }
-    );
+    User director = camp.sender('Read_Group_Schedules');
+    Test.startTest();
+    List<OutgoingResult> results;
+    System.runAs(director) {
+      results = OutgoingDoors.bySend(
+        new OutgoingGroupSchedule(),
+        new List<OutgoingDoors.Send>{ sendTo('formstack') }
+      );
+    }
     Assert.areEqual(
       'Couldn\'t send the group schedule for Week 1 to formstack: Nothing in "Week 1" is published yet. Schedules go out once a week is published.',
       results[0].message
     );
     schedule(camp, 'Published', grid(camp));
-    results = OutgoingDoors.bySend(
-      new OutgoingGroupSchedule(),
-      new List<OutgoingDoors.Send>{ sendTo('https://example.com/x') }
-    );
+    System.runAs(director) {
+      results = OutgoingDoors.bySend(
+        new OutgoingGroupSchedule(),
+        new List<OutgoingDoors.Send>{ sendTo('https://example.com/x') }
+      );
+    }
     Assert.areEqual(
       'Couldn\'t send the group schedule for Week 1 to https://example.com/x: Say which saved destination to send to (to_system): the name of a Named Credential, letters, numbers and single underscores.',
       results[0].message
     );
+    // The sends are kept just after (SendLog).
+    Test.stopTest();
     Assert.areEqual(2, SendLog.failedLast(camp.season.Id).size());
   }
 
@@ -497,7 +601,37 @@ private class OutgoingTest {
     schedule(camp, 'Published', grid(camp));
     Destination formstack = new Destination(200, 'OK');
     Test.setMock(HttpCalloutMock.class, formstack);
+    User director = reader(
+      camp,
+      new List<String>{
+        'Read_Activity_Schedules',
+        'Read_Elective_Offerings',
+        'Read_Elective_Seats'
+      }
+    );
     Test.startTest();
+    System.runAs(director) {
+      sendAll();
+    }
+    Test.stopTest();
+    Assert.areEqual(3, formstack.received.size());
+    System.runAs(director) {
+      Assert.areEqual(
+        records(webAnswer(new OutgoingActivitySchedule(), false)),
+        records(formstack.received[0].getBody())
+      );
+      String file = webAnswer(new OutgoingElectiveOfferings(), true);
+      Assert.areEqual(file, formstack.received[1].getBody());
+      Assert.isTrue(file.startsWith('elective_set,activity,seats'), file);
+      Assert.areEqual(
+        records(webAnswer(new OutgoingElectiveSeats(), false)),
+        records(formstack.received[2].getBody())
+      );
+    }
+  }
+
+  /** The activity schedule, offerings (as CSV) and seats, each sent by its own Flow action. */
+  private static void sendAll() {
     OutgoingActivitySchedule.Request activity = new OutgoingActivitySchedule.Request();
     activity.to_system = 'formstack';
     activity.season = 'Summer 2026';
@@ -518,19 +652,6 @@ private class OutgoingTest {
     seats.week = 'Week 1';
     OutgoingElectiveSeats.send(
       new List<OutgoingElectiveSeats.Request>{ seats }
-    );
-    Test.stopTest();
-    Assert.areEqual(3, formstack.received.size());
-    Assert.areEqual(
-      records(webAnswer(new OutgoingActivitySchedule(), false)),
-      records(formstack.received[0].getBody())
-    );
-    String file = webAnswer(new OutgoingElectiveOfferings(), true);
-    Assert.areEqual(file, formstack.received[1].getBody());
-    Assert.isTrue(file.startsWith('elective_set,activity,seats'), file);
-    Assert.areEqual(
-      records(webAnswer(new OutgoingElectiveSeats(), false)),
-      records(formstack.received[2].getBody())
     );
   }
 

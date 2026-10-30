@@ -104,6 +104,7 @@ describe("the API's addresses", () => {
       ...Object.keys(OUTGOING),
       "OutgoingDoors",
       "OutgoingPublished",
+      "OutgoingRows",
       "OutgoingResult",
       "SendLog",
       "IncomingCamperPlan",

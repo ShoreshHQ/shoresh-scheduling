@@ -5,7 +5,7 @@
 global with sharing class OutgoingResult {
   @InvocableVariable(
     label='sent'
-    description='true when the destination took it.'
+    description='true when it is on its way. If the destination does not take it, Settings shows why.'
   )
   global Boolean sent = false;
 
