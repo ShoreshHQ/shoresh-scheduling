@@ -126,7 +126,7 @@ function testFiles(dir, found = []) {
 
 /** Every statement, in document order, with its status and the test files that name it. */
 function protocolIndex(root = ROOT) {
-  const tests = ["force-app", "jest", "scripts"]
+  const tests = ["force-app", "jest", "scripts", "connect"]
     .map((d) => path.join(root, d))
     .filter((d) => fs.existsSync(d))
     .flatMap((d) => testFiles(d))
