@@ -112,10 +112,23 @@ public with sharing class IncomingBatch {
 
   /** API-4.4: the capability's own permission set, whoever is asking. */
   private static void requireAccess(Capability capability) {
+    if (!holds(capability.permissionSet())) {
+      throw new NoAccessException(
+        'This user can\'t send ' +
+          capability.what().toLowerCase() +
+          '. A Salesforce admin can give it the "' +
+          capability.permissionLabel() +
+          '" permission set.'
+      );
+    }
+  }
+
+  /**
+   * Whether the person asking holds this Shoresh permission set, themselves or through a group
+   * holding it: the platform's answer about this person (API-4.4; OutgoingDoors too).
+   */
+  public static Boolean holds(String setName) {
     String namespace = ShoreshSchema.namespace();
-    String setName = capability.permissionSet();
-    // The person's own assignments, the set itself or a group holding it: the platform's answer
-    // about this person.
     Set<Id> groups = new Set<Id>();
     for (PermissionSetGroupComponent part : [
       SELECT PermissionSetGroupId
@@ -127,7 +140,7 @@ public with sharing class IncomingBatch {
     ]) {
       groups.add(part.PermissionSetGroupId);
     }
-    Boolean holds = ![
+    return ![
         SELECT Id
         FROM PermissionSetAssignment
         WHERE
@@ -139,15 +152,6 @@ public with sharing class IncomingBatch {
         LIMIT 1
       ]
       .isEmpty();
-    if (!holds) {
-      throw new NoAccessException(
-        'This user can\'t send ' +
-          capability.what().toLowerCase() +
-          '. A Salesforce admin can give it the "' +
-          capability.permissionLabel() +
-          '" permission set.'
-      );
-    }
   }
 
   // ---------------------------------------------------------------- what a capability says

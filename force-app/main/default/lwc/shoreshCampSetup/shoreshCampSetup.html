@@ -440,6 +440,18 @@
                   </template>
                 </div>
               </template>
+              <!-- A send to a saved destination that failed, until one goes through (API-6.3) -->
+              <template for:each={failedSends} for:item="failed">
+                <div key={failed.key} class="send-failed" data-id="send-failed">
+                  <lightning-icon
+                    icon-name="utility:warning"
+                    size="x-small"
+                    variant="warning"
+                    alternative-text="Failed"
+                  ></lightning-icon>
+                  <span>{failed.said}</span>
+                </div>
+              </template>
             </div>
 
             <template lwc:if={setup}>
