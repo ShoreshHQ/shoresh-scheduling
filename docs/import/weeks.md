@@ -234,7 +234,9 @@ Each rule is clue, meaning, example, test.
     field-day.csv?" (Monday to Sunday, or leave it out). Answered, the file is read as that day
     and comes in as a special day on it, as rule 3 makes one (its own time blocks, the file's
     cells), in the week the files go to; the program's blocks never gain its, no empty version
-    is kept, and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
+    is kept, nothing in it is fixed or recurring at its own times (a name only there, Lunch
+    included, is an activity of the day, as the special-schedule import makes them, so the save
+    never refers to a time block it does not add), and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
     in as a special day on Thursday, with its own times."). Beside other files, a program that
     runs that day joins the special day (rule 11), and the week, if the files do not say it, is
     asked as any week is. Unanswered, nothing is read from it; left out, and it is the only
@@ -245,11 +247,15 @@ Each rule is clue, meaning, example, test.
     Counter-case: a one-day file naming its day is rule 15. A file of several pages that name no day
     keeps the note "it does not say which day it is".
     Test: "INGEST-4.14: a one-day file naming no day is not refused: which day is asked, and the
-    answer makes it a special day on that day"; "INGEST-4.14 counter-case: left out, nothing is read
+    answer makes it a special day on that day"; "INGEST-4.14: a single-day file's save refers only
+    to records it adds, so Add saves it (Lunch at its own time is an activity of the day)";
+    "INGEST-4.15: a weekday-named one-day file beside a week's files: its save refers only to
+    records it adds"; Apex `ImportOneDayFileTest`; "INGEST-4.14 counter-case: left out, nothing is read
     from it"; "INGEST-4.14: beside a week's files, the answered day is the special day on the week
     asked, and the week's groups join it"; the screen's "INGEST-4.14: a one-day file naming no day is not refused; it asks
     which day", "INGEST-4.14: leaving out the only file goes back to choosing a file" and "a file with no schedule in it is still refused, and says so". Code:
-    `reading.js` `singleDay`; `structure.js` `singleDayFiles`; `questions.js` `oneDayCard`.
+    `reading.js` `singleDay`; `structure.js` `singleDayFiles`; `questions.js` `oneDayCard`;
+    `items.js` `verdictFor`.
 
 15. **A one-day file naming its day is a special day beside a regular schedule; alone, a one-day
     camp** (coordinator, 2026-10-29, after Greg's "one-day camps exist"; desktop: placed on the
@@ -276,3 +282,6 @@ Each rule is clue, meaning, example, test.
   second program, as before.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.
+- A one-day file beside a week file whose blocks differ from the week's (color-war-wednesday.csv
+  beside summer-week.csv) still reads its bunks as a second program's ("Bunk Alef (schedule 1)"
+  and "(schedule 2)"), each program with its own groups, in the special day and in setup.
