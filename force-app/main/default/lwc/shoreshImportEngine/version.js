@@ -402,16 +402,21 @@ function versionFor(t, week, label, context) {
         context.unmatched.push({ ...p, why: "specialDayTaken" })
       );
     } else if (own) {
-      const cells = specialDayCells(own, onDay, context);
-      context.specialDays.push(
-        specialDayFor(t, week, day, label, {
-          parts: [{ t, groups, placements: cells }],
-          at: `${t.index}|${label}|${day}`,
-          program: t.name,
-          cells,
-          every: !!own.every
-        })
-      );
+      const { cells, under } = specialDayCells(own, onDay);
+      const special = specialDayFor(t, week, day, label, {
+        parts: [{ t, groups, placements: cells }],
+        at: `${t.index}|${label}|${day}`,
+        program: t.name,
+        cells,
+        every: !!own.every
+      });
+      context.specialDays.push(special);
+      if (under.length) {
+        // INGEST-4.16: the week file's own day stays underneath, hidden by the special day (as
+        // the desktop keeps a special day's regular cells), said in one line.
+        days.push({ date, grid: dayGrid(t, groups, under, context) });
+        context.notes.push({ type: "underneath", name: special.name, day });
+      }
     } else if (!date) {
       onDay.forEach((p) =>
         context.unmatched.push({ ...p, why: "dayNotInWeek" })
@@ -585,18 +590,18 @@ function takenBy(context, week, day) {
 
 /**
  * INGEST-4.16: a single-day file's special day holds that file's cells; the week file's cells
- * that day for the same groups are replaced by it (said in the not-placed list).
+ * that day for the same groups stay underneath it, on the regular day (`under`).
  */
-function specialDayCells(own, onDay, context) {
+function specialDayCells(own, onDay) {
   if (!own.pages) {
-    return onDay;
+    return { cells: onDay, under: [] };
   }
   const inFile = (p) => own.pages.includes(p.page);
   const covered = new Set(onDay.filter(inFile).map((p) => p.group));
-  onDay
-    .filter((p) => !inFile(p) && covered.has(p.group))
-    .forEach((p) => context.unmatched.push({ ...p, why: "specialDayFile" }));
-  return onDay.filter((p) => inFile(p) || !covered.has(p.group));
+  return {
+    cells: onDay.filter((p) => inFile(p) || !covered.has(p.group)),
+    under: onDay.filter((p) => !inFile(p) && covered.has(p.group))
+  };
 }
 
 function ownDayOf(t, label, day) {

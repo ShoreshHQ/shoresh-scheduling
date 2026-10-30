@@ -6,7 +6,8 @@ import {
   importNotes,
   readAsGroups,
   planFor,
-  questionCards
+  questionCards,
+  unplacedLines
 } from "./data/engine";
 import { existingSetup, program as programOf, terms } from "./data/samples";
 import { splitWeekColumn, sheetToPages } from "../sheets";
@@ -1362,9 +1363,14 @@ describe("INGEST-4.14: a single-day file", () => {
     });
     expect(plan.specialDays[0].grid.b).toHaveLength(2);
     expect(plan.specialDays[0].grid.g.map((g) => g[1]).sort()).toEqual(GROUPS);
-    // The program's blocks are the week's; the week's version has no Wednesday.
+    // The program's blocks are the week's; the week file's Wednesday stays underneath, in the
+    // version, said in one line, never as cells not placed.
     expect(plan.timeBlocks).toHaveLength(BLOCKS.length);
-    expect(plan.versions[0].days).toHaveLength(4);
+    expect(plan.versions[0].days).toHaveLength(5);
+    expect(unplacedLines(p, terms)).toEqual([]);
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "Week 1 Wednesday is a special day; the week file's Wednesday stays underneath."
+    );
     expect(
       importNotes(p, terms)
         .map((n) => n.text)
@@ -1397,7 +1403,7 @@ describe("INGEST-4.14: a single-day file", () => {
       "Thursday",
       "Wednesday"
     ]);
-    expect(plan.versions[0].days).toHaveLength(3);
+    expect(plan.versions[0].days).toHaveLength(5);
   });
 
   it("INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow the season's own days", () => {

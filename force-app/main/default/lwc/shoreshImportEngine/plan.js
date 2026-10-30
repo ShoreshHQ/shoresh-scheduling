@@ -531,8 +531,6 @@ const UNPLACED_WHY = {
   specialDayClash: (t) =>
     `another ${t.sIn("Program")} has its own times that day too, and a day holds one ${t.sIn("SpecialDay")}`,
   ownDayLeftOut: () => "that day's own times were left out for now",
-  specialDayFile: (t) =>
-    `that day is the ${t.sIn("SpecialDay")} from its own file`,
   differsByWeek: (t) =>
     `it differs from ${t.sIn("Week")} to ${t.sIn("Week")}, and one ${t.sIn("SpecialDay")} has the same schedule every ${t.sIn("Week")}`,
   specialDayTaken: (t) =>
@@ -668,6 +666,15 @@ export function importNotes(proposal, t) {
     );
   // weeks.md INGEST-4.3: listed under "Read as" (review.md INGEST-5.4).
   // weeks.md INGEST-4.6: the camp's own special day on that day wins.
+  // INGEST-4.16: a single-day file's special day over the week file's own day.
+  proposal.notes
+    .filter((n) => n.type === "underneath")
+    .forEach((n) =>
+      notes.push({
+        key: `underneath|${n.name}`,
+        text: `${n.name} is ${article(t.sIn("SpecialDay"))}; the week file's ${n.day} stays underneath.`
+      })
+    );
   proposal.notes
     .filter((n) => n.type === "specialDayTaken")
     .forEach((n) =>

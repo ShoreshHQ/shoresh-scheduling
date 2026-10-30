@@ -283,8 +283,10 @@ Each rule is clue, meaning, example, test.
     Meaning: it is that program's special day, not a second program: each group once ("Bunk Alef",
     never "(schedule 1)"/"(schedule 2)"), one program, and its names set up once (no "Lunch is an
     activity in Main and a fixed activity in Program 2"). Its blocks are the special day's own;
-    the program's are the week's. The week file's cells that day for the groups it holds are
-    replaced by it, listed as not placed ("that day is the special day from its own file"). Beside
+    the program's are the week's. The week file's cells that day for the groups it holds stay
+    underneath it, in the week's version (hidden by the special day and back when it is taken off,
+    as the desktop keeps a special day's regular cells), said in one line ("Week 1 Wednesday is a
+    special day; the week file's Wednesday stays underneath."), never as cells not placed. Beside
     several programs of a week, it joins the one sharing the most groups with it. Regular
     multi-file grouping is unchanged.
     Test: "INGEST-4.16: a one-day special-day file on its own times joins the week file's
