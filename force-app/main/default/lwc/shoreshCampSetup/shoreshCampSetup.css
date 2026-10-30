@@ -295,6 +295,13 @@
   min-width: 0;
 }
 
+.send-failed {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  padding: var(--shoresh-space-pad);
+}
+
 .outside-questions {
   margin: 0;
   padding: 0 var(--shoresh-s4) var(--shoresh-s2) calc(var(--shoresh-s4) * 2);

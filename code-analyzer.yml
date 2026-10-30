@@ -172,3 +172,25 @@ suppressions:
     - rule_selector: "pmd:FieldNamingConventions"
       max_suppressed_violations: 2
       reason: "Record fields are the API's plain-English names (API-1.5)."
+  # What goes out (repo ADR 0024): a Flow's send fields are plain-English names too (to_system, as_csv).
+  "main/default/classes/OutgoingGroupSchedule.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Flow send fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/OutgoingActivitySchedule.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Flow send fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/OutgoingElectiveOfferings.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Flow send fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/OutgoingElectiveSeats.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 2
+      reason: "Flow send fields are the API's plain-English names (API-1.5)."
+  # A Flow action's answer in a managed package must be global for a camp's Flows to use it.
+  "main/default/classes/OutgoingResult.cls":
+    - rule_selector: "pmd:AvoidGlobalModifier"
+      max_suppressed_violations: 1
+      reason: "The send actions' answer: global so a camp's Flows can read it."

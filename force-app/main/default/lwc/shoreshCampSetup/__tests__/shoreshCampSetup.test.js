@@ -3587,6 +3587,20 @@ describe("c-shoresh-camp-setup", () => {
     expect(undoImport).toHaveBeenCalledWith({ importId: "i2" });
   });
 
+  it("API-6.3: Settings shows a send that failed, in its own sentence", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    const said =
+      "Couldn't send the group schedule for Week 2 to formstack: formstack answered 503 Service Unavailable.";
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(setupWith({ failedSends: [said] }))
+    );
+    const element = await render();
+    const line = q(element, '[data-id="send-failed"]');
+    expect(line.closest('[data-screen="learned"]')).not.toBeNull();
+    expect(line.textContent).toContain(said);
+  });
+
   it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

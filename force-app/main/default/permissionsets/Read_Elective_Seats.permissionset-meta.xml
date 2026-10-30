@@ -49,6 +49,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Camper__c.Withdrawn__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>ElectiveRun__c.FinalizedAt__c</field>
         <readable>true</readable>
     </fieldPermissions>

@@ -17,6 +17,14 @@ const INCOMING = {
   IncomingCamperElectiveChoice: "camper_elective_choice"
 };
 
+// API-1.2: what goes out, by its plain name (its Flow action is send_<name>).
+const OUTGOING = {
+  OutgoingGroupSchedule: "group_schedule",
+  OutgoingActivitySchedule: "activity_schedule",
+  OutgoingElectiveOfferings: "elective_offerings",
+  OutgoingElectiveSeats: "elective_seats"
+};
+
 const source = (name) => fs.readFileSync(path.join(DIR, `${name}.cls`), "utf8");
 
 describe("the API's addresses", () => {
@@ -54,10 +62,50 @@ describe("the API's addresses", () => {
     }
   });
 
+  // API-1.1, API-1.2, API-1.3: each outgoing capability is one class, read at /v1/<name> and
+  // sent by the Flow action send_<name> (to the destination the camp names), both through the
+  // one shared logic; nothing else goes out, and there is no per-camper schedule.
+  it("reaches each outgoing capability by a web address and a send_ Flow action", () => {
+    for (const [cls, name] of Object.entries(OUTGOING)) {
+      const text = source(cls);
+      expect([cls, text.match(/urlMapping='([^']*)'/)[1]]).toEqual([
+        cls,
+        `/v1/${name}`
+      ]);
+      const action = text.match(/@InvocableMethod\(\s*label='([^']*)'/);
+      expect([cls, action && action[1]]).toEqual([cls, `send_${name}`]);
+      expect(text).toContain("label='to_system'");
+      expect(text).toContain("OutgoingDoors.bySend(");
+      expect(text).toContain("OutgoingDoors.byWeb(");
+    }
+    const sends = fs
+      .readdirSync(DIR)
+      .filter((f) => f.endsWith(".cls"))
+      .flatMap((f) =>
+        [
+          ...fs
+            .readFileSync(path.join(DIR, f), "utf8")
+            .matchAll(/@InvocableMethod\(\s*label='(send_[^']*)'/g)
+        ].map((m) => m[1])
+      )
+      .sort();
+    expect(sends).toEqual(
+      Object.values(OUTGOING)
+        .map((name) => `send_${name}`)
+        .sort()
+    );
+    expect(sends.join(" ")).not.toMatch(/camper_schedule/);
+  });
+
   // API-1.5: no jargon in what a camp or developer reads.
   it("says nothing in jargon", () => {
     for (const cls of [
       ...Object.keys(INCOMING),
+      ...Object.keys(OUTGOING),
+      "OutgoingDoors",
+      "OutgoingPublished",
+      "OutgoingResult",
+      "SendLog",
       "IncomingCamperPlan",
       "IncomingNamedPlan",
       "IncomingCamperGroupPlan",
