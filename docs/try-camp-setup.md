@@ -1263,6 +1263,129 @@ on **Weeks** first).
    greyed out, as the Week picker there is, until the build is done; _Week 1_'s still opens, and
    **Manual Build** is not held. No message: the button simply waits.
 
+## 33. Connecting other systems (data in and out)
+
+Your other software (registration, a forms tool, a website) can send campers and bunks into
+Shoresh, read your published schedules, or be sent them by you. Nothing connects until you set
+it up here. These steps are done once per outside system, in Salesforce **Setup** (the gear,
+top right, then **Setup**; you need to be a Salesforce administrator to see it). Steps marked _(not checked)_ could not be confirmed against
+Salesforce's own pages; if the screen looks different, tell Claude what you see.
+
+### Let an outside system send data in
+
+1. **Make a connection user** (a login no person uses; the outside system signs in as it).
+   In Setup, type _Users_ in **Quick Find**, click **Users**, then **New User**.
+   - **User License:** _Salesforce Integration_ (free; every Salesforce account includes a few. If it isn't in the list, tell Claude).
+   - **Profile:** _Minimum Access - API Only Integrations_.
+   - Name it like _CampMinder connection_. Put your own address in **Email**, and in **Username**
+     something that is not a real address, like _campminder@yourcamp.shoresh_. Click **Save**.
+2. Scroll down the user's page to the list **Permission Set License Assignments** (with the
+   word _License_; step 3 uses a different list). There, click **Edit Assignments**,
+   tick **Salesforce API Integration**, and **Save**.
+3. In the list **Permission Set Assignments** (no _License_), click **Edit Assignments** and add only the ones it needs:
+
+   | To send in                   | Permission set        |
+   | ---------------------------- | --------------------- |
+   | Divisions                    | Send divisions        |
+   | Bunks                        | Send groups           |
+   | Activities                   | Send activities       |
+   | Campers                      | Send campers          |
+   | Which bunk each camper is in | Send camper groups    |
+   | Campers' elective choices    | Send elective choices |
+
+4. **Share the season with it.** Seasons are private, so the connection user sees none until
+   you share one. Open the season's Salesforce record (App Launcher, the nine dots at top left,
+   search _Seasons_, click the season's name). At the top right click the small **▾**, then
+   **Sharing**. In the box, search for the connection user, set access to **Read Only**, and
+   click **Save**. Do this for each season it
+   should reach. _(not checked: that the Sharing button shows on the Season page once Shoresh
+   is installed from AppExchange.)_
+5. **The key.** The outside system needs a key: a name-and-password pair just for software,
+   which signs in as the connection user. You make it once in Setup (Salesforce calls it an
+   **External Client App**). _(not checked: the exact clicks; Claude will go through the screens
+   with you the first time.)_ Give the key to the other company privately, never by email. It
+   can do only what step 3 allowed.
+
+What comes in is treated like an import: it never overwrites anything you changed or locked
+(you'll see both, and decide), never deletes (a withdrawn camper is hidden, not removed), and
+can be undone (see "If something goes wrong" below).
+
+### Let an outside system read your schedules
+
+Do steps 1 to 5 above, but in step 3 pick from this table. One connection user can have
+both Send and Read permission sets.
+
+| To read                         | Permission set          |
+| ------------------------------- | ----------------------- |
+| Each bunk's schedule            | Read group schedules    |
+| Each activity's schedule        | Read activity schedules |
+| Elective offerings (for a form) | Read elective offerings |
+| Elective seats (who got what)   | Read elective seats     |
+
+Only published weeks go out, and elective seats only after **Finalize**. Unpublished work, saved
+versions, scheduling problems and family or medical details never leave Shoresh.
+
+### Send schedules out with your own Flow
+
+Shoresh never sends by itself. You decide when, with a Salesforce Flow (on publish, on a
+schedule, or from a button).
+
+1. **Save the destination** as a Named Credential. In Setup, type _Named Credentials_ in
+   **Quick Find** and click it. On the **External Credentials** tab click **New**, name it
+   after the other system, choose the sign-in type the other company told you to use (ask them
+   in writing), paste in what they gave you, and **Save**. Then on the **Named Credentials** tab click **New**: give
+   it a short **Name** with no spaces, like _formstack_, and the web address the other system
+   gave you. That name is what you'll pick in the Flow.
+   _(Checked against guides that quote Salesforce; button names can differ by release.)_
+2. Whoever the Flow runs as needs permission to use that saved sign-in _(not checked: the
+   exact clicks; Claude will show you the first time)_, **and** the matching **Read …** permission set
+   from the table above. No Read permission, no send.
+3. In your Flow, add an **Action**, search **Shoresh**, and pick one of:
+   **send_group_schedule**, **send_activity_schedule**, **send_elective_offerings**,
+   **send_elective_seats**. Fill in **to_system** (the Named Credential's name), **season**
+   (like _Summer 2026_), **week** (like _Week 1_), and **as_csv** (_True_ if the other system wants a
+   spreadsheet file, _False_ if it wants data; ask them). If the Flow starts when a record is
+   saved, add the action on the branch labelled **Run Asynchronously**, not the main path.
+   Never built a Flow? Ask Claude for the steps.
+
+The action answers at once (**sent**, and a one-sentence **message**) when it can't even start:
+no permission, week not published, no destination by that name.
+
+### If something goes wrong
+
+Open **Settings** at the foot of the Shoresh menu.
+
+- **A send that failed** shows with a warning sign: _Couldn't send … to … : why_. It stays
+  there until the same thing goes through to the same place. Shoresh doesn't retry; run your
+  Flow again.
+- **Each outside system's last batch** shows as **Last from** _system_: _what_, with its own
+  **Undo** and any questions it raised. That Undo is separate from your own last import on
+  Roots: undoing one never undoes the other, and keeps what you changed since.
+
+### For whoever builds the other side
+
+- Addresses (in an installed package, Salesforce adds the package prefix:
+  `/services/apexrest/<prefix>/v1/...`):
+  - Send in (POST, JSON `{"records": [ {...}, ... ]}`, up to 200 a batch):
+    `/v1/division`, `/v1/group`, `/v1/activity`, `/v1/camper`, `/v1/camper_group`,
+    `/v1/camper_elective_choice`. Each record is answered _saved_, _unchanged_ or _problem_
+    with one sentence.
+  - Read (GET `?season=&week=`, add `&format=csv` for a file): `/v1/group_schedule`,
+    `/v1/activity_schedule`, `/v1/elective_offerings`, `/v1/elective_seats`.
+- Every incoming record has `season` and `source_system`. Campers are matched on
+  `source_system` + `camper_id`, never by name, so send the same ID every time.
+  - `division`: `division_name`, `program` · `group`: `group_name`, `division` ·
+    `activity`: `activity_name`
+  - `camper`: `camper_id`, `camper_name`, `camper_number`, `withdrawn`, `changed_at`
+  - `camper_group`: `camper_id`, `camper_name`, `bunk`, `week` (leave out for every week)
+  - `camper_elective_choice`: `camper_id`, `camper_name`, `elective`, `week`,
+    `first_choice` … `fifth_choice`, `changed_at`
+- Going out: group schedule `week, date, group, time_block, start_time, end_time, activity`;
+  activity schedule `week, date, activity, time_block, start_time, end_time, groups`;
+  offerings `elective_set, activity, seats, minimum_to_run`; seats `week, elective_set, date,
+time_block, activity, location, source_system, camper_id, camper_name, camper_number, bunk`.
+- Full rules: [docs/protocol/api.md](protocol/api.md), [ADR 0024](adr/0024-data-in-and-out.md).
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
