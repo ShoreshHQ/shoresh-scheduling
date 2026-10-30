@@ -1,7 +1,8 @@
 /**
- * The ten things an AI tool or the command line can do today: the API's capabilities
- * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name. Each one is the
- * API's own web address, so it obeys the API's rules and the person's permission sets (API-1.6).
+ * The things an AI tool or the command line can do today: the API's capabilities
+ * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name, and the
+ * person's own changes to a Generated Schedule week (API-1.11 to API-1.14). Each one is the API's
+ * own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
 const SEASON = {
@@ -52,6 +53,39 @@ function bringIn(name, api, description, fields) {
         }
       },
       required: ["records"],
+      additionalProperties: false
+    }
+  };
+}
+
+const WEEK_FIELDS = {
+  season: SEASON,
+  week: {
+    type: "string",
+    description: "The week's name in Shoresh, like Week 2."
+  },
+  program: {
+    type: "string",
+    description:
+      "The program's name, like Main. Leave it out when the season has only one."
+  }
+};
+
+/**
+ * The person's own change to a Generated Schedule week (POST /v1/<api> with the fields), made by
+ * the same save the screen makes, marked as made through an agent, and undoable.
+ */
+function change(name, api, description, more = {}, required = []) {
+  return {
+    name,
+    api,
+    method: "POST",
+    sendsFields: true,
+    description: `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    inputSchema: {
+      type: "object",
+      properties: { ...WEEK_FIELDS, ...more },
+      required: ["season", "week", ...required],
       additionalProperties: false
     }
   };
@@ -134,6 +168,38 @@ const CAPABILITIES = [
       "fifth_choice",
       "changed_at"
     ]
+  ),
+  change(
+    "change_schedule_cell",
+    "schedule_cell",
+    "Change one cell of a week's Generated Schedule: put an activity there, or Open to clear it.",
+    {
+      group: { type: "string", description: "The group's name, like Bunk 3." },
+      day: {
+        type: "string",
+        description: "The day, like Monday, or its date like 2026-06-29."
+      },
+      time: {
+        type: "string",
+        description:
+          "The time block's name, like Period 2, or its start like 09:00."
+      },
+      was: {
+        type: "string",
+        description:
+          "What the cell holds now as you last saw it: an activity's name, or Open."
+      },
+      activity: {
+        type: "string",
+        description: "What it should hold: an activity's name, or Open."
+      }
+    },
+    ["group", "day", "time", "was", "activity"]
+  ),
+  change(
+    "undo_last_agent_change",
+    "undo_last_agent_change",
+    "Undo your last change made through an agent in a week's Generated Schedule. It is refused if anyone saved the week since."
   )
 ];
 

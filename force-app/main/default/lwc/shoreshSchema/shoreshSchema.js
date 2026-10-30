@@ -237,6 +237,7 @@ import scheduleProgram from "@salesforce/schema/Schedule__c.Program__c";
 import schedulePublishKey from "@salesforce/schema/Schedule__c.PublishKey__c";
 import schedulePublishedAt from "@salesforce/schema/Schedule__c.PublishedAt__c";
 import schedulePublishedBy from "@salesforce/schema/Schedule__c.PublishedBy__c";
+import scheduleRevisionsAfter from "@salesforce/schema/Schedule__c.RevisionsAfter__c";
 import scheduleSourceSchedule from "@salesforce/schema/Schedule__c.SourceSchedule__c";
 import scheduleStatus from "@salesforce/schema/Schedule__c.Status__c";
 import scheduleVersionReason from "@salesforce/schema/Schedule__c.VersionReason__c";
@@ -601,6 +602,7 @@ export const FIELD = Object.freeze({
     PublishKey: schedulePublishKey.fieldApiName,
     PublishedAt: schedulePublishedAt.fieldApiName,
     PublishedBy: schedulePublishedBy.fieldApiName,
+    RevisionsAfter: scheduleRevisionsAfter.fieldApiName,
     SourceSchedule: scheduleSourceSchedule.fieldApiName,
     Status: scheduleStatus.fieldApiName,
     VersionReason: scheduleVersionReason.fieldApiName,

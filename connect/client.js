@@ -18,6 +18,13 @@ function requestFor(capability, input = {}) {
     if (input.as_csv) query.set("format", "csv");
     return { path: `${path}?${query}`, method: "GET" };
   }
+  if (capability.sendsFields) {
+    const fields = {};
+    for (const field of Object.keys(capability.inputSchema.properties)) {
+      if (input[field] !== undefined) fields[field] = input[field];
+    }
+    return { path, method: "POST", body: JSON.stringify(fields) };
+  }
   return {
     path,
     method: "POST",

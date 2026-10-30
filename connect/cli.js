@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
- * Shoresh from the command line: the same ten actions as the MCP server, by the same names
+ * Shoresh from the command line: the same actions as the MCP server, by the same names
  * (API-1.10), signed in as the person through the sf CLI.
  *
  *   node connect/cli.js read_group_schedule --season "Summer 2026" --week "Week 2" [--csv]
  *   node connect/cli.js bring_in_campers --file campers.json
+ *   node connect/cli.js change_schedule_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
+ *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
+ *   node connect/cli.js undo_last_agent_change --season "Summer 2026" --week "Week 2"
  *   (--org <alias> picks a sf CLI sign-in; otherwise SHORESH_ORG, then the sf CLI's default.)
  */
 const fs = require("fs");
@@ -13,7 +16,7 @@ const { call } = require("./client");
 
 function usage() {
   return [
-    "Usage: node connect/cli.js <action> [--season <name> --week <name> [--csv]] [--file <records.json>] [--org <alias>]",
+    "Usage: node connect/cli.js <action> [--season <name> --week <name> [--csv]] [--file <records.json>] [--<field> <value> ...] [--org <alias>]",
     "",
     ...CAPABILITIES.map(
       (c) =>
@@ -34,7 +37,11 @@ function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
     else if (word.startsWith("--")) flags[word.slice(2)] = rest[++i];
   }
   const input = {};
-  if (capability.method === "GET") {
+  if (capability.sendsFields) {
+    for (const field of Object.keys(capability.inputSchema.properties)) {
+      if (flags[field] !== undefined) input[field] = flags[field];
+    }
+  } else if (capability.method === "GET") {
     input.season = flags.season;
     input.week = flags.week;
     if (flags.csv) input.as_csv = true;
