@@ -711,7 +711,7 @@ export function versionsFor(proposal, input) {
       } else {
         const version = versionFor(t, week, label, context);
         // A single-day file's only day is a special day (INGEST-4.14): no empty version.
-        if (version.days.length || !t.ownDays.length) {
+        if (version.days.length || !t.oneDay) {
           versions.push(version);
         }
       }

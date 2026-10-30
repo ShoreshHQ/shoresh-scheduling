@@ -1189,6 +1189,29 @@ describe("INGEST-4.14: a single-day file", () => {
     expect(plan.versions[0].days).toHaveLength(1);
   });
 
+  it("INGEST-4.14: beside a week's files, the answered day is the special day on the week asked, and the week's groups join it", () => {
+    const files = [
+      file("Camp - Week 1.csv", [sheetOf("Week 1", weekRows(0))]),
+      ...fieldDay()
+    ];
+    const answers = {
+      "oneDay|field-day.csv": "Wednesday",
+      "week|the file's week": "Week 1"
+    };
+    const p = propose(files, existing, answers);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekId: "w1",
+      day: "Wednesday"
+    });
+    expect(plan.specialDays[0].grid.g.map((g) => g[1]).sort()).toEqual(
+      expect.arrayContaining(GROUPS)
+    );
+    const week = plan.versions.find((v) => v.days.length);
+    expect(week.days).toHaveLength(4);
+  });
+
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
     const answers = { "oneDay|field-day.csv": LEAVE_OUT };
     const p = propose(fieldDay(), existing, answers);

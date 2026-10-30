@@ -235,7 +235,9 @@ Each rule is clue, meaning, example, test.
     and comes in as a special day on it, as rule 3 makes one (its own time blocks, the file's
     cells), in the week the files go to; the program's blocks never gain its, no empty version
     is kept, and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
-    in as a special day on Thursday, with its own times."). Unanswered, nothing is read from it.
+    in as a special day on Thursday, with its own times."). Beside other files, a program that
+    runs that day joins the special day (rule 11), and the week, if the files do not say it, is
+    asked as any week is. Unanswered or left out, nothing is read from it.
     A file with no schedule in it at all is still refused ("notes.csv: no schedule Shoresh could
     read was found. Nothing was imported.").
     Counter-case: a one-day file naming its day ("color-war-wednesday.csv") is read as that day
@@ -245,7 +247,8 @@ Each rule is clue, meaning, example, test.
     Test: "INGEST-4.14: a one-day file naming no day is not refused: which day is asked, and the
     answer makes it a special day on that day"; "INGEST-4.14 counter-case: a one-day file naming
     its day is read as that day, as before"; "INGEST-4.14 counter-case: left out, nothing is read
-    from it"; the screen's "INGEST-4.14: a one-day file naming no day is not refused; it asks
+    from it"; "INGEST-4.14: beside a week's files, the answered day is the special day on the week
+    asked, and the week's groups join it"; the screen's "INGEST-4.14: a one-day file naming no day is not refused; it asks
     which day" and "a file with no schedule in it is still refused, and says so". Code:
     `reading.js` `singleDay`; `structure.js` `singleDayFiles`; `questions.js` `oneDayCard`.
 

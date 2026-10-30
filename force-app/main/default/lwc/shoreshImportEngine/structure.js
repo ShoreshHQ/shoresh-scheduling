@@ -615,8 +615,9 @@ function earlyEnds(t, placements, blockAt, context, notes) {
 
 /**
  * INGEST-4.14 (weeks.md): a timetable of single-day files only (`page.oneDay`), on one week's
- * day no other timetable has, is a special day on that day, all its blocks its own. Not joined
- * to another program's shape already (INGEST-4.3). Changes `timetables` in place; returns notes.
+ * day, is a special day on that day, all its blocks its own (another program's groups that day
+ * join it, INGEST-4.11). Not joined to another program's shape already (INGEST-4.3). Changes
+ * `timetables` in place; returns notes.
  */
 function singleDayFiles(timetables, pages, placements) {
   const notes = [];
@@ -626,15 +627,8 @@ function singleDayFiles(timetables, pages, placements) {
         .filter((p) => t.pages.includes(p.page))
         .map((p) => `${p.week || ""}|${p.day}`)
     );
-    const others = timetables.filter((x) => x !== t);
-    const taken = placements.some(
-      (p) =>
-        others.some((x) => x.pages.includes(p.page)) &&
-        wds.has(`${p.week || ""}|${p.day}`)
-    );
     if (
       wds.size !== 1 ||
-      taken ||
       (t.ownDays || []).length ||
       !t.pages.every((i) => pages[i].oneDay)
     ) {
@@ -643,6 +637,7 @@ function singleDayFiles(timetables, pages, placements) {
     const [week, day] = [...wds][0].split("|");
     t.ownKeys = new Set(t.raw.map((b) => b.key));
     t.ownDays = [{ week, day, every: false }];
+    t.oneDay = true;
     notes.push({
       type: "oneDay",
       day,
