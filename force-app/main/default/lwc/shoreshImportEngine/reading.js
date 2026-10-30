@@ -132,7 +132,30 @@ function sameLayoutPerFile(pages, detected) {
   });
 }
 
-function readPages(pages, keys, existing, layouts) {
+/**
+ * INGEST-4.14 (weeks.md): a file of one grid with time rows, no days across and no day in its
+ * name or title is a single-day schedule: which day is asked (`oneDay|file`), and the answer
+ * reads it as that day. One naming its day is read as that day, as before (level 5 `oneDay`).
+ * Gives { day, ask } for the page, or null when it is not one.
+ */
+function singleDay(page, found, pageIndex, fileCount, answers) {
+  if (
+    fileCount !== 1 ||
+    found.layout === "byGroup" ||
+    found.daysAcross ||
+    pageDay(page)
+  ) {
+    return null;
+  }
+  if (readPage(page, pageIndex, found, WEEKDAYS[0]).placements.length === 0) {
+    return null;
+  }
+  const id = `oneDay|${page.file}`;
+  const answer = WEEKDAYS.includes(answers[id]) ? answers[id] : null;
+  return { day: answer, ask: { id, type: "oneDay", file: page.file } };
+}
+
+function readPages(pages, keys, existing, layouts, answers) {
   const known = {
     groups: new Set(campNames(existing).groups.map(looseKey))
   };
@@ -147,8 +170,19 @@ function readPages(pages, keys, existing, layouts) {
   const named = nameFromFiles(pages, found, seasonWeekCount(existing));
   const placements = [];
   const noted = [];
+  const asks = [];
+  const perFile = new Map();
+  named.forEach((page) =>
+    perFile.set(page.file, (perFile.get(page.file) || 0) + 1)
+  );
   const info = named.map((page, i) => {
-    const read = readPage(page, i, found[i]);
+    const one = singleDay(page, found[i], i, perFile.get(page.file), answers);
+    if (one && one.ask) {
+      asks.push(one.ask);
+    }
+    // Marked for buildTimetables: it comes in as a special day (INGEST-4.14).
+    page.oneDay = !!(one && one.day);
+    const read = readPage(page, i, found[i], one && one.day);
     placements.push(...read.placements);
     noted.push(...read.groups);
     return {
@@ -160,10 +194,11 @@ function readPages(pages, keys, existing, layouts) {
       confident:
         detected[i].confident && found[i].layout === detected[i].layout,
       daysAcross: detected[i].daysAcross,
-      day: pageDay(page),
+      day: pageDay(page) || (one && one.day),
       week: pageWeek(page),
       name: pageName(page),
-      noDay: read.noDay,
+      // Asked which day instead (INGEST-4.14), so not noted as unread.
+      noDay: read.noDay && !(one && one.ask),
       placements: read.placements.length
     };
   });
@@ -171,7 +206,8 @@ function readPages(pages, keys, existing, layouts) {
     info,
     placements: placesInBrackets(placements, existing),
     noted,
-    pages: named
+    pages: named,
+    asks
   };
 }
 
@@ -358,7 +394,13 @@ export function readImport(input) {
     maxWeek: seasonWeekCount(input.existing)
   });
   const keys = pageKeys(pages);
-  const read = readPages(pages, keys, input.existing, input.layouts || {});
+  const read = readPages(
+    pages,
+    keys,
+    input.existing,
+    input.layouts || {},
+    answers
+  );
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -474,7 +516,7 @@ export function readImport(input) {
     ],
     groupAsks: identified.asks,
     splitAsks: together.asks,
-    timeAsks,
+    timeAsks: [...read.asks, ...timeAsks],
     identities: identified.rules
   };
 }

@@ -226,6 +226,29 @@ Each rule is clue, meaning, example, test.
     Code: `structure.js` `earlyEnds`; `reading.js` (the placements it covers, `early`);
     `classify.js` `patternsOf` (read at its usual slot); `items.js` `earlyOf`.
 
+14. **A one-day file naming no day is a single-day schedule, asked which day** (desktop:
+    "This looks like a single-day schedule", Build this special day).
+    Clue: a file of one grid, no days across, not a page per group, no day in its name or title,
+    whose rows hold a schedule when read as a day (time rows and cells).
+    Meaning: not refused. Asked "This looks like a single-day schedule. Which day is
+    field-day.csv?" (Monday to Sunday, or leave it out). Answered, the file is read as that day
+    and comes in as a special day on it, as rule 3 makes one (its own time blocks, the file's
+    cells), in the week the files go to; the program's blocks never gain its, no empty version
+    is kept, and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
+    in as a special day on Thursday, with its own times."). Unanswered, nothing is read from it.
+    A file with no schedule in it at all is still refused ("notes.csv: no schedule Shoresh could
+    read was found. Nothing was imported.").
+    Counter-case: a one-day file naming its day ("color-war-wednesday.csv") is read as that day
+    of the week, as before (level 5 `oneDay`: a one-day program). The desktop builds that one as a
+    special day too; that difference is open for Greg. A file of several pages that name no day
+    keeps the note "it does not say which day it is".
+    Test: "INGEST-4.14: a one-day file naming no day is not refused: which day is asked, and the
+    answer makes it a special day on that day"; "INGEST-4.14 counter-case: a one-day file naming
+    its day is read as that day, as before"; "INGEST-4.14 counter-case: left out, nothing is read
+    from it"; the screen's "INGEST-4.14: a one-day file naming no day is not refused; it asks
+    which day" and "a file with no schedule in it is still refused, and says so". Code:
+    `reading.js` `singleDay`; `structure.js` `singleDayFiles`; `questions.js` `oneDayCard`.
+
 ## Known limits
 
 - A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a

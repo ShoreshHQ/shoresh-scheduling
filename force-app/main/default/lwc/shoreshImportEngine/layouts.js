@@ -365,11 +365,12 @@ function readActivityPage(reader, page, day, daysAcross) {
  * Every placement a page shows: { page, file, week, day, group, block (row label), row, span,
  * text, place }, a name repeated in the blocks right after it joined into one placement, and
  * the groups it names with any division written beside them. A page whose day cannot be told
- * gives nothing and says so (`noDay`).
+ * gives nothing and says so (`noDay`), unless `dayGiven` (a single-day file's answered day,
+ * INGEST-4.14) gives it.
  */
-export function readPage(page, pageIndex, found) {
+export function readPage(page, pageIndex, found, dayGiven = null) {
   const reader = new CellReader(page, pageIndex, found.layout);
-  const day = pageDay(page);
+  const day = pageDay(page) || dayGiven;
   if (found.layout === "byGroup") {
     readGroupPage(reader, page);
   } else if (!found.daysAcross && !day) {

@@ -2,6 +2,7 @@
 // name, one week's day with its own time blocks, and a week named by a date.
 import {
   buildProposal,
+  LEAVE_OUT,
   importNotes,
   readAsGroups,
   planFor,
@@ -1125,5 +1126,72 @@ describe("INGEST-4.13: the regular day ending early is the regular day", () => {
     const p = propose(files(fri), existing);
     expect(p.specialDays).toHaveLength(1);
     expect(p.specialDays[0].name).toBe("Friday");
+  });
+});
+
+describe("INGEST-4.14: a single-day file", () => {
+  const weeks = [
+    {
+      Id: "w1",
+      Name: "Week 1",
+      StartDate__c: "2026-06-29",
+      EndDate__c: "2026-07-03"
+    }
+  ];
+  const existing = existingSetup({ weeks });
+  const rows = [
+    ["Time", "Bunk 1", "Bunk 2"],
+    ["9:00-10:00", "Relay races", "Tug of war"],
+    ["10:00-11:00", "Tug of war", "Relay races"],
+    ["11:00-12:00", "Lunch", "Lunch"]
+  ];
+  const fieldDay = (name = "field-day.csv") => [
+    file(name, [sheetOf("Sheet1", rows)])
+  ];
+
+  it("INGEST-4.14: a one-day file naming no day is not refused: which day is asked, and the answer makes it a special day on that day", () => {
+    const before = propose(fieldDay(), existing);
+    const [card] = asked(before, "oneDay|");
+    expect(card.title).toBe(
+      "This looks like a single-day schedule. Which day is field-day.csv?"
+    );
+    expect(card.options.map((o) => o.value)).toContain("Thursday");
+    expect(before.reading.pages[0].noDay).toBe(false);
+    expect(
+      importNotes(before, terms)
+        .map((n) => n.text)
+        .join(" ")
+    ).not.toMatch(/does not say which day/);
+
+    const answers = { "oneDay|field-day.csv": "Thursday" };
+    const p = propose(fieldDay(), existing, answers);
+    expect(p.reading.placements).toHaveLength(6);
+    const plan = planFor(p, existing, "a00000000000001AAA", { answers });
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({
+      weekId: "w1",
+      day: "Thursday"
+    });
+    expect(plan.specialDays[0].grid.r).toHaveLength(2);
+    // Its blocks are the special day's own, never the program's; no empty version.
+    expect(plan.timeBlocks).toEqual([]);
+    expect(plan.versions).toEqual([]);
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "field-day.csv looks like a single-day schedule, so it comes in as a special day on Thursday, with its own times."
+    );
+  });
+
+  it("INGEST-4.14 counter-case: a one-day file naming its day is read as that day, as before", () => {
+    const p = propose(fieldDay("color-war-wednesday.csv"), existing);
+    expect(asked(p, "oneDay|")).toEqual([]);
+    const plan = planFor(p, existing, "a00000000000001AAA");
+    expect(plan.specialDays).toEqual([]);
+    expect(plan.versions[0].days).toHaveLength(1);
+  });
+
+  it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
+    const answers = { "oneDay|field-day.csv": LEAVE_OUT };
+    const p = propose(fieldDay(), existing, answers);
+    expect(p.reading.placements).toHaveLength(0);
   });
 });
