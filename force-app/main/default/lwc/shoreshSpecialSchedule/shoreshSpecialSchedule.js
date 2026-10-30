@@ -8,6 +8,7 @@ import addActivity from "@salesforce/apex/SpecialScheduleController.addActivity"
 import importPlan from "@salesforce/apex/SpecialScheduleController.importPlan";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { offeringNames } from "c/shoreshElectiveDetails";
 import { scheduleSheets } from "c/shoreshScheduleExport";
 import { shortClock } from "c/shoreshScheduleViews";
 import {
@@ -382,7 +383,12 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       return;
     }
     try {
-      const [sheet] = scheduleSheets({ days: [day] }, [], this.t);
+      const [sheet] = scheduleSheets(
+        { days: [day] },
+        [],
+        this.t,
+        offeringNames(this.setup)
+      );
       await downloadWorkbook(
         this,
         [{ ...sheet, name: this.name }],

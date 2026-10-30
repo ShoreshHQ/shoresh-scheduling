@@ -336,6 +336,33 @@ describe("c-shoresh-special-schedule", () => {
     ]);
   });
 
+  it("ELECT-6.3: Download lists an elective set's offerings, as every Excel download does", async () => {
+    const plan = dayPlan(["3,", ",1"]);
+    plan.schedule.days[0].items.push(ref("es1", "Chugim", "E"));
+    const { element } = await render(plan);
+    element.setup = nsRecord({
+      activities: [
+        { Id: "a7", Name: "Archery" },
+        { Id: "a8", Name: "Drama" }
+      ],
+      locations: [],
+      electives: {
+        offerings: [
+          { Id: "o1", ElectiveSet__c: "es1", Activity__c: "a7" },
+          { Id: "o2", ElectiveSet__c: "es1", Activity__c: "a8" }
+        ]
+      }
+    });
+    await flush();
+    q(element, '[data-id="download"]').click();
+    await flush();
+    const [, sheets] = downloadWorkbook.mock.calls.at(-1);
+    expect(sheets[0].rows[1].slice(0, 2)).toEqual([
+      "Opening (9:00 AM – 9:45 AM)",
+      "Chugim (Archery, Drama)"
+    ]);
+  });
+
   it("a special day holding only what it started with is imported into, and says what the file replaced", async () => {
     const { element } = await render(dayPlan());
     q(element, '[data-id="import"]').click();

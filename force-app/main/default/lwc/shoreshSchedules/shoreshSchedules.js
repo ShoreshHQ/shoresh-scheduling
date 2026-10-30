@@ -8,6 +8,7 @@ import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule"
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { offeringNames } from "c/shoreshElectiveDetails";
 import { printPages, scheduleSheets } from "c/shoreshScheduleExport";
 import {
   activityCards,
@@ -551,7 +552,12 @@ export default class ShoreshSchedules extends LightningElement {
     try {
       await downloadWorkbook(
         this,
-        scheduleSheets(this.shown, this.catalogue, this.t),
+        scheduleSheets(
+          this.shown,
+          this.catalogue,
+          this.t,
+          offeringNames(this._setup)
+        ),
         fileNameOf(`${this.weekName} - ${this.openedName}`)
       );
     } catch (e) {
