@@ -15,6 +15,10 @@ module.exports = {
   // jest/sa11y-setup.js kept selector answers during a check, the axe checks over a whole screen
   // passed 5 s there (#99). 20 s still stops a test that hangs.
   testTimeout: 20000,
+  // A worker's memory grows across test files (each loads its own copy of the screens and the
+  // engine) to about 3 GB, where Node spends its time collecting garbage and a 150 ms test can
+  // pass 20 s on CI. Above 1 GB a worker is replaced between test files, starting fresh.
+  workerIdleMemoryLimit: "1GB",
   // CSS-only modules (shared colours) have no JavaScript for Jest to find.
   moduleNameMapper: {
     ...(jestConfig.moduleNameMapper || {}),
