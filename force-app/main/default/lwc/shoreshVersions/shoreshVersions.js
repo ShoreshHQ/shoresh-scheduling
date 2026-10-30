@@ -8,6 +8,8 @@ const ORIGINS = {
 };
 // VersionReason__c's value for a version kept by the app ("Before Restore").
 const AUTO_SAVED = "AutoSaved";
+// Its value for a version kept before a change the person made through an agent (AgentWeeks).
+const THROUGH_AGENT = "ThroughAgent";
 
 /**
  * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
@@ -171,6 +173,7 @@ export default class ShoreshVersions extends LightningElement {
       const meta = [
         ORIGINS[version.origin] || version.origin,
         version.reason === AUTO_SAVED ? "Auto-saved" : null,
+        version.reason === THROUGH_AGENT ? "Through an agent" : null,
         version.publishedAt && showSaved ? "Published" : null
       ]
         .filter(Boolean)

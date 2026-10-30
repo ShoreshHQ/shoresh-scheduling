@@ -44,7 +44,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .map((m) => m[1])
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(10);
+    expect(CAPABILITIES).toHaveLength(12);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -54,9 +54,11 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.6, API-1.5
-  it("plainNames: every action is read_<thing> or bring_in_<things>, said without jargon", () => {
+  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing> or undo_last_change, said without jargon", () => {
     for (const c of CAPABILITIES) {
-      expect(c.name).toMatch(/^(read|bring_in)_[a-z]+(_[a-z]+)*$/);
+      expect(c.name).toMatch(
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_change)$/
+      );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
       );
@@ -181,7 +183,59 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.10
-  it("sameNamesBothWays: the MCP tools and the command line take the same ten names", async () => {
+  // API-1.11
+  it("personsOwnChanges: change_cell and undo_last_change send the person's fields to /v1/cell and /v1/undo", async () => {
+    const seen = [];
+    const fields = {
+      season: "Summer 2026",
+      week: "Week 1",
+      group: "Group A",
+      day: "Monday",
+      time: "Period 2",
+      was: "Gym games",
+      activity: "Soccer"
+    };
+    await call(
+      "change_cell",
+      { ...fields, records: [] },
+      { run: sfAnswering(200, "{}", seen) }
+    );
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/cell",
+      "--method",
+      "POST"
+    ]);
+    expect(JSON.parse(seen[0].stdin)).toEqual(fields);
+    const undone = await call(
+      "undo_last_change",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message: 'Undid "Placed Soccer · Group A · Monday · Period 2".'
+          }),
+          seen
+        )
+      }
+    );
+    expect(seen[1].args[3]).toBe("/services/apexrest/v1/undo");
+    expect(undone).toEqual({
+      ok: true,
+      status: 200,
+      text: 'Undid "Placed Soccer · Group A · Monday · Period 2".'
+    });
+    expect(
+      parse([
+        "change_cell",
+        ...Object.entries(fields).flatMap(([k, v]) => [`--${k}`, v]),
+        "--org",
+        "my-camp"
+      ])
+    ).toEqual({ name: "change_cell", input: fields, org: "my-camp" });
+  });
+
+  it("sameNamesBothWays: the MCP tools and the command line take the same names", async () => {
     const init = await handle({
       jsonrpc: "2.0",
       id: 0,
@@ -196,9 +250,9 @@ describe("Shoresh for AI tools and the command line", () => {
     const names = tools().map((t) => t.name);
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
-      const words = name.startsWith("read_")
-        ? [name, "--season", "S", "--week", "W"]
-        : [name, "--file", "x.json"];
+      const words = name.startsWith("bring_in_")
+        ? [name, "--file", "x.json"]
+        : [name, "--season", "S", "--week", "W"];
       expect(parse(words, () => '{"records":[]}').name).toBe(name);
     }
     expect(

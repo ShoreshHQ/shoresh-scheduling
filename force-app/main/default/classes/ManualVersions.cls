@@ -206,9 +206,10 @@ public with sharing class ManualVersions {
 
   /**
    * The days written into a version, as they are, their rainy-day marks too (the desktop's
-   * versions keep each cell's flags, toSnapshotSlot; repo docs/adr/0019 choice 9).
+   * versions keep each cell's flags, toSnapshotSlot; repo docs/adr/0019 choice 9). Also how a
+   * change through an agent keeps the week first (AgentWeeks).
    */
-  private static void writeDays(Id versionId, List<ScheduleDays.DayGrid> days) {
+  public static void writeDays(Id versionId, List<ScheduleDays.DayGrid> days) {
     List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
@@ -222,8 +223,8 @@ public with sharing class ManualVersions {
     ScheduleDaySaves.write(versionId, saves);
   }
 
-  /** A new version of the draft's week (no days yet). */
-  private static Id newVersion(Schedule__c draft, String name, String reason) {
+  /** A new version of the draft's week (no days yet), for a reason (AgentWeeks too). */
+  public static Id newVersion(Schedule__c draft, String name, String reason) {
     Schedule__c version = new Schedule__c(
       Program__c = draft.Program__c,
       Week__c = draft.Week__c,

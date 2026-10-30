@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RevisionsAfter__c</fullName>
+    <description
+  >On a version kept before a change made through an agent or the command line (Version Reason "Through an agent"): a fingerprint of the week's day revisions right after that change. Undo through an agent restores the version only while the week is still exactly so; blank once it can no longer be undone that way.</description>
+    <label>Revisions After</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

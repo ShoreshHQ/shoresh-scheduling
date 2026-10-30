@@ -320,6 +320,23 @@ describe("c-shoresh-versions", () => {
       );
     });
 
+    // API-1.12
+    it("a version kept before a change made through an agent says so", async () => {
+      const element = await renderRestore([
+        {
+          id: "a1",
+          name: "Before Placed Soccer · Group A · Monday · Period 2",
+          origin: "Generated",
+          reason: "ThroughAgent",
+          savedAt: "2026-10-30T17:00:00.000Z"
+        }
+      ]);
+      const row = qa(element, ".version")[0];
+      expect(row.querySelector(".version-meta").textContent).toContain(
+        "Generated Schedule · Through an agent"
+      );
+    });
+
     it("a version that was once the published schedule says so and can't be deleted", async () => {
       const element = await renderRestore([
         {
