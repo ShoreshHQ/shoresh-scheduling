@@ -402,15 +402,21 @@ function versionFor(t, week, label, context) {
         context.unmatched.push({ ...p, why: "specialDayTaken" })
       );
     } else if (own) {
-      context.specialDays.push(
-        specialDayFor(t, week, day, label, {
-          parts: [{ t, groups, placements: onDay }],
-          at: `${t.index}|${label}|${day}`,
-          program: t.name,
-          cells: onDay,
-          every: !!own.every
-        })
-      );
+      const { cells, under } = specialDayCells(own, onDay);
+      const special = specialDayFor(t, week, day, label, {
+        parts: [{ t, groups, placements: cells }],
+        at: `${t.index}|${label}|${day}`,
+        program: t.name,
+        cells,
+        every: !!own.every
+      });
+      context.specialDays.push(special);
+      if (under.length) {
+        // INGEST-4.16: the week file's own day stays underneath, hidden by the special day (as
+        // the desktop keeps a special day's regular cells), said in one line.
+        days.push({ date, grid: dayGrid(t, groups, under, context) });
+        context.notes.push({ type: "underneath", name: special.name, day });
+      }
     } else if (!date) {
       onDay.forEach((p) =>
         context.unmatched.push({ ...p, why: "dayNotInWeek" })
@@ -582,6 +588,22 @@ function takenBy(context, week, day) {
   return item ? item.Name : null;
 }
 
+/**
+ * INGEST-4.16: a single-day file's special day holds that file's cells; the week file's cells
+ * that day for the same groups stay underneath it, on the regular day (`under`).
+ */
+function specialDayCells(own, onDay) {
+  if (!own.pages) {
+    return { cells: onDay, under: [] };
+  }
+  const inFile = (p) => own.pages.includes(p.page);
+  const covered = new Set(onDay.filter(inFile).map((p) => p.group));
+  return {
+    cells: onDay.filter((p) => inFile(p) || !covered.has(p.group)),
+    under: onDay.filter((p) => !inFile(p) && covered.has(p.group))
+  };
+}
+
 function ownDayOf(t, label, day) {
   return (t.ownDays || []).find((o) => o.week === label && o.day === day);
 }
@@ -631,8 +653,12 @@ function reasonFor(p, proposal) {
 
 /** The days the grids run between them, Monday first: the shape of the weeks an import adds. */
 function gridDays(proposal) {
+  // INGEST-4.17: a single-day file's special day never decides the camp's days (desktop
+  // specialDayFile.js: it is not a week); with nothing else, the season's own days.
   const runs = new Set(
-    proposal.timetables.filter((t) => !t.leftOut).flatMap((t) => t.days)
+    proposal.timetables
+      .filter((t) => !t.leftOut && !t.oneDay)
+      .flatMap((t) => t.days)
   );
   return WEEKDAYS.filter((d) => runs.has(d));
 }

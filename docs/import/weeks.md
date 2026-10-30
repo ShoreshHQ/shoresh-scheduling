@@ -276,12 +276,37 @@ Each rule is clue, meaning, example, test.
     schedule, stays ordinary days". Code:
     `reading.js` `singleDay`; `structure.js` `singleDayFiles`.
 
+16. **A single-day file on its own times joins the week's program** (coordinator, 2026-10-30,
+    after the test-org round: a special day has its own times by design).
+    Clue: a one-day file that comes in as a special day (rules 14, 15) beside a file of the
+    camp's week (two days or more) whose time blocks differ from it.
+    Meaning: it is that program's special day, not a second program: each group once ("Bunk Alef",
+    never "(schedule 1)"/"(schedule 2)"), one program, and its names set up once (no "Lunch is an
+    activity in Main and a fixed activity in Program 2"). Its blocks are the special day's own;
+    the program's are the week's. The week file's cells that day for the groups it holds stay
+    underneath it, in the week's version (hidden by the special day and back when it is taken off,
+    as the desktop keeps a special day's regular cells), said in one line ("Week 1 Wednesday is a
+    special day; the week file's Wednesday stays underneath."), never as cells not placed. Beside
+    several programs of a week, it joins the one sharing the most groups with it. Regular
+    multi-file grouping is unchanged.
+    Test: "INGEST-4.16: a one-day special-day file on its own times joins the week file's
+    program: each group once, one program"; "two single-day files beside one week's file both join
+    its program". Code: `structure.js` `singleDayFiles`, `hostOf`;
+    `version.js` `specialDayCells`.
+
+17. **A single-day file never decides the camp's days** (desktop `specialDayFile.js`: a
+    one-day file "is a schedule. It is just not a week").
+    Clue: a single-day file that comes in as a special day, alone, into a season with dates and
+    no weeks.
+    Meaning: the weeks added follow the season's own days (its programs' days, Monday to Friday
+    when none), as for a file that names no days, never only the special day's weekday; a program
+    it makes runs those days too.
+    Test: "INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow
+    the season's own days". Code: `version.js` `gridDays`; `plan.js` `programRecords`.
+
 ## Known limits
 
 - A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a
   second program, as before.
 - Without season weeks (none, and no dates to fill them in), the special day has no day to go
   on and its cells are left out, as a version's are.
-- A one-day file beside a week file whose blocks differ from the week's (color-war-wednesday.csv
-  beside summer-week.csv) still reads its bunks as a second program's ("Bunk Alef (schedule 1)"
-  and "(schedule 2)"), each program with its own groups, in the special day and in setup.

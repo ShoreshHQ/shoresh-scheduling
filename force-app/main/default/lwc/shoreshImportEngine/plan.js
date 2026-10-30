@@ -7,6 +7,7 @@ import { FIELD } from "c/shoreshSchema";
 import { availabilityKey } from "./availability";
 import { broughtBack } from "./deleted";
 import { clock, shortClock } from "./text";
+import { programDays } from "./weeks";
 import { dayList, nameList } from "./questions";
 
 /** The highest place in order among records, by the records' own sort-order field. */
@@ -35,7 +36,9 @@ function programRecords(proposal, existing) {
       key: t.key,
       id: t.program ? t.program.id : null,
       name: t.name,
-      days: t.days,
+      // INGEST-4.17: a program only a single-day file's special day makes runs the season's
+      // own days, never just that day.
+      days: !t.program && t.oneDay ? programDays(existing) : t.days,
       sortOrder: t.program ? null : base + ++n
     }));
 }
@@ -663,6 +666,15 @@ export function importNotes(proposal, t) {
     );
   // weeks.md INGEST-4.3: listed under "Read as" (review.md INGEST-5.4).
   // weeks.md INGEST-4.6: the camp's own special day on that day wins.
+  // INGEST-4.16: a single-day file's special day over the week file's own day.
+  proposal.notes
+    .filter((n) => n.type === "underneath")
+    .forEach((n) =>
+      notes.push({
+        key: `underneath|${n.name}`,
+        text: `${n.name} is ${article(t.sIn("SpecialDay"))}; the week file's ${n.day} stays underneath.`
+      })
+    );
   proposal.notes
     .filter((n) => n.type === "specialDayTaken")
     .forEach((n) =>
