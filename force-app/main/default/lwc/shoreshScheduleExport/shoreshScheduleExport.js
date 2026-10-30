@@ -31,6 +31,7 @@ import {
   groupCells,
   groupGrid,
   groups,
+  isElectiveItem,
   isSetUpItem,
   kindLabel
 } from "c/shoreshScheduleViews";
@@ -68,6 +69,19 @@ export function itemText(item, t, bracket = false) {
     : name;
 }
 
+/**
+ * An elective set's cell lists its offerings, as the desktop's Excel export does
+ * ("Chugim (Archery, Drama)"), on every sheet and with no kind in brackets (ELECT-6.3). offerings:
+ * a Map of set Id to its offerings' names; a set with none reads as its name; one removed as itemText.
+ */
+function cellText(item, t, offerings, bracket = false) {
+  if (!isElectiveItem(item) || item.gone) {
+    return itemText(item, t, bracket);
+  }
+  const names = offerings.get(item.id) || [];
+  return names.length ? `${item.name} (${names.join(", ")})` : item.name;
+}
+
 /** One group's day, one entry per time block: the item there (or null), carried-on blocks too. */
 function itemsByBlock(day, groupIndex) {
   const out = day.blocks.map(() => null);
@@ -103,13 +117,13 @@ function guarded(rows) {
 }
 
 /** A day's (or a special event's) grid as rows: the time block, then a column per group or station. */
-function gridRows(day, t) {
+function gridRows(day, t, offerings = new Map()) {
   const byGroup = day.groups.map((grp, g) => itemsByBlock(day, g));
   return [
     [t.s("TimeBlock"), ...day.groups.map((g) => withRemoved(g.name, g.gone))],
     ...day.blocks.map((block, b) => [
       blockText(block),
-      ...byGroup.map((items) => itemText(items[b], t))
+      ...byGroup.map((items) => cellText(items[b], t, offerings))
     ])
   ];
 }
@@ -125,9 +139,10 @@ function specialRows(special, t) {
 
 /**
  * The Excel file's sheets for an opened schedule: [{ name, rows, widths }]. catalogue: the
- * season's activities (their order is Activity View's).
+ * season's activities (their order is Activity View's). offerings: each elective set's offerings'
+ * names, by set Id (c/shoreshElectiveDetails offeringNames).
  */
-export function scheduleSheets(view, catalogue, t) {
+export function scheduleSheets(view, catalogue, t, offerings = new Map()) {
   const allDays = (view && view.days) || [];
   const labels = allDays.map(dayName);
   const events = eventPlans(view);
@@ -140,7 +155,7 @@ export function scheduleSheets(view, catalogue, t) {
     if (day.problem) {
       return { name: names[i], rows: [[CANT_BE_SHOWN]], widths: [22] };
     }
-    const rows = gridRows(day, t);
+    const rows = gridRows(day, t, offerings);
     if (day.special) {
       rows.push(...specialRows(day.special, t));
     }
@@ -154,7 +169,7 @@ export function scheduleSheets(view, catalogue, t) {
   // Each special event's own schedule: its time blocks down, its stations across.
   const eventSheets = events.map((event, i) => ({
     name: names[allDays.length + i],
-    rows: guarded(gridRows(event.plan, t)),
+    rows: guarded(gridRows(event.plan, t, offerings)),
     widths: [22, ...event.plan.groups.map(() => 16)]
   }));
 
@@ -175,7 +190,7 @@ export function scheduleSheets(view, catalogue, t) {
             withRemoved(grp.name, grp.gone),
             labels[i].label,
             blockText(day.blocks[b]),
-            itemText(item, t, true)
+            cellText(item, t, offerings, true)
           ]);
         }
       });
