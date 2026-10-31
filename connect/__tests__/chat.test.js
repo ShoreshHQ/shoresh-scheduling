@@ -263,4 +263,50 @@ describe("Shoresh in an AI chat", () => {
     );
     expect(JSON.stringify(noView.result.content)).not.toMatch(/https:/);
   });
+
+  // API-1.29
+  it("theViewIsLogged: asking for the view and answering with it each write one line, with no schedule in it", async () => {
+    const lines = [];
+    const log = (line) => lines.push(line);
+    await handle(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "read_group_schedule", arguments: { week: "Week 1" } }
+      },
+      {
+        log,
+        callFn: async () => ({
+          ok: true,
+          text: "Bunk 3 swims",
+          weekView: { programs: [] }
+        })
+      }
+    );
+    await handle(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "list_seasons", arguments: {} }
+      },
+      { log, callFn: async () => ({ ok: true, text: "Summer 2026" }) }
+    );
+    // The page as shipped (scripts/build-connect.js puts it beside the connector).
+    const { TO } = require("../../scripts/build-connect");
+    await require(path.join(TO, "mcp.js")).handle(
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "resources/read",
+        params: { uri: WEEK_VIEW.uri }
+      },
+      { log }
+    );
+    expect(lines).toEqual([
+      "Shoresh: answered read_group_schedule with the week view attached",
+      "Shoresh: Claude asked for the week view"
+    ]);
+  });
 });

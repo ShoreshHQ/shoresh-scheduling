@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "shoresh",
   "display_name": "Shoresh",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Read and change your camp's Shoresh schedules, as you, with your own Salesforce sign-in.",
   "long_description": "Shoresh is a day-camp scheduling app in Salesforce. This extension lets Claude read your camp's schedules, bring in campers and groups, and change a schedule cell, as you and with exactly your access in Salesforce. The first time, your browser opens at Salesforce's sign-in page. It needs the Salesforce command line on this computer.",
   "author": {
