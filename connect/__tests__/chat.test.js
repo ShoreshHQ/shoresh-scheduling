@@ -125,6 +125,18 @@ describe("Shoresh in an AI chat", () => {
     ]);
     expect(answer.result.structuredContent).toEqual({ week_view: view });
 
+    // The view is extra: a read whose view can't be had still answers.
+    const noView = await callTool(
+      "read_group_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}group_schedule`]: [200, '{"records":[]}'],
+        [`${V1}week_view`]: [200, "not JSON"]
+      })
+    );
+    expect(noView.result.isError).toBe(false);
+    expect(noView.result.structuredContent).toBeUndefined();
+
     // The page as shipped, beside the connector (scripts/build-connect.js makes it).
     const { TO } = require("../../scripts/build-connect");
     const shipped = require(path.join(TO, "mcp.js"));

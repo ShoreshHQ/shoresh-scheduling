@@ -131,12 +131,17 @@ async function call(
   if (!done.ok || !capability.about || input.as_csv) return done;
   done.about = capability.about;
   if (capability.showsWeek) {
-    const view = await ask(
-      { ...requestFor(WEEK_VIEW, input), method: "GET" },
-      org,
-      run
-    );
-    if (view.status === 200) done.weekView = JSON.parse(view.body);
+    // The view is extra: the read stands without it.
+    try {
+      const view = await ask(
+        { ...requestFor(WEEK_VIEW, input), method: "GET" },
+        org,
+        run
+      );
+      if (view.status === 200) done.weekView = JSON.parse(view.body);
+    } catch {
+      // no view this time
+    }
   }
   return done;
 }
