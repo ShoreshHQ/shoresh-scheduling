@@ -114,4 +114,33 @@ describe("the API's access pieces", () => {
       expect([name, inside]).toEqual([name, []]);
     }
   });
+  // API-4.7
+  it("schedulerHoldsWhatEveryCapabilitySetGives: Shoresh Scheduler has every object and field access the capability sets give", () => {
+    const scheduler = read("Shoresh_Scheduler");
+    const objects = new Map(scheduler.objects.map((o) => [o.object, o]));
+    const fields = new Map(scheduler.fields.map((f) => [f.field, f]));
+    for (const name of Object.keys(PIECES)) {
+      const piece = read(name);
+      for (const o of piece.objects) {
+        const has = objects.get(o.object);
+        expect([name, o.object, !!has]).toEqual([name, o.object, true]);
+        expect([name, o.object, has.create || !o.create]).toEqual([
+          name,
+          o.object,
+          true
+        ]);
+        expect([name, o.object, has.edit || !o.edit]).toEqual([
+          name,
+          o.object,
+          true
+        ]);
+      }
+      for (const f of piece.fields) {
+        const has = fields.get(f.field);
+        expect([name, f.field, !!has && (has.editable || !f.editable)]).toEqual(
+          [name, f.field, true]
+        );
+      }
+    }
+  });
 });

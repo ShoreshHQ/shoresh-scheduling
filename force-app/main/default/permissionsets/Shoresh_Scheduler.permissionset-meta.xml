@@ -92,6 +92,11 @@
   >For camp staff who set up seasons and build schedules.</description>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Camper__c.OutsideMatch__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ImportAnswer__c.QuestionKey__c</field>
         <readable>true</readable>
     </fieldPermissions>

@@ -320,6 +320,19 @@ private class OutgoingTest {
     );
   }
 
+  // API-4.7: a person holding Shoresh Scheduler reads through their AI as on screen, with no
+  // capability permission set.
+  @IsTest
+  static void aSchedulerReadsWithoutTheReadPermissionSet() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      answer = get(new OutgoingGroupSchedule(), week1());
+    }
+    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+  }
+
   /** Chugim's run in Week 1, with Maya (from the sign-up form) and Eli (Shoresh's own) seated. */
   private static IncomingTestData seated() {
     IncomingTestData camp = new IncomingTestData().withElectives();

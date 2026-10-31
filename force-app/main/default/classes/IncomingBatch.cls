@@ -110,6 +110,8 @@ public with sharing class IncomingBatch {
     return batch.results;
   }
 
+  private static final String SCHEDULER_SET = 'Shoresh_Scheduler';
+
   /** API-4.4: the capability's own permission set, whoever is asking. */
   private static void requireAccess(Capability capability) {
     if (!holds(capability.permissionSet())) {
@@ -124,17 +126,19 @@ public with sharing class IncomingBatch {
   }
 
   /**
-   * Whether the person asking holds this Shoresh permission set, themselves or through a group
-   * holding it: the platform's answer about this person (API-4.4; OutgoingDoors too).
+   * Whether the person asking holds this Shoresh permission set, or Shoresh Scheduler (a person
+   * who can do it all on screen can do it through their AI, API-4.7), themselves or through a
+   * group holding it: the platform's answer about this person (API-4.4; OutgoingDoors too).
    */
   public static Boolean holds(String setName) {
+    Set<String> setNames = new Set<String>{ setName, SCHEDULER_SET };
     String namespace = ShoreshSchema.namespace();
     Set<Id> groups = new Set<Id>();
     for (PermissionSetGroupComponent part : [
       SELECT PermissionSetGroupId
       FROM PermissionSetGroupComponent
       WHERE
-        PermissionSet.Name = :setName
+        PermissionSet.Name IN :setNames
         AND PermissionSet.NamespacePrefix = :namespace
       WITH SYSTEM_MODE
     ]) {
@@ -145,7 +149,7 @@ public with sharing class IncomingBatch {
         FROM PermissionSetAssignment
         WHERE
           AssigneeId = :UserInfo.getUserId()
-          AND ((PermissionSet.Name = :setName
+          AND ((PermissionSet.Name IN :setNames
           AND PermissionSet.NamespacePrefix = :namespace)
           OR PermissionSetGroupId IN :groups)
         WITH SYSTEM_MODE

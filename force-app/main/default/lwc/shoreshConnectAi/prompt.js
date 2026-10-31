@@ -45,7 +45,7 @@ Never use sudo or ask for my computer's password; if a step needs that, use the 
 4. Test it (the first time can take a minute): npx -y ${PACKAGE} check --org shoresh
    It prints one sentence. Tell me that sentence, in plain words.
    If it says I'm not signed in, do step 3 again once.
-   If it names a permission set I need, tell me that my Salesforce admin can give it to me. If I am the admin, offer to add it, and only if I say yes run: sf org assign permset --name <that name, with _ for spaces and each word capitalized, like Read_Group_Schedules> --target-org shoresh
+   If it says I need a permission set, tell me to ask my Salesforce admin for the "Shoresh Scheduler" permission set.
 
 5. Add Shoresh to the AI app you are running in, as a local MCP server named "shoresh":
    - Claude Code: run: claude mcp add --scope user shoresh -- npx ${args.replace(/[",]/g, "")}

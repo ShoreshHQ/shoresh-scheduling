@@ -66,6 +66,29 @@ private class IncomingCamperTest {
     Assert.areEqual('Campers from Sign-up Form', imports[0].Files__c);
   }
 
+  // API-4.7: a person holding Shoresh Scheduler brings campers in through their AI as on screen,
+  // with no capability permission set.
+  @IsTest
+  static void aSchedulerBringsInCampersWithoutTheSendPermissionSet() {
+    IncomingTestData camp = new IncomingTestData();
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      answer = send(
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'camper_id' => 'SYN-1',
+            'camper_name' => 'Maya Cohen'
+          }
+        }
+      );
+    }
+    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+    Assert.areEqual(
+      'saved: Added this camper.',
+      IncomingTestData.said(answer, 1)
+    );
+  }
+
   // API-1.3: a Flow action and the web address give the same result for the same record.
   @IsTest
   static void aFlowActionAndTheWebAddressGiveTheSameResult() {
