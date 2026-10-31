@@ -1,6 +1,14 @@
 import { LightningElement, api } from "lwc";
 import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
 import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
+import {
+  checkLines,
+  keptLine,
+  priorityRowsOf,
+  readKept,
+  saidOf,
+  spreadOf
+} from "./lines";
 
 /**
  * The week's counter on the rail (wiki decisions 38 and 41; ADR 0008 part 7), shared by Manual
@@ -100,9 +108,9 @@ export default class ShoreshWeekChecks extends LightningElement {
     if (!scheduleId) {
       return;
     }
-    let lines;
+    let kept;
     try {
-      lines = JSON.parse((await readAccepted({ scheduleId })) || "[]");
+      kept = readKept(await readAccepted({ scheduleId }));
     } catch {
       // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake).
       return;
@@ -110,11 +118,6 @@ export default class ShoreshWeekChecks extends LightningElement {
     if (ticket !== this.readTicket) {
       return;
     }
-    const kept = lines.map((line) => ({
-      key: line.k,
-      same: line.s === null ? undefined : line.s,
-      size: line.n === null ? undefined : line.n
-    }));
     // Accepts made while it was read stay.
     this.accepted = [...kept, ...this.accepted];
   }
@@ -170,16 +173,11 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
   /** Priorities met (CORE-6.4): "High priority 9 of 10 minimums met", then Low. Counts only. */
   get priorityRows() {
-    return (this.m.priorities || []).map((row) => ({
-      ...row,
-      key: `priority-${row.priority}`,
-      label: row.priority === "high" ? "High priority" : "Low priority"
-    }));
+    return priorityRowsOf(this.m);
   }
   /** Spread across the week (CORE-6.4): sessions on a day of their own, of repeated sessions. */
   get spread() {
-    const spread = this.m.spread;
-    return spread && spread.sessions > 0 ? spread : null;
+    return spreadOf(this.m);
   }
 
   /** Under, with a 0 when the camp has goals and none is short (the desktop's grey 0). */
@@ -189,17 +187,12 @@ export default class ShoreshWeekChecks extends LightningElement {
   get underCount() {
     return this.m.under.count;
   }
+  /** The counter's lines still shown (c/shoreshWeekChecks lines.js). */
+  get lines() {
+    return checkLines(this.m, this.accepted);
+  }
   get underRows() {
-    return this.m.under.rows
-      .map((row) => ({
-        ...row,
-        key: `under|${row.id}|${row.placed}|${row.goal}`,
-        same: `under|${row.id}`,
-        size: row.goal - row.placed,
-        said: `${row.name}: ${row.placed} of ${row.goal}`,
-        acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}`
-      }))
-      .filter((row) => !this.tucked(row));
+    return this.lines.under;
   }
   get showOver() {
     return this.m.hasLimits || this.m.over.count > 0;
@@ -208,48 +201,18 @@ export default class ShoreshWeekChecks extends LightningElement {
     return this.m.over.count;
   }
   get overRows() {
-    return this.m.over.rows
-      .map((row) => ({
-        ...row,
-        key: `over|${row.id}|${row.placed}|${row.goal}`,
-        same: `over|${row.id}`,
-        size: row.placed - row.goal,
-        said: `${row.name}: ${row.placed} of ${row.goal}, over`,
-        acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}, over`
-      }))
-      .filter((row) => !this.tucked(row));
+    return this.lines.over;
   }
   /** Open cells and why (Generated: the engine's words). An Open cell can be accepted. */
   get openRows() {
-    return (this.m.open || [])
-      .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
-      .filter((line) => !this.tucked(line));
+    return this.lines.open;
   }
   /** Lines with no cell to go to. */
   get noteRows() {
-    return (this.m.notes || [])
-      .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
-      .filter((line) => !this.tucked(line));
+    return this.lines.notes;
   }
   get lookRows() {
-    return this.m.look
-      .map((line) => ({
-        ...line,
-        // Desktop FindingsRail: an overlap has nothing to accept.
-        acceptable: line.kind !== "overlapping",
-        acceptLabel: `Accept: ${line.text}`
-      }))
-      .filter((line) => !this.tucked(line));
-  }
-
-  /** Accepted this visit and no worse since: the same line, its size no bigger (CORE-6.8). */
-  tucked(line) {
-    return this.accepted.some((a) => {
-      if (a.same === undefined || a.size === undefined) {
-        return a.key === line.key;
-      }
-      return a.same === line.same && line.size <= a.size;
-    });
+    return this.lines.look;
   }
 
   /**
@@ -272,7 +235,7 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     const line = all[index];
-    const said = line.text || `${line.name}, ${line.placed} of ${line.goal}`;
+    const said = saidOf(line);
     const accepted = { key, same: line.same, size: line.size, said };
     this.accepted = [...this.accepted, accepted];
     this.acceptSaid = `Accepted: ${said}.`;
@@ -293,11 +256,7 @@ export default class ShoreshWeekChecks extends LightningElement {
     try {
       await keepAccepted({
         scheduleId,
-        line: JSON.stringify({
-          k: line.key,
-          s: line.same === undefined ? null : line.same,
-          n: line.size === undefined ? null : line.size
-        })
+        line: keptLine(line)
       });
     } catch {
       // Shown in the dropdown, where role="alert" also says it: the live line stays quiet.

@@ -204,7 +204,7 @@ describe("Shoresh in an AI chat", () => {
   });
 
   // API-1.27
-  it("answersSayWhatTheyAreAndAreNot: each read says what its answer is, and a schedule says it holds no findings", async () => {
+  it("answersSayWhatTheyAreAndAreNot: each read says what its answer is, and a schedule says it holds no findings and where they are read", async () => {
     for (const c of CAPABILITIES.filter((c) => c.method === "GET")) {
       expect([c.name, typeof c.about]).toEqual([c.name, "string"]);
     }
@@ -215,6 +215,8 @@ describe("Shoresh in an AI chat", () => {
           /exactly as published in Shoresh, and nothing else/
         );
         expect(text).toMatch(/holds no findings, checks or problems/);
+        // Shoresh's checks of a week are their own read (API-1.30).
+        expect(text).toMatch(/read them with read_week_checks/);
         expect(text).toMatch(
           /anything this answer doesn't say, Shoresh didn't say/
         );

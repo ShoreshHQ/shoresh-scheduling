@@ -34,17 +34,11 @@ import {
 } from "./specials";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { LEFT_OUT, cellKey as toolCellKey, replan, toolRuns } from "./tools";
-import {
-  RAIN_PLAN_FULL,
-  isMarked,
-  marksAfter,
-  rainCounts,
-  rainModel,
-  rainReceipt
-} from "./rain";
+import { marksAfter, rainCounts, rainModel, rainReceipt } from "./rain";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
+import { dayNameOf, rainFullAt, weekMeasure, withPriority } from "./measure";
 import {
   LOCKED,
   foldRun,
@@ -75,22 +69,6 @@ import {
  */
 const SET_TIME_BY_HAND = true;
 const NEVER_AWAY = () => false;
-
-/**
- * The editor's activities, each with its priority from its record ("high" or "low"), so the
- * week's measure can count priorities met (CORE-6.4).
- */
-function withPriority(activities, records) {
-  const high = new Set(
-    (records || [])
-      .filter((r) => r[FIELD.Activity.Priority] === "High")
-      .map((r) => r.Id)
-  );
-  return (activities || []).map((a) => ({
-    ...a,
-    priority: high.has(a.id) ? "high" : "low"
-  }));
-}
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -706,147 +684,15 @@ export default class ShoreshWeekEditor extends LightningElement {
       memo.activities = activities;
       memo.setupDots = this.setupDots;
       memo.days = weekDays;
-      const measured = measureWeek(
+      memo.result = weekMeasure({
         checked,
-        withPriority(activities, this.draft && this.draft.activityRecords),
-        weekDays
-      );
-      const why = this.whyRows(checked, weekDays);
-      memo.result = {
-        ...measured,
-        look: [...measured.look, ...why.look],
-        open: why.open,
-        notes: why.notes,
-        offTarget:
-          measured.offTarget ||
-          why.look.length > 0 ||
-          why.open.length > 0 ||
-          why.notes.length > 0
-      };
+        draft: this.draft,
+        weekDays,
+        setupDots: this.setupDots,
+        planName: this.planName
+      });
     }
     return memo.result;
-  }
-
-  /**
-   * The Why list's rows that measureWeek doesn't make (wiki engine care plan Q18: nothing from
-   * the engine or the rule checks sits on the grid; it is all said here, each row naming its
-   * cell, place first): look, one row per placement with everything said about it joined (what
-   * the check says about the placement as a whole (a time block it shares with other
-   * cells is the overlapping cell's own row), setup changed since the week started,
-   * rain plan full), "Bunk 1 · Monday · Period 2 · Soccer: …"; open, the host's Open cells with
-   * why (Generated), "Bunk 1 · Monday · Period 3: …"; notes, the
-   * host's lines with no cell (setup taken as 1, the imported week).
-   */
-  whyRows(checked, weekDays) {
-    const look = [];
-    if (!checked) {
-      return { look, open: [], notes: [] };
-    }
-    const dayOf = (dateValue) =>
-      weekDays.find((d) => d.dateValue === dateValue);
-    const where = (dateValue, groupId, blockId) => {
-      const day = dayOf(dateValue);
-      const grp = day && day.groups.find((x) => x.id === groupId);
-      const block = day && day.blocks.find((x) => x.id === blockId);
-      return [
-        grp ? grp.name : "",
-        this.dayNameOf(dateValue),
-        block ? block.name : ""
-      ].join(" · ");
-    };
-    // One row per placement (keyed where it starts), its reasons joined as the checks join
-    // them (" · "): what the check flags, then setup changed, then rain plan full.
-    const said = new Map();
-    const say = (key, words) => {
-      const list = said.get(key) || [];
-      if (words && !list.includes(words)) {
-        list.push(words);
-      }
-      said.set(key, list);
-    };
-    // Only the reasons about the placement as a whole: a reason about a time block it shares
-    // with other cells is that overlapping cell's own row (no Accept), from measureWeek.
-    (checked.wholeFlags || new Map()).forEach((words, key) => say(key, words));
-    // Setup changed: on the placement it is part of (any of its time blocks).
-    (this.setupDots || new Map()).forEach((words, key) => {
-      const [dateValue, groupId, blockId] = key.split("|");
-      const day = dayOf(dateValue);
-      const g = day ? day.groups.findIndex((x) => x.id === groupId) : -1;
-      const b = day ? day.blocks.findIndex((x) => x.id === blockId) : -1;
-      say(
-        g >= 0 && b >= 0
-          ? `${dateValue}|${groupId}|${day.blocks[placement(day, g, b).first].id}`
-          : key,
-        words
-      );
-    });
-    weekDays.forEach((day, d) => {
-      if (!day.rain || !day.rain.length || day.problem) {
-        return;
-      }
-      day.groups.forEach((grp, g) =>
-        day.blocks.forEach((block, b) => {
-          if (
-            placement(day, g, b).first === b &&
-            this.rainFullFor({ day: d, group: g, block: b })
-          ) {
-            say(`${day.dateValue}|${grp.id}|${block.id}`, RAIN_PLAN_FULL);
-          }
-        })
-      );
-    });
-    // In the week's order: by day, then group, then time block.
-    const at = (key) => {
-      const [dateValue, groupId, blockId] = key.split("|");
-      const d = weekDays.findIndex((x) => x.dateValue === dateValue);
-      const day = weekDays[d];
-      return [
-        d,
-        day ? day.groups.findIndex((x) => x.id === groupId) : -1,
-        day ? day.blocks.findIndex((x) => x.id === blockId) : -1
-      ];
-    };
-    [...said]
-      .sort((x, y) => {
-        const px = at(x[0]);
-        const py = at(y[0]);
-        return px[0] - py[0] || px[1] - py[1] || px[2] - py[2];
-      })
-      .forEach(([key, list]) => {
-        const [dateValue, groupId, blockId] = key.split("|");
-        const p = (checked.placements || []).find((x) => x.key === key);
-        const name = p ? this.activityName(p.id) : "";
-        const words = list.join(" · ");
-        // Place first, then what is there: "Bunk 1 · Monday · Period 2 · Soccer: …".
-        const place = [where(dateValue, groupId, blockId), name]
-          .filter(Boolean)
-          .join(" · ");
-        look.push({
-          key: `why|${key}|${words}`,
-          kind: "placement",
-          text: `${place}: ${words}`,
-          groupId,
-          dateValue,
-          blockId
-        });
-      });
-    // Only an Open cell with a reason: the rest are counted in "still needed", as on Manual Build.
-    const open = (checked.openCells || [])
-      .filter((c) => c.reason)
-      .map((c) => ({
-        key: `open|${c.dateValue}|${c.groupId}|${c.blockId}|${c.reason || ""}`,
-        kind: "open",
-        text: c.text,
-        groupId: c.groupId,
-        dateValue: c.dateValue,
-        blockId: c.blockId
-      }));
-    const notes = (checked.notes || []).map((text) => ({
-      key: `note|${text}`,
-      kind: "note",
-      text
-    }));
-    return { look, open, notes };
   }
 
   /** The counter's row: that activity, in Activity View (the editor's own drill-down). */
@@ -970,7 +816,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
   /** What a day is called in lines and questions: its weekday, or the plan's name. */
   dayNameOf(dateValue) {
-    return this.planName || dayLabel(dateValue).label;
+    return dayNameOf(dateValue, this.planName);
   }
   get showGroupPills() {
     return !!this.draft && !this.hasNoDays && this.isGroup;
@@ -1715,22 +1561,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    * while it still holds that activity, as on the desktop: a row in the Why list.
    */
   rainFullFor(slot) {
-    const day = this.dayOf(slot);
-    if (!day || !day.rain || !day.rain.length) {
-      return null;
-    }
-    const at = placement(day, slot.group, slot.block);
-    if (!at.slot.startsWith("A:") || at.length !== 1) {
-      return null;
-    }
-    return isMarked(
-      day,
-      day.groups[slot.group].id,
-      day.blocks[at.first].id,
-      at.slot.slice(2)
-    )
-      ? RAIN_PLAN_FULL
-      : null;
+    return rainFullAt(this.dayOf(slot), slot.group, slot.block);
   }
 
   /** The check's key for the placement a slot is in: "date|groupId|firstBlockId". */

@@ -32,22 +32,7 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
       for (String field : new List<String>{ 'season', 'week', 'program' }) {
         asked.put(field, RestContext.request.params.get(field));
       }
-      AgentWeeks.Week week = AgentWeeks.placeOf(asked);
-      Id campId = [
-        SELECT Camp__c
-        FROM Season__c
-        WHERE Id = :week.season.Id
-        WITH USER_MODE
-      ]
-      .Camp__c;
-      Map<String, Object> read = new Map<String, Object>{
-        'inputs' => GeneratedScheduleController.getInputs(
-          week.program.Id,
-          week.weekId
-        ),
-        'setup' => SeasonSetupController.getSeasonSetup(week.season.Id),
-        'labels' => CampLabels.forCamp(campId).all()
-      };
+      Map<String, Object> read = readOf(AgentWeeks.placeOf(asked));
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(JSON.serialize(read, true));
     } catch (Exception e) {
@@ -69,6 +54,28 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentBuild());
+  }
+
+  /**
+   * What Generated Schedule reads for the week: its getInputs, the season's setup and the camp's
+   * words, exactly as the screen reads them. Also what /v1/week_checks starts from (AgentChecks).
+   */
+  public static Map<String, Object> readOf(AgentWeeks.Week week) {
+    Id campId = [
+      SELECT Camp__c
+      FROM Season__c
+      WHERE Id = :week.season.Id
+      WITH USER_MODE
+    ]
+    .Camp__c;
+    return new Map<String, Object>{
+      'inputs' => GeneratedScheduleController.getInputs(
+        week.program.Id,
+        week.weekId
+      ),
+      'setup' => SeasonSetupController.getSeasonSetup(week.season.Id),
+      'labels' => CampLabels.forCamp(campId).all()
+    };
   }
 
   public String run() {

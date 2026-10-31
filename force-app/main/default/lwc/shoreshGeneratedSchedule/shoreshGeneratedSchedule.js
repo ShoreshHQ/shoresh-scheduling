@@ -13,13 +13,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
-import {
-  MODE,
-  checkGeneratedWeek,
-  notesOf,
-  notesWithout,
-  whyOf
-} from "c/shoreshEngine";
+import { MODE, notesOf, notesWithout, whyOf } from "c/shoreshEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -42,8 +36,9 @@ import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { namesOf, progressLine } from "./progressWords";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import { clearedDays, editedKeys, openCells } from "./week";
-import { activityOptions, awayRows, lockOf } from "./editing";
+import { clearedDays, editedKeys } from "./week";
+import { lockOf } from "./editing";
+import { checkDays, editorDraftOf } from "./counter";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -751,29 +746,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    * week as it stands shows.
    */
   checkDays(days, locks) {
-    const engineWhy = this.engineWhy;
-    const week = checkGeneratedWeek(this.engineInput(days, { locks }));
-    const locked = lockedKeys(locks);
-    // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
-    const open = openCells(
-      week.checkedDays,
-      week.isAway,
-      this.t,
-      week.shortest,
-      (dateValue, groupId, blockId) =>
-        locked.has(`${dateValue}|${groupId}|${blockId}`),
-      engineWhy ? engineWhy.open : undefined
+    return checkDays(
+      this.loaded,
+      { terms: this.t, setup: this._setup, engineWhy: this.engineWhy },
+      days,
+      locks
     );
-    return {
-      ...week,
-      locked,
-      checked: {
-        ...week.checked,
-        openCells: open,
-        // A short week's lowered minimums first (WEEK-4.2), then the engine's own notes.
-        notes: [...week.shortWeek, ...(engineWhy ? engineWhy.notes : [])]
-      }
-    };
   }
 
   /** The week's draft, where the counter keeps accepted lines (CORE-6.8). */
@@ -1609,22 +1587,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** The week as the editor shows it: the days checked, the activities to place, where groups are away. */
   get editorDraft() {
-    const week = this.week;
-    const input = this.loaded.input;
-    return {
-      schedule: { schedule: { id: this.loaded.scheduleId }, days: week.days },
-      activities: activityOptions(input, week.days),
-      away: awayRows(week.days, week.isAway),
-      // The season's special events and the week's special days (ADR 0014 slice 4).
-      specials: input.specials || null,
-      // What a rainy day reads (outdoors, rain plans, places and other programs), under the names
-      // Manual Build's draft gives them (repo docs/adr/0019).
-      activityRecords: input.activities || [],
-      locationRecords: input.locations || [],
-      fixedActivityRecords: input.fixedActivities || [],
-      recurringActivityRecords: input.recurringActivities || [],
-      otherPrograms: input.otherPrograms || []
-    };
+    return editorDraftOf(this.loaded, this.week);
   }
 
   /**
