@@ -146,3 +146,21 @@ export function foldRun(locks, run, target) {
   });
   return next;
 }
+
+/**
+ * Runs as they are sent, each stamped with the locks the director saw when they made them
+ * (locksBefore) and, for an Undo or Redo, the locks to leave (locksAfter, from `target`), each
+ * run's after the ones before it are made. Never the newest locks: a lock that arrived while
+ * the edit waited must come back as a refusal, not be covered.
+ */
+export function stampLocks(runs, seen, target) {
+  let state = seen;
+  return runs.map((run) => {
+    const stamped = { ...run, locksBefore: marks(state, run) };
+    if (target) {
+      stamped.locksAfter = marks(target, run);
+    }
+    state = foldRun(state, run, target);
+    return stamped;
+  });
+}

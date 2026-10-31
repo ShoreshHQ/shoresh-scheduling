@@ -8,7 +8,8 @@
  * publishing and finalizing a week as the screens do (API-1.19 to API-1.23), and reading and
  * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31), and a
  * week's versions as its Versions panel has them (API-1.32 to API-1.35), and unpublishing a
- * week and locking and unlocking its cells as Generated Schedule does (API-1.36, API-1.37). Each one is the
+ * week and locking and unlocking its cells as Generated Schedule does (API-1.36, API-1.37), and
+ * moving, swapping, taking out, copying and pasting cells as its grid does (API-1.38 to API-1.40). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -99,6 +100,25 @@ const LOCK_FIELDS = {
     type: "string",
     description:
       "The time block's name, like Period 2, or its start like 09:00. Only with a day and a group, for one cell."
+  }
+};
+
+/** One cell of a week, and what it holds as the agent last saw it. */
+const CELL = {
+  group: { type: "string", description: "The group's name, like Bunk 3." },
+  day: {
+    type: "string",
+    description: "The day, like Monday, or its date like 2026-06-29."
+  },
+  time: {
+    type: "string",
+    description:
+      "The time block's name, like Period 2, or its start like 09:00."
+  },
+  was: {
+    type: "string",
+    description:
+      "What the cell holds now as you last saw it: an activity's name, or Open."
   }
 };
 
@@ -275,6 +295,67 @@ const CAPABILITIES = [
     },
     ["group", "day", "time", "was", "activity"]
   ),
+  {
+    ...change(
+      "move_cell",
+      "move_cell",
+      "Move what a cell of a week's Generated Schedule holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change.",
+      {
+        day: CELL.day,
+        group: CELL.group,
+        time: CELL.time,
+        was: CELL.was,
+        to_day: { ...CELL.day, description: "The day to move it to." },
+        to_group: { ...CELL.group, description: "The group to move it to." },
+        to_time: { ...CELL.time, description: "The time to move it to." }
+      },
+      ["day", "group", "time", "was", "to_day", "to_group", "to_time"]
+    ),
+    editsWithEngine: true
+  },
+  {
+    ...change(
+      "take_out_cell",
+      "take_out_cell",
+      "Take what a cell of a week's Generated Schedule holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change.",
+      { day: CELL.day, group: CELL.group, time: CELL.time, was: CELL.was },
+      ["day", "group", "time", "was"]
+    ),
+    editsWithEngine: true
+  },
+  {
+    ...change(
+      "copy_cells",
+      "copy_cells",
+      "Copy cells of a week's Generated Schedule and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change.",
+      {
+        day: CELL.day,
+        groups: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'The groups to copy, side by side as the day shows them, like ["Bunk 3", "Bunk 4"].'
+        },
+        time: { ...CELL.time, description: "The first time to copy." },
+        through_time: {
+          ...CELL.time,
+          description:
+            "The last time to copy. Leave it out to copy only the first time."
+        },
+        to_day: { ...CELL.day, description: "The day to paste onto." },
+        to_group: {
+          ...CELL.group,
+          description: "The group the first copied group is pasted onto."
+        },
+        to_time: {
+          ...CELL.time,
+          description: "The time the first copied time is pasted at."
+        }
+      },
+      ["day", "groups", "time", "to_day", "to_group", "to_time"]
+    ),
+    editsWithEngine: true
+  },
   change(
     "undo_last_agent_change",
     "undo_last_agent_change",

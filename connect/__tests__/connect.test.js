@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(26);
+    expect(CAPABILITIES).toHaveLength(29);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -623,6 +623,206 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(conflict.text).toBe(
       "Someone else published or unpublished this week since, so nothing was unpublished."
     );
+  });
+
+  // API-1.38, API-1.39, API-1.40
+  it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    // Two days; Bunk 1: Flagpole, Swim, Art, Open; Bunk 2: Flagpole, Art, Swim, Open (locked
+    // in Period 2 on Monday).
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: day.dateValue === "2026-06-29" ? ["", ",,1,"] : ["", ""]
+    }));
+    const read = { inputs, setup: {}, labels: [] };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const send = async (name, more, status = 200, message = "Done.") => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+        `HTTP/1.1 ${status}\n\n${JSON.stringify({ message })}`
+      ];
+      const done = await call(
+        name,
+        { ...asked, ...more },
+        {
+          run: async (args, stdin) => {
+            seen.push({ args, stdin });
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, seen, sent: seen[1] && JSON.parse(seen[1].stdin) };
+    };
+    const monday = { day: "Monday", group: "Bunk 1" };
+
+    // Onto Open: moved, keeping its length, with the screen's label.
+    const moved = await send("move_cell", {
+      ...monday,
+      time: "Period 1",
+      was: "Swim",
+      to_day: "Monday",
+      to_group: "Bunk 1",
+      to_time: "Period 3"
+    });
+    expect(moved.seen[0].args[3]).toBe(
+      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main"
+    );
+    expect(moved.seen[1].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/move_cell",
+      "--method",
+      "POST"
+    ]);
+    expect(moved.sent.change).toBe("Moved Swim to Bunk 1 · Monday · Period 3");
+    // Only the cells that change: Period 2 between them is left alone.
+    expect(moved.sent.runs).toEqual([
+      {
+        day: "2026-06-29",
+        groupId: inputs.groups[0].Id,
+        firstBlockId: inputs.timeBlocks[1].Id,
+        blockIds: [inputs.timeBlocks[1].Id],
+        before: [`A:${swim}`],
+        after: [""],
+        locksBefore: [""]
+      },
+      expect.objectContaining({
+        firstBlockId: inputs.timeBlocks[3].Id,
+        before: [""],
+        after: [`A:${swim}`]
+      })
+    ]);
+    expect(moved.done).toEqual({ ok: true, status: 200, text: "Done." });
+
+    // Onto a filled cell: swapped.
+    const swapped = await send("move_cell", {
+      ...monday,
+      time: "Period 1",
+      was: "swim",
+      to_day: "2026-06-29",
+      to_group: "Bunk 2",
+      to_time: "Period 1"
+    });
+    expect(swapped.sent.change).toBe("Swapped Swim and Art");
+
+    // A locked cell, someone else's change and a name that isn't there: refused, nothing sent.
+    const locked = await send("move_cell", {
+      ...monday,
+      time: "Period 2",
+      was: "Art",
+      to_day: "Monday",
+      to_group: "Bunk 2",
+      to_time: "Period 2"
+    });
+    expect(locked.done).toEqual({
+      ok: false,
+      status: 400,
+      text: "Bunk 2 · Monday · Period 2 is locked."
+    });
+    expect(locked.seen).toHaveLength(1);
+    const changed = await send("take_out_cell", {
+      ...monday,
+      time: "Period 1",
+      was: "Art"
+    });
+    expect(changed.done).toEqual({
+      ok: false,
+      status: 409,
+      text: "Changed by someone else: Bunk 1 · Monday · Period 1 holds Swim now. Nothing was changed."
+    });
+    const unknown = await send("take_out_cell", {
+      ...monday,
+      group: "Bunk 9",
+      time: "Period 1",
+      was: "Swim"
+    });
+    expect(unknown.done.text).toBe(
+      'There is no group called "Bunk 9" on that day. The groups: Bunk 1, Bunk 2.'
+    );
+
+    // Taken out whole.
+    const out = await send("take_out_cell", {
+      ...monday,
+      time: "Period 2",
+      was: "Art"
+    });
+    expect(out.sent.change).toBe("Cleared Art · Bunk 1 · Monday · Period 2");
+    expect(out.sent.runs[0].after).toEqual([""]);
+
+    // Copied and pasted: the paste's own label, and a locked cell left as it is and said.
+    const pasted = await send("copy_cells", {
+      day: "Tuesday",
+      groups: ["Bunk 1"],
+      time: "Period 1",
+      through_time: "Period 2",
+      to_day: "Monday",
+      to_group: "Bunk 2",
+      to_time: "Period 1"
+    });
+    expect(pasted.sent.change).toBe(
+      "Pasted 2 activities · Bunk 2 · Monday · Period 1"
+    );
+    expect(pasted.sent.said).toBe("1 left out: Art · Bunk 2 · Monday: locked.");
+    expect(pasted.sent.runs).toEqual([
+      expect.objectContaining({ before: [`A:${art}`], after: [`A:${swim}`] })
+    ]);
+    const same = await send("copy_cells", {
+      day: "Tuesday",
+      groups: ["Bunk 1"],
+      time: "Period 1",
+      to_day: "Monday",
+      to_group: "Bunk 1",
+      to_time: "Period 1"
+    });
+    expect(same.done).toEqual({
+      ok: true,
+      status: 200,
+      text: "Nothing to paste: Bunk 1 · Monday · Period 1 already matches."
+    });
+    expect(same.seen).toHaveLength(1);
+
+    // Shoresh's own conflict comes back as its sentence.
+    const conflict = await send(
+      "move_cell",
+      {
+        ...monday,
+        time: "Period 1",
+        was: "Swim",
+        to_day: "Monday",
+        to_group: "Bunk 1",
+        to_time: "Period 3"
+      },
+      409,
+      "Changed by someone else since you read the week: Moved Swim to Bunk 1 · Monday · Period 3. Nothing was changed."
+    );
+    expect(conflict.done.ok).toBe(false);
+    expect(conflict.done.text).toMatch(/^Changed by someone else since/);
   });
 
   it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {

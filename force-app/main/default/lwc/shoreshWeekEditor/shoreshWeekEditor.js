@@ -32,9 +32,26 @@ import {
   rowsCovered,
   specialsOf
 } from "./specials";
-import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
-import { LEFT_OUT, cellKey as toolCellKey, replan, toolRuns } from "./tools";
-import { marksAfter, rainCounts, rainModel, rainReceipt } from "./rain";
+import { resizeEdit } from "./moves";
+import { cellKey as toolCellKey, replan, toolRuns } from "./tools";
+import {
+  copyStep,
+  firstLocked,
+  lockedText,
+  lockedWords,
+  moveStep,
+  nameOfSlot,
+  pasteTool,
+  refusalWords,
+  serverRunOf,
+  serverRunsOf,
+  slotName,
+  takeOutStep,
+  toolLabel,
+  toolStep,
+  toolWords
+} from "./handEdits";
+import { marksAfter, rainModel, rainReceipt } from "./rain";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
@@ -44,8 +61,8 @@ import {
   foldRun,
   lockKey,
   locksOfWeek,
-  marks,
-  noteRows
+  noteRows,
+  stampLocks
 } from "./locks";
 import {
   RULE,
@@ -1629,12 +1646,21 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** "Bunk 3 · Monday · Period 2" */
   slotName(slot, block = slot.block) {
-    const day = this.dayOf(slot);
-    return [
-      day.groups[slot.group].name,
-      this.dayNameOf(day.dateValue),
-      day.blocks[block].name
-    ].join(" · ");
+    return slotName(this.editCtx, slot, block);
+  }
+
+  /** What the shared hand edits (handEdits.js) work with: this week and its words. */
+  get editCtx() {
+    return {
+      week: this.schedule.days,
+      t: this.t,
+      nameOf: (slot, day) => this.nameOf(slot, day),
+      dayNameOf: (dateValue) => this.dayNameOf(dateValue),
+      isAwayOn: (week, d, g, b) => this.isAwayOn(week, d, g, b),
+      isLocked: (slot) => this.isLockedSlot(slot),
+      liveLocks: this.liveLocks,
+      replaced: this.replaced
+    };
   }
 
   /**
@@ -1658,31 +1684,12 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** What a slot's identity is called: the day's saved name, else the activity's. */
   nameOf(slot, day) {
-    if (slot === OPEN) {
-      return "Open";
-    }
-    const saved = this.savedItem(slot, day);
-    if (saved) {
-      return saved.name;
-    }
-    const activity = this.activityFor(owner(slot));
-    if (activity) {
-      return activity.name;
-    }
-    const event = this.eventFor(owner(slot));
-    if (event) {
-      return event.name;
-    }
-    const set = this.electiveFor(owner(slot));
-    if (set) {
-      return set.name;
-    }
-    if (owner(slot).startsWith("E:")) {
-      return `${this.t.s("ElectiveSet")} (removed)`;
-    }
-    return owner(slot).startsWith("S:")
-      ? `${this.t.s("SpecialEvent")} (removed)`
-      : `${this.t.s("Activity")} (removed)`;
+    return nameOfSlot(slot, day, {
+      activity: (item) => this.activityFor(item),
+      event: (item) => this.eventFor(item),
+      elective: (item) => this.electiveFor(item),
+      t: this.t
+    });
   }
 
   activityFor(item) {
@@ -1758,20 +1765,16 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   refuseLocked(slot) {
-    this.refuse(`${this.slotName(slot)} is locked.`);
+    this.refuse(lockedWords(this.editCtx, slot));
   }
 
   /** Whether runs (as edits make them: day, group, first, after) would change a locked cell. */
   runsLocked(runs) {
-    for (const run of runs) {
-      for (let i = 0; i < run.after.length; i++) {
-        const slot = { day: run.day, group: run.group, block: run.first + i };
-        if (this.isLockedSlot(slot)) {
-          // The locked cell itself, not where the edit starts.
-          this.refuseLocked(slot);
-          return true;
-        }
-      }
+    const slot = firstLocked(this.editCtx, runs);
+    if (slot) {
+      // The locked cell itself, not where the edit starts.
+      this.refuseLocked(slot);
+      return true;
     }
     return false;
   }
@@ -2069,24 +2072,12 @@ export default class ShoreshWeekEditor extends LightningElement {
    * when it is undone or redone.
    */
   toServerRun(run, week = this.schedule.days) {
-    const day = week[run.day];
-    return {
-      day: day.dateValue,
-      groupId: day.groups[run.group].id,
-      firstBlockId: day.blocks[run.first].id,
-      before: run.before,
-      after: run.after,
-      blockIds: day.blocks
-        .slice(run.first, run.first + run.after.length)
-        .map((b) => b.id)
-    };
+    return serverRunOf(run, week);
   }
 
   /** Runs as the server takes them, each noted with its whole row after it (for the locks it brings). */
   toServerRuns(runs, week = this.schedule.days) {
-    const serverRuns = runs.map((run) => this.toServerRun(run, week));
-    noteRows(week, serverRuns);
-    return serverRuns;
+    return serverRunsOf(runs, week);
   }
 
   /**
@@ -2477,16 +2468,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!entry.seen) {
       return entry.edit;
     }
-    let state = entry.seen;
-    const runs = entry.edit.runs.map((run) => {
-      const stamped = { ...run, locksBefore: marks(state, run) };
-      if (entry.locksTarget) {
-        stamped.locksAfter = marks(entry.locksTarget, run);
-      }
-      state = foldRun(state, run, entry.locksTarget);
-      return stamped;
-    });
-    return { ...entry.edit, runs };
+    return {
+      ...entry.edit,
+      runs: stampLocks(entry.edit.runs, entry.seen, entry.locksTarget)
+    };
   }
 
   /**
@@ -2858,19 +2843,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** A tool's words for what stayed or was left out, from its result (tools.js toolRuns). */
   toolWords(tool, result) {
-    if (tool.kind === "rain") {
-      return rainCounts(result.rain);
-    }
-    if (tool.kind === "clear") {
-      return this.stayedText(result.week, result.stayed);
-    }
-    if (tool.kind === "paste") {
-      return this.pasteLeftOutText(result.week, result.leftOut);
-    }
-    const from = result.week.findIndex((d) => d.dateValue === tool.from);
-    return from < 0
-      ? null
-      : this.leftOutText(result.week, from, result.leftOut);
+    return toolWords(this.editCtx, tool, result);
   }
 
   /** Whether a group isn't at camp in a block of a day (indexes) of some week. */
@@ -2885,113 +2858,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** "Cleared Monday", "Copied Monday to Tuesday": a tool's words for Undo and the line. */
   toolLabel(tool) {
-    if (tool.kind === "rain") {
-      return tool.label;
-    }
-    if (tool.kind === "paste") {
-      return `Pasted ${tool.what} · ${tool.where}`;
-    }
-    return tool.kind === "clear"
-      ? `Cleared ${tool.name}`
-      : `Copied ${tool.fromName} to ${tool.toName}`;
-  }
-
-  /** What a tool says when it changes nothing. */
-  toolNothing(tool, said) {
-    if (tool.kind === "rain") {
-      return `${tool.label}: ${said || rainCounts({ switches: [], full: [], noPlan: [], spans: [], locked: [] })}`;
-    }
-    if (tool.kind === "paste") {
-      return said
-        ? `Nothing pasted. ${said}`
-        : `Nothing to paste: ${tool.where} already matches.`;
-    }
-    if (tool.kind === "clear") {
-      const where = `${tool.inWeek ? "in" : "on"} ${tool.name}`;
-      return said
-        ? `Nothing cleared ${where}. ${said}`
-        : `Nothing to clear ${where}.`;
-    }
-    if (said) {
-      return `Nothing copied. ${said}`;
-    }
-    const to =
-      tool.toName === "all other days" ? "All other days" : tool.toName;
-    return `${to} ${tool.toName === "all other days" ? "already match" : "already matches"} ${tool.fromName}.`;
-  }
-
-  /** The things a placement is named by in a line: "Swim · Bunk 3 · Tuesday". */
-  placementName(week, dayIndex, group, slot) {
-    const day = week[dayIndex];
-    return `${this.nameOf(slot, day)} · ${day.groups[group].name} · ${this.dayNameOf(day.dateValue)}`;
-  }
-
-  /** "2 stayed: Archery · Bunk 1 · Monday (removed); …" (at most five named). */
-  stayedText(week, stayed) {
-    const why = {
-      [LEFT_OUT.GONE]: "removed",
-      [LEFT_OUT.NOT_SET_UP]: "not set up yet",
-      [LEFT_OUT.AWAY]: "not at camp then"
-    };
-    return this.listText(
-      stayed,
-      "stayed",
-      (o) =>
-        `${this.placementName(week, o.day, o.group, o.slot)} (${why[o.why]})`
-    );
-  }
-
-  /** "2 left out: Swim · Bunk 3 · Tuesday: not at camp then; …" (at most five named). */
-  leftOutText(week, from, leftOut) {
-    const source = week[from];
-    const why = (o) => {
-      const target = this.dayNameOf(week[o.day].dateValue);
-      switch (o.why) {
-        case LEFT_OUT.AWAY:
-          return "not at camp then";
-        case LEFT_OUT.NO_BLOCK:
-          return `${target} has no ${source.blocks[o.missing].name}`;
-        case LEFT_OUT.NO_GROUP:
-          return `not on ${target}`;
-        case LEFT_OUT.GONE:
-          return "removed";
-        case LEFT_OUT.NOT_SET_UP:
-          return "not set up yet";
-        default:
-          return `${this.nameOf(o.blocking, week[o.day])} is set up there`;
-      }
-    };
-    return this.listText(
-      leftOut,
-      "left out",
-      (o) =>
-        `${this.nameOf(o.slot, source)} · ${source.groups[o.group].name} · ${this.dayNameOf(week[o.day].dateValue)}: ${why(o)}`
-    );
-  }
-
-  /** "2 left out: Swim · Bunk 2 · Tuesday: not at camp then; Boating: no room there." */
-  pasteLeftOutText(week, leftOut) {
-    const why = (o) => {
-      switch (o.why) {
-        case LEFT_OUT.AWAY:
-          return "not at camp then";
-        case LEFT_OUT.GONE:
-          return "removed";
-        case LEFT_OUT.NOT_SET_UP:
-          return "not set up yet";
-        case LEFT_OUT.NO_ROOM:
-          return "no room there";
-        default:
-          return `${this.nameOf(o.blocking, week[o.day])} is set up there`;
-      }
-    };
-    return this.listText(leftOut, "left out", (o) => {
-      const where =
-        o.day === null
-          ? ""
-          : ` · ${week[o.day].groups[o.group].name} · ${this.dayNameOf(week[o.day].dateValue)}`;
-      return `${o.name}${where}: ${why(o)}`;
-    });
+    return toolLabel(tool);
   }
 
   /**
@@ -3001,38 +2868,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    * none.
    */
   lockedText(tool, week, cells) {
-    const named = cells
-      .map(({ key, slot }) => {
-        const [date, groupId, blockId] = key.split("|");
-        const d = week.findIndex((x) => x.dateValue === date);
-        const g =
-          d < 0 ? -1 : week[d].groups.findIndex((x) => x.id === groupId);
-        const b =
-          d < 0 ? -1 : week[d].blocks.findIndex((x) => x.id === blockId);
-        return d < 0 || g < 0 || b < 0 ? null : { d, g, b, slot };
-      })
-      .filter(Boolean);
-    return tool.kind === "clear"
-      ? this.listText(
-          named,
-          "stayed",
-          (o) => `${this.placementName(week, o.d, o.g, o.slot)} (locked)`
-        )
-      : this.listText(
-          named,
-          "left out",
-          (o) => `${this.placementName(week, o.d, o.g, o.slot)}: locked`
-        );
-  }
-
-  /** "N <what>: a; b; …; and M more." with at most five named, or null. */
-  listText(list, what, name) {
-    if (!list.length) {
-      return null;
-    }
-    const named = list.slice(0, 5).map(name);
-    const more = list.length - named.length;
-    return `${list.length} ${what}: ${named.join("; ")}${more > 0 ? `; and ${more} more` : ""}.`;
+    return lockedText(this.editCtx, tool, week, cells);
   }
 
   /**
@@ -3042,36 +2878,16 @@ export default class ShoreshWeekEditor extends LightningElement {
    */
   @api
   runTool(asked, { keepFocus = false } = {}) {
-    // A day a special day replaces is left as it is: its cells are out of sight (ADR 0014).
-    const { tool, replacedNote } = this.withoutReplaced(asked);
-    if (!tool) {
-      this.say(replacedNote || this.toolNothing(asked, null));
+    // A day a special day replaces is left as it is: its cells are out of sight (ADR 0014). A
+    // paste leaves locked cells (Generated) as they are, and lists them (handEdits.js toolStep).
+    const step = toolStep(this.editCtx, asked);
+    if (step.nothing) {
+      this.say(step.nothing);
       return;
     }
+    const { tool, result, label, said, locked } = step;
     const seen = this.schedule.days;
-    const isAway = (week, d, g, b) => this.isAwayOn(week, d, g, b);
-    // A paste leaves locked cells (Generated) as they are, and lists them, as a tool does a cell
-    // locked meanwhile: a Lock beats what is pasted.
-    const locks = tool.kind === "paste" ? this.liveLocks : null;
-    const locked = locks && locks.size ? new Set(locks) : null;
-    const result = locked
-      ? replan(tool, seen, seen, new Set(), isAway, locked)
-      : toolRuns(tool, seen, { isAway });
-    const said =
-      [
-        this.toolWords(tool, result),
-        locked ? this.lockedText(tool, seen, result.lockedCells) : null,
-        replacedNote
-      ]
-        .filter(Boolean)
-        .join(" ") || null;
-    const label = this.toolLabel(tool);
     const rain = tool.kind === "rain";
-    // A rainy day whose cells are all full still leaves its marks (one Undo step).
-    if (!result.runs.length && !(rain && result.marks.length)) {
-      this.say(this.toolNothing(tool, said));
-      return;
-    }
     const rainMarks = rain ? this.rainStep(tool, seen, result) : null;
     if (!this.commit(result.runs, label, null, rainMarks)) {
       // Refused: nothing is said as done, and no Undo is offered for it.
@@ -3097,48 +2913,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Its Undo is the most useful next stop, and the menu or button that ran it may be held
     // while it saves (which drops focus). A shortcut on the grid keeps focus where it is.
     this.focusToolUndoAfterRender = !keepFocus;
-  }
-
-  /**
-   * A tool without the days a special day replaces: { tool, replacedNote }, the note naming
-   * them ("Friday is Visiting Day: left as it is."); no tool when nothing is left to do.
-   */
-  withoutReplaced(tool) {
-    const replaced = this.replaced;
-    const hit = new Set();
-    const keep = (date) => {
-      if (replaced.has(date)) {
-        hit.add(date);
-        return false;
-      }
-      return true;
-    };
-    if (tool.kind === "copy" && replaced.has(tool.from)) {
-      const special = replaced.get(tool.from);
-      return {
-        tool: null,
-        replacedNote: `${dayLabel(tool.from).label} is ${special.name}: open it to change that day.`
-      };
-    }
-    const next = { ...tool, dates: (tool.dates || []).filter(keep) };
-    if (tool.kind === "paste") {
-      next.items = (tool.items || []).filter((item) => keep(item.date));
-      next.opens = (tool.opens || []).filter((key) =>
-        keep(String(key).split("|")[0])
-      );
-    }
-    const note = hit.size
-      ? [...hit]
-          .sort()
-          .map(
-            (date) => `${dayLabel(date).label} is ${replaced.get(date).name}`
-          )
-          .join(", ") + ": left as it is."
-      : null;
-    const empty =
-      !next.dates.length ||
-      (tool.kind === "paste" && !next.items.length && !next.opens.length);
-    return { tool: empty ? null : next, replacedNote: note };
   }
 
   showToolNotice(label, said, stepId, joiner = ". ") {
@@ -3506,19 +3280,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     return group < 0 || block < 0 ? null : { day: column, group, block };
   }
 
-  /** "Swim", "3 activities and 2 Open": what was copied, in a line. */
-  copiedWords(items, opens) {
-    if (items.length === 1 && !opens.length) {
-      return items[0].name;
-    }
-    const open = opens.length ? `${opens.length} Open` : "";
-    if (!items.length) {
-      return opens.length === 1 ? "Open" : open;
-    }
-    const placed = `${items.length} ${items.length === 1 ? this.t.sIn("Activity") : this.t.pIn("Activity")}`;
-    return open ? `${placed} and ${open}` : placed;
-  }
-
   /**
    * Copy (Edit, or Cmd/Ctrl+C on the grid): what the cells hold, by where they sit, for Paste,
    * fixed and recurring activities and times a bunk isn't at camp included (a paste is a hand
@@ -3529,41 +3290,15 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!cells.length) {
       return;
     }
-    const items = [];
-    const opens = [];
-    cells.forEach((cell) => {
-      const day = this.dayOf(cell.slot);
-      const at = placement(day, cell.slot.group, cell.slot.block);
-      // Fixed and recurring activities and not-at-camp times are copied too: a paste is a hand
-      // edit (Greg, 2026-10-26).
-      if (at.slot === OPEN) {
-        opens.push({ row: cell.row, column: cell.column });
-        return;
-      }
-      const saved = this.savedItem(at.slot, day);
-      items.push({
-        row: cell.row,
-        column: cell.column,
-        slot: at.slot,
-        length: at.length,
-        name: this.nameOf(at.slot, day),
-        gone: !!(saved && saved.gone)
-      });
-    });
-    if (!items.length && !opens.length) {
-      this.refuse("Nothing to copy there.");
+    const step = copyStep(this.editCtx, cells, (slot, day) =>
+      this.savedItem(slot, day)
+    );
+    if (step.refused) {
+      this.refuse(step.refused);
       return;
     }
-    const all = [...items, ...opens];
-    const top = Math.min(...all.map((c) => c.row));
-    const left = Math.min(...all.map((c) => c.column));
-    const offset = ({ row, column, ...rest }) => ({
-      ...rest,
-      dr: row - top,
-      dc: column - left
-    });
-    this.clipboard = { items: items.map(offset), opens: opens.map(offset) };
-    this.say(`Copied ${this.copiedWords(items, opens)}.`);
+    this.clipboard = step.clip;
+    this.say(step.said);
   }
 
   /**
@@ -3579,61 +3314,21 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!clip || !origin || !grid) {
       return;
     }
-    const items = [];
-    const outside = [];
-    const opens = [];
-    const dates = new Set();
-    clip.items.forEach((c) => {
-      const at = this.slotAtGrid(grid, origin.row + c.dr, origin.column + c.dc);
-      const day = at && this.dayOf(at);
-      if (!at || at.block + c.length > day.blocks.length) {
-        outside.push({ slot: c.slot, name: c.name });
-        return;
-      }
-      dates.add(day.dateValue);
-      items.push({
-        date: day.dateValue,
-        groupId: day.groups[at.group].id,
-        blockIds: day.blocks
-          .slice(at.block, at.block + c.length)
-          .map((b) => b.id),
-        slot: c.slot,
-        gone: c.gone,
-        name: c.name
-      });
-    });
-    clip.opens.forEach((c) => {
-      const at = this.slotAtGrid(grid, origin.row + c.dr, origin.column + c.dc);
-      if (at) {
-        const day = this.dayOf(at);
-        dates.add(day.dateValue);
-        opens.push(
-          lockKey(
-            day.dateValue,
-            day.groups[at.group].id,
-            day.blocks[at.block].id
-          )
-        );
-      }
-    });
     const first = this.slotAtGrid(grid, origin.row, origin.column);
-    this.chosen = null;
-    this.runTool(
-      {
-        kind: "paste",
-        dates: [...dates],
-        items,
-        opens,
-        outside,
-        what: this.copiedWords(clip.items, clip.opens),
-        where: first
-          ? this.slotName(first)
-          : this.isDaily
-            ? this.dailyGridLabel
-            : this.groupGridLabel
-      },
-      { keepFocus }
+    const where = first
+      ? this.slotName(first)
+      : this.isDaily
+        ? this.dailyGridLabel
+        : this.groupGridLabel;
+    const tool = pasteTool(
+      this.editCtx,
+      clip,
+      origin,
+      (row, column) => this.slotAtGrid(grid, row, column),
+      where
     );
+    this.chosen = null;
+    this.runTool(tool, { keepFocus });
   }
 
   handleCopyClick() {
@@ -4069,49 +3764,25 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   moveTo(from, cell) {
-    const fromDay = this.dayOf(from);
-    const name = this.nameOf(
-      placement(fromDay, from.group, from.block).slot,
-      fromDay
-    );
-    const result = moveEdit(
-      this.schedule.days,
-      from,
-      cell.slot,
-      NEVER_AWAY,
-      SET_TIME_BY_HAND
-    );
-    if (!result) {
+    const step = moveStep(this.editCtx, from, cell.slot);
+    if (!step) {
       // Put down where it already is.
       this.announce("Put back.");
       return;
     }
-    if (result.refused) {
-      this.refuse(this.refusal(result.refused, name, result.at || cell.slot));
+    if (step.refused) {
+      this.refuse(step.refused);
       return;
     }
-    if (this.runsLocked(result.runs)) {
-      return;
-    }
-    const day = this.dayOf(cell.slot);
-    const there = placement(day, cell.slot.group, cell.slot.block).slot;
-    const label =
-      there === OPEN
-        ? `Moved ${name} to ${this.slotName(cell.slot)}`
-        : `Swapped ${name} and ${this.nameOf(there, day)}`;
-    this.commit(result.runs, label, cell.key);
+    this.commit(step.runs, step.label, cell.key);
   }
 
   removeAt(slot) {
-    const day = this.dayOf(slot);
-    const name = this.nameOf(placement(day, slot.group, slot.block).slot, day);
-    const result = removeEdit(this.schedule.days, slot, SET_TIME_BY_HAND);
-    if (result && !this.runsLocked(result.runs)) {
-      this.commit(
-        result.runs,
-        `Cleared ${name} · ${this.slotName(slot)}`,
-        null
-      );
+    const step = takeOutStep(this.editCtx, slot);
+    if (step && step.refused) {
+      this.refuse(step.refused);
+    } else if (step) {
+      this.commit(step.runs, step.label, null);
     }
   }
 
@@ -4146,7 +3817,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (result.refused) {
-      this.refuse(this.refusal(result.refused, name, slot));
+      this.refuse(refusalWords(this.editCtx, result.refused, name, slot));
       return;
     }
     if (this.runsLocked(result.runs)) {
@@ -4160,30 +3831,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       `${name} runs ${length} ${word} · ${this.slotName({ ...slot, block: at.first })}`,
       key
     );
-  }
-
-  /** A refused move, in a few words. */
-  refusal(reason, name, slot) {
-    const day = this.dayOf(slot);
-    switch (reason) {
-      case REFUSED.SET_TIME:
-        return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is set up.`;
-      case REFUSED.AWAY:
-        return `${day.groups[slot.group].name} isn't at camp then.`;
-      case REFUSED.SWAP_LONG:
-        return `Longer ${this.t.pIn("Activity")} don't swap.`;
-      case REFUSED.FIXED_HERE:
-        return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is.`;
-      case REFUSED.NO_SWAP:
-        // The desktop's words (useSlotMutations.js): elective and event cells never swap. A camp
-        // with its own word for electives (wiki decision 66) sees it, plural so no article is
-        // built from it; the standard word keeps the desktop's sentence.
-        return this.t.s("Elective") === "Elective"
-          ? "Can’t swap with an elective or an event. Move it to an empty cell instead."
-          : `Can’t swap with ${this.t.pIn("Elective")} or events. Move it to an empty cell instead.`;
-      default:
-        return `${name} doesn't fit there.`;
-    }
   }
 
   refuse(text) {
