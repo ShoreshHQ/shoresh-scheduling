@@ -90,6 +90,29 @@ global with sharing class AgentVersions {
             : 'Its ' + word + 's: ' + String.join(names, ', ') + '.')
       );
     }
+    return oneOf(
+      same,
+      saved,
+      week.name +
+        ' has ' +
+        same.size() +
+        ' ' +
+        word +
+        's called "' +
+        same[0].name +
+        '".'
+    );
+  }
+
+  /**
+   * The one of those saved when saved says; refused, after twins (what there are two of), naming
+   * when each was saved, otherwise.
+   */
+  private static ScheduleViews.VersionRow oneOf(
+    List<ScheduleViews.VersionRow> same,
+    String saved,
+    String twins
+  ) {
     if (same.size() == 1) {
       return same[0];
     }
@@ -102,14 +125,8 @@ global with sharing class AgentVersions {
       times.add(at);
     }
     throw new ShoreshException(
-      week.name +
-        ' has ' +
-        same.size() +
-        ' ' +
-        word +
-        's called "' +
-        same[0].name +
-        '". Say which by when it was saved (saved), as list_versions gives it: ' +
+      twins +
+        ' Say which by when it was saved (saved), as list_versions gives it: ' +
         String.join(times, ', ') +
         '.'
     );

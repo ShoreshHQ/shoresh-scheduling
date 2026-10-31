@@ -47,15 +47,15 @@ private class AgentVersionsTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    if (action == 'save') {
-      AgentSaveVersion.post();
-    } else if (action == 'restore') {
-      AgentRestoreVersion.post();
-    } else if (action == 'rename') {
-      AgentRenameVersion.post();
-    } else {
-      AgentDeleteVersion.post();
-    }
+    AgentWeeks.answer(
+      new Map<String, AgentWeeks.Action>{
+          'save' => new AgentSaveVersion(),
+          'restore' => new AgentRestoreVersion(),
+          'rename' => new AgentRenameVersion(),
+          'delete' => new AgentDeleteVersion()
+        }
+        .get(action)
+    );
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
