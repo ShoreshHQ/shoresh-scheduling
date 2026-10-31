@@ -12,7 +12,8 @@ import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveW
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { MODE, generateWeek } from "c/shoreshEngine";
-import { loadWeek } from "c/shoreshGeneratedWeek";
+import { buildForAgent, loadWeek } from "c/shoreshGeneratedWeek";
+import { NAMESPACE_PREFIX } from "c/shoreshSchema";
 import { nextTurn } from "../pieces";
 import {
   BIG,
@@ -330,6 +331,71 @@ describe("c-shoresh-generated-schedule", () => {
     );
     expect(q(element, '[data-id="announce"]').textContent).toContain(
       `Filled ${expected.cells.filled} of ${expected.cells.total}.`
+    );
+  });
+
+  // API-1.19
+  it("anAgentsBuildIsTheScreensGenerateAndRebuild: the connector's build sends what Generate, then Rebuild, sends", async () => {
+    const asSent = (r) => ({
+      revision: r.revision,
+      option: r.option,
+      days: r.days,
+      engine_notes: r.engineNotes
+    });
+    // getInputs names its program and week, as the server sends them.
+    const ids = { programId: PROGRAM, weekId: WEEK };
+    const inputs = { ...camp(SMALL), ...ids };
+    const agent = buildForAgent({ inputs, setup: SETUP, labels: LABELS });
+    const element = await render(inputs);
+    await generate(element);
+    expect(agent.ok).toBe(true);
+    expect(agent.save).toEqual(asSent(sent(0)));
+
+    const builtOnce = {
+      ...camp({ ...SMALL, scheduleId: SCHEDULE, option: 1 }),
+      ...ids
+    };
+    getInputs.mockResolvedValue(builtOnce);
+    const again = await render(builtOnce);
+    action(again, "Rebuild").click();
+    await flush();
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    q(again, '[data-id="confirm-go"]').click();
+    await settle(again);
+    expect(sent(1).action).toBe("Rebuild");
+    expect(
+      buildForAgent({ inputs: builtOnce, setup: SETUP, labels: LABELS }).save
+    ).toEqual(asSent(sent(1)));
+  });
+
+  // API-1.20
+  it("theConnectorRunsTheSameEngine: ShoreshConnect's copy of the engine builds the same week in Node", () => {
+    const { spawnSync } = require("child_process");
+    const path = require("path");
+    const resource = path.resolve(
+      __dirname,
+      "../../../staticresources/ShoreshConnect"
+    );
+    const read = {
+      inputs: { ...camp(SMALL), programId: PROGRAM, weekId: WEEK },
+      setup: SETUP,
+      labels: LABELS
+    };
+    const node = spawnSync(
+      "node",
+      [
+        "--input-type=module",
+        "-e",
+        `globalThis.SHORESH_NAMESPACE = ${JSON.stringify(NAMESPACE_PREFIX.replace(/__$/, ""))};
+         const { buildForAgent } = await import(${JSON.stringify(path.join(resource, "engine.shoreshGeneratedWeek.build.mjs"))});
+         let text = ""; for await (const c of process.stdin) text += c;
+         process.stdout.write(JSON.stringify(buildForAgent(JSON.parse(text))));`
+      ],
+      { input: JSON.stringify(read), encoding: "utf8", maxBuffer: 1 << 26 }
+    );
+    expect(node.stderr).toBe("");
+    expect(JSON.parse(node.stdout)).toEqual(
+      JSON.parse(JSON.stringify(buildForAgent(read)))
     );
   });
 

@@ -1,8 +1,9 @@
 /**
  * The things an AI tool or the command line can do today: the API's capabilities
- * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name, and the
- * person's own changes to a Generated Schedule week (API-1.11 to API-1.14). Each one is the API's
- * own web address, so it obeys the API's rules and the person's own access (API-1.6).
+ * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name, the
+ * person's own changes to a Generated Schedule week (API-1.11 to API-1.14), and building,
+ * publishing and finalizing a week as the screens do (API-1.19 to API-1.23). Each one is the
+ * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
 const SEASON = {
@@ -76,15 +77,26 @@ const WEEK_FIELDS = {
  * the same save the screen makes, marked as made through an agent, and undoable.
  */
 function change(name, api, description, more = {}, required = []) {
+  return act(
+    name,
+    api,
+    `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    { ...WEEK_FIELDS, ...more },
+    required
+  );
+}
+
+/** One of the person's own actions (POST /v1/<api> with the fields). */
+function act(name, api, description, properties, required = []) {
   return {
     name,
     api,
     method: "POST",
     sendsFields: true,
-    description: `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    description,
     inputSchema: {
       type: "object",
-      properties: { ...WEEK_FIELDS, ...more },
+      properties,
       required: ["season", "week", ...required],
       additionalProperties: false
     }
@@ -199,7 +211,35 @@ const CAPABILITIES = [
   change(
     "undo_last_agent_change",
     "undo_last_agent_change",
-    "Undo your last change made through an agent in a week's Generated Schedule. It is refused if anyone saved the week since."
+    "Undo your last change made through an agent in a week's Generated Schedule (a cell change or a build). It is refused if anyone saved the week since."
+  ),
+  {
+    ...change(
+      "build_week",
+      "build_week",
+      "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: it keeps the week and changes only what setup now forces). Locked cells and hand edits are kept. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
+    ),
+    buildsWithEngine: true
+  },
+  act(
+    "publish_week",
+    "publish_week",
+    "Publish a week's Generated Schedule, as its Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
+    WEEK_FIELDS
+  ),
+  act(
+    "finalize_electives",
+    "finalize_electives",
+    "Finalize a week's elective seats, as the Elective seats screen's Finalize does, without asking first. Seats must already be assigned on that screen. It is done as you, with your own access. If it can't be finalized, Shoresh says why in one sentence: pass that on to the person.",
+    {
+      season: SEASON,
+      week: WEEK_FIELDS.week,
+      elective_set: {
+        type: "string",
+        description:
+          "The electives' name in Shoresh, like Chugim. Leave it out when the season has only one."
+      }
+    }
   )
 ];
 

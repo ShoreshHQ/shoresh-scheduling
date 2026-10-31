@@ -113,18 +113,84 @@ function readResponse(stdout) {
  * Do one action as the person. Answers { ok, status, text }: text is Shoresh's own answer, so a
  * conflict or a refusal reaches the agent as the same plain sentence a person sees (API-1.9).
  */
-async function call(name, input, { org, run = runSf } = {}) {
+async function call(
+  name,
+  input,
+  { org, run = runSf, engine = loadEngine } = {}
+) {
   const capability = byName(name);
   if (!capability) throw new Error(`Shoresh has no action called "${name}".`);
   const request = requestFor(capability, input);
+  if (capability.buildsWithEngine) {
+    return build(request, org, run, engine);
+  }
+  return answer(await ask(request, org, run));
+}
+
+/** One request as the person; Salesforce's status and Shoresh's answer. */
+async function ask(request, org, run) {
   const response = readResponse(await run(sfArgs(request, org), request.body));
   if (!response) {
     throw new Error(
       `Couldn't reach Salesforce${org ? ` as "${org}"` : ""}. Sign in once with: sf org login web${org ? ` --alias ${org}` : ""}`
     );
   }
+  return response;
+}
+
+function answer(response) {
   const ok = response.status >= 200 && response.status < 300;
   return { ok, status: response.status, text: answerText(response.body) };
+}
+
+/**
+ * build_week (API-1.19): reads what Generate reads (GET /v1/build_week), builds the week here with
+ * Generated Schedule's own engine module (shipped beside this file, API-1.20), and saves it through
+ * the screen's own save (POST /v1/build_week). The engine's refusal comes back in its own words.
+ */
+async function build(request, org, run, engine) {
+  const fields = JSON.parse(request.body);
+  const query = new URLSearchParams();
+  for (const field of ["season", "week", "program"]) {
+    if (fields[field] !== undefined) query.set(field, fields[field]);
+  }
+  const read = await ask(
+    { path: `${request.path}?${query}`, method: "GET" },
+    org,
+    run
+  );
+  if (read.status !== 200) return answer(read);
+  const inputs = JSON.parse(read.body);
+  const built = (await engine(namespaceOf(inputs))).buildForAgent(inputs);
+  if (!built.ok) return { ok: false, status: 400, text: built.error };
+  return answer(
+    await ask(
+      { ...request, body: JSON.stringify({ ...fields, ...built.save }) },
+      org,
+      run
+    )
+  );
+}
+
+/** The package's prefix on the field names Salesforce sent ("shoresh" in shoresh__Week__c), or "". */
+function namespaceOf(read) {
+  const found = /"([A-Za-z0-9]+)__[A-Za-z0-9_]+__c"\s*:/.exec(
+    JSON.stringify(read)
+  );
+  return found ? found[1] : "";
+}
+
+/** Generated Schedule's own build module, as scripts/build-connect.js ships it beside this file. */
+async function loadEngine(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const file = path.join(__dirname, "engine.shoreshGeneratedWeek.build.mjs");
+  try {
+    return await import(require("url").pathToFileURL(file).href);
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector has no build engine. Download it again from Settings in Shoresh."
+    );
+  }
 }
 
 /** Shoresh's answer as text; a refusal's sentence on its own. */
@@ -204,6 +270,7 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   requestFor,
+  namespaceOf,
   sfArgs,
   readResponse,
   call,

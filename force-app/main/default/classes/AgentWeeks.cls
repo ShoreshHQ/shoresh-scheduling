@@ -30,6 +30,9 @@ public with sharing class AgentWeeks {
   public class Week {
     public Schedule__c draft;
     public String name;
+    public Season__c season;
+    public Program__c program;
+    public Id weekId;
   }
 
   /**
@@ -37,20 +40,56 @@ public with sharing class AgentWeeks {
    * The program may be left out when the season has only one.
    */
   public static Week weekOf(Map<String, Object> body) {
-    // Changing a schedule on screen takes the Shoresh Scheduler permission set (or an admin's
-    // access): without the right to change schedules, nothing is tried.
+    Week result = placeOf(body);
+    if (result.draft == null) {
+      throw new ShoreshException(
+        result.name +
+          ' hasn\'t been built for ' +
+          result.program.Name +
+          ' yet. Build it first (build_week).'
+      );
+    }
+    result.draft = GeneratedDrafts.lockedToEdit(result.draft.Id);
+    return result;
+  }
+
+  /**
+   * The season's week (season, week, program) and its Generated draft as found, unlocked, or null
+   * before the week is first built. Refused without the right to change schedules.
+   */
+  public static Week placeOf(Map<String, Object> body) {
+    requireScheduler();
+    Season__c season = OutgoingRows.seasonCalled(
+      AgentFields.text(body, 'season')
+    );
+    Week__c week = weekIn(season, AgentFields.text(body, 'week'));
+    Program__c program = programOf(season, AgentFields.text(body, 'program'));
+    Week result = new Week();
+    result.draft = GeneratedDrafts.find(program.Id, week.Id);
+    result.name = week.Name;
+    result.season = season;
+    result.program = program;
+    result.weekId = week.Id;
+    return result;
+  }
+
+  /**
+   * Changing a schedule on screen takes the Shoresh Scheduler permission set (or an admin's
+   * access): without the right to change schedules, nothing is tried.
+   */
+  public static void requireScheduler() {
     if (
       !Schedule__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
         .isUpdateable()
     ) {
       throw new ShoreshException(NO_ACCESS);
     }
-    Season__c season = OutgoingRows.seasonCalled(
-      AgentFields.text(body, 'season')
-    );
-    String weekName = AgentFields.text(body, 'week');
+  }
+
+  /** The season's week of that name. */
+  public static Week__c weekIn(Season__c season, String weekName) {
     OutgoingRows.requireWeek(weekName);
-    Week__c week = (Week__c) named(
+    return (Week__c) named(
       [
         SELECT Id, Name
         FROM Week__c
@@ -61,20 +100,6 @@ public with sharing class AgentWeeks {
       weekName,
       'week'
     );
-    Program__c program = programOf(season, AgentFields.text(body, 'program'));
-    Schedule__c found = GeneratedDrafts.find(program.Id, week.Id);
-    if (found == null) {
-      throw new ShoreshException(
-        week.Name +
-          ' hasn\'t been built for ' +
-          program.Name +
-          ' yet. Build it on Generated Schedule first.'
-      );
-    }
-    Week result = new Week();
-    result.draft = GeneratedDrafts.lockedToEdit(found.Id);
-    result.name = week.Name;
-    return result;
   }
 
   private static Program__c programOf(Season__c season, String name) {
@@ -103,7 +128,7 @@ public with sharing class AgentWeeks {
   }
 
   /** The one record of that name (as camps type names); refused in plain words otherwise. */
-  private static SObject named(List<SObject> rows, String name, String what) {
+  public static SObject named(List<SObject> rows, String name, String what) {
     for (SObject row : rows) {
       if (
         IncomingBatch.fold((String) row.get('Name')) == IncomingBatch.fold(name)

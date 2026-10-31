@@ -1,0 +1,87 @@
+/**
+ * What checkWeek needs from the season's setup (the records every screen gets), read into its
+ * model's shapes. Activities and places are read by the engine's own readers (setup.js), so both
+ * schedules see the same rules. Written for Manual Build part 3; moved here with checks.js.
+ */
+import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import {
+  readActivities as readCatalog,
+  readLocations as readPlaces,
+  shortWeekMinimums
+} from "./engine.shoreshEngine.setup.mjs";
+
+/**
+ * Each activity by Id, in SortOrder then Id order, as the engine reads it; with shortWeek (the
+ * camp's choice, campShortWeek) and the week's number of days, each weekly minimum as this
+ * week has it (WEEK-4.2, shortWeekMinimums).
+ */
+export function readActivities(records, shortWeek = null, weekDays = 0) {
+  return new Map(
+    shortWeekMinimums(
+      readCatalog(records, [], null).running,
+      shortWeek,
+      weekDays
+    ).map((a) => [a.id, a])
+  );
+}
+
+/** Each place by Id: { name, fit } (how many groups fit at once, at least 1). */
+export function readLocations(records) {
+  const { fit, names } = readPlaces(records);
+  return new Map(
+    [...fit].map(([id, groupsThatFit]) => [
+      id,
+      { name: names.get(id), fit: groupsThatFit }
+    ])
+  );
+}
+
+/**
+ * From a program's setup: each group's division, and where each fixed and recurring activity
+ * takes place (each object's own field: the two share a local name but are different fields).
+ */
+export function readProgram(entry) {
+  const divisions = new Map();
+  ((entry && entry.divisions) || []).forEach((division) =>
+    (division.groups || []).forEach((grp) =>
+      divisions.set(grp.Id, grp[FIELD.Group.Division] || null)
+    )
+  );
+  const setTimeLocations = new Map();
+  ((entry && entry.fixedActivities) || []).forEach((r) =>
+    setTimeLocations.set(r.Id, r[FIELD.FixedActivity.Location] || null)
+  );
+  ((entry && entry.recurringActivities) || []).forEach((r) =>
+    setTimeLocations.set(r.Id, r[FIELD.RecurringActivity.Location] || null)
+  );
+  return { divisions, setTimeLocations };
+}
+
+const OFFERING = FIELD.Offering;
+
+/**
+ * Where each elective set takes place (ADR 0018 slice E5; desktop engine/electiveOccupancy.js):
+ * the places of its confirmed offerings' activities (a proposed one has no campers there; 0 or
+ * blank seats don't close one, Greg 2026-10-26: the seat run uses no limit), each place once, since two offerings at one place are one group's presence
+ * there. offerings: the season's Offering__c records (setup.electives.offerings); activities: the
+ * season's Activity__c records. Returns set Id -> [place Ids], in the offerings' order.
+ */
+export function readElectivePlaces(offerings, activities) {
+  const placeOf = new Map(
+    (activities || []).map((r) => [r.Id, r[FIELD.Activity.Location] || null])
+  );
+  const places = new Map();
+  (offerings || []).forEach((offering) => {
+    const placeId = placeOf.get(offering[OFFERING.Activity]);
+    if (!placeId || offering[OFFERING.Proposed]) {
+      return;
+    }
+    const setId = offering[OFFERING.ElectiveSet];
+    const list = places.get(setId) || [];
+    if (!list.includes(placeId)) {
+      list.push(placeId);
+    }
+    places.set(setId, list);
+  });
+  return places;
+}
