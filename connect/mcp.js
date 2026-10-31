@@ -61,8 +61,8 @@ function orgFrom(argv, env) {
   return i >= 0 ? argv[i + 1] : env.SHORESH_ORG;
 }
 
-if (require.main === module) {
-  const org = orgFrom(process.argv, process.env);
+/** Answers MCP messages on standard input, one a line, as the person signed in to `org`. */
+function serve(org) {
   let buffered = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (chunk) => {
@@ -88,4 +88,6 @@ if (require.main === module) {
   });
 }
 
-module.exports = { tools, handle, orgFrom };
+if (require.main === module) serve(orgFrom(process.argv, process.env));
+
+module.exports = { tools, handle, orgFrom, serve };

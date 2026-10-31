@@ -5,7 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("../capabilities");
-const { requestFor, sfArgs, readResponse, call } = require("../client");
+const { requestFor, sfArgs, readResponse, call, check } = require("../client");
 const { tools, handle, orgFrom } = require("../mcp");
 const { parse } = require("../cli");
 
@@ -279,5 +279,69 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toThrow('The file needs JSON like {"records": [ { ... }, { ... } ]}.');
     expect(orgFrom(["node", "mcp.js", "--org", "a"], {})).toBe("a");
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
+  });
+  // API-1.15
+  it("oneCommand: npx runs Shoresh straight from the repo on GitHub, with nothing else to install or publish", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
+    );
+    expect(pkg.private).toBe(true); // never published to a registry
+    expect(pkg.bin).toEqual({ shoresh: "connect/shoresh.js" });
+    expect(pkg.files).toEqual(["connect/*.js"]);
+    expect(pkg.dependencies).toBeUndefined();
+    expect(pkg.scripts.prepare).toBeUndefined(); // so npx never installs the repo's own tools
+    expect(
+      fs.readFileSync(path.resolve(__dirname, "../shoresh.js"), "utf8")
+    ).toMatch(/^#!\/usr\/bin\/env node\n/);
+    for (const f of fs.readdirSync(path.resolve(__dirname, ".."))) {
+      if (!f.endsWith(".js")) continue;
+      const source = fs.readFileSync(path.resolve(__dirname, "..", f), "utf8");
+      for (const [, needed] of source.matchAll(/require\("([^"]+)"\)/g)) {
+        expect(
+          ["fs", "child_process"].includes(needed) || needed.startsWith("./")
+        ).toBe(true);
+      }
+    }
+  });
+
+  // API-1.15
+  it("testReadInOneSentence: the setup's test read says connected, a missing permission set, no Shoresh, or not signed in", async () => {
+    const seen = [];
+    const said = async (status, body) =>
+      await check({ org: "shoresh", run: sfAnswering(status, body, seen) });
+    expect(await said(400, '{"message":"Say which season (season)."}')).toEqual(
+      {
+        ok: true,
+        text: "Connected: Shoresh answers as you, with exactly your access."
+      }
+    );
+    expect(seen[0].args).toEqual([
+      "api",
+      "request",
+      "rest",
+      "/services/apexrest/v1/group_schedule?season=&week=",
+      "--method",
+      "GET",
+      "--include",
+      "--target-org",
+      "shoresh"
+    ]);
+    const refused =
+      'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
+    expect(await said(403, JSON.stringify({ message: refused }))).toEqual({
+      ok: false,
+      text: `Connected, but: ${refused}`
+    });
+    expect(
+      (
+        await said(
+          404,
+          '[{"errorCode":"NOT_FOUND","message":"Could not find a match for URL"}]'
+        )
+      ).text
+    ).toBe("This Salesforce doesn't have Shoresh, or this user can't see it.");
+    expect((await check({ org: "shoresh", run: async () => "" })).text).toBe(
+      "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
+    );
   });
 });

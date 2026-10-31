@@ -121,4 +121,36 @@ function answerText(text) {
   return text.trim();
 }
 
-module.exports = { requestFor, sfArgs, readResponse, call };
+/**
+ * The test read the setup ends with (API-1.15): one read as the person, answered as one plain
+ * sentence. Reading with no season reaches Shoresh's own checks (signed in, Shoresh there, the
+ * person's permission) without needing a season's name.
+ */
+async function check({ org, run = runSf } = {}) {
+  const request = requestFor(byName("read_group_schedule"), {});
+  const response = readResponse(await run(sfArgs(request, org)));
+  if (!response) {
+    return {
+      ok: false,
+      text: "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
+    };
+  }
+  if (response.status === 403) {
+    return { ok: false, text: `Connected, but: ${answerText(response.body)}` };
+  }
+  if (response.status === 404) {
+    return {
+      ok: false,
+      text: "This Salesforce doesn't have Shoresh, or this user can't see it."
+    };
+  }
+  if (response.status === 400 || response.status === 200) {
+    return {
+      ok: true,
+      text: "Connected: Shoresh answers as you, with exactly your access."
+    };
+  }
+  return { ok: false, text: answerText(response.body) };
+}
+
+module.exports = { requestFor, sfArgs, readResponse, call, check };

@@ -1,0 +1,19 @@
+<template>
+  <template lwc:if={host}>
+    <!-- The rail (the setup screens' grammar): the section's name and its one action -->
+    <div class="rail" data-id="connect-ai">
+      <h3 class="rail-title">Connect your AI</h3>
+      <lightning-button
+        label={copyLabel}
+        icon-name={copyIcon}
+        data-id="copy-prompt"
+        onclick={handleCopy}
+      ></lightning-button>
+    </div>
+    <div class="shoresh-hairline" role="presentation"></div>
+    <p class="slds-assistive-text" role="status" aria-live="polite">{said}</p>
+    <template lwc:if={copyFailed}>
+      <pre class="prompt" tabindex="0" data-id="prompt-text">{prompt}</pre>
+    </template>
+  </template>
+</template>

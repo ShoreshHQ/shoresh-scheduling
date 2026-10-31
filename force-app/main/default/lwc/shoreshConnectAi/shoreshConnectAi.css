@@ -1,0 +1,38 @@
+@import "c/shoreshTokens";
+
+/* The setup screens' rail, as What Shoresh has learned draws it. */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
+}
+
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s1);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-title {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+}
+
+/* Shown only when copying isn't allowed: the prompt, to copy by hand. */
+.prompt {
+  box-sizing: border-box;
+  display: block;
+  max-height: 16rem;
+  overflow: auto;
+  margin: var(--shoresh-s2) var(--shoresh-s4);
+  white-space: pre-wrap;
+  font: inherit;
+  user-select: all;
+}
