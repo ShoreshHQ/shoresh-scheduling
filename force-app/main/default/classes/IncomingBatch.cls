@@ -13,6 +13,9 @@
  *   see on Roots, never settled here.
  */
 public with sharing class IncomingBatch {
+  /** The person's own permission set, which reaches every capability (API-4.7). */
+  private static final String SCHEDULER_SET = 'Shoresh_Scheduler';
+
   /** The most records one batch may carry. */
   public static final Integer MOST = 200;
   public static final String SAVED = 'saved';
@@ -109,8 +112,6 @@ public with sharing class IncomingBatch {
     }
     return batch.results;
   }
-
-  private static final String SCHEDULER_SET = 'Shoresh_Scheduler';
 
   /** API-4.4: the capability's own permission set, whoever is asking. */
   private static void requireAccess(Capability capability) {
