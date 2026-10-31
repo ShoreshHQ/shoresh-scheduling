@@ -446,8 +446,12 @@ describe("c-shoresh-generated-schedule", () => {
     inputs.days = inputs.days.map((day, i) => ({
       ...day,
       items: days[i].items.map((it) => ({ ...it, gone: false })),
-      rows: days[i].rows
+      rows: days[i].rows,
+      // Bunk 1's first cell on Monday locked, as the server sends a lock.
+      locks: i === 0 ? ["1,,,", ""] : []
     }));
+    // What the engine said about the week it built, kept with it.
+    inputs.engine = { notes: sent().engineNotes };
     document.body.removeChild(first);
     const measured = await render(inputs);
     const m = checks(measured).measure;
@@ -551,6 +555,16 @@ describe("c-shoresh-generated-schedule", () => {
     expect(agent.still_needed).toBe(
       Number(root.querySelector('[data-id="still-needed"] b').textContent)
     );
+    // The counter's numbers and words are drawn side by side: compared without the spaces.
+    const bare = (text) => (text || "").replace(/\s+/g, "");
+    expect(agent.priorities.map(bare)).toEqual(
+      [...root.querySelectorAll('[data-id^="priority-"]')].map((n) =>
+        bare(n.textContent)
+      )
+    );
+    expect(agent.priorities.length).toBeGreaterThan(0);
+    const spread = root.querySelector('[data-id="spread"]');
+    expect(bare(agent.spread)).toBe(spread ? bare(spread.textContent) : "");
     expect(agent.under.count).toBe(
       Number(root.querySelector('[data-id="under"] b').textContent)
     );
