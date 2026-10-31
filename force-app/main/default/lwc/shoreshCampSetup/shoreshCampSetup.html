@@ -408,6 +408,9 @@
 
             <!-- What Shoresh has learned (repo ADR 0021): the camp's, so no season needed -->
             <div class={shown.learned} data-screen="learned">
+              <!-- Connect your AI, first so a long list never hides it: one prompt the person gives
+                   their AI app (API-1.15) -->
+              <c-shoresh-connect-ai></c-shoresh-connect-ai>
               <template for:each={campKeys} for:item="key">
                 <c-shoresh-learned
                   key={key}

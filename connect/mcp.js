@@ -5,7 +5,7 @@
  * Which Salesforce sign-in: --org <alias>, or SHORESH_ORG, or the sf CLI's default.
  */
 const { CAPABILITIES } = require("./capabilities");
-const { call } = require("./client");
+const { call, sfInstalled, signIn } = require("./client");
 
 /** The tool list an AI tool sees. */
 function tools() {
@@ -16,8 +16,50 @@ function tools() {
   }));
 }
 
+const NO_SF =
+  "The Salesforce command line isn't installed on this computer. Install it from https://developer.salesforce.com/tools/salesforcecli, then ask again.";
+
+const SIGNING_IN =
+  "Your browser has opened at Salesforce's sign-in page. Sign in and click Allow, then ask me again.";
+
+/** The one sign-in under way, shared by every action asked meanwhile (one browser page, once). */
+let signingIn = null;
+
+/**
+ * One action; when the person isn't signed in and `browserSignIn` is on (the Claude desktop
+ * extension), their browser opens at Salesforce's sign-in page, once, and the answer says to ask
+ * again after signing in: the sign-in can take longer than an AI app waits for one answer.
+ */
+async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
+  try {
+    return await callFn(name, input, { org });
+  } catch (e) {
+    if (!/^Couldn't reach Salesforce/.test(e.message)) throw e;
+    if (!(await sf.installed())) throw new Error(NO_SF);
+    if (!browserSignIn) throw e;
+    if (!signingIn) {
+      signingIn = Promise.resolve()
+        .then(() => sf.signIn(org, host))
+        .catch(() => {})
+        .then(() => {
+          signingIn = null;
+        });
+    }
+    throw new Error(SIGNING_IN);
+  }
+}
+
 /** One JSON-RPC message in, its answer out (null for a notification). */
-async function handle(message, { org, callFn = call } = {}) {
+async function handle(
+  message,
+  {
+    org,
+    browserSignIn = false,
+    host,
+    callFn = call,
+    sf = { installed: () => sfInstalled(), signIn }
+  } = {}
+) {
   const { id, method, params } = message;
   if (id === undefined || id === null) return null;
   const reply = (result) => ({ jsonrpc: "2.0", id, result });
@@ -34,8 +76,12 @@ async function handle(message, { org, callFn = call } = {}) {
       return reply({ tools: tools() });
     case "tools/call":
       try {
-        const answer = await callFn(params?.name, params?.arguments ?? {}, {
-          org
+        const answer = await act(params?.name, params?.arguments ?? {}, {
+          org,
+          browserSignIn,
+          host,
+          callFn,
+          sf
         });
         return reply({
           content: [{ type: "text", text: answer.text }],
@@ -61,8 +107,28 @@ function orgFrom(argv, env) {
   return i >= 0 ? argv[i + 1] : env.SHORESH_ORG;
 }
 
-if (require.main === module) {
-  const org = orgFrom(process.argv, process.env);
+/** The My Domain host from what the person typed: a web address, or a Lightning page's. */
+function hostFrom(typed) {
+  const host = String(typed || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/[/?#].*$/, "")
+    .toLowerCase()
+    .replace(/\.lightning\.force\.com$/, ".my.salesforce.com");
+  return host || undefined;
+}
+
+/**
+ * Answers MCP messages on standard input, one a line, as the person signed in to `org`.
+ * SHORESH_SIGN_IN=browser (the Claude desktop extension) signs in through the browser when
+ * needed, at SHORESH_SALESFORCE (a My Domain host) if given.
+ */
+function serve(org, env = process.env) {
+  const options = {
+    org,
+    browserSignIn: env.SHORESH_SIGN_IN === "browser",
+    host: hostFrom(env.SHORESH_SALESFORCE)
+  };
   let buffered = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (chunk) => {
@@ -81,11 +147,13 @@ if (require.main === module) {
         );
         continue;
       }
-      handle(message, { org }).then((answer) => {
+      handle(message, options).then((answer) => {
         if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
       });
     }
   });
 }
 
-module.exports = { tools, handle, orgFrom };
+if (require.main === module) serve(orgFrom(process.argv, process.env));
+
+module.exports = { tools, handle, orgFrom, serve, hostFrom };
