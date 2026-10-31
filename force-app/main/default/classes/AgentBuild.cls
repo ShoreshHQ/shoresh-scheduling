@@ -85,16 +85,42 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
         change
       );
     }
+    Id draftId = save(week, requestOf(body, week));
+    if (first) {
+      // Before a first build the week was blank, as Generated Schedule showed it: that is kept.
+      versionId = AgentWeeks.keepBefore(
+        GeneratedDrafts.lockedToEdit(draftId),
+        GeneratedInputs.daysOf(
+          new GeneratedSetup(week.program.Id, week.weekId).blankWeek().days
+        ),
+        change
+      );
+    }
+    AgentWeeks.changed(versionId, draftId);
+    return change + '.';
+  }
 
+  /** What the screen's save reads: Generate for a first build, else Rebuild. */
+  private static GeneratedWeek.Save requestOf(
+    Map<String, Object> body,
+    AgentWeeks.Week week
+  ) {
     GeneratedWeek.Save request = new GeneratedWeek.Save();
     request.programId = week.program.Id;
     request.weekId = week.weekId;
-    request.scheduleId = first ? null : week.draft.Id;
+    request.scheduleId = week.draft?.Id;
     request.revision = AgentFields.text(body, 'revision');
-    request.action = first ? GeneratedSaves.GENERATE : GeneratedSaves.REBUILD;
+    request.action = week.draft == null
+      ? GeneratedSaves.GENERATE
+      : GeneratedSaves.REBUILD;
     request.option = optionOf(body);
     request.days = daysOf(body);
     request.engineNotes = (String) body.get('engine_notes');
+    return request;
+  }
+
+  /** The screen's own save; the draft saved, or a conflict or refusal in its words. */
+  private static Id save(AgentWeeks.Week week, GeneratedWeek.Save request) {
     GeneratedWeek.Result result;
     try {
       result = GeneratedScheduleController.saveWeek(request);
@@ -106,19 +132,7 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
     if (result.conflict) {
       throw new AgentWeeks.ConflictException(result.message);
     }
-    if (first) {
-      // Before a first build the week was blank, as Generated Schedule showed it: that is kept.
-      Schedule__c draft = GeneratedDrafts.lockedToEdit(result.scheduleId);
-      versionId = AgentWeeks.keepBefore(
-        draft,
-        GeneratedInputs.daysOf(
-          new GeneratedSetup(week.program.Id, week.weekId).blankWeek().days
-        ),
-        change
-      );
-    }
-    AgentWeeks.changed(versionId, result.scheduleId);
-    return change + '.';
+    return result.scheduleId;
   }
 
   private static Integer optionOf(Map<String, Object> body) {

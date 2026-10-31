@@ -30,28 +30,7 @@ global with sharing class AgentFinalize implements AgentWeeks.Action {
       season,
       AgentFields.text(body, 'elective_set')
     );
-    Id runId = null;
-    Boolean finalOnly = false;
-    for (
-      ElectiveSeats.RunInfo each : ElectiveSeatsController.seatsSetup(season.Id)
-        .runs
-    ) {
-      if (each.setId != electiveSet.Id || each.weekId != week.Id) {
-        continue;
-      }
-      if (each.status == ElectiveRunState.COMMITTED && runId == null) {
-        runId = each.id;
-      } else if (each.status != ElectiveRunState.COMMITTED) {
-        finalOnly = true;
-      }
-    }
-    if (runId == null) {
-      throw new ShoreshException(
-        finalOnly
-          ? electiveSet.Name + ' in ' + week.Name + ' is already finalized.'
-          : 'Not finalized. Assign seats first.'
-      );
-    }
+    Id runId = committedRun(season, electiveSet, week);
     try {
       ElectiveSeatsController.finalizeRun(
         runId,
@@ -61,6 +40,31 @@ global with sharing class AgentFinalize implements AgentWeeks.Action {
       throw new ShoreshException('Not finalized. ' + e.getMessage());
     }
     return 'Finalized ' + electiveSet.Name + ' in ' + week.Name + '.';
+  }
+
+  /** The run the screen opens on for that set and week: its Committed one; refused when none. */
+  private static Id committedRun(
+    Season__c season,
+    ElectiveSet__c electiveSet,
+    Week__c week
+  ) {
+    Boolean finalOnly = false;
+    for (
+      ElectiveSeats.RunInfo each : ElectiveSeatsController.seatsSetup(season.Id)
+        .runs
+    ) {
+      if (each.setId == electiveSet.Id && each.weekId == week.Id) {
+        if (each.status == ElectiveRunState.COMMITTED) {
+          return each.id;
+        }
+        finalOnly = true;
+      }
+    }
+    throw new ShoreshException(
+      finalOnly
+        ? electiveSet.Name + ' in ' + week.Name + ' is already finalized.'
+        : 'Not finalized. Assign seats first.'
+    );
   }
 
   /** The season's elective set of that name; may be left out when the season has only one. */
