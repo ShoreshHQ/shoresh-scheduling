@@ -20,8 +20,6 @@ import {
   notesWithout,
   whyOf
 } from "c/shoreshEngine";
-import { electivesOf } from "c/shoreshElectiveDetails";
-import { campFirstDay, campShortWeek } from "c/shoreshImportEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -31,6 +29,7 @@ import {
   SAVED,
   SETUP_CHANGED,
   addActivity,
+  engineInputOf,
   inputFor,
   loadWeek,
   readSetupChanges,
@@ -711,19 +710,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    */
   engineInput(days, extra = {}, action = null) {
     const base = action ? inputFor(this.loaded, action) : this.loaded.input;
+    // The same input the connector builds an agent's week from (c/shoreshGeneratedWeek build.js).
     return {
-      ...base,
-      days,
-      terms: this.t,
-      // Days a special day replaces: nothing is built, checked or counted there (ADR 0014).
-      replacedDates: this.replacedDates,
-      // The season's offerings: an elective set on the grid takes up their places (ADR 0018
-      // slice E5).
-      electiveOfferings: electivesOf(this._setup).offerings,
-      // The camp's normal first day of the week: an early-week goal counts from it.
-      firstDay: campFirstDay(this._setup),
-      // The camp's "In a short week" choice: keep each weekly minimum, or lower it (WEEK-4.2).
-      shortWeek: campShortWeek(this._setup),
+      ...engineInputOf(base, { days, terms: this.t, setup: this._setup }),
       ...extra
     };
   }

@@ -52,7 +52,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .map((m) => m[1])
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(12);
+    expect(CAPABILITIES).toHaveLength(15);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -62,10 +62,11 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.6, API-1.5
-  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing> or undo_last_agent_change, said without jargon", () => {
+  // API-1.19
+  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives or undo_last_agent_change, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_agent_change)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_agent_change|build_week|publish_week|finalize_electives)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -245,6 +246,166 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toEqual({ name: "change_schedule_cell", input: fields, org: "my-camp" });
   });
 
+  // API-1.19
+  it("buildsHereSavesThere: build_week reads what Generate reads, builds the week on this computer and saves it through the screen's save", async () => {
+    const seen = [];
+    const answers = [
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${JSON.stringify({
+        inputs: { shoresh__Thing__c: 1 },
+        setup: {},
+        labels: []
+      })}`,
+      'HTTP/1.1 200\n\n{"message":"Built Week 1."}'
+    ];
+    const run = async (args, stdin) => {
+      seen.push({ args, stdin });
+      return answers.shift();
+    };
+    const asked = [];
+    const engine = async (namespace) => ({
+      buildForAgent: (read) => {
+        asked.push({ namespace, read });
+        return { ok: true, save: { revision: "r1", option: 1, days: [] } };
+      }
+    });
+    const built = await call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      { run, engine }
+    );
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/build_week?season=Summer+2026&week=Week+1",
+      "--method",
+      "GET"
+    ]);
+    expect(asked).toEqual([
+      {
+        namespace: "shoresh",
+        read: { inputs: { shoresh__Thing__c: 1 }, setup: {}, labels: [] }
+      }
+    ]);
+    expect(seen[1].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/build_week",
+      "--method",
+      "POST"
+    ]);
+    expect(JSON.parse(seen[1].stdin)).toEqual({
+      season: "Summer 2026",
+      week: "Week 1",
+      revision: "r1",
+      option: 1,
+      days: []
+    });
+    expect(built).toEqual({ ok: true, status: 200, text: "Built Week 1." });
+
+    // A refusal while reading, or the engine's own, comes back as one sentence; nothing is saved.
+    const refused = await call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 9" },
+      {
+        run: sfAnswering(
+          400,
+          '{"message":"There is no week called \\"Week 9\\" that this user can see."}'
+        ),
+        engine
+      }
+    );
+    expect(refused.text).toBe(
+      'There is no week called "Week 9" that this user can see.'
+    );
+    const cannot = [];
+    expect(
+      await call(
+        "build_week",
+        { season: "Summer 2026", week: "Week 1" },
+        {
+          run: sfAnswering(200, '{"inputs":{}}', cannot),
+          engine: async () => ({
+            buildForAgent: () => ({
+              ok: false,
+              error: "That option can't be built."
+            })
+          })
+        }
+      )
+    ).toEqual({ ok: false, status: 400, text: "That option can't be built." });
+    expect(cannot).toHaveLength(1);
+  });
+
+  // API-1.20
+  it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module, unchanged but for where its imports point", () => {
+    const {
+      engineFiles,
+      ENGINE_ENTRY,
+      flatName,
+      TO
+    } = require("../../scripts/build-connect");
+    const engine = engineFiles();
+    expect(Object.keys(engine)).toContain(flatName(ENGINE_ENTRY));
+    expect(
+      fs
+        .readdirSync(TO)
+        .filter((f) => f.endsWith(".mjs"))
+        .sort()
+    ).toEqual(Object.keys(engine).sort());
+    for (const [f, text] of Object.entries(engine)) {
+      expect([f, fs.readFileSync(path.join(TO, f), "utf8")]).toEqual([f, text]);
+    }
+    const lwc = path.resolve(__dirname, "../../force-app/main/default/lwc");
+    const unpointed = (text) =>
+      text
+        .replace(/^import \{ schemaName \} from "[^"]+";\n/, "")
+        .replace(
+          /^const (\w+) = schemaName\(("[^"]+")\);$/gm,
+          (a, n, f) => `import ${n} from "@salesforce/schema/${JSON.parse(f)}";`
+        )
+        .replace(/ from "[^"]+";$/gm, "")
+        .replace(/^import "[^"]+";$/gm, "");
+    const source = fs.readFileSync(path.join(lwc, ENGINE_ENTRY), "utf8");
+    expect(unpointed(engine[flatName(ENGINE_ENTRY)])).toBe(unpointed(source));
+  });
+
+  // API-1.22, API-1.23
+  it("publishesAndFinalizesAsThePerson: publish_week and finalize_electives send the person's fields to /v1/publish_week and /v1/finalize_electives", async () => {
+    const seen = [];
+    const published = await call(
+      "publish_week",
+      { season: "Summer 2026", week: "Week 1", program: "Main" },
+      {
+        run: sfAnswering(200, '{"message":"Published Week 1."}', seen)
+      }
+    );
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
+    expect(JSON.parse(seen[0].stdin)).toEqual({
+      season: "Summer 2026",
+      week: "Week 1",
+      program: "Main"
+    });
+    expect(published.text).toBe("Published Week 1.");
+    const refused = await call(
+      "finalize_electives",
+      { season: "Summer 2026", week: "Week 1", elective_set: "Chugim" },
+      {
+        run: sfAnswering(
+          400,
+          '{"message":"Not finalized. Assign seats first."}',
+          seen
+        )
+      }
+    );
+    expect(seen[1].args[3]).toBe("/services/apexrest/v1/finalize_electives");
+    expect(JSON.parse(seen[1].stdin)).toEqual({
+      season: "Summer 2026",
+      week: "Week 1",
+      elective_set: "Chugim"
+    });
+    expect(refused).toEqual({
+      ok: false,
+      status: 400,
+      text: "Not finalized. Assign seats first."
+    });
+  });
+
   it("sameNamesBothWays: the MCP tools and the command line take the same names", async () => {
     const init = await handle({
       jsonrpc: "2.0",
@@ -294,7 +455,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       fs
         .readdirSync(TO)
-        .filter((f) => f !== "manifest.json")
+        .filter((f) => f !== "manifest.json" && !f.endsWith(".mjs"))
         .sort()
     ).toEqual(connectorFiles());
     for (const f of connectorFiles()) {
@@ -306,7 +467,7 @@ describe("Shoresh for AI tools and the command line", () => {
       for (const [, needed] of source.matchAll(/require\("([^"]+)"\)/g)) {
         expect([f, needed]).toEqual([
           f,
-          ["fs", "path", "child_process"].includes(needed) ||
+          ["fs", "path", "child_process", "url"].includes(needed) ||
           needed.startsWith("./")
             ? needed
             : "(only Node's own)"

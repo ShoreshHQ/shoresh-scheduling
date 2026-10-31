@@ -8,6 +8,8 @@
  *   node connect/cli.js change_schedule_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
  *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
  *   node connect/cli.js undo_last_agent_change --season "Summer 2026" --week "Week 2"
+ *   node connect/cli.js build_week --season "Summer 2026" --week "Week 2"   (then publish_week)
+ *   node connect/cli.js finalize_electives --season "Summer 2026" --week "Week 2" --elective_set Chugim
  *   (--org <alias> picks a sf CLI sign-in; otherwise SHORESH_ORG, then the sf CLI's default.)
  */
 const fs = require("fs");

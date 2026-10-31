@@ -1,0 +1,139 @@
+/**
+ * build: build a program's Generated Schedule week, as the person, through an agent or the
+ * command line (docs/protocol/api.md API-1.19 to API-1.21). Web address /v1/build_week. The build
+ * engine runs where the screen runs it, outside Salesforce (the connector runs the same engine
+ * module the screen does), so this address has two halves:
+ *   GET  ?season=&week=&program=  what Generate reads: Generated Schedule's own getInputs, the
+ *        season's setup and the camp's words, exactly as the screen reads them
+ *   POST {season, week, program, revision, option, days, engine_notes}  the week the engine
+ *        built, saved by Generated Schedule's own save (Generate for a first build, Rebuild after),
+ *        so locks, hand edits and "changed by someone else" behave as on screen
+ * A version marked "Through an agent" is kept first (the blank week, for a first build), so the
+ * person sees it in Versions and Undo brings the week back (AgentUndo).
+ */
+@RestResource(urlMapping='/v1/build_week')
+global with sharing class AgentBuild implements AgentWeeks.Action {
+  private static final Set<String> FIELDS = new Set<String>{
+    'season',
+    'week',
+    'program',
+    'revision',
+    'option',
+    'days',
+    'engine_notes'
+  };
+
+  @HttpGet
+  global static void get() {
+    RestResponse response = RestContext.response;
+    response.addHeader('Content-Type', 'application/json');
+    try {
+      Map<String, Object> asked = new Map<String, Object>();
+      for (String field : new List<String>{ 'season', 'week', 'program' }) {
+        asked.put(field, RestContext.request.params.get(field));
+      }
+      AgentWeeks.Week week = AgentWeeks.placeOf(asked);
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Id = :week.season.Id
+        WITH USER_MODE
+      ]
+      .Camp__c;
+      Map<String, Object> read = new Map<String, Object>{
+        'inputs' => GeneratedScheduleController.getInputs(
+          week.program.Id,
+          week.weekId
+        ),
+        'setup' => SeasonSetupController.getSeasonSetup(week.season.Id),
+        'labels' => CampLabels.forCamp(campId).all()
+      };
+      response.statusCode = 200;
+      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
+    } catch (Exception e) {
+      Boolean ours =
+        e instanceof ShoreshException || e instanceof AuraHandledException;
+      response.statusCode = ours ? 400 : 500;
+      response.responseBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, String>{
+            'message' => ours
+              ? e.getMessage()
+              : ScreenErrors.ofLoading(e).getMessage()
+          }
+        )
+      );
+    }
+  }
+
+  @HttpPost
+  global static void post() {
+    AgentWeeks.answer(new AgentBuild());
+  }
+
+  public String run() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    AgentWeeks.Week week = AgentWeeks.placeOf(body);
+    Boolean first = week.draft == null;
+    String change = (first ? 'Built ' : 'Rebuilt ') + week.name;
+    Id versionId;
+    if (!first) {
+      week.draft = GeneratedDrafts.lockedToEdit(week.draft.Id);
+      versionId = AgentWeeks.keepBefore(
+        week.draft,
+        ScheduleDays.read(week.draft.Id),
+        change
+      );
+    }
+
+    GeneratedWeek.Save request = new GeneratedWeek.Save();
+    request.programId = week.program.Id;
+    request.weekId = week.weekId;
+    request.scheduleId = first ? null : week.draft.Id;
+    request.revision = AgentFields.text(body, 'revision');
+    request.action = first ? GeneratedSaves.GENERATE : GeneratedSaves.REBUILD;
+    request.option = optionOf(body);
+    request.days = daysOf(body);
+    request.engineNotes = (String) body.get('engine_notes');
+    GeneratedWeek.Result result;
+    try {
+      result = GeneratedScheduleController.saveWeek(request);
+    } catch (AuraHandledException e) {
+      throw new ShoreshException(
+        week.name + ' was not built. ' + e.getMessage()
+      );
+    }
+    if (result.conflict) {
+      throw new AgentWeeks.ConflictException(result.message);
+    }
+    if (first) {
+      // Before a first build the week was blank, as Generated Schedule showed it: that is kept.
+      Schedule__c draft = GeneratedDrafts.lockedToEdit(result.scheduleId);
+      versionId = AgentWeeks.keepBefore(
+        draft,
+        GeneratedInputs.daysOf(
+          new GeneratedSetup(week.program.Id, week.weekId).blankWeek().days
+        ),
+        change
+      );
+    }
+    AgentWeeks.changed(versionId, result.scheduleId);
+    return change + '.';
+  }
+
+  private static Integer optionOf(Map<String, Object> body) {
+    Object option = body.get('option');
+    return option instanceof Integer ? (Integer) option : 1;
+  }
+
+  private static List<GeneratedWeek.Day> daysOf(Map<String, Object> body) {
+    try {
+      return (List<GeneratedWeek.Day>) JSON.deserialize(
+        JSON.serialize(body.get('days')),
+        List<GeneratedWeek.Day>.class
+      );
+    } catch (JSONException e) {
+      throw new ShoreshException('The days built could not be read.');
+    }
+  }
+}

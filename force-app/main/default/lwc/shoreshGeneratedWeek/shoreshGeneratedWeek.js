@@ -6,16 +6,16 @@ import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.ad
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetupOnServer from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
 import { reasonOf } from "c/shoreshErrors";
-import { notesText, readNotes, readOtherPrograms } from "c/shoreshEngine";
+import { notesText } from "c/shoreshEngine";
+import { loadedOf, locksOf, saveRequestOf } from "./build";
 
-/** What a save is for (GeneratedSaves). Rebuild and Start over keep the week as a version first. */
-export const ACTION = Object.freeze({
-  GENERATE: "Generate",
-  REBUILD: "Rebuild",
-  TRY_ANOTHER: "TryAnother",
-  FILL_OPEN: "FillOpen",
-  START_OVER: "StartOver"
-});
+export {
+  ACTION,
+  buildForAgent,
+  engineInputOf,
+  inputFor,
+  locksOf
+} from "./build";
 
 /** What a lock change does (setLocks). */
 export const LOCK = "Lock";
@@ -47,38 +47,7 @@ export const REFUSED = "refused";
  */
 export async function loadWeek(programId, weekId) {
   const r = await getInputs({ programId, weekId });
-  return {
-    scheduleId: r.scheduleId || null,
-    revision: r.revision || "",
-    option: r.option || 1,
-    notPlaced: r.notPlaced || [],
-    published: r.published || null,
-    engineNotes: readNotes(r.engine && r.engine.notes),
-    input: {
-      // The server's own Ids (18 characters): the engine compares them exactly and seeds with them.
-      programId: r.programId || programId,
-      weekId: r.weekId || weekId,
-      days: r.days || [],
-      groups: r.groups || [],
-      timeBlocks: r.timeBlocks || [],
-      activities: r.activities || [],
-      eligibilities: r.eligibilities || [],
-      locations: r.locations || [],
-      fixedActivities: r.fixedActivities || [],
-      recurringActivities: r.recurringActivities || [],
-      weekExceptions: r.weekExceptions || [],
-      // Locked cells, as the server stored them (grid format v2).
-      locks: locksOf(r.days || []),
-      // Other programs' published schedules, or fixed and recurring activities, this week (G5).
-      otherPrograms: readOtherPrograms(r.otherPrograms),
-      // The week's days a special day replaces (ADR 0014 slice 4).
-      specials: r.specials || { days: [] },
-      // The week as it was imported and that version's name: the engine's floor (step 8).
-      imported: (r.engine && r.engine.imported && r.engine.imported.days) || [],
-      importedName:
-        (r.engine && r.engine.imported && r.engine.imported.name) || null
-    }
-  };
+  return loadedOf(r, programId, weekId);
 }
 
 /**
@@ -97,16 +66,13 @@ export async function saveWeek(
   loaded,
   { action, option, days, engineNotes = null }
 ) {
-  const request = {
-    programId: loaded.input.programId,
-    weekId: loaded.input.weekId,
-    scheduleId: loaded.scheduleId,
-    revision: loaded.revision,
+  const request = saveRequestOf(loaded, {
     action,
     option,
-    days: (days || []).map(dayToSave),
-    engineNotes: notesText(engineNotes)
-  };
+    days,
+    engineNotes
+  });
+
   let result;
   try {
     result = await saveWeekOnServer({ request });
@@ -140,55 +106,6 @@ export async function saveWeek(
       }
     }
   };
-}
-
-/**
- * generateWeek's input for a build of the loaded week: Start over builds with no locks (it clears
- * them all, after keeping a version); every other build keeps them.
- */
-export function inputFor(loaded, action) {
-  return action === ACTION.START_OVER
-    ? { ...loaded.input, locks: [] }
-    : loaded.input;
-}
-
-/** Only what the server reads: the day, its frame's Ids, and the grid's items and rows. */
-function dayToSave(day) {
-  return {
-    dateValue: day.dateValue,
-    blockIds: (day.blocks || []).map((b) => b.id),
-    groupIds: (day.groups || []).map((g) => g.id),
-    items: (day.items || []).map(({ kind, id, name }) => ({
-      kind,
-      id: id || "",
-      name
-    })),
-    rows: day.rows || []
-  };
-}
-
-/**
- * The engine's locks ({ date, groupId, blockId }) from the days as the server sends them: each
- * day's lock rows, one per group like its rows, each cell "1" (locked) or empty.
- */
-export function locksOf(days) {
-  const locks = [];
-  for (const day of days) {
-    (day.locks || []).forEach((row, g) => {
-      String(row)
-        .split(",")
-        .forEach((cell, b) => {
-          if (cell === "1" && day.groups[g] && day.blocks[b]) {
-            locks.push({
-              date: day.dateValue,
-              groupId: day.groups[g].id,
-              blockId: day.blocks[b].id
-            });
-          }
-        });
-    });
-  }
-  return locks;
 }
 
 /**
