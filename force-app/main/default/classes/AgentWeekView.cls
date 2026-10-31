@@ -44,7 +44,7 @@ global with sharing class AgentWeekView {
     List<Object> programs = new List<Object>();
     Schedule__c first;
     for (Schedule__c schedule : [
-      SELECT Id, Program__c, Program__r.Name
+      SELECT Id, Program__c, Week__c, Program__r.Name
       FROM Schedule__c
       WHERE
         Week__c = :week.Id
@@ -75,18 +75,12 @@ global with sharing class AgentWeekView {
       'week' => week.Name,
       'labels' => CampLabels.forCamp(campId).all(),
       'programs' => programs,
-      'opens' => opens(campId, season.Id, week.Id, first)
+      'opens' => opens(campId, season.Id, first)
     };
   }
 
   /** The Shoresh page opened on Schedules at this schedule (?c__preview=schedules, API-1.28). */
-  @TestVisible
-  private static String opens(
-    Id campId,
-    Id seasonId,
-    Id weekId,
-    Schedule__c at
-  ) {
+  private static String opens(Id campId, Id seasonId, Schedule__c at) {
     String ns = ShoreshSchema.namespace();
     return URL.getOrgDomainUrl().toExternalForm() +
       '/lightning/n/' +
@@ -98,7 +92,7 @@ global with sharing class AgentWeekView {
       '&c__program=' +
       at.Program__c +
       '&c__week=' +
-      weekId +
+      at.Week__c +
       '&c__schedule=' +
       at.Id;
   }
