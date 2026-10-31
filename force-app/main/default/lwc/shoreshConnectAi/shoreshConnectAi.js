@@ -9,6 +9,7 @@ import { connectPrompt, myDomainHost } from "./prompt";
  */
 export default class ShoreshConnectAi extends LightningElement {
   copied = false;
+  downloaded = false;
   copyFailed = false;
 
   get host() {
@@ -30,11 +31,18 @@ export default class ShoreshConnectAi extends LightningElement {
   }
 
   get said() {
+    if (this.downloaded) return "Downloaded. Open Shoresh.mcpb.";
     if (this.copied) return "Copied. Paste it into your AI app.";
     return this.copyFailed ? "Couldn't copy. The prompt is below." : "";
   }
 
+  handleDownload() {
+    this.downloaded = true;
+    this.copied = false;
+  }
+
   async handleCopy() {
+    this.downloaded = false;
     try {
       await navigator.clipboard.writeText(this.prompt);
       this.copied = true;

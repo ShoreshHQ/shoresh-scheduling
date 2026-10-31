@@ -19,9 +19,16 @@ function tools() {
 const NO_SF =
   "The Salesforce command line isn't installed on this computer. Install it from https://developer.salesforce.com/tools/salesforcecli, then ask again.";
 
+const SIGNING_IN =
+  "Your browser has opened at Salesforce's sign-in page. Sign in and click Allow, then ask me again.";
+
+/** The one sign-in under way, shared by every action asked meanwhile (one browser page, once). */
+let signingIn = null;
+
 /**
  * One action; when the person isn't signed in and `browserSignIn` is on (the Claude desktop
- * extension), their browser opens at Salesforce's sign-in page once and the action is tried again.
+ * extension), their browser opens at Salesforce's sign-in page, once, and the answer says to ask
+ * again after signing in: the sign-in can take longer than an AI app waits for one answer.
  */
 async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
   try {
@@ -30,8 +37,15 @@ async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
     if (!/^Couldn't reach Salesforce/.test(e.message)) throw e;
     if (!(await sf.installed())) throw new Error(NO_SF);
     if (!browserSignIn) throw e;
-    await sf.signIn(org, host);
-    return callFn(name, input, { org });
+    if (!signingIn) {
+      signingIn = Promise.resolve()
+        .then(() => sf.signIn(org, host))
+        .catch(() => {})
+        .then(() => {
+          signingIn = null;
+        });
+    }
+    throw new Error(SIGNING_IN);
   }
 }
 

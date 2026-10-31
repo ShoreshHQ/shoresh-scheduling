@@ -365,7 +365,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
   });
   // API-1.17
-  it("signsInThroughTheBrowserOnce: the desktop extension opens Salesforce's sign-in page when needed, then tries again", async () => {
+  it("signsInThroughTheBrowserOnce: the desktop extension opens Salesforce's sign-in page once, however many actions are asked meanwhile", async () => {
     const message = {
       jsonrpc: "2.0",
       id: 4,
@@ -374,6 +374,7 @@ describe("Shoresh for AI tools and the command line", () => {
     };
     const signedInto = [];
     let signedIn = false;
+    let finish;
     const callFn = async () => {
       if (!signedIn)
         throw new Error('Couldn\'t reach Salesforce as "shoresh".');
@@ -381,33 +382,51 @@ describe("Shoresh for AI tools and the command line", () => {
     };
     const sf = {
       installed: async () => true,
-      signIn: async (org, host) => {
+      signIn: (org, host) => {
         signedInto.push([org, host]);
-        signedIn = true;
+        return new Promise((resolve) => {
+          finish = () => {
+            signedIn = true;
+            resolve();
+          };
+        });
       }
     };
-    const answer = await handle(message, {
+    const options = {
       org: "shoresh",
       browserSignIn: true,
       host: "maple-grove.my.salesforce.com",
       callFn,
       sf
+    };
+    const said =
+      "Your browser has opened at Salesforce's sign-in page. Sign in and click Allow, then ask me again.";
+    const [first, second] = await Promise.all([
+      handle(message, options),
+      handle(message, options)
+    ]);
+    expect(first.result).toEqual({
+      content: [{ type: "text", text: said }],
+      isError: true
     });
-    expect(answer.result).toEqual({
+    expect(second.result.content[0].text).toBe(said);
+    await Promise.resolve();
+    expect(signedInto).toEqual([["shoresh", "maple-grove.my.salesforce.com"]]);
+    finish();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    const after = await handle(message, options);
+    expect(after.result).toEqual({
       content: [{ type: "text", text: "the schedule" }],
       isError: false
     });
-    expect(signedInto).toEqual([["shoresh", "maple-grove.my.salesforce.com"]]);
     // Without the extension's setting, no browser opens: the sentence says how to sign in.
     signedIn = false;
     const plain = await handle(message, { org: "shoresh", callFn, sf });
-    expect(plain.result.isError).toBe(true);
+    expect(plain.result.content[0].text).toMatch(/^Couldn't reach Salesforce/);
     expect(signedInto).toHaveLength(1);
     // No Salesforce command line: one plain sentence, no browser.
     const none = await handle(message, {
-      org: "shoresh",
-      browserSignIn: true,
-      callFn,
+      ...options,
       sf: { ...sf, installed: async () => false }
     });
     expect(none.result.content[0].text).toBe(

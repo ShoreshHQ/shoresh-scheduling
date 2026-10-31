@@ -64,7 +64,8 @@ describe("Connect your AI", () => {
       "sf --version",
       `sf org login web --instance-url https://${HOST} --alias shoresh`,
       "StaticResource WHERE Name = 'ShoreshConnect'",
-      "--target-org shoresh --stream-to-file <your home folder>/.shoresh/connect.zip",
+      "/Body --target-org shoresh --stream-to-file <your home folder>/.shoresh/connect.zip",
+      "unzip -o <your home folder>/.shoresh/connect.zip -d <your home folder>/.shoresh/connect",
       `node ${SERVER} check --org shoresh`,
       `claude mcp add --scope user shoresh -- node ${SERVER} --org shoresh`,
       "Finish with one plain sentence"
@@ -138,6 +139,11 @@ describe("Connect your AI", () => {
     expect(link.getAttribute("download")).toBe("Shoresh.mcpb");
     expect(link.getAttribute("href")).toMatch(/ShoreshConnect$/);
     expect(link.textContent.trim()).toBe("Claude desktop");
+    link.click();
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[role="status"]').textContent
+    ).toBe("Downloaded. Open Shoresh.mcpb.");
     await expect(element).toBeAccessible();
   });
 
