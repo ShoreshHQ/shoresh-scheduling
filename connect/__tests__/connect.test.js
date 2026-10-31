@@ -312,7 +312,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(await said(400, '{"message":"Say which season (season)."}')).toEqual(
       {
         ok: true,
-        text: "Connected: Shoresh answers as you, with exactly your access."
+        text: "Connected: your AI can now see and change your camp's schedules, with the same access you have in Salesforce."
       }
     );
     expect(seen[0].args).toEqual([
@@ -330,7 +330,7 @@ describe("Shoresh for AI tools and the command line", () => {
       'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
     expect(await said(403, JSON.stringify({ message: refused }))).toEqual({
       ok: false,
-      text: `Connected, but: ${refused}`
+      text: `Not ready yet: ${refused}`
     });
     expect(
       (
@@ -339,7 +339,9 @@ describe("Shoresh for AI tools and the command line", () => {
           '[{"errorCode":"NOT_FOUND","message":"Could not find a match for URL"}]'
         )
       ).text
-    ).toBe("This Salesforce doesn't have Shoresh, or this user can't see it.");
+    ).toBe(
+      "Shoresh isn't in this Salesforce, or your account can't see it. Ask your Salesforce admin."
+    );
     expect((await check({ org: "shoresh", run: async () => "" })).text).toBe(
       "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
     );

@@ -136,18 +136,18 @@ async function check({ org, run = runSf } = {}) {
     };
   }
   if (response.status === 403) {
-    return { ok: false, text: `Connected, but: ${answerText(response.body)}` };
+    return { ok: false, text: `Not ready yet: ${answerText(response.body)}` };
   }
   if (response.status === 404) {
     return {
       ok: false,
-      text: "This Salesforce doesn't have Shoresh, or this user can't see it."
+      text: "Shoresh isn't in this Salesforce, or your account can't see it. Ask your Salesforce admin."
     };
   }
   if (response.status === 400 || response.status === 200) {
     return {
       ok: true,
-      text: "Connected: Shoresh answers as you, with exactly your access."
+      text: "Connected: your AI can now see and change your camp's schedules, with the same access you have in Salesforce."
     };
   }
   return { ok: false, text: answerText(response.body) };

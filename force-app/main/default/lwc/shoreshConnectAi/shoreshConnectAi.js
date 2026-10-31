@@ -26,7 +26,8 @@ export default class ShoreshConnectAi extends LightningElement {
   }
 
   get said() {
-    return this.copied ? "Copied. Paste it into your AI app." : "";
+    if (this.copied) return "Copied. Paste it into your AI app.";
+    return this.copyFailed ? "Couldn't copy. The prompt is below." : "";
   }
 
   async handleCopy() {

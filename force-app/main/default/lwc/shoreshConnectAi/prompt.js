@@ -4,7 +4,10 @@
  * Salesforce by its My Domain host and nothing else: never a sign-in link, code or token.
  */
 
-const PACKAGE = "github:ShoreshHQ/shoresh-scheduling";
+// The connector, straight from the repo on GitHub as a file download: no npm publishing, and no
+// git needed on the person's computer (a github: address would need git).
+const PACKAGE =
+  "https://github.com/ShoreshHQ/shoresh-scheduling/archive/refs/heads/main.tar.gz";
 
 /**
  * This org's My Domain host from the page's own host (Lightning pages are served from
@@ -20,12 +23,13 @@ export function myDomainHost(pageHost) {
 }
 
 export function connectPrompt(host) {
-  const run = `npx -y ${PACKAGE} --org shoresh`;
+  const args = `"-y", "${PACKAGE}", "--org", "shoresh"`;
   return `Please connect me to Shoresh, my camp's scheduling app in Salesforce, so you can read and change our camp's schedules for me. Please do the setup yourself by running the commands below on this computer. I will only click in my web browser when Salesforce asks me to sign in.
 
 My camp's Salesforce: ${host}
 
-If you can't run commands on this computer, stop and tell me: "I can't set this up from here. Paste the same message into Claude Code, Claude's desktop app with Claude Code, or Cursor."
+If you can't run commands on this computer, stop and tell me: "I can't set this up from here. Paste the same message into Claude Code (the Code tab in Claude's desktop app) or Cursor."
+Never use sudo or ask for my computer's password; if a step needs that, use the message for that step instead.
 
 1. Run: node --version
    If Node.js is missing or older than version 20, stop and tell me: "Your computer needs Node.js first. Install the LTS version from https://nodejs.org, then paste the same message to me again."
@@ -36,20 +40,23 @@ If you can't run commands on this computer, stop and tell me: "I can't set this 
 
 3. Tell me: "A Salesforce page will open in your browser. Sign in as you usually do, then click Allow."
    Then run: sf org login web --instance-url https://${host} --alias shoresh
-   Wait for it to finish. The Salesforce command line keeps the sign-in itself; never show me, copy or save a sign-in code or token.
+   Wait for it to finish. The Salesforce command line keeps the sign-in; you don't need to read, copy or save anything from it.
 
-4. Add Shoresh to the AI app you are running in, as a local MCP server named "shoresh" whose command is: ${run}
-   - Claude Code: run: claude mcp add --scope user shoresh -- ${run}
-   - Claude's desktop app: add it under "mcpServers" in claude_desktop_config.json (Mac: ~/Library/Application Support/Claude/, Windows: %APPDATA%\\Claude\\).
-   - Cursor: add it under "mcpServers" in ~/.cursor/mcp.json.
-   - Any other app: its own way of adding a local MCP server.
-   When you edit a settings file, keep everything already in it. Use the full path of npx (from "which npx", or "where npx" on Windows), and give the server "env": {"PATH": "<this computer's PATH>"} so the app can find npx and sf. On Windows the command is "cmd" with "/c" before npx.
-   If this app can't add a local MCP server, tell me: "This AI app can't run Shoresh's connector yet. Claude Code, Claude's desktop app and Cursor can."
-
-5. Test it: run: npx -y ${PACKAGE} check --org shoresh
+4. Test it (the first time can take a minute): npx -y ${PACKAGE} check --org shoresh
    It prints one sentence. Tell me that sentence, in plain words.
-   If it says I need a permission set, tell me its name and that my Salesforce admin can give it to me. If I am the admin, offer to add it, and only if I say yes: find its name with "sf org list metadata --metadata-type PermissionSet --target-org shoresh", then run "sf org assign permset --name <that name> --target-org shoresh".
-   If it says I'm not signed in, go back to step 3 once.
+   If it says I'm not signed in, do step 3 again once.
+   If it names a permission set I need, tell me that my Salesforce admin can give it to me. If I am the admin, offer to add it, and only if I say yes run: sf org assign permset --name <that name, with _ for spaces and each word capitalized, like Read_Group_Schedules> --target-org shoresh
 
-6. Finish with one plain sentence: whether Shoresh is connected, and whether I need to restart this AI app once to see it.`;
+5. Add Shoresh to the AI app you are running in, as a local MCP server named "shoresh":
+   - Claude Code: run: claude mcp add --scope user shoresh -- npx ${args.replace(/[",]/g, "")}
+   - Claude's desktop app: in claude_desktop_config.json (Mac: ~/Library/Application Support/Claude/, Windows: %APPDATA%\\Claude\\), under "mcpServers".
+   - Cursor: in ~/.cursor/mcp.json, under "mcpServers".
+   - Any other app: its own way of adding a local MCP server, with the same command.
+   In a settings file, the entry is:
+     "shoresh": {"command": "<full path of npx>", "args": [${args}], "env": {"PATH": "<the folders holding node and sf, from: which node sf>"}}
+   On Windows instead: "command": "cmd", "args": ["/c", "npx", ${args}] (no "env").
+   Keep everything already in the file, and check it is still valid JSON afterwards.
+   If this app can't add a local MCP server, tell me: "This AI app can't run Shoresh's connector yet. Claude Code and Cursor can."
+
+6. Finish with one plain sentence: whether Shoresh is connected, and that I should restart this AI app once so Shoresh shows up.`;
 }

@@ -3,6 +3,8 @@ import ShoreshConnectAi from "c/shoreshConnectAi";
 import { connectPrompt, myDomainHost } from "../prompt";
 
 const HOST = "maple-grove.my.salesforce.com";
+const ZIP =
+  "https://github.com/ShoreshHQ/shoresh-scheduling/archive/refs/heads/main.tar.gz";
 
 const flush = () => Promise.resolve().then(() => Promise.resolve());
 
@@ -47,10 +49,14 @@ describe("Connect your AI", () => {
     expect(links).toEqual([
       "https://nodejs.org,",
       "https://developer.salesforce.com/tools/salesforcecli,",
-      `https://${HOST}`
+      `https://${HOST}`,
+      ZIP,
+      ZIP,
+      ZIP,
+      ZIP
     ]);
     expect(prompt).not.toMatch(
-      /frontdoor|sid=|access_token|refresh_token|session|password|00D[A-Za-z0-9]{12}|![A-Za-z0-9._]{20,}/i
+      /frontdoor|sid=|access_token|refresh_token|session|password=|pw=|00D[A-Za-z0-9]{12}|![A-Za-z0-9._]{20,}/i
     );
   });
 
@@ -61,8 +67,8 @@ describe("Connect your AI", () => {
       "node --version",
       "sf --version",
       `sf org login web --instance-url https://${HOST} --alias shoresh`,
-      "claude mcp add --scope user shoresh -- npx -y github:ShoreshHQ/shoresh-scheduling --org shoresh",
-      "npx -y github:ShoreshHQ/shoresh-scheduling check --org shoresh",
+      `npx -y ${ZIP} check --org shoresh`,
+      `claude mcp add --scope user shoresh -- npx -y ${ZIP} --org shoresh`,
       "Finish with one plain sentence"
     ].map((s) => prompt.indexOf(s));
     expect(steps.every((i) => i > 0)).toBe(true);
@@ -74,6 +80,7 @@ describe("Connect your AI", () => {
     );
     expect(prompt).toContain("permission set");
     expect(prompt).toContain("can't run Shoresh's connector yet");
+    expect(prompt).toContain("Never use sudo");
     expect(prompt).not.toMatch(/resource|payload|entity|endpoint|sobject/i);
   });
 
@@ -108,6 +115,9 @@ describe("Connect your AI", () => {
     await flush();
     const text = element.shadowRoot.querySelector('[data-id="prompt-text"]');
     expect(text.textContent).toBe(connectPrompt(HOST));
+    expect(
+      element.shadowRoot.querySelector('[role="status"]').textContent
+    ).toBe("Couldn't copy. The prompt is below.");
     await expect(element).toBeAccessible();
   });
 

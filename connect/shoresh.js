@@ -11,11 +11,17 @@ const { check } = require("./client");
 
 const argv = process.argv.slice(2);
 const org = orgFrom(argv, process.env);
-if (argv[0] === "check") {
-  check({ org }).then((answer) => {
-    (answer.ok ? process.stdout : process.stderr).write(`${answer.text}\n`);
-    process.exitCode = answer.ok ? 0 : 1;
-  });
+const say = (ok, text) => {
+  (ok ? process.stdout : process.stderr).write(`${text}\n`);
+  process.exitCode = ok ? 0 : 1;
+};
+if (argv.includes("--org") && !org) {
+  say(false, "Say which Salesforce sign-in after --org, like: --org shoresh");
+} else if (argv[0] === "check") {
+  check({ org }).then(
+    (answer) => say(answer.ok, answer.text),
+    (e) => say(false, e.message)
+  );
 } else if (argv.length === 0 || argv[0] === "--org") {
   serve(org);
 } else {
