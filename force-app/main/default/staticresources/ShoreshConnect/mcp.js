@@ -98,7 +98,9 @@ async function handle(
     browserSignIn = false,
     host,
     callFn = call,
-    sf = { installed: () => sfInstalled(), signIn }
+    sf = { installed: () => sfInstalled(), signIn },
+    // One line to standard error, which Claude desktop keeps in mcp-server-Shoresh.log (API-1.29).
+    log = (line) => process.stderr.write(`${line}\n`)
   } = {}
 ) {
   const { id, method, params } = message;
@@ -129,6 +131,7 @@ async function handle(
           error: { code: -32002, message: `No such page: ${params?.uri}` }
         };
       }
+      log("Shoresh: Claude asked for the week view");
       return reply({
         contents: [{ ...WEEK_VIEW, text: weekViewPage() }]
       });
@@ -141,7 +144,11 @@ async function handle(
           callFn,
           sf
         });
-        return reply(toolResult(answer));
+        const result = toolResult(answer);
+        if (result.structuredContent) {
+          log(`Shoresh: answered ${params.name} with the week view attached`);
+        }
+        return reply(result);
       } catch (e) {
         return reply({
           content: [{ type: "text", text: e.message }],
