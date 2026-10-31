@@ -53,7 +53,7 @@ Never use sudo or ask for my computer's password; if a step needs that, use the 
    - Cursor: in ~/.cursor/mcp.json, under "mcpServers".
    - Any other app: its own way of adding a local MCP server, with the same command.
    In a settings file, the entry is:
-     "shoresh": {"command": "<full path of npx>", "args": [${args}], "env": {"PATH": "<the folders holding node and sf, from: which node sf>"}}
+     "shoresh": {"command": "<full path of npx>", "args": [${args}], "env": {"PATH": "<the folders holding node and sf (from: which node sf)>:/usr/bin:/bin"}}
    On Windows instead: "command": "cmd", "args": ["/c", "npx", ${args}] (no "env").
    Keep everything already in the file, and check it is still valid JSON afterwards.
    If this app can't add a local MCP server, tell me: "This AI app can't run Shoresh's connector yet. Claude Code and Cursor can."
