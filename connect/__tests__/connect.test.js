@@ -516,4 +516,49 @@ describe("Shoresh for AI tools and the command line", () => {
         .filter((f) => fs.statSync(path.join(RESOURCE, f)).isDirectory())
     ).toEqual([]);
   });
+  // API-1.18
+  it("codeModeSameNamesSameAnswers: a script gets one async function per MCP tool, same name, same answer", async () => {
+    const code = require("../code");
+    const names = tools().map((t) => t.name);
+    expect(
+      Object.keys(code)
+        .filter((k) => k !== "ACTIONS")
+        .sort()
+    ).toEqual([...names].sort());
+    for (const name of names) {
+      const seenScript = [];
+      const seenMcp = [];
+      const input = { season: "S", week: "W", records: [] };
+      const fromScript = await code[name](input, {
+        run: sfAnswering(
+          409,
+          '{"message":"Changed by someone else"}',
+          seenScript
+        )
+      });
+      const fromMcp = await callTool(
+        name,
+        input,
+        sfAnswering(409, '{"message":"Changed by someone else"}', seenMcp)
+      );
+      expect(seenScript).toEqual(seenMcp);
+      expect(fromMcp.result).toEqual({
+        content: [{ type: "text", text: fromScript.text }],
+        isError: !fromScript.ok
+      });
+    }
+  });
+
+  // API-1.18
+  it("codeModeOneDescription: the MCP tool list and code mode come from the same one description of every action", () => {
+    const { ACTIONS } = require("../code");
+    expect(ACTIONS).toBe(CAPABILITIES);
+    expect(tools()).toEqual(
+      ACTIONS.map(({ name, description, inputSchema }) => ({
+        name,
+        description,
+        inputSchema
+      }))
+    );
+  });
 });
