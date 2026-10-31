@@ -140,7 +140,10 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     throw new ShoreshException(
       String.isBlank(asked)
         ? 'Say which group (group).'
-        : 'There is no group called "' + asked.left(80) + '" on that day.'
+        : 'There is no group called "' +
+          asked.left(80) +
+          '" on that day. ' +
+          AgentWeeks.namesSaid('groups', names)
     );
   }
 
@@ -163,7 +166,10 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     throw new ShoreshException(
       String.isBlank(asked)
         ? 'Say which time (time), like Period 2.'
-        : 'There is no time called "' + asked.left(80) + '" on that day.'
+        : 'There is no time called "' +
+          asked.left(80) +
+          '" on that day. ' +
+          AgentWeeks.namesSaid('times', names)
     );
   }
 
@@ -193,18 +199,24 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       return SlotIds.OPEN;
     }
     Id seasonId = draft.Program__r.Season__c;
+    List<String> names = new List<String>();
     for (Activity__c activity : [
       SELECT Id, Name
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
+      ORDER BY Name
     ]) {
       if (IncomingBatch.fold(activity.Name) == IncomingBatch.fold(asked)) {
         return 'A:' + activity.Id;
       }
+      names.add(activity.Name);
     }
     throw new ShoreshException(
-      'There is no activity called "' + asked.left(80) + '" in this season.'
+      'There is no activity called "' +
+        asked.left(80) +
+        '" in this season. ' +
+        AgentWeeks.namesSaid('activities', names)
     );
   }
 

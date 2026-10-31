@@ -291,7 +291,7 @@ private class OutgoingTest {
     }
     Assert.areEqual(400, before.get('status'));
     Assert.areEqual(
-      'Nothing in "Week 1" is published yet. Schedules go out once a week is published.',
+      'Nothing in Week 1 of Summer 2026 is published yet. Schedules go out once a week is published.',
       before.get('message')
     );
     schedule(camp, 'Published', grid(camp));
@@ -583,7 +583,7 @@ private class OutgoingTest {
       );
     }
     Assert.areEqual(
-      'Couldn\'t send the group schedule for Week 1 to formstack: Nothing in "Week 1" is published yet. Schedules go out once a week is published.',
+      'Couldn\'t send the group schedule for Week 1 to formstack: Nothing in Week 1 of Summer 2026 is published yet. Schedules go out once a week is published.',
       results[0].message
     );
     schedule(camp, 'Published', grid(camp));

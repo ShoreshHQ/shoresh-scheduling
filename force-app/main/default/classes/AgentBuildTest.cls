@@ -221,7 +221,7 @@ private class AgentBuildTest {
       Assert.areEqual(400, noSeats[0]);
       Assert.areEqual('Not finalized. Assign seats first.', noSeats[1]);
       Assert.areEqual(
-        'There is no elective set called "Sports" that this user can see.',
+        'There is no elective set called "Sports" that this user can see. The elective sets: Chugim.',
         noSuchSet[1]
       );
     }

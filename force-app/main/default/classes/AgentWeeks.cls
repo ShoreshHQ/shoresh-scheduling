@@ -86,20 +86,9 @@ public with sharing class AgentWeeks {
     }
   }
 
-  /** The season's week of that name. */
+  /** The season's week of that name, or refused with the season's weeks. */
   public static Week__c weekIn(Season__c season, String weekName) {
-    OutgoingRows.requireWeek(weekName);
-    return (Week__c) named(
-      [
-        SELECT Id, Name
-        FROM Week__c
-        WHERE Season__c = :season.Id
-        WITH USER_MODE
-        ORDER BY SortOrder__c, StartDate__c
-      ],
-      weekName,
-      'week'
-    );
+    return OutgoingRows.weekIn(season, weekName);
   }
 
   private static Program__c programOf(Season__c season, String name) {
@@ -127,22 +116,35 @@ public with sharing class AgentWeeks {
     return (Program__c) named(programs, name, 'program');
   }
 
-  /** The one record of that name (as camps type names); refused in plain words otherwise. */
+  /**
+   * The one record of that name (as camps type names); refused in plain words otherwise, naming
+   * the ones there are so no one has to guess (API-1.25).
+   */
   public static SObject named(List<SObject> rows, String name, String what) {
+    List<String> names = new List<String>();
     for (SObject row : rows) {
       if (
         IncomingBatch.fold((String) row.get('Name')) == IncomingBatch.fold(name)
       ) {
         return row;
       }
+      names.add((String) row.get('Name'));
     }
     throw new ShoreshException(
       'There is no ' +
         what +
         ' called "' +
         name.left(80) +
-        '" that this user can see.'
+        '" that this user can see. ' +
+        namesSaid(what + 's', names)
     );
+  }
+
+  /** "The programs: Main, Teens." or "There are no programs yet." (things: the plural). */
+  public static String namesSaid(String things, List<String> names) {
+    return names.isEmpty()
+      ? 'There are no ' + things + ' yet.'
+      : 'The ' + things + ': ' + String.join(names, ', ') + '.';
   }
 
   /** The day of the week asked for, by its weekday ("Monday") or date ("2026-06-29"). */

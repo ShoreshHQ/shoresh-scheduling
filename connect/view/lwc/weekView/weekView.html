@@ -1,0 +1,27 @@
+<template>
+  <main class="page">
+    <h1 class="title">{title}</h1>
+    <template for:each={programs} for:item="program">
+      <section key={program.key}>
+        <template lwc:if={program.name}>
+          <h2 class="program">{program.name}</h2>
+        </template>
+        <template for:each={program.days} for:item="day">
+          <section key={day.key} class="day">
+            <h3 class="day-name">{day.heading}</h3>
+            <template lwc:if={day.problem}>
+              <p class="problem" role="alert">{day.problem}</p>
+            </template>
+            <template lwc:elseif={day.grid}>
+              <c-shoresh-schedule-grid
+                grid={day.grid}
+                corner={day.corner}
+                label={day.heading}
+              ></c-shoresh-schedule-grid>
+            </template>
+          </section>
+        </template>
+      </section>
+    </template>
+  </main>
+</template>

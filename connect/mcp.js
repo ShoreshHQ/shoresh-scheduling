@@ -4,16 +4,47 @@
  * computer over stdio and signs in as that person through the sf CLI (client.js).
  * Which Salesforce sign-in: --org <alias>, or SHORESH_ORG, or the sf CLI's default.
  */
+const fs = require("fs");
+const path = require("path");
 const { CAPABILITIES } = require("./capabilities");
 const { call, sfInstalled, signIn } = require("./client");
 
-/** The tool list an AI tool sees. */
+/**
+ * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
+ * io.modelcontextprotocol/ui): a page the chat app shows beside a schedule read. scripts/
+ * build-connect.js makes it from the Schedules screen's own components.
+ */
+const WEEK_VIEW = {
+  uri: "ui://shoresh/week-view.html",
+  name: "Shoresh week",
+  mimeType: "text/html;profile=mcp-app"
+};
+
+function weekViewPage() {
+  return fs.readFileSync(path.join(__dirname, "week-view.html"), "utf8");
+}
+
+/** The tool list an AI tool sees; a schedule read names Shoresh's view of the week. */
 function tools() {
-  return CAPABILITIES.map(({ name, description, inputSchema }) => ({
+  return CAPABILITIES.map(({ name, description, inputSchema, showsWeek }) => ({
     name,
     description,
-    inputSchema
+    inputSchema,
+    ...(showsWeek ? { _meta: { ui: { resourceUri: WEEK_VIEW.uri } } } : {})
   }));
+}
+
+/** The answer as MCP gives it: what it is first, then Shoresh's answer, then the view's data. */
+function toolResult(answer) {
+  const content = [{ type: "text", text: answer.text }];
+  if (answer.about) content.unshift({ type: "text", text: answer.about });
+  return {
+    content,
+    ...(answer.weekView
+      ? { structuredContent: { week_view: answer.weekView } }
+      : {}),
+    isError: !answer.ok
+  };
 }
 
 const NO_SF =
@@ -67,13 +98,30 @@ async function handle(
     case "initialize":
       return reply({
         protocolVersion: "2025-06-18",
-        capabilities: { tools: {} },
+        capabilities: {
+          tools: {},
+          resources: {},
+          extensions: { "io.modelcontextprotocol/ui": {} }
+        },
         serverInfo: { name: "shoresh", version: "1.0.0" }
       });
     case "ping":
       return reply({});
     case "tools/list":
       return reply({ tools: tools() });
+    case "resources/list":
+      return reply({ resources: [WEEK_VIEW] });
+    case "resources/read":
+      if (params?.uri !== WEEK_VIEW.uri) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32002, message: `No such page: ${params?.uri}` }
+        };
+      }
+      return reply({
+        contents: [{ ...WEEK_VIEW, text: weekViewPage() }]
+      });
     case "tools/call":
       try {
         const answer = await act(params?.name, params?.arguments ?? {}, {
@@ -83,10 +131,7 @@ async function handle(
           callFn,
           sf
         });
-        return reply({
-          content: [{ type: "text", text: answer.text }],
-          isError: !answer.ok
-        });
+        return reply(toolResult(answer));
       } catch (e) {
         return reply({
           content: [{ type: "text", text: e.message }],
@@ -156,4 +201,4 @@ function serve(org, env = process.env) {
 
 if (require.main === module) serve(orgFrom(process.argv, process.env));
 
-module.exports = { tools, handle, orgFrom, serve, hostFrom };
+module.exports = { tools, handle, orgFrom, serve, hostFrom, WEEK_VIEW };
