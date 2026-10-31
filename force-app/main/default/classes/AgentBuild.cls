@@ -42,9 +42,7 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
       response.responseBody = Blob.valueOf(
         JSON.serialize(
           new Map<String, String>{
-            'message' => ours
-              ? e.getMessage()
-              : ScreenErrors.ofLoading(e).getMessage()
+            'message' => ours ? e.getMessage() : ScreenErrors.loadingWords(e)
           }
         )
       );
@@ -131,9 +129,9 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
     GeneratedWeek.Result result;
     try {
       result = GeneratedScheduleController.saveWeek(request);
-    } catch (AuraHandledException e) {
+    } catch (Exception e) {
       throw new ShoreshException(
-        week.name + ' was not built. ' + e.getMessage()
+        week.name + ' was not built. ' + ScreenErrors.words(e)
       );
     }
     if (result.conflict) {

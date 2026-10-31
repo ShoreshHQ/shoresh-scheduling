@@ -34,9 +34,9 @@ global with sharing class AgentPublish implements AgentWeeks.Action {
         preview.revisions,
         preview.published == null ? null : preview.published.id
       );
-    } catch (AuraHandledException e) {
+    } catch (Exception e) {
       throw new ShoreshException(
-        week.name + ' was not published. ' + e.getMessage()
+        week.name + ' was not published. ' + ScreenErrors.words(e)
       );
     }
     if (result.draftChanged) {

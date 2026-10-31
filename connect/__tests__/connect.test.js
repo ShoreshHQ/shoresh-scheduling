@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(23);
+    expect(CAPABILITIES).toHaveLength(26);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -580,6 +580,48 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(refused.ok).toBe(false);
     expect(refused.text).toMatch(
       /^Published Oct 18, 2:40 PM wasn't deleted\. /
+    );
+  });
+
+  // API-1.36, API-1.37
+  it("unpublishAndLocksAreTheScreens: unpublish_week, lock_cells and unlock_cells send the person's fields to their own addresses and pass on Shoresh's sentence", async () => {
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const cases = [
+      ["unpublish_week", {}, "Unpublished Week 1."],
+      [
+        "lock_cells",
+        { day: "Monday", group: "Bunk 3", time: "Period 2" },
+        "Locked Bunk 3 · Monday · Period 2."
+      ],
+      ["unlock_cells", { day: "Monday" }, "Unlocked Monday."]
+    ];
+    for (const [name, more, message] of cases) {
+      const seen = [];
+      const done = await call(
+        name,
+        { ...asked, ...more },
+        { run: sfAnswering(200, JSON.stringify({ message }), seen) }
+      );
+      expect(seen[0].args.slice(3, 6)).toEqual([
+        `/services/apexrest/v1/${name}`,
+        "--method",
+        "POST"
+      ]);
+      expect(JSON.parse(seen[0].stdin)).toEqual({ ...asked, ...more });
+      expect(done).toEqual({ ok: true, status: 200, text: message });
+    }
+    const conflict = await call("unpublish_week", asked, {
+      run: sfAnswering(
+        409,
+        JSON.stringify({
+          message:
+            "Someone else published or unpublished this week since, so nothing was unpublished."
+        })
+      )
+    });
+    expect(conflict.ok).toBe(false);
+    expect(conflict.text).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished."
     );
   });
 

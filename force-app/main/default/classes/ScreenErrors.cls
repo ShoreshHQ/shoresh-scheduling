@@ -31,6 +31,11 @@ public with sharing class ScreenErrors {
     return messageFor(e, COULD_NOT_SAVE);
   }
 
+  /** The words ofLoading(e) would carry, for a web address's answer (it can't make one). */
+  public static String loadingWords(Exception e) {
+    return messageFor(e, COULD_NOT_OPEN);
+  }
+
   /** For a screen that could not load what it shows. */
   public static AuraHandledException ofLoading(Exception e) {
     return of(messageFor(e, COULD_NOT_OPEN));

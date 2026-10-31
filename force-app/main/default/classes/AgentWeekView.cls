@@ -26,7 +26,7 @@ global with sharing class AgentWeekView {
           new Map<String, String>{
             'message' => e instanceof ShoreshException
               ? e.getMessage()
-              : ScreenErrors.of(e).getMessage()
+              : ScreenErrors.words(e)
           }
         )
       );
