@@ -22,7 +22,7 @@ global with sharing class AgentSaveVersion implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.eitherOf(body);
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String name = AgentFields.text(body, 'name');
     try {
       // Each screen's own Save version (API-1.41).

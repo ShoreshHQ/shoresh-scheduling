@@ -23,7 +23,7 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.eitherOf(body);
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     try {
       // Each screen's own delete (API-1.41).

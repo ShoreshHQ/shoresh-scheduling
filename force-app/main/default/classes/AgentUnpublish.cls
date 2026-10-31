@@ -22,25 +22,18 @@ global with sharing class AgentUnpublish implements AgentWeeks.Action {
   }
 
   public String run() {
-    AgentWeeks.Week week = AgentWeeks.eitherOf(AgentFields.body(FIELDS));
+    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
     String weekWord = AgentVersions.labelsOf(week).singularInSentence('Week');
     SchedulePublish.Result result;
     try {
       // What the screen shows as published (its Unpublish is only there when there is one).
-      SchedulePublish.Preview seen = week.manual
-        ? ManualBuildController.previewPublish(week.draft.Id)
-        : GeneratedScheduleController.previewPublish(week.draft.Id);
+      SchedulePublish.Preview seen = AgentSchedules.preview(week);
       if (seen.published == null) {
         return week.name +
           ' isn\'t published, so there is nothing to unpublish.';
       }
-      // Each screen's own Unpublish (API-1.41).
-      result = week.manual
-        ? ManualBuildController.unpublish(week.draft.Id, seen.published.id)
-        : GeneratedScheduleController.unpublish(
-            week.draft.Id,
-            seen.published.id
-          );
+      // Each screen's own Unpublish (API-1.43).
+      result = AgentSchedules.unpublish(week, seen.published.id);
     } catch (Exception e) {
       throw new ShoreshException(
         week.name + ' was not unpublished. ' + ScreenErrors.words(e)

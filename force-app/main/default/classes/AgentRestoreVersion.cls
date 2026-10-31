@@ -24,10 +24,10 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.placeOfEither(body);
+    AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     if (week.manual) {
-      AgentWeeks.requireDraft(week);
+      AgentSchedules.requireDraft(week);
     }
     Boolean done;
     try {

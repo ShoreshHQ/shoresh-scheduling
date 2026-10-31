@@ -21,7 +21,7 @@ global with sharing class AgentUndo implements AgentWeeks.Action {
   }
 
   public String run() {
-    AgentWeeks.Week week = AgentWeeks.eitherOf(AgentFields.body(FIELDS));
+    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
     Id draftId = week.draft.Id;
     Id me = UserInfo.getUserId();
     List<Schedule__c> kept = [

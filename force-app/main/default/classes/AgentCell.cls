@@ -42,7 +42,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
 
   public String run() {
     body = AgentFields.body(FIELDS);
-    week = AgentWeeks.eitherOf(body);
+    week = AgentSchedules.eitherOf(body);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     find(days, week.name);
     checkCanChange();
@@ -51,12 +51,11 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       ? 'Cleared ' + place
       : 'Placed ' + AgentFields.text(body, 'activity') + ' · ' + place;
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
-    SlotEdits.Result result = week.manual
-      ? ManualBuildController.saveSlots(
-          week.draft.Id,
-          new List<SlotEdits.Edit>{ editOf(target) }
-        )
-      : saveOnGenerated(days, target);
+    SlotEdits.Result result = AgentSchedules.saveCell(
+      week,
+      editOf(target),
+      days
+    );
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(
         'Changed by someone else: ' + place + '. Nothing was changed.'
@@ -64,27 +63,6 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     }
     AgentWeeks.changed(versionId, week.draft.Id);
     return change + '.';
-  }
-
-  /** Generated Schedule's own hand edit of the cell (Manual Build's is its saveSlots). */
-  private SlotEdits.Result saveOnGenerated(
-    List<ScheduleDays.DayGrid> days,
-    String target
-  ) {
-    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
-    request.scheduleId = week.draft.Id;
-    request.revision = GeneratedDrafts.revisionOf(days);
-    request.edits = new List<SlotEdits.Edit>{ editOf(target) };
-    // The cell's Open reason goes, as the screen drops it before saving a hand edit.
-    request.engineNotes = GeneratedEngineNotes.withoutCell(
-      week.draft.EngineNotes__c,
-      new List<String>{
-        String.valueOf(day),
-        grid.groups[g].id,
-        grid.blocks[b].id
-      }
-    );
-    return GeneratedEngineNotes.saveHandEdits(request);
   }
 
   /** The cell asked for (day, group, time) in the week's days, and what it holds now. */
@@ -126,7 +104,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       );
     }
     // Manual Build has no locks: its screen changes any cell (API-1.41).
-    if (!week.manual && ScheduleGridLocks.isLocked(grid, g, b)) {
+    if (AgentSchedules.isLocked(week, grid, new List<Integer>{ g, b })) {
       // The screen's own refusal (shoreshWeekEditor refuseLocked); unlocking is the person's.
       throw new ShoreshException(place + ' is locked.');
     }
@@ -140,7 +118,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
           ' is part of a longer ' +
           nowName +
           '. Change it on ' +
-          AgentWeeks.screenOf(week) +
+          AgentSchedules.screenOf(week) +
           '.'
       );
     }
