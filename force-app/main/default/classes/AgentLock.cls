@@ -13,6 +13,7 @@ global with sharing class AgentLock implements AgentWeeks.Action {
     'season',
     'week',
     'program',
+    'schedule',
     'day',
     'group',
     'time'
@@ -36,7 +37,16 @@ global with sharing class AgentLock implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.weekOf(body);
+    AgentWeeks.Week week = AgentWeeks.eitherOf(body);
+    if (week.manual) {
+      // Manual Build has no Lock menu: nothing is built over its cells (API-1.41).
+      throw new ShoreshException(
+        ManualDrafts.NAME +
+          ' has no locks: only ' +
+          GeneratedDrafts.NAME +
+          '\'s cells are locked, to keep them when the week is built again.'
+      );
+    }
     AgentLockScope scope = new AgentLockScope(action, body, week);
     List<ScheduleDays.DayGrid> days = scope.days;
     GeneratedWeek.LockChange change = scope.change;

@@ -1,8 +1,9 @@
 /**
- * cell: change one cell of a program's Generated Schedule week, as the person, through an agent
- * or the command line (docs/protocol/api.md API-1.11 to API-1.13). Web address /v1/schedule_cell, POST
- * {season, week, program, group, day, time, was, activity}. The change is the screen's own hand
- * edit (GeneratedEngineNotes.saveHandEdits: the same save, conflicts and locking), made only when
+ * cell: change one cell of a program's Generated Schedule or Manual Build week, as the person,
+ * through an agent or the command line (docs/protocol/api.md API-1.11 to API-1.13, API-1.41). Web
+ * address /v1/schedule_cell, POST {season, week, program, schedule, group, day, time, was,
+ * activity}. The change is the screen's own hand edit (GeneratedEngineNotes.saveHandEdits, or
+ * Manual Build's saveSlots: the same save, conflicts and locking), made only when
  * the cell still holds what the agent says it saw (was), so someone else's change is never
  * replaced unseen; a locked cell is refused in the screen's words. A version marked "Through an
  * agent" is kept first, so the person sees it and Undo brings the week back (AgentUndo).
@@ -13,6 +14,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     'season',
     'week',
     'program',
+    'schedule',
     'group',
     'day',
     'time',
@@ -30,6 +32,8 @@ global with sharing class AgentCell implements AgentWeeks.Action {
   private Integer b;
   private List<String> row;
   private String place;
+  // The week asked for, on Generated Schedule or Manual Build (API-1.41).
+  private AgentWeeks.Week week;
 
   @HttpPost
   global static void post() {
@@ -38,7 +42,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
 
   public String run() {
     body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.weekOf(body);
+    week = AgentWeeks.eitherOf(body);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     find(days, week.name);
     checkCanChange();
@@ -47,7 +51,26 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       ? 'Cleared ' + place
       : 'Placed ' + AgentFields.text(body, 'activity') + ' · ' + place;
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
+    SlotEdits.Result result = week.manual
+      ? ManualBuildController.saveSlots(
+          week.draft.Id,
+          new List<SlotEdits.Edit>{ editOf(target) }
+        )
+      : saveOnGenerated(days, target);
+    if (!result.conflicts.isEmpty()) {
+      throw new AgentWeeks.ConflictException(
+        'Changed by someone else: ' + place + '. Nothing was changed.'
+      );
+    }
+    AgentWeeks.changed(versionId, week.draft.Id);
+    return change + '.';
+  }
 
+  /** Generated Schedule's own hand edit of the cell (Manual Build's is its saveSlots). */
+  private SlotEdits.Result saveOnGenerated(
+    List<ScheduleDays.DayGrid> days,
+    String target
+  ) {
     GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
     request.scheduleId = week.draft.Id;
     request.revision = GeneratedDrafts.revisionOf(days);
@@ -61,14 +84,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
         grid.blocks[b].id
       }
     );
-    SlotEdits.Result result = GeneratedEngineNotes.saveHandEdits(request);
-    if (!result.conflicts.isEmpty()) {
-      throw new AgentWeeks.ConflictException(
-        'Changed by someone else: ' + place + '. Nothing was changed.'
-      );
-    }
-    AgentWeeks.changed(versionId, week.draft.Id);
-    return change + '.';
+    return GeneratedEngineNotes.saveHandEdits(request);
   }
 
   /** The cell asked for (day, group, time) in the week's days, and what it holds now. */
@@ -109,7 +125,8 @@ global with sharing class AgentCell implements AgentWeeks.Action {
           ' now. Nothing was changed.'
       );
     }
-    if (ScheduleGridLocks.isLocked(grid, g, b)) {
+    // Manual Build has no locks: its screen changes any cell (API-1.41).
+    if (!week.manual && ScheduleGridLocks.isLocked(grid, g, b)) {
       // The screen's own refusal (shoreshWeekEditor refuseLocked); unlocking is the person's.
       throw new ShoreshException(place + ' is locked.');
     }
@@ -122,7 +139,9 @@ global with sharing class AgentCell implements AgentWeeks.Action {
         place +
           ' is part of a longer ' +
           nowName +
-          '. Change it on Generated Schedule.'
+          '. Change it on ' +
+          AgentWeeks.screenOf(week) +
+          '.'
       );
     }
   }

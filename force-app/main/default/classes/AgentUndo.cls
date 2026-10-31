@@ -1,7 +1,7 @@
 /**
  * undo: take back the person's last change made through an agent or the command line in a
- * program's Generated Schedule week (docs/protocol/api.md API-1.14). Web address /v1/undo_last_agent_change, POST
- * {season, week, program}. It is Versions' own Restore (ManualVersions.restoreInto) of the
+ * program's Generated Schedule or Manual Build week (docs/protocol/api.md API-1.14, API-1.41). Web
+ * address /v1/undo_last_agent_change, POST {season, week, program, schedule}. It is Versions' own Restore (ManualVersions.restoreInto) of the
  * version that change kept first, so the week as it was before Undo is kept too ("Before
  * Restore"), and it is refused when anyone has saved the week since that change: a newer change is
  * never taken back unseen.
@@ -11,7 +11,8 @@ global with sharing class AgentUndo implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
-    'program'
+    'program',
+    'schedule'
   };
 
   @HttpPost
@@ -20,7 +21,7 @@ global with sharing class AgentUndo implements AgentWeeks.Action {
   }
 
   public String run() {
-    AgentWeeks.Week week = AgentWeeks.weekOf(AgentFields.body(FIELDS));
+    AgentWeeks.Week week = AgentWeeks.eitherOf(AgentFields.body(FIELDS));
     Id draftId = week.draft.Id;
     Id me = UserInfo.getUserId();
     List<Schedule__c> kept = [

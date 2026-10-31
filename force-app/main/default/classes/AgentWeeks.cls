@@ -33,6 +33,95 @@ public with sharing class AgentWeeks {
     public Season__c season;
     public Program__c program;
     public Id weekId;
+    // True when the draft is the week's Manual Build (API-1.41), not its Generated Schedule.
+    public Boolean manual = false;
+  }
+
+  /** The field naming which screen's schedule of the week (API-1.41). */
+  public static final String SCHEDULE = 'schedule';
+
+  /**
+   * The season's week on the screen that holds it, Generated Schedule or Manual Build (API-1.41),
+   * locked as that screen's save locks it. Refused before the week is built or started there.
+   */
+  public static Week eitherOf(Map<String, Object> body) {
+    Week result = placeOfEither(body);
+    requireDraft(result);
+    result.draft = result.manual
+      ? ManualDrafts.locked(result.draft.Id)
+      : GeneratedDrafts.lockedToEdit(result.draft.Id);
+    return result;
+  }
+
+  /**
+   * The season's week and the draft of the screen asked for (schedule: "Generated Schedule" or
+   * "Manual Build"), as found, unlocked. Left out, it is the one the week has; a week with both
+   * is refused, naming them, and Shoresh never picks one (API-1.41).
+   */
+  public static Week placeOfEither(Map<String, Object> body) {
+    Week result = placeOf(body);
+    Schedule__c manual = ManualDrafts.find(result.program.Id, result.weekId);
+    String asked = AgentFields.text(body, SCHEDULE);
+    String both = GeneratedDrafts.NAME + ' or ' + ManualDrafts.NAME;
+    if (IncomingBatch.fold(asked) == IncomingBatch.fold(ManualDrafts.NAME)) {
+      result.manual = true;
+    } else if (
+      String.isNotBlank(asked) &&
+      IncomingBatch.fold(asked) != IncomingBatch.fold(GeneratedDrafts.NAME)
+    ) {
+      throw new ShoreshException(
+        'There is no schedule called "' +
+          asked.left(80) +
+          '". Say ' +
+          both +
+          ' (schedule).'
+      );
+    } else if (String.isBlank(asked) && manual != null) {
+      if (result.draft != null) {
+        throw new ShoreshException(
+          result.name +
+            ' has a ' +
+            GeneratedDrafts.NAME +
+            ' and a ' +
+            ManualDrafts.NAME +
+            ' for ' +
+            result.program.Name +
+            '. Say which (schedule): ' +
+            both +
+            '.'
+        );
+      }
+      result.manual = true;
+    }
+    if (result.manual) {
+      result.draft = manual;
+    }
+    return result;
+  }
+
+  /** Refused, in plain words, when the week has no draft on its screen yet. */
+  public static void requireDraft(Week week) {
+    if (week.draft != null) {
+      return;
+    }
+    throw new ShoreshException(
+      week.manual
+        ? week.name +
+          ' hasn\'t been started on ' +
+          ManualDrafts.NAME +
+          ' for ' +
+          week.program.Name +
+          ' yet. Start it there first.'
+        : week.name +
+          ' hasn\'t been built for ' +
+          week.program.Name +
+          ' yet. Build it first (build_week).'
+    );
+  }
+
+  /** The screen a week's draft is on: "Generated Schedule" or "Manual Build". */
+  public static String screenOf(Week week) {
+    return week.manual ? ManualDrafts.NAME : GeneratedDrafts.NAME;
   }
 
   /**

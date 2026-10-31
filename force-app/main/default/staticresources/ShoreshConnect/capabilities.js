@@ -9,7 +9,9 @@
  * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31), and a
  * week's versions as its Versions panel has them (API-1.32 to API-1.35), and unpublishing a
  * week and locking and unlocking its cells as Generated Schedule does (API-1.36, API-1.37), and
- * moving, swapping, taking out, copying and pasting cells as its grid does (API-1.38 to API-1.40). Each one is the
+ * moving, swapping, taking out, copying and pasting cells as its grid does (API-1.38 to API-1.40),
+ * and changing a cell, undoing, versions, publishing and unpublishing on a Manual Build week as
+ * that screen does (API-1.41 to API-1.43). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -88,9 +90,22 @@ const WEEK_FIELDS = {
   }
 };
 
+/**
+ * A week on either screen that holds it (API-1.41): Generated Schedule or Manual Build. Shoresh
+ * never picks one when a week has both.
+ */
+const EITHER_WEEK = {
+  ...WEEK_FIELDS,
+  schedule: {
+    type: "string",
+    description:
+      "Generated Schedule or Manual Build: which of the week's schedules. Leave it out when the week has only one; Shoresh asks when it has both."
+  }
+};
+
 /** What a Lock or Unlock reaches, as Generated Schedule's Lock menu offers it. */
 const LOCK_FIELDS = {
-  ...WEEK_FIELDS,
+  ...EITHER_WEEK,
   day: {
     type: "string",
     description: "The day, like Monday, or its date like 2026-06-29."
@@ -140,15 +155,26 @@ const VERSION_FIELDS = {
  * The person's own change to a Generated Schedule week (POST /v1/<api> with the fields), made by
  * the same save the screen makes, marked as made through an agent, and undoable.
  */
-function change(name, api, description, more = {}, required = []) {
+function change(
+  name,
+  api,
+  description,
+  more = {},
+  required = [],
+  screen = "the Generated Schedule screen",
+  week = WEEK_FIELDS
+) {
   return act(
     name,
     api,
-    `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
-    { ...WEEK_FIELDS, ...more },
+    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    { ...week, ...more },
     required
   );
 }
+
+/** A change made on either screen that holds the week (API-1.41). */
+const ON_EITHER = "that screen";
 
 /** One of the person's own actions (POST /v1/<api> with the fields). */
 function act(name, api, description, properties, required = []) {
@@ -271,7 +297,7 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule: put an activity there, or Open to clear it.",
+    "Change one cell of a week's Generated Schedule or Manual Build: put an activity there, or Open to clear it.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
@@ -293,7 +319,9 @@ const CAPABILITIES = [
         description: "What it should hold: an activity's name, or Open."
       }
     },
-    ["group", "day", "time", "was", "activity"]
+    ["group", "day", "time", "was", "activity"],
+    ON_EITHER,
+    EITHER_WEEK
   ),
   {
     ...change(
@@ -359,7 +387,11 @@ const CAPABILITIES = [
   change(
     "undo_last_agent_change",
     "undo_last_agent_change",
-    "Undo your last change made through an agent in a week's Generated Schedule (a cell change or a build). It is refused if anyone saved the week since."
+    "Undo your last change made through an agent in a week's Generated Schedule or Manual Build (a cell change, an edit of several cells or a build). It is refused if anyone saved the week since.",
+    {},
+    [],
+    ON_EITHER,
+    EITHER_WEEK
   ),
   {
     ...change(
@@ -408,7 +440,7 @@ const CAPABILITIES = [
     method: "GET",
     listsVersions: true,
     description:
-      "List a week's versions as the Versions panel on Generated Schedule lists them, newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
+      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
     about:
       "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
     inputSchema: {
@@ -421,9 +453,9 @@ const CAPABILITIES = [
   act(
     "save_version",
     "save_version",
-    "Save the week as it is now as a version under a name, as the Versions panel's Save version on Generated Schedule does, without asking first: its cells, locks and option are kept. It is done as you, with your own access.",
+    "Save the week as it is now as a version under a name, as the Versions panel's Save version on Generated Schedule or Manual Build does, without asking first: its cells, locks and option are kept. It is done as you, with your own access.",
     {
-      ...WEEK_FIELDS,
+      ...EITHER_WEEK,
       name: {
         type: "string",
         description: "The version's name, like Before the trip."
@@ -434,8 +466,8 @@ const CAPABILITIES = [
   act(
     "restore_version",
     "restore_version",
-    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything beyond your own last change (undo_last_agent_change). It is done as you, with your own access.",
-    VERSION_FIELDS,
+    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule or Manual Build does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything beyond your own last change (undo_last_agent_change). It is done as you, with your own access.",
+    { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
   ),
   act(
@@ -452,25 +484,25 @@ const CAPABILITIES = [
     "delete_version",
     "delete_version",
     "Delete one of a week's versions for good, as the Versions panel's delete does, without asking first; there is no undo. One that was ever the published schedule, or the imported week, is kept and refused. It is done as you, with your own access.",
-    VERSION_FIELDS,
+    { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
   ),
   act(
     "publish_week",
     "publish_week",
-    "Publish a week's Generated Schedule, as its Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
-    WEEK_FIELDS
+    "Publish a week's Generated Schedule or Manual Build, as that screen's Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
+    EITHER_WEEK
   ),
   act(
     "unpublish_week",
     "unpublish_week",
-    "Unpublish a week's Generated Schedule, as its Unpublish does, without asking first: nothing is published for the week then, and the schedule it had is kept as a version marked Published (republish with publish_week). It is done as you, with your own access. If someone else published or unpublished the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person.",
-    WEEK_FIELDS
+    "Unpublish a week's Generated Schedule or Manual Build, as that screen's Unpublish does, without asking first: nothing is published for the week then, and the schedule it had is kept as a version marked Published (republish with publish_week). It is done as you, with your own access. If someone else published or unpublished the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person.",
+    EITHER_WEEK
   ),
   act(
     "lock_cells",
     "lock_cells",
-    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked. It is done as you, with your own access.",
+    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. It is done as you, with your own access.",
     LOCK_FIELDS
   ),
   act(

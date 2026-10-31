@@ -1,7 +1,8 @@
 /**
- * publish: publish a program's Generated Schedule week, as the person, through an agent or the
- * command line (docs/protocol/api.md API-1.22). Web address /v1/publish_week, POST {season, week,
- * program}. It is Generated Schedule's own Publish (GeneratedScheduleController.previewPublish,
+ * publish: publish a program's Generated Schedule or Manual Build week, as the person, through an
+ * agent or the command line (docs/protocol/api.md API-1.22, API-1.41). Web address
+ * /v1/publish_week, POST {season, week, program, schedule}. It is that screen's own Publish
+ * (GeneratedScheduleController or ManualBuildController previewPublish,
  * then publish with what the preview saw), without the question the screen may ask first (Greg,
  * 2026-10-30: an agent publishes without asking). Its answers are the screen's own sentences.
  */
@@ -10,7 +11,8 @@ global with sharing class AgentPublish implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
-    'program'
+    'program',
+    'schedule'
   };
 
   @HttpPost
@@ -19,21 +21,31 @@ global with sharing class AgentPublish implements AgentWeeks.Action {
   }
 
   public String run() {
-    AgentWeeks.Week week = AgentWeeks.weekOf(AgentFields.body(FIELDS));
+    AgentWeeks.Week week = AgentWeeks.eitherOf(AgentFields.body(FIELDS));
     String weekWord = CampLabels.forCamp(
         week.draft.Program__r.Season__r.Camp__c
       )
       .singularInSentence('Week');
     SchedulePublish.Result result;
     try {
-      SchedulePublish.Preview preview = GeneratedScheduleController.previewPublish(
-        week.draft.Id
-      );
-      result = GeneratedScheduleController.publish(
-        week.draft.Id,
-        preview.revisions,
-        preview.published == null ? null : preview.published.id
-      );
+      // Each screen's own Publish (API-1.41): Manual Build's, or Generated Schedule's.
+      SchedulePublish.Preview preview = week.manual
+        ? ManualBuildController.previewPublish(week.draft.Id)
+        : GeneratedScheduleController.previewPublish(week.draft.Id);
+      Id seenPublishedId = preview.published == null
+        ? null
+        : preview.published.id;
+      result = week.manual
+        ? ManualBuildController.publish(
+            week.draft.Id,
+            preview.revisions,
+            seenPublishedId
+          )
+        : GeneratedScheduleController.publish(
+            week.draft.Id,
+            preview.revisions,
+            seenPublishedId
+          );
     } catch (Exception e) {
       throw new ShoreshException(
         week.name + ' was not published. ' + ScreenErrors.words(e)

@@ -25,7 +25,9 @@ global with sharing class AgentVersions {
           new Map<String, Object>{
             'week' => week.name,
             'program' => week.program.Name,
-            'built' => week.draft != null,
+            // A delete is on the panel once the week is built or started on Manual Build (API-1.41).
+            'built' => week.draft != null ||
+            ManualDrafts.find(week.program.Id, week.weekId) != null,
             'versions' => SchedulesController.getVersions(
               week.program.Id,
               week.weekId
