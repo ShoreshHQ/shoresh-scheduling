@@ -120,7 +120,7 @@ function act(name, api, description, properties, required = []) {
  * that can show it, never said to be shown, since only the app knows whether it is.
  */
 const VIEW_ATTACHED =
-  "Shoresh's own view of the week is attached for chat apps that can show it, but it may not be shown: never say the person can see it, and don't draw, chart or redraw the schedule. Give the schedule in words from the rows; if the person can't see the view, those rows are the schedule.";
+  "Shoresh's own view of the week is attached for chat apps that can show it, but it may not be shown: never say the person can see it, and don't draw, chart or redraw the schedule. Give the schedule in words from the rows; if the person can't see the view, those rows are the schedule. When the answer ends with a link that opens this week on Shoresh's Schedules screen in the camp's Salesforce, give the person that link, as it is, so they can open the real view.";
 
 const CAPABILITIES = [
   {

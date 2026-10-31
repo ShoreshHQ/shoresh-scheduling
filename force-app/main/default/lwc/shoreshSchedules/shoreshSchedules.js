@@ -81,6 +81,42 @@ export default class ShoreshSchedules extends LightningElement {
   printPending = false;
   printStyleLoaded = false;
   afterPrint = null;
+  // The version the address asked for (API-1.28), opened instead of the newest once its week loads.
+  versionToOpen = null;
+  _opening;
+  openingDone = false;
+
+  /**
+   * Where the screen starts when the page's address asked for it ({ programId, weekId,
+   * scheduleId }, API-1.28): that program and week, on that version. Once; after that the
+   * pickers lead.
+   */
+  @api
+  get opening() {
+    return this._opening;
+  }
+  set opening(value) {
+    this._opening = value;
+    this.openingDone = false;
+    this.applyOpening();
+  }
+
+  applyOpening() {
+    const asked = this._opening;
+    if (!asked || this.openingDone || !this._setup) {
+      return;
+    }
+    this.openingDone = true;
+    const programs = this.programOptions.map((o) => o.value);
+    const weeks = this.weekOptions.map((o) => o.value);
+    if (programs.includes(asked.programId)) {
+      this.programId = asked.programId;
+    }
+    if (weeks.includes(asked.weekId)) {
+      this.weekId = asked.weekId;
+      this.versionToOpen = asked.scheduleId || null;
+    }
+  }
 
   @api
   get setup() {
@@ -96,6 +132,7 @@ export default class ShoreshSchedules extends LightningElement {
     if (!weeks.includes(this.weekId)) {
       this.weekId = weeks[0];
     }
+    this.applyOpening();
     // The parent hands the setup again after every save; reload only when the choice changed.
     this.loadVersions();
   }
@@ -184,7 +221,10 @@ export default class ShoreshSchedules extends LightningElement {
       this.loadedFor = null;
     } else if (loaded && key === this.loadedFor && this.versions.length) {
       // The newest version opens by itself (Greg, 2026-10-16); Versions switches to another.
-      await this.open(this.versions[0].id);
+      // The address's version, when it is one of this week's (API-1.28), opens instead.
+      const asked = this.versions.find((v) => v.id === this.versionToOpen);
+      this.versionToOpen = null;
+      await this.open(asked ? asked.id : this.versions[0].id);
     }
     if (key === this.loadedFor || this.loadedFor === null) {
       this.loading = false;

@@ -230,4 +230,37 @@ describe("Shoresh in an AI chat", () => {
       '{"records":[]}'
     ]);
   });
+
+  // API-1.28
+  it("aScheduleReadOpensTheWeekOnTheSchedulesScreen: the answer gives the camp's own link to the week on the Schedules screen, and the tool says to give it", async () => {
+    const opens =
+      "https://maple-grove.my.salesforce.com/lightning/n/Shoresh_Camp_Setup?c__preview=schedules&c__camp=a01&c__season=a02&c__program=a03&c__week=a04&c__schedule=a05";
+    const answer = await callTool(
+      "read_activity_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}activity_schedule`]: [200, '{"records":[]}'],
+        [`${V1}week_view`]: [200, JSON.stringify({ programs: [], opens })]
+      })
+    );
+    const texts = answer.result.content.map((c) => c.text);
+    expect(texts[texts.length - 1]).toBe(
+      `Open this week on Shoresh's Schedules screen: ${opens}`
+    );
+    for (const name of ["read_group_schedule", "read_activity_schedule"]) {
+      expect(byName(name).description).toMatch(
+        /give the person that link, as it is, so they can open the real view/
+      );
+    }
+    // No view, no link: nothing is made up in its place.
+    const noView = await callTool(
+      "read_activity_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}activity_schedule`]: [200, '{"records":[]}'],
+        [`${V1}week_view`]: [400, '{"message":"no"}']
+      })
+    );
+    expect(JSON.stringify(noView.result.content)).not.toMatch(/https:/);
+  });
 });

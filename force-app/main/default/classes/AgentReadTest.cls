@@ -206,4 +206,51 @@ private class AgentReadTest {
     Assert.areEqual('Week 1', answer.get('week'));
     Assert.areEqual('Summer 2026', answer.get('season'));
   }
+
+  // API-1.28: a schedule read's answer opens the week on the Schedules screen in the camp's own
+  // Salesforce: the Shoresh page at its published schedule, never a sign-in address.
+  @IsTest
+  static void aScheduleReadOpensTheWeekOnTheSchedulesScreen() {
+    IncomingTestData camp = new IncomingTestData();
+    Schedule__c published = schedule(camp, 'Published', grid(camp));
+    schedule(camp, 'Draft', grid(camp));
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      answer = AgentWeekView.answer(null, 'week 1');
+    }
+    published = [
+      SELECT
+        Id,
+        Program__c,
+        Week__c,
+        Program__r.Season__c,
+        Program__r.Season__r.Camp__c
+      FROM Schedule__c
+      WHERE Id = :published.Id
+    ];
+    String opens = (String) answer.get('opens');
+    Assert.isTrue(
+      opens.startsWith(
+        URL.getOrgDomainUrl().toExternalForm() + '/lightning/n/'
+      ),
+      opens
+    );
+    Assert.isTrue(
+      opens.endsWith(
+        'Shoresh_Camp_Setup?c__preview=schedules&c__camp=' +
+          published.Program__r.Season__r.Camp__c +
+          '&c__season=' +
+          published.Program__r.Season__c +
+          '&c__program=' +
+          published.Program__c +
+          '&c__week=' +
+          published.Week__c +
+          '&c__schedule=' +
+          published.Id
+      ),
+      opens
+    );
+    Assert.isFalse(opens.containsIgnoreCase('frontdoor'), opens);
+    Assert.isFalse(opens.containsIgnoreCase('sid='), opens);
+  }
 }
