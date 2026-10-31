@@ -84,7 +84,7 @@ describe("Shoresh in an AI chat", () => {
   });
 
   // API-1.26
-  it("theWeekIsShownInShoreshsOwnView: a schedule read carries the Schedules screen's view, shown by Shoresh's own page", async () => {
+  it("theWeekIsShownInShoreshsOwnView: a schedule read carries the Schedules screen's view, in Shoresh's own page", async () => {
     const shown = tools().filter((t) => t._meta);
     expect(shown.map((t) => t.name)).toEqual([
       "read_group_schedule",
@@ -94,9 +94,6 @@ describe("Shoresh in an AI chat", () => {
       expect(t._meta).toEqual({
         ui: { resourceUri: "ui://shoresh/week-view.html" }
       });
-      expect(t.description).toMatch(
-        /Shoresh shows the week in the chat itself, in its own view.*don't draw, chart or redraw the schedule/
-      );
     }
     const view = {
       season: "Summer 2026",
@@ -183,6 +180,28 @@ describe("Shoresh in an AI chat", () => {
       )
     ).toMatch(/<c-shoresh-schedule-grid/);
   }, 120000);
+
+  // API-1.26
+  it("theViewIsAttachedNeverSaidToBeShown: a schedule read says its view is attached, never that the person sees it, and the rows are the schedule", () => {
+    for (const name of ["read_group_schedule", "read_activity_schedule"]) {
+      const c = byName(name);
+      for (const text of [c.description, c.about]) {
+        expect(text).toMatch(
+          /view of the week is attached for chat apps that can show it, but it may not be shown: never say the person can see it/
+        );
+        expect(text).toMatch(/don't draw, chart or redraw the schedule/);
+        expect(text).toMatch(
+          /if the person can't see the view, those rows are the schedule/
+        );
+      }
+    }
+    for (const c of CAPABILITIES) {
+      expect([c.name, `${c.description} ${c.about ?? ""}`]).not.toEqual([
+        c.name,
+        expect.stringMatching(/shows the week in the chat|shown above|is shown/)
+      ]);
+    }
+  });
 
   // API-1.27
   it("answersSayWhatTheyAreAndAreNot: each read says what its answer is, and a schedule says it holds no findings", async () => {

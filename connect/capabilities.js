@@ -115,9 +115,12 @@ function act(name, api, description, properties, required = []) {
   };
 }
 
-/** What a schedule read's description says about Shoresh's own view (API-1.26). */
-const SHOWN =
-  "Shoresh shows the week in the chat itself, in its own view, as its Schedules screen does: don't draw, chart or redraw the schedule; answer in words.";
+/**
+ * What a schedule read says about Shoresh's own view (API-1.26): it is attached for a chat app
+ * that can show it, never said to be shown, since only the app knows whether it is.
+ */
+const VIEW_ATTACHED =
+  "Shoresh's own view of the week is attached for chat apps that can show it, but it may not be shown: never say the person can see it, and don't draw, chart or redraw the schedule. Give the schedule in words from the rows; if the person can't see the view, those rows are the schedule.";
 
 const CAPABILITIES = [
   {
@@ -133,15 +136,15 @@ const CAPABILITIES = [
   read(
     "read_group_schedule",
     "group_schedule",
-    `Read a week's published schedule: what each group does, day by day and time by time. ${SHOWN} ${ONLY_THE_SCHEDULE}`,
-    `One row per group per activity, day by day, as published in Shoresh. ${ONLY_THE_SCHEDULE}`,
+    `Read a week's published schedule: what each group does, day by day and time by time. ${VIEW_ATTACHED} ${ONLY_THE_SCHEDULE}`,
+    `One row per group per activity, day by day, as published in Shoresh. ${VIEW_ATTACHED} ${ONLY_THE_SCHEDULE}`,
     { showsWeek: true }
   ),
   read(
     "read_activity_schedule",
     "activity_schedule",
-    `Read a week's published schedule by activity: where each activity runs and which groups have it. ${SHOWN} ${ONLY_THE_SCHEDULE}`,
-    `One row per activity per time it runs, as published in Shoresh. ${ONLY_THE_SCHEDULE}`,
+    `Read a week's published schedule by activity: where each activity runs and which groups have it. ${VIEW_ATTACHED} ${ONLY_THE_SCHEDULE}`,
+    `One row per activity per time it runs, as published in Shoresh. ${VIEW_ATTACHED} ${ONLY_THE_SCHEDULE}`,
     { showsWeek: true }
   ),
   read(

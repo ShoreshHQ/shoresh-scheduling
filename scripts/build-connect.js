@@ -149,7 +149,31 @@ async function viewFile() {
     .replace("/* SHORESH_VIEW */", () => code);
 }
 
+/** What the extension holds besides its manifest, file by file. */
+function contents() {
+  return fs
+    .readdirSync(TO)
+    .filter((f) => f !== "manifest.json")
+    .sort()
+    .map((f) => `${f}\n${fs.readFileSync(path.join(TO, f), "utf8")}`)
+    .join("\n");
+}
+
+/**
+ * A new version whenever what it holds changes, so installing the new .mcpb replaces the copy
+ * Claude desktop has (it keeps an installed extension of the same version).
+ */
+function bumpVersionIfChanged(before) {
+  if (contents() === before) return;
+  const file = path.join(TO, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+  const [major, minor, patch] = manifest.version.split(".").map(Number);
+  manifest.version = `${major}.${minor}.${patch + 1}`;
+  fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 async function build() {
+  const before = contents();
   for (const f of fs.readdirSync(TO)) {
     if (f.endsWith(".js") || f.endsWith(".mjs")) fs.rmSync(path.join(TO, f));
   }
@@ -161,6 +185,7 @@ async function build() {
     fs.writeFileSync(path.join(TO, f), text);
   }
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
+  bumpVersionIfChanged(before);
   console.log(
     `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files and the week view into ${TO}`
   );
