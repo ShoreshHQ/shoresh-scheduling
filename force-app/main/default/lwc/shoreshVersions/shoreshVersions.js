@@ -1,15 +1,5 @@
 import { LightningElement, api } from "lwc";
-
-const ORIGINS = {
-  Manual: "Manual Build",
-  Generated: "Generated Schedule",
-  Copied: "Copied",
-  Imported: "Imported"
-};
-// VersionReason__c's value for a version kept by the app ("Before Restore").
-const AUTO_SAVED = "AutoSaved";
-// Its value for a version kept before a change the person made through an agent (AgentWeeks).
-const THROUGH_AGENT = "ThroughAgent";
+import { canDelete, metaOf } from "./words";
 
 /**
  * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
@@ -167,28 +157,13 @@ export default class ShoreshVersions extends LightningElement {
   get rows() {
     return this._versions.map((version) => {
       const confirming = version.id === this.deletingId;
-      // "Manual · Auto-saved · " then when it was saved. Once the week's published schedule:
-      // "Published", unless the name already says it and when ("Published Oct 18, 2:40 PM").
-      const showSaved = !version.namedByPublish;
-      const meta = [
-        ORIGINS[version.origin] || version.origin,
-        version.reason === AUTO_SAVED ? "Auto-saved" : null,
-        version.reason === THROUGH_AGENT ? "Through an agent" : null,
-        version.publishedAt && showSaved ? "Published" : null
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      const { meta, showSaved } = metaOf(version);
       return {
         ...version,
         meta: showSaved ? `${meta} · ` : meta,
         showSaved,
         // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
-        deletable:
-          this.restore &&
-          !this.noDraft &&
-          !version.publishedAt &&
-          // The imported week is kept as it came in (ImportedWeekGuard).
-          version.origin !== "Imported",
+        deletable: this.restore && !this.noDraft && canDelete(version),
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "delete",

@@ -34,6 +34,8 @@ const CHECKS_ENTRIES = [
   "shoreshWeekEditor/measure.js",
   "shoreshWeekChecks/lines.js"
 ];
+// The module the connector lists a week's versions with (API-1.32): the Versions panel's words.
+const VERSIONS_ENTRY = "shoreshVersions/words.js";
 const SCHEMA = "engine.salesforce-schema.mjs";
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
@@ -42,8 +44,9 @@ function flatName(file) {
 }
 
 /**
- * The build engine and the week's checks as the connector runs them in Node (API-1.19, API-1.30):
- * the screens' own modules (ENGINE_ENTRY, CHECKS_ENTRIES and everything they import), each copied
+ * The build engine, the week's checks and the Versions list's words as the connector runs them in
+ * Node (API-1.19, API-1.30, API-1.32): the screens' own modules (ENGINE_ENTRY, CHECKS_ENTRIES,
+ * VERSIONS_ENTRY and everything they import), each copied
  * unchanged but for where its imports point, flat beside the connector. Node has no
  * c/<component>, @salesforce/schema or @salesforce/apex, so c/x becomes x's own file, a field's
  * name comes from SCHEMA (the package's prefix, once it has one, added as Salesforce adds it on a
@@ -62,7 +65,7 @@ function engineFiles() {
       ""
     ].join("\n")
   };
-  const todo = [ENGINE_ENTRY, ...CHECKS_ENTRIES];
+  const todo = [ENGINE_ENTRY, ...CHECKS_ENTRIES, VERSIONS_ENTRY];
   while (todo.length) {
     const file = todo.pop();
     if (out[flatName(file)] !== undefined) continue;
@@ -220,6 +223,7 @@ module.exports = {
   flatName,
   ENGINE_ENTRY,
   CHECKS_ENTRIES,
+  VERSIONS_ENTRY,
   FROM,
   TO,
   RESOURCE

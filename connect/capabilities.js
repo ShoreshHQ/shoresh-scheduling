@@ -6,7 +6,8 @@
  * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name, the
  * person's own changes to a Generated Schedule week (API-1.11 to API-1.14), building,
  * publishing and finalizing a week as the screens do (API-1.19 to API-1.23), and reading and
- * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31). Each one is the
+ * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31), and a
+ * week's versions as its Versions panel has them (API-1.32 to API-1.35). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -82,6 +83,20 @@ const WEEK_FIELDS = {
     type: "string",
     description:
       "The program's name, like Main. Leave it out when the season has only one."
+  }
+};
+
+/** Which of a week's versions (as list_versions gives them). */
+const VERSION_FIELDS = {
+  ...WEEK_FIELDS,
+  version: {
+    type: "string",
+    description: "The version's name, exactly as list_versions gives it."
+  },
+  saved: {
+    type: "string",
+    description:
+      "When it was saved, exactly as list_versions gives it. Only needed when two versions have the same name."
   }
 };
 
@@ -290,6 +305,59 @@ const CAPABILITIES = [
     ),
     checksWithEngine: true
   },
+  {
+    name: "list_versions",
+    api: "versions",
+    method: "GET",
+    listsVersions: true,
+    description:
+      "List a week's versions as the Versions panel on Generated Schedule lists them, newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
+    about:
+      "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
+    inputSchema: {
+      type: "object",
+      properties: WEEK_FIELDS,
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  act(
+    "save_version",
+    "save_version",
+    "Save the week as it is now as a version under a name, as the Versions panel's Save version on Generated Schedule does, without asking first: its cells, locks and option are kept. It is done as you, with your own access.",
+    {
+      ...WEEK_FIELDS,
+      name: {
+        type: "string",
+        description: "The version's name, like Before the trip."
+      }
+    },
+    ["name"]
+  ),
+  act(
+    "restore_version",
+    "restore_version",
+    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything beyond your own last change (undo_last_agent_change). It is done as you, with your own access.",
+    VERSION_FIELDS,
+    ["version"]
+  ),
+  act(
+    "rename_version",
+    "rename_version",
+    "Give one of a week's versions a new name, as the Versions panel's rename does, without asking first. It is done as you, with your own access.",
+    {
+      ...VERSION_FIELDS,
+      name: { type: "string", description: "The new name." }
+    },
+    ["version", "name"]
+  ),
+  act(
+    "delete_version",
+    "delete_version",
+    "Delete one of a week's versions for good, as the Versions panel's delete does, without asking first; there is no undo. One that was ever the published schedule, or the imported week, is kept and refused. It is done as you, with your own access.",
+    VERSION_FIELDS,
+    ["version"]
+  ),
   act(
     "publish_week",
     "publish_week",
