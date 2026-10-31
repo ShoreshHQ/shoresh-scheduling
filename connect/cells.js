@@ -5,7 +5,7 @@
  * screen opens it (c/shoreshGeneratedSchedule counter.js), and the edit made with the week
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
  * moves, swaps, pastes, refusals and words. Its runs then go to the screen's own save
- * (POST /v1/schedule_cells), marked Through an agent. Only finding the cells by their names is
+ * (POST /v1/move_cell, /v1/take_out_cell or /v1/copy_cells), marked Through an agent. Only finding the cells by their names is
  * done here.
  */
 
@@ -60,7 +60,7 @@ function dayIn(ctx, m, asked, weekName) {
   const d = ctx.week.findIndex(
     (day) =>
       day.dateValue === String(asked || "").trim() ||
-      fold(m.dayNameOf(day.dateValue, null)) === fold(asked)
+      fold(ctx.dayNameOf(day.dateValue)) === fold(asked)
   );
   if (!String(asked || "").trim()) {
     throw new Refused("Say which day (day), like Monday.");
@@ -78,7 +78,7 @@ function dayIn(ctx, m, asked, weekName) {
   if (special) {
     // The screen's words when a tool reaches it (handEdits.js withoutReplaced).
     throw new Refused(
-      `${m.dayNameOf(day.dateValue, null)} is ${special.name}: open it to change that day.`
+      `${ctx.dayNameOf(day.dateValue)} is ${special.name}: open it to change that day.`
     );
   }
   return d;
@@ -162,7 +162,9 @@ function contextOf(m, body) {
     week,
     t,
     nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue, null),
+    // As the screen names a day (shoreshWeekEditor dayNameOf(dateValue, this.planName)): Generated
+    // Schedule gives its editor no planName (only a special day's or event's own schedule has one).
+    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
     isAwayOn,
     isLocked: (slot) => {
       const day = week[slot.day];

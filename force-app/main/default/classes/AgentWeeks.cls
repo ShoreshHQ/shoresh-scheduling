@@ -33,6 +33,8 @@ public with sharing class AgentWeeks {
     public Season__c season;
     public Program__c program;
     public Id weekId;
+    // True when the draft is the week's Manual Build (API-1.41), not its Generated Schedule.
+    public Boolean manual = false;
   }
 
   /**

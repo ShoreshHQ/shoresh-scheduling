@@ -13,6 +13,7 @@ global with sharing class AgentLock implements AgentWeeks.Action {
     'season',
     'week',
     'program',
+    'schedule',
     'day',
     'group',
     'time'
@@ -36,7 +37,8 @@ global with sharing class AgentLock implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.weekOf(body);
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
+    AgentSchedules.refuseLocks(week);
     AgentLockScope scope = new AgentLockScope(action, body, week);
     List<ScheduleDays.DayGrid> days = scope.days;
     GeneratedWeek.LockChange change = scope.change;

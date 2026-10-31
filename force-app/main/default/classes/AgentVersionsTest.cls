@@ -235,14 +235,21 @@ private class AgentVersionsTest {
         .schedule.schedule.id;
       ManualBuildController.saveVersion(manualId, 'By hand');
       Test.startTest();
-      // Before the week is built, the panel has no save or delete.
+      // The week has only a Manual Build, so Generated Schedule is named (API-1.41). Before the
+      // week is built, the panel has no save or delete.
       List<Object> notBuilt = post(
         'delete',
-        new Map<String, Object>{ 'version' => 'By hand' }
+        new Map<String, Object>{
+          'version' => 'By hand',
+          'schedule' => 'Generated Schedule'
+        }
       );
       List<Object> restored = post(
         'restore',
-        new Map<String, Object>{ 'version' => 'By hand' }
+        new Map<String, Object>{
+          'version' => 'By hand',
+          'schedule' => 'Generated Schedule'
+        }
       );
       Test.stopTest();
       Assert.areEqual(200, restored[0], String.valueOf(restored[1]));

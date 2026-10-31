@@ -1226,4 +1226,49 @@ describe("Shoresh for AI tools and the command line", () => {
       }))
     );
   });
+
+  it("manualBuildWeeksSayWhichSchedule: a cell change, undo, versions, publish, unpublish and locks take schedule and send it; the grid's multi-cell edits, build and checks stay Generated Schedule's", async () => {
+    const either = [
+      "change_schedule_cell",
+      "undo_last_agent_change",
+      "save_version",
+      "restore_version",
+      "delete_version",
+      "publish_week",
+      "unpublish_week",
+      "lock_cells",
+      "unlock_cells"
+    ];
+    for (const name of either) {
+      expect(byName(name).inputSchema.properties.schedule).toBeDefined();
+    }
+    for (const name of [
+      "move_cell",
+      "take_out_cell",
+      "copy_cells",
+      "build_week",
+      "read_week_checks",
+      "accept_finding",
+      "list_versions",
+      "rename_version"
+    ]) {
+      expect(byName(name).inputSchema.properties.schedule).toBeUndefined();
+    }
+    const asked = {
+      season: "Summer 2026",
+      week: "Week 1",
+      schedule: "Manual Build"
+    };
+    const seen = [];
+    const done = await call("publish_week", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({ message: "Published Week 1." }),
+        seen
+      )
+    });
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
+    expect(JSON.parse(seen[0].stdin)).toEqual(asked);
+    expect(done).toEqual({ ok: true, status: 200, text: "Published Week 1." });
+  });
 });
