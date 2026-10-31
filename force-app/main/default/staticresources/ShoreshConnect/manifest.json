@@ -10,11 +10,11 @@
   },
   "server": {
     "type": "node",
-    "entry_point": "server/shoresh.js",
+    "entry_point": "shoresh.js",
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/server/shoresh.js",
+        "${__dirname}/shoresh.js",
         "--org",
         "shoresh"
       ],

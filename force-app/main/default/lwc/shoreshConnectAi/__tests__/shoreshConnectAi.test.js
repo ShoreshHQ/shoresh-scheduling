@@ -3,7 +3,7 @@ import ShoreshConnectAi from "c/shoreshConnectAi";
 import { connectPrompt, myDomainHost } from "../prompt";
 
 const HOST = "maple-grove.my.salesforce.com";
-const SERVER = "<your home folder>/.shoresh/connect/server/shoresh.js";
+const SERVER = "<your home folder>/.shoresh/connect/shoresh.js";
 
 const flush = () => Promise.resolve().then(() => Promise.resolve());
 

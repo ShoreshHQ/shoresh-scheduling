@@ -291,7 +291,12 @@ describe("Shoresh for AI tools and the command line", () => {
   // API-1.15
   it("shipsInsideThePackage: the connector is the ShoreshConnect static resource, the same files as connect/, needing only Node", () => {
     const { connectorFiles, FROM, TO } = require("../../scripts/build-connect");
-    expect(fs.readdirSync(TO).sort()).toEqual(connectorFiles());
+    expect(
+      fs
+        .readdirSync(TO)
+        .filter((f) => f !== "manifest.json")
+        .sort()
+    ).toEqual(connectorFiles());
     for (const f of connectorFiles()) {
       expect([f, fs.readFileSync(path.join(TO, f), "utf8")]).toEqual([
         f,
@@ -464,17 +469,17 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.17
-  it("theExtensionIsTheSameConnector: the static resource's manifest.json makes it a Claude desktop extension running server/shoresh.js", () => {
+  it("theExtensionIsTheSameConnector: the static resource's manifest.json makes it a Claude desktop extension running shoresh.js", () => {
     const { RESOURCE } = require("../../scripts/build-connect");
     const manifest = JSON.parse(
       fs.readFileSync(path.join(RESOURCE, "manifest.json"), "utf8")
     );
     expect(manifest.server).toEqual({
       type: "node",
-      entry_point: "server/shoresh.js",
+      entry_point: "shoresh.js",
       mcp_config: {
         command: "node",
-        args: ["${__dirname}/server/shoresh.js", "--org", "shoresh"],
+        args: ["${__dirname}/shoresh.js", "--org", "shoresh"],
         env: {
           SHORESH_SIGN_IN: "browser",
           SHORESH_SALESFORCE: "${user_config.salesforce_address}"
@@ -485,9 +490,11 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(JSON.stringify(manifest)).not.toMatch(
       /token|password|secret|github/i
     );
-    expect(fs.readdirSync(RESOURCE).sort()).toEqual([
-      "manifest.json",
-      "server"
-    ]);
+    // No folders: Claude's extension installer stops at a folder entry in the zip.
+    expect(
+      fs
+        .readdirSync(RESOURCE)
+        .filter((f) => fs.statSync(path.join(RESOURCE, f)).isDirectory())
+    ).toEqual([]);
   });
 });

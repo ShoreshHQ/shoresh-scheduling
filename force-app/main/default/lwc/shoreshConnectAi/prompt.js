@@ -22,7 +22,7 @@ export function myDomainHost(pageHost) {
 }
 
 export function connectPrompt(host) {
-  const server = "<your home folder>/.shoresh/connect/server/shoresh.js";
+  const server = "<your home folder>/.shoresh/connect/shoresh.js";
   return `Please connect me to Shoresh, my camp's scheduling app in Salesforce, so you can read and change our camp's schedules for me. Please do the setup yourself by running the commands below on this computer. I will only click in my web browser when Salesforce asks me to sign in.
 
 My camp's Salesforce: ${host}
