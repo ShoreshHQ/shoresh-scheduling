@@ -296,6 +296,8 @@ export default class ShoreshCampSetup extends LightningElement {
   // that the menu leads, as for any screen).
   preview = null;
   previewOpened = false;
+  // Where Schedules starts when the address asked for a week ({ programId, weekId, scheduleId }).
+  schedulesOpening = null;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
   sameLocationError = null;
   // Merging: the question's buttons wait.
@@ -341,12 +343,34 @@ export default class ShoreshCampSetup extends LightningElement {
    * The page's address. ?c__preview=bringInChoices opens Bring in choices, which is not in the
    * menu (it is reached from Elective seats), so the checks can open it directly (repo ADR 0017
    * choice 19); ?c__preview=electives and ?c__preview=electiveSeats open those screens, as the
-   * menu does since slice E11 (ADR 0018 choice 59). Any other value is ignored.
+   * menu does since slice E11 (ADR 0018 choice 59). ?c__preview=schedules with c__camp,
+   * c__season, c__program, c__week and c__schedule (a chat's link, API-1.28) opens Schedules on
+   * that camp's season, week and version. Any other value is ignored.
    */
   @wire(CurrentPageReference)
   wiredPageReference(reference) {
     const state = (reference && reference.state) || {};
     this.preview = previewScreen(state.c__preview);
+    this.schedulesOpening =
+      this.preview === "schedules" && state.c__week
+        ? {
+            programId: state.c__program,
+            weekId: state.c__week,
+            scheduleId: state.c__schedule
+          }
+        : null;
+    const elsewhere =
+      (state.c__camp && state.c__camp !== this.campId) ||
+      (state.c__season && state.c__season !== this.seasonId);
+    if (elsewhere) {
+      this.campId = state.c__camp || this.campId;
+      this.seasonId = state.c__season || this.seasonId;
+      // Already open on another season: open the one asked for (loadCamp keeps seasonId).
+      if (this.setup) {
+        this.loadCamps(this.campId);
+        return;
+      }
+    }
     this.openPreview();
   }
 

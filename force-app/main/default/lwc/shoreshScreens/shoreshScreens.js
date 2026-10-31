@@ -18,10 +18,16 @@
 // Elective seats opened with slice E11 (decision 44; repo ADR 0018 choice 59).
 const COMING = new Set();
 // A screen the page's address may open (repo ADR 0018 choices 12 and 59: ?c__preview=electives,
-// ?c__preview=electiveSeats; ADR 0017 choice 19: ?c__preview=bringInChoices). The checks reach
-// Bring in choices this way; Electives and Elective seats are in the menu now, so their address
-// opens what the menu does. Nothing else is opened from the address.
-const PREVIEWABLE = new Set(["electives", "bringInChoices", "electiveSeats"]);
+// ?c__preview=electiveSeats; ADR 0017 choice 19: ?c__preview=bringInChoices; API-1.28:
+// ?c__preview=schedules, a chat's link to a published week). The checks reach Bring in choices
+// this way; the others are in the menu, so their address opens what the menu does. Nothing else
+// is opened from the address.
+const PREVIEWABLE = new Set([
+  "electives",
+  "bringInChoices",
+  "electiveSeats",
+  "schedules"
+]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords", "learned"]);
 
@@ -102,7 +108,7 @@ export function canOpen(screen, hasSeason, preview = null) {
   return built && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
-/** The screen a page address may open ("electives", "bringInChoices", "electiveSeats"), else null. */
+/** The screen a page address may open ("electives", "bringInChoices", "electiveSeats", "schedules"), else null. */
 export function previewScreen(name) {
   return PREVIEWABLE.has(name) ? name : null;
 }

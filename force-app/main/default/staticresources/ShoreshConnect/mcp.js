@@ -34,10 +34,20 @@ function tools() {
   }));
 }
 
-/** The answer as MCP gives it: what it is first, then Shoresh's answer, then the view's data. */
+/**
+ * The answer as MCP gives it: what it is first, then Shoresh's answer, then the link that opens
+ * the week on the Schedules screen in the camp's own Salesforce (API-1.28), then the view's data.
+ */
 function toolResult(answer) {
   const content = [{ type: "text", text: answer.text }];
   if (answer.about) content.unshift({ type: "text", text: answer.about });
+  const opens = answer.weekView?.opens;
+  if (typeof opens === "string" && /^https:\/\//.test(opens)) {
+    content.push({
+      type: "text",
+      text: `Open this week on Shoresh's Schedules screen: ${opens}`
+    });
+  }
   return {
     content,
     ...(answer.weekView

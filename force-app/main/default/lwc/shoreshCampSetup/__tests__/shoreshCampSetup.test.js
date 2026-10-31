@@ -23,6 +23,8 @@ import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import getTable from "@salesforce/apex/RootsController.getTable";
+import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -33,6 +35,12 @@ const pageAddress = (state) =>
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
+jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/RootsController.getTable", () => apex(), {
   virtual: true
 });
@@ -4871,5 +4879,47 @@ describe("a group in no division", () => {
         t
       )
     ).toEqual(["1 Program", "1 Division", "2 Bunks"]);
+  });
+
+  // API-1.28
+  it("aScheduleLinkOpensTheWeekOnTheSchedulesScreen: a chat's link opens Schedules on its camp, season, program, week and version", async () => {
+    const OTHER = { Id: "c2", Name: "Camp Cedar" };
+    const CEDAR = { ...SEASON, Id: "s2", Camp__c: "c2" };
+    getCamps.mockResolvedValue(nsRecord([CAMP, OTHER]));
+    getSeasons.mockResolvedValue(nsRecord([CEDAR]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          season: CEDAR,
+          weeks: [
+            { Id: "w1", Name: "Week 1" },
+            { Id: "w2", Name: "Week 2" }
+          ]
+        })
+      )
+    );
+    getVersions.mockResolvedValue([{ id: "v-newer" }, { id: "v-published" }]);
+    openSchedule.mockResolvedValue(null);
+    const element = createElement("c-shoresh-camp-setup", {
+      is: ShoreshCampSetup
+    });
+    document.body.appendChild(element);
+    pageAddress({
+      c__preview: "schedules",
+      c__camp: "c2",
+      c__season: "s2",
+      c__program: "p1",
+      c__week: "w2",
+      c__schedule: "v-published"
+    });
+    await flush();
+    await flush();
+    await flush();
+    expect(getSeasons).toHaveBeenCalledWith({ campId: "c2" });
+    expect(shownScreens(element)).toEqual(["schedules"]);
+    expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w2" });
+    // The published version the link names, not the newest one.
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "v-published" });
+    expect(openSchedule).not.toHaveBeenCalledWith({ scheduleId: "v-newer" });
   });
 });

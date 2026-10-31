@@ -33,13 +33,18 @@ global with sharing class AgentWeekView {
     }
   }
 
-  /** { season, week, labels, programs: [ { program, view } ] }, published programs in order. */
+  /**
+   * { season, week, labels, programs: [ { program, view } ], opens }, published programs in order.
+   * opens (API-1.28): the camp's own Salesforce address of the Schedules screen on this week's
+   * published schedule (its first program's), never a sign-in address.
+   */
   public static Map<String, Object> answer(String seasonName, String weekName) {
     Season__c season = OutgoingRows.seasonCalled(seasonName);
     Week__c week = OutgoingRows.weekIn(season, weekName);
     List<Object> programs = new List<Object>();
+    Schedule__c first;
     for (Schedule__c schedule : [
-      SELECT Id, Program__r.Name
+      SELECT Id, Program__c, Week__c, Program__r.Name
       FROM Schedule__c
       WHERE
         Week__c = :week.Id
@@ -49,6 +54,9 @@ global with sharing class AgentWeekView {
       ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
       LIMIT 50
     ]) {
+      if (first == null) {
+        first = schedule;
+      }
       programs.add(
         new Map<String, Object>{
           'program' => schedule.Program__r.Name,
@@ -61,12 +69,32 @@ global with sharing class AgentWeekView {
         OutgoingPublished.notPublished(season, week.Name)
       );
     }
+    Id campId = campOf(season);
     return new Map<String, Object>{
       'season' => season.Name,
       'week' => week.Name,
-      'labels' => CampLabels.forCamp(campOf(season)).all(),
-      'programs' => programs
+      'labels' => CampLabels.forCamp(campId).all(),
+      'programs' => programs,
+      'opens' => opens(campId, season.Id, first)
     };
+  }
+
+  /** The Shoresh page opened on Schedules at this schedule (?c__preview=schedules, API-1.28). */
+  private static String opens(Id campId, Id seasonId, Schedule__c at) {
+    String ns = ShoreshSchema.namespace();
+    return URL.getOrgDomainUrl().toExternalForm() +
+      '/lightning/n/' +
+      (ns == null ? '' : ns + '__') +
+      'Shoresh_Camp_Setup?c__preview=schedules&c__camp=' +
+      campId +
+      '&c__season=' +
+      seasonId +
+      '&c__program=' +
+      at.Program__c +
+      '&c__week=' +
+      at.Week__c +
+      '&c__schedule=' +
+      at.Id;
   }
 
   private static Id campOf(Season__c season) {
