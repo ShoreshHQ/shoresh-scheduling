@@ -50,23 +50,25 @@ describe("Shoresh for AI tools and the command line", () => {
           .matchAll(/@RestResource\(\s*urlMapping\s*=\s*'\/v1\/([^']*)'/g)
       ])
       .map((m) => m[1])
+      // What Shoresh's view of a week draws: part of a schedule read, not an action (API-1.26).
+      .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(15);
+    expect(CAPABILITIES).toHaveLength(16);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
       ).toMatch(new RegExp(`^/services/apexrest/v1/${c.api}(\\?|$)`));
-      expect(c.method).toBe(c.name.startsWith("read_") ? "GET" : "POST");
+      expect(c.method).toBe(/^(read|list)_/.test(c.name) ? "GET" : "POST");
     }
   });
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives or undo_last_agent_change, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives or undo_last_agent_change, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|undo_last_agent_change|build_week|publish_week|finalize_electives)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -413,7 +415,11 @@ describe("Shoresh for AI tools and the command line", () => {
       method: "initialize",
       params: { protocolVersion: "2099-01-01" }
     });
-    expect(init.result.capabilities).toEqual({ tools: {} });
+    expect(init.result.capabilities).toEqual({
+      tools: {},
+      resources: {},
+      extensions: { "io.modelcontextprotocol/ui": {} }
+    });
     expect(init.result.protocolVersion).toBe("2025-06-18");
     expect(
       await handle({ jsonrpc: "2.0", method: "notifications/initialized" })
@@ -455,7 +461,10 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       fs
         .readdirSync(TO)
-        .filter((f) => f !== "manifest.json" && !f.endsWith(".mjs"))
+        .filter(
+          (f) =>
+            f !== "manifest.json" && !f.endsWith(".mjs") && !f.endsWith(".html")
+        )
         .sort()
     ).toEqual(connectorFiles());
     for (const f of connectorFiles()) {
@@ -498,7 +507,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "api",
       "request",
       "rest",
-      "/services/apexrest/v1/group_schedule?season=&week=",
+      "/services/apexrest/v1/group_schedule",
       "--method",
       "GET",
       "--include",
@@ -714,7 +723,7 @@ describe("Shoresh for AI tools and the command line", () => {
   it("codeModeOneDescription: the MCP tool list and code mode come from the same one description of every action", () => {
     const { ACTIONS } = require("../code");
     expect(ACTIONS).toBe(CAPABILITIES);
-    expect(tools()).toEqual(
+    expect(tools().map(({ _meta, ...tool }) => tool)).toEqual(
       ACTIONS.map(({ name, description, inputSchema }) => ({
         name,
         description,

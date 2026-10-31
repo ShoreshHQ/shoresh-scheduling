@@ -1,0 +1,30 @@
+@import "c/shoreshTokens";
+
+/* The page around the grids: the screen's surface and words, nothing of its own. */
+:host {
+  display: block;
+  background: var(--shoresh-surface-page);
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+.page {
+  padding: 12px;
+}
+.title,
+.program,
+.day-name {
+  margin: 0 0 8px;
+  font-weight: 600;
+  font-size: var(--shoresh-font-size);
+}
+.program,
+.day-name {
+  color: var(--shoresh-text-2);
+}
+.day {
+  margin-bottom: 20px;
+}
+.problem {
+  color: var(--shoresh-text-2);
+}

@@ -1,0 +1,9 @@
+# Gitleaks' own rules, plus one false positive: the LWC compiler's stylesheet scope names
+# (stylesheetToken = "lwc-…") in the compiled week view (ShoreshConnect/week-view.html).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "LWC stylesheet scope names in compiled components"
+regexTarget = "line"
+regexes = ['''stylesheetToken = "lwc-[a-z0-9]+";''']

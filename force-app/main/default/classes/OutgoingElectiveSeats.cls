@@ -127,7 +127,7 @@ global with sharing class OutgoingElectiveSeats implements OutgoingDoors.Capabil
 
   /** The week's finalized runs, or refused when none is final yet. */
   private static Set<Id> finalRuns(Season__c season, String week) {
-    OutgoingRows.requireWeek(week);
+    OutgoingRows.weekIn(season, week);
     Set<Id> finalRuns = new Set<Id>();
     for (ElectiveRun__c run : [
       SELECT Id, Week__r.Name

@@ -87,7 +87,69 @@ function engineFiles() {
   return out;
 }
 
-if (require.main === module) {
+// The week view an AI chat shows (API-1.26): Shoresh's own components compiled for a plain page.
+const VIEW = path.join(FROM, "view");
+const VIEW_FILE = "week-view.html";
+
+/** Every c/<component> by its own file, as Salesforce finds them, and the view's own wrapper. */
+function viewModules() {
+  const modules = fs
+    .readdirSync(LWC)
+    .map((name) =>
+      ["js", "css"]
+        .map((ext) => path.join(LWC, name, `${name}.${ext}`))
+        .find((file) => fs.existsSync(file))
+    )
+    .filter(Boolean)
+    .map((file) => ({
+      name: `c/${path.basename(path.dirname(file))}`,
+      path: file
+    }));
+  modules.push({
+    name: "shoresh/weekView",
+    path: path.join(VIEW, "lwc", "weekView", "weekView.js")
+  });
+  return modules;
+}
+
+/**
+ * The week view as one page (API-1.26): the Schedules screen's own grid component
+ * (c/shoreshScheduleGrid, its template and styles and the design tokens) and view module
+ * (c/shoreshScheduleViews), compiled unchanged by Salesforce's own LWC compiler with the LWC
+ * engine, inside view/week.html, which talks to the chat app (MCP Apps).
+ */
+async function viewFile() {
+  const { rollup } = require("rollup");
+  const lwc = require("@lwc/rollup-plugin").default;
+  const bundle = await rollup({
+    input: path.join(VIEW, "entry.js"),
+    plugins: [
+      lwc({
+        rootDir: path.resolve(__dirname, ".."),
+        modules: viewModules(),
+        disableSyntheticShadowSupport: true
+      }),
+      // The LWC engine as Salesforce runs it for people: its production build.
+      {
+        name: "production",
+        transform: (code) =>
+          code.includes("process.env.NODE_ENV")
+            ? code.replace(/process\.env\.NODE_ENV/g, '"production"')
+            : null
+      }
+    ],
+    onwarn(warning) {
+      throw new Error(`The week view can't be built: ${warning.message}`);
+    }
+  });
+  const { output } = await bundle.generate({ format: "iife", compact: true });
+  const code = output[0].code.replace(/<\/(script)/gi, "<\\/$1");
+  return fs
+    .readFileSync(path.join(VIEW, "week.html"), "utf8")
+    .replace("/* SHORESH_VIEW */", () => code);
+}
+
+async function build() {
   for (const f of fs.readdirSync(TO)) {
     if (f.endsWith(".js") || f.endsWith(".mjs")) fs.rmSync(path.join(TO, f));
   }
@@ -98,14 +160,24 @@ if (require.main === module) {
   for (const [f, text] of Object.entries(engine)) {
     fs.writeFileSync(path.join(TO, f), text);
   }
+  fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
   console.log(
-    `Copied ${connectorFiles().length} files and ${Object.keys(engine).length} engine files into ${TO}`
+    `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files and the week view into ${TO}`
   );
+}
+
+if (require.main === module) {
+  build().catch((e) => {
+    console.error(e.message);
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {
   connectorFiles,
   engineFiles,
+  viewFile,
+  VIEW_FILE,
   flatName,
   ENGINE_ENTRY,
   FROM,

@@ -12,12 +12,13 @@ const { byName } = require("./capabilities");
 function requestFor(capability, input = {}) {
   const path = `/services/apexrest/v1/${capability.api}`;
   if (capability.method === "GET") {
-    const query = new URLSearchParams({
-      season: input.season ?? "",
-      week: input.week ?? ""
-    });
+    const query = new URLSearchParams();
+    for (const field of ["season", "week"]) {
+      if (input[field]) query.set(field, input[field]);
+    }
     if (input.as_csv) query.set("format", "csv");
-    return { path: `${path}?${query}`, method: "GET" };
+    const said = query.toString();
+    return { path: said ? `${path}?${said}` : path, method: "GET" };
   }
   if (capability.sendsFields) {
     const fields = {};
@@ -112,6 +113,8 @@ function readResponse(stdout) {
 /**
  * Do one action as the person. Answers { ok, status, text }: text is Shoresh's own answer, so a
  * conflict or a refusal reaches the agent as the same plain sentence a person sees (API-1.9).
+ * A read's answer also has about (what the answer is and is not, API-1.27), and a schedule
+ * read's has weekView: what Shoresh's own view of the week draws (API-1.26), when it could be read.
  */
 async function call(
   name,
@@ -124,8 +127,22 @@ async function call(
   if (capability.buildsWithEngine) {
     return build(request, org, run, engine);
   }
-  return answer(await ask(request, org, run));
+  const done = answer(await ask(request, org, run));
+  if (!done.ok || !capability.about || input.as_csv) return done;
+  done.about = capability.about;
+  if (capability.showsWeek) {
+    const view = await ask(
+      { ...requestFor(WEEK_VIEW, input), method: "GET" },
+      org,
+      run
+    );
+    if (view.status === 200) done.weekView = JSON.parse(view.body);
+  }
+  return done;
 }
+
+/** What Shoresh's own view of a week draws: the Schedules screen's published week (API-1.26). */
+const WEEK_VIEW = { api: "week_view", method: "GET" };
 
 /** One request as the person; Salesforce's status and Shoresh's answer. */
 async function ask(request, org, run) {

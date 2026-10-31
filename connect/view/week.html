@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shoresh</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #f3f5f2;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="week"></div>
+    <script>
+      /* SHORESH_VIEW */
+    </script>
+    <script>
+      // MCP Apps (io.modelcontextprotocol/ui, 2026-01-26): the chat app hands this page the read's
+      // answer; the page draws it with Shoresh's own grid and says how tall it is.
+      (function () {
+        var parent = window.parent;
+        var send = function (message) {
+          parent.postMessage(Object.assign({ jsonrpc: "2.0" }, message), "*");
+        };
+        var element = null;
+        var sayHeight = function () {
+          send({
+            method: "ui/notifications/size-changed",
+            params: {
+              width: document.documentElement.scrollWidth,
+              height: document.documentElement.scrollHeight
+            }
+          });
+        };
+        var show = function (result) {
+          var week =
+            result &&
+            result.structuredContent &&
+            result.structuredContent.week_view;
+          if (!week) return;
+          if (!element) {
+            element = ShoreshWeekView.create();
+            document.getElementById("week").appendChild(element);
+          }
+          element.week = week;
+          setTimeout(sayHeight, 50);
+        };
+        window.addEventListener("message", function (event) {
+          if (event.source !== parent) return;
+          var message = event.data || {};
+          if (message.id === 1 && message.result) {
+            send({ method: "ui/notifications/initialized", params: {} });
+          } else if (message.method === "ui/notifications/tool-result") {
+            show(message.params);
+          } else if (
+            message.method === "ui/resource-teardown" &&
+            message.id !== undefined
+          ) {
+            send({ id: message.id, result: {} });
+          }
+        });
+        new ResizeObserver(sayHeight).observe(document.body);
+        send({
+          id: 1,
+          method: "ui/initialize",
+          params: {
+            appInfo: { name: "Shoresh", version: "1.0.0" },
+            appCapabilities: {},
+            protocolVersion: "2026-01-26"
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -65,7 +65,7 @@ public with sharing class OutgoingPublished {
 
   /** The week's published schedules the user can see, in program order; refused when none. */
   private static List<Id> publishedIn(Season__c season, String week) {
-    OutgoingRows.requireWeek(week);
+    Week__c named = OutgoingRows.weekIn(season, week);
     List<Id> published = new List<Id>();
     for (Schedule__c schedule : [
       SELECT Id, Week__r.Name
@@ -82,13 +82,45 @@ public with sharing class OutgoingPublished {
       }
     }
     if (published.isEmpty()) {
-      throw new ShoreshException(
-        'Nothing in "' +
-          week.left(80) +
-          '" is published yet. Schedules go out once a week is published.'
-      );
+      throw new ShoreshException(notPublished(season, named.Name));
     }
     return published;
+  }
+
+  /**
+   * "Nothing in Week 1 of Summer 2026 is published yet." naming the season used, and the other
+   * seasons the user can see where a week of that name is published, so no one has to guess
+   * (API-1.25).
+   */
+  public static String notPublished(Season__c season, String week) {
+    Set<String> elsewhere = new Set<String>();
+    for (Schedule__c schedule : [
+      SELECT Week__r.Name, Program__r.Season__r.Name
+      FROM Schedule__c
+      WHERE
+        Status__c = :SchedulePublish.PUBLISHED
+        AND Program__r.Season__c != :season.Id
+      WITH USER_MODE
+      ORDER BY Program__r.Season__r.Name
+      LIMIT 1000
+    ]) {
+      if (OutgoingRows.sameWeek(schedule.Week__r.Name, week)) {
+        elsewhere.add(schedule.Program__r.Season__r.Name);
+      }
+    }
+    return 'Nothing in ' +
+      week +
+      ' of ' +
+      season.Name +
+      ' is published yet.' +
+      (elsewhere.isEmpty()
+        ? ''
+        : ' ' +
+          week +
+          ' is published in: ' +
+          String.join(new List<String>(elsewhere), ', ') +
+          '.') +
+      ' Schedules go out once a week is published.';
   }
 
   private static void addDay(ScheduleDays.DayGrid day, List<Thing> things) {
