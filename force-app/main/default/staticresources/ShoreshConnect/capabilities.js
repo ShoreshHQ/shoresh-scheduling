@@ -7,7 +7,8 @@
  * person's own changes to a Generated Schedule week (API-1.11 to API-1.14), building,
  * publishing and finalizing a week as the screens do (API-1.19 to API-1.23), and reading and
  * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31), and a
- * week's versions as its Versions panel has them (API-1.32 to API-1.35). Each one is the
+ * week's versions as its Versions panel has them (API-1.32 to API-1.35), and unpublishing a
+ * week and locking and unlocking its cells as Generated Schedule does (API-1.36, API-1.37). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -83,6 +84,21 @@ const WEEK_FIELDS = {
     type: "string",
     description:
       "The program's name, like Main. Leave it out when the season has only one."
+  }
+};
+
+/** What a Lock or Unlock reaches, as Generated Schedule's Lock menu offers it. */
+const LOCK_FIELDS = {
+  ...WEEK_FIELDS,
+  day: {
+    type: "string",
+    description: "The day, like Monday, or its date like 2026-06-29."
+  },
+  group: { type: "string", description: "The group's name, like Bunk 3." },
+  time: {
+    type: "string",
+    description:
+      "The time block's name, like Period 2, or its start like 09:00. Only with a day and a group, for one cell."
   }
 };
 
@@ -363,6 +379,24 @@ const CAPABILITIES = [
     "publish_week",
     "Publish a week's Generated Schedule, as its Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
     WEEK_FIELDS
+  ),
+  act(
+    "unpublish_week",
+    "unpublish_week",
+    "Unpublish a week's Generated Schedule, as its Unpublish does, without asking first: nothing is published for the week then, and the schedule it had is kept as a version marked Published (republish with publish_week). It is done as you, with your own access. If someone else published or unpublished the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person.",
+    WEEK_FIELDS
+  ),
+  act(
+    "lock_cells",
+    "lock_cells",
+    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked. It is done as you, with your own access.",
+    LOCK_FIELDS
+  ),
+  act(
+    "unlock_cells",
+    "unlock_cells",
+    "Unlock cells of a week's Generated Schedule, as its Lock menu's Unlock does, without asking first: one cell (day, group and time), a whole day (day), a whole group (group) or a group's day (group and day). Nothing a lock kept changes until the week is built again. It is done as you, with your own access.",
+    LOCK_FIELDS
   ),
   act(
     "finalize_electives",

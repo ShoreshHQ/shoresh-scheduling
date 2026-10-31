@@ -36,8 +36,8 @@ global with sharing class AgentFinalize implements AgentWeeks.Action {
         runId,
         ElectiveSeatsController.openRun(runId).revision
       );
-    } catch (AuraHandledException e) {
-      throw new ShoreshException('Not finalized. ' + e.getMessage());
+    } catch (Exception e) {
+      throw new ShoreshException('Not finalized. ' + ScreenErrors.words(e));
     }
     return 'Finalized ' + electiveSet.Name + ' in ' + week.Name + '.';
   }

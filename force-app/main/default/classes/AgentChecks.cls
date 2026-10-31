@@ -39,7 +39,7 @@ global with sharing class AgentChecks {
           new Map<String, String>{
             'message' => ours
               ? e.getMessage()
-              : ScreenErrors.ofLoading(e).getMessage()
+              : ScreenErrors.loadingWords(e)
           }
         )
       );
