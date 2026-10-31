@@ -7,6 +7,7 @@
 const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
+const { editCells } = require("./cells");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -124,7 +125,8 @@ async function call(
     run = runSf,
     engine = loadEngine,
     checks = loadChecks,
-    versionWords = loadVersionWords
+    versionWords = loadVersionWords,
+    edits = loadEdits
   } = {}
 ) {
   const capability = byName(name);
@@ -135,6 +137,14 @@ async function call(
   }
   if (capability.checksWithEngine) {
     return weekChecks(capability, input, org, run, checks);
+  }
+  if (capability.editsWithEngine) {
+    return editCells(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: edits,
+      namespaceOf
+    });
   }
   if (capability.listsVersions) {
     return listVersions(capability, request, org, run, versionWords);
@@ -398,6 +408,39 @@ async function loadChecks(namespace) {
   } catch {
     throw new Error(
       "This copy of Shoresh's connector can't read a week's checks. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/**
+ * The screens' own modules an edit of several cells is worked out with (API-1.38): the week opened
+ * as Generated Schedule opens it, and the week editor's edits, as scripts/build-connect.js ships them.
+ */
+async function loadEdits(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const modules = await Promise.all(
+      [
+        "shoreshGeneratedWeek.build",
+        "shoreshTerms.shoreshTerms",
+        "shoreshGeneratedSchedule.counter",
+        "shoreshGeneratedSchedule.locks",
+        "shoreshWeekEditor.measure",
+        "shoreshWeekEditor.specials",
+        "shoreshWeekEditor.slotEdits",
+        "shoreshWeekEditor.locks",
+        "shoreshWeekEditor.handEdits"
+      ].map(load)
+    );
+    return Object.assign({}, ...modules);
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't change several cells. Download it again from Settings in Shoresh."
     );
   }
 }
