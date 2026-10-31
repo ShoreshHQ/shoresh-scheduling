@@ -5,6 +5,7 @@
  * code never sees, keeps or shows the sign-in (API-1.8).
  */
 const { execFile } = require("child_process");
+const path = require("path");
 const { byName } = require("./capabilities");
 
 /** The web address and request for one action. */
@@ -51,15 +52,40 @@ function sfArgs(request, org) {
   return args;
 }
 
+/**
+ * Where sf is looked for: the PATH it was given, then the folders the Salesforce installer,
+ * Homebrew and npm use, since a desktop app starts the connector with a short PATH. Node's own
+ * folder too, for an sf installed with npm.
+ */
+function sfPath(env = process.env, node = process.execPath) {
+  const home = env.HOME || env.USERPROFILE || "";
+  return [
+    env.PATH,
+    path.dirname(node),
+    "/usr/local/bin",
+    "/opt/homebrew/bin",
+    home && path.join(home, ".npm-global", "bin"),
+    "/usr/bin",
+    "/bin"
+  ]
+    .filter(Boolean)
+    .join(path.delimiter);
+}
+
 /** Runs sf; answers its standard output. */
-function runSf(args, stdin) {
+function runSf(args, stdin, timeout = 0) {
   return new Promise((resolve) => {
     const child = execFile(
       "sf",
       args,
       {
         maxBuffer: 16 * 1024 * 1024,
-        env: { ...process.env, SF_DISABLE_AUTOUPDATE: "true" }
+        timeout,
+        env: {
+          ...process.env,
+          PATH: sfPath(),
+          SF_DISABLE_AUTOUPDATE: "true"
+        }
       },
       (error, stdout) => resolve(stdout ?? "")
     );
@@ -121,6 +147,29 @@ function answerText(text) {
   return text.trim();
 }
 
+/** Whether sf answers at all (installed and found). */
+async function sfInstalled(run = runSf) {
+  return /@salesforce\/cli/.test(await run(["--version"]));
+}
+
+/**
+ * Opens the person's browser at Salesforce's own sign-in page and waits (up to five minutes)
+ * while they sign in; sf keeps the sign-in under `org`. Nothing it prints is kept (API-1.8).
+ * host: the camp's My Domain host; without one, Salesforce's usual sign-in page.
+ */
+async function signIn(org, host, run = runSf) {
+  const args = ["org", "login", "web", "--alias", org];
+  if (host) {
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.salesforce\.com$/i.test(host)) {
+      throw new Error(
+        "That isn't a Salesforce address, like camp.my.salesforce.com."
+      );
+    }
+    args.push("--instance-url", `https://${host}`);
+  }
+  await run(args, "", 5 * 60 * 1000);
+}
+
 /**
  * The test read the setup ends with (API-1.15): one read as the person, answered as one plain
  * sentence. Reading with no season reaches Shoresh's own checks (signed in, Shoresh there, the
@@ -153,4 +202,13 @@ async function check({ org, run = runSf } = {}) {
   return { ok: false, text: answerText(response.body) };
 }
 
-module.exports = { requestFor, sfArgs, readResponse, call, check };
+module.exports = {
+  requestFor,
+  sfArgs,
+  readResponse,
+  call,
+  check,
+  sfPath,
+  sfInstalled,
+  signIn
+};

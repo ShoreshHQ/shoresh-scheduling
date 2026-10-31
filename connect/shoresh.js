@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * The one command `npx -y github:ShoreshHQ/shoresh-scheduling` runs (API-1.15):
+ * The connector's one entry point, shipped in the package as the ShoreshConnect static resource
+ * (API-1.15): node shoresh.js ...
  *   (nothing but --org)  the MCP server an AI tool starts (mcp.js)
  *   check --org <alias>  the setup's test read: one plain sentence
  *   <action> ...         the command line (cli.js)

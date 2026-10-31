@@ -1,8 +1,23 @@
 <template>
   <template lwc:if={host}>
-    <!-- The rail (the setup screens' grammar): the section's name and its one action -->
+    <!-- The rail (the setup screens' grammar): the section's name and one action per kind of AI app -->
     <div class="rail" data-id="connect-ai">
       <h3 class="rail-title">Connect your AI</h3>
+      <!-- Claude's desktop app: the extension, from this camp's own Salesforce (API-1.17) -->
+      <a
+        class="slds-button slds-button_neutral"
+        href={extensionUrl}
+        download="Shoresh.mcpb"
+        data-id="download-extension"
+      >
+        <lightning-icon
+          icon-name="utility:download"
+          size="x-small"
+          class="slds-button__icon_left"
+        ></lightning-icon>
+        Claude desktop
+      </a>
+      <!-- Claude Code, Cursor or another AI app that runs commands: the prompt (API-1.15) -->
       <lightning-button
         label={copyLabel}
         icon-name={copyIcon}

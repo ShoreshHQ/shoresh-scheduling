@@ -5,8 +5,16 @@
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("../capabilities");
-const { requestFor, sfArgs, readResponse, call, check } = require("../client");
-const { tools, handle, orgFrom } = require("../mcp");
+const {
+  requestFor,
+  sfArgs,
+  readResponse,
+  call,
+  check,
+  sfPath,
+  signIn
+} = require("../client");
+const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
@@ -281,27 +289,32 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });
   // API-1.15
-  it("oneCommand: npx runs Shoresh straight from the repo on GitHub, with nothing else to install or publish", () => {
+  it("shipsInsideThePackage: the connector is the ShoreshConnect static resource, the same files as connect/, needing only Node", () => {
+    const { connectorFiles, FROM, TO } = require("../../scripts/build-connect");
+    expect(fs.readdirSync(TO).sort()).toEqual(connectorFiles());
+    for (const f of connectorFiles()) {
+      expect([f, fs.readFileSync(path.join(TO, f), "utf8")]).toEqual([
+        f,
+        fs.readFileSync(path.join(FROM, f), "utf8")
+      ]);
+      const source = fs.readFileSync(path.join(FROM, f), "utf8");
+      for (const [, needed] of source.matchAll(/require\("([^"]+)"\)/g)) {
+        expect([f, needed]).toEqual([
+          f,
+          ["fs", "path", "child_process"].includes(needed) ||
+          needed.startsWith("./")
+            ? needed
+            : "(only Node's own)"
+        ]);
+      }
+    }
+    expect(fs.readFileSync(path.join(FROM, "shoresh.js"), "utf8")).toMatch(
+      /^#!\/usr\/bin\/env node\n/
+    );
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
     );
-    expect(pkg.private).toBe(true); // never published to a registry
-    expect(pkg.bin).toEqual({ shoresh: "connect/shoresh.js" });
-    expect(pkg.files).toEqual(["connect/*.js"]);
-    expect(pkg.dependencies).toBeUndefined();
-    expect(pkg.scripts.prepare).toBeUndefined(); // so npx never installs the repo's own tools
-    expect(
-      fs.readFileSync(path.resolve(__dirname, "../shoresh.js"), "utf8")
-    ).toMatch(/^#!\/usr\/bin\/env node\n/);
-    for (const f of fs.readdirSync(path.resolve(__dirname, ".."))) {
-      if (!f.endsWith(".js")) continue;
-      const source = fs.readFileSync(path.resolve(__dirname, "..", f), "utf8");
-      for (const [, needed] of source.matchAll(/require\("([^"]+)"\)/g)) {
-        expect(
-          ["fs", "child_process"].includes(needed) || needed.startsWith("./")
-        ).toBe(true);
-      }
-    }
+    expect(pkg.bin).toBeUndefined(); // nothing fetched from GitHub or a registry
   });
 
   // API-1.15
@@ -345,5 +358,136 @@ describe("Shoresh for AI tools and the command line", () => {
     expect((await check({ org: "shoresh", run: async () => "" })).text).toBe(
       "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
     );
+  });
+  // API-1.17
+  it("signsInThroughTheBrowserOnce: the desktop extension opens Salesforce's sign-in page when needed, then tries again", async () => {
+    const message = {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: { name: "read_group_schedule", arguments: {} }
+    };
+    const signedInto = [];
+    let signedIn = false;
+    const callFn = async () => {
+      if (!signedIn)
+        throw new Error('Couldn\'t reach Salesforce as "shoresh".');
+      return { ok: true, text: "the schedule" };
+    };
+    const sf = {
+      installed: async () => true,
+      signIn: async (org, host) => {
+        signedInto.push([org, host]);
+        signedIn = true;
+      }
+    };
+    const answer = await handle(message, {
+      org: "shoresh",
+      browserSignIn: true,
+      host: "maple-grove.my.salesforce.com",
+      callFn,
+      sf
+    });
+    expect(answer.result).toEqual({
+      content: [{ type: "text", text: "the schedule" }],
+      isError: false
+    });
+    expect(signedInto).toEqual([["shoresh", "maple-grove.my.salesforce.com"]]);
+    // Without the extension's setting, no browser opens: the sentence says how to sign in.
+    signedIn = false;
+    const plain = await handle(message, { org: "shoresh", callFn, sf });
+    expect(plain.result.isError).toBe(true);
+    expect(signedInto).toHaveLength(1);
+    // No Salesforce command line: one plain sentence, no browser.
+    const none = await handle(message, {
+      org: "shoresh",
+      browserSignIn: true,
+      callFn,
+      sf: { ...sf, installed: async () => false }
+    });
+    expect(none.result.content[0].text).toBe(
+      "The Salesforce command line isn't installed on this computer. Install it from https://developer.salesforce.com/tools/salesforcecli, then ask again."
+    );
+    expect(signedInto).toHaveLength(1);
+  });
+
+  // API-1.17, API-1.8
+  it("signInIsSalesforcesOwn: sf opens the browser at the camp's address or Salesforce's usual page, and nothing it prints is kept", async () => {
+    const seen = [];
+    const run = async (args, stdin, timeout) => {
+      seen.push({ args, timeout });
+      return "Successfully authorized someone@example.com";
+    };
+    await expect(
+      signIn("shoresh", "maple-grove.my.salesforce.com", run)
+    ).resolves.toBeUndefined();
+    await signIn("shoresh", undefined, run);
+    expect(seen).toEqual([
+      {
+        args: [
+          "org",
+          "login",
+          "web",
+          "--alias",
+          "shoresh",
+          "--instance-url",
+          "https://maple-grove.my.salesforce.com"
+        ],
+        timeout: 300000
+      },
+      { args: ["org", "login", "web", "--alias", "shoresh"], timeout: 300000 }
+    ]);
+    await expect(
+      signIn("shoresh", "evil.example.com --x", run)
+    ).rejects.toThrow(
+      "That isn't a Salesforce address, like camp.my.salesforce.com."
+    );
+    expect(
+      hostFrom(" https://Maple-Grove.lightning.force.com/lightning/n/x ")
+    ).toBe("maple-grove.my.salesforce.com");
+    expect(hostFrom("")).toBeUndefined();
+    // A desktop app's short PATH still finds sf where its installers put it.
+    expect(
+      sfPath(
+        { PATH: "/usr/bin", HOME: "/Users/dana" },
+        "/apps/node/bin/node"
+      ).split(path.delimiter)
+    ).toEqual([
+      "/usr/bin",
+      "/apps/node/bin",
+      "/usr/local/bin",
+      "/opt/homebrew/bin",
+      "/Users/dana/.npm-global/bin",
+      "/usr/bin",
+      "/bin"
+    ]);
+  });
+
+  // API-1.17
+  it("theExtensionIsTheSameConnector: the static resource's manifest.json makes it a Claude desktop extension running server/shoresh.js", () => {
+    const { RESOURCE } = require("../../scripts/build-connect");
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(RESOURCE, "manifest.json"), "utf8")
+    );
+    expect(manifest.server).toEqual({
+      type: "node",
+      entry_point: "server/shoresh.js",
+      mcp_config: {
+        command: "node",
+        args: ["${__dirname}/server/shoresh.js", "--org", "shoresh"],
+        env: {
+          SHORESH_SIGN_IN: "browser",
+          SHORESH_SALESFORCE: "${user_config.salesforce_address}"
+        }
+      }
+    });
+    expect(manifest.user_config.salesforce_address.required).toBe(false);
+    expect(JSON.stringify(manifest)).not.toMatch(
+      /token|password|secret|github/i
+    );
+    expect(fs.readdirSync(RESOURCE).sort()).toEqual([
+      "manifest.json",
+      "server"
+    ]);
   });
 });

@@ -3,8 +3,7 @@ import ShoreshConnectAi from "c/shoreshConnectAi";
 import { connectPrompt, myDomainHost } from "../prompt";
 
 const HOST = "maple-grove.my.salesforce.com";
-const ZIP =
-  "https://github.com/ShoreshHQ/shoresh-scheduling/archive/refs/heads/main.tar.gz";
+const SERVER = "<your home folder>/.shoresh/connect/server/shoresh.js";
 
 const flush = () => Promise.resolve().then(() => Promise.resolve());
 
@@ -49,12 +48,9 @@ describe("Connect your AI", () => {
     expect(links).toEqual([
       "https://nodejs.org,",
       "https://developer.salesforce.com/tools/salesforcecli,",
-      `https://${HOST}`,
-      ZIP,
-      ZIP,
-      ZIP,
-      ZIP
+      `https://${HOST}`
     ]);
+    expect(prompt).not.toMatch(/github|npx|npmjs/i); // the connector comes only from the camp's Salesforce
     expect(prompt).not.toMatch(
       /frontdoor|sid=|access_token|refresh_token|session|password=|pw=|00D[A-Za-z0-9]{12}|![A-Za-z0-9._]{20,}/i
     );
@@ -67,8 +63,10 @@ describe("Connect your AI", () => {
       "node --version",
       "sf --version",
       `sf org login web --instance-url https://${HOST} --alias shoresh`,
-      `npx -y ${ZIP} check --org shoresh`,
-      `claude mcp add --scope user shoresh -- npx -y ${ZIP} --org shoresh`,
+      "StaticResource WHERE Name = 'ShoreshConnect'",
+      "--target-org shoresh --stream-to-file <your home folder>/.shoresh/connect.zip",
+      `node ${SERVER} check --org shoresh`,
+      `claude mcp add --scope user shoresh -- node ${SERVER} --org shoresh`,
       "Finish with one plain sentence"
     ].map((s) => prompt.indexOf(s));
     expect(steps.every((i) => i > 0)).toBe(true);
@@ -81,7 +79,16 @@ describe("Connect your AI", () => {
     expect(prompt).toContain("permission set");
     expect(prompt).toContain("can't run Shoresh's connector yet");
     expect(prompt).toContain("Never use sudo");
-    expect(prompt).not.toMatch(/resource|payload|entity|endpoint|sobject/i);
+    // What the AI says to the person is plain: no jargon in any "tell me" sentence.
+    const toldThePerson = [...prompt.matchAll(/[Tt]ell me: "([^"]+)"/g)].map(
+      (m) => m[1]
+    );
+    expect(toldThePerson.length).toBeGreaterThanOrEqual(6);
+    for (const said of toldThePerson) {
+      expect(said).not.toMatch(
+        /resource|payload|entity|endpoint|sobject|MCP|query|alias/i
+      );
+    }
   });
 
   // API-1.15
@@ -91,7 +98,7 @@ describe("Connect your AI", () => {
     const element = mount("maple-grove.lightning.force.com");
     await flush();
     const button = element.shadowRoot.querySelector('[data-id="copy-prompt"]');
-    expect(button.label).toBe("Copy");
+    expect(button.label).toBe("Claude Code or Cursor");
     expect(element.shadowRoot.querySelector(".rail-title").textContent).toBe(
       "Connect your AI"
     );
@@ -118,6 +125,19 @@ describe("Connect your AI", () => {
     expect(
       element.shadowRoot.querySelector('[role="status"]').textContent
     ).toBe("Couldn't copy. The prompt is below.");
+    await expect(element).toBeAccessible();
+  });
+
+  // API-1.17
+  it("offersTheExtensionFromTheCampsSalesforce: Claude desktop downloads Shoresh.mcpb, the package's own static resource", async () => {
+    const element = mount("maple-grove.lightning.force.com");
+    await flush();
+    const link = element.shadowRoot.querySelector(
+      '[data-id="download-extension"]'
+    );
+    expect(link.getAttribute("download")).toBe("Shoresh.mcpb");
+    expect(link.getAttribute("href")).toMatch(/ShoreshConnect$/);
+    expect(link.textContent.trim()).toBe("Claude desktop");
     await expect(element).toBeAccessible();
   });
 

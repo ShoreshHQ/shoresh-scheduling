@@ -3,12 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "description": "Shoresh day-camp scheduling for Salesforce",
-  "bin": {
-    "shoresh": "connect/shoresh.js"
-  },
-  "files": [
-    "connect/*.js"
-  ],
   "scripts": {
     "lint": "eslint \"force-app/**/lwc/**/*.js\"",
     "test": "npm run test:unit",

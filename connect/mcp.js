@@ -5,7 +5,7 @@
  * Which Salesforce sign-in: --org <alias>, or SHORESH_ORG, or the sf CLI's default.
  */
 const { CAPABILITIES } = require("./capabilities");
-const { call } = require("./client");
+const { call, sfInstalled, signIn } = require("./client");
 
 /** The tool list an AI tool sees. */
 function tools() {
@@ -16,8 +16,36 @@ function tools() {
   }));
 }
 
+const NO_SF =
+  "The Salesforce command line isn't installed on this computer. Install it from https://developer.salesforce.com/tools/salesforcecli, then ask again.";
+
+/**
+ * One action; when the person isn't signed in and `browserSignIn` is on (the Claude desktop
+ * extension), their browser opens at Salesforce's sign-in page once and the action is tried again.
+ */
+async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
+  try {
+    return await callFn(name, input, { org });
+  } catch (e) {
+    if (!/^Couldn't reach Salesforce/.test(e.message)) throw e;
+    if (!(await sf.installed())) throw new Error(NO_SF);
+    if (!browserSignIn) throw e;
+    await sf.signIn(org, host);
+    return callFn(name, input, { org });
+  }
+}
+
 /** One JSON-RPC message in, its answer out (null for a notification). */
-async function handle(message, { org, callFn = call } = {}) {
+async function handle(
+  message,
+  {
+    org,
+    browserSignIn = false,
+    host,
+    callFn = call,
+    sf = { installed: () => sfInstalled(), signIn }
+  } = {}
+) {
   const { id, method, params } = message;
   if (id === undefined || id === null) return null;
   const reply = (result) => ({ jsonrpc: "2.0", id, result });
@@ -34,8 +62,12 @@ async function handle(message, { org, callFn = call } = {}) {
       return reply({ tools: tools() });
     case "tools/call":
       try {
-        const answer = await callFn(params?.name, params?.arguments ?? {}, {
-          org
+        const answer = await act(params?.name, params?.arguments ?? {}, {
+          org,
+          browserSignIn,
+          host,
+          callFn,
+          sf
         });
         return reply({
           content: [{ type: "text", text: answer.text }],
@@ -61,8 +93,28 @@ function orgFrom(argv, env) {
   return i >= 0 ? argv[i + 1] : env.SHORESH_ORG;
 }
 
-/** Answers MCP messages on standard input, one a line, as the person signed in to `org`. */
-function serve(org) {
+/** The My Domain host from what the person typed: a web address, or a Lightning page's. */
+function hostFrom(typed) {
+  const host = String(typed || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/[/?#].*$/, "")
+    .toLowerCase()
+    .replace(/\.lightning\.force\.com$/, ".my.salesforce.com");
+  return host || undefined;
+}
+
+/**
+ * Answers MCP messages on standard input, one a line, as the person signed in to `org`.
+ * SHORESH_SIGN_IN=browser (the Claude desktop extension) signs in through the browser when
+ * needed, at SHORESH_SALESFORCE (a My Domain host) if given.
+ */
+function serve(org, env = process.env) {
+  const options = {
+    org,
+    browserSignIn: env.SHORESH_SIGN_IN === "browser",
+    host: hostFrom(env.SHORESH_SALESFORCE)
+  };
   let buffered = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (chunk) => {
@@ -81,7 +133,7 @@ function serve(org) {
         );
         continue;
       }
-      handle(message, { org }).then((answer) => {
+      handle(message, options).then((answer) => {
         if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
       });
     }
@@ -90,4 +142,4 @@ function serve(org) {
 
 if (require.main === module) serve(orgFrom(process.argv, process.env));
 
-module.exports = { tools, handle, orgFrom, serve };
+module.exports = { tools, handle, orgFrom, serve, hostFrom };
