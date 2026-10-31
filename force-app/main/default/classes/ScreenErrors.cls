@@ -26,12 +26,24 @@ public with sharing class ScreenErrors {
     return of(messageFor(e, COULD_NOT_SAVE));
   }
 
+  /** The words of(e) would carry, for a web address's answer (it can't make one). */
+  public static String words(Exception e) {
+    return messageFor(e, COULD_NOT_SAVE);
+  }
+
   /** For a screen that could not load what it shows. */
   public static AuraHandledException ofLoading(Exception e) {
     return of(messageFor(e, COULD_NOT_OPEN));
   }
 
+  /**
+   * Outside a screen (a web address: an AI or the command line, docs/protocol/api.md API-1.9)
+   * Salesforce allows no AuraHandledException, so the same words come as Shoresh's own refusal.
+   */
   public static AuraHandledException of(String message) {
+    if (Request.getCurrent().getQuiddity() == Quiddity.REST) {
+      throw new ShoreshException(message);
+    }
     AuraHandledException e = new AuraHandledException(message);
     e.setMessage(message);
     return e;

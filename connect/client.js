@@ -119,7 +119,13 @@ function readResponse(stdout) {
 async function call(
   name,
   input,
-  { org, run = runSf, engine = loadEngine, checks = loadChecks } = {}
+  {
+    org,
+    run = runSf,
+    engine = loadEngine,
+    checks = loadChecks,
+    versionWords = loadVersionWords
+  } = {}
 ) {
   const capability = byName(name);
   if (!capability) throw new Error(`Shoresh has no action called "${name}".`);
@@ -129,6 +135,9 @@ async function call(
   }
   if (capability.checksWithEngine) {
     return weekChecks(capability, input, org, run, checks);
+  }
+  if (capability.listsVersions) {
+    return listVersions(capability, request, org, run, versionWords);
   }
   const done = answer(await ask(request, org, run));
   if (!done.ok || !capability.about || input.as_csv) return done;
@@ -285,6 +294,65 @@ function counterOf(m, body) {
     planName: null
   });
   return { measure, accepted: m.readKept(body.accepted) };
+}
+
+/**
+ * list_versions (API-1.32): the Versions panel's own list (GET /v1/versions), each version said
+ * in the panel's words (its own module, shipped beside this file) and when it was saved as the
+ * panel shows it ("Oct 31, 3:40 PM", on this computer's clock), with saved as Shoresh keeps it, to
+ * name one of two that share a name.
+ */
+async function listVersions(capability, request, org, run, versionWords) {
+  const read = await ask(request, org, run);
+  if (read.status !== 200) return answer(read);
+  const body = JSON.parse(read.body);
+  const { metaOf, canDelete } = await versionWords();
+  const when = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+  const versions = body.versions.map((version) => {
+    const { meta, showSaved } = metaOf(version);
+    return {
+      name: version.name,
+      says: showSaved
+        ? `${meta} · ${when.format(new Date(version.savedAt))}`
+        : meta,
+      saved: version.savedAt,
+      can_delete: body.built && canDelete(version)
+    };
+  });
+  return {
+    ok: true,
+    status: 200,
+    about: capability.about,
+    text: JSON.stringify(
+      {
+        week: body.week,
+        program: body.program,
+        versions: versions.length ? versions : "None yet"
+      },
+      null,
+      2
+    )
+  };
+}
+
+/** The Versions panel's words module, as scripts/build-connect.js ships it. */
+async function loadVersionWords() {
+  try {
+    return await import(
+      require("url").pathToFileURL(
+        path.join(__dirname, "engine.shoreshVersions.words.mjs")
+      ).href
+    );
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't list a week's versions. Download it again from Settings in Shoresh."
+    );
+  }
 }
 
 /** The package's prefix on the field names Salesforce sent ("shoresh" in shoresh__Week__c), or "". */

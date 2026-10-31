@@ -320,7 +320,7 @@ describe("c-shoresh-versions", () => {
       );
     });
 
-    // API-1.12
+    // API-1.12, API-1.32
     it("a version kept before a change made through an agent says so", async () => {
       const element = await renderRestore([
         {

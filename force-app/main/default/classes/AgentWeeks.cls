@@ -236,7 +236,7 @@ public with sharing class AgentWeeks {
       Database.rollback(before);
       Boolean ours = e instanceof ShoreshException;
       status = ours ? 400 : 500;
-      message = ours ? e.getMessage() : ScreenErrors.of(e).getMessage();
+      message = ours ? e.getMessage() : ScreenErrors.words(e);
     }
     response.statusCode = status;
     response.responseBody = Blob.valueOf(

@@ -18,6 +18,9 @@ const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
+// The Versions panel's own words module, as the connector runs it (shipped by build-connect.js).
+const versionWords = async () =>
+  require("../../force-app/main/default/lwc/shoreshVersions/words.js");
 
 /** A stand-in for `sf api request rest --include`: answers status and body, and records each call. */
 const sfAnswering =
@@ -54,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(18);
+    expect(CAPABILITIES).toHaveLength(23);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -65,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives, accept_finding or undo_last_agent_change, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives|accept_finding)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -447,11 +450,145 @@ describe("Shoresh for AI tools and the command line", () => {
     });
   });
 
+  // API-1.32
+  it("versionsInThePanelsWords: list_versions reads the panel's own list and says each version in the panel's words", async () => {
+    const seen = [];
+    const rows = [
+      {
+        id: "a1",
+        name: "Before Placed Soccer",
+        origin: "Generated",
+        reason: "ThroughAgent",
+        savedAt: "2026-10-31T19:40:00.000Z",
+        publishedAt: null,
+        namedByPublish: false
+      },
+      {
+        id: "a2",
+        name: "Published Oct 18, 2:40 PM",
+        origin: "Generated",
+        reason: null,
+        savedAt: "2026-10-18T18:40:00.000Z",
+        publishedAt: "2026-10-18T18:40:00.000Z",
+        namedByPublish: true
+      }
+    ];
+    const asked = { season: "Summer 2026", week: "Week 1" };
+    const got = await call("list_versions", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({
+          week: "Week 1",
+          program: "Main",
+          built: true,
+          versions: rows
+        }),
+        seen
+      ),
+      versionWords
+    });
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/versions?season=Summer+2026&week=Week+1",
+      "--method",
+      "GET"
+    ]);
+    const when = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(rows[0].savedAt));
+    expect(got.about).toBe(byName("list_versions").about);
+    expect(JSON.parse(got.text)).toEqual({
+      week: "Week 1",
+      program: "Main",
+      versions: [
+        {
+          name: "Before Placed Soccer",
+          says: `Generated Schedule · Through an agent · ${when}`,
+          saved: "2026-10-31T19:40:00.000Z",
+          can_delete: true
+        },
+        {
+          name: "Published Oct 18, 2:40 PM",
+          says: "Generated Schedule",
+          saved: "2026-10-18T18:40:00.000Z",
+          can_delete: false
+        }
+      ]
+    });
+    const none = await call("list_versions", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({
+          week: "Week 1",
+          program: "Main",
+          built: false,
+          versions: []
+        })
+      ),
+      versionWords
+    });
+    expect(JSON.parse(none.text).versions).toBe("None yet");
+  });
+
+  // API-1.33, API-1.34
+  it("versionActionsAreThePanels: save, restore, rename and delete send the person's fields to their own addresses and pass on Shoresh's sentence", async () => {
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const cases = [
+      ["save_version", { name: "Before the trip" }, "Saved Before the trip."],
+      [
+        "restore_version",
+        { version: "Before Restore", saved: "2026-10-31T19:40:00.000Z" },
+        "Restored Before Restore."
+      ],
+      [
+        "rename_version",
+        { version: "Before the trip", name: "Trip week" },
+        "Renamed Before the trip to Trip week."
+      ],
+      ["delete_version", { version: "Trip week" }, "Deleted Trip week."]
+    ];
+    for (const [name, more, message] of cases) {
+      const seen = [];
+      const done = await call(
+        name,
+        { ...asked, ...more },
+        { run: sfAnswering(200, JSON.stringify({ message }), seen) }
+      );
+      expect(seen[0].args.slice(3, 6)).toEqual([
+        `/services/apexrest/v1/${name}`,
+        "--method",
+        "POST"
+      ]);
+      expect(JSON.parse(seen[0].stdin)).toEqual({ ...asked, ...more });
+      expect(done).toEqual({ ok: true, status: 200, text: message });
+    }
+    const refused = await call(
+      "delete_version",
+      { ...asked, version: "Published Oct 18, 2:40 PM" },
+      {
+        run: sfAnswering(
+          400,
+          JSON.stringify({
+            message:
+              "Published Oct 18, 2:40 PM wasn't deleted. \"Published Oct 18, 2:40 PM\" was the published schedule, which is kept as history, so it can't be deleted."
+          })
+        )
+      }
+    );
+    expect(refused.ok).toBe(false);
+    expect(refused.text).toMatch(
+      /^Published Oct 18, 2:40 PM wasn't deleted\. /
+    );
+  });
+
   it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {
     const {
       engineFiles,
       ENGINE_ENTRY,
       CHECKS_ENTRIES,
+      VERSIONS_ENTRY,
       flatName,
       TO
     } = require("../../scripts/build-connect");
@@ -477,7 +614,7 @@ describe("Shoresh for AI tools and the command line", () => {
         .replace(/ from "[^"]+";$/gm, "")
         .replace(/^import "[^"]+";$/gm, "");
     // The build module, and the counter's own modules a week's checks are read with (API-1.30).
-    for (const entry of [ENGINE_ENTRY, ...CHECKS_ENTRIES]) {
+    for (const entry of [ENGINE_ENTRY, ...CHECKS_ENTRIES, VERSIONS_ENTRY]) {
       const source = fs.readFileSync(path.join(lwc, entry), "utf8");
       expect(unpointed(engine[flatName(entry)])).toBe(unpointed(source));
     }
