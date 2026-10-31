@@ -7,6 +7,8 @@
  */
 @IsTest
 private class AgentChecksTest {
+  private static final String NOT_BUILT = 'Week 1 hasn\'t been built for Main yet, so it has no checks. Build it first (build_week).';
+
   private static String season() {
     return [
       SELECT Name
@@ -60,8 +62,6 @@ private class AgentChecksTest {
       answer.get('message')
     };
   }
-
-  private static final String NOT_BUILT = 'Week 1 hasn\'t been built for Main yet, so it has no checks. Build it first (build_week).';
 
   // API-1.30
   @IsTest
