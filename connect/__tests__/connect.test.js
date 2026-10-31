@@ -4,7 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { CAPABILITIES } = require("../capabilities");
+const { CAPABILITIES, byName } = require("../capabilities");
 const {
   requestFor,
   sfArgs,
@@ -54,7 +54,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(16);
+    expect(CAPABILITIES).toHaveLength(18);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -65,10 +65,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives or undo_last_agent_change, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, finalize_electives, accept_finding or undo_last_agent_change, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|publish_week|finalize_electives|accept_finding)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -335,10 +335,123 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.20
-  it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module, unchanged but for where its imports point", () => {
+  // API-1.30, API-1.31
+  it("checksHereAcceptThere: read_week_checks reads what the counter reads and answers the counter's words; accept_finding keeps only a line it lists, through /v1/accept_finding", async () => {
+    const read = {
+      inputs: { shoresh__Thing__c: 1 },
+      setup: {},
+      labels: [],
+      setup_changes: { dots: [{ key: "d|g|b", words: "Setup changed" }] },
+      accepted: "[]"
+    };
+    const swim = {
+      said: "Swim: 2 of 4",
+      key: "under|a1|2|4",
+      same: "under|a1",
+      size: 2
+    };
+    const overlap = {
+      text: "Bunk 1 · Monday · Period 2: clash",
+      key: "x",
+      acceptable: false
+    };
+    const handed = [];
+    const checks = async (namespace) => ({
+      buildTerms: () => "terms",
+      loadedOf: (inputs) => ({ input: inputs }),
+      counterWeek: () => ({
+        draft: { schedule: { days: ["day"] } },
+        checked: "checked"
+      }),
+      weekMeasure: (given) => {
+        handed.push({ namespace, given });
+        return "measure";
+      },
+      readKept: (text) => JSON.parse(text),
+      checkLines: () => ({
+        open: [],
+        under: [swim],
+        over: [],
+        look: [overlap],
+        notes: []
+      }),
+      counterWords: () => ({ placed: "3 of 4 placed" }),
+      acceptable: (l) => l.acceptable !== false,
+      wordsOf: (l) => l.said || l.text,
+      saidOf: () => "Swim, 2 of 4",
+      keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size })
+    });
+    const seen = [];
+    const answers = (more) => {
+      const queue = [`HTTP/1.1 200\n\n${JSON.stringify(read)}`, ...more];
+      return async (args, stdin) => {
+        seen.push({ args, stdin });
+        return queue.shift();
+      };
+    };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const got = await call("read_week_checks", asked, {
+      run: answers([]),
+      checks
+    });
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main",
+      "--method",
+      "GET"
+    ]);
+    expect(got).toEqual({
+      ok: true,
+      status: 200,
+      about: byName("read_week_checks").about,
+      text: JSON.stringify({ placed: "3 of 4 placed" }, null, 2)
+    });
+    expect(handed[0].namespace).toBe("shoresh");
+    expect([...handed[0].given.setupDots]).toEqual([
+      ["d|g|b", "Setup changed"]
+    ]);
+
+    // A line it doesn't list, or one with nothing to accept, is refused naming those it can.
+    seen.length = 0;
+    for (const finding of ["Art: 1 of 3", overlap.text]) {
+      const refused = await call(
+        "accept_finding",
+        { ...asked, finding },
+        { run: answers([]), checks }
+      );
+      expect(refused.ok).toBe(false);
+      expect(refused.text).toMatch(
+        /The lines that can be accepted: Swim: 2 of 4\.$/
+      );
+    }
+    expect(seen.every((s) => s.args.includes("GET"))).toBe(true);
+
+    seen.length = 0;
+    const accepted = await call(
+      "accept_finding",
+      { ...asked, finding: " swim:  2 of 4" },
+      { run: answers(['HTTP/1.1 200\n\n{"message":"Accepted."}']), checks }
+    );
+    expect(accepted).toEqual({
+      ok: true,
+      status: 200,
+      text: "Accepted: Swim, 2 of 4."
+    });
+    expect(seen[1].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/accept_finding",
+      "--method",
+      "POST"
+    ]);
+    expect(JSON.parse(seen[1].stdin)).toEqual({
+      ...asked,
+      line: { k: "under|a1|2|4", s: "under|a1", n: 2 }
+    });
+  });
+
+  it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {
     const {
       engineFiles,
       ENGINE_ENTRY,
+      CHECKS_ENTRIES,
       flatName,
       TO
     } = require("../../scripts/build-connect");
@@ -363,8 +476,11 @@ describe("Shoresh for AI tools and the command line", () => {
         )
         .replace(/ from "[^"]+";$/gm, "")
         .replace(/^import "[^"]+";$/gm, "");
-    const source = fs.readFileSync(path.join(lwc, ENGINE_ENTRY), "utf8");
-    expect(unpointed(engine[flatName(ENGINE_ENTRY)])).toBe(unpointed(source));
+    // The build module, and the counter's own modules a week's checks are read with (API-1.30).
+    for (const entry of [ENGINE_ENTRY, ...CHECKS_ENTRIES]) {
+      const source = fs.readFileSync(path.join(lwc, entry), "utf8");
+      expect(unpointed(engine[flatName(entry)])).toBe(unpointed(source));
+    }
   });
 
   // API-1.22, API-1.23

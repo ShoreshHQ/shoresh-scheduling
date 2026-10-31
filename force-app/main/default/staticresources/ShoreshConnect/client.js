@@ -119,13 +119,16 @@ function readResponse(stdout) {
 async function call(
   name,
   input,
-  { org, run = runSf, engine = loadEngine } = {}
+  { org, run = runSf, engine = loadEngine, checks = loadChecks } = {}
 ) {
   const capability = byName(name);
   if (!capability) throw new Error(`Shoresh has no action called "${name}".`);
   const request = requestFor(capability, input);
   if (capability.buildsWithEngine) {
     return build(request, org, run, engine);
+  }
+  if (capability.checksWithEngine) {
+    return weekChecks(capability, input, org, run, checks);
   }
   const done = answer(await ask(request, org, run));
   if (!done.ok || !capability.about || input.as_csv) return done;
@@ -194,6 +197,96 @@ async function build(request, org, run, engine) {
   );
 }
 
+/**
+ * read_week_checks and accept_finding (API-1.30, API-1.31): reads what Generated Schedule reads
+ * to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
+ * modules (shipped beside this file), and answers it in the counter's words; to accept, finds
+ * the line named among those shown and keeps it through the counter's own save
+ * (POST /v1/accept_finding).
+ */
+async function weekChecks(capability, input, org, run, checks) {
+  const fields = {};
+  for (const field of ["season", "week", "program"]) {
+    if (input[field] !== undefined) fields[field] = input[field];
+  }
+  const read = await ask(
+    {
+      path: `/services/apexrest/v1/week_checks?${new URLSearchParams(fields)}`,
+      method: "GET"
+    },
+    org,
+    run
+  );
+  if (read.status !== 200) return answer(read);
+  const body = JSON.parse(read.body);
+  const m = await checks(namespaceOf(body));
+  const { measure, accepted } = counterOf(m, body);
+  if (capability.name === "read_week_checks") {
+    return {
+      ok: true,
+      status: 200,
+      about: capability.about,
+      text: JSON.stringify(m.counterWords(measure, accepted), null, 2)
+    };
+  }
+  const lines = m.checkLines(measure, accepted);
+  const shown = [
+    ...lines.open,
+    ...lines.under,
+    ...lines.over,
+    ...lines.look,
+    ...lines.notes
+  ].filter(m.acceptable);
+  const fold = (text) =>
+    String(text || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  const line = shown.find((l) => fold(m.wordsOf(l)) === fold(input.finding));
+  if (!line) {
+    return {
+      ok: false,
+      status: 400,
+      text: `There is no line "${String(input.finding || "").slice(0, 120)}" to accept in this week's checks. The lines that can be accepted: ${shown.map(m.wordsOf).join("; ") || "none"}.`
+    };
+  }
+  const kept = answer(
+    await ask(
+      {
+        path: `/services/apexrest/v1/${capability.api}`,
+        method: "POST",
+        body: JSON.stringify({ ...fields, line: JSON.parse(m.keptLine(line)) })
+      },
+      org,
+      run
+    )
+  );
+  return kept.ok ? { ...kept, text: `Accepted: ${m.saidOf(line)}.` } : kept;
+}
+
+/**
+ * The counter's measure and the lines accepted with the week, as Generated Schedule hands them
+ * on: the page checks the week (counter.js), the week editor measures it (measure.js) and the
+ * counter reads the week's accepts (lines.js).
+ */
+function counterOf(m, body) {
+  const terms = m.buildTerms(body.labels);
+  const loaded = m.loadedOf(body.inputs || {});
+  const { draft, checked } = m.counterWeek(loaded, {
+    terms,
+    setup: body.setup
+  });
+  const dots = (body.setup_changes && body.setup_changes.dots) || [];
+  const measure = m.weekMeasure({
+    checked,
+    draft,
+    weekDays: draft.schedule.days,
+    setupDots: new Map(dots.map((dot) => [dot.key, dot.words])),
+    planName: null
+  });
+  return { measure, accepted: m.readKept(body.accepted) };
+}
+
 /** The package's prefix on the field names Salesforce sent ("shoresh" in shoresh__Week__c), or "". */
 function namespaceOf(read) {
   const found = /"([A-Za-z0-9]+)__[A-Za-z0-9_]+__c"\s*:/.exec(
@@ -211,6 +304,32 @@ async function loadEngine(namespace) {
   } catch {
     throw new Error(
       "This copy of Shoresh's connector has no build engine. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/** The screens' own modules the counter is worked out with, as scripts/build-connect.js ships them. */
+async function loadChecks(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const modules = await Promise.all(
+      [
+        "shoreshGeneratedWeek.build",
+        "shoreshTerms.shoreshTerms",
+        "shoreshGeneratedSchedule.counter",
+        "shoreshWeekEditor.measure",
+        "shoreshWeekChecks.lines"
+      ].map(load)
+    );
+    return Object.assign({}, ...modules);
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't read a week's checks. Download it again from Settings in Shoresh."
     );
   }
 }

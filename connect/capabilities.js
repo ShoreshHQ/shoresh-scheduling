@@ -4,8 +4,9 @@
  *
  * The things an AI tool or the command line can do today: the API's capabilities
  * (docs/protocol/api.md, API-1.1, API-1.2), each under a plain-English action name, the
- * person's own changes to a Generated Schedule week (API-1.11 to API-1.14), and building,
- * publishing and finalizing a week as the screens do (API-1.19 to API-1.23). Each one is the
+ * person's own changes to a Generated Schedule week (API-1.11 to API-1.14), building,
+ * publishing and finalizing a week as the screens do (API-1.19 to API-1.23), and reading and
+ * accepting a week's checks as Generated Schedule's counter does (API-1.30, API-1.31). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -22,7 +23,7 @@ const WEEK = {
 
 /** What every schedule answer is, and is not (API-1.27). */
 const ONLY_THE_SCHEDULE =
-  "The answer is the schedule exactly as published in Shoresh, and nothing else: it holds no findings, checks or problems. Shoresh's own checks of a week (goals, limits, things to look at) are on its Generated Schedule screen and are not part of this answer, so anything this answer doesn't say, Shoresh didn't say.";
+  "The answer is the schedule exactly as published in Shoresh, and nothing else: it holds no findings, checks or problems. Shoresh's own checks of a week (goals, limits, still needed, things to look at) are not part of this answer (read them with read_week_checks), so anything this answer doesn't say, Shoresh didn't say.";
 
 /**
  * Reading a published schedule out (GET /v1/<api>?season=&week=). about: one sentence, put
@@ -255,6 +256,39 @@ const CAPABILITIES = [
       "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: it keeps the week and changes only what setup now forces). Locked cells and hand edits are kept. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
     ),
     buildsWithEngine: true
+  },
+  {
+    name: "read_week_checks",
+    api: "week_checks",
+    method: "GET",
+    checksWithEngine: true,
+    description:
+      "Read a week's checks exactly as the counter on Generated Schedule shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
+    about:
+      "Generated Schedule's counter for this week, exactly as the screen shows it now. These are all of Shoresh's checks of the week: anything not listed, Shoresh didn't find.",
+    inputSchema: {
+      type: "object",
+      properties: WEEK_FIELDS,
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  {
+    ...act(
+      "accept_finding",
+      "accept_finding",
+      "Accept one line of a week's checks, as its Accept button on Generated Schedule does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; there is no undo through an agent (a Rebuild clears every accept).",
+      {
+        ...WEEK_FIELDS,
+        finding: {
+          type: "string",
+          description:
+            "The line to accept, exactly as read_week_checks gives it, like Soccer: 2 of 4."
+        }
+      },
+      ["finding"]
+    ),
+    checksWithEngine: true
   },
   act(
     "publish_week",

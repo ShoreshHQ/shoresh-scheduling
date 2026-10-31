@@ -9,6 +9,9 @@ import {
 } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
+import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
+import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
+import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { MODE, generateWeek } from "c/shoreshEngine";
@@ -33,6 +36,21 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/GeneratedScheduleController.saveWeek",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/WeekAccepts.accepted",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/WeekAccepts.accept",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SetupMatchController.getSetupChanges",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -396,6 +414,169 @@ describe("c-shoresh-generated-schedule", () => {
     expect(node.stderr).toBe("");
     expect(JSON.parse(node.stdout)).toEqual(
       JSON.parse(JSON.stringify(buildForAgent(read)))
+    );
+  });
+
+  // API-1.30, API-1.31
+  it("anAgentReadsTheCountersOwnChecks: the shipped connector lists what the counter shows, accepted lines left out, and keeps an Accept as the counter keeps it", async () => {
+    const { spawnSync } = require("child_process");
+    const path = require("path");
+    const resource = path.resolve(
+      __dirname,
+      "../../../staticresources/ShoreshConnect"
+    );
+    // Swim owed three times in two days (under its goal); Hike may not run at all (over).
+    const inputs = {
+      ...camp({
+        ...SMALL,
+        scheduleId: SCHEDULE,
+        activities: [
+          { name: "Swim", min: 3, max: 3, atOnce: 2 },
+          { name: "Hike", min: 0, max: 0, atOnce: 2 },
+          { name: "Art", min: 3, max: 3, atOnce: 2 }
+        ]
+      }),
+      programId: PROGRAM,
+      weekId: WEEK
+    };
+    // Built once (the week opened is the one saved), so it has things to look at.
+    const first = await render({ ...inputs, scheduleId: null });
+    await generate(first);
+    const days = sent().days;
+    inputs.days = inputs.days.map((day, i) => ({
+      ...day,
+      items: days[i].items.map((it) => ({ ...it, gone: false })),
+      rows: days[i].rows
+    }));
+    document.body.removeChild(first);
+    const measured = await render(inputs);
+    const m = checks(measured).measure;
+    expect(m.under.rows.length).toBeGreaterThan(1);
+    expect(m.look.length).toBeGreaterThan(0);
+    // Someone accepted Swim's under row; setup changed one placement since.
+    const swim = m.under.rows[0];
+    const accepted = JSON.stringify([
+      {
+        k: `under|${swim.id}|${swim.placed}|${swim.goal}`,
+        s: `under|${swim.id}`,
+        n: swim.goal - swim.placed
+      }
+    ]);
+    const placed = m.look[0];
+    const setupChanges = {
+      changes: [{ key: "x" }],
+      dots: [
+        {
+          key: `${placed.dateValue}|${placed.groupId}|${placed.blockId}`,
+          words: "Setup changed: its place"
+        }
+      ]
+    };
+    readAccepted.mockResolvedValue(accepted);
+    getSetupChanges.mockResolvedValue(setupChanges);
+    getInputs.mockResolvedValue(inputs);
+    document.body.removeChild(measured);
+    const element = await render(inputs);
+    await flush();
+    await openCounter(element);
+    const root = checks(element).shadowRoot;
+    const words = (selector) =>
+      [...root.querySelectorAll(selector)].map((n) =>
+        (n.getAttribute("aria-label") || n.textContent)
+          .replace(/\s+/g, " ")
+          .trim()
+      );
+    const screen = {
+      open: words('[data-id="open"] + ul .look-row'),
+      under: words('[data-id="under"] + ul button[data-activity]'),
+      over: words('[data-id="over"] + ul button[data-activity]'),
+      look: words('[data-id="look"] + ul .look-row'),
+      notes: words('[data-id="notes"] + ul .note')
+    };
+    expect(screen.look.join()).toContain("Setup changed: its place");
+    expect(screen.under).not.toContain(
+      `${swim.name}: ${swim.placed} of ${swim.goal}`
+    );
+
+    const seen = [];
+    const read = JSON.stringify({
+      inputs,
+      setup: SETUP,
+      labels: LABELS,
+      setup_changes: setupChanges,
+      accepted
+    });
+    // The shipped connector, run in Node as Claude runs it, answered by "Salesforce" here.
+    const connector = (name, input) => {
+      const answers = [
+        `HTTP/1.1 200\n\n${read}`,
+        'HTTP/1.1 200\n\n{"message":"Accepted."}'
+      ];
+      const node = spawnSync(
+        "node",
+        [
+          "-e",
+          `const { call } = require(${JSON.stringify(path.join(resource, "client.js"))});
+           let text = ""; process.stdin.on("data", (c) => (text += c)).on("end", () => {
+             const { name, input, answers } = JSON.parse(text);
+             const sent = [];
+             const run = async (args, stdin) => { sent.push({ args, stdin }); return answers.shift(); };
+             call(name, input, { run }).then((a) => process.stdout.write(JSON.stringify({ answer: a, sent })));
+           });`
+        ],
+        {
+          input: JSON.stringify({ name, input, answers }),
+          encoding: "utf8",
+          maxBuffer: 1 << 26
+        }
+      );
+      expect(node.stderr).toBe("");
+      const out = JSON.parse(node.stdout);
+      seen.push(...out.sent);
+      return out.answer;
+    };
+    const read1 = connector("read_week_checks", { week: "Week 1" });
+    expect(read1.ok).toBe(true);
+    const agent = JSON.parse(read1.text);
+    const lines = (list) => (list || []).map((l) => l.line);
+    expect({
+      open: lines(agent.open),
+      under: lines(agent.under && agent.under.lines),
+      over: lines(agent.over && agent.over.lines),
+      look: lines(agent.to_look_at),
+      notes: lines(agent.notes)
+    }).toEqual(screen);
+    // The counter's number and its words, drawn side by side.
+    expect(agent.placed.replace(" ", "")).toBe(counterText(element));
+    expect(agent.still_needed).toBe(
+      Number(root.querySelector('[data-id="still-needed"] b').textContent)
+    );
+    expect(agent.under.count).toBe(
+      Number(root.querySelector('[data-id="under"] b').textContent)
+    );
+
+    // Accept: the line the counter would keep, through the counter's own save.
+    const next = checks(element).shadowRoot.querySelector(
+      '[data-id="under"] + ul .accept'
+    );
+    const said = screen.under[0];
+    const answer = connector("accept_finding", {
+      week: "Week 1",
+      finding: said
+    });
+    next.click();
+    await flush();
+    expect(answer.ok).toBe(true);
+    expect(answer.text).toBe(
+      checks(element).shadowRoot.querySelector('[data-id="accept-said"]')
+        .textContent
+    );
+    const posted = JSON.parse(seen[seen.length - 1].stdin);
+    expect(seen[seen.length - 1].args[3]).toBe(
+      "/services/apexrest/v1/accept_finding"
+    );
+    expect(JSON.stringify(posted.line)).toBe(
+      keepAccepted.mock.calls[0][0].line
     );
   });
 

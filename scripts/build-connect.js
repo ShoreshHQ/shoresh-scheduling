@@ -25,8 +25,15 @@ function connectorFiles() {
 }
 
 const LWC = path.resolve(__dirname, "../force-app/main/default/lwc");
-// The one module the connector builds a week with (API-1.19): Generated Schedule's own.
+// The module the connector builds a week with (API-1.19): Generated Schedule's own.
 const ENGINE_ENTRY = "shoreshGeneratedWeek/build.js";
+// The modules the connector reads a week's checks with (API-1.30): the ones Generated Schedule's
+// counter is worked out with, from the week checked to the lines its dropdown lists.
+const CHECKS_ENTRIES = [
+  "shoreshGeneratedSchedule/counter.js",
+  "shoreshWeekEditor/measure.js",
+  "shoreshWeekChecks/lines.js"
+];
 const SCHEMA = "engine.salesforce-schema.mjs";
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
@@ -35,11 +42,13 @@ function flatName(file) {
 }
 
 /**
- * The build engine as the connector runs it in Node (API-1.19): Generated Schedule's own modules
- * (ENGINE_ENTRY and everything it imports), each copied unchanged but for where its imports
- * point, flat beside the connector. Node has no c/<component> or @salesforce/schema, so c/x
- * becomes x's own file, and a field's name comes from SCHEMA (the package's prefix, once it has
- * one, added as Salesforce adds it on a screen). Answers { name: text }.
+ * The build engine and the week's checks as the connector runs them in Node (API-1.19, API-1.30):
+ * the screens' own modules (ENGINE_ENTRY, CHECKS_ENTRIES and everything they import), each copied
+ * unchanged but for where its imports point, flat beside the connector. Node has no
+ * c/<component>, @salesforce/schema or @salesforce/apex, so c/x becomes x's own file, a field's
+ * name comes from SCHEMA (the package's prefix, once it has one, added as Salesforce adds it on a
+ * screen), and a screen's server call, never made here, refuses if it ever were. Answers
+ * { name: text }.
  */
 function engineFiles() {
   const out = {
@@ -53,7 +62,7 @@ function engineFiles() {
       ""
     ].join("\n")
   };
-  const todo = [ENGINE_ENTRY];
+  const todo = [ENGINE_ENTRY, ...CHECKS_ENTRIES];
   while (todo.length) {
     const file = todo.pop();
     if (out[flatName(file)] !== undefined) continue;
@@ -67,6 +76,11 @@ function engineFiles() {
           schema = true;
           return `const ${name} = schemaName(${JSON.stringify(field)});`;
         }
+      )
+      .replace(
+        /^import (\w+) from "@salesforce\/apex\/([^"]+)";$/gm,
+        (all, name, method) =>
+          `const ${name} = () => Promise.reject(new Error(${JSON.stringify(`${method} runs only on Shoresh's screens.`)}));`
       )
       .replace(
         /^((?:import|export)\b[^\n]* from |\} from |import )"([^"]+)";$/gm,
@@ -205,6 +219,7 @@ module.exports = {
   VIEW_FILE,
   flatName,
   ENGINE_ENTRY,
+  CHECKS_ENTRIES,
   FROM,
   TO,
   RESOURCE
