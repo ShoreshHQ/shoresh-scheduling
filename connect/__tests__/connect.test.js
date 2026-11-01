@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(61);
+    expect(CAPABILITIES).toHaveLength(65);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day or place_special_event, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event or set_up_noted_item, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -991,6 +991,57 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(unknown.done.text).toBe(
       'There is no special event called "Carnival" in this season. The special events: Color War.'
     );
+  });
+
+  // API-1.76, API-1.77, API-1.78, API-1.79
+  it("specialSchedulesWithWhatWasSeen: a special schedule is read by name in the web address, a cell sends what it held, a frame change sends the seen and says ask first before taking cells away, and Set it up sends the noted name", async () => {
+    expect(
+      byName("change_special_schedule_frame").inputSchema.required
+    ).toEqual(["special", "action", "seen"]);
+    expect(byName("change_special_schedule_frame").description).toMatch(
+      /ask the person first/
+    );
+    expect(
+      byName("change_special_schedule_cell").inputSchema.required
+    ).toContain("was");
+    const read = [];
+    await call(
+      "read_special_schedule",
+      { season: "Summer 2026", special: "Color War" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Plan" }), read) }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/read_special_schedule?season=Summer+2026&special=Color+War"
+    );
+    const asked = {
+      change_special_schedule_cell: {
+        special: "Color War",
+        column: "Blue",
+        time: "Relays",
+        was: "Open",
+        activity: "Swim"
+      },
+      change_special_schedule_frame: {
+        special: "Color War",
+        action: "add_time_block",
+        start_time: "1:00 PM",
+        end_time: "2:00 PM",
+        seen: "4"
+      },
+      set_up_noted_item: {
+        week: "Week 1",
+        kind: "special event",
+        name: "Carnival"
+      }
+    };
+    for (const [name, body] of Object.entries(asked)) {
+      const sent = [];
+      await call(name, body, {
+        run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+      });
+      expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
+      expect(JSON.parse(sent[0].stdin)).toEqual(body);
+    }
   });
 
   // API-1.66, API-1.67, API-1.68
