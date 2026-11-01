@@ -34,19 +34,7 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
-    SlotEdits.Edit edit = new SlotEdits.Edit();
-    edit.runs = AgentCells.runsOf(body.get('runs'));
-    edit.rain = rainOf(body.get('rain'));
-    if (
-      String.isBlank(change) ||
-      edit.rain == null ||
-      edit.rain.size() != 1 ||
-      !(body.get('seen') instanceof List<Object>)
-    ) {
-      throw new ShoreshException(
-        'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
-      );
-    }
+    SlotEdits.Edit edit = editOf(body, change);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     if (!sameMarks(days, edit.rain[0].day, (List<Object>) body.get('seen'))) {
       throw changedSince(change);
@@ -72,6 +60,27 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     return change +
       (String.isBlank(said) ? '.' : ': ' + said + '.') +
       ' undo_last_agent_change switches it back.';
+  }
+
+  /** The switch as the connector sends it: its runs and one day's marks; refused otherwise. */
+  private static SlotEdits.Edit editOf(
+    Map<String, Object> body,
+    String change
+  ) {
+    SlotEdits.Edit edit = new SlotEdits.Edit();
+    edit.runs = AgentCells.runsOf(body.get('runs'));
+    edit.rain = rainOf(body.get('rain'));
+    if (
+      String.isBlank(change) ||
+      edit.rain == null ||
+      edit.rain.size() != 1 ||
+      !(body.get('seen') instanceof List<Object>)
+    ) {
+      throw new ShoreshException(
+        'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
+      );
+    }
+    return edit;
   }
 
   /** The day's marks now are the ones the agent read (compared as RainMarks writes them). */
