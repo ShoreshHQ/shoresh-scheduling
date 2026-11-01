@@ -232,6 +232,12 @@ function setup(name, api, description, more = {}, required = []) {
   };
 }
 
+/** An activity, by its name. */
+const ACTIVITY_NAME = {
+  type: "string",
+  description: "The activity's name now, exactly as Shoresh has it."
+};
+
 /** The fields change_setup_record and add_setup_record set (API-1.49, API-1.50). */
 const SETUP_FIELDS = {
   type: "object",
@@ -660,7 +666,72 @@ const CAPABILITIES = [
     "add_setup_record",
     "Add one setup record to a season, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words.",
     { fields: SETUP_FIELDS }
-  )
+  ),
+  {
+    // A read: GET, its fields in the web address (API-1.51).
+    name: "read_activity_rules",
+    api: "read_activity_rules",
+    method: "GET",
+    description:
+      "Read an activity's details as its details panel on Camp Setup shows them: who_can_do_it (divisions and groups by name, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Read it right before changing them, and send those values back unchanged as seen.",
+    about:
+      "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
+    queryFields: ["season", "name"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON, name: ACTIVITY_NAME },
+      required: ["name"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_activity_rules",
+    api: "change_activity_rules",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, groups from the same division only, early in the week, and notes. Read them first with read_activity_rules and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        name: ACTIVITY_NAME,
+        fields: {
+          type: "object",
+          description:
+            "The details to set, by name, each as text: who_can_do_it (division and group names with commas between, or everyone: that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes."
+        },
+        seen: {
+          type: "object",
+          description:
+            "What each detail you change held when you read it with read_activity_rules, by the same names, as that read said it. Shoresh compares it with what the activity holds now: if someone changed it since, nothing is saved and the person should be told."
+        }
+      },
+      required: ["name", "fields", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "fill_in_weeks",
+    api: "fill_in_weeks",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused (add more with add_setup_record). It is done as you, with your own access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        seen: {
+          type: "object",
+          description:
+            'The season\'s start_date and end_date as list_seasons gave them, like {"start_date": "2026-06-29", "end_date": "2026-08-07"}.'
+        }
+      },
+      required: ["seen"],
+      additionalProperties: false
+    }
+  }
 ];
 
 // What comes back is camp data (names people typed), never instructions to follow.

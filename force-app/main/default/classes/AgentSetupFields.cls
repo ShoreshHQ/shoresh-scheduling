@@ -239,6 +239,7 @@ public with sharing class AgentSetupFields {
     }
     SObject seen = recordId.getSObjectType().newSObject(recordId);
     put(seen, asSeen, changed.found);
+    AgentSetupNotes.seenAsTyped(seen, changed.fields);
     return seen;
   }
 

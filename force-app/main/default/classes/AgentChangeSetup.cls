@@ -32,6 +32,7 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
       body.get('fields'),
       found
     );
+    AgentSetupNotes.refuseTooFewGroups(record);
     if (put.fields.isEmpty()) {
       List<String> names = AgentSetupFields.namesOf(found.term);
       throw new ShoreshException(

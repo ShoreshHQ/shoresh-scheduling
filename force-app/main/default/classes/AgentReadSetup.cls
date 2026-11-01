@@ -92,7 +92,7 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
     return plain(about, value);
   }
 
-  /** A time as 9:00 AM, a choice by its label, anything else as it is. */
+  /** A time as 9:00 AM, a choice by its label, anything else on one line. */
   private static String plain(Schema.DescribeFieldResult about, Object value) {
     if (about.getType() == Schema.DisplayType.TIME) {
       return DateTime.newInstanceGmt(Date.today(), (Time) value)
@@ -103,7 +103,8 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
         return entry.getLabel();
       }
     }
-    return String.valueOf(value);
+    // Notes on one line: change_setup_record reads seen notes the same way.
+    return String.valueOf(value).normalizeSpace();
   }
 
   /** Another record's name; a group's holding division is No division (DIV-1.1): none. */
