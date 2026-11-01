@@ -91,16 +91,69 @@ private class AgentImportsTest {
     return [SELECT COUNT() FROM Activity__c WHERE Name = :name];
   }
 
+  /** The review's seen, read as the connector reads it; asserts the read stays well in bounds. */
+  private static String seenNow() {
+    Integer before = Limits.getQueries();
+    List<Object> first = read(false);
+    Integer reading = Limits.getQueries() - before;
+    Map<String, Object> answer = (Map<String, Object>) first[1];
+    Assert.areEqual(200, first[0]);
+    Assert.isTrue(
+      reading < 60,
+      'one read stays well under the limit: ' + reading
+    );
+    Assert.isNotNull(answer.get('setup'));
+    Assert.isNotNull(answer.get('answers'));
+    return (String) answer.get('seen');
+  }
+
   // API-1.80
   @IsTest
   static void aListIsTheScreensSaveOnlyWhileTheSetupIsAsRead() {
     System.runAs(ShoreshTestData.scheduler()) {
       Id seasonId = camp();
+      String seen = seenNow();
       Test.startTest();
-      List<Object> first = read(false);
-      Integer queries = Limits.getQueries();
-      Map<String, Object> answer = (Map<String, Object>) first[1];
-      String seen = (String) answer.get('seen');
+      List<Object> saved = ask(
+        new AgentImportList(),
+        'POST',
+        save(seen, activities(seasonId, 'Canoeing'))
+      );
+      Integer saving = Limits.getQueries();
+      Test.stopTest();
+      // The setup changed with that save: the review read before it is refused.
+      List<Object> stale = ask(
+        new AgentImportList(),
+        'POST',
+        save(seen, activities(seasonId, 'Kayaking'))
+      );
+      Assert.areEqual(16, seen.length());
+      Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
+      Assert.isTrue(
+        saving < 60,
+        'a save stays well under the limit: ' + saving
+      );
+      Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
+        (String) saved[1]
+      );
+      Assert.areEqual(
+        1,
+        ((Map<String, Object>) result.get('added')).get('Activity')
+      );
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(1, named('Canoeing'));
+      Assert.areEqual(0, named('Kayaking'));
+    }
+  }
+
+  // API-1.80
+  @IsTest
+  static void aListIsRefusedWithoutTheSetupAsReadOrForAnotherSeason() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id seasonId = camp();
+      String seen = seenNow();
+      Id other = ShoreshTestData.camp('Other (made up)').Id;
+      Test.startTest();
       List<Object> wrong = ask(
         new AgentImportList(),
         'POST',
@@ -114,48 +167,13 @@ private class AgentImportsTest {
       List<Object> elsewhere = ask(
         new AgentImportList(),
         'POST',
-        save(
-          seen,
-          activities(ShoreshTestData.camp('Other (made up)').Id, 'Canoeing')
-        )
-      );
-      Integer before = Limits.getQueries();
-      List<Object> saved = ask(
-        new AgentImportList(),
-        'POST',
-        save(seen, activities(seasonId, 'Canoeing'))
-      );
-      Integer saving = Limits.getQueries() - before;
-      // The setup changed with that save: the review read before it is refused.
-      List<Object> stale = ask(
-        new AgentImportList(),
-        'POST',
-        save(seen, activities(seasonId, 'Kayaking'))
+        save(seen, activities(other, 'Canoeing'))
       );
       Test.stopTest();
-      Assert.areEqual(200, first[0]);
-      Assert.isTrue(queries < 100, 'one read stays well under the limit');
-      Assert.isTrue(
-        saving < 60,
-        'a save stays well under the limit: ' + saving
-      );
-      Assert.isNotNull(answer.get('setup'));
-      Assert.isNotNull(answer.get('answers'));
-      Assert.areEqual(16, seen.length());
       Assert.areEqual(409, wrong[0], String.valueOf(wrong[1]));
       Assert.areEqual(400, none[0]);
       Assert.areEqual(400, elsewhere[0]);
-      Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
-      Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
-        (String) saved[1]
-      );
-      Assert.areEqual(
-        1,
-        ((Map<String, Object>) result.get('added')).get('Activity')
-      );
-      Assert.areEqual(409, stale[0]);
-      Assert.areEqual(1, named('Canoeing'));
-      Assert.areEqual(0, named('Kayaking'));
+      Assert.areEqual(0, named('Canoeing'));
     }
   }
 
@@ -180,9 +198,9 @@ private class AgentImportsTest {
           new List<Object>()
         )
       );
-      Test.startTest();
       List<Object> first = read(true);
       String seen = (String) ((Map<String, Object>) first[1]).get('seen');
+      Test.startTest();
       List<Object> saved = ask(
         new AgentImportWorksheet(),
         'POST',
