@@ -26,13 +26,20 @@ async function assignElectiveSeats(
   for (const field of ["season", "week", "elective_set"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
+  if (!String(input.seen ?? "").trim()) {
+    return {
+      ok: false,
+      status: 400,
+      text: "Send the seen read_elective_seats_now gave, so a change someone made since isn't replaced unseen."
+    };
+  }
   const path = `/services/apexrest/v1/${capability.api}`;
   const readRun = () =>
     ask({ path: `${path}?${new URLSearchParams(fields)}`, method: "GET" });
   const read = await readRun();
   if (read.status !== 200) return answer(read);
   const body = JSON.parse(read.body);
-  if (String(body.view.revision) !== String(input.seen).trim()) {
+  if (Number(body.view.revision) !== Number(String(input.seen).trim())) {
     return changedSince();
   }
   const m = await load(namespaceOf(body));

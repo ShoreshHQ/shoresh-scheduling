@@ -66,13 +66,19 @@ public with sharing class AgentElectives {
   }
 
   /**
-   * The run held (locked) until the request ends, and refused (409) unless it is still as the
-   * agent read it: the screen's own check (ElectiveRunState.refuseUnlessCurrent).
+   * The run locked until the request ends (as the screen's saves lock it, ElectiveRunState.held),
+   * and refused (409) unless it is still as the agent read it: its revision, the screen's own
+   * check (refuseUnlessCurrent), read alone so the whole run isn't read an extra time.
    */
   public static void holdAsSeen(Run run, Decimal seen) {
-    try {
-      ElectiveRunState.held(run.id).refuseUnlessCurrent(seen);
-    } catch (ShoreshException e) {
+    List<ElectiveRun__c> now = [
+      SELECT Revision__c
+      FROM ElectiveRun__c
+      WHERE Id = :run.id AND Status__c = :ElectiveRunState.COMMITTED
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    if (now.isEmpty() || now[0].Revision__c != seen) {
       throw new AgentWeeks.ConflictException(
         'Someone changed the seats in ' +
           run.setName +

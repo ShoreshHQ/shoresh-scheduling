@@ -916,6 +916,10 @@ describe("Shoresh for AI tools and the command line", () => {
       expect.objectContaining({ ok: false, status: 409 })
     );
     expect(stale.sent).toHaveLength(1);
+    // No seen: asked for, nothing read or sent.
+    const none = await assign("");
+    expect(none.done.status).toBe(400);
+    expect(none.sent).toHaveLength(0);
 
     const moved = [];
     const move = {
