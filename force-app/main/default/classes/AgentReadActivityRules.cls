@@ -27,7 +27,7 @@ global with sharing class AgentReadActivityRules implements AgentWeeks.Action {
     }
     asked.put('kind', 'Activity');
     AgentSetupRecords.Found found = AgentSetupRecords.find(asked);
-    Map<String, String> now = AgentActivityRules.now(found.id, false);
+    Map<String, String> now = AgentActivityRules.now(found.id);
     List<String> said = new List<String>();
     for (String key : AgentActivityRules.names()) {
       said.add(key + ': ' + now.get(key));

@@ -9,11 +9,8 @@ private class AgentSetupRestTest {
   private static List<Object> ask(
     AgentWeeks.Action door,
     String method,
-    String season,
-    Map<String, Object> fields
+    Map<String, Object> body
   ) {
-    Map<String, Object> body = new Map<String, Object>{ 'season' => season };
-    body.putAll(fields);
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = method;
     if (method == 'GET') {
@@ -54,14 +51,13 @@ private class AgentSetupRestTest {
       List<Object> read = ask(
         new AgentReadActivityRules(),
         'GET',
-        season,
-        new Map<String, Object>{ 'name' => 'swim' }
+        new Map<String, Object>{ 'season' => season, 'name' => 'swim' }
       );
       List<Object> changed = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{
             'who_can_do_it' => 'Group B, juniors',
@@ -79,8 +75,8 @@ private class AgentSetupRestTest {
       List<Object> again = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{
             'early_week_count' => '1',
@@ -95,8 +91,8 @@ private class AgentSetupRestTest {
       List<Object> notesAgain = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{ 'notes' => 'Towels' },
           'seen' => new Map<String, Object>{
@@ -109,8 +105,8 @@ private class AgentSetupRestTest {
       List<Object> stale = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{ 'same_division_only' => 'yes' },
           'seen' => new Map<String, Object>{ 'same_division_only' => 'yes' }
@@ -119,8 +115,8 @@ private class AgentSetupRestTest {
       List<Object> casing = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{ 'notes' => 'x' },
           'seen' => new Map<String, Object>{ 'notes' => 'towels' }
@@ -129,8 +125,8 @@ private class AgentSetupRestTest {
       List<Object> unseen = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{ 'notes' => 'x' }
         }
@@ -138,8 +134,8 @@ private class AgentSetupRestTest {
       List<Object> nobody = ask(
         new AgentChangeActivityRules(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'name' => 'Swim',
           'fields' => new Map<String, Object>{ 'who_can_do_it' => 'Lake' },
           'seen' => new Map<String, Object>{
@@ -233,8 +229,8 @@ private class AgentSetupRestTest {
       List<Object> stale = ask(
         new AgentFillWeeks(),
         'POST',
-        empty.Name,
         new Map<String, Object>{
+          'season' => empty.Name,
           'seen' => new Map<String, Object>{
             'start_date' => '2026-06-22',
             'end_date' => '2026-08-07'
@@ -250,8 +246,8 @@ private class AgentSetupRestTest {
       List<Object> filled = ask(
         new AgentFillWeeks(),
         'POST',
-        empty.Name,
         new Map<String, Object>{
+          'season' => empty.Name,
           'seen' => new Map<String, Object>{
             'start_date' => '2026-06-29',
             'end_date' => '2026-08-07'
@@ -261,8 +257,8 @@ private class AgentSetupRestTest {
       List<Object> twice = ask(
         new AgentFillWeeks(),
         'POST',
-        empty.Name,
         new Map<String, Object>{
+          'season' => empty.Name,
           'seen' => new Map<String, Object>{
             'start_date' => '2026-06-29',
             'end_date' => '2026-08-07'
@@ -302,8 +298,11 @@ private class AgentSetupRestTest {
       List<Object> read = ask(
         new AgentReadSetup(),
         'GET',
-        season,
-        new Map<String, Object>{ 'kind' => 'location', 'name' => 'Pool' }
+        new Map<String, Object>{
+          'season' => season,
+          'kind' => 'location',
+          'name' => 'Pool'
+        }
       );
       String notes = String.valueOf(read[1])
         .substringAfter('notes: ')
@@ -311,8 +310,8 @@ private class AgentSetupRestTest {
       List<Object> changed = ask(
         new AgentChangeSetup(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'kind' => 'location',
           'name' => 'Pool',
           'fields' => new Map<String, Object>{ 'notes' => 'Deep end only' },
@@ -322,8 +321,8 @@ private class AgentSetupRestTest {
       List<Object> none = ask(
         new AgentAddSetup(),
         'POST',
-        season,
         new Map<String, Object>{
+          'season' => season,
           'kind' => 'location',
           'name' => 'Lake',
           'fields' => new Map<String, Object>{ 'groups_that_fit' => '0' }

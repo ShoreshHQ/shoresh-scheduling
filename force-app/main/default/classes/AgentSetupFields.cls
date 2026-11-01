@@ -239,65 +239,8 @@ public with sharing class AgentSetupFields {
     }
     SObject seen = recordId.getSObjectType().newSObject(recordId);
     put(seen, asSeen, changed.found);
-    seenAsTyped(seen, changed);
+    AgentSetupNotes.seenAsTyped(seen, changed.fields);
     return seen;
-  }
-
-  /**
-   * Notes as seen are read on one line, as read_setup_record says them: a note that reads the
-   * same on one line is what was seen, line breaks and all, so it isn't taken as changed.
-   */
-  private static void seenAsTyped(SObject seen, Put changed) {
-    List<Schema.SObjectField> notes = new List<Schema.SObjectField>();
-    for (Schema.SObjectField field : changed.fields) {
-      Schema.DisplayType type = field.getDescribe().getType();
-      if (
-        type == Schema.DisplayType.TEXTAREA ||
-        type == Schema.DisplayType.STRING
-      ) {
-        notes.add(field);
-      }
-    }
-    if (notes.isEmpty()) {
-      return;
-    }
-    List<String> columns = new List<String>();
-    for (Schema.SObjectField field : notes) {
-      columns.add(ShoreshSchema.queryName(field));
-    }
-    SObject now = Database.queryWithBinds(
-      'SELECT ' +
-        String.join(columns, ', ') +
-        ' FROM ' +
-        ShoreshSchema.queryName(seen.getSObjectType()) +
-        ' WHERE Id = :recordId',
-      new Map<String, Object>{ 'recordId' => seen.Id },
-      AccessLevel.USER_MODE
-    )[0];
-    for (Schema.SObjectField field : notes) {
-      String held = (String) now.get(field);
-      String said = (String) seen.get(field);
-      if (
-        held != null &&
-        said != null &&
-        held.normalizeSpace().equals(said.normalizeSpace())
-      ) {
-        seen.put(field, held);
-      }
-    }
-  }
-
-  /** A location takes at least one group, as the screen's box does (min 1). */
-  public static void refuseTooFewGroups(SObject record) {
-    if (
-      record instanceof Location__c &&
-      ((Location__c) record).GroupsThatFit__c != null &&
-      ((Location__c) record).GroupsThatFit__c < 1
-    ) {
-      throw new ShoreshException(
-        'Give the groups that fit as a whole number, 1 or more.'
-      );
-    }
   }
 
   /** The days of the week as a program's fields are named, Monday first. */

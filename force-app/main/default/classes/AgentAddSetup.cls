@@ -51,7 +51,7 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action {
       body.get('fields'),
       found
     );
-    AgentSetupFields.refuseTooFewGroups(record);
+    AgentSetupNotes.refuseTooFewGroups(record);
     RowSaves.Result result;
     try {
       // The setup table's own Add: one new row (ADR 0011).

@@ -23,22 +23,9 @@ global with sharing class AgentFillWeeks implements AgentWeeks.Action {
     AgentWeeks.requireScheduler();
     Id seasonId = OutgoingRows.seasonCalled(AgentFields.text(body, 'season'))
       .Id;
-    Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
-    List<String> missing = new List<String>();
-    for (String key : DATES) {
-      if (!seen.containsKey(key)) {
-        missing.add(key);
-      }
-    }
-    if (!missing.isEmpty()) {
-      throw new ShoreshException(
-        'Say the season\'s dates as list_seasons gave them (seen: ' +
-          String.join(missing, ', ') +
-          '), so dates someone changed since aren\'t used.'
-      );
-    }
+    Map<String, Object> seen = seenDates(body.get('seen'));
     Season__c season = [
-      SELECT Name, Camp__c, StartDate__c, EndDate__c
+      SELECT Id, Name, Camp__c, StartDate__c, EndDate__c
       FROM Season__c
       WHERE Id = :seasonId
       WITH USER_MODE
@@ -66,6 +53,31 @@ global with sharing class AgentFillWeeks implements AgentWeeks.Action {
           ScreenErrors.words(e)
       );
     }
+    return added(season, labels);
+  }
+
+  /** The season's dates as the agent read them; both are needed. */
+  private static Map<String, Object> seenDates(Object asked) {
+    Map<String, Object> seen = AgentSetupFields.given(asked);
+    List<String> missing = new List<String>();
+    for (String key : DATES) {
+      if (!seen.containsKey(key)) {
+        missing.add(key);
+      }
+    }
+    if (!missing.isEmpty()) {
+      throw new ShoreshException(
+        'Say the season\'s dates as list_seasons gave them (seen: ' +
+          String.join(missing, ', ') +
+          '), so dates someone changed since aren\'t used.'
+      );
+    }
+    return seen;
+  }
+
+  /** The weeks the season has now, each with its dates. */
+  private static String added(Season__c season, CampLabels labels) {
+    Id seasonId = season.Id;
     List<String> said = new List<String>();
     for (Week__c week : [
       SELECT Name, StartDate__c, EndDate__c
