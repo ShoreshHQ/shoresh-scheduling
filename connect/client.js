@@ -447,7 +447,8 @@ async function loadEdits(namespace) {
         "shoreshWeekEditor.specials",
         "shoreshWeekEditor.slotEdits",
         "shoreshWeekEditor.locks",
-        "shoreshWeekEditor.handEdits"
+        "shoreshWeekEditor.handEdits",
+        "shoreshWeekEditor.rain"
       ].map(load)
     );
     return Object.assign({}, ...modules);
