@@ -108,6 +108,28 @@ private class AgentSetupTest {
   }
 
   @IsTest
+  static void aRenameThatOnlyChangesCaseIsSaved() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> renamed = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'Group A',
+          'new_name' => 'GROUP A'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, renamed[0], String.valueOf(renamed[1]));
+      Assert.areEqual('Renamed the group "Group A" to "GROUP A".', renamed[1]);
+      Assert.isTrue(
+        'GROUP A'.equals(nameOf(GeneratedTestData.ids.get('Group A')))
+      );
+    }
+  }
+
+  @IsTest
   static void deletingIsCampSetupsDeleteWithItsRefusals() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
@@ -170,6 +192,15 @@ private class AgentSetupTest {
       Test.stopTest();
       Assert.isFalse(first.startedBySomeoneElse);
       Assert.isTrue(second.startedBySomeoneElse);
+      // A blank start copies nothing, so it doesn't say so; a start from another week does.
+      Assert.areEqual(
+        'Someone else started this week.',
+        AgentStartWeek.someoneElse(CampLabels.modelTermsOnly(), false)
+      );
+      Assert.areEqual(
+        'Someone else started this week; nothing was copied.',
+        AgentStartWeek.someoneElse(CampLabels.modelTermsOnly(), true)
+      );
     }
   }
 }

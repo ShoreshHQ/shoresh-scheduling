@@ -31,7 +31,8 @@ global with sharing class AgentRenameSetup implements AgentWeeks.Action {
         'Say what to call the ' + found.kind + ' now (new_name).'
       );
     }
-    if (newName == found.name) {
+    // Case counts: "bunk a" to "Bunk A" is a rename (Apex's == ignores case).
+    if (newName.equals(found.name)) {
       return 'The ' + found.kind + ' is already called "' + newName + '".';
     }
     SObject record = found.id.getSObjectType().newSObject(found.id);

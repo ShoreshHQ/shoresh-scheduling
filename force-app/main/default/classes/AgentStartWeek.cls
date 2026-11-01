@@ -40,7 +40,7 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
     if (String.isBlank(fromWeek)) {
       ManualBuildViews.DraftView view = started(week, null);
       if (view.startedBySomeoneElse) {
-        return someoneElse(labels);
+        return someoneElse(labels, false);
       }
       return 'Started ' +
         week.name +
@@ -54,7 +54,7 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
     );
     ManualBuildViews.DraftView view = started(week, source.id);
     if (view.startedBySomeoneElse) {
-      return someoneElse(labels);
+      return someoneElse(labels, true);
     }
     return 'Started ' +
       week.name +
@@ -70,10 +70,11 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
   }
 
   /** Someone else started the week first: theirs is kept as they made it (API-1.46). */
-  private static String someoneElse(CampLabels labels) {
+  @TestVisible
+  private static String someoneElse(CampLabels labels, Boolean copying) {
     return 'Someone else started this ' +
       labels.singularInSentence('Week') +
-      '; nothing was copied.';
+      (copying ? '; nothing was copied.' : '.');
   }
 
   /** The screen's start (blank, or from the source), refused in its own words. */
