@@ -35,14 +35,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
         'Send the dates read_season_copy said as seen, so a change someone made since isn\'t copied unseen.'
       );
     }
-    // Locked: no week can be added, moved or taken out between the compare and the copy.
-    List<Season__c> locked = [
-      SELECT Id
-      FROM Season__c
-      WHERE Id = :season.Id
-      WITH USER_MODE
-      FOR UPDATE
-    ];
+    lock(season.Id);
     refuseTaken(name);
     Map<String, String> now;
     try {
@@ -137,5 +130,17 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
           '". Give the new one another name.'
       );
     }
+  }
+
+  /** Locked: no week can be added, moved or taken out between the compare and the copy. */
+  private static Integer lock(Id seasonId) {
+    return [
+        SELECT Id
+        FROM Season__c
+        WHERE Id = :seasonId
+        WITH USER_MODE
+        FOR UPDATE
+      ]
+      .size();
   }
 }

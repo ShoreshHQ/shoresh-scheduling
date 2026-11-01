@@ -43,23 +43,7 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
       days,
       'Update to match setup'
     );
-    SetupMatch.Ask ask = new SetupMatch.Ask();
-    ask.keys = keys;
-    ask.seenRevisions = stamp;
-    // The version just kept is the way back: the update keeps no second one.
-    ask.versionKept = true;
-    SetupMatch.Updated result;
-    try {
-      // The screens' own update.
-      result = SetupMatchController.updateToMatchSetup(week.draft.Id, ask);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        week.name + ' was not updated. ' + ScreenErrors.words(e)
-      );
-    }
-    if (result.refused != null) {
-      throw conflict(week);
-    }
+    makeChanges(week, keys, stamp);
     AgentWeeks.changed(versionId, week.draft.Id);
     return 'Updated ' +
       week.name +
@@ -69,6 +53,30 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
       keys.size() +
       (keys.size() == 1 ? ' change' : ' changes') +
       '). undo_last_agent_change brings it back.';
+  }
+
+  /** The screens' own update of the changes named, on the week as read (stamp). */
+  private static void makeChanges(
+    AgentWeeks.Week week,
+    List<String> keys,
+    String stamp
+  ) {
+    SetupMatch.Ask ask = new SetupMatch.Ask();
+    ask.keys = keys;
+    ask.seenRevisions = stamp;
+    // The version just kept is the way back: the update keeps no second one.
+    ask.versionKept = true;
+    SetupMatch.Updated result;
+    try {
+      result = SetupMatchController.updateToMatchSetup(week.draft.Id, ask);
+    } catch (Exception e) {
+      throw new ShoreshException(
+        week.name + ' was not updated. ' + ScreenErrors.words(e)
+      );
+    }
+    if (result.refused != null) {
+      throw conflict(week);
+    }
   }
 
   /** A change as read_setup_changes says it: its key, summary, and each cell before and after. */
