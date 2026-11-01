@@ -61,7 +61,9 @@ function htmlName(m, title) {
 
 /** The schedule's file, as the Schedules screen's Excel or Print makes it. */
 function scheduleFile(m, body, input, t) {
-  const { opened, setup, week, version } = body;
+  const { opened, setup, week } = body;
+  // As the screen names the version on screen: the opened schedule's own name.
+  const version = opened.schedule ? opened.schedule.name : body.version;
   if (!opened.days || !opened.days.length) {
     return { problem: `This ${t.sIn("Version")} has no days saved.` };
   }

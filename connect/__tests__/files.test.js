@@ -141,7 +141,10 @@ describe("the screens' files, made on this computer", () => {
     ]);
     expect(excel.done.ok).toBe(true);
     // As the screen names it: fileNameOf(`${week} - ${version}`).
-    expect(excel.saved).toEqual(["Week 1 - Published Oct 18, 2 40 PM.xlsx"]);
+    // As the screen names it: fileNameOf(`${week} - ${opened.schedule.name}`).
+    expect(excel.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx.xlsx"
+    ]);
     const answer = JSON.parse(excel.done.text);
     expect(answer.path).toBe(path.join(excel.folder, excel.saved[0]));
     expect(sheetsIn(answer.path)).toEqual(
@@ -160,15 +163,17 @@ describe("the screens' files, made on this computer", () => {
       { week: "Week 1", as: "print", view: "group" },
       read
     );
-    expect(printed.saved).toEqual(["Week 1 - Published Oct 18, 2 40 PM.html"]);
+    expect(printed.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx.html"
+    ]);
     expect(JSON.parse(printed.done.text).print).toMatch(/Save as PDF/);
     expect(printoutIn(path.join(printed.folder, printed.saved[0]))).toEqual({
       kind: "schedule",
-      title: "Week 1 - Published Oct 18, 2:40 PM",
+      title: "Week 1 - Imported from sample-week.xlsx",
       props: plain({
         pages: scheduleExport.printPages(shown, "group", setup.activities, t),
         week: "Week 1",
-        version: "Published Oct 18, 2:40 PM",
+        version: "Imported from sample-week.xlsx",
         corner: t.s("TimeBlock")
       })
     });
@@ -410,13 +415,11 @@ Promise.all([
     ).toString();
     const [list, printout] = JSON.parse(said);
     expect([list.ok, printout.ok]).toEqual([true, true]);
+    const printName = "Week 1 - Imported from sample-week.xlsx.html";
     expect(fs.readdirSync(folder).sort()).toEqual(
-      [JSON.parse(list.text).file_name, "Week 1 - Plain.html"].sort()
+      [JSON.parse(list.text).file_name, printName].sort()
     );
-    const page = fs.readFileSync(
-      path.join(folder, "Week 1 - Plain.html"),
-      "utf8"
-    );
+    const page = fs.readFileSync(path.join(folder, printName), "utf8");
     expect(page).toContain('window.SHORESH_PRINTOUT = {"kind":"schedule"');
   }, 120000);
 });
