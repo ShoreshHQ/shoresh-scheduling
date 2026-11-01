@@ -138,6 +138,18 @@ private class AgentSetupChangeTest {
         noField[1]
       );
       Assert.areEqual('An activity', AgentSetupFields.aOrAn('activity'));
+      Assert.areEqual(
+        Time.newInstance(12, 0, 0, 0),
+        AgentSetupTimes.timeOf('start_time', '12 PM')
+      );
+      Assert.areEqual(
+        Time.newInstance(0, 15, 0, 0),
+        AgentSetupTimes.timeOf('start_time', '12:15am')
+      );
+      Assert.areEqual(
+        Time.newInstance(14, 30, 0, 0),
+        AgentSetupTimes.timeOf('start_time', '14:30')
+      );
       Assert.areEqual(400, noPlace[0]);
       Assert.isTrue(
         String.valueOf(noPlace[1])
