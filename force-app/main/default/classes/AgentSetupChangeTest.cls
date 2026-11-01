@@ -19,14 +19,21 @@ private class AgentSetupChangeTest {
     };
     body.putAll(fields);
     RestContext.request = new RestRequest();
-    RestContext.request.httpMethod = 'POST';
-    RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+    RestContext.request.httpMethod = action == 'read' ? 'GET' : 'POST';
+    if (action == 'read') {
+      for (String key : body.keySet()) {
+        RestContext.request.addParameter(key, String.valueOf(body.get(key)));
+      }
+    } else {
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+    }
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
-      action == 'change'
-        ? (AgentWeeks.Action) new AgentChangeSetup()
-        : new AgentAddSetup()
-    );
+    AgentWeeks.Action door = action == 'change'
+      ? (AgentWeeks.Action) new AgentChangeSetup()
+      : action == 'read'
+          ? (AgentWeeks.Action) new AgentReadSetup()
+          : new AgentAddSetup();
+    AgentWeeks.answer(door);
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -41,6 +48,13 @@ private class AgentSetupChangeTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Test.startTest();
+      List<Object> read = post(
+        'read',
+        new Map<String, Object>{ 'kind' => 'time block', 'name' => 'Lunch' }
+      );
+      String lunchStart = String.valueOf(read[1])
+        .substringAfter('start_time: ')
+        .substringBefore(';');
       List<Object> swim = post(
         'change',
         new Map<String, Object>{
@@ -51,6 +65,12 @@ private class AgentSetupChangeTest {
             'location' => 'gym',
             'priority' => 'high',
             'outdoor' => 'yes'
+          },
+          'seen' => new Map<String, Object>{
+            'length' => '1',
+            'location' => 'Pool',
+            'priority' => 'Low',
+            'outdoor' => 'no'
           }
         }
       );
@@ -59,7 +79,8 @@ private class AgentSetupChangeTest {
         new Map<String, Object>{
           'kind' => 'time block',
           'name' => 'Lunch',
-          'fields' => new Map<String, Object>{ 'start_time' => '12:30 pm' }
+          'fields' => new Map<String, Object>{ 'start_time' => '12:30 pm' },
+          'seen' => new Map<String, Object>{ 'start_time' => lunchStart }
         }
       );
       List<Object> moved = post(
@@ -67,7 +88,8 @@ private class AgentSetupChangeTest {
         new Map<String, Object>{
           'kind' => 'group',
           'name' => 'Group A',
-          'fields' => new Map<String, Object>{ 'division' => 'Seniors' }
+          'fields' => new Map<String, Object>{ 'division' => 'Seniors' },
+          'seen' => new Map<String, Object>{ 'division' => 'Juniors' }
         }
       );
       List<Object> noField = post(
@@ -95,6 +117,12 @@ private class AgentSetupChangeTest {
         }
       );
       Test.stopTest();
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isTrue(
+        String.valueOf(read[1])
+          .startsWith('The time block "Lunch" holds start_time: '),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(200, swim[0], String.valueOf(swim[1]));
       Assert.areEqual(
         'Changed the activity "Swim": location gym, length 2, priority high, outdoor yes.',
@@ -262,6 +290,67 @@ private class AgentSetupChangeTest {
       Assert.areEqual(
         'There is no program called "Day camp" that this user can see. The programs: Main.',
         noProgram[1]
+      );
+    }
+  }
+
+  @IsTest
+  static void aChangeSomeoneMadeSinceTheReadIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id swim = GeneratedTestData.ids.get('Swim');
+      Test.startTest();
+      // The AI read length 1; then the director made it 3 on Camp Setup.
+      update as user new Activity__c(Id = swim, Length__c = 3);
+      List<Object> stale = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'activity',
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'length' => '2' },
+          'seen' => new Map<String, Object>{ 'length' => '1' }
+        }
+      );
+      List<Object> unseen = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'activity',
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'length' => '2' }
+        }
+      );
+      List<Object> fraction = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'activity',
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'length' => '1.5' },
+          'seen' => new Map<String, Object>{ 'length' => '3' }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(
+        'Someone else changed "Swim" since, so nothing was saved. Read it again in Shoresh.',
+        stale[1]
+      );
+      Assert.areEqual(
+        3,
+        [SELECT Length__c FROM Activity__c WHERE Id = :swim WITH SYSTEM_MODE]
+        .Length__c
+      );
+      Assert.areEqual(400, unseen[0]);
+      Assert.isTrue(
+        String.valueOf(unseen[1])
+          .startsWith(
+            'Say what each field held when you read it (seen: length)'
+          ),
+        String.valueOf(unseen[1])
+      );
+      Assert.areEqual(400, fraction[0]);
+      Assert.areEqual(
+        'Give the length as a whole number, like 2.',
+        fraction[1]
       );
     }
   }

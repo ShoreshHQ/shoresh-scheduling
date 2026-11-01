@@ -76,14 +76,14 @@ public with sharing class AgentSetupValues {
     }
   }
 
+  /** The screens' number boxes take whole numbers, none below zero. */
   private static Decimal numberOf(String key, String asked) {
-    try {
-      return Decimal.valueOf(asked);
-    } catch (Exception e) {
+    if (!asked.isNumeric()) {
       throw new ShoreshException(
-        'Give the ' + words(key) + ' as a number, like 2.'
+        'Give the ' + words(key) + ' as a whole number, like 2.'
       );
     }
+    return Decimal.valueOf(asked);
   }
 
   private static String choiceOf(

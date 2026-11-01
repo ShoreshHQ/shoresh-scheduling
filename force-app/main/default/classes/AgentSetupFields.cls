@@ -200,35 +200,45 @@ public with sharing class AgentSetupFields {
     return (Map<String, Object>) fields;
   }
 
+  /** A value as text; "(blank)", as read_setup_record says an empty one, is empty. */
   private static String text(Object value) {
-    return value == null ? '' : String.valueOf(value).normalizeSpace();
+    String said = value == null ? '' : String.valueOf(value).normalizeSpace();
+    return said == '(blank)' ? '' : said;
   }
 
   private static String shown(Object asked, Object value) {
     return value == null ? 'left blank' : text(asked);
   }
 
-  /** What the record holds now in those fields: what the agent's change is compared with. */
-  public static SObject seen(Id recordId, List<Schema.SObjectField> fields) {
+  /**
+   * What the agent saw in the fields it changes (seen: {plain name: value as read_setup_record
+   * gave it}), read as the change is, for the row save to compare with what the record holds
+   * now. A changed field the agent didn't say it saw is refused: Shoresh never guesses it.
+   */
+  public static SObject seen(Id recordId, Object seenAsked, Put changed) {
+    Map<String, Object> said = given(seenAsked);
+    Map<String, Schema.SObjectField> known = FIELDS.get(changed.found.term);
+    Map<String, Object> asSeen = new Map<String, Object>();
+    List<String> missing = new List<String>();
+    for (String key : known.keySet()) {
+      if (!changed.fields.contains(known.get(key))) {
+        continue;
+      }
+      if (said.containsKey(key)) {
+        asSeen.put(key, said.get(key));
+      } else {
+        missing.add(key);
+      }
+    }
+    if (!missing.isEmpty()) {
+      throw new ShoreshException(
+        'Say what each field held when you read it (seen: ' +
+          String.join(missing, ', ') +
+          '), as read_setup_record gives it, so a change someone made since isn\'t overwritten.'
+      );
+    }
     SObject seen = recordId.getSObjectType().newSObject(recordId);
-    if (fields.isEmpty()) {
-      return seen;
-    }
-    List<String> names = new List<String>();
-    for (Schema.SObjectField field : fields) {
-      names.add(ShoreshSchema.queryName(field));
-    }
-    SObject now = Database.query(
-      'SELECT ' +
-        String.join(names, ', ') +
-        ' FROM ' +
-        ShoreshSchema.queryName(recordId.getSObjectType()) +
-        ' WHERE Id = :recordId',
-      AccessLevel.USER_MODE
-    )[0];
-    for (Schema.SObjectField field : fields) {
-      seen.put(field, now.get(field));
-    }
+    put(seen, asSeen, changed.found);
     return seen;
   }
 

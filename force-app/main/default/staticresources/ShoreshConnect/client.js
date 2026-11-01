@@ -14,7 +14,7 @@ function requestFor(capability, input = {}) {
   const path = `/services/apexrest/v1/${capability.api}`;
   if (capability.method === "GET") {
     const query = new URLSearchParams();
-    for (const field of ["season", "week"]) {
+    for (const field of capability.queryFields ?? ["season", "week"]) {
       if (input[field]) query.set(field, input[field]);
     }
     if (input.as_csv) query.set("format", "csv");

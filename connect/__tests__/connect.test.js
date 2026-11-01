@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(34);
+    expect(CAPABILITIES).toHaveLength(35);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -1280,7 +1280,15 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(byName("change_setup_record").inputSchema.required).toEqual([
       "kind",
       "name",
-      "fields"
+      "fields",
+      "seen"
+    ]);
+    expect(byName("change_setup_record").description).toMatch(
+      /read_setup_record and send what it said as seen/
+    );
+    expect(byName("read_setup_record").inputSchema.required).toEqual([
+      "kind",
+      "name"
     ]);
     expect(byName("add_setup_record").inputSchema.required).toEqual([
       "kind",
@@ -1298,7 +1306,8 @@ describe("Shoresh for AI tools and the command line", () => {
       season: "Summer 2026",
       kind: "activity",
       name: "Swim",
-      fields: { length: "2", location: "Pool" }
+      fields: { length: "2", location: "Pool" },
+      seen: { length: "1", location: "Gym" }
     };
     const seen = [];
     const done = await call("change_setup_record", asked, {
@@ -1328,6 +1337,21 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     );
     expect(added[0].args[3]).toBe("/services/apexrest/v1/add_setup_record");
+    const read = [];
+    await call(
+      "read_setup_record",
+      { season: "Summer 2026", kind: "time block", name: "Lunch" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: "The time block" }),
+          read
+        )
+      }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/read_setup_record?season=Summer+2026&kind=time+block&name=Lunch"
+    );
     expect(JSON.parse(added[0].stdin)).toEqual({
       kind: "location",
       name: "Lake"

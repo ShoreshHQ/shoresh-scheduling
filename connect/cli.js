@@ -39,7 +39,7 @@ function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
     else if (word.startsWith("--")) flags[word.slice(2)] = rest[++i];
   }
   const input = {};
-  if (capability.sendsFields) {
+  if (capability.sendsFields || capability.queryFields) {
     for (const field of Object.keys(capability.inputSchema.properties)) {
       if (flags[field] !== undefined) input[field] = flags[field];
     }

@@ -628,12 +628,32 @@ const CAPABILITIES = [
     "delete_setup_record",
     "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first, as that screen asks: anything inside it is deleted too. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   ),
+  {
+    // A read: GET, its fields in the web address (API-1.49).
+    ...setup(
+      "read_setup_record",
+      "read_setup_record",
+      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty). Read it right before changing it, and send those values back unchanged as seen."
+    ),
+    method: "GET",
+    about:
+      "What the setup record holds now, as Camp Setup shows it. It holds no findings or problems.",
+    sendsFields: false,
+    queryFields: ["season", "kind", "name", "program"]
+  },
   setup(
     "change_setup_record",
     "change_setup_record",
-    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row: a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
-    { fields: SETUP_FIELDS },
-    ["fields"]
+    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+    {
+      fields: SETUP_FIELDS,
+      seen: {
+        type: "object",
+        description:
+          "What each field you change held when you read it with read_setup_record, by the same names, as that read said it. Shoresh compares it with what the record holds now: if someone changed it since, nothing is saved and the person should be told."
+      }
+    },
+    ["fields", "seen"]
   ),
   addedRecord(
     "add_setup_record",

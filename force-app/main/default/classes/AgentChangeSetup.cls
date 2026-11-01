@@ -2,10 +2,10 @@
  * change_setup_record: change fields of one of the season's setup records other than its name
  * (times, dates, days, places, limits, a group's division), as the person, through an agent or the
  * command line (docs/protocol/api.md API-1.49). Web address /v1/change_setup_record, POST {season,
- * kind, name, program, fields}. Found as rename_setup_record finds it; it is the setup table's own
- * row save (SetupTablesController.saveRow) with what the record held when read sent as seen, so
- * someone else's change since is refused, never overwritten. Answered and refused in the save's
- * own words.
+ * kind, name, program, fields, seen}. Found as rename_setup_record finds it; it is the setup
+ * table's own row save (SetupTablesController.saveRow) with what the agent read
+ * (read_setup_record) sent as seen, so someone else's change since it read is refused, never
+ * overwritten. Answered and refused in the save's own words.
  */
 @RestResource(urlMapping='/v1/change_setup_record')
 global with sharing class AgentChangeSetup implements AgentWeeks.Action {
@@ -14,7 +14,8 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
     'kind',
     'name',
     'program',
-    'fields'
+    'fields',
+    'seen'
   };
 
   @HttpPost
@@ -42,7 +43,7 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
             '.'
       );
     }
-    SObject seen = AgentSetupFields.seen(found.id, put.fields);
+    SObject seen = AgentSetupFields.seen(found.id, body.get('seen'), put);
     RowSaves.Result result;
     try {
       // The setup table's own save of one row (ADR 0011).
