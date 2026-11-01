@@ -102,14 +102,16 @@ private class AgentCopyAndMatchTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Season__c season = season();
-      Map<String, Object> seen = new Map<String, Object>(
-        AgentCopySeason.seenOf(
-          SeasonSetupController.previewCopy(
-            season.Id,
-            season.StartDate__c.addDays(364)
-          )
+      Map<String, Object> seen = new Map<String, Object>();
+      Map<String, String> dates = AgentCopySeason.seenOf(
+        SeasonSetupController.previewCopy(
+          season.Id,
+          season.StartDate__c.addDays(364)
         )
       );
+      for (String key : dates.keySet()) {
+        seen.put(key, dates.get(key));
+      }
       Map<String, Object> stale = seen.clone();
       stale.put(AgentCopySeason.WHOLE, 'something else');
       Integer before = seasons();
@@ -210,60 +212,115 @@ private class AgentCopyAndMatchTest {
     }
   }
 
+  /** The week's change asked for: its key, with the week as read (seen) unless told. */
+  private static Map<String, Object> updateAsk(
+    Map<String, Object> weekAsked,
+    List<String> keyAndSeen
+  ) {
+    Map<String, Object> body = weekAsked.clone();
+    body.put('changes', new List<Object>{ keyAndSeen[0] });
+    body.put('seen', keyAndSeen[1]);
+    return body;
+  }
+
+  /** The one change the week shows, and the week as read: [key, seen]. */
+  private static List<String> shown(Id draftId) {
+    SetupMatch.Preview preview = SetupMatchController.getSetupChanges(draftId);
+    return new List<String>{
+      preview.changes[0].key,
+      AgentUpdateToMatch.seenOf(preview.revisions)
+    };
+  }
+
   // API-1.64
   @IsTest
-  static void updateIsTheScreensUpdateWithTheWeekSeenAndCanBeUndone() {
+  static void updateIsRefusedWhenTheWeekOrSetupChangedSince() {
     System.runAs(ShoreshTestData.scheduler()) {
       Id draftId = weekWithSwimGone(GeneratedTestData.camp());
       Map<String, Object> weekAsked = weekAsk(draftId);
-      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
-        draftId
-      );
-      String key = preview.changes[0].key;
-      String seen = AgentUpdateToMatch.seenOf(preview.revisions);
+      List<String> read = shown(draftId);
       Test.startTest();
-      Map<String, Object> stale = weekAsked.clone();
-      stale.put('changes', new List<Object>{ key });
-      stale.put('seen', 'not the week');
-      List<Object> staleAnswer = ask(new AgentUpdateToMatch(), 'POST', stale);
-      Map<String, Object> unknown = weekAsked.clone();
-      unknown.put('changes', new List<Object>{ 'no such change' });
-      unknown.put('seen', seen);
-      List<Object> unknownAnswer = ask(
+      List<Object> stale = ask(
         new AgentUpdateToMatch(),
         'POST',
-        unknown
+        updateAsk(weekAsked, new List<String>{ read[0], 'not the week' })
       );
-      Integer before = Limits.getQueries();
-      Map<String, Object> good = weekAsked.clone();
-      good.put('changes', new List<Object>{ key });
-      good.put('seen', seen);
-      List<Object> done = ask(new AgentUpdateToMatch(), 'POST', good);
-      Integer queries = Limits.getQueries() - before;
-      Boolean matchedAfter = SetupMatchController.getSetupChanges(draftId)
-        .changes.isEmpty();
-      Integer kept = [
-        SELECT COUNT()
-        FROM Schedule__c
-        WHERE
-          SourceSchedule__c = :draftId
-          AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
-        WITH SYSTEM_MODE
-      ];
-      List<Object> undone = ask(new AgentUndo(), 'POST', weekAsked);
+      List<Object> unknown = ask(
+        new AgentUpdateToMatch(),
+        'POST',
+        updateAsk(weekAsked, new List<String>{ 'no such change', read[1] })
+      );
       Test.stopTest();
-      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(409, unknown[0], String.valueOf(unknown[1]));
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE
+            SourceSchedule__c = :draftId
+            AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+          WITH SYSTEM_MODE
+        ],
+        'nothing kept or changed when refused'
+      );
+    }
+  }
+
+  // API-1.64
+  @IsTest
+  static void updateIsTheScreensUpdateWithTheWeekSeen() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id draftId = weekWithSwimGone(GeneratedTestData.camp());
+      Map<String, Object> weekAsked = weekAsk(draftId);
+      List<String> read = shown(draftId);
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      List<Object> done = ask(
+        new AgentUpdateToMatch(),
+        'POST',
+        updateAsk(weekAsked, read)
+      );
+      Integer queries = Limits.getQueries() - before;
+      Boolean matched = SetupMatchController.getSetupChanges(draftId)
+        .changes.isEmpty();
+      Test.stopTest();
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.isTrue(matched, 'the week matches setup after the update');
       Assert.areEqual(
         1,
-        SetupMatchController.getSetupChanges(draftId).changes.size(),
-        'Undo brings the week back as it was, Swim and all'
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE
+            SourceSchedule__c = :draftId
+            AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+          WITH SYSTEM_MODE
+        ],
+        'one version kept, marked through an agent'
       );
-      Assert.areEqual(409, staleAnswer[0], String.valueOf(staleAnswer[1]));
-      Assert.areEqual(409, unknownAnswer[0], String.valueOf(unknownAnswer[1]));
-      Assert.areEqual(200, done[0], String.valueOf(done[1]));
-      Assert.isTrue(matchedAfter, 'the week matched setup after the update');
-      Assert.areEqual(1, kept, 'one version kept, marked through an agent');
       Assert.isTrue(queries < 100, 'Update used ' + queries + ' queries');
+    }
+  }
+
+  // API-1.64
+  @IsTest
+  static void anUpdateIsUndoneByUndo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id draftId = weekWithSwimGone(GeneratedTestData.camp());
+      Map<String, Object> weekAsked = weekAsk(draftId);
+      List<String> read = shown(draftId);
+      Test.startTest();
+      List<Object> done = ask(
+        new AgentUpdateToMatch(),
+        'POST',
+        updateAsk(weekAsked, read)
+      );
+      List<Object> undone = ask(new AgentUndo(), 'POST', weekAsked);
+      Test.stopTest();
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
     }
   }
 }
