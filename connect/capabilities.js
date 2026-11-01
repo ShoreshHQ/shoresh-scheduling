@@ -11,7 +11,8 @@
  * week and locking and unlocking its cells as Generated Schedule does (API-1.36, API-1.37), and
  * moving, swapping, taking out, copying and pasting cells as its grid does (API-1.38 to API-1.40),
  * and changing a cell, undoing, versions, publishing and unpublishing on a Manual Build week as
- * that screen does (API-1.41 to API-1.43). Each one is the
+ * that screen does (API-1.41 to API-1.43), and, on Manual Build, reading and accepting its
+ * checks, the grid's edits of several cells and starting a week (API-1.44 to API-1.46). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -327,7 +328,7 @@ const CAPABILITIES = [
     ...change(
       "move_cell",
       "move_cell",
-      "Move what a cell of a week's Generated Schedule holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change.",
+      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -337,7 +338,9 @@ const CAPABILITIES = [
         to_group: { ...CELL.group, description: "The group to move it to." },
         to_time: { ...CELL.time, description: "The time to move it to." }
       },
-      ["day", "group", "time", "was", "to_day", "to_group", "to_time"]
+      ["day", "group", "time", "was", "to_day", "to_group", "to_time"],
+      ON_EITHER,
+      EITHER_WEEK
     ),
     editsWithEngine: true
   },
@@ -345,9 +348,11 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change.",
       { day: CELL.day, group: CELL.group, time: CELL.time, was: CELL.was },
-      ["day", "group", "time", "was"]
+      ["day", "group", "time", "was"],
+      ON_EITHER,
+      EITHER_WEEK
     ),
     editsWithEngine: true
   },
@@ -355,7 +360,7 @@ const CAPABILITIES = [
     ...change(
       "copy_cells",
       "copy_cells",
-      "Copy cells of a week's Generated Schedule and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change.",
+      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change.",
       {
         day: CELL.day,
         groups: {
@@ -380,7 +385,9 @@ const CAPABILITIES = [
           description: "The time the first copied time is pasted at."
         }
       },
-      ["day", "groups", "time", "to_day", "to_group", "to_time"]
+      ["day", "groups", "time", "to_day", "to_group", "to_time"],
+      ON_EITHER,
+      EITHER_WEEK
     ),
     editsWithEngine: true
   },
@@ -407,12 +414,12 @@ const CAPABILITIES = [
     method: "GET",
     checksWithEngine: true,
     description:
-      "Read a week's checks exactly as the counter on Generated Schedule shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
+      "Read a week's checks exactly as the counter on Generated Schedule or Manual Build shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
     about:
-      "Generated Schedule's counter for this week, exactly as the screen shows it now. These are all of Shoresh's checks of the week: anything not listed, Shoresh didn't find.",
+      "The counter for this week on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now. These are all of Shoresh's checks of the week: anything not listed, Shoresh didn't find.",
     inputSchema: {
       type: "object",
-      properties: WEEK_FIELDS,
+      properties: EITHER_WEEK,
       required: ["week"],
       additionalProperties: false
     }
@@ -421,9 +428,9 @@ const CAPABILITIES = [
     ...act(
       "accept_finding",
       "accept_finding",
-      "Accept one line of a week's checks, as its Accept button on Generated Schedule does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; there is no undo through an agent (a Rebuild clears every accept).",
+      "Accept one line of a week's checks, as its Accept button on Generated Schedule or Manual Build does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; there is no undo through an agent (a Rebuild clears every accept).",
       {
-        ...WEEK_FIELDS,
+        ...EITHER_WEEK,
         finding: {
           type: "string",
           description:
@@ -434,6 +441,24 @@ const CAPABILITIES = [
     ),
     checksWithEngine: true
   },
+  act(
+    "start_manual_week",
+    "start_manual_week",
+    "Start a week on Manual Build, as that screen does, without asking first: Start a blank week (its fixed and recurring activities placed, everything else Open), or, with from_week, Start from another week (the week begins as that one, matched by weekday). Only a week not started on Manual Build yet can be started. It is done as you, with your own access. What couldn't be placed or copied comes back in the screen's words: pass it on to the person.",
+    {
+      ...WEEK_FIELDS,
+      from_week: {
+        type: "string",
+        description:
+          "The week to start from, like Week 1. Leave it out to start a blank week."
+      },
+      from: {
+        type: "string",
+        description:
+          "Which of that week's schedules to start from: Manual Build, its published schedule, or a version's name. Leave it out when that week has only one; Shoresh lists them when it has more."
+      }
+    }
+  ),
   {
     name: "list_versions",
     api: "versions",

@@ -1,6 +1,6 @@
 /**
  * A Manual Build week through an agent or the command line (docs/protocol/api.md API-1.41 to
- * API-1.43): the same web addresses as Generated Schedule's, each Manual Build's own server
+ * API-1.46): the same web addresses as Generated Schedule's, each Manual Build's own server
  * action, on GeneratedTestData's camp (Week 1 of Main; a blank week holds Flagpole in Period 1
  * and Open in Period 2).
  */
@@ -35,7 +35,10 @@ private class AgentManualBuildTest {
           'lock' => new AgentLock(),
           'save' => new AgentSaveVersion(),
           'restore' => new AgentRestoreVersion(),
-          'delete' => new AgentDeleteVersion()
+          'delete' => new AgentDeleteVersion(),
+          'move' => new AgentCells(),
+          'accept' => new AgentAccept(),
+          'start' => new AgentStartWeek()
         }
         .get(action)
     );
@@ -219,6 +222,173 @@ private class AgentManualBuildTest {
           WHERE Name = :ManualVersions.BEFORE_RESTORE AND Origin__c = 'Manual'
           WITH SYSTEM_MODE
         ]
+      );
+    }
+  }
+
+  /** GET /v1/week_checks for Week 1 of Main on Manual Build; answers [status, body]. */
+  private static List<Object> readChecks() {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'GET';
+    RestContext.request.params.putAll(
+      new Map<String, String>{
+        'season' => [
+          SELECT Name
+          FROM Season__c
+          WHERE Id = :GeneratedTestData.ids.get('Season')
+          WITH SYSTEM_MODE
+        ]
+        .Name,
+        'week' => 'Week 1',
+        'program' => 'Main',
+        'schedule' => 'Manual Build'
+      }
+    );
+    RestContext.response = new RestResponse();
+    AgentChecks.get();
+    return new List<Object>{
+      RestContext.response.statusCode,
+      JSON.deserializeUntyped(RestContext.response.responseBody.toString())
+    };
+  }
+
+  // API-1.44
+  @IsTest
+  static void manualChecksReadManualBuildsDraftAndAcceptThere() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> notStarted = readChecks();
+      Id draftId = manualDraft();
+      List<Object> read = readChecks();
+      List<Object> accepted = post(
+        'accept',
+        new Map<String, Object>{
+          'line' => new Map<String, Object>{
+            'k' => 'under|a1|2|4',
+            's' => 'under|a1',
+            'n' => 2
+          }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, notStarted[0]);
+      Assert.areEqual(
+        'Week 1 hasn\'t been started on Manual Build for Main yet. Start it there first.',
+        ((Map<String, Object>) notStarted[1]).get('message')
+      );
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Map<String, Object> body = (Map<String, Object>) read[1];
+      Assert.areEqual(
+        new Set<String>{
+          'draft',
+          'setup',
+          'labels',
+          'setup_changes',
+          'accepted'
+        },
+        body.keySet()
+      );
+      Map<String, Object> schedule = (Map<String, Object>) ((Map<String, Object>) body.get(
+          'draft'
+        ))
+        .get('schedule');
+      Assert.areEqual(
+        String.valueOf(draftId),
+        ((Map<String, Object>) schedule.get('schedule')).get('id')
+      );
+      Assert.areEqual('Accepted.', accepted[1]);
+      List<Object> lines = (List<Object>) JSON.deserializeUntyped(
+        WeekAccepts.accepted(draftId)
+      );
+      Assert.areEqual(1, lines.size());
+    }
+  }
+
+  // API-1.45
+  @IsTest
+  static void manualCellsAreManualBuildsSaveAndUndone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = manualDraft();
+      Map<String, Id> ids = GeneratedTestData.ids;
+      String soccer = GeneratedTestData.a('Soccer');
+      Map<String, Object> run = new Map<String, Object>{
+        'day' => '2026-06-29',
+        'groupId' => ids.get('Group A'),
+        'firstBlockId' => ids.get('Period 2'),
+        'blockIds' => new List<Object>{ ids.get('Period 2') },
+        'before' => new List<Object>{ '' },
+        'after' => new List<Object>{ soccer }
+      };
+      Map<String, Object> edit = new Map<String, Object>{
+        'change' => 'Pasted 1 activity · ' + WHERE_A,
+        'said' => '',
+        'runs' => new List<Object>{ run }
+      };
+      Test.startTest();
+      List<Object> done = post('move', edit);
+      String placed = periodTwo(draftId);
+      List<Object> stale = post('move', edit);
+      List<Object> undone = post('undo', new Map<String, Object>());
+      Test.stopTest();
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.areEqual('Pasted 1 activity · ' + WHERE_A + '.', done[1]);
+      Assert.areEqual(soccer, placed);
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(
+        'Changed by someone else since you read the week: Pasted 1 activity · ' +
+          WHERE_A +
+          '. Nothing was changed.',
+        stale[1]
+      );
+      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(SlotIds.OPEN, periodTwo(draftId));
+    }
+  }
+
+  // API-1.46
+  @IsTest
+  static void startingAWeekIsTheScreensStart() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> blank = post('start', new Map<String, Object>());
+      List<Object> again = post('start', new Map<String, Object>());
+      List<Object> unknown = post(
+        'start',
+        new Map<String, Object>{ 'week' => 'Week 2', 'from_week' => 'Week 9' }
+      );
+      List<Object> fromWeek = post(
+        'start',
+        new Map<String, Object>{ 'week' => 'Week 2', 'from_week' => 'week 1' }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, blank[0], String.valueOf(blank[1]));
+      Assert.isTrue(
+        ((String) blank[1]).startsWith('Started Week 1.'),
+        String.valueOf(blank[1])
+      );
+      Assert.isNotNull(
+        ManualDrafts.find(
+          GeneratedTestData.ids.get('Main'),
+          GeneratedTestData.ids.get('Week 1')
+        )
+      );
+      Assert.areEqual(400, again[0]);
+      Assert.areEqual(
+        'Week 1 has already been started on Manual Build for Main. Change it there (or restore a version) instead.',
+        again[1]
+      );
+      Assert.areEqual(400, unknown[0]);
+      Assert.areEqual(
+        'There is nothing called "Week 9" to start from. What it can start from: Week 1 · Manual Build.',
+        unknown[1]
+      );
+      Assert.areEqual(200, fromWeek[0], String.valueOf(fromWeek[1]));
+      Assert.isTrue(
+        ((String) fromWeek[1]).startsWith('Started Week 2 from Week 1.'),
+        String.valueOf(fromWeek[1])
       );
     }
   }

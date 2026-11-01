@@ -32,6 +32,8 @@ const ENGINE_ENTRY = "shoreshGeneratedWeek/build.js";
 const CHECKS_ENTRIES = [
   "shoreshGeneratedSchedule/counter.js",
   "shoreshWeekEditor/measure.js",
+  // Manual Build's own check of its week (API-1.44).
+  "shoreshWeekEditor/manualChecks.js",
   "shoreshWeekChecks/lines.js"
 ];
 // The module the connector lists a week's versions with (API-1.32): the Versions panel's words.

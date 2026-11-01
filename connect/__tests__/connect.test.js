@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(29);
+    expect(CAPABILITIES).toHaveLength(30);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1227,9 +1227,14 @@ describe("Shoresh for AI tools and the command line", () => {
     );
   });
 
-  it("manualBuildWeeksSayWhichSchedule: a cell change, undo, versions, publish, unpublish and locks take schedule and send it; the grid's multi-cell edits, build and checks stay Generated Schedule's", async () => {
+  it("manualBuildWeeksSayWhichSchedule: a cell change, the grid's multi-cell edits, checks and accepts, undo, versions, publish, unpublish and locks take schedule and send it; build stays Generated Schedule's", async () => {
     const either = [
       "change_schedule_cell",
+      "move_cell",
+      "take_out_cell",
+      "copy_cells",
+      "read_week_checks",
+      "accept_finding",
       "undo_last_agent_change",
       "save_version",
       "restore_version",
@@ -1243,12 +1248,8 @@ describe("Shoresh for AI tools and the command line", () => {
       expect(byName(name).inputSchema.properties.schedule).toBeDefined();
     }
     for (const name of [
-      "move_cell",
-      "take_out_cell",
-      "copy_cells",
       "build_week",
-      "read_week_checks",
-      "accept_finding",
+      "start_manual_week",
       "list_versions",
       "rename_version"
     ]) {
@@ -1270,5 +1271,96 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
     expect(done).toEqual({ ok: true, status: 200, text: "Published Week 1." });
+  });
+
+  // API-1.44, API-1.45
+  it("manualBuildAsItsScreen: on a Manual Build week, read_week_checks measures the draft as its week editor does, and move_cell works the edit out with the editor's own module and sends it without locks", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const modules = (files) => async () =>
+      Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
+    const shared = [
+      "shoreshGeneratedWeek/build.js",
+      "shoreshTerms/shoreshTerms.js",
+      "shoreshGeneratedSchedule/counter.js",
+      "shoreshWeekEditor/measure.js"
+    ];
+    const checks = modules([
+      ...shared,
+      "shoreshWeekEditor/manualChecks.js",
+      "shoreshWeekChecks/lines.js"
+    ]);
+    const edits = modules([
+      ...shared,
+      "shoreshGeneratedSchedule/locks.js",
+      "shoreshWeekEditor/specials.js",
+      "shoreshWeekEditor/slotEdits.js",
+      "shoreshWeekEditor/locks.js",
+      "shoreshWeekEditor/handEdits.js"
+    ]);
+    const fixture = require(
+      `${LWC}/shoreshWeekEditor/__tests__/data/draftFixture.js`
+    );
+    // Bunk 1: Flagpole, Soccer, Open on Monday; Flagpole, Open, Open on Tuesday.
+    const draft = fixture.draft(fixture.WITH_SOCCER, ["1,2,", "1,,"]);
+    const read = { draft, setup: {}, labels: [], accepted: "[]" };
+    const asked = {
+      season: "Summer 2026",
+      week: "Week 1",
+      program: "Main",
+      schedule: "Manual Build"
+    };
+    const answering = (seen) => {
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: "Done." })}`
+      ];
+      return async (args, stdin) => {
+        seen.push({ args, stdin });
+        return queue.shift();
+      };
+    };
+
+    const seen = [];
+    const got = await call("read_week_checks", asked, {
+      run: answering(seen),
+      checks
+    });
+    expect(seen[0].args[3]).toBe(
+      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main&schedule=Manual+Build"
+    );
+    const m = await checks();
+    const t = m.buildTerms([]);
+    expect(got.ok).toBe(true);
+    expect(JSON.parse(got.text)).toEqual(
+      m.counterWords(
+        m.manualMeasure(draft, { t, setup: {}, setupDots: new Map() }),
+        m.readKept("[]")
+      )
+    );
+
+    const sent = [];
+    const moved = await call(
+      "move_cell",
+      {
+        ...asked,
+        day: "Monday",
+        group: "Bunk 1",
+        time: "Period 2",
+        was: "Soccer",
+        to_day: "Tuesday",
+        to_group: "Bunk 1",
+        to_time: "Period 2"
+      },
+      { run: answering(sent), edits }
+    );
+    expect(moved).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(sent[1].args[3]).toBe("/services/apexrest/v1/move_cell");
+    const body = JSON.parse(sent[1].stdin);
+    expect(body).toMatchObject({ ...asked, said: "" });
+    expect(body.change).toMatch(/^Moved Soccer to Bunk 1 · Tuesday · Period 2/);
+    expect(body.runs.length).toBeGreaterThan(0);
+    for (const run of body.runs) {
+      expect(run.locksBefore).toBeUndefined();
+    }
   });
 });

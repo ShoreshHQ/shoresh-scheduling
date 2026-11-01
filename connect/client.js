@@ -217,15 +217,15 @@ async function build(request, org, run, engine) {
 }
 
 /**
- * read_week_checks and accept_finding (API-1.30, API-1.31): reads what Generated Schedule reads
- * to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
+ * read_week_checks and accept_finding (API-1.30, API-1.31, API-1.44): reads what Generated
+ * Schedule or Manual Build reads to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
  * modules (shipped beside this file), and answers it in the counter's words; to accept, finds
  * the line named among those shown and keeps it through the counter's own save
  * (POST /v1/accept_finding).
  */
 async function weekChecks(capability, input, org, run, checks) {
   const fields = {};
-  for (const field of ["season", "week", "program"]) {
+  for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
   const read = await ask(
@@ -290,17 +290,29 @@ async function weekChecks(capability, input, org, run, checks) {
  */
 function counterOf(m, body) {
   const terms = m.buildTerms(body.labels);
+  const dots = (body.setup_changes && body.setup_changes.dots) || [];
+  const setupDots = new Map(dots.map((dot) => [dot.key, dot.words]));
+  if (body.draft) {
+    // Manual Build (API-1.44): its draft checked as its week editor checks it (manualChecks.js).
+    return {
+      measure: m.manualMeasure(body.draft, {
+        t: terms,
+        setup: body.setup,
+        setupDots
+      }),
+      accepted: m.readKept(body.accepted)
+    };
+  }
   const loaded = m.loadedOf(body.inputs || {});
   const { draft, checked } = m.counterWeek(loaded, {
     terms,
     setup: body.setup
   });
-  const dots = (body.setup_changes && body.setup_changes.dots) || [];
   const measure = m.weekMeasure({
     checked,
     draft,
     weekDays: draft.schedule.days,
-    setupDots: new Map(dots.map((dot) => [dot.key, dot.words])),
+    setupDots,
     planName: null
   });
   return { measure, accepted: m.readKept(body.accepted) };
@@ -401,6 +413,7 @@ async function loadChecks(namespace) {
         "shoreshTerms.shoreshTerms",
         "shoreshGeneratedSchedule.counter",
         "shoreshWeekEditor.measure",
+        "shoreshWeekEditor.manualChecks",
         "shoreshWeekChecks.lines"
       ].map(load)
     );

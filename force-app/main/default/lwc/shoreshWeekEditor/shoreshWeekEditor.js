@@ -3,7 +3,6 @@ import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { electivesOf, openCount } from "c/shoreshElectiveDetails";
-import { campFirstDay, campShortWeek } from "c/shoreshImportEngine";
 import {
   activityCards,
   activityGrid,
@@ -56,6 +55,7 @@ import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
 import { dayNameOf, rainFullAt, weekMeasure, withPriority } from "./measure";
+import { checkManualDays } from "./manualChecks";
 import {
   LOCKED,
   foldRun,
@@ -66,15 +66,9 @@ import {
 } from "./locks";
 import {
   RULE,
-  checkWeek,
   measureWeek,
-  otherProgramsAt,
   reasonFor,
-  readActivities,
-  readElectivePlaces,
-  readLocations,
-  readOtherPrograms,
-  readProgram
+  readElectivePlaces
 } from "c/shoreshEngine";
 
 /**
@@ -639,46 +633,14 @@ export default class ShoreshWeekEditor extends LightningElement {
       // The host's engine leaves out the days a special day replaces itself.
       return this.checkWith(weekDays, this.liveLocks);
     }
-    // A day a special day replaces is not checked or counted (ADR 0014 slice 4).
-    const replaced = this.replaced;
-    // The week's own length, a replaced day too: a short week is one with fewer days (WEEK-4.2).
-    const dayCount = weekDays.length;
-    weekDays = weekDays.filter((day) => !replaced.has(day.dateValue));
-    const draft = this.draft || {};
-    const entry = {
-      divisions: [{ groups: draft.groupRecords || [] }],
-      fixedActivities: draft.fixedActivityRecords || [],
-      recurringActivities: draft.recurringActivityRecords || []
-    };
-    const away = new Set();
-    ((this.draft && this.draft.away) || []).forEach((row) =>
-      row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
-    );
-    return checkWeek(
-      weekDays,
-      {
-        activities: readActivities(
-          draft.activityRecords,
-          campShortWeek(this.setup),
-          dayCount
-        ),
-        locations: readLocations(draft.locationRecords),
-        ...readProgram(entry),
-        // An elective set takes up its offerings' places (ADR 0018 slice E5).
-        electivePlaces: this.electivePlaces,
-        notFor: new Map(
-          ((this.draft && this.draft.activities) || []).map((a) => [
-            a.id,
-            a.notFor || []
-          ])
-        ),
-        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
-        // The camp's normal first day of the week: an early-week goal counts from it.
-        firstDay: campFirstDay(this.setup),
-        ...otherProgramsAt(readOtherPrograms(draft.otherPrograms), weekDays)
-      },
-      { t: this.t, dayName: (dateValue) => this.dayNameOf(dateValue) }
-    );
+    // Manual Build's own check, shared with Shoresh's connector (manualChecks.js).
+    return checkManualDays(this.draft, weekDays, {
+      t: this.t,
+      setup: this.setup,
+      electivePlaces: this.electivePlaces,
+      replaced: this.replaced,
+      dayName: (dateValue) => this.dayNameOf(dateValue)
+    });
   }
 
   /**
