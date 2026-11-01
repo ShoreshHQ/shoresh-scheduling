@@ -23,7 +23,7 @@ public with sharing class AgentSpecials {
     );
     CampLabels labels = CampLabels.forCamp(season.Camp__c);
     String asked = AgentFields.text(body, 'special');
-    String kind = IncomingBatch.fold(AgentFields.text(body, 'kind'));
+    String kind = AgentFields.text(body, 'kind').toLowerCase();
     List<SObject> rows = new List<SObject>();
     if (kind != 'special event') {
       rows.addAll(

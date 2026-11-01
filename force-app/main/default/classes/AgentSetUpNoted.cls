@@ -31,7 +31,7 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    String kind = KINDS.get(IncomingBatch.fold(AgentFields.text(body, 'kind')));
+    String kind = KINDS.get(AgentFields.text(body, 'kind').toLowerCase());
     String name = AgentFields.text(body, 'name');
     if (kind == null || String.isBlank(name)) {
       throw new ShoreshException(
