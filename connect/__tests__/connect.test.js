@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(30);
+    expect(CAPABILITIES).toHaveLength(32);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change or <verb>_version, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version or rename/delete_setup_record, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete)_setup_record)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1225,6 +1225,55 @@ describe("Shoresh for AI tools and the command line", () => {
         inputSchema
       }))
     );
+  });
+
+  // API-1.47, API-1.48
+  it("setupRecordsAsCampSetup: renaming and deleting a setup record send its kind, name and program to their own web address, with no week", async () => {
+    for (const name of ["rename_setup_record", "delete_setup_record"]) {
+      const schema = byName(name).inputSchema;
+      expect(schema.required).toEqual(
+        name === "rename_setup_record"
+          ? ["kind", "name", "new_name"]
+          : ["kind", "name"]
+      );
+      expect(schema.properties.week).toBeUndefined();
+    }
+    expect(byName("delete_setup_record").description).toMatch(
+      /Ask the person first/
+    );
+    const asked = {
+      season: "Summer 2026",
+      kind: "bunk",
+      name: "Bunk 3",
+      new_name: "Cedar"
+    };
+    const seen = [];
+    const done = await call("rename_setup_record", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({ message: 'Renamed the bunk "Bunk 3" to "Cedar".' }),
+        seen
+      )
+    });
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/rename_setup_record");
+    expect(JSON.parse(seen[0].stdin)).toEqual(asked);
+    expect(done.text).toBe('Renamed the bunk "Bunk 3" to "Cedar".');
+    const refused = await call(
+      "delete_setup_record",
+      { kind: "location", name: "Gym" },
+      {
+        run: sfAnswering(
+          400,
+          JSON.stringify({
+            message:
+              '"Gym" not deleted. Nothing was removed. This can\'t be deleted yet: "Gym games" happens here.'
+          }),
+          []
+        )
+      }
+    );
+    expect(refused.ok).toBe(false);
+    expect(refused.text).toMatch(/not deleted. Nothing was removed./);
   });
 
   it("manualBuildWeeksSayWhichSchedule: a cell change, the grid's multi-cell edits, checks and accepts, undo, versions, publish, unpublish and locks take schedule and send it; build stays Generated Schedule's", async () => {
