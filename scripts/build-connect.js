@@ -50,6 +50,18 @@ const ELECTIVES_ENTRIES = [
   "shoreshElectiveSeats/seats.js",
   "shoreshElectiveEngine/shoreshElectiveEngine.js"
 ];
+// The modules the connector imports a file with (API-1.80, API-1.81): Import a list's and Import
+// worksheet's own reading, review and save request, their table, and the words they are said in.
+const IMPORTS_ENTRIES = [
+  "shoreshImportEngine/shoreshImportEngine.js",
+  "shoreshLists/shoreshLists.js",
+  "shoreshListImport/table.js",
+  "shoreshTerms/shoreshTerms.js",
+  "shoreshScreens/shoreshScreens.js",
+  "shoreshRemembered/shoreshRemembered.js",
+  "shoreshPatterns/shoreshPatterns.js",
+  "shoreshChoicesReader/shoreshChoicesReader.js"
+];
 const SCHEMA = "engine.salesforce-schema.mjs";
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
@@ -84,7 +96,8 @@ function engineFiles() {
     ...CHECKS_ENTRIES,
     VERSIONS_ENTRY,
     ...EDITS_ENTRIES,
-    ...ELECTIVES_ENTRIES
+    ...ELECTIVES_ENTRIES,
+    ...IMPORTS_ENTRIES
   ];
   while (todo.length) {
     const file = todo.pop();
@@ -246,6 +259,7 @@ module.exports = {
   VERSIONS_ENTRY,
   EDITS_ENTRIES,
   ELECTIVES_ENTRIES,
+  IMPORTS_ENTRIES,
   FROM,
   TO,
   RESOURCE

@@ -9,6 +9,7 @@ const path = require("path");
 const { byName } = require("./capabilities");
 const { editCells } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
+const { importFile, undoImport } = require("./imports");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -128,7 +129,8 @@ async function call(
     checks = loadChecks,
     versionWords = loadVersionWords,
     edits = loadEdits,
-    electives = loadElectives
+    electives = loadElectives,
+    imports = loadImports
   } = {}
 ) {
   const capability = byName(name);
@@ -154,6 +156,21 @@ async function call(
       answer,
       load: electives,
       namespaceOf
+    });
+  }
+  if (capability.importsWithEngine) {
+    return importFile(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: imports,
+      namespaceOf
+    });
+  }
+  if (capability.undoesImport) {
+    return undoImport(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: imports
     });
   }
   if (capability.listsVersions) {
@@ -496,6 +513,72 @@ async function loadElectives(namespace) {
   }
 }
 
+/**
+ * The import screens' own modules a file is reviewed and saved with (API-1.80, API-1.81), as
+ * scripts/build-connect.js ships them. Each module's own names, so the list's questionCards is
+ * the one Import a list asks with (Import last year's has the same name).
+ */
+async function loadImports(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const [
+      engine,
+      lists,
+      table,
+      terms,
+      screens,
+      remembered,
+      patterns,
+      choices
+    ] = await Promise.all(
+      [
+        "shoreshImportEngine.shoreshImportEngine",
+        "shoreshLists.shoreshLists",
+        "shoreshListImport.table",
+        "shoreshTerms.shoreshTerms",
+        "shoreshScreens.shoreshScreens",
+        "shoreshRemembered.shoreshRemembered",
+        "shoreshPatterns.shoreshPatterns",
+        "shoreshChoicesReader.shoreshChoicesReader"
+      ].map(load)
+    );
+    return importModules({
+      engine,
+      lists,
+      table,
+      terms,
+      screens,
+      remembered,
+      patterns,
+      choices
+    });
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't import a file. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/** The names the import actions use, each from its own module. */
+function importModules(m) {
+  return {
+    ...m.engine,
+    ...m.lists,
+    importTable: m.table.importTable,
+    buildTerms: m.terms.buildTerms,
+    screenLabels: m.screens.screenLabels,
+    rememberedByKey: m.remembered.rememberedByKey,
+    suggestionsFor: m.patterns.suggestionsFor,
+    withLearning: m.patterns.withLearning,
+    readChoices: m.choices.readChoices
+  };
+}
+
 /** Shoresh's answer as text; a refusal's sentence on its own. */
 function answerText(text) {
   try {
@@ -572,6 +655,7 @@ async function check({ org, run = runSf } = {}) {
 }
 
 module.exports = {
+  importModules,
   requestFor,
   namespaceOf,
   sfArgs,
