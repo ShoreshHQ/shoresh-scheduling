@@ -669,9 +669,9 @@ const CAPABILITIES = [
     api: "elective_seats_now",
     method: "GET",
     description:
-      "Read a week's elective seats as the Elective seats screen shows them now, before they are finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
+      "Read a week's elective seats as the Elective seats screen shows them now, being worked on or (when none is) finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
     about:
-      "The seats now, as the Elective seats screen shows them. They are not finalized (read_elective_seats reads finalized ones) and hold no findings or problems.",
+      "The seats now, as the Elective seats screen shows them: the version being worked on, or the finalized one when none is (it says which). They hold no findings or problems.",
     queryFields: ["season", "week", "elective_set"],
     inputSchema: {
       type: "object",
@@ -722,6 +722,83 @@ const CAPABILITIES = [
     },
     ["camper", "day", "time", "elective", "seen"]
   ),
+  act(
+    "lock_elective_seat",
+    "lock_elective_seat",
+    "Lock or unlock one camper's elective seat without moving it, as the padlock on the Elective seats screen's roster does: a locked seat stays when seats are assigned again. Read the seats first with read_elective_seats_now and send its seen. It is done as you, with your own access. If someone changed the seats since, nothing is changed and Shoresh says so; read them again before the next change.",
+    {
+      ...ELECTIVE_RUN,
+      camper: {
+        type: "string",
+        description:
+          "The camper's name, or their number like #12, as read_elective_seats_now gives it."
+      },
+      day: {
+        type: "string",
+        description: "The day, like Monday, or its date like 2026-06-29."
+      },
+      time: {
+        type: "string",
+        description: "The time block's name, like Period 2."
+      },
+      locked: {
+        type: "boolean",
+        description: "true to lock the seat, false to unlock it."
+      },
+      seen: ELECTIVE_SEEN
+    },
+    ["camper", "day", "time", "locked", "seen"]
+  ),
+  act(
+    "start_new_elective_version",
+    "start_new_elective_version",
+    "Start a new version of a week's finalized elective seats, as the Elective seats screen's Start a new version does: a new version to work on, with the campers' choices, locks and moves made by hand; the finalized seats stay as they were until the new version is finalized. Read the seats first with read_elective_seats_now (it says when they are finalized) and send its seen. It is done as you, with your own access.",
+    { ...ELECTIVE_RUN, seen: ELECTIVE_SEEN },
+    ["seen"]
+  ),
+  {
+    // A read: GET, its fields in the web address (API-1.71).
+    name: "read_electives_to_clear",
+    api: "electives_to_clear",
+    method: "GET",
+    description:
+      "Read what the Elective seats screen's end-of-season Clear shows before it clears: each week's campers, choices, seats and runs, what is still being worked on, and what stays for next summer (elective sets, offerings, linked choices), with seen. Read it right before clear_electives.",
+    about:
+      "The season's electives as the Clear shows them now. They hold no findings or problems.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      required: [],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "clear_electives",
+    api: "clear_electives",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Clear a season's electives at the end of the season, as the Elective seats screen's Clear does, the whole season or one week: the runs with their choices and seats go, and every camper no remaining run uses, for good; elective sets, offerings and linked choices stay for next summer. It can't be undone: ask the person first. Read it first with read_electives_to_clear and send its seen. Seats still being worked on (not finalized) are refused. It is done as you, with your own access. If anything changed since, nothing is cleared and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        week: {
+          ...WEEK,
+          description:
+            "One week to clear, like Week 2. Leave it out to clear the whole season."
+        },
+        seen: {
+          type: "string",
+          description:
+            "The seen read_electives_to_clear gave. If anything changed since, nothing is cleared and the person should be told."
+        }
+      },
+      required: ["seen"],
+      additionalProperties: false
+    }
+  },
   setup(
     "rename_setup_record",
     "rename_setup_record",

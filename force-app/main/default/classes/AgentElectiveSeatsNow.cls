@@ -18,7 +18,7 @@ global with sharing class AgentElectiveSeatsNow {
       ) {
         asked.put(field, RestContext.request.params.get(field));
       }
-      AgentElectives.Run run = AgentElectives.committed(asked);
+      AgentElectives.Run run = AgentElectives.committedOrFinal(asked);
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
@@ -59,8 +59,11 @@ global with sharing class AgentElectiveSeatsNow {
       ' in ' +
       run.weekName +
       ': ' +
-      (view.assigned ? 'seats assigned' : 'seats not assigned yet') +
-      ', not finalized. seen: ' +
+      (run.isFinal
+        ? 'finalized; start a new version (start_new_elective_version) to change them'
+        : (view.assigned ? 'seats assigned' : 'seats not assigned yet') +
+          ', not finalized') +
+      '. seen: ' +
       view.revision
     };
     if (view.scheduleChanged) {

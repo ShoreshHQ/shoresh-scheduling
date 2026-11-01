@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(53);
+    expect(CAPABILITIES).toHaveLength(57);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats or move_elective_seat, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version or clear_electives, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -935,6 +935,48 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(moved[0].args[3]).toBe("/services/apexrest/v1/move_elective_seat");
     expect(JSON.parse(moved[0].stdin)).toEqual(move);
+  });
+
+  // API-1.69, API-1.70, API-1.71, API-1.72
+  it("restOfElectiveSeatsWithWhatWasSeen: a lock, a new version and the Clear send what was seen, the Clear's picture is read with the season in the web address, and the Clear says to ask first", async () => {
+    expect(byName("clear_electives").description).toMatch(
+      /ask the person first/
+    );
+    const read = [];
+    await call(
+      "read_electives_to_clear",
+      { season: "Summer 2026" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Picture" }), read) }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/electives_to_clear?season=Summer+2026"
+    );
+    const asked = {
+      lock_elective_seat: {
+        season: "Summer 2026",
+        week: "Week 1",
+        camper: "#12",
+        day: "Monday",
+        time: "Period 1",
+        locked: false,
+        seen: "3"
+      },
+      start_new_elective_version: {
+        season: "Summer 2026",
+        week: "Week 1",
+        seen: "4"
+      },
+      clear_electives: { season: "Summer 2026", week: "Week 1", seen: "a1b2" }
+    };
+    for (const [name, body] of Object.entries(asked)) {
+      expect(byName(name).inputSchema.required).toContain("seen");
+      const sent = [];
+      await call(name, body, {
+        run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+      });
+      expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
+      expect(JSON.parse(sent[0].stdin)).toEqual(body);
+    }
   });
 
   // API-1.65

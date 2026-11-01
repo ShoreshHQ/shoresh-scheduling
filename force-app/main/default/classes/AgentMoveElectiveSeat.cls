@@ -65,7 +65,7 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
   }
 
   /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
-  private static ElectiveSeats.CamperInfo camperOf(
+  public static ElectiveSeats.CamperInfo camperOf(
     ElectiveSeats.RunView view,
     String asked
   ) {
@@ -95,7 +95,7 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
   }
 
   /** The time by its day (Monday, or 2026-06-29) and time block's name. */
-  private static ElectivePeriod timeOf(
+  public static ElectivePeriod timeOf(
     ElectiveSeats.RunView view,
     String day,
     String block
