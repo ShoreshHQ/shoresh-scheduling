@@ -308,7 +308,7 @@ private class AgentSetupRestTest {
       );
       String notes = String.valueOf(read[1])
         .substringAfter('notes: ')
-        .substringBefore('. Send');
+        .substringBefore('; runs_in: ');
       List<Object> changed = ask(
         new AgentChangeSetup(),
         'POST',
