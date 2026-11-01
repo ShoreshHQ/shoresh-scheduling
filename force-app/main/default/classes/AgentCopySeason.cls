@@ -35,7 +35,6 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
         'Send the dates read_season_copy said as seen, so a change someone made since isn\'t copied unseen.'
       );
     }
-    refuseTaken(name);
     // Locked: no week can be added, moved or taken out between the compare and the copy.
     List<Season__c> locked = [
       SELECT Id
@@ -44,6 +43,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
       WITH USER_MODE
       FOR UPDATE
     ];
+    refuseTaken(name);
     Map<String, String> now;
     try {
       now = seenOf(SeasonSetupController.previewCopy(season.Id, start));

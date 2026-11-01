@@ -240,26 +240,29 @@ private class AgentCopyAndMatchTest {
       good.put('seen', seen);
       List<Object> done = ask(new AgentUpdateToMatch(), 'POST', good);
       Integer queries = Limits.getQueries() - before;
+      Boolean matchedAfter = SetupMatchController.getSetupChanges(draftId)
+        .changes.isEmpty();
+      Integer kept = [
+        SELECT COUNT()
+        FROM Schedule__c
+        WHERE
+          SourceSchedule__c = :draftId
+          AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+        WITH SYSTEM_MODE
+      ];
+      List<Object> undone = ask(new AgentUndo(), 'POST', weekAsked);
       Test.stopTest();
+      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(
+        1,
+        SetupMatchController.getSetupChanges(draftId).changes.size(),
+        'Undo brings the week back as it was, Swim and all'
+      );
       Assert.areEqual(409, staleAnswer[0], String.valueOf(staleAnswer[1]));
       Assert.areEqual(409, unknownAnswer[0], String.valueOf(unknownAnswer[1]));
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
-      Assert.isTrue(
-        SetupMatchController.getSetupChanges(draftId).changes.isEmpty(),
-        'the week matches setup now'
-      );
-      Assert.areEqual(
-        1,
-        [
-          SELECT COUNT()
-          FROM Schedule__c
-          WHERE
-            SourceSchedule__c = :draftId
-            AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
-          WITH SYSTEM_MODE
-        ],
-        'one version kept, marked through an agent: Undo brings the week back'
-      );
+      Assert.isTrue(matchedAfter, 'the week matched setup after the update');
+      Assert.areEqual(1, kept, 'one version kept, marked through an agent');
       Assert.isTrue(queries < 100, 'Update used ' + queries + ' queries');
     }
   }
