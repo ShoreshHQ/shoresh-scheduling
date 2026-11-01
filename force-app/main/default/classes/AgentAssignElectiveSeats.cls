@@ -72,7 +72,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentElectives.Run run = AgentElectives.committed(body);
-    Decimal seen = AgentElectives.seenOf(body);
+    Decimal seen = AgentElectives.seenOf(body, run);
     if (!(body.get('seats') instanceof List<Object>)) {
       throw new ShoreshException(
         'Those seats could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
