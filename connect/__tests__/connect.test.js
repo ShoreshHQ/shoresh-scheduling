@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(32);
+    expect(CAPABILITIES).toHaveLength(34);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version or rename/delete_setup_record, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version or rename/delete/add_setup_record, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete)_setup_record)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1274,6 +1274,64 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(refused.ok).toBe(false);
     expect(refused.text).toMatch(/not deleted. Nothing was removed./);
+  });
+
+  it("setupFieldsAsCampSetup: changing a setup record's fields and adding one send kind, name, program and fields to their own web address, with no week", async () => {
+    expect(byName("change_setup_record").inputSchema.required).toEqual([
+      "kind",
+      "name",
+      "fields"
+    ]);
+    expect(byName("add_setup_record").inputSchema.required).toEqual([
+      "kind",
+      "name"
+    ]);
+    for (const name of ["change_setup_record", "add_setup_record"]) {
+      const schema = byName(name).inputSchema;
+      expect(schema.properties.week).toBeUndefined();
+      expect(schema.properties.fields.type).toBe("object");
+    }
+    expect(
+      byName("add_setup_record").inputSchema.properties.name.description
+    ).toBe("What to call it.");
+    const asked = {
+      season: "Summer 2026",
+      kind: "activity",
+      name: "Swim",
+      fields: { length: "2", location: "Pool" }
+    };
+    const seen = [];
+    const done = await call("change_setup_record", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({
+          message: 'Changed the activity "Swim": length 2, location Pool.'
+        }),
+        seen
+      )
+    });
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/change_setup_record");
+    expect(JSON.parse(seen[0].stdin)).toEqual(asked);
+    expect(done.text).toBe(
+      'Changed the activity "Swim": length 2, location Pool.'
+    );
+    const added = [];
+    await call(
+      "add_setup_record",
+      { kind: "location", name: "Lake" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: 'Added the location "Lake".' }),
+          added
+        )
+      }
+    );
+    expect(added[0].args[3]).toBe("/services/apexrest/v1/add_setup_record");
+    expect(JSON.parse(added[0].stdin)).toEqual({
+      kind: "location",
+      name: "Lake"
+    });
   });
 
   it("manualBuildWeeksSayWhichSchedule: a cell change, the grid's multi-cell edits, checks and accepts, undo, versions, publish, unpublish and locks take schedule and send it; build stays Generated Schedule's", async () => {

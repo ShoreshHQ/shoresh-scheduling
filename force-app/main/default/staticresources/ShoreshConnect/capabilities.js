@@ -232,6 +232,29 @@ function setup(name, api, description, more = {}, required = []) {
   };
 }
 
+/** The fields change_setup_record and add_setup_record set (API-1.49, API-1.50). */
+const SETUP_FIELDS = {
+  type: "object",
+  description:
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day, early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+};
+
+/**
+ * A new setup record (API-1.50): add_setup_record names what to call it, and the program it goes
+ * in, not a record that is there.
+ */
+function addedRecord(name, api, description, more) {
+  const capability = setup(name, api, description, more);
+  const { properties } = capability.inputSchema;
+  properties.name = { type: "string", description: "What to call it." };
+  properties.program = {
+    type: "string",
+    description:
+      "The program it goes in, like Main, for a division, group, time block, fixed or recurring activity. Only needed when the season has more than one."
+  };
+  return capability;
+}
+
 /**
  * What a schedule read says about Shoresh's own view (API-1.26): it is attached for a chat app
  * that can show it, never said to be shown, since only the app knows whether it is.
@@ -604,6 +627,19 @@ const CAPABILITIES = [
     "delete_setup_record",
     "delete_setup_record",
     "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first, as that screen asks: anything inside it is deleted too. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
+  ),
+  setup(
+    "change_setup_record",
+    "change_setup_record",
+    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row: a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+    { fields: SETUP_FIELDS },
+    ["fields"]
+  ),
+  addedRecord(
+    "add_setup_record",
+    "add_setup_record",
+    "Add one setup record to a season, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words.",
+    { fields: SETUP_FIELDS }
   )
 ];
 
