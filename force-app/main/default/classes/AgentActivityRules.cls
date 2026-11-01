@@ -70,12 +70,12 @@ public with sharing class AgentActivityRules {
     return String.valueOf(value).normalizeSpace();
   }
 
-  /** What was seen, said as the panel shows it: who A to Z, notes on one line, a tick as read. */
+  /** What was seen, said as the panel shows it: who as a list A to Z, notes on one line, a tick as read. */
   public static String asShown(String key, Object said) {
-    String text = said == null ? '' : String.valueOf(said).normalizeSpace();
     if (key == WHO) {
-      return AgentActivityWho.said(text.split(','));
+      return AgentActivityWho.said(AgentActivityWho.namesIn(said));
     }
+    String text = said == null ? '' : String.valueOf(said).normalizeSpace();
     if (text == '(blank)' || text == '') {
       return '(blank)';
     }

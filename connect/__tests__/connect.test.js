@@ -1403,6 +1403,33 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(JSON.parse(filled[0].stdin)).toEqual(weeks);
   });
 
+  // API-1.53, API-1.54, API-1.55
+  it("runsInCoversAndWhoAsLists: the weeks something runs in, who a recurring activity covers and who can do an activity go as lists, so a name with a comma stays one name", async () => {
+    const fields = byName("change_setup_record").inputSchema.properties.fields
+      .description;
+    expect(fields).toMatch(/runs_in: a list of the week names/);
+    expect(fields).toMatch(/covers: a list of the division and group names/);
+    expect(
+      byName("add_setup_record").inputSchema.properties.fields.description
+    ).not.toMatch(/runs_in/);
+    expect(
+      byName("change_activity_rules").inputSchema.properties.fields.description
+    ).toMatch(/who_can_do_it \(a list of division and group names/);
+    const asked = {
+      season: "Summer 2026",
+      kind: "recurring activity",
+      name: "Rest",
+      fields: { runs_in: ["Week 1", "Week 3"], covers: ["Bunk 4, boys"] },
+      seen: { runs_in: ["Week 1", "Week 2"], covers: ["Seniors"] }
+    };
+    const sent = [];
+    await call("change_setup_record", asked, {
+      run: sfAnswering(200, JSON.stringify({ message: "Changed" }), sent)
+    });
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/change_setup_record");
+    expect(JSON.parse(sent[0].stdin)).toEqual(asked);
+  });
+
   it("manualBuildWeeksSayWhichSchedule: a cell change, the grid's multi-cell edits, checks and accepts, undo, versions, publish, unpublish and locks take schedule and send it; build stays Generated Schedule's", async () => {
     const either = [
       "change_schedule_cell",

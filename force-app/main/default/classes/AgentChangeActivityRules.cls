@@ -110,10 +110,12 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
         ? ''
         : String.valueOf(given.get(key)).trim();
       if (key == AgentActivityRules.WHO) {
-        chosen = AgentActivityWho.idsOf(text, found);
+        chosen = AgentActivityWho.idsOf(given.get(key), found);
         said.add(
           'who can do it ' +
-          (chosen.isEmpty() ? AgentActivityWho.EVERYONE : text)
+          (chosen.isEmpty()
+            ? AgentActivityWho.EVERYONE
+            : String.join(AgentActivityWho.namesIn(given.get(key)), ', '))
         );
       } else {
         Object value = valueOf(key, text);
