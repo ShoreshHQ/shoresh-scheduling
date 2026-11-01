@@ -10,6 +10,8 @@ const { byName } = require("./capabilities");
 const { editCells } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { importFile, undoImport } = require("./imports");
+const { importLastYear } = require("./lastYear");
+const { importSpecialSchedule } = require("./specialFile");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -164,6 +166,21 @@ async function call(
       answer,
       load: imports,
       namespaceOf
+    });
+  }
+  if (capability.importsLastYear) {
+    return importLastYear(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: imports,
+      namespaceOf
+    });
+  }
+  if (capability.importsSpecialSchedule) {
+    return importSpecialSchedule(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: imports
     });
   }
   if (capability.undoesImport) {
@@ -534,7 +551,10 @@ async function loadImports(namespace) {
       screens,
       remembered,
       patterns,
-      choices
+      choices,
+      flow,
+      summary,
+      fromFile
     ] = await Promise.all(
       [
         "shoreshImportEngine.shoreshImportEngine",
@@ -544,7 +564,10 @@ async function loadImports(namespace) {
         "shoreshScreens.shoreshScreens",
         "shoreshRemembered.shoreshRemembered",
         "shoreshPatterns.shoreshPatterns",
-        "shoreshChoicesReader.shoreshChoicesReader"
+        "shoreshChoicesReader.shoreshChoicesReader",
+        "shoreshImport.flow",
+        "shoreshImport.summary",
+        "shoreshSpecialSchedule.fromFile"
       ].map(load)
     );
     return importModules({
@@ -555,7 +578,10 @@ async function loadImports(namespace) {
       screens,
       remembered,
       patterns,
-      choices
+      choices,
+      flow,
+      summary,
+      fromFile
     });
   } catch {
     throw new Error(
@@ -575,7 +601,14 @@ function importModules(m) {
     rememberedByKey: m.remembered.rememberedByKey,
     suggestionsFor: m.patterns.suggestionsFor,
     withLearning: m.patterns.withLearning,
-    readChoices: m.choices.readChoices
+    readChoices: m.choices.readChoices,
+    // Import last year's own steps and counts (API-1.84).
+    ...m.flow,
+    comingIn: m.summary.comingIn,
+    countTiles: m.summary.countTiles,
+    // A special schedule's own file reading (API-1.85).
+    pagesOf: m.fromFile.pagesOf,
+    planFromPage: m.fromFile.planFromPage
   };
 }
 

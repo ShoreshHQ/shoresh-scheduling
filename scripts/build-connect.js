@@ -60,7 +60,12 @@ const IMPORTS_ENTRIES = [
   "shoreshScreens/shoreshScreens.js",
   "shoreshRemembered/shoreshRemembered.js",
   "shoreshPatterns/shoreshPatterns.js",
-  "shoreshChoicesReader/shoreshChoicesReader.js"
+  "shoreshChoicesReader/shoreshChoicesReader.js",
+  // Import last year's own steps and counts (API-1.84).
+  "shoreshImport/flow.js",
+  "shoreshImport/summary.js",
+  // A special schedule's own file reading (API-1.85).
+  "shoreshSpecialSchedule/fromFile.js"
 ];
 const SCHEMA = "engine.salesforce-schema.mjs";
 

@@ -1,7 +1,8 @@
 /**
- * Import a list and Import worksheet through an agent or the command line (docs/protocol/api.md
- * API-1.80, API-1.81). The file is read where the screen reads it, outside Salesforce (the
- * connector runs the screen's own module, c/shoreshLists), so each web address has two halves:
+ * Import a list, Import worksheet and Import last year through an agent or the command line
+ * (docs/protocol/api.md API-1.80, API-1.81, API-1.84). The files are read where the screen reads
+ * them, outside Salesforce (the connector runs the screen's own modules, c/shoreshLists and
+ * c/shoreshImport flow.js), so each web address has two halves:
  *   GET  ?season=  what the screen reads: the season's setup (SeasonSetupController.
  *        getSeasonSetupInCamp, the camp's words in it), the camp's remembered answers
  *        (ImportController.getAnswers), and the setup's stamp as read (seen)
@@ -10,6 +11,9 @@
  *        locked as imports and Undos lock it (ImportUndo.lockSeason)
  */
 public with sharing class AgentImports {
+  /** Import last year: it also reads what earlier imports brought in, and saves weeks' versions. */
+  public static final String LAST_YEAR = 'lastYear';
+  public static final String SCREEN_LIST = 'list';
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'seen',
@@ -17,7 +21,7 @@ public with sharing class AgentImports {
   };
 
   /** What the screen reads before a file, answered as JSON (refusals as {"message"}). */
-  public static void answerRead() {
+  public static void answerRead(String door) {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
@@ -35,7 +39,7 @@ public with sharing class AgentImports {
       );
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(
-        JSON.serialize(readOf(season), true)
+        JSON.serialize(readOf(season, door), true)
       );
     } catch (Exception e) {
       Boolean ours =
@@ -52,21 +56,33 @@ public with sharing class AgentImports {
   }
 
   /** The screen's own reads, and the stamp a save carries back as seen. */
-  public static Map<String, Object> readOf(Season__c season) {
-    return new Map<String, Object>{
+  public static Map<String, Object> readOf(Season__c season, String door) {
+    Map<String, Object> read = new Map<String, Object>{
       'season' => season.Name,
       'setup' => SeasonSetupController.getSeasonSetupInCamp(
         season.Camp__c,
         season.Id
       ),
       'answers' => ImportController.getAnswers(season.Camp__c),
-      'seen' => AgentImportStamp.of(season.Id, season.Camp__c)
+      'seen' => stampOf(season, door)
     };
+    if (door == LAST_YEAR) {
+      // INGEST-5.7, 5.8: what earlier imports brought in and no one changed since.
+      read.put('imported', ImportController.getImported(season.Id));
+    }
+    return read;
+  }
+
+  /** The stamp a door compares: Import last year's also covers weeks' versions and special days. */
+  private static String stampOf(Season__c season, String door) {
+    return door == LAST_YEAR
+      ? AgentImportStamp.withSchedules(season.Id, season.Camp__c)
+      : AgentImportStamp.of(season.Id, season.Camp__c);
   }
 
   /** Import a list's own save (ImportController.saveList), only while the setup is as read. */
   public static String saveList() {
-    String plan = checkedPlan();
+    String plan = checkedPlan(SCREEN_LIST);
     try {
       return JSON.serialize(ImportController.saveList(plan), true);
     } catch (Exception e) {
@@ -76,9 +92,19 @@ public with sharing class AgentImports {
 
   /** Import worksheet's own save (ImportController.saveWorkbook), only while the setup is as read. */
   public static String saveWorkbook() {
-    String plan = checkedPlan();
+    String plan = checkedPlan(SCREEN_LIST);
     try {
       return JSON.serialize(ImportController.saveWorkbook(plan), true);
+    } catch (Exception e) {
+      throw nothingSaved(e);
+    }
+  }
+
+  /** Import last year's own save (ImportController.saveSetup), only while the setup is as read. */
+  public static String saveLastYear() {
+    String plan = checkedPlan(LAST_YEAR);
+    try {
+      return JSON.serialize(ImportController.saveSetup(plan), true);
     } catch (Exception e) {
       throw nothingSaved(e);
     }
@@ -93,7 +119,7 @@ public with sharing class AgentImports {
    * read (seen); refused otherwise. The answer of a save is its result as JSON, which the
    * connector says in the screen's words.
    */
-  private static String checkedPlan() {
+  private static String checkedPlan(String door) {
     Map<String, Object> body = AgentFields.body(FIELDS);
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
@@ -114,7 +140,7 @@ public with sharing class AgentImports {
     }
     // Imports and Undos in one season take turns; the setup is compared once it is ours.
     ImportUndo.lockSeason(season.Id);
-    if (AgentImportStamp.of(season.Id, season.Camp__c) != seen) {
+    if (stampOf(season, door) != seen) {
       throw new AgentWeeks.ConflictException(
         'Someone changed the setup of "' +
           season.Name +

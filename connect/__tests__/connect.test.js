@@ -58,7 +58,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(69);
+    expect(CAPABILITIES).toHaveLength(71);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -69,10 +69,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet or undo_import, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule or undo_import, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|undo_import)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1323,7 +1323,10 @@ describe("Shoresh for AI tools and the command line", () => {
         screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
         remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
         patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
-        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`)
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
       });
     const setup = {
       season: { Id: "a00000000000001AAA", Name: "Summer 2026" },
@@ -1516,6 +1519,177 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: "a0I1"
     });
     expect(undo.text).toBe(m.undoMessage(result));
+  });
+
+  // API-1.84, API-1.85
+  it("lastYearAndSpecialFilesAsTheScreens: Import last year reviews with the screen's own steps and saves its own plan only with the seen; a special schedule's file is read with its page's own module", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists: require(`${LWC}/shoreshLists/shoreshLists.js`),
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
+      });
+    const setup = {
+      season: { Id: "a00000000000001AAA", Name: "Summer 2026" },
+      weeks: [],
+      weekExceptions: [],
+      programs: [],
+      activities: [],
+      locations: [],
+      locationTypes: [],
+      schedules: [],
+      labels: [],
+      electives: { sets: [], offerings: [], linkedChoices: [] }
+    };
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const activities = ["Archery", "Swim", "Arts"];
+    const files = ["Bunk 1", "Bunk 2"].map((g, gi) => ({
+      file_name: `Camp - ${g}.csv`,
+      csv_text: [
+        ["Time", ...days],
+        ...[
+          "Period 1 9:00-9:45",
+          "Period 2 9:50-10:35",
+          "Lunch 11:30-12:15"
+        ].map((b, bi) => [
+          b,
+          ...days.map((_, d) =>
+            bi === 2 ? "Lunch" : activities[(gi + d + bi) % 3]
+          )
+        ])
+      ]
+        .map((r) => r.join(","))
+        .join("\n")
+    }));
+    const read = JSON.stringify({
+      season: "Summer 2026",
+      setup,
+      answers: [],
+      imported: {},
+      seen: "s1"
+    });
+    const send = async (input) => {
+      const sent = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${read}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: JSON.stringify({ added: { Group: 2 }, changed: {}, removed: {}, leftAsIs: [], openNotKept: 0 }) })}`
+      ];
+      const done = await call("import_last_year", input, {
+        run: async (args, stdin) => {
+          sent.push({ args, stdin });
+          return queue.shift();
+        },
+        imports
+      });
+      return { done, sent };
+    };
+    const review = await send({ season: "Summer 2026", files });
+    expect(review.sent).toHaveLength(1);
+    expect(review.sent[0].args[3]).toBe(
+      "/services/apexrest/v1/import_last_year?season=Summer+2026"
+    );
+    expect(review.done.text).toMatch(/Ready to save: Add \d+\./);
+    expect(review.done.text).toContain('seen: "s1"');
+    const stale = await send({
+      season: "Summer 2026",
+      files,
+      save: true,
+      seen: "s0"
+    });
+    expect(stale.done.status).toBe(409);
+    expect(stale.sent).toHaveLength(1);
+    const saved = await send({
+      season: "Summer 2026",
+      files,
+      save: true,
+      seen: "s1"
+    });
+    expect(saved.sent[1].args[3]).toBe(
+      "/services/apexrest/v1/import_last_year"
+    );
+    // The screen's own plan, from its own steps.
+    const m = await imports();
+    const t = m.buildTerms([]);
+    const flow = {
+      files: files.map((f) => m.csvFile(f.file_name, f.csv_text)),
+      setup,
+      terms: t,
+      layouts: {},
+      imported: [],
+      inUse: {},
+      versionUses: {}
+    };
+    let state = m.recomputed(flow, {}, {});
+    state = m.appliedOnItsOwn(flow, state, {
+      savedRows: [],
+      remembered: {},
+      autoUndone: []
+    });
+    state = m.recomputed(flow, state.answers, state.autoApplied);
+    const plan = m.savePlan(flow, state.proposal, state.answers, {
+      autoApplied: state.autoApplied,
+      savedRows: [],
+      remembered: {}
+    });
+    expect(JSON.parse(saved.sent[1].stdin)).toEqual({
+      season: "Summer 2026",
+      seen: "s1",
+      plan: JSON.stringify(plan)
+    });
+    expect(saved.done.text).toMatch(/^Added 2 groups\./);
+
+    // A special schedule's file: read with the page's own module, sent with what was seen.
+    expect(byName("import_special_schedule").inputSchema.required).toEqual([
+      "special",
+      "seen",
+      "file_name"
+    ]);
+    const special = [];
+    const csvText =
+      "Time,Blue,Gold\n9:00-9:45,Tug of war,Relay race\n9:50-11:20,Relay race,";
+    await call(
+      "import_special_schedule",
+      {
+        season: "Summer 2026",
+        special: "Color War",
+        seen: "4",
+        file_name: "cw.csv",
+        csv_text: csvText
+      },
+      {
+        run: sfAnswering(200, JSON.stringify({ message: "Imported" }), special),
+        imports
+      }
+    );
+    const { pages } = m.pagesOf(m.csvFile("cw.csv", csvText));
+    const { imported, noTimes, places } = m.planFromPage(pages[0]);
+    expect(special[0].args[3]).toBe(
+      "/services/apexrest/v1/import_special_schedule"
+    );
+    expect(JSON.parse(special[0].stdin)).toEqual({
+      season: "Summer 2026",
+      special: "Color War",
+      seen: "4",
+      file_name: "cw.csv",
+      blocks: imported.blocks,
+      columns: imported.columns,
+      no_times: noTimes,
+      places,
+      page_count: 1,
+      replace_edited: false
+    });
+    expect(byName("import_special_schedule").description).toMatch(
+      /ask the person/
+    );
   });
 
   it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {

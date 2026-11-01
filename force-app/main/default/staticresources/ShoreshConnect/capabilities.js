@@ -1523,6 +1523,104 @@ const CAPABILITIES = [
     "Import the whole-camp worksheet, as Roots' Import worksheet does: every sheet it knows (programs, divisions, groups, time blocks, location types, locations, activities, fixed and recurring activities, weeks, the weeks things run in, camp words) reviewed together exactly as the screen reviews them, with the same code, then saved together and undone together. Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it."
   ),
   {
+    name: "import_last_year",
+    api: "import_last_year",
+    method: "POST",
+    sendsFields: true,
+    importsLastYear: true,
+    description:
+      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, places named in the files, what an earlier import brought in that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        files: {
+          type: "array",
+          description:
+            "The files, each {file_name, csv_text} or {file_name, sheets: [{name, rows, merges}]}, every row a list of its cells as text as the sheet shows them (merges as Excel's merged ranges, if any).",
+          items: { type: "object" }
+        },
+        layouts: {
+          type: "object",
+          description:
+            "A file's layout when the review isn't sure of it, by file name: allCamp, byGroup or byActivity."
+        },
+        answers: {
+          type: "object",
+          description:
+            "Your answers, by the id the review gives each (an empty answer takes one back)."
+        },
+        ask_again: {
+          type: "array",
+          description:
+            "Ids of answers filled in from the camp's patterns to ask again instead.",
+          items: { type: "string" }
+        },
+        save: {
+          type: "boolean",
+          description:
+            "true to save, once the review says it is ready. Leave it out to review."
+        },
+        seen: {
+          type: "string",
+          description: "With save: the seen the review gave."
+        }
+      },
+      required: ["files"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "import_special_schedule",
+    api: "import_special_schedule",
+    method: "POST",
+    sendsFields: true,
+    importsSpecialSchedule: true,
+    description:
+      "Fill a special day's or event's own schedule from a file, as Import on its page does: the file is read with the same code (times down the side or across the top, its time blocks, and its columns: a special day's groups, an event's stations) and saved as its schedule; activities it names that the season lacks are added. Only a schedule with nothing typed in it can be filled (clear it first with change_special_schedule_frame, after asking the person). Read it first with read_special_schedule and send its seen. If the file renames or removes time blocks or stations the person changed, nothing is saved and the answer is the page's question: ask the person, then send the same file with replace_edited: true. There is no undo. If someone changed it since, nothing is saved.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        special: {
+          type: "string",
+          description:
+            "The special day's or event's name, as read_special_days gives it."
+        },
+        kind: {
+          type: "string",
+          description:
+            "special day or special event, only when a special day and an event share the name."
+        },
+        seen: {
+          type: "string",
+          description: "The seen read_special_schedule gave."
+        },
+        file_name: {
+          type: "string",
+          description: "The file's name, like color-war.xlsx."
+        },
+        csv_text: {
+          type: "string",
+          description: "The file's contents as CSV text (or send sheets)."
+        },
+        sheets: {
+          type: "array",
+          description:
+            "The file's sheets, each {name, rows, merges}, every row a list of its cells as text (merges as Excel's merged ranges, so a cell that runs down carries on).",
+          items: { type: "object" }
+        },
+        replace_edited: {
+          type: "boolean",
+          description:
+            "true once the person said yes to replacing time blocks or stations they changed."
+        }
+      },
+      required: ["special", "seen", "file_name"],
+      additionalProperties: false
+    }
+  },
+  {
     name: "read_last_imports",
     api: "read_last_imports",
     method: "GET",

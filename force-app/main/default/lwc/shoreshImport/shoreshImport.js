@@ -11,13 +11,11 @@ import {
   BRING_BACK,
   LAYOUTS,
   LEAVE_OUT,
-  buildProposal,
   csvFile,
   foundLists,
   importNotes,
   isCsv,
   isReadable,
-  planFor,
   questionCards,
   readAsGroups,
   undoMessage,
@@ -27,28 +25,18 @@ import {
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedByKey } from "c/shoreshRemembered";
-import {
-  autoAnswersFor,
-  staleAuto,
-  suggestionsFor,
-  withLearning,
-  autoAppliedIn
-} from "c/shoreshPatterns";
+import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
-
-/** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
-function leaveable(card) {
-  return card.options.some((o) => o.value === LEAVE_OUT);
-}
-
-/** Each layout in the camp's words. */
-function layoutWords(t) {
-  return {
-    allCamp: `All camp: a page per day, ${t.pIn("Group")} across`,
-    byGroup: `By ${t.sIn("Group")}: a page per ${t.sIn("Group")}, days across`,
-    byActivity: `By ${t.sIn("Activity")}: the ${t.pIn("Group")} doing each ${t.sIn("Activity")} listed in its cell`
-  };
-}
+import {
+  appliedOnItsOwn,
+  foundNothing,
+  layoutWords,
+  leaveable,
+  planNow,
+  proposalWith,
+  recomputed,
+  savePlan
+} from "./flow";
 
 /**
  * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
@@ -287,26 +275,23 @@ export default class ShoreshImport extends LightningElement {
    * follows a few deep. Same answers, same file, same result.
    */
   applyOnItsOwn() {
-    for (let depth = 0; depth < 5 && this.proposal; depth++) {
-      const cards = questionCards(this.proposal, this.terms, this.answers);
-      const auto = autoAnswersFor(
-        cards,
-        this.savedRows,
-        this.remembered,
-        this.autoUndone
-      );
-      const ids = Object.keys(auto);
-      if (ids.length === 0) {
-        return;
+    const next = appliedOnItsOwn(
+      this.flowInput,
+      {
+        proposal: this.proposal,
+        answers: this.answers,
+        autoApplied: this.autoApplied
+      },
+      {
+        savedRows: this.savedRows,
+        remembered: this.remembered,
+        autoUndone: this.autoUndone
       }
-      const answers = { ...this.answers };
-      ids.forEach((id) => {
-        answers[id] = auto[id].value;
-      });
-      this.answers = answers;
-      this.autoApplied = { ...this.autoApplied, ...auto };
-      this.recompute();
-    }
+    );
+    this.proposal = next.proposal;
+    this.answers = next.answers;
+    this.autoApplied = next.autoApplied;
+    this.plan = this.planNow();
   }
 
   /** A question a person answers is theirs from then on, not filled in on its own. */
@@ -467,84 +452,34 @@ export default class ShoreshImport extends LightningElement {
 
   // ---------- the proposal ----------
 
-  proposalWith(answers) {
-    return buildProposal({
+  /** What the review is worked out from (./flow.js): the files, setup, words and choices. */
+  get flowInput() {
+    return {
       files: this.files,
-      existing: this.setup,
+      setup: this.setup,
       terms: this.terms,
-      answers,
       layouts: this.layouts,
       imported: this.imported,
       inUse: this.inUse,
       versionUses: this.versionUses
-    });
+    };
+  }
+
+  proposalWith(answers) {
+    return proposalWith(this.flowInput, answers);
   }
 
   recompute() {
-    this.proposal = this.proposalWith(this.answers);
-    // An auto-applied answer whose question went away with another goes too: none stays hidden.
-    for (let depth = 0; depth < 5; depth++) {
-      const stale = staleAuto(
-        this.autoApplied,
-        questionCards(this.proposal, this.terms, this.answers)
-      );
-      if (stale.length === 0) {
-        break;
-      }
-      const answers = { ...this.answers };
-      const rest = { ...this.autoApplied };
-      stale.forEach((id) => {
-        delete answers[id];
-        delete rest[id];
-      });
-      this.answers = answers;
-      this.autoApplied = rest;
-      this.proposal = this.proposalWith(this.answers);
-    }
+    const next = recomputed(this.flowInput, this.answers, this.autoApplied);
+    this.proposal = next.proposal;
+    this.answers = next.answers;
+    this.autoApplied = next.autoApplied;
     this.plan = this.planNow();
-  }
-
-  /**
-   * INGEST-5.5: what Add saves while questions are open. Each open question that can be left out
-   * is left out, so nothing that depends on it is guessed (a question that opens another is
-   * followed, a few deep); { proposal, open: [card] }.
-   */
-  settled() {
-    const answers = { ...this.answers };
-    const open = new Map();
-    let proposal = this.proposal;
-    for (let depth = 0; depth < 5; depth++) {
-      const more = questionCards(proposal, this.terms, answers).filter(
-        (c) => !c.answer && !open.has(c.id) && leaveable(c)
-      );
-      if (more.length === 0) {
-        break;
-      }
-      more.forEach((c) => {
-        open.set(c.id, c);
-        answers[c.id] = LEAVE_OUT;
-      });
-      proposal = this.proposalWith(answers);
-    }
-    return { proposal, open: [...open.values()] };
   }
 
   /** The plan Add would save, for the counts; null if it cannot be made yet. */
   planNow(fileData) {
-    if (!this.proposal || this.foundNothing) {
-      return null;
-    }
-    try {
-      const { proposal, open } = this.settled();
-      return planFor(proposal, this.setup, this.seasonId, {
-        answers: this.answers,
-        fileNames: this.files.map((f) => f.name),
-        open: open.map((c) => ({ key: c.id, title: c.title })),
-        fileData
-      });
-    } catch {
-      return null;
-    }
+    return planNow(this.flowInput, this.proposal, this.answers, fileData);
   }
 
   get seasonId() {
@@ -552,14 +487,7 @@ export default class ShoreshImport extends LightningElement {
   }
 
   get foundNothing() {
-    // A single-day file waiting for its day (INGEST-4.14) is something found.
-    return (
-      !this.proposal ||
-      (this.proposal.reading.placements.length === 0 &&
-        !this.proposal.reading.timeAsks.some(
-          (a) => a.type === "oneDay" && this.answers[a.id] !== LEAVE_OUT
-        ))
-    );
+    return foundNothing(this.proposal, this.answers);
   }
 
   /** Every question, in the engine's order (the file's names first, then held ones, the rest). */
@@ -1067,21 +995,14 @@ export default class ShoreshImport extends LightningElement {
     this.error = null;
     try {
       // The files as read go with open questions, so they can be answered later.
-      const plan = this.planNow(JSON.stringify(this.files));
+      const plan = savePlan(this.flowInput, this.proposal, this.answers, {
+        autoApplied: this.autoApplied,
+        savedRows: this.savedRows,
+        remembered: this.remembered
+      });
       if (!plan) {
         throw new Error("The plan could not be made.");
       }
-      if (plan.open.length === 0) {
-        delete plan.fileData;
-      }
-      const cards = questionCards(this.proposal, this.terms, this.answers);
-      plan.autoApplied = autoAppliedIn(plan.remember, this.autoApplied);
-      plan.remember = withLearning(
-        plan.remember,
-        cards,
-        this.suggestionsOf(cards),
-        this.autoApplied
-      );
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.savedOpen = plan.open;
       this.stage = "done";

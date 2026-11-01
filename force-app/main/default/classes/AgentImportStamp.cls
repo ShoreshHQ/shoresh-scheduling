@@ -12,6 +12,11 @@ public with sharing class AgentImportStamp {
     rows.addAll(seasonRows(seasonId));
     rows.addAll(insideRows(seasonId));
     rows.addAll(campRows(campId));
+    return digest(rows);
+  }
+
+  /** Rows as 16 letters and digits. */
+  private static String digest(List<AggregateResult> rows) {
     List<String> parts = new List<String>();
     for (AggregateResult row : rows) {
       Datetime at = (Datetime) row.get('at');
@@ -201,5 +206,55 @@ public with sharing class AgentImportStamp {
       ]
     );
     return rows;
+  }
+
+  /**
+   * Import last year's stamp (API-1.84): the setup's, and also the weeks' schedules and their
+   * days (it keeps last year's schedule as a version and may replace an earlier import's cells)
+   * and the season's special days and events (it puts days of their own on).
+   */
+  public static String withSchedules(Id seasonId, Id campId) {
+    List<AggregateResult> rows = new List<AggregateResult>();
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM Schedule__c
+        WHERE Program__r.Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Program__r.Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM SpecialDay__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM SpecialEvent__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM SpecialDate__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    return of(seasonId, campId) + digest(rows);
   }
 }
