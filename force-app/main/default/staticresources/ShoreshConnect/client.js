@@ -13,6 +13,7 @@ const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
+const { readLearned } = require("./learned");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -135,6 +136,7 @@ async function call(
     electives = loadElectives,
     imports = loadImports,
     files = loadExports,
+    learned = loadLearned,
     folder
   } = {}
 ) {
@@ -193,6 +195,14 @@ async function call(
       load: files,
       namespaceOf,
       ...(folder ? { folder } : {})
+    });
+  }
+  if (capability.readsLearned) {
+    return readLearned(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: learned,
+      namespaceOf
     });
   }
   if (capability.undoesImport) {
@@ -598,6 +608,35 @@ async function loadImports(namespace) {
   } catch {
     throw new Error(
       "This copy of Shoresh's connector can't import a file. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/**
+ * "What Shoresh has learned"'s own modules its list is worked out with (API-1.93), as
+ * scripts/build-connect.js ships them.
+ */
+async function loadLearned(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const modules = await Promise.all(
+      [
+        "shoreshLearned.history",
+        "shoreshLearned.builtIn",
+        "shoreshLearned.view",
+        "shoreshPatterns.shoreshPatterns",
+        "shoreshTerms.shoreshTerms"
+      ].map(load)
+    );
+    return Object.assign({}, ...modules);
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't read what Shoresh has learned. Download it again from Settings in Shoresh."
     );
   }
 }

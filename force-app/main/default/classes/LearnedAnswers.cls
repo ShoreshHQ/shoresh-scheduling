@@ -207,7 +207,7 @@ public with sharing class LearnedAnswers {
 
   /** The marker's key: "pattern|<template>|<antecedent>", each part escaped (partOf). */
   @TestVisible
-  private static String markerOf(String template, String antecedent) {
+  public static String markerOf(String template, String antecedent) {
     return PATTERN + partOf(template) + '|' + partOf(antecedent);
   }
 
