@@ -211,7 +211,7 @@ public with sharing class AgentImportStamp {
   /**
    * Import last year's stamp (API-1.84): the setup's, and also the weeks' schedules and their
    * days (it keeps last year's schedule as a version and may replace an earlier import's cells)
-   * and the season's special days and events (it puts days of their own on).
+   * and the season's special days and events and their plans (it puts days of their own on).
    */
   public static String withSchedules(Id seasonId, Id campId) {
     List<AggregateResult> rows = new List<AggregateResult>();
@@ -251,6 +251,14 @@ public with sharing class AgentImportStamp {
       [
         SELECT COUNT(Id) n, MAX(SystemModstamp) at
         FROM SpecialDate__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT COUNT(Id) n, MAX(SystemModstamp) at
+        FROM PlanPart__c
         WHERE Season__c = :seasonId
         WITH USER_MODE
       ]

@@ -36,7 +36,7 @@ function reviewOf(m, body, input, files) {
     versionUses: before.versionUses || {}
   };
   const remembered = m.rememberedByKey(body.answers || []);
-  const askAgain = (input.ask_again || []).map(String);
+  const askAgain = [].concat(input.ask_again || []).map(String);
   // Read: what the camp answered before, then what steady patterns fill in (MEMO-5.1).
   let state = m.recomputed(flow, remembered.answers, {});
   state = m.appliedOnItsOwn(flow, state, {
