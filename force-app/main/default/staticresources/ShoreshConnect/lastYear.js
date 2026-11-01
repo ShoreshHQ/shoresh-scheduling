@@ -9,7 +9,13 @@
  * screen's own save (POST /v1/import_last_year) with the seen, compared while the season is
  * locked. Questions that can wait are left for later, as Add does ("Add 58, 3 for later").
  */
-const { fileOf, fromCommandLine, changedSince, refused } = require("./imports");
+const {
+  fileOf,
+  fromCommandLine,
+  asTheScreenReads,
+  changedSince,
+  refused
+} = require("./imports");
 
 /** The person's answers over the review's: an empty answer takes one back (an unticked place). */
 function answered(answers, given) {
@@ -93,7 +99,7 @@ function questionLine(m, card, suggestion, remembered, auto) {
 function reviewText(m, body, review, input) {
   const { flow, t, remembered, state } = review;
   const { proposal, answers, autoApplied } = state;
-  const cards = m.questionCards(proposal, t, answers);
+  const cards = m.yearCards(proposal, t, answers);
   const suggestions = m.suggestionsFor(
     cards,
     body.answers || [],
@@ -269,7 +275,7 @@ async function importLastYear(
     method: "GET"
   });
   if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
+  const body = asTheScreenReads(JSON.parse(read.body));
   if (input.save && body.seen !== String(input.seen).trim()) {
     return changedSince();
   }
@@ -290,7 +296,7 @@ async function importLastYear(
   if (!input.save) {
     return { ok: true, status: 200, text: reviewText(m, body, review, input) };
   }
-  const cards = m.questionCards(state.proposal, t, state.answers);
+  const cards = m.yearCards(state.proposal, t, state.answers);
   const must = cards.filter(
     (c) => !c.options.some((o) => o.value === c.answer) && !m.leaveable(c)
   );

@@ -8,6 +8,9 @@ public with sharing class IncomingRuns {
   private List<ElectiveRun__c> runs;
   // The season's groups by folded name; a name two groups share is left out (not guessed).
   private Map<String, Id> groups = new Map<String, Id>();
+  // The season's elective set and week names, folded; read once, only to say a refusal.
+  private Set<String> setNames;
+  private Set<String> weekNames;
 
   private IncomingRuns(List<ElectiveRun__c> runs) {
     this.runs = runs;
@@ -121,6 +124,46 @@ public with sharing class IncomingRuns {
       result.put(row.ElectiveRun__c + '|' + row.Camper__c, row);
     }
     return result;
+  }
+
+  /**
+   * API-6.4: whether the season has a week of this name (and an elective set of that name, when
+   * one is given), though no run: nothing was brought in there yet.
+   */
+  public Boolean notStarted(Id seasonId, String electiveSet, String week) {
+    if (String.isBlank(week)) {
+      return false;
+    }
+    if (weekNames == null) {
+      weekNames = new Set<String>();
+      for (Week__c item : [
+        SELECT Name
+        FROM Week__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]) {
+        weekNames.add(IncomingBatch.fold(item.Name));
+      }
+    }
+    if (!weekNames.contains(IncomingBatch.fold(week))) {
+      return false;
+    }
+    if (electiveSet == null) {
+      return true;
+    }
+    // Read only when a set is named: a key that sends bunks reads no sets.
+    if (setNames == null) {
+      setNames = new Set<String>();
+      for (ElectiveSet__c item : [
+        SELECT Name
+        FROM ElectiveSet__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]) {
+        setNames.add(IncomingBatch.fold(item.Name));
+      }
+    }
+    return setNames.contains(IncomingBatch.fold(electiveSet));
   }
 
   private static Boolean same(String saved, String sent) {

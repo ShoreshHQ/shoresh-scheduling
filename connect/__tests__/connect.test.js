@@ -1619,6 +1619,173 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // API-1.98, API-1.99
+  it("lastYearAsksTheScreensQuestionsAndMatchesItsBlocks: every question the screen asks is said with its choices and answered by choice, and a setup's times are read as the screen reads them, so its time blocks are matched, not added again", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists: require(`${LWC}/shoreshLists/shoreshLists.js`),
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
+      });
+    const m = await imports();
+    const name = "maple-grove-2026-all-camp.xlsx";
+    const { sheets } = m.workbookFile(
+      require("xlsx"),
+      name,
+      fs.readFileSync(
+        path.resolve(__dirname, "../../docs/samples/import", name)
+      )
+    );
+    const files = [{ file_name: name, sheets }];
+    const weeks = [
+      {
+        Id: "w1",
+        Name: "Week 1",
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-02"
+      },
+      {
+        Id: "w2",
+        Name: "Week 2",
+        StartDate__c: "2027-07-05",
+        EndDate__c: "2027-07-09"
+      }
+    ];
+    const empty = {
+      season: { Id: "a00000000000001AAA", Name: "Summer 2027" },
+      weeks,
+      weekExceptions: [],
+      programs: [],
+      activities: [],
+      locations: [],
+      locationTypes: [],
+      schedules: [],
+      labels: [],
+      electives: { sets: [], offerings: [], linkedChoices: [] }
+    };
+    const send = async (setup, input) => {
+      const sent = [];
+      const read = JSON.stringify({
+        season: "Summer 2027",
+        setup,
+        answers: [],
+        imported: {},
+        seen: "s1"
+      });
+      const queue = [
+        `HTTP/1.1 200\n\n${read}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: JSON.stringify({ added: {}, changed: {}, removed: {}, leftAsIs: [], openNotKept: 0 }) })}`
+      ];
+      const done = await call(
+        "import_last_year",
+        { season: "Summer 2027", files, ...input },
+        {
+          run: async (args, stdin) => {
+            sent.push({ args, stdin });
+            return queue.shift();
+          },
+          imports
+        }
+      );
+      return { done, sent };
+    };
+
+    // API-1.98: the screen's questions, each with its choices, as the screen asks them.
+    const review = await send(empty, {});
+    const similar = "similar|activity|music|musik|Music|Musik";
+    expect(review.done.text).toContain(
+      `[id "${similar}"] Are “Music” and “Musik” the same activity? Answer with "a" = Same: call it “Music”, "b" = Same: call it “Musik”, "different" = Different: keep both, "leaveOut" = Leave it out for now.`
+    );
+    expect(review.done.text).toContain(
+      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leaveOut" = Leave it out for now.`
+    );
+    // Answered by choice, the save keeps last year's week as a version, as the screen's does.
+    const answers = { [similar]: "a", "week|the file's week": "Week 1" };
+    const answered = await send(empty, { answers });
+    expect(answered.done.text).toContain(
+      "Last year's schedule: Week 1 (Main), kept as a version"
+    );
+    expect(answered.done.text).toMatch(/Ready to save: Add \d+\./);
+    const saved = await send(empty, { answers, save: true, seen: "s1" });
+    const plan = JSON.parse(JSON.parse(saved.sent[1].stdin).plan);
+    expect(plan.open).toEqual([]);
+    expect(plan.versions.map((v) => v.weekId)).toEqual(["w1"]);
+
+    // API-1.99: a second import into the setup the first made: its time blocks come from the web
+    // address as "09:00:00.000Z" (the screen gets milliseconds) and are matched, not added again.
+    const at = (h, min) =>
+      `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00.000Z`;
+    const blocks = [
+      ["Period 1", 9, 0, 9, 45],
+      ["Period 2", 9, 50, 10, 35],
+      ["Period 3", 10, 40, 11, 25],
+      ["Lunch", 11, 30, 12, 15],
+      ["Period 4", 12, 20, 13, 5],
+      ["Period 5", 13, 10, 13, 55],
+      ["Period 6", 14, 0, 14, 45]
+    ].map(([n, h1, m1, h2, m2], i) => ({
+      Id: `tb${i + 1}`,
+      Name: n,
+      StartTime__c: at(h1, m1),
+      EndTime__c: at(h2, m2),
+      SortOrder__c: i + 1
+    }));
+    const days = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ];
+    const program = { Id: "p1", Name: "Main" };
+    days.forEach((d, i) => {
+      program[`${d}__c`] = i < 5;
+    });
+    const bunks = (did, dname, names) => ({
+      division: { Id: did, Name: dname, SortOrder__c: 1 },
+      groups: names.map((g, i) => ({
+        Id: `${did}g${i}`,
+        Name: g,
+        SortOrder__c: i + 1
+      }))
+    });
+    const second = await send(
+      {
+        ...empty,
+        programs: [
+          {
+            program,
+            timeBlocks: blocks,
+            divisions: [
+              bunks("d1", "Juniors", ["Bunk 1", "Bunk 2", "Bunk 3"]),
+              bunks("d2", "Seniors", ["Bunk 4", "Bunk 5", "Bunk 6"])
+            ],
+            fixedActivities: [],
+            recurringActivities: []
+          }
+        ]
+      },
+      { answers }
+    );
+    const comes = second.done.text
+      .split("\n")
+      .find((l) => l.startsWith("Comes in:"));
+    expect(comes).toBeDefined();
+    expect(comes).not.toMatch(/time block/);
+    expect(comes).not.toMatch(/group|division|program/);
+  });
+
   // API-1.84, API-1.85
   it("lastYearAndSpecialFilesAsTheScreens: Import last year reviews with the screen's own steps and saves its own plan only with the seen; a special schedule's file is read with its page's own module", async () => {
     const LWC = "../../force-app/main/default/lwc";

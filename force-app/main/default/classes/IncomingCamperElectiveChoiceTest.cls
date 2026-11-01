@@ -221,6 +221,35 @@ private class IncomingCamperElectiveChoiceTest {
     Assert.areEqual(0, camp.imports().size(), 'Nothing recorded');
   }
 
+  // API-6.4: an elective set and week with no choices brought in yet: the refusal says the one step
+  // a person takes first, on the Elective seats screen; nothing is saved.
+  @IsTest
+  static void choicesBeforeAnyAreBroughtInSayWhatToDoFirst() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    camp.camper('Maya Cohen', 'SYN-1');
+    Database.delete(camp.run, AccessLevel.SYSTEM_MODE);
+    Map<String, Object> unknown = record('Swim', null);
+    unknown.put('elective', 'Bechirot');
+    System.runAs(camp.sender('Send_Elective_Choices')) {
+      Map<String, Object> answer = send(
+        new List<Map<String, Object>>{ record('Archery', 'Swim'), unknown }
+      );
+      Assert.areEqual(
+        'problem: No choices brought in for Chugim in Week 1 yet, so Shoresh has nowhere to keep these. A person brings them in once on the Elective seats screen (choose Chugim and Week 1, then Bring in choices); after that, send these again.',
+        IncomingTestData.said(answer, 1)
+      );
+      Assert.areEqual(
+        'problem: There is no elective "Bechirot" in "Week 1" in this season.',
+        IncomingTestData.said(answer, 2)
+      );
+    }
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Preference__c WITH SYSTEM_MODE],
+      'Nothing saved'
+    );
+  }
+
   // API-4.4: only "Send elective choices" sends choices.
   @IsTest
   static void anotherPieceCannotSendChoices() {

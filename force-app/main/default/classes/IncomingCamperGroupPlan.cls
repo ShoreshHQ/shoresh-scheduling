@@ -79,9 +79,15 @@ public with sharing class IncomingCamperGroupPlan {
           ? 'This season has no electives yet, and Shoresh keeps a camper\'s ' +
             groupWord +
             ' with their elective choices. Send it again once there are.'
-          : 'There are no electives in "' +
-            record.week.left(80) +
-            '" in this season.'
+          : runs.notStarted(batch.season.Id, null, record.week)
+              ? 'There are no elective choices in "' +
+                record.week.left(80) +
+                '" yet, and Shoresh keeps a camper\'s ' +
+                groupWord +
+                ' with their choices. Send their elective choices first, then this again.'
+              : 'There are no electives in "' +
+                record.week.left(80) +
+                '" in this season.'
       );
       return;
     }

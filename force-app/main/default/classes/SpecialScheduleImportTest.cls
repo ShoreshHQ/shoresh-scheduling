@@ -175,6 +175,76 @@ private class SpecialScheduleImportTest {
     }
   }
 
+  // SPECIAL-2.2: a name in the file that is one of the camp's fixed or recurring activities is
+  // that activity, held as the special day holds it when it starts; never a stray new activity.
+  @IsTest
+  static void aFixedActivityInTheFileIsTheCampsOwnNotANewActivity() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id dayId = ids.get('Field Day');
+      SpecialScheduleImport.Imported imported = SpecialScheduleTestData.sportsDay(
+        new List<SpecialScheduleImport.ImportedColumn>{
+          SpecialScheduleTestData.column(
+            'Group A',
+            new List<String>{ 'Soccer', 'lunch BREAK' }
+          ),
+          SpecialScheduleTestData.column(
+            'Group B',
+            new List<String>{ 'Relay races', 'Lunch break' }
+          )
+        }
+      );
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialScheduleImport.Outcome outcome = SpecialScheduleController.importPlan(
+        dayId,
+        1,
+        imported
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 25, 'Queries to import: ' + used);
+      Assert.areEqual(new List<String>{ 'Relay races' }, outcome.added);
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Activity__c
+          WHERE Name = 'Lunch break'
+          WITH USER_MODE
+        ],
+        'No activity is made for a fixed activity the file names'
+      );
+      Id lunchId = [
+        SELECT Id
+        FROM FixedActivity__c
+        WHERE Name = 'Lunch break'
+        WITH USER_MODE
+      ]
+      .Id;
+      ScheduleGrid grid = SpecialPlans.read(dayId).grid;
+      Integer lunches = 0;
+      for (ScheduleGrid.Item item : grid.items) {
+        if (item.name == 'Lunch break') {
+          lunches++;
+          Assert.areEqual('F', item.kind);
+          Assert.areEqual(String.valueOf(lunchId), item.id);
+        }
+      }
+      Assert.areEqual(1, lunches, 'One item for both cells');
+      Assert.areEqual(
+        new List<String>{
+          'Group A: Soccer,Lunch break',
+          'Group B: Relay races,Lunch break',
+          'Group C: ,'
+        },
+        SpecialScheduleTestData.cells(outcome.plan.schedule.days[0])
+      );
+    }
+  }
+
   // A time block the director renamed is not replaced quietly: the import asks first (nothing
   // saved), names each change, and replaces them only once the director says yes.
   @IsTest

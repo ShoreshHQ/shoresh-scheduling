@@ -736,6 +736,9 @@ function importModules(m) {
     suggestionsFor: m.patterns.suggestionsFor,
     withLearning: m.patterns.withLearning,
     readChoices: m.choices.readChoices,
+    // Import last year's questions: the engine's, as its screen asks them (the list's
+    // questionCards above has the same name).
+    yearCards: m.engine.questionCards,
     // Import last year's own steps and counts (API-1.84).
     ...m.flow,
     comingIn: m.summary.comingIn,
