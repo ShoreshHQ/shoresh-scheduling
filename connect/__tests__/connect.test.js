@@ -12,7 +12,8 @@ const {
   call,
   check,
   sfPath,
-  signIn
+  signIn,
+  importModules
 } = require("../client");
 const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
@@ -57,7 +58,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(65);
+    expect(CAPABILITIES).toHaveLength(69);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +69,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event or set_up_noted_item, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet or undo_import, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|undo_import)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1307,6 +1308,214 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(conflict.done.ok).toBe(false);
     expect(conflict.done.status).toBe(409);
+  });
+
+  // API-1.80, API-1.81, API-1.82, API-1.83
+  it("importsAsTheScreens: a file is reviewed with the import screen's own modules and saved with its own plan only with the seen, and undo asks first and says the screen's words", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const lists = require(`${LWC}/shoreshLists/shoreshLists.js`);
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists,
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`)
+      });
+    const setup = {
+      season: { Id: "a00000000000001AAA", Name: "Summer 2026" },
+      weeks: [],
+      weekExceptions: [],
+      locationTypes: [],
+      locations: [
+        { Id: "l1", Name: "Gym", GroupsThatFit__c: 2 },
+        { Id: "l2", Name: "Pool", GroupsThatFit__c: 1 }
+      ],
+      activities: [
+        {
+          Id: "a1",
+          Name: "Archery",
+          Location__c: "l1",
+          Length__c: 1,
+          Priority__c: "Low",
+          GroupsAtOnce__c: 1
+        }
+      ],
+      programs: [],
+      schedules: [],
+      labels: []
+    };
+    const read = JSON.stringify({
+      season: "Summer 2026",
+      setup,
+      answers: [],
+      seen: "s1"
+    });
+    const file = {
+      season: "Summer 2026",
+      list: "activities",
+      file_name: "activities.csv",
+      csv_text: "Activity,Location\nArchery,Pool\nSwimming,Pool"
+    };
+    const send = async (
+      input,
+      saved = "{}",
+      status = 200,
+      name = "import_list"
+    ) => {
+      const sent = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${read}`,
+        `HTTP/1.1 ${status}\n\n${JSON.stringify({ message: saved })}`
+      ];
+      const done = await call(name, input, {
+        run: async (args, stdin) => {
+          sent.push({ args, stdin });
+          return queue.shift();
+        },
+        imports
+      });
+      return { done, sent };
+    };
+
+    // The review: read as the screen reads it, nothing sent, with its questions and seen.
+    const review = await send(file);
+    expect(review.sent).toHaveLength(1);
+    expect(review.sent[0].args[3]).toBe(
+      "/services/apexrest/v1/import_list?season=Summer+2026"
+    );
+    expect(review.done.ok).toBe(true);
+    const m = await imports();
+    const t = m.buildTerms([]);
+    const proposal = m.listProposal({
+      screenKey: "activities",
+      file: m.csvFile("activities.csv", file.csv_text),
+      setup,
+      terms: t,
+      answers: {}
+    });
+    const difference = proposal.rows.find((r) => r.status === "changed")
+      .differences[0];
+    expect(review.done.text).toContain(
+      `Keep or Change [id ${JSON.stringify(difference.id)}]`
+    );
+    expect(review.done.text).toContain("Swimming");
+    expect(review.done.text).toContain('seen: "s1"');
+    expect(review.done.text).toMatch(
+      /Before it can be saved: 1 difference to Keep or Change/
+    );
+
+    // No seen: nothing read or sent. Another seen: refused before anything is sent.
+    expect((await send({ ...file, save: true })).done.status).toBe(400);
+    const stale = await send({ ...file, save: true, seen: "s0" });
+    expect(stale.done.status).toBe(409);
+    expect(stale.sent).toHaveLength(1);
+    // Waiting for an answer: nothing sent.
+    const waiting = await send({ ...file, save: true, seen: "s1" });
+    expect(waiting.done.status).toBe(400);
+    expect(waiting.done.text).toMatch(/^Nothing was saved\./);
+    expect(waiting.sent).toHaveLength(1);
+
+    // Answered: the screen's own plan, with the seen.
+    const answers = { [difference.id]: lists.CHANGE };
+    const saved = await send(
+      { ...file, answers, save: true, seen: "s1" },
+      JSON.stringify({ added: { Activity: 1 }, changed: { Activity: 1 } })
+    );
+    expect(saved.sent[1].args[3]).toBe("/services/apexrest/v1/import_list");
+    const body = JSON.parse(saved.sent[1].stdin);
+    const answered = m.listProposal({
+      screenKey: "activities",
+      file: m.csvFile("activities.csv", file.csv_text),
+      setup,
+      terms: t,
+      answers
+    });
+    const plan = m.listPlan(
+      answered,
+      answers,
+      setup.season.Id,
+      "activities.csv (Activities)"
+    );
+    const cards = m.questionCards(answered, t, answers);
+    plan.remember = m.withLearning(
+      plan.remember,
+      cards,
+      m.suggestionsFor(cards, [], {})
+    );
+    expect(body).toEqual({
+      season: "Summer 2026",
+      seen: "s1",
+      plan: JSON.stringify(plan)
+    });
+    expect(saved.done.text).toMatch(
+      /^Added 1 activity, Changed 1 activity\. To undo this import, use undo_import/
+    );
+    // Someone changed it while it saved: Shoresh's own refusal.
+    const conflict = await send(
+      { ...file, answers, save: true, seen: "s1" },
+      "Someone changed the setup",
+      409
+    );
+    expect(conflict.done.status).toBe(409);
+
+    // The worksheet is read at its own address.
+    const sheet = await send(
+      {
+        season: "Summer 2026",
+        file_name: "camp.xlsx",
+        sheets: [{ name: "Activities", rows: [["Activity"], ["Archery"]] }]
+      },
+      "",
+      200,
+      "import_worksheet"
+    );
+    expect(sheet.sent[0].args[3]).toBe(
+      "/services/apexrest/v1/import_worksheet?season=Summer+2026"
+    );
+    expect(sheet.done.ok).toBe(true);
+
+    // Undo: what was read, asked first, said in the screen's words.
+    const last = [];
+    await call(
+      "read_last_imports",
+      { season: "Summer 2026" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Imports" }), last) }
+    );
+    expect(last[0].args[3]).toBe(
+      "/services/apexrest/v1/read_last_imports?season=Summer+2026"
+    );
+    expect(byName("undo_import").description).toMatch(/ask the person first/);
+    expect(byName("undo_import").inputSchema.required).toEqual(["seen"]);
+    const undone = [];
+    const result = {
+      removed: 2,
+      restored: 1,
+      keptEdited: [],
+      keptInUse: [],
+      gone: []
+    };
+    const undo = await call(
+      "undo_import",
+      { season: "Summer 2026", seen: "a0I1" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: JSON.stringify(result) }),
+          undone
+        ),
+        imports
+      }
+    );
+    expect(undone[0].args[3]).toBe("/services/apexrest/v1/undo_import");
+    expect(JSON.parse(undone[0].stdin)).toEqual({
+      season: "Summer 2026",
+      seen: "a0I1"
+    });
+    expect(undo.text).toBe(m.undoMessage(result));
   });
 
   it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {

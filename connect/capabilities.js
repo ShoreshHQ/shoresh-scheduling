@@ -193,6 +193,59 @@ const ELECTIVE_SEEN = {
     "The seen read_elective_seats_now gave. If the seats changed since, nothing is changed and the person should be told."
 };
 
+/**
+ * Importing a file as an import screen does (API-1.80, API-1.81): the file's contents as data,
+ * reviewed and saved with the screen's own modules (connect/imports.js).
+ */
+function importFile(name, api, description, more = {}, required = []) {
+  return {
+    name,
+    api,
+    method: "POST",
+    sendsFields: true,
+    importsWithEngine: true,
+    importsWorkbook: api === "import_worksheet",
+    description,
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        ...more,
+        file_name: {
+          type: "string",
+          description: "The file's name, like activities.csv or Camp 2026.xlsx."
+        },
+        csv_text: {
+          type: "string",
+          description: "The file's contents as CSV text (or send sheets)."
+        },
+        sheets: {
+          type: "array",
+          description:
+            "The file's sheets, each {name, rows}, every row a list of its cells as text as the sheet shows them (or send csv_text).",
+          items: { type: "object" }
+        },
+        answers: {
+          type: "object",
+          description:
+            "Your answers, by the id the review gives each: a question's choice, a column's choice, keep or change for a difference, leaveOut for a new row, back for something deleted before."
+        },
+        save: {
+          type: "boolean",
+          description:
+            "true to save, once the review says it is ready. Leave it out to review."
+        },
+        seen: {
+          type: "string",
+          description: "With save: the seen the review gave."
+        }
+      },
+      required: ["file_name", ...required],
+      additionalProperties: false
+    }
+  };
+}
+
 /** A change made on either screen that holds the week (API-1.41). */
 const ON_EITHER = "that screen";
 
@@ -1434,7 +1487,82 @@ const CAPABILITIES = [
     ["kind", "name"],
     ON_EITHER,
     EITHER_WEEK
-  )
+  ),
+  importFile(
+    "import_list",
+    "import_list",
+    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it.",
+    {
+      list: {
+        type: "string",
+        enum: [
+          "programs",
+          "divisions",
+          "groups",
+          "timeBlocks",
+          "locations",
+          "activities",
+          "fixedActivities",
+          "recurringActivities",
+          "electives"
+        ],
+        description:
+          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, or electives (offerings, not camper choices)."
+      },
+      sheet: {
+        type: "string",
+        description:
+          "For a file of several sheets: the sheet to read, when the review read another."
+      }
+    },
+    ["list"]
+  ),
+  importFile(
+    "import_worksheet",
+    "import_worksheet",
+    "Import the whole-camp worksheet, as Roots' Import worksheet does: every sheet it knows (programs, divisions, groups, time blocks, location types, locations, activities, fixed and recurring activities, weeks, the weeks things run in, camp words) reviewed together exactly as the screen reviews them, with the same code, then saved together and undone together. Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it."
+  ),
+  {
+    name: "read_last_imports",
+    api: "read_last_imports",
+    method: "GET",
+    description:
+      "Read the imports that can be undone in a season, as Roots and Settings offer Undo: the person's own last import (a list, a worksheet or Import last year), and each outside system's last batch (bring_in_*), each with when it was made and its seen. Only the last of each can be undone, once.",
+    about:
+      "The imports Undo is offered for, as Roots and Settings show them. It holds nothing else.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "undo_import",
+    api: "undo_import",
+    method: "POST",
+    sendsFields: true,
+    undoesImport: true,
+    description:
+      "Undo the last import, as Roots' Undo last import (and Settings' Undo of an outside system's last batch) does: what it added is removed, and what it changed goes back to how it was; anything edited since, or still used by something else, stays, and the answer says which. It removes records, so ask the person first. Read it first with read_last_imports and send its seen (and from, for an outside system's batch). If another import was made, or it was undone, since, nothing is undone.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        from: {
+          type: "string",
+          description:
+            "For an outside system's batch: the system's name, as read_last_imports gives it. Leave it out for the person's own import."
+        },
+        seen: {
+          type: "string",
+          description: "The seen read_last_imports gave for that import."
+        }
+      },
+      required: ["seen"],
+      additionalProperties: false
+    }
+  }
 ];
 
 // What comes back is camp data (names people typed), never instructions to follow.
