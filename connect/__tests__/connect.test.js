@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(43);
+    expect(CAPABILITIES).toHaveLength(47);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks or merge_locations, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, copy_season or update_to_match_setup, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|copy_season|update_to_match_setup)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1451,6 +1451,60 @@ describe("Shoresh for AI tools and the command line", () => {
         name: "Pool",
         keep: "Pool",
         seen: { Pool: "1", pool: "2" }
+      }
+    };
+    for (const [name, body] of Object.entries(asked)) {
+      const sent = [];
+      await call(name, body, {
+        run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+      });
+      expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
+      expect(JSON.parse(sent[0].stdin)).toEqual(body);
+    }
+  });
+
+  // API-1.61, API-1.62, API-1.63, API-1.64
+  it("copySeasonAndUpdateToMatchWithWhatWasSeen: the copy and the setup changes are read with their fields in the web address, and the copy and the update send what was seen", async () => {
+    expect(byName("copy_season").inputSchema.required).toEqual([
+      "name",
+      "start_date",
+      "seen"
+    ]);
+    expect(byName("update_to_match_setup").inputSchema.required).toEqual([
+      "week",
+      "changes",
+      "seen"
+    ]);
+    expect(byName("update_to_match_setup").description).toMatch(
+      /ask the person first/
+    );
+    const read = [];
+    await call(
+      "read_season_copy",
+      { season: "Summer 2026", start_date: "2027-06-28" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Copy" }), read) }
+    );
+    await call(
+      "read_setup_changes",
+      { season: "Summer 2026", week: "Week 1", schedule: "Manual Build" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Changes" }), read) }
+    );
+    expect(read.map((r) => r.args[3])).toEqual([
+      "/services/apexrest/v1/read_season_copy?season=Summer+2026&start_date=2027-06-28",
+      "/services/apexrest/v1/read_setup_changes?season=Summer+2026&week=Week+1&schedule=Manual+Build"
+    ]);
+    const asked = {
+      copy_season: {
+        season: "Summer 2026",
+        name: "Summer 2027",
+        start_date: "2027-06-28",
+        seen: { season: "2027-06-28 to 2027-08-06" }
+      },
+      update_to_match_setup: {
+        season: "Summer 2026",
+        week: "Week 1",
+        changes: ["a1b2"],
+        seen: "c3d4"
       }
     };
     for (const [name, body] of Object.entries(asked)) {

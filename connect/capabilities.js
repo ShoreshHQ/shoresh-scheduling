@@ -863,6 +863,103 @@ const CAPABILITIES = [
       required: ["name", "seen"],
       additionalProperties: false
     }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.61).
+    name: "read_season_copy",
+    api: "read_season_copy",
+    method: "GET",
+    description:
+      "Read what Camp Setup's Copy season page shows before a copy: for a new first day (start_date), the new season's first and last day, each week's dates in the copy, and whether the weeks land on other weekdays. Read it right before copy_season and send the dates it said as seen.",
+    about:
+      "The copy's dates now, as Camp Setup's Copy season page shows them. They hold no findings or problems.",
+    queryFields: ["season", "start_date"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        start_date: {
+          type: "string",
+          description: "The new season's first day, like 2027-06-28."
+        }
+      },
+      required: ["start_date"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "copy_season",
+    api: "copy_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Copy a season to a new one, as Camp Setup's Copy season page does: its setup comes along with dates moved to the new first day; its schedules, versions, special days and events, elective seats and campers' choices stay behind. The season copied is not changed. Read it first with read_season_copy and send the dates it said as seen. It is done as you, with your own access. If someone changed the season's weeks or dates since, nothing is copied and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        name: {
+          type: "string",
+          description:
+            "The new season's name, like Summer 2027. A name another season already has is refused."
+        },
+        start_date: {
+          type: "string",
+          description: "The new season's first day, like 2027-06-28."
+        },
+        seen: {
+          type: "object",
+          description:
+            'The dates read_season_copy said, by the same names ("season" and each week), like {"season": "2027-06-28 to 2027-08-06", "Week 1": "2027-06-28 to 2027-07-02"}. If they changed since, nothing is copied and the person should be told.'
+        }
+      },
+      required: ["name", "start_date", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.63).
+    name: "read_setup_changes",
+    api: "read_setup_changes",
+    method: "GET",
+    description:
+      'Read what Generated Schedule or Manual Build shows when setup changed since the week started: each change "Update to match setup" can make, by its key, with each cell before and after and why, and the week as read (seen). Read it right before update_to_match_setup.',
+    about:
+      "The changes setup makes to the week now, as the screen lists them. They are not the week's checks (read those with read_week_checks).",
+    queryFields: ["season", "week", "program", "schedule"],
+    inputSchema: {
+      type: "object",
+      properties: EITHER_WEEK,
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "update_to_match_setup",
+    api: "update_to_match_setup",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Update a week to match setup, as Generated Schedule's or Manual Build's \"Update to match setup\" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone's choice: ask the person first. It is done as you, with your own access, and undo_last_agent_change brings the week back. If someone changed the week or setup since, nothing is updated and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...EITHER_WEEK,
+        changes: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "The keys of the changes to make, exactly as read_setup_changes gave them."
+        },
+        seen: {
+          type: "string",
+          description:
+            "The seen read_setup_changes gave. If the week changed since, nothing is updated and the person should be told."
+        }
+      },
+      required: ["week", "changes", "seen"],
+      additionalProperties: false
+    }
   }
 ];
 
