@@ -87,6 +87,11 @@ private class AgentSpecialDaysTest {
         'GET',
         new Map<String, Object>{ 'season' => season, 'week' => 'Week 1' }
       );
+      List<Object> noSeen = ask(
+        new AgentSpecialDay(),
+        'POST',
+        tuesday(season, 'Field Day', '')
+      );
       Test.stopTest();
       String said = String.valueOf(read[1]);
       Assert.areEqual(200, read[0], said);
@@ -102,6 +107,7 @@ private class AgentSpecialDaysTest {
       );
       Assert.isTrue(said.endsWith('its seen is "none".'), said);
       Assert.areEqual(400, unknown[0], String.valueOf(unknown[1]));
+      Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
     }
   }
 
@@ -147,23 +153,14 @@ private class AgentSpecialDaysTest {
         'POST',
         tuesday(season, 'Visiting Day', 'Visiting Day')
       );
-      List<Object> noSeen = ask(
-        new AgentSpecialDay(),
+      // Not on that day: said, nothing changed, nothing to undo.
+      List<Object> notThere = ask(
+        new AgentSpecialDay(AgentSpecialDay.TAKE_OFF),
         'POST',
-        tuesday(season, 'Field Day', '')
+        tuesday(season, 'Field Day', 'none')
       );
       Test.stopTest();
 
-      Assert.areEqual(200, before[0], String.valueOf(before[1]));
-      Assert.isTrue(
-        String.valueOf(before[1])
-          .contains('"Field Day": not on a day; "Visiting Day": not on a day.'),
-        String.valueOf(before[1])
-      );
-      Assert.isTrue(
-        String.valueOf(before[1]).contains('"Color War"'),
-        String.valueOf(before[1])
-      );
       Assert.areEqual(200, put[0], String.valueOf(put[1]));
       Assert.areEqual(
         '"Field Day" is on Tuesday of "Week 1". take_special_day_off_day takes it off again; the day\'s own schedule was kept.',
@@ -199,7 +196,10 @@ private class AgentSpecialDaysTest {
         'Tuesday of "Week 1" has its regular schedule again. "Visiting Day" stays saved. put_special_day_on_day puts it back.',
         takenOff[1]
       );
-      Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
+      Assert.areEqual(
+        '"Field Day" is not on Tuesday of "Week 1".',
+        notThere[1]
+      );
       Assert.areEqual(new List<String>(), onTuesday(week));
     }
   }

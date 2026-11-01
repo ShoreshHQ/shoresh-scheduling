@@ -1276,6 +1276,7 @@ const CAPABILITIES = [
         groups: {
           type: "array",
           items: { type: "string" },
+          minItems: 1,
           description:
             'The groups it covers, side by side as the day shows them, like ["Bunk 3", "Bunk 4"].'
         },

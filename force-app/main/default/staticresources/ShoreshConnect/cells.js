@@ -333,9 +333,13 @@ function placeEvent(ctx, m, input, weekName) {
   );
   const event = ctx.events[e];
   const d = dayIn(ctx, m, input.day, weekName);
-  const groups = (Array.isArray(input.groups) ? input.groups : [input.groups])
-    .map((g) => groupIn(ctx, d, g))
-    .sort((a, b) => a - b);
+  const asked = Array.isArray(input.groups) ? input.groups : [input.groups];
+  if (!asked.length) {
+    throw new Refused("Say which groups (groups), like Bunk 3.");
+  }
+  const groups = [...new Set(asked.map((g) => groupIn(ctx, d, g)))].sort(
+    (a, b) => a - b
+  );
   groups.forEach((g, i) => {
     if (i > 0 && g !== groups[i - 1] + 1) {
       throw new Refused(

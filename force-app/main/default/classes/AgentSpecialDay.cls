@@ -84,7 +84,13 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
       return placed.asks +
         ' Nothing was changed. Ask the person; if they say yes, send it again with replace: true.';
     }
-    return placed.said + ' ' + undoneBy(now, specialDay.Name);
+    // Already on, or not there: nothing changed, so nothing to undo.
+    Boolean unchanged = action == PUT
+      ? now.equals(specialDay.Name)
+      : !now.equals(specialDay.Name);
+    return unchanged
+      ? placed.said
+      : placed.said + ' ' + undoneBy(now, specialDay.Name);
   }
 
   /** What the day had as read; refused when left out, or replace sent to a take off. */
@@ -137,7 +143,7 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
     if (action == TAKE_OFF) {
       return 'put_special_day_on_day puts it back.';
     }
-    if (NONE.equals(was) || was.equals(name)) {
+    if (NONE.equals(was)) {
       return 'take_special_day_off_day takes it off again; the day\'s own schedule was kept.';
     }
     return '"' +

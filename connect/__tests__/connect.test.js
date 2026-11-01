@@ -981,6 +981,13 @@ describe("Shoresh for AI tools and the command line", () => {
       groups: ["Bunk 1"],
       time: "Period 1"
     });
+    const none = await send({
+      event: "Color War",
+      day: "Monday",
+      groups: [],
+      time: "Period 1"
+    });
+    expect(none.done.text).toBe("Say which groups (groups), like Bunk 3.");
     expect(unknown.done.text).toBe(
       'There is no special event called "Carnival" in this season. The special events: Color War.'
     );
