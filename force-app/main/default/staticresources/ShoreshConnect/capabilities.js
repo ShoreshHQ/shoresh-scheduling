@@ -863,6 +863,64 @@ const CAPABILITIES = [
       required: ["name", "seen"],
       additionalProperties: false
     }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.59).
+    name: "read_setup_guesses",
+    api: "read_setup_guesses",
+    method: "GET",
+    description:
+      "Read what Camp Setup marks as guessed from a file (an import worked it out rather than read it) and no one has said looks right or changed since: each with its kind, name, field (how_often, who, groups_that_fit, division or periods) and value now. Read it right before confirm_setup_guess and send the value it said as seen.",
+    about:
+      "The guesses still marked now, as Camp Setup shows them. They hold no findings or problems.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "confirm_setup_guess",
+    api: "confirm_setup_guess",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Say a value Camp Setup marks as guessed from a file looks right, as the mark's Looks right does: Camp Setup then no longer marks it. Only when the person agrees the value is right; to change it instead, use change_setup_record. Read it first with read_setup_guesses and send its value as seen. It is done as you, with your own access. If someone changed it or said it looks right since, nothing is changed and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        kind: {
+          type: "string",
+          description:
+            "What it is, as read_setup_guesses said it: activity, location, group (or the camp's own words for them) or linked choice."
+        },
+        name: { type: "string", description: "Its name, like Swim." },
+        program: {
+          type: "string",
+          description:
+            "For a group, its program, when two programs have a group by that name."
+        },
+        elective_set: {
+          type: "string",
+          description:
+            "For a linked choice, its elective set, when two sets have one by that name."
+        },
+        field: {
+          type: "string",
+          enum: ["how_often", "who", "groups_that_fit", "division", "periods"],
+          description: "The field marked as guessed."
+        },
+        seen: {
+          type: "string",
+          description:
+            'Its value exactly as read_setup_guesses said it, like "1 to 2 a week". If it changed since, nothing is changed and the person should be told.'
+        }
+      },
+      required: ["kind", "name", "field", "seen"],
+      additionalProperties: false
+    }
   }
 ];
 

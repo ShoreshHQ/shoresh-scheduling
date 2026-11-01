@@ -99,7 +99,7 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
     AgentWeeks.requireScheduler();
     Id seasonId = OutgoingRows.seasonCalled(name).Id;
     return [
-      SELECT Id, Camp__c, Camp__r.Name
+      SELECT Id, Name, Camp__c, Camp__r.Name
       FROM Season__c
       WHERE Id = :seasonId
       WITH USER_MODE
