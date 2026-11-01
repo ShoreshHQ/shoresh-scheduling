@@ -1660,6 +1660,135 @@ const CAPABILITIES = [
       required: ["seen"],
       additionalProperties: false
     }
+  },
+  {
+    name: "download_schedule",
+    api: "schedule_file",
+    method: "GET",
+    makesFile: "schedule",
+    queryFields: ["season", "week", "program", "version", "saved"],
+    description:
+      "Make a week's schedule file exactly as the Schedules screen's Excel or Print makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). Excel: a sheet per day, then every group's and every activity's week. Print: a page per day, group or activity, as the view chosen; it is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest version unless you name one (list_versions names them). The answer is the file's name and where it was saved: tell the person.",
+    about:
+      "The file was made on this computer exactly as the Schedules screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...VERSION_FIELDS,
+        version: {
+          type: "string",
+          description:
+            "The version's name, exactly as list_versions gives it. Leave it out for the newest, as the screen opens."
+        },
+        as: {
+          type: "string",
+          enum: ["excel", "print"],
+          description: "excel (the default) or print."
+        },
+        view: {
+          type: "string",
+          enum: ["daily", "group", "activity"],
+          description:
+            "For print: a page per day (daily, the default), per group, or per activity."
+        }
+      },
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "download_special_schedule",
+    api: "special_schedule_file",
+    method: "GET",
+    makesFile: "special",
+    queryFields: ["season", "special", "kind"],
+    description:
+      "Make a special day's or event's own schedule file exactly as Download on its page makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). The answer is the file's name and where it was saved: tell the person.",
+    about:
+      "The file was made on this computer exactly as its page makes it and saved in its Downloads folder; nothing else was changed or sent.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        special: {
+          type: "string",
+          description:
+            "The special day's or event's name, as read_special_days gives it."
+        },
+        kind: {
+          type: "string",
+          description:
+            "special day or special event, only when a special day and an event share the name."
+        }
+      },
+      required: ["special"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "download_elective_files",
+    api: "elective_file",
+    method: "GET",
+    makesFile: "electives",
+    queryFields: ["season", "week", "elective_set"],
+    description:
+      "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per offering, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and bring back). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
+    about:
+      "The file was made on this computer exactly as the Elective seats screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...ELECTIVE_RUN,
+        file: {
+          type: "string",
+          enum: [
+            "rosters",
+            "print_rosters",
+            "camper_schedules",
+            "full_report",
+            "campers"
+          ],
+          description: "Which file (rosters, the default)."
+        }
+      },
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "download_setup",
+    api: "setup_file",
+    method: "GET",
+    makesFile: "setup",
+    queryFields: ["season"],
+    description:
+      "Make a setup file exactly as Camp Setup's Download this list or Roots' Download worksheet makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): one screen's list, in the layout its Import a list reads, or the whole-camp worksheet (every list, location types, camp words, weeks and the weeks each item runs in), which Import worksheet reads back. The answer is the file's name and where it was saved: tell the person.",
+    about:
+      "The file was made on this computer exactly as Camp Setup or Roots makes it and saved in its Downloads folder; nothing else was changed or sent.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        list: {
+          type: "string",
+          enum: [
+            "worksheet",
+            "programs",
+            "divisions",
+            "groups",
+            "timeBlocks",
+            "locations",
+            "activities",
+            "fixedActivities",
+            "recurringActivities",
+            "electives"
+          ],
+          description:
+            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, or electives (offerings)."
+        }
+      },
+      additionalProperties: false
+    }
   }
 ];
 

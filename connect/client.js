@@ -12,6 +12,7 @@ const { assignElectiveSeats } = require("./electives");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
+const { makeFile } = require("./exports");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -132,7 +133,9 @@ async function call(
     versionWords = loadVersionWords,
     edits = loadEdits,
     electives = loadElectives,
-    imports = loadImports
+    imports = loadImports,
+    files = loadExports,
+    folder
   } = {}
 ) {
   const capability = byName(name);
@@ -181,6 +184,15 @@ async function call(
       ask: (r) => ask(r, org, run),
       answer,
       load: imports
+    });
+  }
+  if (capability.makesFile) {
+    return makeFile(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: files,
+      namespaceOf,
+      ...(folder ? { folder } : {})
     });
   }
   if (capability.undoesImport) {
@@ -590,6 +602,89 @@ async function loadImports(namespace) {
   }
 }
 
+/**
+ * The screens' own modules their files are made with (API-1.86 to API-1.89), SheetJS as the
+ * screens save Excel files with it, and the printout page, as scripts/build-connect.js ships them.
+ */
+async function loadExports(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const [
+      scheduleExport,
+      views,
+      offerings,
+      electives,
+      workbook,
+      lists,
+      screens,
+      terms
+    ] = await Promise.all(
+      [
+        "shoreshScheduleExport.shoreshScheduleExport",
+        "shoreshScheduleViews.shoreshScheduleViews",
+        "shoreshElectiveDetails.offerings",
+        "shoreshElectiveSeats.downloads",
+        "shoreshDownload.workbook",
+        "shoreshLists.shoreshLists",
+        "shoreshScreens.shoreshScreens",
+        "shoreshTerms.shoreshTerms"
+      ].map(load)
+    );
+    return exportModules({
+      scheduleExport,
+      views,
+      offerings,
+      electives,
+      workbook,
+      lists,
+      screens,
+      terms,
+      XLSX: require("./engine.SheetJS.cjs"),
+      printPage: () =>
+        require("fs").readFileSync(
+          path.join(__dirname, "print-view.html"),
+          "utf8"
+        )
+    });
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't make a file. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/** The names the file actions use, each from its own module. */
+function exportModules(m) {
+  return {
+    scheduleSheets: m.scheduleExport.scheduleSheets,
+    printPages: m.scheduleExport.printPages,
+    withRaindrops: m.views.withRaindrops,
+    withSpecials: m.views.withSpecials,
+    offeringNames: m.offerings.offeringNames,
+    readDownload: m.electives.readDownload,
+    downloadTitle: m.electives.downloadTitle,
+    rosterPages: m.electives.rosterPages,
+    rosterSheets: m.electives.rosterSheets,
+    camperScheduleSheets: m.electives.camperScheduleSheets,
+    fullReportSheets: m.electives.fullReportSheets,
+    campersSheets: m.electives.campersSheets,
+    workbookBytes: m.workbook.workbookBytes,
+    fileNameOf: m.workbook.fileNameOf,
+    listRows: m.lists.listRows,
+    campWorkbookSheets: m.lists.campWorkbookSheets,
+    LIST_SCREENS: m.lists.LIST_SCREENS,
+    screenLabels: m.screens.screenLabels,
+    buildTerms: m.terms.buildTerms,
+    XLSX: m.XLSX,
+    printPage: m.printPage
+  };
+}
+
 /** The names the import actions use, each from its own module. */
 function importModules(m) {
   return {
@@ -689,6 +784,7 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   importModules,
+  exportModules,
   requestFor,
   namespaceOf,
   sfArgs,

@@ -6,7 +6,9 @@
  */
 import { loadScript } from "lightning/platformResourceLoader";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
-import { sheetName } from "c/shoreshLists";
+import { fileNameOf, workbookBytes } from "./workbook";
+
+export { fileNameOf };
 
 let lastUrl = null;
 
@@ -19,16 +21,8 @@ export async function downloadWorkbook(component, sheets, fileName) {
   await loadScript(component, SHEETJS);
   // SheetJS puts itself on window when its script runs.
   const XLSX = window.XLSX;
-  const workbook = XLSX.utils.book_new();
-  sheets.forEach(({ name, rows, widths }) => {
-    const sheet = XLSX.utils.aoa_to_sheet(rows);
-    if (widths) {
-      sheet["!cols"] = widths.map((wch) => ({ wch }));
-    }
-    XLSX.utils.book_append_sheet(workbook, sheet, sheetName(name));
-  });
   // A Blob, not a data: link, so a large camp's file isn't cut off by the browser's link limit.
-  const data = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  const data = workbookBytes(XLSX, sheets);
   const url = URL.createObjectURL(new Blob([data], { type: FILE_TYPE }));
   const link = document.createElement("a");
   link.href = url;
@@ -39,13 +33,4 @@ export async function downloadWorkbook(component, sheets, fileName) {
   }
   lastUrl = url;
   link.click();
-}
-
-/** A file name from a title: no characters a computer's file names refuse. */
-export function fileNameOf(title) {
-  const clean = String(title)
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return `${clean || "Shoresh"}.xlsx`;
 }

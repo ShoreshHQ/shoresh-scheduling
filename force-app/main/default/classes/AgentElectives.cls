@@ -41,6 +41,25 @@ public with sharing class AgentElectives {
     return found.run;
   }
 
+  /**
+   * The set and week's newest finalized run, whose files the screen's Download makes (API-1.88);
+   * refused when none is finalized yet.
+   */
+  public static Run finalized(Map<String, Object> body) {
+    Found found = find(body);
+    if (found.finalRun == null) {
+      throw new ShoreshException(
+        found.run.setName +
+          ' in ' +
+          found.run.weekName +
+          ' isn\'t finalized yet, so it has no rosters or files to download. Finalize it first (finalize_electives).'
+      );
+    }
+    found.run.id = found.finalRun.id;
+    found.run.isFinal = true;
+    return found.run;
+  }
+
   /** The set and week's runs as Elective seats lists them. */
   private class Found {
     Run run = new Run();
