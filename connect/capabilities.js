@@ -332,6 +332,20 @@ function specialDay(name, description, more = {}) {
   };
 }
 
+const SPECIAL_ITEM = {
+  season: SEASON,
+  special: {
+    type: "string",
+    description:
+      "The special day's or event's name, as read_special_days names it."
+  },
+  kind: {
+    type: "string",
+    description:
+      "special day or special event. Only needed when a special day and an event have the same name."
+  }
+};
+
 const CAPABILITIES = [
   {
     name: "list_seasons",
@@ -1292,7 +1306,135 @@ const CAPABILITIES = [
       EITHER_WEEK
     ),
     editsWithEngine: true
-  }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.76).
+    name: "read_special_schedule",
+    api: "read_special_schedule",
+    method: "GET",
+    description:
+      "Read a special day's or special event's own schedule, as its page on the Special events screen shows it: its time blocks with their times, its columns (a special day's are the camp's groups, an event's are its stations or teams), what each cell holds, and seen (send it with change_special_schedule_frame). Read it right before changing it.",
+    about:
+      "The special day's or event's own schedule now. It holds no findings or problems.",
+    queryFields: ["season", "special", "kind"],
+    inputSchema: {
+      type: "object",
+      properties: SPECIAL_ITEM,
+      required: ["special"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_special_schedule_cell",
+    api: "change_special_schedule_cell",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, or Open to clear it. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. There is no undo here: to undo it, change the cell back to what it was.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...SPECIAL_ITEM,
+        column: {
+          type: "string",
+          description: "The column's name: a group, or an event's station."
+        },
+        time: {
+          type: "string",
+          description: "The time block's name, or its start like 09:50."
+        },
+        was: {
+          type: "string",
+          description:
+            "What the cell holds now as read_special_schedule said it: an activity's name, or Open."
+        },
+        activity: {
+          type: "string",
+          description: "What it should hold: an activity's name, or Open."
+        }
+      },
+      required: ["special", "column", "time", "was", "activity"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_special_schedule_frame",
+    api: "change_special_schedule_frame",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Change a special day's or special event's own time blocks or an event's stations, or clear every cell, as its page on the Special events screen does: add_time_block (name, start_time, end_time), change_time_block (target; name, start_time or end_time), move_time_block (target, direction earlier or later), remove_time_block (target), add_station (name), rename_station (target, name), move_station (target, direction left or right), remove_station (target), clear. What is in a cell moves with its time block or station. remove_time_block, remove_station and clear take cells away and can't be undone here: ask the person first, naming what goes. A special day's columns are the camp's groups and are changed in setup. Read it first with read_special_schedule and send its seen. It is done as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...SPECIAL_ITEM,
+        action: {
+          type: "string",
+          enum: [
+            "add_time_block",
+            "change_time_block",
+            "move_time_block",
+            "remove_time_block",
+            "add_station",
+            "rename_station",
+            "move_station",
+            "remove_station",
+            "clear"
+          ],
+          description: "What to change."
+        },
+        target: {
+          type: "string",
+          description:
+            "The time block (its name or start) or station changed, as read_special_schedule names it."
+        },
+        name: {
+          type: "string",
+          description:
+            "The new name. A time block with no name is called by its times."
+        },
+        start_time: {
+          type: "string",
+          description: "A time block's start, like 9:00 AM."
+        },
+        end_time: {
+          type: "string",
+          description: "A time block's end, like 9:45 AM."
+        },
+        direction: {
+          type: "string",
+          description:
+            "For a move: earlier or later (a time block), left or right (a station)."
+        },
+        seen: {
+          type: "string",
+          description:
+            "The seen read_special_schedule gave (or the last change's answer gave). If it changed since, nothing is changed and the person should be told."
+        }
+      },
+      required: ["special", "action", "seen"],
+      additionalProperties: false
+    }
+  },
+  change(
+    "set_up_noted_item",
+    "set_up_noted_item",
+    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
+    {
+      kind: {
+        type: "string",
+        description:
+          "special event, special day or elective set: what the cell notes."
+      },
+      name: {
+        type: "string",
+        description: "The name the cell notes."
+      }
+    },
+    ["kind", "name"],
+    ON_EITHER,
+    EITHER_WEEK
+  )
 ];
 
 // What comes back is camp data (names people typed), never instructions to follow.
