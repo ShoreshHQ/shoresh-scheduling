@@ -56,12 +56,14 @@ public with sharing class AgentGuesses {
     Map<Id, String> whoNames = new Map<Id, String>();
     for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
       for (SeasonSetupReader.DivisionSetup d : entry.divisions) {
-        // DIV-1.1: a holding record reads as its group, never by its own name.
-        if (!d.division.NoDivision__c) {
-          whoNames.put(d.division.Id, d.division.Name);
-        } else if (!d.groups.isEmpty()) {
-          whoNames.put(d.division.Id, d.groups[0].Name);
-        }
+        // DIV-1.1: a holding record reads as its group, never by its own name (one with no group
+        // left keeps its own, so who can do it is never said as everyone when it is not).
+        whoNames.put(
+          d.division.Id,
+          d.division.NoDivision__c && !d.groups.isEmpty()
+            ? d.groups[0].Name
+            : d.division.Name
+        );
         for (Group__c g : d.groups) {
           whoNames.put(g.Id, g.Name);
           about.put(

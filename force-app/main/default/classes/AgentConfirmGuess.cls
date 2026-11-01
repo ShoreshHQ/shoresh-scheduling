@@ -95,6 +95,7 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
   }
 
   /** The guess named: by kind, name, field, and program or elective set when a name is in two. */
+  @TestVisible
   private static AgentGuesses.Entry onlyOne(
     List<AgentGuesses.Entry> standing,
     String term,
@@ -114,7 +115,8 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
         entry.field == field &&
         IncomingBatch.fold(entry.name) == IncomingBatch.fold(name) &&
         (String.isBlank(place) ||
-        IncomingBatch.fold(entry.place) == IncomingBatch.fold(place))
+        (entry.place != null &&
+        IncomingBatch.fold(entry.place) == IncomingBatch.fold(place)))
       ) {
         matched.add(entry);
         places.add(entry.place);

@@ -181,4 +181,53 @@ private class AgentGuessesTest {
       );
     }
   }
+  private static AgentGuesses.Entry bunkIn(Id recordId, String program) {
+    AgentGuesses.Entry entry = new AgentGuesses.Entry();
+    entry.recordId = recordId;
+    entry.term = 'Group';
+    entry.name = 'Bunk 1';
+    entry.place = program;
+    entry.field = 'division';
+    return entry;
+  }
+
+  // API-1.60
+  @IsTest
+  static void aNameTwoProgramsShareIsAskedAboutNeverPicked() {
+    Id one = Id.valueOf(
+      Group__c.SObjectType.getDescribe().getKeyPrefix() + '000000000001'
+    );
+    Id two = Id.valueOf(
+      Group__c.SObjectType.getDescribe().getKeyPrefix() + '000000000002'
+    );
+    List<AgentGuesses.Entry> standing = new List<AgentGuesses.Entry>{
+      bunkIn(one, 'Main'),
+      bunkIn(two, 'Teens')
+    };
+    String asked;
+    try {
+      AgentConfirmGuess.onlyOne(
+        standing,
+        'Group',
+        'division',
+        new Map<String, Object>{ 'name' => 'Bunk 1' }
+      );
+    } catch (ShoreshException e) {
+      asked = e.getMessage();
+    }
+    Assert.isTrue(
+      asked != null && asked.contains('Main, Teens'),
+      'both programs named: ' + asked
+    );
+    Assert.areEqual(
+      two,
+      AgentConfirmGuess.onlyOne(
+          standing,
+          'Group',
+          'division',
+          new Map<String, Object>{ 'name' => 'Bunk 1', 'program' => 'teens' }
+        )
+        .recordId
+    );
+  }
 }
