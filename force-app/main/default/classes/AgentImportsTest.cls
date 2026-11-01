@@ -119,11 +119,13 @@ private class AgentImportsTest {
           activities(ShoreshTestData.camp('Other (made up)').Id, 'Canoeing')
         )
       );
+      Integer before = Limits.getQueries();
       List<Object> saved = ask(
         new AgentImportList(),
         'POST',
         save(seen, activities(seasonId, 'Canoeing'))
       );
+      Integer saving = Limits.getQueries() - before;
       // The setup changed with that save: the review read before it is refused.
       List<Object> stale = ask(
         new AgentImportList(),
@@ -133,6 +135,10 @@ private class AgentImportsTest {
       Test.stopTest();
       Assert.areEqual(200, first[0]);
       Assert.isTrue(queries < 100, 'one read stays well under the limit');
+      Assert.isTrue(
+        saving < 60,
+        'a save stays well under the limit: ' + saving
+      );
       Assert.isNotNull(answer.get('setup'));
       Assert.isNotNull(answer.get('answers'));
       Assert.areEqual(16, seen.length());

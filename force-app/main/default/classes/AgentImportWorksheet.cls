@@ -18,6 +18,6 @@ global with sharing class AgentImportWorksheet implements AgentWeeks.Action {
   }
 
   public String run() {
-    return AgentImports.save(true);
+    return AgentImports.saveWorkbook();
   }
 }

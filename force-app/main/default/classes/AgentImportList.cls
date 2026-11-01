@@ -18,6 +18,6 @@ global with sharing class AgentImportList implements AgentWeeks.Action {
   }
 
   public String run() {
-    return AgentImports.save(false);
+    return AgentImports.saveList();
   }
 }

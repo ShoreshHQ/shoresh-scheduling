@@ -35,6 +35,24 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
     String source = AgentFields.text(body, 'from');
     // An import saving, or another Undo, in this season waits here; read again after.
     ImportUndo.lockSeason(season.Id);
+    Id last = asRead(season, source, seen);
+    ImportUndo.Result result;
+    try {
+      result = ImportController.undoImport(last);
+    } catch (Exception e) {
+      throw new ShoreshException(
+        'That import could not be undone. Nothing was changed. ' +
+        ScreenErrors.words(e)
+      );
+    }
+    return JSON.serialize(result, true);
+  }
+
+  /**
+   * The source's last import that stands, refused when there is none, or (409) when it is not
+   * the one read.
+   */
+  private static Id asRead(Season__c season, String source, String seen) {
     Id last = standing(season.Id, source);
     if (last == null) {
       throw new ShoreshException(
@@ -50,16 +68,7 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
         'The last import is not the one you read: another import was made, or it was undone, since. Nothing was undone. Read them again with read_last_imports.'
       );
     }
-    ImportUndo.Result result;
-    try {
-      result = ImportController.undoImport(last);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        'That import could not be undone. Nothing was changed. ' +
-        ScreenErrors.words(e)
-      );
-    }
-    return JSON.serialize(result, true);
+    return last;
   }
 
   /** The source's last import, unless it is undone (as Roots and Settings offer Undo). */
