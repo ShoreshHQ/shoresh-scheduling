@@ -68,63 +68,48 @@ global with sharing class AgentElectiveSeatsNow {
     }
     lines.add('Times:');
     for (ElectivePeriod period : view.times) {
-      List<String> offered = new List<String>();
-      for (Id offeringId : period.offeringIds) {
-        offered.add(offerings.get(offeringId));
-      }
-      List<String> who = new List<String>();
-      for (Id groupId : period.groupIds) {
-        who.add(groups.get(groupId));
-      }
-      lines.add(
-        '- ' +
-          period.words() +
-          (who.isEmpty() ? '' : ' (' + String.join(who, ', ') + ')') +
-          ': ' +
-          (offered.isEmpty() ? 'nothing offered' : String.join(offered, ', '))
-      );
+      lines.add(timeLine(period, offerings, groups));
     }
-    Map<Id, List<String>> seats = new Map<Id, List<String>>();
-    for (ElectiveSeats.SeatInfo seat : view.seats) {
-      if (!seats.containsKey(seat.camperId)) {
-        seats.put(seat.camperId, new List<String>());
-      }
-      seats.get(seat.camperId)
-        .add(
-          wordsOf(seat.day, seat.blockId, view.times) +
-            ': ' +
-            offerings.get(seat.offeringId) +
-            (seat.locked ? ' (locked)' : '') +
-            (seat.byHand ? ' (moved by hand)' : '')
-        );
-    }
+    Map<Id, List<String>> seats = AgentElectives.seatsOf(view, offerings);
     lines.add('Campers:');
     for (ElectiveSeats.CamperInfo camper : view.campers) {
-      List<String> has = seats.get(camper.id);
-      lines.add(
-        '- ' +
-          camper.name +
-          (String.isBlank(camper.camperNumber)
-            ? ''
-            : ' #' + camper.camperNumber) +
-          (camper.groupId == null ? '' : ', ' + groups.get(camper.groupId)) +
-          ': ' +
-          (has == null ? 'no seats' : String.join(has, '; '))
-      );
+      lines.add(camperLine(camper, seats.get(camper.id), groups));
     }
     return String.join(lines, '\n');
   }
 
-  private static String wordsOf(
-    Date day,
-    Id blockId,
-    List<ElectivePeriod> times
+  /** "- Monday, Period 1 (Bunk 1, Bunk 2): Archery, Drama" */
+  private static String timeLine(
+    ElectivePeriod period,
+    Map<Id, String> offerings,
+    Map<Id, String> groups
   ) {
-    for (ElectivePeriod period : times) {
-      if (period.day == day && period.blockId == blockId) {
-        return period.words();
-      }
+    List<String> offered = new List<String>();
+    for (Id offeringId : period.offeringIds) {
+      offered.add(offerings.get(offeringId));
     }
-    return String.valueOf(day);
+    List<String> who = new List<String>();
+    for (Id groupId : period.groupIds) {
+      who.add(groups.get(groupId));
+    }
+    return '- ' +
+      period.words() +
+      (who.isEmpty() ? '' : ' (' + String.join(who, ', ') + ')') +
+      ': ' +
+      (offered.isEmpty() ? 'nothing offered' : String.join(offered, ', '));
+  }
+
+  /** "- Ana Levi #12, Bunk 1: Monday, Period 1: Drama" */
+  private static String camperLine(
+    ElectiveSeats.CamperInfo camper,
+    List<String> has,
+    Map<Id, String> groups
+  ) {
+    return '- ' +
+      camper.name +
+      (String.isBlank(camper.camperNumber) ? '' : ' #' + camper.camperNumber) +
+      (camper.groupId == null ? '' : ', ' + groups.get(camper.groupId)) +
+      ': ' +
+      (has == null ? 'no seats' : String.join(has, '; '));
   }
 }

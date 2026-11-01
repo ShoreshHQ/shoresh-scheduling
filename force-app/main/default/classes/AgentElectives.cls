@@ -88,4 +88,39 @@ public with sharing class AgentElectives {
       );
     }
   }
+
+  /** Each camper's seats, said: "Monday, Period 1: Drama (locked)". */
+  public static Map<Id, List<String>> seatsOf(
+    ElectiveSeats.RunView view,
+    Map<Id, String> offerings
+  ) {
+    Map<Id, List<String>> seats = new Map<Id, List<String>>();
+    for (ElectiveSeats.SeatInfo seat : view.seats) {
+      if (!seats.containsKey(seat.camperId)) {
+        seats.put(seat.camperId, new List<String>());
+      }
+      seats.get(seat.camperId)
+        .add(
+          wordsOf(seat.day, seat.blockId, view.times) +
+            ': ' +
+            offerings.get(seat.offeringId) +
+            (seat.locked ? ' (locked)' : '') +
+            (seat.byHand ? ' (moved by hand)' : '')
+        );
+    }
+    return seats;
+  }
+
+  private static String wordsOf(
+    Date day,
+    Id blockId,
+    List<ElectivePeriod> times
+  ) {
+    for (ElectivePeriod period : times) {
+      if (period.day == day && period.blockId == blockId) {
+        return period.words();
+      }
+    }
+    return String.valueOf(day);
+  }
 }
