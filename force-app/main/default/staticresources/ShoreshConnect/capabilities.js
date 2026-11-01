@@ -246,6 +246,15 @@ const SETUP_FIELDS = {
 };
 
 /**
+ * The fields change_setup_record sets: those, and the lists of weeks it runs in and who a
+ * recurring activity covers (API-1.53, API-1.54).
+ */
+const CHANGED_SETUP_FIELDS = {
+  ...SETUP_FIELDS,
+  description: `${SETUP_FIELDS.description} A group, activity, location, fixed or recurring activity also has runs_in: a list of the week names it runs in (every week not listed is a week it doesn't run). A recurring activity also has covers: a list of the division and group names of its program it is for (an empty list is everyone). Lists replace what is there; a name with a comma is still one name.`
+};
+
+/**
  * A new setup record (API-1.50): add_setup_record names what to call it, and the program it goes
  * in, not a record that is there.
  */
@@ -639,7 +648,7 @@ const CAPABILITIES = [
     ...setup(
       "read_setup_record",
       "read_setup_record",
-      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty). Read it right before changing it, and send those values back unchanged as seen."
+      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
     ),
     method: "GET",
     about:
@@ -650,9 +659,9 @@ const CAPABILITIES = [
   setup(
     "change_setup_record",
     "change_setup_record",
-    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, the weeks something runs in, who a recurring activity covers, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
     {
-      fields: SETUP_FIELDS,
+      fields: CHANGED_SETUP_FIELDS,
       seen: {
         type: "object",
         description:
@@ -673,7 +682,7 @@ const CAPABILITIES = [
     api: "read_activity_rules",
     method: "GET",
     description:
-      "Read an activity's details as its details panel on Camp Setup shows them: who_can_do_it (divisions and groups by name, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Read it right before changing them, and send those values back unchanged as seen.",
+      "Read an activity's details as its details panel on Camp Setup shows them: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
     queryFields: ["season", "name"],
@@ -699,7 +708,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            "The details to set, by name, each as text: who_can_do_it (division and group names with commas between, or everyone: that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes."
+            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",

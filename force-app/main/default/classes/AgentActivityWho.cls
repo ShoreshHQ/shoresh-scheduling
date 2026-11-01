@@ -1,6 +1,7 @@
 /**
- * Who can do an activity, as its details panel has it (docs/protocol/api.md API-1.51): divisions
- * and groups by name, or everyone (none means everyone).
+ * Who can do an activity, as its details panel has it (docs/protocol/api.md API-1.51), and who a
+ * recurring activity covers (API-1.54): divisions and groups by name, a list so a name with a
+ * comma stays one name (API-1.55), or everyone (none means everyone).
  */
 public with sharing class AgentActivityWho {
   public static final String EVERYONE = 'everyone';
@@ -35,7 +36,31 @@ public with sharing class AgentActivityWho {
     return ids;
   }
 
-  /** Who, said one way whatever the order: names A to Z, or everyone. */
+  /**
+   * The names given: a list, or one name as text (a list as text, as a read says it, is read as
+   * that list). Text is never split on commas: a name may have one (API-1.55).
+   */
+  public static List<String> namesIn(Object asked) {
+    Object given = asked;
+    if (asked instanceof String && ((String) asked).trim().startsWith('[')) {
+      try {
+        given = JSON.deserializeUntyped((String) asked);
+      } catch (JSONException e) {
+        given = asked;
+      }
+    }
+    List<String> names = new List<String>();
+    if (given instanceof List<Object>) {
+      for (Object name : (List<Object>) given) {
+        names.add(name == null ? '' : String.valueOf(name));
+      }
+    } else if (given != null) {
+      names.add(String.valueOf(given));
+    }
+    return names;
+  }
+
+  /** Who, said one way whatever the order: a list of names A to Z, or everyone. */
   public static String said(List<String> names) {
     List<String> sorted = new List<String>();
     for (String name : names) {
@@ -47,21 +72,25 @@ public with sharing class AgentActivityWho {
       return EVERYONE;
     }
     sorted.sort();
-    return String.join(sorted, ', ');
+    return JSON.serialize(sorted);
   }
 
   /**
-   * The divisions and groups named (comma between), as the panel's ticks offer them; everyone or
-   * blank is none. A name not there, or one two of them share, is refused.
+   * The divisions and groups named (a list), as the panel's ticks offer them; everyone or blank
+   * is none. A recurring activity's are its program's. A name not there, or one two of them
+   * share, is refused.
    */
-  public static List<Id> idsOf(String asked, AgentSetupRecords.Found found) {
-    List<SObject> offered = offered(found.seasonId);
+  public static List<Id> idsOf(Object asked, AgentSetupRecords.Found found) {
+    List<SObject> offered = offered(
+      found.seasonId,
+      found.term == 'RecurringActivity' ? found.programId : null
+    );
     List<String> names = new List<String>();
     for (SObject row : offered) {
       names.add((String) row.get('Name'));
     }
     List<Id> ids = new List<Id>();
-    for (String name : asked.split(',')) {
+    for (String name : namesIn(asked)) {
       if (String.isNotBlank(name) && IncomingBatch.fold(name) != EVERYONE) {
         ids.add(offered[onlyOne(names, name.trim(), found)].Id);
       }
@@ -69,27 +98,34 @@ public with sharing class AgentActivityWho {
     return ids;
   }
 
-  /** The season's divisions (not No division) and groups, as the panel offers them. */
-  private static List<SObject> offered(Id seasonId) {
+  /**
+   * The season's (or one program's) divisions (not No division) and groups, as the panel offers
+   * them.
+   */
+  private static List<SObject> offered(Id seasonId, Id programId) {
     List<SObject> result = new List<SObject>();
-    result.addAll(
-      [
-        SELECT Id, Name
-        FROM Division__c
-        WHERE Program__r.Season__c = :seasonId AND NoDivision__c = FALSE
-        WITH USER_MODE
-        ORDER BY SortOrder__c, Name
-      ]
-    );
-    result.addAll(
-      [
-        SELECT Id, Name
-        FROM Group__c
-        WHERE Division__r.Program__r.Season__c = :seasonId
-        WITH USER_MODE
-        ORDER BY SortOrder__c, Name
-      ]
-    );
+    for (Division__c division : [
+      SELECT Id, Name, Program__c
+      FROM Division__c
+      WHERE Program__r.Season__c = :seasonId AND NoDivision__c = FALSE
+      WITH USER_MODE
+      ORDER BY SortOrder__c, Name
+    ]) {
+      if (programId == null || division.Program__c == programId) {
+        result.add(division);
+      }
+    }
+    for (Group__c row : [
+      SELECT Id, Name, Division__r.Program__c
+      FROM Group__c
+      WHERE Division__r.Program__r.Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c, Name
+    ]) {
+      if (programId == null || row.Division__r.Program__c == programId) {
+        result.add(row);
+      }
+    }
     return result;
   }
 

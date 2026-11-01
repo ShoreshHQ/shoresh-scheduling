@@ -23,7 +23,8 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
     AgentSetupRecords.Found found = AgentSetupRecords.find(asked());
 
     List<String> keys = AgentSetupFields.namesOf(found.term);
-    if (keys.isEmpty()) {
+    Map<String, String> lists = AgentRunsIn.now(found);
+    if (keys.isEmpty() && lists.isEmpty()) {
       return AgentSetupFields.aOrAn(found.kind) +
         ' has nothing but its name: "' +
         found.name +
@@ -49,6 +50,10 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
       said.add(
         key + ': ' + shown(AgentSetupFields.fieldOf(found.term, key), now)
       );
+    }
+    // The weeks it runs in and who it covers, as lists (API-1.53, API-1.54).
+    for (String key : lists.keySet()) {
+      said.add(key + ': ' + lists.get(key));
     }
     return 'The ' +
       found.kind +
