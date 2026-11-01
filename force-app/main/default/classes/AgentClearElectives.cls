@@ -87,9 +87,7 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action {
     // As the screen's Clear checks: the stamp, and no run outside what was drawn.
     if (now.stamp != seen || drawn != held) {
       throw new AgentWeeks.ConflictException(
-        'Something changed in ' +
-          season.Name +
-          '\'s electives since, so nothing was cleared. Read them again with read_electives_to_clear.'
+        'Something changed since this was drawn, so nothing was cleared. Look again with read_electives_to_clear, then clear.'
       );
     }
   }

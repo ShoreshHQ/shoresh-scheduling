@@ -24,7 +24,7 @@ global with sharing class AgentStartNewElectiveVersion implements AgentWeeks.Act
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentElectives.Run run = AgentElectives.committedOrFinal(body);
-    Decimal seen = AgentElectives.seenOf(body);
+    Decimal seen = AgentElectives.seenOf(body, run);
     if (!run.isFinal) {
       throw new AgentWeeks.ConflictException(
         run.setName +

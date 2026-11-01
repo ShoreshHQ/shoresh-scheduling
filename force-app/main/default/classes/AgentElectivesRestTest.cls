@@ -20,14 +20,20 @@ private class AgentElectivesRestTest {
       };
       Test.startTest();
       Map<String, Object> stale = lock.clone();
-      stale.put('seen', String.valueOf(AgentElectivesTestData.revision() - 1));
+      stale.put(
+        'seen',
+        AgentElectivesTestData.seen(AgentElectivesTestData.revision() - 1)
+      );
       List<Object> refused = AgentElectivesTestData.send(
         'lock_elective_seat',
         'POST',
         AgentElectivesTestData.asked(stale)
       );
       Map<String, Object> current = lock.clone();
-      current.put('seen', String.valueOf(AgentElectivesTestData.revision()));
+      current.put(
+        'seen',
+        AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+      );
       List<Object> locked = AgentElectivesTestData.send(
         'lock_elective_seat',
         'POST',
@@ -36,7 +42,10 @@ private class AgentElectivesRestTest {
       Boolean wasLocked = AgentElectivesTestData.seats()[0].Locked__c;
       Map<String, Object> unlock = lock.clone();
       unlock.put('locked', false);
-      unlock.put('seen', String.valueOf(AgentElectivesTestData.revision()));
+      unlock.put(
+        'seen',
+        AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+      );
       List<Object> unlocked = AgentElectivesTestData.send(
         'lock_elective_seat',
         'POST',
@@ -59,6 +68,41 @@ private class AgentElectivesRestTest {
     }
   }
 
+  // API-1.66, API-1.69
+  @IsTest
+  static void aSeenFromAnotherRunIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      AgentElectivesTestData.assigned();
+      Map<String, Object> lock = new Map<String, Object>{
+        'camper' => 'Synthetic Camper 1',
+        'day' => 'Monday',
+        'time' => 'Period 1',
+        'locked' => true
+      };
+      Test.startTest();
+      Map<String, Object> otherRun = lock.clone();
+      otherRun.put(
+        'seen',
+        AgentElectives.seenText(
+          AgentElectivesTestData.ids.get('Season'),
+          AgentElectivesTestData.revision()
+        )
+      );
+      List<Object> wrongRun = AgentElectivesTestData.send(
+        'lock_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(otherRun)
+      );
+      Test.stopTest();
+      Assert.areEqual(409, wrongRun[0], String.valueOf(wrongRun[1]));
+      Assert.isFalse(
+        AgentElectivesTestData.seats()[0].Locked__c,
+        'nothing changed'
+      );
+    }
+  }
+
   // API-1.66, API-1.70
   @IsTest
   static void aNewVersionIsTheScreensWithTheFinalRunSeen() {
@@ -73,7 +117,9 @@ private class AgentElectivesRestTest {
         AgentElectivesTestData.asked(none)
       );
       Map<String, Object> stale = new Map<String, Object>{
-        'seen' => String.valueOf(AgentElectivesTestData.revision() - 1)
+        'seen' => AgentElectivesTestData.seen(
+          AgentElectivesTestData.revision() - 1
+        )
       };
       List<Object> refused = AgentElectivesTestData.send(
         'start_new_elective_version',
@@ -81,7 +127,7 @@ private class AgentElectivesRestTest {
         AgentElectivesTestData.asked(stale)
       );
       Map<String, Object> current = new Map<String, Object>{
-        'seen' => String.valueOf(AgentElectivesTestData.revision())
+        'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
       };
       List<Object> started = AgentElectivesTestData.send(
         'start_new_elective_version',

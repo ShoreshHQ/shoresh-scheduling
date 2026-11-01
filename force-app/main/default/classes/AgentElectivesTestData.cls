@@ -218,4 +218,9 @@ public class AgentElectivesTestData {
     assigned();
     ElectiveSeatsController.finalizeRun(runId, revision());
   }
+
+  /** The run as read at a revision, as read_elective_seats_now says it. */
+  public static String seen(Decimal revision) {
+    return AgentElectives.seenText(runId, revision);
+  }
 }

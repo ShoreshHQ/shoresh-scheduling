@@ -33,7 +33,7 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
     }
     Boolean locked = (Boolean) body.get('locked');
     AgentElectives.Run run = AgentElectives.committed(body);
-    Decimal seen = AgentElectives.seenOf(body);
+    Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);
     ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
     ElectiveSeats.CamperInfo camper = AgentMoveElectiveSeat.camperOf(

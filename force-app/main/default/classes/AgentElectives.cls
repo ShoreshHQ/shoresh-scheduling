@@ -2,7 +2,7 @@
  * The Elective seats screen's run a request through an agent or the command line is about
  * (docs/protocol/api.md API-1.66 to API-1.68): the one the screen opens on for an elective set and
  * week (its Committed run, as finalize_electives finds it), and the run as the agent read it
- * (seen: its revision, the one the screen sends with every save).
+ * (seen: the run and its revision, the one the screen sends with every save).
  */
 public with sharing class AgentElectives {
   /** The run asked for, with the names to say it by. */
@@ -84,6 +84,7 @@ public with sharing class AgentElectives {
         found.committedId = each.id;
       } else if (
         found.finalRun == null ||
+        found.finalRun.finalizedAt == null ||
         each.finalizedAt > found.finalRun.finalizedAt
       ) {
         found.finalRun = each;
@@ -92,16 +93,29 @@ public with sharing class AgentElectives {
     return found;
   }
 
-  /** The seen sent (the revision read_elective_seats_now gave); refused when left out. */
-  public static Decimal seenOf(Map<String, Object> body) {
-    Object seen = body.get('seen');
+  /** The run as read, as read_elective_seats_now says it: "<run Id>:<revision>". */
+  public static String seenText(Id runId, Decimal revision) {
+    return String.valueOf(runId) + ':' + revision;
+  }
+
+  /**
+   * The revision of the seen sent (read_elective_seats_now's); refused when left out or
+   * unreadable, and (409) when it is another run's: a version started or replaced since.
+   */
+  public static Decimal seenOf(Map<String, Object> body, Run run) {
+    String seen = String.valueOf(body.get('seen') ?? '').trim();
+    Decimal revision;
     try {
-      return Decimal.valueOf(String.valueOf(seen).trim());
+      revision = Decimal.valueOf(seen.substringAfterLast(':'));
     } catch (Exception e) {
       throw new ShoreshException(
         'Send the seen read_elective_seats_now gave, so a change someone made since isn\'t replaced unseen.'
       );
     }
+    if (!seen.substringBeforeLast(':').equals(String.valueOf(run.id))) {
+      throw changedSince(run);
+    }
+    return revision;
   }
 
   /**
@@ -121,14 +135,18 @@ public with sharing class AgentElectives {
       FOR UPDATE
     ];
     if (now.isEmpty() || now[0].Revision__c != seen) {
-      throw new AgentWeeks.ConflictException(
-        'Someone changed the seats in ' +
-          run.setName +
-          ' in ' +
-          run.weekName +
-          ' since, so nothing was changed. Read them again with read_elective_seats_now.'
-      );
+      throw changedSince(run);
     }
+  }
+
+  private static AgentWeeks.ConflictException changedSince(Run run) {
+    return new AgentWeeks.ConflictException(
+      'Someone changed the seats in ' +
+        run.setName +
+        ' in ' +
+        run.weekName +
+        ' since, so nothing was changed. Read them again with read_elective_seats_now.'
+    );
   }
 
   /** Each camper's seats, said: "Monday, Period 1: Drama (locked)". */

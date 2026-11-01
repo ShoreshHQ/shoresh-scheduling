@@ -888,7 +888,7 @@ describe("Shoresh for AI tools and the command line", () => {
       );
       return { done, sent: seen_ };
     };
-    const done = await assign("1");
+    const done = await assign("r1:1");
     expect(done.sent[0].args[3]).toBe(
       "/services/apexrest/v1/assign_elective_seats?season=Summer+2026&week=Week+1&elective_set=Chugim"
     );
@@ -902,7 +902,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(body).toEqual({
       ...asked,
-      seen: "1",
+      seen: "r1:1",
       seats: expected.seats,
       dropped: expected.dropped
     });
@@ -911,7 +911,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(done.done.text).toMatch(/^Seats assigned: \d+ of \d+ placed\.$/);
 
     // Read at another revision: refused before anything is sent.
-    const stale = await assign("0");
+    const stale = await assign("r1:0");
     expect(stale.done).toEqual(
       expect.objectContaining({ ok: false, status: 409 })
     );

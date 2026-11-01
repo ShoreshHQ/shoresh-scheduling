@@ -64,7 +64,7 @@ global with sharing class AgentElectiveSeatsNow {
         : (view.assigned ? 'seats assigned' : 'seats not assigned yet') +
           ', not finalized') +
       '. seen: ' +
-      view.revision
+      AgentElectives.seenText(run.id, view.revision)
     };
     if (view.scheduleChanged) {
       lines.add('Schedule changed since seats were assigned: assign again.');

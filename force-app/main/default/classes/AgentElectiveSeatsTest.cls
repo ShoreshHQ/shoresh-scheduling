@@ -28,7 +28,10 @@ private class AgentElectiveSeatsTest {
       String said = (String) read[1];
       Assert.areEqual(200, read[0], said);
       Assert.isTrue(
-        said.contains('seen: ' + AgentElectivesTestData.revision()),
+        said.contains(
+          'seen: ' +
+          AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+        ),
         said
       );
       Assert.isTrue(said.contains('Monday, Period 1'), said);
@@ -58,7 +61,7 @@ private class AgentElectiveSeatsTest {
         'POST',
         AgentElectivesTestData.asked(
           new Map<String, Object>{
-            'seen' => String.valueOf(seen - 1),
+            'seen' => AgentElectivesTestData.seen(seen - 1),
             'seats' => AgentElectivesTestData.everyoneInDrama()
           }
         )
@@ -78,7 +81,7 @@ private class AgentElectiveSeatsTest {
         'POST',
         AgentElectivesTestData.asked(
           new Map<String, Object>{
-            'seen' => String.valueOf(seen),
+            'seen' => AgentElectivesTestData.seen(seen),
             'seats' => AgentElectivesTestData.everyoneInDrama()
           }
         )
@@ -128,7 +131,7 @@ private class AgentElectiveSeatsTest {
       };
       Test.startTest();
       Map<String, Object> stale = move.clone();
-      stale.put('seen', String.valueOf(seen - 1));
+      stale.put('seen', AgentElectivesTestData.seen(seen - 1));
       List<Object> refused = AgentElectivesTestData.send(
         'move_elective_seat',
         'POST',
@@ -136,7 +139,7 @@ private class AgentElectiveSeatsTest {
       );
       Map<String, Object> unknown = move.clone();
       unknown.put('camper', 'Nobody');
-      unknown.put('seen', String.valueOf(seen));
+      unknown.put('seen', AgentElectivesTestData.seen(seen));
       List<Object> nobody = AgentElectivesTestData.send(
         'move_elective_seat',
         'POST',
@@ -144,7 +147,7 @@ private class AgentElectiveSeatsTest {
       );
       Map<String, Object> byNumber = move.clone();
       byNumber.put('camper', '#SYN-0001');
-      byNumber.put('seen', String.valueOf(seen));
+      byNumber.put('seen', AgentElectivesTestData.seen(seen));
       List<Object> done = AgentElectivesTestData.send(
         'move_elective_seat',
         'POST',

@@ -39,7 +39,9 @@ async function assignElectiveSeats(
   const read = await readRun();
   if (read.status !== 200) return answer(read);
   const body = JSON.parse(read.body);
-  if (Number(body.view.revision) !== Number(String(input.seen).trim())) {
+  if (
+    `${body.view.run.id}:${body.view.revision}` !== String(input.seen).trim()
+  ) {
     return changedSince();
   }
   const m = await load(namespaceOf(body));

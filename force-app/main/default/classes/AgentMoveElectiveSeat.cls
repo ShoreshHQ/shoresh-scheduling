@@ -28,7 +28,7 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentElectives.Run run = AgentElectives.committed(body);
-    Decimal seen = AgentElectives.seenOf(body);
+    Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);
     ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
     ElectiveSeats.CamperInfo camper = camperOf(
