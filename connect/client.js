@@ -8,6 +8,7 @@ const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
 const { editCells } = require("./cells");
+const { assignElectiveSeats } = require("./electives");
 
 /** The web address and request for one action. */
 function requestFor(capability, input = {}) {
@@ -126,7 +127,8 @@ async function call(
     engine = loadEngine,
     checks = loadChecks,
     versionWords = loadVersionWords,
-    edits = loadEdits
+    edits = loadEdits,
+    electives = loadElectives
   } = {}
 ) {
   const capability = byName(name);
@@ -143,6 +145,14 @@ async function call(
       ask: (r) => ask(r, org, run),
       answer,
       load: edits,
+      namespaceOf
+    });
+  }
+  if (capability.assignsWithEngine) {
+    return assignElectiveSeats(capability, input, {
+      ask: (r) => ask(r, org, run),
+      answer,
+      load: electives,
       namespaceOf
     });
   }
@@ -454,6 +464,33 @@ async function loadEdits(namespace) {
   } catch {
     throw new Error(
       "This copy of Shoresh's connector can't change several cells. Download it again from Settings in Shoresh."
+    );
+  }
+}
+
+/**
+ * The Elective seats screen's own modules seats are assigned with (API-1.67), as
+ * scripts/build-connect.js ships them.
+ */
+async function loadElectives(namespace) {
+  globalThis.SHORESH_NAMESPACE = namespace;
+  const load = (name) =>
+    import(
+      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+        .href
+    );
+  try {
+    const modules = await Promise.all(
+      [
+        "shoreshTerms.shoreshTerms",
+        "shoreshElectiveEngine.shoreshElectiveEngine",
+        "shoreshElectiveSeats.seats"
+      ].map(load)
+    );
+    return Object.assign({}, ...modules);
+  } catch {
+    throw new Error(
+      "This copy of Shoresh's connector can't assign elective seats. Download it again from Settings in Shoresh."
     );
   }
 }

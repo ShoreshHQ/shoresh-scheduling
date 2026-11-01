@@ -68,7 +68,7 @@ global with sharing class AgentFinalize implements AgentWeeks.Action {
   }
 
   /** The season's elective set of that name; may be left out when the season has only one. */
-  private static ElectiveSet__c setOf(Season__c season, String name) {
+  public static ElectiveSet__c setOf(Season__c season, String name) {
     List<ElectiveSet__c> sets = [
       SELECT Id, Name
       FROM ElectiveSet__c

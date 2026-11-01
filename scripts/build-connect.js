@@ -44,6 +44,12 @@ const EDITS_ENTRIES = [
   "shoreshWeekEditor/handEdits.js",
   "shoreshWeekEditor/specials.js"
 ];
+// The modules the connector assigns elective seats with (API-1.67): the Elective seats screen's own
+// working (from its run to the engine's input and back) and its seat engine.
+const ELECTIVES_ENTRIES = [
+  "shoreshElectiveSeats/seats.js",
+  "shoreshElectiveEngine/shoreshElectiveEngine.js"
+];
 const SCHEMA = "engine.salesforce-schema.mjs";
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
@@ -77,7 +83,8 @@ function engineFiles() {
     ENGINE_ENTRY,
     ...CHECKS_ENTRIES,
     VERSIONS_ENTRY,
-    ...EDITS_ENTRIES
+    ...EDITS_ENTRIES,
+    ...ELECTIVES_ENTRIES
   ];
   while (todo.length) {
     const file = todo.pop();
@@ -238,6 +245,7 @@ module.exports = {
   CHECKS_ENTRIES,
   VERSIONS_ENTRY,
   EDITS_ENTRIES,
+  ELECTIVES_ENTRIES,
   FROM,
   TO,
   RESOURCE
