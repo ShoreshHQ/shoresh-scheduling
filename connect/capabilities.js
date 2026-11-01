@@ -1804,6 +1804,123 @@ const CAPABILITIES = [
       },
       additionalProperties: false
     }
+  },
+  {
+    // What Shoresh has learned (API-1.93): the screen's own list, worked out with its own modules.
+    name: "read_learned_answers",
+    api: "read_learned_answers",
+    method: "GET",
+    readsLearned: true,
+    queryFields: ["season"],
+    description:
+      'Read "What Shoresh has learned" (under Settings) as the screen lists it: the camp\'s remembered import answers and patterns, newest first, each with when and how it was learned, then what Shoresh already knew. Each answer remembered now has its answer_id, seen and (when it can be changed) the answers it can be changed to; each pattern there now has its pattern and seen. Read it right before change_learned_answer, forget_learned_answer or forget_learned_pattern and send those.',
+    about:
+      "What the camp's imports have taught Shoresh, as the screen lists it. It holds no findings or problems.",
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_learned_answer",
+    api: "change_learned_answer",
+    method: "POST",
+    sendsFields: true,
+    description:
+      'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        answer_id: {
+          type: "string",
+          description: "The answer_id read_learned_answers gave it."
+        },
+        answer: {
+          type: "string",
+          description:
+            "One of the choices read_learned_answers listed for it, as written there, like recurring."
+        },
+        seen: {
+          type: "string",
+          description:
+            "Its seen exactly as read_learned_answers gave it. If it changed since, nothing is changed and the person should be told."
+        }
+      },
+      required: ["answer_id", "answer", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "forget_learned_answer",
+    api: "forget_learned_answer",
+    method: "POST",
+    sendsFields: true,
+    description:
+      'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        answer_id: {
+          type: "string",
+          description: "The answer_id read_learned_answers gave it."
+        },
+        seen: {
+          type: "string",
+          description: "Its seen exactly as read_learned_answers gave it."
+        }
+      },
+      required: ["answer_id", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "forget_learned_pattern",
+    api: "forget_learned_pattern",
+    method: "POST",
+    sendsFields: true,
+    description:
+      'Forget a pattern, as Forget pattern on "What Shoresh has learned" does: the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again. Ask the person first. Read it first with read_learned_answers and send its pattern and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone forgot it or undid that since, nothing is changed and Shoresh says so.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        pattern: {
+          type: "string",
+          description:
+            'The pattern exactly as read_learned_answers gave it, like "pattern:numbered:Lunch".'
+        },
+        seen: {
+          type: "string",
+          description: "Its seen exactly as read_learned_answers gave it."
+        }
+      },
+      required: ["pattern", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "undo_learned_answer",
+    api: "undo_learned_answer",
+    method: "POST",
+    sendsFields: true,
+    description:
+      'Undo a change, forget or forget pattern you just made on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. Only what you did, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        undo: {
+          type: "string",
+          description:
+            "The undo the change, forget or forget pattern answered with, exactly as given."
+        }
+      },
+      required: ["undo"],
+      additionalProperties: false
+    }
   }
 ];
 

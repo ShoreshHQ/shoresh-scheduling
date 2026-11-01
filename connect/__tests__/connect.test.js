@@ -58,7 +58,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(76);
+    expect(CAPABILITIES).toHaveLength(81);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -72,10 +72,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import or download_<file>, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|download_(schedule|special_schedule|elective_files|setup))$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1549,6 +1549,74 @@ describe("Shoresh for AI tools and the command line", () => {
     const capability = byName("read_failed_sends");
     expect(capability.method).toBe("GET");
     expect(Object.keys(capability.inputSchema.properties)).toEqual(["season"]);
+  });
+
+  // API-1.93, API-1.94, API-1.95, API-1.96, API-1.97
+  it("learnedAsTheScreen: What Shoresh has learned is read with one GET and listed with the screen's own modules; each change is sent with what was read as seen, and forgetting tells the AI to ask first", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const answers = [
+      {
+        id: "a01",
+        question: "kind|lunch",
+        answer: "fixed",
+        byYou: true,
+        byName: "Pat",
+        answeredOn: "2031-07-01",
+        savedAt: "2031-07-01T10:00:00Z"
+      }
+    ];
+    const sent = [];
+    const said = await call(
+      "read_learned_answers",
+      { season: "Summer 2031" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            camp: "Pine Hollow (made up)",
+            setup: { labels: [] },
+            answers,
+            events: []
+          }),
+          sent
+        ),
+        learned: async () => ({
+          ...require(`${LWC}/shoreshLearned/history.js`),
+          ...require(`${LWC}/shoreshLearned/builtIn.js`),
+          ...require(`${LWC}/shoreshLearned/view.js`),
+          ...require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+          ...require(`${LWC}/shoreshTerms/shoreshTerms.js`)
+        })
+      }
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0].args[3]).toBe(
+      "/services/apexrest/v1/read_learned_answers?season=Summer+2031"
+    );
+    expect(said.ok).toBe(true);
+    expect(said.text).toContain(
+      "lunch is a fixed activity (From your answer in an import)"
+    );
+    expect(said.text).toContain(
+      'answer_id a01, seen "fixed", can be changed to recurring'
+    );
+    expect(said.text).toContain("What Shoresh already knew");
+    for (const name of [
+      "change_learned_answer",
+      "forget_learned_answer",
+      "forget_learned_pattern"
+    ]) {
+      expect(byName(name).inputSchema.required).toContain("seen");
+    }
+    expect(byName("forget_learned_answer").description).toContain(
+      "Ask the person first"
+    );
+    expect(byName("forget_learned_pattern").description).toContain(
+      "Ask the person first"
+    );
+    expect(byName("undo_learned_answer").inputSchema.required).toEqual([
+      "undo"
+    ]);
   });
 
   // API-1.84, API-1.85

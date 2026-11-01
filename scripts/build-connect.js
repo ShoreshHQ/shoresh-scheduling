@@ -80,6 +80,12 @@ const EXPORTS_ENTRIES = [
   "shoreshScreens/shoreshScreens.js",
   "shoreshTerms/shoreshTerms.js"
 ];
+// The modules the connector lists what Shoresh has learned with (API-1.93): the screen's own list.
+const LEARNED_ENTRIES = [
+  "shoreshLearned/history.js",
+  "shoreshLearned/builtIn.js",
+  "shoreshTerms/shoreshTerms.js"
+];
 const SCHEMA = "engine.salesforce-schema.mjs";
 // SheetJS, the package's own copy the screens save Excel files with, run by the connector too.
 const SHEETJS = path.resolve(
@@ -122,7 +128,8 @@ function engineFiles() {
     ...EDITS_ENTRIES,
     ...ELECTIVES_ENTRIES,
     ...IMPORTS_ENTRIES,
-    ...EXPORTS_ENTRIES
+    ...EXPORTS_ENTRIES,
+    ...LEARNED_ENTRIES
   ];
   while (todo.length) {
     const file = todo.pop();
