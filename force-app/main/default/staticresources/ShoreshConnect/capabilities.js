@@ -467,6 +467,25 @@ const CAPABILITIES = [
     ),
     editsWithEngine: true
   },
+  {
+    // API-1.65: worked out here with the week editor's own rainy day, as copy_cells is.
+    ...change(
+      "switch_to_rain_plans",
+      "switch_to_rain_plans",
+      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. To switch the day back, undo it with undo_last_agent_change (the week before is also kept in Versions as "Before rainy <day>").',
+      {
+        day: {
+          ...CELL.day,
+          description:
+            "The rainy day, like Monday, or its date like 2026-06-29."
+        }
+      },
+      ["day"],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
+  },
   change(
     "undo_last_agent_change",
     "undo_last_agent_change",

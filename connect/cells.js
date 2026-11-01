@@ -1,11 +1,12 @@
 /**
- * move_cell, take_out_cell and copy_cells (API-1.38 to API-1.40, API-1.45): an edit of several
+ * move_cell, take_out_cell, copy_cells and switch_to_rain_plans (API-1.38 to API-1.40, API-1.45,
+ * API-1.65): an edit of several
  * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
  * screen opens it (c/shoreshGeneratedSchedule counter.js), and the edit made with the week
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
  * moves, swaps, pastes, refusals and words. Its runs then go to the screen's own save
- * (POST /v1/move_cell, /v1/take_out_cell or /v1/copy_cells), marked Through an agent. Only finding the cells by their names is
+ * (POST /v1/move_cell, /v1/take_out_cell, /v1/copy_cells or /v1/switch_to_rain_plans), marked Through an agent. Only finding the cells by their names is
  * done here.
  */
 
@@ -167,6 +168,8 @@ function contextOf(m, body) {
   return {
     week,
     t,
+    // The season's setup a rainy day reads (rain.js rainModel), as the screen's editor has it.
+    draft,
     nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
     // As the screen names a day (shoreshWeekEditor dayNameOf(dateValue, this.planName)): Generated
     // Schedule gives its editor no planName (only a special day's or event's own schedule has one).
@@ -203,6 +206,7 @@ function manualContextOf(m, body) {
   return {
     week,
     t,
+    draft,
     nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
     dayNameOf: (dateValue) => m.dayNameOf(dateValue),
     isAwayOn: (w, d, g, b) => {
@@ -277,8 +281,44 @@ function copyTool(ctx, m, input, weekName) {
   );
 }
 
+/**
+ * switch_to_rain_plans as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
+ * runRainyDay): the day's outdoor activities switched to their rain plans by the editor's own tool,
+ * locked cells (Generated) left as they are. With the marks it leaves on the day ("Rain plan full",
+ * switched), and the day's marks as read (seen).
+ */
+function rainyDay(ctx, m, input, weekName) {
+  const day = ctx.week[dayIn(ctx, m, input.day, weekName)];
+  const name = ctx.dayNameOf(day.dateValue);
+  const step = m.toolStep(ctx, {
+    kind: "rain",
+    dates: [day.dateValue],
+    name,
+    label: `Rainy ${name}`,
+    model: m.rainModel(ctx.draft, ctx.week),
+    // A Lock beats a switch (Generated): the cells locked now are left as they are.
+    locks: ctx.liveLocks ? new Set(ctx.liveLocks) : null
+  });
+  if (step.nothing) {
+    return { nothing: step.nothing };
+  }
+  const before = day.rain || [];
+  return {
+    runs: step.result.runs,
+    label: step.label,
+    said: step.said,
+    rain: [
+      { day: day.dateValue, cells: m.marksAfter(before, step.result.marks) }
+    ],
+    seen: before
+  };
+}
+
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */
 function stepOf(capability, ctx, m, input, weekName) {
+  if (capability.name === "switch_to_rain_plans") {
+    return rainyDay(ctx, m, input, weekName);
+  }
   if (capability.name === "copy_cells") {
     const step = m.toolStep(ctx, copyTool(ctx, m, input, weekName));
     if (step.nothing) {
@@ -351,7 +391,9 @@ async function editCells(
         ...fields,
         change: step.label,
         said: step.said || "",
-        runs
+        runs,
+        // A rainy day's marks, and the day's marks as read.
+        ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
       })
     })
   );

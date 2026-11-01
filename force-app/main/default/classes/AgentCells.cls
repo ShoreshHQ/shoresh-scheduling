@@ -59,7 +59,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
   }
 
   /** Generated Schedule's own hand-edit save, the cells' Open reasons dropped as the screen drops them. */
-  private static SlotEdits.Result handEdit(
+  public static SlotEdits.Result handEdit(
     AgentWeeks.Week week,
     List<ScheduleDays.DayGrid> days,
     SlotEdits.Edit edit
@@ -73,7 +73,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
   }
 
   /** The runs as the screen sends them (SlotEdits.Run); anything else is refused. */
-  private static List<SlotEdits.Run> runsOf(Object sent) {
+  public static List<SlotEdits.Run> runsOf(Object sent) {
     if (!(sent instanceof List<Object>)) {
       return new List<SlotEdits.Run>();
     }
