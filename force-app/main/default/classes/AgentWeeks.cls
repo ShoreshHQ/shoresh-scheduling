@@ -93,7 +93,7 @@ public with sharing class AgentWeeks {
     return OutgoingRows.weekIn(season, weekName);
   }
 
-  private static Program__c programOf(Season__c season, String name) {
+  public static Program__c programOf(Season__c season, String name) {
     List<Program__c> programs = [
       SELECT Id, Name
       FROM Program__c

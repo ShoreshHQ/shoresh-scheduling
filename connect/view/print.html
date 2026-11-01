@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shoresh</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      @media screen {
+        body {
+          padding: 12mm;
+        }
+      }
+      @page {
+        margin: 12mm;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      /* SHORESH_PRINTOUT_CODE */
+    </script>
+    <script>
+      // What the connector saved to print (API-1.86, API-1.88): { kind, title, props }.
+      window.SHORESH_PRINTOUT = /* SHORESH_PRINTOUT */ null;
+    </script>
+    <script>
+      // The printout as the screen puts it on the page before it prints: the screen's own
+      // component with the screen's own pages. On paper it is exactly what the screen prints; on
+      // screen its paper rules are shown too, so the file can be looked at before printing.
+      (function () {
+        var printout = window.SHORESH_PRINTOUT;
+        if (!printout) return;
+        document.title = printout.title;
+        if (printout.kind === "schedule") {
+          // As ShoreshPrint's @page shoresh-schedule: a day's columns are its groups.
+          var page = document.createElement("style");
+          page.textContent = "@page { size: landscape; margin: 12mm; }";
+          document.head.appendChild(page);
+        }
+        var element = ShoreshPrintout.create(printout.kind);
+        Object.keys(printout.props).forEach(function (key) {
+          element[key] = printout.props[key];
+        });
+        document.body.appendChild(element);
+        var root = element.shadowRoot;
+        if (root && window.CSSStyleSheet) {
+          var paper = "";
+          var sheets = Array.prototype.slice.call(
+            root.adoptedStyleSheets || []
+          );
+          root.querySelectorAll("style").forEach(function (style) {
+            if (style.sheet) sheets.push(style.sheet);
+          });
+          sheets.forEach(function (sheet) {
+            Array.prototype.forEach.call(sheet.cssRules, function (rule) {
+              if (rule.media && /\bprint\b/.test(rule.media.mediaText)) {
+                Array.prototype.forEach.call(rule.cssRules, function (inner) {
+                  paper += inner.cssText + "\n";
+                });
+              }
+            });
+          });
+          var screen = new CSSStyleSheet();
+          screen.replaceSync("@media screen {\n" + paper + "}");
+          root.adoptedStyleSheets = Array.prototype.slice
+            .call(root.adoptedStyleSheets || [])
+            .concat([screen]);
+        }
+        window.addEventListener("load", function () {
+          setTimeout(function () {
+            window.print();
+          }, 200);
+        });
+      })();
+    </script>
+  </body>
+</html>

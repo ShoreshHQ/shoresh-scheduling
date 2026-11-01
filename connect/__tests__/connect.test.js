@@ -58,21 +58,24 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(71);
+    expect(CAPABILITIES).toHaveLength(75);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
       ).toMatch(new RegExp(`^/services/apexrest/v1/${c.api}(\\?|$)`));
-      expect(c.method).toBe(/^(read|list)_/.test(c.name) ? "GET" : "POST");
+      // A read, or a file made from what a screen reads (API-1.86 to API-1.89), is a GET.
+      expect(c.method).toBe(
+        /^(read|list|download)_/.test(c.name) ? "GET" : "POST"
+      );
     }
   });
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule or undo_import, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import or download_<file>, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|download_(schedule|special_schedule|elective_files|setup))$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -149,11 +152,14 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const f of fs.readdirSync(path.resolve(__dirname, ".."))) {
       if (f.endsWith(".js")) {
         const text = fs.readFileSync(path.resolve(__dirname, "..", f), "utf8");
+        // exports.js writes only the file a screen would download, into Downloads (API-1.90).
+        const written =
+          f === "exports.js" ? "" : "|writeFile|appendFile|createWriteStream";
         expect([
           f,
-          /accessToken|Bearer|org display|sfdxAuthUrl|writeFile|appendFile|createWriteStream|console\./.test(
-            text
-          )
+          new RegExp(
+            `accessToken|Bearer|org display|sfdxAuthUrl|console\\.${written}`
+          ).test(text)
         ]).toEqual([f, false]);
       }
     }
@@ -1825,7 +1831,10 @@ describe("Shoresh for AI tools and the command line", () => {
         .readdirSync(TO)
         .filter(
           (f) =>
-            f !== "manifest.json" && !f.endsWith(".mjs") && !f.endsWith(".html")
+            f !== "manifest.json" &&
+            !f.endsWith(".mjs") &&
+            !f.endsWith(".cjs") &&
+            !f.endsWith(".html")
         )
         .sort()
     ).toEqual(connectorFiles());

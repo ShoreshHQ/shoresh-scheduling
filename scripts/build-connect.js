@@ -67,7 +67,26 @@ const IMPORTS_ENTRIES = [
   // A special schedule's own file reading (API-1.85).
   "shoreshSpecialSchedule/fromFile.js"
 ];
+// The modules the connector makes the screens' files with (API-1.86 to API-1.89): Schedules'
+// Excel and printout pages, a special schedule's sheet, the Elective seats screen's downloads and
+// rosters, Camp Setup's lists and Roots' worksheet, and the Excel file's bytes and name.
+const EXPORTS_ENTRIES = [
+  "shoreshScheduleExport/shoreshScheduleExport.js",
+  "shoreshScheduleViews/shoreshScheduleViews.js",
+  "shoreshElectiveDetails/offerings.js",
+  "shoreshElectiveSeats/downloads.js",
+  "shoreshDownload/workbook.js",
+  "shoreshLists/shoreshLists.js",
+  "shoreshScreens/shoreshScreens.js",
+  "shoreshTerms/shoreshTerms.js"
+];
 const SCHEMA = "engine.salesforce-schema.mjs";
+// SheetJS, the package's own copy the screens save Excel files with, run by the connector too.
+const SHEETJS = path.resolve(
+  __dirname,
+  "../force-app/main/default/staticresources/SheetJS.js"
+);
+const SHEETJS_FILE = "engine.SheetJS.cjs";
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
 function flatName(file) {
@@ -102,7 +121,8 @@ function engineFiles() {
     VERSIONS_ENTRY,
     ...EDITS_ENTRIES,
     ...ELECTIVES_ENTRIES,
-    ...IMPORTS_ENTRIES
+    ...IMPORTS_ENTRIES,
+    ...EXPORTS_ENTRIES
   ];
   while (todo.length) {
     const file = todo.pop();
@@ -174,16 +194,41 @@ function viewModules() {
  * engine, inside view/week.html, which talks to the chat app (MCP Apps).
  */
 async function viewFile() {
+  const code = await compiled(path.join(VIEW, "entry.js"));
+  return fs
+    .readFileSync(path.join(VIEW, "week.html"), "utf8")
+    .replace("/* SHORESH_VIEW */", () => code);
+}
+
+/** One entry and the components it uses, compiled into one script for a plain page. */
+async function compiled(input) {
   const { rollup } = require("rollup");
   const lwc = require("@lwc/rollup-plugin").default;
   const bundle = await rollup({
-    input: path.join(VIEW, "entry.js"),
+    input,
     plugins: [
       lwc({
         rootDir: path.resolve(__dirname, ".."),
         modules: viewModules(),
         disableSyntheticShadowSupport: true
       }),
+      // A field's or server call's name, as engineFiles gives them: the printout's modules name
+      // fields (c/shoreshSchema) but read none, and never call the server.
+      {
+        name: "salesforce",
+        resolveId: (id) =>
+          /^@salesforce\/(schema|apex)\//.test(id) ? `\0${id}` : null,
+        load(id) {
+          const [, kind, name] =
+            /^\0@salesforce\/(schema|apex)\/(.+)$/.exec(id) || [];
+          if (!kind) return null;
+          if (kind === "apex") {
+            return `export default () => Promise.reject(new Error(${JSON.stringify(`${name} runs only on Shoresh's screens.`)}));`;
+          }
+          const [objectApiName, fieldApiName] = name.split(".");
+          return `export default ${JSON.stringify(fieldApiName ? { objectApiName, fieldApiName } : { objectApiName })};`;
+        }
+      },
       // The LWC engine as Salesforce runs it for people: its production build.
       {
         name: "production",
@@ -194,14 +239,30 @@ async function viewFile() {
       }
     ],
     onwarn(warning) {
-      throw new Error(`The week view can't be built: ${warning.message}`);
+      throw new Error(
+        `${path.basename(input)} can't be built: ${warning.message}`
+      );
     }
   });
   const { output } = await bundle.generate({ format: "iife", compact: true });
-  const code = output[0].code.replace(/<\/(script)/gi, "<\\/$1");
+  return output[0].code.replace(/<\/(script)/gi, "<\\/$1");
+}
+
+// The printout a schedule or rosters are saved as (API-1.86, API-1.88): the screens' own printout
+// components compiled for a plain page, as the week view is.
+const PRINT_FILE = "print-view.html";
+
+/**
+ * The printout page: Schedules' and Elective seats' own printout components
+ * (c/shoreshSchedulePrint, c/shoreshRosterPrint, their templates and styles), compiled unchanged
+ * by Salesforce's own LWC compiler with the LWC engine, inside view/print.html, where the
+ * connector puts the pages to print.
+ */
+async function printViewFile() {
+  const code = await compiled(path.join(VIEW, "print-entry.js"));
   return fs
-    .readFileSync(path.join(VIEW, "week.html"), "utf8")
-    .replace("/* SHORESH_VIEW */", () => code);
+    .readFileSync(path.join(VIEW, "print.html"), "utf8")
+    .replace("/* SHORESH_PRINTOUT_CODE */", () => code);
 }
 
 /** What the extension holds besides its manifest, file by file. */
@@ -230,7 +291,7 @@ function bumpVersionIfChanged(before) {
 async function build() {
   const before = contents();
   for (const f of fs.readdirSync(TO)) {
-    if (f.endsWith(".js") || f.endsWith(".mjs")) fs.rmSync(path.join(TO, f));
+    if (/\.(js|mjs|cjs)$/.test(f)) fs.rmSync(path.join(TO, f));
   }
   for (const f of connectorFiles()) {
     fs.copyFileSync(path.join(FROM, f), path.join(TO, f));
@@ -239,7 +300,9 @@ async function build() {
   for (const [f, text] of Object.entries(engine)) {
     fs.writeFileSync(path.join(TO, f), text);
   }
+  fs.copyFileSync(SHEETJS, path.join(TO, SHEETJS_FILE));
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
+  fs.writeFileSync(path.join(TO, PRINT_FILE), await printViewFile());
   bumpVersionIfChanged(before);
   console.log(
     `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files and the week view into ${TO}`
@@ -258,6 +321,9 @@ module.exports = {
   engineFiles,
   viewFile,
   VIEW_FILE,
+  printViewFile,
+  PRINT_FILE,
+  SHEETJS_FILE,
   flatName,
   ENGINE_ENTRY,
   CHECKS_ENTRIES,
@@ -265,6 +331,7 @@ module.exports = {
   EDITS_ENTRIES,
   ELECTIVES_ENTRIES,
   IMPORTS_ENTRIES,
+  EXPORTS_ENTRIES,
   FROM,
   TO,
   RESOURCE
