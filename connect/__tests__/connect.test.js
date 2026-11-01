@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(35);
+    expect(CAPABILITIES).toHaveLength(38);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version or rename/delete/add_setup_record, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record or fill_in_weeks, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1356,6 +1356,51 @@ describe("Shoresh for AI tools and the command line", () => {
       kind: "location",
       name: "Lake"
     });
+  });
+
+  // API-1.51, API-1.52
+  it("activityRulesAndWeeksAsCampSetup: an activity's details are read by name in the web address and changed with what was seen; filling in weeks sends the season's dates as seen", async () => {
+    expect(byName("change_activity_rules").inputSchema.required).toEqual([
+      "name",
+      "fields",
+      "seen"
+    ]);
+    expect(byName("fill_in_weeks").inputSchema.required).toEqual(["seen"]);
+    const read = [];
+    await call(
+      "read_activity_rules",
+      { season: "Summer 2026", name: "Swim" },
+      {
+        run: sfAnswering(200, JSON.stringify({ message: "The activity" }), read)
+      }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/read_activity_rules?season=Summer+2026&name=Swim"
+    );
+    const asked = {
+      season: "Summer 2026",
+      name: "Swim",
+      fields: { who_can_do_it: "Juniors" },
+      seen: { who_can_do_it: "everyone" }
+    };
+    const changed = [];
+    await call("change_activity_rules", asked, {
+      run: sfAnswering(200, JSON.stringify({ message: "Changed" }), changed)
+    });
+    expect(changed[0].args[3]).toBe(
+      "/services/apexrest/v1/change_activity_rules"
+    );
+    expect(JSON.parse(changed[0].stdin)).toEqual(asked);
+    const weeks = {
+      season: "Summer 2026",
+      seen: { start_date: "2026-06-29", end_date: "2026-08-07" }
+    };
+    const filled = [];
+    await call("fill_in_weeks", weeks, {
+      run: sfAnswering(200, JSON.stringify({ message: "Added" }), filled)
+    });
+    expect(filled[0].args[3]).toBe("/services/apexrest/v1/fill_in_weeks");
+    expect(JSON.parse(filled[0].stdin)).toEqual(weeks);
   });
 
   it("manualBuildWeeksSayWhichSchedule: a cell change, the grid's multi-cell edits, checks and accepts, undo, versions, publish, unpublish and locks take schedule and send it; build stays Generated Schedule's", async () => {
