@@ -257,9 +257,9 @@ private class AgentManualBuildTest {
   static void manualChecksReadManualBuildsDraftAndAcceptThere() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
-      Test.startTest();
       List<Object> notStarted = readChecks();
       Id draftId = manualDraft();
+      Test.startTest();
       List<Object> read = readChecks();
       List<Object> accepted = post(
         'accept',
@@ -352,9 +352,9 @@ private class AgentManualBuildTest {
   static void startingAWeekIsTheScreensStart() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
-      Test.startTest();
       List<Object> blank = post('start', new Map<String, Object>());
       List<Object> again = post('start', new Map<String, Object>());
+      Test.startTest();
       List<Object> unknown = post(
         'start',
         new Map<String, Object>{ 'week' => 'Week 2', 'from_week' => 'Week 9' }
