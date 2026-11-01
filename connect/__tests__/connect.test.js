@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(47);
+    expect(CAPABILITIES).toHaveLength(49);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, copy_season or update_to_match_setup, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season or update_to_match_setup, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|copy_season|update_to_match_setup)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1461,6 +1461,38 @@ describe("Shoresh for AI tools and the command line", () => {
       expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
       expect(JSON.parse(sent[0].stdin)).toEqual(body);
     }
+  });
+
+  // API-1.59, API-1.60
+  it("guessesReadAndConfirmedWithTheValueSeen: the guesses are read by season in the web address, and Looks right sends the guess's kind, name, field and value as seen", async () => {
+    expect(byName("confirm_setup_guess").inputSchema.required).toEqual([
+      "kind",
+      "name",
+      "field",
+      "seen"
+    ]);
+    const read = [];
+    await call(
+      "read_setup_guesses",
+      { season: "Summer 2026" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Guesses" }), read) }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/read_setup_guesses?season=Summer+2026"
+    );
+    const body = {
+      season: "Summer 2026",
+      kind: "activity",
+      name: "Swim",
+      field: "how_often",
+      seen: "1 to 2 a week"
+    };
+    const sent = [];
+    await call("confirm_setup_guess", body, {
+      run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+    });
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/confirm_setup_guess");
+    expect(JSON.parse(sent[0].stdin)).toEqual(body);
   });
 
   // API-1.61, API-1.62, API-1.63, API-1.64
