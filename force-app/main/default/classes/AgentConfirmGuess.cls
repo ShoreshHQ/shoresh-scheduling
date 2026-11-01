@@ -50,30 +50,22 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
       );
     }
     String seen = String.valueOf(body.get('seen'));
-    AgentGuesses.Entry found = onlyOne(
+    // Locked first: no one else's save of a record by that name can come between the read and
+    // Looks right, so one read of the guesses is what is compared and confirmed.
+    lockNamed(term, season.Id, AgentFields.text(body, 'name'));
+    AgentGuesses.Entry now = onlyOne(
       AgentGuesses.standing(season.Id, labels),
       term,
       field,
       body
     );
-    // Locked: no one else's save of the record can come between the compare and Looks right.
-    lock(found.recordId);
-    AgentGuesses.Entry now = null;
-    for (AgentGuesses.Entry entry : AgentGuesses.standing(season.Id, labels)) {
-      if (
-        entry.recordId == found.recordId &&
-        entry.guessField == found.guessField
-      ) {
-        now = entry;
-      }
-    }
     // "2 to 3 a week" is what was read; capitals count in names (Apex's == ignores case).
-    if (now == null || !now.value.equals(seen)) {
+    if (!now.value.equals(seen)) {
       throw new AgentWeeks.ConflictException(
         'Someone changed the ' +
-          found.kind +
+          now.kind +
           ' "' +
-          found.name +
+          now.name +
           '" or said it looks right since, so nothing was marked. Read it again with read_setup_guesses.'
       );
     }
@@ -196,13 +188,41 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     );
   }
 
-  private static void lock(Id recordId) {
-    Database.queryWithBinds(
-      'SELECT Id FROM ' +
-        ShoreshSchema.queryName(recordId.getSObjectType()) +
-        ' WHERE Id = :recordId FOR UPDATE',
-      new Map<String, Object>{ 'recordId' => recordId },
-      AccessLevel.USER_MODE
-    );
+  /** The season's records of that kind and name (SOQL compares names without capitals). */
+  private static void lockNamed(String term, Id seasonId, String name) {
+    String given = name.normalizeSpace();
+    if (term == 'Activity') {
+      List<Activity__c> locked = [
+        SELECT Id
+        FROM Activity__c
+        WHERE Season__c = :seasonId AND Name = :given
+        WITH USER_MODE
+        FOR UPDATE
+      ];
+    } else if (term == 'Location') {
+      List<Location__c> locked = [
+        SELECT Id
+        FROM Location__c
+        WHERE Season__c = :seasonId AND Name = :given
+        WITH USER_MODE
+        FOR UPDATE
+      ];
+    } else if (term == 'Group') {
+      List<Group__c> locked = [
+        SELECT Id
+        FROM Group__c
+        WHERE Division__r.Program__r.Season__c = :seasonId AND Name = :given
+        WITH USER_MODE
+        FOR UPDATE
+      ];
+    } else {
+      List<LinkedChoice__c> locked = [
+        SELECT Id
+        FROM LinkedChoice__c
+        WHERE ElectiveSet__r.Season__c = :seasonId AND Name = :given
+        WITH USER_MODE
+        FOR UPDATE
+      ];
+    }
   }
 }

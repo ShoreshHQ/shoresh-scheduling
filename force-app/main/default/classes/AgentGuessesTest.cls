@@ -62,8 +62,19 @@ private class AgentGuessesTest {
     };
   }
 
-  private static Integer marked(Id seasonId) {
-    return SeasonSetupController.getSeasonSetup(seasonId).guesses.size();
+  /** The camp's guesses still remembered (Looks right forgets one). */
+  private static Integer remembered() {
+    Integer result = 0;
+    for (ImportAnswer__c row : [
+      SELECT QuestionKey__c
+      FROM ImportAnswer__c
+      WITH SYSTEM_MODE
+    ]) {
+      if (row.QuestionKey__c.startsWith(SetupGuessValues.PREFIX)) {
+        result++;
+      }
+    }
+    return result;
   }
 
   private static Map<String, Object> confirm(
@@ -117,36 +128,8 @@ private class AgentGuessesTest {
   @IsTest
   static void looksRightIsTheMarksOwnWithTheValueSeen() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = guessedCamp();
-      Id hall = [
-        SELECT Id
-        FROM Location__c
-        WHERE Season__c = :season.Id AND Name = 'Hall'
-        WITH USER_MODE
-      ]
-      .Id;
+      guessedCamp();
       Test.startTest();
-      List<Object> noSeen = ask(
-        new AgentConfirmGuess(),
-        'POST',
-        confirm('activity', 'Swim', 'how_often', null)
-      );
-      List<Object> stale = ask(
-        new AgentConfirmGuess(),
-        'POST',
-        confirm('activity', 'Swim', 'how_often', '1 to 3 a week')
-      );
-      Integer afterRefused = marked(season.Id);
-      // Changed since the AI read it: the mark is gone, and nothing is marked as looked at.
-      Database.update(
-        new Location__c(Id = hall, GroupsThatFit__c = 5),
-        AccessLevel.USER_MODE
-      );
-      List<Object> changed = ask(
-        new AgentConfirmGuess(),
-        'POST',
-        confirm('location', 'Hall', 'groups_that_fit', '4')
-      );
       Integer before = Limits.getQueries();
       List<Object> done = ask(
         new AgentConfirmGuess(),
@@ -166,21 +149,60 @@ private class AgentGuessesTest {
       );
       Test.stopTest();
 
-      Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
-      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
-      Assert.areEqual(6, afterRefused, 'a refusal marks nothing as looked at');
-      Assert.areEqual(409, changed[0], String.valueOf(changed[1]));
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual(409, again[0], 'once looked at, it is no longer marked');
       Assert.areEqual(200, bunk[0], String.valueOf(bunk[1]));
-      // Of six: Hall's changed, Swim's how often and Bunk 1's division looked at.
-      Assert.areEqual(3, marked(season.Id));
+      // Of six: Swim's how often and Bunk 1's division looked at, forgotten as the mark forgets.
+      Assert.areEqual(4, remembered());
       Assert.isTrue(
-        queries < 100,
-        'One Looks right stays under 100 queries: ' + queries
+        queries < 50,
+        'One Looks right stays well under 100 queries: ' + queries
       );
     }
   }
+
+  // API-1.60
+  @IsTest
+  static void aGuessChangedOrSeenOtherwiseIsRefusedWithNothingChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = guessedCamp();
+      Id hall = [
+        SELECT Id
+        FROM Location__c
+        WHERE Season__c = :season.Id AND Name = 'Hall'
+        WITH USER_MODE
+      ]
+      .Id;
+      Test.startTest();
+      List<Object> noSeen = ask(
+        new AgentConfirmGuess(),
+        'POST',
+        confirm('activity', 'Swim', 'how_often', null)
+      );
+      List<Object> stale = ask(
+        new AgentConfirmGuess(),
+        'POST',
+        confirm('activity', 'Swim', 'how_often', '1 to 3 a week')
+      );
+      // Changed since the AI read it: the mark is gone, and nothing is marked as looked at.
+      Database.update(
+        new Location__c(Id = hall, GroupsThatFit__c = 5),
+        AccessLevel.USER_MODE
+      );
+      List<Object> changed = ask(
+        new AgentConfirmGuess(),
+        'POST',
+        confirm('location', 'Hall', 'groups_that_fit', '4')
+      );
+      Test.stopTest();
+
+      Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(409, changed[0], String.valueOf(changed[1]));
+      Assert.areEqual(6, remembered(), 'a refusal forgets no guess');
+    }
+  }
+
   private static AgentGuesses.Entry bunkIn(Id recordId, String program) {
     AgentGuesses.Entry entry = new AgentGuesses.Entry();
     entry.recordId = recordId;
