@@ -129,8 +129,7 @@ public with sharing class LocationMerge {
   }
 
   /** Capitals and spacing aside, as the tables' "Same name as another" compares names. */
-  @TestVisible
-  private static String sameNameKey(String name) {
+  public static String sameNameKey(String name) {
     // As the screen folds them: every kind of space, and capitals the same in every locale.
     return name == null
       ? ''

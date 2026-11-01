@@ -740,6 +740,129 @@ const CAPABILITIES = [
       required: ["seen"],
       additionalProperties: false
     }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.56).
+    name: "read_camp_words",
+    api: "read_camp_words",
+    method: "GET",
+    description:
+      "Read the camp's own words for Shoresh's terms, as Camp Setup's Camp words screen shows them: each of Shoresh's words (like Group) with the camp's singular / plural (like Bunk / Bunks). Read them right before changing them, and send the ones you change back unchanged as seen.",
+    about:
+      "The camp's words now, as Camp Setup shows them. They hold no findings or problems.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_camp_words",
+    api: "change_camp_words",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Change the camp's own words for Shoresh's terms, as Camp Setup's Camp words screen saves them; every Shoresh screen then uses them. Read them first with read_camp_words and send what it said as seen. It is done as you, with your own access. If someone else changed one of those words since (capitals count), nothing is saved and Shoresh says so; what that screen refuses is refused in its words.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        words: {
+          type: "object",
+          description:
+            'The words to set, by Shoresh\'s word, each as "singular / plural", like {"Group": "Bunk / Bunks"}, or "(blank)" to go back to Shoresh\'s own word.'
+        },
+        seen: {
+          type: "object",
+          description:
+            "What each word you change was when you read it with read_camp_words, by the same names, exactly as that read said it. Shoresh compares it with the camp's words now: if someone changed one since, nothing is saved and the person should be told."
+        }
+      },
+      required: ["words", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_season",
+    api: "change_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date) or its last day (end_date). Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        fields: {
+          type: "object",
+          description:
+            'What to set: name, start_date, end_date (dates like 2026-06-29), like {"name": "Summer 2027"}.'
+        },
+        seen: {
+          type: "object",
+          description:
+            'What each field you change was as list_seasons gave it, by the same names (the season\'s name as "name"), like {"name": "Summer 2026"}. If someone changed it since, nothing is saved and the person should be told.'
+        }
+      },
+      required: ["fields", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.58).
+    name: "read_same_locations",
+    api: "read_same_locations",
+    method: "GET",
+    description:
+      "Read Camp Setup's \"Same location?\" question for a place: the season's locations whose names match it, capitals and spacing aside, each with its exact name, groups that fit and how many activities happen there, and which one the question would keep. Read it right before merge_locations and send what it said as seen.",
+    about:
+      "The matching places now, as Camp Setup's question shows them. They hold no findings or problems.",
+    queryFields: ["season", "name"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        name: { type: "string", description: "The place's name, like Pool." }
+      },
+      required: ["name"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "merge_locations",
+    api: "merge_locations",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Merge places whose names match (capitals and spacing aside) into one, as Camp Setup's \"Same location?\" Merge does: everything at the others (activities, fixed and recurring activities, the weeks they are closed) moves to the one kept, and the others are deleted. This can't be undone here: ask the person first, naming the one kept, the ones deleted and the groups that fit, as that question does. Read them first with read_same_locations and send each place's exact name and groups_that_fit as seen. It is done as you, with your own access. If someone else changed those places since, nothing is merged and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        name: {
+          type: "string",
+          description: "The places' name, like Pool."
+        },
+        keep: {
+          type: "string",
+          description:
+            "The exact name (capitals and spaces as read_same_locations said it) of the place to keep. Leave it out to keep the one the question would keep."
+        },
+        groups_that_fit: {
+          type: "string",
+          description:
+            "How many groups fit at the place kept: a whole number, 1 or more. Leave it out for the most any of them fits, as the question starts."
+        },
+        seen: {
+          type: "object",
+          description:
+            'Each place as read_same_locations said it: its exact name with its groups_that_fit, like {"Pool": "1", "pool": "2"}. If any place was added, renamed, changed or deleted since, nothing is merged and the person should be told.'
+        }
+      },
+      required: ["name", "seen"],
+      additionalProperties: false
+    }
   }
 ];
 

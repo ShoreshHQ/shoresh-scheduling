@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(38);
+    expect(CAPABILITIES).toHaveLength(43);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record or fill_in_weeks, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks or merge_locations, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -1401,6 +1401,66 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(filled[0].args[3]).toBe("/services/apexrest/v1/fill_in_weeks");
     expect(JSON.parse(filled[0].stdin)).toEqual(weeks);
+  });
+
+  // API-1.56, API-1.57, API-1.58
+  it("campWordsSeasonAndMergeAsCampSetup: camp words and the season are changed with what was seen, the matching places are read by name in the web address, and a merge asks the person first and sends each place as seen", async () => {
+    expect(byName("change_camp_words").inputSchema.required).toEqual([
+      "words",
+      "seen"
+    ]);
+    expect(byName("change_season").inputSchema.required).toEqual([
+      "fields",
+      "seen"
+    ]);
+    expect(byName("merge_locations").inputSchema.required).toEqual([
+      "name",
+      "seen"
+    ]);
+    expect(byName("merge_locations").description).toMatch(
+      /ask the person first/
+    );
+    const read = [];
+    await call(
+      "read_camp_words",
+      { season: "Summer 2026" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Words" }), read) }
+    );
+    await call(
+      "read_same_locations",
+      { season: "Summer 2026", name: "Pool" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Places" }), read) }
+    );
+    expect(read.map((r) => r.args[3])).toEqual([
+      "/services/apexrest/v1/read_camp_words?season=Summer+2026",
+      "/services/apexrest/v1/read_same_locations?season=Summer+2026&name=Pool"
+    ]);
+    const asked = {
+      change_camp_words: {
+        season: "Summer 2026",
+        words: { Group: "Bunk / Bunks" },
+        seen: { Group: "Group / Groups" }
+      },
+      change_season: {
+        season: "Summer 2026",
+        fields: { name: "Summer 2027" },
+        seen: { name: "Summer 2026" }
+      },
+      merge_locations: {
+        season: "Summer 2026",
+        name: "Pool",
+        keep: "Pool",
+        seen: { Pool: "1", pool: "2" }
+      }
+    };
+    for (const [name, body] of Object.entries(asked)) {
+      const sent = [];
+      await call(name, body, {
+        run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+      });
+      expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
+      expect(JSON.parse(sent[0].stdin)).toEqual(body);
+    }
   });
 
   // API-1.53, API-1.54, API-1.55
