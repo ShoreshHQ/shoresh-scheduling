@@ -189,7 +189,7 @@ private class AgentLearnedTest {
         new AgentForgetPattern(),
         new Map<String, Object>{
           'pattern' => 'pattern:numbered:Lunch',
-          'seen' => 'a0X000000000001'
+          'seen' => 'forgotten before'
         }
       );
       List<Object> forgot = post(
