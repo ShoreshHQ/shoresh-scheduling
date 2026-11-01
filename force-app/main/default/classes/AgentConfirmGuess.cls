@@ -53,11 +53,16 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     // Locked first: no one else's save of a record by that name can come between the read and
     // Looks right, so one read of the guesses is what is compared and confirmed.
     lockNamed(term, season.Id, AgentFields.text(body, 'name'));
+    AgentGuesses.Entry asked = new AgentGuesses.Entry(
+      null,
+      term,
+      AgentFields.text(body, term == 'Group' ? 'program' : 'elective_set')
+    );
+    asked.name = AgentFields.text(body, 'name');
+    asked.field = field;
     AgentGuesses.Entry now = onlyOne(
       AgentGuesses.standing(season.Id, labels),
-      term,
-      field,
-      body
+      asked
     );
     // "2 to 3 a week" is what was read; capitals count in names (Apex's == ignores case).
     if (!now.value.equals(seen)) {
@@ -86,30 +91,19 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
       ' as looked at. Camp Setup no longer marks it as guessed.';
   }
 
-  /** The guess named: by kind, name, field, and program or elective set when a name is in two. */
+  /**
+   * The guess named (asked: its term, field, name and, when given, program or elective set),
+   * the program or elective set asked about when a name is in two.
+   */
   @TestVisible
   private static AgentGuesses.Entry onlyOne(
     List<AgentGuesses.Entry> standing,
-    String term,
-    String field,
-    Map<String, Object> body
+    AgentGuesses.Entry asked
   ) {
-    String name = AgentFields.text(body, 'name');
-    String place = AgentFields.text(
-      body,
-      term == 'Group' ? 'program' : 'elective_set'
-    );
     List<AgentGuesses.Entry> matched = new List<AgentGuesses.Entry>();
-    Set<String> places = new Set<String>();
+    List<String> places = new List<String>();
     for (AgentGuesses.Entry entry : standing) {
-      if (
-        entry.term == term &&
-        entry.field == field &&
-        IncomingBatch.fold(entry.name) == IncomingBatch.fold(name) &&
-        (String.isBlank(place) ||
-        (entry.place != null &&
-        IncomingBatch.fold(entry.place) == IncomingBatch.fold(place)))
-      ) {
+      if (matches(entry, asked)) {
         matched.add(entry);
         places.add(entry.place);
       }
@@ -117,31 +111,43 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     if (matched.isEmpty()) {
       throw new AgentWeeks.ConflictException(
         'The ' +
-          field +
+          asked.field +
           ' of "' +
-          name.left(80) +
+          asked.name.left(80) +
           '" isn\'t marked as guessed now: someone may have changed it or said it looks right since.' +
           NOTHING +
           ' read_setup_guesses says what is marked.'
       );
     }
     if (matched.size() > 1) {
-      List<String> named = new List<String>(places);
-      named.sort();
+      places.sort();
+      Boolean bunk = asked.term == 'Group';
       throw new ShoreshException(
         'More than one "' +
-          name.left(80) +
+          asked.name.left(80) +
           '" is marked. Say which ' +
-          (term == 'Group' ? 'program' : 'elective set') +
-          ' (' +
-          (term == 'Group' ? 'program' : 'elective_set') +
-          '): ' +
-          String.join(named, ', ') +
+          (bunk ? 'program (program)' : 'elective set (elective_set)') +
+          ': ' +
+          String.join(places, ', ') +
           '.' +
           NOTHING
       );
     }
     return matched[0];
+  }
+
+  /** The same kind, field and name (capitals and spacing aside), in the place asked, if any. */
+  private static Boolean matches(
+    AgentGuesses.Entry entry,
+    AgentGuesses.Entry asked
+  ) {
+    Boolean anyPlace = String.isBlank(asked.place);
+    return entry.term == asked.term &&
+      entry.field == asked.field &&
+      IncomingBatch.fold(entry.name) == IncomingBatch.fold(asked.name) &&
+      (anyPlace ||
+      (entry.place != null &&
+      IncomingBatch.fold(entry.place) == IncomingBatch.fold(asked.place)));
   }
 
   /** The kind asked about, by the model's word or the camp's; only kinds an import guesses. */
@@ -189,40 +195,45 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
   }
 
   /** The season's records of that kind and name (SOQL compares names without capitals). */
-  private static void lockNamed(String term, Id seasonId, String name) {
+  private static Integer lockNamed(String term, Id seasonId, String name) {
     String given = name.normalizeSpace();
     if (term == 'Activity') {
-      List<Activity__c> locked = [
-        SELECT Id
-        FROM Activity__c
-        WHERE Season__c = :seasonId AND Name = :given
-        WITH USER_MODE
-        FOR UPDATE
-      ];
-    } else if (term == 'Location') {
-      List<Location__c> locked = [
-        SELECT Id
-        FROM Location__c
-        WHERE Season__c = :seasonId AND Name = :given
-        WITH USER_MODE
-        FOR UPDATE
-      ];
-    } else if (term == 'Group') {
-      List<Group__c> locked = [
-        SELECT Id
-        FROM Group__c
-        WHERE Division__r.Program__r.Season__c = :seasonId AND Name = :given
-        WITH USER_MODE
-        FOR UPDATE
-      ];
-    } else {
-      List<LinkedChoice__c> locked = [
+      return [
+          SELECT Id
+          FROM Activity__c
+          WHERE Season__c = :seasonId AND Name = :given
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+        .size();
+    }
+    if (term == 'Location') {
+      return [
+          SELECT Id
+          FROM Location__c
+          WHERE Season__c = :seasonId AND Name = :given
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+        .size();
+    }
+    if (term == 'Group') {
+      return [
+          SELECT Id
+          FROM Group__c
+          WHERE Division__r.Program__r.Season__c = :seasonId AND Name = :given
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+        .size();
+    }
+    return [
         SELECT Id
         FROM LinkedChoice__c
         WHERE ElectiveSet__r.Season__c = :seasonId AND Name = :given
         WITH USER_MODE
         FOR UPDATE
-      ];
-    }
+      ]
+      .size();
   }
 }

@@ -77,20 +77,16 @@ private class AgentGuessesTest {
     return result;
   }
 
-  private static Map<String, Object> confirm(
-    String kind,
-    String name,
-    String field,
-    Object seen
-  ) {
+  /** A Looks right asked for: kind, name, field, then seen (left out when null). */
+  private static Map<String, Object> confirm(List<String> asked) {
     Map<String, Object> body = new Map<String, Object>{
       'season' => 'Summer 2027',
-      'kind' => kind,
-      'name' => name,
-      'field' => field
+      'kind' => asked[0],
+      'name' => asked[1],
+      'field' => asked[2]
     };
-    if (seen != null) {
-      body.put('seen', seen);
+    if (asked[3] != null) {
+      body.put('seen', asked[3]);
     }
     return body;
   }
@@ -134,18 +130,22 @@ private class AgentGuessesTest {
       List<Object> done = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('Activity', 'swim', 'how often', '1 to 2 a week')
+        confirm(
+          new List<String>{ 'Activity', 'swim', 'how often', '1 to 2 a week' }
+        )
       );
       Integer queries = Limits.getQueries() - before;
       List<Object> again = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('activity', 'Swim', 'how_often', '1 to 2 a week')
+        confirm(
+          new List<String>{ 'activity', 'Swim', 'how_often', '1 to 2 a week' }
+        )
       );
       List<Object> bunk = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('group', 'Bunk 1', 'division', 'Juniors')
+        confirm(new List<String>{ 'group', 'Bunk 1', 'division', 'Juniors' })
       );
       Test.stopTest();
 
@@ -177,12 +177,14 @@ private class AgentGuessesTest {
       List<Object> noSeen = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('activity', 'Swim', 'how_often', null)
+        confirm(new List<String>{ 'activity', 'Swim', 'how_often', null })
       );
       List<Object> stale = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('activity', 'Swim', 'how_often', '1 to 3 a week')
+        confirm(
+          new List<String>{ 'activity', 'Swim', 'how_often', '1 to 3 a week' }
+        )
       );
       // Changed since the AI read it: the mark is gone, and nothing is marked as looked at.
       Database.update(
@@ -192,7 +194,7 @@ private class AgentGuessesTest {
       List<Object> changed = ask(
         new AgentConfirmGuess(),
         'POST',
-        confirm('location', 'Hall', 'groups_that_fit', '4')
+        confirm(new List<String>{ 'location', 'Hall', 'groups_that_fit', '4' })
       );
       Test.stopTest();
 
@@ -204,11 +206,11 @@ private class AgentGuessesTest {
   }
 
   private static AgentGuesses.Entry bunkIn(Id recordId, String program) {
-    AgentGuesses.Entry entry = new AgentGuesses.Entry();
-    entry.recordId = recordId;
-    entry.term = 'Group';
-    entry.name = 'Bunk 1';
-    entry.place = program;
+    AgentGuesses.Entry entry = new AgentGuesses.Entry(
+      new Group__c(Id = recordId, Name = 'Bunk 1'),
+      'Group',
+      program
+    );
     entry.field = 'division';
     return entry;
   }
@@ -217,10 +219,12 @@ private class AgentGuessesTest {
   @IsTest
   static void aNameTwoProgramsShareIsAskedAboutNeverPicked() {
     Id one = Id.valueOf(
-      Group__c.SObjectType.getDescribe().getKeyPrefix() + '000000000001'
+      Group__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+        .getKeyPrefix() + '000000000001'
     );
     Id two = Id.valueOf(
-      Group__c.SObjectType.getDescribe().getKeyPrefix() + '000000000002'
+      Group__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+        .getKeyPrefix() + '000000000002'
     );
     List<AgentGuesses.Entry> standing = new List<AgentGuesses.Entry>{
       bunkIn(one, 'Main'),
@@ -228,12 +232,7 @@ private class AgentGuessesTest {
     };
     String asked;
     try {
-      AgentConfirmGuess.onlyOne(
-        standing,
-        'Group',
-        'division',
-        new Map<String, Object>{ 'name' => 'Bunk 1' }
-      );
+      AgentConfirmGuess.onlyOne(standing, bunkIn(null, null));
     } catch (ShoreshException e) {
       asked = e.getMessage();
     }
@@ -243,13 +242,7 @@ private class AgentGuessesTest {
     );
     Assert.areEqual(
       two,
-      AgentConfirmGuess.onlyOne(
-          standing,
-          'Group',
-          'division',
-          new Map<String, Object>{ 'name' => 'Bunk 1', 'program' => 'teens' }
-        )
-        .recordId
+      AgentConfirmGuess.onlyOne(standing, bunkIn(null, 'teens')).recordId
     );
   }
 }

@@ -29,6 +29,13 @@ public with sharing class AgentGuesses {
     public String guessField;
     public String value;
 
+    public Entry(SObject record, String term, String place) {
+      this.recordId = record == null ? null : record.Id;
+      this.name = record == null ? null : (String) record.get('Name');
+      this.term = term;
+      this.place = place;
+    }
+
     /** As read_setup_guesses says it. */
     public String said() {
       return kind +
@@ -49,12 +56,55 @@ public with sharing class AgentGuesses {
 
   /** The season's guesses still marked, in the screen's order, as the setup screen reads them. */
   public static List<Entry> standing(Id seasonId, CampLabels labels) {
-    SeasonSetupReader.SeasonSetup setup = SeasonSetupController.getSeasonSetup(
-      seasonId
+    Reading reading = new Reading(
+      SeasonSetupController.getSeasonSetup(seasonId)
     );
-    Map<Id, Entry> about = new Map<Id, Entry>();
-    Map<Id, String> whoNames = new Map<Id, String>();
-    for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
+    List<Entry> result = new List<Entry>();
+    for (SetupGuesses.Guess guess : reading.setup.guesses) {
+      Entry known = reading.about.get(guess.recordId);
+      if (known == null || !SAID.containsKey(guess.field)) {
+        continue;
+      }
+      Entry one = new Entry(null, known.term, known.place);
+      one.recordId = known.recordId;
+      one.name = known.name;
+      one.kind = known.term == 'LinkedChoice'
+        ? 'linked choice'
+        : labels.singularInSentence(known.term);
+      one.guessField = guess.field;
+      one.field = SAID.get(guess.field);
+      one.value = reading.valueOf(guess);
+      result.add(one);
+    }
+    return result;
+  }
+
+  /** The setup screen's read, by record: what each guess names and the values it holds. */
+  private class Reading {
+    final SeasonSetupReader.SeasonSetup setup;
+    final Map<Id, Entry> about = new Map<Id, Entry>();
+    final Map<Id, String> whoNames = new Map<Id, String>();
+    final Map<Id, Activity__c> activities;
+    final Map<Id, Location__c> locations;
+    final Map<Id, String> periodsOf = new Map<Id, String>();
+
+    Reading(SeasonSetupReader.SeasonSetup setup) {
+      this.setup = setup;
+      this.activities = new Map<Id, Activity__c>(setup.activities);
+      this.locations = new Map<Id, Location__c>(setup.locations);
+      for (Activity__c row : setup.activities) {
+        about.put(row.Id, new Entry(row, 'Activity', null));
+      }
+      for (Location__c row : setup.locations) {
+        about.put(row.Id, new Entry(row, 'Location', null));
+      }
+      for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
+        readProgram(entry);
+      }
+      readLinkedChoices();
+    }
+
+    private void readProgram(SeasonSetupReader.ProgramSetup entry) {
       for (SeasonSetupReader.DivisionSetup d : entry.divisions) {
         // DIV-1.1: a holding record reads as its group, never by its own name (one with no group
         // left keeps its own, so who can do it is never said as everyone when it is not).
@@ -66,151 +116,91 @@ public with sharing class AgentGuesses {
         );
         for (Group__c g : d.groups) {
           whoNames.put(g.Id, g.Name);
-          about.put(
-            g.Id,
-            entry(g.Id, 'Group', labels, g.Name, entry.program.Name)
-          );
+          about.put(g.Id, new Entry(g, 'Group', entry.program.Name));
         }
       }
     }
-    Map<Id, Activity__c> activities = new Map<Id, Activity__c>(
-      setup.activities
-    );
-    for (Activity__c row : setup.activities) {
-      about.put(row.Id, entry(row.Id, 'Activity', labels, row.Name, null));
-    }
-    Map<Id, Location__c> locations = new Map<Id, Location__c>(setup.locations);
-    for (Location__c row : setup.locations) {
-      about.put(row.Id, entry(row.Id, 'Location', labels, row.Name, null));
-    }
-    Map<Id, String> periodsOf = linkedChoices(setup, about, labels);
-    List<Entry> result = new List<Entry>();
-    for (SetupGuesses.Guess guess : setup.guesses) {
-      Entry known = about.get(guess.recordId);
-      if (known == null || !SAID.containsKey(guess.field)) {
-        continue;
+
+    /** Linked choices, and each one's periods as the Electives screen says them. */
+    private void readLinkedChoices() {
+      if (setup.electives == null) {
+        return;
       }
-      Entry one = entry(
-        known.recordId,
-        known.term,
-        labels,
-        known.name,
-        known.place
+      Map<Id, String> blockNames = new Map<Id, String>();
+      for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
+        for (TimeBlock__c block : entry.timeBlocks) {
+          blockNames.put(block.Id, block.Name);
+        }
+      }
+      Map<Id, ElectiveSet__c> sets = new Map<Id, ElectiveSet__c>(
+        setup.electives.sets
       );
-      one.guessField = guess.field;
-      one.field = SAID.get(guess.field);
+      for (LinkedChoice__c row : setup.electives.linkedChoices) {
+        ElectiveSet__c inSet = sets.get(row.ElectiveSet__c);
+        about.put(
+          row.Id,
+          new Entry(row, 'LinkedChoice', inSet == null ? null : inSet.Name)
+        );
+        List<String> periods = new List<String>();
+        for (LinkedChoiceTime__c period : row.Times__r) {
+          periods.add(
+            (period.Weekday__c == null ? '' : period.Weekday__c + ' ') +
+            blockNames.get(period.TimeBlock__c)
+          );
+        }
+        periods.sort();
+        periodsOf.put(row.Id, String.join(periods, ', '));
+      }
+    }
+
+    /** The guessed field's value now, as the screen shows it. */
+    String valueOf(SetupGuesses.Guess guess) {
       if (guess.field == SetupGuessValues.OFTEN) {
-        one.value = often(activities.get(guess.recordId));
-      } else if (guess.field == SetupGuessValues.WHO) {
-        one.value = who(activities.get(guess.recordId), whoNames);
-      } else if (guess.field == SetupGuessValues.FITS) {
-        one.value = SetupGuessValues.wholeText(
+        return often(activities.get(guess.recordId));
+      }
+      if (guess.field == SetupGuessValues.WHO) {
+        return who(activities.get(guess.recordId));
+      }
+      if (guess.field == SetupGuessValues.FITS) {
+        return SetupGuessValues.wholeText(
           locations.get(guess.recordId).GroupsThatFit__c
         );
-      } else if (guess.field == SetupGuessValues.DIVISION) {
-        one.value = String.isBlank(guess.value) ? 'none' : guess.value;
-      } else {
-        one.value = periodsOf.get(guess.recordId);
       }
-      result.add(one);
-    }
-    return result;
-  }
-
-  private static Entry entry(
-    Id recordId,
-    String term,
-    CampLabels labels,
-    String name,
-    String place
-  ) {
-    Entry result = new Entry();
-    result.recordId = recordId;
-    result.term = term;
-    result.kind = term == 'LinkedChoice'
-      ? 'linked choice'
-      : labels.singularInSentence(term);
-    result.name = name;
-    result.place = place;
-    return result;
-  }
-
-  /** Linked choices by Id (in about), and each one's periods as the Electives screen says them. */
-  private static Map<Id, String> linkedChoices(
-    SeasonSetupReader.SeasonSetup setup,
-    Map<Id, Entry> about,
-    CampLabels labels
-  ) {
-    Map<Id, String> result = new Map<Id, String>();
-    if (setup.electives == null) {
-      return result;
-    }
-    Map<Id, String> blockNames = new Map<Id, String>();
-    for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
-      for (TimeBlock__c block : entry.timeBlocks) {
-        blockNames.put(block.Id, block.Name);
+      if (guess.field == SetupGuessValues.DIVISION) {
+        return String.isBlank(guess.value) ? 'none' : guess.value;
       }
+      return periodsOf.get(guess.recordId);
     }
-    Map<Id, String> setNames = new Map<Id, String>();
-    for (ElectiveSet__c row : setup.electives.sets) {
-      setNames.put(row.Id, row.Name);
-    }
-    for (LinkedChoice__c row : setup.electives.linkedChoices) {
-      about.put(
-        row.Id,
-        entry(
-          row.Id,
-          'LinkedChoice',
-          labels,
-          row.Name,
-          setNames.get(row.ElectiveSet__c)
-        )
-      );
-      List<String> periods = new List<String>();
-      for (LinkedChoiceTime__c period : row.Times__r) {
-        periods.add(
-          (period.Weekday__c == null ? '' : period.Weekday__c + ' ') +
-          blockNames.get(period.TimeBlock__c)
+
+    /** Who can do it: everyone, or each division and group by name, in order. */
+    private String who(Activity__c row) {
+      List<String> names = new List<String>();
+      for (ActivityEligibility__c canDo : row.Eligibilities__r) {
+        String name = whoNames.get(
+          canDo.Division__c != null ? canDo.Division__c : canDo.Group__c
         );
+        if (name != null) {
+          names.add(name);
+        }
       }
-      periods.sort();
-      result.put(row.Id, String.join(periods, ', '));
+      if (names.isEmpty()) {
+        return 'everyone';
+      }
+      names.sort();
+      return String.join(names, ', ');
     }
-    return result;
   }
 
   /** Times a week as the activity holds them now. */
   private static String often(Activity__c row) {
     String fewest = SetupGuessValues.wholeText(row.TimesPerWeekMin__c);
     String most = SetupGuessValues.wholeText(row.TimesPerWeekMax__c);
+    String start = String.isBlank(fewest) ? '(blank)' : fewest;
     if (row.NoWeeklyMax__c) {
-      return (String.isBlank(fewest) ? '(blank)' : fewest) +
-        ' a week, no weekly most';
+      return start + ' a week, no weekly most';
     }
-    if (String.isBlank(most)) {
-      return (String.isBlank(fewest) ? '(blank)' : fewest) + ' a week';
-    }
-    return (String.isBlank(fewest) ? '(blank)' : fewest) +
-      ' to ' +
-      most +
-      ' a week';
-  }
-
-  /** Who can do it: everyone, or each division and group by name, in order. */
-  private static String who(Activity__c row, Map<Id, String> whoNames) {
-    List<String> names = new List<String>();
-    for (ActivityEligibility__c canDo : row.Eligibilities__r) {
-      String name = whoNames.get(
-        canDo.Division__c != null ? canDo.Division__c : canDo.Group__c
-      );
-      if (name != null) {
-        names.add(name);
-      }
-    }
-    if (names.isEmpty()) {
-      return 'everyone';
-    }
-    names.sort();
-    return String.join(names, ', ');
+    return String.isBlank(most)
+      ? start + ' a week'
+      : start + ' to ' + most + ' a week';
   }
 }
