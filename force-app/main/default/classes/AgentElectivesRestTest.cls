@@ -95,7 +95,10 @@ private class AgentElectivesRestTest {
       );
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
-      Assert.isTrue(((String) read[1]).contains('finalized;'), String.valueOf(read[1]));
+      Assert.isTrue(
+        ((String) read[1]).contains('finalized;'),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(200, started[0], String.valueOf(started[1]));
       Assert.areEqual(409, again[0], String.valueOf(again[1]));
@@ -160,7 +163,10 @@ private class AgentElectivesRestTest {
       );
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
-      Assert.isTrue(((String) read[1]).contains('seen: ' + stamp), String.valueOf(read[1]));
+      Assert.isTrue(
+        ((String) read[1]).contains('seen: ' + stamp),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(1, runsAfterRefused, 'nothing cleared when refused');
