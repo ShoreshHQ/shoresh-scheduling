@@ -1,6 +1,6 @@
 /**
- * move_cell, take_out_cell, copy_cells and switch_to_rain_plans (API-1.38 to API-1.40, API-1.45,
- * API-1.65): an edit of several
+ * move_cell, take_out_cell, copy_cells, switch_to_rain_plans and place_special_event (API-1.38 to
+ * API-1.40, API-1.45, API-1.65, API-1.75): an edit of several
  * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
  * screen opens it (c/shoreshGeneratedSchedule counter.js), and the edit made with the week
@@ -182,6 +182,7 @@ function contextOf(m, body) {
       );
     },
     liveLocks: locks,
+    events,
     replaced: m.replacedDays(draft)
   };
 }
@@ -218,6 +219,7 @@ function manualContextOf(m, body) {
     },
     isLocked: () => false,
     liveLocks: null,
+    events,
     replaced: m.replacedDays(draft)
   };
 }
@@ -314,8 +316,92 @@ function rainyDay(ctx, m, input, weekName) {
   };
 }
 
+/**
+ * place_special_event as choosing a special event from the screen's list puts it over the cells
+ * chosen (shoreshWeekEditor placeEvent): the groups side by side and times asked for on one day,
+ * widened to whole placements (rowsCovered), each group's cells holding the event (eventRuns: a
+ * fixed or recurring activity is covered, as a hand edit may; a locked cell refuses it), labelled
+ * as the screen labels it ("Placed Color War · Bunk 1 to Bunk 2 · Monday · Period 1 to Period 2").
+ */
+function placeEvent(ctx, m, input, weekName) {
+  const e = onlyOne(
+    ctx.events,
+    input.event,
+    (x) => [x.Name],
+    "special event",
+    " in this season"
+  );
+  const event = ctx.events[e];
+  const d = dayIn(ctx, m, input.day, weekName);
+  const asked = Array.isArray(input.groups) ? input.groups : [input.groups];
+  if (!asked.length) {
+    throw new Refused("Say which groups (groups), like Bunk 3.");
+  }
+  const groups = [...new Set(asked.map((g) => groupIn(ctx, d, g)))].sort(
+    (a, b) => a - b
+  );
+  groups.forEach((g, i) => {
+    if (i > 0 && g !== groups[i - 1] + 1) {
+      throw new Refused(
+        `Choose groups side by side, as the day shows them: ${ctx.week[d].groups.map((x) => x.name).join(", ")}.`
+      );
+    }
+  });
+  let top = blockIn(ctx, d, input.time);
+  let bottom = input.through_time ? blockIn(ctx, d, input.through_time) : top;
+  if (bottom < top) {
+    [top, bottom] = [bottom, top];
+  }
+  const cells = [];
+  groups.forEach((g) => {
+    for (let b = top; b <= bottom; b++) {
+      cells.push({ slot: { day: d, group: g, block: b } });
+    }
+  });
+  const rows = m
+    .rowsCovered(ctx.week, cells)
+    .sort((a, b) => a.day - b.day || a.group - b.group);
+  const result = m.eventRuns(ctx.week, rows, `S:${event.Id}`, {
+    isAway: () => false,
+    isLocked: (slot) => ctx.isLocked(slot),
+    coversSetTime: true
+  });
+  if (result.refused) {
+    // Only a Lock stops a hand edit, in the screen's words.
+    throw new Refused(m.lockedWords(ctx, result.at));
+  }
+  const range = rangeName(ctx, rows);
+  if (!result.runs.length) {
+    return {
+      nothing: `Nothing to place: ${range} already holds ${event.Name}.`
+    };
+  }
+  return { runs: result.runs, label: `Placed ${event.Name} · ${range}` };
+}
+
+/** "Bunk 1 to Bunk 2 · Monday · Period 1 to Period 2", as the screen names what it covers. */
+function rangeName(ctx, rows) {
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const day = ctx.week[first.day];
+  const groupsSaid =
+    rows.length === 1 || first.group === last.group
+      ? day.groups[first.group].name
+      : `${day.groups[first.group].name} to ${day.groups[last.group].name}`;
+  const top = Math.min(...rows.map((r) => r.first));
+  const bottom = Math.max(...rows.map((r) => r.last));
+  const blocks =
+    top === bottom
+      ? day.blocks[top].name
+      : `${day.blocks[top].name} to ${day.blocks[bottom].name}`;
+  return [groupsSaid, ctx.dayNameOf(day.dateValue), blocks].join(" · ");
+}
+
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */
 function stepOf(capability, ctx, m, input, weekName) {
+  if (capability.name === "place_special_event") {
+    return placeEvent(ctx, m, input, weekName);
+  }
   if (capability.name === "switch_to_rain_plans") {
     return rainyDay(ctx, m, input, weekName);
   }
