@@ -45,7 +45,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
           week.draft.Id,
           new List<SlotEdits.Edit>{ edit }
         )
-      : handEdit(week, days, edit, runs);
+      : handEdit(week, days, edit);
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(
         'Changed by someone else since you read the week: ' +
@@ -62,14 +62,13 @@ public with sharing class AgentCells implements AgentWeeks.Action {
   private static SlotEdits.Result handEdit(
     AgentWeeks.Week week,
     List<ScheduleDays.DayGrid> days,
-    SlotEdits.Edit edit,
-    List<SlotEdits.Run> runs
+    SlotEdits.Edit edit
   ) {
     GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
     request.scheduleId = week.draft.Id;
     request.revision = GeneratedDrafts.revisionOf(days);
     request.edits = new List<SlotEdits.Edit>{ edit };
-    request.engineNotes = notesWithout(week.draft.EngineNotes__c, runs);
+    request.engineNotes = notesWithout(week.draft.EngineNotes__c, edit.runs);
     return GeneratedEngineNotes.saveHandEdits(request);
   }
 

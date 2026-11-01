@@ -28,14 +28,7 @@ global with sharing class AgentChecks {
       }
       AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
       requireDraft(week);
-      Map<String, Object> read;
-      if (week.manual) {
-        // What Manual Build reads: its draft (getDraft's), the season's setup and the camp's words.
-        read = AgentBuild.setupOf(week);
-        read.put('draft', ManualBuildViews.open(week.draft.Id));
-      } else {
-        read = AgentBuild.readOf(week);
-      }
+      Map<String, Object> read = readOf(week);
       read.put(
         'setup_changes',
         SetupMatchController.getSetupChanges(week.draft.Id)
@@ -55,6 +48,19 @@ global with sharing class AgentChecks {
         )
       );
     }
+  }
+
+  /**
+   * What the week's screen reads: on Manual Build its draft (getDraft's), the season's setup and
+   * the camp's words; on Generated Schedule what Generate reads.
+   */
+  private static Map<String, Object> readOf(AgentWeeks.Week week) {
+    if (!week.manual) {
+      return AgentBuild.readOf(week);
+    }
+    Map<String, Object> read = AgentBuild.setupOf(week);
+    read.put('draft', ManualBuildViews.open(week.draft.Id));
+    return read;
   }
 
   /** Refused before the week is built (Generated Schedule) or started (Manual Build). */

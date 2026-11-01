@@ -46,8 +46,7 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
     }
     ManualBuildViews.WeekSource source = sourceOf(
       ManualBuildController.getWeekSources(week.program.Id, week.weekId),
-      fromWeek,
-      AgentFields.text(body, 'from'),
+      body,
       labels
     );
     ManualBuildViews.DraftView view = started(week, source.id);
@@ -97,6 +96,29 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
     .Camp__c;
   }
 
+  /** The source's name as the list says it: the published schedule in the camp's word. */
+  private static String nameOf(
+    ManualBuildViews.WeekSource source,
+    CampLabels labels
+  ) {
+    return source.isPublished == true
+      ? labels.singular('PublishedSchedule')
+      : source.name;
+  }
+
+  /** "Week 2 · Manual Build", "Week 1 · Published schedule", "Week 1 · Before the trip (version)". */
+  private static String labelOf(
+    ManualBuildViews.WeekSource source,
+    String name,
+    CampLabels labels
+  ) {
+    Boolean version = source.isVersion == true && source.isPublished != true;
+    return source.weekName +
+      ' · ' +
+      name +
+      (version ? ' (' + labels.singularInSentence('Version') + ')' : '');
+  }
+
   /** " <label>: a; b." or "" when there are none. */
   private static String linesOf(String label, List<String> lines) {
     return lines == null || lines.isEmpty()
@@ -111,53 +133,51 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
    */
   private static ManualBuildViews.WeekSource sourceOf(
     List<ManualBuildViews.WeekSource> sources,
-    String fromWeek,
-    String fromName,
+    Map<String, Object> body,
     CampLabels labels
   ) {
-    String published = labels.singular('PublishedSchedule');
+    String fromWeek = AgentFields.text(body, 'from_week');
+    String fromName = AgentFields.text(body, 'from');
     List<ManualBuildViews.WeekSource> found = new List<ManualBuildViews.WeekSource>();
     List<String> offered = new List<String>();
     for (ManualBuildViews.WeekSource source : sources) {
-      String name = source.isPublished == true ? published : source.name;
-      offered.add(
-        source.weekName +
-          ' · ' +
-          name +
-          (source.isVersion == true &&
-            source.isPublished != true
-            ? ' (' + labels.singularInSentence('Version') + ')'
-            : '')
-      );
-      Boolean sameWeek =
-        IncomingBatch.fold(source.weekName) == IncomingBatch.fold(fromWeek);
-      Boolean sameName =
-        String.isBlank(fromName) ||
-        IncomingBatch.fold(name) == IncomingBatch.fold(fromName);
-      if (sameWeek && sameName) {
+      String name = nameOf(source, labels);
+      offered.add(labelOf(source, name, labels));
+      if (
+        IncomingBatch.fold(source.weekName) == IncomingBatch.fold(fromWeek) &&
+        (String.isBlank(fromName) ||
+        IncomingBatch.fold(name) == IncomingBatch.fold(fromName))
+      ) {
         found.add(source);
       }
     }
     if (found.size() == 1) {
       return found[0];
     }
+    throw new ShoreshException(refusal(found.size(), body, offered));
+  }
+
+  /** Why no one source was found, naming what there is to start from. */
+  private static String refusal(
+    Integer found,
+    Map<String, Object> body,
+    List<String> offered
+  ) {
+    String fromWeek = AgentFields.text(body, 'from_week');
+    String fromName = AgentFields.text(body, 'from');
     String said = offered.isEmpty()
       ? 'There is nothing to start from yet.'
       : 'What it can start from: ' + String.join(offered, '; ') + '.';
-    if (found.size() > 1) {
-      throw new ShoreshException(
-        'Say which of ' +
-          fromWeek.left(40) +
-          '\'s schedules to start from (from). ' +
-          said
-      );
+    if (found > 1) {
+      return 'Say which of ' +
+        fromWeek.left(40) +
+        '\'s schedules to start from (from). ' +
+        said;
     }
-    throw new ShoreshException(
-      'There is nothing called "' +
-        (fromWeek + (String.isBlank(fromName) ? '' : ' · ' + fromName))
-          .left(120) +
-        '" to start from. ' +
-        said
-    );
+    return 'There is nothing called "' +
+      (fromWeek + (String.isBlank(fromName) ? '' : ' · ' + fromName))
+        .left(120) +
+      '" to start from. ' +
+      said;
   }
 }
