@@ -9,7 +9,7 @@
 global with sharing class AgentImportList implements AgentWeeks.Action {
   @HttpGet
   global static void get() {
-    AgentImports.answerRead();
+    AgentImports.answerRead(AgentImports.SCREEN_LIST);
   }
 
   @HttpPost

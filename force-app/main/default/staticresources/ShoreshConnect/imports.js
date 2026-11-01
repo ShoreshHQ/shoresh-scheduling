@@ -47,7 +47,7 @@ function fileOf(input, m) {
           cell === null || cell === undefined ? "" : String(cell)
         )
       ),
-      merges: []
+      merges: Array.isArray(s && s.merges) ? s.merges : []
     }));
     return { file: { name, sheets } };
   }
@@ -463,4 +463,11 @@ async function undoImport(capability, input, { ask, answer, load }) {
   return { ok: true, status: 200, text: m.undoMessage(result) };
 }
 
-module.exports = { importFile, undoImport };
+module.exports = {
+  importFile,
+  undoImport,
+  fileOf,
+  fromCommandLine,
+  changedSince,
+  refused
+};
