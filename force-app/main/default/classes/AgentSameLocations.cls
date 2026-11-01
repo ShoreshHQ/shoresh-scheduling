@@ -37,7 +37,7 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
       AgentFields.text(asked, 'season')
     );
     CampLabels labels = CampLabels.forCamp(season.Camp__c);
-    List<Place> places = matching(season.Id, (String) asked.get('name'), false);
+    List<Place> places = matching(season.Id, (String) asked.get('name'));
     List<String> said = new List<String>();
     for (Place place : places) {
       said.add(

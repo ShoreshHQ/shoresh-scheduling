@@ -110,6 +110,11 @@ private class AgentCampSetupTest {
         String.valueOf(half[1])
       );
       Assert.areEqual(200, back[0], String.valueOf(back[1]));
+      Assert.isTrue(
+        String.valueOf(back[1])
+          .endsWith(': Group: back to Shoresh\'s own, Group / Groups.'),
+        String.valueOf(back[1])
+      );
       Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);
     }
   }
@@ -174,10 +179,16 @@ private class AgentCampSetupTest {
       GeneratedTestData.camp();
       Season__c season = season();
       Id pool = GeneratedTestData.ids.get('Pool');
+      // In this order in the table: "Pool" and "pool" sort alike by name.
+      Database.update(
+        new Location__c(Id = pool, SortOrder__c = 1),
+        AccessLevel.SYSTEM_MODE
+      );
       Location__c other = new Location__c(
         Season__c = season.Id,
         Name = 'pool',
-        GroupsThatFit__c = 2
+        GroupsThatFit__c = 2,
+        SortOrder__c = 2
       );
       Database.insert(other, AccessLevel.SYSTEM_MODE);
       Test.startTest();
@@ -225,7 +236,9 @@ private class AgentCampSetupTest {
       Assert.areEqual(200, merged[0], String.valueOf(merged[1]));
       Assert.isTrue(
         String.valueOf(merged[1])
-          .startsWith('Merged into "Pool" (groups_that_fit 2): "pool" deleted'),
+          .startsWith(
+            'Merged into "Pool" (groups_that_fit 2): "pool" deleted, and everything there moved to it.'
+          ),
         String.valueOf(merged[1])
       );
       Assert.areEqual(

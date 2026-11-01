@@ -87,7 +87,9 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
       );
     }
     // "summer 2026" is not "Summer 2026" (Apex's == ignores case).
-    if (!shownNow(key, now).equals(text(seen.get(key)))) {
+    // Compared as sent: a name's spaces count too.
+    Object said = seen.get(key);
+    if (!shownNow(key, now).equals(said == null ? '' : String.valueOf(said))) {
       throw new AgentWeeks.ConflictException(
         'Someone else changed the ' +
           word +

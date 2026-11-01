@@ -72,11 +72,17 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action {
       fits.intValue() +
       '): ' +
       String.join(gone, ', ') +
-      ' deleted, and their ' +
-      moved +
-      ' ' +
-      CampLabels.forCamp(season.Camp__c).pluralInSentence('Activity') +
-      ' and everything else there moved to it.';
+      ' deleted, and everything there' +
+      (moved == 0
+        ? ''
+        : ' (' +
+          moved +
+          ' ' +
+          (moved == 1
+            ? CampLabels.forCamp(season.Camp__c).singularInSentence('Activity')
+            : CampLabels.forCamp(season.Camp__c).pluralInSentence('Activity')) +
+          ')') +
+      ' moved to it.';
   }
 
   /**

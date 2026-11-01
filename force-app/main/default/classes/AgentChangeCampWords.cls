@@ -35,12 +35,27 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
     List<CampLabels.TermLabel> all = CampLabels.forCamp(season.Camp__c).all();
     List<CampLabels.TermLabel> changed = new List<CampLabels.TermLabel>();
     List<String> said = new List<String>();
+    Set<String> terms = new Set<String>();
     for (String key : words.keySet()) {
       CampLabels.TermLabel row = termOf(key, all);
+      if (!terms.add(row.term)) {
+        throw new ShoreshException(
+          NOT_SAVED + 'Say "' + row.modelSingular + '" once.'
+        );
+      }
       refuseChanged(row, seen, key);
       put(row, String.valueOf(words.get(key)));
       changed.add(row);
-      said.add(row.modelSingular + ': ' + shown(row));
+      said.add(
+        row.modelSingular +
+          ': ' +
+          (String.isBlank(row.singular)
+            ? 'back to Shoresh\'s own, ' +
+              row.modelSingular +
+              ' / ' +
+              row.modelPlural
+            : shown(row))
+      );
     }
     try {
       // Camp Setup's own Camp words save.
@@ -96,7 +111,16 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
     return row.singular + ' / ' + row.plural;
   }
 
+  /** The camp and its words: a camp still on Shoresh's own words has none to lock. */
   private static void lock(Id campId) {
+    List<Camp__c> camp = [
+      SELECT Id
+      FROM Camp__c
+      WHERE Id = :campId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    camp.clear();
     List<CampLabel__c> labels = [
       SELECT Id
       FROM CampLabel__c
