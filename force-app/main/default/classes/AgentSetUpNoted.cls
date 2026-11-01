@@ -41,18 +41,20 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
     // Locked as the screen's save locks it.
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
-    if (!noted(days, new NotedItems(kind, name))) {
+    // The name as the cell notes it, as the screen sends it.
+    String noted = notedName(days, kind, name);
+    if (noted == null) {
       throw new AgentWeeks.ConflictException(
         'Nothing in this week is noted as "' +
           name.left(80) +
           '" not set up yet (someone may have set it up or changed it since). Nothing was changed.'
       );
     }
-    String change = 'Set up ' + name;
+    String change = 'Set up ' + noted;
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
     SpecialSetUp.Done done;
     try {
-      done = SpecialPlacingController.setUpItem(week.draft.Id, kind, name);
+      done = SpecialPlacingController.setUpItem(week.draft.Id, kind, noted);
     } catch (Exception e) {
       throw new ShoreshException(
         'Nothing was changed. ' + ScreenErrors.words(e)
@@ -63,15 +65,26 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
       ' undo_last_agent_change brings the week\'s cells back; what was made stays in setup, and a special day put on a day stays there (take_special_day_off_day takes it off).';
   }
 
-  private static Boolean noted(
+  /** The name a noted cell of that kind has, read as NotedItems reads it; null when none. */
+  private static String notedName(
     List<ScheduleDays.DayGrid> days,
-    NotedItems items
+    String kind,
+    String name
   ) {
+    NotedItems asked = new NotedItems(kind, name);
     for (ScheduleDays.DayGrid day : days) {
-      if (day.grid != null && items.isIn(day.grid)) {
-        return true;
+      for (
+        ScheduleGrid.Item item : day.grid == null
+          ? new List<ScheduleGrid.Item>()
+          : day.grid.items
+      ) {
+        ScheduleGrid one = new ScheduleGrid();
+        one.items.add(item);
+        if (asked.isIn(one)) {
+          return item.name;
+        }
       }
     }
-    return false;
+    return null;
   }
 }

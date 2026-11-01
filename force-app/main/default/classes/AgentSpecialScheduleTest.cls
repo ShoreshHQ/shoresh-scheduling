@@ -226,19 +226,19 @@ private class AgentSpecialScheduleTest {
       Assert.areEqual(200, setUp[0], String.valueOf(setUp[1]));
       Assert.isTrue(
         String.valueOf(setUp[1])
-          .startsWith('"carnival" is set up as a special event.'),
+          .startsWith('"Carnival" is set up as a special event.'),
         String.valueOf(setUp[1])
       );
       Assert.areEqual(409, again[0], String.valueOf(again[1]));
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      ScheduleGrid monday;
+      ScheduleGrid mondayGrid;
       for (ScheduleDays.DayGrid read : ScheduleDays.read(draftId)) {
         if (read.day == MONDAY) {
-          monday = read.grid;
+          mondayGrid = read.grid;
         }
       }
-      ScheduleGrid.Item item = monday.items[
-        Integer.valueOf(monday.rows[0][0]) - 1
+      ScheduleGrid.Item item = mondayGrid.items[
+        Integer.valueOf(mondayGrid.rows[0][0]) - 1
       ];
       Assert.isTrue(String.isBlank(item.id), 'The cell is noted again');
     }
