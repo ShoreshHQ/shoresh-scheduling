@@ -4,7 +4,7 @@
  */
 const { protocolIndex, counts } = require("../protocol-index.js");
 
-const ENCODED_FLOOR = 429;
+const ENCODED_FLOOR = 430;
 
 describe("the protocol's conformance index", () => {
   const statements = protocolIndex();

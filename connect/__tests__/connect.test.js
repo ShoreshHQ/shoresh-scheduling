@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(52);
+    expect(CAPABILITIES).toHaveLength(53);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, assign_elective_seats or move_elective_seat, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats or move_elective_seat, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|assign_elective_seats|move_elective_seat)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -935,6 +935,117 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(moved[0].args[3]).toBe("/services/apexrest/v1/move_elective_seat");
     expect(JSON.parse(moved[0].stdin)).toEqual(move);
+  });
+
+  // API-1.65
+  it("rainyDayAsTheScreensEditor: switch_to_rain_plans works the day out with the week editor's own rainy day and sends its runs, marks, words and the day's marks as read", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const { nsRecord } = require("shoresh-jest/namespace");
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js",
+          "shoreshWeekEditor/rain.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    // SMALL with Soccer outdoors (Art its rain plan) in both bunks' Monday Period 1, Bunk 2's
+    // locked; a mark from before on the day.
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [, art, soccer] = inputs.activities;
+    const outdoors = nsRecord({ Outdoor__c: true, RainPlan__c: art.Id });
+    inputs.activities = inputs.activities.map((r) =>
+      r.Id === soccer.Id ? { ...r, ...outdoors } : r
+    );
+    const item = { kind: "A", id: soccer.Id, name: "Soccer", gone: false };
+    const [bunk1, bunk2] = inputs.groups.map((g) => g.Id);
+    const [, p1, p2] = inputs.timeBlocks.map((b) => b.Id);
+    const earlier = `${bunk1}|${p2}|${soccer.Id}`;
+    inputs.days = inputs.days.map((day, d) => ({
+      ...day,
+      items: [...day.items, item],
+      rows: d === 0 ? ["1,2,,", "1,2,,"] : day.rows,
+      locks: d === 0 ? ["", ",1,,"] : day.locks,
+      rain: d === 0 ? [earlier] : []
+    }));
+    const read = { inputs, setup: {}, labels: [] };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const send = async (day, status = 200, message = "Done.") => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+        `HTTP/1.1 ${status}\n\n${JSON.stringify({ message })}`
+      ];
+      const done = await call(
+        "switch_to_rain_plans",
+        { ...asked, day },
+        {
+          run: async (args, stdin) => {
+            seen.push({ args, stdin });
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, seen, sent: seen[1] && JSON.parse(seen[1].stdin) };
+    };
+
+    const monday = await send("Monday");
+    expect(monday.seen[1].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/switch_to_rain_plans",
+      "--method",
+      "POST"
+    ]);
+    expect(monday.sent.change).toBe("Rainy Monday");
+    expect(monday.sent.said).toBe(
+      "1 switched to rain plans, 1 locked, left as is"
+    );
+    expect(monday.sent.runs).toEqual([
+      expect.objectContaining({
+        day: "2026-06-29",
+        groupId: bunk1,
+        firstBlockId: p1,
+        before: [`A:${soccer.Id}`],
+        after: [`A:${art.Id}`]
+      })
+    ]);
+    expect(monday.sent.seen).toEqual([earlier]);
+    expect(monday.sent.rain).toEqual([
+      {
+        day: "2026-06-29",
+        cells: [earlier, `${bunk1}|${p1}|${art.Id}|switched`]
+      }
+    ]);
+    expect(monday.done).toEqual({ ok: true, status: 200, text: "Done." });
+
+    // Nothing outdoors: the screen's receipt, nothing sent.
+    const tuesday = await send("Tuesday");
+    expect(tuesday.done).toEqual({
+      ok: true,
+      status: 200,
+      text: "Rainy Tuesday: nothing outdoors to switch"
+    });
+    expect(tuesday.seen).toHaveLength(1);
+
+    // Shoresh's own refusal comes back as its sentence.
+    const conflict = await send(
+      "Monday",
+      409,
+      "Changed by someone else since you read the week: Rainy Monday. Nothing was changed."
+    );
+    expect(conflict.done.ok).toBe(false);
+    expect(conflict.done.status).toBe(409);
   });
 
   it("engineShipsWithTheConnector: ShoreshConnect carries Generated Schedule's own build module and its counter's modules, unchanged but for where their imports point", () => {
