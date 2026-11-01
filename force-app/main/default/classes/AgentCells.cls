@@ -1,7 +1,8 @@
 /**
- * cells: an edit of several cells of a program's Generated Schedule week (a placement moved,
+ * cells: an edit of several cells of a program's Generated Schedule or Manual Build week (a placement moved,
  * swapped, taken out whole, or cells copied and pasted), as the person, through an agent or the
- * command line (docs/protocol/api.md API-1.38 to API-1.40). Web addresses /v1/move_cell,
+ * command line (docs/protocol/api.md API-1.38 to API-1.40; on Manual Build, Manual Build's own
+ * save, ManualBuildController.saveSlots, API-1.45). Web addresses /v1/move_cell,
  * /v1/take_out_cell and /v1/copy_cells (AgentMoveCell, AgentTakeOutCell, AgentCopyCells), each
  * POST {season, week, program, change, said, runs}. The edit is worked out where the screen works it
  * out, outside Salesforce: the connector runs the week editor's own module (c/shoreshWeekEditor
@@ -17,6 +18,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     'season',
     'week',
     'program',
+    'schedule',
     'change',
     'said',
     'runs'
@@ -24,7 +26,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
 
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.Week week = AgentWeeks.weekOf(body);
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     List<SlotEdits.Run> runs = runsOf(body.get('runs'));
     if (String.isBlank(change) || runs.isEmpty()) {
@@ -35,15 +37,15 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
 
-    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
-    request.scheduleId = week.draft.Id;
-    request.revision = GeneratedDrafts.revisionOf(days);
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = runs;
     // One edit, as the screen sends one step: made whole or not at all.
-    request.edits = new List<SlotEdits.Edit>{ edit };
-    request.engineNotes = notesWithout(week.draft.EngineNotes__c, runs);
-    SlotEdits.Result result = GeneratedEngineNotes.saveHandEdits(request);
+    SlotEdits.Result result = week.manual
+      ? ManualBuildController.saveSlots(
+          week.draft.Id,
+          new List<SlotEdits.Edit>{ edit }
+        )
+      : handEdit(week, days, edit);
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(
         'Changed by someone else since you read the week: ' +
@@ -54,6 +56,20 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     AgentWeeks.changed(versionId, week.draft.Id);
     String said = AgentFields.text(body, 'said');
     return change + '.' + (String.isBlank(said) ? '' : ' ' + said);
+  }
+
+  /** Generated Schedule's own hand-edit save, the cells' Open reasons dropped as the screen drops them. */
+  private static SlotEdits.Result handEdit(
+    AgentWeeks.Week week,
+    List<ScheduleDays.DayGrid> days,
+    SlotEdits.Edit edit
+  ) {
+    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
+    request.scheduleId = week.draft.Id;
+    request.revision = GeneratedDrafts.revisionOf(days);
+    request.edits = new List<SlotEdits.Edit>{ edit };
+    request.engineNotes = notesWithout(week.draft.EngineNotes__c, edit.runs);
+    return GeneratedEngineNotes.saveHandEdits(request);
   }
 
   /** The runs as the screen sends them (SlotEdits.Run); anything else is refused. */

@@ -59,6 +59,19 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
    * words, exactly as the screen reads them. Also what /v1/week_checks starts from (AgentChecks).
    */
   public static Map<String, Object> readOf(AgentWeeks.Week week) {
+    Map<String, Object> read = setupOf(week);
+    read.put(
+      'inputs',
+      GeneratedScheduleController.getInputs(week.program.Id, week.weekId)
+    );
+    return read;
+  }
+
+  /**
+   * The season's setup and the camp's words, as both schedule screens read them (Manual Build's
+   * checks start from them too, AgentChecks).
+   */
+  public static Map<String, Object> setupOf(AgentWeeks.Week week) {
     Id campId = [
       SELECT Camp__c
       FROM Season__c
@@ -67,10 +80,6 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
     ]
     .Camp__c;
     return new Map<String, Object>{
-      'inputs' => GeneratedScheduleController.getInputs(
-        week.program.Id,
-        week.weekId
-      ),
       'setup' => SeasonSetupController.getSeasonSetup(week.season.Id),
       'labels' => CampLabels.forCamp(campId).all()
     };

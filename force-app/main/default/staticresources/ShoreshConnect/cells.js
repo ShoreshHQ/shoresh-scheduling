@@ -1,6 +1,6 @@
 /**
- * move_cell, take_out_cell and copy_cells (API-1.38 to API-1.40): an edit of several cells of a
- * Generated Schedule week, worked out here exactly as the screen's grid works it out. The week is
+ * move_cell, take_out_cell and copy_cells (API-1.38 to API-1.40, API-1.45): an edit of several
+ * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
  * screen opens it (c/shoreshGeneratedSchedule counter.js), and the edit made with the week
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
@@ -132,8 +132,14 @@ function checkWas(ctx, m, slot, was) {
   }
 }
 
-/** The week as Generated Schedule opens it, and what the shared edits work with (handEdits.js ctx). */
+/**
+ * What the shared edits work with (handEdits.js ctx): the week as Generated Schedule opens it, or
+ * Manual Build's draft as that screen gives it to its week editor (no locks there).
+ */
 function contextOf(m, body) {
+  if (body.draft) {
+    return manualContextOf(m, body);
+  }
   const t = m.buildTerms(body.labels);
   const loaded = m.loadedOf(body.inputs || {});
   const { draft } = m.counterWeek(loaded, { terms: t, setup: body.setup });
@@ -173,6 +179,41 @@ function contextOf(m, body) {
       );
     },
     liveLocks: locks,
+    replaced: m.replacedDays(draft)
+  };
+}
+
+/** Manual Build's week as its week editor holds it (shoreshWeekEditor editCtx, nameOf, isAwayOn). */
+function manualContextOf(m, body) {
+  const t = m.buildTerms(body.labels);
+  const draft = body.draft;
+  const week = draft.schedule.days;
+  const setup = body.setup || {};
+  const events = (setup.special && setup.special.specialEvents) || [];
+  const sets = (setup.electives && setup.electives.sets) || [];
+  const find = {
+    activity: (item) =>
+      (draft.activities || []).find((a) => `A:${a.id}` === item),
+    event: (item) =>
+      ((e) => e && { name: e.Name })(events.find((e) => `S:${e.Id}` === item)),
+    elective: (item) =>
+      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
+    t
+  };
+  return {
+    week,
+    t,
+    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
+    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
+    isAwayOn: (w, d, g, b) => {
+      const groupId = w[d].groups[g].id;
+      const blockId = w[d].blocks[b].id;
+      return (draft.away || []).some(
+        (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
+      );
+    },
+    isLocked: () => false,
+    liveLocks: null,
     replaced: m.replacedDays(draft)
   };
 }
@@ -275,7 +316,7 @@ async function editCells(
   { ask, answer, load, namespaceOf }
 ) {
   const fields = {};
-  for (const field of ["season", "week", "program"]) {
+  for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
   const read = await ask({
@@ -299,7 +340,9 @@ async function editCells(
   if (step.nothing) {
     return { ok: true, status: 200, text: step.nothing };
   }
-  const runs = m.stampLocks(m.serverRunsOf(step.runs, ctx.week), ctx.liveLocks);
+  const sent = m.serverRunsOf(step.runs, ctx.week);
+  // Manual Build has no locks: its runs go as its screen sends them, without any.
+  const runs = ctx.liveLocks ? m.stampLocks(sent, ctx.liveLocks) : sent;
   return answer(
     await ask({
       path: `/services/apexrest/v1/${capability.api}`,
