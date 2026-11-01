@@ -58,7 +58,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(75);
+    expect(CAPABILITIES).toHaveLength(76);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -1525,6 +1525,30 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: "a0I1"
     });
     expect(undo.text).toBe(m.undoMessage(result));
+  });
+
+  // API-1.91
+  it("failedSendsAsSettings: the failed sends are read with a GET of the season and nothing else", async () => {
+    const sent = [];
+    const said = await call(
+      "read_failed_sends",
+      { season: "Summer 2026" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: "Sends that failed: one" }),
+          sent
+        )
+      }
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0].args[3]).toBe(
+      "/services/apexrest/v1/read_failed_sends?season=Summer+2026"
+    );
+    expect(said.text).toContain("Sends that failed: one");
+    const capability = byName("read_failed_sends");
+    expect(capability.method).toBe("GET");
+    expect(Object.keys(capability.inputSchema.properties)).toEqual(["season"]);
   });
 
   // API-1.84, API-1.85

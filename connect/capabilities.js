@@ -1662,6 +1662,21 @@ const CAPABILITIES = [
     }
   },
   {
+    name: "read_failed_sends",
+    api: "read_failed_sends",
+    method: "GET",
+    description:
+      "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Flow sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
+    about:
+      "The failed sends Settings shows, in its sentences. It holds no destination's address, key or password.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
     name: "download_schedule",
     api: "schedule_file",
     method: "GET",
