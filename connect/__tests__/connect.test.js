@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(50);
+    expect(CAPABILITIES).toHaveLength(53);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup or switch_to_rain_plans, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats or move_elective_seat, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -823,6 +823,118 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(conflict.done.ok).toBe(false);
     expect(conflict.done.text).toMatch(/^Changed by someone else since/);
+  });
+
+  // API-1.66, API-1.67, API-1.68
+  it("electiveSeatsAsTheSeatsScreen: the seats are read with their fields in the web address, assigned with the screen's own modules and the seats seen, and a move sends what was seen", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const electives = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshElectiveEngine/shoreshElectiveEngine.js",
+          "shoreshElectiveSeats/seats.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { runView } = require(
+      `${LWC}/shoreshElectiveSeats/__tests__/data/run.js`
+    );
+    expect(byName("assign_elective_seats").inputSchema.required).toEqual([
+      "week",
+      "seen"
+    ]);
+    expect(byName("move_elective_seat").inputSchema.required).toEqual([
+      "week",
+      "camper",
+      "day",
+      "time",
+      "elective",
+      "seen"
+    ]);
+    const read = [];
+    await call(
+      "read_elective_seats_now",
+      { season: "Summer 2026", week: "Week 1", elective_set: "Chugim" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Seats" }), read) }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/elective_seats_now?season=Summer+2026&week=Week+1&elective_set=Chugim"
+    );
+
+    const asked = {
+      season: "Summer 2026",
+      week: "Week 1",
+      elective_set: "Chugim"
+    };
+    const view = runView();
+    const assign = async (seen, status = 200) => {
+      const seen_ = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify({ view, labels: [] })}`,
+        `HTTP/1.1 ${status}\n\n${JSON.stringify({ message: "Seats assigned in Chugim in Week 1." })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ view: { ...view, revision: 2, assigned: true }, labels: [] })}`
+      ];
+      const done = await call(
+        "assign_elective_seats",
+        { ...asked, seen },
+        {
+          run: async (args, stdin) => {
+            seen_.push({ args, stdin });
+            return queue.shift();
+          },
+          electives
+        }
+      );
+      return { done, sent: seen_ };
+    };
+    const done = await assign("1");
+    expect(done.sent[0].args[3]).toBe(
+      "/services/apexrest/v1/assign_elective_seats?season=Summer+2026&week=Week+1&elective_set=Chugim"
+    );
+    const body = JSON.parse(done.sent[1].stdin);
+    // The screen's own request, worked out by its own modules.
+    const m = await electives();
+    const run = m.readRun(view);
+    const expected = m.assignRequest(
+      run,
+      m.assignSeats(m.engineInput(run, m.buildTerms([])).input)
+    );
+    expect(body).toEqual({
+      ...asked,
+      seen: "1",
+      seats: expected.seats,
+      dropped: expected.dropped
+    });
+    expect(body.seats.length).toBeGreaterThan(0);
+    expect(done.done.ok).toBe(true);
+    expect(done.done.text).toMatch(/^Seats assigned: \d+ of \d+ placed\.$/);
+
+    // Read at another revision: refused before anything is sent.
+    const stale = await assign("0");
+    expect(stale.done).toEqual(
+      expect.objectContaining({ ok: false, status: 409 })
+    );
+    expect(stale.sent).toHaveLength(1);
+    // No seen: asked for, nothing read or sent.
+    const none = await assign("");
+    expect(none.done.status).toBe(400);
+    expect(none.sent).toHaveLength(0);
+
+    const moved = [];
+    const move = {
+      ...asked,
+      camper: "#12",
+      day: "Monday",
+      time: "Period 1",
+      elective: "Archery",
+      seen: "2"
+    };
+    await call("move_elective_seat", move, {
+      run: sfAnswering(200, JSON.stringify({ message: "Moved" }), moved)
+    });
+    expect(moved[0].args[3]).toBe("/services/apexrest/v1/move_elective_seat");
+    expect(JSON.parse(moved[0].stdin)).toEqual(move);
   });
 
   // API-1.65

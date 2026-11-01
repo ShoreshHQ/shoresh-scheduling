@@ -175,6 +175,24 @@ function change(
   );
 }
 
+/** Which elective seats: a week's, for an elective set (API-1.66 to API-1.68). */
+const ELECTIVE_RUN = {
+  season: SEASON,
+  week: WEEK,
+  elective_set: {
+    type: "string",
+    description:
+      "The electives' name in Shoresh, like Chugim. Leave it out when the season has only one."
+  }
+};
+
+/** The seats as read (API-1.66): read_elective_seats_now's seen. */
+const ELECTIVE_SEEN = {
+  type: "string",
+  description:
+    "The seen read_elective_seats_now gave. If the seats changed since, nothing is changed and the person should be told."
+};
+
 /** A change made on either screen that holds the week (API-1.41). */
 const ON_EITHER = "that screen";
 
@@ -644,6 +662,65 @@ const CAPABILITIES = [
           "The electives' name in Shoresh, like Chugim. Leave it out when the season has only one."
       }
     }
+  ),
+  {
+    // A read: GET, its fields in the web address (API-1.66).
+    name: "read_elective_seats_now",
+    api: "elective_seats_now",
+    method: "GET",
+    description:
+      "Read a week's elective seats as the Elective seats screen shows them now, before they are finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
+    about:
+      "The seats now, as the Elective seats screen shows them. They are not finalized (read_elective_seats reads finalized ones) and hold no findings or problems.",
+    queryFields: ["season", "week", "elective_set"],
+    inputSchema: {
+      type: "object",
+      properties: ELECTIVE_RUN,
+      required: ["week"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "assign_elective_seats",
+    api: "assign_elective_seats",
+    method: "POST",
+    sendsFields: true,
+    assignsWithEngine: true,
+    description:
+      "Assign a week's elective seats, as the Elective seats screen's Assign seats (or Assign again) does: every camper is placed from their choices around the seats already locked, which stay. The seats are worked out here, on this computer, with the same code as the screen, so the same choices give the same seats. Read them first with read_elective_seats_now and send its seen. It is done as you, with your own access. There is no undo; assigning again replaces every seat that isn't locked. If someone changed the seats since, nothing is changed and Shoresh says so.",
+    inputSchema: {
+      type: "object",
+      properties: { ...ELECTIVE_RUN, seen: ELECTIVE_SEEN },
+      required: ["week", "seen"],
+      additionalProperties: false
+    }
+  },
+  act(
+    "move_elective_seat",
+    "move_elective_seat",
+    "Move one camper's elective seat to another elective at the same time, as dragging their name (or Move to) on the Elective seats screen does: the seat is moved by hand and locked, so assigning again keeps it. Read the seats first with read_elective_seats_now and send its seen. It is done as you, with your own access. If someone changed the seats since, nothing is changed and Shoresh says so; read them again before the next move.",
+    {
+      ...ELECTIVE_RUN,
+      camper: {
+        type: "string",
+        description:
+          "The camper's name, or their number like #12, as read_elective_seats_now gives it."
+      },
+      day: {
+        type: "string",
+        description: "The day, like Monday, or its date like 2026-06-29."
+      },
+      time: {
+        type: "string",
+        description: "The time block's name, like Period 2."
+      },
+      elective: {
+        type: "string",
+        description: "The elective to move them to, as offered at that time."
+      },
+      seen: ELECTIVE_SEEN
+    },
+    ["camper", "day", "time", "elective", "seen"]
   ),
   setup(
     "rename_setup_record",
