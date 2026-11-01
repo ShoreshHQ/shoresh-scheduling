@@ -57,7 +57,7 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((a) => a !== "week_view")
       .sort();
     expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(57);
+    expect(CAPABILITIES).toHaveLength(61);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -68,10 +68,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version or clear_electives, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day or place_special_event, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -823,6 +823,167 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(conflict.done.ok).toBe(false);
     expect(conflict.done.text).toMatch(/^Changed by someone else since/);
+  });
+
+  // API-1.73, API-1.74
+  it("specialDaysWithWhatWasSeen: special days are read by season in the web address, put on and taken off a day with what the day had as seen, and a replace asks the person first", async () => {
+    for (const name of ["put_special_day_on_day", "take_special_day_off_day"]) {
+      expect(byName(name).inputSchema.required).toEqual([
+        "special_day",
+        "week",
+        "day",
+        "seen"
+      ]);
+    }
+    expect(byName("put_special_day_on_day").description).toMatch(
+      /ask the person, and only if they say yes send it again with replace: true/
+    );
+    const read = [];
+    await call(
+      "read_special_days",
+      { season: "Summer 2026" },
+      { run: sfAnswering(200, JSON.stringify({ message: "Days" }), read) }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/read_special_days?season=Summer+2026"
+    );
+    const asked = {
+      put_special_day_on_day: {
+        season: "Summer 2026",
+        special_day: "Visiting Day",
+        week: "Week 1",
+        day: "Tuesday",
+        replace: true,
+        seen: "Field Day"
+      },
+      take_special_day_off_day: {
+        special_day: "Field Day",
+        week: "Week 1",
+        day: "Tuesday",
+        seen: "Field Day"
+      }
+    };
+    for (const [name, body] of Object.entries(asked)) {
+      const sent = [];
+      await call(name, body, {
+        run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
+      });
+      expect(sent[0].args[3]).toBe(`/services/apexrest/v1/${name}`);
+      expect(JSON.parse(sent[0].stdin)).toEqual(body);
+    }
+  });
+
+  // API-1.75
+  it("specialEventAsTheScreensEditor: place_special_event works the cells out with the week editor's own special events and sends its runs and words", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    // Flag, Period 1 to 3. Bunk 1: Flagpole, Swim, Art, Open; Bunk 2: Flagpole, Art, Swim, Open
+    // (locked in Period 2 on Monday).
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: day.dateValue === "2026-06-29" ? ["", ",,1,"] : ["", ""]
+    }));
+    const colorWar = "a0E000000000001AAA";
+    const read = {
+      inputs,
+      setup: {
+        special: { specialEvents: [{ Id: colorWar, Name: "Color War" }] }
+      },
+      labels: []
+    };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const send = async (more) => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: "Done." })}`
+      ];
+      const done = await call(
+        "place_special_event",
+        { ...asked, ...more },
+        {
+          run: async (args, stdin) => {
+            seen.push({ args, stdin });
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, seen, sent: seen[1] && JSON.parse(seen[1].stdin) };
+    };
+
+    const placed = await send({
+      event: "color war",
+      day: "Tuesday",
+      groups: ["Bunk 1", "Bunk 2"],
+      time: "Period 2",
+      through_time: "Period 3"
+    });
+    expect(placed.seen[1].args[3]).toBe(
+      "/services/apexrest/v1/place_special_event"
+    );
+    expect(placed.sent.change).toBe(
+      "Placed Color War · Bunk 1 to Bunk 2 · Tuesday · Period 2 to Period 3"
+    );
+    expect(placed.sent).not.toHaveProperty("event");
+    expect(placed.sent.runs).toHaveLength(2);
+    expect(placed.sent.runs[0]).toEqual(
+      expect.objectContaining({
+        day: "2026-06-30",
+        groupId: inputs.groups[0].Id,
+        before: [`A:${art}`, ""],
+        after: [`S:${colorWar}`, `^S:${colorWar}`]
+      })
+    );
+    expect(placed.done).toEqual({ ok: true, status: 200, text: "Done." });
+
+    // A locked cell refuses it, in the screen's words; nothing is sent.
+    const locked = await send({
+      event: "Color War",
+      day: "Monday",
+      groups: ["Bunk 2"],
+      time: "Period 2"
+    });
+    expect(locked.done).toEqual({
+      ok: false,
+      status: 400,
+      text: "Bunk 2 · Monday · Period 2 is locked."
+    });
+    expect(locked.seen).toHaveLength(1);
+    const unknown = await send({
+      event: "Carnival",
+      day: "Monday",
+      groups: ["Bunk 1"],
+      time: "Period 1"
+    });
+    expect(unknown.done.text).toBe(
+      'There is no special event called "Carnival" in this season. The special events: Color War.'
+    );
   });
 
   // API-1.66, API-1.67, API-1.68

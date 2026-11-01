@@ -295,6 +295,43 @@ function addedRecord(name, api, description, more) {
 const VIEW_ATTACHED =
   "Shoresh's own view of the week is attached for chat apps that can show it, but it may not be shown: never say the person can see it, and don't draw, chart or redraw the schedule. Give the schedule in words from the rows; if the person can't see the view, those rows are the schedule. When the answer ends with a link that opens this week on Shoresh's Schedules screen in the camp's Salesforce, give the person that link, as it is, so they can open the real view.";
 
+/**
+ * A special day put on or taken off a week day (API-1.74), with what that day had as read.
+ * POST /v1/<api> with the fields.
+ */
+function specialDay(name, description, more = {}) {
+  return {
+    name,
+    api: name,
+    method: "POST",
+    sendsFields: true,
+    description,
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        special_day: {
+          type: "string",
+          description: "The special day's name, as read_special_days names it."
+        },
+        week: WEEK,
+        day: {
+          type: "string",
+          description: "The day of the week, like Friday."
+        },
+        ...more,
+        seen: {
+          type: "string",
+          description:
+            'What that week day has as read_special_days said it: a special day\'s exact name, or "none". If it changed since, nothing is changed and the person should be told.'
+        }
+      },
+      required: ["special_day", "week", "day", "seen"],
+      additionalProperties: false
+    }
+  };
+}
+
 const CAPABILITIES = [
   {
     name: "list_seasons",
@@ -1191,6 +1228,69 @@ const CAPABILITIES = [
       required: ["week", "changes", "seen"],
       additionalProperties: false
     }
+  },
+  {
+    // A read: GET, its fields in the web address (API-1.73).
+    name: "read_special_days",
+    api: "read_special_days",
+    method: "GET",
+    description:
+      'Read the season\'s special days and special events, as the Special events screen lists them, and the week days each special day is on (like Tuesday of "Week 1"). A special day replaces its day for the whole camp; a week day not named has none, and reads "none". Read it right before put_special_day_on_day or take_special_day_off_day and send what that day has as seen.',
+    about:
+      "The special days and events now, and where they are. They hold no findings or problems.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  specialDay(
+    "put_special_day_on_day",
+    'Put a special day on a day of a week, as "Put on a day" on the Special events screen does: that day then has the special day\'s own schedule for the whole camp, and the week\'s own cells for it are kept, out of sight, until it is taken off. A day holds one special day: when another is there, Shoresh asks the screen\'s question ("Use this one instead?") and changes nothing; ask the person, and only if they say yes send it again with replace: true (the one replaced stays saved). Read it first with read_special_days and send what that day has as seen. It is done as you, with your own access. If someone else changed that day since, nothing is changed and Shoresh says so. take_special_day_off_day undoes it.',
+    {
+      replace: {
+        type: "boolean",
+        description:
+          "true only after the person said yes to Shoresh's question about replacing the special day already on that day."
+      }
+    }
+  ),
+  specialDay(
+    "take_special_day_off_day",
+    "Take a special day off a day of a week, as \"Take off\" on the Special events screen, Manual Build or Generated Schedule does: the day has its regular schedule again, the week's own cells just as they were, and the special day stays saved. Read it first with read_special_days and send that special day's name as seen. It is done as you, with your own access. If someone else changed that day since, nothing is changed and Shoresh says so. put_special_day_on_day puts it back."
+  ),
+  {
+    // API-1.75: worked out here with the week editor's own special events, as copy_cells is.
+    ...change(
+      "place_special_event",
+      "place_special_event",
+      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. Undo it with undo_last_agent_change.",
+      {
+        event: {
+          type: "string",
+          description:
+            "The special event's name, as read_special_days names it."
+        },
+        day: CELL.day,
+        groups: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'The groups it covers, side by side as the day shows them, like ["Bunk 3", "Bunk 4"].'
+        },
+        time: { ...CELL.time, description: "The first time it covers." },
+        through_time: {
+          ...CELL.time,
+          description:
+            "The last time it covers. Leave it out for only the first time."
+        }
+      },
+      ["event", "day", "groups", "time"],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
   }
 ];
 
