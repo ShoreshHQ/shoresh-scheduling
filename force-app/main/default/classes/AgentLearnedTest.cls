@@ -18,12 +18,21 @@ private class AgentLearnedTest {
   }
 
   private static ImportAnswer__c only(Id campId) {
+    return keyed(campId, 'kind|Lunch');
+  }
+
+  private static ImportAnswer__c keyed(Id campId, String question) {
+    String key = ImportAnswers.keyOf(campId, question);
     return [
       SELECT Id, Answer__c
       FROM ImportAnswer__c
-      WHERE Camp__c = :campId AND QuestionKey__c = 'kind|Lunch'
+      WHERE Camp__c = :campId AND Key__c = :key
       LIMIT 1
     ];
+  }
+
+  private static Integer rows(Id campId) {
+    return [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :campId];
   }
 
   private static List<Object> post(
@@ -104,6 +113,23 @@ private class AgentLearnedTest {
         }
       );
       String recurring = only(campId).Answer__c;
+      ImportAnswers.rememberEach(
+        campId,
+        new Map<String, String>{ 'kind|Swim' => 'activity' }
+      );
+      Id swim = keyed(campId, 'kind|Swim').Id;
+      post(
+        new AgentForgetLearned(),
+        new Map<String, Object>{ 'answer_id' => swim, 'seen' => 'activity' }
+      );
+      List<Object> wrongOld = post(
+        new AgentUndoLearned(),
+        new Map<String, Object>{
+          'undo' => undoOf(changed[1]).substringBeforeLast(':') +
+          ':' +
+          swim
+        }
+      );
       List<Object> undone = post(
         new AgentUndoLearned(),
         new Map<String, Object>{ 'undo' => undoOf(changed[1]) }
@@ -114,6 +140,7 @@ private class AgentLearnedTest {
       Assert.isTrue(String.valueOf(notAChoice[1]).contains('recurring'));
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
       Assert.areEqual('recurring', recurring);
+      Assert.areEqual(409, wrongOld[0], 'only the answer the change replaced');
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual(oldId, only(campId).Id, 'the old answer is back');
       Assert.areEqual('fixed', only(campId).Answer__c);
@@ -172,11 +199,7 @@ private class AgentLearnedTest {
           'seen' => 'none'
         }
       );
-      Integer marks = [
-        SELECT COUNT()
-        FROM ImportAnswer__c
-        WHERE Camp__c = :campId AND QuestionKey__c LIKE 'pattern|%'
-      ];
+      Integer marks = rows(campId);
       List<Object> undone = post(
         new AgentUndoLearned(),
         new Map<String, Object>{ 'undo' => undoOf(forgot[1]) }
@@ -184,16 +207,9 @@ private class AgentLearnedTest {
       Test.stopTest();
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(200, forgot[0], String.valueOf(forgot[1]));
-      Assert.areEqual(1, marks);
+      Assert.areEqual(2, marks, 'the pattern\'s mark saved');
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      Assert.areEqual(
-        0,
-        [
-          SELECT COUNT()
-          FROM ImportAnswer__c
-          WHERE Camp__c = :campId AND QuestionKey__c LIKE 'pattern|%'
-        ]
-      );
+      Assert.areEqual(1, rows(campId), 'the mark gone');
       Assert.areEqual('fixed', only(campId).Answer__c, 'its answers stay');
     }
   }

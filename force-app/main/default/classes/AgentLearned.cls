@@ -191,7 +191,7 @@ global with sharing class AgentLearned {
    */
   public static String undo(Map<String, Object> body) {
     Id campId = campOf(body);
-    List<String> parts = raw(body, 'undo').split(':');
+    List<String> parts = raw(body, 'undo').trim().split(':');
     String kind = parts[0];
     Boolean ok =
       (kind == 'change' &&
@@ -217,14 +217,35 @@ global with sharing class AgentLearned {
     String what = kind == 'change'
       ? LearnedEvents.CHANGED
       : LearnedEvents.FORGOTTEN;
-    List<ImportAnswer__c> live = [
-      SELECT Id
-      FROM ImportAnswer__c
-      WHERE Id = :ids[0] AND Camp__c = :campId
-      WITH USER_MODE
-      FOR UPDATE
-    ];
-    live.clear();
+    if (ids.size() == 2 && kind != 'forget') {
+      // What it saved, locked; and what it replaced must be that same question's, in the bin.
+      List<ImportAnswer__c> saved = [
+        SELECT Key__c
+        FROM ImportAnswer__c
+        WHERE Id = :ids[0] AND Camp__c = :campId
+        WITH USER_MODE
+        LIMIT 1
+        FOR UPDATE
+      ];
+      List<ImportAnswer__c> replaced = [
+        SELECT Key__c
+        FROM ImportAnswer__c
+        WHERE Id = :ids[1] AND Camp__c = :campId AND IsDeleted = TRUE
+        WITH USER_MODE
+        LIMIT 1
+        ALL ROWS
+      ];
+      if (
+        saved.isEmpty() ||
+        replaced.isEmpty() ||
+        !saved[0].Key__c.equals(replaced[0].Key__c)
+      ) {
+        throw new AgentWeeks.ConflictException(
+          'That can\'t be undone now: someone changed it since, or the undo isn\'t the one its answer gave.' +
+          READ_AGAIN
+        );
+      }
+    }
     if (!lastByMe(campId, ids[0], what)) {
       throw new AgentWeeks.ConflictException(
         'That can\'t be undone now: someone changed it since, or it wasn\'t you who did it.' +
@@ -313,7 +334,7 @@ global with sharing class AgentLearned {
   /** A field as sent, spaces kept (a pattern's name is as the camp wrote it). */
   private static String raw(Map<String, Object> body, String field) {
     Object value = body.get(field);
-    return value == null ? '' : String.valueOf(value).trim();
+    return value == null ? '' : String.valueOf(value);
   }
 
   private static AgentWeeks.ConflictException stale() {
