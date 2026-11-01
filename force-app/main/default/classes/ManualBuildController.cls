@@ -31,6 +31,8 @@ public with sharing class ManualBuildController {
         setup
       );
       view.notPlaced = started.notPlaced;
+      // Someone else's start got there first: theirs is opened as they made it.
+      view.startedBySomeoneElse = !started.created;
       return view;
     } catch (Exception e) {
       throw ScreenErrors.of(e);

@@ -12,7 +12,8 @@
  * moving, swapping, taking out, copying and pasting cells as its grid does (API-1.38 to API-1.40),
  * and changing a cell, undoing, versions, publishing and unpublishing on a Manual Build week as
  * that screen does (API-1.41 to API-1.43), and, on Manual Build, reading and accepting its
- * checks, the grid's edits of several cells and starting a week (API-1.44 to API-1.46). Each one is the
+ * checks, the grid's edits of several cells and starting a week (API-1.44 to API-1.46), and
+ * renaming and deleting setup records as Camp Setup does (API-1.47, API-1.48). Each one is the
  * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
  */
 
@@ -189,6 +190,43 @@ function act(name, api, description, properties, required = []) {
       type: "object",
       properties,
       required: ["week", ...required],
+      additionalProperties: false
+    }
+  };
+}
+
+/**
+ * One of the season's setup records, as Camp Setup's tables have it (API-1.47, API-1.48): found
+ * by its kind and name (POST /v1/<api> with the fields).
+ */
+function setup(name, api, description, more = {}, required = []) {
+  return {
+    name,
+    api,
+    method: "POST",
+    sendsFields: true,
+    description,
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        kind: {
+          type: "string",
+          description:
+            "What kind of record: week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set (or the camp's own word for it, like bunk)."
+        },
+        name: {
+          type: "string",
+          description: "Its name now, exactly as Shoresh has it."
+        },
+        program: {
+          type: "string",
+          description:
+            "The program it is in, like Main. Only needed when two programs have one of that name."
+        },
+        ...more
+      },
+      required: ["kind", "name", ...required],
       additionalProperties: false
     }
   };
@@ -549,6 +587,23 @@ const CAPABILITIES = [
           "The electives' name in Shoresh, like Chugim. Leave it out when the season has only one."
       }
     }
+  ),
+  setup(
+    "rename_setup_record",
+    "rename_setup_record",
+    "Rename one of a season's setup records, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
+    {
+      new_name: {
+        type: "string",
+        description: "What to call it now."
+      }
+    },
+    ["new_name"]
+  ),
+  setup(
+    "delete_setup_record",
+    "delete_setup_record",
+    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first, as that screen asks: anything inside it is deleted too. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   )
 ];
 
