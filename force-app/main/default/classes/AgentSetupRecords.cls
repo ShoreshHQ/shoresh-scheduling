@@ -23,25 +23,43 @@ public with sharing class AgentSetupRecords {
     'ElectiveSet'
   };
 
-  /** The record found: its Id and name, its kind in the camp's word, and the camp's words. */
+  /**
+   * The record found: its Id and name, its kind in the camp's word, and the camp's words; its
+   * kind's model term, its season, and its program (null for a season-wide kind).
+   */
   public class Found {
     public Id id;
     public String name;
     public String kind;
     public CampLabels labels;
+    public String term;
+    public Id seasonId;
+    public Id programId;
   }
 
-  /** The one record of that kind and name in the season (season, kind, name, program). */
-  public static Found find(Map<String, Object> body) {
+  /** The season and the kind asked about (season, kind), with no record yet: for an add. */
+  public static Found kindIn(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     Season__c season = OutgoingRows.seasonCalled(
       AgentFields.text(body, 'season')
     );
-    CampLabels labels = CampLabels.forCamp(
+    Found result = new Found();
+    result.seasonId = season.Id;
+    result.labels = CampLabels.forCamp(
       [SELECT Camp__c FROM Season__c WHERE Id = :season.Id WITH USER_MODE]
       .Camp__c
     );
-    String term = termOf(AgentFields.text(body, 'kind'), labels);
+    result.term = termOf(AgentFields.text(body, 'kind'), result.labels);
+    result.kind = result.labels.singularInSentence(result.term);
+    return result;
+  }
+
+  /** The one record of that kind and name in the season (season, kind, name, program). */
+  public static Found find(Map<String, Object> body) {
+    Found result = kindIn(body);
+    CampLabels labels = result.labels;
+    String term = result.term;
+    Id seasonId = result.seasonId;
     String name = AgentFields.text(body, 'name');
     if (String.isBlank(name)) {
       throw new ShoreshException(
@@ -49,19 +67,34 @@ public with sharing class AgentSetupRecords {
       );
     }
     SObject row = onlyOne(
-      rowsOf(term, season.Id),
+      rowsOf(term, seasonId),
       body,
       new List<String>{
         labels.singularInSentence(term),
         labels.pluralInSentence(term)
       }
     );
-    Found result = new Found();
     result.id = row.Id;
     result.name = (String) row.get('Name');
-    result.kind = labels.singularInSentence(term);
-    result.labels = labels;
+    result.programId = programIdOf(row);
     return result;
+  }
+
+  /** The Id of the program a record sits in (null for a season-wide kind). */
+  private static Id programIdOf(SObject row) {
+    if (row instanceof Group__c) {
+      Division__c division = ((Group__c) row).Division__r;
+      return division == null ? null : division.Program__c;
+    } else if (row instanceof Division__c) {
+      return ((Division__c) row).Program__c;
+    } else if (row instanceof TimeBlock__c) {
+      return ((TimeBlock__c) row).Program__c;
+    } else if (row instanceof FixedActivity__c) {
+      return ((FixedActivity__c) row).Program__c;
+    } else if (row instanceof RecurringActivity__c) {
+      return ((RecurringActivity__c) row).Program__c;
+    }
+    return null;
   }
 
   /** The model term the kind names, by the model's word or the camp's; refused otherwise. */
@@ -113,7 +146,7 @@ public with sharing class AgentSetupRecords {
       }
       when 'Division' {
         return [
-          SELECT Id, Name, Program__r.Name
+          SELECT Id, Name, Program__c, Program__r.Name
           FROM Division__c
           WHERE Program__r.Season__c = :seasonId
           WITH USER_MODE
@@ -122,7 +155,7 @@ public with sharing class AgentSetupRecords {
       }
       when 'Group' {
         return [
-          SELECT Id, Name, Division__r.Program__r.Name
+          SELECT Id, Name, Division__r.Program__c, Division__r.Program__r.Name
           FROM Group__c
           WHERE Division__r.Program__r.Season__c = :seasonId
           WITH USER_MODE
@@ -131,7 +164,7 @@ public with sharing class AgentSetupRecords {
       }
       when 'TimeBlock' {
         return [
-          SELECT Id, Name, Program__r.Name
+          SELECT Id, Name, Program__c, Program__r.Name
           FROM TimeBlock__c
           WHERE Program__r.Season__c = :seasonId
           WITH USER_MODE
@@ -167,7 +200,7 @@ public with sharing class AgentSetupRecords {
       }
       when 'FixedActivity' {
         return [
-          SELECT Id, Name, Program__r.Name
+          SELECT Id, Name, Program__c, Program__r.Name
           FROM FixedActivity__c
           WHERE Program__r.Season__c = :seasonId
           WITH USER_MODE
@@ -176,7 +209,7 @@ public with sharing class AgentSetupRecords {
       }
       when 'RecurringActivity' {
         return [
-          SELECT Id, Name, Program__r.Name
+          SELECT Id, Name, Program__c, Program__r.Name
           FROM RecurringActivity__c
           WHERE Program__r.Season__c = :seasonId
           WITH USER_MODE
