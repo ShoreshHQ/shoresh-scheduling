@@ -8,10 +8,11 @@ private class ElectiveSeatExamplesTest {
   // ELECT-4.4
   @IsTest
   static void theSaveCheckPassesTheSharedSeatExamples() {
+    String ours = ShoreshSchema.namespace();
     StaticResource examples = [
       SELECT Body
       FROM StaticResource
-      WHERE Name = 'ShoreshSeatExamples'
+      WHERE Name = 'ShoreshSeatExamples' AND NamespacePrefix = :ours
       LIMIT 1
     ];
     Map<String, Object> read = (Map<String, Object>) JSON.deserializeUntyped(
