@@ -3,7 +3,7 @@
  * exactly as the screen works it out. The run is read as the screen reads it (GET
  * /v1/assign_elective_seats: ElectiveSeatsController.openRun and the camp's words), the seats placed
  * with the screen's own modules (c/shoreshElectiveSeats seats.js and c/shoreshElectiveEngine,
- * shipped beside this file: readRun, engineInput, the engine's assignSeats, assignRequest), and
+ * shipped beside this file: planSeats), and
  * saved through the screen's own save (POST /v1/assign_elective_seats) with the run as the agent
  * read it (seen). The answer is the screen's own line, counted with its own board.
  */
@@ -13,7 +13,7 @@ const { changedSince } = require("./imports");
 async function assignElectiveSeats(
   capability,
   input,
-  { ask, answer, load, namespaceOf }
+  { read, send, answer, load }
 ) {
   const fields = {};
   for (const field of ["season", "week", "elective_set"]) {
@@ -26,12 +26,10 @@ async function assignElectiveSeats(
       text: "Send the seen read_elective_seats_now gave, so a change someone made since isn't replaced unseen."
     };
   }
-  const path = `/services/apexrest/v1/${capability.api}`;
-  const readRun = () =>
-    ask({ path: `${path}?${new URLSearchParams(fields)}`, method: "GET" });
-  const read = await readRun();
-  if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
+  const readRun = () => read(capability.api, fields);
+  const got = await readRun();
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
   if (
     `${body.view.run.id}:${body.view.revision}` !== String(input.seen).trim()
   ) {
@@ -40,20 +38,14 @@ async function assignElectiveSeats(
       "Someone changed the seats since you read them, so nothing was changed. Read them again with read_elective_seats_now."
     );
   }
-  const m = await load(namespaceOf(body));
+  const m = await load();
   const t = m.buildTerms(body.labels);
-  const run = m.readRun(body.view);
-  const { input: engineIn } = m.engineInput(run, t);
-  const request = m.assignRequest(run, m.assignSeats(engineIn));
-  const saved = await ask({
-    path,
-    method: "POST",
-    body: JSON.stringify({
-      ...fields,
-      seen: input.seen,
-      seats: request.seats,
-      dropped: request.dropped
-    })
+  const request = m.planSeats(body.view, t);
+  const saved = await send(capability.api, {
+    ...fields,
+    seen: input.seen,
+    seats: request.seats,
+    dropped: request.dropped
   });
   if (saved.status !== 200) return answer(saved);
   // The screen's own line once saved: "Seats assigned: 18 of 20 placed."

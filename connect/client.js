@@ -14,32 +14,14 @@ const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
 const { readLearned } = require("./learned");
-
-/** The web address and request for one action. */
-function requestFor(capability, input = {}) {
-  const path = `/services/apexrest/v1/${capability.api}`;
-  if (capability.method === "GET") {
-    const query = new URLSearchParams();
-    for (const field of capability.queryFields ?? ["season", "week"]) {
-      if (input[field]) query.set(field, input[field]);
-    }
-    if (input.as_csv) query.set("format", "csv");
-    const said = query.toString();
-    return { path: said ? `${path}?${said}` : path, method: "GET" };
-  }
-  if (capability.sendsFields) {
-    const fields = {};
-    for (const field of Object.keys(capability.inputSchema.properties)) {
-      if (input[field] !== undefined) fields[field] = input[field];
-    }
-    return { path, method: "POST", body: JSON.stringify(fields) };
-  }
-  return {
-    path,
-    method: "POST",
-    body: JSON.stringify({ records: input.records ?? [] })
-  };
-}
+const {
+  campOf,
+  tooOld,
+  downloadAgain,
+  read,
+  send,
+  requestFor
+} = require("./camp");
 
 /** The sf command line's words for one request; the body goes in on standard input. */
 function sfArgs(request, org) {
@@ -137,95 +119,90 @@ async function call(
     imports = loadImports,
     files = loadExports,
     learned = loadLearned,
+    camp = campFor,
     folder
   } = {}
 ) {
   const capability = byName(name);
   if (!capability) throw new Error(`Shoresh has no action called "${name}".`);
-  const request = requestFor(capability, input);
+  const asked = (request) => ask(request, org, run);
+  const said = await camp(org, asked);
+  const old = tooOld(said);
+  if (old) return { ok: false, status: 400, text: old };
+  const { namespace } = said;
+  const at = {
+    read: (api, fields) => asked(read(namespace, api, fields)),
+    send: (api, body) => asked(send(namespace, api, body)),
+    answer
+  };
+  const request = requestFor(capability, input, namespace);
   if (capability.buildsWithEngine) {
-    return build(request, org, run, engine);
+    return build(capability, input, at, () => engine(namespace));
   }
   if (capability.checksWithEngine) {
-    return weekChecks(capability, input, org, run, checks);
+    return weekChecks(capability, input, at, () => checks(namespace));
   }
   if (capability.editsWithEngine) {
     return editCells(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: edits,
-      namespaceOf
+      ...at,
+      load: () => edits(namespace)
     });
   }
   if (capability.assignsWithEngine) {
     return assignElectiveSeats(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: electives,
-      namespaceOf
+      ...at,
+      load: () => electives(namespace)
     });
   }
   if (capability.importsWithEngine) {
     return importFile(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: imports,
-      namespaceOf
+      ...at,
+      load: () => imports(namespace)
     });
   }
   if (capability.importsLastYear) {
     return importLastYear(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: imports,
-      namespaceOf
+      ...at,
+      load: () => imports(namespace)
     });
   }
   if (capability.importsSpecialSchedule) {
     return importSpecialSchedule(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: imports
+      ...at,
+      load: () => imports(namespace)
     });
   }
   if (capability.makesFile) {
     return makeFile(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: files,
-      namespaceOf,
+      ...at,
+      load: () => files(namespace),
       ...(folder ? { folder } : {})
     });
   }
   if (capability.readsLearned) {
     return readLearned(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: learned,
-      namespaceOf
+      ...at,
+      load: () => learned(namespace)
     });
   }
   if (capability.undoesImport) {
     return undoImport(capability, input, {
-      ask: (r) => ask(r, org, run),
-      answer,
-      load: imports
+      ...at,
+      load: () => imports(namespace)
     });
   }
   if (capability.listsVersions) {
-    return listVersions(capability, request, org, run, versionWords);
+    return listVersions(capability, await asked(request), () =>
+      versionWords(namespace)
+    );
   }
-  const done = answer(await ask(request, org, run));
+  const done = answer(await asked(request));
   if (!done.ok || !capability.about || input.as_csv) return done;
   done.about = capability.about;
   if (capability.showsWeek) {
     // The view is extra: the read stands without it.
     try {
-      const view = await ask(
-        { ...requestFor(WEEK_VIEW, input), method: "GET" },
-        org,
-        run
-      );
+      const view = await asked(requestFor(WEEK_VIEW, input, namespace));
       if (view.status === 200) done.weekView = JSON.parse(view.body);
     } catch {
       // no view this time
@@ -236,6 +213,20 @@ async function call(
 
 /** What Shoresh's own view of a week draws: the Schedules screen's published week (API-1.26). */
 const WEEK_VIEW = { api: "week_view", method: "GET" };
+
+/**
+ * What Salesforce says of the camp's Shoresh (camp.js), kept once read for each sign-in while the
+ * connector runs: its namespace doesn't change under a running connector.
+ */
+const camps = new Map();
+async function campFor(org, asked) {
+  if (!camps.has(org)) {
+    const camp = await campOf(asked);
+    if (camp.read === false) return camp;
+    camps.set(org, camp);
+  }
+  return camps.get(org);
+}
 
 /** One request as the person; Salesforce's status and Shoresh's answer. */
 async function ask(request, org, run) {
@@ -258,28 +249,18 @@ function answer(response) {
  * Generated Schedule's own engine module (shipped beside this file, API-1.20), and saves it through
  * the screen's own save (POST /v1/build_week). The engine's refusal comes back in its own words.
  */
-async function build(request, org, run, engine) {
-  const fields = JSON.parse(request.body);
-  const query = new URLSearchParams();
+async function build(capability, input, at, engine) {
+  const fields = JSON.parse(requestFor(capability, input).body);
+  const query = {};
   for (const field of ["season", "week", "program"]) {
-    if (fields[field] !== undefined) query.set(field, fields[field]);
+    if (fields[field] !== undefined) query[field] = fields[field];
   }
-  const read = await ask(
-    { path: `${request.path}?${query}`, method: "GET" },
-    org,
-    run
-  );
-  if (read.status !== 200) return answer(read);
-  const inputs = JSON.parse(read.body);
-  const built = (await engine(namespaceOf(inputs))).buildForAgent(inputs);
+  const got = await at.read(capability.api, query);
+  if (got.status !== 200) return answer(got);
+  const inputs = JSON.parse(got.body);
+  const built = (await engine()).buildForAgent(inputs);
   if (!built.ok) return { ok: false, status: 400, text: built.error };
-  return answer(
-    await ask(
-      { ...request, body: JSON.stringify({ ...fields, ...built.save }) },
-      org,
-      run
-    )
-  );
+  return answer(await at.send(capability.api, { ...fields, ...built.save }));
 }
 
 /**
@@ -290,22 +271,15 @@ async function build(request, org, run, engine) {
  * the line named among those shown and keeps it through the counter's own save
  * (POST /v1/accept_finding).
  */
-async function weekChecks(capability, input, org, run, checks) {
+async function weekChecks(capability, input, at, checks) {
   const fields = {};
   for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
-  const read = await ask(
-    {
-      path: `/services/apexrest/v1/week_checks?${new URLSearchParams(fields)}`,
-      method: "GET"
-    },
-    org,
-    run
-  );
-  if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
-  const m = await checks(namespaceOf(body));
+  const got = await at.read("week_checks", fields);
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
+  const m = await checks();
   const { measure, accepted } = counterOf(m, body);
   if (capability.name === "read_week_checks") {
     const words = m.counterWords(measure, accepted);
@@ -340,15 +314,10 @@ async function weekChecks(capability, input, org, run, checks) {
     };
   }
   const kept = answer(
-    await ask(
-      {
-        path: `/services/apexrest/v1/${capability.api}`,
-        method: "POST",
-        body: JSON.stringify({ ...fields, line: JSON.parse(m.keptLine(line)) })
-      },
-      org,
-      run
-    )
+    await at.send(capability.api, {
+      ...fields,
+      line: JSON.parse(m.keptLine(line))
+    })
   );
   return kept.ok ? { ...kept, text: `Accepted: ${m.saidOf(line)}.` } : kept;
 }
@@ -394,10 +363,9 @@ function counterOf(m, body) {
  * panel shows it ("Oct 31, 3:40 PM", on this computer's clock), with saved as Shoresh keeps it, to
  * name one of two that share a name.
  */
-async function listVersions(capability, request, org, run, versionWords) {
-  const read = await ask(request, org, run);
-  if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
+async function listVersions(capability, got, versionWords) {
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
   const { metaOf, canDelete } = await versionWords();
   const when = new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -440,57 +408,54 @@ function loadModule(name) {
   );
 }
 
-/** The Versions panel's words module, as scripts/build-connect.js ships it. */
-async function loadVersionWords() {
+/**
+ * The screens' own modules, with the camp's namespace on the field names they use (the shipped
+ * schema module reads it); missing ones say what this copy can't do.
+ */
+async function loadModules(namespace, names, cant) {
+  globalThis.SHORESH_NAMESPACE = namespace;
   try {
-    return await loadModule("shoreshVersions.words");
+    return await Promise.all(names.map(loadModule));
   } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't list a week's versions. Download it again from Settings in Shoresh."
-    );
+    throw new Error(downloadAgain(cant));
   }
 }
 
-/** The package's prefix on the field names Salesforce sent ("shoresh" in shoresh__Week__c), or "". */
-function namespaceOf(read) {
-  const found = /"([A-Za-z0-9]+)__[A-Za-z0-9_]+__c"\s*:/.exec(
-    JSON.stringify(read)
+/** The Versions panel's words module, as scripts/build-connect.js ships it. */
+async function loadVersionWords(namespace) {
+  const [words] = await loadModules(
+    namespace,
+    ["shoreshVersions.words"],
+    "can't list a week's versions"
   );
-  return found ? found[1] : "";
+  return words;
 }
 
 /** Generated Schedule's own build module, as scripts/build-connect.js ships it beside this file. */
 async function loadEngine(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    return await loadModule("shoreshGeneratedWeek.build");
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector has no build engine. Download it again from Settings in Shoresh."
-    );
-  }
+  const [engine] = await loadModules(
+    namespace,
+    ["shoreshGeneratedWeek.build"],
+    "has no build engine"
+  );
+  return engine;
 }
 
 /** The screens' own modules the counter is worked out with, as scripts/build-connect.js ships them. */
 async function loadChecks(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const modules = await Promise.all(
-      [
-        "shoreshGeneratedWeek.build",
-        "shoreshTerms.shoreshTerms",
-        "shoreshGeneratedSchedule.counter",
-        "shoreshWeekEditor.measure",
-        "shoreshWeekEditor.manualChecks",
-        "shoreshWeekChecks.lines"
-      ].map(loadModule)
-    );
-    return Object.assign({}, ...modules);
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't read a week's checks. Download it again from Settings in Shoresh."
-    );
-  }
+  const modules = await loadModules(
+    namespace,
+    [
+      "shoreshGeneratedWeek.build",
+      "shoreshTerms.shoreshTerms",
+      "shoreshGeneratedSchedule.counter",
+      "shoreshWeekEditor.measure",
+      "shoreshWeekEditor.manualChecks",
+      "shoreshWeekChecks.lines"
+    ],
+    "can't read a week's checks"
+  );
+  return Object.assign({}, ...modules);
 }
 
 /**
@@ -498,28 +463,23 @@ async function loadChecks(namespace) {
  * as Generated Schedule opens it, and the week editor's edits, as scripts/build-connect.js ships them.
  */
 async function loadEdits(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const modules = await Promise.all(
-      [
-        "shoreshGeneratedWeek.build",
-        "shoreshTerms.shoreshTerms",
-        "shoreshGeneratedSchedule.counter",
-        "shoreshGeneratedSchedule.locks",
-        "shoreshWeekEditor.measure",
-        "shoreshWeekEditor.specials",
-        "shoreshWeekEditor.slotEdits",
-        "shoreshWeekEditor.locks",
-        "shoreshWeekEditor.handEdits",
-        "shoreshWeekEditor.rain"
-      ].map(loadModule)
-    );
-    return Object.assign({}, ...modules);
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't change several cells. Download it again from Settings in Shoresh."
-    );
-  }
+  const modules = await loadModules(
+    namespace,
+    [
+      "shoreshGeneratedWeek.build",
+      "shoreshTerms.shoreshTerms",
+      "shoreshGeneratedSchedule.counter",
+      "shoreshGeneratedSchedule.locks",
+      "shoreshWeekEditor.measure",
+      "shoreshWeekEditor.specials",
+      "shoreshWeekEditor.slotEdits",
+      "shoreshWeekEditor.locks",
+      "shoreshWeekEditor.handEdits",
+      "shoreshWeekEditor.rain"
+    ],
+    "can't change several cells"
+  );
+  return Object.assign({}, ...modules);
 }
 
 /**
@@ -527,21 +487,16 @@ async function loadEdits(namespace) {
  * scripts/build-connect.js ships them.
  */
 async function loadElectives(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const modules = await Promise.all(
-      [
-        "shoreshTerms.shoreshTerms",
-        "shoreshElectiveEngine.shoreshElectiveEngine",
-        "shoreshElectiveSeats.seats"
-      ].map(loadModule)
-    );
-    return Object.assign({}, ...modules);
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't assign elective seats. Download it again from Settings in Shoresh."
-    );
-  }
+  const modules = await loadModules(
+    namespace,
+    [
+      "shoreshTerms.shoreshTerms",
+      "shoreshElectiveEngine.shoreshElectiveEngine",
+      "shoreshElectiveSeats.seats"
+    ],
+    "can't assign elective seats"
+  );
+  return Object.assign({}, ...modules);
 }
 
 /**
@@ -550,53 +505,48 @@ async function loadElectives(namespace) {
  * the one Import a list asks with (Import last year's has the same name).
  */
 async function loadImports(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const [
-      engine,
-      lists,
-      table,
-      terms,
-      screens,
-      remembered,
-      patterns,
-      choices,
-      flow,
-      summary,
-      fromFile
-    ] = await Promise.all(
-      [
-        "shoreshImportEngine.shoreshImportEngine",
-        "shoreshLists.shoreshLists",
-        "shoreshListImport.table",
-        "shoreshTerms.shoreshTerms",
-        "shoreshScreens.shoreshScreens",
-        "shoreshRemembered.shoreshRemembered",
-        "shoreshPatterns.shoreshPatterns",
-        "shoreshChoicesReader.shoreshChoicesReader",
-        "shoreshImport.flow",
-        "shoreshImport.summary",
-        "shoreshSpecialSchedule.fromFile"
-      ].map(loadModule)
-    );
-    return importModules({
-      engine,
-      lists,
-      table,
-      terms,
-      screens,
-      remembered,
-      patterns,
-      choices,
-      flow,
-      summary,
-      fromFile
-    });
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't import a file. Download it again from Settings in Shoresh."
-    );
-  }
+  const [
+    engine,
+    lists,
+    table,
+    terms,
+    screens,
+    remembered,
+    patterns,
+    choices,
+    flow,
+    summary,
+    fromFile
+  ] = await loadModules(
+    namespace,
+    [
+      "shoreshImportEngine.shoreshImportEngine",
+      "shoreshLists.shoreshLists",
+      "shoreshListImport.table",
+      "shoreshTerms.shoreshTerms",
+      "shoreshScreens.shoreshScreens",
+      "shoreshRemembered.shoreshRemembered",
+      "shoreshPatterns.shoreshPatterns",
+      "shoreshChoicesReader.shoreshChoicesReader",
+      "shoreshImport.flow",
+      "shoreshImport.summary",
+      "shoreshSpecialSchedule.fromFile"
+    ],
+    "can't import a file"
+  );
+  return importModules({
+    engine,
+    lists,
+    table,
+    terms,
+    screens,
+    remembered,
+    patterns,
+    choices,
+    flow,
+    summary,
+    fromFile
+  });
 }
 
 /**
@@ -604,23 +554,18 @@ async function loadImports(namespace) {
  * scripts/build-connect.js ships them.
  */
 async function loadLearned(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const modules = await Promise.all(
-      [
-        "shoreshLearned.history",
-        "shoreshLearned.builtIn",
-        "shoreshLearned.view",
-        "shoreshPatterns.shoreshPatterns",
-        "shoreshTerms.shoreshTerms"
-      ].map(loadModule)
-    );
-    return Object.assign({}, ...modules);
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't read what Shoresh has learned. Download it again from Settings in Shoresh."
-    );
-  }
+  const modules = await loadModules(
+    namespace,
+    [
+      "shoreshLearned.history",
+      "shoreshLearned.builtIn",
+      "shoreshLearned.view",
+      "shoreshPatterns.shoreshPatterns",
+      "shoreshTerms.shoreshTerms"
+    ],
+    "can't read what Shoresh has learned"
+  );
+  return Object.assign({}, ...modules);
 }
 
 /**
@@ -628,50 +573,45 @@ async function loadLearned(namespace) {
  * screens save Excel files with it, and the printout page, as scripts/build-connect.js ships them.
  */
 async function loadExports(namespace) {
-  globalThis.SHORESH_NAMESPACE = namespace;
-  try {
-    const [
-      scheduleExport,
-      views,
-      offerings,
-      electives,
-      workbook,
-      lists,
-      screens,
-      terms
-    ] = await Promise.all(
-      [
-        "shoreshScheduleExport.shoreshScheduleExport",
-        "shoreshScheduleViews.shoreshScheduleViews",
-        "shoreshElectiveDetails.offerings",
-        "shoreshElectiveSeats.downloads",
-        "shoreshDownload.workbook",
-        "shoreshLists.shoreshLists",
-        "shoreshScreens.shoreshScreens",
-        "shoreshTerms.shoreshTerms"
-      ].map(loadModule)
-    );
-    return exportModules({
-      scheduleExport,
-      views,
-      offerings,
-      electives,
-      workbook,
-      lists,
-      screens,
-      terms,
-      XLSX: require("./engine.SheetJS.cjs"),
-      printPage: () =>
-        require("fs").readFileSync(
-          path.join(__dirname, "print-view.html"),
-          "utf8"
-        )
-    });
-  } catch {
-    throw new Error(
-      "This copy of Shoresh's connector can't make a file. Download it again from Settings in Shoresh."
-    );
-  }
+  const [
+    scheduleExport,
+    views,
+    offerings,
+    electives,
+    workbook,
+    lists,
+    screens,
+    terms
+  ] = await loadModules(
+    namespace,
+    [
+      "shoreshScheduleExport.shoreshScheduleExport",
+      "shoreshScheduleViews.shoreshScheduleViews",
+      "shoreshElectiveDetails.offerings",
+      "shoreshElectiveSeats.downloads",
+      "shoreshDownload.workbook",
+      "shoreshLists.shoreshLists",
+      "shoreshScreens.shoreshScreens",
+      "shoreshTerms.shoreshTerms"
+    ],
+    "can't make a file"
+  );
+  return exportModules({
+    scheduleExport,
+    views,
+    offerings,
+    electives,
+    workbook,
+    lists,
+    screens,
+    terms,
+    XLSX: require("./engine.SheetJS.cjs"),
+    printPage: () =>
+      require("fs").readFileSync(
+        path.join(__dirname, "print-view.html"),
+        "utf8"
+      )
+  });
 }
 
 /** The names the file actions use, each from its own module. */
@@ -775,7 +715,15 @@ async function signIn(org, host, run = runSf) {
  * person's permission) without needing a season's name.
  */
 async function check({ org, run = runSf } = {}) {
-  const request = requestFor(byName("read_group_schedule"), {});
+  const asked = async (request) =>
+    readResponse(await run(sfArgs(request, org), request.body)) ?? {
+      status: 0,
+      body: ""
+    };
+  const said = await campOf(asked);
+  const old = tooOld(said);
+  if (old) return { ok: false, text: old };
+  const request = requestFor(byName("read_group_schedule"), {}, said.namespace);
   const response = readResponse(await run(sfArgs(request, org)));
   if (!response) {
     return {
@@ -805,7 +753,6 @@ module.exports = {
   importModules,
   exportModules,
   requestFor,
-  namespaceOf,
   sfArgs,
   readResponse,
   call,

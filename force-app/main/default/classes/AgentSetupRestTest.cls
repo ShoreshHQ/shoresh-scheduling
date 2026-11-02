@@ -56,7 +56,7 @@ private class AgentSetupRestTest {
     .Id;
   }
 
-  // API-1.51, API-1.102: screen over AI. The details panel was opened (Swim: Group A, no notes),
+  // API-1.51, API-1.103: screen over AI. The details panel was opened (Swim: Group A, no notes),
   // then the AI chose Group B. The stale panel's notes save leaves who can do it as the AI left it,
   // and its own change of who can do it is answered with theirs, nothing saved.
   @IsTest

@@ -531,7 +531,7 @@ const CAPABILITIES = [
     ...change(
       "move_cell",
       "move_cell",
-      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change.",
+      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change, which takes back only your last change.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -551,7 +551,7 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change, which takes back only your last change.",
       { day: CELL.day, group: CELL.group, time: CELL.time, was: CELL.was },
       ["day", "group", "time", "was"],
       ON_EITHER,
@@ -563,7 +563,7 @@ const CAPABILITIES = [
     ...change(
       "copy_cells",
       "copy_cells",
-      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change.",
+      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change, which takes back only your last change.",
       {
         day: CELL.day,
         groups: {
@@ -599,7 +599,7 @@ const CAPABILITIES = [
     ...change(
       "switch_to_rain_plans",
       "switch_to_rain_plans",
-      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. To switch the day back, undo it with undo_last_agent_change (the week before is also kept in Versions as "Before rainy <day>").',
+      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. To switch the day back, undo it with undo_last_agent_change, which takes back only your last change (the week before is also kept in Versions as "Before rainy <day>").',
       {
         day: {
           ...CELL.day,
@@ -925,8 +925,21 @@ const CAPABILITIES = [
   setup(
     "delete_setup_record",
     "delete_setup_record",
-    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first, as that screen asks: anything inside it is deleted too. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
+    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_setup_delete right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   ),
+  {
+    // A read: GET, its fields in the web address (API-1.102).
+    ...setup(
+      "read_setup_delete",
+      "delete_setup_record",
+      "Read the question Camp Setup asks before deleting one of a season's setup records: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_setup_record. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
+    ),
+    method: "GET",
+    about:
+      "Camp Setup's question before its Delete, word for word. It holds no findings or problems.",
+    sendsFields: false,
+    queryFields: ["season", "kind", "name", "program"]
+  },
   {
     // A read: GET, its fields in the web address (API-1.49).
     ...setup(
@@ -1329,7 +1342,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Update a week to match setup, as Generated Schedule's or Manual Build's \"Update to match setup\" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone's choice: ask the person first. It is done as you, with your own access, and undo_last_agent_change brings the week back. If someone changed the week or setup since, nothing is updated and Shoresh says so.",
+      "Update a week to match setup, as Generated Schedule's or Manual Build's \"Update to match setup\" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone's choice: ask the person first. It is done as you, with your own access, and undo_last_agent_change brings the week back, if it is still your last change. If someone changed the week or setup since, nothing is updated and Shoresh says so.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1386,7 +1399,7 @@ const CAPABILITIES = [
     ...change(
       "place_special_event",
       "place_special_event",
-      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. Undo it with undo_last_agent_change.",
+      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. Undo it with undo_last_agent_change, which takes back only your last change.",
       {
         event: {
           type: "string",
@@ -1526,7 +1539,7 @@ const CAPABILITIES = [
   change(
     "set_up_noted_item",
     "set_up_noted_item",
-    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
+    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back while it is your last change; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
     {
       kind: {
         type: "string",

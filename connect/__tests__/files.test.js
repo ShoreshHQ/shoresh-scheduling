@@ -9,7 +9,13 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { byName } = require("../capabilities");
-const { call, exportModules } = require("../client");
+const { call: callAs, exportModules } = require("../client");
+// A camp without a namespace, as the test org is; namespaces are camp.test.js's.
+const call = (name, input, options) =>
+  callAs(name, input, {
+    camp: async () => ({ namespace: "", version: null }),
+    ...options
+  });
 const { downloadsFolder } = require("../exports");
 
 const LWC = path.resolve(__dirname, "../../force-app/main/default/lwc");

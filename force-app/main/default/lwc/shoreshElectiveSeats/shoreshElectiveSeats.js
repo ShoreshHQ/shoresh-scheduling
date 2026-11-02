@@ -11,16 +11,14 @@ import clearElectives from "@salesforce/apex/ElectiveSeatsController.clearElecti
 import { loadStyle } from "lightning/platformResourceLoader";
 import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
-import { assignSeats as runEngine } from "c/shoreshElectiveEngine";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import {
-  assignRequest,
   buildBoard,
-  engineInput,
   moveTargets,
   needsLook,
+  planSeats,
   problemSections,
   readRun
 } from "./seats";
@@ -609,11 +607,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
     this.errorAction = null;
     this.status = "Assigning seats…";
     try {
-      const run = readRun(this.view);
-      const { input } = engineInput(run, this.t);
-      const result = runEngine(input);
       const view = await assignSeats({
-        request: JSON.stringify(assignRequest(run, result))
+        request: JSON.stringify(planSeats(this.view, this.t))
       });
       this.view = view;
       const board = buildBoard(readRun(view), this.t);

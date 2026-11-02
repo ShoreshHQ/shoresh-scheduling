@@ -9,12 +9,20 @@ const {
   requestFor,
   sfArgs,
   readResponse,
-  call,
+  call: callAs,
   check,
   sfPath,
   signIn,
   importModules
 } = require("../client");
+// A camp without a namespace, as the test org is; namespaces are camp.test.js's.
+// A packaged camp: the namespace Salesforce says, handed to the screens' modules.
+const packaged = async () => ({ namespace: "shoresh", version: null });
+const call = (name, input, options) =>
+  callAs(name, input, {
+    camp: async () => ({ namespace: "", version: null }),
+    ...options
+  });
 const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
 
@@ -44,7 +52,7 @@ const callTool = (name, args, run) =>
 
 describe("Shoresh for AI tools and the command line", () => {
   // API-1.6
-  it("matchesTheApi: one action per API web address, no more, no fewer", () => {
+  it("matchesTheApi: every API web address has its actions (a delete also its question, API-1.102), no more, no fewer", () => {
     const addresses = fs
       .readdirSync(CLASSES)
       .filter((f) => f.endsWith(".cls"))
@@ -57,8 +65,10 @@ describe("Shoresh for AI tools and the command line", () => {
       // What Shoresh's view of a week draws: part of a schedule read, not an action (API-1.26).
       .filter((a) => a !== "week_view")
       .sort();
-    expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(83);
+    expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
+      addresses
+    );
+    expect(CAPABILITIES).toHaveLength(84);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -283,10 +293,10 @@ describe("Shoresh for AI tools and the command line", () => {
     const built = await call(
       "build_week",
       { season: "Summer 2026", week: "Week 1" },
-      { run, engine }
+      { run, engine, camp: packaged }
     );
     expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/build_week?season=Summer+2026&week=Week+1",
+      "/services/apexrest/shoresh/v1/build_week?season=Summer+2026&week=Week+1",
       "--method",
       "GET"
     ]);
@@ -297,7 +307,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     ]);
     expect(seen[1].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/build_week",
+      "/services/apexrest/shoresh/v1/build_week",
       "--method",
       "POST"
     ]);
@@ -402,10 +412,11 @@ describe("Shoresh for AI tools and the command line", () => {
     const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
     const got = await call("read_week_checks", asked, {
       run: answers([]),
-      checks
+      checks,
+      camp: packaged
     });
     expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main",
+      "/services/apexrest/shoresh/v1/week_checks?season=Summer+2026&week=Week+1&program=Main",
       "--method",
       "GET"
     ]);
@@ -2147,7 +2158,9 @@ describe("Shoresh for AI tools and the command line", () => {
         text: "Connected: your AI can now see and change your camp's schedules, with the same access you have in Salesforce."
       }
     );
-    expect(seen[0].args).toEqual([
+    // First what Salesforce says of the camp's Shoresh (camp.js), then the read at its address.
+    expect(seen[0].args[3]).toMatch(/^\/services\/data\/v\d+\.0\/query\?q=/);
+    expect(seen[1].args).toEqual([
       "api",
       "request",
       "rest",
@@ -2355,7 +2368,10 @@ describe("Shoresh for AI tools and the command line", () => {
         input,
         sfAnswering(409, '{"message":"Changed by someone else"}', seenMcp)
       );
-      expect(seenScript).toEqual(seenMcp);
+      // The script asks Salesforce for the camp's namespace too; the actions themselves are the same.
+      const actions = (seen) =>
+        seen.filter((s) => s.args[3].startsWith("/services/apexrest/"));
+      expect(actions(seenScript)).toEqual(seenMcp);
       expect(fromMcp.result).toEqual({
         content: [{ type: "text", text: fromScript.text }],
         isError: !fromScript.ok
@@ -2423,6 +2439,26 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(refused.ok).toBe(false);
     expect(refused.text).toMatch(/not deleted. Nothing was removed./);
+  });
+
+  // API-1.102
+  it("askBeforeDeleteAsCampSetup: Camp Setup's question before a delete is read from the delete's own web address, by name", async () => {
+    expect(byName("delete_setup_record").description).toMatch(
+      /read_setup_delete/
+    );
+    const question = 'Delete "Main"? Anything inside it is deleted too.';
+    const read = [];
+    const done = await call(
+      "read_setup_delete",
+      { season: "Summer 2026", kind: "program", name: "Main" },
+      {
+        run: sfAnswering(200, JSON.stringify({ message: question }), read)
+      }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/delete_setup_record?season=Summer+2026&kind=program&name=Main"
+    );
+    expect(done.text).toBe(question);
   });
 
   // API-1.49, API-1.50

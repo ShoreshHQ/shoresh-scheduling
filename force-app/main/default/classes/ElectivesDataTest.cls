@@ -169,6 +169,7 @@ private class ElectivesDataTest {
     }
   }
 
+  // ELECT-4.7
   @IsTest
   static void anActivityIsOfferedOnceInASetAndOnlyFromItsSeason() {
     System.runAs(ShoreshTestData.scheduler()) {

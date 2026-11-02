@@ -239,7 +239,7 @@ describe("c-shoresh-activity-details", () => {
         EarlyWeekByDay__c: "Wednesday"
       }
     ]);
-    // API-1.102: who can do it is sent only when it changes, so a rule never resets it.
+    // API-1.103: who can do it is sent only when it changes, so a rule never resets it.
     expect(saves[0].whoCanDoIt).toBeUndefined();
     expect(bareRecord(saves[0].seen().seen)).toEqual({
       sobjectType: "Activity__c",
@@ -265,9 +265,9 @@ describe("c-shoresh-activity-details", () => {
     expect(saves[0].whoCanDoIt).toEqual(["d1"]);
   });
 
-  // API-1.102: screen over AI. Someone (through their AI) chose who can do it since the panel
+  // API-1.103: screen over AI. Someone (through their AI) chose who can do it since the panel
   // was shown: the panel hands back what it saw and asks, never overwriting theirs unseen.
-  it("API-1.102: who can do it hands back what it saw, and someone else's choice since is asked about", async () => {
+  it("API-1.103: who can do it hands back what it saw, and someone else's choice since is asked about", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
@@ -534,7 +534,7 @@ describe("c-shoresh-activity-details", () => {
     const detail = handler.mock.calls[0][0].detail;
     expect(detail.shown()).toBe(true);
     // Sent, so nothing is unsaved: switching does not ask. It waits for the answer, so someone
-    // else's change since is always asked about (API-1.102).
+    // else's change since is always asked about (API-1.103).
     const leaving = element.open("a2");
     await flush();
     detail.onSaved({ id: "a1", changed: [] });

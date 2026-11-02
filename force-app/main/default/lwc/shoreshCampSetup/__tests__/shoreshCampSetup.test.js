@@ -11,7 +11,7 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
-import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
@@ -112,9 +112,11 @@ jest.mock("@salesforce/apex/RunsInController.placedInWeeks", () => apex(), {
 jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
   virtual: true
 });
-jest.mock("@salesforce/apex/SetupTablesController.scheduleUses", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.deletePreview",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock(
   "@salesforce/apex/SetupTablesController.mergeLocations",
   () => apex(),
@@ -249,6 +251,11 @@ const validAll = (element) =>
 describe("c-shoresh-camp-setup", () => {
   beforeEach(() => {
     getLabels.mockResolvedValue(nsRecord(LABELS));
+    // The server's question before a delete (SetupDelete): the usual one unless a test says.
+    deletePreview.mockResolvedValue({
+      label: "Delete",
+      message: "Delete it? Anything inside it is deleted too."
+    });
   });
 
   afterEach(() => {
@@ -1599,6 +1606,10 @@ describe("c-shoresh-camp-setup", () => {
       const element = await render();
       await openScreen(element, "programs");
       LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+      deletePreview.mockResolvedValueOnce({
+        label: "Delete",
+        message: 'Delete "Teen Travel"? Anything inside it is deleted too.'
+      });
       deleteRecord.mockResolvedValueOnce();
       const onDeleted = jest.fn();
       table(element).dispatchEvent(
@@ -1723,7 +1734,8 @@ describe("c-shoresh-camp-setup", () => {
     }, Promise.resolve());
   });
 
-  it("deleting a bunk or activity some schedules use says how many first", async () => {
+  // API-1.102, ADR 0012; the words themselves are SetupDelete's (SetupDeleteTest)
+  it("a delete asks the server's question word for word, without making the page busy", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
@@ -1733,22 +1745,10 @@ describe("c-shoresh-camp-setup", () => {
       element,
       'c-shoresh-editable-table[data-id="activities"]'
     );
-    const asked = async (count, name = "Swim") => {
-      if (count instanceof Error) {
-        scheduleUses.mockRejectedValueOnce({ body: { message: "No" } });
-      } else {
-        scheduleUses.mockResolvedValueOnce(count);
-      }
-      LightningConfirm.open.mockResolvedValueOnce(false);
-      activities.dispatchEvent(
-        new CustomEvent("delete", { detail: { recordId: "a1", name } })
-      );
-      await flush();
-      await flush();
-      const calls = LightningConfirm.open.mock.calls;
-      return calls[calls.length - 1][0];
-    };
-    scheduleUses.mockResolvedValueOnce({ schedules: 2, complete: true });
+    deletePreview.mockResolvedValueOnce({
+      label: 'Delete "Bunk 3"?',
+      message: "Bunk 3 is in 2 schedules. Delete anyway?"
+    });
     let busyWhenAsked;
     LightningConfirm.open.mockImplementationOnce(() => {
       busyWhenAsked = activities.busy;
@@ -1759,123 +1759,48 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     await flush();
-    expect(scheduleUses).toHaveBeenCalledWith({ recordId: "g3" });
-    expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
+    expect(deletePreview).toHaveBeenCalledWith({ recordId: "g3" });
+    expect(LightningConfirm.open.mock.calls[0][0]).toEqual({
       label: 'Delete "Bunk 3"?',
-      message: "Bunk 3 is in 2 schedules. Delete anyway?"
+      message: "Bunk 3 is in 2 schedules. Delete anyway?",
+      variant: "header",
+      theme: "warning"
     });
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "g3" });
     // The question opens without making the page busy: Cancel gives focus back to the row.
     expect(busyWhenAsked).toBe(false);
-
-    expect((await asked({ schedules: 1, complete: true })).message).toBe(
-      "Swim is in 1 schedule. Delete anyway?"
-    );
-    // A season too big to read whole: never a number that might be short.
-    expect((await asked({ schedules: 3, complete: false })).message).toBe(
-      "Swim is in 3 or more schedules. Delete anyway?"
-    );
-    // Couldn't count at all, or not all of it: said so, never left out quietly.
-    expect((await asked({ schedules: 0, complete: false })).message).toBe(
-      "Shoresh couldn't count the schedules Swim is in. Delete anyway?"
-    );
-    expect((await asked(new Error("refused"))).message).toBe(
-      "Shoresh couldn't count the schedules Swim is in. Delete anyway?"
-    );
-    // In no schedule: the usual question.
-    expect((await asked({ schedules: 0, complete: true })).message).toContain(
-      'Delete "Swim"?'
-    );
-    expect(deleteRecord).toHaveBeenCalledTimes(1);
   });
 
-  it("deleting a week says which saved versions go with it", async () => {
+  it("what can't be deleted yet is said in the server's words, with nothing asked or deleted", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(
-      nsRecord(
-        setupWith({
-          schedules: [
-            { Id: "s1", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
-            { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
-            {
-              Id: "s3",
-              Week__c: "w1",
-              Program__c: "p1",
-              Status__c: "Published"
-            },
-            {
-              Id: "s4",
-              Week__c: "w1",
-              Program__c: "p1",
-              Status__c: "Draft",
-              Origin__c: "Manual"
-            },
-            {
-              Id: "s5",
-              Week__c: "w1",
-              Program__c: "p1",
-              Status__c: "Draft",
-              Origin__c: "Generated"
-            }
-          ]
-        })
-      )
-    );
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
-    LightningConfirm.open.mockResolvedValue(nsRecord(false));
-    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    deletePreview.mockResolvedValueOnce({
+      refusal: 'This can\'t be deleted yet: "Gym games" happens here.'
+    });
+    weeks.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "l3", name: "Gym" } })
+    );
+    await flush();
+    await flush();
+    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(deleteRecord).not.toHaveBeenCalled();
+    expect(element.shadowRoot.textContent).toContain(
+      '"Gym" not deleted. Nothing was removed. This can\'t be deleted yet: "Gym games" happens here.'
+    );
+    // A question that can't be read is never skipped: nothing is deleted.
+    deletePreview.mockRejectedValueOnce({ body: { message: "Locked." } });
+    weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
     await flush();
-    expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
-      "That includes its Manual Build, its Generated Schedule and 2 saved versions."
-    );
-  });
-
-  it("deleting a week names the special days and events it takes off its days", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(
-      nsRecord(
-        setupWith({
-          special: {
-            specialDays: [{ Id: "sd1", Name: "Field Day" }],
-            specialEvents: [{ Id: "se1", Name: "Carnival" }],
-            briefs: [
-              {
-                itemId: "sd1",
-                planned: false,
-                rows: 0,
-                periods: [],
-                days: [
-                  { weekId: "w1", day: "Tuesday" },
-                  { weekId: "w2", day: "Friday" }
-                ]
-              },
-              {
-                itemId: "se1",
-                planned: false,
-                rows: 0,
-                periods: [],
-                days: [
-                  { weekId: "w1", day: "Wednesday" },
-                  { weekId: "w1", day: "Thursday" }
-                ]
-              }
-            ]
-          }
-        })
-      )
-    );
-    const element = await render();
-    LightningConfirm.open.mockResolvedValue(nsRecord(false));
-    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
-      new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
-    );
     await flush();
-    expect(LightningConfirm.open.mock.calls[0][0].message).toBe(
-      'Delete "Week 1"? Anything inside it is deleted too. It takes "Field Day" off Tuesday and "Carnival" off Wednesday and Thursday.'
+    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(deleteRecord).not.toHaveBeenCalled();
+    expect(element.shadowRoot.textContent).toContain(
+      '"Week 1" not deleted. Nothing was removed. Locked.'
     );
   });
 
@@ -2181,30 +2106,6 @@ describe("c-shoresh-camp-setup", () => {
         "Summer 2025"
       );
     });
-  });
-
-  it("deleting a program says which saved versions go with it", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(
-      nsRecord(
-        setupWith({
-          schedules: [
-            { Id: "v1", Week__c: "w9", Program__c: "p1", Status__c: "Version" }
-          ]
-        })
-      )
-    );
-    const element = await render();
-    await openScreen(element, "programs");
-    LightningConfirm.open.mockResolvedValue(false);
-    q(element, "c-shoresh-program").dispatchEvent(
-      new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
-    );
-    await flush();
-    expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
-      "That includes 1 saved version."
-    );
   });
 
   it("gives each table its own object, columns, and new-row values", async () => {
@@ -4010,7 +3911,7 @@ describe("c-shoresh-camp-setup", () => {
       const first = { onSaved: jest.fn(), onFailure: jest.fn() };
       const second = { onSaved: jest.fn(), onFailure: jest.fn() };
       const rules = nsRecord({ sobjectType: "Activity__c", Id: "a1" });
-      // What the panel saw goes with each save (API-1.102); who only when it changed.
+      // What the panel saw goes with each save (API-1.103); who only when it changed.
       const seen = () => ({ seen: rules, seenWho: ["g1"] });
       details.dispatchEvent(
         new CustomEvent("save", {
@@ -4830,7 +4731,6 @@ describe("c-shoresh-camp-setup", () => {
     it("a row's delete asks, then deletes it and reads the season again", async () => {
       const element = await renderSpecial();
       LightningConfirm.open.mockResolvedValue(true);
-      scheduleUses.mockResolvedValue({ schedules: 0, complete: true });
       deleteRecord.mockResolvedValue();
       const onDeleted = jest.fn();
       list(element, "days").dispatchEvent(

@@ -11,6 +11,15 @@ public with sharing class ElectiveSeatChecks {
   }
 
   /**
+   * A seat Assign again and Start a new version keep: one a person locked. A move by hand is
+   * locked; unlocked, it is Assign's to place again, as the desktop's regeneration rewrites every
+   * unlocked seat (commitElectiveRun.js). The one answer every path uses (docs/protocol/elect.md).
+   */
+  public static Boolean kept(Assignment__c seat) {
+    return seat.Locked__c == true;
+  }
+
+  /**
    * The time the seat's camper takes there, refused when they have none there or its offering is
    * not one that time offers (not confirmed, not open to it, or not the set's).
    */

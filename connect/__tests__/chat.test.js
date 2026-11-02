@@ -7,7 +7,13 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { CAPABILITIES, byName } = require("../capabilities");
-const { call } = require("../client");
+const { call: callAs } = require("../client");
+// A camp without a namespace, as the test org is; namespaces are camp.test.js's.
+const call = (name, input, options) =>
+  callAs(name, input, {
+    camp: async () => ({ namespace: "", version: null }),
+    ...options
+  });
 const { tools, handle, WEEK_VIEW } = require("../mcp");
 
 /** A stand-in sf: answers by web address, and records each one asked. */
