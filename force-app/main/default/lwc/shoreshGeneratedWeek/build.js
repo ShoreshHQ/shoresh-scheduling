@@ -151,6 +151,72 @@ export function locksOf(days) {
 }
 
 /**
+ * How the engine builds for each action (Greg 2026-10-27, protocol section 10): Rebuild keeps the
+ * week as it is and changes only what setup forces; Generate and Try another build it fresh;
+ * Fill the open cells keeps every filled cell.
+ */
+function modeOf(action) {
+  if (action === ACTION.FILL_OPEN) {
+    return MODE.FILL_OPEN;
+  }
+  return action === ACTION.REBUILD ? MODE.KEEP : MODE.FULL;
+}
+
+/**
+ * generateWeek's whole input for building the loaded week (not Start over, which builds nothing):
+ * the action's mode, the option, the camp's words (terms) and the season's setup. The engine's
+ * notes are the ones the server kept with the week (loaded.engineNotes), so every build of the
+ * same records is the same, after a reload or through an agent.
+ */
+export function buildInputOf(loaded, { action, option, terms, setup }) {
+  const notes = loaded.engineNotes;
+  return {
+    ...engineInputOf(inputFor(loaded, action), {
+      days: loaded.input.days,
+      terms,
+      setup
+    }),
+    option,
+    mode: modeOf(action),
+    // Each weekly minimum as the week was built: Rebuild moves cells only for a minimum the
+    // setup change left short (rule 10.6). Unknown for a week built before they were kept.
+    builtMinimums: notes && notes.mins.length ? notes.mins : null
+  };
+}
+
+/**
+ * The week generateWeek built (result) for the loaded week: { ok: true, days, notes, request },
+ * notes being what the engine said about it (notesOf) and request what the server's save reads;
+ * or { ok: false, error } in the engine's own words.
+ */
+export function builtWeekOf(loaded, { action, option }, result) {
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  const notes = notesOf(result);
+  return {
+    ok: true,
+    days: result.days,
+    notes,
+    request: saveRequestOf(loaded, {
+      action,
+      option,
+      days: result.days,
+      engineNotes: notes
+    })
+  };
+}
+
+/**
+ * Builds the loaded week at once: buildInputOf, generateWeek, builtWeekOf. Generated Schedule
+ * runs the same input through its pieces runner instead (so the tab never feels stuck), which
+ * builds the same week.
+ */
+export function buildWeek(loaded, how) {
+  return builtWeekOf(loaded, how, generateWeek(buildInputOf(loaded, how)));
+}
+
+/**
  * A week built for an agent (API-1.19), as Generated Schedule's own buttons build it: Generate
  * when the week has never been built, else Rebuild (it keeps the week, changing only what setup
  * forces), on the option the week was built with, locks kept. read: what /v1/build_week answers
@@ -160,27 +226,16 @@ export function locksOf(days) {
  */
 export function buildForAgent(read) {
   const loaded = loadedOf(read.inputs || {});
-  const action = loaded.scheduleId ? ACTION.REBUILD : ACTION.GENERATE;
-  const notes = loaded.engineNotes;
-  const result = generateWeek({
-    ...engineInputOf(inputFor(loaded, action), {
-      days: loaded.input.days,
-      terms: buildTerms(read.labels),
-      setup: read.setup
-    }),
+  const built = buildWeek(loaded, {
+    action: loaded.scheduleId ? ACTION.REBUILD : ACTION.GENERATE,
     option: loaded.option,
-    mode: action === ACTION.REBUILD ? MODE.KEEP : MODE.FULL,
-    builtMinimums: notes && notes.mins.length ? notes.mins : null
+    terms: buildTerms(read.labels),
+    setup: read.setup
   });
-  if (!result.ok) {
-    return { ok: false, error: result.error };
+  if (!built.ok) {
+    return built;
   }
-  const request = saveRequestOf(loaded, {
-    action,
-    option: loaded.option,
-    days: result.days,
-    engineNotes: notesOf(result)
-  });
+  const { request } = built;
   return {
     ok: true,
     save: {
