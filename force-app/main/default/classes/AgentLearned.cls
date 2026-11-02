@@ -93,7 +93,7 @@ global with sharing class AgentLearned {
       FOR UPDATE
     ];
     // "Tuesday" is what was read; capitals count (Apex's == ignores case).
-    if (rows.isEmpty() || !seen.equals(rows[0].Answer__c)) {
+    if (rows.isEmpty() || !SeenSaves.value(rows[0].Answer__c, seen)) {
       throw stale();
     }
     return rows[0];

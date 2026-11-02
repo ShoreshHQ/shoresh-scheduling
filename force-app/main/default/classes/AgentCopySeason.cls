@@ -109,7 +109,9 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
     }
     for (String key : now.keySet()) {
       Object said = seen.get(key);
-      if (said == null || !now.get(key).equals(String.valueOf(said))) {
+      if (
+        said == null || !SeenSaves.value(now.get(key), String.valueOf(said))
+      ) {
         return false;
       }
     }

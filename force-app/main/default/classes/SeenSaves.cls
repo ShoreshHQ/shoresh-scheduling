@@ -6,8 +6,10 @@
  * setup rows (RowSaves), an activity's details (ActivityDetails, for the panel and
  * change_activity_rules), Generated Schedule's locks and the AI's cell changes (GeneratedLocks,
  * AgentSchedules.holdAsSeen), a special plan (SpecialPlans), an elective run's seats
- * (AgentElectives), and the stamps an import, Clear electives and Update to match read
- * (AgentImports, AgentClearElectives, AgentUpdateToMatch). Compares with RowSeen's rules.
+ * (AgentElectives), the stamps an import, Clear electives and Update to match read
+ * (AgentImports, AgentClearElectives, AgentUpdateToMatch), and the values the AI's setup verbs
+ * read (camp words, seasons, guesses, learned answers, a season copy, Fill weeks, merged places,
+ * Undo import). Compares with RowSeen's rules.
  */
 public with sharing class SeenSaves {
   /** A row's ticket: what its changed fields held when the person saw it, and who it covered. */
@@ -94,6 +96,14 @@ public with sharing class SeenSaves {
    */
   public static Boolean stamp(String now, String ticket) {
     return String.isNotBlank(ticket) && ticket.equals(now);
+  }
+
+  /**
+   * Whether one value, already held, is still what the person read, exactly (capitals and spaces
+   * count; Apex's == on text ignores case): a value read empty is still seen.
+   */
+  public static Boolean value(String now, String seen) {
+    return (now ?? '').equals(seen ?? '');
   }
 
   /**

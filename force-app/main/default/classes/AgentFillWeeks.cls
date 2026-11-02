@@ -115,7 +115,10 @@ global with sharing class AgentFillWeeks implements AgentWeeks.Action {
       return now == null;
     }
     try {
-      return Date.valueOf(text) == now;
+      return SeenSaves.value(
+        String.valueOf(now),
+        String.valueOf(Date.valueOf(text))
+      );
     } catch (Exception e) {
       throw new ShoreshException(
         'Give the season\'s dates as dates like 2026-07-06.'

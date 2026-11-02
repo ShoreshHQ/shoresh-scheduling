@@ -133,6 +133,23 @@ private class SeenSavesTest {
     Assert.isFalse(SeenSaves.stamp(null, ''));
   }
 
+  // API-1.90: a value the AI's setup verbs read (a camp word, a season's field, a learned
+  // answer) is as seen only exactly, and read empty is still seen.
+  @IsTest
+  static void aValueIsAsSeenOnlyExactlyAndEmptyIsSeen() {
+    Assert.isTrue(SeenSaves.value('Bunk / Bunks', 'Bunk / Bunks'));
+    Assert.isFalse(
+      SeenSaves.value('Bunk / Bunks', 'bunk / bunks'),
+      'Capitals count'
+    );
+    Assert.isFalse(
+      SeenSaves.value('Summer  2026', 'Summer 2026'),
+      'Spaces count'
+    );
+    Assert.isTrue(SeenSaves.value(null, ''), 'Read empty is still seen');
+    Assert.isFalse(SeenSaves.value('Tuesday', null));
+  }
+
   // API-1.90: a special plan's and an elective run's revision; a plan never saved is as seen
   // ("none") only while it still hasn't been.
   @IsTest

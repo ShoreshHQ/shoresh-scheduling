@@ -115,9 +115,10 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action {
   ) {
     Object fits = seen.get(place.row.Name);
     return fits != null &&
-      String.valueOf(fits)
-        .normalizeSpace()
-        .equals(AgentSameLocations.fits(place));
+      SeenSaves.value(
+        AgentSameLocations.fits(place),
+        String.valueOf(fits).normalizeSpace()
+      );
   }
 
   /** Two places named exactly alike can't be told apart by name: left to Camp Setup. */

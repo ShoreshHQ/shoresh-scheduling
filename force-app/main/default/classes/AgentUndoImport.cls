@@ -65,8 +65,8 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
     }
     // Ids are case-sensitive; Apex != on text is not.
     if (
-      !String.valueOf(last).equals(seen) &&
-      !String.valueOf(last).left(15).equals(seen)
+      !SeenSaves.stamp(String.valueOf(last), seen) &&
+      !SeenSaves.stamp(String.valueOf(last).left(15), seen)
     ) {
       throw new AgentWeeks.ConflictException(
         'The last import is not the one you read: another import was made, or it was undone, since. Nothing was undone. Read them again with read_last_imports.'
