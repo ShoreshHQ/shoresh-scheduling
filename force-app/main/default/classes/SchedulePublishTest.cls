@@ -796,7 +796,7 @@ private class SchedulePublishTest {
         WHERE Id = :teensFirst
         WITH SYSTEM_MODE
       ];
-      String teensSlotBefore = mondayMorning(teensFirst, teenGroup);
+      String teensDaysBefore = JSON.serialize(ScheduleDays.read(teensFirst));
       SlotRunsTestData.useBlocks(
         new List<Id>{
           ids.get('Period 1'),
@@ -807,12 +807,20 @@ private class SchedulePublishTest {
       placeOver(mainDraft, 'A:' + ids.get('Soccer'), 'Gym games');
       Id mainSecond = publishNow(mainDraft).published.id;
       Test.stopTest();
-      Map<Id, Schedule__c> current = new Map<Id, Schedule__c>();
-      for (Schedule__c published : publishedSchedules()) {
-        if (published.PublishKey__c != null) {
-          current.put(published.Id, published);
-        }
-      }
+      Map<Id, Schedule__c> current = new Map<Id, Schedule__c>(
+        [
+          SELECT
+            Id,
+            Status__c,
+            Week__c,
+            PublishedAt__c,
+            PublishedBy__c,
+            PublishKey__c
+          FROM Schedule__c
+          WHERE PublishKey__c != NULL
+          WITH SYSTEM_MODE
+        ]
+      );
       Assert.areEqual(
         new Set<Id>{ mainSecond, teensFirst },
         current.keySet(),
@@ -825,14 +833,14 @@ private class SchedulePublishTest {
       Assert.areEqual(teensBefore.PublishedAt__c, teensAfter.PublishedAt__c);
       Assert.areEqual(teensBefore.PublishedBy__c, teensAfter.PublishedBy__c);
       Assert.isTrue(teensBefore.PublishKey__c.equals(teensAfter.PublishKey__c));
-      Assert.areEqual(teensSlotBefore, mondayMorning(teensFirst, teenGroup));
-      Assert.areEqual('A:' + ids.get('Soccer'), teensSlotBefore);
+      Assert.areEqual(
+        teensDaysBefore,
+        JSON.serialize(ScheduleDays.read(teensFirst)),
+        'Main publishing again left Teens\' published cells alone'
+      );
+      Assert.isTrue(
+        teensDaysBefore.contains(String.valueOf(ids.get('Soccer')))
+      );
     }
-  }
-
-  /** What a group's first block holds on Monday in a schedule. */
-  private static String mondayMorning(Id scheduleId, Id groupId) {
-    ScheduleGrid grid = ScheduleDays.read(scheduleId)[0].grid;
-    return SlotIds.ofRow(grid, SlotIds.indexOf(grid.groupIds(), groupId))[0];
   }
 }
