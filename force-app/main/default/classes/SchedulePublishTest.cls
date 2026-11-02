@@ -755,4 +755,92 @@ private class SchedulePublishTest {
       Assert.isNotNull(current.PublishKey__c);
     }
   }
+
+  // PROG-6.1
+  @IsTest
+  static void eachProgramsWeekPublishesOnItsOwn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id mainDraft = startWeek(ids);
+      placeOver(mainDraft, '', 'Soccer');
+      Program__c teens = ShoreshTestData.program(ids.get('Season'), 'Teens');
+      Id morning = ShoreshTestData.timeBlock(teens.Id, 'Morning', 9).Id;
+      Id teenGroup = ShoreshTestData.groupIn(
+          ShoreshTestData.division(teens.Id, 'Teens').Id,
+          'Teen A'
+        )
+        .Id;
+      Id teensDraft = ManualBuildController.startBlankWeek(
+          teens.Id,
+          ids.get('Week 1')
+        )
+        .schedule.schedule.id;
+      SlotRunsTestData.useBlocks(new List<Id>{ morning });
+      SlotEdits.Result placed = ManualBuildController.saveSlots(
+        teensDraft,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(MONDAY, teenGroup, morning),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Soccer') }
+          )
+        }
+      );
+      Assert.isTrue(placed.conflicts.isEmpty(), String.valueOf(placed));
+      Test.startTest();
+      Id mainFirst = publishNow(mainDraft).published.id;
+      Id teensFirst = publishNow(teensDraft).published.id;
+      Schedule__c teensBefore = [
+        SELECT PublishedAt__c, PublishedBy__c, PublishKey__c
+        FROM Schedule__c
+        WHERE Id = :teensFirst
+        WITH SYSTEM_MODE
+      ];
+      String teensDaysBefore = JSON.serialize(ScheduleDays.read(teensFirst));
+      SlotRunsTestData.useBlocks(
+        new List<Id>{
+          ids.get('Period 1'),
+          ids.get('Period 2'),
+          ids.get('Lunch')
+        }
+      );
+      placeOver(mainDraft, 'A:' + ids.get('Soccer'), 'Gym games');
+      Id mainSecond = publishNow(mainDraft).published.id;
+      Test.stopTest();
+      Map<Id, Schedule__c> current = new Map<Id, Schedule__c>(
+        [
+          SELECT
+            Id,
+            Status__c,
+            Week__c,
+            PublishedAt__c,
+            PublishedBy__c,
+            PublishKey__c
+          FROM Schedule__c
+          WHERE PublishKey__c != NULL
+          WITH SYSTEM_MODE
+        ]
+      );
+      Assert.areEqual(
+        new Set<Id>{ mainSecond, teensFirst },
+        current.keySet(),
+        'one published week per program; Main publishing again left Teens\' alone'
+      );
+      Assert.areNotEqual(mainFirst, mainSecond);
+      Assert.areEqual('Published', current.get(teensFirst).Status__c);
+      Assert.areEqual(ids.get('Week 1'), current.get(teensFirst).Week__c);
+      Schedule__c teensAfter = current.get(teensFirst);
+      Assert.areEqual(teensBefore.PublishedAt__c, teensAfter.PublishedAt__c);
+      Assert.areEqual(teensBefore.PublishedBy__c, teensAfter.PublishedBy__c);
+      Assert.isTrue(teensBefore.PublishKey__c.equals(teensAfter.PublishKey__c));
+      Assert.areEqual(
+        teensDaysBefore,
+        JSON.serialize(ScheduleDays.read(teensFirst)),
+        'Main publishing again left Teens\' published cells alone'
+      );
+      Assert.isTrue(
+        teensDaysBefore.contains(String.valueOf(ids.get('Soccer')))
+      );
+    }
+  }
 }

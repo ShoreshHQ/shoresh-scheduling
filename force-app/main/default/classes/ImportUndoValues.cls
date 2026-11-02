@@ -7,7 +7,10 @@ public with sharing class ImportUndoValues {
       return Decimal.valueOf(String.valueOf(plainNow)) ==
         Decimal.valueOf(String.valueOf(written));
     }
-    return String.valueOf(plainNow) == String.valueOf(written);
+    // Exactly, capitals too: Apex == on text ignores them, and a capitals-only edit is an edit.
+    String a = String.valueOf(plainNow);
+    String b = String.valueOf(written);
+    return a == null ? b == null : a.equals(b);
   }
 
   private static Boolean isNumber(Object value) {

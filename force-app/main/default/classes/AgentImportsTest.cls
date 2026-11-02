@@ -265,4 +265,25 @@ private class AgentImportsTest {
       Assert.isTrue(((String) after[1]).startsWith('Nothing imported'));
     }
   }
+
+  // API-1.82: an Id read with other capitals is another Id, so Undo is refused as not the one read.
+  @IsTest
+  static void undoRefusesAnIdReadWithOtherCapitals() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id seasonId = camp();
+      Id last = ImportController.saveList(activities(seasonId, 'Kayaking'))
+        .importId;
+      String other = String.valueOf(last).left(15).swapCase();
+      Assert.isFalse(String.valueOf(last).left(15).equals(other));
+      Test.startTest();
+      List<Object> answer = ask(
+        new AgentUndoImport(),
+        'POST',
+        new Map<String, Object>{ 'season' => SEASON, 'seen' => other }
+      );
+      Test.stopTest();
+      Assert.areEqual(409, answer[0], String.valueOf(answer[1]));
+      Assert.areEqual(1, named('Kayaking'), 'nothing was undone');
+    }
+  }
 }
