@@ -6,28 +6,17 @@
  * and name for things not set up yet), or '^' and the item carrying on into it.
  */
 
-export const OPEN = "";
-const CARRIES_ON = "^";
-const SET_UP = new Set(["A", "F", "R"]);
-const SET_UP_LATER = new Set(["S", "D", "E"]);
+import {
+  CARRIES_ON,
+  OPEN,
+  identity,
+  isSetTime,
+  owner,
+  startsActivity
+} from "c/shoreshEngine";
 
-export function identity(item) {
-  // A special event or day (ADR 0014 slice 4) or an elective set (ADR 0018 slice E5) with its
-  // record is that record; one noted from a file is its name.
-  const byRecord =
-    SET_UP.has(item.kind) || (SET_UP_LATER.has(item.kind) && Boolean(item.id));
-  return `${item.kind}:${byRecord ? item.id : item.name}`;
-}
-
-/** The item a slot belongs to, whether it starts there or carries on into it. */
-export function owner(slot) {
-  return slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
-}
-
-export function isSetTime(slot) {
-  const item = owner(slot);
-  return item.startsWith("F:") || item.startsWith("R:");
-}
+// What a slot holds is read by the engine's rules (c/shoreshEngine grid.js), shared with Apex SlotIds.
+export { OPEN, identity, isSetTime, owner };
 
 /**
  * Whether a placement can be moved, stretched, or taken out: an activity; on a special day's own
@@ -35,7 +24,7 @@ export function isSetTime(slot) {
  * cell of that day as on the desktop (ADR 0014 choice 15).
  */
 export function isMovable(slot, ownPlan = false) {
-  return slot.startsWith("A:") || (ownPlan && isSetTime(slot));
+  return startsActivity(slot) || (ownPlan && isSetTime(slot));
 }
 
 /**

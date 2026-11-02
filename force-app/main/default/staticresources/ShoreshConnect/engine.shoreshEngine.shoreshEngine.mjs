@@ -59,6 +59,16 @@ export {
   readLocations,
   readProgram
 } from "./engine.shoreshEngine.checkInputs.mjs";
+export {
+  CARRIES_ON,
+  KIND,
+  OPEN,
+  identity,
+  isCarryOn,
+  isSetTime,
+  owner,
+  startsActivity
+} from "./engine.shoreshEngine.grid.mjs";
 export { measureWeek } from "./engine.shoreshEngine.measure.mjs";
 export { NOW } from "./engine.shoreshEngine.progress.mjs";
 export {

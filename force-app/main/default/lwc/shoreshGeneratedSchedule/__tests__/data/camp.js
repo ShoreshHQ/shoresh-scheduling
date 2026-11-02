@@ -125,3 +125,12 @@ export const BIG = {
     priority: i % 2 ? "Low" : "High"
   }))
 };
+
+/**
+ * The server's answer to a save, keeping the engine's notes sent, as GeneratedSaves does with
+ * notes of the right size and shape (GEN-10.11); an answer naming engineNotes keeps those.
+ */
+export const keeping =
+  (answer) =>
+  ({ request }) =>
+    Promise.resolve({ engineNotes: request.engineNotes, ...answer });
