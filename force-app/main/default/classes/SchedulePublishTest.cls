@@ -790,6 +790,13 @@ private class SchedulePublishTest {
       Test.startTest();
       Id mainFirst = publishNow(mainDraft).published.id;
       Id teensFirst = publishNow(teensDraft).published.id;
+      Schedule__c teensBefore = [
+        SELECT PublishedAt__c, PublishedBy__c, PublishKey__c
+        FROM Schedule__c
+        WHERE Id = :teensFirst
+        WITH SYSTEM_MODE
+      ];
+      String teensSlotBefore = mondayMorning(teensFirst, teenGroup);
       SlotRunsTestData.useBlocks(
         new List<Id>{
           ids.get('Period 1'),
@@ -814,6 +821,18 @@ private class SchedulePublishTest {
       Assert.areNotEqual(mainFirst, mainSecond);
       Assert.areEqual('Published', current.get(teensFirst).Status__c);
       Assert.areEqual(ids.get('Week 1'), current.get(teensFirst).Week__c);
+      Schedule__c teensAfter = current.get(teensFirst);
+      Assert.areEqual(teensBefore.PublishedAt__c, teensAfter.PublishedAt__c);
+      Assert.areEqual(teensBefore.PublishedBy__c, teensAfter.PublishedBy__c);
+      Assert.isTrue(teensBefore.PublishKey__c.equals(teensAfter.PublishKey__c));
+      Assert.areEqual(teensSlotBefore, mondayMorning(teensFirst, teenGroup));
+      Assert.areEqual('A:' + ids.get('Soccer'), teensSlotBefore);
     }
+  }
+
+  /** What a group's first block holds on Monday in a schedule. */
+  private static String mondayMorning(Id scheduleId, Id groupId) {
+    ScheduleGrid grid = ScheduleDays.read(scheduleId)[0].grid;
+    return SlotIds.ofRow(grid, SlotIds.indexOf(grid.groupIds(), groupId))[0];
   }
 }
