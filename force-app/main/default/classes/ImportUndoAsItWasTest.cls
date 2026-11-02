@@ -6,6 +6,10 @@
  */
 @IsTest
 private class ImportUndoAsItWasTest {
+  // What the Undo job returned, and the queries it took.
+  private static ImportUndo.Result undone;
+  private static Integer undoQueries;
+
   @TestSetup
   static void setup() {
     User scheduler = ShoreshTestData.scheduler();
@@ -67,7 +71,7 @@ private class ImportUndoAsItWasTest {
 
   /**
    * Copy season and Undo are each a request of their own. Undo runs as a job, which a test runs
-   * at Test.stopTest() with limits of its own; what it returns and the queries it took are kept.
+   * at Test.stopTest() with limits of its own.
    */
   private class UndoJob implements Queueable {
     private final Id importId;
@@ -79,8 +83,6 @@ private class ImportUndoAsItWasTest {
       undoQueries = Limits.getQueries();
     }
   }
-  private static ImportUndo.Result undone;
-  private static Integer undoQueries;
 
   /** Copies the kept season as 'Next summer' and returns the copy's Id. */
   private static Id copySeason(Map<String, Id> kept) {

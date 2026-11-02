@@ -37,6 +37,12 @@ public with sharing class ImportUndoDeletes {
     'Season'
   };
   // What a week off or a who row belongs to: decided before those rows go.
+  // Rows kept along with an item this Undo keeps.
+  private static final Set<String> KEPT_WITH_ITEMS = new Set<String>{
+    'Coverage',
+    'WeekException'
+  };
+
   private static final Set<String> ITEMS = new Set<String>{
     // Decided before its day goes: a special day kept keeps its day.
     'SpecialDay',
@@ -205,12 +211,8 @@ public with sharing class ImportUndoDeletes {
 
   /** Coverage rows and weeks off of an item this Undo keeps: kept with it, unnamed. */
   private List<SObject> withoutKeptItems(String term, List<SObject> rows) {
-    if (
-      (term != 'Coverage' &&
-      term != 'WeekException') ||
-      keptIds.isEmpty() ||
-      rows.isEmpty()
-    ) {
+    // Nothing kept, nothing to keep with it: no query.
+    if (!KEPT_WITH_ITEMS.contains(term) || keptIds.isEmpty()) {
       return rows;
     }
     Set<Id> ids = new Map<Id, SObject>(rows).keySet();
@@ -308,7 +310,7 @@ public with sharing class ImportUndoDeletes {
   /** Records with something inside them the import did not make (one query, with sub-queries). */
   private Set<Id> holdingOthers(String term, Set<Id> ids) {
     Set<Id> result = new Set<Id>();
-    if (!INSIDE.containsKey(term) || ids.isEmpty()) {
+    if (!INSIDE.containsKey(term)) {
       return result;
     }
     Schema.SObjectType type = ImportFields.ofTerm(term);
