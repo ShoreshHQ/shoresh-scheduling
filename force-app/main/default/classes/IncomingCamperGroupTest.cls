@@ -129,7 +129,7 @@ private class IncomingCamperGroupTest {
       );
       // API-6.4: a week of the season with no choices yet says what to send first.
       Assert.areEqual(
-        'problem: There are no elective choices in "Week 6" yet, and Shoresh keeps a camper\'s group with their choices. Send their elective choices first, then this again.',
+        'problem: There are no elective choices in "Week 6" yet, and Shoresh keeps a camper\'s group with their choices. A person brings choices in once on the Elective seats screen (Bring in choices); then send their elective choices, then this again.',
         IncomingTestData.said(send('Group B', 'Week 6'), 1)
       );
     }

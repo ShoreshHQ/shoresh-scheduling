@@ -26,23 +26,26 @@ function refused(text) {
   return { ok: false, status: 400, text };
 }
 
-// A time as the web address gives it ("09:00:00.000Z").
+// A time as the web address gives it ("09:00:00.000Z"), and the fields that hold one (a time
+// block's start and end; namespaced or not).
 const WEB_TIME = /^(\d\d):(\d\d):(\d\d)\.(\d{3})Z$/;
+const TIME_FIELD = /(^|__)(Start|End)Time__c$/;
 
 /**
  * What the screen reads before a file, as the screen gets it (API-1.99): Salesforce gives a
  * screen a time as milliseconds after midnight, and the web address as "09:00:00.000Z", so each
- * such time is made the screen's number. The setup's time blocks are then matched by their times,
- * as on the screen, not added again.
+ * time field's is made the screen's number. The setup's time blocks are then matched by their
+ * times, as on the screen, not added again, and a file made from them shows their times.
  */
-function asTheScreenReads(value) {
-  if (Array.isArray(value)) return value.map(asTheScreenReads);
+function asTheScreenReads(value, key = "") {
+  if (Array.isArray(value)) return value.map((v) => asTheScreenReads(v));
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, v]) => [key, asTheScreenReads(v)])
+      Object.entries(value).map(([k, v]) => [k, asTheScreenReads(v, k)])
     );
   }
-  const time = typeof value === "string" && WEB_TIME.exec(value);
+  const time =
+    TIME_FIELD.test(key) && typeof value === "string" && WEB_TIME.exec(value);
   if (!time) return value;
   const [hours, minutes, seconds, ms] = time.slice(1).map(Number);
   return ((hours * 60 + minutes) * 60 + seconds) * 1000 + ms;

@@ -84,7 +84,9 @@ public with sharing class IncomingCamperGroupPlan {
                 record.week.left(80) +
                 '" yet, and Shoresh keeps a camper\'s ' +
                 groupWord +
-                ' with their choices. Send their elective choices first, then this again.'
+                ' with their choices. A person brings choices in once on the ' +
+                batch.labels.singular('Elective') +
+                ' seats screen (Bring in choices); then send their elective choices, then this again.'
               : 'There are no electives in "' +
                 record.week.left(80) +
                 '" in this season.'
