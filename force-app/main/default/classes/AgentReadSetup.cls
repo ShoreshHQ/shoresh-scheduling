@@ -65,7 +65,7 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
   }
 
   /** The web address's fields; one Shoresh doesn't know is refused, as a body's is. */
-  private static Map<String, Object> asked() {
+  public static Map<String, Object> asked() {
     Map<String, Object> result = new Map<String, Object>();
     for (String key : RestContext.request.params.keySet()) {
       if (!FIELDS.contains(key)) {
