@@ -33,18 +33,13 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentSpecials.Found found = AgentSpecials.find(body);
-    String seen = AgentFields.text(body, 'seen');
-    if (seen != AgentSpecials.NEVER_SAVED && !seen.isNumeric()) {
-      throw new ShoreshException(
-        'Nothing was imported. Send seen as read_special_schedule said it.'
-      );
-    }
+    Integer seen = AgentSpecials.seenOf(body, 'imported');
     SpecialScheduleImport.Imported imported = importedOf(body);
     SpecialScheduleImport.Outcome outcome;
     try {
       outcome = SpecialScheduleController.importPlan(
         found.owner.itemId,
-        seen == AgentSpecials.NEVER_SAVED ? null : Integer.valueOf(seen),
+        seen,
         imported
       );
     } catch (Exception e) {

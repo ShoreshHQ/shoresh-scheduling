@@ -180,6 +180,67 @@ private class AgentSpecialScheduleTest {
     }
   }
 
+  /** The page's own Add station, at the revision it opened the plan at. */
+  private static Boolean screenAddsStation(Id eventId, Integer opened) {
+    SpecialScheduleFrame.Change change = new SpecialScheduleFrame.Change();
+    change.action = 'addStation';
+    change.name = 'Purple';
+    try {
+      SpecialScheduleController.changeFrame(eventId, opened, change);
+      return true;
+    } catch (Exception e) {
+      Assert.isTrue(
+        ScreenErrors.words(e).startsWith('Someone else changed'),
+        ScreenErrors.words(e)
+      );
+      return false;
+    }
+  }
+
+  // API-1.90, API-1.78: AI over screen, then screen over AI. The AI read the plan at 4; the
+  // person added a station, so the AI's change from 4 is refused. The AI read it again (5) and
+  // changed it; the page still open at 5 is refused in its own words. Nothing is overwritten.
+  @IsTest
+  static void aSpecialPlanIsChangedOnlyAtTheRevisionEachSideRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+      String season = seasonName(ids.get('Season'));
+      Map<String, Object> addGreen = new Map<String, Object>{
+        'action' => 'add_station',
+        'name' => 'Green'
+      };
+      Test.startTest();
+      Boolean screenFirst = screenAddsStation(eventId, 4);
+      addGreen.put('seen', '4');
+      List<Object> aiStale = ask(
+        new AgentSpecialFrame(),
+        'POST',
+        colorWar(season, addGreen)
+      );
+      addGreen.put('seen', '5');
+      List<Object> aiAgain = ask(
+        new AgentSpecialFrame(),
+        'POST',
+        colorWar(season, addGreen)
+      );
+      Boolean screenStale = screenAddsStation(eventId, 5);
+      Test.stopTest();
+      Assert.isTrue(screenFirst);
+      Assert.areEqual(409, aiStale[0], String.valueOf(aiStale[1]));
+      Assert.areEqual(200, aiAgain[0], String.valueOf(aiAgain[1]));
+      Assert.isFalse(screenStale, 'The page opened before the AI\'s change');
+      List<String> stations = new List<String>();
+      for (
+        ScheduleGrid.GroupRef station : SpecialPlans.read(eventId).grid.groups
+      ) {
+        stations.add(station.name);
+      }
+      Assert.isTrue(stations.contains('Purple'), String.valueOf(stations));
+      Assert.isTrue(stations.contains('Green'), String.valueOf(stations));
+    }
+  }
+
   // API-1.79
   @IsTest
   static void setItUpIsTheScreensKeptFirstAndUndone() {

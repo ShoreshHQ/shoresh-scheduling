@@ -124,6 +124,28 @@ private class SeenSavesTest {
     }
   }
 
+  // API-1.90: an import's, Clear electives' and Update to match's stamp is as seen only exactly.
+  @IsTest
+  static void aStampIsAsSeenOnlyExactly() {
+    Assert.isTrue(SeenSaves.stamp('a1b2', 'a1b2'));
+    Assert.isFalse(SeenSaves.stamp('a1b2', 'A1B2'), 'Compared exactly');
+    Assert.isFalse(SeenSaves.stamp('a1b2', null), 'No ticket is never as seen');
+    Assert.isFalse(SeenSaves.stamp(null, ''));
+  }
+
+  // API-1.90: a special plan's and an elective run's revision; a plan never saved is as seen
+  // ("none") only while it still hasn't been.
+  @IsTest
+  static void aRevisionIsAsSeenOnlyAtTheRevisionRead() {
+    Assert.isTrue(SeenSaves.revision(4, 4));
+    Assert.isFalse(SeenSaves.revision(5, 4));
+    Assert.isTrue(SeenSaves.revision(null, null));
+    Assert.isFalse(
+      SeenSaves.revision(1, null),
+      'Saved since it was read as never saved'
+    );
+  }
+
   // The details panel's save hands back what it saw; without it nothing is saved.
   @IsTest
   static void detailsWithoutWhatWasSeenAreRefused() {
