@@ -26,7 +26,8 @@ import {
   SMALL,
   WEEK,
   WEEK_2,
-  camp
+  camp,
+  keeping
 } from "./data/camp";
 
 jest.mock(
@@ -123,15 +124,6 @@ function savedAnswer(n = 1) {
     versionId: null
   };
 }
-
-/**
- * The server's answer to a save, keeping the engine's notes sent, as GeneratedSaves does with
- * notes of the right size and shape (GEN-10.11); an answer naming engineNotes keeps those.
- */
-const keeping =
-  (answer) =>
-  ({ request }) =>
-    Promise.resolve({ engineNotes: request.engineNotes, ...answer });
 
 async function render(inputs = camp(SMALL), setup = SETUP) {
   getInputs.mockResolvedValue(inputs);

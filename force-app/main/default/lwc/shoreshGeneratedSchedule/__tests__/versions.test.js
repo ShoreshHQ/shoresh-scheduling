@@ -24,7 +24,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, WEEK, camp } from "./data/camp";
+import { PROGRAM, SCHEDULE, WEEK, camp, keeping } from "./data/camp";
 import { nextTurn } from "../pieces";
 
 const apex = () => ({ default: jest.fn() });
@@ -825,13 +825,15 @@ describe("Versions on the Generated Schedule screen", () => {
     /** Start over saved: Period 1 emptied, a version kept first. */
     async function startOver(element) {
       const cleared = week();
-      saveWeekOnServer.mockResolvedValueOnce({
-        conflict: false,
-        scheduleId: SCHEDULE,
-        revision: STARTED_AT,
-        versionId: KEPT,
-        locks: []
-      });
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({
+          conflict: false,
+          scheduleId: SCHEDULE,
+          revision: STARTED_AT,
+          versionId: KEPT,
+          locks: []
+        })
+      );
       action(element, "StartOver").click();
       await until(() => !q(element, '[data-id="busy"]'));
       return cleared;
@@ -890,13 +892,15 @@ describe("Versions on the Generated Schedule screen", () => {
     it("the Undo line goes once the week is saved again", async () => {
       const element = await render(week());
       await startOver(element);
-      saveWeekOnServer.mockResolvedValueOnce({
-        conflict: false,
-        scheduleId: SCHEDULE,
-        revision: "2026-06-29:3",
-        versionId: null,
-        locks: []
-      });
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({
+          conflict: false,
+          scheduleId: SCHEDULE,
+          revision: "2026-06-29:3",
+          versionId: null,
+          locks: []
+        })
+      );
       action(element, "FillOpen").click();
       await until(() => !q(element, '[data-id="busy"]'));
       expect(startedLine(element)).toBeNull();
@@ -904,13 +908,15 @@ describe("Versions on the Generated Schedule screen", () => {
 
     it("no Undo when the server kept no version", async () => {
       const element = await render(week());
-      saveWeekOnServer.mockResolvedValueOnce({
-        conflict: false,
-        scheduleId: SCHEDULE,
-        revision: STARTED_AT,
-        versionId: null,
-        locks: []
-      });
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({
+          conflict: false,
+          scheduleId: SCHEDULE,
+          revision: STARTED_AT,
+          versionId: null,
+          locks: []
+        })
+      );
       action(element, "StartOver").click();
       await until(() => !q(element, '[data-id="busy"]'));
       expect(startedLine(element)).toBeNull();
@@ -920,13 +926,15 @@ describe("Versions on the Generated Schedule screen", () => {
   it("a build reads the list again (Rebuild keeps a version first)", async () => {
     const element = await render(week());
     getVersions.mockClear();
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2",
-      versionId: "a0S000000000024AAA",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2",
+        versionId: "a0S000000000024AAA",
+        locks: []
+      })
+    );
     action(element, "TryAnother").click();
     await until(() => getVersions.mock.calls.length > 0);
     expect(getVersions).toHaveBeenCalledTimes(1);

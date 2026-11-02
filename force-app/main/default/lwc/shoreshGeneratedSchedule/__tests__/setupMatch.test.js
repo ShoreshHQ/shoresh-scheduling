@@ -21,7 +21,7 @@ import updateToMatchSetup from "@salesforce/apex/SetupMatchController.updateToMa
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, WEEK, camp, dateAt } from "./data/camp";
+import { PROGRAM, SCHEDULE, WEEK, camp, keeping, dateAt } from "./data/camp";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -492,13 +492,15 @@ describe("Setup changed on the Generated Schedule screen", () => {
 
   it("Start over's save reads the setup changes again", async () => {
     const element = await render();
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2",
-      versionId: "a0S000000000031AAA",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2",
+        versionId: "a0S000000000031AAA",
+        locks: []
+      })
+    );
     getSetupChanges.mockResolvedValue(NOTHING);
     q(element, '[data-action="StartOver"]').click();
     await flush();

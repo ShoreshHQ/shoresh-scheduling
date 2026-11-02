@@ -22,7 +22,7 @@ import addOnGenerated from "@salesforce/apex/GeneratedScheduleController.addActi
 import addOnManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
+import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
 import { nextTurn } from "../pieces";
 
 const apex = () => ({ default: jest.fn() });
@@ -191,10 +191,12 @@ async function clearSwim(element) {
 
 /** Try another meets someone else's save: the conflict box with Reload shows. */
 async function conflictShown(element) {
-  saveWeekOnServer.mockResolvedValueOnce({
-    conflict: true,
-    message: "Someone else changed this schedule since you opened it."
-  });
+  saveWeekOnServer.mockImplementationOnce(
+    keeping({
+      conflict: true,
+      message: "Someone else changed this schedule since you opened it."
+    })
+  );
   action(element, "TryAnother").click();
   await until(() => q(element, '[data-id="conflict"]') !== null);
 }
@@ -297,13 +299,15 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
     await clearSwim(element);
     expect(saveSlots).toHaveBeenCalledTimes(1);
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:8|2026-06-30:2",
-      versionId: null,
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:8|2026-06-30:2",
+        versionId: null,
+        locks: []
+      })
+    );
     action(element, "Rebuild").click();
     await flush();
     q(element, '[data-id="confirm-go"]').click();
@@ -362,13 +366,15 @@ describe("hand editing on the Generated Schedule screen", () => {
       )
     );
     await flush();
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:4|2026-06-30:2",
-      versionId: null,
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:4|2026-06-30:2",
+        versionId: null,
+        locks: []
+      })
+    );
     action(element, "Rebuild").click();
     await flush();
     q(element, '[data-id="confirm-go"]').click();
@@ -638,13 +644,15 @@ describe("hand editing on the Generated Schedule screen", () => {
     // Fill the open cells: a build. Undo had a step; now it has none.
     await press(cellAt(element, "0-1"), "Delete");
     expect(q(element, '[data-id="undo"]').disabled).toBe(false);
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:9|2026-06-30:9",
-      versionId: null,
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:9|2026-06-30:9",
+        versionId: null,
+        locks: []
+      })
+    );
     action(element, "TryAnother").click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();

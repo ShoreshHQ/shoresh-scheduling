@@ -18,30 +18,30 @@ import {
   applyRun,
   editRun,
   identity,
-  isMovable,
   isSetTime,
   owner,
   placement
 } from "./slotEdits";
 import {
-  eventRuns,
   mergedWith,
   planGrid,
   replacedDays,
   rowsCovered,
   specialsOf
 } from "./specials";
-import { resizeEdit } from "./moves";
 import { cellKey as toolCellKey, replan, toolRuns } from "./tools";
 import {
+  canMove,
+  clearAllStep,
   copyStep,
-  firstLocked,
   lockedText,
   lockedWords,
   moveStep,
   nameOfSlot,
   pasteTool,
-  refusalWords,
+  placeOverStep,
+  placeStep,
+  resizeStep,
   serverRunOf,
   serverRunsOf,
   slotName,
@@ -70,16 +70,6 @@ import {
   reasonFor,
   readElectivePlaces
 } from "c/shoreshEngine";
-
-/**
- * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
- * happen in the real world. A fixed or recurring activity can be moved, covered or cleared by
- * hand, and anything can go where a group is away or not at camp then; the Why list reminds them
- * ("Update to match setup" reads the week again after such an edit: savedNotice). Bulk tools
- * (copy a day, paste, a rainy day) still leave those cells as they are.
- */
-const SET_TIME_BY_HAND = true;
-const NEVER_AWAY = () => false;
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -1235,17 +1225,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
       (a, b) => a.day - b.day || a.group - b.group
     );
-    const result = eventRuns(
-      weekDays,
-      rows,
-      `E:${setId}`,
-      {
-        isAway: NEVER_AWAY,
-        isLocked: (slot) => this.isLockedSlot(slot),
-        coversSetTime: SET_TIME_BY_HAND
-      },
-      true
-    );
+    const result = placeOverStep(this.editCtx, rows, `E:${setId}`, true);
     this.commitPlaced(result, rows, found.name, cell);
   }
 
@@ -1295,22 +1275,17 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
       (a, b) => a.day - b.day || a.group - b.group
     );
-    const result = eventRuns(weekDays, rows, `S:${eventId}`, {
-      isAway: NEVER_AWAY,
-      isLocked: (slot) => this.isLockedSlot(slot),
-      coversSetTime: SET_TIME_BY_HAND
-    });
+    const result = placeOverStep(this.editCtx, rows, `S:${eventId}`);
     this.commitPlaced(result, rows, found.name, cell);
   }
 
   /**
-   * An event's or elective set's runs (eventRuns) made as one Undo step, or why not, said. The
+   * An event's or elective set's runs (placeOverStep) made as one Undo step, or why not, said. The
    * cell keeps focus, or the cell it is now drawn as one with.
    */
   commitPlaced(result, rows, name, cell) {
     if (result.refused) {
-      // Only a Lock stops a hand edit (eventRuns with coversSetTime and NEVER_AWAY).
-      this.refuseLocked(result.at);
+      this.refuse(result.refused);
       return;
     }
     if (!result.runs.length) {
@@ -1345,29 +1320,20 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.change(cell.slot, cell.key, OPEN, 1);
       return;
     }
-    const weekDays = this.schedule.days;
-    const runs = [];
-    merged.forEach((c) => {
-      const run = editRun(
-        weekDays[c.slot.day],
-        c.slot.group,
-        c.slot.block,
-        OPEN,
-        1,
-        NEVER_AWAY,
-        () => false,
-        SET_TIME_BY_HAND
-      );
-      if (run) {
-        runs.push({ day: c.slot.day, group: c.slot.group, ...run });
-      }
-    });
-    if (!runs.length || this.runsLocked(runs)) {
+    const result = clearAllStep(
+      this.editCtx,
+      merged.map((c) => c.slot)
+    );
+    if (!result) {
       return;
     }
-    const rows = rowsCovered(weekDays, merged);
+    if (result.refused) {
+      this.refuse(result.refused);
+      return;
+    }
+    const rows = rowsCovered(this.schedule.days, merged);
     this.commit(
-      runs,
+      result.runs,
       `Cleared ${cell.text} · ${this.rangeName(rows)}`,
       cell.key
     );
@@ -1475,7 +1441,7 @@ export default class ShoreshWeekEditor extends LightningElement {
           : {}),
         readOnly: false,
         // Nothing from the checks on the grid (wiki engine care plan Q18): the Why list says it.
-        movable: isMovable(here, SET_TIME_BY_HAND)
+        movable: canMove(here)
       };
       if (cell.elective) {
         // "Chugim (4)": the set as setup has it now, and its confirmed, open offerings
@@ -1728,17 +1694,6 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   refuseLocked(slot) {
     this.refuse(lockedWords(this.editCtx, slot));
-  }
-
-  /** Whether runs (as edits make them: day, group, first, after) would change a locked cell. */
-  runsLocked(runs) {
-    const slot = firstLocked(this.editCtx, runs);
-    if (slot) {
-      // The locked cell itself, not where the edit starts.
-      this.refuseLocked(slot);
-      return true;
-    }
-    return false;
   }
 
   /** Said to the host: the cell keyboard focus reached (the grid's key, and where it is). */
@@ -1998,34 +1953,15 @@ export default class ShoreshWeekEditor extends LightningElement {
    * block; key: the grid cell to put focus back on; next: what the slot should hold.
    */
   change(slot, key, next, length) {
-    const day = this.dayOf(slot);
-    const run = editRun(
-      day,
-      slot.group,
-      slot.block,
-      next,
-      length,
-      NEVER_AWAY,
-      // A longer activity stops at a locked cell, as it stops at a filled one.
-      (block) => this.isLockedSlot({ ...slot, block }),
-      SET_TIME_BY_HAND
-    );
-    if (!run) {
+    const result = placeStep(this.editCtx, slot, next, length);
+    if (!result) {
       return;
     }
-    if (this.runsLocked([{ day: slot.day, group: slot.group, ...run }])) {
+    if (result.refused) {
+      this.refuse(result.refused);
       return;
     }
-    let label =
-      next === OPEN
-        ? `Cleared ${this.slotName(slot, run.first)}`
-        : `Placed ${this.nameOf(next, day)} · ${this.slotName(slot, run.first)}`;
-    const placed = run.after.filter((s) => s !== OPEN).length;
-    if (next !== OPEN && placed < (length || 1)) {
-      // Not enough room for its whole length: placed as far as it goes, and said so.
-      label += ` (${placed} of ${length})`;
-    }
-    this.commit([{ day: slot.day, group: slot.group, ...run }], label, key);
+    this.commit(result.runs, result.label, key);
   }
 
   /**
@@ -3761,38 +3697,15 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   resizeTo(slot, key, lastBlock) {
-    const day = this.dayOf(slot);
-    const at = placement(day, slot.group, slot.block);
-    const name = this.nameOf(at.slot, day);
-    if (lastBlock < at.first) {
-      this.say(`${name} can't end before it starts.`);
-      return;
-    }
-    const result = resizeEdit(
-      this.schedule.days,
-      slot,
-      lastBlock,
-      NEVER_AWAY,
-      SET_TIME_BY_HAND
-    );
+    const result = resizeStep(this.editCtx, slot, lastBlock);
     if (!result) {
       return;
     }
     if (result.refused) {
-      this.refuse(refusalWords(this.editCtx, result.refused, name, slot));
+      this.refuse(result.refused);
       return;
     }
-    if (this.runsLocked(result.runs)) {
-      return;
-    }
-    const length = lastBlock - at.first + 1;
-    const word =
-      length === 1 ? this.t.sIn("TimeBlock") : this.t.pIn("TimeBlock");
-    this.commit(
-      result.runs,
-      `${name} runs ${length} ${word} · ${this.slotName({ ...slot, block: at.first })}`,
-      key
-    );
+    this.commit(result.runs, result.label, key);
   }
 
   refuse(text) {

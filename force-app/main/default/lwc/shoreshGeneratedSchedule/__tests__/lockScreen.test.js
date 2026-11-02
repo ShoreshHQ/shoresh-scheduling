@@ -18,7 +18,7 @@ import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveW
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
+import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -219,18 +219,20 @@ describe("locks on the Generated Schedule screen", () => {
     expect(menuLabels(element)).toContain("Unlock Bunk 1 · Monday · Period 1");
 
     // The next build keeps the lock: the engine gets it, and the save names the new revision.
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:3|2026-06-30:2",
-      locks: [
-        {
-          dateValue: "2026-06-29",
-          groupId: after.groups[0].Id,
-          blockId: after.timeBlocks[1].Id
-        }
-      ]
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:3|2026-06-30:2",
+        locks: [
+          {
+            dateValue: "2026-06-29",
+            groupId: after.groups[0].Id,
+            blockId: after.timeBlocks[1].Id
+          }
+        ]
+      })
+    );
     q(element, '[data-action="TryAnother"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     const request = saveWeekOnServer.mock.calls[0][0].request;
@@ -280,12 +282,14 @@ describe("locks on the Generated Schedule screen", () => {
     );
     q(element, '[data-id="confirm-cancel"]').click();
     await flush();
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2|2026-06-30:2",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2|2026-06-30:2",
+        locks: []
+      })
+    );
     q(element, '[data-action="StartOver"]').click();
     await flush();
     expect(q(element, '[data-id="confirm"]')).toBeNull();
@@ -294,12 +298,14 @@ describe("locks on the Generated Schedule screen", () => {
 
   it("Start over: the server clears the locks, and none show after", async () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2|2026-06-30:2",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2|2026-06-30:2",
+        locks: []
+      })
+    );
     q(element, '[data-action="StartOver"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
@@ -310,21 +316,25 @@ describe("locks on the Generated Schedule screen", () => {
   it("lock a cell, Start over, then fill: the cleared lock no longer keeps the cell empty", async () => {
     // Monday, Bunk 1, Period 3 is Open and locked: a build would leave it empty.
     const element = await render(savedWeek([[",,1,", ",,,"]]));
-    saveWeekOnServer.mockResolvedValueOnce({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2|2026-06-30:2",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementationOnce(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2|2026-06-30:2",
+        locks: []
+      })
+    );
     q(element, '[data-action="StartOver"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
-    saveWeekOnServer.mockResolvedValueOnce({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:3|2026-06-30:3",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementationOnce(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:3|2026-06-30:3",
+        locks: []
+      })
+    );
     q(element, '[data-action="FillOpen"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 1);
     const sent = saveWeekOnServer.mock.calls[1][0].request;
@@ -388,12 +398,14 @@ describe("locks on the Generated Schedule screen", () => {
     const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
     inputs.days[0] = { ...inputs.days[0], locks: [",,1,", ",,,"] };
     const element = await render(inputs);
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2|2026-06-30:2",
-      locks: []
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2|2026-06-30:2",
+        locks: []
+      })
+    );
     q(element, '[data-action="StartOver"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
