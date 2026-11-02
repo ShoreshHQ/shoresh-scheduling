@@ -15,7 +15,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { refused } = require("./imports");
+const { refused, asTheScreenReads } = require("./imports");
 
 /** The views Print prints, as the Schedules screen names them. */
 const VIEWS = { daily: "day", group: "group", activity: "activity" };
@@ -198,7 +198,7 @@ async function makeFile(
     method: "GET"
   });
   if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
+  const body = asTheScreenReads(JSON.parse(read.body));
   const m = await load(namespaceOf(body));
   const t = m.buildTerms((body.setup && body.setup.labels) || []);
   let made;

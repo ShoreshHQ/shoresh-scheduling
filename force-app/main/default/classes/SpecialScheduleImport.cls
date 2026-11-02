@@ -4,8 +4,9 @@
  * (c/shoreshImportEngine) and sends one grid, its time blocks down and its columns across; this
  * saves it as the item's plan. For an event the columns become its stations; for a special day
  * each column is matched to a group of the camp by name, and a column that names none is left
- * out and said. Each name in a cell is the season's activity of that name, or a new one
- * (SpecialActivities). Only a schedule with nothing the director put there is filled: one that
+ * out and said. Each name in a cell is the season's fixed or recurring activity of that name
+ * (SPECIAL-2.2: Lunch in the file is the camp's Lunch, as a special day brings it in), else its
+ * activity of that name, or a new one (SpecialActivities). Only a schedule with nothing the director put there is filled: one that
  * has entries is refused, as on the desktop, so a file never writes over what the director typed.
  * What a special day started with (its time blocks and the fixed and recurring activities
  * brought in) is not an entry, as the desktop's seed is not (its ADR 2026-08-22-event-schedule-import
@@ -140,7 +141,10 @@ public with sharing class SpecialScheduleImport {
       : plan.grid.groups;
   }
 
-  /** Every name in the columns, each once, as the season's activity (made new if need be). */
+  /**
+   * Every name in the columns, each once: the season's fixed or recurring activity of that name
+   * (SPECIAL-2.2), else its activity (made new if need be).
+   */
   private static SpecialActivities.Named activitiesFor(
     SpecialSchedule.Owner owner,
     List<ImportedColumn> columns
@@ -155,9 +159,7 @@ public with sharing class SpecialScheduleImport {
         }
       }
     }
-    return names.isEmpty()
-      ? new SpecialActivities.Named()
-      : SpecialActivities.named(owner.seasonId, names);
+    return SpecialActivities.namedInFile(owner.seasonId, names);
   }
 
   /** A cell's name, tidied; null for nothing or a carry-on. */
@@ -179,9 +181,7 @@ public with sharing class SpecialScheduleImport {
     for (String cell : column.cells) {
       String name = nameIn(cell);
       if (name != null) {
-        row.add(
-          tokenFor(grid, found.byName.get(SpecialActivities.looseName(name)))
-        );
+        row.add(tokenFor(grid, found.itemFor(name)));
       } else if (cell != null && cell.trim() == ScheduleGrid.CARRIES_ON) {
         // Carries on only from something above it in the same column.
         row.add(
@@ -196,14 +196,14 @@ public with sharing class SpecialScheduleImport {
     return row;
   }
 
-  private static String tokenFor(ScheduleGrid grid, Activity__c activity) {
-    String key = String.valueOf(activity.Id);
+  private static String tokenFor(ScheduleGrid grid, ScheduleGrid.Item item) {
+    String key = String.valueOf(item.id);
     for (Integer i = 0; i < grid.items.size(); i++) {
       if (grid.items[i].id == key) {
         return String.valueOf(i + 1);
       }
     }
-    grid.items.add(new ScheduleGrid.Item('A', key, activity.Name));
+    grid.items.add(new ScheduleGrid.Item(item.kind, key, item.name));
     return String.valueOf(grid.items.size());
   }
 

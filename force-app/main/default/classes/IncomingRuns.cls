@@ -8,6 +8,9 @@ public with sharing class IncomingRuns {
   private List<ElectiveRun__c> runs;
   // The season's groups by folded name; a name two groups share is left out (not guessed).
   private Map<String, Id> groups = new Map<String, Id>();
+  // The season's elective set and week names, folded; read once, only to say a refusal.
+  private Set<String> setNames;
+  private Set<String> weekNames;
 
   private IncomingRuns(List<ElectiveRun__c> runs) {
     this.runs = runs;
@@ -121,6 +124,74 @@ public with sharing class IncomingRuns {
       result.put(row.ElectiveRun__c + '|' + row.Camper__c, row);
     }
     return result;
+  }
+
+  /**
+   * API-6.4: whether the season has a week of this name (and an elective set of that name, when
+   * one is given), though no run: nothing was brought in there yet.
+   */
+  public Boolean notStarted(Id seasonId, String electiveSet, String week) {
+    if (String.isBlank(week)) {
+      return false;
+    }
+    if (weekNames == null) {
+      weekNames = new Set<String>();
+      for (Week__c item : [
+        SELECT Name
+        FROM Week__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]) {
+        weekNames.add(IncomingBatch.fold(item.Name));
+      }
+    }
+    if (!weekNames.contains(IncomingBatch.fold(week))) {
+      return false;
+    }
+    if (electiveSet == null) {
+      return true;
+    }
+    // Read only when a set is named: a key that sends bunks reads no sets.
+    if (setNames == null) {
+      setNames = new Set<String>();
+      for (ElectiveSet__c item : [
+        SELECT Name
+        FROM ElectiveSet__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]) {
+        setNames.add(IncomingBatch.fold(item.Name));
+      }
+    }
+    return setNames.contains(IncomingBatch.fold(electiveSet));
+  }
+
+  /**
+   * Why choices sent to this elective set and week can't be kept: none of that name, or (API-6.4)
+   * the season has both but nothing was brought in there yet, so the step a person takes first
+   * (the first run is the Elective seats screen's own Bring in choices).
+   */
+  public String noRun(IncomingBatch batch, String electiveSet, String week) {
+    String setName = electiveSet.left(80);
+    String weekName = week.left(80);
+    if (!notStarted(batch.season.Id, electiveSet, week)) {
+      return 'There is no elective "' +
+        setName +
+        '" in "' +
+        weekName +
+        '" in this season.';
+    }
+    return 'No choices brought in for ' +
+      setName +
+      ' in ' +
+      weekName +
+      ' yet, so Shoresh has nowhere to keep these. A person brings them in once on the ' +
+      batch.labels.singular('Elective') +
+      ' seats screen (choose ' +
+      setName +
+      ' and ' +
+      weekName +
+      ', then Bring in choices); after that, send these again.';
   }
 
   private static Boolean same(String saved, String sent) {

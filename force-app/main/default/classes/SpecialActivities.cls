@@ -14,6 +14,73 @@ public with sharing class SpecialActivities {
   public class Named {
     public Map<String, Activity__c> byName = new Map<String, Activity__c>();
     public List<String> added = new List<String>();
+    /** The season's fixed and recurring activities by loose name, where a file names one. */
+    public Map<String, ScheduleGrid.Item> setTimes = new Map<String, ScheduleGrid.Item>();
+
+    /** The item a grid holds a name by: its fixed or recurring activity, else its activity. */
+    public ScheduleGrid.Item itemFor(String name) {
+      String key = looseName(name);
+      if (setTimes.containsKey(key)) {
+        return setTimes.get(key);
+      }
+      Activity__c activity = byName.get(key);
+      return new ScheduleGrid.Item('A', activity.Id, activity.Name);
+    }
+  }
+
+  /**
+   * SPECIAL-2.2: the names in an imported file, each the season's fixed or recurring activity of
+   * that name, else its activity (made new if need be, as named does).
+   */
+  public static Named namedInFile(Id seasonId, List<String> names) {
+    Map<String, ScheduleGrid.Item> setTimes = setTimeItems(seasonId);
+    List<String> rest = new List<String>();
+    for (String name : names) {
+      if (!setTimes.containsKey(looseName(name))) {
+        rest.add(name);
+      }
+    }
+    Named result = rest.isEmpty() ? new Named() : named(seasonId, rest);
+    result.setTimes = setTimes;
+    return result;
+  }
+
+  /**
+   * SPECIAL-2.2: the season's fixed and recurring activities by loose name, each as the item a
+   * special day's grid holds it by (as SpecialDayStart brings one in), fixed first, then by
+   * program and order; the first of a name wins, so the same setup gives the same item.
+   */
+  public static Map<String, ScheduleGrid.Item> setTimeItems(Id seasonId) {
+    Map<String, ScheduleGrid.Item> result = new Map<String, ScheduleGrid.Item>();
+    for (FixedActivity__c fixed : [
+      SELECT Id, Name
+      FROM FixedActivity__c
+      WHERE Program__r.Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY Program__r.Name, SortOrder__c NULLS LAST, Name, Id
+    ]) {
+      putOnce(result, new ScheduleGrid.Item('F', fixed.Id, fixed.Name));
+    }
+    for (RecurringActivity__c recurring : [
+      SELECT Id, Name
+      FROM RecurringActivity__c
+      WHERE Program__r.Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY Program__r.Name, SortOrder__c NULLS LAST, Name, Id
+    ]) {
+      putOnce(result, new ScheduleGrid.Item('R', recurring.Id, recurring.Name));
+    }
+    return result;
+  }
+
+  private static void putOnce(
+    Map<String, ScheduleGrid.Item> items,
+    ScheduleGrid.Item item
+  ) {
+    String key = looseName(item.name);
+    if (!items.containsKey(key)) {
+      items.put(key, item);
+    }
   }
 
   public static Named named(Id seasonId, List<String> names) {

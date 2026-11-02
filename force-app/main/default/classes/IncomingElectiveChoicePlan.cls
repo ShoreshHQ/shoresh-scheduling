@@ -83,11 +83,7 @@ public with sharing class IncomingElectiveChoicePlan {
       return aboutCamper;
     }
     if (run == null) {
-      return 'There is no elective "' +
-        record.elective.left(80) +
-        '" in "' +
-        record.week.left(80) +
-        '" in this season.';
+      return runs.noRun(batch, record.elective, record.week);
     }
     if (run.Status__c == ChoicesImport.FINAL_STATUS) {
       return 'Seats for ' +

@@ -298,8 +298,8 @@ describe("the screens' files, made on this computer", () => {
     );
   });
 
-  // API-1.89
-  it("aSetupFileIsTheScreensListOrWorksheet: Download this list and Download worksheet, as the screens make them", async () => {
+  // API-1.89, API-1.99
+  it("aSetupFileIsTheScreensListOrWorksheet: Download this list and Download worksheet, as the screens make them, from times as the web address gives them", async () => {
     const setup = camp();
     const st = terms.buildTerms(setup.labels);
     const worksheet = await make("download_setup", {}, { setup });
@@ -319,6 +319,27 @@ describe("the screens' files, made on this computer", () => {
       asWritten([
         { name: screenName, rows: lists.listRows("groups", setup, st) }
       ])
+    );
+    // API-1.99: times as the web address gives them ("09:00:00.000Z") make the same file.
+    const web = (value) =>
+      Array.isArray(value)
+        ? value.map(web)
+        : value && typeof value === "object"
+          ? Object.fromEntries(
+              Object.entries(value).map(([key, v]) => [
+                key,
+                /^(Start|End)Time__c$/.test(key) && typeof v === "number"
+                  ? `${new Date(v).toISOString().slice(11, 23)}Z`
+                  : web(v)
+              ])
+            )
+          : value;
+    expect(JSON.stringify(web(setup))).toMatch(
+      /"StartTime__c":"\d\d:\d\d:00\.000Z"/
+    );
+    const fromWeb = await make("download_setup", {}, { setup: web(setup) });
+    expect(sheetsIn(path.join(fromWeb.folder, fromWeb.saved[0]))).toEqual(
+      asWritten(lists.campWorkbookSheets(setup, st))
     );
     const unknown = await make("download_setup", { list: "bunks" }, { setup });
     expect(unknown.done.ok).toBe(false);
