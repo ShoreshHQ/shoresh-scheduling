@@ -54,7 +54,7 @@ example, test.
    Test: "every group, same time block, every day, nowhere else"; "rule 1: fixed at two times a
    day"; "rule 1: a bunk on a trip / with no cells / off on Wednesday does not break a fixed
    Carpool"; "rule 1: a group that never has the name in its slot is not fixed"; "rule 1: a cell
-   spelled otherwise, still asked, does not break a fixed Lunch".
+   spelled otherwise does not break a fixed Lunch".
 
 2. **One name, one kind: a group has it at three or more times → activity everywhere.**
    Clue: in one week some group has the name in three or more different slots. That is placed

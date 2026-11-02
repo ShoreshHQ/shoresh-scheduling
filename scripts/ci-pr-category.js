@@ -5,6 +5,7 @@
  *             and never waits in line for the test org.
  * - `screen`: only screens (LWC bundles) or static resources changed. No Apex test can see
  *             those, so the check deploys to prove the source deploys, and runs no Apex tests.
+ *             Except the screens in MIRRORED_SCREENS, whose rules Apex repeats: those are `full`.
  * - `full`:   anything else (Apex, objects, fields, permission sets, CI, scripts, project
  *             config, or any path not listed below): deploy and every Apex test, as on main.
  * When in doubt it says `full`: an unknown path, an empty file list, or a failed `git diff`.
@@ -33,6 +34,19 @@ const SCREEN_ONLY = [
   /^force-app\/main\/default\/staticresources\//
 ];
 
+// Screens whose rules the Agent* Apex classes repeat word for word, promising to act as the screen
+// does: a change to one may need the Apex (and its tests) to change too, so it runs everything.
+//   shoreshWeekEditor   AgentCell's locked-cell refusal (refuseLocked)
+//   shoreshCampSetup,   AgentSetupNewRow's new row (the tables' defaults)
+//   shoreshProgram
+//   shoreshErrors       AgentVersions.failed (failed())
+const MIRRORED_SCREENS = [
+  "shoreshWeekEditor",
+  "shoreshCampSetup",
+  "shoreshProgram",
+  "shoreshErrors"
+].map((name) => new RegExp(`^force-app/main/default/lwc/${name}/`));
+
 function categorize(files) {
   if (files.length === 0) {
     return {
@@ -42,8 +56,9 @@ function categorize(files) {
   }
   const other = files.filter(
     (f) =>
-      !NO_ORG_EFFECT.some((r) => r.test(f)) &&
-      !SCREEN_ONLY.some((r) => r.test(f))
+      MIRRORED_SCREENS.some((r) => r.test(f)) ||
+      (!NO_ORG_EFFECT.some((r) => r.test(f)) &&
+        !SCREEN_ONLY.some((r) => r.test(f)))
   );
   if (other.length > 0) {
     const shown =
