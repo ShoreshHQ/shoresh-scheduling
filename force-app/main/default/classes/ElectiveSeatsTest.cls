@@ -667,9 +667,48 @@ private class ElectiveSeatsTest {
       view = camp.lock(view.revision, 2, false);
       Assignment__c seat = camp.mondaySeat(2);
       Assert.isFalse(seat.Locked__c, 'Unlocked');
-      Assert.isTrue(seat.ByHand__c, 'Still the move made by hand');
+      Assert.isFalse(seat.ByHand__c, 'Unlocked, it is Assign\'s again');
       Assert.areEqual(camp.ids.get('o:Archery'), seat.Offering__c);
       Test.stopTest();
+    }
+  }
+
+  // ELECT-5.5
+  @IsTest
+  static void anUnlockedHandMoveIsPlacedAgainByAssignAgain() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(3);
+      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      view = camp.move(view.revision, 0, 'Archery');
+      view = camp.lock(view.revision, 0, false);
+      Test.startTest();
+      view = camp.assign(camp.everyoneInDrama(view.revision));
+      Test.stopTest();
+
+      Assignment__c seat = camp.mondaySeat(0);
+      Assert.areEqual(camp.ids.get('o:Drama'), seat.Offering__c);
+      Assert.isFalse(seat.Locked__c || seat.ByHand__c, 'Assign\'s seat now');
+    }
+  }
+
+  // ELECT-5.5
+  @IsTest
+  static void anUnlockedHandMoveIsNotCarriedIntoANewVersion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeatsCamp camp = new SeatsCamp(3);
+      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      view = camp.move(view.revision, 0, 'Archery');
+      view = camp.move(view.revision, 1, 'Archery');
+      view = camp.lock(view.revision, 0, false);
+      Test.startTest();
+      view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
+      ElectiveSeats.RunView copy = ElectiveSeatsController.startNewVersion(
+        camp.runId
+      );
+      Test.stopTest();
+
+      Assert.areEqual(1, copy.seats.size(), 'Only the move still locked');
+      Assert.areEqual(camp.campers[1], copy.seats[0].camperId);
     }
   }
 

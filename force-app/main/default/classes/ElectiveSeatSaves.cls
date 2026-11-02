@@ -95,7 +95,7 @@ public with sharing class ElectiveSeatSaves {
   ) {
     Map<String, Assignment__c> unlocked = new Map<String, Assignment__c>();
     for (Assignment__c seat : state.seats) {
-      if (seat.Locked__c != true) {
+      if (!ElectiveSeatChecks.kept(seat)) {
         unlocked.put(
           ElectiveSeatChecks.seatKey(
             seat.Camper__c,

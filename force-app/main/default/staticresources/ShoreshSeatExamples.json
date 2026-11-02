@@ -1,0 +1,12 @@
+{
+  "about": "Seat counts both the engine (c/shoreshElectiveEngine) and Assign's save check (ElectiveSeatTally) must give, one offering at one time (docs/protocol/elect.md ELECT-4.1, 4.4, 4.5). seats null is blank. Each camper wants the offering first; placed is how many Assign seats beside the locks.",
+  "cases": [
+    { "name": "room for everyone", "seats": 5, "noLimit": false, "locked": 0, "wanting": 3, "placed": 3 },
+    { "name": "full: the rest are left out", "seats": 2, "noLimit": false, "locked": 0, "wanting": 4, "placed": 2 },
+    { "name": "locks take seats first", "seats": 3, "noLimit": false, "locked": 2, "wanting": 4, "placed": 1 },
+    { "name": "locks alone may go over", "seats": 2, "noLimit": false, "locked": 3, "wanting": 2, "placed": 0 },
+    { "name": "no limit ticked", "seats": 2, "noLimit": true, "locked": 1, "wanting": 5, "placed": 5 },
+    { "name": "blank seats are no limit", "seats": null, "noLimit": false, "locked": 0, "wanting": 4, "placed": 4 },
+    { "name": "0 seats are no limit", "seats": 0, "noLimit": false, "locked": 1, "wanting": 4, "placed": 4 }
+  ]
+}

@@ -19,7 +19,7 @@ public with sharing class ElectiveSeatTally {
   public Map<String, Assignment__c> addLocks() {
     Map<String, Assignment__c> result = new Map<String, Assignment__c>();
     for (Assignment__c seat : state.seats) {
-      if (seat.Locked__c != true) {
+      if (!ElectiveSeatChecks.kept(seat)) {
         continue;
       }
       result.put(
@@ -63,12 +63,11 @@ public with sharing class ElectiveSeatTally {
       Offering__c offering = state.offeringsById.get(
         Id.valueOf(key.substringAfterLast('|'))
       );
-      if (noLimitUsed(offering)) {
-        continue;
-      }
-      Integer seats = offering.Seats__c.intValue();
-      Integer held = lockedCount.containsKey(key) ? lockedCount.get(key) : 0;
-      if (addedCount.get(key) > Math.max(0, seats - held)) {
+      Integer free = freeSeats(
+        offering,
+        lockedCount.containsKey(key) ? lockedCount.get(key) : 0
+      );
+      if (free != null && addedCount.get(key) > free) {
         throw new ShoreshException(
           '"' +
             offering.Activity__r.Name +
@@ -78,6 +77,18 @@ public with sharing class ElectiveSeatTally {
         );
       }
     }
+  }
+
+  /**
+   * The seats Assign may fill beside the locks, never below 0; null for no limit. The engine's
+   * remainingCapacity; both pass staticresources/ShoreshSeatExamples.json.
+   */
+  @TestVisible
+  private static Integer freeSeats(Offering__c offering, Integer locked) {
+    if (noLimitUsed(offering)) {
+      return null;
+    }
+    return Math.max(0, offering.Seats__c.intValue() - locked);
   }
 
   /** No seat limit, ticked, or seats blank or 0 (the engine's NO_SEATS_SET). */
