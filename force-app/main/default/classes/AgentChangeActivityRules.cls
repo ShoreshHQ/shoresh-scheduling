@@ -46,7 +46,7 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
       result = ActivitiesController.saveActivityDetails(
         rules,
         chosen,
-        AgentActivityRules.ticketNow(found.id, chosen != null)
+        AgentActivityRules.ticketNow(found.id, chosen)
       );
     } catch (Exception e) {
       throw new ShoreshException(

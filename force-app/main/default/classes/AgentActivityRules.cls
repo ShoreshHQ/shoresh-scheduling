@@ -42,9 +42,9 @@ public with sharing class AgentActivityRules {
     }
   }
 
-  /** What the activity holds now, as a save's ticket (SeenSaves); who only when it changes. */
-  public static SeenSaves.Ticket ticketNow(Id activityId, Boolean who) {
-    return new SeenSaves.Ticket(
+  /** What the activity holds now, as a save's ticket (SeenSaves); who only when chosen. */
+  public static SeenSaves.Ticket ticketNow(Id activityId, List<Id> chosen) {
+    return SeenSaves.ticket(
       [
         SELECT
           SameDivisionOnly__c,
@@ -55,7 +55,7 @@ public with sharing class AgentActivityRules {
         WHERE Id = :activityId
         WITH USER_MODE
       ],
-      who ? AgentActivityWho.idsNow(activityId) : null
+      chosen == null ? null : AgentActivityWho.idsNow(activityId)
     );
   }
 

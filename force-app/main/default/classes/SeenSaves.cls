@@ -16,14 +16,14 @@ public with sharing class SeenSaves {
     /** Who it covered (null when the person didn't change who). */
     @AuraEnabled
     public List<Id> seenWho { get; set; }
+  }
 
-    public Ticket() {
-    }
-
-    public Ticket(SObject seen, List<Id> seenWho) {
-      this.seen = seen;
-      this.seenWho = seenWho;
-    }
+  /** A ticket from what was seen (the screens send theirs as one). */
+  public static Ticket ticket(SObject seen, List<Id> seenWho) {
+    Ticket result = new Ticket();
+    result.seen = seen;
+    result.seenWho = seenWho;
+    return result;
   }
 
   /**

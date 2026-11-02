@@ -56,7 +56,7 @@ private class ActivitiesAndLocationsTest {
     // Nothing to read for a new row: it is refused before anything is compared.
     SeenSaves.Ticket ticket = rules.Id == null
       ? null
-      : new SeenSaves.Ticket(
+      : SeenSaves.ticket(
           [
             SELECT
               SameDivisionOnly__c,

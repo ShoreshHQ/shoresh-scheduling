@@ -95,7 +95,7 @@ private class SetTimePlanFieldsTest {
       ActivitiesController.saveActivityDetails(
         new Activity__c(Id = tennis.Id, Notes__c = 'Rackets and balls'),
         null,
-        new SeenSaves.Ticket(
+        SeenSaves.ticket(
           new Activity__c(Id = tennis.Id, Notes__c = 'Rackets'),
           null
         )
@@ -106,7 +106,7 @@ private class SetTimePlanFieldsTest {
       ActivitiesController.saveActivityDetails(
         new Activity__c(Id = tennis.Id, Notes__c = 'Balls'),
         null,
-        new SeenSaves.Ticket(
+        SeenSaves.ticket(
           new Activity__c(Id = tennis.Id, Notes__c = 'Rackets and balls'),
           null
         )

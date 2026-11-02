@@ -29,23 +29,17 @@ private class SeenSavesTest {
       Test.startTest();
       RowSaves.Result asSeen = SeenSaves.row(
         new Activity__c(Id = swim, Notes__c = 'Goggles'),
-        new SeenSaves.Ticket(
-          new Activity__c(Id = swim, Notes__c = 'Towels'),
-          null
-        ),
+        SeenSaves.ticket(new Activity__c(Id = swim, Notes__c = 'Towels'), null),
         null
       );
       RowSaves.Result same = SeenSaves.row(
         new Activity__c(Id = swim, Notes__c = 'Towels'),
-        new SeenSaves.Ticket(new Activity__c(Id = swim, Notes__c = null), null),
+        SeenSaves.ticket(new Activity__c(Id = swim, Notes__c = null), null),
         null
       );
       RowSaves.Result changed = SeenSaves.row(
         new Activity__c(Id = swim, Notes__c = 'Goggles'),
-        new SeenSaves.Ticket(
-          new Activity__c(Id = swim, Notes__c = 'towels'),
-          null
-        ),
+        SeenSaves.ticket(new Activity__c(Id = swim, Notes__c = 'towels'), null),
         null
       );
       Test.stopTest();
@@ -66,17 +60,17 @@ private class SeenSavesTest {
       Test.startTest();
       RowSaves.Result asSeen = SeenSaves.row(
         new Activity__c(Id = swim),
-        new SeenSaves.Ticket(new Activity__c(Id = swim), new List<Id>{ a }),
+        SeenSaves.ticket(new Activity__c(Id = swim), new List<Id>{ a }),
         new List<Id>{ b }
       );
       RowSaves.Result stale = SeenSaves.row(
         new Activity__c(Id = swim),
-        new SeenSaves.Ticket(new Activity__c(Id = swim), new List<Id>()),
+        SeenSaves.ticket(new Activity__c(Id = swim), new List<Id>()),
         new List<Id>{ b }
       );
       RowSaves.Result sameChoice = SeenSaves.row(
         new Activity__c(Id = swim),
-        new SeenSaves.Ticket(new Activity__c(Id = swim), new List<Id>()),
+        SeenSaves.ticket(new Activity__c(Id = swim), new List<Id>()),
         new List<Id>{ a }
       );
       Test.stopTest();
@@ -96,7 +90,7 @@ private class SeenSavesTest {
       try {
         SeenSaves.row(
           new Activity__c(Id = swim, Notes__c = 'x'),
-          new SeenSaves.Ticket(
+          SeenSaves.ticket(
             new Activity__c(Id = swim, Name = 'Swim', Notes__c = null),
             null
           ),
@@ -145,7 +139,7 @@ private class SeenSavesTest {
               ? new Activity__c(Id = swim, Notes__c = 'x')
               : new Activity__c(Id = swim),
             i == 0 ? null : new List<Id>(),
-            new SeenSaves.Ticket(new Activity__c(Id = swim), null)
+            SeenSaves.ticket(new Activity__c(Id = swim), null)
           );
         } catch (AuraHandledException e) {
           refused.add(e.getMessage());

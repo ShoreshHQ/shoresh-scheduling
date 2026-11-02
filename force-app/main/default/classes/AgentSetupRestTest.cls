@@ -82,12 +82,12 @@ private class AgentSetupRestTest {
       RowSaves.Result notes = ActivitiesController.saveActivityDetails(
         new Activity__c(Id = swim, Notes__c = 'Towels'),
         null,
-        new SeenSaves.Ticket(new Activity__c(Id = swim, Notes__c = null), null)
+        SeenSaves.ticket(new Activity__c(Id = swim, Notes__c = null), null)
       );
       RowSaves.Result who = ActivitiesController.saveActivityDetails(
         new Activity__c(Id = swim),
         new List<Id>{ groupNamed('Group A'), groupNamed('Group C') },
-        new SeenSaves.Ticket(new Activity__c(Id = swim), panelSawWho)
+        SeenSaves.ticket(new Activity__c(Id = swim), panelSawWho)
       );
       Test.stopTest();
       Assert.areEqual(200, ai[0], String.valueOf(ai[1]));
