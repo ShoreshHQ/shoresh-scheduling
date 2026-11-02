@@ -32,9 +32,17 @@ public with sharing class ImportUndoDeletes {
     'TimeBlock',
     'Program',
     'Week',
-    'CampLabel'
+    'CampLabel',
+    // Copy season's new season, last: it goes only once nothing is left in it.
+    'Season'
   };
   // What a week off or a who row belongs to: decided before those rows go.
+  // Rows kept along with an item this Undo keeps.
+  private static final Set<String> KEPT_WITH_ITEMS = new Set<String>{
+    'Coverage',
+    'WeekException'
+  };
+
   private static final Set<String> ITEMS = new Set<String>{
     // Decided before its day goes: a special day kept keeps its day.
     'SpecialDay',
@@ -109,6 +117,25 @@ public with sharing class ImportUndoDeletes {
     'Offering' => new List<Schema.SObjectField>{
       LinkedChoice__c.Offering__c,
       Assignment__c.Offering__c
+    },
+    // A copied season (INGEST-5.10) with anything in it the copy didn't make, or that this Undo
+    // keeps, stays; so does one copied again since. Its import log is not counted.
+    'Season' => new List<Schema.SObjectField>{
+      Week__c.Season__c,
+      Program__c.Season__c,
+      LocationType__c.Season__c,
+      Location__c.Season__c,
+      Activity__c.Season__c,
+      Coverage__c.Season__c,
+      ElectiveSet__c.Season__c,
+      ElectiveRun__c.Season__c,
+      Camper__c.Season__c,
+      SpecialDay__c.Season__c,
+      SpecialDate__c.Season__c,
+      SpecialEvent__c.Season__c,
+      PlanPart__c.Season__c,
+      Send__c.Season__c,
+      Season__c.CopiedFrom__c
     }
   };
 
@@ -184,7 +211,8 @@ public with sharing class ImportUndoDeletes {
 
   /** Coverage rows and weeks off of an item this Undo keeps: kept with it, unnamed. */
   private List<SObject> withoutKeptItems(String term, List<SObject> rows) {
-    if (term != 'Coverage' && term != 'WeekException') {
+    // Nothing kept, nothing to keep with it: no query.
+    if (!KEPT_WITH_ITEMS.contains(term) || keptIds.isEmpty()) {
       return rows;
     }
     Set<Id> ids = new Map<Id, SObject>(rows).keySet();

@@ -267,7 +267,8 @@ private class ImportNamespaceTest {
       ShoreshSchema.simulatedPrefix = PREFIX;
       Camp c = camp();
       ImportSetupSaves.Result result = importPackaged(c);
-      expectFieldRefused(result.importId, c.swim.Id, PREFIX + 'CopiedFrom__c');
+      // A season's field, namespaced, on an activity: not on the activity's list.
+      expectFieldRefused(result.importId, c.swim.Id, PREFIX + 'StartDate__c');
       expectFieldRefused(result.importId, c.swim.Id, 'other__Length__c');
       Assert.areEqual(
         1,

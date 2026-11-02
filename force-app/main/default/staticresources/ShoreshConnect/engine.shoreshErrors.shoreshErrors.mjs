@@ -9,12 +9,17 @@
  * error, a dropped connection) never reaches the director: the why becomes "Try again.", and the
  * raw detail goes to the browser console for support.
  */
-// Where camp staff reach Shoresh support. Settings shows it (Help); other screens point there.
-export const SUPPORT_EMAIL = "imshoresh@gmail.com";
-
 const TRY_AGAIN = "Try again.";
 // For a caller that can't say what it was doing (failed() is the usual way in).
 const NOTHING_HAPPENED = "That didn't work. Try again.";
+// Salesforce stops one request that reads or saves too much (a governor limit), and everything
+// it did is rolled back. Trying again does the same, so the director is told plainly.
+// Shoresh support's address, the one place it is written (Help in Settings uses it too).
+export const SUPPORT_EMAIL = "imshoresh@gmail.com";
+const TOO_BIG = `This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`;
+const LIMIT_TYPE = /(^|\.)LimitException$/;
+const LIMIT_WORDS =
+  /^(?:Too many [A-Za-z ]+:|Apex CPU time limit exceeded|Apex heap size too large)/;
 
 // The exception type our Apex sends its own words as. Any other type is the platform's.
 const OURS = /(^|\.)AuraHandledException$/;
@@ -90,8 +95,26 @@ function ownWords(error) {
   return ownServerWords(body);
 }
 
-/** The why: Shoresh's own words, or "Try again." with the detail in the console for support. */
+/** Whether a server answer is Salesforce's governor limit stopping the request. */
+function hitLimit(error) {
+  const bodies = error && error.body;
+  return (Array.isArray(bodies) ? bodies : [bodies]).some(
+    (body) =>
+      Boolean(body) &&
+      (LIMIT_TYPE.test(body.exceptionType || "") ||
+        LIMIT_WORDS.test(body.message || ""))
+  );
+}
+
+/**
+ * The why: Shoresh's own words, "too big" when Salesforce's limits stopped it, or "Try again."
+ * with the detail in the console for support.
+ */
 export function reasonOf(error) {
+  if (hitLimit(error)) {
+    console.error("Shoresh: stopped by a Salesforce limit:", error);
+    return TOO_BIG;
+  }
   const own = ownWords(error);
   if (own === NOTHING_HAPPENED) {
     // A bare errorMessage() passed along to failed(): its subject says what didn't happen.

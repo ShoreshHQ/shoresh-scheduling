@@ -56,7 +56,8 @@ public with sharing class ImportUndoWho {
         kinds.put(kind.term, kind);
         ownersByKind.put(kind.term, new Set<Id>());
       }
-      ownersByKind.get(kind.term).add((Id) (String) entry.get('who'));
+      ownersByKind.get(kind.term)
+        .add((Id) (String) entry.get(ImportUndoLog.WHO));
       for (String target : texts(entry.get('before'))) {
         targets.add(targetId(target));
       }
@@ -83,7 +84,7 @@ public with sharing class ImportUndoWho {
   }
 
   private void undoOne(Map<String, Object> entry) {
-    SObject owner = now.get((Id) (String) entry.get('who'));
+    SObject owner = now.get((Id) (String) entry.get(ImportUndoLog.WHO));
     if (owner == null) {
       result.gone.add((String) entry.get('name'));
       return;
@@ -151,7 +152,7 @@ public with sharing class ImportUndoWho {
   private static ImportWhoKinds.Kind kindOf(Map<String, Object> entry) {
     ImportWhoKinds.Kind kind = ImportWhoKinds.forChild(entry.get('type'));
     if (
-      ImportFields.ofRecord(entry.get('who')) != kind.ownerObject ||
+      ImportFields.ofRecord(entry.get(ImportUndoLog.WHO)) != kind.ownerObject ||
       !(entry.get('name') instanceof String)
     ) {
       throw ImportFields.unreadableLog();

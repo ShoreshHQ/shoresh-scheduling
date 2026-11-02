@@ -16,7 +16,7 @@ public with sharing class ImportUndoRemovals {
     List<String> names = new List<String>();
     for (Object item : removals) {
       Map<String, Object> entry = (Map<String, Object>) item;
-      Object recordId = entry.get('removed');
+      Object recordId = entry.get(ImportUndoLog.REMOVED);
       Schema.SObjectType kind = ImportFields.ofRecord(recordId);
       rows.add(kind.newSObject((Id) (String) recordId));
       names.add((String) entry.get('name'));

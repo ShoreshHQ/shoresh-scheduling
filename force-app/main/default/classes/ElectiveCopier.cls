@@ -9,11 +9,14 @@ public with sharing class ElectiveCopier {
   private final Id newSeasonId;
   // Every original activity, time block and division => its copy.
   private final Map<Id, Id> copies;
+  // The copy's import log (SeasonCopier).
+  private final ImportWriter log;
 
-  public ElectiveCopier(Id sourceSeasonId, Id newSeasonId, Map<Id, Id> copies) {
-    this.sourceSeasonId = sourceSeasonId;
-    this.newSeasonId = newSeasonId;
+  public ElectiveCopier(SeasonCopier.Copying made, Map<Id, Id> copies) {
+    this.sourceSeasonId = made.sourceSeasonId;
+    this.newSeasonId = made.newSeasonId;
     this.copies = copies;
+    this.log = made.log;
   }
 
   /** Copies everything, in a fixed number of reads and saves whatever the number of sets. */
@@ -37,7 +40,7 @@ public with sharing class ElectiveCopier {
     if (setCopies.isEmpty()) {
       return;
     }
-    Database.insert(setCopies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('ElectiveSet', setCopies.values());
     Map<Id, Offering__c> offeringCopies = copyOfferings(setCopies);
     Map<Id, LinkedChoice__c> choiceCopies = copyLinkedChoices(
       setCopies,
@@ -70,7 +73,7 @@ public with sharing class ElectiveCopier {
       copy.CopiedFrom__c = offering.Id;
       result.put(offering.Id, copy);
     }
-    Database.insert(result.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Offering', result.values());
     return result;
   }
 
@@ -91,7 +94,7 @@ public with sharing class ElectiveCopier {
       copy.CopiedFrom__c = choice.Id;
       result.put(choice.Id, copy);
     }
-    Database.insert(result.values(), AccessLevel.USER_MODE);
+    log.saveTracked('LinkedChoice', result.values());
     return result;
   }
 
@@ -111,7 +114,7 @@ public with sharing class ElectiveCopier {
         )
       );
     }
-    Database.insert(rows, AccessLevel.USER_MODE);
+    log.saveTracked('LinkedChoiceTime', rows);
   }
 
   private void copyCoverage(Map<Id, LinkedChoice__c> choiceCopies) {
@@ -130,6 +133,6 @@ public with sharing class ElectiveCopier {
         )
       );
     }
-    Database.insert(rows, AccessLevel.USER_MODE);
+    log.saveTracked('Coverage', rows);
   }
 }

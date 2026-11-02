@@ -4,7 +4,9 @@
  * POST {season, name, start_date, seen}. It is the page's own Copy
  * (SeasonSetupController.copySeason), done only while the copy's dates are still the ones
  * read_season_copy said (seen), with the season locked; otherwise refused (409), nothing saved.
- * The season copied is only read, never changed.
+ * The season copied is only read, never changed. The copy is the new season's last import, so
+ * undo_import takes it away again, as Roots' Undo last import does (docs/import/review.md
+ * INGEST-5.10).
  */
 @RestResource(urlMapping='/v1/copy_season')
 global with sharing class AgentCopySeason implements AgentWeeks.Action {
@@ -66,7 +68,9 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
       now.get(WHOLE) +
       '. "' +
       season.Name +
-      '" itself is unchanged.';
+      '" itself is unchanged. The copy is "' +
+      name +
+      '"\'s last import: undo_import takes it all away again.';
   }
 
   /** The copy's dates: the whole season's, then each week's, by name, as start to end. */

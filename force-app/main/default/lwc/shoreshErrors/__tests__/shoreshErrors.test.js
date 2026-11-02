@@ -1,4 +1,10 @@
-import { errorMessage, failed, reasonOf, refusal } from "c/shoreshErrors";
+import {
+  errorMessage,
+  failed,
+  reasonOf,
+  refusal,
+  SUPPORT_EMAIL
+} from "c/shoreshErrors";
 
 // Shapes as Lightning delivers them to a screen: an AuraHandledException (our own words), an
 // exception our Apex didn't catch, and the platform's or the browser's own failures.
@@ -75,6 +81,25 @@ describe("reasonOf", () => {
     });
     expect(consoleError).toHaveBeenCalledTimes(raw.length);
     expect(consoleError).toHaveBeenCalledWith(expect.any(String), uncaught);
+  });
+
+  it("a camp too big for one request says so, and that trying again won't help", () => {
+    const tooBig = [
+      {
+        body: {
+          exceptionType: "System.LimitException",
+          message: "Too many SOQL queries: 101"
+        }
+      },
+      { body: { message: "Apex CPU time limit exceeded" } },
+      { body: [{ message: "Too many DML rows: 10001" }] }
+    ];
+    tooBig.forEach((error) => {
+      expect(failed("That import could not be undone.", error)).toBe(
+        `That import could not be undone. This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`
+      );
+    });
+    expect(consoleError).toHaveBeenCalledTimes(tooBig.length);
   });
 
   it("names in quotes are the camp's own words, whatever they hold", () => {

@@ -8,16 +8,20 @@ public with sharing class SetTimeCopier {
   private final Id newSeasonId;
   // Every original program, time block, division, group, and location => its copy.
   private final Map<Id, Id> copies;
+  // The copy's import log (SeasonCopier).
+  private final ImportWriter log;
 
-  public SetTimeCopier(Id sourceSeasonId, Id newSeasonId, Map<Id, Id> copies) {
-    this.sourceSeasonId = sourceSeasonId;
-    this.newSeasonId = newSeasonId;
+  public SetTimeCopier(SeasonCopier.Copying made, Map<Id, Id> copies) {
+    this.sourceSeasonId = made.sourceSeasonId;
+    this.newSeasonId = made.newSeasonId;
     this.copies = copies;
+    this.log = made.log;
   }
 
   /** Copies everything and returns original Id => copy Id for the fixed and recurring activities. */
   public Map<Id, Id> copy() {
-    List<SObject> made = new List<SObject>();
+    List<SObject> fixedCopies = new List<SObject>();
+    List<SObject> recurringCopies = new List<SObject>();
     Map<Id, SObject> bySource = new Map<Id, SObject>();
     for (FixedActivity__c item : [
       SELECT
@@ -35,6 +39,7 @@ public with sharing class SetTimeCopier {
       WITH USER_MODE
     ]) {
       bySource.put(item.Id, copyOf(item));
+      fixedCopies.add(bySource.get(item.Id));
     }
     for (RecurringActivity__c item : [
       SELECT
@@ -57,9 +62,10 @@ public with sharing class SetTimeCopier {
       WITH USER_MODE
     ]) {
       bySource.put(item.Id, copyOf(item));
+      recurringCopies.add(bySource.get(item.Id));
     }
-    made.addAll(bySource.values());
-    Database.insert(made, AccessLevel.USER_MODE);
+    log.saveTracked('FixedActivity', fixedCopies);
+    log.saveTracked('RecurringActivity', recurringCopies);
     copyCoverage(bySource);
     Map<Id, Id> result = new Map<Id, Id>();
     for (Id sourceId : bySource.keySet()) {
@@ -98,6 +104,6 @@ public with sharing class SetTimeCopier {
         )
       );
     }
-    Database.insert(rows, AccessLevel.USER_MODE);
+    log.saveTracked('Coverage', rows);
   }
 }

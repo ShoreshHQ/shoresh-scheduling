@@ -96,6 +96,52 @@ private class AgentCopyAndMatchTest {
     }
   }
 
+  // API-1.62, INGEST-5.10: the AI's copy is the new season's last import; its Undo takes it away.
+  @IsTest
+  static void ingest510TheAisCopyIsUndoneByTheAisUndo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Season__c season = season();
+      Map<String, Object> seen = new Map<String, Object>();
+      seen.putAll(
+        AgentCopySeason.seenOf(
+          SeasonSetupController.previewCopy(
+            season.Id,
+            season.StartDate__c.addDays(364)
+          )
+        )
+      );
+      Integer before = seasons();
+      List<Object> copied = ask(
+        new AgentCopySeason(),
+        'POST',
+        copyAsk(season, 'Next summer', seen)
+      );
+      Assert.areEqual(200, copied[0], String.valueOf(copied[1]));
+      Assert.isTrue(
+        ((String) copied[1]).contains('undo_import'),
+        String.valueOf(copied[1])
+      );
+      Id copyId = [SELECT Id FROM Season__c WHERE Name = 'Next summer'].Id;
+      Test.startTest();
+      List<Object> undone = ask(
+        new AgentUndoImport(),
+        'POST',
+        new Map<String, Object>{
+          'season' => 'Next summer',
+          'seen' => ImportUndo.latest(copyId)
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
+        (String) undone[1]
+      );
+      Assert.areEqual(true, result.get('seasonRemoved'));
+      Assert.areEqual(before, seasons());
+    }
+  }
+
   // API-1.62
   @IsTest
   static void copyIsTheCopyPagesCopyWithTheDatesSeen() {
