@@ -7,13 +7,17 @@
  */
 const { fileOf, refused } = require("./imports");
 
-async function importSpecialSchedule(capability, input, { ask, answer, load }) {
+async function importSpecialSchedule(
+  capability,
+  input,
+  { send, answer, load }
+) {
   if (!String(input.seen ?? "").trim()) {
     return refused(
       "Send the seen read_special_schedule gave, so a change someone made since isn't replaced unseen."
     );
   }
-  const m = await load("");
+  const m = await load();
   const { file, problem } = fileOf(input, m);
   if (problem) return refused(problem);
   const noSide = `Couldn't tell which side of ${file.name} is the schedule's times. Check that the file has a clear time column or time row, and try again.`;
@@ -31,20 +35,16 @@ async function importSpecialSchedule(capability, input, { ask, answer, load }) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
   return answer(
-    await ask({
-      path: `/services/apexrest/v1/${capability.api}`,
-      method: "POST",
-      body: JSON.stringify({
-        ...fields,
-        file_name: file.name,
-        blocks: imported.blocks,
-        columns: imported.columns,
-        no_times: noTimes,
-        places,
-        page_count: pages.length,
-        replace_edited:
-          input.replace_edited === true || input.replace_edited === "true"
-      })
+    await send(capability.api, {
+      ...fields,
+      file_name: file.name,
+      blocks: imported.blocks,
+      columns: imported.columns,
+      no_times: noTimes,
+      places,
+      page_count: pages.length,
+      replace_edited:
+        input.replace_edited === true || input.replace_edited === "true"
     })
   );
 }

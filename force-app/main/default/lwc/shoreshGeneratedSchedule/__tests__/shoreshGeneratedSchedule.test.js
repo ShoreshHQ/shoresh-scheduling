@@ -631,7 +631,9 @@ describe("c-shoresh-generated-schedule", () => {
              const { name, input, answers } = JSON.parse(text);
              const sent = [];
              const run = async (args, stdin) => { sent.push({ args, stdin }); return answers.shift(); };
-             call(name, input, { run }).then((a) => process.stdout.write(JSON.stringify({ answer: a, sent })));
+             // The camp's namespace, as Salesforce says it (connect/camp.js).
+           const camp = async () => ({ namespace: ${JSON.stringify(NAMESPACE_PREFIX.replace(/__$/, ""))}, version: null });
+           call(name, input, { run, camp }).then((a) => process.stdout.write(JSON.stringify({ answer: a, sent })));
            });`
         ],
         {
@@ -693,7 +695,7 @@ describe("c-shoresh-generated-schedule", () => {
     );
     const posted = JSON.parse(seen[seen.length - 1].stdin);
     expect(seen[seen.length - 1].args[3]).toBe(
-      "/services/apexrest/v1/accept_finding"
+      `/services/apexrest/${NAMESPACE_PREFIX.replace(/__$/, "/")}v1/accept_finding`
     );
     expect(JSON.stringify(posted.line)).toBe(
       keepAccepted.mock.calls[0][0].line

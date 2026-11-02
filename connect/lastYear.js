@@ -245,11 +245,7 @@ function savedText(m, t, result, plan) {
   return lines.join(" ");
 }
 
-async function importLastYear(
-  capability,
-  given,
-  { ask, answer, load, namespaceOf }
-) {
+async function importLastYear(capability, given, { read, send, answer, load }) {
   const input = fromCommandLine(given);
   if (typeof input.layouts === "string") {
     try {
@@ -268,18 +264,14 @@ async function importLastYear(
       "Send the files: each with file_name and its contents (csv_text, or sheets of rows)."
     );
   }
-  const path = `/services/apexrest/v1/${capability.api}`;
   const fields = input.season !== undefined ? { season: input.season } : {};
-  const read = await ask({
-    path: `${path}?${new URLSearchParams(fields)}`,
-    method: "GET"
-  });
-  if (read.status !== 200) return answer(read);
-  const body = asTheScreenReads(JSON.parse(read.body));
+  const got = await read(capability.api, fields);
+  if (got.status !== 200) return answer(got);
+  const body = asTheScreenReads(JSON.parse(got.body));
   if (input.save && body.seen !== String(input.seen).trim()) {
     return changedSince();
   }
-  const m = await load(namespaceOf(body));
+  const m = await load();
   const files = [];
   for (const f of input.files) {
     const { file, problem } = fileOf(f || {}, m);
@@ -312,14 +304,10 @@ async function importLastYear(
   });
   if (!plan) return refused("Nothing was saved: the plan could not be made.");
   const saved = answer(
-    await ask({
-      path,
-      method: "POST",
-      body: JSON.stringify({
-        ...fields,
-        seen: String(input.seen).trim(),
-        plan: JSON.stringify(plan)
-      })
+    await send(capability.api, {
+      ...fields,
+      seen: String(input.seen).trim(),
+      plan: JSON.stringify(plan)
     })
   );
   if (!saved.ok) return saved;
