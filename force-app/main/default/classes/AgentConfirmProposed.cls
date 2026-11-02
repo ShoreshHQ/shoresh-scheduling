@@ -28,16 +28,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     );
     String activity = AgentFields.text(body, 'activity');
     String setName = AgentFields.text(body, 'elective_set');
-    if (String.isBlank(activity)) {
-      throw new ShoreshException(
-        'Say which activity is offered (activity), as read_proposed_offerings said it.'
-      );
-    }
-    if (AgentFields.text(body, 'seen') != 'proposed') {
-      throw new ShoreshException(
-        'Say what read_proposed_offerings said it is (seen: "proposed"), so one confirmed since isn\'t confirmed again.'
-      );
-    }
+    refuseUnsaid(body, activity);
     // Locked first: no one else's save comes between this read and the Confirm.
     Offering__c now = onlyOne(
       [
@@ -84,6 +75,20 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     return 'Confirmed ' +
       named +
       ': it is offered now, and campers can get a seat in it.';
+  }
+
+  /** No activity, or no seen "proposed", is refused before anything is read. */
+  private static void refuseUnsaid(Map<String, Object> body, String activity) {
+    if (String.isBlank(activity)) {
+      throw new ShoreshException(
+        'Say which activity is offered (activity), as read_proposed_offerings said it.'
+      );
+    }
+    if (AgentFields.text(body, 'seen') != 'proposed') {
+      throw new ShoreshException(
+        'Say what read_proposed_offerings said it is (seen: "proposed"), so one confirmed since isn\'t confirmed again.'
+      );
+    }
   }
 
   /** The offering named, in the elective set asked about when the activity is in two. */
