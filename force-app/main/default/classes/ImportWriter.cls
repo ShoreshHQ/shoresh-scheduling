@@ -146,7 +146,7 @@ public with sharing class ImportWriter {
   public void logWordOff(CampLabel__c label) {
     changed.add(
       new Map<String, Object>{
-        'wordOff' => label.Id,
+        ImportUndoLog.WORD_OFF => label.Id,
         'term' => label.ModelTerm__c,
         'singular' => label.Singular__c,
         'plural' => label.Plural__c
@@ -169,7 +169,7 @@ public with sharing class ImportWriter {
     for (SObject record : records) {
       changed.add(
         new Map<String, Object>{
-          'removed' => record.Id,
+          ImportUndoLog.REMOVED => record.Id,
           'type' => ShoreshSchema.localName(record.getSObjectType()),
           'name' => record.get('Name')
         }
@@ -190,7 +190,7 @@ public with sharing class ImportWriter {
   public void logCellsOut(ScheduleDay__c day, String after) {
     changed.add(
       new Map<String, Object>{
-        'cellsOut' => day.Id,
+        ImportUndoLog.CELLS_OUT => day.Id,
         'name' => day.Schedule__r.Name,
         'before' => day.Grid__c,
         'after' => after
@@ -213,7 +213,7 @@ public with sharing class ImportWriter {
     );
     changed.add(
       new Map<String, Object>{
-        'who' => change.owner.Id,
+        ImportUndoLog.WHO => change.owner.Id,
         'type' => change.type,
         'name' => change.owner.get('Name'),
         'before' => change.before,

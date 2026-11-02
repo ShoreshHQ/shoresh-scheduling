@@ -3,8 +3,10 @@
  * and puts back what it changed, but keeps anything edited since or still in use, and says
  * which. Only the season's most recent import can be undone, and only once (Greg, 2026-10-17):
  * once it is undone, no earlier import can be undone until the next import. Setup lists
- * imported on a screen (slice 4c) are imports too. The director's imports and each outside
- * system's batches each have their own last import, undone on its own (API-2.6).
+ * imported on a screen (slice 4c) are imports too, and so is Copy season (Greg, 2026-11-02). The
+ * director's imports and each outside system's batches each have their own last import, undone
+ * on its own (API-2.6). Undo last import restores the camp as it was (docs/import/review.md
+ * INGEST-5.10): this class finds and holds the import; its log is put back by ImportUndoLog.
  */
 public with sharing class ImportUndo {
   /** What Undo did, for the screen. */
@@ -20,6 +22,9 @@ public with sharing class ImportUndo {
     /** Records the import changed that were deleted since: nothing to put back. */
     @AuraEnabled
     public List<String> gone { get; set; }
+    /** A copied season the Undo took away with everything in it: the screen leaves it. */
+    @AuraEnabled
+    public Boolean seasonRemoved { get; set; }
 
     public Result() {
       removed = 0;
@@ -27,17 +32,7 @@ public with sharing class ImportUndo {
       keptEdited = new List<String>();
       keptInUse = new List<String>();
       gone = new List<String>();
-    }
-  }
-
-  /** Undo takes away what the import made, its imported week too, which nothing else may delete. */
-  private static void deleteCreated(Result result, Import__c done) {
-    ImportedWeekGuard.allow();
-    try {
-      new ImportUndoDeletes(result, new ImportUndoLater(done))
-        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
-    } finally {
-      ImportedWeekGuard.done();
+      seasonRemoved = false;
     }
   }
 
@@ -53,26 +48,11 @@ public with sharing class ImportUndo {
     // import may change them.
     OutsideOwned.bringingIn = IncomingQuestions.isBatch(done.Open__c);
     try {
-      // Put back first (a group moved into a division the import made goes home), then remove.
-      Map<String, List<Object>> sorted = ImportUndoEntries.sorted(done);
-      List<Object> changes = sorted.get('changes');
-      List<Object> wordsOff = sorted.get('wordOff');
-      Id campId = touchesCampWords(done, changes, wordsOff)
-        ? campOf(done.Season__c)
-        : null;
-      if (campId != null) {
-        // Camp words are shared by the camp's seasons: another season's import waits.
-        lockCamp(campId);
-      }
-      new ImportUndoRemovals(result).run(sorted.get('removed'));
-      ImportSupersededCells.putBack(sorted.get('cellsOut'), result);
-      new ImportUndoRestores(result).run(changes);
-      new ImportUndoWho(result).run(sorted.get('who'));
-      new ImportUndoWeeksOff(result, done.Season__c).run(sorted.get('weekOn'));
-      new ImportUndoWords(result, campId).run(wordsOff);
-      deleteCreated(result, done);
+      ImportUndoLog.reverse(done, result);
       SetTimeGuard.checkPending();
-      ImportLog.markUndone(done);
+      if (!result.seasonRemoved) {
+        ImportLog.markUndone(done);
+      }
     } catch (Exception e) {
       Database.rollback(beforeUndo);
       throw e;
@@ -164,35 +144,6 @@ public with sharing class ImportUndo {
         'That import was already undone, or it was not found.'
       );
     }
-  }
-
-  /** Whether Undo changes camp words: one the import added, changed, or set back. */
-  private static Boolean touchesCampWords(
-    Import__c done,
-    List<Object> changes,
-    List<Object> wordsOff
-  ) {
-    if (
-      !wordsOff.isEmpty() ||
-      ((Map<String, Object>) JSON.deserializeUntyped(done.Created__c))
-        .containsKey('CampLabel')
-    ) {
-      return true;
-    }
-    for (Object entry : changes) {
-      if (
-        ImportFields.ofRecord(((Map<String, Object>) entry).get('id')) ==
-        CampLabel__c.SObjectType
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static Id campOf(Id seasonId) {
-    return [SELECT Camp__c FROM Season__c WHERE Id = :seasonId WITH USER_MODE]
-    .Camp__c;
   }
 
   /**

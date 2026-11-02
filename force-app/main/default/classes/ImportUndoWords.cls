@@ -60,8 +60,8 @@ public with sharing class ImportUndoWords {
 
   private CampLabel__c checked(Map<String, Object> entry, Set<String> terms) {
     if (
-      ImportFields.ofRecord(entry.get('wordOff')) != CampLabel__c.SObjectType ||
-      !terms.contains(word(entry, 'term'))
+      ImportFields.ofRecord(entry.get(ImportUndoLog.WORD_OFF)) !=
+      CampLabel__c.SObjectType || !terms.contains(word(entry, 'term'))
     ) {
       throw ImportFields.unreadableLog();
     }

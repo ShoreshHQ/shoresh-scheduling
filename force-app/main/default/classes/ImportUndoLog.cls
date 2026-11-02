@@ -1,12 +1,130 @@
 /**
- * What an import changes, recorded before it is changed, so Undo last import can put it back:
- * for each existing record the import updates, the values of the fields it updates.
+ * The import log, kept on each import's record (Import__c) and read back by Undo last import,
+ * which restores the camp as it was (docs/import/review.md INGEST-5.10). ImportWriter records
+ * it as an import (or Copy season) saves; reverse() puts it back, its steps run only from here.
+ *
+ * Created__c: what the import made, by kind (ImportWriter.created), each with a fingerprint of
+ * what it wrote. Changed__c: a list of entries, each a record's values before and after
+ * ({ id, type, name, before, after }), or one of the kinds below, marked by its key.
+ *
+ * What triggers do as an import saves needs no entry of its own. Values a trigger works out from
+ * the row (keys, a time block's name that follows its times, a fixed or recurring activity's
+ * last block) are worked out again when Undo puts the row back; a holding record of a group with
+ * no division that went when its last group moved out is made again (NoDivisions.restoreHolders);
+ * records that go with one deleted go with it. The rest of what triggers do only checks.
  *
  * Objects and fields are kept by their local names ("Week__c", "StartDate__c"): the same with or
  * without the package's namespace, so a log reads the same before and after it arrives. Rows
  * report their fields with the prefix once there is one; they are turned into fields first.
  */
 public with sharing class ImportUndoLog {
+  // Entries of Changed__c that are not a record's values, by the key that marks them: who lists
+  // a list import replaced (slice 4c), weeks off a workbook ticked back on and camp words it set
+  // back (part D), what a second import removed and the cells it took out (INGEST-5.8).
+  public static final String WHO = 'who';
+  public static final String WEEK_ON = 'weekOn';
+  public static final String WORD_OFF = 'wordOff';
+  public static final String REMOVED = 'removed';
+  public static final String CELLS_OUT = 'cellsOut';
+  private static final List<String> OWN_KINDS = new List<String>{
+    WHO,
+    WEEK_ON,
+    WORD_OFF,
+    REMOVED,
+    CELLS_OUT
+  };
+  // Everything else in Changed__c: a record's values.
+  private static final String VALUES = 'values';
+
+  /**
+   * Puts back what the import did, in this order: what it removed comes back, then what it
+   * changed goes back (a group moved into a division the import made goes home), then what it
+   * made is removed. Anything edited since, or still in use, is kept and named in the result.
+   */
+  public static void reverse(Import__c done, ImportUndo.Result result) {
+    Map<String, List<Object>> sorted = sorted(done);
+    List<Object> changes = sorted.get(VALUES);
+    List<Object> wordsOff = sorted.get(WORD_OFF);
+    Id campId = touchesCampWords(done, changes, wordsOff)
+      ? campOf(done.Season__c)
+      : null;
+    if (campId != null) {
+      // Camp words are shared by the camp's seasons: another season's import waits.
+      ImportUndo.lockCamp(campId);
+    }
+    new ImportUndoRemovals(result).run(sorted.get(REMOVED));
+    ImportSupersededCells.putBack(sorted.get(CELLS_OUT), result);
+    new ImportUndoRestores(result).run(changes);
+    new ImportUndoWho(result).run(sorted.get(WHO));
+    new ImportUndoWeeksOff(result, done.Season__c).run(sorted.get(WEEK_ON));
+    new ImportUndoWords(result, campId).run(wordsOff);
+    // Last, what it made, its imported week too, which nothing else may delete.
+    ImportedWeekGuard.allow();
+    try {
+      new ImportUndoDeletes(result, new ImportUndoLater(done))
+        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
+    } finally {
+      ImportedWeekGuard.done();
+    }
+  }
+
+  /** What the import changed, by kind (VALUES for records' values). */
+  private static Map<String, List<Object>> sorted(Import__c done) {
+    Map<String, List<Object>> byKind = new Map<String, List<Object>>{
+      VALUES => new List<Object>()
+    };
+    for (String kind : OWN_KINDS) {
+      byKind.put(kind, new List<Object>());
+    }
+    for (
+      Object entry : (List<Object>) JSON.deserializeUntyped(done.Changed__c)
+    ) {
+      // Anything that isn't an entry is the refusal.
+      if (!(entry instanceof Map<String, Object>)) {
+        throw ImportFields.unreadableLog();
+      }
+      Map<String, Object> values = (Map<String, Object>) entry;
+      String kind = VALUES;
+      for (String own : OWN_KINDS) {
+        if (values.containsKey(own)) {
+          kind = own;
+          break;
+        }
+      }
+      byKind.get(kind).add(entry);
+    }
+    return byKind;
+  }
+
+  /** Whether Undo changes camp words: one the import added, changed, or set back. */
+  private static Boolean touchesCampWords(
+    Import__c done,
+    List<Object> changes,
+    List<Object> wordsOff
+  ) {
+    if (
+      !wordsOff.isEmpty() ||
+      ((Map<String, Object>) JSON.deserializeUntyped(done.Created__c))
+        .containsKey('CampLabel')
+    ) {
+      return true;
+    }
+    for (Object entry : changes) {
+      if (
+        ImportFields.ofRecord(((Map<String, Object>) entry).get('id')) ==
+        CampLabel__c.SObjectType
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static Id campOf(Id seasonId) {
+    return [SELECT Camp__c FROM Season__c WHERE Id = :seasonId WITH USER_MODE]
+    .Camp__c;
+  }
+
   /** [{ id, type, name, before: { field: value } }] for the rows that update existing records. */
   public static List<Map<String, Object>> before(List<SObject> rows) {
     Map<Schema.SObjectType, Map<Id, Map<String, Schema.SObjectField>>> byType = new Map<Schema.SObjectType, Map<Id, Map<String, Schema.SObjectField>>>();

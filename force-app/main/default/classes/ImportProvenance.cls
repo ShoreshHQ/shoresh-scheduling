@@ -219,8 +219,8 @@ public with sharing class ImportProvenance {
     Datetime at
   ) {
     // Removed by a later import (rule 8): no longer there to update or list.
-    if (entry.containsKey('removed')) {
-      written.remove((Id) (String) entry.get('removed'));
+    if (entry.containsKey(ImportUndoLog.REMOVED)) {
+      written.remove((Id) (String) entry.get(ImportUndoLog.REMOVED));
       return;
     }
     Object recordId = entry.get('id');

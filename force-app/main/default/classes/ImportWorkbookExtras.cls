@@ -131,7 +131,7 @@ public with sharing class ImportWorkbookExtras {
       Id target = (Id) off.get(field);
       writer.logWeekBackOn(
         new Map<String, Object>{
-          'weekOn' => off.Id,
+          ImportUndoLog.WEEK_ON => off.Id,
           'week' => off.Week__c,
           'field' => ShoreshSchema.localName(field),
           'target' => target,

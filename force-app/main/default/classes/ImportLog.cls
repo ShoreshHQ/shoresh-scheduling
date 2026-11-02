@@ -49,6 +49,22 @@ public with sharing class ImportLog {
   }
 
   /**
+   * Records Copy season as the new season's import (SeasonCopier): everything it made, nothing
+   * it changed, so Undo last import takes the copy away (docs/import/review.md INGEST-5.10).
+   */
+  public static Id recordCopy(Id seasonId, String what, String created) {
+    requireEditAccess(seasonId);
+    Import__c done = new Import__c(
+      Season__c = seasonId,
+      Files__c = what.left(255),
+      Created__c = created,
+      Changed__c = '[]'
+    );
+    Database.insert(done, AccessLevel.SYSTEM_MODE);
+    return done.Id;
+  }
+
+  /**
    * Records a batch from another system (IncomingSave; API-2.3) as an import of the season, so
    * Undo last import takes it back and Roots shows its questions. A sending key holds no access
    * to imports and need not edit the season: it must only see it (it found it in user mode), and

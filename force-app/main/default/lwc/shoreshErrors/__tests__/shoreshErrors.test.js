@@ -77,6 +77,25 @@ describe("reasonOf", () => {
     expect(consoleError).toHaveBeenCalledWith(expect.any(String), uncaught);
   });
 
+  it("a camp too big for one request says so, and that trying again won't help", () => {
+    const tooBig = [
+      {
+        body: {
+          exceptionType: "System.LimitException",
+          message: "Too many SOQL queries: 101"
+        }
+      },
+      { body: { message: "Apex CPU time limit exceeded" } },
+      { body: [{ message: "Too many DML rows: 10001" }] }
+    ];
+    tooBig.forEach((error) => {
+      expect(failed("That import could not be undone.", error)).toBe(
+        "That import could not be undone. This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Tell Shoresh support, so it can be fixed."
+      );
+    });
+    expect(consoleError).toHaveBeenCalledTimes(tooBig.length);
+  });
+
   it("names in quotes are the camp's own words, whatever they hold", () => {
     expect(reasonOf(ours('"BUNK_A" isn\'t at camp then.'))).toBe(
       '"BUNK_A" isn\'t at camp then.'

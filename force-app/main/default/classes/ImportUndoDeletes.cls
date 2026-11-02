@@ -32,7 +32,9 @@ public with sharing class ImportUndoDeletes {
     'TimeBlock',
     'Program',
     'Week',
-    'CampLabel'
+    'CampLabel',
+    // Copy season's new season, last: it goes only once nothing is left in it.
+    'Season'
   };
   // What a week off or a who row belongs to: decided before those rows go.
   private static final Set<String> ITEMS = new Set<String>{
@@ -109,6 +111,25 @@ public with sharing class ImportUndoDeletes {
     'Offering' => new List<Schema.SObjectField>{
       LinkedChoice__c.Offering__c,
       Assignment__c.Offering__c
+    },
+    // A copied season (INGEST-5.10) with anything in it the copy didn't make, or that this Undo
+    // keeps, stays; so does one copied again since. Its import log is not counted.
+    'Season' => new List<Schema.SObjectField>{
+      Week__c.Season__c,
+      Program__c.Season__c,
+      LocationType__c.Season__c,
+      Location__c.Season__c,
+      Activity__c.Season__c,
+      Coverage__c.Season__c,
+      ElectiveSet__c.Season__c,
+      ElectiveRun__c.Season__c,
+      Camper__c.Season__c,
+      SpecialDay__c.Season__c,
+      SpecialDate__c.Season__c,
+      SpecialEvent__c.Season__c,
+      PlanPart__c.Season__c,
+      Send__c.Season__c,
+      Season__c.CopiedFrom__c
     }
   };
 
@@ -333,6 +354,10 @@ public with sharing class ImportUndoDeletes {
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (outcomes[i].isSuccess()) {
         result.removed += ImportUndoCount.each(term);
+        // A copied season takes its import log with it: nothing is left to mark undone.
+        if (term == 'Season') {
+          result.seasonRemoved = true;
+        }
         continue;
       }
       Database.Error error = outcomes[i].getErrors()[0];

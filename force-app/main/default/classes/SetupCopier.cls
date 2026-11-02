@@ -6,10 +6,13 @@
 public with sharing class SetupCopier {
   private final Id sourceSeasonId;
   private final Id newSeasonId;
+  // The copy's import log (SeasonCopier).
+  private final ImportWriter log;
 
-  public SetupCopier(Id sourceSeasonId, Id newSeasonId) {
+  public SetupCopier(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
     this.sourceSeasonId = sourceSeasonId;
     this.newSeasonId = newSeasonId;
+    this.log = log;
   }
 
   /**
@@ -43,7 +46,7 @@ public with sharing class SetupCopier {
       copy.CopiedFrom__c = type.Id;
       copies.put(type.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('LocationType', copies.values());
     return copies;
   }
 
@@ -65,7 +68,7 @@ public with sharing class SetupCopier {
       copy.CopiedFrom__c = location.Id;
       copies.put(location.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Location', copies.values());
     return copies;
   }
 
@@ -110,7 +113,7 @@ public with sharing class SetupCopier {
         rainPlanBySource.put(activity.Id, activity.RainPlan__c);
       }
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Activity', copies.values());
     List<Activity__c> withRainPlans = new List<Activity__c>();
     for (Id sourceId : rainPlanBySource.keySet()) {
       withRainPlans.add(
@@ -123,7 +126,7 @@ public with sharing class SetupCopier {
     // The copy keeps each rain plan as the season had it, even one made outdoors since.
     ActivityTriggerHandler.checkRainPlans = false;
     try {
-      Database.update(withRainPlans, AccessLevel.USER_MODE);
+      log.amend(withRainPlans);
     } finally {
       ActivityTriggerHandler.checkRainPlans = true;
     }
@@ -149,6 +152,6 @@ public with sharing class SetupCopier {
         )
       );
     }
-    Database.insert(copies, AccessLevel.USER_MODE);
+    log.saveTracked('ActivityEligibility', copies);
   }
 }
