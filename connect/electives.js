@@ -3,7 +3,7 @@
  * exactly as the screen works it out. The run is read as the screen reads it (GET
  * /v1/assign_elective_seats: ElectiveSeatsController.openRun and the camp's words), the seats placed
  * with the screen's own modules (c/shoreshElectiveSeats seats.js and c/shoreshElectiveEngine,
- * shipped beside this file: readRun, engineInput, the engine's assignSeats, assignRequest), and
+ * shipped beside this file: planSeats), and
  * saved through the screen's own save (POST /v1/assign_elective_seats) with the run as the agent
  * read it (seen). The answer is the screen's own line, counted with its own board.
  */
@@ -40,9 +40,7 @@ async function assignElectiveSeats(
   }
   const m = await load();
   const t = m.buildTerms(body.labels);
-  const run = m.readRun(body.view);
-  const { input: engineIn } = m.engineInput(run, t);
-  const request = m.assignRequest(run, m.assignSeats(engineIn));
+  const request = m.planSeats(body.view, t);
   const saved = await send(capability.api, {
     ...fields,
     seen: input.seen,
