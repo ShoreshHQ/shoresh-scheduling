@@ -195,7 +195,7 @@ private class SetupTablesTest {
     scheduleNaming('First', 1, new List<String>{ 'Group A' });
     System.runAs(ShoreshTestData.outsider()) {
       try {
-        ScheduleUses.count(ids.get('Group A'));
+        SeasonSetupController.deletePreview(ids.get('Group A'));
         Assert.fail('No access: refused, never a count of 0');
       } catch (AuraHandledException e) {
         Assert.isNotNull(e.getMessage());
