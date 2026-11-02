@@ -197,14 +197,14 @@ public with sharing class ElectiveFinalize {
     return result;
   }
 
-  /** The seats a person set: locked ones and hand moves, as they were. */
+  /** The seats a person set (ElectiveSeatChecks.kept: locked, hand moves among them), as they were. */
   private static List<Assignment__c> heldFor(
     Id copyId,
     ElectiveRunState state
   ) {
     List<Assignment__c> result = new List<Assignment__c>();
     for (Assignment__c seat : state.seats) {
-      if (seat.Locked__c != true && seat.ByHand__c != true) {
+      if (!ElectiveSeatChecks.kept(seat)) {
         continue;
       }
       result.add(

@@ -418,7 +418,7 @@ at a place.
     bunk, the **padlock** (pressed when locked) and **Move to…** (the other offerings then); a
     name can also be dragged onto another offering at the same time. A move is a hand move and
     **locked**, as the desktop makes it; it may put an offering over its seats, which is then
-    shown as a problem, never refused. The padlock locks or unlocks a seat as it is. Each change is
+    shown as a problem, never refused. The padlock locks or unlocks a seat as it is; unlocked, a move by hand is no longer one. Each change is
     one save (`ElectiveSeatSaves.change`), checked as Assign's are, with the run's revision. A refused
     change puts the cursor back on what asked (the padlock, Move to…, the notice's Unlock), or the
     roster heading when that is gone or the change was a drag, never on the page (WCAG 2.4.3).
@@ -443,7 +443,9 @@ at a place.
     ("Schedule changed since seats were assigned"), and Finalize says so.
 35. **Start a new version** (decision 48.6; desktop wording Q5): a Committed copy of a final run,
     linked by `NewVersionOf__c`, with every camper's choices (as imported and as changed by hand),
-    and only the seats a person set (locked, or moved by hand); Assign seats fills the rest. The
+    and only the seats a person set: the locked ones, every move by hand among them (a hand move
+    the director unlocks is Assign's again, on this button as on Assign again; desktop
+    `commitElectiveRun.js`, W1-seats); Assign seats fills the rest. The
     final run stays as it was. One working version at a time: a second is refused, pointing at the
     first. Bringing in choices goes into the new committed run (`ChoicesImportPlace`).
 36. **By camper and the counter** (seats-camper, seats-problems). By camper lists each bunk's

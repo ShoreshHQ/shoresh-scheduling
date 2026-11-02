@@ -1392,7 +1392,11 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
    not JSON, another version, or not lists of rows of text are not kept (the week is saved
    anyway). Nothing reads them but the screen, only to word the Why list (`readNotes` drops
    unknown codes and shapes; nothing is shown as stored). User mode; the field is in the Shoresh
-   Scheduler permission set.
+   Scheduler permission set. The save's answer carries the notes it kept
+   (`GeneratedWeek.Result.engineNotes`, null for none), and the screen goes on with those, never
+   its own copy: the next build and the Why list are the ones a reload or an agent gets (protocol
+   rule 10.11, 2026-11-02). Notes sent and not kept are said on the editor's line ("Week 1 was
+   saved without the reasons for how it was built.").
 5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots` now takes one
    request, `GeneratedWeek.HandEdits`: the edits, the revision and `engineNotes`; Code Analyzer's
    parameter limit; `GeneratedEngineNotes.saveHandEdits` saves the edits, then the notes): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the

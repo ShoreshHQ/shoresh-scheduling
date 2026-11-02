@@ -9,6 +9,7 @@
  * 6", "2nd", "Not chosen", "One of their choices", "2 couldn't be placed", "Second choice".
  */
 import {
+  assignSeats,
   CELL_CHOICE,
   ORDERED_FALLBACK,
   UNORDERED_SET
@@ -375,6 +376,15 @@ export function assignRequest(run, result) {
     seats,
     dropped
   };
+}
+
+/**
+ * Assign seats, worked out: the run read, the engine run on it and what is saved. The one way the
+ * screen and the connector (connect/electives.js) place seats.
+ */
+export function planSeats(view, terms) {
+  const run = readRun(view);
+  return assignRequest(run, assignSeats(engineInput(run, terms).input));
 }
 
 /** What did not run when seats were last assigned: timeKey|activityId -> { had, needed }. */

@@ -28,6 +28,8 @@ public with sharing class ElectiveSeatChange {
       seat = moved(state, seat, request);
     } else if (seat != null && request.locked != null) {
       seat.Locked__c = request.locked;
+      // Unlocked, a hand move is Assign's again (ElectiveSeatChecks.kept).
+      seat.ByHand__c = seat.ByHand__c == true && request.locked;
     } else {
       throw new ShoreshException(
         'That seat is no longer there. Reload the page.'
