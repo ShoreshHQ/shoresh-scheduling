@@ -37,6 +37,20 @@ describe("ci-pr-category", () => {
     ).toBe("screen");
   });
 
+  it("full: a screen whose rules Apex repeats (the Agent* classes act as the screen does)", () => {
+    for (const f of [
+      "force-app/main/default/lwc/shoreshWeekEditor/shoreshWeekEditor.js",
+      "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.js",
+      "force-app/main/default/lwc/shoreshProgram/shoreshProgram.html",
+      "force-app/main/default/lwc/shoreshErrors/shoreshErrors.js"
+    ]) {
+      expect(category([f])).toBe("full");
+    }
+    expect(
+      category(["force-app/main/default/lwc/shoreshWeekEditorX/a.js"])
+    ).toBe("screen");
+  });
+
   it("full: Apex, objects, fields, permission sets, tabs, apps", () => {
     for (const f of [
       "force-app/main/default/classes/Scheduler.cls",

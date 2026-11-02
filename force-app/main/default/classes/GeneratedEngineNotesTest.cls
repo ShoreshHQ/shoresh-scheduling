@@ -29,6 +29,11 @@ private class GeneratedEngineNotesTest {
 
   /** The first Generate of Week 1 (Gym games in every Period 2), with these notes. */
   private static Id generatedWith(String engineNotes) {
+    return generate(engineNotes).scheduleId;
+  }
+
+  /** The same Generate, its whole answer. */
+  private static GeneratedWeek.Result generate(String engineNotes) {
     GeneratedWeek.Save request = GeneratedTestData.filled(
       GeneratedTestData.request(
         GeneratedTestData.inputs(),
@@ -38,7 +43,7 @@ private class GeneratedEngineNotesTest {
       'Gym games'
     );
     request.engineNotes = engineNotes;
-    return GeneratedTestData.save(request).scheduleId;
+    return GeneratedTestData.save(request);
   }
 
   private static String stored(Id draftId) {
@@ -98,7 +103,10 @@ private class GeneratedEngineNotesTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       String sent = notes(ids, 'full');
-      Id draftId = generatedWith(sent);
+      GeneratedWeek.Result first = generate(sent);
+      Id draftId = first.scheduleId;
+      // GEN-10.11: the answer carries the notes kept, for the screen's next build.
+      Assert.areEqual(sent, first.engineNotes);
       Test.startTest();
       Integer before = Limits.getQueries();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -136,9 +144,11 @@ private class GeneratedEngineNotesTest {
         'Gym games'
       );
       rebuild.engineNotes = notes(ids, 'searched');
-      GeneratedTestData.save(rebuild);
+      GeneratedWeek.Result result = GeneratedTestData.save(rebuild);
       Test.stopTest();
       Assert.areEqual(notes(ids, 'searched'), stored(draftId));
+      // GEN-10.11: a later save answers the notes it kept too.
+      Assert.areEqual(notes(ids, 'searched'), result.engineNotes);
     }
   }
 
@@ -151,10 +161,13 @@ private class GeneratedEngineNotesTest {
         '{"v":1,"open":[],"blank":[],"pad":"' +
         'x'.repeat(GeneratedEngineNotes.maxLength()) +
         '"}';
-      Id draftId = generatedWith(tooLong);
+      GeneratedWeek.Result result = generate(tooLong);
       Test.stopTest();
+      Id draftId = result.scheduleId;
       Assert.isNotNull(draftId);
       Assert.isNull(stored(draftId));
+      // GEN-10.11: the answer says none were kept, so the screen builds on none and says so.
+      Assert.isNull(result.engineNotes);
       Assert.areEqual(
         GeneratedTestData.a('Gym games'),
         GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[

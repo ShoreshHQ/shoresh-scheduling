@@ -13,7 +13,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
-import { MODE, notesOf, notesWithout, whyOf } from "c/shoreshEngine";
+import { notesWithout, whyOf } from "c/shoreshEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -23,8 +23,8 @@ import {
   SAVED,
   SETUP_CHANGED,
   addActivity,
-  engineInputOf,
-  inputFor,
+  buildInputOf,
+  builtWeekOf,
   loadWeek,
   readSetupChanges,
   saveEdits,
@@ -48,18 +48,6 @@ const ACTION_LABEL = {
   [ACTION.FILL_OPEN]: "Fill the open cells",
   [ACTION.START_OVER]: "Start over"
 };
-
-/**
- * How the engine builds for each action (Greg 2026-10-27, protocol section 10): Rebuild keeps the
- * week as it is and changes only what setup forces; Generate and Try another build it fresh;
- * Fill the open cells keeps every filled cell.
- */
-function modeOf(action) {
-  if (action === ACTION.FILL_OPEN) {
-    return MODE.FILL_OPEN;
-  }
-  return action === ACTION.REBUILD ? MODE.KEEP : MODE.FULL;
-}
 
 /**
  * The server's conflict sentence without its closing instruction ("Open it again…"): the box's
@@ -699,19 +687,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return lines.length ? lines : null;
   }
 
-  /**
-   * The engine's input for this week, with the camp's words: the data module's for the action
-   * (Start over builds without locks; every other build keeps them), or the week as loaded.
-   */
-  engineInput(days, extra = {}, action = null) {
-    const base = action ? inputFor(this.loaded, action) : this.loaded.input;
-    // The same input the connector builds an agent's week from (c/shoreshGeneratedWeek build.js).
-    return {
-      ...engineInputOf(base, { days, terms: this.t, setup: this._setup }),
-      ...extra
-    };
-  }
-
   /** The week's days a special day replaces ("YYYY-MM-DD"). */
   get replacedDates() {
     const specials = this.loaded && this.loaded.input.specials;
@@ -940,21 +915,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       if (!building) {
         days = clearedDays(loaded.input.days, new Set(this.replacedDates));
       } else {
-        const input = this.engineInput(
-          loaded.input.days,
-          {
-            option,
-            mode: modeOf(action),
-            // Each weekly minimum as the week was built: Rebuild moves cells only for a minimum
-            // the setup change left short (rule 10.6). Unknown for a week built before they
-            // were kept.
-            builtMinimums:
-              this.engineNotes && this.engineNotes.mins.length
-                ? this.engineNotes.mins
-                : null
-          },
-          action
-        );
+        // The same build as the connector's for an agent (c/shoreshGeneratedWeek build.js),
+        // run in pieces.
+        const how = { action, option, terms: this.t, setup: this._setup };
+        const input = buildInputOf(loaded, how);
         const names = namesOf(input);
         // When the line last changed, and when and what was last said aloud (the start said
         // "Generating…"): a line is said once, never again every few seconds.
@@ -997,12 +961,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           }
           return;
         }
-        if (!result.ok) {
-          this.error = result.error;
+        built = builtWeekOf(loaded, how, result);
+        if (!built.ok) {
+          this.error = built.error;
           return;
         }
-        days = result.days;
-        built = result;
+        days = built.days;
         // Built: being saved now, so no line and no Cancel. Focus on Cancel goes at once to the
         // progress it was part of (the build actions are held until the save is done; then
         // focus moves on to Build, below).
@@ -1020,12 +984,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         }
       }
       // What the engine said about the week it built, kept with it for the Why list.
-      const engineNotes = built ? notesOf(built) : null;
       const saved = await saveWeek(loaded, {
         action,
         option,
         days,
-        engineNotes
+        engineNotes: built ? built.notes : null
       });
       if (ticket !== this.loadTicket) {
         return;
@@ -1047,10 +1010,16 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
               }
             : null;
         this.resetChecks();
-        // What the engine said about the week it just built, for the Why list.
-        this.useEngineNotes(engineNotes);
+        // What the engine said about the week it just built, as the server kept it, for the Why
+        // list: the next Rebuild reads the same notes a reload would.
+        this.useEngineNotes(saved.loaded.engineNotes);
         // A whole new week: Undo starts over (its steps were made on the week it replaced).
         this.showInEditor("rebuilt");
+        // Notes the server couldn't keep are said, never hidden: Why has no reasons for this
+        // week, as after a reload.
+        if (saved.notesDropped) {
+          this.sayWhenShown = this.notesDroppedText;
+        }
         // Rebuild, Try another and Start over kept a version first: Versions lists it.
         this.loadVersions();
         // What still doesn't match setup in the week just built (locks and leftovers stay).
@@ -1194,6 +1163,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /** Cancel shows while the week is being built (not once it is sent to be saved). */
   get canStopBuild() {
     return !!this.busy && this.busy.building;
+  }
+  get notesDroppedText() {
+    return `${this.weekName} was saved without the reasons for how it was built.`;
   }
   get stoppedText() {
     return `Stopped. ${this.weekName} wasn't changed.`;

@@ -108,6 +108,11 @@ public with sharing class GeneratedWeek {
     // that changed nothing isn't "changed since"), or null when the week has none.
     @AuraEnabled
     public SchedulePublish.PublishState published;
+    // After a save: the engine's notes as kept with the week (GeneratedEngineNotes.kept), or
+    // null when none were (too long, or not their shape): the next build reads these, not the
+    // ones sent, so it builds what a reload would.
+    @AuraEnabled
+    public String engineNotes;
   }
 
   /**

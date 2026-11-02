@@ -306,7 +306,7 @@ public with sharing class ElectiveSeats {
     made.offeringId = seat.Offering__c;
     made.linkedChoiceId = seat.LinkedChoice__c;
     made.locked = seat.Locked__c == true;
-    made.byHand = seat.ByHand__c == true;
+    made.byHand = ElectiveSeatChecks.kept(seat) && seat.ByHand__c == true;
     made.activityName = seat.ActivityName__c;
     made.locationName = seat.LocationName__c;
     made.groupName = seat.GroupName__c;

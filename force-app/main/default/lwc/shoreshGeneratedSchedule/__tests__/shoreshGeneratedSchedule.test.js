@@ -124,6 +124,15 @@ function savedAnswer(n = 1) {
   };
 }
 
+/**
+ * The server's answer to a save, keeping the engine's notes sent, as GeneratedSaves does with
+ * notes of the right size and shape (GEN-10.11); an answer naming engineNotes keeps those.
+ */
+const keeping =
+  (answer) =>
+  ({ request }) =>
+    Promise.resolve({ engineNotes: request.engineNotes, ...answer });
+
 async function render(inputs = camp(SMALL), setup = SETUP) {
   getInputs.mockResolvedValue(inputs);
   const element = createElement("c-shoresh-generated-schedule", {
@@ -175,7 +184,7 @@ async function openCounter(element) {
 const sent = (call = 0) => saveWeekOnServer.mock.calls[call][0].request;
 
 async function generate(element) {
-  saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+  saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer()));
   q(element, '[data-id="generate"]').click();
   await settle(element);
 }
@@ -377,13 +386,110 @@ describe("c-shoresh-generated-schedule", () => {
     const again = await render(builtOnce);
     action(again, "Rebuild").click();
     await flush();
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     q(again, '[data-id="confirm-go"]').click();
     await settle(again);
     expect(sent(1).action).toBe("Rebuild");
     expect(
       buildForAgent({ inputs: builtOnce, setup: SETUP, labels: LABELS }).save
     ).toEqual(asSent(sent(1)));
+  });
+
+  // GEN-10.11, GEN-10.6
+  describe("10.11: the next Rebuild reads the notes the server kept, as a reload and an agent do", () => {
+    const ids = { programId: PROGRAM, weekId: WEEK };
+
+    /** The week as getInputs answers it after the first save, with the notes the server kept. */
+    function reloaded(spec, kept) {
+      const inputs = {
+        ...camp({ ...spec, scheduleId: SCHEDULE, option: 1 }),
+        ...ids
+      };
+      const days = sent(0).days;
+      inputs.days = inputs.days.map((day, i) => ({
+        ...day,
+        items: days[i].items.map((it) => ({ ...it, gone: false })),
+        rows: days[i].rows
+      }));
+      inputs.revision = savedAnswer().revision;
+      if (kept) {
+        inputs.engine = { notes: kept };
+      }
+      return inputs;
+    }
+
+    /** Generate, the server answering with the notes it kept; then Rebuild on the same screen. */
+    async function generateThenRebuild(spec, keep) {
+      const element = await render({ ...camp(spec), ...ids });
+      saveWeekOnServer.mockImplementationOnce(
+        keeping(keep ? savedAnswer() : { ...savedAnswer(), engineNotes: null })
+      );
+      q(element, '[data-id="generate"]').click();
+      await settle(element);
+      action(element, "Rebuild").click();
+      await flush();
+      saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
+      q(element, '[data-id="confirm-go"]').click();
+      await settle(element);
+      return element;
+    }
+
+    const asSent = (r) => ({
+      revision: r.revision,
+      option: r.option,
+      days: r.days,
+      engine_notes: r.engineNotes
+    });
+
+    it("notes the server kept: the screen's Rebuild is the agent's", async () => {
+      await generateThenRebuild(SMALL, true);
+      const inputs = reloaded(SMALL, sent(0).engineNotes);
+      expect(
+        buildForAgent({ inputs, setup: SETUP, labels: LABELS }).save
+      ).toEqual(asSent(sent(1)));
+    });
+
+    it("notes the server dropped: the screen's Rebuild is the agent's, which reads none", async () => {
+      await generateThenRebuild(SMALL, false);
+      const inputs = reloaded(SMALL, null);
+      expect(
+        buildForAgent({ inputs, setup: SETUP, labels: LABELS }).save
+      ).toEqual(asSent(sent(1)));
+    });
+
+    it("notes the server dropped: the Why list is the one a reload shows, and the quiet line says so", async () => {
+      // Hike's groups at once is blank: a note only the engine makes.
+      const spec = {
+        ...SMALL,
+        activities: [{ name: "Hike", min: 0, max: 5, atOnce: 2, length: 2 }]
+      };
+      const blankAtOnce = (inputs) => {
+        const atOnce = Object.keys(inputs.activities[0]).find((k) =>
+          /GroupsAtOnce__c$/.test(k)
+        );
+        inputs.activities = inputs.activities.map((a) => ({
+          ...a,
+          [atOnce]: null
+        }));
+        return inputs;
+      };
+      const element = await render(blankAtOnce({ ...camp(spec), ...ids }));
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({ ...savedAnswer(), engineNotes: null })
+      );
+      q(element, '[data-id="generate"]').click();
+      await settle(element);
+      const why = (el) =>
+        ["open", "notes"].map((k) => checks(el).measure[k].map((l) => l.text));
+      const shown = why(element);
+      const again = await render(blankAtOnce(reloaded(spec, null)));
+      expect(why(again)).toEqual(shown);
+      await until(
+        () =>
+          q(element, '[data-id="notice"]').textContent ===
+          "Week 1 was saved without the reasons for how it was built."
+      );
+    });
   });
 
   // API-1.20
@@ -663,7 +769,7 @@ describe("c-shoresh-generated-schedule", () => {
 
     it("shows one line in the setup's names and the camp's words, never machinery", async () => {
       const element = await render(camp(BIG));
-      saveWeekOnServer.mockResolvedValue(savedAnswer());
+      saveWeekOnServer.mockImplementation(keeping(savedAnswer()));
       q(element, '[data-id="generate"]').click();
       await flush();
       const line = () => q(element, '[data-id="busy-now"]');
@@ -703,7 +809,7 @@ describe("c-shoresh-generated-schedule", () => {
       });
       try {
         const element = await render(camp(BIG));
-        saveWeekOnServer.mockResolvedValue(savedAnswer());
+        saveWeekOnServer.mockImplementation(keeping(savedAnswer()));
         const editor = q(element, '[data-id="week-editor"]');
         const said = [];
         const announce = editor.announce.bind(editor);
@@ -842,7 +948,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="confirm-cancel"]')
     );
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     q(element, '[data-id="confirm-go"]').click();
     await settle(element);
     expect(sent(1).action).toBe("Rebuild");
@@ -905,7 +1011,7 @@ describe("c-shoresh-generated-schedule", () => {
     await generate(element);
     const first = sent(0).days.map((d) => d.rows);
 
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "TryAnother").click();
     await settle(element);
     expect(sent(1).action).toBe("TryAnother");
@@ -923,7 +1029,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-option="2"]').getAttribute("role")).toBe(
       "menuitemradio"
     );
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(3)));
     chooseOption(element, "1");
     await settle(element);
     expect(sent(2).action).toBe("TryAnother");
@@ -942,14 +1048,14 @@ describe("c-shoresh-generated-schedule", () => {
     expect(action(element, "FillOpen").disabled).toBe(true);
 
     // Start over leaves cells Open; then Fill the open cells fills them, in fill mode.
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "StartOver").click();
     await settle(element);
     expect(action(element, "FillOpen").disabled).toBe(false);
     // The cleared cells have no reason: counted in "still needed", not listed one by one.
     expect(checks(element).measure.open).toEqual([]);
     expect(checks(element).measure.stillNeeded).toBe(10);
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(3)));
     action(element, "FillOpen").click();
     await settle(element);
     expect(sent(2).action).toBe("FillOpen");
@@ -975,7 +1081,7 @@ describe("c-shoresh-generated-schedule", () => {
   it("Start over asks nothing: it clears every activity at once and keeps Flagpole", async () => {
     const element = await render();
     await generate(element);
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "StartOver").click();
     await flush();
     expect(q(element, '[data-id="confirm"]')).toBeNull();
@@ -1081,7 +1187,7 @@ describe("c-shoresh-generated-schedule", () => {
   it("a build is said when it ends, from the screen's one live region", async () => {
     const element = await render();
     await generate(element);
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "TryAnother").click();
     await settle(element);
     await flush();
@@ -1125,7 +1231,7 @@ describe("c-shoresh-generated-schedule", () => {
 
   it("the season read again mid-build: the build finishes and saves, then the week is read again", async () => {
     const element = await render(camp(BIG));
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer()));
     q(element, '[data-id="generate"]').click();
     await flush();
     getInputs.mockClear();
@@ -1166,7 +1272,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(action(element, "TryAnother").disabled).toBe(false);
     expect(optionShown(element)).toBe("2");
     // The next save goes from the week just read.
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(3)));
     action(element, "TryAnother").click();
     await settle(element);
     expect(sent(1).revision).toBe("2026-06-29:1");
@@ -1185,7 +1291,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(optionValues(element)).toEqual(["1"]);
 
     // Try another saved (option 2), then picking 1 again is refused: Option goes back to 2.
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "TryAnother").click();
     await settle(element);
     saveWeekOnServer.mockRejectedValueOnce({
@@ -1271,7 +1377,7 @@ describe("c-shoresh-generated-schedule", () => {
     const first = sent(0).days.map((d) => d.rows);
     action(element, "Rebuild").click();
     await flush();
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     q(element, '[data-id="confirm-go"]').click();
     await settle(element);
     expect(sent(1).action).toBe("Rebuild");
@@ -1695,7 +1801,7 @@ describe("c-shoresh-generated-schedule", () => {
 
     it("coming back to the window mid-build doesn't stop it or read over it", async () => {
       const element = await render(camp(BIG));
-      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer()));
       q(element, '[data-id="generate"]').click();
       await flush();
       window.dispatchEvent(new CustomEvent("focus"));
@@ -1752,7 +1858,7 @@ describe("c-shoresh-generated-schedule", () => {
 
     it("a second click while building builds once", async () => {
       const element = await render(camp(BIG));
-      saveWeekOnServer.mockResolvedValue(savedAnswer());
+      saveWeekOnServer.mockImplementation(keeping(savedAnswer()));
       q(element, '[data-id="generate"]').click();
       q(element, '[data-id="generate"]').click();
       await settle(element);
@@ -1761,7 +1867,7 @@ describe("c-shoresh-generated-schedule", () => {
 
     it("the week picker waits while building", async () => {
       const element = await render(camp(BIG));
-      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer()));
       q(element, '[data-id="generate"]').click();
       await flush();
       expect(q(element, '[data-id="week"]').disabled).toBe(true);
@@ -1792,7 +1898,7 @@ describe("c-shoresh-generated-schedule", () => {
       const element = await render(camp(BIG));
       const told = [];
       element.addEventListener("weekstate", (e) => told.push(e.detail));
-      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer()));
       q(element, '[data-id="generate"]').click();
       await flush();
       // The page hears the picker waits, so the doorway holds this screen's other weeks.

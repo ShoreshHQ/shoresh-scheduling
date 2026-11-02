@@ -84,6 +84,7 @@ public with sharing class GeneratedSaves {
     List<ScheduleGrid> grids = GeneratedChecks.check(setup, blank, request);
     Savepoint beforeSave = Database.setSavepoint();
     try {
+      String notes = GeneratedEngineNotes.kept(request.engineNotes);
       Schedule__c draft = new Schedule__c(
         Program__c = program.Id,
         Week__c = request.weekId,
@@ -91,12 +92,13 @@ public with sharing class GeneratedSaves {
         Status__c = ManualDrafts.DRAFT,
         Origin__c = GeneratedDrafts.GENERATED,
         EngineOption__c = request.option,
-        EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes)
+        EngineNotes__c = notes
       );
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, daySaves(blank, grids, false));
       GeneratedWeek.Result result = saved(draft.Id, blank, null);
       result.published = publishedBeside(blank, grids);
+      result.engineNotes = notes;
       return result;
     } catch (Exception e) {
       Database.rollback(beforeSave);
@@ -123,11 +125,12 @@ public with sharing class GeneratedSaves {
         : null;
       // The engine's notes are this build's: none kept from the week it replaces. Accepted
       // lines go too (WeekAccepts, CORE-6.8), as the desktop's Rebuild clears set-aside findings.
+      String notes = GeneratedEngineNotes.kept(request.engineNotes);
       Database.update(
         new Schedule__c(
           Id = draft.Id,
           EngineOption__c = request.option,
-          EngineNotes__c = GeneratedEngineNotes.kept(request.engineNotes),
+          EngineNotes__c = notes,
           AcceptedLines__c = null
         ),
         AccessLevel.USER_MODE
@@ -136,6 +139,7 @@ public with sharing class GeneratedSaves {
       GeneratedWeek.Result result = saved(draft.Id, days, versionId);
       result.locks = GeneratedLockCells.lockedIn(days, grids);
       result.published = publishedBeside(days, grids);
+      result.engineNotes = notes;
       return result;
     } catch (Exception e) {
       Database.rollback(beforeSave);
