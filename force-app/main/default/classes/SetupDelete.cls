@@ -142,7 +142,7 @@ public with sharing class SetupDelete {
         labels.singularInSentence('Activity') +
         ' is kept.';
     }
-    return result;
+    return found(result);
   }
 
   /** A linked choice: a sheet that names it then counts as its offering's activity (slice E8). */
@@ -161,6 +161,14 @@ public with sharing class SetupDelete {
         (activity == null
           ? ''
           : ' A sheet that names it then counts as ' + activity + '.');
+    }
+    return found(result);
+  }
+
+  /** The preview, or a refusal to ask about something the person can no longer see. */
+  private static Preview found(Preview result) {
+    if (result.message == null) {
+      throw ScreenErrors.of('That is no longer there. Reload the page.');
     }
     return result;
   }
@@ -196,7 +204,10 @@ public with sharing class SetupDelete {
       new Map<String, Object>{ 'recordId' => recordId },
       AccessLevel.USER_MODE
     );
-    return found.isEmpty() ? '' : (String) found[0].get('Name');
+    if (found.isEmpty()) {
+      throw ScreenErrors.of('That is no longer there. Reload the page.');
+    }
+    return (String) found[0].get('Name');
   }
 
   /**
@@ -205,7 +216,10 @@ public with sharing class SetupDelete {
    */
   private static String savedSchedules(Id recordId) {
     Schema.SObjectType kind = recordId.getSObjectType();
-    if (kind != Week__c.SObjectType && kind != Program__c.SObjectType) {
+    if (
+      (kind != Week__c.SObjectType && kind != Program__c.SObjectType) ||
+      !Schema.sObjectType.Schedule__c.isAccessible()
+    ) {
       return '';
     }
     Integer builds = 0;

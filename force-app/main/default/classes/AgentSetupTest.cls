@@ -208,9 +208,15 @@ private class AgentSetupTest {
   static void theAiAsksCampSetupsQuestionBeforeADelete() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
+      // Teens: a program nothing else uses (Main's groups are in "Who can do it").
+      Id teens = ShoreshTestData.program(
+          GeneratedTestData.ids.get('Season'),
+          'Teens'
+        )
+        .Id;
       Database.insert(
         new Schedule__c(
-          Program__c = GeneratedTestData.ids.get('Main'),
+          Program__c = teens,
           Week__c = GeneratedTestData.ids.get('Week 1'),
           Name = 'Build',
           Status__c = 'Draft',
@@ -219,15 +225,14 @@ private class AgentSetupTest {
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
-      List<Object> program = askBeforeDelete('program', 'Main');
+      List<Object> program = askBeforeDelete('program', 'Teens');
       List<Object> refused = askBeforeDelete('location', 'Gym');
-      String screen = SetupDelete.preview(GeneratedTestData.ids.get('Main'))
-        .message;
+      String screen = SetupDelete.preview(teens).message;
       Test.stopTest();
       Assert.areEqual(200, program[0], String.valueOf(program[1]));
       Assert.areEqual(screen, program[1]);
       Assert.areEqual(
-        'Delete "Main"? Anything inside it is deleted too. That includes its Manual Build.',
+        'Delete "Teens"? Anything inside it is deleted too. That includes its Manual Build.',
         program[1]
       );
       Assert.areEqual(400, refused[0]);
@@ -243,7 +248,7 @@ private class AgentSetupTest {
         [
           SELECT COUNT()
           FROM Program__c
-          WHERE Id = :GeneratedTestData.ids.get('Main')
+          WHERE Id = :teens
           WITH SYSTEM_MODE
         ]
       );

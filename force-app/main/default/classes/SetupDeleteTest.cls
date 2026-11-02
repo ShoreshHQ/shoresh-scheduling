@@ -5,9 +5,12 @@
  */
 @IsTest
 private class SetupDeleteTest {
-  /** A Manual Build, a Generated draft and saved versions of Main's weeks. */
-  private static void schedulesOfMain(Map<String, Id> ids) {
-    Id main = ids.get('Main');
+  /**
+   * Teens, a program nothing else uses (Main's groups are in "Who can do it"), with a Manual
+   * Build, a Generated draft and saved versions of its weeks.
+   */
+  private static Id teensWithSchedules(Map<String, Id> ids) {
+    Id main = ShoreshTestData.program(ids.get('Season'), 'Teens').Id;
     Database.insert(
       new List<Schedule__c>{
         new Schedule__c(
@@ -29,6 +32,7 @@ private class SetupDeleteTest {
     );
     ShoreshTestData.savedVersion(main, ids.get('Week 1'), 'V1');
     ShoreshTestData.savedVersion(main, ids.get('Week 1'), 'V2');
+    return main;
   }
 
   private static Id specialDay(Map<String, Id> ids, String name) {
@@ -46,9 +50,9 @@ private class SetupDeleteTest {
   static void deletingAProgramNamesItsSchedulesAndTakesThem() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      schedulesOfMain(ids);
+      Id teens = teensWithSchedules(ids);
       Test.startTest();
-      SetupDelete.Preview preview = SetupDelete.preview(ids.get('Main'));
+      SetupDelete.Preview preview = SetupDelete.preview(teens);
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.isTrue(
@@ -58,7 +62,7 @@ private class SetupDeleteTest {
       Assert.isNull(preview.refusal);
       Assert.areEqual('Delete', preview.label);
       Assert.areEqual(
-        'Delete "Main"? Anything inside it is deleted too. That includes its Manual Build, its Generated Schedule and 2 saved versions.',
+        'Delete "Teens"? Anything inside it is deleted too. That includes its Manual Build, its Generated Schedule and 2 saved versions.',
         preview.message
       );
     }
@@ -69,7 +73,7 @@ private class SetupDeleteTest {
   static void deletingAWeekNamesItsSchedulesAndTheSpecialDaysItTakesOff() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      schedulesOfMain(ids);
+      teensWithSchedules(ids);
       Id fieldDay = specialDay(ids, 'Field Day');
       SpecialEvent__c carnival = new SpecialEvent__c(
         Season__c = ids.get('Season'),

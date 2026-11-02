@@ -92,6 +92,11 @@ public with sharing class ScheduleUses {
     Count result = new Count();
     result.complete = parts.size() <= rowBudget;
     Set<Id> found = new Set<Id>();
+    // Never more than the request has left, keeping room for a delete after the count.
+    Integer budget = Math.min(
+      queryBudget,
+      Limits.getLimitQueries() - Limits.getQueries() - 30
+    );
     Long text = 0;
     Integer queries = 0;
     List<Id> batch = new List<Id>();
@@ -102,7 +107,7 @@ public with sharing class ScheduleUses {
       if (batch.size() < partsAtOnce && i < parts.size() - 1) {
         continue;
       }
-      if (queries == queryBudget || text >= textBudget) {
+      if (queries >= budget || text >= textBudget) {
         result.complete = false;
       } else {
         text += addNaming(batch, key, found);
