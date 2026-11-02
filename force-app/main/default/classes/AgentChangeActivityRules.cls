@@ -42,7 +42,7 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     refuseIfChangedSince(seen);
     RowSaves.Result result;
     try {
-      // The activity details panel's own save: it holds the activity and compares again (SeenSaves).
+      // The activity details panel's own save (SeenSaves); held since the lock above.
       result = ActivitiesController.saveActivityDetails(
         rules,
         chosen,

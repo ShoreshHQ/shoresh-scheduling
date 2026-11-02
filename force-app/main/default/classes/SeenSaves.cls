@@ -29,7 +29,7 @@ public with sharing class SeenSaves {
     for (String name : compared.keySet()) {
       Schema.SObjectField field = compared.get(name);
       if (
-        !RowSeen.stillSeenSaves(
+        !RowSeen.stillAsSeen(
           seen.get(field),
           now.get(field),
           record.get(field)

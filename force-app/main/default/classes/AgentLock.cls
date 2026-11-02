@@ -71,7 +71,7 @@ global with sharing class AgentLock implements AgentWeeks.Action {
     if (result.conflict) {
       throw new AgentWeeks.ConflictException(result.message);
     }
-    if (result.revision == seen) {
+    if (seen.equals(result.revision)) {
       // The screen's menu never offers a change that would do nothing (locks.js lockChoices).
       return locks
         ? 'Nothing in ' +
