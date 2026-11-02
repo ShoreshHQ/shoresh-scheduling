@@ -3,7 +3,7 @@
  * the camp is exactly as it was (docs/import/review.md INGEST-5.10). When each record was last
  * saved is left out (a record put back was saved again), and so are import logs, which record
  * what happened rather than the camp; everything else, Ids included, counts.
- * A few queries in all, with each kind's records inside their parent's.
+ * About 35 queries: Salesforce counts each kind inside its parent as a query of its own.
  */
 @IsTest
 public class CampSnapshot {
