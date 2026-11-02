@@ -38,6 +38,7 @@ private class AgentReadFailedSendsTest {
   }
 
   // API-1.91: the same list Settings shows (SendLog.failedLast), in its sentences.
+  // API-1.92: no web address, so no token, ever reaches the AI.
   @IsTest
   static void failedSendsAreSettingsOwnList() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -64,7 +65,6 @@ private class AgentReadFailedSendsTest {
       String said = (String) listed[1];
       Assert.isTrue(said.contains(failed), said);
       Assert.areEqual(2, SendLog.failedLast(seasonId).size());
-      // API-1.92: no web address, so no token, ever reaches the AI.
       Assert.isFalse(said.contains('s3cret'), said);
       Assert.isFalse(said.contains('hooks.example.test'), said);
       Assert.isTrue(said.contains('see (a web address) now.'), said);
