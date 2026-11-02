@@ -104,6 +104,47 @@ describe("what proves a statement", () => {
     ).toBe(false);
   });
 
+  it("not a skipped test, or one in a skipped describe", () => {
+    const ok = `() => {\n  expect(1).toBe(1);\n}`;
+    expect(proved(jest(`// ${ID}\nit.skip("refuses", ${ok});`))).toBe(false);
+    expect(
+      proved(
+        jest(
+          `// ${ID}\ndescribe.skip("locks", () => {\n  it("one", ${ok.replace(/\n/g, "\n  ")});\n});`
+        )
+      )
+    ).toBe(false);
+  });
+
+  it("not one whose only assert is commented out, or after its own body", () => {
+    expect(
+      proved(
+        jest(`// ${ID}\nit("refuses", () => {\n  // expect(1).toBe(1);\n});`)
+      )
+    ).toBe(false);
+    expect(
+      proved(
+        jest(
+          `// ${ID}\nit("refuses", () => {\n  run();\n});\nafterEach(() => {\n  expect(1).toBe(1);\n});`
+        )
+      )
+    ).toBe(false);
+    expect(
+      proved(
+        apex(
+          `@IsTest\nprivate class BTest {\n  // ${ID}\n  @IsTest\n  static void refused() {\n    run();\n  }\n  static void run() {\n    Assert.isTrue(true);\n  }\n}`
+        )
+      )
+    ).toBe(false);
+  });
+
+  it("a one-line describe covers nothing after it", () => {
+    const tests = jest(
+      `// ${ID}\ndescribe.each(cases)("%s", run);\nit("other", () => {\n  expect(1).toBe(1);\n});`
+    );
+    expect(tests.some((t) => proves(t, ID))).toBe(false);
+  });
+
   it("not a comment-only citation: a file header, a test's body, or a comment a line apart", () => {
     const body = `it("refuses", () => {\n  expect(1).toBe(1);\n});`;
     expect(proved(jest(`/**\n * ${ID}\n */\nconst x = 1;\n\n${body}`))).toBe(

@@ -144,33 +144,38 @@ function testsIn(file, text) {
     while (top > 0 && /^\s*(\/\/|\/\*|\*)/.test(lines[top - 1])) top -= 1;
     return lines.slice(top, i).join("\n");
   };
-  // Each describe, from its line to the "})" at its own indent (the code is Prettier-formatted).
+  // A block runs from its line to the "}" at its own indent (the code is Prettier-formatted),
+  // or is that one line when it closes there.
+  const endOf = (i, indent) => {
+    if (/\);?\s*$/.test(lines[i]) && !/[({[]\s*$/.test(lines[i])) return i + 1;
+    const close = new RegExp(`^${indent}[})]`);
+    let end = i + 1;
+    while (end < lines.length && !close.test(lines[end])) end += 1;
+    return end + 1;
+  };
+  // Each describe; a skipped one (describe.skip, xdescribe) proves nothing inside it.
   const groups = [];
   if (!apex) {
     lines.forEach((line, i) => {
-      const m = /^(\s*)describe(\.each)?\s*[(.]/.exec(line);
+      const m = /^(\s*)(x?)describe(\.each|\.only|\.skip)?\s*\(/.exec(line);
       if (!m) return;
-      const close = new RegExp(`^${m[1]}\\}`);
-      let end = i + 1;
-      while (end < lines.length && !close.test(lines[end])) end += 1;
       groups.push({
         start: i,
-        end,
+        end: endOf(i, m[1]),
+        skipped: Boolean(m[2]) || m[3] === ".skip",
         cites: `${above(i)}\n${line}${line.endsWith("(") ? `\n${lines[i + 1]}` : ""}`
       });
     });
   }
-  const starts = [];
+  // Each test: an @IsTest method (not the class), or an it/test that isn't skipped.
+  const found = [];
   lines.forEach((line, i) => {
-    if (
-      apex
-        ? /^\s*@IsTest\b/i.test(line)
-        : /^\s*(it|test)(\.each)?\s*[(.]/.test(line)
-    ) {
-      // An @IsTest on the class itself is not a test.
-      if (apex && /\bclass\b/.test(lines[i + 1] || "")) return;
-      starts.push(i);
-    }
+    const m = apex
+      ? /^(\s*)@IsTest\b/i.exec(line)
+      : /^(\s*)(it|test)(\.each|\.only)?\s*\(/.exec(line);
+    if (!m) return;
+    if (apex && /\bclass\b/.test(`${line} ${lines[i + 1] || ""}`)) return;
+    found.push({ start: i, end: endOf(apex ? i + 1 : i, m[1]) });
   });
   const titled = groups.map((g) => ({
     file,
@@ -179,14 +184,9 @@ function testsIn(file, text) {
     asserts: false
   }));
   return titled.concat(
-    starts.map((start, n) => {
-      const end = n + 1 < starts.length ? starts[n + 1] : lines.length;
-      const comment = [
-        above(start),
-        ...groups
-          .filter((g) => g.start < start && start < g.end)
-          .map((g) => g.cites)
-      ].join("\n");
+    found.map(({ start, end }) => {
+      const around = groups.filter((g) => g.start < start && start < g.end);
+      const comment = [above(start), ...around.map((g) => g.cites)].join("\n");
       const rest = lines.slice(start, end).join("\n");
       let name;
       if (apex) {
@@ -197,9 +197,13 @@ function testsIn(file, text) {
       } else {
         name = title(rest);
       }
-      const asserts = apex
-        ? /\b(Assert\.|System\.assert)/.test(rest)
-        : /\bexpect\w*\s*\(|\bassert\w*\s*\(/.test(rest);
+      // Its own body, comments left out, must assert.
+      const code = rest.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+      const asserts =
+        !around.some((g) => g.skipped) &&
+        (apex
+          ? /\b(Assert\.|System\.assert)/.test(code)
+          : /\bexpect\w*\s*\(|\bassert\w*\s*\(/.test(code));
       return { file, name, cites: `${comment}\n${name}`, asserts };
     })
   );

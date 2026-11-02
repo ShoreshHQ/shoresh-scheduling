@@ -68,7 +68,9 @@ step 5's first rule. The wiki's sketch numbers for GEN and INGEST will be renumb
 A test proves a statement by naming its ID in the test's title or in the comment lines directly
 above it (no blank line between). In Apex the comment goes above `@IsTest`. An ID above a Jest
 `describe` covers every test inside it. A test that asserts nothing proves nothing, and an ID
-anywhere else (a file's header, inside a test's body) is not counted:
+anywhere else (a file's header, inside a test's body) is not counted. Skipped tests prove nothing.
+The index reads text, so it can't tell a meaningful assert from `expect(true).toBe(true)`: that is
+review's job.
 
 ```js
 // CORE-4.2
