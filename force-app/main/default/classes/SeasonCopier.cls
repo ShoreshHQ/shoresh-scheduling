@@ -6,6 +6,10 @@
  * elective runs are not copied.
  * The original season and everything in it is only read, never written.
  *
+ * The copy is the new season's import (Greg, 2026-11-02): everything it makes is kept in the
+ * import log, so Undo last import takes it all away again, the new season with it
+ * (docs/import/review.md INGEST-5.10).
+ *
  * Dates move by the number of days between the old and new start dates, so each week keeps its
  * length and position. If that shift is not a whole number of weeks, weeks land on different
  * weekdays; the preview says so rather than adjusting anything silently.
@@ -14,6 +18,8 @@ public with sharing class SeasonCopier {
   private final Season__c source;
   private final Integer shiftDays;
   private final CampLabels labels;
+  // Everything the copy makes, kept for Undo last import.
+  private final ImportWriter log = new ImportWriter(null);
 
   public SeasonCopier(Id sourceSeasonId, Date newStartDate) {
     List<Season__c> found = new List<Season__c>();
@@ -82,7 +88,7 @@ public with sharing class SeasonCopier {
         ShrinkShortWeek__c = source.ShrinkShortWeek__c,
         CopiedFrom__c = source.Id
       );
-      Database.insert(season, AccessLevel.USER_MODE);
+      log.saveTracked('Season', new List<SObject>{ season });
 
       Map<Id, Week__c> weekCopies = copyWeeks(season.Id);
       Map<Id, Program__c> programCopies = copyPrograms(season.Id);
@@ -94,12 +100,18 @@ public with sharing class SeasonCopier {
       copies.putAll(copyIds(divisionCopies));
       copies.putAll(copyIds(programCopies));
       copies.putAll(copyIds(blockCopies));
-      copies.putAll(new SetupCopier(source.Id, season.Id).copy(copies));
-      copies.putAll(new SetTimeCopier(source.Id, season.Id, copies).copy());
-      new ElectiveCopier(source.Id, season.Id, copies).copy();
+      Copying made = new Copying(source.Id, season.Id, log);
+      copies.putAll(new SetupCopier(made).copy(copies));
+      copies.putAll(new SetTimeCopier(made, copies).copy());
+      new ElectiveCopier(made, copies).copy();
       copyWeekExceptions(weekCopies, copies);
       // A copy of a season without clashes has none, but check before keeping it.
       SetTimeGuard.checkPending();
+      ImportLog.recordCopy(
+        season.Id,
+        'the copy of "' + source.Name + '"',
+        JSON.serialize(log.created)
+      );
       return season.Id;
     } catch (Exception e) {
       Database.rollback(beforeCopy);
@@ -133,7 +145,7 @@ public with sharing class SeasonCopier {
         )
       );
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Week', copies.values());
     return copies;
   }
 
@@ -160,7 +172,7 @@ public with sharing class SeasonCopier {
       copy.CopiedFrom__c = program.Id;
       copies.put(program.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Program', copies.values());
     return copies;
   }
 
@@ -186,7 +198,7 @@ public with sharing class SeasonCopier {
       copy.CopiedFrom__c = block.Id;
       copies.put(block.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('TimeBlock', copies.values());
     return copies;
   }
 
@@ -205,7 +217,7 @@ public with sharing class SeasonCopier {
       copy.CopiedFrom__c = division.Id;
       copies.put(division.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Division', copies.values());
     return copies;
   }
 
@@ -222,7 +234,7 @@ public with sharing class SeasonCopier {
       copy.CopiedFrom__c = grp.Id;
       copies.put(grp.Id, copy);
     }
-    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    log.saveTracked('Group', copies.values());
     return copies;
   }
 
@@ -256,7 +268,7 @@ public with sharing class SeasonCopier {
         )
       );
     }
-    Database.insert(copies, AccessLevel.USER_MODE);
+    log.saveTracked('WeekException', copies);
   }
 
   private static Id copyOf(Map<Id, Id> copies, Id sourceId) {
@@ -270,6 +282,19 @@ public with sharing class SeasonCopier {
       result.put(sourceId, copies.get(sourceId).Id);
     }
     return result;
+  }
+
+  /** The copy being made: the season copied, the new one, and the import log keeping it. */
+  public class Copying {
+    public final Id sourceSeasonId;
+    public final Id newSeasonId;
+    public final ImportWriter log;
+
+    public Copying(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
+      this.sourceSeasonId = sourceSeasonId;
+      this.newSeasonId = newSeasonId;
+      this.log = log;
+    }
   }
 
   public class Preview {

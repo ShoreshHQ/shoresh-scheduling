@@ -57,8 +57,18 @@ public with sharing class ImportUndoSpecialDays {
    */
   public static Map<Id, String> usedBy(Set<Id> keptIds, Set<Id> ids) {
     Map<Id, String> result = new Map<Id, String>();
+    // Read once per kind Undo removes: no query unless it keeps a special day.
+    Set<Id> keptDays = new Set<Id>();
+    for (Id keptId : keptIds) {
+      if (keptId.getSObjectType() == SpecialDay__c.SObjectType) {
+        keptDays.add(keptId);
+      }
+    }
+    if (keptDays.isEmpty() || ids.isEmpty()) {
+      return result;
+    }
     Map<Id, SpecialDay__c> kept = new Map<Id, SpecialDay__c>(
-      [SELECT Id, Name FROM SpecialDay__c WHERE Id IN :keptIds WITH USER_MODE]
+      [SELECT Id, Name FROM SpecialDay__c WHERE Id IN :keptDays WITH USER_MODE]
     );
     if (kept.isEmpty()) {
       return result;

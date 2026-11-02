@@ -113,7 +113,7 @@ public with sharing class ImportSupersededCells {
     Map<Id, Map<String, Object>> byDay = new Map<Id, Map<String, Object>>();
     for (Object item : entries) {
       Map<String, Object> entry = (Map<String, Object>) item;
-      byDay.put((Id) (String) entry.get('cellsOut'), entry);
+      byDay.put((Id) (String) entry.get(ImportUndoLog.CELLS_OUT), entry);
     }
     if (byDay.isEmpty()) {
       return;

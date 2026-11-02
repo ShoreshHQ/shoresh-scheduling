@@ -36,11 +36,13 @@ public with sharing class ImportFields {
     'SpecialDate' => SpecialDate__c.SObjectType,
     // A batch from another system (IncomingBatch): campers, their choices and bunks.
     'Camper' => Camper__c.SObjectType,
-    'Preference' => Preference__c.SObjectType
+    'Preference' => Preference__c.SObjectType,
+    // Copy season: the new season itself, made with everything in it (SeasonCopier).
+    'Season' => Season__c.SObjectType
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
-  // ImportStructureWrites, ImportElectiveWrites, ImportVersionWrites, ImportWhoKinds, and the
-  // workbook's kinds).
+  // ImportStructureWrites, ImportElectiveWrites, ImportVersionWrites, ImportWhoKinds, the
+  // workbook's kinds, and Copy season's copiers, which also write CopiedFrom__c).
   private static final Map<Schema.SObjectType, Set<Schema.SObjectField>> WRITTEN = new Map<Schema.SObjectType, Set<Schema.SObjectField>>{
     Program__c.SObjectType => new Set<Schema.SObjectField>{
       Program__c.Name,
@@ -52,20 +54,23 @@ public with sharing class ImportFields {
       Program__c.Thursday__c,
       Program__c.Friday__c,
       Program__c.Saturday__c,
-      Program__c.Sunday__c
+      Program__c.Sunday__c,
+      Program__c.CopiedFrom__c
     },
     Division__c.SObjectType => new Set<Schema.SObjectField>{
       Division__c.Name,
       Division__c.Program__c,
       Division__c.SortOrder__c,
       // DIV-1.1: a holding record of a group in no division.
-      Division__c.NoDivision__c
+      Division__c.NoDivision__c,
+      Division__c.CopiedFrom__c
     },
     Group__c.SObjectType => new Set<Schema.SObjectField>{
       Group__c.Name,
       Group__c.Division__c,
       Group__c.Availability__c,
-      Group__c.SortOrder__c
+      Group__c.SortOrder__c,
+      Group__c.CopiedFrom__c
     },
     TimeBlock__c.SObjectType => new Set<Schema.SObjectField>{
       TimeBlock__c.Name,
@@ -73,18 +78,23 @@ public with sharing class ImportFields {
       TimeBlock__c.SortOrder__c,
       TimeBlock__c.StartTime__c,
       TimeBlock__c.EndTime__c,
-      TimeBlock__c.PartOfDay__c
+      TimeBlock__c.PartOfDay__c,
+      TimeBlock__c.CopiedFrom__c
     },
     LocationType__c.SObjectType => new Set<Schema.SObjectField>{
       LocationType__c.Name,
-      LocationType__c.Season__c
+      LocationType__c.Season__c,
+      LocationType__c.SortOrder__c,
+      LocationType__c.CopiedFrom__c
     },
     Location__c.SObjectType => new Set<Schema.SObjectField>{
       Location__c.Name,
       Location__c.Season__c,
       Location__c.GroupsThatFit__c,
       Location__c.LocationType__c,
-      Location__c.Notes__c
+      Location__c.Notes__c,
+      Location__c.SortOrder__c,
+      Location__c.CopiedFrom__c
     },
     Activity__c.SObjectType => new Set<Schema.SObjectField>{
       Activity__c.Name,
@@ -103,7 +113,8 @@ public with sharing class ImportFields {
       Activity__c.SameDivisionOnly__c,
       Activity__c.EarlyWeekCount__c,
       Activity__c.EarlyWeekByDay__c,
-      Activity__c.Notes__c
+      Activity__c.Notes__c,
+      Activity__c.CopiedFrom__c
     },
     ActivityEligibility__c.SObjectType => new Set<Schema.SObjectField>{
       ActivityEligibility__c.Activity__c,
@@ -117,7 +128,9 @@ public with sharing class ImportFields {
       FixedActivity__c.Location__c,
       FixedActivity__c.Length__c,
       FixedActivity__c.EarlyDay__c,
-      FixedActivity__c.EarlyBlocks__c
+      FixedActivity__c.EarlyBlocks__c,
+      FixedActivity__c.SortOrder__c,
+      FixedActivity__c.CopiedFrom__c
     },
     RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{
       RecurringActivity__c.Name,
@@ -131,13 +144,16 @@ public with sharing class ImportFields {
       RecurringActivity__c.Thursday__c,
       RecurringActivity__c.Friday__c,
       RecurringActivity__c.Saturday__c,
-      RecurringActivity__c.Sunday__c
+      RecurringActivity__c.Sunday__c,
+      RecurringActivity__c.SortOrder__c,
+      RecurringActivity__c.CopiedFrom__c
     },
     Coverage__c.SObjectType => new Set<Schema.SObjectField>{
       Coverage__c.Season__c,
       Coverage__c.RecurringActivity__c,
       Coverage__c.Division__c,
-      Coverage__c.Group__c
+      Coverage__c.Group__c,
+      Coverage__c.LinkedChoice__c
     },
     Schedule__c.SObjectType => new Set<Schema.SObjectField>{
       Schedule__c.Name,
@@ -170,7 +186,8 @@ public with sharing class ImportFields {
     },
     ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
       ElectiveSet__c.Name,
-      ElectiveSet__c.Season__c
+      ElectiveSet__c.Season__c,
+      ElectiveSet__c.CopiedFrom__c
     },
     Offering__c.SObjectType => new Set<Schema.SObjectField>{
       Offering__c.ElectiveSet__c,
@@ -178,14 +195,16 @@ public with sharing class ImportFields {
       Offering__c.Seats__c,
       Offering__c.NoSeatLimit__c,
       Offering__c.MinimumToRun__c,
-      Offering__c.Proposed__c
+      Offering__c.Proposed__c,
+      Offering__c.CopiedFrom__c
     },
     LinkedChoice__c.SObjectType => new Set<Schema.SObjectField>{
       LinkedChoice__c.Name,
       LinkedChoice__c.ElectiveSet__c,
       LinkedChoice__c.Offering__c,
       LinkedChoice__c.AppliesTo__c,
-      LinkedChoice__c.SortOrder__c
+      LinkedChoice__c.SortOrder__c,
+      LinkedChoice__c.CopiedFrom__c
     },
     LinkedChoiceTime__c.SObjectType => new Set<Schema.SObjectField>{
       LinkedChoiceTime__c.LinkedChoice__c,
@@ -210,6 +229,15 @@ public with sharing class ImportFields {
       Camper__c.SourceSystem__c,
       Camper__c.Withdrawn__c,
       Camper__c.OutsideChangedAt__c
+    },
+    Season__c.SObjectType => new Set<Schema.SObjectField>{
+      Season__c.Name,
+      Season__c.Camp__c,
+      Season__c.StartDate__c,
+      Season__c.EndDate__c,
+      Season__c.Status__c,
+      Season__c.ShrinkShortWeek__c,
+      Season__c.CopiedFrom__c
     },
     Preference__c.SObjectType => new Set<Schema.SObjectField>{
       Preference__c.ElectiveRun__c,

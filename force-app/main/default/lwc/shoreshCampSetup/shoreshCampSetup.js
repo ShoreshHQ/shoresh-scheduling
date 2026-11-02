@@ -2616,6 +2616,14 @@ export default class ShoreshCampSetup extends LightningElement {
       const result = await undoImport({ importId });
       this.changedOnServer = true;
       this.toast(undoMessage(result));
+      if (result.seasonRemoved) {
+        // Undoing Copy season took the new season away (INGEST-5.10): back to the camp.
+        this.seasonId = null;
+        this.seasonOpen = false;
+        this.screen = "roots";
+        await this.loadCamp();
+        return;
+      }
       await this.loadSeason();
     }, "That import could not be undone. Nothing was changed.");
   }

@@ -161,3 +161,27 @@ Each rule is clue, meaning, example, test.
    half of the day is read as before; the save remembers it like any answer.
    Test: "INGEST-5.9: listed as here part of the day, with Morning only pressed and All day";
    "INGEST-5.9: All day makes it all day, and the save remembers it".
+
+10. **Undo last import restores the camp as it was.**
+    Clue: the director (Roots' Undo last import, Settings' Undo of an outside system's batch) or
+    their AI (`undo_import`) undoes the season's last import. Copy season counts as an import of
+    the new season (Greg, 2026-11-02: "Undo last import should truly mean it"), from the Copy
+    season page and from the AI's `copy_season` alike.
+    Meaning: every record the import made is removed, every record it changed is put back, every
+    record it removed comes back, and what triggers worked out as it saved (keys, a time block's
+    name that follows its times, a fixed or recurring activity's last block) is worked out again
+    from what is put back. One import log (`ImportUndoLog`) records all of it as the import saves
+    and reverses it. Undoing a copy takes the new season away with everything in it, and the
+    screen goes back to the camp. Anything changed since, or in use by something the import did
+    not make, is kept and named, never removed silently; a copied season that keeps anything
+    stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
+    as a new holding record of the same name, which the director never sees. Too big a camp for
+    Salesforce to undo (or import) in one go changes nothing and says so plainly.
+    Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
+    camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
+    it, and "Summer 2027" with it, and says so.
+    Test: Apex `ImportUndoAsItWasTest` `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
+    `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
+    `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
+    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
+    and that trying again won't help" (`shoreshErrors`).
