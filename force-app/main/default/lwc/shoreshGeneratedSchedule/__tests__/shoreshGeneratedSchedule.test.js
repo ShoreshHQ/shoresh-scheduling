@@ -487,7 +487,7 @@ describe("c-shoresh-generated-schedule", () => {
       await until(
         () =>
           q(element, '[data-id="notice"]').textContent ===
-          "Week 1 was saved without the reasons for its Open cells."
+          "Week 1 was saved without the reasons for how it was built."
       );
     });
   });

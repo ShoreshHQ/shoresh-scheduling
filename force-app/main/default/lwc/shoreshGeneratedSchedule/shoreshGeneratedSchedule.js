@@ -1165,7 +1165,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return !!this.busy && this.busy.building;
   }
   get notesDroppedText() {
-    return `${this.weekName} was saved without the reasons for its Open cells.`;
+    return `${this.weekName} was saved without the reasons for how it was built.`;
   }
   get stoppedText() {
     return `Stopped. ${this.weekName} wasn't changed.`;
