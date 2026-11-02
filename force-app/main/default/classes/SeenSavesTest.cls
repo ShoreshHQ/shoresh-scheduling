@@ -155,4 +155,27 @@ private class SeenSavesTest {
       );
     }
   }
+
+  // A field read empty is still seen: a ticket built from a query keeps it.
+  @IsTest
+  static void aFieldReadEmptyIsStillSeen() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id swim = GeneratedTestData.ids.get('Swim');
+      update as user new Activity__c(Id = swim, Notes__c = null);
+      Test.startTest();
+      SObject read = SeenSaves.asRead(
+        [SELECT Notes__c FROM Activity__c WHERE Id = :swim WITH USER_MODE],
+        new List<Schema.SObjectField>{ Activity__c.Notes__c }
+      );
+      RowSaves.Result result = ActivityDetails.save(
+        new Activity__c(Id = swim, Notes__c = 'Towels'),
+        null,
+        SeenSaves.ticket(read, null)
+      );
+      Test.stopTest();
+      Assert.isTrue(read.getPopulatedFieldsAsMap().containsKey('Notes__c'));
+      Assert.isTrue(result.saved());
+    }
+  }
 }

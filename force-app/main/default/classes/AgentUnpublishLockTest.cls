@@ -274,8 +274,8 @@ private class AgentUnpublishLockTest {
         new Map<String, Object>{ 'group' => 'Group A', 'day' => 'Monday' }
       );
       Test.stopTest();
-      Assert.isFalse(screen.conflict, String.valueOf(screen.message));
-      Assert.areEqual(409, unlock[0], String.valueOf(unlock[1]));
+      Assert.isFalse(screen.conflict, 'Screen lock: ' + screen.message);
+      Assert.areEqual(409, unlock[0], 'Unlock: ' + unlock[1]);
       Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, unlock[1]);
       Assert.areEqual(400, unseen[0], 'No seen: never read in its place');
       Assert.isTrue(((String) unseen[1]).contains('(seen)'));

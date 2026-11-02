@@ -27,6 +27,18 @@ public with sharing class SeenSaves {
   }
 
   /**
+   * A row as read, each field named: a field read empty is still seen (Salesforce leaves fields
+   * a query found empty out of a row's populated fields).
+   */
+  public static SObject asRead(SObject row, List<Schema.SObjectField> fields) {
+    SObject result = row.getSObjectType().newSObject(row.Id);
+    for (Schema.SObjectField field : fields) {
+      result.put(field, row.get(field));
+    }
+    return result;
+  }
+
+  /**
    * Holds the row and compares each field the person changed (record) with its ticket.
    * wantedWho is who they chose: someone else having chosen the same is no question. A row
    * someone else deleted is refused in plain words.

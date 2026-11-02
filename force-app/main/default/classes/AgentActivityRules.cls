@@ -45,16 +45,19 @@ public with sharing class AgentActivityRules {
   /** What the activity holds now, as a save's ticket (SeenSaves); who only when chosen. */
   public static SeenSaves.Ticket ticketNow(Id activityId, List<Id> chosen) {
     return SeenSaves.ticket(
-      [
-        SELECT
-          SameDivisionOnly__c,
-          EarlyWeekCount__c,
-          EarlyWeekByDay__c,
-          Notes__c
-        FROM Activity__c
-        WHERE Id = :activityId
-        WITH USER_MODE
-      ],
+      SeenSaves.asRead(
+        [
+          SELECT
+            SameDivisionOnly__c,
+            EarlyWeekCount__c,
+            EarlyWeekByDay__c,
+            Notes__c
+          FROM Activity__c
+          WHERE Id = :activityId
+          WITH USER_MODE
+        ],
+        PANEL_RULES.values()
+      ),
       chosen == null ? null : AgentActivityWho.idsNow(activityId)
     );
   }

@@ -57,16 +57,24 @@ private class ActivitiesAndLocationsTest {
     SeenSaves.Ticket ticket = rules.Id == null
       ? null
       : SeenSaves.ticket(
-          [
-            SELECT
-              SameDivisionOnly__c,
-              EarlyWeekCount__c,
-              EarlyWeekByDay__c,
-              Notes__c
-            FROM Activity__c
-            WHERE Id = :rules.Id
-            WITH SYSTEM_MODE
-          ],
+          SeenSaves.asRead(
+            [
+              SELECT
+                SameDivisionOnly__c,
+                EarlyWeekCount__c,
+                EarlyWeekByDay__c,
+                Notes__c
+              FROM Activity__c
+              WHERE Id = :rules.Id
+              WITH SYSTEM_MODE
+            ],
+            new List<Schema.SObjectField>{
+              Activity__c.SameDivisionOnly__c,
+              Activity__c.EarlyWeekCount__c,
+              Activity__c.EarlyWeekByDay__c,
+              Activity__c.Notes__c
+            }
+          ),
           RowSeen.whoNow(rules)
         );
     return ActivitiesController.saveActivityDetails(rules, whoCanDoIt, ticket);
