@@ -1012,4 +1012,14 @@ private class ImportUndoTest {
       );
     }
   }
+
+  // Undo keeps an edit that only changed capitals ("Archery" to "archery").
+  @IsTest
+  static void anEditOfOnlyCapitalsCountsAsAnEdit() {
+    Assert.isFalse(ImportUndoValues.same('archery', 'Archery'));
+    Assert.isTrue(ImportUndoValues.same('Archery', 'Archery'));
+    Assert.isTrue(ImportUndoValues.same(null, null));
+    Assert.isFalse(ImportUndoValues.same(null, 'Archery'));
+    Assert.isTrue(ImportUndoValues.same(2, 2.0));
+  }
 }

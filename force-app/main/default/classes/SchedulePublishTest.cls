@@ -755,4 +755,65 @@ private class SchedulePublishTest {
       Assert.isNotNull(current.PublishKey__c);
     }
   }
+
+  // PROG-6.1
+  @IsTest
+  static void eachProgramsWeekPublishesOnItsOwn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id mainDraft = startWeek(ids);
+      placeOver(mainDraft, '', 'Soccer');
+      Program__c teens = ShoreshTestData.program(ids.get('Season'), 'Teens');
+      Id morning = ShoreshTestData.timeBlock(teens.Id, 'Morning', 9).Id;
+      Id teenGroup = ShoreshTestData.groupIn(
+          ShoreshTestData.division(teens.Id, 'Teens').Id,
+          'Teen A'
+        )
+        .Id;
+      Id teensDraft = ManualBuildController.startBlankWeek(
+          teens.Id,
+          ids.get('Week 1')
+        )
+        .schedule.schedule.id;
+      SlotRunsTestData.useBlocks(new List<Id>{ morning });
+      SlotEdits.Result placed = ManualBuildController.saveSlots(
+        teensDraft,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(MONDAY, teenGroup, morning),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Soccer') }
+          )
+        }
+      );
+      Assert.isTrue(placed.conflicts.isEmpty(), String.valueOf(placed));
+      Test.startTest();
+      Id mainFirst = publishNow(mainDraft).published.id;
+      Id teensFirst = publishNow(teensDraft).published.id;
+      SlotRunsTestData.useBlocks(
+        new List<Id>{
+          ids.get('Period 1'),
+          ids.get('Period 2'),
+          ids.get('Lunch')
+        }
+      );
+      placeOver(mainDraft, 'A:' + ids.get('Soccer'), 'Gym games');
+      Id mainSecond = publishNow(mainDraft).published.id;
+      Test.stopTest();
+      Map<Id, Schedule__c> current = new Map<Id, Schedule__c>();
+      for (Schedule__c published : publishedSchedules()) {
+        if (published.PublishKey__c != null) {
+          current.put(published.Id, published);
+        }
+      }
+      Assert.areEqual(
+        new Set<Id>{ mainSecond, teensFirst },
+        current.keySet(),
+        'one published week per program; Main publishing again left Teens\' alone'
+      );
+      Assert.areNotEqual(mainFirst, mainSecond);
+      Assert.areEqual('Published', current.get(teensFirst).Status__c);
+      Assert.areEqual(ids.get('Week 1'), current.get(teensFirst).Week__c);
+    }
+  }
 }
