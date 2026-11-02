@@ -211,3 +211,10 @@
 .line_progress {
   justify-content: flex-start;
 }
+
+.help {
+  display: flex;
+  align-items: baseline;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-space-pad);
+}
