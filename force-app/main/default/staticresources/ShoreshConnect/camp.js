@@ -12,7 +12,8 @@ const fs = require("fs");
 const path = require("path");
 
 const QUERY =
-  "SELECT NamespacePrefix, Description FROM StaticResource WHERE Name = 'ShoreshConnect'";
+  // The package's own first, should the camp also have one of that name outside it.
+  "SELECT NamespacePrefix, Description FROM StaticResource WHERE Name = 'ShoreshConnect' ORDER BY NamespacePrefix NULLS LAST LIMIT 1";
 const API_VERSION = "v67.0";
 
 /** "This copy of Shoresh's connector <can't do what>. Download it again from Settings in Shoresh." */
@@ -38,19 +39,23 @@ function ownVersion(dir = __dirname) {
 
 /**
  * What Salesforce says of the camp's Shoresh: { namespace, version }. ask(request) answers
- * Salesforce's { status, body }. Where it can't be read, no namespace and no version.
+ * Salesforce's { status, body }. Where it can't be read, no namespace and no version, and read:
+ * false so it is asked again next time.
  */
 async function campOf(ask) {
   const read = await ask({
     path: `/services/data/${API_VERSION}/query?${new URLSearchParams({ q: QUERY })}`,
     method: "GET"
   });
-  let record;
+  let records;
   try {
-    record = read.status === 200 && JSON.parse(read.body).records[0];
+    records = read.status === 200 && JSON.parse(read.body).records;
   } catch {
-    record = null;
+    records = null;
   }
+  if (!Array.isArray(records))
+    return { namespace: "", version: null, read: false };
+  const [record] = records;
   if (!record) return { namespace: "", version: null };
   return {
     namespace: record.NamespacePrefix || "",
@@ -60,9 +65,10 @@ async function campOf(ask) {
 
 /** Why this copy can't be used with the camp (it is older than the camp's), or null. */
 function tooOld(camp, own = ownVersion()) {
-  if (!camp.version || !versionIn(own)) return null;
+  const ours = versionIn(own);
+  if (!camp.version || !ours) return null;
   const theirs = camp.version.split(".").map(Number);
-  const mine = own.split(".").map(Number);
+  const mine = ours.split(".").map(Number);
   for (let i = 0; i < 3; i++) {
     if (mine[i] > theirs[i]) return null;
     if (mine[i] < theirs[i]) {

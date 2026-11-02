@@ -57,9 +57,11 @@ describe("The camp's Salesforce address", () => {
     expect(
       await campOf(async () => ({ status: 200, body: '{"records":[]}' }))
     ).toEqual({ namespace: "", version: null });
+    // Not read (refused, or no answer): asked again next time.
     expect(await campOf(async () => ({ status: 400, body: "[]" }))).toEqual({
       namespace: "",
-      version: null
+      version: null,
+      read: false
     });
   });
 

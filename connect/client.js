@@ -215,15 +215,15 @@ async function call(
 const WEEK_VIEW = { api: "week_view", method: "GET" };
 
 /**
- * What Salesforce says of the camp's Shoresh (camp.js), asked once a sign-in while the connector
- * runs: its namespace doesn't change under a running connector.
+ * What Salesforce says of the camp's Shoresh (camp.js), kept once read for each sign-in while the
+ * connector runs: its namespace doesn't change under a running connector.
  */
 const camps = new Map();
-function campFor(org, asked) {
+async function campFor(org, asked) {
   if (!camps.has(org)) {
-    const found = campOf(asked);
-    camps.set(org, found);
-    found.catch(() => camps.delete(org));
+    const camp = await campOf(asked);
+    if (camp.read === false) return camp;
+    camps.set(org, camp);
   }
   return camps.get(org);
 }
