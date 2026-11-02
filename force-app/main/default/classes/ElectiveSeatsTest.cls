@@ -1020,14 +1020,17 @@ private class ElectiveSeatsTest {
 
   // ---------------------------------------------------------------- Start a new version
 
-  // ELECT-5.3
+  // ELECT-5.3, ELECT-5.5
   @IsTest
   static void aNewVersionCarriesChoicesLocksAndHandMoves() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
       view = camp.move(view.revision, 0, 'Archery');
+      view = camp.move(view.revision, 1, 'Archery');
       Test.startTest();
+      // Camper 1's hand move, unlocked, is Assign's again: not carried.
+      view = camp.lock(view.revision, 1, false);
       view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
 
       ElectiveSeats.RunView copy = ElectiveSeatsController.startNewVersion(
@@ -1040,6 +1043,7 @@ private class ElectiveSeatsTest {
       Assert.areEqual(3, copy.campers.size(), 'Every camper and their choices');
       Assert.areEqual(1, copy.seats.size(), 'Only the hand move');
       Assert.isTrue(copy.seats[0].locked && copy.seats[0].byHand);
+      Assert.areEqual(camp.campers[0], copy.seats[0].camperId);
       Assert.isFalse(copy.assigned, 'Assign seats fills the rest');
       // The final run is kept as it was.
       Assert.areEqual(
@@ -1061,27 +1065,6 @@ private class ElectiveSeatsTest {
   }
 
   // ---------------------------------------------------------------- no bunk
-
-  // ELECT-5.5
-  @IsTest
-  static void aNewVersionLeavesAnUnlockedHandMoveForAssign() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      SeatsCamp camp = new SeatsCamp(3);
-      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
-      view = camp.move(view.revision, 0, 'Archery');
-      view = camp.move(view.revision, 1, 'Archery');
-      Test.startTest();
-      view = camp.lock(view.revision, 0, false);
-      view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
-      ElectiveSeats.RunView copy = ElectiveSeatsController.startNewVersion(
-        camp.runId
-      );
-      Test.stopTest();
-
-      Assert.areEqual(1, copy.seats.size(), 'Only the move still locked');
-      Assert.areEqual(camp.campers[1], copy.seats[0].camperId);
-    }
-  }
 
   @IsTest
   static void aCamperWithNoBunkTakesTheFirstDivisionsTime() {
