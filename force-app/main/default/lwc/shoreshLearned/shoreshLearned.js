@@ -6,7 +6,7 @@ import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
-import { failed } from "c/shoreshErrors";
+import { failed, SUPPORT_EMAIL } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
 import { builtInRows } from "./builtIn";
 import { historyLines } from "./history";
@@ -38,6 +38,9 @@ const STALE = "Someone else changed this just now. Showing the latest.";
  * @api focusHeading(): the cursor to the screen's heading.
  */
 export default class ShoreshLearned extends LightningElement {
+  supportEmail = SUPPORT_EMAIL;
+  supportHref = `mailto:${SUPPORT_EMAIL}`;
+
   @api campId;
   @api terms;
   // The open season's setup (the page's own), for names as the camp writes them now.

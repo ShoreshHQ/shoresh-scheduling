@@ -823,3 +823,15 @@ describe("patterns, and what Shoresh already knew", () => {
     expect(patternLines(element)).toHaveLength(1);
   });
 });
+
+describe("c-shoresh-learned: Help", () => {
+  it("gives the support email as a real link, even when nothing is learned", async () => {
+    const element = await mount([]);
+    const help = $(element, '[data-id="help"]');
+    expect(help.querySelector("h3").textContent).toBe("Help");
+    const link = $(element, 'a[data-id="support-email"]');
+    expect(link.textContent).toBe("imshoresh@gmail.com");
+    expect(link.getAttribute("href")).toBe("mailto:imshoresh@gmail.com");
+    await expect(element).toBeAccessible();
+  });
+});
