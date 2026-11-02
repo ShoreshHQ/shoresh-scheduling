@@ -272,11 +272,7 @@ function fromCommandLine(given) {
   return input;
 }
 
-async function importFile(
-  capability,
-  given,
-  { ask, answer, load, namespaceOf }
-) {
+async function importFile(capability, given, { read, send, answer, load }) {
   const input = fromCommandLine(given);
   const workbook = capability.importsWorkbook;
   if (input.save && !String(input.seen ?? "").trim()) {
@@ -292,18 +288,14 @@ async function importFile(
   ) {
     return refused('answers is an object of id to answer, like {"q1": "b"}.');
   }
-  const path = `/services/apexrest/v1/${capability.api}`;
   const fields = input.season !== undefined ? { season: input.season } : {};
-  const read = await ask({
-    path: `${path}?${new URLSearchParams(fields)}`,
-    method: "GET"
-  });
-  if (read.status !== 200) return answer(read);
-  const body = asTheScreenReads(JSON.parse(read.body));
+  const got = await read(capability.api, fields);
+  if (got.status !== 200) return answer(got);
+  const body = asTheScreenReads(JSON.parse(got.body));
   if (input.save && body.seen !== String(input.seen).trim()) {
     return changedSince();
   }
-  const m = await load(namespaceOf(body));
+  const m = await load();
   const setup = body.setup;
   const t = m.buildTerms(setup.labels || []);
   const screenKey = input.list;
@@ -436,14 +428,10 @@ async function importFile(
     );
     plan.remember = m.withLearning(plan.remember, cards, suggestions);
   }
-  const saved = await ask({
-    path,
-    method: "POST",
-    body: JSON.stringify({
-      ...fields,
-      seen: String(input.seen).trim(),
-      plan: JSON.stringify(plan)
-    })
+  const saved = await send(capability.api, {
+    ...fields,
+    seen: String(input.seen).trim(),
+    plan: JSON.stringify(plan)
   });
   const done = answer(saved);
   if (!done.ok) return done;
@@ -461,14 +449,8 @@ async function importFile(
 }
 
 /** The screen's own Undo, said as the screen says it. */
-async function undoImport(capability, input, { ask, answer, load }) {
-  const done = answer(
-    await ask({
-      path: `/services/apexrest/v1/${capability.api}`,
-      method: "POST",
-      body: JSON.stringify(input)
-    })
-  );
+async function undoImport(capability, input, { send, answer, load }) {
+  const done = answer(await send(capability.api, input));
   if (!done.ok) return done;
   let result;
   try {
@@ -476,7 +458,7 @@ async function undoImport(capability, input, { ask, answer, load }) {
   } catch {
     return done;
   }
-  const m = await load("");
+  const m = await load();
   return { ok: true, status: 200, text: m.undoMessage(result) };
 }
 

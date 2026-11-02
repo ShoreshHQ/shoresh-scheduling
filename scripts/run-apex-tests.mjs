@@ -13,9 +13,11 @@
  * test org, so a busy day used it up and every queued run failed. Direct single-class runs do
  * not count against it. See docs/ci-setup.md.
  *
- * Usage: node scripts/run-apex-tests.mjs [--target-org <alias>]
+ * Usage: node scripts/run-apex-tests.mjs [--target-org <alias>] [--class-names <A,B,...>]
+ * --class-names runs only those classes (a pull request's pick, scripts/ci-apex-tests.js); then
+ * coverage is shown but not required, since the classes not run count as 0%.
  * Exits 1 if no test class is found, any class fails, cannot run, or takes longer than 10
- * minutes, or coverage is below 75%. While the shared org is busy (another run or deploy), a
+ * minutes, or (running every class) coverage is below 75%. While the shared org is busy (another run or deploy), a
  * class waits and tries again, for up to 3 minutes.
  */
 import { execFileSync } from "node:child_process";
@@ -28,6 +30,9 @@ const CLI_TIMEOUT_MS = 2 * 60 * 1000;
 const args = process.argv.slice(2);
 const orgIndex = args.indexOf("--target-org");
 const orgArgs = orgIndex >= 0 ? ["--target-org", args[orgIndex + 1]] : [];
+const namesIndex = args.indexOf("--class-names");
+const only =
+  namesIndex >= 0 ? args[namesIndex + 1].split(",").filter(Boolean) : null;
 
 /** Every file under a folder with one of the extensions. */
 function files(dir, extensions) {
@@ -353,7 +358,9 @@ function coverage(lines) {
   return { percent: total === 0 ? 100 : (100 * covered) / total, untouched };
 }
 
-const classes = testClasses();
+const classes = only
+  ? testClasses().filter((name) => only.includes(name))
+  : testClasses();
 if (classes.length === 0) {
   const anyApex = files("force-app", [".cls"]).length > 0;
   console.log(anyApex ? "No Apex test classes found." : "No Apex yet.");
@@ -383,17 +390,19 @@ console.log(
     `${ran} tests ran, ${failedTests} failed.`
 );
 console.log(
-  `Coverage of this repository's Apex: ${percent.toFixed(0)}% (needs ${MIN_COVERAGE}%).`
+  `Coverage of this repository's Apex: ${percent.toFixed(0)}%` +
+    (only ? " (some classes only; not checked)." : ` (needs ${MIN_COVERAGE}%).`)
 );
-if (untouched.length > 0) {
+const lowCoverage = !only && percent < MIN_COVERAGE;
+if (!only && untouched.length > 0) {
   console.log(`Not run by any test (counted as 0%): ${untouched.join(", ")}`);
 }
-if (percent < MIN_COVERAGE) {
+if (lowCoverage) {
   console.log(
     "A deploy to the test org while this run was going can lower this; if so, run it again."
   );
 }
-if (failedClasses > 0 || percent < MIN_COVERAGE) {
+if (failedClasses > 0 || lowCoverage) {
   console.log("\nApex tests FAILED.");
   process.exit(1);
 }

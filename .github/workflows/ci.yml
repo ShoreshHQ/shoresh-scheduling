@@ -135,6 +135,8 @@ jobs:
     outputs:
       category: ${{ steps.decide.outputs.category }}
       reason: ${{ steps.decide.outputs.reason }}
+      apex_tests: ${{ steps.pick.outputs.apex_tests }}
+      apex_reason: ${{ steps.pick.outputs.apex_reason }}
     steps:
       - uses: actions/checkout@v7
         if: github.event_name == 'pull_request'
@@ -158,6 +160,21 @@ jobs:
           else
             echo "category=full" | tee -a "$GITHUB_OUTPUT"
             echo "reason=$GITHUB_EVENT_NAME run: the full Apex suite on $GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
+          fi
+      - name: Pick the Apex tests this change can affect
+        # scripts/ci-apex-tests.js: the test classes that name a changed class, directly or
+        # through other classes; `all` whenever in doubt. Base branch's copy, as above.
+        # Nightly and by-hand runs: all.
+        id: pick
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] &&
+             git show "origin/$BASE_REF:scripts/ci-apex-tests.js" > "$RUNNER_TEMP/ci-apex-tests.js"; then
+            node "$RUNNER_TEMP/ci-apex-tests.js" "$BASE_REF" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "apex_tests=all" | tee -a "$GITHUB_OUTPUT"
+            echo "apex_reason=every Apex test class ($GITHUB_EVENT_NAME run)" | tee -a "$GITHUB_OUTPUT"
           fi
 
   scratch-org:
@@ -185,21 +202,31 @@ jobs:
       # Anything but a successful category check with an answer means full.
       CATEGORY: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.category || 'full' }}
       REASON: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.reason || 'the category check did not finish, so running everything' }}
+      # all, none, or the comma-separated test classes the change can affect.
+      APEX_TESTS: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.apex_tests || 'all' }}
+      APEX_REASON: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.apex_reason || 'the category check did not finish, so running everything' }}
     steps:
       - name: What this change needs
         run: |
           case "$CATEGORY" in
             docs)   what="No org check needed: nothing deployed, no Apex tests." ;;
             screen) what="Deploy to the test org, no Apex tests." ;;
-            *)      what="Deploy to the test org and run every Apex test." ;;
+            *)      case "$APEX_TESTS" in
+                      all) what="Deploy to the test org and run every Apex test." ;;
+                      none) what="Deploy to the test org; no Apex test can be affected." ;;
+                      *)   what="Deploy to the test org and run these Apex tests: ${APEX_TESTS//,/, }." ;;
+                    esac ;;
           esac
           echo "Category: ${CATEGORY:-full}. $what"
           echo "Why: $REASON"
+          echo "Apex tests: $APEX_REASON"
           {
             echo "### Category: ${CATEGORY:-full}"
             echo "$what"
             echo
             echo "Why: $REASON"
+            echo
+            echo "Apex tests: $APEX_REASON"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v7
         if: env.CATEGORY != 'docs'
@@ -246,8 +273,15 @@ jobs:
           fi
       - name: Apex tests
         # Skipped only for docs and screen-only pull requests; anything unrecognised runs them.
-        if: env.CATEGORY != 'docs' && env.CATEGORY != 'screen'
+        if: env.CATEGORY != 'docs' && env.CATEGORY != 'screen' && env.APEX_TESTS != 'none'
         # One class at a time, run directly: queued runs (RunLocalTests) count against the test
         # org's daily allowance of 500 queued test classes, which CI and sessions share, and a
         # busy day used it up (2026-10-16). See docs/ci-setup.md.
-        run: node scripts/run-apex-tests.mjs
+        # A pull request runs only the classes its change can affect (APEX_TESTS); nightly and
+        # by-hand runs, and any pull request in doubt, run all of them.
+        run: |
+          if [ "$APEX_TESTS" = "all" ]; then
+            node scripts/run-apex-tests.mjs
+          else
+            node scripts/run-apex-tests.mjs --class-names "$APEX_TESTS"
+          fi

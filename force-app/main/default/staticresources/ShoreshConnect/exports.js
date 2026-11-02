@@ -184,22 +184,18 @@ const MAKERS = {
 async function makeFile(
   capability,
   input,
-  { ask, answer, load, namespaceOf, folder = downloadsFolder() }
+  { read, answer, load, folder = downloadsFolder() }
 ) {
-  const query = new URLSearchParams();
+  const query = {};
   for (const field of capability.queryFields) {
     if (input[field] !== undefined && input[field] !== "") {
-      query.set(field, input[field]);
+      query[field] = input[field];
     }
   }
-  const said = query.toString();
-  const read = await ask({
-    path: `/services/apexrest/v1/${capability.api}${said ? `?${said}` : ""}`,
-    method: "GET"
-  });
-  if (read.status !== 200) return answer(read);
-  const body = asTheScreenReads(JSON.parse(read.body));
-  const m = await load(namespaceOf(body));
+  const got = await read(capability.api, query);
+  if (got.status !== 200) return answer(got);
+  const body = asTheScreenReads(JSON.parse(got.body));
+  const m = await load();
   const t = m.buildTerms((body.setup && body.setup.labels) || []);
   let made;
   try {
