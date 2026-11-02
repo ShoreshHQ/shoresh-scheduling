@@ -434,24 +434,17 @@ function stepOf(capability, ctx, m, input, weekName) {
 
 /**
  * The edit, made as the person: read, worked out here, saved through the screen's own save.
- * ask(request) answers Salesforce's { status, body }; load(namespace) the screens' modules.
+ * read(api, fields) and send(api, body) answer Salesforce's { status, body }; load() the screens' modules.
  */
-async function editCells(
-  capability,
-  input,
-  { ask, answer, load, namespaceOf }
-) {
+async function editCells(capability, input, { read, send, answer, load }) {
   const fields = {};
   for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
-  const read = await ask({
-    path: `/services/apexrest/v1/week_checks?${new URLSearchParams(fields)}`,
-    method: "GET"
-  });
-  if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
-  const m = await load(namespaceOf(body));
+  const got = await read("week_checks", fields);
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
+  const m = await load();
   const ctx = contextOf(m, body);
   const weekName = input.week;
   let step;
@@ -470,17 +463,13 @@ async function editCells(
   // Manual Build has no locks: its runs go as its screen sends them, without any.
   const runs = ctx.liveLocks ? m.stampLocks(sent, ctx.liveLocks) : sent;
   return answer(
-    await ask({
-      path: `/services/apexrest/v1/${capability.api}`,
-      method: "POST",
-      body: JSON.stringify({
-        ...fields,
-        change: step.label,
-        said: step.said || "",
-        runs,
-        // A rainy day's marks, and the day's marks as read.
-        ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
-      })
+    await send(capability.api, {
+      ...fields,
+      change: step.label,
+      said: step.said || "",
+      runs,
+      // A rainy day's marks, and the day's marks as read.
+      ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
     })
   );
 }

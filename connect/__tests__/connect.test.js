@@ -9,12 +9,20 @@ const {
   requestFor,
   sfArgs,
   readResponse,
-  call,
+  call: callAs,
   check,
   sfPath,
   signIn,
   importModules
 } = require("../client");
+// A camp without a namespace, as the test org is; namespaces are camp.test.js's.
+// A packaged camp: the namespace Salesforce says, handed to the screens' modules.
+const packaged = async () => ({ namespace: "shoresh", version: null });
+const call = (name, input, options) =>
+  callAs(name, input, {
+    camp: async () => ({ namespace: "", version: null }),
+    ...options
+  });
 const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
 
@@ -283,10 +291,10 @@ describe("Shoresh for AI tools and the command line", () => {
     const built = await call(
       "build_week",
       { season: "Summer 2026", week: "Week 1" },
-      { run, engine }
+      { run, engine, camp: packaged }
     );
     expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/build_week?season=Summer+2026&week=Week+1",
+      "/services/apexrest/shoresh/v1/build_week?season=Summer+2026&week=Week+1",
       "--method",
       "GET"
     ]);
@@ -297,7 +305,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     ]);
     expect(seen[1].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/build_week",
+      "/services/apexrest/shoresh/v1/build_week",
       "--method",
       "POST"
     ]);
@@ -402,10 +410,11 @@ describe("Shoresh for AI tools and the command line", () => {
     const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
     const got = await call("read_week_checks", asked, {
       run: answers([]),
-      checks
+      checks,
+      camp: packaged
     });
     expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main",
+      "/services/apexrest/shoresh/v1/week_checks?season=Summer+2026&week=Week+1&program=Main",
       "--method",
       "GET"
     ]);
@@ -2133,7 +2142,9 @@ describe("Shoresh for AI tools and the command line", () => {
         text: "Connected: your AI can now see and change your camp's schedules, with the same access you have in Salesforce."
       }
     );
-    expect(seen[0].args).toEqual([
+    // First what Salesforce says of the camp's Shoresh (camp.js), then the read at its address.
+    expect(seen[0].args[3]).toMatch(/^\/services\/data\/v\d+\.0\/query\?q=/);
+    expect(seen[1].args).toEqual([
       "api",
       "request",
       "rest",
@@ -2341,7 +2352,10 @@ describe("Shoresh for AI tools and the command line", () => {
         input,
         sfAnswering(409, '{"message":"Changed by someone else"}', seenMcp)
       );
-      expect(seenScript).toEqual(seenMcp);
+      // The script asks Salesforce for the camp's namespace too; the actions themselves are the same.
+      const actions = (seen) =>
+        seen.filter((s) => s.args[3].startsWith("/services/apexrest/"));
+      expect(actions(seenScript)).toEqual(seenMcp);
       expect(fromMcp.result).toEqual({
         content: [{ type: "text", text: fromScript.text }],
         isError: !fromScript.ok

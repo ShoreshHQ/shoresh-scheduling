@@ -295,6 +295,25 @@ function bumpVersionIfChanged(before) {
   fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
+/**
+ * The version in the static resource's description too, where the connector reads it with the
+ * person's sign-in (connect/camp.js): an older download then says so.
+ */
+function describeVersion() {
+  const { version } = JSON.parse(
+    fs.readFileSync(path.join(TO, "manifest.json"), "utf8")
+  );
+  const file = `${RESOURCE}.resource-meta.xml`;
+  const xml = fs.readFileSync(file, "utf8");
+  fs.writeFileSync(
+    file,
+    xml.replace(
+      /( Version [\d.]+\.)?<\/description>/,
+      ` Version ${version}.</description>`
+    )
+  );
+}
+
 async function build() {
   const before = contents();
   for (const f of fs.readdirSync(TO)) {
@@ -311,6 +330,7 @@ async function build() {
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
   fs.writeFileSync(path.join(TO, PRINT_FILE), await printViewFile());
   bumpVersionIfChanged(before);
+  describeVersion();
   console.log(
     `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files and the week view into ${TO}`
   );

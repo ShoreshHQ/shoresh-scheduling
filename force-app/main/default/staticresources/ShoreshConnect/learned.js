@@ -40,19 +40,12 @@ function lineText(line, answers, m) {
   return text;
 }
 
-async function readLearned(
-  capability,
-  input,
-  { ask, answer, load, namespaceOf }
-) {
+async function readLearned(capability, input, { read, answer, load }) {
   const fields = input.season !== undefined ? { season: input.season } : {};
-  const read = await ask({
-    path: `/services/apexrest/v1/${capability.api}?${new URLSearchParams(fields)}`,
-    method: "GET"
-  });
-  if (read.status !== 200) return answer(read);
-  const body = JSON.parse(read.body);
-  const m = await load(namespaceOf(body));
+  const got = await read(capability.api, fields);
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
+  const m = await load();
   const setup = body.setup || {};
   const t = m.buildTerms(setup.labels || []);
   const lines = m.historyLines(
