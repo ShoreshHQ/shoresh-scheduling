@@ -79,8 +79,8 @@ public with sharing class SetupDelete {
       'Delete "' +
       name +
       '"? Anything inside it is deleted too.' +
-      savedSchedules(recordId) +
-      specialDaysTakenOff(recordId);
+      SetupDeleteContents.savedSchedules(recordId) +
+      SetupDeleteContents.specialDaysTakenOff(recordId);
     return result;
   }
 
@@ -208,127 +208,5 @@ public with sharing class SetupDelete {
       throw ScreenErrors.of('That is no longer there. Reload the page.');
     }
     return (String) found[0].get('Name');
-  }
-
-  /**
-   * For a week or program: ' That includes its Manual Build, 2 Generated Schedules and 3 saved
-   * versions.', or '' when none.
-   */
-  private static String savedSchedules(Id recordId) {
-    Schema.SObjectType kind = recordId.getSObjectType();
-    if (
-      (kind != Week__c.SObjectType && kind != Program__c.SObjectType) ||
-      !Schema.sObjectType.Schedule__c.isAccessible()
-    ) {
-      return '';
-    }
-    Integer builds = 0;
-    Integer generated = 0;
-    Integer versions = 0;
-    Id campId;
-    for (Schedule__c row : [
-      SELECT Status__c, Origin__c, Program__r.Season__r.Camp__c
-      FROM Schedule__c
-      WHERE Week__c = :recordId OR Program__c = :recordId
-      WITH USER_MODE
-    ]) {
-      campId = row.Program__r.Season__r.Camp__c;
-      if (row.Status__c == 'Version') {
-        versions++;
-      } else if (row.Status__c == 'Draft' && row.Origin__c == 'Manual') {
-        builds++;
-      } else if (row.Status__c == 'Draft' && row.Origin__c == 'Generated') {
-        generated++;
-      }
-    }
-    List<String> parts = new List<String>();
-    if (builds > 0) {
-      parts.add(builds == 1 ? 'its Manual Build' : builds + ' Manual Builds');
-    }
-    if (generated > 0) {
-      parts.add(
-        generated == 1
-          ? 'its Generated Schedule'
-          : generated + ' Generated Schedules'
-      );
-    }
-    if (versions > 0) {
-      CampLabels labels = CampLabels.forCamp(campId);
-      parts.add(
-        versions +
-          ' saved ' +
-          (versions == 1
-            ? labels.singularInSentence('Version')
-            : labels.pluralInSentence('Version'))
-      );
-    }
-    return parts.isEmpty() ? '' : ' That includes ' + andList(parts) + '.';
-  }
-
-  /**
-   * For a week: ' It takes "Field Day" off Tuesday and "Carnival" off Wednesday and Thursday.',
-   * special days first, then events, each in the Special events screen's order; '' when none.
-   */
-  private static String specialDaysTakenOff(Id weekId) {
-    if (weekId.getSObjectType() != Week__c.SObjectType) {
-      return '';
-    }
-    // Read as the Special events screen reads them; someone who can't sees none.
-    if (
-      !Schema.sObjectType.SpecialDate__c.isAccessible() ||
-      !Schema.sObjectType.SpecialDay__c.isAccessible() ||
-      !Schema.sObjectType.SpecialEvent__c.isAccessible()
-    ) {
-      return '';
-    }
-    Map<Id, List<String>> daysOf = new Map<Id, List<String>>();
-    for (SpecialDate__c row : [
-      SELECT Day__c, SpecialDay__c, SpecialEvent__c
-      FROM SpecialDate__c
-      WHERE Week__c = :weekId
-      WITH USER_MODE
-      ORDER BY Day__c, Id
-    ]) {
-      Id itemId = row.SpecialDay__c != null
-        ? row.SpecialDay__c
-        : row.SpecialEvent__c;
-      if (!daysOf.containsKey(itemId)) {
-        daysOf.put(itemId, new List<String>());
-      }
-      daysOf.get(itemId).add(row.Day__c);
-    }
-    if (daysOf.isEmpty()) {
-      return '';
-    }
-    List<String> off = new List<String>();
-    for (SpecialDay__c item : [
-      SELECT Id, Name
-      FROM SpecialDay__c
-      WHERE Id IN :daysOf.keySet()
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ]) {
-      off.add('"' + item.Name + '" off ' + andList(daysOf.get(item.Id)));
-    }
-    for (SpecialEvent__c item : [
-      SELECT Id, Name
-      FROM SpecialEvent__c
-      WHERE Id IN :daysOf.keySet()
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ]) {
-      off.add('"' + item.Name + '" off ' + andList(daysOf.get(item.Id)));
-    }
-    return off.isEmpty() ? '' : ' It takes ' + andList(off) + '.';
-  }
-
-  /** "A", "A and B", "A, B and C". */
-  private static String andList(List<String> parts) {
-    if (parts.size() <= 1) {
-      return String.join(parts, '');
-    }
-    List<String> first = new List<String>(parts);
-    String last = first.remove(first.size() - 1);
-    return String.join(first, ', ') + ' and ' + last;
   }
 }
