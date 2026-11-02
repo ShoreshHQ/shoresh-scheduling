@@ -3,26 +3,6 @@
  * user-mode DML, so Salesforce enforces the scheduler's object, field, and record access.
  */
 public with sharing class SeasonSetupController {
-  // Camps are never deleted from these screens.
-  private static final Set<Schema.SObjectType> DELETABLE_TYPES = new Set<Schema.SObjectType>{
-    Season__c.SObjectType,
-    Week__c.SObjectType,
-    Program__c.SObjectType,
-    Division__c.SObjectType,
-    Group__c.SObjectType,
-    TimeBlock__c.SObjectType,
-    LocationType__c.SObjectType,
-    Location__c.SObjectType,
-    Activity__c.SObjectType,
-    FixedActivity__c.SObjectType,
-    RecurringActivity__c.SObjectType,
-    SpecialDay__c.SObjectType,
-    SpecialEvent__c.SObjectType,
-    ElectiveSet__c.SObjectType,
-    Offering__c.SObjectType,
-    LinkedChoice__c.SObjectType
-  };
-
   @AuraEnabled
   public static List<Camp__c> getCamps() {
     try {
@@ -93,32 +73,20 @@ public with sharing class SeasonSetupController {
     return ScreenSaves.save(records, null, null);
   }
 
+  /** What deleting the record would do: why it can't, or the question to ask first (SetupDelete). */
+  @AuraEnabled
+  public static SetupDelete.Preview deletePreview(Id recordId) {
+    try {
+      return SetupDelete.preview(recordId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** Deletes a setup record, unless something still uses it (SetupDelete). */
   @AuraEnabled
   public static void deleteRecord(Id recordId) {
-    if (
-      recordId == null || !DELETABLE_TYPES.contains(recordId.getSObjectType())
-    ) {
-      throw ScreenErrors.of('These screens can\'t delete that.');
-    }
-    String inUse = InUse.reason(recordId);
-    if (inUse != null) {
-      throw ScreenErrors.of(inUse);
-    }
-    // Deleting a time block can move the ones after it: fixed and recurring activities that
-    // span it are checked once the delete is done, and a clash undoes it.
-    SetTimeGuard.defer();
-    Savepoint beforeDelete = Database.setSavepoint();
-    try {
-      // Remembered first, while its name can still be read: a later import leaves it out.
-      SetupDeletions.remember(recordId);
-      WeekExceptions.deleteWithWeeks(recordId);
-      SetTimeGuard.checkPending();
-    } catch (Exception e) {
-      Database.rollback(beforeDelete);
-      throw ScreenErrors.of(e);
-    } finally {
-      SetTimeGuard.resume();
-    }
+    SetupDelete.remove(recordId);
   }
 
   /** Saves the camp's own words. A term with both words blank goes back to the model term. */

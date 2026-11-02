@@ -1,5 +1,5 @@
 /**
- * Server side of the setup screens' tables, saved as you go (ADR 0011), and what their deletes
+ * Server side of the setup screens' tables, saved as you go (ADR 0011), and what their moves
  * and "Same location?" need (ADR 0012). Every query runs in user mode and every write uses
  * user-mode DML, so Salesforce enforces the scheduler's object, field, and record access.
  */
@@ -15,16 +15,6 @@ public with sharing class SetupTablesController {
     ScreenSaves.Extras extras
   ) {
     return RowSaves.save(record, seen, extras);
-  }
-
-  /** How many schedules a bunk or activity is in (none for anything else), asked before a delete. */
-  @AuraEnabled
-  public static ScheduleUses.Count scheduleUses(Id recordId) {
-    try {
-      return ScheduleUses.count(recordId);
-    } catch (Exception e) {
-      throw ScreenErrors.ofLoading(e);
-    }
   }
 
   /**

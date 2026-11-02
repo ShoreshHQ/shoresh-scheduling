@@ -918,8 +918,21 @@ const CAPABILITIES = [
   setup(
     "delete_setup_record",
     "delete_setup_record",
-    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first, as that screen asks: anything inside it is deleted too. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
+    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_setup_delete right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   ),
+  {
+    // A read: GET, its fields in the web address (API-1.102).
+    ...setup(
+      "read_setup_delete",
+      "delete_setup_record",
+      "Read the question Camp Setup asks before deleting one of a season's setup records: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_setup_record. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
+    ),
+    method: "GET",
+    about:
+      "Camp Setup's question before its Delete, word for word. It holds no findings or problems.",
+    sendsFields: false,
+    queryFields: ["season", "kind", "name", "program"]
+  },
   {
     // A read: GET, its fields in the web address (API-1.49).
     ...setup(

@@ -129,6 +129,7 @@ private class AgentSetupTest {
     }
   }
 
+  // API-1.48
   @IsTest
   static void deletingIsCampSetupsDeleteWithItsRefusals() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -168,6 +169,86 @@ private class AgentSetupTest {
           SELECT COUNT()
           FROM Group__c
           WHERE Id = :GeneratedTestData.ids.get('Group B')
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+
+  /** The AI's question before a delete (GET /v1/delete_setup_record): [status, message]. */
+  private static List<Object> askBeforeDelete(String kind, String name) {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'GET';
+    RestContext.request.params.put(
+      'season',
+      [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :GeneratedTestData.ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Name
+    );
+    RestContext.request.params.put('kind', kind);
+    RestContext.request.params.put('name', name);
+    RestContext.response = new RestResponse();
+    AgentWeeks.answer(new AgentDeleteSetup());
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
+    return new List<Object>{
+      RestContext.response.statusCode,
+      answer.get('message')
+    };
+  }
+
+  // API-1.102: the AI asks Camp Setup's own question (SetupDelete), word for word, and is refused
+  // what the screen refuses, with nothing deleted.
+  @IsTest
+  static void theAiAsksCampSetupsQuestionBeforeADelete() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      // Teens: a program nothing else uses (Main's groups are in "Who can do it").
+      Id teens = ShoreshTestData.program(
+          GeneratedTestData.ids.get('Season'),
+          'Teens'
+        )
+        .Id;
+      Database.insert(
+        new Schedule__c(
+          Program__c = teens,
+          Week__c = GeneratedTestData.ids.get('Week 1'),
+          Name = 'Build',
+          Status__c = 'Draft',
+          Origin__c = 'Manual'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      List<Object> program = askBeforeDelete('program', 'Teens');
+      List<Object> refused = askBeforeDelete('location', 'Gym');
+      String screen = SetupDelete.preview(teens).message;
+      Test.stopTest();
+      Assert.areEqual(200, program[0], String.valueOf(program[1]));
+      Assert.areEqual(screen, program[1]);
+      Assert.areEqual(
+        'Delete "Teens"? Anything inside it is deleted too. That includes its Manual Build.',
+        program[1]
+      );
+      Assert.areEqual(400, refused[0]);
+      Assert.isTrue(
+        String.valueOf(refused[1])
+          .startsWith(
+            '"Gym" not deleted. Nothing was removed. This can\'t be deleted yet:'
+          ),
+        String.valueOf(refused[1])
+      );
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM Program__c
+          WHERE Id = :teens
           WITH SYSTEM_MODE
         ]
       );

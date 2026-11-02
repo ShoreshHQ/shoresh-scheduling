@@ -10,10 +10,12 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
 ## Deleting a bunk or activity that schedules use
 
 1. **The count comes first** (desktop ADR 2026-07-30 §1, "count first"). Before the question,
-   `SetupTablesController.scheduleUses` counts the schedules whose days name the bunk or
+   `ScheduleUses` counts the schedules whose days name the bunk or
    activity: Manual Build and generated drafts, saved versions, and published schedules, each
    schedule once however many days name it. Only bunks and activities are counted; deleting
-   anything else asks as before.
+   anything else asks as before. The whole question (this count, and what goes with any other
+   record) is worded once, on the server (`SetupDelete.preview`), and Camp Setup and the AI ask
+   it word for word (API-1.102, 2026-11-02).
 2. **The words are Greg's:** title _Delete "Bunk 3"?_, then _Bunk 3 is in 2 schedules. Delete
    anyway?_ ("1 schedule" for one). Nothing used by a schedule: the question is as before.
    _Difference from the desktop:_ the desktop counts cells ("is used in N places in your
