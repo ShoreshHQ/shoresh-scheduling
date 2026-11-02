@@ -15,25 +15,24 @@ public with sharing class ActivityDetails {
   };
 
   /**
-   * Saves the rules sent and who can do it (null: unchanged). seen holds what each rule sent held
-   * when the person saw it, and seenWho who could do it (needed when whoCanDoIt is sent).
+   * Saves the rules sent and who can do it (null: unchanged). The ticket holds what each rule
+   * sent held when the person saw it, and who could do it (needed when whoCanDoIt is sent).
    */
   public static RowSaves.Result save(
     Activity__c rules,
     List<Id> whoCanDoIt,
-    Activity__c seen,
-    List<Id> seenWho
+    SeenSaves.Ticket ticket
   ) {
     if (rules == null || rules.Id == null) {
       throw new ShoreshException('Save the new row in the table first.');
     }
     CampLabels labels = labelsFor(rules.Id);
     Activity__c changes = ruleChanges(rules);
-    refuseUnseen(changes, whoCanDoIt, seen, seenWho);
+    refuseUnseen(changes, whoCanDoIt, ticket);
     List<ActivityEligibility__c> adds = whoCanDoIt == null
       ? null
       : eligibilityRows(rules.Id, whoCanDoIt, labels);
-    RowSaves.Result result = SeenSaves.row(changes, seen, seenWho, whoCanDoIt);
+    RowSaves.Result result = SeenSaves.row(changes, ticket, whoCanDoIt);
     if (!result.saved()) {
       return result;
     }
@@ -65,18 +64,17 @@ public with sharing class ActivityDetails {
   private static void refuseUnseen(
     Activity__c changes,
     List<Id> whoCanDoIt,
-    Activity__c seen,
-    List<Id> seenWho
+    SeenSaves.Ticket ticket
   ) {
-    Set<String> seenFields = seen == null
+    Set<String> seenFields = ticket?.seen == null
       ? new Set<String>()
-      : seen.getPopulatedFieldsAsMap().keySet();
+      : ticket.seen.getPopulatedFieldsAsMap().keySet();
     for (String name : changes.getPopulatedFieldsAsMap().keySet()) {
       if (name != 'Id' && !seenFields.contains(name)) {
         throw new ShoreshException('These screens can\'t save that.');
       }
     }
-    if (whoCanDoIt != null && seenWho == null) {
+    if (whoCanDoIt != null && ticket?.seenWho == null) {
       throw new ShoreshException('These screens can\'t save that.');
     }
   }

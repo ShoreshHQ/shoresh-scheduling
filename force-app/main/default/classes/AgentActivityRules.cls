@@ -42,6 +42,23 @@ public with sharing class AgentActivityRules {
     }
   }
 
+  /** What the activity holds now, as a save's ticket (SeenSaves); who only when it changes. */
+  public static SeenSaves.Ticket ticketNow(Id activityId, Boolean who) {
+    return new SeenSaves.Ticket(
+      [
+        SELECT
+          SameDivisionOnly__c,
+          EarlyWeekCount__c,
+          EarlyWeekByDay__c,
+          Notes__c
+        FROM Activity__c
+        WHERE Id = :activityId
+        WITH USER_MODE
+      ],
+      who ? AgentActivityWho.idsNow(activityId) : null
+    );
+  }
+
   /** What the activity holds now, by plain name, as the panel shows it. */
   public static Map<String, String> now(Id activityId) {
     Activity__c activity = [

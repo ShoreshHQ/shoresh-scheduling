@@ -78,8 +78,7 @@ public with sharing class RowSaves {
   ) {
     return SeenSaves.row(
       record,
-      seen,
-      extras == null ? null : extras.seenWho,
+      new SeenSaves.Ticket(seen, extras == null ? null : extras.seenWho),
       RowExtras.wantedWho(extras)
     );
   }

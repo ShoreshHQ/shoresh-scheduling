@@ -2690,7 +2690,7 @@ export default class ShoreshCampSetup extends LightningElement {
             saveActivityDetails({
               rules,
               whoCanDoIt: whoCanDoIt || null,
-              ...seen()
+              ticket: seen()
             }),
       what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
       onSaved,

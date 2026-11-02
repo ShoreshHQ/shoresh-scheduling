@@ -53,38 +53,23 @@ private class ActivitiesAndLocationsTest {
     Activity__c rules,
     List<Id> whoCanDoIt
   ) {
-    Activity__c seen = new Activity__c(Id = rules.Id);
-    if (rules.Id != null) {
-      Activity__c now = [
-        SELECT
-          SameDivisionOnly__c,
-          EarlyWeekCount__c,
-          EarlyWeekByDay__c,
-          Notes__c
-        FROM Activity__c
-        WHERE Id = :rules.Id
-        WITH SYSTEM_MODE
-      ];
-      Set<Schema.SObjectField> sent = ShoreshSchema.populatedFields(rules);
-      for (
-        Schema.SObjectField field : new List<Schema.SObjectField>{
-          Activity__c.SameDivisionOnly__c,
-          Activity__c.EarlyWeekCount__c,
-          Activity__c.EarlyWeekByDay__c,
-          Activity__c.Notes__c
-        }
-      ) {
-        if (sent.contains(field)) {
-          seen.put(field, now.get(field));
-        }
-      }
-    }
-    return ActivitiesController.saveActivityDetails(
-      rules,
-      whoCanDoIt,
-      seen,
-      rules.Id == null ? null : RowSeen.whoNow(rules)
-    );
+    // Nothing to read for a new row: it is refused before anything is compared.
+    SeenSaves.Ticket ticket = rules.Id == null
+      ? null
+      : new SeenSaves.Ticket(
+          [
+            SELECT
+              SameDivisionOnly__c,
+              EarlyWeekCount__c,
+              EarlyWeekByDay__c,
+              Notes__c
+            FROM Activity__c
+            WHERE Id = :rules.Id
+            WITH SYSTEM_MODE
+          ],
+          RowSeen.whoNow(rules)
+        );
+    return ActivitiesController.saveActivityDetails(rules, whoCanDoIt, ticket);
   }
 
   private static String detailsError(Activity__c rules) {

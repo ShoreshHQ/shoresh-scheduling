@@ -37,8 +37,8 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
     AgentActivityRules.lock(found.id);
-    // What was seen is said as the panel shows it: compared here, then handed to the save as
-    // what the activity holds (seenRules), which compares again.
+    // What was seen is said as the panel shows it: compared here, under the lock, so the
+    // activity as it is now is the ticket handed to the save.
     refuseIfChangedSince(seen);
     RowSaves.Result result;
     try {
@@ -46,10 +46,7 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
       result = ActivitiesController.saveActivityDetails(
         rules,
         chosen,
-        seenRules(),
-        given.containsKey(AgentActivityRules.WHO)
-          ? AgentActivityWho.idsNow(found.id)
-          : null
+        AgentActivityRules.ticketNow(found.id, chosen != null)
       );
     } catch (Exception e) {
       throw new ShoreshException(
@@ -170,23 +167,5 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
         found.name +
         '" since, so nothing was saved. Read it again in Shoresh.'
     );
-  }
-
-  /** The changed rules as they are now, said the same as seen: the ticket handed to the save. */
-  private Activity__c seenRules() {
-    Activity__c now = [
-      SELECT SameDivisionOnly__c, EarlyWeekCount__c, EarlyWeekByDay__c, Notes__c
-      FROM Activity__c
-      WHERE Id = :found.id
-      WITH USER_MODE
-    ];
-    Activity__c result = new Activity__c(Id = found.id);
-    for (String key : given.keySet()) {
-      Schema.SObjectField field = AgentActivityRules.fieldOf(key);
-      if (field != null) {
-        result.put(field, now.get(field));
-      }
-    }
-    return result;
   }
 }

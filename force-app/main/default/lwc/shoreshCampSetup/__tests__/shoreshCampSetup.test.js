@@ -4010,21 +4010,29 @@ describe("c-shoresh-camp-setup", () => {
       const first = { onSaved: jest.fn(), onFailure: jest.fn() };
       const second = { onSaved: jest.fn(), onFailure: jest.fn() };
       const rules = nsRecord({ sobjectType: "Activity__c", Id: "a1" });
+      // What the panel saw goes with each save (API-1.102); who only when it changed.
+      const seen = () => ({ seen: rules, seenWho: ["g1"] });
       details.dispatchEvent(
         new CustomEvent("save", {
-          detail: { rules, whoCanDoIt: ["d1"], ...first }
+          detail: { rules, whoCanDoIt: ["d1"], seen, ...first }
         })
       );
       details.dispatchEvent(
         new CustomEvent("save", {
-          detail: { rules, whoCanDoIt: [], ...second }
+          detail: { rules, seen, ...second }
         })
       );
       await flush();
       await flush();
       expect(
-        saveActivityDetails.mock.calls.map((c) => c[0].whoCanDoIt)
-      ).toEqual([["d1"], []]);
+        saveActivityDetails.mock.calls.map((c) => [
+          c[0].whoCanDoIt,
+          c[0].ticket.seenWho
+        ])
+      ).toEqual([
+        [["d1"], ["g1"]],
+        [null, ["g1"]]
+      ]);
       expect(first.onSaved).toHaveBeenCalled();
       expect(second.onFailure).toHaveBeenCalledWith(
         "Activity details not saved. Your changes are still here. No."
@@ -4123,6 +4131,7 @@ describe("c-shoresh-camp-setup", () => {
           detail: {
             rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
             whoCanDoIt: [],
+            seen: () => ({ seen: null, seenWho: [] }),
             onSaved: jest.fn(),
             onFailure
           }
@@ -4159,6 +4168,7 @@ describe("c-shoresh-camp-setup", () => {
           detail: {
             rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
             whoCanDoIt: [],
+            seen: () => ({ seen: null, seenWho: [] }),
             onSaved: jest.fn(),
             onFailure,
             // The form shows another activity now.
