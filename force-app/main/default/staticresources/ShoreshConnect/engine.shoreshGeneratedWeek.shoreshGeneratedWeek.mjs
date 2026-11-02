@@ -6,12 +6,14 @@ const addActivityOnServer = () => Promise.reject(new Error("GeneratedScheduleCon
 const getSetupChanges = () => Promise.reject(new Error("SetupMatchController.getSetupChanges runs only on Shoresh's screens."));
 const updateToMatchSetupOnServer = () => Promise.reject(new Error("SetupMatchController.updateToMatchSetup runs only on Shoresh's screens."));
 import { reasonOf } from "./engine.shoreshErrors.shoreshErrors.mjs";
-import { notesText } from "./engine.shoreshEngine.shoreshEngine.mjs";
+import { notesText, readNotes } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { loadedOf, locksOf, saveRequestOf } from "./engine.shoreshGeneratedWeek.build.mjs";
 
 export {
   ACTION,
   buildForAgent,
+  buildInputOf,
+  builtWeekOf,
   engineInputOf,
   inputFor,
   locksOf
@@ -54,8 +56,10 @@ export async function loadWeek(programId, weekId) {
  * Saves the week the engine built (its result's days) over what was loaded, with what the engine
  * said about it (engineNotes: notesOf of its result; null for Start over, which builds nothing).
  * Resolves to one of
- *   { status: SAVED, scheduleId, revision, versionId, published, loaded }: loaded is the week
- *     to go on with (what was built, the new revision, the locks kept: none after Start over);
+ *   { status: SAVED, scheduleId, revision, versionId, published, notesDropped, loaded }: loaded
+ *     is the week to go on with (what was built, the new revision, the locks kept: none after
+ *     Start over, and the engine's notes as the server kept them, so the next build is the one a
+ *     reload would make); notesDropped is true when notes were sent and the server kept none;
  *     versionId is the version Rebuild, Try another or Start over kept first, or null;
  *     published is the week's published schedule beside the week as saved now, or null
  *   { status: CONFLICT, message }: someone else saved the week since; nothing was written
@@ -88,13 +92,14 @@ export async function saveWeek(
     revision: result.revision,
     versionId: result.versionId || null,
     published: result.published || null,
+    notesDropped: !!engineNotes && !result.engineNotes,
     // The week to go on with: what was built, at the new revision, with the locks the server
     // kept (none after Start over), replaced together.
     loaded: {
       ...loaded,
       scheduleId: result.scheduleId,
       revision: result.revision,
-      engineNotes,
+      engineNotes: readNotes(result.engineNotes),
       input: {
         ...loaded.input,
         days: days || [],
