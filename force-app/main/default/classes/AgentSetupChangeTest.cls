@@ -43,6 +43,7 @@ private class AgentSetupChangeTest {
     };
   }
 
+  // API-1.49
   @IsTest
   static void changingFieldsIsTheSetupTablesRowSave() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -191,6 +192,7 @@ private class AgentSetupChangeTest {
     }
   }
 
+  // API-1.50
   @IsTest
   static void addingIsTheSetupTablesAdd() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -294,6 +296,7 @@ private class AgentSetupChangeTest {
     }
   }
 
+  // API-1.49
   @IsTest
   static void aChangeSomeoneMadeSinceTheReadIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {

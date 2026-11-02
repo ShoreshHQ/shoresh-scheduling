@@ -65,19 +65,34 @@ step 5's first rule. The wiki's sketch numbers for GEN and INGEST will be renumb
 
 ## How a statement is tested
 
-A test proves a statement by naming its ID, in the test's title or in a comment beside it:
+A test proves a statement by naming its ID in the test's title or in the comment lines directly
+above it (no blank line between). In Apex the comment goes above `@IsTest`. An ID above a Jest
+`describe` covers every test inside it. A test that asserts nothing proves nothing, and an ID
+anywhere else (a file's header, inside a test's body) is not counted. Skipped tests prove nothing.
+The index reads text, so it can't tell a meaningful assert from `expect(true).toBe(true)`: that is
+review's job.
 
 ```js
 // CORE-4.2
 it("never repeats an activity in a day: the cell stays Open, saying so", () => {
 ```
 
-`node scripts/protocol-index.js` reads every statement ID from the documents above and searches
-every test file for it. Each statement is one of:
+```apex
+// LOCK-4.3
+@IsTest
+static void aBuildThatChangesALockedCellIsRefused() {
+```
 
-- **ENCODED**: at least one test names the ID.
-- **MAPPED**: the sub-protocol's own table names a test for it, but no test names the ID yet.
+`node scripts/protocol-index.js` reads every statement ID from the documents above and finds the
+tests that prove it. Each statement is one of:
+
+- **ENCODED**: at least one test proves it, as above.
+- **MAPPED**: the sub-protocol's own table names a test for it, but no test proves it yet.
 - **NOT YET TESTED**: neither.
+
+The Test column is checked too: every Apex method (after its class, `GeneratedLocksTest
+aBuildThatChangesALockedCellIsRefused` or `GeneratedLocksTest.aBuild...`), quoted Jest title (up
+to any "…") and test file it names must exist, so a renamed or deleted test fails the check.
 
 `scripts/__tests__/protocol-index.test.js` pins the number of ENCODED statements as a floor: it
 may only go up. When a change adds citations, raise the floor in that test.
