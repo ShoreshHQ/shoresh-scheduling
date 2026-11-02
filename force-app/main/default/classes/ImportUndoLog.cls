@@ -34,7 +34,7 @@ public with sharing class ImportUndoLog {
     CELLS_OUT
   };
   // Everything else in Changed__c: a record's values.
-  private static final String VALUES = 'values';
+  private static final String RECORD_VALUES = 'values';
 
   /**
    * Puts back what the import did, in this order: what it removed comes back, then what it
@@ -43,7 +43,7 @@ public with sharing class ImportUndoLog {
    */
   public static void reverse(Import__c done, ImportUndo.Result result) {
     Map<String, List<Object>> sorted = sorted(done);
-    List<Object> changes = sorted.get(VALUES);
+    List<Object> changes = sorted.get(RECORD_VALUES);
     List<Object> wordsOff = sorted.get(WORD_OFF);
     Id campId = touchesCampWords(done, changes, wordsOff)
       ? campOf(done.Season__c)
@@ -68,10 +68,10 @@ public with sharing class ImportUndoLog {
     }
   }
 
-  /** What the import changed, by kind (VALUES for records' values). */
+  /** What the import changed, by kind (RECORD_VALUES for records' values). */
   private static Map<String, List<Object>> sorted(Import__c done) {
     Map<String, List<Object>> byKind = new Map<String, List<Object>>{
-      VALUES => new List<Object>()
+      RECORD_VALUES => new List<Object>()
     };
     for (String kind : OWN_KINDS) {
       byKind.put(kind, new List<Object>());
@@ -83,10 +83,10 @@ public with sharing class ImportUndoLog {
       if (!(entry instanceof Map<String, Object>)) {
         throw ImportFields.unreadableLog();
       }
-      Map<String, Object> values = (Map<String, Object>) entry;
-      String kind = VALUES;
+      Map<String, Object> logged = (Map<String, Object>) entry;
+      String kind = RECORD_VALUES;
       for (String own : OWN_KINDS) {
-        if (values.containsKey(own)) {
+        if (logged.containsKey(own)) {
           kind = own;
           break;
         }
