@@ -30,7 +30,7 @@ const WEEK = {
 
 /** What every schedule answer is, and is not (API-1.27). */
 const ONLY_THE_SCHEDULE =
-  "The answer is the schedule exactly as published in Shoresh, and nothing else: it holds no findings, checks or problems. Shoresh's own checks of a week (goals, limits, still needed, things to look at) are not part of this answer (read them with read_week_checks), so anything this answer doesn't say, Shoresh didn't say.";
+  "The answer is the schedule exactly as published in Shoresh, and nothing else: it holds no findings, checks, problems or locks. Shoresh's own checks of a week (goals, limits, still needed, things to look at) and which cells are locked are not part of this answer (read them with read_week_checks), so anything this answer doesn't say, Shoresh didn't say.";
 
 /**
  * Reading a published schedule out (GET /v1/<api>?season=&week=). about: one sentence, put
@@ -127,6 +127,11 @@ const LOCK_FIELDS = {
 
 /** One cell of a week, and what it holds as the agent last saw it. */
 const CELL = {
+  seen: {
+    type: "string",
+    description:
+      "On Generated Schedule, the week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
+  },
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
     type: "string",
@@ -521,7 +526,8 @@ const CAPABILITIES = [
       activity: {
         type: "string",
         description: "What it should hold: an activity's name, or Open."
-      }
+      },
+      seen: CELL.seen
     },
     ["group", "day", "time", "was", "activity"],
     ON_EITHER,
@@ -537,6 +543,7 @@ const CAPABILITIES = [
         group: CELL.group,
         time: CELL.time,
         was: CELL.was,
+        seen: CELL.seen,
         to_day: { ...CELL.day, description: "The day to move it to." },
         to_group: { ...CELL.group, description: "The group to move it to." },
         to_time: { ...CELL.time, description: "The time to move it to." }
@@ -552,7 +559,13 @@ const CAPABILITIES = [
       "take_out_cell",
       "take_out_cell",
       "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change, which takes back only your last change.",
-      { day: CELL.day, group: CELL.group, time: CELL.time, was: CELL.was },
+      {
+        day: CELL.day,
+        group: CELL.group,
+        time: CELL.time,
+        was: CELL.was,
+        seen: CELL.seen
+      },
       ["day", "group", "time", "was"],
       ON_EITHER,
       EITHER_WEEK
@@ -586,7 +599,8 @@ const CAPABILITIES = [
         to_time: {
           ...CELL.time,
           description: "The time the first copied time is pasted at."
-        }
+        },
+        seen: CELL.seen
       },
       ["day", "groups", "time", "to_day", "to_group", "to_time"],
       ON_EITHER,
@@ -605,7 +619,8 @@ const CAPABILITIES = [
           ...CELL.day,
           description:
             "The rainy day, like Monday, or its date like 2026-06-29."
-        }
+        },
+        seen: CELL.seen
       },
       ["day"],
       ON_EITHER,
@@ -636,7 +651,7 @@ const CAPABILITIES = [
     method: "GET",
     checksWithEngine: true,
     description:
-      "Read a week's checks exactly as the counter on Generated Schedule or Manual Build shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
+      "Read a week's checks exactly as the counter on Generated Schedule or Manual Build shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. On Generated Schedule it also lists the locked cells (locked), as the screen shows each with its lock, and gives the week as you read it (seen): hand that back to change cells, lock or unlock. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
     about:
       "The counter for this week on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now. These are all of Shoresh's checks of the week: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -1419,7 +1434,8 @@ const CAPABILITIES = [
           ...CELL.time,
           description:
             "The last time it covers. Leave it out for only the first time."
-        }
+        },
+        seen: CELL.seen
       },
       ["event", "day", "groups", "time"],
       ON_EITHER,

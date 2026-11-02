@@ -2,9 +2,10 @@
  * cell: change one cell of a program's Generated Schedule or Manual Build week, as the person,
  * through an agent or the command line (docs/protocol/api.md API-1.11 to API-1.13, API-1.41). Web
  * address /v1/schedule_cell, POST {season, week, program, schedule, group, day, time, was,
- * activity}. The change is the screen's own hand edit (GeneratedEngineNotes.saveHandEdits, or
+ * activity, seen}. The change is the screen's own hand edit (GeneratedEngineNotes.saveHandEdits, or
  * Manual Build's saveSlots: the same save, conflicts and locking), made only when
- * the cell still holds what the agent says it saw (was), so someone else's change is never
+ * the cell still holds what the agent says it saw (was) and, on Generated Schedule, the week is
+ * still as it read it (seen, read_week_checks' ticket), so someone else's change is never
  * replaced unseen; a locked cell is refused in the screen's words. A version marked "Through an
  * agent" is kept first, so the person sees it and Undo brings the week back (AgentUndo).
  */
@@ -19,7 +20,8 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     'day',
     'time',
     'was',
-    'activity'
+    'activity',
+    'seen'
   };
   private static final String OPEN_WORD = 'Open';
 
@@ -43,6 +45,12 @@ global with sharing class AgentCell implements AgentWeeks.Action {
   public String run() {
     body = AgentFields.body(FIELDS);
     week = AgentSchedules.eitherOf(body);
+    String seen = AgentSchedules.holdAsSeen(
+      week,
+      body,
+      'seen',
+      AgentSchedules.SAY_SEEN
+    );
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     find(days, week.name);
     checkCanChange();
@@ -54,7 +62,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     SlotEdits.Result result = AgentSchedules.saveCell(
       week,
       editOf(target),
-      days
+      seen
     );
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(

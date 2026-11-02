@@ -52,6 +52,10 @@ private class AgentCellsTest {
 
   /** Sends body to the web address; answers [status, sentence]. */
   private static List<Object> send(String address, Map<String, Object> body) {
+    // The week as read now, unless the test says what the connector read (revision).
+    if (address != 'undo' && !body.containsKey('revision')) {
+      body.put('revision', GeneratedTestData.weekNow());
+    }
     RestContext.request = new RestRequest();
     RestContext.request.requestURI = '/services/apexrest/v1/' + address;
     RestContext.request.httpMethod = 'POST';

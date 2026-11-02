@@ -121,12 +121,13 @@ public with sharing class AgentSchedules {
 
   /**
    * One cell's edit (one run of one block), by the screen's own save: Manual Build's saveSlots,
-   * or Generated Schedule's hand edit (the cell's Open reason dropped, as the screen drops it).
+   * or Generated Schedule's hand edit (the cell's Open reason dropped, as the screen drops it),
+   * compared with the week as the AI read it (seen, its ticket).
    */
   public static SlotEdits.Result saveCell(
     AgentWeeks.Week week,
     SlotEdits.Edit edit,
-    List<ScheduleDays.DayGrid> days
+    String seen
   ) {
     List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>{ edit };
     if (week.manual) {
@@ -135,13 +136,42 @@ public with sharing class AgentSchedules {
     SlotEdits.Run run = edit.runs[0];
     GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
     request.scheduleId = week.draft.Id;
-    request.revision = GeneratedDrafts.revisionOf(days);
+    request.revision = seen;
     request.edits = edits;
     request.engineNotes = GeneratedEngineNotes.withoutCell(
       week.draft.EngineNotes__c,
       new List<String>{ String.valueOf(run.day), run.groupId, run.firstBlockId }
     );
     return GeneratedEngineNotes.saveHandEdits(request);
+  }
+
+  /** Asked for when an edit of a Generated Schedule week comes without the week as it was read. */
+  public static final String SAY_SEEN = 'Say what the week was when you read it (seen), as read_week_checks gives it, so a change someone made since isn\'t undone.';
+
+  /**
+   * Holds a Generated Schedule week until the request ends and refuses an edit (409, nothing
+   * changed) unless the week is still as it was read: its ticket (seen, in field), never the week
+   * read here in its place (SeenSaves.week). Manual Build's save has no ticket: each of its runs
+   * is made only while its cells hold what was seen. Answers the ticket, for the save.
+   */
+  public static String holdAsSeen(
+    AgentWeeks.Week week,
+    Map<String, Object> body,
+    String field,
+    String missing
+  ) {
+    String seen = AgentFields.text(body, field);
+    if (week.manual) {
+      return seen;
+    }
+    if (String.isBlank(seen)) {
+      throw new ShoreshException(missing);
+    }
+    GeneratedDrafts.lockedToEdit(week.draft.Id);
+    if (!SeenSaves.week(ScheduleDays.read(week.draft.Id), seen)) {
+      throw new AgentWeeks.ConflictException(ScheduleDaySaves.CHANGED_SINCE);
+    }
+    return seen;
   }
 
   /** Whether a cell (group and block positions) is locked; Manual Build has no locks. */

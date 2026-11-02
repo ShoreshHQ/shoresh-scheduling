@@ -2,7 +2,7 @@
  * switch_to_rain_plans: one day of a program's Generated Schedule or Manual Build week switched to
  * its rain plans, as the screen's Edit > Rainy day… does, through an agent or the command line
  * (docs/protocol/api.md API-1.65). Web address /v1/switch_to_rain_plans, POST {season, week,
- * program, schedule, change, said, runs, rain, seen}. The switch is worked out where the screen
+ * program, schedule, change, said, runs, rain, seen, revision}. The switch is worked out where the screen
  * works it out, outside Salesforce: the connector runs the week editor's own rainy day
  * (c/shoreshWeekEditor rain.js) on the week as it read it and sends the runs and marks the screen
  * would send. They are saved as the screen saves them (Generated Schedule's hand-edit save, or
@@ -22,7 +22,8 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     'said',
     'runs',
     'rain',
-    'seen'
+    'seen',
+    'revision'
   };
 
   @HttpPost
@@ -35,6 +36,12 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     SlotEdits.Edit edit = editOf(body, change);
+    String seen = AgentSchedules.holdAsSeen(
+      week,
+      body,
+      'revision',
+      AgentSchedules.SAY_SEEN
+    );
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     if (!sameMarks(days, edit.rain[0].day, (List<Object>) body.get('seen'))) {
       throw changedSince(change);
@@ -51,7 +58,7 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
           week.draft.Id,
           new List<SlotEdits.Edit>{ edit }
         )
-      : AgentCells.handEdit(week, days, edit);
+      : AgentCells.handEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
       throw changedSince(change);
     }

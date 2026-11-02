@@ -99,6 +99,10 @@ private class AgentRainyDayTest {
     AgentWeeks.Action door,
     Map<String, Object> body
   ) {
+    // The week as read now (on Generated Schedule), unless the test says what was read.
+    if (door instanceof AgentRainyDay && !body.containsKey('revision')) {
+      body.put('revision', GeneratedTestData.weekNow());
+    }
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
