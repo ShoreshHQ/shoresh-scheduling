@@ -1,4 +1,10 @@
-import { errorMessage, failed, reasonOf, refusal } from "c/shoreshErrors";
+import {
+  errorMessage,
+  failed,
+  reasonOf,
+  refusal,
+  SUPPORT_EMAIL
+} from "c/shoreshErrors";
 
 // Shapes as Lightning delivers them to a screen: an AuraHandledException (our own words), an
 // exception our Apex didn't catch, and the platform's or the browser's own failures.
@@ -90,7 +96,7 @@ describe("reasonOf", () => {
     ];
     tooBig.forEach((error) => {
       expect(failed("That import could not be undone.", error)).toBe(
-        "That import could not be undone. This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Tell Shoresh support, so it can be fixed."
+        `That import could not be undone. This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`
       );
     });
     expect(consoleError).toHaveBeenCalledTimes(tooBig.length);

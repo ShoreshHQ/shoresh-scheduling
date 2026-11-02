@@ -205,7 +205,12 @@ public with sharing class ImportUndoDeletes {
 
   /** Coverage rows and weeks off of an item this Undo keeps: kept with it, unnamed. */
   private List<SObject> withoutKeptItems(String term, List<SObject> rows) {
-    if (term != 'Coverage' && term != 'WeekException') {
+    if (
+      (term != 'Coverage' &&
+      term != 'WeekException') ||
+      keptIds.isEmpty() ||
+      rows.isEmpty()
+    ) {
       return rows;
     }
     Set<Id> ids = new Map<Id, SObject>(rows).keySet();
@@ -303,7 +308,7 @@ public with sharing class ImportUndoDeletes {
   /** Records with something inside them the import did not make (one query, with sub-queries). */
   private Set<Id> holdingOthers(String term, Set<Id> ids) {
     Set<Id> result = new Set<Id>();
-    if (!INSIDE.containsKey(term)) {
+    if (!INSIDE.containsKey(term) || ids.isEmpty()) {
       return result;
     }
     Schema.SObjectType type = ImportFields.ofTerm(term);
