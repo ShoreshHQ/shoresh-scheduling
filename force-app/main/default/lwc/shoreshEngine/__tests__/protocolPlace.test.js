@@ -211,8 +211,9 @@ describe("step 4: placing by priority", () => {
   });
 });
 
+// GEN-10.4
 describe("step 10: Rebuild keeps the week", () => {
-  // GEN-10.4: Swim is in the week on each of three days; setup now says once a week.
+  // Swim is in the week on each of three days; setup now says once a week.
   const rebuild = (activities) => {
     const input = camp({
       days: 3,

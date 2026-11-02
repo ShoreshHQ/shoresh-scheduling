@@ -2425,6 +2425,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(refused.text).toMatch(/not deleted. Nothing was removed./);
   });
 
+  // API-1.49, API-1.50
   it("setupFieldsAsCampSetup: changing a setup record's fields and adding one send kind, name, program and fields to their own web address, with no week", async () => {
     expect(byName("change_setup_record").inputSchema.required).toEqual([
       "kind",
