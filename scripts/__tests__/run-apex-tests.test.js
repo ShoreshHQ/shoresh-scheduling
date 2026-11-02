@@ -120,9 +120,9 @@ esac
 afterEach(() => fs.rmSync(work, { recursive: true, force: true }));
 
 /** Runs the script in the temp project; resolves { code, out }. */
-const run = (extraEnv = {}) =>
+const run = (extraEnv = {}, args = []) =>
   new Promise((resolve) => {
-    const child = spawn("node", [SCRIPT], {
+    const child = spawn("node", [SCRIPT, ...args], {
       cwd: work,
       env: {
         ...process.env,
@@ -243,6 +243,20 @@ describe("run-apex-tests.mjs", () => {
     expect(code).toBe(1);
     expect(out).toContain("Not run by any test");
     expect(out).toContain("deploy to the test org while this run was going");
+  });
+
+  it("--class-names runs only those classes and does not require coverage", async () => {
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Other.cls"),
+      "public class Other {\n  public void a() {\n    b();\n    c();\n    d();\n    e();\n  }\n}\n"
+    );
+    const { code, out } = await run({}, ["--class-names", "BetaTest"]);
+    expect(out).toContain("1/1 classes passed");
+    expect(out).toContain("not checked");
+    expect(code).toBe(0);
+    expect(runCalls().map((c) => JSON.parse(c.body).tests)).toEqual([
+      [{ className: "BetaTest" }]
+    ]);
   });
 
   it("uses the aggregate totals when the org keeps no per-test coverage", async () => {

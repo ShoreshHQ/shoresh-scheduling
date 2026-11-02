@@ -31,7 +31,7 @@ the files the pull request changes and picks one of three:
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings                                                    | Passes at once. Doesn't wait in line for the test org or touch it. |
 | `screen` | Only screens (`force-app/main/default/lwc/`, except those Apex repeats: `MIRRORED_SCREENS` in the script) and static resources, plus any `docs` files | Deploys to the test org (proves it deploys); no Apex tests.        |
-| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/`                                      | Deploys and runs every Apex test, as before.                       |
+| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/`                                      | Deploys and runs the Apex tests the change can affect (below).     |
 
 When in doubt it picks `full`: a path not in the first two rows, a failure to list the
 changed files, or the quick check itself failing runs everything. It uses the rules as they are
@@ -39,13 +39,31 @@ on the base branch, so a pull request that edits `scripts/ci-pr-category.js` is 
 the old rules (and, since it changes `scripts/`, gets `full`). The org check still reports under the same name, and passes,
 in every category; its log and summary say which category it chose and why.
 
+### Which Apex tests a `full` pull request runs
+
+The deploy is always whole, so every class still compiles. But a pull request runs only the
+Apex test classes its change can reach (`scripts/ci-apex-tests.js`, also the base branch's
+copy): a test class runs if it names a changed class, or names a class that names one, and so on.
+A change to a screen Apex repeats counts as a change to the Apex class that repeats it. A pull
+request that touches only electives runs a handful of classes in a few minutes; one that changes
+nothing any test reaches runs none.
+
+It runs every class instead whenever in doubt: a test data builder (`*TestData`, such as
+`ShoreshTestData`), a trigger, an object or field, a permission set, `sfdx-project.json`,
+`package.json`, CI files or `scripts/`, any other path outside the Apex classes, more than 40
+test classes reached, or the selection itself failing. The log lists each chosen class with the
+chain that reached it (`AgentElectivesTest <- AgentElectives <- ElectiveClear`), and the
+summary says why. A pull request that runs only some classes shows coverage but doesn't
+require 75%: classes it didn't run would count as 0%. The nightly run checks coverage.
+
 ### The nightly full run on main (the safety net)
 
 Merges to main run only the quick check ("LWC Jest and Code Analyzer"). That check is a summary:
 it passes only when its three jobs, run side by side, pass ("LWC Jest", "LWC Jest, as if the
 package had its namespace", "Code Analyzer and Apex file checks"); open the red one to see why. Every night at 07:15 UTC
 (03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
-Apex test. Whatever a `docs` or `screen` pull request skipped is tested by the next morning. It
+Apex test. Whatever a pull request skipped (all Apex tests for `docs` and `screen`, the ones its
+change can't reach for `full`) is tested by the next morning. It
 waits its turn for the test org like any pull request.
 
 A failed nightly run shows as a red run in the repository's **Actions** tab (filter by event
@@ -161,7 +179,8 @@ deleted after, and Bring in choices from Elective seats; `--only electives` runs
 Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
 test org is not your default org). It runs each test class on its own, directly
 (synchronously), and prints one line per class, a summary, and the coverage of this
-repository's classes and triggers (the check fails below 75%). CI uses the same script.
+repository's classes and triggers (the check fails below 75%). CI uses the same script. Add
+`--class-names A,B` to run only those classes (coverage is then shown, not required).
 
 Why: a queued run (`sf apex run test --test-level RunLocalTests`) counts every test class
 against the test org's **daily allowance of 500 queued test classes** (a rolling 24 hours).
