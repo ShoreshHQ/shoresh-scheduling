@@ -2677,17 +2677,22 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /**
    * A field of an activity's details, saved as the director leaves it: a rule or who can do it
-   * (ActivityDetails), or one of the activity's own fields, compared and set as a table row.
+   * (ActivityDetails), or one of the activity's own fields as a table row. Either is compared and
+   * set (ADR 0011 choice 5): seen() is read when its turn comes, and the panel hears what someone
+   * else changed.
    */
   handleSaveActivityDetails(event) {
     const { rules, whoCanDoIt, record, seen, onSaved, onFailure, shown } =
       event.detail;
     return this.saveForm({
-      // The activity's own field: compared and set as the table's rows are (ADR 0011 choice
-      // 5); seen() is read when its turn comes. The panel hears what someone else changed.
       save: record
         ? () => saveRow({ record, seen: seen(), extras: null })
-        : () => saveActivityDetails({ rules, whoCanDoIt }),
+        : () =>
+            saveActivityDetails({
+              rules,
+              whoCanDoIt: whoCanDoIt || null,
+              ticket: seen()
+            }),
       what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
       onSaved,
       onFailure,

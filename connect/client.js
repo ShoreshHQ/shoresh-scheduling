@@ -266,7 +266,8 @@ async function build(capability, input, at, engine) {
 /**
  * read_week_checks and accept_finding (API-1.30, API-1.31, API-1.44): reads what Generated
  * Schedule or Manual Build reads to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
- * modules (shipped beside this file), and answers it in the counter's words; to accept, finds
+ * modules (shipped beside this file), and answers it in the counter's words (on Generated
+ * Schedule with the week as read, seen, for lock_cells and unlock_cells); to accept, finds
  * the line named among those shown and keeps it through the counter's own save
  * (POST /v1/accept_finding).
  */
@@ -281,11 +282,14 @@ async function weekChecks(capability, input, at, checks) {
   const m = await checks();
   const { measure, accepted } = counterOf(m, body);
   if (capability.name === "read_week_checks") {
+    const words = m.counterWords(measure, accepted);
+    // A Generated Schedule week as read (its revision): lock_cells and unlock_cells hand it back.
+    const seen = body.inputs && body.inputs.revision;
     return {
       ok: true,
       status: 200,
       about: capability.about,
-      text: JSON.stringify(m.counterWords(measure, accepted), null, 2)
+      text: JSON.stringify(seen ? { ...words, seen } : words, null, 2)
     };
   }
   const lines = m.checkLines(measure, accepted);

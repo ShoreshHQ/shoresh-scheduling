@@ -4,7 +4,7 @@
  * API-1.51). Web address /v1/change_activity_rules, POST {season, name, fields, seen}. It is the
  * activity details panel's own save (ActivitiesController.saveActivityDetails), made only while
  * each field changed still holds what read_activity_rules said (seen); someone else's change since
- * is refused (409) with nothing saved.
+ * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed.
  */
 @RestResource(urlMapping='/v1/change_activity_rules')
 global with sharing class AgentChangeActivityRules implements AgentWeeks.Action {
@@ -37,17 +37,24 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
     AgentActivityRules.lock(found.id);
+    // What was seen is said as the panel shows it: compared here, under the lock, so the
+    // activity as it is now is the ticket handed to the save.
     refuseIfChangedSince(seen);
-    if (chosen == null) {
-      chosen = AgentActivityWho.idsNow(found.id);
-    }
+    RowSaves.Result result;
     try {
-      // The activity details panel's own save.
-      ActivitiesController.saveActivityDetails(rules, chosen);
+      // The activity details panel's own save (SeenSaves); held since the lock above.
+      result = ActivitiesController.saveActivityDetails(
+        rules,
+        chosen,
+        AgentActivityRules.ticketNow(found.id, chosen)
+      );
     } catch (Exception e) {
       throw new ShoreshException(
         '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
       );
+    }
+    if (!result.saved()) {
+      throw changedSince();
     }
     return 'Changed the ' +
       found.kind +
@@ -149,12 +156,16 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
       if (
         !AgentActivityRules.asShown(key, seen.get(key)).equals(now.get(key))
       ) {
-        throw new AgentWeeks.ConflictException(
-          'Someone else changed "' +
-            found.name +
-            '" since, so nothing was saved. Read it again in Shoresh.'
-        );
+        throw changedSince();
       }
     }
+  }
+
+  private AgentWeeks.ConflictException changedSince() {
+    return new AgentWeeks.ConflictException(
+      'Someone else changed "' +
+        found.name +
+        '" since, so nothing was saved. Read it again in Shoresh.'
+    );
   }
 }

@@ -1,7 +1,9 @@
 /**
- * Saves an activity's "more rules" and who can do it, all or none. Who can do it is a list of
- * divisions and groups; an empty list means every group (decision: none means everyone). The
- * saved list replaces the old one.
+ * Saves an activity's "more rules" and who can do it, all or none, and only while each is still as
+ * the person saw it (SeenSaves, ADR 0011 choice 5): someone else's change since is answered, not
+ * overwritten, and nothing is saved. Who can do it is a list of divisions and groups; an empty
+ * list means every group (decision: none means everyone). The saved list replaces the old one;
+ * left out (null), who can do it stays as it is.
  */
 public with sharing class ActivityDetails {
   // The only activity fields this save may change.
@@ -12,31 +14,68 @@ public with sharing class ActivityDetails {
     Activity__c.Notes__c
   };
 
-  public static void save(Activity__c rules, List<Id> whoCanDoIt) {
+  /**
+   * Saves the rules sent and who can do it (null: unchanged). The ticket holds what each rule
+   * sent held when the person saw it, and who could do it (needed when whoCanDoIt is sent).
+   */
+  public static RowSaves.Result save(
+    Activity__c rules,
+    List<Id> whoCanDoIt,
+    SeenSaves.Ticket ticket
+  ) {
     if (rules == null || rules.Id == null) {
       throw new ShoreshException('Save the new row in the table first.');
     }
     CampLabels labels = labelsFor(rules.Id);
     Activity__c changes = ruleChanges(rules);
-    List<ActivityEligibility__c> adds = eligibilityRows(
-      rules.Id,
-      whoCanDoIt,
-      labels
-    );
-    List<ActivityEligibility__c> removes = [
-      SELECT Id
-      FROM ActivityEligibility__c
-      WHERE Activity__c = :rules.Id
-      WITH USER_MODE
-    ];
+    refuseUnseen(changes, whoCanDoIt, ticket);
+    List<ActivityEligibility__c> adds = whoCanDoIt == null
+      ? null
+      : eligibilityRows(rules.Id, whoCanDoIt, labels);
+    RowSaves.Result result = SeenSaves.row(changes, ticket, whoCanDoIt);
+    if (!result.saved()) {
+      return result;
+    }
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Database.update(changes, AccessLevel.USER_MODE);
-      Database.delete(removes, true, AccessLevel.USER_MODE);
-      Database.insert(adds, AccessLevel.USER_MODE);
+      if (adds != null) {
+        Database.delete(
+          [
+            SELECT Id
+            FROM ActivityEligibility__c
+            WHERE Activity__c = :rules.Id
+            WITH USER_MODE
+          ],
+          true,
+          AccessLevel.USER_MODE
+        );
+        Database.insert(adds, AccessLevel.USER_MODE);
+      }
     } catch (DmlException e) {
       Database.rollback(beforeSave);
       throw e;
+    }
+    result.id = rules.Id;
+    return result;
+  }
+
+  /** Each rule sent, and who when sent, needs what was seen in it: never read in its place. */
+  private static void refuseUnseen(
+    Activity__c changes,
+    List<Id> whoCanDoIt,
+    SeenSaves.Ticket ticket
+  ) {
+    Set<String> seenFields = ticket?.seen == null
+      ? new Set<String>()
+      : ticket.seen.getPopulatedFieldsAsMap().keySet();
+    for (String name : changes.getPopulatedFieldsAsMap().keySet()) {
+      if (name != 'Id' && !seenFields.contains(name)) {
+        throw new ShoreshException('These screens can\'t save that.');
+      }
+    }
+    if (whoCanDoIt != null && ticket?.seenWho == null) {
+      throw new ShoreshException('These screens can\'t save that.');
     }
   }
 

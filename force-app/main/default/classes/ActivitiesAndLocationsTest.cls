@@ -48,9 +48,41 @@ private class ActivitiesAndLocationsTest {
     return null;
   }
 
+  /** The details panel's save, having seen what the activity holds now. */
+  private static RowSaves.Result saveDetails(
+    Activity__c rules,
+    List<Id> whoCanDoIt
+  ) {
+    // Nothing to read for a new row: it is refused before anything is compared.
+    SeenSaves.Ticket ticket = rules.Id == null
+      ? null
+      : SeenSaves.ticket(
+          SeenSaves.asRead(
+            [
+              SELECT
+                SameDivisionOnly__c,
+                EarlyWeekCount__c,
+                EarlyWeekByDay__c,
+                Notes__c
+              FROM Activity__c
+              WHERE Id = :rules.Id
+              WITH SYSTEM_MODE
+            ],
+            new List<Schema.SObjectField>{
+              Activity__c.SameDivisionOnly__c,
+              Activity__c.EarlyWeekCount__c,
+              Activity__c.EarlyWeekByDay__c,
+              Activity__c.Notes__c
+            }
+          ),
+          RowSeen.whoNow(rules)
+        );
+    return ActivitiesController.saveActivityDetails(rules, whoCanDoIt, ticket);
+  }
+
   private static String detailsError(Activity__c rules) {
     try {
-      ActivitiesController.saveActivityDetails(rules, new List<Id>());
+      saveDetails(rules, new List<Id>());
     } catch (AuraHandledException e) {
       return e.getMessage();
     }
@@ -86,7 +118,7 @@ private class ActivitiesAndLocationsTest {
       List<Id> activityIds = SeasonSetupController.saveRecords(
         new List<SObject>{ tennis }
       );
-      ActivitiesController.saveActivityDetails(
+      saveDetails(
         new Activity__c(
           Id = activityIds[0],
           SameDivisionOnly__c = true,
@@ -145,7 +177,7 @@ private class ActivitiesAndLocationsTest {
       WITH SYSTEM_MODE
     ]
     .Id;
-    ActivitiesController.saveActivityDetails(
+    saveDetails(
       new Activity__c(Id = ids.get('Swim')),
       new List<Id>{ division, division }
     );
@@ -162,10 +194,7 @@ private class ActivitiesAndLocationsTest {
     );
     Assert.areEqual(division, rows[0].Division__c);
 
-    ActivitiesController.saveActivityDetails(
-      new Activity__c(Id = ids.get('Swim')),
-      new List<Id>()
-    );
+    saveDetails(new Activity__c(Id = ids.get('Swim')), new List<Id>());
     Assert.areEqual(
       0,
       [
@@ -196,7 +225,7 @@ private class ActivitiesAndLocationsTest {
         '","Name":"Renamed","EarlyWeekCount__c":null,"EarlyWeekByDay__c":null}',
       Activity__c.class
     );
-    ActivitiesController.saveActivityDetails(sent, new List<Id>());
+    saveDetails(sent, new List<Id>());
     Activity__c after = [
       SELECT Name, EarlyWeekCount__c, EarlyWeekByDay__c
       FROM Activity__c
@@ -211,10 +240,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void detailsOfAnUnsavedActivityAreRefused() {
     try {
-      ActivitiesController.saveActivityDetails(
-        new Activity__c(),
-        new List<Id>()
-      );
+      saveDetails(new Activity__c(), new List<Id>());
       Assert.fail('Refused');
     } catch (AuraHandledException e) {
       Assert.areEqual('Save the new row in the table first.', e.getMessage());
@@ -302,7 +328,7 @@ private class ActivitiesAndLocationsTest {
         .contains('belongs to a different season')
     );
     try {
-      ActivitiesController.saveActivityDetails(
+      saveDetails(
         new Activity__c(Id = ids.get('Swim')),
         new List<Id>{ groupNamed(other.Id, 'Group B') }
       );

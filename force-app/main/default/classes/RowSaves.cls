@@ -70,40 +70,16 @@ public with sharing class RowSaves {
     }
   }
 
-  /** Locks the row and compares each field the director changed with what it holds now. */
+  /** Holds the row and compares what the director changed with what they saw (SeenSaves). */
   private static Result compare(
     SObject record,
     SObject seen,
     ScreenSaves.Extras extras
   ) {
-    Map<String, Schema.SObjectField> compared = RowSeen.comparedFields(
+    return SeenSaves.row(
       record,
-      seen
+      SeenSaves.ticket(seen, extras == null ? null : extras.seenWho),
+      RowExtras.wantedWho(extras)
     );
-    SObject now = RowSeen.lockedNow(record, compared.values(), seen);
-    Result result = new Result();
-    for (String name : compared.keySet()) {
-      Schema.SObjectField field = compared.get(name);
-      if (
-        !RowSeen.stillAsSeen(seen.get(field), now.get(field), record.get(field))
-      ) {
-        result.changed.add(name);
-        result.theirs = now;
-      }
-    }
-    List<Id> seenWho = extras == null ? null : extras.seenWho;
-    if (seenWho != null) {
-      List<Id> who = RowSeen.whoNow(record);
-      // Unchanged since, or someone else chose the same: no question.
-      List<Id> wanted = RowExtras.wantedWho(extras);
-      if (
-        !RowSeen.sameIds(seenWho, who) &&
-        (wanted == null || !RowSeen.sameIds(wanted, who))
-      ) {
-        result.theirWho = who;
-        result.theirs = now;
-      }
-    }
-    return result;
   }
 }

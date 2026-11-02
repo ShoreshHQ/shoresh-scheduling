@@ -117,6 +117,11 @@ const LOCK_FIELDS = {
     type: "string",
     description:
       "The time block's name, like Period 2, or its start like 09:00. Only with a day and a group, for one cell."
+  },
+  seen: {
+    type: "string",
+    description:
+      "The week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
   }
 };
 
@@ -744,14 +749,16 @@ const CAPABILITIES = [
   act(
     "lock_cells",
     "lock_cells",
-    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. It is done as you, with your own access.",
-    LOCK_FIELDS
+    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.",
+    LOCK_FIELDS,
+    ["seen"]
   ),
   act(
     "unlock_cells",
     "unlock_cells",
-    "Unlock cells of a week's Generated Schedule, as its Lock menu's Unlock does, without asking first: one cell (day, group and time), a whole day (day), a whole group (group) or a group's day (group and day). Nothing a lock kept changes until the week is built again. It is done as you, with your own access.",
-    LOCK_FIELDS
+    "Unlock cells of a week's Generated Schedule, as its Lock menu's Unlock does, without asking first: one cell (day, group and time), a whole day (day), a whole group (group) or a group's day (group and day). Nothing a lock kept changes until the week is built again. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.",
+    LOCK_FIELDS,
+    ["seen"]
   ),
   act(
     "finalize_electives",

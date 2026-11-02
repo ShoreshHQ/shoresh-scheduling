@@ -41,6 +41,75 @@ private class AgentSetupRestTest {
     .Name;
   }
 
+  private static Id groupNamed(String name) {
+    return [
+      SELECT Id
+      FROM Group__c
+      WHERE
+        Name = :name
+        AND Division__r.Program__r.Season__c = :GeneratedTestData.ids.get(
+          'Season'
+        )
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ]
+    .Id;
+  }
+
+  // API-1.51, API-1.103: screen over AI. The details panel was opened (Swim: Group A, no notes),
+  // then the AI chose Group B. The stale panel's notes save leaves who can do it as the AI left it,
+  // and its own change of who can do it is answered with theirs, nothing saved.
+  @IsTest
+  static void aStaleDetailsPanelNeverOverwritesWhatTheAiChose() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      String season = seasonName();
+      Id swim = GeneratedTestData.ids.get('Swim');
+      List<Id> panelSawWho = new List<Id>{ groupNamed('Group A') };
+      Test.startTest();
+      List<Object> ai = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'who_can_do_it' => new List<String>{ 'Group B' }
+          },
+          'seen' => new Map<String, Object>{ 'who_can_do_it' => '["Group A"]' }
+        }
+      );
+      RowSaves.Result notes = ActivitiesController.saveActivityDetails(
+        new Activity__c(Id = swim, Notes__c = 'Towels'),
+        null,
+        SeenSaves.ticket(new Activity__c(Id = swim, Notes__c = null), null)
+      );
+      RowSaves.Result who = ActivitiesController.saveActivityDetails(
+        new Activity__c(Id = swim),
+        new List<Id>{ groupNamed('Group A'), groupNamed('Group C') },
+        SeenSaves.ticket(new Activity__c(Id = swim), panelSawWho)
+      );
+      Test.stopTest();
+      Assert.areEqual(200, ai[0], String.valueOf(ai[1]));
+      Assert.isTrue(notes.saved(), 'Notes alone don\'t touch who can do it');
+      Assert.isFalse(who.saved());
+      Assert.areEqual(new List<Id>{ groupNamed('Group B') }, who.theirWho);
+      List<ActivityEligibility__c> rows = [
+        SELECT Group__c
+        FROM ActivityEligibility__c
+        WHERE Activity__c = :swim
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual(1, rows.size(), 'What the AI chose stays');
+      Assert.areEqual(groupNamed('Group B'), rows[0].Group__c);
+      Assert.areEqual(
+        'Towels',
+        [SELECT Notes__c FROM Activity__c WHERE Id = :swim WITH SYSTEM_MODE]
+        .Notes__c
+      );
+    }
+  }
+
   @IsTest
   static void activityRulesAreTheDetailsPanelsSave() {
     System.runAs(ShoreshTestData.scheduler()) {

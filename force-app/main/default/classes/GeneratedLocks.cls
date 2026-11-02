@@ -5,7 +5,7 @@
  * (all the blocks of a multi-block activity), as the engine keeps it. Fixed and recurring
  * activities always stay where setup puts them, so they are never locked.
  *
- * Like a whole-week save, a change names the revision the screen read the week at: if someone
+ * Like a whole-week save, a change names the revision the screen read the week at (SeenSaves): if someone
  * else saved the week since, nothing is changed and the answer is a conflict, so a screen never
  * goes on building from a week that isn't the saved one. Only the days whose locks changed are
  * written. Runs in user mode under the draft's lock; the days are written by ScheduleDaySaves.
@@ -23,7 +23,7 @@ public with sharing class GeneratedLocks {
     Schedule__c draft = GeneratedDrafts.lockedToEdit(scheduleId);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     GeneratedWeek.Locked result = new GeneratedWeek.Locked();
-    if (!GeneratedDrafts.revisionOf(days).equals(seen ?? '')) {
+    if (!SeenSaves.week(days, seen)) {
       result.conflict = true;
       result.message = ScheduleDaySaves.CHANGED_SINCE;
       return result;
