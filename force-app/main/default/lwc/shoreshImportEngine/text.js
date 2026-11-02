@@ -278,6 +278,12 @@ export function clock(minutes) {
   return `${String(hours).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+/** Minutes after midnight as "9:00 AM". */
+export function clockText(minutes) {
+  const hours = Math.floor(minutes / 60);
+  return `${hours % 12 || 12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+}
+
 /** "9:00" / "1:30" for screens: 12-hour, no AM or PM (as camp schedules write it). */
 export function shortClock(minutes) {
   const hours = Math.floor(minutes / 60) % 12 || 12;

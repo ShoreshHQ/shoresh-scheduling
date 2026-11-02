@@ -428,14 +428,18 @@ async function listVersions(capability, request, org, run, versionWords) {
   };
 }
 
+/** One of the screens' own modules ("shoreshTerms.shoreshTerms"), as scripts/build-connect.js ships it beside this file. */
+function loadModule(name) {
+  return import(
+    require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
+      .href
+  );
+}
+
 /** The Versions panel's words module, as scripts/build-connect.js ships it. */
 async function loadVersionWords() {
   try {
-    return await import(
-      require("url").pathToFileURL(
-        path.join(__dirname, "engine.shoreshVersions.words.mjs")
-      ).href
-    );
+    return await loadModule("shoreshVersions.words");
   } catch {
     throw new Error(
       "This copy of Shoresh's connector can't list a week's versions. Download it again from Settings in Shoresh."
@@ -454,9 +458,8 @@ function namespaceOf(read) {
 /** Generated Schedule's own build module, as scripts/build-connect.js ships it beside this file. */
 async function loadEngine(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const file = path.join(__dirname, "engine.shoreshGeneratedWeek.build.mjs");
   try {
-    return await import(require("url").pathToFileURL(file).href);
+    return await loadModule("shoreshGeneratedWeek.build");
   } catch {
     throw new Error(
       "This copy of Shoresh's connector has no build engine. Download it again from Settings in Shoresh."
@@ -467,11 +470,6 @@ async function loadEngine(namespace) {
 /** The screens' own modules the counter is worked out with, as scripts/build-connect.js ships them. */
 async function loadChecks(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const modules = await Promise.all(
       [
@@ -481,7 +479,7 @@ async function loadChecks(namespace) {
         "shoreshWeekEditor.measure",
         "shoreshWeekEditor.manualChecks",
         "shoreshWeekChecks.lines"
-      ].map(load)
+      ].map(loadModule)
     );
     return Object.assign({}, ...modules);
   } catch {
@@ -497,11 +495,6 @@ async function loadChecks(namespace) {
  */
 async function loadEdits(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const modules = await Promise.all(
       [
@@ -515,7 +508,7 @@ async function loadEdits(namespace) {
         "shoreshWeekEditor.locks",
         "shoreshWeekEditor.handEdits",
         "shoreshWeekEditor.rain"
-      ].map(load)
+      ].map(loadModule)
     );
     return Object.assign({}, ...modules);
   } catch {
@@ -531,18 +524,13 @@ async function loadEdits(namespace) {
  */
 async function loadElectives(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const modules = await Promise.all(
       [
         "shoreshTerms.shoreshTerms",
         "shoreshElectiveEngine.shoreshElectiveEngine",
         "shoreshElectiveSeats.seats"
-      ].map(load)
+      ].map(loadModule)
     );
     return Object.assign({}, ...modules);
   } catch {
@@ -559,11 +547,6 @@ async function loadElectives(namespace) {
  */
 async function loadImports(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const [
       engine,
@@ -590,7 +573,7 @@ async function loadImports(namespace) {
         "shoreshImport.flow",
         "shoreshImport.summary",
         "shoreshSpecialSchedule.fromFile"
-      ].map(load)
+      ].map(loadModule)
     );
     return importModules({
       engine,
@@ -618,11 +601,6 @@ async function loadImports(namespace) {
  */
 async function loadLearned(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const modules = await Promise.all(
       [
@@ -631,7 +609,7 @@ async function loadLearned(namespace) {
         "shoreshLearned.view",
         "shoreshPatterns.shoreshPatterns",
         "shoreshTerms.shoreshTerms"
-      ].map(load)
+      ].map(loadModule)
     );
     return Object.assign({}, ...modules);
   } catch {
@@ -647,11 +625,6 @@ async function loadLearned(namespace) {
  */
 async function loadExports(namespace) {
   globalThis.SHORESH_NAMESPACE = namespace;
-  const load = (name) =>
-    import(
-      require("url").pathToFileURL(path.join(__dirname, `engine.${name}.mjs`))
-        .href
-    );
   try {
     const [
       scheduleExport,
@@ -672,7 +645,7 @@ async function loadExports(namespace) {
         "shoreshLists.shoreshLists",
         "shoreshScreens.shoreshScreens",
         "shoreshTerms.shoreshTerms"
-      ].map(load)
+      ].map(loadModule)
     );
     return exportModules({
       scheduleExport,
