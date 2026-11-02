@@ -166,6 +166,34 @@ public with sharing class IncomingRuns {
     return setNames.contains(IncomingBatch.fold(electiveSet));
   }
 
+  /**
+   * Why choices sent to this elective set and week can't be kept: none of that name, or (API-6.4)
+   * the season has both but nothing was brought in there yet, so the step a person takes first
+   * (the first run is the Elective seats screen's own Bring in choices).
+   */
+  public String noRun(IncomingBatch batch, String electiveSet, String week) {
+    String set = electiveSet.left(80);
+    String named = week.left(80);
+    if (!notStarted(batch.season.Id, electiveSet, week)) {
+      return 'There is no elective "' +
+        set +
+        '" in "' +
+        named +
+        '" in this season.';
+    }
+    return 'No choices brought in for ' +
+      set +
+      ' in ' +
+      named +
+      ' yet, so Shoresh has nowhere to keep these. A person brings them in once on the ' +
+      batch.labels.singular('Elective') +
+      ' seats screen (choose ' +
+      set +
+      ' and ' +
+      named +
+      ', then Bring in choices); after that, send these again.';
+  }
+
   private static Boolean same(String saved, String sent) {
     return String.isNotBlank(sent) &&
       IncomingBatch.fold(saved) == IncomingBatch.fold(sent);

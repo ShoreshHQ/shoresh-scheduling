@@ -149,28 +149,17 @@ public with sharing class SpecialScheduleImport {
     SpecialSchedule.Owner owner,
     List<ImportedColumn> columns
   ) {
-    Map<String, ScheduleGrid.Item> setTimes = SpecialActivities.setTimeItems(
-      owner.seasonId
-    );
     List<String> names = new List<String>();
     Set<String> seen = new Set<String>();
     for (ImportedColumn column : columns) {
       for (String cell : column.cells) {
         String name = nameIn(cell);
-        if (name == null) {
-          continue;
-        }
-        String key = SpecialActivities.looseName(name);
-        if (seen.add(key) && !setTimes.containsKey(key)) {
+        if (name != null && seen.add(SpecialActivities.looseName(name))) {
           names.add(name);
         }
       }
     }
-    SpecialActivities.Named found = names.isEmpty()
-      ? new SpecialActivities.Named()
-      : SpecialActivities.named(owner.seasonId, names);
-    found.setTimes = setTimes;
-    return found;
+    return SpecialActivities.namedInFile(owner.seasonId, names);
   }
 
   /** A cell's name, tidied; null for nothing or a carry-on. */
@@ -192,16 +181,7 @@ public with sharing class SpecialScheduleImport {
     for (String cell : column.cells) {
       String name = nameIn(cell);
       if (name != null) {
-        String key = SpecialActivities.looseName(name);
-        Activity__c activity = found.byName.get(key);
-        row.add(
-          tokenFor(
-            grid,
-            found.setTimes.containsKey(key)
-              ? found.setTimes.get(key)
-              : new ScheduleGrid.Item('A', activity.Id, activity.Name)
-          )
-        );
+        row.add(tokenFor(grid, found.itemFor(name)));
       } else if (cell != null && cell.trim() == ScheduleGrid.CARRIES_ON) {
         // Carries on only from something above it in the same column.
         row.add(

@@ -16,6 +16,33 @@ public with sharing class SpecialActivities {
     public List<String> added = new List<String>();
     /** The season's fixed and recurring activities by loose name, where a file names one. */
     public Map<String, ScheduleGrid.Item> setTimes = new Map<String, ScheduleGrid.Item>();
+
+    /** The item a grid holds a name by: its fixed or recurring activity, else its activity. */
+    public ScheduleGrid.Item itemFor(String name) {
+      String key = looseName(name);
+      if (setTimes.containsKey(key)) {
+        return setTimes.get(key);
+      }
+      Activity__c activity = byName.get(key);
+      return new ScheduleGrid.Item('A', activity.Id, activity.Name);
+    }
+  }
+
+  /**
+   * SPECIAL-2.2: the names in an imported file, each the season's fixed or recurring activity of
+   * that name, else its activity (made new if need be, as named does).
+   */
+  public static Named namedInFile(Id seasonId, List<String> names) {
+    Map<String, ScheduleGrid.Item> setTimes = setTimeItems(seasonId);
+    List<String> rest = new List<String>();
+    for (String name : names) {
+      if (!setTimes.containsKey(looseName(name))) {
+        rest.add(name);
+      }
+    }
+    Named result = rest.isEmpty() ? new Named() : named(seasonId, rest);
+    result.setTimes = setTimes;
+    return result;
   }
 
   /**

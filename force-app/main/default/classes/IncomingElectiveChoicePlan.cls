@@ -82,29 +82,8 @@ public with sharing class IncomingElectiveChoicePlan {
     if (aboutCamper != null) {
       return aboutCamper;
     }
-    if (
-      run == null &&
-      runs.notStarted(batch.season.Id, record.elective, record.week)
-    ) {
-      // API-6.4: the first run is the Elective seats screen's own Bring in choices.
-      return 'No choices brought in for ' +
-        record.elective.left(80) +
-        ' in ' +
-        record.week.left(80) +
-        ' yet, so Shoresh has nowhere to keep these. A person brings them in once on the ' +
-        batch.labels.singular('Elective') +
-        ' seats screen (choose ' +
-        record.elective.left(80) +
-        ' and ' +
-        record.week.left(80) +
-        ', then Bring in choices); after that, send these again.';
-    }
     if (run == null) {
-      return 'There is no elective "' +
-        record.elective.left(80) +
-        '" in "' +
-        record.week.left(80) +
-        '" in this season.';
+      return runs.noRun(batch, record.elective, record.week);
     }
     if (run.Status__c == ChoicesImport.FINAL_STATUS) {
       return 'Seats for ' +
