@@ -9,6 +9,9 @@
  * error, a dropped connection) never reaches the director: the why becomes "Try again.", and the
  * raw detail goes to the browser console for support.
  */
+// Where camp staff reach Shoresh support. Settings shows it (Help); other screens point there.
+export const SUPPORT_EMAIL = "imshoresh@gmail.com";
+
 const TRY_AGAIN = "Try again.";
 // For a caller that can't say what it was doing (failed() is the usual way in).
 const NOTHING_HAPPENED = "That didn't work. Try again.";
