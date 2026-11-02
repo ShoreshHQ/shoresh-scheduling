@@ -61,7 +61,7 @@ private class SetupTablesTest {
   }
 
   private static Integer uses(String name) {
-    ScheduleUses.Count count = SetupTablesController.scheduleUses(
+    ScheduleUses.Count count = ScheduleUses.count(
       name == null ? null : ids.get(name)
     );
     Assert.isTrue(count.complete);
@@ -146,9 +146,7 @@ private class SetupTablesTest {
       {
         Test.startTest();
         Integer before = Limits.getQueries();
-        ScheduleUses.Count count = SetupTablesController.scheduleUses(
-          ids.get('Soccer')
-        );
+        ScheduleUses.Count count = ScheduleUses.count(ids.get('Soccer'));
         Integer used = Limits.getQueries() - before;
         Test.stopTest();
         // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
@@ -171,9 +169,7 @@ private class SetupTablesTest {
       {
         ScheduleUses.partsAtOnce = 10;
         ScheduleUses.queryBudget = 2;
-        ScheduleUses.Count count = SetupTablesController.scheduleUses(
-          ids.get('Group A')
-        );
+        ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
         // Two reads of 10 days each: some schedules found, the rest not read.
         Assert.isTrue(
           count.schedules >= 1 && count.schedules < 61,
@@ -182,12 +178,12 @@ private class SetupTablesTest {
         Assert.isFalse(count.complete);
         ScheduleUses.queryBudget = 90;
         ScheduleUses.rowBudget = 100;
-        count = SetupTablesController.scheduleUses(ids.get('Soccer'));
+        count = ScheduleUses.count(ids.get('Soccer'));
         Assert.areEqual(0, count.schedules);
         Assert.isFalse(count.complete);
         ScheduleUses.rowBudget = 40000;
         ScheduleUses.textBudget = 1;
-        count = SetupTablesController.scheduleUses(ids.get('Swim'));
+        count = ScheduleUses.count(ids.get('Swim'));
         Assert.isFalse(count.complete);
       }
     }
@@ -199,7 +195,7 @@ private class SetupTablesTest {
     scheduleNaming('First', 1, new List<String>{ 'Group A' });
     System.runAs(ShoreshTestData.outsider()) {
       try {
-        SetupTablesController.scheduleUses(ids.get('Group A'));
+        ScheduleUses.count(ids.get('Group A'));
         Assert.fail('No access: refused, never a count of 0');
       } catch (AuraHandledException e) {
         Assert.isNotNull(e.getMessage());

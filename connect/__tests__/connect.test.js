@@ -44,7 +44,7 @@ const callTool = (name, args, run) =>
 
 describe("Shoresh for AI tools and the command line", () => {
   // API-1.6
-  it("matchesTheApi: one action per API web address, no more, no fewer", () => {
+  it("matchesTheApi: every API web address has its actions (a delete also its question, API-1.102), no more, no fewer", () => {
     const addresses = fs
       .readdirSync(CLASSES)
       .filter((f) => f.endsWith(".cls"))
@@ -57,8 +57,10 @@ describe("Shoresh for AI tools and the command line", () => {
       // What Shoresh's view of a week draws: part of a schedule read, not an action (API-1.26).
       .filter((a) => a !== "week_view")
       .sort();
-    expect(CAPABILITIES.map((c) => c.api).sort()).toEqual(addresses);
-    expect(CAPABILITIES).toHaveLength(83);
+    expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
+      addresses
+    );
+    expect(CAPABILITIES).toHaveLength(84);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -2409,6 +2411,26 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(refused.ok).toBe(false);
     expect(refused.text).toMatch(/not deleted. Nothing was removed./);
+  });
+
+  // API-1.102
+  it("askBeforeDeleteAsCampSetup: Camp Setup's question before a delete is read from the delete's own web address, by name", async () => {
+    expect(byName("delete_setup_record").description).toMatch(
+      /read_setup_delete/
+    );
+    const question = 'Delete "Main"? Anything inside it is deleted too.';
+    const read = [];
+    const done = await call(
+      "read_setup_delete",
+      { season: "Summer 2026", kind: "program", name: "Main" },
+      {
+        run: sfAnswering(200, JSON.stringify({ message: question }), read)
+      }
+    );
+    expect(read[0].args[3]).toBe(
+      "/services/apexrest/v1/delete_setup_record?season=Summer+2026&kind=program&name=Main"
+    );
+    expect(done.text).toBe(question);
   });
 
   it("setupFieldsAsCampSetup: changing a setup record's fields and adding one send kind, name, program and fields to their own web address, with no week", async () => {

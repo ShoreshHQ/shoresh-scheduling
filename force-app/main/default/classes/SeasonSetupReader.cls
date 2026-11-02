@@ -81,8 +81,8 @@ public with sharing class SeasonSetupReader {
       WHERE Week__r.Season__c = :seasonId
       WITH USER_MODE
     ];
-    // Only what the delete messages need: which weeks and programs have saved schedules and
-    // Manual Build weeks.
+    // Only what Delete season counts: the season's saved schedules (a setup record's own delete
+    // asks SetupDelete).
     result.schedules = [
       SELECT Id, Program__c, Week__c, Status__c, Origin__c
       FROM Schedule__c

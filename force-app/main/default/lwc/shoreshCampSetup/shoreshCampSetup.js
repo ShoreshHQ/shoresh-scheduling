@@ -12,9 +12,9 @@ import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
+import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
-import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
@@ -220,13 +220,6 @@ function focusedElement() {
  * The season's name and dates are edited next to the season picker, and saved as you go like
  * everything else in setup (decision 26 (4) and (5)).
  */
-/** "A", "A and B", "A, B and C". */
-function andList(parts) {
-  return parts.length <= 1
-    ? parts.join("")
-    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-}
-
 /** A batch's questions kept on its import (JSON [{ key, title }]), for the screen. */
 function outsideQuestions(open) {
   try {
@@ -2910,68 +2903,6 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
-  /**
-   * For a week or program: its saved versions and Manual Build weeks, which a delete takes with
-   * it (ADR 0005 §10, ADR 0008).
-   */
-  savedSchedulesNote(recordId) {
-    const S = FIELD.Schedule;
-    const mine = ((this.setup && this.setup.schedules) || []).filter(
-      (s) => s[S.Week] === recordId || s[S.Program] === recordId
-    );
-    const versions = mine.filter((s) => s[S.Status] === "Version").length;
-    const drafts = (origin) =>
-      mine.filter((s) => s[S.Status] === "Draft" && s[S.Origin] === origin)
-        .length;
-    const builds = drafts("Manual");
-    const generated = drafts("Generated");
-    const t = this.terms;
-    const parts = [];
-    if (builds) {
-      parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
-    }
-    if (generated) {
-      parts.push(
-        generated === 1
-          ? "its Generated Schedule"
-          : `${generated} Generated Schedules`
-      );
-    }
-    if (versions) {
-      const word = versions === 1 ? t.sIn("Version") : t.pIn("Version");
-      parts.push(`${versions} saved ${word}`);
-    }
-    if (!parts.length) {
-      return "";
-    }
-    const last = parts.pop();
-    return ` That includes ${parts.length ? `${parts.join(", ")} and ` : ""}${last}.`;
-  }
-
-  /**
-   * For a week: the special days and events on its days, which a delete takes off them (ADR 0014
-   * choice 9; the items stay saved): ' It takes "Field Day" off Tuesday and "Carnival" off
-   * Wednesday and Thursday.'
-   */
-  specialDaysNote(recordId) {
-    const special = (this.setup && this.setup.special) || {};
-    const names = new Map(
-      [...(special.specialDays || []), ...(special.specialEvents || [])].map(
-        (item) => [item.Id, item.Name]
-      )
-    );
-    const off = (special.briefs || [])
-      .map((brief) => ({
-        name: names.get(brief.itemId),
-        days: (brief.days || [])
-          .filter((d) => d.weekId === recordId)
-          .map((d) => d.day)
-      }))
-      .filter((item) => item.name && item.days.length)
-      .map((item) => `"${item.name}" off ${andList(item.days)}`);
-    return off.length ? ` It takes ${andList(off)}.` : "";
-  }
-
   async handleDeleteRecord(event) {
     // A second click while the question is open (or the delete is under way) does nothing.
     if (this.deleting) {
@@ -2986,11 +2917,28 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async askAndDelete({ recordId, name, onDeleted }) {
+    const notDeleted = `"${name}" not deleted. Nothing was removed.`;
+    // The server's question (SetupDelete), as the AI asks it: what goes with the record, or why
+    // it can't be deleted yet.
+    let preview;
+    try {
+      preview = await deletePreview({ recordId });
+    } catch (e) {
+      this.showError(e, notDeleted);
+      return;
+    }
+    if (preview.refusal) {
+      this.showError({ body: { message: preview.refusal } }, notDeleted);
+      return;
+    }
     // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
     // gives it back there.
-    const ok = await LightningConfirm.open(
-      await this.deleteQuestion(recordId, name)
-    );
+    const ok = await LightningConfirm.open({
+      label: preview.label,
+      message: preview.message,
+      variant: "header",
+      theme: "warning"
+    });
     if (!ok) {
       return;
     }
@@ -3003,78 +2951,7 @@ export default class ShoreshCampSetup extends LightningElement {
       if (onDeleted) {
         onDeleted();
       }
-    }, `"${name}" not deleted. Nothing was removed.`);
-  }
-
-  /**
-   * The question before a delete. A bunk or activity some schedule uses says how many first
-   * (decision 15: "Bunk 3 is in 2 schedules. Delete anyway?"); Salesforce's Recycle Bin can
-   * bring it back, and the schedules keep its name.
-   */
-  async deleteQuestion(recordId, name) {
-    // An offering: taken off its set, the activity kept (desktop "Remove …? The activity is
-    // kept."); its linked choices go with it.
-    const offering = this.electives.offerings.find((o) => o.Id === recordId);
-    if (offering) {
-      const set = this.electives.sets.find(
-        (s) => s.Id === offering[OFFER.ElectiveSet]
-      );
-      return {
-        label: "Delete",
-        message: `Take "${name}" off "${set ? set.Name : ""}"? The ${this.terms.sIn("Activity")} is kept.`,
-        variant: "header",
-        theme: "warning"
-      };
-    }
-    // A linked choice: a sheet that names it then counts as its offering's activity (slice E8).
-    const linked = this.electives.linkedChoices.find((c) => c.Id === recordId);
-    if (linked) {
-      const linkedOffering = this.electives.offerings.find(
-        (o) => o.Id === linked[FIELD.LinkedChoice.Offering]
-      );
-      const activity = linkedOffering
-        ? ((this.setup && this.setup.activities) || []).find(
-            (a) => a.Id === linkedOffering[OFFER.Activity]
-          )
-        : null;
-      return {
-        label: "Delete",
-        message: `Delete "${name}"?${activity ? ` A sheet that names it then counts as ${activity.Name}.` : ""}`,
-        variant: "header",
-        theme: "warning"
-      };
-    }
-    // A count that couldn't be made is said so, never left out quietly.
-    const count = (await Promise.resolve()
-      .then(() => scheduleUses({ recordId }))
-      .catch(() => ({ schedules: 0, complete: false }))) || {
-      schedules: 0,
-      complete: true
-    };
-    const uses = count.schedules;
-    const word = uses === 1 ? "schedule" : "schedules";
-    let message = null;
-    if (uses > 0 && count.complete) {
-      message = `${name} is in ${uses} ${word}. Delete anyway?`;
-    } else if (uses > 0) {
-      message = `${name} is in ${uses} or more schedules. Delete anyway?`;
-    } else if (!count.complete) {
-      message = `Shoresh couldn't count the schedules ${name} is in. Delete anyway?`;
-    }
-    if (message) {
-      return {
-        label: `Delete "${name}"?`,
-        message,
-        variant: "header",
-        theme: "warning"
-      };
-    }
-    return {
-      label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)}${this.specialDaysNote(recordId)}`,
-      variant: "header",
-      theme: "warning"
-    };
+    }, notDeleted);
   }
 
   /** "Same location?" for a place and the places whose names match it (ADR 0012). */

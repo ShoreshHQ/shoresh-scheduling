@@ -14,7 +14,7 @@ import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
-import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
@@ -40,9 +40,13 @@ jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
 jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
   virtual: true
 });
-jest.mock("@salesforce/apex/SetupTablesController.scheduleUses", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.deletePreview",
+  () => apex(),
+  {
+    virtual: true
+  }
+);
 jest.mock(
   "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces",
   () => apex(),
@@ -486,7 +490,11 @@ describe("c-shoresh-camp-setup: Electives", () => {
 
   it("deleting an offering takes it off its set; the activity is kept", async () => {
     const element = await render();
-    scheduleUses.mockResolvedValue({ schedules: 0, complete: true });
+    // The server's question (SetupDelete), asked as it comes.
+    deletePreview.mockResolvedValue({
+      label: "Delete",
+      message: 'Take "Archery" off "Chugim"? The activity is kept.'
+    });
     LightningConfirm.open.mockResolvedValue(true);
     deleteRecord.mockResolvedValue();
     const onDeleted = jest.fn();
@@ -568,6 +576,11 @@ describe("c-shoresh-camp-setup: Electives", () => {
 
   it("deleting a linked choice asks first, saying what a sheet that names it then counts as", async () => {
     const element = await render();
+    deletePreview.mockResolvedValue({
+      label: "Delete",
+      message:
+        'Delete "Pottery double"? A sheet that names it then counts as Pottery.'
+    });
     LightningConfirm.open.mockResolvedValue(true);
     deleteRecord.mockResolvedValue();
     section(element, "es1").dispatchEvent(
@@ -586,7 +599,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
       message:
         'Delete "Pottery double"? A sheet that names it then counts as Pottery.'
     });
-    expect(scheduleUses).not.toHaveBeenCalled();
+    expect(deletePreview).toHaveBeenCalledWith({ recordId: "lc1" });
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "lc1" });
     expect(onDeleted).toHaveBeenCalled();
   });
