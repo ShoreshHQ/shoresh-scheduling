@@ -8,14 +8,7 @@
  * read it (seen). The answer is the screen's own line, counted with its own board.
  */
 
-/** Someone changed the seats since the agent read them: nothing was changed (409). */
-function changedSince() {
-  return {
-    ok: false,
-    status: 409,
-    text: `Someone changed the seats since you read them, so nothing was changed. Read them again with read_elective_seats_now.`
-  };
-}
+const { changedSince } = require("./imports");
 
 async function assignElectiveSeats(
   capability,
@@ -42,7 +35,10 @@ async function assignElectiveSeats(
   if (
     `${body.view.run.id}:${body.view.revision}` !== String(input.seen).trim()
   ) {
-    return changedSince();
+    // Someone changed the seats since the agent read them: nothing was changed (409).
+    return changedSince(
+      "Someone changed the seats since you read them, so nothing was changed. Read them again with read_elective_seats_now."
+    );
   }
   const m = await load(namespaceOf(body));
   const t = m.buildTerms(body.labels);

@@ -9,6 +9,7 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import {
   BRING_BACK,
   LEAVE_OUT,
+  clockText,
   csvFile,
   isCsv,
   isReadable,
@@ -49,12 +50,6 @@ const OWN_WORDS = {
   CampLabel: () => ["camp word", "camp words"],
   WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
 };
-
-/** Minutes after midnight as "9:00 AM". */
-function timeText(minutes) {
-  const hours = Math.floor(minutes / 60);
-  return `${hours % 12 || 12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
-}
 
 /**
  * "Import a list" on a setup screen (slice 4c): choose an Excel or CSV file, see which column is
@@ -637,7 +632,7 @@ export default class ShoreshListImport extends LightningElement {
       } else if (!chosen && card.answer && card.timesQuestion) {
         const [start, end] = card.answer.split("-").map((hm) => {
           const [h, m] = hm.split(":").map(Number);
-          return timeText(h * 60 + m);
+          return clockText(h * 60 + m);
         });
         chosen = { label: `${start}–${end}` };
       }
@@ -743,7 +738,7 @@ export default class ShoreshListImport extends LightningElement {
     (add.timeBlock || []).forEach((item) => {
       lines.push({
         key: `block:${item.programId}:${item.name}`,
-        label: `${item.name} · ${t.sIn("TimeBlock")} · ${timeText(item.start)}–${timeText(item.end)}`,
+        label: `${item.name} · ${t.sIn("TimeBlock")} · ${clockText(item.start)}–${clockText(item.end)}`,
         checked: true,
         canUntick: false
       });

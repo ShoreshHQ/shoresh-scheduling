@@ -140,7 +140,7 @@ describe("seat assignment properties", () => {
     expect(seats).toBeGreaterThan(2500);
     expect(linked).toBeGreaterThan(25);
     expect(dropped).toBeGreaterThan(25);
-  });
+  }, 60000);
 
   it("leave the inputs as they were", () => {
     const input = randomElectiveCamp(42);

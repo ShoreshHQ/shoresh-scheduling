@@ -96,6 +96,7 @@ export {
   timeRange,
   clock,
   shortClock,
+  clockText,
   cellName,
   hasClockTime
 } from "./engine.shoreshImportEngine.text.mjs";

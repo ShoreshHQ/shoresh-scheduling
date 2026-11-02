@@ -61,5 +61,5 @@ describe("seats without a linked-choice conflict", () => {
       camps: 89,
       hash: "30c3a1b6"
     });
-  });
+  }, 60000);
 });

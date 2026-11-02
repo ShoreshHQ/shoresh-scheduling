@@ -13,13 +13,11 @@
  * undo_import (API-1.83): the screen's own Undo, said in its words (undoMessage).
  */
 
-/** The setup changed since the review: nothing was saved (409). */
-function changedSince() {
-  return {
-    ok: false,
-    status: 409,
-    text: "Someone changed the setup since the file was reviewed, so nothing was saved. Review the file again (without save) and use the new seen."
-  };
+/** Something changed since it was read or reviewed: nothing was saved (409). By default, the setup since the review. */
+function changedSince(
+  text = "Someone changed the setup since the file was reviewed, so nothing was saved. Review the file again (without save) and use the new seen."
+) {
+  return { ok: false, status: 409, text };
 }
 
 function refused(text) {
@@ -49,12 +47,6 @@ function asTheScreenReads(value, key = "") {
   if (!time) return value;
   const [hours, minutes, seconds, ms] = time.slice(1).map(Number);
   return ((hours * 60 + minutes) * 60 + seconds) * 1000 + ms;
-}
-
-/** "9:00 AM", as the screen says a time. */
-function timeText(minutes) {
-  const hours = Math.floor(minutes / 60);
-  return `${hours % 12 || 12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
 }
 
 /** The agent's file as the screen reads a file: CSV text, or sheets of rows. */
@@ -109,7 +101,7 @@ function alsoAddLines(p, t, setup, m) {
   );
   (add.timeBlock || []).forEach((item) =>
     lines.push(
-      `${item.name} · ${t.sIn("TimeBlock")} · ${timeText(item.start)}–${timeText(item.end)}`
+      `${item.name} · ${t.sIn("TimeBlock")} · ${m.clockText(item.start)}–${m.clockText(item.end)}`
     )
   );
   (add.who || []).forEach((item) =>
