@@ -22,7 +22,14 @@
  *
  * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
  */
-import { CARRIES_ON, OPEN, slots } from "./grid";
+import {
+  CARRIES_ON,
+  KIND,
+  OPEN,
+  isSetTime as holdsSetTime,
+  owner,
+  slots
+} from "./grid";
 import { compareText, earlyDates } from "./setup";
 import { BUSY, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
@@ -542,13 +549,12 @@ export function countedCells(ctx, days) {
     }
     day.groups.forEach((grp, g) => {
       slots(day, g).forEach((slot, b) => {
-        const item = slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
+        const item = owner(slot);
         if (
           ctx.isAway(grp.id, day.blocks[b].id) ||
-          item.startsWith("F:") ||
-          item.startsWith("R:") ||
-          item.startsWith("S:") ||
-          item.startsWith("D:") ||
+          holdsSetTime(item) ||
+          item.startsWith(`${KIND.EVENT}:`) ||
+          item.startsWith(`${KIND.SPECIAL_DAY}:`) ||
           PLACED_ELECTIVE.test(item) ||
           (item === OPEN &&
             ctx.isLockedOpen(grp.id, day.dateValue, day.blocks[b].id))

@@ -59,6 +59,16 @@ export {
   readLocations,
   readProgram
 } from "./checkInputs";
+export {
+  CARRIES_ON,
+  KIND,
+  OPEN,
+  identity,
+  isCarryOn,
+  isSetTime,
+  owner,
+  startsActivity
+} from "./grid";
 export { measureWeek } from "./measure";
 export { NOW } from "./progress";
 export {

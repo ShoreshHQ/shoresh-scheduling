@@ -1,0 +1,17 @@
+{
+  "about": "What a cell holds, read the same way by the engine (c/shoreshEngine grid.js, which Manual Build's slotEdits.js uses) and the server (SlotIds); and a locked cell's refusal, worded the same by the screen (shoreshWeekEditor lockedWords) and the server (ScheduleGridLocks.lockedWords). A cell is '' (Open), kind:record Id (or kind:name for things not set up yet) for an item starting there, or '^' and that for one carrying on into it. Ids are made up.",
+  "cells": [
+    { "name": "Open", "slot": "", "owner": "", "carriesOn": false, "setTime": false, "startsActivity": false },
+    { "name": "an activity starting here", "slot": "A:a015g00000AbCdE", "owner": "A:a015g00000AbCdE", "carriesOn": false, "setTime": false, "startsActivity": true },
+    { "name": "an activity carrying on", "slot": "^A:a015g00000AbCdE", "owner": "A:a015g00000AbCdE", "carriesOn": true, "setTime": false, "startsActivity": false },
+    { "name": "a fixed activity", "slot": "F:a025g00000AbCdE", "owner": "F:a025g00000AbCdE", "carriesOn": false, "setTime": true, "startsActivity": false },
+    { "name": "a recurring activity carrying on", "slot": "^R:a035g00000AbCdE", "owner": "R:a035g00000AbCdE", "carriesOn": true, "setTime": true, "startsActivity": false },
+    { "name": "a special event", "slot": "S:a045g00000AbCdE", "owner": "S:a045g00000AbCdE", "carriesOn": false, "setTime": false, "startsActivity": false },
+    { "name": "an elective set by name, carrying on", "slot": "^E:Morning electives", "owner": "E:Morning electives", "carriesOn": true, "setTime": false, "startsActivity": false },
+    { "name": "a trip from a file", "slot": "T:Zoo", "owner": "T:Zoo", "carriesOn": false, "setTime": false, "startsActivity": false }
+  ],
+  "locked": [
+    { "group": "Bunk 1", "weekday": "Monday", "block": "Period 2", "words": "Bunk 1 · Monday · Period 2 is locked." },
+    { "group": "Gesher Girls", "weekday": "Friday", "block": "Lunch", "words": "Gesher Girls · Friday · Lunch is locked." }
+  ]
+}
