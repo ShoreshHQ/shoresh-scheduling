@@ -79,7 +79,7 @@ public with sharing class ImportWriter {
         List<String> fields = ImportUndoLog.fieldsOf(written);
         List<Object> entry = createdEntries.get(row.Id);
         entry[1] = fieldsetOf(createdTerms.get(row.Id), fields);
-        entry[2] = ImportUndoLog.digest(written, fields);
+        entry[2] = ImportUndoValues.digest(written, fields);
       }
     }
   }
@@ -252,7 +252,7 @@ public with sharing class ImportWriter {
     List<Object> entry = new List<Object>{
       row.Id,
       fieldsetOf(term, fields),
-      ImportUndoLog.digest(row, fields)
+      ImportUndoValues.digest(row, fields)
     };
     ((List<Object>) created.get(term).get('rows')).add(entry);
     createdRows.put(row.Id, row);

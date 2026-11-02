@@ -1,8 +1,11 @@
-/** Comparing and putting back the values Undo last import kept (ImportUndoLog). */
+/**
+ * How the import log keeps and compares values, and putting back the values Undo last import
+ * kept (ImportUndoLog).
+ */
 public with sharing class ImportUndoValues {
   /** Whether a value saved now is the one the import wrote. */
   public static Boolean same(Object now, Object written) {
-    Object plainNow = ImportUndoLog.plain(now);
+    Object plainNow = plain(now);
     if (isNumber(plainNow) && isNumber(written)) {
       return Decimal.valueOf(String.valueOf(plainNow)) ==
         Decimal.valueOf(String.valueOf(written));
@@ -112,5 +115,59 @@ public with sharing class ImportUndoValues {
       new Map<String, Object>{ 'ids' => ids },
       AccessLevel.USER_MODE
     );
+  }
+
+  /** How a value is kept and compared: times as "HH:mm", dates as "yyyy-MM-dd", else as is. */
+  public static Object plain(Object value) {
+    if (value instanceof Time) {
+      return String.valueOf(value).left(5);
+    }
+    if (value instanceof Date) {
+      return String.valueOf(value).left(10);
+    }
+    return value;
+  }
+
+  /** One text for comparing values: numbers without trailing zeros, times as "HH:mm". */
+  public static String normalized(Object value) {
+    Object plainValue = plain(value);
+    if (plainValue == null) {
+      return '';
+    }
+    if (
+      plainValue instanceof Decimal ||
+      plainValue instanceof Integer ||
+      plainValue instanceof Long ||
+      plainValue instanceof Double
+    ) {
+      return Decimal.valueOf(String.valueOf(plainValue))
+        .stripTrailingZeros()
+        .toPlainString();
+    }
+    return String.valueOf(plainValue);
+  }
+
+  /**
+   * A short fingerprint of a record's values for the given fields (sorted). Fields are named by
+   * their local names in it, however the list spells them, so a fingerprint taken before the
+   * namespace arrived still matches. The names must be Shoresh's own or already checked
+   * (read checks a log's): this never queries, but it trusts what it is given.
+   */
+  public static String digest(SObject record, List<String> fields) {
+    Schema.SObjectType kind = record.getSObjectType();
+    List<String> parts = new List<String>();
+    for (String name : fields) {
+      Schema.SObjectField field = ShoreshSchema.field(kind, name);
+      if (field == null) {
+        throw ImportFields.unreadableLog();
+      }
+      parts.add(
+        ShoreshSchema.localName(field) + '=' + normalized(record.get(field))
+      );
+    }
+    return EncodingUtil.convertToHex(
+        Crypto.generateDigest('MD5', Blob.valueOf(String.join(parts, '\n')))
+      )
+      .left(16);
   }
 }

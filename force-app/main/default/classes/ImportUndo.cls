@@ -24,7 +24,7 @@ public with sharing class ImportUndo {
     public List<String> gone { get; set; }
     /** A copied season the Undo took away with everything in it: the screen leaves it. */
     @AuraEnabled
-    public Boolean seasonRemoved { get; set; }
+    public Boolean seasonRemoved;
 
     public Result() {
       removed = 0;
@@ -49,6 +49,14 @@ public with sharing class ImportUndo {
     OutsideOwned.bringingIn = IncomingQuestions.isBatch(done.Open__c);
     try {
       ImportUndoLog.reverse(done, result);
+      // Undoing Copy season takes the new season away, its import log with it.
+      result.seasonRemoved =
+        [
+          SELECT COUNT()
+          FROM Season__c
+          WHERE Id = :done.Season__c
+          WITH USER_MODE
+        ] == 0;
       SetTimeGuard.checkPending();
       if (!result.seasonRemoved) {
         ImportLog.markUndone(done);

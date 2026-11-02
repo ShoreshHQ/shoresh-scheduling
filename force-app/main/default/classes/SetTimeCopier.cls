@@ -11,16 +11,11 @@ public with sharing class SetTimeCopier {
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
 
-  public SetTimeCopier(
-    Id sourceSeasonId,
-    Id newSeasonId,
-    Map<Id, Id> copies,
-    ImportWriter log
-  ) {
-    this.sourceSeasonId = sourceSeasonId;
-    this.newSeasonId = newSeasonId;
+  public SetTimeCopier(SeasonCopier.Copying made, Map<Id, Id> copies) {
+    this.sourceSeasonId = made.sourceSeasonId;
+    this.newSeasonId = made.newSeasonId;
     this.copies = copies;
-    this.log = log;
+    this.log = made.log;
   }
 
   /** Copies everything and returns original Id => copy Id for the fixed and recurring activities. */

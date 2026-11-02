@@ -354,10 +354,6 @@ public with sharing class ImportUndoDeletes {
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (outcomes[i].isSuccess()) {
         result.removed += ImportUndoCount.each(term);
-        // A copied season takes its import log with it: nothing is left to mark undone.
-        if (term == 'Season') {
-          result.seasonRemoved = true;
-        }
         continue;
       }
       Database.Error error = outcomes[i].getErrors()[0];

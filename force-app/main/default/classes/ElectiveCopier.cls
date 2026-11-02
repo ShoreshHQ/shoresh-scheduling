@@ -12,16 +12,11 @@ public with sharing class ElectiveCopier {
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
 
-  public ElectiveCopier(
-    Id sourceSeasonId,
-    Id newSeasonId,
-    Map<Id, Id> copies,
-    ImportWriter log
-  ) {
-    this.sourceSeasonId = sourceSeasonId;
-    this.newSeasonId = newSeasonId;
+  public ElectiveCopier(SeasonCopier.Copying made, Map<Id, Id> copies) {
+    this.sourceSeasonId = made.sourceSeasonId;
+    this.newSeasonId = made.newSeasonId;
     this.copies = copies;
-    this.log = log;
+    this.log = made.log;
   }
 
   /** Copies everything, in a fixed number of reads and saves whatever the number of sets. */

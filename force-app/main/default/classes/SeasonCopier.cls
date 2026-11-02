@@ -100,11 +100,10 @@ public with sharing class SeasonCopier {
       copies.putAll(copyIds(divisionCopies));
       copies.putAll(copyIds(programCopies));
       copies.putAll(copyIds(blockCopies));
-      copies.putAll(new SetupCopier(source.Id, season.Id, log).copy(copies));
-      copies.putAll(
-        new SetTimeCopier(source.Id, season.Id, copies, log).copy()
-      );
-      new ElectiveCopier(source.Id, season.Id, copies, log).copy();
+      Copying made = new Copying(source.Id, season.Id, log);
+      copies.putAll(new SetupCopier(made).copy(copies));
+      copies.putAll(new SetTimeCopier(made, copies).copy());
+      new ElectiveCopier(made, copies).copy();
       copyWeekExceptions(weekCopies, copies);
       // A copy of a season without clashes has none, but check before keeping it.
       SetTimeGuard.checkPending();
@@ -283,6 +282,19 @@ public with sharing class SeasonCopier {
       result.put(sourceId, copies.get(sourceId).Id);
     }
     return result;
+  }
+
+  /** The copy being made: the season copied, the new one, and the import log keeping it. */
+  public class Copying {
+    public final Id sourceSeasonId;
+    public final Id newSeasonId;
+    public final ImportWriter log;
+
+    public Copying(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
+      this.sourceSeasonId = sourceSeasonId;
+      this.newSeasonId = newSeasonId;
+      this.log = log;
+    }
   }
 
   public class Preview {

@@ -131,7 +131,7 @@ public with sharing class ImportProvenance {
       Schema.SObjectField field = ImportFields.field(type, name);
       asCreated.put(field, ImportUndoValues.asField(field, w.before.get(name)));
     }
-    return ImportUndoLog.digest(asCreated, w.fields) == w.fingerprint;
+    return ImportUndoValues.digest(asCreated, w.fields) == w.fingerprint;
   }
 
   /**

@@ -45,6 +45,6 @@ public with sharing class ImportUndoLater {
    */
   public Boolean edited(SObject record, List<String> written, String digest) {
     return changed.contains(record.Id) ||
-      ImportUndoLog.digest(record, written) != digest;
+      ImportUndoValues.digest(record, written) != digest;
   }
 }

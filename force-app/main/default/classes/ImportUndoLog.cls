@@ -176,7 +176,7 @@ public with sharing class ImportUndoLog {
       Map<String, Object> values = new Map<String, Object>();
       Map<String, Schema.SObjectField> fields = fieldsById.get(record.Id);
       for (String name : fields.keySet()) {
-        values.put(name, plain(record.get(fields.get(name))));
+        values.put(name, ImportUndoValues.plain(record.get(fields.get(name))));
       }
       result.add(
         new Map<String, Object>{
@@ -214,7 +214,7 @@ public with sharing class ImportUndoLog {
     Map<String, Object> result = new Map<String, Object>();
     Map<String, Schema.SObjectField> fields = written(row);
     for (String name : fields.keySet()) {
-      result.put(name, plain(row.get(fields.get(name))));
+      result.put(name, ImportUndoValues.plain(row.get(fields.get(name))));
     }
     return result;
   }
@@ -233,60 +233,6 @@ public with sharing class ImportUndoLog {
       }
     }
     return result;
-  }
-
-  /** How a value is kept and compared: times as "HH:mm", dates as "yyyy-MM-dd", else as is. */
-  public static Object plain(Object value) {
-    if (value instanceof Time) {
-      return String.valueOf(value).left(5);
-    }
-    if (value instanceof Date) {
-      return String.valueOf(value).left(10);
-    }
-    return value;
-  }
-
-  /** One text for comparing values: numbers without trailing zeros, times as "HH:mm". */
-  public static String normalized(Object value) {
-    Object plainValue = plain(value);
-    if (plainValue == null) {
-      return '';
-    }
-    if (
-      plainValue instanceof Decimal ||
-      plainValue instanceof Integer ||
-      plainValue instanceof Long ||
-      plainValue instanceof Double
-    ) {
-      return Decimal.valueOf(String.valueOf(plainValue))
-        .stripTrailingZeros()
-        .toPlainString();
-    }
-    return String.valueOf(plainValue);
-  }
-
-  /**
-   * A short fingerprint of a record's values for the given fields (sorted). Fields are named by
-   * their local names in it, however the list spells them, so a fingerprint taken before the
-   * namespace arrived still matches. The names must be Shoresh's own or already checked
-   * (ImportUndoValues.read checks a log's): this never queries, but it trusts what it is given.
-   */
-  public static String digest(SObject record, List<String> fields) {
-    Schema.SObjectType kind = record.getSObjectType();
-    List<String> parts = new List<String>();
-    for (String name : fields) {
-      Schema.SObjectField field = ShoreshSchema.field(kind, name);
-      if (field == null) {
-        throw ImportFields.unreadableLog();
-      }
-      parts.add(
-        ShoreshSchema.localName(field) + '=' + normalized(record.get(field))
-      );
-    }
-    return EncodingUtil.convertToHex(
-        Crypto.generateDigest('MD5', Blob.valueOf(String.join(parts, '\n')))
-      )
-      .left(16);
   }
 
   /** A row's written fields by local name, sorted, its Id left out. */

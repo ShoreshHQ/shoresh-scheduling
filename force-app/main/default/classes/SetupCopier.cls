@@ -9,10 +9,10 @@ public with sharing class SetupCopier {
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
 
-  public SetupCopier(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
-    this.sourceSeasonId = sourceSeasonId;
-    this.newSeasonId = newSeasonId;
-    this.log = log;
+  public SetupCopier(SeasonCopier.Copying made) {
+    this.sourceSeasonId = made.sourceSeasonId;
+    this.newSeasonId = made.newSeasonId;
+    this.log = made.log;
   }
 
   /**
