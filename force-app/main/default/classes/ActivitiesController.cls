@@ -1,12 +1,19 @@
 /** Server side of the activity details panel on the Activities screen (who can do it, more rules). */
 public with sharing class ActivitiesController {
+  /**
+   * Saves the rules sent and who can do it (null: unchanged), only while each is as the director
+   * saw it (seen, seenWho); otherwise nothing is saved and the answer says what someone else
+   * changed, as a setup row's does (ActivityDetails, ADR 0011 choice 5).
+   */
   @AuraEnabled
-  public static void saveActivityDetails(
+  public static RowSaves.Result saveActivityDetails(
     Activity__c rules,
-    List<Id> whoCanDoIt
+    List<Id> whoCanDoIt,
+    Activity__c seen,
+    List<Id> seenWho
   ) {
     try {
-      ActivityDetails.save(rules, whoCanDoIt);
+      return ActivityDetails.save(rules, whoCanDoIt, seen, seenWho);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

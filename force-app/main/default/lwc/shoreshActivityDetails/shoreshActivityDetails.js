@@ -17,8 +17,10 @@ const DAYS = [
 ];
 const ACTIVITY = FIELD.Activity;
 const WHO = FIELD.ActivityEligibility;
-// "Who can do it", beside the rule fields, in what is changed and not saved yet.
+// "Who can do it", beside the rule fields, in what is changed and not saved yet (and its input's
+// data-field).
 const WHO_KEY = "who";
+const WHO_INPUT = "whoCanDoIt";
 // Each rule's input (its data-field) and the activity field it saves.
 const RULE_FIELDS = {
   sameDivision: ACTIVITY.SameDivisionOnly,
@@ -42,6 +44,7 @@ const INPUT_FIELDS = { ...RULE_FIELDS, ...ROW_FIELDS };
 const ROW_SET = new Set(Object.values(ROW_FIELDS));
 // The ticks among them, read "Yes" or "No" in "Changed by someone else".
 const TICK_FIELDS = new Set([
+  ACTIVITY.SameDivisionOnly,
   ACTIVITY.NoGroupLimit,
   ACTIVITY.NoWeeklyMax,
   ACTIVITY.Outdoor
@@ -100,14 +103,15 @@ export default class ShoreshActivityDetails extends LightningElement {
   _setup;
   // Put the cursor on the heading once the details are drawn.
   focusHeadingNext = false;
-  // What each of the activity's own fields held when the director saw it (field -> value).
+  // What each field (and who can do it) held when the director saw it (field -> value): handed
+  // back with each save, so nothing someone else changed since is overwritten (ADR 0011 choice 5).
   seen = {};
   // Someone else changed a field since: { field, theirs, yours }, asked until answered.
   conflict = null;
   conflictFocused = false;
   // The field to put the cursor back in once the question is answered.
   focusFieldNext = null;
-  // The activity's own-field saves not yet answered: { activityId, answer (a promise) }.
+  // The saves not yet answered: { activityId, answer (a promise) }.
   // Leaving waits for them, so "someone else changed it" is always asked, never dropped.
   ownWaiting = [];
 
@@ -134,11 +138,14 @@ export default class ShoreshActivityDetails extends LightningElement {
       !!this.draft && (this.dirty.has(field) || this.sending.has(field));
     if (saved) {
       // Fields not being changed are seen as they are now.
-      ROW_SET.forEach((field) => {
+      Object.values(INPUT_FIELDS).forEach((field) => {
         if (!keep(field)) {
           this.seen[field] = saved.rules[field];
         }
       });
+      if (!keep(WHO_KEY)) {
+        this.seen[WHO_KEY] = saved.whoCanDoIt;
+      }
     }
     if (!saved || !this.draft) {
       this.draft = saved;
@@ -610,38 +617,58 @@ export default class ShoreshActivityDetails extends LightningElement {
       this.errors = shown;
     };
     const shown = () => activityId === this.activityId;
+    const yours = { ...rules };
+    let detail;
     if (own) {
-      this.sendOwn(field, rules, { done, onSaved, onFailure, shown });
-      return;
+      detail = {
+        record: rules,
+        seen: () => this.seenRecord(activityId, fields)
+      };
+    } else {
+      // A rule, or who can do it (only then is who sent: left out, it stays as it is).
+      const who = field === WHO_KEY ? [...this.draft.whoCanDoIt] : undefined;
+      yours[WHO_KEY] = who;
+      detail = {
+        rules,
+        whoCanDoIt: who,
+        seen: () => ({
+          seen: this.seenRecord(activityId, fields),
+          seenWho:
+            who && activityId === this.activityId ? this.seen[WHO_KEY] : null
+        })
+      };
     }
-    this.dispatchEvent(
-      new CustomEvent("save", {
-        detail: {
-          rules,
-          whoCanDoIt: [...this.draft.whoCanDoIt],
-          onSaved,
-          onFailure,
-          shown
-        }
-      })
-    );
+    this.sendSeen(field, fields, yours, detail, {
+      done,
+      onSaved,
+      onFailure,
+      shown
+    });
+  }
+
+  /** What the fields held when the director saw them, as a record; read when the save's turn comes. */
+  seenRecord(activityId, fields) {
+    const record = {
+      sobjectType: OBJECT.Activity,
+      Id: activityId,
+      Name: this.activity ? this.activity.Name : null
+    };
+    fields
+      .filter((f) => f !== WHO_KEY)
+      .forEach((f) => {
+        record[f] = activityId === this.activityId ? this.seen[f] : undefined;
+      });
+    return record;
   }
 
   /**
-   * One of the activity's own fields, compared and set as the table's rows are (ADR 0011
-   * choice 5): saved only if no one else changed it since the director saw it; otherwise the
-   * question, and nothing is saved until it is answered.
+   * One save, compared and set as the table's rows are (ADR 0011 choice 5): saved only if no one
+   * else changed what it changes since the director saw it; otherwise the question, and nothing
+   * is saved until it is answered. seen() is read when the save's turn comes: an earlier save of
+   * the same field may have moved it on.
    */
-  sendOwn(field, record, { done, onSaved, onFailure, shown }) {
+  sendSeen(field, fields, yours, detail, { done, onSaved, onFailure, shown }) {
     const activityId = this.activityId;
-    const name = this.activity ? this.activity.Name : null;
-    // Read when the save's turn comes: an earlier save of this field may have moved it on.
-    const seen = () => ({
-      sobjectType: OBJECT.Activity,
-      Id: activityId,
-      Name: name,
-      [field]: activityId === this.activityId ? this.seen[field] : undefined
-    });
     let answer;
     const waiting = {
       activityId,
@@ -660,25 +687,38 @@ export default class ShoreshActivityDetails extends LightningElement {
     };
     const answered = (result) => {
       try {
-        this.answerOwn(field, record, result, { activityId, done, onSaved });
+        this.answerSeen(field, fields, yours, result, {
+          activityId,
+          done,
+          onSaved
+        });
       } finally {
         stopWaiting();
       }
     };
     this.dispatchEvent(
       new CustomEvent("save", {
-        detail: { record, seen, onSaved: answered, onFailure: refused, shown }
+        detail: { ...detail, onSaved: answered, onFailure: refused, shown }
       })
     );
   }
 
-  /** The answer to one own-field save: saved, or the question if someone else changed it. */
-  answerOwn(field, record, result, { activityId, done, onSaved }) {
-    const changed = (result && result.changed) || [];
+  /** The answer to one save: saved, or the question if someone else changed it. */
+  answerSeen(field, fields, yours, result, { activityId, done, onSaved }) {
+    const changed = ((result && result.changed) || []).map(
+      (name) =>
+        fields.find((f) => f.toLowerCase() === name.toLowerCase()) || name
+    );
+    const theirWho = result ? result.theirWho : null;
+    if (theirWho) {
+      changed.push(WHO_KEY);
+    }
     if (!changed.length) {
       if (activityId === this.activityId) {
         // Saved: typing since is compared with what was sent.
-        this.seen[field] = record[field];
+        fields.forEach((f) => {
+          this.seen[f] = yours[f];
+        });
       }
       onSaved();
       return;
@@ -693,38 +733,55 @@ export default class ShoreshActivityDetails extends LightningElement {
       return;
     }
     // Someone else changed it: nothing saved; the typing stays until the director chooses.
-    this.dirty.add(field);
-    const theirs = result.theirs ? result.theirs[field] : null;
+    fields.forEach((f) => this.dirty.add(f));
     this.conflictFocused = false;
     this.conflict = {
       field,
-      theirs: theirs === undefined ? null : theirs,
-      yours: record[field]
+      rows: changed.map((f) => {
+        const theirs =
+          f === WHO_KEY ? theirWho : result.theirs ? result.theirs[f] : null;
+        return {
+          field: f,
+          theirs: theirs === undefined ? null : theirs,
+          yours: yours[f]
+        };
+      })
     };
   }
 
   // ---------- someone else changed the field (the setup tables' question) ----------
 
-  /** The question's one row: "Archery · Length", theirs and yours as the director reads them. */
+  /** The question's rows: "Archery · Length", theirs and yours as the director reads them. */
   get conflictRows() {
     if (!this.conflict) {
       return [];
     }
-    const { field, theirs, yours } = this.conflict;
-    const key = Object.keys(ROW_FIELDS).find((k) => ROW_FIELDS[k] === field);
     const name = this.activity ? this.activity.Name : "";
-    return [
-      {
+    return this.conflict.rows.map(({ field, theirs, yours }) => {
+      const key = inputOf(field);
+      return {
         key,
         where: `${name} · ${this.labels[key]}`,
         theirs: this.shown(field, theirs),
         yours: this.shown(field, yours)
-      }
-    ];
+      };
+    });
   }
 
-  /** A value as the director reads it: Yes or No, an activity by its name, None when blank. */
+  /**
+   * A value as the director reads it: Yes or No, an activity by its name, who can do it by name
+   * (everyone when none), None when blank.
+   */
   shown(field, value) {
+    if (field === WHO_KEY) {
+      const ids = value || [];
+      return ids.length
+        ? this.targetOptions
+            .filter((o) => ids.includes(o.value))
+            .map((o) => o.label)
+            .join(", ")
+        : "Everyone";
+    }
     if (TICK_FIELDS.has(field)) {
       return value ? "Yes" : "No";
     }
@@ -738,22 +795,34 @@ export default class ShoreshActivityDetails extends LightningElement {
     return String(value);
   }
 
-  /** Theirs stays: the field shows what someone else saved, and nothing is sent. */
+  /**
+   * Theirs stays: the fields show what someone else saved, and nothing is sent. A field saved
+   * with them (the other early-week one) is still the director's, sent again.
+   */
   handleKeepTheirs() {
-    const { field, theirs } = this.conflict;
-    this.dirty.delete(field);
-    this.seen[field] = theirs;
-    this.draft = {
-      ...this.draft,
-      rules: { ...this.draft.rules, [field]: theirs }
-    };
+    const { field, rows } = this.conflict;
+    const rules = { ...this.draft.rules };
+    let whoCanDoIt = this.draft.whoCanDoIt;
+    rows.forEach(({ field: f, theirs }) => {
+      this.dirty.delete(f);
+      this.seen[f] = theirs;
+      if (f === WHO_KEY) {
+        whoCanDoIt = theirs || [];
+      } else {
+        rules[f] = theirs;
+      }
+    });
+    this.draft = { ...this.draft, rules, whoCanDoIt };
     this.closeConflict(field);
+    this.save(field);
   }
 
   /** The same change again, naming what is there now. */
   handleUseYours() {
-    const { field, theirs } = this.conflict;
-    this.seen[field] = theirs;
+    const { field, rows } = this.conflict;
+    rows.forEach(({ field: f, theirs }) => {
+      this.seen[f] = theirs;
+    });
     this.closeConflict(field);
     this.save(field);
   }
@@ -772,8 +841,13 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   closeConflict(field) {
     this.conflict = null;
-    this.focusFieldNext = Object.keys(ROW_FIELDS).find(
-      (k) => ROW_FIELDS[k] === field
-    );
+    this.focusFieldNext = inputOf(field);
   }
+}
+
+/** A field's input (its data-field): a rule's, an own field's, or who can do it. */
+function inputOf(field) {
+  return field === WHO_KEY
+    ? WHO_INPUT
+    : Object.keys(INPUT_FIELDS).find((k) => INPUT_FIELDS[k] === field);
 }

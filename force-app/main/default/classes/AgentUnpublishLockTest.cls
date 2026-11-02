@@ -6,8 +6,34 @@
  */
 @IsTest
 private class AgentUnpublishLockTest {
-  /** POST to unpublish_week, lock_cells or unlock_cells on Week 1 of Main; answers [status, sentence]. */
+  /**
+   * POST to unpublish_week, lock_cells or unlock_cells on Week 1 of Main; answers [status,
+   * sentence]. A lock or unlock without its own seen hands back the week as it is now (read just
+   * before, as read_week_checks would read it).
+   */
   private static List<Object> post(String action, Map<String, Object> fields) {
+    if (action != 'unpublish' && !fields.containsKey('seen')) {
+      fields = fields.clone();
+      fields.put('seen', weekNow());
+    }
+    return send(action, fields);
+  }
+
+  /** The Generated draft of Week 1 of Main as read now: its revision, the ticket a lock hands back. */
+  private static String weekNow() {
+    Schedule__c draft = [
+      SELECT Id
+      FROM Schedule__c
+      WHERE
+        Status__c = :ManualDrafts.DRAFT
+        AND Origin__c = :GeneratedDrafts.GENERATED
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ];
+    return GeneratedDrafts.revisionOf(ScheduleDays.read(draft.Id));
+  }
+
+  private static List<Object> send(String action, Map<String, Object> fields) {
     Map<String, Object> body = new Map<String, Object>{
       'season' => [
         SELECT Name
@@ -203,6 +229,59 @@ private class AgentUnpublishLockTest {
       Assert.areEqual(
         'There is no group called "Group Z" in this schedule. The groups: Group A, Group B, Group C.',
         noGroup[1]
+      );
+    }
+  }
+
+  // API-1.37, LOCK-4.7: AI over screen. The AI read the week, then the person locked a cell on
+  // Generated Schedule; the AI's unlock of that group's day hands back the week it read, so it is
+  // refused and the person's lock stays.
+  @IsTest
+  static void anAiUnlockMadeFromAnOlderReadLeavesThePersonsLock() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      String aiRead = weekNow();
+      GeneratedWeek.LockChange screenLock = new GeneratedWeek.LockChange();
+      screenLock.action = GeneratedWeek.LOCK;
+      screenLock.dateValue = ScheduleDays.read(draftId)[0].day;
+      screenLock.groupId = String.valueOf(
+        [
+          SELECT Id
+          FROM Group__c
+          WHERE Name = 'Group A'
+          WITH SYSTEM_MODE
+          LIMIT 1
+        ]
+        .Id
+      );
+      Test.startTest();
+      GeneratedWeek.Locked screen = GeneratedScheduleController.setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{ screenLock },
+        aiRead
+      );
+      List<Object> unlock = post(
+        'unlock',
+        new Map<String, Object>{
+          'group' => 'Group A',
+          'day' => 'Monday',
+          'seen' => aiRead
+        }
+      );
+      List<Object> unseen = send(
+        'unlock',
+        new Map<String, Object>{ 'group' => 'Group A', 'day' => 'Monday' }
+      );
+      Test.stopTest();
+      Assert.isFalse(screen.conflict == true, screen.message);
+      Assert.areEqual(409, unlock[0], String.valueOf(unlock[1]));
+      Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, unlock[1]);
+      Assert.areEqual(400, unseen[0], 'No seen: never read in its place');
+      Assert.isTrue(((String) unseen[1]).contains('(seen)'));
+      Assert.isTrue(
+        locked(draftId, GeneratedTestData.GROUP_A, GeneratedTestData.PERIOD_2),
+        'The person\'s lock stays'
       );
     }
   }

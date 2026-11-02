@@ -415,6 +415,20 @@ describe("Shoresh for AI tools and the command line", () => {
       about: byName("read_week_checks").about,
       text: JSON.stringify({ placed: "3 of 4 placed" }, null, 2)
     });
+    // LOCK-4.7: a Generated Schedule week read gives its revision as seen, for lock_cells.
+    read.inputs.revision = "2,1";
+    seen.length = 0;
+    const withSeen = await call("read_week_checks", asked, {
+      run: answers([]),
+      checks
+    });
+    expect(JSON.parse(withSeen.text)).toEqual({
+      placed: "3 of 4 placed",
+      seen: "2,1"
+    });
+    expect(byName("lock_cells").inputSchema.required).toContain("seen");
+    expect(byName("unlock_cells").inputSchema.required).toContain("seen");
+    delete read.inputs.revision;
     expect(handed[0].namespace).toBe("shoresh");
     expect([...handed[0].given.setupDots]).toEqual([
       ["d|g|b", "Setup changed"]
@@ -590,17 +604,17 @@ describe("Shoresh for AI tools and the command line", () => {
     );
   });
 
-  // API-1.36, API-1.37
+  // API-1.36, API-1.37, LOCK-4.7
   it("unpublishAndLocksAreTheScreens: unpublish_week, lock_cells and unlock_cells send the person's fields to their own addresses and pass on Shoresh's sentence", async () => {
     const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
     const cases = [
       ["unpublish_week", {}, "Unpublished Week 1."],
       [
         "lock_cells",
-        { day: "Monday", group: "Bunk 3", time: "Period 2" },
+        { day: "Monday", group: "Bunk 3", time: "Period 2", seen: "1,1" },
         "Locked Bunk 3 · Monday · Period 2."
       ],
-      ["unlock_cells", { day: "Monday" }, "Unlocked Monday."]
+      ["unlock_cells", { day: "Monday", seen: "1,1" }, "Unlocked Monday."]
     ];
     for (const [name, more, message] of cases) {
       const seen = [];

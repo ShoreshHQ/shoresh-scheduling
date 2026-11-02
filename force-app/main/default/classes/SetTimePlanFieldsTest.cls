@@ -94,14 +94,18 @@ private class SetTimePlanFieldsTest {
 
       ActivitiesController.saveActivityDetails(
         new Activity__c(Id = tennis.Id, Notes__c = 'Rackets and balls'),
-        new List<Id>()
+        null,
+        new Activity__c(Id = tennis.Id, Notes__c = 'Rackets'),
+        null
       );
       assertRules(tennis.Id, 'Rackets and balls');
 
       ShoreshSchema.simulatedPrefix = 'shoresh__';
       ActivitiesController.saveActivityDetails(
         new Activity__c(Id = tennis.Id, Notes__c = 'Balls'),
-        new List<Id>()
+        null,
+        new Activity__c(Id = tennis.Id, Notes__c = 'Rackets and balls'),
+        null
       );
       assertRules(tennis.Id, 'Balls');
     }

@@ -67,9 +67,24 @@ public with sharing class RowSeen {
       : '"' + name + '" was deleted by someone else.';
   }
 
-  /** Who a recurring activity covers now (divisions and groups); nobody for other rows. */
+  /**
+   * Who a row covers now (divisions and groups): a recurring activity's coverage, or who can do
+   * an activity (none: everyone); nobody for other rows.
+   */
   public static List<Id> whoNow(SObject record) {
     List<Id> result = new List<Id>();
+    if (record.getSObjectType() == Activity__c.SObjectType) {
+      for (ActivityEligibility__c row : [
+        SELECT Division__c, Group__c
+        FROM ActivityEligibility__c
+        WHERE Activity__c = :record.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ]) {
+        result.add(row.Division__c != null ? row.Division__c : row.Group__c);
+      }
+      return result;
+    }
     if (record.getSObjectType() != RecurringActivity__c.SObjectType) {
       return result;
     }

@@ -220,7 +220,7 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-field="notes"]').value).toBe("Life jackets");
   });
 
-  it("a tick or a dropdown saves at once; only that rule is sent, with who can do it", async () => {
+  it("a tick or a dropdown saves at once; only that rule is sent, and who can do it is left out", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
@@ -239,8 +239,15 @@ describe("c-shoresh-activity-details", () => {
         EarlyWeekByDay__c: "Wednesday"
       }
     ]);
-    // The server replaces the list, so it always goes whole.
-    expect(saves[0].whoCanDoIt).toEqual(["g2"]);
+    // API-1.102: who can do it is sent only when it changes, so a rule never resets it.
+    expect(saves[0].whoCanDoIt).toBeUndefined();
+    expect(bareRecord(saves[0].seen().seen)).toEqual({
+      sobjectType: "Activity__c",
+      Id: "a1",
+      Name: "Archery",
+      SameDivisionOnly__c: false
+    });
+    expect(saves[0].seen().seenWho).toBeNull();
     expect(typeof saves[0].onSaved).toBe("function");
     expect(typeof saves[0].onFailure).toBe("function");
   });
@@ -256,6 +263,33 @@ describe("c-shoresh-activity-details", () => {
       { sobjectType: "Activity__c", Id: "a1" }
     ]);
     expect(saves[0].whoCanDoIt).toEqual(["d1"]);
+  });
+
+  // API-1.102: screen over AI. Someone (through their AI) chose who can do it since the panel
+  // was shown: the panel hands back what it saw and asks, never overwriting theirs unseen.
+  it("API-1.102: who can do it hands back what it saw, and someone else's choice since is asked about", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    change(q(element, '[data-id="who-can-do-it"]'), ["d1"]);
+    await flush();
+    const save = sent(handler)[0];
+    expect(save.seen().seenWho).toEqual(["g2"]);
+    save.onSaved({ id: null, changed: [], theirWho: ["g1"] });
+    await flush();
+    expect(q(element, ".conflict-where").textContent.trim()).toBe(
+      "Archery · Who can do it"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe(
+      "Bunk 1 (Juniors)"
+    );
+    expect(q(element, '[data-id="yours"]').textContent.trim()).toBe(
+      "Unit: Juniors"
+    );
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1"]);
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 
   it("a number and the notes save when the director leaves them", async () => {
@@ -499,8 +533,12 @@ describe("c-shoresh-activity-details", () => {
     await flush();
     const detail = handler.mock.calls[0][0].detail;
     expect(detail.shown()).toBe(true);
-    // Sent, so nothing is unsaved: switching does not ask.
-    await element.open("a2");
+    // Sent, so nothing is unsaved: switching does not ask. It waits for the answer, so someone
+    // else's change since is always asked about (API-1.102).
+    const leaving = element.open("a2");
+    await flush();
+    detail.onSaved({ id: "a1", changed: [] });
+    await leaving;
     await flush();
     expect(LightningConfirm.open).not.toHaveBeenCalled();
     expect(detail.shown()).toBe(false);
