@@ -1200,6 +1200,53 @@ const CAPABILITIES = [
     }
   },
   {
+    // A read: GET, its fields in the web address (API-1.100).
+    name: "read_proposed_offerings",
+    api: "read_proposed_offerings",
+    method: "GET",
+    description:
+      "Read the offerings Camp Setup shows as proposed and not confirmed yet (an import found them; no camper gets a seat in one until it is confirmed): each activity with its elective set. Read it right before confirm_proposed_offering.",
+    about:
+      "The offerings still proposed now, as Camp Setup shows them. They hold no findings or problems.",
+    queryFields: ["season"],
+    inputSchema: {
+      type: "object",
+      properties: { season: SEASON },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "confirm_proposed_offering",
+    api: "confirm_proposed_offering",
+    method: "POST",
+    sendsFields: true,
+    description:
+      'Confirm a proposed offering, as Camp Setup\'s Confirm on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_proposed_offerings and send seen "proposed". It is done as you, with your own access. If someone confirmed it since, nothing is changed and Shoresh says so.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: SEASON,
+        elective_set: {
+          type: "string",
+          description:
+            "Its elective set, like Chugim, when two sets offer the activity."
+        },
+        activity: {
+          type: "string",
+          description: "The activity offered, like Drama."
+        },
+        seen: {
+          type: "string",
+          enum: ["proposed"],
+          description:
+            "What read_proposed_offerings said it is: proposed. If it was confirmed since, nothing is changed and the person should be told."
+        }
+      },
+      required: ["activity", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
     // A read: GET, its fields in the web address (API-1.61).
     name: "read_season_copy",
     api: "read_season_copy",
