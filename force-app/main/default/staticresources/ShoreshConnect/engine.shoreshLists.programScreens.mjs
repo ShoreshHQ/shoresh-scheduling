@@ -4,7 +4,7 @@
  * one program can leave it out. Columns as in screens.js; required means the heading must be in
  * the file, requiredValue that a cell can't be blank (the item can't be without it).
  */
-import { CHILDREN, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { CHILDREN, childRows, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import {
   WEEKDAYS,
   clock,
@@ -319,7 +319,7 @@ export function recurringScreen(t) {
         words: ["who", "covers", "for", "tier_names"],
         type: "list",
         fromRecord: (r) =>
-          (r[CHILDREN.RecurringActivity.Coverages] || [])
+          childRows(r, CHILDREN.RecurringActivity.Coverages)
             .map(
               (row) => row[FIELD.Coverage.Division] || row[FIELD.Coverage.Group]
             )

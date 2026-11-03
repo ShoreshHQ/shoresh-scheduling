@@ -10,7 +10,7 @@
  * so nothing shifts unseen (ADR 0006 §16). The placements come from the server
  * (GroupPlacements), asked once per group the first time a move would leave an activity.
  */
-import { CHILDREN, FIELD } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 
 /** The lists (record Id -> name) that name this division and not the group itself. */
 function namingDivision(divisionId, groupId, activities, recurringActivities) {
@@ -21,12 +21,15 @@ function namingDivision(divisionId, groupId, activities, recurringActivities) {
   const lists = new Map();
   (activities || [])
     .filter((a) =>
-      counts(a[CHILDREN.Activity.Eligibilities], FIELD.ActivityEligibility)
+      counts(
+        childRows(a, CHILDREN.Activity.Eligibilities),
+        FIELD.ActivityEligibility
+      )
     )
     .forEach((a) => lists.set(a.Id, a.Name));
   (recurringActivities || [])
     .filter((r) =>
-      counts(r[CHILDREN.RecurringActivity.Coverages], FIELD.Coverage)
+      counts(childRows(r, CHILDREN.RecurringActivity.Coverages), FIELD.Coverage)
     )
     .forEach((r) => lists.set(r.Id, r.Name));
   return lists;

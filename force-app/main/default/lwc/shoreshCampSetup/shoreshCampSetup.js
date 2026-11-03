@@ -55,7 +55,7 @@ import {
   linkedNames,
   openCount
 } from "c/shoreshElectiveDetails";
-import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 import { RootsTravel } from "c/shoreshRootsTravel";
 
 // Names as the package has them (c/shoreshSchema).
@@ -1444,7 +1444,7 @@ export default class ShoreshCampSetup extends LightningElement {
     const activities = (this.setup && this.setup.activities) || [];
     const who = this.whoNames;
     const whoIds = (saved) =>
-      (saved[CHILDREN.Activity.Eligibilities] || []).map(
+      childRows(saved, CHILDREN.Activity.Eligibilities).map(
         (row) =>
           row[FIELD.ActivityEligibility.Division] ||
           row[FIELD.ActivityEligibility.Group]
@@ -1950,7 +1950,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
     const who = this.whoNames;
     const whoIds = (activity) =>
-      ((activity && activity[CHILDREN.Activity.Eligibilities]) || []).map(
+      childRows(activity, CHILDREN.Activity.Eligibilities).map(
         (row) =>
           row[FIELD.ActivityEligibility.Division] ||
           row[FIELD.ActivityEligibility.Group]

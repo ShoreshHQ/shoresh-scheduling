@@ -12,7 +12,7 @@
  * record: location, locationType, activity); fromRecord (the value a saved record has, as a
  * cell would give it).
  */
-import { CHILDREN, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { CHILDREN, childRows, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { NONE, listName } from "./engine.shoreshLists.cells.mjs";
 import { whoNames } from "./engine.shoreshLists.who.mjs";
 import {
@@ -281,7 +281,7 @@ function activitiesScreen(t) {
         ],
         type: "list",
         fromRecord: (r) =>
-          (r[CHILDREN.Activity.Eligibilities] || [])
+          childRows(r, CHILDREN.Activity.Eligibilities)
             .map((row) => row[WHO.Division] || row[WHO.Group])
             .sort()
       },

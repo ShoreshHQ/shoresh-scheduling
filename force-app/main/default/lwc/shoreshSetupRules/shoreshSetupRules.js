@@ -1,4 +1,4 @@
-import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema). A fixed or recurring activity's fields come
 // in as `fields` (FIELD.FixedActivity or FIELD.RecurringActivity), whichever it is.
@@ -351,7 +351,7 @@ function groupsWithNothingToDo(setup, terms) {
   const openTo = (setup.activities || []).map(
     (a) =>
       new Set(
-        (a[CHILDREN.Activity.Eligibilities] || []).map(
+        childRows(a, CHILDREN.Activity.Eligibilities).map(
           (e) => e[WHO.Division] || e[WHO.Group]
         )
       )
@@ -398,7 +398,7 @@ function whoIsThere(entry, item, fields) {
     start < 0 ? [] : blocks.slice(start, start + (item[fields.Length] || 1));
   // Only a recurring activity has a who list: a fixed one has none, so it takes everyone.
   const named = new Set(
-    (item[CHILDREN.RecurringActivity.Coverages] || []).map(
+    childRows(item, CHILDREN.RecurringActivity.Coverages).map(
       (row) => row[COVERS.Division] || row[COVERS.Group]
     )
   );
