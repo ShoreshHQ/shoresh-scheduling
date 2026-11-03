@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import LightningConfirm from "lightning/confirm";
-import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
 import { holdsNoDivision } from "c/shoreshImportEngine";
 import { leftField } from "c/shoreshSavedMark";
 import { rainPlanChoices } from "c/shoreshSetupRules";
@@ -195,7 +195,7 @@ export default class ShoreshActivityDetails extends LightningElement {
     Object.values(INPUT_FIELDS).forEach((field) => {
       rules[field] = activity[field] === undefined ? null : activity[field];
     });
-    const whoCanDoIt = (activity[CHILDREN.Activity.Eligibilities] || []).map(
+    const whoCanDoIt = childRows(activity, CHILDREN.Activity.Eligibilities).map(
       (row) => row[WHO.Division] || row[WHO.Group]
     );
     return { rules, whoCanDoIt };

@@ -309,6 +309,16 @@ export function localName(name) {
     : name;
 }
 
+/**
+ * A parent's child rows on a read row, as a list: childRows(activity, CHILDREN.Activity.Eligibilities).
+ * Read through Apex into a screen they are a plain list; read as Salesforce's own JSON (the
+ * connector's) they are wrapped as { records: [...] }. Either way, and none, read the same.
+ */
+export function childRows(row, relationship) {
+  const rows = row && row[relationship];
+  return (Array.isArray(rows) ? rows : rows && rows.records) || [];
+}
+
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,

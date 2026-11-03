@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import { CHILDREN, FIELD } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
 import {
   WEEKDAYS,
@@ -334,10 +334,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
         name: c.Name,
         offeringId: c[CHOICE.Offering],
         appliesTo: c[CHOICE.AppliesTo] || "All",
-        periods: (c[CHILDREN.LinkedChoice.Times] || []).map((t) =>
+        periods: childRows(c, CHILDREN.LinkedChoice.Times).map((t) =>
           periodKey(t[TIME.Weekday], t[TIME.TimeBlock])
         ),
-        divisionIds: (c[CHILDREN.LinkedChoice.Coverages] || []).map(
+        divisionIds: childRows(c, CHILDREN.LinkedChoice.Coverages).map(
           (row) => row[COVERS.Division]
         )
       }));

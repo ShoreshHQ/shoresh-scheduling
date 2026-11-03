@@ -14,7 +14,7 @@
  * in another division (Bunk 3 in Seniors, set up in Juniors), the director chooses: move it,
  * keep it where it is, add a new one, or leave it out; the card says what moving changes.
  */
-import { CHILDREN, FIELD } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 import { deletedAs, deletionsIn } from "./deleted";
 import { groupDivisionName, identityDivision } from "./noDivision";
 import { LEAVE_OUT, NO_DIVISION } from "./reading-constants";
@@ -132,7 +132,7 @@ function whoNaming(existing, divisionId, groupId, otherDivisionId) {
   for (const a of (existing && existing.activities) || []) {
     if (
       counts(
-        a[CHILDREN.Activity.Eligibilities] || [],
+        childRows(a, CHILDREN.Activity.Eligibilities),
         FIELD.ActivityEligibility
       )
     ) {
@@ -142,7 +142,10 @@ function whoNaming(existing, divisionId, groupId, otherDivisionId) {
   for (const entry of (existing && existing.programs) || []) {
     for (const r of entry.recurringActivities || []) {
       if (
-        counts(r[CHILDREN.RecurringActivity.Coverages] || [], FIELD.Coverage)
+        counts(
+          childRows(r, CHILDREN.RecurringActivity.Coverages),
+          FIELD.Coverage
+        )
       ) {
         names.push(r.Name);
       }

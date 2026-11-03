@@ -251,6 +251,24 @@ describe("moving a group to the division the file shows (Greg)", () => {
     ]);
   });
 
+  it("says the same when the who lists come wrapped as { records } (the connector's read)", () => {
+    const wrap = JSON.parse(JSON.stringify(existing));
+    for (const r of wrap.programs[0].recurringActivities) {
+      const who = "Coverages__r";
+      r[who] = { totalSize: 1, done: true, records: r[who] };
+    }
+    for (const a of wrap.activities) {
+      const who = "Eligibilities__r";
+      a[who] = { totalSize: 1, done: true, records: a[who] };
+    }
+    const card = cards(propose(files, wrap)).find((c) =>
+      c.id.startsWith("move|")
+    );
+    expect(card.subtitle).toBe(
+      "If it moves, Bunk 3 is no longer in Library (for Juniors) and is now in Boating (for Seniors)."
+    );
+  });
+
   it("tells two lists of one name apart by record: staggered lunches, one per unit", () => {
     const lunches = JSON.parse(JSON.stringify(existing));
     const recurring = lunches.programs[0].recurringActivities;
