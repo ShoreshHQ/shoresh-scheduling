@@ -7,7 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("./capabilities");
-const { call, sfInstalled, signIn } = require("./client");
+const { call, sfInstalled, signIn, toAgent } = require("./client");
 
 /**
  * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
@@ -38,7 +38,8 @@ function tools() {
  * The answer as MCP gives it: what it is first, then Shoresh's answer, then the link that opens
  * the week on the Schedules screen in the camp's own Salesforce (API-1.28), then the view's data.
  */
-function toolResult(answer) {
+function toolResult(said) {
+  const answer = toAgent(said);
   const content = [{ type: "text", text: answer.text }];
   if (answer.about) content.unshift({ type: "text", text: answer.about });
   const opens = answer.weekView?.opens;

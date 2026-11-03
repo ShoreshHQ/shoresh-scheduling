@@ -124,12 +124,18 @@ public with sharing class ImportSpecialDayWrites {
         day +
           ' of that week now has ' +
           taken.get(at) +
-          ', added after these files were read. Nothing was saved: read the files again to see it, then save.'
+          AgentRefusal.withFix(
+            ', added after these files were read. Nothing was saved.',
+            'Read the files again to see it, then save.'
+          )
       );
     }
     if (!seen.add(at)) {
       throw new ShoreshException(
-        'Two of the files\' days would be the same day\'s special day. Nothing was saved: answer which one it is, then save.'
+        AgentRefusal.withFix(
+          'Two of the files\' days would be the same day\'s special day. Nothing was saved.',
+          'Answer which one it is, then save.'
+        )
       );
     }
   }

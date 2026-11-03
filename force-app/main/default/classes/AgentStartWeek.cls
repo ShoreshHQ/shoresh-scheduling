@@ -32,7 +32,7 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
           ManualDrafts.NAME +
           ' for ' +
           week.program.Name +
-          '. Change it there (or restore a version) instead.'
+          '.'
       );
     }
     CampLabels labels = CampLabels.forCamp(campOf(week));

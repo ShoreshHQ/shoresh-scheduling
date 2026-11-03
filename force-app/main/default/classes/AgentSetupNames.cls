@@ -136,7 +136,7 @@ public with sharing class AgentSetupNames {
             word +
             ' is called "' +
             asked.left(80) +
-            '", so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.'
+            '", so Shoresh can\'t tell which you mean. Nothing was changed.'
         );
       }
       match = row.Id;

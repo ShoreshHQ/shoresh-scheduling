@@ -698,6 +698,20 @@ function importModules(m) {
   };
 }
 
+/**
+ * Said to an AI after every refusal and conflict (API-1.105): what is wrong is the person's to
+ * decide, so the AI tells them instead of changing something else to get around it.
+ */
+const PERSON_DECIDES =
+  "Nothing else was changed. This is for the person to decide: tell them, and don't change anything to work around it.";
+
+/** An answer as an AI hears it: a refusal or conflict ends with PERSON_DECIDES. */
+function toAgent(answer) {
+  return answer.ok
+    ? answer
+    : { ...answer, text: `${answer.text} ${PERSON_DECIDES}` };
+}
+
 /** Shoresh's answer as text; a refusal's sentence on its own. */
 function answerText(text) {
   try {
@@ -783,6 +797,8 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   TOO_BIG,
+  PERSON_DECIDES,
+  toAgent,
   importModules,
   exportModules,
   requestFor,

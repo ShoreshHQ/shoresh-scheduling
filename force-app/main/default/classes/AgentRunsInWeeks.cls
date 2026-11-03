@@ -78,7 +78,7 @@ public with sharing class AgentRunsInWeeks {
               AgentWeeks.namesSaid(found.labels.pluralInSentence('Week'), names)
             : 'More than one is called "' +
               name.trim().left(80) +
-              '", so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.'
+              '", so Shoresh can\'t tell which you mean. Nothing was changed.'
         );
       }
       result.add(called[0]);

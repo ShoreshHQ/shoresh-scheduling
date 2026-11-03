@@ -67,7 +67,7 @@ global with sharing class AgentElectiveSeatsNow {
       AgentElectives.seenText(run.id, view.revision)
     };
     if (view.scheduleChanged) {
-      lines.add('Schedule changed since seats were assigned: assign again.');
+      lines.add('Schedule changed since seats were assigned.');
     }
     lines.add('Times:');
     for (ElectivePeriod period : view.times) {

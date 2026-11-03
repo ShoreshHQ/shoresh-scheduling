@@ -21,7 +21,7 @@ public with sharing class SetTimeMessages {
 
   public static String of(SetTimeClash clash, CampLabels labels, Side origin) {
     SetTimeMessages words = new SetTimeMessages(clash, labels);
-    return words.what() + ' ' + words.fix(origin);
+    return AgentRefusal.withFix(words.what(), words.fix(origin));
   }
 
   private String what() {

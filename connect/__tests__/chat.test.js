@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { CAPABILITIES, byName } = require("../capabilities");
-const { call: callAs } = require("../client");
+const { call: callAs, PERSON_DECIDES } = require("../client");
 // A camp without a namespace, as the test org is; namespaces are camp.test.js's.
 const call = (name, input, options) =>
   callAs(name, input, {
@@ -79,7 +79,7 @@ describe("Shoresh in an AI chat", () => {
       sfAnswering({ [V1]: [400, JSON.stringify({ message: sentence })] })
     );
     expect(answer.result).toEqual({
-      content: [{ type: "text", text: sentence }],
+      content: [{ type: "text", text: `${sentence} ${PERSON_DECIDES}` }],
       isError: true
     });
     for (const c of CAPABILITIES) {

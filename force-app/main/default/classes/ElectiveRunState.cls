@@ -247,7 +247,10 @@ public with sharing class ElectiveRunState {
       throw new ShoreshException(
         '"' +
           run.Name +
-          '" is final, so its seats can\'t change. Start a new version first.'
+          AgentRefusal.withFix(
+            '" is final, so its seats can\'t change.',
+            'Start a new version first.'
+          )
       );
     }
     if (!SeenSaves.revision(run.Revision__c, seenRevision)) {
