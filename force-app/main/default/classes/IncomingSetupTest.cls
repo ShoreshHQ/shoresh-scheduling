@@ -232,10 +232,10 @@ private class IncomingSetupTest {
       return 'Groups';
     }
     public String seasonOf(Object record) {
-      return (String) ((Map<String, Object>) record).get('season');
+      return ((IncomingGroup.Record) record).season;
     }
     public String systemOf(Object record) {
-      return (String) ((Map<String, Object>) record).get('source_system');
+      return ((IncomingGroup.Record) record).source_system;
     }
     public void plan(IncomingBatch batch, List<Object> records) {
       throw new ShoreshException(
@@ -269,7 +269,7 @@ private class IncomingSetupTest {
     System.runAs(camp.sender('Send_Groups')) {
       IncomingDoors.byWeb(
         new Refusing(),
-        Map<String, Object>.class,
+        IncomingGroup.Record.class,
         new Set<String>{ 'season', 'source_system' }
       );
     }
