@@ -24,7 +24,7 @@ public with sharing class OutgoingRows {
     Map<String, String> result = new Map<String, String>{
       'message' => message
     };
-    Season__c season = used ?? asked();
+    Season__c season = used ?? SeasonAsked.found();
     if (season != null) {
       result.put('season', season.Name);
     }
@@ -33,39 +33,11 @@ public with sharing class OutgoingRows {
 
   /** A read's body, saying which season it used when it doesn't already (API-1.108). */
   public static String said(Map<String, Object> body) {
-    Season__c season = used ?? asked();
+    Season__c season = used ?? SeasonAsked.found();
     if (season != null && !body.containsKey('season')) {
       body.put('season', season.Name);
     }
     return JSON.serialize(body, true);
-  }
-
-  /**
-   * The season this request asked for, when it was refused before finding it: the one named, if
-   * it is there, or the one the screens open on. Null when it can't be told (API-1.108).
-   */
-  private static Season__c asked() {
-    RestRequest request = RestContext.request;
-    if (request == null) {
-      return null;
-    }
-    try {
-      String name = request.params?.get('season');
-      if (
-        name == null &&
-        request.requestBody != null &&
-        request.requestBody.size() > 0
-      ) {
-        Object body = JSON.deserializeUntyped(request.requestBody.toString());
-        if (body instanceof Map<String, Object>) {
-          Object named = ((Map<String, Object>) body).get('season');
-          name = named instanceof String ? (String) named : null;
-        }
-      }
-      return seasonCalled(name);
-    } catch (Exception e) {
-      return null; // no season can be said: the answer stands without one
-    }
   }
 
   private static Season__c seasonNamed(String name) {

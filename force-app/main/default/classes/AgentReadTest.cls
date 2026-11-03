@@ -164,14 +164,14 @@ private class AgentReadTest {
   // API-1.108: a refusal made before the season is looked up still says the season asked for.
   @IsTest
   static void aRefusalBeforeTheSeasonIsFoundStillSaysIt() {
-    IncomingTestData camp = new IncomingTestData();
+    new IncomingTestData();
     RestRequest request = new RestRequest();
     request.requestURI = '/services/apexrest/v1/update_to_match_setup';
     request.httpMethod = 'POST';
     request.requestBody = Blob.valueOf(
       JSON.serialize(
         new Map<String, Object>{
-          'season' => camp.season.Name,
+          'season' => 'Summer 2026',
           'week' => 'Week 1',
           'changes' => new List<Object>()
         }
@@ -185,7 +185,7 @@ private class AgentReadTest {
     );
     Assert.areNotEqual(200, RestContext.response.statusCode);
     Assert.areEqual(
-      camp.season.Name,
+      'Summer 2026',
       answer.get('season'),
       String.valueOf(answer)
     );
@@ -194,15 +194,12 @@ private class AgentReadTest {
   // API-1.108: a read's refusal says the season it used too (here a season with no electives).
   @IsTest
   static void aReadsRefusalSaysTheSeasonItUsed() {
-    IncomingTestData camp = new IncomingTestData();
+    new IncomingTestData();
     RestRequest request = new RestRequest();
     request.requestURI = '/services/apexrest/v1/elective_seats_now';
     request.httpMethod = 'GET';
     request.params.putAll(
-      new Map<String, String>{
-        'season' => camp.season.Name,
-        'week' => 'Week 1'
-      }
+      new Map<String, String>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
     );
     RestContext.request = request;
     RestContext.response = new RestResponse();
@@ -215,7 +212,7 @@ private class AgentReadTest {
       RestContext.response.statusCode,
       String.valueOf(answer)
     );
-    Assert.areEqual(camp.season.Name, answer.get('season'));
+    Assert.areEqual('Summer 2026', answer.get('season'));
   }
 
   // API-1.25: a season or week name that isn't there comes back with the names that are.

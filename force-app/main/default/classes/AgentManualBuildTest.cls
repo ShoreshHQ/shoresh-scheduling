@@ -285,7 +285,8 @@ private class AgentManualBuildTest {
           'setup',
           'labels',
           'setup_changes',
-          'accepted'
+          'accepted',
+          'season'
         },
         body.keySet()
       );
