@@ -132,7 +132,18 @@ public with sharing class IncomingBatch {
    * group holding it: the platform's answer about this person (API-4.4; OutgoingDoors too).
    */
   public static Boolean holds(String setName) {
-    Set<String> setNames = new Set<String>{ setName, SCHEDULER_SET };
+    return holdsAny(new Set<String>{ setName, SCHEDULER_SET });
+  }
+
+  /**
+   * Whether the person asking holds Shoresh Scheduler: a person, through their AI (API-4.7). A key
+   * or machine connection holds only capability permission sets (API-4.4).
+   */
+  public static Boolean isPerson() {
+    return holdsAny(new Set<String>{ SCHEDULER_SET });
+  }
+
+  private static Boolean holdsAny(Set<String> setNames) {
     String namespace = ShoreshSchema.namespace();
     Set<Id> groups = new Set<Id>();
     for (PermissionSetGroupComponent part : [

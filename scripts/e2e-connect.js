@@ -380,7 +380,33 @@ function electives(tmp) {
       elective: "Swim",
       seen: now()
     },
-    "done"
+    "refused",
+    [
+      [
+        "API-1.68",
+        has("Swim is full then (2 of 2 seats); nothing changed."),
+        "a full offering refused"
+      ]
+    ]
+  );
+  step(
+    "move_elective_seat",
+    {
+      ...at,
+      camper: "Casey Madeup",
+      day: "Monday",
+      time: "Period 1",
+      elective: "Art",
+      seen: now()
+    },
+    "done",
+    [
+      [
+        "API-1.68",
+        has("Casey Madeup is already in Art then; nothing changed."),
+        "already there, said truly"
+      ]
+    ]
   );
   ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
   step("read_elective_seats", { week: "Week 2" }, "done", [

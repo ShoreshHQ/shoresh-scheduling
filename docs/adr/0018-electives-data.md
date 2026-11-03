@@ -417,8 +417,12 @@ at a place.
     isn't open) opens its **roster beside**, with the cursor on its heading: each camper and their
     bunk, the **padlock** (pressed when locked) and **Move to…** (the other offerings then); a
     name can also be dragged onto another offering at the same time. A move is a hand move and
-    **locked**, as the desktop makes it; it may put an offering over its seats, which is then
-    shown as a problem, never refused. The padlock locks or unlocks a seat as it is; unlocked, a move by hand is no longer one. Each change is
+    **locked**, as the desktop makes it; a move into an offering whose seats are all
+    taken then is refused, as the desktop refuses it ("Swim is full then (2 of 2 seats); nothing
+    changed."; setElectiveAssignment.js OCCURRENCE_FULL; coordinator for Greg, 2026-11-03), and a
+    move to the offering the camper already holds says so ("Ivy is already in Art then; nothing
+    changed."). An offering can still end up over its seats another way (its seats lowered after
+    Assign), shown as a problem. The padlock locks or unlocks a seat as it is; unlocked, a move by hand is no longer one. Each change is
     one save (`ElectiveSeatSaves.change`), checked as Assign's are, with the run's revision. A refused
     change puts the cursor back on what asked (the padlock, Move to…, the notice's Unlock), or the
     roster heading when that is gone or the change was a drag, never on the page (WCAG 2.4.3).

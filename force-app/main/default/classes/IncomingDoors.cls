@@ -61,9 +61,9 @@ public with sharing class IncomingDoors {
     fields = fieldNames;
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
-    // The web address is an AI's or another system's: a refusal says what is wrong, without the
-    // screen's advice (API-1.105). The Flow action, a person's, keeps it.
-    AgentRefusal.forAgent = true;
+    // A person's AI (Shoresh Scheduler, API-4.7) hears what is wrong without the screen's advice
+    // (API-1.105); a key or machine connection keeps the next step (API-6.4), as the Flow does.
+    AgentRefusal.forAgent = IncomingBatch.isPerson();
     try {
       List<Object> sent = recordsIn(RestContext.request.requestBody);
       if (sent.size() > IncomingBatch.MOST) {
