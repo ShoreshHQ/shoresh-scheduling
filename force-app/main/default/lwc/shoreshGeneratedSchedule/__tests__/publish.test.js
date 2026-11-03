@@ -17,7 +17,15 @@ import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, SMALL, WEEK, WEEK_2, camp } from "./data/camp";
+import {
+  PROGRAM,
+  SCHEDULE,
+  SMALL,
+  WEEK,
+  WEEK_2,
+  camp,
+  keeping
+} from "./data/camp";
 import { nextTurn } from "../pieces";
 
 const apex = () => ({ default: jest.fn() });
@@ -671,14 +679,16 @@ describe("Publish on the Generated Schedule screen", () => {
     const element = await render(
       cleanWeek({ published: { ...PUBLISHED, changedSince: true } })
     );
-    saveWeekOnServer.mockResolvedValue({
-      conflict: false,
-      scheduleId: SCHEDULE,
-      revision: "2026-06-29:2",
-      versionId: null,
-      locks: [],
-      published: PUBLISHED
-    });
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2",
+        versionId: null,
+        locks: [],
+        published: PUBLISHED
+      })
+    );
     action(element, "TryAnother").click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();

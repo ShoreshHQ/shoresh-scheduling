@@ -11,13 +11,27 @@
  * A position is { day, group, block }: indexes into the week, that day's groups and its time blocks.
  */
 import { dayLabel } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
-import { OPEN, identity, owner, placement } from "./engine.shoreshWeekEditor.slotEdits.mjs";
-import { REFUSED, moveEdit, removeEdit } from "./engine.shoreshWeekEditor.moves.mjs";
+import {
+  OPEN,
+  editRun,
+  identity,
+  isMovable,
+  owner,
+  placement
+} from "./engine.shoreshWeekEditor.slotEdits.mjs";
+import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./engine.shoreshWeekEditor.moves.mjs";
+import { eventRuns } from "./engine.shoreshWeekEditor.specials.mjs";
 import { LEFT_OUT, replan, toolRuns } from "./engine.shoreshWeekEditor.tools.mjs";
 import { rainCounts } from "./engine.shoreshWeekEditor.rain.mjs";
 import { lockKey, noteRows } from "./engine.shoreshWeekEditor.locks.mjs";
 
-// A hand edit: fixed and recurring activities move by hand, and no time is away for it.
+/**
+ * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
+ * happen in the real world. A fixed or recurring activity can be moved, covered or cleared by
+ * hand, and anything can go where a group is away or not at camp then; the Why list reminds them
+ * ("Update to match setup" reads the week again after such an edit: savedNotice). Bulk tools
+ * (copy a day, paste, a rainy day) still leave those cells as they are.
+ */
 const SET_TIME_BY_HAND = true;
 const NEVER_AWAY = () => false;
 
@@ -150,6 +164,134 @@ export function takeOutStep(ctx, slot) {
     runs: result.runs,
     label: `Cleared ${name} · ${slotName(ctx, slot)}`
   };
+}
+
+/** Whether a placement can be picked up by hand: an activity, or a fixed or recurring one. */
+export function canMove(slot) {
+  return isMovable(slot, SET_TIME_BY_HAND);
+}
+
+/**
+ * A cell given what it should hold (next, for length blocks; OPEN clears it): { runs, label },
+ * { refused, locked }, or null when nothing changes. A longer activity stops at a locked cell, as
+ * it stops at a filled one, and the label says how far it went.
+ */
+export function placeStep(ctx, slot, next, length) {
+  const day = ctx.week[slot.day];
+  const run = editRun(
+    day,
+    slot.group,
+    slot.block,
+    next,
+    length,
+    NEVER_AWAY,
+    (block) => ctx.isLocked({ ...slot, block }),
+    SET_TIME_BY_HAND
+  );
+  if (!run) {
+    return null;
+  }
+  const runs = [{ day: slot.day, group: slot.group, ...run }];
+  const locked = firstLocked(ctx, runs);
+  if (locked) {
+    return { refused: lockedWords(ctx, locked), locked };
+  }
+  let label =
+    next === OPEN
+      ? `Cleared ${slotName(ctx, slot, run.first)}`
+      : `Placed ${ctx.nameOf(next, day)} · ${slotName(ctx, slot, run.first)}`;
+  const placed = run.after.filter((s) => s !== OPEN).length;
+  if (next !== OPEN && placed < (length || 1)) {
+    // Not enough room for its whole length: placed as far as it goes, and said so.
+    label += ` (${placed} of ${length})`;
+  }
+  return { runs, label };
+}
+
+/**
+ * Cells drawn as one (an event across bunks) cleared together: { runs }, { refused, locked }, or
+ * null when nothing changes.
+ */
+export function clearAllStep(ctx, slots) {
+  const runs = [];
+  slots.forEach((slot) => {
+    const run = editRun(
+      ctx.week[slot.day],
+      slot.group,
+      slot.block,
+      OPEN,
+      1,
+      NEVER_AWAY,
+      () => false,
+      SET_TIME_BY_HAND
+    );
+    if (run) {
+      runs.push({ day: slot.day, group: slot.group, ...run });
+    }
+  });
+  if (!runs.length) {
+    return null;
+  }
+  const locked = firstLocked(ctx, runs);
+  return locked ? { refused: lockedWords(ctx, locked), locked } : { runs };
+}
+
+/**
+ * The placement at a cell made to end at lastBlock: { runs, label }, { refused } (with `locked`
+ * when a Lock stopped it), or null when nothing changes.
+ */
+export function resizeStep(ctx, slot, lastBlock) {
+  const day = ctx.week[slot.day];
+  const at = placement(day, slot.group, slot.block);
+  const name = ctx.nameOf(at.slot, day);
+  if (lastBlock < at.first) {
+    return { refused: `${name} can't end before it starts.` };
+  }
+  const result = resizeEdit(
+    ctx.week,
+    slot,
+    lastBlock,
+    NEVER_AWAY,
+    SET_TIME_BY_HAND
+  );
+  if (!result) {
+    return null;
+  }
+  if (result.refused) {
+    return { refused: refusalWords(ctx, result.refused, name, slot) };
+  }
+  const locked = firstLocked(ctx, result.runs);
+  if (locked) {
+    return { refused: lockedWords(ctx, locked), locked };
+  }
+  const length = lastBlock - at.first + 1;
+  const word = length === 1 ? ctx.t.sIn("TimeBlock") : ctx.t.pIn("TimeBlock");
+  return {
+    runs: result.runs,
+    label: `${name} runs ${length} ${word} · ${slotName(ctx, { ...slot, block: at.first })}`
+  };
+}
+
+/**
+ * A special event or elective set (its identity) put over rows (rowsCovered): { runs } (none
+ * when nothing changes) or { refused, locked }. Only a Lock stops a hand edit. eachBlock: as
+ * eventRuns.
+ */
+export function placeOverStep(ctx, rows, item, eachBlock = false) {
+  const result = eventRuns(
+    ctx.week,
+    rows,
+    item,
+    {
+      isAway: NEVER_AWAY,
+      isLocked: (slot) => ctx.isLocked(slot),
+      coversSetTime: SET_TIME_BY_HAND
+    },
+    eachBlock
+  );
+  return result.refused
+    ? { refused: lockedWords(ctx, result.at), locked: result.at }
+    : { runs: result.runs };
 }
 
 /**
