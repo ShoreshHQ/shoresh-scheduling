@@ -101,7 +101,7 @@ public with sharing class AgentSchedules {
         : week.name +
           ' hasn\'t been built for ' +
           week.program.Name +
-          ' yet. Build it first (build_week).'
+          ' yet.'
     );
   }
 

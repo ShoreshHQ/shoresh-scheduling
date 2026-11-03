@@ -1969,6 +1969,7 @@ const CAPABILITIES = [
     api: "forget_learned_pattern",
     method: "POST",
     sendsFields: true,
+    forgetsPattern: true,
     description:
       'Forget a pattern, as Forget pattern on "What Shoresh has learned" does: the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again. Ask the person first. Read it first with read_learned_answers and send its pattern and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone forgot it or undid that since, nothing is changed and Shoresh says so.',
     inputSchema: {

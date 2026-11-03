@@ -213,4 +213,39 @@ private class AgentLearnedTest {
       Assert.areEqual('fixed', only(campId).Answer__c, 'its answers stay');
     }
   }
+
+  // API-1.96, API-1.106: a pattern that can't be there is refused, never previewed.
+  @IsTest
+  static void aPatternThatCantBeThereIsRefusedNotPreviewed() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, Object>{
+            'season' => SEASON,
+            'pattern' => 'none',
+            'seen' => 'none'
+          }
+        )
+      );
+      RestContext.response = new RestResponse();
+      Test.startTest();
+      AgentForgetPattern.post();
+      Test.stopTest();
+      Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+        RestContext.response.responseBody.toString()
+      );
+      Assert.areEqual(
+        400,
+        RestContext.response.statusCode,
+        String.valueOf(answer)
+      );
+      Assert.isTrue(
+        String.valueOf(answer.get('message')).startsWith('Say the pattern'),
+        String.valueOf(answer.get('message'))
+      );
+    }
+  }
 }

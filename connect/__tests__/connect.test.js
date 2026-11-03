@@ -1724,6 +1724,38 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // API-1.96, API-1.25
+  it("forgetsOnlyAPatternThatIsThere: a pattern the screen doesn't offer Forget pattern on is refused naming the ones there, before anything is asked", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const sent = [];
+    const said = await call(
+      "forget_learned_pattern",
+      { season: "Summer 2031", pattern: "none", seen: "none" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ setup: { labels: [] }, answers: [], events: [] }),
+          sent
+        ),
+        learned: async () => ({
+          ...require(`${LWC}/shoreshLearned/history.js`),
+          ...require(`${LWC}/shoreshLearned/builtIn.js`),
+          ...require(`${LWC}/shoreshLearned/view.js`),
+          ...require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+          ...require(`${LWC}/shoreshTerms/shoreshTerms.js`)
+        })
+      }
+    );
+    expect(sent.map((s) => s.args[3])).toEqual([
+      "/services/apexrest/v1/read_learned_answers?season=Summer+2031"
+    ]);
+    expect(said).toEqual({
+      ok: false,
+      status: 400,
+      text: 'There is no pattern "none" on What Shoresh has learned now. There are no patterns there now.'
+    });
+  });
+
   // API-1.98, API-1.99
   it("lastYearAsksTheScreensQuestionsAndMatchesItsBlocks: every question the screen asks is said with its choices and answered by choice, and a setup's times are read as the screen reads them, so its time blocks are matched, not added again", async () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -2197,7 +2229,7 @@ describe("Shoresh for AI tools and the command line", () => {
     // (Agent*.cls and the connector's own) may say to read again, never to repair. Shared screen
     // sentences hide their advice from an AI with AgentRefusal (ActivitiesAndLocationsTest).
     const REPAIR =
-      /Fix it|then (retry|try again|ask again|finalize|delete|save)|\b(First|Rename|Assign|Start|Change|Move|Delete|Take) [^.]*\bfirst\b|\binstead\.|Change it (on|there)/;
+      /Fix it|then (retry|try again|ask again|finalize|delete|save)|\b(First|Build|Rename|Assign|Start|Change|Move|Delete|Take) [^.]*\bfirst\b|\binstead\.|Change it (on|there)/;
     const root = path.join(__dirname, "..", "..");
     const classes = path.join(root, "force-app/main/default/classes");
     const sources = [

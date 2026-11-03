@@ -13,7 +13,7 @@ const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
-const { readLearned } = require("./learned");
+const { readLearned, forgetPattern } = require("./learned");
 const {
   campOf,
   tooOld,
@@ -231,6 +231,12 @@ async function callOnce(
   }
   if (capability.readsLearned) {
     return readLearned(capability, input, {
+      ...at,
+      load: () => learned(namespace)
+    });
+  }
+  if (capability.forgetsPattern) {
+    return forgetPattern(capability, input, {
       ...at,
       load: () => learned(namespace)
     });

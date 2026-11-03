@@ -15,6 +15,7 @@ global with sharing class AgentForgetPattern implements AgentWeeks.Action, Agent
   /** Which pattern it forgets (API-1.106); the forget itself checks it is still as seen. */
   public String preview() {
     Map<String, Object> body = AgentFields.body(FIELDS);
+    partsOf(AgentLearned.raw(body, 'pattern'));
     return 'This forgets the pattern ' +
       AgentLearned.raw(body, 'pattern') +
       ': the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again.';
@@ -25,13 +26,10 @@ global with sharing class AgentForgetPattern implements AgentWeeks.Action, Agent
   }
 
   /**
-   * forget_learned_pattern: the screen's Forget pattern (its answers stay), while the pattern's
-   * mark is as seen: the Id of the mark an earlier Forget left, or "none".
+   * "pattern:<template>:<antecedent>", as read_learned_answers names it; anything else is refused
+   * before a preview is given, so nothing is asked about a pattern that can't be there.
    */
-  private static String forgetPattern(Map<String, Object> body) {
-    Id campId = AgentLearned.campOf(body);
-    String ref = AgentLearned.raw(body, 'pattern');
-    // "pattern:<template>:<antecedent>", as read_learned_answers names it.
+  private static List<String> partsOf(String ref) {
     List<String> parts = ref.split(':', 3);
     if (parts.size() != 3 || parts[0] != 'pattern') {
       throw new ShoreshException(
@@ -39,6 +37,17 @@ global with sharing class AgentForgetPattern implements AgentWeeks.Action, Agent
         AgentLearned.NOTHING
       );
     }
+    return parts;
+  }
+
+  /**
+   * forget_learned_pattern: the screen's Forget pattern (its answers stay), while the pattern's
+   * mark is as seen: the Id of the mark an earlier Forget left, or "none".
+   */
+  private static String forgetPattern(Map<String, Object> body) {
+    Id campId = AgentLearned.campOf(body);
+    String ref = AgentLearned.raw(body, 'pattern');
+    List<String> parts = partsOf(ref);
     String seen = AgentLearned.seenOf(body);
     String key = ImportAnswers.keyOf(
       campId,

@@ -56,9 +56,9 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action 
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          new Map<String, String>{
-            'message' => ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          }
+          OutgoingRows.answered(
+            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
+          )
         )
       );
     }

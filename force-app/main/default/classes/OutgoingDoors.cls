@@ -92,7 +92,7 @@ public with sharing class OutgoingDoors {
     response.statusCode = status;
     response.addHeader('Content-Type', 'application/json');
     response.responseBody = Blob.valueOf(
-      JSON.serialize(new Map<String, String>{ 'message' => message })
+      JSON.serialize(OutgoingRows.answered(message))
     );
   }
 

@@ -48,7 +48,7 @@ public with sharing class AgentWeeks {
         result.name +
           ' hasn\'t been built for ' +
           result.program.Name +
-          ' yet. Build it first (build_week).'
+          ' yet.'
       );
     }
     result.draft = GeneratedDrafts.lockedToEdit(result.draft.Id);

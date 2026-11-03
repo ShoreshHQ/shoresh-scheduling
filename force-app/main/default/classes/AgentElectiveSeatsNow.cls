@@ -22,9 +22,9 @@ global with sharing class AgentElectiveSeatsNow {
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          new Map<String, String>{
-            'message' => said(run, ElectiveSeatsController.openRun(run.id))
-          }
+          OutgoingRows.answered(
+            said(run, ElectiveSeatsController.openRun(run.id))
+          )
         )
       );
     } catch (Exception e) {
@@ -33,9 +33,9 @@ global with sharing class AgentElectiveSeatsNow {
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          new Map<String, String>{
-            'message' => ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          }
+          OutgoingRows.answered(
+            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
+          )
         )
       );
     }
