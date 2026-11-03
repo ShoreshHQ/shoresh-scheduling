@@ -130,7 +130,9 @@ public with sharing class ImportFields {
       FixedActivity__c.EarlyDay__c,
       FixedActivity__c.EarlyBlocks__c,
       FixedActivity__c.SortOrder__c,
-      FixedActivity__c.CopiedFrom__c
+      FixedActivity__c.CopiedFrom__c,
+      // Not written, but kept beside a new time block or length so Undo puts it back (ImportUndoLog).
+      FixedActivity__c.LastTimeBlock__c
     },
     RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{
       RecurringActivity__c.Name,
@@ -138,6 +140,7 @@ public with sharing class ImportFields {
       RecurringActivity__c.TimeBlock__c,
       RecurringActivity__c.Location__c,
       RecurringActivity__c.Length__c,
+      RecurringActivity__c.LastTimeBlock__c,
       RecurringActivity__c.Monday__c,
       RecurringActivity__c.Tuesday__c,
       RecurringActivity__c.Wednesday__c,

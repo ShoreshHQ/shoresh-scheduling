@@ -5,10 +5,10 @@
  * new week. Triggers on those objects report what changed here, by the season, program,
  * division, or week it belongs to.
  *
- * A change made through Salesforce directly is checked as soon as it is saved. A screen save that
- * writes several records in steps (rows, then week ticks, then who) defers the check to the end,
- * so a half-done save is never judged: defer(), then checkPending() once everything is written,
- * and always resume() (in a finally block).
+ * A change made through Salesforce directly is checked as soon as it is saved. A save that writes
+ * several records in steps (rows, then week ticks, then who) is checked once, at the end, so a
+ * half-done save is never judged: it runs as a SetupWrite, which alone calls defer(),
+ * checkPending() and resume() (tests' own setup aside).
  */
 public with sharing class SetTimeGuard {
   private static Integer depth = 0;

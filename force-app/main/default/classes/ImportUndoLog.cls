@@ -136,7 +136,8 @@ public with sharing class ImportUndoLog {
       if (!byType.containsKey(kind)) {
         byType.put(kind, new Map<Id, Map<String, Schema.SObjectField>>());
       }
-      byType.get(kind).put(row.Id, written(row));
+      byType.get(kind)
+        .put(row.Id, SetTimePlan.withLastBlock(written(row), kind));
     }
     List<Map<String, Object>> result = new List<Map<String, Object>>();
     for (Schema.SObjectType kind : byType.keySet()) {

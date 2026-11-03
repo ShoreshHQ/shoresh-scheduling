@@ -277,4 +277,45 @@ private class WeekExceptionsTest {
     }
     Assert.areEqual(1, [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]);
   }
+
+  // A delete from a record page, a Flow or Data Loader: the record's own marks go with it.
+  @IsTest
+  static void marksGoWithARecordDeletedOutsideTheScreens() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id week = weekId(ids.get('Season'), 2);
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(Week__c = week, Group__c = ids.get('Group B')),
+          new WeekException__c(
+            Week__c = week,
+            RecurringActivity__c = ids.get('Rest')
+          )
+        },
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      Database.delete(
+        new List<Id>{ ids.get('Group B'), ids.get('Rest') },
+        true,
+        AccessLevel.USER_MODE
+      );
+      Test.stopTest();
+      // The delete went through: the marks neither blocked it nor stayed behind.
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM WeekException__c
+          WHERE Week__c = :week
+          WITH SYSTEM_MODE
+        ]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM RecurringActivity__c WITH SYSTEM_MODE],
+        'Rest went, its who-it-covers rows with it'
+      );
+    }
+  }
 }

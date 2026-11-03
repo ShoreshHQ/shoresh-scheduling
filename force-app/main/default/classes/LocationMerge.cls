@@ -40,12 +40,31 @@ public with sharing class LocationMerge {
     List<Id> otherIds,
     Decimal groupsThatFit
   ) {
-    Map<Id, Location__c> places = lockedPlaces(keepId, otherIds);
-    SetTimeGuard.defer();
-    Savepoint beforeMerge = Database.setSavepoint();
+    Set<Id> others = lockedPlaces(keepId, otherIds).keySet().clone();
+    others.remove(keepId);
     try {
-      Set<Id> others = places.keySet().clone();
-      others.remove(keepId);
+      SetupWrite.run(
+        SetupWrite.Kind.SAVE,
+        new Merging(keepId, others, groupsThatFit)
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** The others' uses and weeks moved to the one kept, then the others deleted. */
+  private inherited sharing class Merging implements SetupWrite.Steps {
+    private Id keepId;
+    private Set<Id> others;
+    private Decimal groupsThatFit;
+
+    private Merging(Id keepId, Set<Id> others, Decimal groupsThatFit) {
+      this.keepId = keepId;
+      this.others = others;
+      this.groupsThatFit = groupsThatFit;
+    }
+
+    public void write() {
       moveReferences(keepId, others);
       moveWeeks(keepId, others);
       Database.update(
@@ -55,12 +74,6 @@ public with sharing class LocationMerge {
       for (Id other : others) {
         WeekExceptions.deleteWithWeeks(other);
       }
-      SetTimeGuard.checkPending();
-    } catch (Exception e) {
-      Database.rollback(beforeMerge);
-      throw ScreenErrors.of(e);
-    } finally {
-      SetTimeGuard.resume();
     }
   }
 
