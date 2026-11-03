@@ -139,12 +139,11 @@ public with sharing class GeneratedChecks {
   private void checkNotLocked(ScheduleGrid now, Integer g, Integer b) {
     if (keepLocks && ScheduleGridLocks.isLocked(day.grid, g, b)) {
       throw new ShoreshException(
-        now.groups[g].name +
-          ' · ' +
-          BlankWeek.weekdayOf(day.day) +
-          ' · ' +
-          now.blocks[b].name +
-          ' is locked.'
+        ScheduleGridLocks.lockedWords(
+          now.groups[g].name,
+          BlankWeek.weekdayOf(day.day),
+          now.blocks[b].name
+        )
       );
     }
   }

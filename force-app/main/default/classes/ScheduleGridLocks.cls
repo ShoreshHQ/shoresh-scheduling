@@ -18,6 +18,21 @@ public with sharing class ScheduleGridLocks {
     return !grid.locks.isEmpty() && grid.locks[g][b] == LOCKED;
   }
 
+  /**
+   * A locked cell asked to change, in the screen's own words (shoreshWeekEditor lockedWords):
+   * "Bunk 1 · Monday · Period 2 is locked." Both pass staticresources/ShoreshCellExamples.json.
+   */
+  public static String lockedWords(
+    String groupName,
+    String weekday,
+    String blockName
+  ) {
+    return String.join(
+        new List<String>{ groupName, weekday, blockName },
+        ' · '
+      ) + ' is locked.';
+  }
+
   /** Locks one cell (cell: group and time block positions), giving the grid lock rows. */
   public static void lock(ScheduleGrid grid, List<Integer> cell) {
     withRows(grid);

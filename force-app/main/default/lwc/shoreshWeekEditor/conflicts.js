@@ -14,9 +14,7 @@
  * Both come from the same comparison, so every cell someone else changed is shown before anything
  * of theirs is replaced, and nothing is replaced that wasn't shown.
  */
-import { OPEN, diffRuns, placementIn, slots } from "./slotEdits";
-
-const CARRIES_ON = "^";
+import { OPEN, diffRuns, isSetTime, placementIn, slots } from "./slotEdits";
 
 function rowKey(dateValue, groupId) {
   return `${dateValue}|${groupId}`;
@@ -110,11 +108,6 @@ export function withSeen(intent, rows) {
     seen[key] = { ...(seen[key] || {}), [row.blockId]: row.theirs };
   });
   return { cells: intent.cells, seen, missing: intent.missing };
-}
-
-function isSetTime(slot) {
-  const item = slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
-  return item.startsWith("F:") || item.startsWith("R:");
 }
 
 /**
