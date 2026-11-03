@@ -220,6 +220,7 @@ public with sharing class AgentWeeks {
   /**
    * Runs one action and answers {"message": sentence}: 200 when done, 409 for someone else's
    * change, 400 for a refusal in Shoresh's words, 500 for anything else (in Shoresh's words too).
+   * Every verb's access is AgentAccess's one policy, refused here in the same words for every verb.
    */
   public static void answer(Action action) {
     RestResponse response = RestContext.response;
@@ -228,6 +229,7 @@ public with sharing class AgentWeeks {
     Integer status;
     String message;
     try {
+      AgentAccess.require();
       message = action.run();
       status = 200;
     } catch (ConflictException e) {

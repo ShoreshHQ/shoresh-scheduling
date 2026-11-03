@@ -6,17 +6,19 @@
  */
 @IsTest
 private class AgentSetupTest {
-  /** POST to rename or delete in the camp's season; answers [status, sentence]. */
+  /** POST to rename or delete in the camp's season (or the one fields name); answers [status, sentence]. */
   private static List<Object> post(String action, Map<String, Object> fields) {
-    Map<String, Object> body = new Map<String, Object>{
-      'season' => [
-        SELECT Name
-        FROM Season__c
-        WHERE Id = :GeneratedTestData.ids.get('Season')
-        WITH SYSTEM_MODE
-      ]
-      .Name
-    };
+    Map<String, Object> body = fields.containsKey('season')
+      ? new Map<String, Object>()
+      : new Map<String, Object>{
+          'season' => [
+            SELECT Name
+            FROM Season__c
+            WHERE Id = :GeneratedTestData.ids.get('Season')
+            WITH SYSTEM_MODE
+          ]
+          .Name
+        };
     body.putAll(fields);
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
@@ -43,6 +45,36 @@ private class AgentSetupTest {
           ' WHERE Id = :recordId'
       )[0]
       .get('Name');
+  }
+
+  // API-1.11: every change through an agent is refused in the same words without the access
+  @IsTest
+  static void someoneWithoutShoreshRenamesNothing() {
+    String season;
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      season = [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :GeneratedTestData.ids.get('Season')
+      ]
+      .Name;
+    }
+    System.runAs(ShoreshTestData.outsider()) {
+      Test.startTest();
+      List<Object> renamed = post(
+        'rename',
+        new Map<String, Object>{
+          'season' => season,
+          'kind' => 'group',
+          'name' => 'Group A',
+          'new_name' => 'Cabin A'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, renamed[0]);
+      Assert.areEqual(AgentWeeks.NO_ACCESS, renamed[1]);
+    }
   }
 
   @IsTest

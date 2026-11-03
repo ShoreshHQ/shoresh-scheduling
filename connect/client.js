@@ -242,7 +242,28 @@ async function ask(request, org, run) {
       `Couldn't reach Salesforce${org ? ` as "${org}"` : ""}. Sign in once with: sf org login web${org ? ` --alias ${org}` : ""}`
     );
   }
+  if (stoppedByLimit(response)) {
+    return {
+      status: response.status,
+      body: JSON.stringify({ message: TOO_BIG })
+    };
+  }
   return response;
+}
+
+// The screens' own sentence for it (shoreshErrors TOO_BIG; connect.test.js keeps the two the same).
+const TOO_BIG =
+  "This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to imshoresh@gmail.com.";
+
+/**
+ * A Salesforce limit stopped the request (a big import, undo or copy): Apex can't catch that, so
+ * Salesforce answers it itself. Said as the screens say it (shoreshErrors).
+ */
+function stoppedByLimit(response) {
+  return (
+    response.status === 500 &&
+    /^System\.LimitException:/.test(answerText(response.body))
+  );
 }
 
 function answer(response) {
@@ -761,6 +782,7 @@ async function check({ org, run = runSf } = {}) {
 }
 
 module.exports = {
+  TOO_BIG,
   importModules,
   exportModules,
   requestFor,
