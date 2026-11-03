@@ -377,10 +377,10 @@ function electives(tmp) {
       camper: "Casey Madeup",
       day: "Monday",
       time: "Period 1",
-      elective: "Art",
+      elective: "Swim",
       seen: now()
     },
-    "any"
+    "done"
   );
   ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
   step("read_elective_seats", { week: "Week 2" }, "done", [
