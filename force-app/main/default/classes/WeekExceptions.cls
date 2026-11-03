@@ -12,6 +12,8 @@ public with sharing class WeekExceptions {
     WeekException__c.FixedActivity__c,
     WeekException__c.RecurringActivity__c
   };
+  // Records whose own rows deleteWithWeeks has cleared in this transaction.
+  private static Set<Id> clearedByScreens = new Set<Id>();
 
   public static void save(List<WeekException__c> toAdd, List<Id> toRemove) {
     Set<Id> removeIds = new Set<Id>();
@@ -95,6 +97,66 @@ public with sharing class WeekExceptions {
   }
 
   /**
+   * Before a group, activity, location, or fixed or recurring activity is deleted, however it is
+   * deleted: its own week-off marks (and a recurring activity's who-it-covers rows) go with it, so
+   * they neither block the delete (restrict-delete lookups) nor stay behind. System mode on
+   * purpose, as for a season's rows (SeasonTriggerHandler): someone allowed to delete the record
+   * must not be stopped by a mark they cannot see.
+   */
+  public static void goWith(Set<Id> recordIds) {
+    Set<Id> ids = new Set<Id>(recordIds);
+    // A screen delete cleared them already (deleteWithWeeks).
+    ids.removeAll(clearedByScreens);
+    if (ids.isEmpty() || !SetupWrite.clearsOwnRows()) {
+      return;
+    }
+    SetupWrite.run(SetupWrite.Kind.OWN_ROWS, new OwnRows(ids));
+  }
+
+  private inherited sharing class OwnRows implements SetupWrite.Steps {
+    private Set<Id> ids;
+
+    private OwnRows(Set<Id> ids) {
+      this.ids = ids;
+    }
+
+    public void write() {
+      clear(
+        [
+          SELECT Id
+          FROM WeekException__c
+          WHERE
+            Group__c IN :ids
+            OR Activity__c IN :ids
+            OR Location__c IN :ids
+            OR FixedActivity__c IN :ids
+            OR RecurringActivity__c IN :ids
+          WITH SYSTEM_MODE
+        ]
+      );
+      if (
+        new List<Id>(ids)[0].getSObjectType() ==
+        RecurringActivity__c.SObjectType
+      ) {
+        clear(
+          [
+            SELECT Id
+            FROM Coverage__c
+            WHERE RecurringActivity__c IN :ids
+            WITH SYSTEM_MODE
+          ]
+        );
+      }
+    }
+
+    private void clear(List<SObject> rows) {
+      if (!rows.isEmpty()) {
+        Database.delete(rows, true, AccessLevel.SYSTEM_MODE);
+      }
+    }
+  }
+
+  /**
    * Deletes a record from the setup screens together with its own unticked weeks (Greg,
    * 2026-10-16): a group, activity, location, fixed activity, or recurring activity's week
    * exceptions (and a recurring activity's who-it-covers rows), and for a division or program
@@ -150,9 +212,11 @@ public with sharing class WeekExceptions {
           AccessLevel.USER_MODE
         );
       }
+      clearedByScreens.add(recordId);
       Database.delete(recordId, true, AccessLevel.USER_MODE);
     } catch (Exception e) {
       Database.rollback(beforeDelete);
+      clearedByScreens.remove(recordId);
       throw e;
     }
   }

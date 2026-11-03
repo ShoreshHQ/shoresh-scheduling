@@ -1,4 +1,5 @@
 trigger FixedActivityTrigger on FixedActivity__c(
+  before delete,
   before insert,
   before update,
   after insert,

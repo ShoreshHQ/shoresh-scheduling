@@ -31,14 +31,13 @@ public with sharing class ImportUndoRestores {
     }
     // DIV-1.1: a group moved out of no division goes back into a new holding record.
     NoDivisions.restoreHolders(rows);
-    // Undo puts rain plans back as they were, even one made outdoors since (ADR 0006 §18).
-    ActivityTriggerHandler.checkRainPlans = false;
-    List<Database.SaveResult> outcomes;
-    try {
-      outcomes = Database.update(rows, false, AccessLevel.USER_MODE);
-    } finally {
-      ActivityTriggerHandler.checkRainPlans = true;
-    }
+    // Undo puts rain plans and last time blocks back as they were, even an outdoor rain plan
+    // (ADR 0006 §18; ImportUndo restores as a SetupWrite RESTORE).
+    List<Database.SaveResult> outcomes = Database.update(
+      rows,
+      false,
+      AccessLevel.USER_MODE
+    );
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (!outcomes[i].isSuccess()) {
         // Any refusal (a rule, a permission) stops the whole Undo with its reason.

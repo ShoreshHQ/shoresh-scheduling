@@ -207,4 +207,64 @@ private class ImportUndoAsItWasTest {
       Assert.areEqual(before, CampSnapshot.of());
     }
   }
+
+  @IsTest
+  static void ingest510UndoBringsBackAChangedBlocksNote() {
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(new User(Id = kept.get('Scheduler'))) {
+      Id period1 = kept.get('Period 1');
+      Id period2 = kept.get('Period 2');
+      // Flagpole covers Period 1 and 2; then a block is added between them, so its blocks have
+      // changed and Needs attention says so (its last time block is still Period 2).
+      Database.update(
+        new FixedActivity__c(Id = kept.get('Flagpole'), Length__c = 2),
+        AccessLevel.USER_MODE
+      );
+      Database.insert(
+        new TimeBlock__c(
+          Program__c = kept.get('Main'),
+          Name = 'Snack',
+          StartTime__c = Time.newInstance(9, 45, 0, 0),
+          EndTime__c = Time.newInstance(9, 55, 0, 0),
+          PartOfDay__c = 'Morning',
+          SortOrder__c = 9.5
+        ),
+        AccessLevel.USER_MODE
+      );
+      String before = CampSnapshot.of();
+      Map<String, Object> plan = ImportTestPlans.emptyPlan(kept.get('Season'));
+      ImportTestPlans.add(
+        plan,
+        'fixedActivities',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            kept.get('Flagpole'),
+            'id',
+            kept.get('Flagpole'),
+            'blockKey',
+            period1,
+            'length',
+            1
+          }
+        )
+      );
+      // The import works Flagpole's last block out again (Period 1); Undo is a job of its own.
+      Test.startTest();
+      Id importId = ImportController.saveSetup(JSON.serialize(plan)).importId;
+      System.enqueueJob(new UndoJob(importId));
+      Test.stopTest();
+      Assert.areEqual(
+        period2,
+        [
+          SELECT LastTimeBlock__c
+          FROM FixedActivity__c
+          WHERE Id = :kept.get('Flagpole')
+        ]
+        .LastTimeBlock__c,
+        'Undo put the note back'
+      );
+      Assert.areEqual(before, CampSnapshot.of());
+    }
+  }
 }

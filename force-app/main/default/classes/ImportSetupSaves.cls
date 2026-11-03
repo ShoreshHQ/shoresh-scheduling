@@ -80,12 +80,29 @@ public with sharing class ImportSetupSaves {
         ImportProvenance.untouched(plan.seasonId)
       );
     }
-    SetTimeGuard.defer();
-    Savepoint beforeSave = Database.setSavepoint();
-    try {
+    SetupWrite.run(
+      SetupWrite.Kind.SAVE,
+      new Writes(plan, writer, seasons[0].Camp__c)
+    );
+    return writer.result;
+  }
+
+  /** Everything the plan adds, changes and removes, and the import's record. */
+  private class Writes implements SetupWrite.Steps {
+    private ImportPlan plan;
+    private ImportWriter writer;
+    private Id campId;
+
+    private Writes(ImportPlan plan, ImportWriter writer, Id campId) {
+      this.plan = plan;
+      this.writer = writer;
+      this.campId = campId;
+    }
+
+    public void write() {
       // A season with no weeks gets them from its dates first, so last year's week has one to go
       // to (Greg: an import adds what's missing; coordinator, 2026-10-17).
-      new ImportWorkbookExtras(writer, plan.seasonId, seasons[0].Camp__c)
+      new ImportWorkbookExtras(writer, plan.seasonId, campId)
         .fillWeeks(plan.entries('fillWeeks'));
       new ImportStructureWrites(plan, writer).run();
       new ImportItemWrites(plan, writer).run();
@@ -96,19 +113,12 @@ public with sharing class ImportSetupSaves {
       new ImportSpecialDayWrites(plan, writer).run();
       // What an earlier import brought in that the new file lacks, removed as chosen (INGEST-5.8).
       new ImportRemovals(plan, writer).run();
-      SetTimeGuard.checkPending();
-      ImportAnswers.save(seasons[0].Camp__c, plan);
+      ImportAnswers.save(campId, plan);
       // What it guessed rather than read, with the values saved: marked for a look on setup.
-      SetupGuesses.rememberFromPlan(seasons[0].Camp__c, plan, keys);
+      SetupGuesses.rememberFromPlan(campId, plan, writer.keys);
       writer.result.importId = record(plan, writer);
       writer.result.openNotKept = ImportLog.openNotKept;
-    } catch (Exception e) {
-      Database.rollback(beforeSave);
-      throw e;
-    } finally {
-      SetTimeGuard.resume();
     }
-    return writer.result;
   }
 
   /**

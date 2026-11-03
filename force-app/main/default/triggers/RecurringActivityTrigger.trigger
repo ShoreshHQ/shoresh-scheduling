@@ -1,4 +1,5 @@
 trigger RecurringActivityTrigger on RecurringActivity__c(
+  before delete,
   before insert,
   before update,
   after insert,

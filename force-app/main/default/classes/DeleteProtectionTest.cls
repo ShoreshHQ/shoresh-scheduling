@@ -79,7 +79,7 @@ private class DeleteProtectionTest {
   }
 
   @IsTest
-  static void aGroupNamedInAWeekExceptionCannotBeDeleted() {
+  static void aGroupTakesItsWeekExceptionsButItsDivisionCannotBeDeleted() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     ShoreshTestData.fullSeason(camp.Id);
     WeekException__c row = [
@@ -88,10 +88,6 @@ private class DeleteProtectionTest {
       WITH SYSTEM_MODE
     ];
 
-    Assert.isFalse(
-      Database.delete(row.Group__c, false, AccessLevel.SYSTEM_MODE).isSuccess(),
-      'group'
-    );
     Assert.isFalse(
       Database.delete(row.Group__r.Division__c, false, AccessLevel.SYSTEM_MODE)
         .isSuccess(),
@@ -106,6 +102,12 @@ private class DeleteProtectionTest {
         .isSuccess(),
       'program above it'
     );
+    // The group itself goes, its own marks with it (ADR 0004 §16).
+    Assert.isTrue(
+      Database.delete(row.Group__c, false, AccessLevel.SYSTEM_MODE).isSuccess(),
+      'group'
+    );
+    Assert.areEqual(0, [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]);
   }
 
   @IsTest

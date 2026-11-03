@@ -4,11 +4,6 @@
  * ActivitiesScreen.jsx save()).
  */
 public with sharing class ActivityTriggerHandler {
-  /**
-   * Off while a season is copied or an import undone: they put rain plans back as they were, so
-   * an outdoor one already chosen is kept (and shown as one to choose again), never refused.
-   */
-  public static Boolean checkRainPlans = true;
   // Set by the platform on every save, so never a sign that the director edited the row.
   private static final Set<String> SYSTEM_FIELDS = new Set<String>{
     'LastModifiedDate',
@@ -20,6 +15,20 @@ public with sharing class ActivityTriggerHandler {
     Activity__c.Location__c => 'Location',
     Activity__c.RainPlan__c => 'RainPlan'
   };
+
+  /** Before delete: its own week-off marks go with it. Before save: the checks above. */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<Activity__c> activities,
+    Map<Id, Activity__c> before
+  ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
+      WeekExceptions.goWith(before.keySet());
+      return;
+    }
+    beforeSave(activities, before);
+  }
 
   public static void beforeSave(
     List<Activity__c> activities,
@@ -60,7 +69,9 @@ public with sharing class ActivityTriggerHandler {
    * outdoors would do nothing. As on the desktop, saving an activity whose rain plan is outdoors
    * is refused, whatever else changed, using the rain plan's outdoors as this same save leaves it.
    * Making an activity outdoors that is another's rain plan is not refused (nor on the desktop);
-   * that one shows "(outdoor, choose another)" until its rain plan is changed.
+   * that one shows "(outdoor, choose another)" until its rain plan is changed. A copy or an Undo
+   * puts rain plans back as they were, so an outdoor one already chosen is kept, never refused
+   * (SetupWrite rules 2 and 3).
    */
   private static void refuseOutdoorRainPlans(
     List<Activity__c> activities,
@@ -71,7 +82,7 @@ public with sharing class ActivityTriggerHandler {
     Set<Id> chosen = new Set<Id>();
     for (Activity__c activity : activities) {
       if (
-        checkRainPlans &&
+        !SetupWrite.keepsRainPlans() &&
         activity.RainPlan__c != null &&
         editsTheActivity(activity, before)
       ) {

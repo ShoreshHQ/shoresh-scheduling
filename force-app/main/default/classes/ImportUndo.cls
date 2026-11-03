@@ -42,12 +42,28 @@ public with sharing class ImportUndo {
     // not refused part-way by one of the records.
     ImportLog.requireEditAccess(done.Season__c);
     Result result = new Result();
-    SetTimeGuard.defer();
-    Savepoint beforeUndo = Database.setSavepoint();
     // Undoing a batch from another system puts a camper's name and bunk back (API-4.2); no other
     // import may change them.
     OutsideOwned.bringingIn = IncomingQuestions.isBatch(done.Open__c);
     try {
+      SetupWrite.run(SetupWrite.Kind.RESTORE, new Reversal(done, result));
+    } finally {
+      OutsideOwned.bringingIn = false;
+    }
+    return result;
+  }
+
+  /** What the import did, put back (ImportUndoLog), and the import marked undone. */
+  private inherited sharing class Reversal implements SetupWrite.Steps {
+    private Import__c done;
+    private Result result;
+
+    private Reversal(Import__c done, Result result) {
+      this.done = done;
+      this.result = result;
+    }
+
+    public void write() {
       ImportUndoLog.reverse(done, result);
       // Undoing Copy season takes the new season away, its import log with it.
       result.seasonRemoved =
@@ -57,18 +73,10 @@ public with sharing class ImportUndo {
           WHERE Id = :done.Season__c
           WITH USER_MODE
         ] == 0;
-      SetTimeGuard.checkPending();
       if (!result.seasonRemoved) {
         ImportLog.markUndone(done);
       }
-    } catch (Exception e) {
-      Database.rollback(beforeUndo);
-      throw e;
-    } finally {
-      OutsideOwned.bringingIn = false;
-      SetTimeGuard.resume();
     }
-    return result;
   }
 
   /** An import's log is the server's (ImportLog): one without it is never acted on. */

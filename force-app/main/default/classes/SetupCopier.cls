@@ -123,13 +123,9 @@ public with sharing class SetupCopier {
         )
       );
     }
-    // The copy keeps each rain plan as the season had it, even one made outdoors since.
-    ActivityTriggerHandler.checkRainPlans = false;
-    try {
-      log.amend(withRainPlans);
-    } finally {
-      ActivityTriggerHandler.checkRainPlans = true;
-    }
+    // The copy keeps each rain plan as the season had it, even one made outdoors since
+    // (SeasonCopier copies as a SetupWrite COPY).
+    log.amend(withRainPlans);
     return copies;
   }
 

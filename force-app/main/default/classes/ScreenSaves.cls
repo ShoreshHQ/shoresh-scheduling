@@ -161,6 +161,23 @@ public with sharing class ScreenSaves {
     public Id noDivisionProgram { get; set; }
   }
 
+  /** The rows, then their week ticks, then who each covers: one SetupWrite. */
+  private class RowsAndExtras implements SetupWrite.Steps {
+    private List<SObject> rows;
+    private Extras given;
+
+    private RowsAndExtras(List<SObject> rows, Extras given) {
+      this.rows = rows;
+      this.given = given;
+    }
+
+    public void write() {
+      NoDivisions.holdNew(rows, given.noDivisionProgram);
+      RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
+      SetTimeWho.save(rows, given.who);
+    }
+  }
+
   /** Creates new records and updates existing ones, with their week ticks. Returns the Ids in order. */
   public static List<Id> save(
     List<SObject> records,
@@ -178,18 +195,10 @@ public with sharing class ScreenSaves {
     List<SObject> rows = records == null ? new List<SObject>() : records;
     Extras given = extras == null ? new Extras() : extras;
     refuseWhatCannotBeSaved(rows);
-    SetTimeGuard.defer();
-    Savepoint beforeSave = Database.setSavepoint();
     try {
-      NoDivisions.holdNew(rows, given.noDivisionProgram);
-      RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
-      SetTimeWho.save(rows, given.who);
-      SetTimeGuard.checkPending();
+      SetupWrite.run(SetupWrite.Kind.SAVE, new RowsAndExtras(rows, given));
     } catch (Exception e) {
-      Database.rollback(beforeSave);
       throw ScreenErrors.of(e);
-    } finally {
-      SetTimeGuard.resume();
     }
     List<Id> ids = new List<Id>();
     for (SObject record : rows) {
