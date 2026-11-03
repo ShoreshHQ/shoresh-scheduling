@@ -20,8 +20,8 @@ public class IncomingTestData {
   public ElectiveRun__c run;
 
   public IncomingTestData() {
-    season = ShoreshTestData.fullSeason(ShoreshTestData.camp('Camp Willow').Id);
-    ids = ShoreshTestData.lastSeasonIds.clone();
+    ids = new TestCamp().build();
+    season = new Season__c(Id = ids.get('Season'));
   }
 
   /** Chugim in Week 1, offering Archery and Swim. */

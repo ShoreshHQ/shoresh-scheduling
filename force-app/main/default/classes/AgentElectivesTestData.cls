@@ -20,9 +20,7 @@ public class AgentElectivesTestData {
   public static List<Id> campers;
 
   public static void camp() {
-    Camp__c camp = ShoreshTestData.camp('Camp Willow');
-    ShoreshTestData.fullSeason(camp.Id);
-    ids = ShoreshTestData.lastSeasonIds.clone();
+    ids = new TestCamp().build();
     List<Activity__c> activities = new List<Activity__c>{
       ShoreshTestData.activity(ids.get('Season'), 'Archery', null),
       ShoreshTestData.activity(ids.get('Season'), 'Drama', null)
