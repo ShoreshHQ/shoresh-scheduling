@@ -171,27 +171,31 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68: a move to the seat a camper holds says so truthfully, on screen and to the AI; a
-  // move into a full offering is refused, as the desktop refuses it.
+  /** Both campers in Drama, Archery down to one seat: the camp the two move tests share. */
+  private static void dramaAndOneArcherySeat() {
+    AgentElectivesTestData.camp();
+    ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+    request.runId = AgentElectivesTestData.runId;
+    request.revision = AgentElectivesTestData.revision();
+    request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+      JSON.serialize(AgentElectivesTestData.everyoneInDrama()),
+      List<ElectiveSeatSaves.SeatIn>.class
+    );
+    ElectiveSeatsController.assignSeats(JSON.serialize(request));
+    Database.update(
+      new Offering__c(
+        Id = AgentElectivesTestData.ids.get('Archery'),
+        Seats__c = 1
+      ),
+      AccessLevel.USER_MODE
+    );
+  }
+
+  // API-1.68: a move to the seat a camper holds says so truthfully, to the AI and on screen.
   @IsTest
-  static void aMoveSaysWhenItChangesNothingAndIsRefusedWhenFull() {
+  static void aMoveToTheSeatHeldSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
-      AgentElectivesTestData.camp();
-      ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
-      request.runId = AgentElectivesTestData.runId;
-      request.revision = AgentElectivesTestData.revision();
-      request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
-        JSON.serialize(AgentElectivesTestData.everyoneInDrama()),
-        List<ElectiveSeatSaves.SeatIn>.class
-      );
-      ElectiveSeatsController.assignSeats(JSON.serialize(request));
-      Database.update(
-        new Offering__c(
-          Id = AgentElectivesTestData.ids.get('Archery'),
-          Seats__c = 1
-        ),
-        AccessLevel.USER_MODE
-      );
+      dramaAndOneArcherySeat();
       Test.startTest();
       List<Object> already = move('Synthetic Camper 1', 'Drama');
       String screen;
@@ -207,18 +211,23 @@ private class AgentElectiveSeatsTest {
       } catch (Exception e) {
         screen = ScreenErrors.words(e);
       }
+      Test.stopTest();
+      String words = 'Synthetic Camper 1 is already in Drama then; nothing changed.';
+      Assert.areEqual(200, already[0], String.valueOf(already[1]));
+      Assert.areEqual(words, already[1]);
+      Assert.areEqual(words, screen);
+    }
+  }
+
+  // API-1.68: a move into a full offering is refused, as the desktop refuses it.
+  @IsTest
+  static void aMoveIntoAFullOfferingIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      dramaAndOneArcherySeat();
+      Test.startTest();
       List<Object> first = move('Synthetic Camper 1', 'Archery');
       List<Object> over = move('Synthetic Camper 2', 'Archery');
       Test.stopTest();
-      Assert.areEqual(200, already[0], String.valueOf(already[1]));
-      Assert.areEqual(
-        'Synthetic Camper 1 is already in Drama then; nothing changed.',
-        already[1]
-      );
-      Assert.areEqual(
-        'Synthetic Camper 1 is already in Drama then; nothing changed.',
-        screen
-      );
       Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', first[1]);
       Assert.areEqual(400, over[0], String.valueOf(over[1]));
       Assert.areEqual(
