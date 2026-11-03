@@ -65,7 +65,7 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
       asked
     );
     // "2 to 3 a week" is what was read; capitals count in names (Apex's == ignores case).
-    if (!now.value.equals(seen)) {
+    if (!SeenSaves.value(now.value, seen)) {
       throw new AgentWeeks.ConflictException(
         'Someone changed the ' +
           now.kind +

@@ -91,7 +91,7 @@ public with sharing class SpecialPlans {
     Integer current = before.isEmpty() || before[0].Revision__c == null
       ? null
       : before[0].Revision__c.intValue();
-    if (current != expectedRevision) {
+    if (!SeenSaves.revision(current, expectedRevision)) {
       CampLabels labels = CampLabels.forCamp(item.campId);
       throw new ShoreshException(
         'Someone else changed this ' +

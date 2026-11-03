@@ -250,7 +250,7 @@ public with sharing class ElectiveRunState {
           '" is final, so its seats can\'t change. Start a new version first.'
       );
     }
-    if (run.Revision__c != seenRevision) {
+    if (!SeenSaves.revision(run.Revision__c, seenRevision)) {
       throw new ShoreshException(
         'Someone else changed these seats since you opened them. Reload the page to see them.'
       );

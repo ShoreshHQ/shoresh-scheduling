@@ -47,8 +47,10 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action {
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     String asked = AgentFields.text(body, 'action').toLowerCase();
-    String seen = AgentFields.text(body, 'seen');
-    if (!ACTIONS.containsKey(asked) || String.isBlank(seen)) {
+    if (
+      !ACTIONS.containsKey(asked) ||
+      String.isBlank(AgentFields.text(body, 'seen'))
+    ) {
       throw new ShoreshException(
         'Nothing was changed. Say the action (one of ' +
           String.join(new List<String>(ACTIONS.keySet()), ', ') +
@@ -61,7 +63,11 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action {
     change.name = AgentFields.text(body, 'name');
     String target = AgentFields.text(body, 'target');
     aimed(body, found.grid, change);
-    SpecialSchedule.PlanView view = changed(found, change, seen);
+    SpecialSchedule.PlanView view = changed(
+      found,
+      change,
+      AgentSpecials.seenOf(body, 'changed')
+    );
     return 'Done: ' +
       asked.replace('_', ' ') +
       (String.isBlank(target) ? '' : ' "' + target + '"') +
@@ -104,17 +110,8 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action {
   private static SpecialSchedule.PlanView changed(
     AgentSpecials.Found found,
     SpecialScheduleFrame.Change change,
-    String seen
+    Integer revision
   ) {
-    Integer revision = null;
-    if (seen != AgentSpecials.NEVER_SAVED) {
-      if (!seen.isNumeric()) {
-        throw new ShoreshException(
-          'Nothing was changed. Send seen as read_special_schedule said it.'
-        );
-      }
-      revision = Integer.valueOf(seen);
-    }
     try {
       return SpecialScheduleController.changeFrame(
         found.owner.itemId,

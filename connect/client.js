@@ -7,7 +7,7 @@
 const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
-const { editCells } = require("./cells");
+const { editCells, lockedCells } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
@@ -140,7 +140,13 @@ async function call(
     return build(capability, input, at, () => engine(namespace));
   }
   if (capability.checksWithEngine) {
-    return weekChecks(capability, input, at, () => checks(namespace));
+    return weekChecks(
+      capability,
+      input,
+      at,
+      () => checks(namespace),
+      () => edits(namespace)
+    );
   }
   if (capability.editsWithEngine) {
     return editCells(capability, input, {
@@ -267,11 +273,12 @@ async function build(capability, input, at, engine) {
  * read_week_checks and accept_finding (API-1.30, API-1.31, API-1.44): reads what Generated
  * Schedule or Manual Build reads to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
  * modules (shipped beside this file), and answers it in the counter's words (on Generated
- * Schedule with the week as read, seen, for lock_cells and unlock_cells); to accept, finds
+ * Schedule with its locked cells and the week as read, seen, which its cell edits, lock_cells and
+ * unlock_cells hand back); to accept, finds
  * the line named among those shown and keeps it through the counter's own save
  * (POST /v1/accept_finding).
  */
-async function weekChecks(capability, input, at, checks) {
+async function weekChecks(capability, input, at, checks, edits) {
   const fields = {};
   for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
@@ -283,13 +290,17 @@ async function weekChecks(capability, input, at, checks) {
   const { measure, accepted } = counterOf(m, body);
   if (capability.name === "read_week_checks") {
     const words = m.counterWords(measure, accepted);
-    // A Generated Schedule week as read (its revision): lock_cells and unlock_cells hand it back.
+    // A Generated Schedule week as read (its revision): its edits, locks and unlocks hand it
+    // back. Its locked cells, as the screen shows each with its lock.
     const seen = body.inputs && body.inputs.revision;
+    const read = seen
+      ? { ...words, locked: lockedCells(await edits(), body), seen }
+      : words;
     return {
       ok: true,
       status: 200,
       about: capability.about,
-      text: JSON.stringify(seen ? { ...words, seen } : words, null, 2)
+      text: JSON.stringify(read, null, 2)
     };
   }
   const lines = m.checkLines(measure, accepted);

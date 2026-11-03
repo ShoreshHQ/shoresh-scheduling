@@ -307,10 +307,17 @@ private class AgentImportsMoreTest {
       Map<String, Object> asRead = file.clone();
       asRead.put('seen', seen);
       Test.startTest();
+      // API-1.104: one without seen is refused in plain words, never a platform error.
+      List<Object> unseen = post(new AgentImportSpecialSchedule(), file);
       List<Object> stale = post(new AgentImportSpecialSchedule(), wrong);
       List<Object> imported = post(new AgentImportSpecialSchedule(), asRead);
       List<Object> again = post(new AgentImportSpecialSchedule(), asRead);
       Test.stopTest();
+      Assert.areEqual(400, unseen[0], String.valueOf(unseen[1]));
+      Assert.areEqual(
+        'Nothing was imported. Send seen as read_special_schedule said it.',
+        unseen[1]
+      );
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(200, imported[0], String.valueOf(imported[1]));
       Assert.isTrue(

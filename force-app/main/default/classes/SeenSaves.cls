@@ -4,8 +4,12 @@
  * hands the ticket back, and SeenSaves holds the thing until the request ends (FOR UPDATE), compares,
  * and says what someone else changed since; the caller refuses in its screen's own words. Users:
  * setup rows (RowSaves), an activity's details (ActivityDetails, for the panel and
- * change_activity_rules) and Generated Schedule's locks (GeneratedLocks, for the screen and
- * lock_cells/unlock_cells). Compares with RowSeen's rules.
+ * change_activity_rules), Generated Schedule's locks and the AI's cell changes (GeneratedLocks,
+ * AgentSchedules.holdAsSeen), a special plan (SpecialPlans), an elective run's seats
+ * (AgentElectives), the stamps an import, Clear electives and Update to match read
+ * (AgentImports, AgentClearElectives, AgentUpdateToMatch), and the values the AI's setup verbs
+ * read (camp words, seasons, guesses, learned answers, a season copy, Fill weeks, merged places,
+ * Undo import). Compares with RowSeen's rules.
  */
 public with sharing class SeenSaves {
   /** A row's ticket: what its changed fields held when the person saw it, and who it covered. */
@@ -83,7 +87,30 @@ public with sharing class SeenSaves {
    * held (GeneratedDrafts.lockedToEdit). No ticket is never as seen.
    */
   public static Boolean week(List<ScheduleDays.DayGrid> days, String ticket) {
-    return String.isNotBlank(ticket) &&
-      GeneratedDrafts.revisionOf(days).equals(ticket);
+    return stamp(GeneratedDrafts.revisionOf(days), ticket);
+  }
+
+  /**
+   * Whether a thing, already held, still has the stamp the person read (the ticket), exactly:
+   * no ticket is never as seen.
+   */
+  public static Boolean stamp(String now, String ticket) {
+    return String.isNotBlank(ticket) && ticket.equals(now);
+  }
+
+  /**
+   * Whether one value, already held, is still what the person read, exactly (capitals and spaces
+   * count; Apex's == on text ignores case): a value read empty is still seen.
+   */
+  public static Boolean value(String now, String seen) {
+    return (now ?? '').equals(seen ?? '');
+  }
+
+  /**
+   * Whether a thing, already held, is still at the revision the person read (the ticket); null
+   * is never saved, so a ticket of null is as seen only while it still hasn't been.
+   */
+  public static Boolean revision(Decimal now, Decimal ticket) {
+    return now == ticket;
   }
 }

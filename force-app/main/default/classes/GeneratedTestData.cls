@@ -203,6 +203,25 @@ public class GeneratedTestData {
   }
 
   /** What a group's cells hold on a day of a saved schedule ('' Open, 'A:<Id>', '^A:<Id>'). */
+  /**
+   * The Generated draft of Week 1 of Main as read now: its revision, the ticket (seen) an AI's
+   * edit, lock or unlock hands back; null before the week is built.
+   */
+  public static String weekNow() {
+    List<Schedule__c> drafts = [
+      SELECT Id
+      FROM Schedule__c
+      WHERE
+        Status__c = :ManualDrafts.DRAFT
+        AND Origin__c = :GeneratedDrafts.GENERATED
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ];
+    return drafts.isEmpty()
+      ? null
+      : GeneratedDrafts.revisionOf(ScheduleDays.read(drafts[0].Id));
+  }
+
   public static List<String> slots(Id scheduleId, List<Integer> dayAndGroup) {
     return SlotIds.ofRow(
       ScheduleDays.read(scheduleId)[dayAndGroup[0]].grid,

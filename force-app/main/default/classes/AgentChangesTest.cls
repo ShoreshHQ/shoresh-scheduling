@@ -37,8 +37,14 @@ private class AgentChangesTest {
     );
   }
 
-  /** Sends body to the web address; answers [status, sentence]. */
+  /**
+   * Sends body to the web address; answers [status, sentence]. A cell change hands back the week
+   * as read now unless the test says what the agent saw (seen).
+   */
   private static List<Object> send(String address, Map<String, Object> body) {
+    if (address == 'schedule_cell' && !body.containsKey('seen')) {
+      body.put('seen', GeneratedTestData.weekNow());
+    }
     RestContext.request = new RestRequest();
     RestContext.request.requestURI = '/services/apexrest/v1/' + address;
     RestContext.request.httpMethod = 'POST';
@@ -100,6 +106,67 @@ private class AgentChangesTest {
       Assert.areEqual('Before Placed Soccer · ' + WHERE_A, marked[0].Name);
       Assert.isNotNull(marked[0].RevisionsAfter__c);
       Assert.isTrue(used < 60, 'A cell change used ' + used + ' queries');
+    }
+  }
+
+  /** The screen's Lock of Group B's Monday, as Generated Schedule sends it from the week it read. */
+  private static GeneratedWeek.Locked screenLocksGroupB(
+    Id draftId,
+    String screenRead
+  ) {
+    GeneratedWeek.LockChange lock = new GeneratedWeek.LockChange();
+    lock.action = GeneratedWeek.LOCK;
+    lock.dateValue = GeneratedTestData.MONDAY;
+    lock.groupId = GeneratedTestData.ids.get('Group B');
+    return GeneratedScheduleController.setLocks(
+      draftId,
+      new List<GeneratedWeek.LockChange>{ lock },
+      screenRead
+    );
+  }
+
+  // LOCK-4.8, API-1.13: AI over screen. The AI read the week, then the person locked Group B's
+  // Monday; the AI's change hands back the week it read, so it is refused with nothing changed,
+  // and one without seen is refused, never compared with the week read in its place.
+  @IsTest
+  static void anAiCellChangeFromAnOlderReadIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      String aiRead = GeneratedTestData.weekNow();
+      Test.startTest();
+      GeneratedWeek.Locked screen = screenLocksGroupB(draftId, aiRead);
+      Map<String, Object> asked = cell('Gym games', 'Soccer');
+      asked.put('seen', aiRead);
+      List<Object> answer = send('schedule_cell', asked);
+      asked.put('seen', null);
+      List<Object> unseen = send('schedule_cell', asked);
+      Test.stopTest();
+      Assert.isFalse(screen.conflict, 'Screen lock: ' + screen.message);
+      Assert.areEqual(409, answer[0], 'AI change: ' + answer[1]);
+      Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, answer[1]);
+      Assert.areEqual(400, unseen[0], 'No seen: never read in its place');
+      Assert.areEqual(AgentSchedules.SAY_SEEN, unseen[1]);
+      Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
+      Assert.isTrue(agentVersions().isEmpty());
+    }
+  }
+
+  // LOCK-4.8: screen over AI. The person read the week, then the AI changed a cell; the
+  // screen's Lock from its older read is a conflict, so it never builds on a week it didn't see.
+  @IsTest
+  static void aScreenChangeAfterAnAiCellChangeIsAConflict() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      String screenRead = GeneratedTestData.weekNow();
+      Test.startTest();
+      List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
+      GeneratedWeek.Locked screen = screenLocksGroupB(draftId, screenRead);
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], 'AI change: ' + answer[1]);
+      Assert.isTrue(screen.conflict, 'The screen read the week before');
+      Assert.areEqual(GeneratedTestData.a('Soccer'), periodTwo(draftId));
     }
   }
 

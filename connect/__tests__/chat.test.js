@@ -220,7 +220,7 @@ describe("Shoresh in an AI chat", () => {
         expect(text).toMatch(
           /exactly as published in Shoresh, and nothing else/
         );
-        expect(text).toMatch(/holds no findings, checks or problems/);
+        expect(text).toMatch(/holds no findings, checks, problems or locks/);
         // Shoresh's checks of a week are their own read (API-1.30).
         expect(text).toMatch(/read them with read_week_checks/);
         expect(text).toMatch(

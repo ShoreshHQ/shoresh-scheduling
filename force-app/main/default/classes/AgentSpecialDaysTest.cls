@@ -233,7 +233,8 @@ private class AgentSpecialDaysTest {
             'after' => new List<Object>{ 'S:' + event },
             'locksBefore' => new List<Object>{ '' }
           }
-        }
+        },
+        'revision' => GeneratedTestData.weekNow()
       };
       Test.startTest();
       RestContext.request = new RestRequest();
