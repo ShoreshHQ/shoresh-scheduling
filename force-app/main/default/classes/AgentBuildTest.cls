@@ -185,10 +185,7 @@ private class AgentBuildTest {
       );
       List<Object> notBuilt = send('publish_week', body);
       Assert.areEqual(400, notBuilt[0]);
-      Assert.areEqual(
-        'Week 1 hasn\'t been built for Main yet. Build it first (build_week).',
-        notBuilt[1]
-      );
+      Assert.areEqual('Week 1 hasn\'t been built for Main yet.', notBuilt[1]);
       GeneratedTestData.generated();
       List<Object> published = send('publish_week', body);
       List<Object> again = send('publish_week', body);

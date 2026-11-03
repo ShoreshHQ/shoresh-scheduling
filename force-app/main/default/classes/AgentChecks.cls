@@ -35,16 +35,16 @@ global with sharing class AgentChecks {
       );
       read.put('accepted', WeekAccepts.accepted(week.draft.Id));
       response.statusCode = 200;
-      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
+      response.responseBody = Blob.valueOf(OutgoingRows.said(read));
     } catch (Exception e) {
       Boolean ours =
         e instanceof ShoreshException || e instanceof AuraHandledException;
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          new Map<String, String>{
-            'message' => ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          }
+          OutgoingRows.answered(
+            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
+          )
         )
       );
     }
@@ -76,6 +76,6 @@ global with sharing class AgentChecks {
     return week.name +
       ' hasn\'t been built for ' +
       week.program.Name +
-      ' yet, so it has no checks. Build it first (build_week).';
+      ' yet, so it has no checks.';
   }
 }

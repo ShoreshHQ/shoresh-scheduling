@@ -73,4 +73,39 @@ async function readLearned(capability, input, { read, answer, load }) {
   };
 }
 
-module.exports = { readLearned };
+/**
+ * forget_learned_pattern (API-1.96) only for a pattern the screen offers Forget pattern on now:
+ * any other is refused naming the ones there, before Shoresh is asked (API-1.25), so nothing is
+ * previewed for a pattern that isn't there.
+ */
+async function forgetPattern(capability, input, { read, send, answer, load }) {
+  const fields = input.season !== undefined ? { season: input.season } : {};
+  const got = await read("read_learned_answers", fields);
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
+  const m = await load();
+  const setup = body.setup || {};
+  const there = m
+    .historyLines(
+      body.events || [],
+      body.answers || [],
+      m.buildTerms(setup.labels || []),
+      m.speller(setup)
+    )
+    .filter((line) => line.current && line.patternNow)
+    .map((line) => line.pattern);
+  if (!there.includes(String(input.pattern ?? "").trim())) {
+    return {
+      ok: false,
+      status: 400,
+      text: `There is no pattern ${JSON.stringify(String(input.pattern ?? "").slice(0, 120))} on What Shoresh has learned now. ${
+        there.length
+          ? `The patterns there: ${there.map((p) => JSON.stringify(p)).join(", ")}.`
+          : "There are no patterns there now."
+      }`
+    };
+  }
+  return answer(await send(capability.api, input));
+}
+
+module.exports = { readLearned, forgetPattern };

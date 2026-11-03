@@ -7,7 +7,7 @@
  */
 @IsTest
 private class AgentChecksTest {
-  private static final String NOT_BUILT = 'Week 1 hasn\'t been built for Main yet, so it has no checks. Build it first (build_week).';
+  private static final String NOT_BUILT = 'Week 1 hasn\'t been built for Main yet, so it has no checks.';
 
   private static String season() {
     return [
@@ -83,7 +83,8 @@ private class AgentChecksTest {
           'setup',
           'labels',
           'setup_changes',
-          'accepted'
+          'accepted',
+          'season'
         },
         body.keySet()
       );

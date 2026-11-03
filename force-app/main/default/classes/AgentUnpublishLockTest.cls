@@ -110,10 +110,7 @@ private class AgentUnpublishLockTest {
       List<Object> refused = post('unpublish', new Map<String, Object>());
       Test.stopTest();
       Assert.areEqual(400, refused[0]);
-      Assert.areEqual(
-        'Week 1 hasn\'t been built for Main yet. Build it first (build_week).',
-        refused[1]
-      );
+      Assert.areEqual('Week 1 hasn\'t been built for Main yet.', refused[1]);
     }
   }
 

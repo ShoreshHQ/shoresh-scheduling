@@ -41,9 +41,7 @@ global with sharing class AgentVersions {
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          new Map<String, String>{
-            'message' => ours ? e.getMessage() : ScreenErrors.words(e)
-          }
+          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
         )
       );
     }

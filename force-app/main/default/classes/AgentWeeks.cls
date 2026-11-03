@@ -45,10 +45,7 @@ public with sharing class AgentWeeks {
     Week result = placeOf(body);
     if (result.draft == null) {
       throw new ShoreshException(
-        result.name +
-          ' hasn\'t been built for ' +
-          result.program.Name +
-          ' yet. Build it first (build_week).'
+        result.name + ' hasn\'t been built for ' + result.program.Name + ' yet.'
       );
     }
     result.draft = GeneratedDrafts.lockedToEdit(result.draft.Id);

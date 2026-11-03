@@ -161,6 +161,60 @@ private class AgentReadTest {
     Assert.isNull(AgentSeasons.answer().get('opens_on'));
   }
 
+  // API-1.108: a refusal made before the season is looked up still says the season asked for.
+  @IsTest
+  static void aRefusalBeforeTheSeasonIsFoundStillSaysIt() {
+    new IncomingTestData();
+    RestRequest request = new RestRequest();
+    request.requestURI = '/services/apexrest/v1/update_to_match_setup';
+    request.httpMethod = 'POST';
+    request.requestBody = Blob.valueOf(
+      JSON.serialize(
+        new Map<String, Object>{
+          'season' => 'Summer 2026',
+          'week' => 'Week 1',
+          'changes' => new List<Object>()
+        }
+      )
+    );
+    RestContext.request = request;
+    RestContext.response = new RestResponse();
+    AgentUpdateToMatch.post();
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
+    Assert.areNotEqual(200, RestContext.response.statusCode);
+    Assert.areEqual(
+      'Summer 2026',
+      answer.get('season'),
+      String.valueOf(answer)
+    );
+  }
+
+  // API-1.108: a read's refusal says the season it used too (here a season with no electives).
+  @IsTest
+  static void aReadsRefusalSaysTheSeasonItUsed() {
+    new IncomingTestData();
+    RestRequest request = new RestRequest();
+    request.requestURI = '/services/apexrest/v1/elective_seats_now';
+    request.httpMethod = 'GET';
+    request.params.putAll(
+      new Map<String, String>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
+    );
+    RestContext.request = request;
+    RestContext.response = new RestResponse();
+    AgentElectiveSeatsNow.get();
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
+    Assert.areEqual(
+      400,
+      RestContext.response.statusCode,
+      String.valueOf(answer)
+    );
+    Assert.areEqual('Summer 2026', answer.get('season'));
+  }
+
   // API-1.25: a season or week name that isn't there comes back with the names that are.
   @IsTest
   static void anUnknownNameComesBackWithTheNamesThatExist() {

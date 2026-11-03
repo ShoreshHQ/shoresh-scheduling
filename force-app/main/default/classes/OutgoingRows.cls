@@ -24,10 +24,20 @@ public with sharing class OutgoingRows {
     Map<String, String> result = new Map<String, String>{
       'message' => message
     };
-    if (used != null) {
-      result.put('season', used.Name);
+    Season__c season = used ?? SeasonAsked.found();
+    if (season != null) {
+      result.put('season', season.Name);
     }
     return result;
+  }
+
+  /** A read's body, saying which season it used when it doesn't already (API-1.108). */
+  public static String said(Map<String, Object> body) {
+    Season__c season = used ?? SeasonAsked.found();
+    if (season != null && !body.containsKey('season')) {
+      body.put('season', season.Name);
+    }
+    return JSON.serialize(body, true);
   }
 
   private static Season__c seasonNamed(String name) {

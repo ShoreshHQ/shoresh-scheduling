@@ -613,7 +613,7 @@ function everyCommand(tmp) {
       special: "Color war",
       seen: said(special, "seen") ?? "none",
       file_name: "e2e.csv",
-      csv_text: "Time,Bunk 1\nPeriod 1,Swim\n"
+      csv_text: "Time,Bunk 1\n9:00 AM,Swim\n10:00 AM,Art\n"
     },
     "any"
   );
