@@ -652,7 +652,7 @@ private class ElectiveSeatsTest {
 
   // ELECT-4.5
   @IsTest
-  static void aMoveByHandIntoAFullOfferingIsRefusedAndThePadlockUnlocks() {
+  static void aMoveByHandFillsAnOfferingAndThePadlockUnlocks() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
@@ -661,17 +661,6 @@ private class ElectiveSeatsTest {
       for (Integer i = 0; i < 2; i++) {
         view = camp.move(view.revision, i, 'Archery');
       }
-      String refused;
-      try {
-        camp.move(view.revision, 2, 'Archery');
-      } catch (Exception e) {
-        refused = ScreenErrors.words(e);
-      }
-      // As the desktop refuses it (setElectiveAssignment.js OCCURRENCE_FULL).
-      Assert.areEqual(
-        'Archery is full then (2 of 2 seats); nothing changed.',
-        refused
-      );
       Assert.areEqual(
         2,
         [
@@ -681,7 +670,7 @@ private class ElectiveSeatsTest {
             ElectiveRun__c = :camp.runId
             AND Offering__c = :camp.ids.get('o:Archery')
         ],
-        'Full: the third camper stays where they were'
+        'Two by hand, up to its seats (a third is refused: AgentElectiveSeatsTest)'
       );
 
       view = camp.lock(view.revision, 1, false);

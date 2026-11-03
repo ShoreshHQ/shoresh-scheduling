@@ -227,7 +227,25 @@ private class AgentElectiveSeatsTest {
       Test.startTest();
       List<Object> first = move('Synthetic Camper 1', 'Archery');
       List<Object> over = move('Synthetic Camper 2', 'Archery');
+      String screen;
+      try {
+        ElectiveSeatChange.ChangeRequest full = new ElectiveSeatChange.ChangeRequest();
+        full.runId = AgentElectivesTestData.runId;
+        full.revision = AgentElectivesTestData.revision();
+        full.camperId = AgentElectivesTestData.campers[1];
+        full.day = AgentElectivesTestData.MONDAY;
+        full.blockId = AgentElectivesTestData.ids.get('Period 1');
+        full.offeringId = AgentElectivesTestData.ids.get('Archery');
+        ElectiveSeatsController.changeSeat(JSON.serialize(full));
+      } catch (Exception e) {
+        screen = ScreenErrors.words(e);
+      }
       Test.stopTest();
+      Assert.areEqual(
+        'Archery is full then (1 of 1 seats); nothing changed.',
+        screen,
+        'the screen refuses it the same way'
+      );
       Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', first[1]);
       Assert.areEqual(400, over[0], String.valueOf(over[1]));
       Assert.areEqual(
