@@ -1,5 +1,5 @@
 import { countedCells } from "./engine.shoreshEngine.checks.mjs";
-import { CARRIES_ON, slots } from "./engine.shoreshEngine.grid.mjs";
+import { CARRIES_ON, slots, startsActivity } from "./engine.shoreshEngine.grid.mjs";
 import { readGrid } from "./engine.shoreshEngine.weekFixed.mjs";
 import { check } from "./engine.shoreshEngine.weekOptions.mjs";
 import { PREFERENCES, RULE } from "./engine.shoreshEngine.weekRules.mjs";
@@ -67,7 +67,7 @@ export function importedFilled(ctx, days, imported) {
     return slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
   };
   return countedCells(ctx, days).filter((c) =>
-    slotOf(c.day, c.groupId, c.b).startsWith("A:")
+    startsActivity(slotOf(c.day, c.groupId, c.b))
   ).length;
 }
 

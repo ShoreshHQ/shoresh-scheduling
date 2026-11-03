@@ -12,6 +12,7 @@
  * block) marks a cell the tool must leave as it is (someone else changed it since the director
  * looked, ADR 0008 §24); both indexes on the day the tool changes.
  */
+import { startsActivity } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { OPEN, owner, placementIn, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 import { Rows } from "./engine.shoreshWeekEditor.moves.mjs";
 import { markOf, planRain, switchedOf } from "./engine.shoreshWeekEditor.rain.mjs";
@@ -46,6 +47,7 @@ function gone(day, slot) {
   return !!(item && item.gone);
 }
 
+// Not grid.js isSetTime: a carry-on cell is not set time here (canPlace refuses "^F:…").
 const isSetTime = (slot) => slot.startsWith("F:") || slot.startsWith("R:");
 
 /**
@@ -54,7 +56,7 @@ const isSetTime = (slot) => slot.startsWith("F:") || slot.startsWith("R:");
  * something noted from a file by name.
  */
 const PLACED_EVENT = /^[SE]:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
-const isPlaceable = (slot) => slot.startsWith("A:") || PLACED_EVENT.test(slot);
+const isPlaceable = (slot) => startsActivity(slot) || PLACED_EVENT.test(slot);
 
 /**
  * A group's day sorted: the placements Undo could put back (`clear`), the ones that stay and why

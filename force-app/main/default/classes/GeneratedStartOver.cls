@@ -26,7 +26,7 @@ public with sharing class GeneratedStartOver {
   private static void checkCleared(ScheduleGrid now) {
     for (Integer g = 0; g < now.groups.size(); g++) {
       for (String slot : SlotIds.ofRow(now, g)) {
-        if (SlotIds.owner(slot).startsWith('A:')) {
+        if (SlotIds.owner(slot).startsWith(SlotIds.ACTIVITY)) {
           throw GeneratedFrames.unreadable();
         }
       }
