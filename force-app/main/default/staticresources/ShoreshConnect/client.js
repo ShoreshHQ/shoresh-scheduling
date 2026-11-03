@@ -118,7 +118,25 @@ async function call(name, input, options = {}) {
       return out;
     }
   });
-  return season && done && !done.season ? { ...done, season } : done;
+  const said = season && done && !done.season ? { ...done, season } : done;
+  // Shoresh asked first and did nothing yet (API-1.106): never mistaken for done (API-1.115).
+  return said?.ok && String(said.text).startsWith(NOT_YET)
+    ? { ...said, asksFirst: true }
+    : said;
+}
+
+// How Shoresh's ask-first answer opens (AgentAskFirst.NOT_YET; cli.test.js keeps the two the same).
+const NOT_YET = "Nothing has been done yet.";
+
+/**
+ * A season named and found: Shoresh refuses one it doesn't have (API-1.25), so a done answer that
+ * doesn't name its season (one the connector made itself: checks, versions, files, CSV) used the
+ * one named (API-1.108, API-1.110).
+ */
+function withSeasonNamed(answer, input) {
+  return answer?.ok && !answer.season && typeof input?.season === "string"
+    ? { ...answer, season: input.season }
+    : answer;
 }
 
 /** The season an answer says it used, if it says one. */
@@ -825,6 +843,8 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   TOO_BIG,
+  withSeasonNamed,
+  NOT_YET,
   PERSON_DECIDES,
   toAgent,
   importModules,

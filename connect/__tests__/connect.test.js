@@ -2161,7 +2161,10 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const name of names) {
       const words = name.startsWith("bring_in_")
         ? [name, "--file", "x.json"]
-        : [name, "--season", "S", "--week", "W"];
+        : [name, "--season", "S", "--week", "W"].slice(
+            0,
+            byName(name).inputSchema.properties.week ? 5 : 1
+          );
       expect(parse(words, () => '{"records":[]}').name).toBe(name);
     }
     expect(
