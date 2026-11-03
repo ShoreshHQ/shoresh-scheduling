@@ -20,35 +20,30 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
     AgentWeeks.answer(new AgentClearElectives());
   }
 
+  // What the preview found and held: the request's Clear clears that, without reading it again.
+  private Season__c season;
+  private Id weekId;
+  private String seen;
+
   /** What Clear takes away, for good, as the screen's picture says it (API-1.106). */
   public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.requireScheduler();
-    Season__c season = OutgoingRows.seasonCalled(
-      AgentFields.text(body, 'season')
-    );
-    String weekName = AgentFields.text(body, 'week');
-    Id weekId = weekIdOf(season, weekName);
-    holdAsSeen(season, AgentFields.text(body, 'seen'));
+    ElectiveClear.Picture now = heldAsSeen();
     return 'This clears ' +
       (weekId == null
         ? 'every week\'s electives in "' + season.Name + '"'
-        : 'the electives of ' + weekName + ' in "' + season.Name + '"') +
+        : 'the electives of ' +
+          AgentFields.text(AgentFields.body(FIELDS), 'week') +
+          ' in "' +
+          season.Name +
+          '"') +
       ', for good: the runs with their choices and seats go, and every camper no remaining run uses. It can\'t be undone. As it is now:\n' +
-      AgentElectivesToClear.said(
-        ElectiveSeatsController.clearPicture(season.Id)
-      );
+      AgentElectivesToClear.said(now);
   }
 
   public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentWeeks.requireScheduler();
-    Season__c season = OutgoingRows.seasonCalled(
-      AgentFields.text(body, 'season')
-    );
-    Id weekId = weekIdOf(season, AgentFields.text(body, 'week'));
-    String seen = AgentFields.text(body, 'seen');
-    holdAsSeen(season, seen);
+    if (season == null) {
+      heldAsSeen();
+    }
     ElectiveClear.Result result;
     try {
       // The screen's own Clear.
@@ -74,6 +69,16 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
       (result.campers == 1 ? ' camper.' : ' campers.');
   }
 
+  /** The season and week asked for, held while still as seen; the picture now. */
+  private ElectiveClear.Picture heldAsSeen() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    AgentWeeks.requireScheduler();
+    season = OutgoingRows.seasonCalled(AgentFields.text(body, 'season'));
+    weekId = weekIdOf(season, AgentFields.text(body, 'week'));
+    seen = AgentFields.text(body, 'seen');
+    return holdAsSeen(season, seen);
+  }
+
   /** The week asked for; none (null) for the whole season. */
   private static Id weekIdOf(Season__c season, String weekName) {
     return String.isBlank(weekName)
@@ -85,7 +90,10 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
    * The season's runs held as the screen's Clear holds them, then refused (409) unless the
    * picture is still the one the agent read (its stamp).
    */
-  private static void holdAsSeen(Season__c season, String seen) {
+  private static ElectiveClear.Picture holdAsSeen(
+    Season__c season,
+    String seen
+  ) {
     if (String.isBlank(seen)) {
       throw new ShoreshException(
         'Send the seen read_electives_to_clear gave, so nothing is cleared unseen.'
@@ -110,5 +118,6 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
         'Something changed since this was drawn, so nothing was cleared. Look again with read_electives_to_clear, then clear.'
       );
     }
+    return now;
   }
 }

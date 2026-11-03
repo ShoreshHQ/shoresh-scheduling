@@ -21,40 +21,35 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
     AgentWeeks.answer(new AgentUndoImport());
   }
 
+  // What the preview found, held: the request's change undoes that, without reading it again.
+  private Season__c season;
+  private Id last;
+
   /** Which import it undoes, and what undoing does, as Roots' Undo last import says (API-1.106). */
   public String preview() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    Season__c season = AgentChangeCampWords.seasonOf(
-      AgentFields.text(body, 'season')
-    );
-    Import__c last = [
+    season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
+    ImportUndo.lockSeason(season.Id);
+    last = asRead(season, AgentFields.text(body, 'from'), seenOf(body));
+    Import__c made = [
       SELECT Files__c, CreatedDate
       FROM Import__c
-      WHERE Id = :asRead(season, AgentFields.text(body, 'from'), seenOf(body))
+      WHERE Id = :last
       WITH USER_MODE
     ];
     return 'This undoes the last import into "' +
       season.Name +
       '": ' +
-      (String.isBlank(last.Files__c) ? 'a file' : last.Files__c) +
+      (String.isBlank(made.Files__c) ? 'a file' : made.Files__c) +
       ', ' +
-      last.CreatedDate.format('d MMM yyyy h:mm a') +
+      made.CreatedDate.format('d MMM yyyy h:mm a') +
       '. What it added is removed and what it changed goes back to how it was; anything edited since, or still used by something else, stays.';
   }
 
   public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
-    Season__c season = AgentChangeCampWords.seasonOf(
-      AgentFields.text(body, 'season')
-    );
-    String seen = seenOf(body);
-    String source = AgentFields.text(body, 'from');
-    // An import saving, or another Undo, in this season waits here; read again after.
-    ImportUndo.lockSeason(season.Id);
-    Id last = asRead(season, source, seen);
     ImportUndo.Result result;
     try {
-      result = ImportController.undoImport(last);
+      result = ImportController.undoImport(last ?? lastAsRead());
     } catch (Exception e) {
       throw new ShoreshException(
         'That import could not be undone. Nothing was changed. ' +
@@ -62,6 +57,17 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
       );
     }
     return JSON.serialize(result, true);
+  }
+
+  /** The import to undo, found and held as the preview finds it. */
+  private Id lastAsRead() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
+    String seen = seenOf(body);
+    String source = AgentFields.text(body, 'from');
+    // An import saving, or another Undo, in this season waits here; read again after.
+    ImportUndo.lockSeason(season.Id);
+    return asRead(season, source, seen);
   }
 
   private static String seenOf(Map<String, Object> body) {

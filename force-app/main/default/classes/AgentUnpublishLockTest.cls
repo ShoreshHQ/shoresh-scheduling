@@ -209,7 +209,7 @@ private class AgentUnpublishLockTest {
         none[1]
       );
       Assert.areEqual(
-        'One cell is a day, a group and a time: say all three (day, group, time).',
+        'Nothing was changed: say which group (group) to lock, or "all" for every group.',
         timeOnly[1]
       );
       Assert.areEqual(
