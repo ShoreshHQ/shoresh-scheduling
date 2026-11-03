@@ -16,14 +16,14 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
     'seen'
   };
 
+  // What the preview found, held: the request's change undoes that, without reading it again.
+  private Season__c season;
+  private Id last;
+
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentUndoImport());
   }
-
-  // What the preview found, held: the request's change undoes that, without reading it again.
-  private Season__c season;
-  private Id last;
 
   /** Which import it undoes, and what undoing does, as Roots' Undo last import says (API-1.106). */
   public String preview() {

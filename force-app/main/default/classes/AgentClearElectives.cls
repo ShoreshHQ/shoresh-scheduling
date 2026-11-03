@@ -15,15 +15,15 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
     'seen'
   };
 
-  @HttpPost
-  global static void post() {
-    AgentWeeks.answer(new AgentClearElectives());
-  }
-
   // What the preview found and held: the request's Clear clears that, without reading it again.
   private Season__c season;
   private Id weekId;
   private String seen;
+
+  @HttpPost
+  global static void post() {
+    AgentWeeks.answer(new AgentClearElectives());
+  }
 
   /** What Clear takes away, for good, as the screen's picture says it (API-1.106). */
   public String preview() {
