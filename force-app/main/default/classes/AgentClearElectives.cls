@@ -8,7 +8,7 @@
  * otherwise refused (409), nothing cleared.
  */
 @RestResource(urlMapping='/v1/clear_electives')
-global with sharing class AgentClearElectives implements AgentWeeks.Action {
+global with sharing class AgentClearElectives implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -18,6 +18,26 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentClearElectives());
+  }
+
+  /** What Clear takes away, for good, as the screen's picture says it (API-1.106). */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    AgentWeeks.requireScheduler();
+    Season__c season = OutgoingRows.seasonCalled(
+      AgentFields.text(body, 'season')
+    );
+    String weekName = AgentFields.text(body, 'week');
+    Id weekId = weekIdOf(season, weekName);
+    holdAsSeen(season, AgentFields.text(body, 'seen'));
+    return 'This clears ' +
+      (weekId == null
+        ? 'every week\'s electives in "' + season.Name + '"'
+        : 'the electives of ' + weekName + ' in "' + season.Name + '"') +
+      ', for good: the runs with their choices and seats go, and every camper no remaining run uses. It can\'t be undone. As it is now:\n' +
+      AgentElectivesToClear.said(
+        ElectiveSeatsController.clearPicture(season.Id)
+      );
   }
 
   public String run() {

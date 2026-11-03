@@ -47,7 +47,7 @@ private class AgentVersionsTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
+    AgentAskFirstTestCalls.answer(
       new Map<String, AgentWeeks.Action>{
           'save' => new AgentSaveVersion(),
           'restore' => new AgentRestoreVersion(),

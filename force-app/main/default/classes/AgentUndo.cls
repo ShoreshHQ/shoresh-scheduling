@@ -7,7 +7,7 @@
  * never taken back unseen.
  */
 @RestResource(urlMapping='/v1/undo_last_agent_change')
-global with sharing class AgentUndo implements AgentWeeks.Action {
+global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -20,28 +20,27 @@ global with sharing class AgentUndo implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentUndo());
   }
 
+  /** Which change it takes back (API-1.106): the last one, whatever it was. */
+  public String preview() {
+    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
+    Schedule__c version = lastKept(week);
+    AgentAskFirst.stateIs(version.Id + ' ' + version.RevisionsAfter__c);
+    return 'This undoes "' +
+      version.Name.removeStart('Before ') +
+      '" in ' +
+      week.name +
+      ' (' +
+      week.program.Name +
+      ', ' +
+      (week.manual ? 'Manual Build' : 'Generated Schedule') +
+      '): the week goes back to how it was before that change. It is the last change made through an agent there, whatever it was.';
+  }
+
   public String run() {
     AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
     Id draftId = week.draft.Id;
     Id me = UserInfo.getUserId();
-    List<Schedule__c> kept = [
-      SELECT Id, Name, RevisionsAfter__c
-      FROM Schedule__c
-      WHERE
-        SourceSchedule__c = :draftId
-        AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
-        AND RevisionsAfter__c != NULL
-        AND CreatedById = :me
-      WITH USER_MODE
-      ORDER BY CreatedDate DESC, Id DESC
-      LIMIT 1
-    ];
-    if (kept.isEmpty()) {
-      throw new ShoreshException(
-        'There is no change made through an agent to undo in ' + week.name + '.'
-      );
-    }
-    Schedule__c version = kept[0];
+    Schedule__c version = lastKept(week);
     String what = version.Name.removeStart('Before ');
     // Undone only while the week is exactly as that change left it.
     List<ScheduleDays.DayGrid> now = ScheduleDays.read(draftId);
@@ -81,5 +80,29 @@ global with sharing class AgentUndo implements AgentWeeks.Action {
     }
     Database.update(spent, AccessLevel.USER_MODE);
     return 'Undid "' + what + '".';
+  }
+
+  /** The version this person's last change through an agent kept first; refused when none. */
+  private static Schedule__c lastKept(AgentWeeks.Week week) {
+    Id draftId = week.draft.Id;
+    Id me = UserInfo.getUserId();
+    List<Schedule__c> kept = [
+      SELECT Id, Name, RevisionsAfter__c
+      FROM Schedule__c
+      WHERE
+        SourceSchedule__c = :draftId
+        AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+        AND RevisionsAfter__c != NULL
+        AND CreatedById = :me
+      WITH USER_MODE
+      ORDER BY CreatedDate DESC, Id DESC
+      LIMIT 1
+    ];
+    if (kept.isEmpty()) {
+      throw new ShoreshException(
+        'There is no change made through an agent to undo in ' + week.name + '.'
+      );
+    }
+    return kept[0];
   }
 }

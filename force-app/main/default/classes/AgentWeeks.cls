@@ -230,7 +230,7 @@ public with sharing class AgentWeeks {
     String message;
     try {
       AgentAccess.require();
-      message = action.run();
+      message = AgentAskFirst.run(action);
       status = 200;
     } catch (ConflictException e) {
       Database.rollback(before);
@@ -243,9 +243,14 @@ public with sharing class AgentWeeks {
       message = ours ? e.getMessage() : ScreenErrors.words(e);
     }
     response.statusCode = status;
-    response.responseBody = Blob.valueOf(
-      JSON.serialize(new Map<String, String>{ 'message' => message })
-    );
+    Map<String, String> answered = new Map<String, String>{
+      'message' => message
+    };
+    // Which season it used, named or not (API-1.108).
+    if (OutgoingRows.used != null) {
+      answered.put('season', OutgoingRows.used.Name);
+    }
+    response.responseBody = Blob.valueOf(JSON.serialize(answered));
   }
 
   /** One action through an agent: its answer when done. */

@@ -9,9 +9,17 @@ public with sharing class OutgoingRows {
    * names that are, so no one has to guess (API-1.25).
    */
   public static Season__c seasonCalled(String name) {
-    if (String.isBlank(name)) {
-      return seasonToOpen();
-    }
+    used = String.isBlank(name) ? seasonToOpen() : seasonNamed(name);
+    return used;
+  }
+
+  /**
+   * The season this request found (null before one is found), so its answer can say which
+   * season it used (API-1.108).
+   */
+  public static Season__c used { get; private set; }
+
+  private static Season__c seasonNamed(String name) {
     String given = name.normalizeSpace();
     List<Season__c> found = [
       SELECT Id, Name
@@ -71,15 +79,34 @@ public with sharing class OutgoingRows {
     if (
       !its.isEmpty() &&
       (its.size() == 1 ||
-      its[0].StartDate__c != its[1].StartDate__c)
+      its[0].StartDate__c != its[1].StartDate__c) &&
+      notEnded(its) <= 1
     ) {
       return its[0];
     }
     throw new ShoreshException(
       seen.isEmpty()
         ? 'This user can\'t see any season in Shoresh.'
-        : 'Say which season (season). ' + seasonsSaid()
+        : 'Say which season (season)' +
+          (notEnded(its) > 1
+            ? ': more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. '
+            : '. ') +
+          seasonsSaid()
     );
+  }
+
+  /**
+   * How many of the camp's seasons haven't ended (API-1.108): with two, a season copied for next
+   * summer would otherwise become where every request that names none goes, unseen.
+   */
+  private static Integer notEnded(List<Season__c> seasons) {
+    Integer count = 0;
+    for (Season__c season : seasons) {
+      if (season.EndDate__c == null || season.EndDate__c >= Date.today()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   /** The camp the screens open on: the first by name the user can see. */

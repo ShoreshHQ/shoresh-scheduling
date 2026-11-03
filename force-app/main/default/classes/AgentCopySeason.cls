@@ -9,7 +9,7 @@
  * INGEST-5.10).
  */
 @RestResource(urlMapping='/v1/copy_season')
-global with sharing class AgentCopySeason implements AgentWeeks.Action {
+global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'name',
@@ -24,12 +24,60 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentCopySeason());
   }
 
+  /** The copy, as the Copy season page shows it before Copy (API-1.106). */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    Season__c season = AgentChangeCampWords.seasonOf(
+      AgentFields.text(body, 'season')
+    );
+    String name = AgentFields.text(body, 'name').normalizeSpace();
+    Map<String, String> now = asSeen(season, name, body);
+    return 'This makes a new season "' +
+      name +
+      '" from "' +
+      season.Name +
+      '", ' +
+      now.get(WHOLE) +
+      '. "' +
+      season.Name +
+      '" itself is unchanged. The new season is not where the screens or later requests go unless the person names it.';
+  }
+
   public String run() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
     String name = AgentFields.text(body, 'name').normalizeSpace();
+    Date start = dateOf(AgentFields.text(body, 'start_date'));
+    Map<String, String> now = asSeen(season, name, body);
+    try {
+      // The Copy season page's own Copy.
+      SeasonSetupController.copySeason(season.Id, name, start);
+    } catch (Exception e) {
+      throw new ShoreshException(
+        '"' + season.Name + '" not copied. ' + ScreenErrors.words(e)
+      );
+    }
+    return 'Copied "' +
+      season.Name +
+      '" to "' +
+      name +
+      '", ' +
+      now.get(WHOLE) +
+      '. "' +
+      season.Name +
+      '" itself is unchanged. The copy is "' +
+      name +
+      '"\'s last import: undo_import takes it all away again.';
+  }
+
+  /** The copy's dates now, with the season locked, refused unless they are the ones seen. */
+  private static Map<String, String> asSeen(
+    Season__c season,
+    String name,
+    Map<String, Object> body
+  ) {
     Date start = dateOf(AgentFields.text(body, 'start_date'));
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
     if (seen.isEmpty()) {
@@ -52,25 +100,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action {
           '" since, so nothing was copied. Read the copy again with read_season_copy.'
       );
     }
-    try {
-      // The Copy season page's own Copy.
-      SeasonSetupController.copySeason(season.Id, name, start);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        '"' + season.Name + '" not copied. ' + ScreenErrors.words(e)
-      );
-    }
-    return 'Copied "' +
-      season.Name +
-      '" to "' +
-      name +
-      '", ' +
-      now.get(WHOLE) +
-      '. "' +
-      season.Name +
-      '" itself is unchanged. The copy is "' +
-      name +
-      '"\'s last import: undo_import takes it all away again.';
+    return now;
   }
 
   /** The copy's dates: the whole season's, then each week's, by name, as start to end. */

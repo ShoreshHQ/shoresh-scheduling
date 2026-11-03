@@ -129,6 +129,38 @@ private class AgentReadTest {
     Assert.isNull(AgentSeasons.answer().get('opens_on'));
   }
 
+  // API-1.108: a season copied for next summer doesn't become where unnamed requests go. With two
+  // seasons not ended yet, a request naming none is refused with the seasons; every answer says
+  // which season it used.
+  @IsTest
+  static void twoSeasonsNotEndedYetAreAskedAboutAndTheSeasonUsedIsSaid() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    Map<String, Object> named = get(
+      new OutgoingGroupSchedule(),
+      new Map<String, String>{ 'week' => 'Week 1' }
+    );
+    camp.season.StartDate__c = Date.today().addDays(-3);
+    camp.season.EndDate__c = Date.today().addDays(30);
+    Database.update(camp.season, AccessLevel.SYSTEM_MODE);
+    Season__c copy = ShoreshTestData.season(camp.season.Camp__c, 'Summer 2027');
+    copy.StartDate__c = Date.today().addDays(365);
+    copy.EndDate__c = Date.today().addDays(400);
+    Database.update(copy, AccessLevel.SYSTEM_MODE);
+    Map<String, Object> unnamed = get(
+      new OutgoingGroupSchedule(),
+      new Map<String, String>{ 'week' => 'Week 1' }
+    );
+    Assert.areEqual(200, named.get('status'), String.valueOf(named));
+    Assert.areEqual('Summer 2026', named.get('season'));
+    Assert.areEqual(400, unnamed.get('status'), String.valueOf(unnamed));
+    Assert.areEqual(
+      'Say which season (season): more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. Seasons this user can see: Summer 2027, Summer 2026.',
+      unnamed.get('message')
+    );
+    Assert.isNull(AgentSeasons.answer().get('opens_on'));
+  }
+
   // API-1.25: a season or week name that isn't there comes back with the names that are.
   @IsTest
   static void anUnknownNameComesBackWithTheNamesThatExist() {

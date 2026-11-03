@@ -158,7 +158,7 @@ public class AgentElectivesTestData {
     if (method == 'GET') {
       get(address);
     } else {
-      AgentWeeks.answer(POSTS.get(address));
+      AgentAskFirstTestCalls.answer(POSTS.get(address));
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()

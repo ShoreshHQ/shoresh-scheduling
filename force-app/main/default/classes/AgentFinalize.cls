@@ -7,7 +7,7 @@
  * first.", a double-booked place) are the screen's own, after "Not finalized."
  */
 @RestResource(urlMapping='/v1/finalize_electives')
-global with sharing class AgentFinalize implements AgentWeeks.Action {
+global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -17,6 +17,31 @@ global with sharing class AgentFinalize implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentFinalize());
+  }
+
+  /** What finalizing does (API-1.106). */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    AgentWeeks.requireScheduler();
+    Season__c season = OutgoingRows.seasonCalled(
+      AgentFields.text(body, 'season')
+    );
+    Week__c week = AgentWeeks.weekIn(season, AgentFields.text(body, 'week'));
+    ElectiveSet__c electiveSet = setOf(
+      season,
+      AgentFields.text(body, 'elective_set')
+    );
+    Id runId = committedRun(season, electiveSet, week);
+    AgentAskFirst.stateIs(
+      String.valueOf(ElectiveSeatsController.openRun(runId).revision)
+    );
+    return 'This finalizes ' +
+      electiveSet.Name +
+      ' in ' +
+      week.Name +
+      ' (' +
+      season.Name +
+      '), as the Elective seats screen\'s Finalize does: the seats being worked on now become the final ones.';
   }
 
   public String run() {

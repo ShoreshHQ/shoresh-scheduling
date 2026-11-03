@@ -9,7 +9,7 @@
  * said in the answer.
  */
 @RestResource(urlMapping='/v1/delete_setup_record')
-global with sharing class AgentDeleteSetup implements AgentWeeks.Action {
+global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -25,6 +25,11 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentDeleteSetup());
+  }
+
+  /** Camp Setup's own question before its Delete (API-1.106). */
+  public String preview() {
+    return question(AgentSetupRecords.find(AgentFields.body(FIELDS)));
   }
 
   public String run() {

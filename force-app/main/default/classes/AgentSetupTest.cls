@@ -24,7 +24,7 @@ private class AgentSetupTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
+    AgentAskFirstTestCalls.answer(
       action == 'rename'
         ? (AgentWeeks.Action) new AgentRenameSetup()
         : new AgentDeleteSetup()
@@ -207,6 +207,106 @@ private class AgentSetupTest {
     }
   }
 
+  /** One POST to delete_setup_record exactly as given, no yes added: [status, message]. */
+  private static List<Object> deleteOnce(Map<String, Object> fields) {
+    Map<String, Object> body = new Map<String, Object>{
+      'season' => [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :GeneratedTestData.ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Name
+    };
+    body.putAll(fields);
+    RestContext.request = new RestRequest();
+    RestContext.request.requestURI = '/services/apexrest/v1/delete_setup_record';
+    RestContext.request.httpMethod = 'POST';
+    RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+    RestContext.response = new RestResponse();
+    AgentWeeks.answer(new AgentDeleteSetup());
+    return new List<Object>{
+      RestContext.response.statusCode,
+      ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message')
+    };
+  }
+
+  private static Integer groupsCalled(String name) {
+    return [SELECT COUNT() FROM Group__c WHERE Name = :name WITH SYSTEM_MODE];
+  }
+
+  // API-1.106: ask first is Shoresh's, not the description's. Without confirm nothing is deleted
+  // and the answer is Camp Setup's question with a confirm; another target's confirm is refused
+  // with nothing deleted; the confirm the question gave (fields in any order) deletes.
+  @IsTest
+  static void aDeleteIsDoneOnlyWithTheConfirmItsQuestionGave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> asked = deleteOnce(
+        new Map<String, Object>{ 'kind' => 'group', 'name' => 'Group B' }
+      );
+      Integer afterAsking = groupsCalled('Group B');
+      String forB = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      deleteOnce(
+        new Map<String, Object>{ 'kind' => 'group', 'name' => 'Group C' }
+      );
+      String forC = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      List<Object> wrong = deleteOnce(
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'Group B',
+          'confirm' => forC
+        }
+      );
+      Integer afterWrong = groupsCalled('Group B');
+      List<Object> yes = deleteOnce(
+        new Map<String, Object>{
+          'confirm' => forB,
+          'name' => 'Group B',
+          'kind' => 'group'
+        }
+      );
+      Object seasonSaid = ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('season');
+      Test.stopTest();
+      // API-1.108: the answer says which season it used.
+      Assert.areEqual(
+        [
+          SELECT Name
+          FROM Season__c
+          WHERE Id = :GeneratedTestData.ids.get('Season')
+          WITH SYSTEM_MODE
+        ]
+        .Name,
+        seasonSaid
+      );
+      Assert.areEqual(200, asked[0], String.valueOf(asked[1]));
+      Assert.isTrue(
+        String.valueOf(asked[1]).startsWith(AgentAskFirst.NOT_YET),
+        String.valueOf(asked[1])
+      );
+      Assert.isNotNull(forB, String.valueOf(asked[1]));
+      Assert.areEqual(1, afterAsking, 'Asking deletes nothing');
+      Assert.areNotEqual(forB, forC, 'Each target has its own confirm');
+      Assert.areEqual(409, wrong[0], String.valueOf(wrong[1]));
+      Assert.areEqual(
+        1,
+        afterWrong,
+        'Another target\'s confirm deletes nothing'
+      );
+      Assert.areEqual(200, yes[0], String.valueOf(yes[1]));
+      Assert.areEqual('Deleted "Group B".', yes[1]);
+      Assert.areEqual(0, groupsCalled('Group B'));
+      Assert.areEqual(1, groupsCalled('Group C'));
+    }
+  }
+
   /** The AI's question before a delete (GET /v1/delete_setup_record): [status, message]. */
   private static List<Object> askBeforeDelete(String kind, String name) {
     RestContext.request = new RestRequest();
@@ -224,7 +324,7 @@ private class AgentSetupTest {
     RestContext.request.params.put('kind', kind);
     RestContext.request.params.put('name', name);
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(new AgentDeleteSetup());
+    AgentAskFirstTestCalls.answer(new AgentDeleteSetup());
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

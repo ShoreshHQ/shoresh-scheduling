@@ -144,7 +144,7 @@ private class AgentUnpublishLockTest {
       );
       List<Object> day = post(
         'lock',
-        new Map<String, Object>{ 'day' => 'Monday' }
+        new Map<String, Object>{ 'day' => 'Monday', 'group' => 'all' }
       );
       Boolean dayLocked = locked(
         draftId,
@@ -158,7 +158,7 @@ private class AgentUnpublishLockTest {
       );
       List<Object> nothing = post(
         'lock',
-        new Map<String, Object>{ 'day' => 'Monday' }
+        new Map<String, Object>{ 'day' => 'Monday', 'group' => 'ALL' }
       );
       List<Object> groupDay = post(
         'unlock',
@@ -200,12 +200,12 @@ private class AgentUnpublishLockTest {
       );
       List<Object> noGroup = post(
         'unlock',
-        new Map<String, Object>{ 'group' => 'Group Z' }
+        new Map<String, Object>{ 'group' => 'Group Z', 'day' => 'all' }
       );
       Test.stopTest();
       Assert.areEqual(400, none[0]);
       Assert.areEqual(
-        'Say what to lock: a day (day), a group (group), a group\'s day (group and day), or one cell (day, group and time).',
+        'Nothing was changed: say which group (group) to lock, or "all" for every group.',
         none[1]
       );
       Assert.areEqual(
@@ -215,6 +215,44 @@ private class AgentUnpublishLockTest {
       Assert.areEqual(
         'There is no group called "Group Z" in this schedule. The groups: Group A, Group B, Group C.',
         noGroup[1]
+      );
+    }
+  }
+
+  // API-1.107: "Lock Bunk 2's Tuesday" sent without its group is refused naming what is missing,
+  // never read as every group's Tuesday; every group and every day only when said ("all").
+  @IsTest
+  static void aLockScopeLeftOutIsRefusedNeverWidened() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      List<Object> noGroup = post(
+        'lock',
+        new Map<String, Object>{ 'day' => 'Monday' }
+      );
+      List<Object> noDay = post(
+        'unlock',
+        new Map<String, Object>{ 'group' => 'Group A' }
+      );
+      List<Object> wholeWeek = post(
+        'lock',
+        new Map<String, Object>{ 'day' => 'all', 'group' => 'all' }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, noGroup[0]);
+      Assert.areEqual(
+        'Nothing was changed: say which group (group) to lock, or "all" for every group.',
+        noGroup[1]
+      );
+      Assert.areEqual(
+        'Nothing was changed: say which day (day) to unlock, or "all" for every day.',
+        noDay[1]
+      );
+      Assert.areEqual(400, wholeWeek[0]);
+      Assert.isFalse(
+        locked(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2),
+        'Nothing was locked'
       );
     }
   }

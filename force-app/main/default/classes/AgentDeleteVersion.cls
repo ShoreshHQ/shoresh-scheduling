@@ -6,7 +6,7 @@
  * imported week as it came in, and a week not built yet has no delete, as on the panel.
  */
 @RestResource(urlMapping='/v1/delete_version')
-global with sharing class AgentDeleteVersion implements AgentWeeks.Action {
+global with sharing class AgentDeleteVersion implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -19,6 +19,24 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentDeleteVersion());
+  }
+
+  /** What the delete takes away (API-1.106). */
+  public String preview() {
+    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
+    ScheduleViews.VersionRow version = AgentVersions.named(
+      week,
+      AgentFields.body(FIELDS)
+    );
+    return 'This deletes the saved version "' +
+      version.name +
+      '" of ' +
+      week.name +
+      ' (' +
+      week.program.Name +
+      ', ' +
+      (week.manual ? 'Manual Build' : 'Generated Schedule') +
+      ') for good.';
   }
 
   public String run() {

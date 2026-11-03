@@ -20,7 +20,7 @@
 const SEASON = {
   type: "string",
   description:
-    "The season's name, exactly as list_seasons gives it. Leave it out when the person didn't name one: Shoresh then uses the season its screens open on."
+    "The season's name, exactly as list_seasons gives it. Leave it out when the person didn't name one: Shoresh then uses the season its screens open on, or, when more than one season hasn't ended yet, asks which. Every answer says which season it used: tell the person."
 };
 
 const WEEK = {
@@ -110,9 +110,14 @@ const LOCK_FIELDS = {
   ...EITHER_WEEK,
   day: {
     type: "string",
-    description: "The day, like Monday, or its date like 2026-06-29."
+    description:
+      'The day, like Monday, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
   },
-  group: { type: "string", description: "The group's name, like Bunk 3." },
+  group: {
+    type: "string",
+    description:
+      'The group\'s name, like Bunk 3. Always say it: "all" for every group (a whole day). Left out, nothing is changed.'
+  },
   time: {
     type: "string",
     description:
@@ -506,7 +511,7 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule or Manual Build: put an activity there, or Open to clear it.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
@@ -745,7 +750,7 @@ const CAPABILITIES = [
   act(
     "delete_version",
     "delete_version",
-    "Delete one of a week's versions for good, as the Versions panel's delete does, without asking first; there is no undo. One that was ever the published schedule, or the imported week, is kept and refused. It is done as you, with your own access.",
+    "Delete one of a week's versions for good, as the Versions panel's delete does; there is no undo. One that was ever the published schedule, or the imported week, is kept and refused. It is done as you, with your own access.",
     { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
   ),
@@ -764,21 +769,21 @@ const CAPABILITIES = [
   act(
     "lock_cells",
     "lock_cells",
-    "Lock cells of a week's Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a whole day (day), a whole group (group) or a group's day (group and day), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.",
+    'Lock cells of a week\'s Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
     LOCK_FIELDS,
-    ["seen"]
+    ["day", "group", "seen"]
   ),
   act(
     "unlock_cells",
     "unlock_cells",
-    "Unlock cells of a week's Generated Schedule, as its Lock menu's Unlock does, without asking first: one cell (day, group and time), a whole day (day), a whole group (group) or a group's day (group and day). Nothing a lock kept changes until the week is built again. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.",
+    'Unlock cells of a week\'s Generated Schedule, as its Lock menu\'s Unlock does, without asking first: one cell (day, group and time), a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"). Nothing a lock kept changes until the week is built again. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
     LOCK_FIELDS,
-    ["seen"]
+    ["day", "group", "seen"]
   ),
   act(
     "finalize_electives",
     "finalize_electives",
-    "Finalize a week's elective seats, as the Elective seats screen's Finalize does, without asking first. Seats must already be assigned on that screen. It is done as you, with your own access. If it can't be finalized, Shoresh says why in one sentence: pass that on to the person.",
+    "Finalize a week's elective seats, as the Elective seats screen's Finalize does. Seats must already be assigned on that screen. It is done as you, with your own access. If it can't be finalized, Shoresh says why in one sentence: pass that on to the person.",
     {
       season: SEASON,
       week: WEEK_FIELDS.week,
@@ -960,7 +965,7 @@ const CAPABILITIES = [
     ...setup(
       "read_setup_record",
       "read_setup_record",
-      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
+      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_rules). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
     ),
     method: "GET",
     about:
@@ -994,7 +999,7 @@ const CAPABILITIES = [
     api: "read_activity_rules",
     method: "GET",
     description:
-      "Read an activity's details as its details panel on Camp Setup shows them: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Read it right before changing them, and send those values back unchanged as seen.",
+      "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_setup_record (kind activity) and change them with change_setup_record. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
     queryFields: ["season", "name"],
@@ -1287,7 +1292,7 @@ const CAPABILITIES = [
     api: "read_season_copy",
     method: "GET",
     description:
-      "Read what Camp Setup's Copy season page shows before a copy: for a new first day (start_date), the new season's first and last day, each week's dates in the copy, and whether the weeks land on other weekdays. Read it right before copy_season and send the dates it said as seen.",
+      "Read what Camp Setup's Copy season page shows before a copy, changing nothing: use it to answer \"what would the copy look like\" questions. For a new first day (start_date), the new season's first and last day, each week's dates in the copy, and whether the weeks land on other weekdays. Read it right before copy_season and send the dates it said as seen.",
     about:
       "The copy's dates now, as Camp Setup's Copy season page shows them. They hold no findings or problems.",
     queryFields: ["season", "start_date"],
@@ -1310,7 +1315,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Copy a season to a new one, as Camp Setup's Copy season page does: its setup comes along with dates moved to the new first day; its schedules, versions, special days and events, elective seats and campers' choices stay behind. The season copied is not changed. Read it first with read_season_copy and send the dates it said as seen. It is done as you, with your own access. If someone changed the season's weeks or dates since, nothing is copied and Shoresh says so.",
+      "Copy a season to a new one, as Camp Setup's Copy season page does, only when the person asked to make the copy (to see what a copy would look like, use read_season_copy): its setup comes along with dates moved to the new first day; its schedules, versions, special days and events, elective seats and campers' choices stay behind. The season copied is not changed. Read it first with read_season_copy and send the dates it said as seen. It is done as you, with your own access. If someone changed the season's weeks or dates since, nothing is copied and Shoresh says so.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2006,6 +2011,36 @@ const CAPABILITIES = [
     }
   }
 ];
+
+/**
+ * Ask first, enforced by Shoresh (API-1.106): these take something away for good (or, for
+ * change_special_schedule_frame, its remove and clear actions do), and Shoresh does them only with
+ * the confirm their own first answer gives. connect/__tests__/undo.test.js ties this list to the
+ * Apex classes that ask first, both ways.
+ */
+const ASKS_FIRST = [
+  "delete_setup_record",
+  "delete_version",
+  "finalize_electives",
+  "undo_last_agent_change",
+  "merge_locations",
+  "undo_import",
+  "forget_learned_answer",
+  "forget_learned_pattern",
+  "clear_electives",
+  "copy_season",
+  "change_special_schedule_frame"
+];
+for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
+  c.asksFirst = true;
+  c.description +=
+    " Shoresh asks first: sent without confirm, nothing is done and the answer says in plain words what it would do, with a confirm. Show the person exactly that and wait for their yes; only then send the same request again with that confirm. Never confirm on your own, and if the answer comes back different, show the person the new one.";
+  c.inputSchema.properties.confirm = {
+    type: "string",
+    description:
+      "Only after the person said yes to what the first answer said: the confirm it gave. Leave it out the first time."
+  };
+}
 
 // What comes back is camp data (names people typed), never instructions to follow.
 for (const c of CAPABILITIES) {

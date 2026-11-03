@@ -9,7 +9,7 @@
  * to the one kept, and the others are deleted.
  */
 @RestResource(urlMapping='/v1/merge_locations')
-global with sharing class AgentMergeLocations implements AgentWeeks.Action {
+global with sharing class AgentMergeLocations implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'name',
@@ -23,12 +23,66 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentMergeLocations());
   }
 
+  /** What a merge would do, worked out as the merge works it out. */
+  private class Plan {
+    Season__c season;
+    AgentSameLocations.Place keep;
+    Decimal fits;
+    List<Id> others = new List<Id>();
+    List<String> gone = new List<String>();
+    Integer moved = 0;
+  }
+
+  /** The question's own words for the merge (API-1.106). */
+  public String preview() {
+    Plan plan = plan();
+    return 'This merges into "' +
+      plan.keep.row.Name +
+      '" (groups_that_fit ' +
+      plan.fits.intValue() +
+      '): ' +
+      String.join(plan.gone, ', ') +
+      ' will be deleted, and everything there' +
+      movedSaid(plan) +
+      ' moves to it. It can\'t be undone here.';
+  }
+
   public String run() {
+    Plan plan = plan();
+    try {
+      // The question's own Merge.
+      SetupTablesController.mergeLocations(
+        plan.keep.row.Id,
+        plan.others,
+        plan.fits
+      );
+    } catch (Exception e) {
+      throw new ShoreshException(
+        'Nothing was merged into "' +
+          plan.keep.row.Name +
+          '". ' +
+          ScreenErrors.words(e)
+      );
+    }
+    return 'Merged into "' +
+      plan.keep.row.Name +
+      '" (groups_that_fit ' +
+      plan.fits.intValue() +
+      '): ' +
+      String.join(plan.gone, ', ') +
+      ' deleted, and everything there' +
+      movedSaid(plan) +
+      ' moved to it.';
+  }
+
+  /** The places locked and compared with what was seen, and what the merge would do. */
+  private static Plan plan() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    Season__c season = AgentChangeCampWords.seasonOf(
+    Plan result = new Plan();
+    result.season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
-    String places = CampLabels.forCamp(season.Camp__c)
+    String places = CampLabels.forCamp(result.season.Camp__c)
       .pluralInSentence('Location');
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
     if (seen.isEmpty()) {
@@ -37,52 +91,37 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action {
       );
     }
     // Locked: no one's save can come between the compare and the merge.
-    AgentSameLocations.lock(season.Id);
+    AgentSameLocations.lock(result.season.Id);
     List<AgentSameLocations.Place> now = AgentSameLocations.matching(
-      season.Id,
+      result.season.Id,
       AgentFields.text(body, 'name')
     );
     refuseChanged(now, seen, places);
-    AgentSameLocations.Place keep = kept(now, body.get('keep'));
-    Decimal fits = fitsAsked(body.get('groups_that_fit'), now);
-    List<Id> others = new List<Id>();
-    List<String> gone = new List<String>();
-    Integer moved = 0;
+    result.keep = kept(now, body.get('keep'));
+    result.fits = fitsAsked(body.get('groups_that_fit'), now);
     for (AgentSameLocations.Place place : now) {
-      if (place !== keep) {
-        others.add(place.row.Id);
-        gone.add('"' + place.row.Name + '"');
-        moved += place.activities;
+      if (place !== result.keep) {
+        result.others.add(place.row.Id);
+        result.gone.add('"' + place.row.Name + '"');
+        result.moved += place.activities;
       }
     }
-    try {
-      // The question's own Merge.
-      SetupTablesController.mergeLocations(keep.row.Id, others, fits);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        'Nothing was merged into "' +
-          keep.row.Name +
-          '". ' +
-          ScreenErrors.words(e)
-      );
+    return result;
+  }
+
+  /** " (3 activities)" in the camp's words, or "" when nothing is there. */
+  private static String movedSaid(Plan plan) {
+    if (plan.moved == 0) {
+      return '';
     }
-    return 'Merged into "' +
-      keep.row.Name +
-      '" (groups_that_fit ' +
-      fits.intValue() +
-      '): ' +
-      String.join(gone, ', ') +
-      ' deleted, and everything there' +
-      (moved == 0
-        ? ''
-        : ' (' +
-          moved +
-          ' ' +
-          (moved == 1
-            ? CampLabels.forCamp(season.Camp__c).singularInSentence('Activity')
-            : CampLabels.forCamp(season.Camp__c).pluralInSentence('Activity')) +
-          ')') +
-      ' moved to it.';
+    CampLabels labels = CampLabels.forCamp(plan.season.Camp__c);
+    return ' (' +
+      plan.moved +
+      ' ' +
+      (plan.moved == 1
+        ? labels.singularInSentence('Activity')
+        : labels.pluralInSentence('Activity')) +
+      ')';
   }
 
   /**

@@ -636,7 +636,11 @@ describe("Shoresh for AI tools and the command line", () => {
         { day: "Monday", group: "Bunk 3", time: "Period 2", seen: "1,1" },
         "Locked Bunk 3 · Monday · Period 2."
       ],
-      ["unlock_cells", { day: "Monday", seen: "1,1" }, "Unlocked Monday."]
+      [
+        "unlock_cells",
+        { day: "Monday", group: "all", seen: "1,1" },
+        "Unlocked Monday."
+      ]
     ];
     for (const [name, more, message] of cases) {
       const seen = [];
@@ -666,6 +670,35 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(conflict.text).toBe(
       "Someone else published or unpublished this week since, so nothing was unpublished."
     );
+  });
+
+  // API-1.108: every answer says which season Shoresh used, named or not, and the MCP answer
+  // says it to the person.
+  it("theSeasonUsedIsSaid: an answer naming its season carries it, and the tool result says it", async () => {
+    const done = await call(
+      "unpublish_week",
+      { week: "Week 1" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message: "Unpublished Week 1.",
+            season: "Summer 2027"
+          })
+        )
+      }
+    );
+    expect(done).toEqual({
+      ok: true,
+      status: 200,
+      text: "Unpublished Week 1.",
+      season: "Summer 2027"
+    });
+    const { toolResult } = require("../mcp");
+    expect(toolResult(done).content.map((c) => c.text)).toEqual([
+      "Unpublished Week 1.",
+      "Season used: Summer 2027."
+    ]);
   });
 
   // API-1.38, API-1.39, API-1.40

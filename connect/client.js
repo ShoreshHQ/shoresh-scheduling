@@ -105,7 +105,33 @@ function readResponse(stdout) {
  * A read's answer also has about (what the answer is and is not, API-1.27), and a schedule
  * read's has weekView: what Shoresh's own view of the week draws (API-1.26), when it could be read.
  */
-async function call(
+async function call(name, input, options = {}) {
+  // Which season Shoresh used (API-1.108): the last one any of the call's requests said.
+  let season;
+  const run = options.run ?? runSf;
+  const done = await callOnce(name, input, {
+    ...options,
+    run: async (...args) => {
+      const out = await run(...args);
+      const said = seasonIn(readResponse(out)?.body);
+      if (said) season = said;
+      return out;
+    }
+  });
+  return season && done && !done.season ? { ...done, season } : done;
+}
+
+/** The season an answer says it used, if it says one. */
+function seasonIn(body) {
+  try {
+    const parsed = JSON.parse(body);
+    return typeof parsed?.season === "string" ? parsed.season : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function callOnce(
   name,
   input,
   {
@@ -705,7 +731,9 @@ function answerText(text) {
     if (
       parsed &&
       !Array.isArray(parsed) &&
-      Object.keys(parsed).join() === "message"
+      Object.keys(parsed)
+        .filter((key) => key !== "season")
+        .join() === "message"
     ) {
       return parsed.message;
     }
