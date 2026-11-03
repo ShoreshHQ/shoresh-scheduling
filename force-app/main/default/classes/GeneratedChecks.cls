@@ -160,7 +160,7 @@ public with sharing class GeneratedChecks {
       return;
     }
     // Something not set up yet is never newly placed.
-    if (!SlotIds.startsActivity(SlotIds.owner(slot))) {
+    if (!SlotIds.owner(slot).startsWith(SlotIds.ACTIVITY)) {
       throw GeneratedFrames.unreadable();
     }
     closures.check(at[0], rules.seasonActivity(slot));

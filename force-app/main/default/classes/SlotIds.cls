@@ -6,6 +6,8 @@
  */
 public with sharing class SlotIds {
   public static final String OPEN = '';
+  /** What an activity's identity starts with (grid.js KIND.ACTIVITY). */
+  public static final String ACTIVITY = 'A:';
 
   /** The identity of each slot in a group's row. */
   public static List<String> ofRow(ScheduleGrid grid, Integer g) {
@@ -50,14 +52,9 @@ public with sharing class SlotIds {
     return item.startsWith('F:') || item.startsWith('R:');
   }
 
-  /** Whether an activity starts in the slot (not one carrying on into it). */
-  public static Boolean startsActivity(String slot) {
-    return slot.startsWith('A:');
-  }
-
   /** The activity a slot's identity starts, or null. */
   public static Id activityIn(String slot) {
-    if (slot == null || !startsActivity(slot)) {
+    if (slot == null || !slot.startsWith(ACTIVITY)) {
       return null;
     }
     try {
