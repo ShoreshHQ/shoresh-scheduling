@@ -45,12 +45,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
   public String run() {
     body = AgentFields.body(FIELDS);
     week = AgentSchedules.eitherOf(body);
-    String seen = AgentSchedules.holdAsSeen(
-      week,
-      body,
-      'seen',
-      AgentSchedules.SAY_SEEN
-    );
+    String seen = AgentSchedules.holdAsSeen(week, body, 'seen');
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     find(days, week.name);
     checkCanChange();

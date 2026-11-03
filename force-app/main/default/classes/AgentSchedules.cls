@@ -5,6 +5,9 @@
  * actions share on it (API-1.42, API-1.43). Runs in user mode, as AgentWeeks.
  */
 public with sharing class AgentSchedules {
+  /** Asked for when an edit of a Generated Schedule week comes without the week as it was read. */
+  public static final String SAY_SEEN = 'Say what the week was when you read it (seen), as read_week_checks gives it, so a change someone made since isn\'t undone.';
+
   /** The field naming which screen's schedule of the week. */
   public static final String SCHEDULE = 'schedule';
   private static final String BOTH =
@@ -145,9 +148,6 @@ public with sharing class AgentSchedules {
     return GeneratedEngineNotes.saveHandEdits(request);
   }
 
-  /** Asked for when an edit of a Generated Schedule week comes without the week as it was read. */
-  public static final String SAY_SEEN = 'Say what the week was when you read it (seen), as read_week_checks gives it, so a change someone made since isn\'t undone.';
-
   /**
    * Holds a Generated Schedule week until the request ends and refuses an edit (409, nothing
    * changed) unless the week is still as it was read: its ticket (seen, in field), never the week
@@ -157,15 +157,14 @@ public with sharing class AgentSchedules {
   public static String holdAsSeen(
     AgentWeeks.Week week,
     Map<String, Object> body,
-    String field,
-    String missing
+    String field
   ) {
     String seen = AgentFields.text(body, field);
     if (week.manual) {
       return seen;
     }
     if (String.isBlank(seen)) {
-      throw new ShoreshException(missing);
+      throw new ShoreshException(SAY_SEEN);
     }
     GeneratedDrafts.lockedToEdit(week.draft.Id);
     if (!SeenSaves.week(ScheduleDays.read(week.draft.Id), seen)) {
