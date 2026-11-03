@@ -60,8 +60,12 @@ describe("actions and their Apex", () => {
     }
   );
 
-  const undone = CAPABILITIES.filter((capability) =>
-    PROMISES_UNDO.test(capability.description)
+  // undo_last_agent_change's own description names these: a cell change and a build.
+  const NAMED_BY_UNDO = ["change_schedule_cell", "build_week"];
+  const undone = CAPABILITIES.filter(
+    (capability) =>
+      PROMISES_UNDO.test(capability.description) ||
+      NAMED_BY_UNDO.includes(capability.name)
   );
 
   it("finds the actions that promise an Undo", () => {
