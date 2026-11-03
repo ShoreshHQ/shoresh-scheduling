@@ -36,12 +36,7 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     SlotEdits.Edit edit = editOf(body, change);
-    String seen = AgentSchedules.holdAsSeen(
-      week,
-      body,
-      'revision',
-      AgentSchedules.SAY_SEEN
-    );
+    String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     if (!sameMarks(days, edit.rain[0].day, (List<Object>) body.get('seen'))) {
       throw changedSince(change);
