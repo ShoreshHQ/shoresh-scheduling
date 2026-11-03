@@ -165,7 +165,7 @@ const rows = [];
 const ctx = {};
 
 /** Runs one command, holds its answer to the rules, and keeps it for later steps. */
-function step(action, input = {}, expect = "done") {
+function step(action, input = {}, expect = "done", more = []) {
   const args = [action];
   const schema = require(path.join(SHIPPED, "capabilities.js")).byName(action)
     .inputSchema.properties;
@@ -190,6 +190,8 @@ function step(action, input = {}, expect = "done") {
     expect,
     input.as_csv === true
   );
+  const text = said.code === 0 || said.code === 3 ? said.out : said.err;
+  for (const [id, holds, why] of more) checks.push([id, holds(text), why]);
   rows.push({
     what: `cli ${action}`,
     kind: KIND[said.code] ?? `exit ${said.code}`,
@@ -207,6 +209,362 @@ function said(text, name) {
   return m ? JSON.parse(m[1]) : undefined;
 }
 const confirmIn = (text) => /confirm: "([^"]+)"/.exec(text)?.[1];
+/** A seen an answer gave in words: seen: "x" or seen: x. */
+const seenIn = (text) => /seen: "?([^"\s]+?)"?(?:[\s.,;]|$)/.exec(text)?.[1];
+
+/** How many of a query's rows the org has now (read as the signed-in person). */
+function count(soql) {
+  const out = spawnSync(
+    "sf",
+    ["data", "query", "--query", soql, "--target-org", ORG, "--json"],
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }
+  );
+  return JSON.parse(out.stdout || "{}").result?.totalSize ?? -1;
+}
+
+/** A read-back in the org, held to a rule like an answer is. */
+function landed(what, id, soql, wanted) {
+  const n = count(soql);
+  rows.push({
+    what: `org ${what}`,
+    kind: `${n} rows`,
+    checks: [[id, n === wanted, `wanted ${wanted}, found ${n}`]],
+    said: soql
+  });
+}
+
+const IN_SEASON = `Season__r.Name = '${SEASON}'`;
+const has = (words) => (text) => text.includes(words);
+const ticketed = (action, input, done) => {
+  const preview = step(action, input, "asks first");
+  return step(action, { ...input, confirm: confirmIn(preview) }, "done", [
+    ["API-1.106", has(done), `done with its preview's confirm: "${done}"`]
+  ]);
+};
+
+// ---------- electives, all the way (the seed's Chugim in Week 2) ----------
+
+function electives(tmp) {
+  const at = { week: "Week 2", elective_set: "Chugim" };
+  const src = { season: SEASON, source_system: "E2E made-up system" };
+  const campers = [
+    ["E2E-1", "Avery Madeup", "Bunk 1"],
+    ["E2E-2", "Blake Madeup", "Bunk 1"],
+    ["E2E-3", "Casey Madeup", "Bunk 2"]
+  ];
+  const file = (name, records) => {
+    const f = path.join(tmp, `${name}.json`);
+    fs.writeFileSync(f, JSON.stringify({ records }));
+    return f;
+  };
+  const saved = (n) => [["API-6.3", has(`"saved": ${n}`), `${n} saved`]];
+  step(
+    "bring_in_campers",
+    {
+      file: file(
+        "e-campers",
+        campers.map(([id, name], i) => ({
+          ...src,
+          camper_id: id,
+          camper_name: name,
+          camper_number: String(i + 1)
+        }))
+      )
+    },
+    "done",
+    [["API-6.3", has('"problems": 0'), "no problems"]]
+  );
+  landed(
+    "campers in",
+    "API-2.3",
+    `SELECT Id FROM Camper__c WHERE ${IN_SEASON}`,
+    3
+  );
+  step(
+    "bring_in_camper_elective_choices",
+    {
+      file: file(
+        "e-choices",
+        campers.map(([id, name]) => ({
+          ...src,
+          camper_id: id,
+          camper_name: name,
+          elective: "Chugim",
+          week: "Week 2",
+          first_choice: "Swim",
+          second_choice: "Art"
+        }))
+      )
+    },
+    "done",
+    saved(3)
+  );
+  step(
+    "bring_in_camper_groups",
+    {
+      file: file(
+        "e-groups",
+        campers.map(([id, name, bunk]) => ({
+          ...src,
+          camper_id: id,
+          camper_name: name,
+          bunk,
+          week: "Week 2"
+        }))
+      )
+    },
+    "done",
+    saved(3)
+  );
+  landed(
+    "choices in",
+    "API-6.4",
+    `SELECT Id FROM Preference__c WHERE ElectiveRun__r.${IN_SEASON} AND Group__c != null`,
+    3
+  );
+  step("read_elective_offerings", { week: "Week 2" }, "done", [
+    [
+      "API-1.6",
+      (t) => t.includes('"Swim"') && t.includes('"Art"'),
+      "both offerings"
+    ]
+  ]);
+  const now = () =>
+    seenIn(
+      step("read_elective_seats_now", at, "done", [
+        ["API-1.66", has("Chugim in Week 2"), "the run read"]
+      ])
+    );
+  step("assign_elective_seats", { ...at, seen: now() }, "done", [
+    ["API-1.67", has("3 of 3 placed"), "every camper seated"]
+  ]);
+  landed(
+    "seats",
+    "API-1.67",
+    `SELECT Id FROM Assignment__c WHERE ElectiveRun__r.${IN_SEASON}`,
+    3
+  );
+  step(
+    "lock_elective_seat",
+    {
+      ...at,
+      camper: "Avery Madeup",
+      day: "Monday",
+      time: "Period 1",
+      locked: true,
+      seen: now()
+    },
+    "done",
+    [["API-1.69", has("Locked Avery Madeup"), "locked"]]
+  );
+  step(
+    "lock_elective_seat",
+    {
+      ...at,
+      camper: "Avery Madeup",
+      day: "Monday",
+      time: "Period 1",
+      locked: false,
+      seen: now()
+    },
+    "done",
+    [["API-1.69", has("Unlocked Avery Madeup"), "unlocked"]]
+  );
+  step(
+    "move_elective_seat",
+    {
+      ...at,
+      camper: "Casey Madeup",
+      day: "Monday",
+      time: "Period 1",
+      elective: "Art",
+      seen: now()
+    },
+    "any"
+  );
+  ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
+  step("read_elective_seats", { week: "Week 2" }, "done", [
+    ["API-6.2", has('"camper_id": "E2E-3"'), "finalized seats go out"]
+  ]);
+  for (const f of [
+    "rosters",
+    "print_rosters",
+    "camper_schedules",
+    "full_report",
+    "campers"
+  ]) {
+    step("download_elective_files", { ...at, file: f }, "done", [
+      ["API-1.88", has("Saved Chugim Week 2"), `${f} made`]
+    ]);
+  }
+  const clear = step("read_electives_to_clear", {}, "done", [
+    ["API-1.71", has("3 campers in all"), "what the Clear would take"]
+  ]);
+  ticketed(
+    "clear_electives",
+    { week: "Week 2", seen: seenIn(clear) },
+    "Cleared: 1 run, 3 campers"
+  );
+  landed(
+    "campers cleared",
+    "API-1.72",
+    `SELECT Id FROM Camper__c WHERE ${IN_SEASON}`,
+    0
+  );
+}
+
+// ---------- imports that save, read back, undone ----------
+
+function importsSave(tmp) {
+  const lastSeen = (from) => {
+    const text = step("read_last_imports", {}, "done");
+    const re = from
+      ? new RegExp(`Last from ${from}:[^;]*?seen: "([^"]+)"`)
+      : /Last import:[^;]*?seen: "([^"]+)"/;
+    return re.exec(text)?.[1];
+  };
+  const undo = (from, what) =>
+    ticketed(
+      "undo_import",
+      { seen: lastSeen(from), ...(from ? { from } : {}) },
+      what
+    );
+  const activity = (name, wanted, id) =>
+    landed(
+      `activity ${name}`,
+      id,
+      `SELECT Id FROM Activity__c WHERE ${IN_SEASON} AND Name = '${name}'`,
+      wanted
+    );
+
+  // A list (Camp Setup's Import a list): review, save, read back, undo, gone.
+  const list = {
+    list: "activities",
+    file_name: "e2e-list.csv",
+    csv_text: "Activity,Location\nArchery,Field\n"
+  };
+  const review = step("import_list", list, "done", [
+    ["API-1.80", has("Ready to save: Add 1"), "reviewed"]
+  ]);
+  step("import_list", { ...list, save: true, seen: seenIn(review) }, "done", [
+    ["API-1.80", has("Added 1 activity"), "saved"]
+  ]);
+  activity("Archery", 1, "API-1.80");
+  undo(null, "Import undone");
+  activity("Archery", 0, "API-1.83");
+
+  // The camp worksheet.
+  const sheet = {
+    file_name: "e2e-sheet.csv",
+    csv_text: "Activity,Location\nClimbing,Field\n"
+  };
+  const sheetReview = step("import_worksheet", sheet, "done", [
+    ["API-1.81", has("Add 1"), "reviewed"]
+  ]);
+  step(
+    "import_worksheet",
+    { ...sheet, save: true, seen: seenIn(sheetReview) },
+    "done",
+    [["API-1.81", has("Added"), "saved"]]
+  );
+  activity("Climbing", 1, "API-1.81");
+  undo(null, "Import undone");
+  activity("Climbing", 0, "API-1.83");
+
+  // Import last year: a by-group file for each bunk.
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const files = ["Bunk 1", "Bunk 2"].map((g) => ({
+    file_name: `Camp - ${g}.csv`,
+    csv_text: [
+      ["Time", ...days],
+      ["Period 1 9:00-9:50", ...days.map(() => "Swim")],
+      ["Period 2 10:00-10:50", ...days.map(() => "Rowing")],
+      ["Lunch 11:00-11:50", ...days.map(() => "Lunch")]
+    ]
+      .map((r) => r.join(","))
+      .join("\n")
+  }));
+  const answers = {
+    "week|the file's week": "Week 1",
+    "kind|Rowing": "activity"
+  };
+  const lastYear = step("import_last_year", { files, answers }, "done", [
+    ["API-1.84", has("Ready to save"), "reviewed"]
+  ]);
+  step(
+    "import_last_year",
+    { files, answers, save: true, seen: seenIn(lastYear) },
+    "done",
+    [["API-1.84", (t) => !/Nothing (is|was) saved/.test(t), "saved"]]
+  );
+  activity("Rowing", 1, "API-1.84");
+  undo(null, "Import undone");
+  activity("Rowing", 0, "API-1.83");
+
+  // A special day's schedule from a file.
+  step("add_setup_record", { kind: "special day", name: "Lake day" }, "done");
+  const plan = step("read_special_schedule", { special: "Lake day" }, "done");
+  step(
+    "import_special_schedule",
+    {
+      special: "Lake day",
+      seen: seenIn(plan),
+      file_name: "e2e-lake.csv",
+      csv_text: "Time,Bunk 1,Bunk 2\n9:00 AM,Swim,Art\n10:00 AM,Art,Swim\n"
+    },
+    "done",
+    [["API-1.85", (t) => !/Nothing was imported/.test(t), "imported"]]
+  );
+  step("read_special_schedule", { special: "Lake day" }, "done", [
+    ["API-1.85", (t) => /Bunk 1 Swim/.test(t), "the file's cells are there"]
+  ]);
+
+  // An outside system's batches: each saved, read back; its last one undone.
+  const src = { season: SEASON, source_system: "E2E made-up system" };
+  const file = (name, records) => {
+    const f = path.join(tmp, `${name}.json`);
+    fs.writeFileSync(f, JSON.stringify({ records }));
+    return f;
+  };
+  const saved = [["API-6.3", has('"saved": 1'), "1 saved"]];
+  step(
+    "bring_in_divisions",
+    {
+      file: file("i-div", [{ ...src, division_name: "Teens", program: "Main" }])
+    },
+    "done",
+    saved
+  );
+  landed(
+    "division Teens",
+    "API-2.3",
+    `SELECT Id FROM Division__c WHERE Program__r.${IN_SEASON} AND Name = 'Teens'`,
+    1
+  );
+  step(
+    "bring_in_groups",
+    {
+      file: file("i-grp", [{ ...src, group_name: "Bunk 5", division: "Teens" }])
+    },
+    "done",
+    saved
+  );
+  landed(
+    "group Bunk 5",
+    "API-2.3",
+    `SELECT Id FROM Group__c WHERE Division__r.Program__r.${IN_SEASON} AND Name = 'Bunk 5'`,
+    1
+  );
+  step(
+    "bring_in_activities",
+    { file: file("i-act", [{ ...src, activity_name: "Kayak" }]) },
+    "done",
+    saved
+  );
+  activity("Kayak", 1, "API-2.3");
+  undo("E2E made-up system", "Import undone");
+  activity("Kayak", 0, "API-2.6");
+}
 
 // ---------- every command, once ----------
 
@@ -847,6 +1205,8 @@ async function run() {
     apex("e2e-pinecrest-seed.apex");
     everyCommand(tmp);
     await codeMode();
+    electives(tmp);
+    importsSave(tmp);
   } finally {
     try {
       apex("e2e-pinecrest-cleanup.apex");
