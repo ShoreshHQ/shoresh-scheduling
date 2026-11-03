@@ -29,7 +29,12 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
 
   /** Camp Setup's own question before its Delete (API-1.106). */
   public String preview() {
-    return question(AgentSetupRecords.find(AgentFields.body(FIELDS)));
+    AgentSetupRecords.Found found = AgentSetupRecords.find(
+      AgentFields.body(FIELDS)
+    );
+    // The very record shown: one made since under the same name is another delete.
+    AgentAskFirst.stateIs(found.id);
+    return question(found);
   }
 
   public String run() {

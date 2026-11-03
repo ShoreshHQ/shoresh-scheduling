@@ -16,6 +16,7 @@ global with sharing class AgentForgetLearned implements AgentWeeks.Action, Agent
   public String preview() {
     Map<String, Object> body = AgentFields.body(FIELDS);
     ImportAnswer__c row = AgentLearned.locked(AgentLearned.campOf(body), body);
+    AgentAskFirst.stateIs(row.Id);
     return 'This forgets the remembered answer "' +
       row.Answer__c +
       '": the next import asks that question again.';

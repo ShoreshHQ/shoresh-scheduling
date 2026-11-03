@@ -307,6 +307,45 @@ private class AgentSetupTest {
     }
   }
 
+  // API-1.106: a confirm is for the very record shown. Renamed away and another given its name,
+  // the old confirm deletes nothing.
+  @IsTest
+  static void aDeleteConfirmIsForTheRecordShownNotOneNamedTheSameSince() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      deleteOnce(
+        new Map<String, Object>{ 'kind' => 'group', 'name' => 'Group B' }
+      );
+      String confirm = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      Database.update(
+        new List<Group__c>{
+          new Group__c(
+            Id = GeneratedTestData.ids.get('Group B'),
+            Name = 'Group B old'
+          ),
+          new Group__c(
+            Id = GeneratedTestData.ids.get('Group C'),
+            Name = 'Group B'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      List<Object> old = deleteOnce(
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'Group B',
+          'confirm' => confirm
+        }
+      );
+      Test.stopTest();
+      Assert.isNotNull(confirm);
+      Assert.areEqual(409, old[0], String.valueOf(old[1]));
+      Assert.areEqual(1, groupsCalled('Group B'), 'The other group stays');
+      Assert.areEqual(1, groupsCalled('Group B old'), 'The one shown stays');
+    }
+  }
+
   /** The AI's question before a delete (GET /v1/delete_setup_record): [status, message]. */
   private static List<Object> askBeforeDelete(String kind, String name) {
     RestContext.request = new RestRequest();

@@ -28,6 +28,8 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action, Agent
       week,
       AgentFields.body(FIELDS)
     );
+    // The very version shown: a later one of the same name is another delete.
+    AgentAskFirst.stateIs(version.id + ' ' + AgentVersions.savedOf(version));
     return 'This deletes the saved version "' +
       version.name +
       '" of ' +

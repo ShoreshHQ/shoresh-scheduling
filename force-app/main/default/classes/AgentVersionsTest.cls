@@ -107,6 +107,44 @@ private class AgentVersionsTest {
     }
   }
 
+  // API-1.106: a confirm is for the very version shown. Renamed away and a new one saved under
+  // its name, the old confirm deletes nothing.
+  @IsTest
+  static void aDeleteConfirmIsForTheVersionShownNotOneNamedTheSameSince() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      GeneratedTestData.generated();
+      post('save', new Map<String, Object>{ 'name' => 'Keep' });
+      Map<String, Object> asked = new Map<String, Object>{
+        'season' => season(),
+        'week' => 'Week 1',
+        'program' => 'Main',
+        'version' => 'Keep'
+      };
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentDeleteVersion(),
+        asked
+      );
+      Test.startTest();
+      post(
+        'rename',
+        new Map<String, Object>{ 'version' => 'Keep', 'name' => 'Old' }
+      );
+      post('save', new Map<String, Object>{ 'name' => 'Keep' });
+      asked.put(AgentAskFirst.FIELD, confirm);
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(asked));
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentDeleteVersion());
+      Test.stopTest();
+      Assert.isNotNull(confirm);
+      Assert.areEqual(409, RestContext.response.statusCode);
+      Assert.areEqual(1, named('Keep').size(), 'The new Keep stays');
+      Assert.areEqual(1, named('Old').size(), 'The one shown stays');
+    }
+  }
+
   // API-1.33
   @IsTest
   static void saveRenameDeleteAreThePanels() {
