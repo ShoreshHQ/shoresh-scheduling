@@ -21,7 +21,7 @@ public class IncomingTestData {
 
   public IncomingTestData() {
     ids = new TestCamp().build();
-    season = new Season__c(Id = ids.get('Season'));
+    season = new Season__c(Id = ids.get('Season'), Camp__c = ids.get('Camp'));
   }
 
   /** Chugim in Week 1, offering Archery and Swim. */
