@@ -31,8 +31,18 @@ public with sharing class SeasonTriggerHandler {
     // System mode on purpose: these rows go with the season anyway (master-detail), and a
     // scheduler allowed to delete the season must not be stopped by a row they cannot see.
     // Nothing left behind can clash, so the fixed and recurring activity check is held off.
-    SetTimeGuard.defer();
-    try {
+    SetupWrite.run(SetupWrite.Kind.OWN_ROWS, new SeasonRows(deletable));
+  }
+
+  /** The season's own rows that would block its delete, cleared. */
+  private class SeasonRows implements SetupWrite.Steps {
+    private Set<Id> deletable;
+
+    private SeasonRows(Set<Id> deletable) {
+      this.deletable = deletable;
+    }
+
+    public void write() {
       // Elective runs point at the season's elective sets, weeks and schedules, and their
       // choices and seats at its campers, groups, time blocks and offerings; they go first.
       clear(
@@ -147,8 +157,6 @@ public with sharing class SeasonTriggerHandler {
           WITH SYSTEM_MODE
         ]
       );
-    } finally {
-      SetTimeGuard.resume();
     }
   }
 

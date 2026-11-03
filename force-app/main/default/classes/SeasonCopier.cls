@@ -14,12 +14,14 @@
  * length and position. If that shift is not a whole number of weeks, weeks land on different
  * weekdays; the preview says so rather than adjusting anything silently.
  */
-public with sharing class SeasonCopier {
+public with sharing class SeasonCopier implements SetupWrite.Steps {
   private final Season__c source;
   private final Integer shiftDays;
   private final CampLabels labels;
   // Everything the copy makes, kept for Undo last import.
   private final ImportWriter log = new ImportWriter(null);
+  private String newName;
+  private Id copied;
 
   public SeasonCopier(Id sourceSeasonId, Date newStartDate) {
     List<Season__c> found = new List<Season__c>();
@@ -75,50 +77,46 @@ public with sharing class SeasonCopier {
         'Give the new ' + labels.singularInSentence('Season') + ' a name.'
       );
     }
+    this.newName = newName;
     // Copied a piece at a time; fixed and recurring activities are checked once all is in.
-    SetTimeGuard.defer();
-    Savepoint beforeCopy = Database.setSavepoint();
-    try {
-      Season__c season = new Season__c(
-        Name = newName.trim(),
-        Camp__c = source.Camp__c,
-        StartDate__c = source.StartDate__c.addDays(shiftDays),
-        EndDate__c = source.EndDate__c.addDays(shiftDays),
-        Status__c = 'Planning',
-        ShrinkShortWeek__c = source.ShrinkShortWeek__c,
-        CopiedFrom__c = source.Id
-      );
-      log.saveTracked('Season', new List<SObject>{ season });
+    SetupWrite.run(SetupWrite.Kind.COPY, this);
+    return copied;
+  }
 
-      Map<Id, Week__c> weekCopies = copyWeeks(season.Id);
-      Map<Id, Program__c> programCopies = copyPrograms(season.Id);
-      Map<Id, TimeBlock__c> blockCopies = copyTimeBlocks(programCopies);
-      Map<Id, Division__c> divisionCopies = copyDivisions(programCopies);
-      Map<Id, Group__c> groupCopies = copyGroups(divisionCopies);
-      // Ids are unique across objects, so one map holds every original => copy.
-      Map<Id, Id> copies = copyIds(groupCopies);
-      copies.putAll(copyIds(divisionCopies));
-      copies.putAll(copyIds(programCopies));
-      copies.putAll(copyIds(blockCopies));
-      Copying made = new Copying(source.Id, season.Id, log);
-      copies.putAll(new SetupCopier(made).copy(copies));
-      copies.putAll(new SetTimeCopier(made, copies).copy());
-      new ElectiveCopier(made, copies).copy();
-      copyWeekExceptions(weekCopies, copies);
-      // A copy of a season without clashes has none, but check before keeping it.
-      SetTimeGuard.checkPending();
-      ImportLog.recordCopy(
-        season.Id,
-        'the copy of "' + source.Name + '"',
-        JSON.serialize(log.created)
-      );
-      return season.Id;
-    } catch (Exception e) {
-      Database.rollback(beforeCopy);
-      throw e;
-    } finally {
-      SetTimeGuard.resume();
-    }
+  /** The copy itself (SetupWrite runs it): all of it is saved, or none of it. */
+  public void write() {
+    Season__c season = new Season__c(
+      Name = newName.trim(),
+      Camp__c = source.Camp__c,
+      StartDate__c = source.StartDate__c.addDays(shiftDays),
+      EndDate__c = source.EndDate__c.addDays(shiftDays),
+      Status__c = 'Planning',
+      ShrinkShortWeek__c = source.ShrinkShortWeek__c,
+      CopiedFrom__c = source.Id
+    );
+    log.saveTracked('Season', new List<SObject>{ season });
+
+    Map<Id, Week__c> weekCopies = copyWeeks(season.Id);
+    Map<Id, Program__c> programCopies = copyPrograms(season.Id);
+    Map<Id, TimeBlock__c> blockCopies = copyTimeBlocks(programCopies);
+    Map<Id, Division__c> divisionCopies = copyDivisions(programCopies);
+    Map<Id, Group__c> groupCopies = copyGroups(divisionCopies);
+    // Ids are unique across objects, so one map holds every original => copy.
+    Map<Id, Id> copies = copyIds(groupCopies);
+    copies.putAll(copyIds(divisionCopies));
+    copies.putAll(copyIds(programCopies));
+    copies.putAll(copyIds(blockCopies));
+    Copying made = new Copying(source.Id, season.Id, log);
+    copies.putAll(new SetupCopier(made).copy(copies));
+    copies.putAll(new SetTimeCopier(made, copies).copy());
+    new ElectiveCopier(made, copies).copy();
+    copyWeekExceptions(weekCopies, copies);
+    ImportLog.recordCopy(
+      season.Id,
+      'the copy of "' + source.Name + '"',
+      JSON.serialize(log.created)
+    );
+    copied = season.Id;
   }
 
   private List<Week__c> sourceWeeks() {

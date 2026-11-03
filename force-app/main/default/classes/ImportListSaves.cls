@@ -8,7 +8,7 @@
  * the key of one added in the same save, or an Id); only the fields ImportListRows lists are
  * written.
  */
-public with sharing class ImportListSaves {
+public with sharing class ImportListSaves implements SetupWrite.Steps {
   // Kinds in the order they depend on each other.
   private static final List<String> ORDER = new List<String>{
     // A camp workbook's weeks first, and the weeks items are off last (part D).
@@ -35,6 +35,7 @@ public with sharing class ImportListSaves {
   private ImportWriter writer;
   private Boolean workbook;
   private List<ImportPlan.Entry> weeksBackOn = new List<ImportPlan.Entry>();
+  private Id campId;
 
   /** One screen's list. */
   public static ImportSetupSaves.Result save(String planText) {
@@ -72,38 +73,34 @@ public with sharing class ImportListSaves {
       CampLabels.forCamp(seasons[0].Camp__c)
     );
     writer = new ImportWriter(keys);
-    Map<String, List<ImportPlan.Entry>> byKind = byKind();
-    SetTimeGuard.defer();
-    Savepoint beforeSave = Database.setSavepoint();
-    try {
-      ImportWorkbookExtras extras = new ImportWorkbookExtras(
-        writer,
-        plan.seasonId,
-        seasons[0].Camp__c
-      );
-      // Another season's workbook into a season with no weeks: filled first, then paired.
-      if (workbook) {
-        extras.fillWeeks(plan.entries('fillWeeks'));
-      }
-      for (String kind : ORDER) {
-        if (byKind.containsKey(kind)) {
-          saveKind(kind, byKind.get(kind));
-        }
-      }
-      if (workbook) {
-        extras.weeksBackOn(weeksBackOn);
-        extras.campWords(plan.entries('campWords'));
-      }
-      SetTimeGuard.checkPending();
-      ImportAnswers.save(seasons[0].Camp__c, plan);
-      writer.result.importId = record();
-    } catch (Exception e) {
-      Database.rollback(beforeSave);
-      throw e;
-    } finally {
-      SetTimeGuard.resume();
-    }
+    campId = seasons[0].Camp__c;
+    SetupWrite.run(SetupWrite.Kind.SAVE, this);
     return writer.result;
+  }
+
+  /** Every list's rows, in order, and the import's record (SetupWrite runs it). */
+  public void write() {
+    Map<String, List<ImportPlan.Entry>> byKind = byKind();
+    ImportWorkbookExtras extras = new ImportWorkbookExtras(
+      writer,
+      plan.seasonId,
+      campId
+    );
+    // Another season's workbook into a season with no weeks: filled first, then paired.
+    if (workbook) {
+      extras.fillWeeks(plan.entries('fillWeeks'));
+    }
+    for (String kind : ORDER) {
+      if (byKind.containsKey(kind)) {
+        saveKind(kind, byKind.get(kind));
+      }
+    }
+    if (workbook) {
+      extras.weeksBackOn(weeksBackOn);
+      extras.campWords(plan.entries('campWords'));
+    }
+    ImportAnswers.save(campId, plan);
+    writer.result.importId = record();
   }
 
   private Map<String, List<ImportPlan.Entry>> byKind() {

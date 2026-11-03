@@ -118,6 +118,21 @@ wins.
     moving on, they are moving on"): the copy starts from what each item covers at the time of
     the copy.
 
+15. **Undo brings a changed-blocks note back** (W2-setupwrite, 2026-11-02): an import that gives
+    an item a new time block or length logs its last time block too, and Undo writes it back
+    as it was, so a pending note comes back with it. Every setup write runs as a `SetupWrite`
+    (save, copy, restore, or a record's own rows going with it), which holds the clash check to
+    the end and keeps rain plans and last blocks as they were where its numbered rules say so;
+    no caller defers the check or turns a trigger rule off itself.
+
+16. **A record's own week-off marks go with it, however it is deleted** (W2-setupwrite,
+    2026-11-02): deleting a group, activity, location, or fixed or recurring activity from a
+    record page, a Flow or Data Loader clears its marks (and a recurring activity's
+    who-it-covers rows) first, as the setup screens do; before, the restrict-delete lookups
+    refused the delete. Undo is the exception: a record it would delete that was given a week
+    off by hand since is kept, as in use. Nothing is remembered for such a delete (decision 45: only Shoresh's
+    own deletes are).
+
 ## Choices that are hard to undo after release
 
 - Object and field names: `FixedActivity__c`, `RecurringActivity__c`, `Coverage__c` (with

@@ -293,6 +293,54 @@ private class ImportReviewTest {
   }
 
   @IsTest
+  static void ingest58AnItemWithLinkedChoicesIsInUseAndItsRemovalRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c boating = activityNamed(season.Id, 'Boating');
+      // Made by hand: Boating is offered in Chugim, with a linked choice on that offering.
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = season.Id,
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      Offering__c offering = new Offering__c(
+        ElectiveSet__c = chugim.Id,
+        Activity__c = boating.Id,
+        Seats__c = 12
+      );
+      Database.insert(offering, AccessLevel.USER_MODE);
+      Database.insert(
+        new LinkedChoice__c(
+          ElectiveSet__c = chugim.Id,
+          Name = 'Boating double',
+          Offering__c = offering.Id,
+          AppliesTo__c = 'OnlyThese',
+          SortOrder__c = 1
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      String refusal = refusalOf(removing(season.Id, boating));
+      Test.stopTest();
+      Assert.isTrue(
+        refusal != null && refusal.contains('Boating is in Chugim\'s choices'),
+        refusal
+      );
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM LinkedChoice__c
+          WHERE Offering__c = :offering.Id
+          WITH USER_MODE
+        ],
+        'the linked choice is kept'
+      );
+    }
+  }
+
+  @IsTest
   static void ingest58AnItemOnlyInItsImportedWeekIsCollectedApart() {
     System.runAs(ShoreshTestData.scheduler()) {
       Season__c season = newSeason();

@@ -117,11 +117,16 @@ public with sharing class SetTimeItemTriggerHandler {
     Map<Id, SObject> before = Trigger.isExecuting && Trigger.isUpdate
       ? Trigger.oldMap
       : null;
+    // An Undo puts the last block back as it was, a changed-blocks note with it (SetupWrite 3).
+    Boolean keepGiven = SetupWrite.keepsLastTimeBlocks();
     for (SObject item : items) {
       if (before != null && !blocksTouched(item, before.get(item.Id))) {
         continue;
       }
       SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
+      if (keepGiven && item.get(f.lastTimeBlock) != null) {
+        continue;
+      }
       item.put(
         f.lastTimeBlock,
         lastBlockOf(item, blocksByProgram.get((Id) item.get(f.program)))

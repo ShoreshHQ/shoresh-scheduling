@@ -97,17 +97,23 @@ public with sharing class SetupDelete {
     }
     // Deleting a time block can move the ones after it: fixed and recurring activities that
     // span it are checked once the delete is done, and a clash undoes it.
-    SetTimeGuard.defer();
-    Savepoint beforeDelete = Database.setSavepoint();
     try {
+      SetupWrite.run(SetupWrite.Kind.SAVE, new Removal(recordId));
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  private class Removal implements SetupWrite.Steps {
+    private Id recordId;
+
+    private Removal(Id recordId) {
+      this.recordId = recordId;
+    }
+
+    public void write() {
       SetupDeletions.remember(recordId);
       WeekExceptions.deleteWithWeeks(recordId);
-      SetTimeGuard.checkPending();
-    } catch (Exception e) {
-      Database.rollback(beforeDelete);
-      throw ScreenErrors.of(e);
-    } finally {
-      SetTimeGuard.resume();
     }
   }
 

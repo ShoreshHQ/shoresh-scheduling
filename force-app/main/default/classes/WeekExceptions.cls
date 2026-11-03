@@ -95,6 +95,58 @@ public with sharing class WeekExceptions {
   }
 
   /**
+   * Before a group, activity, location, or fixed or recurring activity is deleted, however it is
+   * deleted: its own week-off marks (and a recurring activity's who-it-covers rows) go with it, so
+   * they neither block the delete (restrict-delete lookups) nor stay behind. System mode on
+   * purpose, as for a season's rows (SeasonTriggerHandler): someone allowed to delete the record
+   * must not be stopped by a mark they cannot see.
+   */
+  public static void goWith(Set<Id> recordIds) {
+    if (!SetupWrite.clearsOwnRows()) {
+      return;
+    }
+    SetupWrite.run(SetupWrite.Kind.OWN_ROWS, new OwnRows(recordIds));
+  }
+
+  private class OwnRows implements SetupWrite.Steps {
+    private Set<Id> ids;
+
+    private OwnRows(Set<Id> ids) {
+      this.ids = ids;
+    }
+
+    public void write() {
+      clear(
+        [
+          SELECT Id
+          FROM WeekException__c
+          WHERE
+            Group__c IN :ids
+            OR Activity__c IN :ids
+            OR Location__c IN :ids
+            OR FixedActivity__c IN :ids
+            OR RecurringActivity__c IN :ids
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM Coverage__c
+          WHERE RecurringActivity__c IN :ids
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+
+    private void clear(List<SObject> rows) {
+      if (!rows.isEmpty()) {
+        Database.delete(rows, true, AccessLevel.SYSTEM_MODE);
+      }
+    }
+  }
+
+  /**
    * Deletes a record from the setup screens together with its own unticked weeks (Greg,
    * 2026-10-16): a group, activity, location, fixed activity, or recurring activity's week
    * exceptions (and a recurring activity's who-it-covers rows), and for a division or program
