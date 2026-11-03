@@ -9,9 +9,28 @@ public with sharing class OutgoingRows {
    * names that are, so no one has to guess (API-1.25).
    */
   public static Season__c seasonCalled(String name) {
-    if (String.isBlank(name)) {
-      return seasonToOpen();
+    used = String.isBlank(name) ? seasonToOpen() : seasonNamed(name);
+    return used;
+  }
+
+  /**
+   * The season this request found (null before one is found), so its answer can say which
+   * season it used (API-1.108).
+   */
+  public static Season__c used { get; private set; }
+
+  /** An AI answer: its message, and which season it used, named or not (API-1.108). */
+  public static Map<String, String> answered(String message) {
+    Map<String, String> result = new Map<String, String>{
+      'message' => message
+    };
+    if (used != null) {
+      result.put('season', used.Name);
     }
+    return result;
+  }
+
+  private static Season__c seasonNamed(String name) {
     String given = name.normalizeSpace();
     List<Season__c> found = [
       SELECT Id, Name
@@ -54,51 +73,9 @@ public with sharing class OutgoingRows {
     ];
   }
 
-  /**
-   * The season Shoresh's screens open on (Camp Setup: the first camp by name, then its season
-   * with the latest start), or refused naming the seasons when that isn't one season: that camp
-   * has none, or two of its seasons start the same day (API-1.24).
-   */
+  /** The season Shoresh's screens open on, or refused (SeasonToOpen, API-1.24). */
   public static Season__c seasonToOpen() {
-    List<Season__c> seen = seasonsSeen();
-    Id camp = firstCamp(seen);
-    List<Season__c> its = new List<Season__c>();
-    for (Season__c season : seen) {
-      if (season.Camp__c == camp) {
-        its.add(season);
-      }
-    }
-    if (
-      !its.isEmpty() &&
-      (its.size() == 1 ||
-      its[0].StartDate__c != its[1].StartDate__c)
-    ) {
-      return its[0];
-    }
-    throw new ShoreshException(
-      seen.isEmpty()
-        ? 'This user can\'t see any season in Shoresh.'
-        : 'Say which season (season). ' + seasonsSaid()
-    );
-  }
-
-  /** The camp the screens open on: the first by name the user can see. */
-  private static Id firstCamp(List<Season__c> seen) {
-    try {
-      for (Camp__c camp : [
-        SELECT Id
-        FROM Camp__c
-        WITH USER_MODE
-        ORDER BY Name
-        LIMIT 1
-      ]) {
-        return camp.Id;
-      }
-    } catch (QueryException e) {
-      // A key may see seasons but not camps: their seasons' first camp, in the same order.
-      return seen.isEmpty() ? null : seen[0].Camp__c;
-    }
-    return null;
+    return SeasonToOpen.find();
   }
 
   /** "Seasons this user can see: Summer 2026, Summer 2025." */

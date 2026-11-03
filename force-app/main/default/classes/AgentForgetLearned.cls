@@ -1,6 +1,6 @@
 /** forget_learned_answer: Forget on "What Shoresh has learned", API-1.95 (docs/protocol/api.md). Shared parts: AgentLearned. */
 @RestResource(urlMapping='/v1/forget_learned_answer')
-global with sharing class AgentForgetLearned implements AgentWeeks.Action {
+global with sharing class AgentForgetLearned implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'answer_id',
@@ -10,6 +10,16 @@ global with sharing class AgentForgetLearned implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentForgetLearned());
+  }
+
+  /** Which answer it forgets (API-1.106). */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    ImportAnswer__c row = AgentLearned.locked(AgentLearned.campOf(body), body);
+    AgentAskFirst.stateIs(row.Id);
+    return 'This forgets the remembered answer "' +
+      row.Answer__c +
+      '": the next import asks that question again.';
   }
 
   public String run() {

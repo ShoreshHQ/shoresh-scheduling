@@ -1,6 +1,6 @@
 /** forget_learned_pattern: Forget pattern on "What Shoresh has learned", API-1.96 (docs/protocol/api.md). Shared parts: AgentLearned. */
 @RestResource(urlMapping='/v1/forget_learned_pattern')
-global with sharing class AgentForgetPattern implements AgentWeeks.Action {
+global with sharing class AgentForgetPattern implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'pattern',
@@ -10,6 +10,14 @@ global with sharing class AgentForgetPattern implements AgentWeeks.Action {
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentForgetPattern());
+  }
+
+  /** Which pattern it forgets (API-1.106); the forget itself checks it is still as seen. */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    return 'This forgets the pattern ' +
+      AgentLearned.raw(body, 'pattern') +
+      ': the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again.';
   }
 
   public String run() {

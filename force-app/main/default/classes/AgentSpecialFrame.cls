@@ -7,7 +7,7 @@
  * compared under the item's lock: saved since is refused (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/change_special_schedule_frame')
-global with sharing class AgentSpecialFrame implements AgentWeeks.Action {
+global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special',
@@ -39,9 +39,38 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action {
     'right' => 1
   };
 
+  // The actions that take cells away for good (API-1.106).
+  private static final Set<String> TAKES_CELLS = new Set<String>{
+    'remove_time_block',
+    'remove_station',
+    'clear'
+  };
+
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentSpecialFrame());
+  }
+
+  /** What removing or clearing takes away; null for the changes that keep every cell. */
+  public String preview() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    String asked = AgentFields.text(body, 'action').toLowerCase();
+    if (!TAKES_CELLS.contains(asked)) {
+      return null;
+    }
+    AgentSpecials.Found found = AgentSpecials.find(body);
+    String target = AgentFields.text(body, 'target');
+    return asked == 'clear'
+      ? 'This clears every cell of "' +
+        found.owner.name +
+        '". It can\'t be undone here.'
+      : 'This removes ' +
+        (asked == 'remove_station' ? 'the station' : 'the time block') +
+        ' "' +
+        target +
+        '" from "' +
+        found.owner.name +
+        '", with what is in its cells. It can\'t be undone here.';
   }
 
   public String run() {

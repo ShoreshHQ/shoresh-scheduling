@@ -21,7 +21,7 @@ private class AgentSetupRestTest {
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     }
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(door);
+    AgentAskFirstTestCalls.answer(door);
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

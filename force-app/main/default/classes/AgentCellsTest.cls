@@ -68,7 +68,7 @@ private class AgentCellsTest {
     } else if (address == 'copy_cells') {
       AgentCopyCells.post();
     } else {
-      AgentUndo.post();
+      AgentAskFirstTestCalls.answer(new AgentUndo());
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()

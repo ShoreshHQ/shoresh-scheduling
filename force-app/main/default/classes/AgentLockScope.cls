@@ -18,8 +18,8 @@ public with sharing class AgentLockScope {
   ) {
     change.action = action;
     days = ScheduleDays.read(week.draft.Id);
-    String dayAsked = AgentFields.text(body, 'day');
-    String groupAsked = AgentFields.text(body, 'group');
+    String groupAsked = scoped(AgentFields.text(body, 'group'), 'group');
+    String dayAsked = scoped(AgentFields.text(body, 'day'), 'day');
     String timeAsked = AgentFields.text(body, 'time');
     checkAsked(dayAsked, groupAsked, timeAsked);
     ScheduleGrid grid = null;
@@ -45,6 +45,27 @@ public with sharing class AgentLockScope {
     place = String.join(names, ' · ');
   }
 
+  /**
+   * A day or group is never left out (API-1.107): leaving one out would reach every one, so
+   * "all" says that on purpose, and nothing said is refused naming what is missing.
+   */
+  private String scoped(String asked, String field) {
+    if (String.isBlank(asked)) {
+      throw new ShoreshException(
+        'Nothing was changed: say which ' +
+          field +
+          ' (' +
+          field +
+          ') to ' +
+          change.action.toLowerCase() +
+          ', or "all" for every ' +
+          field +
+          '.'
+      );
+    }
+    return asked.equalsIgnoreCase('all') ? '' : asked;
+  }
+
   /** Refused unless a scope is named, and a time comes with a day and a group (one cell). */
   private void checkAsked(
     String dayAsked,
@@ -53,9 +74,7 @@ public with sharing class AgentLockScope {
   ) {
     if (String.isBlank(dayAsked) && String.isBlank(groupAsked)) {
       throw new ShoreshException(
-        'Say what to ' +
-          change.action.toLowerCase() +
-          ': a day (day), a group (group), a group\'s day (group and day), or one cell (day, group and time).'
+        'Nothing was changed: "all" days of "all" groups is the whole week, which the Lock menu has no shortcut for. Name a day, a group, or both.'
       );
     }
     if (

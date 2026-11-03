@@ -9,36 +9,46 @@
  * the screen's words.
  */
 @RestResource(urlMapping='/v1/undo_import')
-global with sharing class AgentUndoImport implements AgentWeeks.Action {
+global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'from',
     'seen'
   };
 
+  // What the preview found, held: the request's change undoes that, without reading it again.
+  private Season__c season;
+  private Id last;
+
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentUndoImport());
   }
 
-  public String run() {
+  /** Which import it undoes, and what undoing does, as Roots' Undo last import says (API-1.106). */
+  public String preview() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    Season__c season = AgentChangeCampWords.seasonOf(
-      AgentFields.text(body, 'season')
-    );
-    String seen = AgentFields.text(body, 'seen');
-    if (String.isBlank(seen)) {
-      throw new ShoreshException(
-        'Send the seen read_last_imports gave, so an import made since isn\'t undone unseen.'
-      );
-    }
-    String source = AgentFields.text(body, 'from');
-    // An import saving, or another Undo, in this season waits here; read again after.
+    season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
     ImportUndo.lockSeason(season.Id);
-    Id last = asRead(season, source, seen);
+    Import__c made = asRead(
+      season,
+      AgentFields.text(body, 'from'),
+      seenOf(body)
+    );
+    last = made.Id;
+    return 'This undoes the last import into "' +
+      season.Name +
+      '": ' +
+      (String.isBlank(made.Files__c) ? 'a file' : made.Files__c) +
+      ', ' +
+      made.CreatedDate.format('d MMM yyyy h:mm a') +
+      '. What it added is removed and what it changed goes back to how it was; anything edited since, or still used by something else, stays.';
+  }
+
+  public String run() {
     ImportUndo.Result result;
     try {
-      result = ImportController.undoImport(last);
+      result = ImportController.undoImport(last ?? lastAsRead());
     } catch (Exception e) {
       throw new ShoreshException(
         'That import could not be undone. Nothing was changed. ' +
@@ -48,12 +58,37 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
     return JSON.serialize(result, true);
   }
 
+  /** The import to undo, found and held as the preview finds it. */
+  private Id lastAsRead() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
+    String seen = seenOf(body);
+    String source = AgentFields.text(body, 'from');
+    // An import saving, or another Undo, in this season waits here; read again after.
+    ImportUndo.lockSeason(season.Id);
+    return asRead(season, source, seen).Id;
+  }
+
+  private static String seenOf(Map<String, Object> body) {
+    String seen = AgentFields.text(body, 'seen');
+    if (String.isBlank(seen)) {
+      throw new ShoreshException(
+        'Send the seen read_last_imports gave, so an import made since isn\'t undone unseen.'
+      );
+    }
+    return seen;
+  }
+
   /**
    * The source's last import that stands, refused when there is none, or (409) when it is not
    * the one read.
    */
-  private static Id asRead(Season__c season, String source, String seen) {
-    Id last = standing(season.Id, source);
+  private static Import__c asRead(
+    Season__c season,
+    String source,
+    String seen
+  ) {
+    Import__c last = standing(season.Id, source);
     if (last == null) {
       throw new ShoreshException(
         'There is no import to undo in "' +
@@ -65,8 +100,8 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
     }
     // Ids are case-sensitive; Apex != on text is not.
     if (
-      !SeenSaves.stamp(String.valueOf(last), seen) &&
-      !SeenSaves.stamp(String.valueOf(last).left(15), seen)
+      !SeenSaves.stamp(String.valueOf(last.Id), seen) &&
+      !SeenSaves.stamp(String.valueOf(last.Id).left(15), seen)
     ) {
       throw new AgentWeeks.ConflictException(
         'The last import is not the one you read: another import was made, or it was undone, since. Nothing was undone. Read them again with read_last_imports.'
@@ -76,14 +111,17 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action {
   }
 
   /** The source's last import, unless it is undone (as Roots and Settings offer Undo). */
-  private static Id standing(Id seasonId, String source) {
+  private static Import__c standing(Id seasonId, String source) {
     Id last = ImportUndo.latestFrom(seasonId, source);
     if (last == null) {
       return null;
     }
-    return [SELECT UndoneAt__c FROM Import__c WHERE Id = :last WITH USER_MODE]
-      .UndoneAt__c == null
-      ? last
-      : null;
+    Import__c made = [
+      SELECT Id, UndoneAt__c, Files__c, CreatedDate
+      FROM Import__c
+      WHERE Id = :last
+      WITH USER_MODE
+    ];
+    return made.UndoneAt__c == null ? made : null;
   }
 }

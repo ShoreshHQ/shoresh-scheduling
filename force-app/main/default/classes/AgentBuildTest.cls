@@ -54,9 +54,9 @@ private class AgentBuildTest {
     } else if (address == 'publish_week') {
       AgentPublish.post();
     } else if (address == 'finalize_electives') {
-      AgentFinalize.post();
+      AgentAskFirstTestCalls.answer(new AgentFinalize());
     } else {
-      AgentUndo.post();
+      AgentAskFirstTestCalls.answer(new AgentUndo());
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()

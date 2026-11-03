@@ -42,6 +42,10 @@ function toolResult(said) {
   const answer = toAgent(said);
   const content = [{ type: "text", text: answer.text }];
   if (answer.about) content.unshift({ type: "text", text: answer.about });
+  // Which season Shoresh used, named or not (API-1.108): say it to the person.
+  if (answer.season) {
+    content.push({ type: "text", text: `Season used: ${answer.season}.` });
+  }
   const opens = answer.weekView?.opens;
   if (typeof opens === "string" && /^https:\/\//.test(opens)) {
     content.push({
@@ -219,4 +223,12 @@ function serve(org, env = process.env) {
 
 if (require.main === module) serve(orgFrom(process.argv, process.env));
 
-module.exports = { tools, handle, orgFrom, serve, hostFrom, WEEK_VIEW };
+module.exports = {
+  tools,
+  handle,
+  orgFrom,
+  serve,
+  hostFrom,
+  toolResult,
+  WEEK_VIEW
+};

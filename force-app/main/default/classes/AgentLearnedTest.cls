@@ -44,7 +44,7 @@ private class AgentLearnedTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(action);
+    AgentAskFirstTestCalls.answer(action);
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

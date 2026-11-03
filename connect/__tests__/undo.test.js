@@ -80,4 +80,47 @@ describe("actions and their Apex", () => {
       expect(keepsBefore(atAddress.get(capability.api))).toBe(true);
     }
   );
+
+  // API-1.106: Shoresh, not the description, makes the AI ask first. Every action that takes
+  // something away for good is an Apex class that asks first (AgentAskFirst.Preview), and its
+  // description and fields say so; no class asks first behind an action that doesn't say it.
+  const ASKING = new Set(
+    [...sources]
+      .filter(([, source]) =>
+        /implements[^{]*AgentAskFirst\.Preview/.test(source)
+      )
+      .map(([name]) => name)
+  );
+
+  it.each(
+    [
+      "delete_setup_record",
+      "delete_version",
+      "merge_locations",
+      "undo_last_agent_change",
+      "undo_import",
+      "forget_learned_answer",
+      "forget_learned_pattern",
+      "finalize_electives",
+      "clear_electives",
+      "copy_season",
+      "change_special_schedule_frame"
+    ].map((name) => [name])
+  )("API-1.106: %s asks first, enforced by its Apex", (name) => {
+    const capability = CAPABILITIES.find((each) => each.name === name);
+    expect(capability.asksFirst).toBe(true);
+    expect(ASKING.has(atAddress.get(capability.api))).toBe(true);
+    expect(capability.inputSchema.properties.confirm).toBeDefined();
+    expect(capability.description).toMatch(/Shoresh asks first/);
+    expect(capability.description).not.toMatch(/without asking first/);
+  });
+
+  it("API-1.106: every Apex class that asks first is an action that says so", () => {
+    const saying = new Set(
+      CAPABILITIES.filter((each) => each.asksFirst).map((each) =>
+        atAddress.get(each.api)
+      )
+    );
+    expect([...ASKING].sort()).toEqual([...saying].sort());
+  });
 });

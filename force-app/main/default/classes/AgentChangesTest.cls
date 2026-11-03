@@ -53,7 +53,7 @@ private class AgentChangesTest {
     if (address == 'schedule_cell') {
       AgentCell.post();
     } else {
-      AgentUndo.post();
+      AgentAskFirstTestCalls.answer(new AgentUndo());
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()

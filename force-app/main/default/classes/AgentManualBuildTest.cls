@@ -26,7 +26,7 @@ private class AgentManualBuildTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
+    AgentAskFirstTestCalls.answer(
       new Map<String, AgentWeeks.Action>{
           'cell' => new AgentCell(),
           'undo' => new AgentUndo(),

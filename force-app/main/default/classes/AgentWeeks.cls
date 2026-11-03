@@ -231,7 +231,7 @@ public with sharing class AgentWeeks {
     try {
       AgentRefusal.forAgent = true;
       AgentAccess.require();
-      message = action.run();
+      message = AgentAskFirst.run(action);
       status = 200;
     } catch (ConflictException e) {
       Database.rollback(before);
@@ -247,7 +247,7 @@ public with sharing class AgentWeeks {
     }
     response.statusCode = status;
     response.responseBody = Blob.valueOf(
-      JSON.serialize(new Map<String, String>{ 'message' => message })
+      JSON.serialize(OutgoingRows.answered(message))
     );
   }
 
