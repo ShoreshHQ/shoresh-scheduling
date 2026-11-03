@@ -98,10 +98,7 @@ public with sharing class AgentSchedules {
           ' for ' +
           week.program.Name +
           ' yet.'
-        : week.name +
-          ' hasn\'t been built for ' +
-          week.program.Name +
-          ' yet.'
+        : week.name + ' hasn\'t been built for ' + week.program.Name + ' yet.'
     );
   }
 

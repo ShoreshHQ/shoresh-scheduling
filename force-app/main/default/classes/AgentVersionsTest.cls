@@ -292,10 +292,7 @@ private class AgentVersionsTest {
       Test.stopTest();
       Assert.areEqual(200, restored[0], String.valueOf(restored[1]));
       Assert.areEqual(400, notBuilt[0]);
-      Assert.areEqual(
-        'Week 1 hasn\'t been built for Main yet.',
-        notBuilt[1]
-      );
+      Assert.areEqual('Week 1 hasn\'t been built for Main yet.', notBuilt[1]);
       Assert.areEqual('Restored By hand.', restored[1]);
       Assert.isNotNull(GeneratedTestData.inputs().scheduleId);
     }
