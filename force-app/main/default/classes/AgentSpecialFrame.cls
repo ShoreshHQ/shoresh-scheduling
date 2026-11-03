@@ -39,17 +39,17 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
     'right' => 1
   };
 
-  @HttpPost
-  global static void post() {
-    AgentWeeks.answer(new AgentSpecialFrame());
-  }
-
   // The actions that take cells away for good (API-1.106).
   private static final Set<String> TAKES_CELLS = new Set<String>{
     'remove_time_block',
     'remove_station',
     'clear'
   };
+
+  @HttpPost
+  global static void post() {
+    AgentWeeks.answer(new AgentSpecialFrame());
+  }
 
   /** What removing or clearing takes away; null for the changes that keep every cell. */
   public String preview() {

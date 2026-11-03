@@ -246,14 +246,9 @@ public with sharing class AgentWeeks {
       AgentRefusal.forAgent = false;
     }
     response.statusCode = status;
-    Map<String, String> answered = new Map<String, String>{
-      'message' => message
-    };
-    // Which season it used, named or not (API-1.108).
-    if (OutgoingRows.used != null) {
-      answered.put('season', OutgoingRows.used.Name);
-    }
-    response.responseBody = Blob.valueOf(JSON.serialize(answered));
+    response.responseBody = Blob.valueOf(
+      JSON.serialize(OutgoingRows.answered(message))
+    );
   }
 
   /** One action through an agent: its answer when done. */

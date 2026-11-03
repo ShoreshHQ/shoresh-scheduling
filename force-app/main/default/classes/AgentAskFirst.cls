@@ -32,9 +32,15 @@ public with sharing class AgentAskFirst {
     }
     String given = taken();
     String words = ((Preview) action).preview();
-    if (words == null) {
-      return action.run();
-    }
+    return words == null ? action.run() : asked(action, words, given);
+  }
+
+  /** Done only with the confirm this preview gives; otherwise the preview, or refused. */
+  private static String asked(
+    AgentWeeks.Action action,
+    String words,
+    String given
+  ) {
     String ticket = ticketFor(words);
     if (String.isBlank(given)) {
       return NOT_YET +
@@ -85,7 +91,7 @@ public with sharing class AgentAskFirst {
     RestRequest request = RestContext.request;
     String body = request.requestBody == null
       ? ''
-      : canonical(JSON.deserializeUntyped(request.requestBody.toString()));
+      : sorted(request.requestBody.toString());
     String said = String.join(
       new List<String>{
         UserInfo.getUserId(),
@@ -102,25 +108,19 @@ public with sharing class AgentAskFirst {
       .left(12);
   }
 
-  /** A value written the same way whatever order its fields came in. */
-  private static String canonical(Object value) {
-    if (value instanceof Map<String, Object>) {
-      Map<String, Object> given = (Map<String, Object>) value;
-      List<String> keys = new List<String>(given.keySet());
-      keys.sort();
-      List<String> parts = new List<String>();
-      for (String key : keys) {
-        parts.add(JSON.serialize(key) + ':' + canonical(given.get(key)));
-      }
-      return '{' + String.join(parts, ',') + '}';
+  /** The request's fields in name order, so their order never changes the ticket. */
+  private static String sorted(String body) {
+    Object parsed = JSON.deserializeUntyped(body);
+    if (!(parsed instanceof Map<String, Object>)) {
+      return body;
     }
-    if (value instanceof List<Object>) {
-      List<String> parts = new List<String>();
-      for (Object each : (List<Object>) value) {
-        parts.add(canonical(each));
-      }
-      return '[' + String.join(parts, ',') + ']';
+    Map<String, Object> given = (Map<String, Object>) parsed;
+    List<String> keys = new List<String>(given.keySet());
+    keys.sort();
+    List<String> parts = new List<String>();
+    for (String key : keys) {
+      parts.add(key + '=' + JSON.serialize(given.get(key)));
     }
-    return JSON.serialize(value);
+    return String.join(parts, '\n');
   }
 }
