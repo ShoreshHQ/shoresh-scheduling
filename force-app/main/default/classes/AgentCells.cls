@@ -4,7 +4,7 @@
  * command line (docs/protocol/api.md API-1.38 to API-1.40; on Manual Build, Manual Build's own
  * save, ManualBuildController.saveSlots, API-1.45). Web addresses /v1/move_cell,
  * /v1/take_out_cell and /v1/copy_cells (AgentMoveCell, AgentTakeOutCell, AgentCopyCells), each
- * POST {season, week, program, change, said, runs}. The edit is worked out where the screen works it
+ * POST {season, week, program, change, said, runs, revision}. The edit is worked out where the screen works it
  * out, outside Salesforce: the connector runs the week editor's own module (c/shoreshWeekEditor
  * handEdits.js) on the week as it read it, and sends the runs the screen would send, with the
  * screen's words for them (change, and said: what stayed or was left out). This makes them the
@@ -21,7 +21,8 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     'schedule',
     'change',
     'said',
-    'runs'
+    'runs',
+    'revision'
   };
 
   public String run() {
@@ -34,6 +35,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
         'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
       );
     }
+    String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
 
@@ -45,7 +47,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
           week.draft.Id,
           new List<SlotEdits.Edit>{ edit }
         )
-      : handEdit(week, days, edit);
+      : handEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(
         'Changed by someone else since you read the week: ' +
@@ -58,15 +60,18 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     return change + '.' + (String.isBlank(said) ? '' : ' ' + said);
   }
 
-  /** Generated Schedule's own hand-edit save, the cells' Open reasons dropped as the screen drops them. */
+  /**
+   * Generated Schedule's own hand-edit save, the cells' Open reasons dropped as the screen drops
+   * them, with the week's ticket (seen) as the screen sends the revision it read.
+   */
   public static SlotEdits.Result handEdit(
     AgentWeeks.Week week,
-    List<ScheduleDays.DayGrid> days,
+    String seen,
     SlotEdits.Edit edit
   ) {
     GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
     request.scheduleId = week.draft.Id;
-    request.revision = GeneratedDrafts.revisionOf(days);
+    request.revision = seen;
     request.edits = new List<SlotEdits.Edit>{ edit };
     request.engineNotes = notesWithout(week.draft.EngineNotes__c, edit.runs);
     return GeneratedEngineNotes.saveHandEdits(request);

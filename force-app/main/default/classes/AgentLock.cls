@@ -80,9 +80,7 @@ global with sharing class AgentLock implements AgentWeeks.Action {
   private static String seenOf(Map<String, Object> body) {
     String seen = AgentFields.text(body, 'seen');
     if (String.isBlank(seen)) {
-      throw new ShoreshException(
-        'Say what the week was when you read it (seen), as read_week_checks gives it, so a change someone made since isn\'t undone.'
-      );
+      throw new ShoreshException(AgentSchedules.SAY_SEEN);
     }
     return seen;
   }

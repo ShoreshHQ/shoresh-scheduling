@@ -468,10 +468,30 @@ async function editCells(capability, input, { read, send, answer, load }) {
       change: step.label,
       said: step.said || "",
       runs,
+      // The week as the agent read it: the save holds the week and refuses it if changed since.
+      ...(input.seen ? { revision: input.seen } : {}),
       // A rainy day's marks, and the day's marks as read.
       ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
     })
   );
 }
 
-module.exports = { editCells };
+/**
+ * The cells of a Generated Schedule week that are locked, named as the screen names a cell
+ * ("Bunk 3 · Monday · Period 2"), each shown with its lock; Manual Build has none.
+ */
+function lockedCells(m, body) {
+  const ctx = contextOf(m, body);
+  const named = [];
+  ctx.week.forEach((day, d) =>
+    day.groups.forEach((_, g) =>
+      day.blocks.forEach((__, b) => {
+        const slot = { day: d, group: g, block: b };
+        if (ctx.isLocked(slot)) named.push(m.slotName(ctx, slot));
+      })
+    )
+  );
+  return named;
+}
+
+module.exports = { editCells, lockedCells };

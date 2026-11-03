@@ -85,7 +85,12 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
       );
     }
     // Capitals count: "bunk / bunks" is not "Bunk / Bunks" (Apex's == ignores case).
-    if (!shown(row).equals(String.valueOf(seen.get(key)).normalizeSpace())) {
+    if (
+      !SeenSaves.value(
+        shown(row),
+        String.valueOf(seen.get(key)).normalizeSpace()
+      )
+    ) {
       throw new AgentWeeks.ConflictException(
         'Someone else changed the camp\'s word for "' +
           row.modelSingular +

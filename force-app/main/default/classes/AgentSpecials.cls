@@ -80,6 +80,24 @@ public with sharing class AgentSpecials {
     return plan.revision == null ? NEVER_SAVED : String.valueOf(plan.revision);
   }
 
+  /**
+   * The plan's revision from the seen sent (read_special_schedule's; null for "none", never
+   * saved), handed to the page's own save, which holds the plan and compares (SpecialPlans).
+   * Refused, with "Nothing was <done>.", when left out or unreadable.
+   */
+  public static Integer seenOf(Map<String, Object> body, String done) {
+    String seen = AgentFields.text(body, 'seen');
+    if (seen == NEVER_SAVED) {
+      return null;
+    }
+    if (String.isBlank(seen) || !seen.isNumeric()) {
+      throw new ShoreshException(
+        'Nothing was ' + done + '. Send seen as read_special_schedule said it.'
+      );
+    }
+    return Integer.valueOf(seen);
+  }
+
   /** What a slot holds, by the name the grid shows ("Open" when nothing). */
   public static String nameOf(ScheduleGrid grid, String slot) {
     String owner = SlotIds.owner(slot);

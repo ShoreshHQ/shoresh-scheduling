@@ -33,9 +33,15 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
       );
     }
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
+    // Held as its screen's update holds it (SetupMatch.make), then compared with what was read.
+    if (week.manual) {
+      ManualDrafts.locked(week.draft.Id);
+    } else {
+      GeneratedDrafts.lockedToEdit(week.draft.Id);
+    }
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     String stamp = ScheduleDays.stamp(days);
-    if (seenOf(stamp) != seen) {
+    if (!SeenSaves.stamp(seenOf(stamp), seen)) {
       throw conflict(week);
     }
     Id versionId = AgentWeeks.keepBefore(

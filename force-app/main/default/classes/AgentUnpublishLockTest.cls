@@ -14,23 +14,9 @@ private class AgentUnpublishLockTest {
   private static List<Object> post(String action, Map<String, Object> fields) {
     if (action != 'unpublish' && !fields.containsKey('seen')) {
       fields = fields.clone();
-      fields.put('seen', weekNow());
+      fields.put('seen', GeneratedTestData.weekNow());
     }
     return send(action, fields);
-  }
-
-  /** The Generated draft of Week 1 of Main as read now: its revision, the ticket a lock hands back. */
-  private static String weekNow() {
-    Schedule__c draft = [
-      SELECT Id
-      FROM Schedule__c
-      WHERE
-        Status__c = :ManualDrafts.DRAFT
-        AND Origin__c = :GeneratedDrafts.GENERATED
-      WITH SYSTEM_MODE
-      LIMIT 1
-    ];
-    return GeneratedDrafts.revisionOf(ScheduleDays.read(draft.Id));
   }
 
   private static List<Object> send(String action, Map<String, Object> fields) {
@@ -241,7 +227,7 @@ private class AgentUnpublishLockTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
-      String aiRead = weekNow();
+      String aiRead = GeneratedTestData.weekNow();
       GeneratedWeek.LockChange screenLock = new GeneratedWeek.LockChange();
       screenLock.action = GeneratedWeek.LOCK;
       screenLock.dateValue = ScheduleDays.read(draftId)[0].day;

@@ -140,7 +140,7 @@ public with sharing class AgentImports {
     }
     // Imports and Undos in one season take turns; the setup is compared once it is ours.
     ImportUndo.lockSeason(season.Id);
-    if (stampOf(season, door) != seen) {
+    if (!SeenSaves.stamp(stampOf(season, door), seen)) {
       throw new AgentWeeks.ConflictException(
         'Someone changed the setup of "' +
           season.Name +

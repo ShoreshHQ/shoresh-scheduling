@@ -429,12 +429,22 @@ describe("Shoresh for AI tools and the command line", () => {
     // LOCK-4.7: a Generated Schedule week read gives its revision as seen, for lock_cells.
     read.inputs.revision = "2,1";
     seen.length = 0;
+    // Its locked cells too (none in this week; severalCellsAsTheGridDoes names some).
+    const noLocks = async () => ({
+      buildTerms: () => "terms",
+      loadedOf: (inputs) => ({ input: inputs }),
+      counterWeek: () => ({ draft: { schedule: { days: [] } } }),
+      lockedKeys: () => new Set(),
+      replacedDays: () => []
+    });
     const withSeen = await call("read_week_checks", asked, {
       run: answers([]),
-      checks
+      checks,
+      edits: noLocks
     });
     expect(JSON.parse(withSeen.text)).toEqual({
       placed: "3 of 4 placed",
+      locked: [],
       seen: "2,1"
     });
     expect(byName("lock_cells").inputSchema.required).toContain("seen");
@@ -751,6 +761,40 @@ describe("Shoresh for AI tools and the command line", () => {
       })
     ]);
     expect(moved.done).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(moved.sent.revision).toBeUndefined();
+
+    // LOCK-4.8: the week as the agent read it goes with the edit, for the save to hold and compare.
+    const withSeen = await send("move_cell", {
+      ...monday,
+      time: "Period 1",
+      was: "Swim",
+      to_day: "Monday",
+      to_group: "Bunk 1",
+      to_time: "Period 3",
+      seen: "3,1"
+    });
+    expect(withSeen.sent.revision).toBe("3,1");
+
+    // LOCK-4.8: read_week_checks names the locked cells as the screen names a cell.
+    inputs.revision = "3,1";
+    const checked = await call("read_week_checks", asked, {
+      run: async () => `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+      checks: async () => ({
+        buildTerms: () => "terms",
+        loadedOf: (given) => ({ input: given }),
+        counterWeek: () => ({ draft: { schedule: { days: [] } } }),
+        weekMeasure: () => "measure",
+        readKept: () => [],
+        counterWords: () => ({ placed: "6 of 8 placed" })
+      }),
+      edits
+    });
+    expect(JSON.parse(checked.text)).toEqual({
+      placed: "6 of 8 placed",
+      locked: [`Bunk 2 · Monday · ${inputs.timeBlocks[2].Name}`],
+      seen: "3,1"
+    });
+    delete inputs.revision;
 
     // Onto a filled cell: swapped.
     const swapped = await send("move_cell", {

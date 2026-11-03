@@ -153,7 +153,7 @@ public with sharing class AgentElectives {
       WITH USER_MODE
       FOR UPDATE
     ];
-    if (now.isEmpty() || now[0].Revision__c != seen) {
+    if (now.isEmpty() || !SeenSaves.revision(now[0].Revision__c, seen)) {
       throw changedSince(run);
     }
   }
