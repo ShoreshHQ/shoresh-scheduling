@@ -7,7 +7,13 @@
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("./capabilities");
-const { call, sfInstalled, signIn, toAgent } = require("./client");
+const {
+  call,
+  sfInstalled,
+  signIn,
+  toAgent,
+  withSeasonNamed
+} = require("./client");
 
 /**
  * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
@@ -78,7 +84,7 @@ let signingIn = null;
  */
 async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
   try {
-    return await callFn(name, input, { org });
+    return withSeasonNamed(await callFn(name, input, { org }), input);
   } catch (e) {
     if (!/^Couldn't reach Salesforce/.test(e.message)) throw e;
     if (!(await sf.installed())) throw new Error(NO_SF);
