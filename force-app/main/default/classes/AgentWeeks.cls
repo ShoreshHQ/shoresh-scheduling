@@ -220,8 +220,7 @@ public with sharing class AgentWeeks {
   /**
    * Runs one action and answers {"message": sentence}: 200 when done, 409 for someone else's
    * change, 400 for a refusal in Shoresh's words, 500 for anything else (in Shoresh's words too).
-   * One address is one verb (API-1.x): a read is a GET, and every other verb changes something, so
-   * it takes the right to change schedules, refused here in the same words for every verb.
+   * Every verb's access is AgentAccess's one policy, refused here in the same words for every verb.
    */
   public static void answer(Action action) {
     RestResponse response = RestContext.response;
@@ -230,9 +229,7 @@ public with sharing class AgentWeeks {
     Integer status;
     String message;
     try {
-      if (RestContext.request.httpMethod != 'GET') {
-        requireScheduler();
-      }
+      AgentAccess.require();
       message = action.run();
       status = 200;
     } catch (ConflictException e) {
