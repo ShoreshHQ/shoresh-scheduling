@@ -35,12 +35,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
         'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
       );
     }
-    String seen = AgentSchedules.holdAsSeen(
-      week,
-      body,
-      'revision',
-      AgentSchedules.SAY_SEEN
-    );
+    String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
 
