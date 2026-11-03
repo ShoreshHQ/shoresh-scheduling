@@ -72,9 +72,7 @@ public with sharing class AgentElectives {
         finalRun != null
           ? place +
             ' is finalized, so its seats can\'t change. Starting a new version (start_new_elective_version) is the director\'s choice.'
-          : 'No campers\' choices for ' +
-            place +
-            ' yet. Bring them in first (bring_in_camper_elective_choices).'
+          : 'No campers\' choices for ' + place + ' yet.'
       );
     }
   }

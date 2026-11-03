@@ -2229,7 +2229,7 @@ describe("Shoresh for AI tools and the command line", () => {
     // (Agent*.cls and the connector's own) may say to read again, never to repair. Shared screen
     // sentences hide their advice from an AI with AgentRefusal (ActivitiesAndLocationsTest).
     const REPAIR =
-      /Fix it|then (retry|try again|ask again|finalize|delete|save)|\b(First|Build|Rename|Assign|Start|Change|Move|Delete|Take) [^.]*\bfirst\b|\binstead\.|Change it (on|there)/;
+      /Fix it|then (retry|try again|ask again|finalize|delete|save)|\b(First|Build|Bring|Rename|Assign|Start|Change|Move|Delete|Take) [^.]*\bfirst\b|\binstead\.|Change it (on|there)/;
     const root = path.join(__dirname, "..", "..");
     const classes = path.join(root, "force-app/main/default/classes");
     const sources = [

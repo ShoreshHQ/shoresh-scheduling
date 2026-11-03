@@ -219,4 +219,72 @@ private class IncomingSetupTest {
       );
     }
   }
+
+  /** A capability that refuses as a screen check does: the problem, then the screen's advice. */
+  private class Refusing implements IncomingBatch.Capability {
+    public String permissionSet() {
+      return 'Send_Groups';
+    }
+    public String permissionLabel() {
+      return 'Send groups';
+    }
+    public String what() {
+      return 'Groups';
+    }
+    public String seasonOf(Object record) {
+      return ((IncomingGroup.Record) record).season;
+    }
+    public String systemOf(Object record) {
+      return ((IncomingGroup.Record) record).source_system;
+    }
+    public void plan(IncomingBatch batch, List<Object> records) {
+      throw new ShoreshException(
+        AgentRefusal.withFix(
+          '"Bunk 5" doesn\'t fit in the Dining hall at Lunch.',
+          'Change "Lunch" first, then try again.'
+        )
+      );
+    }
+  }
+
+  // API-1.105: the web address (an AI's or a system's) hears the problem, not the screen's advice.
+  @IsTest
+  static void theWebAddressSaysTheProblemWithoutTheScreensAdvice() {
+    IncomingTestData camp = new IncomingTestData();
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'POST';
+    RestContext.request.requestBody = Blob.valueOf(
+      JSON.serialize(
+        new Map<String, Object>{
+          'records' => new List<Object>{
+            new Map<String, Object>{
+              'season' => 'Summer 2026',
+              'source_system' => IncomingTestData.SYSTEM_NAME
+            }
+          }
+        }
+      )
+    );
+    RestContext.response = new RestResponse();
+    System.runAs(camp.sender('Send_Groups')) {
+      IncomingDoors.byWeb(
+        new Refusing(),
+        IncomingGroup.Record.class,
+        new Set<String>{ 'season', 'source_system' }
+      );
+    }
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
+    Assert.areEqual(
+      400,
+      RestContext.response.statusCode,
+      String.valueOf(answer)
+    );
+    Assert.areEqual(
+      '"Bunk 5" doesn\'t fit in the Dining hall at Lunch.',
+      answer.get('message')
+    );
+    Assert.isFalse(AgentRefusal.forAgent, 'set back after the web address');
+  }
 }

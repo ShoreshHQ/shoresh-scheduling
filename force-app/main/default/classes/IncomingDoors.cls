@@ -61,6 +61,9 @@ public with sharing class IncomingDoors {
     fields = fieldNames;
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // The web address is an AI's or another system's: a refusal says what is wrong, without the
+    // screen's advice (API-1.105). The Flow action, a person's, keeps it.
+    AgentRefusal.forAgent = true;
     try {
       List<Object> sent = recordsIn(RestContext.request.requestBody);
       if (sent.size() > IncomingBatch.MOST) {
@@ -97,6 +100,8 @@ public with sharing class IncomingDoors {
         e instanceof IncomingBatch.RefusedException ||
         e instanceof ShoreshException;
       refuse(response, ours ? 400 : 500, messageOf(e));
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

@@ -66,7 +66,7 @@ Map<String, Location__c> places = new Map<String, Location__c>();
 for (String name : new List<String>{ 'Pool', 'Field', 'Art room', 'Dining hall' }) {
   places.put(
     name,
-    new Location__c(Season__c = season.Id, Name = name, GroupsThatFit__c = name == 'Dining hall' ? 4 : 2)
+    new Location__c(Season__c = season.Id, Name = name, GroupsThatFit__c = name == 'Dining hall' ? 6 : 2)
   );
 }
 insert places.values();
@@ -101,4 +101,47 @@ insert new List<Week__c>{
   new Week__c(Season__c = season.Id, Name = 'Week 1', StartDate__c = MONDAY, EndDate__c = MONDAY.addDays(4), SortOrder__c = 1),
   new Week__c(Season__c = season.Id, Name = 'Week 2', StartDate__c = MONDAY.addDays(7), EndDate__c = MONDAY.addDays(11), SortOrder__c = 2)
 };
+
+// Electives: a "Chugim" set (Swim, 2 seats; Art, no limit) in Week 2's Manual Build, Monday
+// Period 1 for Bunk 1 and Bunk 2, and its run as the Elective seats screen's own first Bring in
+// choices leaves it (API-6.4: the first bring-in is the screen's); campers come in through the AI.
+ElectiveSet__c chugim = new ElectiveSet__c(Season__c = season.Id, Name = 'Chugim');
+insert chugim;
+Map<String, Activity__c> byName = new Map<String, Activity__c>();
+for (Activity__c a : activities) {
+  byName.put(a.Name, a);
+}
+insert new List<Offering__c>{
+  new Offering__c(ElectiveSet__c = chugim.Id, Activity__c = byName.get('Swim').Id, Seats__c = 2),
+  new Offering__c(ElectiveSet__c = chugim.Id, Activity__c = byName.get('Art').Id, NoSeatLimit__c = true)
+};
+Week__c week2 = [SELECT Id FROM Week__c WHERE Season__c = :season.Id AND Name = 'Week 2'];
+Schedule__c manual = new Schedule__c(
+  Program__c = program.Id,
+  Week__c = week2.Id,
+  Name = 'Week 2',
+  Status__c = 'Draft',
+  Origin__c = 'Manual'
+);
+insert manual;
+ScheduleGrid grid = new ScheduleGrid();
+grid.blocks.add(new ScheduleGrid.Block(blocks[0].Id, 'Period 1').at('09:00', '09:50'));
+grid.groups.add(new ScheduleGrid.GroupRef(groups[0].Id, 'Bunk 1'));
+grid.groups.add(new ScheduleGrid.GroupRef(groups[1].Id, 'Bunk 2'));
+grid.items.add(new ScheduleGrid.Item('E', chugim.Id, 'Chugim'));
+grid.rows.add(new List<String>{ '1' });
+grid.rows.add(new List<String>{ '1' });
+ScheduleDaySaves.write(
+  manual.Id,
+  new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(MONDAY.addDays(7), grid, null) }
+);
+insert new ElectiveRun__c(
+  Season__c = season.Id,
+  Name = 'Chugim · Week 2',
+  ElectiveSet__c = chugim.Id,
+  Week__c = week2.Id,
+  Schedule__c = manual.Id,
+  Status__c = 'Committed',
+  Revision__c = 1
+);
 System.debug('E2E seeded ' + season.Id);
