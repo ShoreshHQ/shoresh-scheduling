@@ -147,7 +147,7 @@ public with sharing class AgentActivityWho {
       throw new ShoreshException(
         'More than one is called "' +
           name.left(80) +
-          '", so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.'
+          '", so Shoresh can\'t tell which you mean. Nothing was changed.'
       );
     }
     CampLabels labels = found.labels;

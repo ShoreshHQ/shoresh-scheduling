@@ -3,8 +3,9 @@
  * (docs/protocol/api.md API-1.23). Web address /v1/finalize_electives, POST {season, week,
  * elective_set}. It is the Elective seats screen's own Finalize (ElectiveSeatsController
  * finalizeRun) of the run the screen opens on for that set and week (its Committed run), at the
- * revision it reads just before. Refusals ("Assign seats first.", "Schedule changed. Assign again
- * first.", a double-booked place) are the screen's own, after "Not finalized."
+ * revision it reads just before. Refusals (no seats yet, the schedule changed since seats were
+ * assigned, a seat that no longer fits, a double-booked place) are the screen's own, after "Not
+ * finalized.", without the screen's advice (API-1.105).
  */
 @RestResource(urlMapping='/v1/finalize_electives')
 global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFirst.Preview {
@@ -88,7 +89,7 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
     throw new ShoreshException(
       finalOnly
         ? electiveSet.Name + ' in ' + week.Name + ' is already finalized.'
-        : 'Not finalized. Assign seats first.'
+        : 'Not finalized. No seats are assigned yet.'
     );
   }
 

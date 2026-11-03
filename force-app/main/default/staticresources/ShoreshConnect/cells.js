@@ -45,7 +45,7 @@ function onlyOne(list, asked, nameOf, what, where) {
   }
   if (found.length > 1) {
     throw new Refused(
-      `Two ${what}s are called "${String(asked).slice(0, 80)}"${where}. Rename one in Shoresh first.`
+      `Two ${what}s are called "${String(asked).slice(0, 80)}"${where}. Nothing was changed.`
     );
   }
   throw new Refused(

@@ -28,7 +28,7 @@ public with sharing class ElectiveFinalize {
       throw new ShoreshException(
         'Double-booked on the schedule (' +
           String.join(clashes, '; ') +
-          '). Fix it, then finalize.'
+          AgentRefusal.withFix(').', 'Fix it, then finalize.')
       );
     }
     Savepoint before = Database.setSavepoint();
@@ -72,10 +72,17 @@ public with sharing class ElectiveFinalize {
 
   private static void refuseUnready(ElectiveRunState state) {
     if (state.seats.isEmpty()) {
-      throw new ShoreshException('Assign seats first.');
+      throw new ShoreshException(
+        AgentRefusal.say('Assign seats first.', 'No seats are assigned yet.')
+      );
     }
     if (state.live.fingerprint() != state.run.TimesFingerprint__c) {
-      throw new ShoreshException('Schedule changed. Assign again first.');
+      throw new ShoreshException(
+        AgentRefusal.withFix(
+          'Schedule changed since seats were assigned.',
+          'Assign again first.'
+        )
+      );
     }
     for (Assignment__c seat : state.seats) {
       ElectivePeriod at = state.live.periodOf(
@@ -85,10 +92,52 @@ public with sharing class ElectiveFinalize {
       );
       if (at == null || !at.offeringIds.contains(seat.Offering__c)) {
         throw new ShoreshException(
-          'A seat no longer fits its offering. Move it, or assign again, then finalize.'
+          AgentRefusal.withFix(
+            notFitting(state, seat, at),
+            'Move it, or assign again, then finalize.'
+          )
         );
       }
     }
+  }
+
+  /**
+   * Which seat no longer fits, and why: "Ivy Snowberry's seat in Pottery (Tuesday, Period 6) no
+   * longer fits: Pottery isn't offered to their bunk then." (API-1.105 names the camper.)
+   */
+  private static String notFitting(
+    ElectiveRunState state,
+    Assignment__c seat,
+    ElectivePeriod at
+  ) {
+    CampLabels labels = CampLabels.forCamp(state.run.Season__r.Camp__c);
+    Preference__c pref = state.byCamper.get(seat.Camper__c);
+    Offering__c offering = state.offeringsById.get(seat.Offering__c);
+    String camper = pref == null ? 'A camper' : pref.Camper__r.Name;
+    String activity = offering == null
+      ? 'a removed ' + labels.singularInSentence('Elective')
+      : offering.Activity__r.Name;
+    String day = Datetime.newInstance(
+        seat.Date__c,
+        Time.newInstance(12, 0, 0, 0)
+      )
+      .format('EEEE');
+    return camper +
+      '\'s seat in ' +
+      activity +
+      ' (' +
+      (at == null ? day : at.words()) +
+      ') no longer fits: ' +
+      (at == null
+        ? 'their ' +
+          labels.singularInSentence('Group') +
+          ' has no ' +
+          labels.singularInSentence('Elective') +
+          ' time then now.'
+        : activity +
+          ' isn\'t offered to their ' +
+          labels.singularInSentence('Group') +
+          ' then.');
   }
 
   /** The run's schedule, as ManualVersions keeps a version of it. */

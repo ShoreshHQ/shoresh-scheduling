@@ -229,6 +229,7 @@ public with sharing class AgentWeeks {
     Integer status;
     String message;
     try {
+      AgentRefusal.forAgent = true;
       AgentAccess.require();
       message = AgentAskFirst.run(action);
       status = 200;
@@ -241,6 +242,8 @@ public with sharing class AgentWeeks {
       Boolean ours = e instanceof ShoreshException;
       status = ours ? 400 : 500;
       message = ours ? e.getMessage() : ScreenErrors.words(e);
+    } finally {
+      AgentRefusal.forAgent = false;
     }
     response.statusCode = status;
     Map<String, String> answered = new Map<String, String>{

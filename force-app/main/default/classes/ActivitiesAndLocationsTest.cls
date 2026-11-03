@@ -416,6 +416,17 @@ private class ActivitiesAndLocationsTest {
       'do that activity first, then delete it.',
       InUse.reason(groupA)
     );
+    // API-1.105: an AI hears only what is wrong, never the screen's advice to change something.
+    AgentRefusal.forAgent = true;
+    Assert.areEqual(
+      'This can\'t be deleted yet: "Swim" happens here.',
+      InUse.reason(ids.get('Pool'))
+    );
+    Assert.areEqual(
+      'This can\'t be deleted yet: it is in "Who can do it" for "Swim".',
+      InUse.reason(groupA)
+    );
+    AgentRefusal.forAgent = false;
     Id division = [SELECT Division__c FROM Group__c WHERE Id = :groupA]
     .Division__c;
     Assert.isTrue(InUse.reason(division).contains('one of its groups'));

@@ -183,7 +183,7 @@ private class AgentManualBuildTest {
       List<Object> unpublish = post('unpublish', manual);
       Test.stopTest();
       Assert.areEqual(
-        'Week 1 hasn\'t been started on Manual Build for Main yet. Start it there first.',
+        'Week 1 hasn\'t been started on Manual Build for Main yet.',
         notStarted[1]
       );
       Assert.areEqual('Published Week 1.', publish[1]);
@@ -274,7 +274,7 @@ private class AgentManualBuildTest {
       Test.stopTest();
       Assert.areEqual(400, notStarted[0]);
       Assert.areEqual(
-        'Week 1 hasn\'t been started on Manual Build for Main yet. Start it there first.',
+        'Week 1 hasn\'t been started on Manual Build for Main yet.',
         ((Map<String, Object>) notStarted[1]).get('message')
       );
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
@@ -377,7 +377,7 @@ private class AgentManualBuildTest {
       );
       Assert.areEqual(400, again[0]);
       Assert.areEqual(
-        'Week 1 has already been started on Manual Build for Main. Change it there (or restore a version) instead.',
+        'Week 1 has already been started on Manual Build for Main.',
         again[1]
       );
       Assert.areEqual(400, unknown[0]);

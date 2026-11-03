@@ -126,7 +126,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
         place +
           ' is part of a longer ' +
           nowName +
-          '. Change it on ' +
+          ', which can be changed only on ' +
           AgentSchedules.screenOf(week) +
           '.'
       );

@@ -14,7 +14,8 @@ const {
   sfPath,
   signIn,
   importModules,
-  TOO_BIG
+  TOO_BIG,
+  PERSON_DECIDES
 } = require("../client");
 // A camp without a namespace, as the test org is; namespaces are camp.test.js's.
 // A packaged camp: the namespace Salesforce says, handed to the screens' modules.
@@ -177,6 +178,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.9
+  // API-1.105
   it("passesOnThePlainSentence: a refusal or a conflict comes through as Shoresh's own sentence", async () => {
     const sentence =
       'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
@@ -186,7 +188,7 @@ describe("Shoresh for AI tools and the command line", () => {
       sfAnswering(403, JSON.stringify({ message: sentence }))
     );
     expect(refused.result).toEqual({
-      content: [{ type: "text", text: sentence }],
+      content: [{ type: "text", text: `${sentence} ${PERSON_DECIDES}` }],
       isError: true
     });
     // The import's own answer (IncomingDoors): every record, each in one sentence.
@@ -2120,7 +2122,7 @@ describe("Shoresh for AI tools and the command line", () => {
       {
         run: sfAnswering(
           400,
-          '{"message":"Not finalized. Assign seats first."}',
+          '{"message":"Not finalized. No seats are assigned yet."}',
           seen
         )
       }
@@ -2134,7 +2136,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(refused).toEqual({
       ok: false,
       status: 400,
-      text: "Not finalized. Assign seats first."
+      text: "Not finalized. No seats are assigned yet."
     });
   });
 
@@ -2185,6 +2187,46 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(orgFrom(["node", "mcp.js", "--org", "a"], {})).toBe("a");
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });
+  // API-1.105
+  it("refusalsLeaveItToThePerson: no sentence only an AI hears tells it to change something first", () => {
+    // What a smaller AI read as orders (Hermes run 2026-11-02): "Fix it, then finalize", "First
+    // choose another location", "Rename one in Shoresh, then ask again". The agent-only sentences
+    // (Agent*.cls and the connector's own) may say to read again, never to repair. Shared screen
+    // sentences hide their advice from an AI with AgentRefusal (ActivitiesAndLocationsTest).
+    const REPAIR =
+      /Fix it|then (retry|try again|ask again|finalize|delete|save)|\b(First|Rename|Assign|Start|Change|Move|Delete|Take) [^.]*\bfirst\b|\binstead\.|Change it (on|there)/;
+    const root = path.join(__dirname, "..", "..");
+    const classes = path.join(root, "force-app/main/default/classes");
+    const sources = [
+      ...fs
+        .readdirSync(classes)
+        .filter((f) => /^Agent.*\.cls$/.test(f) && !/Test(Data)?\.cls$/.test(f))
+        .map((f) => path.join(classes, f)),
+      ...[
+        "cells.js",
+        "client.js",
+        "electives.js",
+        "imports.js",
+        "learned.js",
+        "camp.js",
+        "exports.js",
+        "lastYear.js",
+        "specialFile.js"
+      ].map((f) => path.join(root, "connect", f))
+    ];
+    const said = [];
+    for (const file of sources) {
+      const text = fs.readFileSync(file, "utf8");
+      for (const m of text.matchAll(
+        /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`([^`]*)`/g
+      )) {
+        const s = m[1] ?? m[2] ?? m[3];
+        if (REPAIR.test(s)) said.push(`${path.basename(file)}: ${s}`);
+      }
+    }
+    expect(said).toEqual([]);
+  });
+
   // API-1.15
   it("tooBig: a Salesforce limit Apex can't catch is said as the screens say it", async () => {
     const run = sfAnswering(

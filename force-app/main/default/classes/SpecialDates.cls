@@ -169,9 +169,12 @@ public with sharing class SpecialDates {
       labels.singularInSentence(SpecialItemTriggerHandler.termOf(type)) +
       ' can\'t be deleted yet: it is on ' +
       listed +
-      '. First take it off ' +
-      (days.size() == 1 ? 'that day' : 'those days') +
-      ', then delete it.';
+      AgentRefusal.withFix(
+        '.',
+        'First take it off ' +
+          (days.size() == 1 ? 'that day' : 'those days') +
+          ', then delete it.'
+      );
   }
 
   /** 'Tuesday of "Week 2"'. */

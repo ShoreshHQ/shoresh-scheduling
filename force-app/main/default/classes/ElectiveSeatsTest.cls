@@ -775,7 +775,10 @@ private class ElectiveSeatsTest {
       } catch (AuraHandledException e) {
         refusal = e.getMessage();
       }
-      Assert.areEqual('Schedule changed. Assign again first.', refusal);
+      Assert.areEqual(
+        'Schedule changed since seats were assigned. Assign again first.',
+        refusal
+      );
     }
   }
 
