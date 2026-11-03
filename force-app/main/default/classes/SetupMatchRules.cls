@@ -52,7 +52,7 @@ public with sharing class SetupMatchRules {
 
   /** Why an activity's placement can't stay this week, or null when it can. */
   public String whyNotActivity(String owner) {
-    if (!owner.startsWith('A:')) {
+    if (!SlotIds.startsActivity(owner)) {
       // Not set up in Shoresh yet (an imported elective): nothing in setup to compare it with.
       return null;
     }

@@ -22,7 +22,8 @@ import {
   readActivities,
   readLocations,
   readOtherPrograms,
-  readProgram
+  readProgram,
+  startsActivity
 } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { owner, placementIn, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 
@@ -137,7 +138,7 @@ export function planRain(day, model, options = {}) {
   day.blocks.forEach((block, b) => {
     day.groups.forEach((grp, g) => {
       const slot = rows[g][b];
-      if (!slot || !slot.startsWith("A:") || skip(g, b) || isAway(g, b)) {
+      if (!slot || !startsActivity(slot) || skip(g, b) || isAway(g, b)) {
         return;
       }
       const activityId = slot.slice(2);
@@ -184,7 +185,7 @@ export function planRain(day, model, options = {}) {
       : null;
   };
   const book = (g, b, identity) => {
-    if (identity.startsWith("A:")) {
+    if (startsActivity(identity)) {
       add(byActivity, `${b}|${identity.slice(2)}`, g);
     }
     const place = placeOf(identity);

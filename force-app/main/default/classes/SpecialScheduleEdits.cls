@@ -163,6 +163,7 @@ public with sharing class SpecialScheduleEdits {
       throw new ShoreshException(
         'That ' +
           labels.singularInSentence(
+            // Which set time, not whether: SlotIds.isSetTime can't tell fixed from recurring.
             slot.startsWith('F:') ? 'FixedActivity' : 'RecurringActivity'
           ) +
           ' was not found. It may have been deleted.'

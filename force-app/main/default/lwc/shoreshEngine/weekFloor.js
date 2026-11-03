@@ -1,5 +1,5 @@
 import { countedCells } from "./checks";
-import { CARRIES_ON, slots } from "./grid";
+import { CARRIES_ON, slots, startsActivity } from "./grid";
 import { readGrid } from "./weekFixed";
 import { check } from "./weekOptions";
 import { PREFERENCES, RULE } from "./weekRules";
@@ -67,7 +67,7 @@ export function importedFilled(ctx, days, imported) {
     return slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
   };
   return countedCells(ctx, days).filter((c) =>
-    slotOf(c.day, c.groupId, c.b).startsWith("A:")
+    startsActivity(slotOf(c.day, c.groupId, c.b))
   ).length;
 }
 

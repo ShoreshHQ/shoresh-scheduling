@@ -1,5 +1,5 @@
 import { FIELD } from "c/shoreshSchema";
-import { measureWeek } from "c/shoreshEngine";
+import { measureWeek, startsActivity } from "c/shoreshEngine";
 import { dayLabel } from "c/shoreshScheduleViews";
 import { placement } from "./slotEdits";
 import { RAIN_PLAN_FULL, isMarked } from "./rain";
@@ -192,7 +192,7 @@ export function rainFullAt(day, g, b) {
     return null;
   }
   const at = placement(day, g, b);
-  if (!at.slot.startsWith("A:") || at.length !== 1) {
+  if (!startsActivity(at.slot) || at.length !== 1) {
     return null;
   }
   return isMarked(

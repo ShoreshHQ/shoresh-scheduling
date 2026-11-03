@@ -109,7 +109,13 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     // Manual Build has no locks: its screen changes any cell (API-1.41).
     if (AgentSchedules.isLocked(week, grid, new List<Integer>{ g, b })) {
       // The screen's own refusal (shoreshWeekEditor refuseLocked); unlocking is the person's.
-      throw new ShoreshException(place + ' is locked.');
+      throw new ShoreshException(
+        ScheduleGridLocks.lockedWords(
+          grid.groups[g].name,
+          AgentWeeks.dayName(day),
+          grid.blocks[b].name
+        )
+      );
     }
     Boolean carriesOn =
       b + 1 < row.size() &&
