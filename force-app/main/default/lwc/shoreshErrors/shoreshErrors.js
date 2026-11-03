@@ -16,7 +16,7 @@ const NOTHING_HAPPENED = "That didn't work. Try again.";
 // it did is rolled back. Trying again does the same, so the director is told plainly.
 // Shoresh support's address, the one place it is written (Help in Settings uses it too).
 export const SUPPORT_EMAIL = "imshoresh@gmail.com";
-const TOO_BIG = `This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`;
+export const TOO_BIG = `This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`;
 const LIMIT_TYPE = /(^|\.)LimitException$/;
 const LIMIT_WORDS =
   /^(?:Too many [A-Za-z ]+:|Apex CPU time limit exceeded|Apex heap size too large)/;

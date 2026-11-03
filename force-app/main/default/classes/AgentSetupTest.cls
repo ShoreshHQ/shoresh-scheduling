@@ -45,6 +45,28 @@ private class AgentSetupTest {
       .get('Name');
   }
 
+  // API-1.11: every change through an agent is refused in the same words without the access
+  @IsTest
+  static void someoneWithoutShoreshRenamesNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+    }
+    System.runAs(ShoreshTestData.outsider()) {
+      Test.startTest();
+      List<Object> renamed = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'Group A',
+          'new_name' => 'Cabin A'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, renamed[0]);
+      Assert.areEqual(AgentWeeks.NO_ACCESS, renamed[1]);
+    }
+  }
+
   @IsTest
   static void renamingIsTheSetupTablesRowSave() {
     System.runAs(ShoreshTestData.scheduler()) {

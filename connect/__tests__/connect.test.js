@@ -13,7 +13,8 @@ const {
   check,
   sfPath,
   signIn,
-  importModules
+  importModules,
+  TOO_BIG
 } = require("../client");
 // A camp without a namespace, as the test org is; namespaces are camp.test.js's.
 // A packaged camp: the namespace Salesforce says, handed to the screens' modules.
@@ -2152,6 +2153,25 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });
   // API-1.15
+  it("tooBig: a Salesforce limit Apex can't catch is said as the screens say it", async () => {
+    const run = sfAnswering(
+      500,
+      JSON.stringify([
+        {
+          errorCode: "APEX_ERROR",
+          message:
+            "System.LimitException: Too many SOQL queries: 101\n\nClass.AgentUndoImport.run: line 1"
+        }
+      ])
+    );
+    const done = await call("undo_import", { season: "Summer 2026" }, { run });
+    expect(done).toEqual({ ok: false, status: 500, text: TOO_BIG });
+    expect(TOO_BIG).toBe(
+      require("../../force-app/main/default/lwc/shoreshErrors/shoreshErrors.js")
+        .TOO_BIG
+    );
+  });
+
   it("shipsInsideThePackage: the connector is the ShoreshConnect static resource, the same files as connect/, needing only Node", () => {
     const { connectorFiles, FROM, TO } = require("../../scripts/build-connect");
     expect(
