@@ -111,11 +111,14 @@ public with sharing class SetTimeInUse {
     return 'This can\'t be deleted yet: ' +
       InUse.quoted(names) +
       oneOrMany(names, ' starts', ' start') +
-      ' in it. First choose another ' +
-      labels.singularInSentence('TimeBlock') +
-      ' for ' +
-      oneOrMany(names, 'it', 'them') +
-      ', then delete it.';
+      AgentRefusal.withFix(
+        ' in it.',
+        'First choose another ' +
+          labels.singularInSentence('TimeBlock') +
+          ' for ' +
+          oneOrMany(names, 'it', 'them') +
+          ', then delete it.'
+      );
   }
 
   private static String programReason(Id programId) {
@@ -148,13 +151,16 @@ public with sharing class SetTimeInUse {
     return 'This can\'t be deleted yet: ' +
       InUse.quoted(names) +
       oneOrMany(names, ' is', ' are') +
-      ' set in it. Delete ' +
-      oneOrMany(names, 'it', 'them') +
-      ' on the ' +
-      labels.plural('FixedActivity') +
-      ' or ' +
-      labels.plural('RecurringActivity') +
-      ' screen first, then delete this.';
+      AgentRefusal.withFix(
+        ' set in it.',
+        'Delete ' +
+          oneOrMany(names, 'it', 'them') +
+          ' on the ' +
+          labels.plural('FixedActivity') +
+          ' or ' +
+          labels.plural('RecurringActivity') +
+          ' screen first, then delete this.'
+      );
   }
 
   /** A group or division (or a group in it) named in who a recurring activity covers. */
@@ -189,11 +195,14 @@ public with sharing class SetTimeInUse {
       ' in who ' +
       InUse.quoted(names) +
       oneOrMany(names, ' covers', ' cover') +
-      '. Change who ' +
-      oneOrMany(names, 'it covers', 'they cover') +
-      ' on the ' +
-      labels.plural('RecurringActivity') +
-      ' screen first, then delete it.';
+      AgentRefusal.withFix(
+        '.',
+        'Change who ' +
+          oneOrMany(names, 'it covers', 'they cover') +
+          ' on the ' +
+          labels.plural('RecurringActivity') +
+          ' screen first, then delete it.'
+      );
   }
 
   /** The first words for one name, the second for several. */

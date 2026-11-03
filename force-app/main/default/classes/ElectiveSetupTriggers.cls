@@ -111,9 +111,12 @@ public with sharing class ElectiveSetupTriggers {
           labels.singularInSentence('Elective') +
           ' runs: ' +
           InUse.quoted(runs) +
-          '. First delete ' +
-          (runs.size() == 1 ? 'that run' : 'those runs') +
-          ', then delete it.'
+          AgentRefusal.withFix(
+            '.',
+            'First delete ' +
+              (runs.size() == 1 ? 'that run' : 'those runs') +
+              ', then delete it.'
+          )
       );
     }
     if (deletable.isEmpty()) {

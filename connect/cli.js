@@ -14,7 +14,7 @@
  */
 const fs = require("fs");
 const { CAPABILITIES, byName } = require("./capabilities");
-const { call } = require("./client");
+const { call, toAgent } = require("./client");
 
 function usage() {
   return [
@@ -63,7 +63,9 @@ function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
 async function main(argv, env, out = process.stdout, err = process.stderr) {
   try {
     const { name, input, org } = parse(argv);
-    const answer = await call(name, input, { org: org ?? env.SHORESH_ORG });
+    const answer = toAgent(
+      await call(name, input, { org: org ?? env.SHORESH_ORG })
+    );
     (answer.ok ? out : err).write(`${answer.text}\n`);
     return answer.ok ? 0 : 1;
   } catch (e) {

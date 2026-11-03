@@ -75,11 +75,14 @@ public with sharing class InUse {
       what +
       ' in "Who can do it" for ' +
       quoted(names) +
-      '. Change who can do ' +
-      (rows.size() == 1
-        ? 'that ' + labels.singularInSentence('Activity')
-        : 'those ' + labels.pluralInSentence('Activity')) +
-      ' first, then delete it.';
+      AgentRefusal.withFix(
+        '.',
+        'Change who can do ' +
+          (rows.size() == 1
+            ? 'that ' + labels.singularInSentence('Activity')
+            : 'those ' + labels.pluralInSentence('Activity')) +
+          ' first, then delete it.'
+      );
   }
 
   private static String locationReason(Id locationId) {
@@ -174,11 +177,10 @@ public with sharing class InUse {
   }
 
   private static String refusal(List<String> parts, List<String> fixes) {
-    return 'This can\'t be deleted yet: ' +
-      String.join(parts, ', and ') +
-      '. First ' +
-      String.join(fixes, ' and ') +
-      ', then delete it.';
+    return AgentRefusal.withFix(
+      'This can\'t be deleted yet: ' + String.join(parts, ', and ') + '.',
+      'First ' + String.join(fixes, ' and ') + ', then delete it.'
+    );
   }
 
   private static String activityReason(Id activityId) {
@@ -220,11 +222,7 @@ public with sharing class InUse {
     if (parts.isEmpty()) {
       return null;
     }
-    return 'This can\'t be deleted yet: ' +
-      String.join(parts, ', and ') +
-      '. First ' +
-      String.join(fixes, ' and ') +
-      ', then delete it.';
+    return refusal(parts, fixes);
   }
 
   /** "Archery", "Swim" … up to 20 names, then "and more". */

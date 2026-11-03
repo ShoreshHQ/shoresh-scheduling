@@ -68,7 +68,7 @@ public with sharing class AgentFields {
             names[i] +
             '" are both a ' +
             what +
-            ' called that on that day, so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.'
+            ' called that on that day, so Shoresh can\'t tell which you mean. Nothing was changed.'
         );
       }
       found = i;

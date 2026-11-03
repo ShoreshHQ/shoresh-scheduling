@@ -389,7 +389,7 @@ private class AgentChangesTest {
       Assert.fail('Expected look-alike names to be refused');
     } catch (ShoreshException e) {
       Assert.areEqual(
-        '"Bunk 1" and "bunk  1" are both a group called that on that day, so Shoresh can\'t tell which you mean. Rename one in Shoresh, then ask again.',
+        '"Bunk 1" and "bunk  1" are both a group called that on that day, so Shoresh can\'t tell which you mean. Nothing was changed.',
         e.getMessage()
       );
     }

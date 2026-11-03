@@ -97,7 +97,7 @@ public with sharing class AgentSchedules {
           ManualDrafts.NAME +
           ' for ' +
           week.program.Name +
-          ' yet. Start it there first.'
+          ' yet.'
         : week.name +
           ' hasn\'t been built for ' +
           week.program.Name +

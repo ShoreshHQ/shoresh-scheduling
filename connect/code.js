@@ -6,14 +6,15 @@
  * description of every action (name, inputs, what it does) that the MCP tool list also comes from.
  */
 const { CAPABILITIES } = require("./capabilities");
-const { call } = require("./client");
+const { call, toAgent } = require("./client");
 
 const ACTIONS = CAPABILITIES;
 
 const functions = Object.fromEntries(
   ACTIONS.map(({ name }) => [
     name,
-    (input = {}, { org, run } = {}) => call(name, input, { org, run })
+    async (input = {}, { org, run } = {}) =>
+      toAgent(await call(name, input, { org, run }))
   ])
 );
 

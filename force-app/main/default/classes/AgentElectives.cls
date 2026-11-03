@@ -71,7 +71,7 @@ public with sharing class AgentElectives {
       return new ShoreshException(
         finalRun != null
           ? place +
-            ' is finalized, so its seats can\'t change. Start a new version first (start_new_elective_version).'
+            ' is finalized, so its seats can\'t change. Starting a new version (start_new_elective_version) is the director\'s choice.'
           : 'No campers\' choices for ' +
             place +
             ' yet. Bring them in first (bring_in_camper_elective_choices).'

@@ -162,7 +162,10 @@ public with sharing class SpecialDateTriggerHandler {
                   ' "' +
                   other +
                   '"') +
-              '. Take it off first, or choose another day.'
+              AgentRefusal.withFix(
+                '.',
+                'Take it off first, or choose another day.'
+              )
             : 'This ' +
               labels.singularInSentence('SpecialEvent') +
               ' is already on ' +

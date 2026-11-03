@@ -51,11 +51,10 @@ public with sharing class ElectivesInUse {
     if (found.parts.isEmpty()) {
       return null;
     }
-    return 'This can\'t be deleted yet: ' +
-      String.join(found.parts, ', and ') +
-      '. First ' +
-      String.join(found.fixes, ' and ') +
-      ', then delete it.';
+    return AgentRefusal.withFix(
+      'This can\'t be deleted yet: ' + String.join(found.parts, ', and ') + '.',
+      'First ' + String.join(found.fixes, ' and ') + ', then delete it.'
+    );
   }
 
   /** What is in the way, and the fix for each, in the same order. */

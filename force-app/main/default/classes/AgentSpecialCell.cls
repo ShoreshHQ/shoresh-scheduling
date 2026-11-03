@@ -39,7 +39,7 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
         place +
           ' is part of a longer ' +
           nowName +
-          '. Change it on the Special events screen.'
+          ', which can be changed only on the Special events screen.'
       );
     }
     String target = slotOf(found.owner.seasonId, body);

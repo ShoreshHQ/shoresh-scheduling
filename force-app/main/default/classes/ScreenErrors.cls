@@ -12,7 +12,7 @@ public with sharing class ScreenErrors {
   private static final String COULD_NOT_OPEN = 'Shoresh couldn\'t tell why. Reload the page to try again.';
   // Plain words for the platform's refusals that are not Shoresh's own.
   private static final Map<StatusCode, String> PLAIN = new Map<StatusCode, String>{
-    StatusCode.DELETE_FAILED => 'This can\'t be deleted while something else still uses it. Change that first.',
+    StatusCode.DELETE_FAILED => 'This can\'t be deleted while something else still uses it.',
     StatusCode.INSUFFICIENT_ACCESS_OR_READONLY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
     StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
     StatusCode.INVALID_FIELD_FOR_INSERT_UPDATE => 'You don\'t have access to change that.',
@@ -20,6 +20,13 @@ public with sharing class ScreenErrors {
     StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
     StatusCode.STRING_TOO_LONG => 'Something typed is too long. Shorten it and save again.'
   };
+
+  /** The plain words; a screen also says to change what still uses it (API-1.105: an AI doesn't). */
+  private static String plain(StatusCode code) {
+    return code == StatusCode.DELETE_FAILED
+      ? AgentRefusal.withFix(PLAIN.get(code), 'Change that first.')
+      : PLAIN.get(code);
+  }
 
   /** For a save or delete that went wrong. */
   public static AuraHandledException of(Exception e) {
@@ -94,7 +101,7 @@ public with sharing class ScreenErrors {
       return duplicateMessage(record);
     }
     if (PLAIN.containsKey(code)) {
-      return PLAIN.get(code);
+      return plain(code);
     }
     logged(e);
     return fallback;
@@ -113,7 +120,7 @@ public with sharing class ScreenErrors {
       return duplicateMessage(null);
     }
     if (PLAIN.containsKey(code)) {
-      return PLAIN.get(code);
+      return plain(code);
     }
     System.debug(
       LoggingLevel.ERROR,
