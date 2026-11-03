@@ -35,7 +35,7 @@ public with sharing class SeasonTriggerHandler {
   }
 
   /** The season's own rows that would block its delete, cleared. */
-  private class SeasonRows implements SetupWrite.Steps {
+  private inherited sharing class SeasonRows implements SetupWrite.Steps {
     private Set<Id> deletable;
 
     private SeasonRows(Set<Id> deletable) {

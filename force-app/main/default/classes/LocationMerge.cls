@@ -53,7 +53,7 @@ public with sharing class LocationMerge {
   }
 
   /** The others' uses and weeks moved to the one kept, then the others deleted. */
-  private class Merging implements SetupWrite.Steps {
+  private inherited sharing class Merging implements SetupWrite.Steps {
     private Id keepId;
     private Set<Id> others;
     private Decimal groupsThatFit;

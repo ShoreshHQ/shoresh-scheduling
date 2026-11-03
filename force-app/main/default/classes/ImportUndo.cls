@@ -54,7 +54,7 @@ public with sharing class ImportUndo {
   }
 
   /** What the import did, put back (ImportUndoLog), and the import marked undone. */
-  private class Reversal implements SetupWrite.Steps {
+  private inherited sharing class Reversal implements SetupWrite.Steps {
     private Import__c done;
     private Result result;
 

@@ -6,10 +6,6 @@ trigger FixedActivityTrigger on FixedActivity__c(
   after update,
   after undelete
 ) {
-  if (Trigger.isDelete && Trigger.isBefore) {
-    WeekExceptions.goWith(Trigger.oldMap.keySet());
-    return;
-  }
   SetTimeItemTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

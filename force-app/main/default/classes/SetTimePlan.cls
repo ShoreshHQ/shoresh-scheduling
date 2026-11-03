@@ -228,6 +228,27 @@ public with sharing class SetTimePlan {
   }
 
   /** A fixed or recurring activity's shared fields. */
+  /**
+   * The fields an import writes on a row, with the item's last time block added when it is given
+   * a new time block or length: logged beside them, Undo puts a "changed blocks" note back with
+   * them (ImportUndoLog; SetupWrite rule 3). Any other row's fields as they are.
+   */
+  public static Map<String, Schema.SObjectField> withLastBlock(
+    Map<String, Schema.SObjectField> fields,
+    Schema.SObjectType kind
+  ) {
+    ItemFields f = fieldsOf(kind);
+    Set<Schema.SObjectField> given = new Set<Schema.SObjectField>(
+      fields.values()
+    );
+    if (
+      f != null && (given.contains(f.timeBlock) || given.contains(f.length))
+    ) {
+      fields.put(ShoreshSchema.localName(f.lastTimeBlock), f.lastTimeBlock);
+    }
+    return fields;
+  }
+
   public static ItemFields fieldsOf(Schema.SObjectType type) {
     if (itemFields == null) {
       itemFields = new Map<Schema.SObjectType, ItemFields>();

@@ -82,7 +82,7 @@ public with sharing class ImportSetupSaves {
     }
     SetupWrite.run(
       SetupWrite.Kind.SAVE,
-      new Writes(plan, writer, keys, seasons[0].Camp__c)
+      new Writes(plan, writer, seasons[0].Camp__c)
     );
     return writer.result;
   }
@@ -91,18 +91,11 @@ public with sharing class ImportSetupSaves {
   private class Writes implements SetupWrite.Steps {
     private ImportPlan plan;
     private ImportWriter writer;
-    private ImportKeys keys;
     private Id campId;
 
-    private Writes(
-      ImportPlan plan,
-      ImportWriter writer,
-      ImportKeys keys,
-      Id campId
-    ) {
+    private Writes(ImportPlan plan, ImportWriter writer, Id campId) {
       this.plan = plan;
       this.writer = writer;
-      this.keys = keys;
       this.campId = campId;
     }
 
@@ -122,7 +115,7 @@ public with sharing class ImportSetupSaves {
       new ImportRemovals(plan, writer).run();
       ImportAnswers.save(campId, plan);
       // What it guessed rather than read, with the values saved: marked for a look on setup.
-      SetupGuesses.rememberFromPlan(campId, plan, keys);
+      SetupGuesses.rememberFromPlan(campId, plan, writer.keys);
       writer.result.importId = record(plan, writer);
       writer.result.openNotKept = ImportLog.openNotKept;
     }

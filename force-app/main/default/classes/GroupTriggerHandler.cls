@@ -8,6 +8,11 @@ public with sharing class GroupTriggerHandler {
     List<Group__c> groups,
     Map<Id, Group__c> before
   ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
+      WeekExceptions.goWith(before.keySet());
+      return;
+    }
     if (operation == System.TriggerOperation.BEFORE_UPDATE) {
       GroupMoves.refuseOtherPrograms(groups, before);
     } else if (operation == System.TriggerOperation.AFTER_DELETE) {

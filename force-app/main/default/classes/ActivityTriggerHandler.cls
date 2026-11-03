@@ -16,6 +16,20 @@ public with sharing class ActivityTriggerHandler {
     Activity__c.RainPlan__c => 'RainPlan'
   };
 
+  /** Before delete: its own week-off marks go with it. Before save: the checks above. */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<Activity__c> activities,
+    Map<Id, Activity__c> before
+  ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
+      WeekExceptions.goWith(before.keySet());
+      return;
+    }
+    beforeSave(activities, before);
+  }
+
   public static void beforeSave(
     List<Activity__c> activities,
     Map<Id, Activity__c> before

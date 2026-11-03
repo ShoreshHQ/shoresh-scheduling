@@ -14,6 +14,11 @@ public with sharing class SetTimeItemTriggerHandler {
     List<SObject> items,
     String term
   ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
+      WeekExceptions.goWith(Trigger.oldMap.keySet());
+      return;
+    }
     if (
       operation == System.TriggerOperation.BEFORE_INSERT ||
       operation == System.TriggerOperation.BEFORE_UPDATE
@@ -101,6 +106,19 @@ public with sharing class SetTimeItemTriggerHandler {
       (Id) item.get(f.lastTimeBlock) != (Id) was.get(f.lastTimeBlock);
   }
 
+  /** New, or its blocks touched; and not a last block an Undo puts back as it was. */
+  private static Boolean needsLastBlock(
+    SObject item,
+    SObject was,
+    Boolean keepGiven
+  ) {
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
+    if (keepGiven && item.get(f.lastTimeBlock) != null) {
+      return false;
+    }
+    return blocksTouched(item, was);
+  }
+
   private static void rememberLastBlocks(
     List<SObject> items,
     List<TimeBlock__c> blocksInOrder
@@ -120,13 +138,11 @@ public with sharing class SetTimeItemTriggerHandler {
     // An Undo puts the last block back as it was, a changed-blocks note with it (SetupWrite 3).
     Boolean keepGiven = SetupWrite.keepsLastTimeBlocks();
     for (SObject item : items) {
-      if (before != null && !blocksTouched(item, before.get(item.Id))) {
+      SObject was = before == null ? null : before.get(item.Id);
+      if (!needsLastBlock(item, was, keepGiven)) {
         continue;
       }
       SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
-      if (keepGiven && item.get(f.lastTimeBlock) != null) {
-        continue;
-      }
       item.put(
         f.lastTimeBlock,
         lastBlockOf(item, blocksByProgram.get((Id) item.get(f.program)))

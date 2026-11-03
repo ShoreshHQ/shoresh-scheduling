@@ -6,6 +6,11 @@ public with sharing class LocationTriggerHandler {
     List<Location__c> locations,
     Map<Id, Location__c> before
   ) {
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
+      WeekExceptions.goWith(before.keySet());
+      return;
+    }
     if (operation == System.TriggerOperation.AFTER_UPDATE) {
       SetTimeTriggers.locationsSaved(locations, before);
     } else {

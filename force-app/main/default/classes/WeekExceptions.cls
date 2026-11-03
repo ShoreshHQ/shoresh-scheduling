@@ -12,6 +12,8 @@ public with sharing class WeekExceptions {
     WeekException__c.FixedActivity__c,
     WeekException__c.RecurringActivity__c
   };
+  // Records whose own rows deleteWithWeeks has cleared in this transaction.
+  private static Set<Id> clearedByScreens = new Set<Id>();
 
   public static void save(List<WeekException__c> toAdd, List<Id> toRemove) {
     Set<Id> removeIds = new Set<Id>();
@@ -102,13 +104,16 @@ public with sharing class WeekExceptions {
    * must not be stopped by a mark they cannot see.
    */
   public static void goWith(Set<Id> recordIds) {
-    if (!SetupWrite.clearsOwnRows()) {
+    Set<Id> ids = new Set<Id>(recordIds);
+    // A screen delete cleared them already (deleteWithWeeks).
+    ids.removeAll(clearedByScreens);
+    if (ids.isEmpty() || !SetupWrite.clearsOwnRows()) {
       return;
     }
-    SetupWrite.run(SetupWrite.Kind.OWN_ROWS, new OwnRows(recordIds));
+    SetupWrite.run(SetupWrite.Kind.OWN_ROWS, new OwnRows(ids));
   }
 
-  private class OwnRows implements SetupWrite.Steps {
+  private inherited sharing class OwnRows implements SetupWrite.Steps {
     private Set<Id> ids;
 
     private OwnRows(Set<Id> ids) {
@@ -129,14 +134,19 @@ public with sharing class WeekExceptions {
           WITH SYSTEM_MODE
         ]
       );
-      clear(
-        [
-          SELECT Id
-          FROM Coverage__c
-          WHERE RecurringActivity__c IN :ids
-          WITH SYSTEM_MODE
-        ]
-      );
+      if (
+        new List<Id>(ids)[0].getSObjectType() ==
+        RecurringActivity__c.SObjectType
+      ) {
+        clear(
+          [
+            SELECT Id
+            FROM Coverage__c
+            WHERE RecurringActivity__c IN :ids
+            WITH SYSTEM_MODE
+          ]
+        );
+      }
     }
 
     private void clear(List<SObject> rows) {
@@ -202,9 +212,11 @@ public with sharing class WeekExceptions {
           AccessLevel.USER_MODE
         );
       }
+      clearedByScreens.add(recordId);
       Database.delete(recordId, true, AccessLevel.USER_MODE);
     } catch (Exception e) {
       Database.rollback(beforeDelete);
+      clearedByScreens.remove(recordId);
       throw e;
     }
   }

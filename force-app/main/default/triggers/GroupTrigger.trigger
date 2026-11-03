@@ -6,10 +6,6 @@ trigger GroupTrigger on Group__c(
   after delete,
   after undelete
 ) {
-  if (Trigger.isDelete && Trigger.isBefore) {
-    WeekExceptions.goWith(Trigger.oldMap.keySet());
-    return;
-  }
   GroupTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

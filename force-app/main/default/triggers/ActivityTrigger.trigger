@@ -3,9 +3,9 @@ trigger ActivityTrigger on Activity__c(
   before insert,
   before update
 ) {
-  if (Trigger.isDelete && Trigger.isBefore) {
-    WeekExceptions.goWith(Trigger.oldMap.keySet());
-    return;
-  }
-  ActivityTriggerHandler.beforeSave(Trigger.new, Trigger.oldMap);
+  ActivityTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    Trigger.oldMap
+  );
 }

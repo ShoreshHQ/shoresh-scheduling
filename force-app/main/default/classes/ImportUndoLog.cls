@@ -136,37 +136,14 @@ public with sharing class ImportUndoLog {
       if (!byType.containsKey(kind)) {
         byType.put(kind, new Map<Id, Map<String, Schema.SObjectField>>());
       }
-      byType.get(kind).put(row.Id, withLastBlock(written(row), kind));
+      byType.get(kind)
+        .put(row.Id, SetTimePlan.withLastBlock(written(row), kind));
     }
     List<Map<String, Object>> result = new List<Map<String, Object>>();
     for (Schema.SObjectType kind : byType.keySet()) {
       result.addAll(valuesBefore(kind, byType.get(kind)));
     }
     return result;
-  }
-
-  /**
-   * A fixed or recurring activity given a new time block or length also keeps its last time block
-   * as it was, so Undo brings back a "changed blocks" note with it (SetupWrite rule 3).
-   */
-  private static Map<String, Schema.SObjectField> withLastBlock(
-    Map<String, Schema.SObjectField> fields,
-    Schema.SObjectType kind
-  ) {
-    if (
-      kind != FixedActivity__c.SObjectType &&
-      kind != RecurringActivity__c.SObjectType
-    ) {
-      return fields;
-    }
-    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(kind);
-    Set<Schema.SObjectField> given = new Set<Schema.SObjectField>(
-      fields.values()
-    );
-    if (given.contains(f.timeBlock) || given.contains(f.length)) {
-      fields.put(ShoreshSchema.localName(f.lastTimeBlock), f.lastTimeBlock);
-    }
-    return fields;
   }
 
   private static List<Map<String, Object>> valuesBefore(
