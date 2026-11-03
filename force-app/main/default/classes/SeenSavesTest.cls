@@ -124,7 +124,7 @@ private class SeenSavesTest {
     }
   }
 
-  // API-1.90: an import's, Clear electives' and Update to match's stamp is as seen only exactly.
+  // API-1.104: an import's, Clear electives' and Update to match's stamp is as seen only exactly.
   @IsTest
   static void aStampIsAsSeenOnlyExactly() {
     Assert.isTrue(SeenSaves.stamp('a1b2', 'a1b2'));
@@ -133,7 +133,7 @@ private class SeenSavesTest {
     Assert.isFalse(SeenSaves.stamp(null, ''));
   }
 
-  // API-1.90: a value the AI's setup verbs read (a camp word, a season's field, a learned
+  // API-1.104: a value the AI's setup verbs read (a camp word, a season's field, a learned
   // answer) is as seen only exactly, and read empty is still seen.
   @IsTest
   static void aValueIsAsSeenOnlyExactlyAndEmptyIsSeen() {
@@ -150,7 +150,7 @@ private class SeenSavesTest {
     Assert.isFalse(SeenSaves.value('Tuesday', null));
   }
 
-  // API-1.90: a special plan's and an elective run's revision; a plan never saved is as seen
+  // API-1.104: a special plan's and an elective run's revision; a plan never saved is as seen
   // ("none") only while it still hasn't been.
   @IsTest
   static void aRevisionIsAsSeenOnlyAtTheRevisionRead() {

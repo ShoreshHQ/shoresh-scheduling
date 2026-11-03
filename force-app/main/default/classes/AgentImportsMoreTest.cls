@@ -307,7 +307,7 @@ private class AgentImportsMoreTest {
       Map<String, Object> asRead = file.clone();
       asRead.put('seen', seen);
       Test.startTest();
-      // API-1.90: one without seen is refused in plain words, never a platform error.
+      // API-1.104: one without seen is refused in plain words, never a platform error.
       List<Object> unseen = post(new AgentImportSpecialSchedule(), file);
       List<Object> stale = post(new AgentImportSpecialSchedule(), wrong);
       List<Object> imported = post(new AgentImportSpecialSchedule(), asRead);

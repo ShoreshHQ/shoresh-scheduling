@@ -197,7 +197,7 @@ private class AgentSpecialScheduleTest {
     }
   }
 
-  // API-1.90, API-1.78: AI over screen, then screen over AI. The AI read the plan at 4; the
+  // API-1.104, API-1.78: AI over screen, then screen over AI. The AI read the plan at 4; the
   // person added a station, so the AI's change from 4 is refused. The AI read it again (5) and
   // changed it; the page still open at 5 is refused in its own words. Nothing is overwritten.
   @IsTest
