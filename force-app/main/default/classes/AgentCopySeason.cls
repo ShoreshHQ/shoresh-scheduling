@@ -19,6 +19,9 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
   // The whole season's dates, beside each week's.
   public static final String WHOLE = 'season';
 
+  // The copy's dates the preview found, held: the request's Copy copies that, unread again.
+  private Map<String, String> previewed;
+
   @HttpPost
   global static void post() {
     AgentWeeks.answer(new AgentCopySeason());
@@ -31,7 +34,8 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
       AgentFields.text(body, 'season')
     );
     String name = AgentFields.text(body, 'name').normalizeSpace();
-    Map<String, String> now = asSeen(season, name, body);
+    previewed = asSeen(season, name, body);
+    Map<String, String> now = previewed;
     return 'This makes a new season "' +
       name +
       '" from "' +
@@ -50,7 +54,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
     );
     String name = AgentFields.text(body, 'name').normalizeSpace();
     Date start = dateOf(AgentFields.text(body, 'start_date'));
-    Map<String, String> now = asSeen(season, name, body);
+    Map<String, String> now = previewed ?? asSeen(season, name, body);
     try {
       // The Copy season page's own Copy.
       SeasonSetupController.copySeason(season.Id, name, start);

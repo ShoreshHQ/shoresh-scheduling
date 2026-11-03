@@ -102,36 +102,25 @@ private class AgentCopyAndMatchTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Season__c season = season();
-      Map<String, Object> seen = new Map<String, Object>();
-      seen.putAll(
-        AgentCopySeason.seenOf(
-          SeasonSetupController.previewCopy(
-            season.Id,
-            season.StartDate__c.addDays(364)
-          )
-        )
-      );
       Integer before = seasons();
-      List<Object> copied = ask(
-        new AgentCopySeason(),
-        'POST',
-        copyAsk(season, 'Next summer', seen)
-      );
-      Assert.areEqual(200, copied[0], String.valueOf(copied[1]));
-      Assert.isTrue(
-        ((String) copied[1]).contains('undo_import'),
-        String.valueOf(copied[1])
+      // The Copy the AI's copy_season makes (its answer is copyIsTheCopyPagesCopyWithTheDatesSeen's);
+      // the AI's ask-first preview of the undo then fits beside it before the test starts.
+      SeasonSetupController.copySeason(
+        season.Id,
+        'Next summer',
+        season.StartDate__c.addDays(364)
       );
       Id copyId = [SELECT Id FROM Season__c WHERE Name = 'Next summer'].Id;
-      Test.startTest();
-      List<Object> undone = ask(
-        new AgentUndoImport(),
-        'POST',
-        new Map<String, Object>{
-          'season' => 'Next summer',
-          'seen' => ImportUndo.latest(copyId)
-        }
+      Map<String, Object> undo = new Map<String, Object>{
+        'season' => 'Next summer',
+        'seen' => ImportUndo.latest(copyId)
+      };
+      undo.put(
+        AgentAskFirst.FIELD,
+        AgentAskFirstTestCalls.confirmFor(new AgentUndoImport(), undo)
       );
+      Test.startTest();
+      List<Object> undone = ask(new AgentUndoImport(), 'POST', undo);
       Test.stopTest();
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
@@ -189,6 +178,10 @@ private class AgentCopyAndMatchTest {
       Assert.areEqual(before, afterRefused, 'nothing copied when refused');
       Assert.areEqual(400, taken[0], String.valueOf(taken[1]));
       Assert.areEqual(200, copied[0], String.valueOf(copied[1]));
+      Assert.isTrue(
+        ((String) copied[1]).contains('undo_import'),
+        String.valueOf(copied[1])
+      );
       Season__c copy = [
         SELECT CopiedFrom__c, StartDate__c
         FROM Season__c
