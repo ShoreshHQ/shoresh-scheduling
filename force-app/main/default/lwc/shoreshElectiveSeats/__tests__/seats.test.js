@@ -237,6 +237,35 @@ describe("the engine's input, and what Assign seats sends", () => {
     expect(b.seats.map(key).sort()).toEqual(a.seats.map(key).sort());
   });
 
+  it("breaks a tie by record id alone: campers alike in all else get seats by their ids, whatever their names or order", () => {
+    const alike = (id, name) => ({
+      id,
+      name,
+      groupId: "g1",
+      choices: JSON.stringify([
+        { n: "Archery", a: "a1", r: 1, k: "ranked" },
+        { n: "Drama", a: "a2", r: 2, k: "ranked" }
+      ])
+    });
+    const seatsFor = (campers) => {
+      const run = readRun(runView({ campers }));
+      return assignRequest(run, assignSeats(engineInput(run, t).input))
+        .seats.filter((s) => s.offeringId === "o1")
+        .map((s) => `${s.camperId}|${s.day}`)
+        .sort();
+    };
+    const named = seatsFor([
+      alike("c1", "Ana"),
+      alike("c2", "Ben"),
+      alike("c3", "Cal")
+    ]);
+    // The same ids under other names, listed in another order: the same ids get Archery.
+    expect(
+      seatsFor([alike("c3", "Ana"), alike("c1", "Cal"), alike("c2", "Ben")])
+    ).toEqual(named);
+    expect(named.length).toBeGreaterThan(0);
+  });
+
   it("places an offering with blank or 0 seats as no limit, and says so", () => {
     const run = readRun(
       runView({

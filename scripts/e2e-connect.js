@@ -338,6 +338,23 @@ function electives(tmp) {
   step("assign_elective_seats", { ...at, seen: now() }, "done", [
     ["API-1.67", has("3 of 3 placed"), "every camper seated"]
   ]);
+  // Same camp, same choices, Assign again: exactly the same seats (same inputs, same output).
+  const seatLines = (text) =>
+    text
+      .split("\n")
+      .filter((l) => / #\d+, Bunk \d: /.test(l))
+      .join("\n");
+  const once = seatLines(step("read_elective_seats_now", at, "done"));
+  step("assign_elective_seats", { ...at, seen: now() }, "done", [
+    ["API-1.67", has("3 of 3 placed"), "seated again"]
+  ]);
+  step("read_elective_seats_now", at, "done", [
+    [
+      "API-1.67",
+      (t) => seatLines(t) === once && once.includes(": Monday, Period 1: "),
+      "exactly the same seats as the first Assign"
+    ]
+  ]);
   landed(
     "seats",
     "API-1.67",
