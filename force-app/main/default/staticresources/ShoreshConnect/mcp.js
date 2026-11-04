@@ -14,6 +14,7 @@ const {
   toAgent,
   withSeasonNamed
 } = require("./client");
+const script = require("./script");
 
 /**
  * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
@@ -30,14 +31,20 @@ function weekViewPage() {
   return fs.readFileSync(path.join(__dirname, "week-view.html"), "utf8");
 }
 
-/** The tool list an AI tool sees; a schedule read names Shoresh's view of the week. */
+/**
+ * The tool list an AI tool sees; a schedule read names Shoresh's view of the week. Last, code mode
+ * for the AI (API-1.118): one script making many of these calls.
+ */
 function tools() {
-  return CAPABILITIES.map(({ name, description, inputSchema, showsWeek }) => ({
-    name,
-    description,
-    inputSchema,
-    ...(showsWeek ? { _meta: { ui: { resourceUri: WEEK_VIEW.uri } } } : {})
-  }));
+  return [
+    ...CAPABILITIES.map(({ name, description, inputSchema, showsWeek }) => ({
+      name,
+      description,
+      inputSchema,
+      ...(showsWeek ? { _meta: { ui: { resourceUri: WEEK_VIEW.uri } } } : {})
+    })),
+    script.scriptTool()
+  ];
 }
 
 /**
@@ -101,6 +108,29 @@ async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
   }
 }
 
+/** One tool call answered as MCP answers it, with what was said (`said`) as code mode has it. */
+async function answerTool(name, input, { log, ...options }) {
+  try {
+    const answer = await act(name, input, options);
+    const result = toolResult(answer);
+    if (result.structuredContent) {
+      log(`Shoresh: answered ${name} with the week view attached`);
+    }
+    return { ...result, said: toAgent(answer) };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: e.message }],
+      isError: true,
+      said: { ok: false, text: e.message }
+    };
+  }
+}
+
+/** What a script's call gets back: code mode's answer (API-1.114, 1.115), without the view's data. */
+function forScript({ ok, status, text, about, season, asksFirst }) {
+  return { ok, status, text, about, season, asksFirst };
+}
+
 /** One JSON-RPC message in, its answer out (null for a notification). */
 async function handle(
   message,
@@ -146,26 +176,32 @@ async function handle(
       return reply({
         contents: [{ ...WEEK_VIEW, text: weekViewPage() }]
       });
-    case "tools/call":
-      try {
-        const answer = await act(params?.name, params?.arguments ?? {}, {
-          org,
-          browserSignIn,
-          host,
-          callFn,
-          sf
+    case "tools/call": {
+      const options = { org, browserSignIn, host, callFn, sf, log };
+      if (params?.name === script.NAME) {
+        // Each call the script makes is answered as the same tool call would be (API-1.120).
+        const ran = await script.runScript(params?.arguments?.script, {
+          callAction: async (name, input) => {
+            const result = await answerTool(name, input, options);
+            return {
+              answer: forScript(result.said),
+              lines: result.content.map((c) => c.text)
+            };
+          }
         });
-        const result = toolResult(answer);
-        if (result.structuredContent) {
-          log(`Shoresh: answered ${params.name} with the week view attached`);
-        }
-        return reply(result);
-      } catch (e) {
         return reply({
-          content: [{ type: "text", text: e.message }],
-          isError: true
+          content: [{ type: "text", text: ran.text }],
+          isError: !ran.ok
         });
       }
+      const result = await answerTool(
+        params?.name,
+        params?.arguments ?? {},
+        options
+      );
+      delete result.said;
+      return reply(result);
+    }
     default:
       return {
         jsonrpc: "2.0",
@@ -236,5 +272,6 @@ module.exports = {
   serve,
   hostFrom,
   toolResult,
+  answerTool,
   WEEK_VIEW
 };

@@ -2335,7 +2335,9 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       await handle({ jsonrpc: "2.0", method: "notifications/initialized" })
     ).toBeNull();
-    const names = tools().map((t) => t.name);
+    const names = tools()
+      .map((t) => t.name)
+      .filter((n) => n !== "run_shoresh_script");
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
       const words = byName(name).inputSchema.properties.records
@@ -2452,8 +2454,14 @@ describe("Shoresh for AI tools and the command line", () => {
       for (const [, needed] of source.matchAll(/require\("([^"]+)"\)/g)) {
         expect([f, needed]).toEqual([
           f,
-          ["fs", "path", "child_process", "url"].includes(needed) ||
-          needed.startsWith("./")
+          [
+            "fs",
+            "path",
+            "child_process",
+            "url",
+            "vm",
+            "worker_threads"
+          ].includes(needed) || needed.startsWith("./")
             ? needed
             : "(only Node's own)"
         ]);
@@ -2667,7 +2675,9 @@ describe("Shoresh for AI tools and the command line", () => {
   // API-1.18
   it("codeModeSameNamesSameAnswers: a script gets one async function per MCP tool, same name, same answer", async () => {
     const code = require("../code");
-    const names = tools().map((t) => t.name);
+    const names = tools()
+      .map((t) => t.name)
+      .filter((n) => n !== "run_shoresh_script");
     expect(
       Object.keys(code)
         .filter((k) => k !== "ACTIONS")
@@ -2704,7 +2714,10 @@ describe("Shoresh for AI tools and the command line", () => {
   it("codeModeOneDescription: the MCP tool list and code mode come from the same one description of every action", () => {
     const { ACTIONS } = require("../code");
     expect(ACTIONS).toBe(CAPABILITIES);
-    expect(tools().map(({ _meta, ...tool }) => tool)).toEqual(
+    const listed = tools();
+    // Last, the AI's code mode, its function list made from the same ACTIONS (API-1.119).
+    expect(listed.pop()).toEqual(require("../script").scriptTool(ACTIONS));
+    expect(listed.map(({ _meta, ...tool }) => tool)).toEqual(
       ACTIONS.map(({ name, description, inputSchema }) => ({
         name,
         description,

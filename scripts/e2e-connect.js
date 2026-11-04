@@ -2,7 +2,7 @@
 /**
  * End-to-end check of the command line and code mode against the real test org (shoresh-test),
  * by the rules in docs/protocol/api.md (Command line API-1.109 to 1.113, Code mode API-1.114 to
- * 1.116, and API-1.105, 1.106, 1.108 they carry). Not run in CI: run it by hand, once, with
+ * 1.116, code mode for an AI API-1.118 to 1.122, and API-1.105, 1.106, 1.108 they carry). Not run in CI: run it by hand, once, with
  *
  *   node scripts/e2e-connect.js
  *
@@ -32,7 +32,7 @@ const ORG = "shoresh-test";
 const LOCK = "/tmp/shoresh-test-org.lock";
 const SEASON = "E2E Pinecrest Summer 2027";
 const { PERSON_DECIDES, NOT_YET } = require(path.join(SHIPPED, "client.js"));
-const { toolResult } = require(path.join(SHIPPED, "mcp.js"));
+const { toolResult, handle } = require(path.join(SHIPPED, "mcp.js"));
 
 // ---------- the org: CI not using it, the lock, the camp ----------
 
@@ -1185,6 +1185,137 @@ async function codeMode() {
   );
 }
 
+// ---------- code mode for an AI: run_shoresh_script through MCP (API-1.118 to API-1.122) ----------
+
+async function aiCodeMode() {
+  let id = 0;
+  const mcp = async (method, params) =>
+    (
+      await handle(
+        { jsonrpc: "2.0", id: ++id, method, params },
+        { org: ORG, log: () => {} }
+      )
+    ).result;
+  const tool = async (name, args) =>
+    (await mcp("tools/call", { name, arguments: args })).content
+      .map((c) => c.text)
+      .join("\n");
+  const add = (what, checks, said) =>
+    rows.push({
+      what: `ai script ${what}`,
+      kind: "script",
+      checks,
+      said: String(said).slice(0, 200)
+    });
+
+  const listed = (await mcp("tools/list")).tools.find(
+    (t) => t.name === "run_shoresh_script"
+  );
+  add(
+    "tools/list",
+    [
+      [
+        "API-1.119",
+        Boolean(
+          listed?.description.includes("- shoresh.read_group_schedule({")
+        ),
+        "lists the functions"
+      ]
+    ],
+    listed?.description
+  );
+
+  // Many calls in one script, then the same reads one by one: the same lines (API-1.120).
+  const reads = [
+    ["list_seasons", {}],
+    ["read_group_schedule", { season: SEASON, week: "Week 1" }],
+    ["read_activity_schedule", { season: SEASON, week: "Week 1" }],
+    ["read_week_checks", { season: SEASON, week: "Week 1" }]
+  ];
+  const week = JSON.stringify({ season: SEASON, week: "Week 1" });
+  const script = [
+    ...reads.map(
+      ([name, input]) => `await shoresh.${name}(${JSON.stringify(input)});`
+    ),
+    `await shoresh.save_version({ ...${week}, name: "E2E ai script" });`,
+    `const p = await shoresh.delete_version({ ...${week}, version: "E2E ai script" });`,
+    "print(p.asksFirst ? 'asks first' : 'done');",
+    "return p.season;"
+  ].join("\n");
+  const ran = await tool("run_shoresh_script", { script });
+  const oneByOne = [];
+  for (const [name, input] of reads)
+    oneByOne.push([name, input, await tool(name, input)]);
+  const same = oneByOne.every(([name, input, lines], i) =>
+    ran.includes(`${i + 1}. ${name} ${JSON.stringify(input)}\n${lines}\n`)
+  );
+  add(
+    `${reads.length + 2} calls`,
+    [
+      ["API-1.120", same, "each read's lines equal the same call one by one"],
+      [
+        "API-1.120",
+        ran.includes(`Season used: ${SEASON}.`),
+        "says the season used"
+      ],
+      [
+        "API-1.120",
+        ran.includes(`Returned: ${SEASON}`),
+        "the script got code mode's answer"
+      ],
+      [
+        "API-1.122",
+        ran.includes(NOT_YET) && ran.includes("Printed:\nasks first"),
+        "the preview's text is in the answer"
+      ]
+    ],
+    ran
+  );
+
+  // The person said yes to that preview (the check is the person here): the script sends its confirm.
+  const ticket = confirmIn(ran);
+  const done = await tool("run_shoresh_script", {
+    script: `const d = await shoresh.delete_version({ ...${week}, version: "E2E ai script", confirm: ${JSON.stringify(ticket ?? "")} });
+const v = await shoresh.list_versions(${week});
+return { done: d.ok && !d.asksFirst, gone: !v.text.includes("E2E ai script") };`
+  });
+  add(
+    "confirm",
+    [
+      [
+        "API-1.122",
+        Boolean(ticket) && done.includes('Returned: {"done":true,"gone":true}'),
+        "the confirm it got deleted only that version"
+      ]
+    ],
+    done
+  );
+
+  const fenced = await tool("run_shoresh_script", {
+    script: "return typeof require + typeof process + typeof fetch;"
+  });
+  const limit = await tool("run_shoresh_script", {
+    script: `for (let i = 0; i < 41; i++) await shoresh.list_seasons({});`
+  });
+  add(
+    "sandbox and limits",
+    [
+      [
+        "API-1.118",
+        fenced.includes("Returned: undefinedundefinedundefined"),
+        "nothing beyond shoresh"
+      ],
+      [
+        "API-1.121",
+        limit.includes("at most 40 calls") &&
+          limit.includes("40. list_seasons"),
+        "stops at 40 calls"
+      ]
+    ],
+    `${fenced}\n${limit.slice(-200)}`
+  );
+}
+
 // ---------- the run ----------
 
 function table() {
@@ -1229,6 +1360,7 @@ async function run() {
     apex("e2e-pinecrest-seed.apex");
     everyCommand(tmp);
     await codeMode();
+    await aiCodeMode();
     electives(tmp);
     importsSave(tmp);
   } finally {
