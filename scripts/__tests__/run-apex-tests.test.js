@@ -281,7 +281,7 @@ describe("run-apex-tests.mjs", () => {
   it("a class with code is still not run when the org counts no lines in it", async () => {
     fs.writeFileSync(
       path.join(work, "force-app", "main", "default", "classes", "Reset.cls"),
-      "public class Reset {\n  public Integer row = '}';\n  public void a() { b(); }\n}\n"
+      "public class Reset {\n  public String row = '}';\n  public String u = 'https://host/x';\n  public void a() { b(); }\n}\n"
     );
     behave.aggregate = [
       {

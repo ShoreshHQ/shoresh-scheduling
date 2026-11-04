@@ -339,7 +339,11 @@ async function readCoverage(testClassIds) {
  * Comments and string literals are left out, so a brace in a string doesn't count.
  */
 function blockStatements(source, isTrigger) {
-  const code = withoutComments(source).replace(/'(?:\\.|[^'\\])*'/g, "''");
+  // Strings and comments in one pass, whichever starts first: a "//" inside a string is text.
+  const code = source.replace(
+    /'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\/|\/\/.*$/gm,
+    (m) => (m[0] === "'" ? "''" : " ")
+  );
   const inside = isTrigger ? 1 : 2;
   let depth = 0;
   let count = 0;
