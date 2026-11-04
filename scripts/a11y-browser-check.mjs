@@ -148,7 +148,9 @@
  *   ADR 0018 choice 62); Copy this season
  *   draws the weeks twice, as many above as below;
  * - Settings (ADR 0023): opened from the menu's foot, What Shoresh has learned shows as one
- *   running list, no groups, each line saying how, what Shoresh already knew last;
+ *   running list, no groups, each line saying how, what Shoresh already knew last; About's
+ *   footnotes go to their notes and back by keyboard, and Legal shows its copyright, licence
+ *   and code;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -158,7 +160,7 @@
  * download).
  *
  * Usage: node scripts/a11y-browser-check.mjs [--report <path>] [--headed] [--shots <dir>]
- *   [--only electives|lists]
+ *   [--only electives|lists|settings]
  * How to run, and the org rules it follows: docs/ci-setup.md.
  */
 import { execFileSync } from "node:child_process";
@@ -219,11 +221,14 @@ const headed = args.includes("--headed");
 // Where the hand's pictures go (Roots R2: cards in hand, one being played away, a calm hand), if
 // asked for: --hand-shots <folder>.
 const handShotsDir = argValue("--hand-shots", null);
-// Some steps on their own (the camp is still seeded first): "electives", or "lists" (Import a
-// list on Groups and on Electives, ADR 0007 choice 33).
+// Some steps on their own (the camp is still seeded first): "electives", "lists" (Import a
+// list on Groups and on Electives, ADR 0007 choice 33), or "settings" (Settings with About and
+// Legal).
 const only = argValue("--only", null);
-if (only && !["electives", "lists"].includes(only)) {
-  console.log(`--only knows "electives" and "lists"; not "${only}".`);
+if (only && !["electives", "lists", "settings"].includes(only)) {
+  console.log(
+    `--only knows "electives", "lists" and "settings"; not "${only}".`
+  );
   process.exit(1);
 }
 
@@ -3021,6 +3026,7 @@ async function campSetup() {
     "Settings: what Shoresh has learned, one running list",
     settingsList
   );
+  await step("Settings", "About and Legal", aboutLegal);
   await step(
     S,
     "Locations: Same location? merges a place typed twice",
@@ -3544,6 +3550,75 @@ async function settingsList() {
       "One running list, each line saying how",
       `Title "${title.trim()}", ${count} lines, ${hows.length} with how, ${groups} groups, last how "${lastHow.trim()}".`
     );
+  }
+}
+
+/**
+ * Settings' About and Legal (after Help, on the Settings screen settingsList leaves open): About's
+ * five footnote numbers are links, Enter on Note 1 moves focus to its note at the foot and the
+ * note's way back returns it; Legal shows the copyright line, the licence's full text and the
+ * code. With --shots it saves both sections for docs/design/screens/.
+ */
+async function aboutLegal() {
+  const S = "Settings";
+  const about = "c-shoresh-about";
+  const refs = await shown(`${about} a.ref`).count();
+  const notes = await shown(`${about} li[data-note]`).count();
+  if (refs === 5 && notes === 5) {
+    results.pass(S, "About: five footnotes, each linked", "5 and 5.");
+  } else {
+    results.fail(
+      S,
+      "About: five footnotes, each linked",
+      `${refs} links, ${notes} notes.`
+    );
+  }
+  if (!(await tabTo(named(/^Note 1$/, { tag: "a" }), { max: 200 })))
+    throw new Error("About's Note 1 was not reached with Tab.");
+  await press("Enter", 600);
+  if ((await focusedAttr("data-note")) === "1") {
+    results.pass(S, "Enter on Note 1: focus on the note", "On note 1.");
+  } else {
+    await shot(S, "note");
+    results.fail(S, "Enter on Note 1: focus on the note", "Not on note 1.");
+  }
+  if (!(await tabTo(named(/^Back to note 1 /, { tag: "a" }), { max: 3 })))
+    throw new Error("Note 1's way back was not reached with Tab.");
+  await press("Enter", 600);
+  await expectFocus(S, "The way back: focus on Note 1 in the text", {
+    tag: /^a$/,
+    name: /^Note 1$/
+  });
+  const legal = await shown(`${about} [data-id="legal"]`)
+    .first()
+    .innerText()
+    .catch(() => "");
+  const STEP = "Legal: copyright, the licence's full text, the code";
+  if (
+    legal.includes(
+      "Copyright 2026 Gregory Feitel, doing business as Shoresh"
+    ) &&
+    (await exists(`${about} a[data-id="licence-text"]`)) &&
+    (await exists(`${about} a[data-id="code"]`))
+  ) {
+    results.pass(S, STEP, "All three shown.");
+  } else {
+    await shot(S, "legal");
+    results.fail(S, STEP, "Something is missing.");
+  }
+  await axe("Settings, About and Legal");
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    for (const [id, name] of [
+      ["about", "settings-about.png"],
+      ["legal", "settings-legal.png"]
+    ]) {
+      const section = shown(`${about} [data-id="${id}"]`).first();
+      await section.scrollIntoViewIfNeeded();
+      await page.mouse.move(2, 2);
+      await pause(300);
+      await section.screenshot({ path: join(shotsDir, name) });
+    }
   }
 }
 
@@ -6973,7 +7048,14 @@ async function main() {
       await openFromMenu("Generated Schedule", /^Generated Schedule/);
       await pickWeek();
     };
-    if (only === "lists") {
+    if (only === "settings") {
+      await step(
+        "Camp setup",
+        "Settings: what Shoresh has learned, one running list",
+        settingsList
+      );
+      await step("Settings", "About and Legal", aboutLegal);
+    } else if (only === "lists") {
       await step(
         "Camp setup",
         "Groups: Import a list laid into the table",
@@ -7012,7 +7094,7 @@ async function main() {
       await schedulesRain();
       await scheduleDoor();
     }
-    if (only !== "lists") {
+    if (only !== "lists" && only !== "settings") {
       await electives();
       await electivesOnGrid(openManual);
     }

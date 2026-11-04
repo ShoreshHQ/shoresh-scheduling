@@ -1,0 +1,119 @@
+@import "c/shoreshTokens";
+
+/*
+ * About and Legal as a calm page of prose, after the desktop's About screen (AboutScreen.jsx:
+ * a ~640px measure, body at 1.7, the subtitle and closing line in italics, quieter): the rail
+ * title as Settings' other sections have it, then the text in the setup screens' type.
+ */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.about,
+.legal {
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-title {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+  line-height: var(--shoresh-control-h);
+}
+
+.prose {
+  max-width: 640px;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.para,
+.lede {
+  margin: 0 0 var(--shoresh-s3);
+  font-size: var(--shoresh-font-size-title);
+  line-height: 1.7;
+}
+
+.lede {
+  margin-bottom: var(--shoresh-s5);
+  font-style: italic;
+  color: var(--shoresh-text-2);
+}
+
+.heading {
+  margin: var(--shoresh-s5) 0 var(--shoresh-s2);
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* A footnote number in the text, and the way back from its note. */
+.ref,
+.back {
+  padding: 0 1px;
+  border-radius: 2px;
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ref:focus-visible,
+.back:focus-visible,
+.note:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.notes-rule {
+  margin: var(--shoresh-s5) 0 var(--shoresh-s3);
+}
+
+.notes {
+  margin: 0 0 var(--shoresh-s4);
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: flex;
+  gap: var(--shoresh-s2);
+  margin-bottom: var(--shoresh-s2);
+  border-radius: 2px;
+  line-height: 1.6;
+  color: var(--shoresh-text-2);
+}
+
+.note-number {
+  flex: none;
+  min-width: 1ch;
+  color: var(--shoresh-text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.back {
+  flex: none;
+  align-self: flex-start;
+}
+
+.credit {
+  margin: 0;
+  line-height: 1.6;
+  font-style: italic;
+  color: var(--shoresh-text-2);
+}
+
+.link {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.parts {
+  margin: 0;
+  padding-left: var(--shoresh-s5);
+  font-size: var(--shoresh-font-size-title);
+  line-height: 1.7;
+}

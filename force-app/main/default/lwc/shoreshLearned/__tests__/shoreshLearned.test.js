@@ -834,4 +834,14 @@ describe("c-shoresh-learned: Help", () => {
     expect(link.getAttribute("href")).toBe("mailto:imshoresh@gmail.com");
     await expect(element).toBeAccessible();
   });
+
+  it("has About and Legal after Help", async () => {
+    const element = await mount([]);
+    const about = $(element, "c-shoresh-about");
+    expect(about).not.toBeNull();
+    expect(
+      $(element, '[data-id="help"]').compareDocumentPosition(about) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
 });
