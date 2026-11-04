@@ -334,9 +334,27 @@ async function readCoverage(testClassIds) {
 }
 
 /**
+ * Statements inside a method, constructor or block (lines ending in ";" nested two braces deep).
+ * A class's own field declarations sit one brace deep and run nothing.
+ */
+function blockStatements(source) {
+  let depth = 0;
+  let count = 0;
+  withoutComments(source)
+    .split("\n")
+    .forEach((line) => {
+      depth += (line.match(/{/g) || []).length;
+      if (depth >= 2 && line.trim().endsWith(";")) count += 1;
+      depth -= (line.match(/}/g) || []).length;
+    });
+  return count;
+}
+
+/**
  * Coverage of the repository's classes and triggers from these runs. One no run touched counts
- * as 0%, with its statements (lines ending in ";") as an estimate of its lines; one the org
- * counts no lines in has nothing to cover and counts nothing.
+ * as 0%, with its statements (lines ending in ";") as an estimate of its lines. One the org
+ * counts no lines in, with no statement inside a method or block (only fields, as
+ * IncomingResult), has nothing to run and counts nothing.
  */
 function coverage(lines) {
   let covered = 0;
@@ -344,14 +362,15 @@ function coverage(lines) {
   const untouched = [];
   codeUnderTest().forEach((file) => {
     const seen = lines.get(baseName(file));
-    if (seen) {
+    const source = readFileSync(file, "utf8");
+    if (seen && (seen.size > 0 || blockStatements(source) === 0)) {
       seen.forEach((hit) => {
         covered += hit ? 1 : 0;
         total += 1;
       });
       return;
     }
-    const statements = withoutComments(readFileSync(file, "utf8"))
+    const statements = withoutComments(source)
       .split("\n")
       .filter((line) => line.trim().endsWith(";")).length;
     if (statements > 0) {
