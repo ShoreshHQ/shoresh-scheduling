@@ -22,3 +22,7 @@ is in [docs/try-camp-setup.md](docs/try-camp-setup.md). Build choices are in
 
 No namespace is registered and no package has been created. `sfdx-project.json` names the
 package, but `sf package create` and any package version wait for Greg's go-ahead.
+
+## Licence
+
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
