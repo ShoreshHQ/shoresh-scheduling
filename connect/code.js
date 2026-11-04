@@ -6,7 +6,8 @@
  * description of every action (name, inputs, what it does) that the MCP tool list also comes from.
  * The rules: docs/protocol/api.md, Code mode (API-1.114 to API-1.116). An answer with
  * asksFirst: true did nothing yet: show its text to the person and stop; send confirm only after
- * they said yes to that very text.
+ * they said yes to that very text. An AI in a chat runs such a script through the MCP tool
+ * run_shoresh_script (script.js, API-1.118 to API-1.122).
  */
 const { CAPABILITIES } = require("./capabilities");
 const { call, toAgent, withSeasonNamed } = require("./client");
