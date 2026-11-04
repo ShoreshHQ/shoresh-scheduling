@@ -1,6 +1,6 @@
 # 0007: Import a list on a screen, build choices
 
-Status: proposed (2026-10-17), slice 4c, part A of four. Design source: wiki
+Status: accepted (2026-10-17), slice 4c, part A of four. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Slice 4c: per-screen imports, Greg's answers (2026-10-17)"),
 the coordinator's plan approval and Greg's answers to its three questions (2026-10-17), and
 Shoresh desktop's setup-list import (`src/ingest/entityColumnMapping.js`,

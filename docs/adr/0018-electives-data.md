@@ -1,6 +1,6 @@
 # 0018: Electives, the data
 
-Status: proposed (2026-10-22), electives slice E1; slice E6 (ADR 0017 choices 10 to 21) writes
+Status: accepted (2026-10-22), electives slice E1; slice E6 (ADR 0017 choices 10 to 21) writes
 campers, committed runs and their choices, and is reached from the page's address until the
 Electives menu opens (ADR 0017 choice 19) (plan: wiki `projects/shoresh-sf-electives-plan`,
 §3 and §8). Design source: the plan's §3 data model, which replaces the Electives section of the

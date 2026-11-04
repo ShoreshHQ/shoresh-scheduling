@@ -1,6 +1,6 @@
 # 0022: Any day of the week
 
-Status: proposed (2026-10-27). Product decision: Greg, 2026-10-27. Supersedes the Monday-to-Friday
+Status: accepted (2026-10-27). Product decision: Greg, 2026-10-27. Supersedes the Monday-to-Friday
 parts of ADRs 0004, 0006, 0007, 0014, 0015 and 0018, and protocol rule 3.12's count.
 
 ## Choices

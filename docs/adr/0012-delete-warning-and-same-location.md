@@ -1,6 +1,6 @@
 # 0012: Deleting what schedules use, and "Same location?"
 
-Status: proposed (2026-10-17). Design source: wiki `projects/shoresh-scheduling-sf` decision 15
+Status: accepted (2026-10-17). Design source: wiki `projects/shoresh-scheduling-sf` decision 15
 (1) and (4), Greg 2026-10-17, all A. Desktop (read-only copy, `~/Dev/Shoresh/shoresh-desktop`
 at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
 `src/components/DeleteRecordDialog.jsx`, `docs/adr/2026-08-15-locations-merge-and-delete-rehome.md`

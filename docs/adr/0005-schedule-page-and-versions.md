@@ -1,6 +1,6 @@
 # 0005: Schedule page and versions, build choices
 
-Status: proposed (2026-10-16), slice 4a. Design source: wiki `projects/shoresh-scheduling-sf`
+Status: accepted (2026-10-16), slice 4a. Design source: wiki `projects/shoresh-scheduling-sf`
 ("Slice 4 planning" rounds 1 and 2), `projects/shoresh-scheduling-data-model` ("Schedules",
 "Protecting history", platform check (d)), glossary (draft schedule, version, published
 schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:

@@ -1,6 +1,6 @@
 # 0023: Settings, and what Shoresh has learned as a running list
 
-Status: proposed (2026-10-28). Product decision: Greg, 2026-10-28 (wiki
+Status: accepted (2026-10-28). Product decision: Greg, 2026-10-28 (wiki
 `projects/shoresh-sf-learned-plan.md`, "Settings: a running list"). Changes ADR 0021's screen
 (choices 4, 6, 14 and 15: the grouped view); everything it decided about remembering, patterns,
 suggestions and auto-apply stands.

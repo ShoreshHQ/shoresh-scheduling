@@ -1,6 +1,6 @@
 # 0008: Manual Build, build choices
 
-Status: proposed (2026-10-17), Manual Build part 1 of 6. Design source: wiki
+Status: accepted (2026-10-17), Manual Build part 1 of 6. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Manual Build, round 1", Greg 2026-10-17, and his answers to the
 plan's questions the same day), `projects/shoresh-desktop-manual-build` (how the desktop does it:
 the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleScreen.jsx`,

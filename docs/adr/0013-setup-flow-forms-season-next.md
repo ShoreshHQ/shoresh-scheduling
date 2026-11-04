@@ -1,6 +1,6 @@
 # 0013: Setup forms save as you go, the season beside its picker, and a next-screen button
 
-Status: proposed (2026-10-20). Design source: wiki `projects/shoresh-scheduling-sf` decision 26
+Status: accepted (2026-10-20). Design source: wiki `projects/shoresh-scheduling-sf` decision 26
 (4), (5) and (6), Greg 2026-10-20 ("go with your recommendations on all six"); findings in the
 UI/UX pass notes (setup screens #2, #3, #4, #7, #8). Desktop (read-only copy,
 `~/Dev/Shoresh/shoresh-desktop`): `src/screens/CampScreen.jsx` (the "✓ Saved" mark),

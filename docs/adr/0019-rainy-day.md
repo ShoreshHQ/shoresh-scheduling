@@ -1,6 +1,6 @@
 # 0019: Rainy day
 
-Status: proposed (2026-10-22). Design source: the desktop, which is the spec here:
+Status: accepted (2026-10-22). Design source: the desktop, which is the spec here:
 `src/utils/rainyDay.js` (`planRainyDay`, `rainyReceiptText`, `RAIN_PLAN_FULL_TEXT`),
 `src/screens/ScheduleScreen.jsx` (the "Rainy day…" toolbar button and its note, lines 400-410 and
 1080-1115), `src/screens/schedule/useSlotMutations.js` (`applyRainyDay`, 1720-1800), and
