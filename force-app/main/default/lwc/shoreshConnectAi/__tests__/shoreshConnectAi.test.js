@@ -99,7 +99,7 @@ describe("Connect your AI", () => {
     const element = mount("maple-grove.lightning.force.com");
     await flush();
     const button = element.shadowRoot.querySelector('[data-id="copy-prompt"]');
-    expect(button.label).toBe("Claude Code or Cursor");
+    expect(button.label).toBe("Copy prompt for your AI");
     expect(element.shadowRoot.querySelector(".rail-title").textContent).toBe(
       "Connect your AI"
     );
