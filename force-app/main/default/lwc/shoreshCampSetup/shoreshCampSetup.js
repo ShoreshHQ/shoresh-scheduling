@@ -516,9 +516,12 @@ export default class ShoreshCampSetup extends LightningElement {
       heading.focus();
       return;
     }
-    // A screen drawn by its own component (Roots, Camp words, Import last year) focuses its own.
-    const own = this.template.querySelector(`[data-screen="${screen}"] > *`);
-    if (own && typeof own.focusHeading === "function") {
+    // A screen drawn by its own component (Roots, Camp words, Import last year) focuses its own;
+    // on Settings that component comes after Connect your AI, so the first that can is asked.
+    const own = [
+      ...this.template.querySelectorAll(`[data-screen="${screen}"] > *`)
+    ].find((child) => typeof child.focusHeading === "function");
+    if (own) {
       own.focusHeading();
     }
   }

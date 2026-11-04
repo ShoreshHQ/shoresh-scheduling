@@ -4266,6 +4266,18 @@ describe("c-shoresh-camp-setup", () => {
       expect(learned.campId).toBe(CAMP.Id);
     });
 
+    it("Settings takes the cursor on its heading, opened or chosen again (Connect your AI comes first)", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([]));
+      const element = await render();
+      const learned = q(element, "c-shoresh-learned");
+      learned.focusHeading = jest.fn();
+      await openScreen(element, "learned");
+      expect(learned.focusHeading).toHaveBeenCalledTimes(1);
+      await openScreen(element, "learned");
+      expect(learned.focusHeading).toHaveBeenCalledTimes(2);
+    });
+
     it("before the first season, only camp words and what Shoresh has learned open", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([]));
