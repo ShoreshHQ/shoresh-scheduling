@@ -1,0 +1,91 @@
+<template>
+  <!-- About: Greg's text, read as a page of prose; its footnotes at the foot, linked both ways. -->
+  <section class="about" aria-labelledby="about-title" data-id="about">
+    <h3 class="rail-title" id="about-title">{about.title}</h3>
+    <div class="prose">
+      <template for:each={about.blocks} for:item="block">
+        <template lwc:if={block.heading}>
+          <h4 key={block.key} class="heading">{block.text}</h4>
+        </template>
+        <template lwc:else>
+          <p key={block.key} class={block.className}>
+            <template for:each={block.runs} for:item="run">
+              <template lwc:if={run.note}>
+                <sup key={run.key}
+                  ><a
+                    class="ref"
+                    href={run.href}
+                    aria-label={run.label}
+                    data-ref={run.note}
+                    onclick={handleNote}
+                    >{run.note}</a
+                  ></sup
+                >
+              </template>
+              <template lwc:else
+                ><span key={run.key}>{run.text}</span></template
+              >
+            </template>
+          </p>
+        </template>
+      </template>
+      <div class="shoresh-hairline notes-rule" role="presentation"></div>
+      <ol class="notes" aria-label="Notes" data-id="notes">
+        <template for:each={about.notes} for:item="note">
+          <li key={note.key} class="note" tabindex="-1" data-note={note.note}>
+            <span class="note-number">{note.note}</span>
+            <span>{note.text}</span>
+            <a
+              class="back"
+              href="#about-title"
+              aria-label={note.label}
+              data-back={note.note}
+              onclick={handleBack}
+              >↩</a
+            >
+          </li>
+        </template>
+      </ol>
+      <template for:each={about.credit} for:item="block">
+        <p key={block.key} class={block.className}>
+          <template for:each={block.runs} for:item="run">
+            <span key={run.key}>{run.text}</span>
+          </template>
+        </p>
+      </template>
+    </div>
+  </section>
+  <!-- Legal: plain and short. -->
+  <div class="shoresh-hairline" role="presentation"></div>
+  <section class="legal" aria-labelledby="legal-title" data-id="legal">
+    <h3 class="rail-title" id="legal-title">{legal.title}</h3>
+    <div class="prose">
+      <p class="para" data-id="copyright">{legal.copyright}</p>
+      <p class="para" data-id="licence">
+        <span>{legal.licence}</span>
+        <a
+          class="shoresh-item link"
+          href={licenseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-id="licence-text"
+          >{legal.licenceText}</a
+        >
+        <a
+          class="shoresh-item link"
+          href={legal.codeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-id="code"
+          >{legal.code}</a
+        >
+      </p>
+      <h4 class="heading">{legal.partsTitle}</h4>
+      <ul class="parts" data-id="parts">
+        <template for:each={legal.parts} for:item="part">
+          <li key={part}>{part}</li>
+        </template>
+      </ul>
+    </div>
+  </section>
+</template>
