@@ -1,8 +1,11 @@
 import { createElement } from "lwc";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import ShoreshAbout, { readAbout } from "c/shoreshAbout";
 import { ABOUT, LEGAL } from "../aboutText";
+
+// Node's own file reading, required as the repo's other tests do (an import would read as an
+// Aura library to the code analyzer).
+const { readFileSync } = require("fs");
+const { join } = require("path");
 
 const ROOT = join(__dirname, "../../../../../..");
 
