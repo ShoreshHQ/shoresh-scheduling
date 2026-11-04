@@ -103,8 +103,7 @@ insert new List<Week__c>{
 };
 
 // Electives: a "Chugim" set (Swim, 2 seats; Art, no limit) in Week 2's Manual Build, Monday
-// Period 1 for Bunk 1 and Bunk 2, and its run as the Elective seats screen's own first Bring in
-// choices leaves it (API-6.4: the first bring-in is the screen's); campers come in through the AI.
+// Period 1 for Bunk 1 and Bunk 2. The week's electives are started through the AI.
 ElectiveSet__c chugim = new ElectiveSet__c(Season__c = season.Id, Name = 'Chugim');
 insert chugim;
 Map<String, Activity__c> byName = new Map<String, Activity__c>();
@@ -135,13 +134,5 @@ ScheduleDaySaves.write(
   manual.Id,
   new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(MONDAY.addDays(7), grid, null) }
 );
-insert new ElectiveRun__c(
-  Season__c = season.Id,
-  Name = 'Chugim · Week 2',
-  ElectiveSet__c = chugim.Id,
-  Week__c = week2.Id,
-  Schedule__c = manual.Id,
-  Status__c = 'Committed',
-  Revision__c = 1
-);
+// No run: the e2e starts the week's electives through bring_in_choices, as a person would.
 System.debug('E2E seeded ' + season.Id);

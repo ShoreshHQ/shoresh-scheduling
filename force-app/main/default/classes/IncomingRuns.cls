@@ -181,17 +181,21 @@ public with sharing class IncomingRuns {
         weekName +
         '" in this season.';
     }
-    return 'No choices brought in for ' +
-      setName +
-      ' in ' +
-      weekName +
-      ' yet, so Shoresh has nowhere to keep these. A person brings them in once on the ' +
-      batch.labels.singular('Elective') +
-      ' seats screen (choose ' +
-      setName +
-      ' and ' +
-      weekName +
-      ', then Bring in choices); after that, send these again.';
+    // A key keeps the next step (API-6.4); a person's AI hears the problem (API-1.105).
+    return AgentRefusal.withFix(
+      'No choices brought in for ' +
+        setName +
+        ' in ' +
+        weekName +
+        ' yet, so Shoresh has nowhere to keep these.',
+      'A person brings them in once on the ' +
+        batch.labels.singular('Elective') +
+        ' seats screen (choose ' +
+        setName +
+        ' and ' +
+        weekName +
+        ', then Bring in choices); after that, send these again.'
+    );
   }
 
   private static Boolean same(String saved, String sent) {

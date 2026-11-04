@@ -261,6 +261,40 @@ function importFile(name, api, description, more = {}, required = []) {
   };
 }
 
+/**
+ * bring_in_choices (API-1.117): the Elective seats screen's own Bring in choices, a file like an
+ * import's, worked out with the screen's own modules (connect/choices.js).
+ */
+function bringInChoicesFile() {
+  const c = importFile(
+    "bring_in_choices",
+    "bring_in_choices",
+    "Bring in campers' elective choices from a file, as the Elective seats screen's Bring in choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet) and its seen. Answer any new names (ask the person about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
+    {
+      elective_set: {
+        type: "string",
+        description: "The elective set, as Camp Setup names it, like Chugim."
+      },
+      week: WEEK,
+      schedule: {
+        type: "string",
+        description:
+          "Generated Schedule or Manual Build (with its program first when the camp has several, like Main · Manual Build). Leave it out when the week has one."
+      }
+    },
+    ["elective_set", "week"]
+  );
+  delete c.importsWithEngine;
+  delete c.importsWorkbook;
+  c.bringsInChoices = true;
+  c.inputSchema.properties.answers = {
+    type: "object",
+    description:
+      'For each name on the sheet Shoresh doesn\'t have, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
+  };
+  return c;
+}
+
 /** A change made on either screen that holds the week (API-1.41). */
 const ON_EITHER = "that screen";
 
@@ -486,13 +520,13 @@ const CAPABILITIES = [
   bringIn(
     "bring_in_camper_groups",
     "camper_group",
-    "Bring in which bunk each camper is in, from another system.",
+    "Bring in which bunk each camper is in, from another system. Shoresh keeps a bunk with the camper's choices, so their choices come first (bring_in_choices starts a week's electives).",
     ["season", "source_system", "camper_id", "camper_name", "bunk", "week"]
   ),
   bringIn(
     "bring_in_camper_elective_choices",
     "camper_elective_choice",
-    "Bring in each camper's elective choices, from another system.",
+    "Bring in each camper's elective choices, from another system. A week's electives start with bring_in_choices (a choices file, as the Elective seats screen's Bring in choices); before that, these come back as a problem.",
     [
       "season",
       "source_system",
@@ -1605,6 +1639,7 @@ const CAPABILITIES = [
     },
     ["list"]
   ),
+  bringInChoicesFile(),
   importFile(
     "import_worksheet",
     "import_worksheet",

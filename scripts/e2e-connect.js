@@ -258,6 +258,38 @@ function electives(tmp) {
     return f;
   };
   const saved = (n) => [["API-6.3", has(`"saved": ${n}`), `${n} saved`]];
+  // Start the week's electives as a person does, with a choices file (API-1.117).
+  const sheet = {
+    ...at,
+    file_name: "chugim-week2.csv",
+    csv_text:
+      "Camper,Camper number,Bunk,Choice 1,Choice 2\n" +
+      campers
+        .map(([, name, bunk], i) => `${name},${i + 1},${bunk},Swim,Art`)
+        .join("\n") +
+      "\n"
+  };
+  const sheetReview = step("bring_in_choices", sheet, "done", [
+    ["API-1.117", has("3 campers: 3 new"), "reviewed as the screen counts it"]
+  ]);
+  step(
+    "bring_in_choices",
+    { ...sheet, save: true, seen: seenIn(sheetReview) },
+    "done",
+    [
+      [
+        "API-1.117",
+        has('Brought in 3 campers to "Chugim · Week 2"'),
+        "the week's electives started"
+      ]
+    ]
+  );
+  landed(
+    "run started",
+    "API-1.117",
+    `SELECT Id FROM ElectiveRun__c WHERE ${IN_SEASON}`,
+    1
+  );
   step(
     "bring_in_campers",
     {

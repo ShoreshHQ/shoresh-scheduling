@@ -14,6 +14,8 @@ public with sharing class AgentImports {
   /** Import last year: it also reads what earlier imports brought in, and saves weeks' versions. */
   public static final String LAST_YEAR = 'lastYear';
   public static final String SCREEN_LIST = 'list';
+  /** Bring in choices (API-1.117): it also reads the Elective seats screen's own sets and runs. */
+  public static final String CHOICES = 'choices';
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'seen',
@@ -66,6 +68,9 @@ public with sharing class AgentImports {
       'answers' => ImportController.getAnswers(season.Camp__c),
       'seen' => stampOf(season, door)
     };
+    if (door == CHOICES) {
+      read.put('situation', ChoicesImportController.choicesSetup(season.Id));
+    }
     if (door == LAST_YEAR) {
       // INGEST-5.7, 5.8: what earlier imports brought in and no one changed since.
       read.put('imported', ImportController.getImported(season.Id));
