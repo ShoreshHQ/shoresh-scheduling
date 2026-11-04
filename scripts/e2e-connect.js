@@ -258,64 +258,39 @@ function electives(tmp) {
     return f;
   };
   const saved = (n) => [["API-6.3", has(`"saved": ${n}`), `${n} saved`]];
+  // Start the week's electives as a person does, with a choices file (API-1.117).
+  const sheet = {
+    ...at,
+    file_name: "chugim-week2.csv",
+    csv_text:
+      "Camper,Camper number,Bunk,Choice 1,Choice 2\n" +
+      campers
+        .map(([, name, bunk], i) => `${name},${i + 1},${bunk},Swim,Art`)
+        .join("\n") +
+      "\n"
+  };
+  const sheetReview = step("bring_in_choices", sheet, "done", [
+    ["API-1.117", has("- 3 campers: "), "reviewed as the screen counts it"]
+  ]);
   step(
-    "bring_in_campers",
-    {
-      file: file(
-        "e-campers",
-        campers.map(([id, name], i) => ({
-          ...src,
-          camper_id: id,
-          camper_name: name,
-          camper_number: String(i + 1)
-        }))
-      )
-    },
+    "bring_in_choices",
+    { ...sheet, save: true, seen: seenIn(sheetReview) },
     "done",
-    [["API-6.3", has('"problems": 0'), "no problems"]]
+    [
+      [
+        "API-1.117",
+        has('Brought in 3 campers to "Chugim · Week 2"'),
+        "the week's electives started"
+      ]
+    ]
   );
   landed(
-    "campers in",
-    "API-2.3",
-    `SELECT Id FROM Camper__c WHERE ${IN_SEASON}`,
-    3
+    "run started",
+    "API-1.117",
+    `SELECT Id FROM ElectiveRun__c WHERE ${IN_SEASON}`,
+    1
   );
-  step(
-    "bring_in_camper_elective_choices",
-    {
-      file: file(
-        "e-choices",
-        campers.map(([id, name]) => ({
-          ...src,
-          camper_id: id,
-          camper_name: name,
-          elective: "Chugim",
-          week: "Week 2",
-          first_choice: "Swim",
-          second_choice: "Art"
-        }))
-      )
-    },
-    "done",
-    saved(3)
-  );
-  step(
-    "bring_in_camper_groups",
-    {
-      file: file(
-        "e-groups",
-        campers.map(([id, name, bunk]) => ({
-          ...src,
-          camper_id: id,
-          camper_name: name,
-          bunk,
-          week: "Week 2"
-        }))
-      )
-    },
-    "done",
-    saved(3)
-  );
+  // The campers came in with the sheet, in its bunks (the screen's own Bring in).
   landed(
     "choices in",
     "API-6.4",
@@ -433,7 +408,7 @@ function electives(tmp) {
   );
   ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
   step("read_elective_seats", { week: "Week 2" }, "done", [
-    ["API-6.2", has('"camper_id": "E2E-3"'), "finalized seats go out"]
+    ["API-6.2", has('"camper_name": "Casey Madeup"'), "finalized seats go out"]
   ]);
   for (const f of [
     "rosters",

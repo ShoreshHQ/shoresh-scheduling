@@ -70,7 +70,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(84);
+    expect(CAPABILITIES).toHaveLength(85);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -1756,6 +1756,153 @@ describe("Shoresh for AI tools and the command line", () => {
     });
   });
 
+  // API-1.117
+  it("bringsInChoicesAsTheSeatsScreen: a choices file is read and reviewed with the screen's own modules, checked by the screen's own check, and brought in only with save and the run as seen", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const choices = async () => ({
+      ...require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+      ...require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+      ...require(`${LWC}/shoreshChoicesImport/review.js`),
+      ...require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+      ...require(`${LWC}/shoreshSchema/shoreshSchema.js`)
+    });
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const S = FIELD.Schedule;
+    const read = {
+      season: "Summer 2027",
+      setup: {
+        season: { Id: "s1" },
+        labels: [],
+        weeks: [{ Id: "w2", Name: "Week 2" }],
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [
+                  { Id: "g1", Name: "Bunk 1" },
+                  { Id: "g2", Name: "Bunk 2" }
+                ]
+              }
+            ]
+          }
+        ],
+        schedules: [
+          {
+            Id: "m2",
+            [S.Week]: "w2",
+            [S.Status]: "Draft",
+            [S.Origin]: "Manual",
+            [S.Program]: "p1"
+          }
+        ],
+        activities: [
+          { Id: "a1", Name: "Swim" },
+          { Id: "a2", Name: "Art" }
+        ],
+        electives: {}
+      },
+      situation: {
+        sets: [{ id: "e1", name: "Chugim", activityIds: ["a1", "a2"] }],
+        runs: [],
+        answers: []
+      }
+    };
+    const check = {
+      runId: null,
+      runName: null,
+      runRevision: null,
+      isFinal: false,
+      known: 0,
+      added: 2,
+      handChanged: [],
+      differs: [],
+      renamed: [],
+      notOnSheet: 0
+    };
+    const input = {
+      season: "Summer 2027",
+      elective_set: "Chugim",
+      week: "Week 2",
+      file_name: "choices.csv",
+      csv_text:
+        "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Swim,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
+    };
+    const answering = (answers, seen) => async (args, stdin) => {
+      seen.push({ args, stdin });
+      return answers.shift();
+    };
+    const ok = (body) =>
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+    const message = (o) => ok(JSON.stringify({ message: JSON.stringify(o) }));
+
+    const seen = [];
+    const review = await call("bring_in_choices", input, {
+      run: answering([ok(JSON.stringify(read)), message(check)], seen),
+      choices
+    });
+    expect(review.ok).toBe(true);
+    expect(review.text).toContain("2 campers: 2 new, 0 already here");
+    expect(review.text).toContain('save: true and seen: "none"');
+    const asked = JSON.parse(seen[1].stdin);
+    expect(asked.save).toBeUndefined();
+    expect(asked.request).toMatchObject({
+      seasonId: "s1",
+      electiveSetId: "e1",
+      weekId: "w2",
+      scheduleId: "m2",
+      fileName: "choices.csv"
+    });
+    expect(
+      asked.request.campers.map((c) => [
+        c.name,
+        c.groupId,
+        c.choices.map((x) => x.a)
+      ])
+    ).toEqual([
+      ["Avery Madeup", "g1", ["a1", "a2"]],
+      ["Casey Madeup", "g2", ["a2", "a1"]]
+    ]);
+
+    const stale = await call(
+      "bring_in_choices",
+      { ...input, save: true, seen: "3" },
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
+    );
+    expect(stale).toMatchObject({ ok: false, status: 409 });
+
+    const savedSeen = [];
+    const done = await call(
+      "bring_in_choices",
+      { ...input, save: true, seen: "none" },
+      {
+        run: answering(
+          [
+            ok(JSON.stringify(read)),
+            message(check),
+            message({
+              campers: 2,
+              added: 2,
+              runName: "Chugim · Week 2",
+              runId: "r1"
+            })
+          ],
+          savedSeen
+        ),
+        choices
+      }
+    );
+    expect(done).toMatchObject({
+      ok: true,
+      text: 'Brought in 2 campers to "Chugim · Week 2": 2 new.'
+    });
+    expect(JSON.parse(savedSeen[2].stdin).save).toBe(true);
+  });
+
   // API-1.98, API-1.99
   it("lastYearAsksTheScreensQuestionsAndMatchesItsBlocks: every question the screen asks is said with its choices and answered by choice, and a setup's times are read as the screen reads them, so its time blocks are matched, not added again", async () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -2191,7 +2338,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const names = tools().map((t) => t.name);
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
-      const words = name.startsWith("bring_in_")
+      const words = byName(name).inputSchema.properties.records
         ? [name, "--file", "x.json"]
         : [name, "--season", "S", "--week", "W"].slice(
             0,

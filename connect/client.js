@@ -14,6 +14,7 @@ const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
 const { readLearned, forgetPattern } = require("./learned");
+const { bringInChoices } = require("./choices");
 const {
   campOf,
   tooOld,
@@ -163,6 +164,7 @@ async function callOnce(
     imports = loadImports,
     files = loadExports,
     learned = loadLearned,
+    choices = choiceModules,
     camp = campFor,
     folder
   } = {}
@@ -208,6 +210,12 @@ async function callOnce(
     return importFile(capability, input, {
       ...at,
       load: () => imports(namespace)
+    });
+  }
+  if (capability.bringsInChoices) {
+    return bringInChoices(capability, input, {
+      ...at,
+      load: () => choices(namespace)
     });
   }
   if (capability.importsLastYear) {
@@ -577,6 +585,25 @@ async function loadElectives(namespace) {
       "shoreshElectiveSeats.seats"
     ],
     "can't assign elective seats"
+  );
+  return Object.assign({}, ...modules);
+}
+
+/**
+ * Bring in choices' own modules (API-1.117), as scripts/build-connect.js ships them: the reader,
+ * the review's working, the import engine's files and names, the camp's words and field names.
+ */
+async function choiceModules(namespace) {
+  const modules = await loadModules(
+    namespace,
+    [
+      "shoreshImportEngine.shoreshImportEngine",
+      "shoreshChoicesReader.shoreshChoicesReader",
+      "shoreshChoicesImport.review",
+      "shoreshTerms.shoreshTerms",
+      "shoreshSchema.shoreshSchema"
+    ],
+    "can't bring in elective choices"
   );
   return Object.assign({}, ...modules);
 }

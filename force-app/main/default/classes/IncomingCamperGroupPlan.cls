@@ -80,13 +80,16 @@ public with sharing class IncomingCamperGroupPlan {
             groupWord +
             ' with their elective choices. Send it again once there are.'
           : runs.notStarted(batch.season.Id, null, record.week)
-              ? 'There are no elective choices in "' +
-                record.week.left(80) +
-                '" yet, and Shoresh keeps a camper\'s ' +
-                groupWord +
-                ' with their choices. A person brings choices in once on the ' +
-                batch.labels.singular('Elective') +
-                ' seats screen (Bring in choices); then send their elective choices, then this again.'
+              ? AgentRefusal.withFix(
+                  'There are no elective choices in "' +
+                    record.week.left(80) +
+                    '" yet, and Shoresh keeps a camper\'s ' +
+                    groupWord +
+                    ' with their choices.',
+                  'A person brings choices in once on the ' +
+                    batch.labels.singular('Elective') +
+                    ' seats screen (Bring in choices); then send their elective choices, then this again.'
+                )
               : 'There are no electives in "' +
                 record.week.left(80) +
                 '" in this season.'

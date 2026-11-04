@@ -65,7 +65,9 @@ const IMPORTS_ENTRIES = [
   "shoreshImport/flow.js",
   "shoreshImport/summary.js",
   // A special schedule's own file reading (API-1.85).
-  "shoreshSpecialSchedule/fromFile.js"
+  "shoreshSpecialSchedule/fromFile.js",
+  // Bring in choices' own review and request (API-1.117).
+  "shoreshChoicesImport/review.js"
 ];
 // The modules the connector makes the screens' files with (API-1.86 to API-1.89): Schedules'
 // Excel and printout pages, a special schedule's sheet, the Elective seats screen's downloads and
