@@ -1019,7 +1019,7 @@ copy that was ever published is never deleted (decision 0002, `PublishedGuard`).
     fills only those, and an Open cell locked to keep it empty stays locked (a Generated version
     restored on Manual Build and saved there again keeps that lock, §32). The same holds for any version Generated Schedule didn't build (Origin not
     Generated: an imported week, one copied, or one from before Origin), for the same reason: none of
-    its cells was generated. (Applied by the review of #74; Greg to confirm for imported weeks.) As on Manual Build, the screen
+    its cells was generated. (Applied by the review of #74; Greg confirmed it for imported weeks, 2026-11-04: an imported week is still kept unedited as its own version and is not locked when imported; only restoring it locks its placed cells. LOCK-5.4.) As on Manual Build, the screen
     sends back the revision it read the week at; a week saved since is refused with nothing
     changed (`restoreVersion` answers false) and the screen shows its conflict box: _Someone else
     changed this week since you opened it, so nothing was restored._ · **Reload**. Otherwise the
