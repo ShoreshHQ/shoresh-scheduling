@@ -99,14 +99,23 @@ Each rule is clue, meaning, example, test.
    sheets, each named, none "Sheet1" and none only a day or week (a sheet per group); otherwise
    its lines are kept as before, so one group's own title repeated in a file per week ("Otters")
    stays its name. A date in a dropped note ("June 2") is not read as the page's week.
+   Every line read as no page's name or schedule (a dropped note, a title line the page is not
+   named by, a title line with no grid under it, a footnote starting "*") is listed once in the
+   import's notes ("Good to know"): "“DRAFT v3” was left out." (Greg, 2026-11-04, build log
+   decision 69; the desktop drops them quietly). A sheet with no schedule is said as before,
+   its lines not listed.
    Example: a sheet per group, each starting "Questions? Ask the head counselor": the groups are
    named by their sheets; days stacked on one sheet, "DRAFT v3" under each day's title: each
    page keeps its day.
    Test: `reading.test.js` "INGEST-2.7: …" (a page per group with a note; days stacked with a
-   note and footnotes; a sheet per group whose only line is the note). Counter-cases
-   ("INGEST-2.7: counter-case: …"): one group's only title, the same in a file per week, or on
-   sheets named for weeks, is still its name; a single page's two title lines keep the last, as
-   before (known limit below). Code: `sheets.js` `notesAboveEveryPage`.
+   note and footnotes; a sheet per group whose only line is the note; a note over every page is
+   listed in the notes once; notes and footnotes of stacked days listed once each; the title
+   line a page is not named by is listed). Counter-cases ("INGEST-2.7: counter-case: …"): one
+   group's only title, the same in a file per week, or on sheets named for weeks, is still its
+   name; a single page's two title lines keep the last, as before (known limit below); a title
+   that names its page is not listed; a sheet with no schedule is said once, its lines not
+   listed. Code: `sheets.js` `notesAboveEveryPage`, `readSheet` (`skipped`); `plan.js`
+   `importNotes`.
 
 8. **A page whose layout is unsure takes its file's sure layout** (level-3 corpus, 2026-10-28).
    Clue: a page rule 6 leaves unsure (its blocks do not call the full roll: a group gone home
@@ -296,7 +305,7 @@ Each rule is clue, meaning, example, test.
   today and must rename one on the activities screen.
 
 - Rule 7 needs two schedules or more: a single page with a note line under its title is still
-  named by the note (the last title line). Every page of a by-activity file whose afternoon
+  named by the note (the last title line); its own title is listed as left out. Every page of a by-activity file whose afternoon
   blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
   three camps).
 

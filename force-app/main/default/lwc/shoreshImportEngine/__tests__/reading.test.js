@@ -1,4 +1,4 @@
-import { buildProposal, questionCards } from "./data/engine";
+import { buildProposal, importNotes, questionCards } from "./data/engine";
 import {
   cellName,
   dayOf,
@@ -432,6 +432,79 @@ describe("the three layouts", () => {
     it("INGEST-2.7: counter-case: one page's two title lines keep the last, as before", () => {
       const proposal = read([groupPage("Otters", "Herons")]);
       expect(proposal.groups.map((g) => g.name)).toEqual(["Herons"]);
+    });
+
+    // Greg, 2026-11-04 (build log decision 69): what was left out is said, never dropped quietly.
+    const leftOut = (proposal) =>
+      importNotes(proposal, terms)
+        .filter((n) => n.key.startsWith("skipped|"))
+        .map((n) => n.text);
+
+    it("INGEST-2.7: a note over every page is listed in the notes once", () => {
+      const note = "Updated June 2 - subject to change";
+      const proposal = read([
+        groupPage("Otters", note),
+        groupPage("Wolves", note)
+      ]);
+      expect(leftOut(proposal).sort()).toEqual([
+        "“Rain plan: indoor activities in the gym” was left out.",
+        `“${note}” was left out.`
+      ]);
+    });
+
+    it("INGEST-2.7: notes and footnotes of days stacked on one sheet are listed once each", () => {
+      const day = (d) => [
+        [`Camp - ${d}`],
+        ["DRAFT v3"],
+        ["Time", "Bunk 1", "Bunk 2"],
+        ["9:00-9:45", "Archery", "Drama"],
+        ["10:00-10:45", "Drama", "Archery"],
+        ["* Bring water"],
+        [""]
+      ];
+      const proposal = read([
+        csv("Camp.csv", [...day("Monday"), ...day("Tuesday")])
+      ]);
+      expect(leftOut(proposal).sort()).toEqual([
+        "“* Bring water” was left out.",
+        "“DRAFT v3” was left out."
+      ]);
+    });
+
+    it("INGEST-2.7: the title line a page is not named by is listed", () => {
+      const proposal = read([groupPage("Otters", "Herons")]);
+      expect(leftOut(proposal)).toContain("“Otters” was left out.");
+    });
+
+    it("INGEST-2.7: counter-case: a title that names its page is not listed", () => {
+      const week = (w) =>
+        csv(`Camp - Week ${w}.csv`, [
+          ["Otters"],
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"]
+        ]);
+      expect(leftOut(read([week(1), week(2)]))).toEqual([]);
+    });
+
+    it("INGEST-2.7: counter-case: a sheet with no schedule is said once, its lines not listed", () => {
+      const proposal = read([
+        {
+          name: "Camp.xlsx",
+          sheets: [
+            {
+              name: "Otters",
+              merges: [],
+              rows: [
+                ["Time", "Monday", "Tuesday"],
+                ["9:00-9:45", "Archery", "Drama"]
+              ]
+            },
+            { name: "Read me", merges: [], rows: [["Packing list"]] }
+          ]
+        }
+      ]);
+      expect(leftOut(proposal)).toEqual([]);
     });
   });
 
