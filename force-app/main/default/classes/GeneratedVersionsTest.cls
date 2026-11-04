@@ -290,6 +290,7 @@ private class GeneratedVersionsTest {
     );
   }
 
+  // LOCK-5.4
   @IsTest
   static void aManualBuildVersionComesInWithItsPlacedCellsLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -371,6 +372,7 @@ private class GeneratedVersionsTest {
     return ManualBuildController.saveVersion(manualId, 'By hand');
   }
 
+  // LOCK-5.4
   @IsTest
   static void anImportedVersionComesInWithItsPlacedCellsLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -378,6 +380,7 @@ private class GeneratedVersionsTest {
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
       // An imported week (Origin Imported): made by hand somewhere else, so not generated here.
+      // Restoring it locks its placed cells (Greg, 2026-11-04); importing it does not.
       Id imported = manualVersionWithSwim(ids);
       update new Schedule__c(Id = imported, Origin__c = 'Imported');
       Boolean restored = GeneratedScheduleController.restoreVersion(
