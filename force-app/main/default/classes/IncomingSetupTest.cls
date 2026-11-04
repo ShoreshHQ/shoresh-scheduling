@@ -247,10 +247,8 @@ private class IncomingSetupTest {
     }
   }
 
-  // API-1.105: the web address (an AI's or a system's) hears the problem, not the screen's advice.
-  @IsTest
-  static void theWebAddressSaysTheProblemWithoutTheScreensAdvice() {
-    IncomingTestData camp = new IncomingTestData();
+  /** One batch through the web address as that user, refused by Refusing; its answer. */
+  private static Map<String, Object> refusedAs(User user) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(
@@ -266,7 +264,7 @@ private class IncomingSetupTest {
       )
     );
     RestContext.response = new RestResponse();
-    System.runAs(camp.sender('Send_Groups')) {
+    System.runAs(user) {
       IncomingDoors.byWeb(
         new Refusing(),
         IncomingGroup.Record.class,
@@ -281,10 +279,27 @@ private class IncomingSetupTest {
       RestContext.response.statusCode,
       String.valueOf(answer)
     );
+    Assert.isFalse(AgentRefusal.forAgent, 'set back after the web address');
+    return answer;
+  }
+
+  // API-1.105: a person's AI (Shoresh Scheduler) hears the problem, not the screen's advice.
+  @IsTest
+  static void aPersonsAiHearsTheProblemWithoutTheScreensAdvice() {
+    IncomingTestData camp = new IncomingTestData();
     Assert.areEqual(
       '"Bunk 5" doesn\'t fit in the Dining hall at Lunch.',
-      answer.get('message')
+      refusedAs(camp.sender('Shoresh_Scheduler')).get('message')
     );
-    Assert.isFalse(AgentRefusal.forAgent, 'set back after the web address');
+  }
+
+  // API-6.4: a key (only the capability's permission set) keeps the next step.
+  @IsTest
+  static void aKeyKeepsTheNextStep() {
+    IncomingTestData camp = new IncomingTestData();
+    Assert.areEqual(
+      '"Bunk 5" doesn\'t fit in the Dining hall at Lunch. Change "Lunch" first, then try again.',
+      refusedAs(camp.sender('Send_Groups')).get('message')
+    );
   }
 }

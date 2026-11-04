@@ -73,6 +73,7 @@ global with sharing class AgentElectiveSeatsNow {
     for (ElectivePeriod period : view.times) {
       lines.add(timeLine(period, offerings, groups));
     }
+    lines.addAll(ElectiveOverSeats.of(view));
     Map<Id, List<String>> seats = AgentElectives.seatsOf(view, offerings);
     lines.add('Campers:');
     for (ElectiveSeats.CamperInfo camper : view.campers) {

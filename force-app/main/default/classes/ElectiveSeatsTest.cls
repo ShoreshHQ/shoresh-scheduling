@@ -652,17 +652,17 @@ private class ElectiveSeatsTest {
 
   // ELECT-4.5
   @IsTest
-  static void aMoveByHandMayGoOverSeatsAndThePadlockUnlocks() {
+  static void aMoveByHandFillsAnOfferingAndThePadlockUnlocks() {
     System.runAs(ShoreshTestData.scheduler()) {
       SeatsCamp camp = new SeatsCamp(3);
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
       // Each change by hand is its own request: they get their own limits here.
       Test.startTest();
-      for (Integer i = 0; i < 3; i++) {
+      for (Integer i = 0; i < 2; i++) {
         view = camp.move(view.revision, i, 'Archery');
       }
       Assert.areEqual(
-        3,
+        2,
         [
           SELECT COUNT()
           FROM Assignment__c
@@ -670,11 +670,11 @@ private class ElectiveSeatsTest {
             ElectiveRun__c = :camp.runId
             AND Offering__c = :camp.ids.get('o:Archery')
         ],
-        'Over its seats by hand: shown, not refused'
+        'Two by hand, up to its seats (a third is refused: AgentElectiveSeatsTest)'
       );
 
-      view = camp.lock(view.revision, 2, false);
-      Assignment__c seat = camp.mondaySeat(2);
+      view = camp.lock(view.revision, 1, false);
+      Assignment__c seat = camp.mondaySeat(1);
       Assert.isFalse(seat.Locked__c, 'Unlocked');
       Assert.isFalse(seat.ByHand__c, 'Unlocked, it is Assign\'s again');
       Assert.areEqual(camp.ids.get('o:Archery'), seat.Offering__c);

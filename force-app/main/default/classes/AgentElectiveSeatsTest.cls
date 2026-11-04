@@ -170,4 +170,153 @@ private class AgentElectiveSeatsTest {
       );
     }
   }
+
+  /** Both campers in Drama, Archery down to one seat: the camp the two move tests share. */
+  private static void dramaAndOneArcherySeat() {
+    AgentElectivesTestData.camp();
+    ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+    request.runId = AgentElectivesTestData.runId;
+    request.revision = AgentElectivesTestData.revision();
+    request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+      JSON.serialize(AgentElectivesTestData.everyoneInDrama()),
+      List<ElectiveSeatSaves.SeatIn>.class
+    );
+    ElectiveSeatsController.assignSeats(JSON.serialize(request));
+    Database.update(
+      new Offering__c(
+        Id = AgentElectivesTestData.ids.get('Archery'),
+        Seats__c = 1
+      ),
+      AccessLevel.USER_MODE
+    );
+  }
+
+  // API-1.68: a move to the seat a camper holds says so truthfully, to the AI and on screen.
+  @IsTest
+  static void aMoveToTheSeatHeldSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      dramaAndOneArcherySeat();
+      Test.startTest();
+      List<Object> already = move('Synthetic Camper 1', 'Drama');
+      String screen;
+      try {
+        ElectiveSeatChange.ChangeRequest same = new ElectiveSeatChange.ChangeRequest();
+        same.runId = AgentElectivesTestData.runId;
+        same.revision = AgentElectivesTestData.revision();
+        same.camperId = AgentElectivesTestData.campers[0];
+        same.day = AgentElectivesTestData.MONDAY;
+        same.blockId = AgentElectivesTestData.ids.get('Period 1');
+        same.offeringId = AgentElectivesTestData.ids.get('Drama');
+        ElectiveSeatsController.changeSeat(JSON.serialize(same));
+      } catch (Exception e) {
+        screen = ScreenErrors.words(e);
+      }
+      Test.stopTest();
+      String words = 'Synthetic Camper 1 is already in Drama then; nothing changed.';
+      Assert.areEqual(200, already[0], String.valueOf(already[1]));
+      Assert.areEqual(words, already[1]);
+      Assert.areEqual(words, screen);
+    }
+  }
+
+  // API-1.68: a move into a full offering is refused, as the desktop refuses it.
+  @IsTest
+  static void aMoveIntoAFullOfferingIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      dramaAndOneArcherySeat();
+      Test.startTest();
+      List<Object> first = move('Synthetic Camper 1', 'Archery');
+      List<Object> over = move('Synthetic Camper 2', 'Archery');
+      String screen;
+      try {
+        ElectiveSeatChange.ChangeRequest full = new ElectiveSeatChange.ChangeRequest();
+        full.runId = AgentElectivesTestData.runId;
+        full.revision = AgentElectivesTestData.revision();
+        full.camperId = AgentElectivesTestData.campers[1];
+        full.day = AgentElectivesTestData.MONDAY;
+        full.blockId = AgentElectivesTestData.ids.get('Period 1');
+        full.offeringId = AgentElectivesTestData.ids.get('Archery');
+        ElectiveSeatsController.changeSeat(JSON.serialize(full));
+      } catch (Exception e) {
+        screen = ScreenErrors.words(e);
+      }
+      Test.stopTest();
+      Assert.areEqual(
+        'Archery is full then (1 of 1 seats); nothing changed.',
+        screen,
+        'the screen refuses it the same way'
+      );
+      Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', first[1]);
+      Assert.areEqual(400, over[0], String.valueOf(over[1]));
+      Assert.areEqual(
+        'Archery is full then (1 of 1 seats); nothing changed.',
+        over[1]
+      );
+      Assert.areEqual(
+        AgentElectivesTestData.ids.get('Drama'),
+        AgentElectivesTestData.seats()[1].Offering__c,
+        'the second camper stays in Drama'
+      );
+    }
+  }
+
+  // API-1.68: an offering over its seats (its seats lowered after Assign) is said in the read,
+  // as the screen's "over Seats" problem shows it.
+  @IsTest
+  static void theSeatsReadSaysAnOfferingOverItsSeats() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      List<Object> seats = AgentElectivesTestData.everyoneInDrama();
+      for (Object each : seats) {
+        ((Map<String, Object>) each)
+          .put('offeringId', AgentElectivesTestData.ids.get('Archery'));
+      }
+      ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+      request.runId = AgentElectivesTestData.runId;
+      request.revision = AgentElectivesTestData.revision();
+      request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+        JSON.serialize(seats),
+        List<ElectiveSeatSaves.SeatIn>.class
+      );
+      ElectiveSeatsController.assignSeats(JSON.serialize(request));
+      Database.update(
+        new Offering__c(
+          Id = AgentElectivesTestData.ids.get('Archery'),
+          Seats__c = 1
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      List<Object> read = AgentElectivesTestData.send(
+        'elective_seats_now',
+        'GET',
+        AgentElectivesTestData.asked(new Map<String, Object>())
+      );
+      Test.stopTest();
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isTrue(
+        String.valueOf(read[1])
+          .contains('Archery is over its seats on Monday, Period 1: 2 of 1.'),
+        String.valueOf(read[1])
+      );
+    }
+  }
+
+  private static List<Object> move(String camper, String elective) {
+    return AgentElectivesTestData.send(
+      'move_elective_seat',
+      'POST',
+      AgentElectivesTestData.asked(
+        new Map<String, Object>{
+          'camper' => camper,
+          'day' => 'Monday',
+          'time' => 'Period 1',
+          'elective' => elective,
+          'seen' => AgentElectivesTestData.seen(
+            AgentElectivesTestData.revision()
+          )
+        }
+      )
+    );
+  }
 }

@@ -370,17 +370,49 @@ function electives(tmp) {
     "done",
     [["API-1.69", has("Unlocked Avery Madeup"), "unlocked"]]
   );
+  // Whoever Assign put in Art: Swim (2 seats) is full, so moving them there is refused, and
+  // moving them to Art, where they are, changes nothing.
+  const seats = step("read_elective_seats_now", at, "done");
+  const inArt =
+    /- ([^#\n]+?) #\d+, Bunk \d: Monday, Period 1: Art/.exec(seats)?.[1] ??
+    "Casey Madeup";
   step(
     "move_elective_seat",
     {
       ...at,
-      camper: "Casey Madeup",
+      camper: inArt,
       day: "Monday",
       time: "Period 1",
       elective: "Swim",
+      seen: seenIn(seats)
+    },
+    "refused",
+    [
+      [
+        "API-1.68",
+        has("Swim is full then (2 of 2 seats); nothing changed."),
+        "a full offering refused"
+      ]
+    ]
+  );
+  step(
+    "move_elective_seat",
+    {
+      ...at,
+      camper: inArt,
+      day: "Monday",
+      time: "Period 1",
+      elective: "Art",
       seen: now()
     },
-    "done"
+    "done",
+    [
+      [
+        "API-1.68",
+        has(`${inArt} is already in Art then; nothing changed.`),
+        "already there, said truly"
+      ]
+    ]
   );
   ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
   step("read_elective_seats", { week: "Week 2" }, "done", [

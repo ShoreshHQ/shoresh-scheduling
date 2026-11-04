@@ -56,8 +56,15 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       // The screen's own change of one seat.
       ElectiveSeatsController.changeSeat(JSON.serialize(request));
     } catch (Exception e) {
+      String words = ScreenErrors.words(e);
+      // Already there: said as it is, nothing changed (not a refusal).
+      if (words == ElectiveSeatChange.alreadyIn(camper.name, offering.name)) {
+        return words;
+      }
       throw new ShoreshException(
-        'That seat wasn\'t changed. ' + ScreenErrors.words(e)
+        words.endsWith('; nothing changed.')
+          ? words
+          : 'That seat wasn\'t changed. ' + words
       );
     }
     // The screen's own words for it.
