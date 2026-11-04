@@ -36,14 +36,19 @@ private class AgentUnpublishLockTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
-      new Map<String, AgentWeeks.Action>{
-          'unpublish' => new AgentUnpublish(),
-          'lock' => new AgentLock(),
-          'unlock' => new AgentLock(GeneratedWeek.UNLOCK)
-        }
-        .get(action)
-    );
+    if (action == 'unlock_cells') {
+      // The web address itself, as an AI reaches it.
+      AgentUnlock.post();
+    } else {
+      AgentWeeks.answer(
+        new Map<String, AgentWeeks.Action>{
+            'unpublish' => new AgentUnpublish(),
+            'lock' => new AgentLock(),
+            'unlock' => new AgentLock(GeneratedWeek.UNLOCK)
+          }
+          .get(action)
+      );
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -250,6 +255,55 @@ private class AgentUnpublishLockTest {
       Assert.isFalse(
         locked(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2),
         'Nothing was locked'
+      );
+    }
+  }
+
+  // API-1.37: the unlock web address itself. Monday is locked; an unlock without seen, or from a
+  // read made before the lock, changes nothing; one from the week as it is unlocks only Group A's
+  // Monday.
+  @IsTest
+  static void unlockCellsIsItsOwnWebAddress() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      String beforeLock = GeneratedTestData.weekNow();
+      post(
+        'lock',
+        new Map<String, Object>{ 'day' => 'Monday', 'group' => 'all' }
+      );
+      Map<String, Object> groupADay = new Map<String, Object>{
+        'group' => 'Group A',
+        'day' => 'Monday'
+      };
+      Test.startTest();
+      List<Object> unseen = send('unlock_cells', groupADay);
+      Map<String, Object> stale = groupADay.clone();
+      stale.put('seen', beforeLock);
+      List<Object> old = send('unlock_cells', stale);
+      Boolean stillLocked = locked(
+        draftId,
+        GeneratedTestData.GROUP_A,
+        GeneratedTestData.PERIOD_2
+      );
+      List<Object> unlocked = post('unlock_cells', groupADay);
+      Test.stopTest();
+      Assert.areEqual(400, unseen[0], String.valueOf(unseen[1]));
+      Assert.isTrue(
+        ((String) unseen[1]).contains('(seen)'),
+        String.valueOf(unseen[1])
+      );
+      Assert.areEqual(409, old[0], String.valueOf(old[1]));
+      Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, old[1]);
+      Assert.isTrue(stillLocked, 'A refused unlock changes nothing');
+      Assert.areEqual(200, unlocked[0], String.valueOf(unlocked[1]));
+      Assert.areEqual('Unlocked Group A · Monday.', unlocked[1]);
+      Assert.isFalse(
+        locked(draftId, GeneratedTestData.GROUP_A, GeneratedTestData.PERIOD_2)
+      );
+      Assert.isTrue(
+        locked(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2),
+        'Only Group A\'s Monday is unlocked'
       );
     }
   }
