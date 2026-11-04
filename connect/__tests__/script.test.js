@@ -150,6 +150,29 @@ describe("Code mode for an AI: run_shoresh_script", () => {
     expect(endless.text).toMatch(/ran out of time/);
   });
 
+  // API-1.121
+  it("memoryAndGraceLimits: a script past its memory is stopped plainly, and a call still unanswered after the grace is said as sent", async () => {
+    const big = await runScript(
+      "const a = []; for (;;) a.push(new Array(1e5).fill(a.length));",
+      {
+        callAction: async () => ({ answer: { ok: true }, lines: [] })
+      }
+    );
+    expect(big.ok).toBe(false);
+    expect(big.text).toMatch(/more than 128 MB of memory and was stopped/);
+    const started = Date.now();
+    const hung = await runScript("await shoresh.list_seasons({});", {
+      timeLimitMs: 200,
+      graceMs: 200,
+      callAction: () => new Promise(() => {})
+    });
+    expect(Date.now() - started).toBeLessThan(5000);
+    expect(hung.text).toContain(
+      "1. list_seasons {}\nSent to Shoresh; its answer wasn't received before the script was stopped, so it may or may not have been done."
+    );
+    expect(hung.text).toMatch(/ran out of time/);
+  });
+
   // API-1.122
   it("askFirstAndErrorsArePlain: a preview's text is in the answer with no confirm added, a confirm the script got may be sent, errors are said plainly", async () => {
     const asked = [];

@@ -18,6 +18,10 @@ const { CAPABILITIES } = require("./capabilities");
 const NAME = "run_shoresh_script";
 const TIME_LIMIT_MS = 120000;
 const CALL_LIMIT = 40;
+// How long, after a script stops, its calls already sent are waited for (Shoresh calls have no timeout of their own).
+const GRACE_MS = 10000;
+// A script's own memory; past it the worker stops long before it could slow the computer.
+const MEMORY_MB = 128;
 
 /** One action as a line of the function list: its name, its fields (? when optional), what it does. */
 function signature({ name, description, inputSchema }) {
@@ -65,6 +69,7 @@ async function runScript(
   {
     callAction,
     timeLimitMs = TIME_LIMIT_MS,
+    graceMs = GRACE_MS,
     callLimit = CALL_LIMIT,
     names = CAPABILITIES.map((c) => c.name)
   }
@@ -76,7 +81,13 @@ async function runScript(
   const printed = [];
   const inFlight = [];
   let stopped = false;
-  const worker = new Worker(__filename, { workerData: { script, names } });
+  const worker = new Worker(__filename, {
+    workerData: { script, names },
+    resourceLimits: {
+      maxOldGenerationSizeMb: MEMORY_MB,
+      maxYoungGenerationSizeMb: 16
+    }
+  });
   const finished = new Promise((resolve) => {
     worker.on("message", (m) => {
       if (m.kind === "print") printed.push(m.text);
@@ -122,7 +133,15 @@ async function runScript(
         inFlight.push(p);
       }
     });
-    worker.on("error", (e) => resolve({ ok: false, why: e.message }));
+    worker.on("error", (e) =>
+      resolve({
+        ok: false,
+        why:
+          e.code === "ERR_WORKER_OUT_OF_MEMORY"
+            ? `The script used more than ${MEMORY_MB} MB of memory and was stopped.`
+            : e.message
+      })
+    );
     worker.on("exit", () =>
       resolve({ ok: false, why: "The script stopped before it finished." })
     );
@@ -143,7 +162,14 @@ async function runScript(
   stopped = true;
   await worker.terminate();
   // A call already sent still finishes in Shoresh: say what it answered.
-  await Promise.all(inFlight);
+  let grace;
+  await Promise.race([
+    Promise.all(inFlight),
+    new Promise((resolve) => {
+      grace = setTimeout(resolve, graceMs);
+    })
+  ]);
+  clearTimeout(grace);
   return { ok: end.ok, text: answerText(calls, printed, end) };
 }
 
@@ -156,7 +182,9 @@ function answerText(calls, printed, end) {
   calls.forEach(({ name, input, lines }, i) => {
     out.push(
       `${i + 1}. ${name} ${JSON.stringify(input)}`,
-      ...(lines ?? ["(no answer)"])
+      ...(lines ?? [
+        "Sent to Shoresh; its answer wasn't received before the script was stopped, so it may or may not have been done."
+      ])
     );
   });
   if (printed.length) out.push("Printed:", ...printed);
@@ -251,6 +279,8 @@ module.exports = {
   NAME,
   TIME_LIMIT_MS,
   CALL_LIMIT,
+  GRACE_MS,
+  MEMORY_MB,
   scriptTool,
   runScript,
   signature
