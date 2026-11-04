@@ -310,14 +310,6 @@ async function readCoverage(testClassIds) {
     )
   ).forEach((record) => {
     const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
-    // With no per-test rows (the org stores only aggregate coverage) take every aggregate row,
-    // as the CLI does.
-    if (
-      !name ||
-      (touched.size > 0 && !touched.has(record.ApexClassOrTriggerId))
-    ) {
-      return;
-    }
     const seen = new Map();
     ((record.Coverage && record.Coverage.coveredLines) || []).forEach((line) =>
       seen.set(String(line), true)
@@ -325,6 +317,17 @@ async function readCoverage(testClassIds) {
     ((record.Coverage && record.Coverage.uncoveredLines) || []).forEach(
       (line) => seen.set(String(line), seen.get(String(line)) === true)
     );
+    // With no per-test rows (the org stores only aggregate coverage) take every aggregate row,
+    // as the CLI does. A class the org counts no lines in (only fields, as IncomingResult) has
+    // nothing to run, so it is kept even when no test touched it.
+    if (
+      !name ||
+      (touched.size > 0 &&
+        !touched.has(record.ApexClassOrTriggerId) &&
+        seen.size > 0)
+    ) {
+      return;
+    }
     lines.set(name, seen);
   });
   return lines;
@@ -332,7 +335,8 @@ async function readCoverage(testClassIds) {
 
 /**
  * Coverage of the repository's classes and triggers from these runs. One no run touched counts
- * as 0%, with its statements (lines ending in ";") as an estimate of its lines.
+ * as 0%, with its statements (lines ending in ";") as an estimate of its lines; one the org
+ * counts no lines in has nothing to cover and counts nothing.
  */
 function coverage(lines) {
   let covered = 0;
@@ -340,7 +344,7 @@ function coverage(lines) {
   const untouched = [];
   codeUnderTest().forEach((file) => {
     const seen = lines.get(baseName(file));
-    if (seen && seen.size > 0) {
+    if (seen) {
       seen.forEach((hit) => {
         covered += hit ? 1 : 0;
         total += 1;
