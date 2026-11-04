@@ -281,7 +281,7 @@ describe("run-apex-tests.mjs", () => {
   it("a class with code is still not run when the org counts no lines in it", async () => {
     fs.writeFileSync(
       path.join(work, "force-app", "main", "default", "classes", "Reset.cls"),
-      "public class Reset {\n  public Integer row;\n  public void a() {\n    b();\n  }\n}\n"
+      "public class Reset {\n  public Integer row = '}';\n  public void a() { b(); }\n}\n"
     );
     behave.aggregate = [
       {
@@ -292,6 +292,30 @@ describe("run-apex-tests.mjs", () => {
     ];
     const { out } = await run();
     expect(out).toContain("Not run by any test (counted as 0%): Reset");
+  });
+
+  it("a trigger is still not run when the org counts no lines in it", async () => {
+    const triggers = path.join(
+      work,
+      "force-app",
+      "main",
+      "default",
+      "triggers"
+    );
+    fs.mkdirSync(triggers, { recursive: true });
+    fs.writeFileSync(
+      path.join(triggers, "Watch.trigger"),
+      "trigger Watch on Account (before insert) {\n  Handler.run();\n}\n"
+    );
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-5",
+        ApexClassOrTrigger: { Name: "Watch" },
+        Coverage: { coveredLines: [], uncoveredLines: [] }
+      }
+    ];
+    const { out } = await run();
+    expect(out).toContain("Not run by any test (counted as 0%): Watch");
   });
 
   it("a class with lines that no test of this run touched is still not run", async () => {

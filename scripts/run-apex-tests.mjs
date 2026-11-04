@@ -334,19 +334,20 @@ async function readCoverage(testClassIds) {
 }
 
 /**
- * Statements inside a method, constructor or block (lines ending in ";" nested two braces deep).
- * A class's own field declarations sit one brace deep and run nothing.
+ * Statements inside a method, constructor or block: each ";" at least two braces deep in a class
+ * (a class's own field declarations sit one deep and run nothing), or inside a trigger's body.
+ * Comments and string literals are left out, so a brace in a string doesn't count.
  */
-function blockStatements(source) {
+function blockStatements(source, isTrigger) {
+  const code = withoutComments(source).replace(/'(?:\\.|[^'\\])*'/g, "''");
+  const inside = isTrigger ? 1 : 2;
   let depth = 0;
   let count = 0;
-  withoutComments(source)
-    .split("\n")
-    .forEach((line) => {
-      depth += (line.match(/{/g) || []).length;
-      if (depth >= 2 && line.trim().endsWith(";")) count += 1;
-      depth -= (line.match(/}/g) || []).length;
-    });
+  for (const ch of code) {
+    if (ch === "{") depth += 1;
+    else if (ch === "}") depth -= 1;
+    else if (ch === ";" && depth >= inside) count += 1;
+  }
   return count;
 }
 
@@ -363,7 +364,11 @@ function coverage(lines) {
   codeUnderTest().forEach((file) => {
     const seen = lines.get(baseName(file));
     const source = readFileSync(file, "utf8");
-    if (seen && (seen.size > 0 || blockStatements(source) === 0)) {
+    if (
+      seen &&
+      (seen.size > 0 ||
+        blockStatements(source, file.endsWith(".trigger")) === 0)
+    ) {
       seen.forEach((hit) => {
         covered += hit ? 1 : 0;
         total += 1;
