@@ -1,6 +1,6 @@
 # 0004: Fixed and recurring activities, build choices
 
-Status: proposed (2026-10-16), slice 3b. Design source: wiki `projects/shoresh-scheduling-sf`
+Status: accepted (2026-10-16), slice 3b. Design source: wiki `projects/shoresh-scheduling-sf`
 (slice 3 planning rounds 1 to 3, "Open questions answered", "Slice 3b"),
 `projects/shoresh-scheduling-data-model` ("Set-time items", "Protecting history", "Rows that
 lose their owner"), glossary (fixed activity, recurring activity, mutual exclusivity), and

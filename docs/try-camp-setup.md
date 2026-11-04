@@ -1394,12 +1394,11 @@ time_block, activity, location, source_system, camper_id, camper_name, camper_nu
 
 ## What is not here yet
 
-- Moving a bunk to another unit on the Bunks screen comes later.
-- Special events: putting a special day or event on a day, and Import a list / Download this
-  list on the Special events list, come in later slices.
-- Electives: one roster for a linked choice across its periods, and a camper's week on screen,
-  come later (each camper's week is in the Camper schedules download now).
-- The camp map is a later piece.
+- Special events: Import a list / Download this list on the Special events list come in a later
+  slice.
+- Electives: one roster for a linked choice across its periods comes later. A camper's week on
+  screen is not planned (each camper's week is in the Camper schedules download).
+- There is no camp map (dropped).
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
 

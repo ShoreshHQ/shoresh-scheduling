@@ -1,6 +1,6 @@
 # 0010: Generated Schedule
 
-Status: proposed (2026-10-17), parts G1 (the engine), G2 (reading its inputs, saving the
+Status: accepted (2026-10-17), parts G1 (the engine), G2 (reading its inputs, saving the
 week), G3 (the screen) and G5 (other programs' occupancy) of 5. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Generated Schedule round 1", Greg 2026-10-17, and the
 coordinator's technical calls the same day), `projects/shoresh-design-guide`,

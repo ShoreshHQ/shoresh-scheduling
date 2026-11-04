@@ -1,6 +1,6 @@
 # 0011: Setup tables save as you go
 
-Status: proposed (2026-10-17). Design source: wiki `projects/shoresh-scheduling-sf` decision 15
+Status: accepted (2026-10-17). Design source: wiki `projects/shoresh-scheduling-sf` decision 15
 (2), Greg 2026-10-17: "Setup tables work like the desktop: an always-present blank last row,
 saved as you go (Enter), replacing table-wide Save/Cancel." Desktop (read-only copy,
 `~/Dev/Shoresh/shoresh-desktop` at 69dbd34): `docs/governance/standards/DESIGN_STANDARD.md`

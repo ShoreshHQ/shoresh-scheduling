@@ -1,6 +1,6 @@
 # 0020: Roots, the canasta table
 
-Status: proposed (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
+Status: accepted (2026-10-24), slice R1 of the Roots redesign (the table); R1.1 polish
 (2026-10-24): the journey's first frame, long seasons, long names, sparse and huge camps; slice
 R2 (2026-10-24): the "needs a look" hand (choice 10); R2.1 (2026-10-25): the hand always
 whole, at the mock-up's size; R2.2 (2026-10-25): Roots fits a laptop's window (1280 by 800,

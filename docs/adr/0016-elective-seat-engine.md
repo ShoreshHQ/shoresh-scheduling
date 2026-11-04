@@ -1,6 +1,6 @@
 # 0016: Elective seat assignment, the engine
 
-Status: proposed (2026-10-21), electives slice E2 (plan: wiki `projects/shoresh-sf-electives-plan`,
+Status: accepted (2026-10-21), electives slice E2 (plan: wiki `projects/shoresh-sf-electives-plan`,
 §5 and §8). Design source: the desktop, Greg's own Apache-2.0 repo `gfeitel1-maker/Scheduling-Project-`
 at 69dbd34: `src/engine/buildElectiveAssignments.js`, `src/engine/rankKind.js` and their tests,
 and desktop ADRs `2026-09-17-individual-elective-scheduling` (D3, D11, D14),

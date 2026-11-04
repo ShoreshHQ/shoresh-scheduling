@@ -146,7 +146,7 @@ eight layouts, 40 each) with two or three of the untidy things almost every real
 - **trip**: one division (or the whole camp) on a Field Trip one afternoon, merged down the
   afternoon in Excel. Trips are noted, not set up: not an activity, but kept in the imported week.
 - **halfDay**: the youngest division goes home after Lunch; its afternoon cells are blank. It
-  stays in the camp's one program (see the open question below). Its groups are Morning only
+  stays in the camp's one program. Its groups are Morning only
   (INGEST-2.9) when all they have is before noon and the day has blocks from noon; a Lunch at
   noon or later keeps them all day (26 of 114 camps).
 - **gaps**: a few blank cells in ordinary periods: nothing scheduled then.

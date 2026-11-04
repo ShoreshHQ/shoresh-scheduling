@@ -1,6 +1,6 @@
 # 0003: Menu, Roots, and "Runs in", build choices
 
-Status: proposed (2026-10-16), slice 3a. Design source: wiki `projects/shoresh-scheduling-sf`
+Status: accepted (2026-10-16), slice 3a. Design source: wiki `projects/shoresh-scheduling-sf`
 (slice 3 planning rounds 1 to 3, "Open questions answered", "Coordinator handoff (final)") and
 Shoresh desktop (`src/screens/RootsHomeScreen.jsx`, `src/components/layout/navSections.js`,
 its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`,

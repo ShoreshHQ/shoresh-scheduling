@@ -1,6 +1,6 @@
 # 0006: Import last year, build choices
 
-Status: proposed (2026-10-16), slice 4b, part 1 of 2. Design source: wiki
+Status: accepted (2026-10-16), slice 4b, part 1 of 2. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Slice 4 planning" rounds 1 and 2, Greg's 4b decisions of
 2026-10-16), `projects/shoresh-desktop-import` (how the desktop imports),
 `projects/shoresh-scheduling-data-model`, the glossary, and Shoresh desktop

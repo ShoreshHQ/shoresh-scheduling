@@ -1,6 +1,6 @@
 # 0015: The design system
 
-Status: proposed (2026-10-21), design build step 1 of several (the foundation). Design source:
+Status: accepted (2026-10-21), design build step 1 of several (the foundation). Design source:
 Greg's decisions 28 to 40 in wiki `projects/shoresh-scheduling-sf.md` (approved 2026-10-21, "let's
 do it"), and the visual spec in `docs/design/` (round 13 mock-up `manual-build.html` with
 `spacing-spec.md`, and round 11's `spacing-spec-continuous.md` for the rail's grammar). The

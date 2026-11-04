@@ -1,6 +1,6 @@
 # 0017: Reading a choices sheet
 
-Status: proposed (2026-10-21), electives slice E3a; slice E6 (bringing in choices, 2026-10-22)
+Status: accepted (2026-10-21), electives slice E3a; slice E6 (bringing in choices, 2026-10-22)
 added choices 10 to 21. Design source: the wiki electives plan
 (`projects/shoresh-sf-electives-plan.md` §2 "Choices", §3 "Privacy", §6.3, §8 slice E3a), Greg's
 decision 44 (electives are one piece of work), and Shoresh desktop's choices-sheet reader

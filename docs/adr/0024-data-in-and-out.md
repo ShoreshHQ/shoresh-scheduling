@@ -1,6 +1,6 @@
 # 0024: Data in and out (the Shoresh API)
 
-Status: proposed (2026-10-29). Product decision: Greg, 2026-10-29 (wiki `projects/shoresh-api.md`,
+Status: accepted (2026-10-29). Product decision: Greg, 2026-10-29 (wiki `projects/shoresh-api.md`,
 "Greg's answers"; wiki decision 0009, "Data moves in and out freely"). The rules are numbered in
 [docs/protocol/api.md](../protocol/api.md) (API-n.m). Built so far: camper outside IDs and the access
 pieces (#197); all six coming in, by Flow action and web address (API piece 2); all four going out, by web address, Flow action and CSV (API piece 3).

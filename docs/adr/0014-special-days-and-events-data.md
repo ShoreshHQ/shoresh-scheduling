@@ -1,6 +1,6 @@
 # 0014: Special days and special events, the data
 
-Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22; slice 4 added
+Status: accepted (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22; slice 4 added
 2026-10-22; slice 5 added 2026-10-22; slice 6 added 2026-10-22), Special Events and Special Days slices 1 to 6 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
