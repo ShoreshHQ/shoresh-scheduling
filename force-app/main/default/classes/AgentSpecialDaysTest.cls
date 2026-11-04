@@ -204,6 +204,78 @@ private class AgentSpecialDaysTest {
     }
   }
 
+  /** One POST to /v1/take_special_day_off_day itself; answers [status, sentence]. */
+  private static List<Object> takeOff(Map<String, Object> body) {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'POST';
+    RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+    RestContext.response = new RestResponse();
+    AgentTakeOffSpecialDay.post();
+    return new List<Object>{
+      RestContext.response.statusCode,
+      ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message')
+    };
+  }
+
+  // API-1.74: the take off web address itself. Field Day is on Tuesday; a take off with replace,
+  // or from a read that is out of date, changes nothing; one as the day was read takes it off and
+  // keeps it saved.
+  @IsTest
+  static void takeSpecialDayOffDayIsItsOwnWebAddress() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
+      String season = seasonName(ids.get('Season'));
+      Id week = ids.get('Week 1');
+      Map<String, Object> withReplace = tuesday(
+        season,
+        'Field Day',
+        'Field Day'
+      );
+      withReplace.put('replace', true);
+      Test.startTest();
+      List<Object> replace = takeOff(withReplace);
+      List<String> afterReplace = onTuesday(week);
+      List<Object> stale = takeOff(tuesday(season, 'Field Day', 'none'));
+      List<String> afterStale = onTuesday(week);
+      List<Object> takenOff = takeOff(
+        tuesday(season, 'Field Day', 'Field Day')
+      );
+      Test.stopTest();
+      Assert.areEqual(400, replace[0], String.valueOf(replace[1]));
+      Assert.areEqual(
+        'Shoresh doesn\'t know the field "replace" here. The fields are: day, season, seen, special_day, week.',
+        replace[1]
+      );
+      Assert.areEqual(new List<String>{ 'Field Day' }, afterReplace);
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(
+        'Someone else changed Tuesday of "Week 1" since you read it: it has "Field Day" now. Nothing was changed. Read it again with read_special_days.',
+        stale[1]
+      );
+      Assert.areEqual(new List<String>{ 'Field Day' }, afterStale);
+      Assert.areEqual(200, takenOff[0], String.valueOf(takenOff[1]));
+      Assert.areEqual(
+        'Tuesday of "Week 1" has its regular schedule again. "Field Day" stays saved. put_special_day_on_day puts it back.',
+        takenOff[1]
+      );
+      Assert.areEqual(new List<String>(), onTuesday(week));
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM SpecialDay__c
+          WHERE Id = :ids.get('Field Day')
+          WITH SYSTEM_MODE
+        ],
+        'The special day stays saved'
+      );
+    }
+  }
+
   // API-1.75
   @IsTest
   static void anEventOverCellsIsTheScreensHandEditMarkedAndUndone() {
