@@ -4,7 +4,8 @@ import { connectPrompt, myDomainHost } from "./prompt";
 
 /**
  * Settings' "Connect your AI" (API-1.15 to API-1.17): Claude desktop downloads the extension from
- * this camp's own Salesforce; Claude Code or Cursor copies the prompt the person pastes into it.
+ * this camp's own Salesforce; any AI app that runs commands (Claude Code, Cursor and the like)
+ * takes the prompt the person copies and pastes into it.
  * If copying isn't allowed, the prompt is shown to copy by hand.
  */
 export default class ShoreshConnectAi extends LightningElement {
@@ -23,7 +24,7 @@ export default class ShoreshConnectAi extends LightningElement {
   extensionUrl = CONNECTOR;
 
   get copyLabel() {
-    return this.copied ? "Copied" : "Claude Code or Cursor";
+    return this.copied ? "Copied" : "Copy prompt for your AI";
   }
 
   get copyIcon() {
