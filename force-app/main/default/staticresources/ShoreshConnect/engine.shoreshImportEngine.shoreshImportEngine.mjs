@@ -62,14 +62,19 @@ export function checkSheets(sheetRows, limits = IMPORT_LIMITS) {
   }
   if (sheetRows.some((rows) => rows > limits.maxRowsPerSheet)) {
     throw refusal(
-      `A sheet in that file has too many rows (over ${limits.maxRowsPerSheet}) to import safely. Nothing was imported.`
+      `A sheet in that file has too many rows (over ${limits.maxRowsPerSheet.toLocaleString("en-US")}) to import safely. Nothing was imported.`
     );
   }
 }
 
-/** The refusal's own words when a file was refused for its size, else null. */
-export function refusedFile(error) {
-  return error && error.importRefused ? error.message : null;
+/**
+ * The refusal's own words when a file was refused for its size, else null; a screen that says
+ * "brought in" gives its own words for what didn't happen.
+ */
+export function refusedFile(error, nothing = "Nothing was imported.") {
+  return error && error.importRefused
+    ? error.message.replace("Nothing was imported.", nothing)
+    : null;
 }
 
 /**
@@ -118,10 +123,19 @@ export function csvFile(name, text) {
  */
 export function workbookFile(XLSX, name, data) {
   checkFileSize(data.byteLength ?? data.length ?? 0);
-  const workbook = XLSX.read(data, { type: "array", cellDates: false });
+  // The sheets are counted from the workbook's list of them, before any sheet is opened.
+  const names = XLSX.read(data, { type: "array", bookSheets: true }).SheetNames;
+  checkSheets(names.map(() => 0));
+  // Then each sheet is read no further than one row past the limit; its real size is !fullref.
+  const workbook = XLSX.read(data, {
+    type: "array",
+    cellDates: false,
+    sheetRows: IMPORT_LIMITS.maxRowsPerSheet + 1
+  });
   checkSheets(
     workbook.SheetNames.map((sheetName) => {
-      const ref = workbook.Sheets[sheetName]["!ref"];
+      const ws = workbook.Sheets[sheetName];
+      const ref = ws["!fullref"] || ws["!ref"];
       return ref ? XLSX.utils.decode_range(ref).e.r + 1 : 0;
     })
   );

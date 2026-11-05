@@ -21,7 +21,7 @@ const TOO_LARGE =
 const TOO_MANY_SHEETS =
   "That file has too many sheets (over 256) to import safely. Nothing was imported.";
 const TOO_MANY_ROWS =
-  "A sheet in that file has too many rows (over 20000) to import safely. Nothing was imported.";
+  "A sheet in that file has too many rows (over 20,000) to import safely. Nothing was imported.";
 
 const bigCsv = "Activity\n" + "Archery,".repeat(1.4 * 1024 * 1024);
 const sheets = (count, rows = 1) =>

@@ -509,7 +509,7 @@ describe("c-shoresh-choices-import", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
-      "That file is too large to import (over 10 MB). Nothing was imported."
+      "That file is too large to import (over 10 MB). Nothing was brought in."
     );
     expect(big.text).not.toHaveBeenCalled();
     expect(big.arrayBuffer).not.toHaveBeenCalled();

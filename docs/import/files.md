@@ -37,25 +37,29 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.1: workbook bytes over 10 MB never reach the spreadsheet reader".
 
 2. **A file with more than 256 sheets is refused.**
-   Clue: the workbook, once opened, has more than 256 sheets.
+   Clue: the workbook's list of its sheets names more than 256.
    Meaning: "That file has too many sheets (over 256) to import safely. Nothing was imported."
-   No sheet is read. This differs from the desktop, whose limit is 32: its ADR §3a calls the
+   The sheets are counted from that list alone, before any sheet is opened. This differs from the desktop, whose limit is 32: its ADR §3a calls the
    bounds "tunable", and a real camp shape, a tab per group per week, passes 32 at once (16
    groups × 8 weeks = 128 tabs; the level-2 and level-4 corpus camps have 36 to 128). 256 covers
    it, and the 10 MB limit still bounds the file (coordinator, 2026-11-04).
    Example: a workbook of 257 tabs is refused; 128 (16 groups × 8 weeks) and 256 are read.
    Test: "INGEST-1.2: a workbook of 257 sheets is refused; 256 is read";
+   "INGEST-1.2: 257 sheets are refused from the workbook's list of sheets, before any sheet is opened";
    "INGEST-1.2: a camp with a tab per group per week, 16 groups by 8 weeks, is read".
 
 3. **A file with a sheet of more than 20,000 rows is refused.**
-   Clue: a sheet's own extent (the range the file says it covers) is more than 20,000 rows, or a
+   Clue: a sheet's real size (the range the file says it covers) is more than 20,000 rows, or a
    CSV has more than 20,000 lines.
-   Meaning: "A sheet in that file has too many rows (over 20000) to import safely. Nothing was
-   imported." It is checked before any cell is walked, so a sheet that claims a million rows
-   is refused without reading them.
+   Meaning: "A sheet in that file has too many rows (over 20,000) to import safely. Nothing was
+   imported." Each sheet is read no further than its 20,001st row, and is refused on its real
+   size, so a sheet of a million rows, real or only claimed, is never read whole and none of its
+   rows is turned into cells. What this does not protect: the file is still unzipped to be read,
+   as on the desktop; the 10 MB limit bounds what is unzipped.
    Example: a sheet of 20,001 rows is refused; 20,000 is read.
    Test: "INGEST-1.3: a workbook sheet of 20,001 rows is refused; 20,000 is read";
-   "INGEST-1.3: a sheet claiming a million rows is refused before a cell is walked";
+   "INGEST-1.3: a sheet's rows are read no further than 20,001, and a longer sheet is refused by its real size";
+   "INGEST-1.3: a sheet claiming a million rows is refused before its rows are turned into cells";
    "INGEST-1.3: a CSV of 20,001 rows is refused; 20,000 is read".
 
 4. **Every way a file comes in is held to the same limits, in one place.**
@@ -66,7 +70,8 @@ Each rule is clue, meaning, example, test.
    Meaning: the screens read a chosen file only through `readImportFile`, and the AI's file only
    through `fileOf`, both on the engine's one check. The refusal shows where that screen already
    shows a file it could not read, nothing is saved, and the director can choose another file at
-   once. The AI gets the same words as its answer.
+   once. Bring in choices, which says "brought in" for what it saves, ends the refusal "Nothing was
+   brought in." The AI gets the same words as its answer.
    Test: "refuses a file over 10 MB before reading it, saves nothing, and reads the next file
    chosen" (Import last year, Import a list); "the Electives list refuses a file over 10 MB
    before reading it"; "refuses a file over 10 MB before reading it, brings nothing in, and reads

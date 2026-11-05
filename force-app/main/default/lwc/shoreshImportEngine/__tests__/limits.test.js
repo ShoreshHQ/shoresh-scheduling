@@ -19,7 +19,7 @@ const TOO_LARGE =
 const TOO_MANY_SHEETS =
   "That file has too many sheets (over 256) to import safely. Nothing was imported.";
 const TOO_MANY_ROWS =
-  "A sheet in that file has too many rows (over 20000) to import safely. Nothing was imported.";
+  "A sheet in that file has too many rows (over 20,000) to import safely. Nothing was imported.";
 
 const MB = 1024 * 1024;
 
@@ -127,6 +127,17 @@ describe("INGEST-1.2: a file with more than 256 sheets", () => {
     ).toHaveLength(256);
   });
 
+  it("INGEST-1.2: 257 sheets are refused from the workbook's list of sheets, before any sheet is opened", () => {
+    const read = jest.fn(XLSX.read);
+    expect(
+      refusalNow(() =>
+        workbookFile({ ...XLSX, read }, "many.xlsx", workbookBytes(257))
+      )
+    ).toBe(TOO_MANY_SHEETS);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(read.mock.calls[0][1]).toMatchObject({ bookSheets: true });
+  });
+
   it("INGEST-1.2: a camp with a tab per group per week, 16 groups by 8 weeks, is read", () => {
     expect(
       workbookFile(XLSX, "camp.xlsx", workbookBytes(16 * 8)).sheets
@@ -144,7 +155,22 @@ describe("INGEST-1.3: a sheet with more than 20,000 rows", () => {
     ).toHaveLength(20000);
   });
 
-  it("INGEST-1.3: a sheet claiming a million rows is refused before a cell is walked", () => {
+  it("INGEST-1.3: a sheet's rows are read no further than 20,001, and a longer sheet is refused by its real size", () => {
+    const read = jest.fn(XLSX.read);
+    const sheetToJson = jest.fn(XLSX.utils.sheet_to_json);
+    const spy = {
+      ...XLSX,
+      read,
+      utils: { ...XLSX.utils, sheet_to_json: sheetToJson }
+    };
+    expect(
+      refusalNow(() => workbookFile(spy, "long.xlsx", workbookBytes(1, 30000)))
+    ).toBe(TOO_MANY_ROWS);
+    expect(read.mock.calls[1][1]).toMatchObject({ sheetRows: 20001 });
+    expect(sheetToJson).not.toHaveBeenCalled();
+  });
+
+  it("INGEST-1.3: a sheet claiming a million rows is refused before its rows are turned into cells", () => {
     const book = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([["Archery"]]);
     sheet["!ref"] = "A1:A1000000";

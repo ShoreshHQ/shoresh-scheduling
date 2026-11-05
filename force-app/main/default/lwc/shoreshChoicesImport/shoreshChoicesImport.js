@@ -338,7 +338,9 @@ export default class ShoreshChoicesImport extends LightningElement {
     } catch (e) {
       this.phase = "pick";
       this.status = "";
-      this.error = refusedFile(e) || failed("That file could not be read.", e);
+      this.error =
+        refusedFile(e, "Nothing was brought in.") ||
+        failed("That file could not be read.", e);
     }
   }
 
