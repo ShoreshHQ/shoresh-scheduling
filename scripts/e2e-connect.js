@@ -2,7 +2,7 @@
 /**
  * End-to-end check of the command line and code mode against the real test org (shoresh-test),
  * by the rules in docs/protocol/api.md (Command line API-1.109 to 1.113, Code mode API-1.114 to
- * 1.116, code mode for an AI API-1.118 to 1.122, and API-1.105, 1.106, 1.108 they carry). Not run in CI: run it by hand, once, with
+ * 1.116, code mode for an AI API-1.118 to 1.122, and API-1.105, 1.106, 1.108 they carry, and a week's draft read, API-1.123). Not run in CI: run it by hand, once, with
  *
  *   node scripts/e2e-connect.js
  *
@@ -207,6 +207,19 @@ function said(text, name) {
     `"${name}"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|\\{[^}]*\\})`
   ).exec(text);
   return m ? JSON.parse(m[1]) : undefined;
+}
+/** What read_week_draft's answer says a cell holds. */
+function draftCell(text, group, day, time) {
+  try {
+    const answer = JSON.parse(
+      text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)
+    );
+    return answer.records.find(
+      (r) => r.group === group && r.day === day && r.time_block === time
+    )?.activity;
+  } catch {
+    return undefined;
+  }
 }
 const confirmIn = (text) => /confirm: "([^"]+)"/.exec(text)?.[1];
 /** A seen an answer gave in words: seen: "x" or seen: x. */
@@ -800,9 +813,22 @@ function everyCommand(tmp) {
     { ...at, was: cell, activity: other, seen: ctx.seen },
     "any"
   );
+  const holds = rows[rows.length - 1].kind === "done" ? other : cell;
   const undo = step("undo_last_agent_change", week, "asks first");
   ctx.undoConfirm = confirmIn(undo);
-  ctx.seen = said(step("read_week_checks", week), "seen");
+  // The draft as its screen has it: the cell just changed, which the published week doesn't
+  // have, and the seen the edits below take (API-1.123).
+  ctx.seen = said(
+    step("read_week_draft", week, "done", [
+      [
+        "API-1.123",
+        (t) => draftCell(t, "Bunk 1", "Monday", "Period 1") === holds,
+        `Bunk 1 · Monday · Period 1 holds ${holds}`
+      ],
+      ["API-1.123", (t) => Boolean(said(t, "seen")), "gives seen"]
+    ]),
+    "seen"
+  );
   step(
     "move_cell",
     {

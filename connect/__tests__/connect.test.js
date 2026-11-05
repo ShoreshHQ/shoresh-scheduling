@@ -70,7 +70,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(85);
+    expect(CAPABILITIES).toHaveLength(86);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -3258,6 +3258,153 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
     expect(done).toEqual({ ok: true, status: 200, text: "Published Week 1." });
+  });
+
+  // API-1.123
+  it("draftReadAsItsScreen: read_week_draft reads what the counter reads at its own address, lays the cells out as the published read's rows with the cell edits' own reading (locked, away, Open, special days), and gives the counter and, on Generated Schedule, seen", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const modules = (files) => async () =>
+      Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
+    const shared = [
+      "shoreshGeneratedWeek/build.js",
+      "shoreshTerms/shoreshTerms.js",
+      "shoreshGeneratedSchedule/counter.js",
+      "shoreshWeekEditor/measure.js"
+    ];
+    const checks = modules([
+      ...shared,
+      "shoreshWeekEditor/manualChecks.js",
+      "shoreshWeekChecks/lines.js"
+    ]);
+    const edits = modules([
+      ...shared,
+      "shoreshGeneratedSchedule/locks.js",
+      "shoreshWeekEditor/specials.js",
+      "shoreshWeekEditor/slotEdits.js",
+      "shoreshWeekEditor/locks.js",
+      "shoreshWeekEditor/handEdits.js"
+    ]);
+    const reading =
+      (body, seen = []) =>
+      async (args) => {
+        seen.push(args);
+        return `HTTP/1.1 200\n\n${JSON.stringify(body)}`;
+      };
+
+    // Generated Schedule: Bunk 1 Flagpole, Swim, Art, Open; Bunk 2 Flagpole, Art, Swim (locked
+    // on Monday), Open (mornings only, so away).
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: day.dateValue === "2026-06-29" ? ["", ",,1,"] : ["", ""]
+    }));
+    const read = { inputs, setup: {}, labels: [], accepted: "[]" };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const seen = [];
+    const got = await call("read_week_draft", asked, {
+      run: reading(read, seen),
+      checks,
+      edits
+    });
+    expect(seen[0][3]).toBe(
+      "/services/apexrest/v1/read_week_draft?season=Summer+2026&week=Week+1&program=Main"
+    );
+    expect(got.ok).toBe(true);
+    expect(got.about).toBe(byName("read_week_draft").about);
+    const answer = JSON.parse(got.text);
+    expect(answer.schedule).toBe("Generated Schedule");
+    expect(answer.records).toHaveLength(16);
+    expect(answer.records.slice(4, 8)).toEqual([
+      {
+        week: "Week 1",
+        date: "2026-06-29",
+        day: "Monday",
+        group: "Bunk 2",
+        time_block: "Flag",
+        start_time: "08:30",
+        end_time: "09:00",
+        activity: "Flagpole"
+      },
+      expect.objectContaining({ time_block: "Period 1", activity: "Art" }),
+      expect.objectContaining({
+        time_block: "Period 2",
+        activity: "Swim",
+        locked: true
+      }),
+      expect.objectContaining({
+        time_block: "Period 3",
+        activity: "Open",
+        away: true
+      })
+    ]);
+    expect(answer.records.filter((r) => r.locked)).toHaveLength(1);
+    expect(answer.seen).toBe("2026-06-29:1");
+    // The counter, exactly as read_week_checks gives it on the same week.
+    const counted = await call("read_week_checks", asked, {
+      run: reading(read),
+      checks,
+      edits
+    });
+    const { seen: _, locked, ...words } = JSON.parse(counted.text);
+    expect(answer.checks).toEqual(words);
+    expect(locked).toEqual(["Bunk 2 · Monday · Period 2"]);
+
+    // Manual Build: no locks and no seen; Tuesday is a special day, said by its name.
+    const fixture = require(
+      `${LWC}/shoreshWeekEditor/__tests__/data/draftFixture.js`
+    );
+    const draft = {
+      ...fixture.draft(fixture.WITH_SOCCER, ["1,2,", "1,,"]),
+      specials: { days: [{ dateValue: "2026-06-30", name: "Color War" }] }
+    };
+    const manual = await call(
+      "read_week_draft",
+      { ...asked, schedule: "Manual Build" },
+      {
+        run: reading({ draft, setup: {}, labels: [], accepted: "[]" }),
+        checks,
+        edits
+      }
+    );
+    const manualAnswer = JSON.parse(manual.text);
+    expect(manualAnswer.schedule).toBe("Manual Build");
+    expect(manualAnswer.seen).toBeUndefined();
+    expect(manualAnswer.special_days).toEqual([
+      { date: "2026-06-30", day: "Tuesday", special_day: "Color War" }
+    ]);
+    expect(
+      manualAnswer.records.map((r) => [r.group, r.time_block, r.activity])
+    ).toEqual([
+      ["Bunk 1", "Period 1", "Flagpole"],
+      ["Bunk 1", "Period 2", "Soccer"],
+      ["Bunk 1", "Lunch", "Open"],
+      ["Bunk 2", "Period 1", "Flagpole"],
+      ["Bunk 2", "Period 2", "Open"],
+      ["Bunk 2", "Lunch", "Open"]
+    ]);
+    expect(manualAnswer.checks.placed).toBe("1 of 3 placed");
+
+    // A week never built: Shoresh's own sentence, passed on.
+    const refused = await call("read_week_draft", asked, {
+      run: async () =>
+        `HTTP/1.1 400\n\n${JSON.stringify({ message: "Week 1 hasn't been built for Main yet, so it has no draft." })}`,
+      checks,
+      edits
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      text: "Week 1 hasn't been built for Main yet, so it has no draft."
+    });
   });
 
   // API-1.44, API-1.45

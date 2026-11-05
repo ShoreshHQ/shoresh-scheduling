@@ -126,7 +126,7 @@ const LOCK_FIELDS = {
   seen: {
     type: "string",
     description:
-      "The week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
+      "The week as you read it: the seen read_week_draft or read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
   }
 };
 
@@ -135,7 +135,7 @@ const CELL = {
   seen: {
     type: "string",
     description:
-      "On Generated Schedule, the week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
+      "On Generated Schedule, the week as you read it: the seen read_week_draft or read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
   },
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
@@ -545,7 +545,7 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
@@ -683,6 +683,22 @@ const CAPABILITIES = [
       "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: it keeps the week and changes only what setup now forces). Locked cells and hand edits are kept. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
     ),
     buildsWithEngine: true
+  },
+  {
+    name: "read_week_draft",
+    api: "read_week_draft",
+    method: "GET",
+    readsDraft: true,
+    description:
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. records has what each group does, day by day and time by time, in read_group_schedule's rows (Open where nothing is placed), each with locked when its cell is locked, away when the group is away, and kind for a special event or an elective. special_days lists the days a special day takes over (read their cells with read_special_schedule). checks is the screen's counter in its words, as read_week_checks gives it. On Generated Schedule it gives the week as you read it (seen): hand that back to change cells, lock or unlock. Report what it says; never add a problem Shoresh didn't list.",
+    about:
+      "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
+    inputSchema: {
+      type: "object",
+      properties: EITHER_WEEK,
+      required: ["week"],
+      additionalProperties: false
+    }
   },
   {
     name: "read_week_checks",
