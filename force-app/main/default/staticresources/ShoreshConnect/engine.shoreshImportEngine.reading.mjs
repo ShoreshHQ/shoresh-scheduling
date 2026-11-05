@@ -399,7 +399,7 @@ export function readImport(input) {
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
-  const { pages, unread, colours } = filesToPages(files, {
+  const { pages, unread, colours, skipped } = filesToPages(files, {
     maxWeek: seasonWeekCount(input.existing)
   });
   const keys = pageKeys(pages);
@@ -501,6 +501,7 @@ export function readImport(input) {
   return {
     pages: read.info,
     unread,
+    skipped,
     colours,
     pairs: asked,
     disagreements,

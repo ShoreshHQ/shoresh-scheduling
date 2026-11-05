@@ -224,11 +224,16 @@ class SectionReader {
     this.lastHeader = null;
     this.pendingTitle = null;
     this.previousRow = null;
+    // Lines read as no schedule's: footnotes, and title lines with no grid under them
+    // (INGEST-2.7, listed in the import's notes).
+    this.skipped = [];
   }
 
   close() {
     if (this.current.rows.length > 0) {
       this.sections.push(this.current);
+    } else {
+      this.current.titles.forEach((line) => this.skipped.push(line));
     }
   }
 
@@ -246,7 +251,11 @@ class SectionReader {
   readRow(row, index) {
     const label = labelOf(row, this.labelColumns);
     const rest = row.slice(this.labelColumns);
-    if (filled(row) === 0 || (FOOTNOTE.test(label) && filled(rest) === 0)) {
+    if (filled(row) === 0) {
+      return;
+    }
+    if (FOOTNOTE.test(label) && filled(rest) === 0) {
+      this.skipped.push(row.filter((c) => c !== "").join(" "));
       return;
     }
     const day = dayHeading(row);
@@ -707,6 +716,11 @@ function byWeek(page, weeks) {
  * ones become blocks spanned. A sheet may hold several schedules one under another.
  */
 export function sheetToPages(sheet, options = {}) {
+  return readSheet(sheet, options).pages;
+}
+
+/** sheetToPages, with the lines it read as no schedule's: { pages, skipped }. */
+function readSheet(sheet, options) {
   const table = (sheet.rows || []).map((row) => {
     return Array.isArray(row) ? row.map(cellText) : [];
   });
@@ -718,9 +732,13 @@ export function sheetToPages(sheet, options = {}) {
     : standUpright(cellsRead, sheet.merges);
   const split = splitWeekColumn(upright.table, upright.merges);
   const labelColumns = labelColumnCount(split.table);
-  const sections = new SectionReader(split.table, labelColumns).read();
+  const reader = new SectionReader(split.table, labelColumns);
+  const sections = reader.read();
   const unmerged = { ...sheet, merges: split.merges };
-  return sections
+  sections
+    .filter((section) => !section.header)
+    .forEach((section) => reader.skipped.push(...section.titles));
+  const pages = sections
     .filter((section) => section.header)
     .flatMap((section, index) =>
       byWeek(
@@ -729,6 +747,7 @@ export function sheetToPages(sheet, options = {}) {
       )
     )
     .filter((page) => page.columns.some(Boolean) && page.rows.length > 0);
+  return { pages, skipped: reader.skipped.map(tidy) };
 }
 
 /** Whether a sheet has anything in it at all (empty sheets are skipped without a word). */
@@ -742,12 +761,14 @@ export function sheetHasContent(sheet) {
  * Every file's pages. files: [{ name, sheets: [{ name, rows, merges }] }]; options.maxWeek, the
  * season's number of weeks (a bare "W2" is a week only up to it, INGEST-4.2). Each page knows its
  * file and where its title came from; sheets with something in them but no schedule are
- * listed in `unread`, so the director is told what was not read.
+ * listed in `unread`, so the director is told what was not read, and so are the lines of a
+ * sheet read as no page's name or schedule (`skipped`: "DRAFT v3", a footnote, INGEST-2.7).
  */
 export function filesToPages(files, options = {}) {
   const pages = [];
   const unread = [];
   const colours = [];
+  const skipped = new Set();
   const perFile = (files || []).map((file) => {
     const read = [];
     for (const sheet of file.sheets || []) {
@@ -757,9 +778,11 @@ export function filesToPages(files, options = {}) {
       readColourKey(rows).colours.forEach((c) =>
         colours.push({ ...c, file: file.name })
       );
-      const found = sheetToPages(sheet, options);
+      const { pages: found, skipped: lines } = readSheet(sheet, options);
       if (found.length === 0 && sheetHasContent(sheet)) {
         unread.push({ file: file.name, sheet: sheet.name });
+      } else {
+        lines.forEach((line) => skipped.add(line));
       }
       found.forEach((page) => read.push(page));
     }
@@ -770,6 +793,11 @@ export function filesToPages(files, options = {}) {
     const fileTitle = baseName(file.name);
     const named = sheetsNameTheirPages(found, options.maxWeek);
     const read = found.map((page) => withoutNotes(page, notes, named));
+    read.forEach((page) =>
+      page.titles
+        .filter((line) => line !== page.title)
+        .forEach((line) => skipped.add(line))
+    );
     const severalSheets = new Set(read.map((p) => p.sheet)).size > 1;
     read.forEach((page) => {
       // Where the page's name may come from, most specific first: a title line above the
@@ -795,7 +823,7 @@ export function filesToPages(files, options = {}) {
       });
     });
   }
-  return { pages, unread, colours };
+  return { pages, unread, colours, skipped: [...skipped].filter(Boolean) };
 }
 
 // ---------- a note written above every page (INGEST-2.7) ----------
