@@ -566,8 +566,8 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
     - **A special day a list adds starts from the regular day**, as one added in its blank row
       (choice 12), in the same save: `SpecialDaySeed.seedAll` works the plan out once and saves
       every new day's in one write (`ImportListSeeds`), so 30 new days cost no more queries than one. What was not
-      brought in is not named after a list import (the blank row's note); see "Not in this
-      slice".
+      brought in is named in the import's summary, in the blank row's words ("Not brought in,
+      since they don't run every day: Swim.").
     - **Deleting one on the screen is remembered** (`SetupDeletionSpecials`: "deleted|SpecialDay||Field
       Day"), so a later list leaves it out with Bring back.
     - The AI's `import_list` and `download_setup` take `specialEvents` too (API parity).
@@ -590,6 +590,3 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 ## Not in this slice
 
 A special day's column for a group added to the camp after it started (choice 34).
-
-What a special day added by Import a list left out of the regular day (choice 37): the blank row
-says it under the section; after a list import it is not said yet.
