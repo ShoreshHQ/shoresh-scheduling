@@ -565,10 +565,10 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
       a special day whose schedule was saved since already is).
     - **A special day a list adds starts from the regular day**, as one added in its blank row
       (choice 12), in the same save: `SpecialDaySeed.seedAll` works the plan out once and saves
-      every new day's in one write, so 30 new days cost no more queries than one. What was not
+      every new day's in one write (`ImportListSeeds`), so 30 new days cost no more queries than one. What was not
       brought in is not named after a list import (the blank row's note); see "Not in this
       slice".
-    - **Deleting one on the screen is remembered** (`SetupDeletions`: "deleted|SpecialDay||Field
+    - **Deleting one on the screen is remembered** (`SetupDeletionSpecials`: "deleted|SpecialDay||Field
       Day"), so a later list leaves it out with Bring back.
     - The AI's `import_list` and `download_setup` take `specialEvents` too (API parity).
     - Checked by `ImportListSpecialTest`, `shoreshLists` `special.test.js` and `contract.test.js`,

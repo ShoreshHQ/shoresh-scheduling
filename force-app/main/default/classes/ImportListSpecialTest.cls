@@ -8,6 +8,8 @@
 @IsTest
 private class ImportListSpecialTest {
   private static final String UNREADABLE = 'The import could not be read. Start it again.';
+  // No notes, and no place.
+  private static final List<Object> NOTHING = new List<Object>{ null, null };
 
   private static Map<String, Object> plan(Id seasonId, List<Object> records) {
     Map<String, Object> result = ImportTestPlans.listPlan(seasonId, records);
@@ -16,16 +18,15 @@ private class ImportListSpecialTest {
     return result;
   }
 
-  /** A new special day or event as the screen sends it. */
+  /** A new special day or event as the screen sends it: its notes, and an event's place. */
   private static Map<String, Object> added(
     String kind,
     String name,
-    String notes,
-    Object locationRef
+    List<Object> notesAndPlace
   ) {
     Map<String, Object> refs = new Map<String, Object>();
     if (kind == 'SpecialEvent') {
-      refs.put('Location__c', locationRef);
+      refs.put('Location__c', notesAndPlace[1]);
     }
     return new Map<String, Object>{
       'kind' => kind,
@@ -35,23 +36,23 @@ private class ImportListSpecialTest {
       name,
       'fields' => new Map<String, Object>{
         'Name' => name,
-        'Notes__c' => notes
+        'Notes__c' => notesAndPlace[0]
       },
       'refs' => refs
     };
   }
 
+  /** A change to an item set up: its fields and links, as the screen sends them. */
   private static Map<String, Object> changed(
     String kind,
     Id recordId,
-    Map<String, Object> fields,
-    Map<String, Object> refs
+    List<Map<String, Object>> fieldsAndRefs
   ) {
     return new Map<String, Object>{
       'kind' => kind,
       'id' => recordId,
-      'fields' => fields,
-      'refs' => refs
+      'fields' => fieldsAndRefs[0],
+      'refs' => fieldsAndRefs[1]
     };
   }
 
@@ -104,13 +105,15 @@ private class ImportListSpecialTest {
         }
       };
       for (Integer i = 0; i < 30; i++) {
-        records.add(added('SpecialDay', 'Theme Day ' + i, null, null));
+        records.add(added('SpecialDay', 'Theme Day ' + i, NOTHING));
         records.add(
           added(
             'SpecialEvent',
             'Show ' + i,
-            'Bring chairs',
-            Math.mod(i, 2) == 0 ? (Object) lake.Id : 'Location:Amphitheater'
+            new List<Object>{
+              'Bring chairs',
+              Math.mod(i, 2) == 0 ? (Object) lake.Id : 'Location:Amphitheater'
+            }
           )
         );
       }
@@ -202,14 +205,18 @@ private class ImportListSpecialTest {
             changed(
               'SpecialDay',
               colorWar.Id,
-              new Map<String, Object>{ 'Notes__c' => 'Wear team colors' },
-              new Map<String, Object>()
+              new List<Map<String, Object>>{
+                new Map<String, Object>{ 'Notes__c' => 'Wear team colors' },
+                new Map<String, Object>()
+              }
             ),
             changed(
               'SpecialEvent',
               carnival.Id,
-              new Map<String, Object>(),
-              new Map<String, Object>{ 'Location__c' => lake.Id }
+              new List<Map<String, Object>>{
+                new Map<String, Object>(),
+                new Map<String, Object>{ 'Location__c' => lake.Id }
+              }
             )
           }
         )
@@ -221,8 +228,10 @@ private class ImportListSpecialTest {
             changed(
               'SpecialEvent',
               carnival.Id,
-              new Map<String, Object>{ 'Name' => 'Fair' },
-              new Map<String, Object>()
+              new List<Map<String, Object>>{
+                new Map<String, Object>{ 'Name' => 'Fair' },
+                new Map<String, Object>()
+              }
             )
           }
         )
@@ -234,8 +243,10 @@ private class ImportListSpecialTest {
             changed(
               'SpecialDay',
               colorWar.Id,
-              new Map<String, Object>(),
-              new Map<String, Object>{ 'Location__c' => lake.Id }
+              new List<Map<String, Object>>{
+                new Map<String, Object>(),
+                new Map<String, Object>{ 'Location__c' => lake.Id }
+              }
             )
           }
         )
@@ -284,8 +295,10 @@ private class ImportListSpecialTest {
             changed(
               'SpecialEvent',
               carnival.Id,
-              new Map<String, Object>{ 'Notes__c' => 'Moved' },
-              new Map<String, Object>()
+              new List<Map<String, Object>>{
+                new Map<String, Object>{ 'Notes__c' => 'Moved' },
+                new Map<String, Object>()
+              }
             )
           }
         )
@@ -319,15 +332,17 @@ private class ImportListSpecialTest {
         plan(
           seasonId,
           new List<Object>{
-            added('SpecialDay', 'Maccabiah', null, null),
-            added('SpecialDay', 'Field Day', null, null),
-            added('SpecialEvent', 'Talent Show', null, null),
-            added('SpecialEvent', 'Campfire', null, null),
+            added('SpecialDay', 'Maccabiah', NOTHING),
+            added('SpecialDay', 'Field Day', NOTHING),
+            added('SpecialEvent', 'Talent Show', NOTHING),
+            added('SpecialEvent', 'Campfire', NOTHING),
             changed(
               'SpecialEvent',
               carnival.Id,
-              new Map<String, Object>{ 'Notes__c' => 'Free entry' },
-              new Map<String, Object>()
+              new List<Map<String, Object>>{
+                new Map<String, Object>{ 'Notes__c' => 'Free entry' },
+                new Map<String, Object>()
+              }
             )
           }
         )

@@ -128,45 +128,19 @@ public with sharing class SetupDeletions {
         program.program = row.Name;
         return program;
       }
-    } else if (
-      type == SpecialDay__c.SObjectType ||
-      type == SpecialEvent__c.SObjectType
-    ) {
-      return specialItemOf(recordId, type);
     } else {
       return programItemOf(recordId, type);
     }
     return null;
   }
 
-  /** A special day or event (SPECIAL-2.7): the season's own, by its kind and name. */
-  private static Item specialItemOf(Id recordId, Schema.SObjectType type) {
-    if (type == SpecialDay__c.SObjectType) {
-      for (SpecialDay__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM SpecialDay__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        return new Item('SpecialDay', row.Name, row.Season__r.Camp__c);
-      }
-      return null;
-    }
-    for (SpecialEvent__c row : [
-      SELECT Name, Season__r.Camp__c
-      FROM SpecialEvent__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      return new Item('SpecialEvent', row.Name, row.Season__r.Camp__c);
-    }
-    return null;
-  }
-
-  /** An elective set or an offering (SetupDeletionElectives), as an item (with no camp for anything else). */
+  /**
+   * An elective set or an offering (SetupDeletionElectives), or a special day or event
+   * (SetupDeletionSpecials), as an item (with no camp for anything else).
+   */
   private static Item electiveItemOf(Id recordId) {
     // Nothing found has no camp: remember() leaves it.
-    SetupDeletionElectives.Found found = SetupDeletionElectives.of(recordId);
+    SetupDeletionElectives.Found found = SetupDeletionSpecials.of(recordId);
     Item item = new Item(found.kind, found.name, found.campId);
     item.scope = found.scope;
     return item;

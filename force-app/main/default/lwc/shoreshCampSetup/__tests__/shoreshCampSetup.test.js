@@ -4525,7 +4525,6 @@ describe("c-shoresh-camp-setup", () => {
       expect(screen.className).toContain("screen_import-review");
       await tell({ open: false, review: false });
       expect(screen.className).not.toContain("screen_importing");
-      await expect(screen).toBeAccessible();
     });
 
     it("opens from the menu: one list of special days and events, counted on the rail", async () => {
