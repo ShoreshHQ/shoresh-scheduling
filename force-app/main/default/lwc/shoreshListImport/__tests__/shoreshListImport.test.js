@@ -69,6 +69,35 @@ const $$ = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
 
+/** Opens the screen and chooses a file over 10 MB, then (after the refusal) a normal one. */
+async function refusedThenRead(text, { screenKey, setup }) {
+  const element = createElement("c-shoresh-list-import", {
+    is: ShoreshListImport
+  });
+  element.screenKey = screenKey;
+  element.setup = nsRecord(setup);
+  element.terms = buildTerms([]);
+  document.body.appendChild(element);
+  $(element, 'lightning-button[data-id="open"]').click();
+  await flush();
+  const big = { ...file("big.csv", text), size: 10 * 1024 * 1024 + 1 };
+  big.text = jest.fn(big.text);
+  const input = $(element, 'input[data-id="file"]');
+  Object.defineProperty(input, "files", { value: [big], configurable: true });
+  input.dispatchEvent(new CustomEvent("change"));
+  await flush();
+  const refusal = $(element, '[data-id="error"]').textContent;
+  expect(big.text).not.toHaveBeenCalled();
+  expect(saveList).not.toHaveBeenCalled();
+  Object.defineProperty(input, "files", {
+    value: [file("list.csv", text)],
+    configurable: true
+  });
+  input.dispatchEvent(new CustomEvent("change"));
+  await flush();
+  return { element, refusal };
+}
+
 async function openWith(
   text,
   { screenKey = "activities", setup = SETUP } = {}
@@ -616,6 +645,18 @@ describe("c-shoresh-list-import", () => {
     const length = $(element, '[data-row="Canoeing"] td.cell_quiet');
     expect(textOf(length)).toBe("1, starting value");
   });
+  // INGEST-1.4
+  it("refuses a file over 10 MB before reading it, saves nothing, and reads the next file chosen", async () => {
+    const { element, refusal } = await refusedThenRead(
+      ["Activity,Length", "Canoeing,1", "Hiking,1"].join("\n"),
+      { screenKey: "activities", setup: SETUP }
+    );
+    expect(refusal).toBe(
+      "That file is too large to import (over 10 MB). Nothing was imported."
+    );
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect(rowsOf(element, "new")).toEqual(["Canoeing", "Hiking"]);
+  });
 });
 
 describe("laid into the screen's own table (decision 56)", () => {
@@ -1106,6 +1147,18 @@ describe("Import worksheet (Roots)", () => {
         linkedChoices: []
       }
     };
+
+    // INGEST-1.4
+    it("the Electives list refuses a file over 10 MB before reading it, saves nothing, and reads the next file chosen", async () => {
+      const { element, refusal } = await refusedThenRead(
+        ["Activity,Seats", "Archery,12", "Woodworking,10"].join("\n"),
+        { screenKey: "electives", setup: ELECTIVES }
+      );
+      expect(refusal).toBe(
+        "That file is too large to import (over 10 MB). Nothing was imported."
+      );
+      expect(rowsOf(element, "new")).toEqual(["Woodworking"]);
+    });
 
     it("offerings of activities the season doesn't have: the activities are added with them, proposed", async () => {
       const element = await openWith(

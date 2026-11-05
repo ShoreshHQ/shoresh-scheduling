@@ -5,11 +5,11 @@ import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup"
 import checkChoices from "@salesforce/apex/ChoicesImportController.checkChoices";
 import bringInChoices from "@salesforce/apex/ChoicesImportController.bringInChoices";
 import {
-  csvFile,
   foldName,
-  isCsv,
+  FILE_TYPES,
   isReadable,
-  workbookFile
+  readImportFile,
+  refusedFile
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { failed } from "c/shoreshErrors";
@@ -53,6 +53,11 @@ const SCHEDULE = FIELD.Schedule;
  */
 export default class ShoreshChoicesImport extends LightningElement {
   @api terms;
+
+  /** The files the picker offers: the ones this import reads (INGEST-1.5). */
+  get fileTypes() {
+    return FILE_TYPES.choices.join(",");
+  }
 
   /**
    * Where to start when Elective seats opened this screen: its set, week and schedule
@@ -290,18 +295,15 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   async readFile(chosen) {
     if (!chosen || !this.canChooseFile) return;
-    if (!isReadable(chosen.name)) {
-      this.error = `${chosen.name}: Shoresh reads Excel (.xlsx, .xls) and CSV files. Nothing was brought in.`;
+    if (!isReadable(chosen.name, FILE_TYPES.choices)) {
+      this.error = `${chosen.name}: Shoresh reads Excel (.xlsx, .xls), CSV, TSV and text (.txt) files. Nothing was brought in.`;
       return;
     }
     this.error = null;
     this.phase = "reading";
     this.status = "Reading the file";
     try {
-      const bytes = new Uint8Array(await chosen.arrayBuffer());
-      const file = isCsv(chosen.name)
-        ? csvFile(chosen.name, await chosen.text())
-        : workbookFile(await this.ensureSheetJs(), chosen.name, bytes);
+      const file = await readImportFile(chosen, () => this.ensureSheetJs());
       const activities = this.activities;
       // A linked choice's name is what a sheet says to choose it (desktop ADR 2026-09-29 D6),
       // so it is a name Shoresh knows, never one to settle.
@@ -318,7 +320,9 @@ export default class ShoreshChoicesImport extends LightningElement {
         this.error = `${chosen.name}: no campers with choices found. Nothing was brought in.`;
         return;
       }
-      this.fingerprint = await this.fingerprintOf(bytes);
+      this.fingerprint = await this.fingerprintOf(
+        new Uint8Array(await chosen.arrayBuffer())
+      );
       this.linked = linked;
       this.file = file;
       this.fileName = chosen.name;
@@ -334,7 +338,9 @@ export default class ShoreshChoicesImport extends LightningElement {
     } catch (e) {
       this.phase = "pick";
       this.status = "";
-      this.error = failed("That file could not be read.", e);
+      this.error =
+        refusedFile(e, "Nothing was brought in.") ||
+        failed("That file could not be read.", e);
     }
   }
 

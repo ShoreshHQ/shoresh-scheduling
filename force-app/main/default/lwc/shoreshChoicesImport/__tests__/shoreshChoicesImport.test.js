@@ -462,16 +462,62 @@ describe("c-shoresh-choices-import", () => {
     expect(bringInChoices).not.toHaveBeenCalled();
   });
 
+  // INGEST-1.5
+  it("takes a .tsv and a .txt, as the desktop's choice sheets do, and reads them as the .csv", async () => {
+    const element = await render();
+    expect($(element, 'input[data-id="file"]').accept).toBe(
+      ".xlsx,.xlsm,.xls,.csv,.tsv,.txt"
+    );
+    // The same sheet, tab-separated: the packed cell keeps its commas.
+    const tabbed = SHEET.split("\n")
+      .map((line) =>
+        line.replace(/"[^"]*"|,/g, (m) => (m === "," ? "\t" : m.slice(1, -1)))
+      )
+      .join("\n");
+    await choose(element, "chugim-week1.tsv", tabbed);
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect($(element, '[data-id="step"]').textContent).toBe("1 of 3");
+    const fromTxt = await render();
+    await choose(fromTxt, "chugim-week1.txt", tabbed);
+    expect($(fromTxt, '[data-id="error"]')).toBeNull();
+    expect($(fromTxt, '[data-id="step"]').textContent).toBe("1 of 3");
+    expect($(fromTxt, '[data-id="file-name"]').textContent).toBe(
+      "chugim-week1.txt"
+    );
+  });
+
   it("says why a file isn't read, and brings nothing in", async () => {
     const element = await render();
-    await choose(element, "notes.txt", "hello");
+    await choose(element, "notes.pdf", "hello");
     expect($(element, '[data-id="error"]').textContent).toContain(
-      "Shoresh reads Excel (.xlsx, .xls) and CSV files"
+      "Shoresh reads Excel (.xlsx, .xls), CSV, TSV and text (.txt) files"
     );
     await choose(element, "empty.csv", "Name,Notes\nMaya Fernwood,hi");
     expect($(element, '[data-id="error"]').textContent).toContain(
       "no campers with choices found"
     );
+  });
+
+  // INGEST-1.4
+  it("refuses a file over 10 MB before reading it, brings nothing in, and reads the next file chosen", async () => {
+    const element = await render();
+    const big = { ...file("big.csv", SHEET), size: 10 * 1024 * 1024 + 1 };
+    big.text = jest.fn(big.text);
+    big.arrayBuffer = jest.fn(big.arrayBuffer);
+    const input = $(element, 'input[data-id="file"]');
+    Object.defineProperty(input, "files", { value: [big], configurable: true });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "That file is too large to import (over 10 MB). Nothing was brought in."
+    );
+    expect(big.text).not.toHaveBeenCalled();
+    expect(big.arrayBuffer).not.toHaveBeenCalled();
+    expect(checkChoices).not.toHaveBeenCalled();
+    expect(bringInChoices).not.toHaveBeenCalled();
+
+    await choose(element, "chugim-week1.csv", SHEET);
+    expect($(element, '[data-id="step"]').textContent).toBe("1 of 3");
   });
 
   it("shows the server's reason when the save is refused, and stays on the card", async () => {

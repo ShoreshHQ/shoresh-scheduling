@@ -10,13 +10,13 @@ import {
   BRING_BACK,
   LEAVE_OUT,
   clockText,
-  csvFile,
-  isCsv,
+  FILE_TYPES,
   isReadable,
   undoMessage,
   MONDAY_TO_FRIDAY,
   WEEKDAYS,
-  workbookFile
+  readImportFile,
+  refusedFile
 } from "c/shoreshImportEngine";
 import {
   CHANGE,
@@ -202,6 +202,11 @@ export default class ShoreshListImport extends LightningElement {
     );
   }
 
+  /** The files the picker offers: the ones this import reads (INGEST-1.5). */
+  get fileTypes() {
+    return FILE_TYPES.list.join(",");
+  }
+
   /** What is happening, for the status line screen readers hear. */
   get statusText() {
     if (this.stage === "reading") {
@@ -343,13 +348,7 @@ export default class ShoreshListImport extends LightningElement {
     this.readingName = chosen.name;
     this.stage = "reading";
     try {
-      this.file = isCsv(chosen.name)
-        ? csvFile(chosen.name, await chosen.text())
-        : workbookFile(
-            await this.ensureSheetJs(),
-            chosen.name,
-            new Uint8Array(await chosen.arrayBuffer())
-          );
+      this.file = await readImportFile(chosen, () => this.ensureSheetJs());
       if (this.screenKey === "electives" && isChoicesFile(this.file)) {
         // Not read as offerings, and nothing saved: the director chooses where it goes.
         this.file = null;
@@ -364,7 +363,7 @@ export default class ShoreshListImport extends LightningElement {
       this.stage = "review";
     } catch (e) {
       this.stage = "pick";
-      this.error = failed("That file could not be read.", e);
+      this.error = refusedFile(e) || failed("That file could not be read.", e);
     }
   }
 

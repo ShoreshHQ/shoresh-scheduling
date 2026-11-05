@@ -11,16 +11,16 @@ import {
   BRING_BACK,
   LAYOUTS,
   LEAVE_OUT,
-  csvFile,
   foundLists,
   importNotes,
-  isCsv,
+  FILE_TYPES,
   isReadable,
   questionCards,
   readAsGroups,
   undoMessage,
   unplacedLines,
-  workbookFile
+  readImportFile,
+  refusedFile
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
@@ -178,6 +178,11 @@ export default class ShoreshImport extends LightningElement {
       : this.template.querySelector("[data-heading]");
   }
 
+  /** The files the picker offers: the ones this import reads (INGEST-1.5). */
+  get fileTypes() {
+    return FILE_TYPES.schedule.join(",");
+  }
+
   /** What is happening, for the status line screen readers hear. */
   get statusText() {
     if (this.stage === "reading") {
@@ -203,16 +208,8 @@ export default class ShoreshImport extends LightningElement {
     return window.XLSX;
   }
 
-  async readOne(file) {
-    if (isCsv(file.name)) {
-      return csvFile(file.name, await file.text());
-    }
-    const XLSX = await this.ensureSheetJs();
-    return workbookFile(
-      XLSX,
-      file.name,
-      new Uint8Array(await file.arrayBuffer())
-    );
+  readOne(file) {
+    return readImportFile(file, () => this.ensureSheetJs());
   }
 
   async readFiles(list) {
@@ -221,10 +218,10 @@ export default class ShoreshImport extends LightningElement {
       return;
     }
     const unreadable = chosen
-      .filter((f) => !isReadable(f.name))
+      .filter((f) => !isReadable(f.name, FILE_TYPES.schedule))
       .map((f) => f.name);
     if (unreadable.length) {
-      this.error = `${unreadable.join(", ")}: Shoresh reads Excel (.xlsx, .xls) and CSV files. Nothing was imported.`;
+      this.error = `${unreadable.join(", ")}: Shoresh reads Excel (.xlsx, .xls), CSV and TSV files. Nothing was imported.`;
       return;
     }
     this.error = null;
@@ -244,7 +241,7 @@ export default class ShoreshImport extends LightningElement {
     } catch (e) {
       this.stage = "pick";
       this.files = [];
-      this.error = failed("That file could not be read.", e);
+      this.error = refusedFile(e) || failed("That file could not be read.", e);
     }
   }
 

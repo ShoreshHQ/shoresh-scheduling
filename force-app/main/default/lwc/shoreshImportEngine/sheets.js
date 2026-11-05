@@ -30,12 +30,25 @@ const EXTENSION = /\.(xlsx|xlsm|xls|csv|tsv|txt)$/i;
 
 // ---------- comma-separated files ----------
 
-/** The separator the first few lines use most: comma, semicolon, or tab. */
+/**
+ * The separator the first few lines use most: comma, semicolon, or tab. A header with at least as
+ * many tabs as unquoted commas is tab-separated, whatever the cells hold: a TSV whose cells say
+ * "Swim, Archery, Ceramics" was read as CSV otherwise (desktop exportSanitize.js tabSeparated).
+ */
 function delimiterOf(text) {
   const lines = text
     .split(/\r?\n/)
     .filter((line) => line.trim() !== "")
     .slice(0, 5);
+  let tabs = 0;
+  let commas = 0;
+  let quoted = false;
+  for (const ch of lines[0] || "") {
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === "\t") tabs += 1;
+    else if (!quoted && ch === ",") commas += 1;
+  }
+  if (tabs > 0 && tabs >= commas) return "\t";
   const counts = [",", ";", "\t"].map((d) => ({
     d,
     n: lines.reduce((sum, line) => sum + line.split(d).length - 1, 0)
