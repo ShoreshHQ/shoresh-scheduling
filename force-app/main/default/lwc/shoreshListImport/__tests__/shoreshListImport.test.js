@@ -1214,6 +1214,36 @@ describe("Import worksheet (Roots)", () => {
       expect($(element, '[data-id="list-import"]')).toBeNull();
     });
 
+    it("INGEST-1.6: pasted camper choices are said as those cells, not a file, and offer Bring in choices", async () => {
+      const element = createElement("c-shoresh-list-import", {
+        is: ShoreshListImport
+      });
+      element.screenKey = "electives";
+      element.setup = nsRecord(ELECTIVES);
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      $(element, 'lightning-button[data-id="open"]').click();
+      await flush();
+      const event = new CustomEvent("paste", {
+        bubbles: true,
+        cancelable: true
+      });
+      event.clipboardData = {
+        getData: () =>
+          [
+            "Camper ID\tChild's name\tChug choice 1\tChug choice 2",
+            "SYN-1\tMaya Fernwood\tArchery\tDrama",
+            "SYN-2\tEli Marblecrest\tDrama\tArchery"
+          ].join("\n")
+      };
+      $(element, '[data-id="list-import"]').dispatchEvent(event);
+      await flush();
+      expect($(element, '[data-id="choices-file"]').textContent).toContain(
+        "Pasted cells: those are camper choices, not offerings. Nothing was saved."
+      );
+      expect(saveList).not.toHaveBeenCalled();
+    });
+
     it("its own download is not taken for camper choices", async () => {
       const element = await openWith(
         [
@@ -1253,5 +1283,126 @@ describe("Import worksheet (Roots)", () => {
       delete URL.createObjectURL;
       delete URL.revokeObjectURL;
     });
+  });
+});
+
+describe("cells pasted from a spreadsheet (INGEST-1.6)", () => {
+  beforeEach(() => {
+    getAnswers.mockResolvedValue([]);
+    saveList.mockResolvedValue({ added: 0, changed: 0 });
+  });
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+    delete navigator.clipboard;
+  });
+
+  async function opened() {
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.screenKey = "activities";
+    element.setup = nsRecord(SETUP);
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    $(element, 'lightning-button[data-id="open"]').click();
+    await flush();
+    return element;
+  }
+
+  /** ⌘V or Ctrl+V while Import a list is open: a paste event carrying the copied text. */
+  async function paste(element, text) {
+    const event = new CustomEvent("paste", { bubbles: true, cancelable: true });
+    event.clipboardData = { getData: () => text };
+    $(element, '[data-id="list-import"]').dispatchEvent(event);
+    await flush();
+    return event;
+  }
+
+  it("INGEST-1.6: cells pasted with ⌘V are laid into the same review a file is", async () => {
+    const element = await opened();
+    const event = await paste(
+      element,
+      ["Activity\tLength", "Canoeing\t1", "Hiking\t1"].join("\n")
+    );
+    expect(event.defaultPrevented).toBe(true);
+    expect(rowsOf(element, "new")).toEqual(["Canoeing", "Hiking"]);
+    expect($(element, '[data-id="file-name"]').textContent).toBe(
+      "Pasted cells"
+    );
+    saveOf(element).click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(plan.records.map((r) => r.fields.Name)).toEqual([
+      "Canoeing",
+      "Hiking"
+    ]);
+  });
+
+  it("INGEST-1.6: Paste cells reads what was copied, as ⌘V does", async () => {
+    navigator.clipboard = {
+      readText: jest.fn(() =>
+        Promise.resolve(["Activity", "Canoeing", "Hiking"].join("\n"))
+      )
+    };
+    const element = await opened();
+    $(element, 'button[data-id="paste"]').click();
+    await flush();
+    expect(navigator.clipboard.readText).toHaveBeenCalled();
+    expect(rowsOf(element, "new")).toEqual(["Canoeing", "Hiking"]);
+  });
+
+  it("INGEST-1.6: a pasted column of names with commas in them stays one column", async () => {
+    const element = await opened();
+    await paste(element, ["Activity", "Arts, crafts", "Hiking"].join("\n"));
+    expect(rowsOf(element, "new")).toEqual(["Arts, crafts", "Hiking"]);
+  });
+
+  it("INGEST-1.6: nothing but blanks is refused, nothing saved, and the next paste is read", async () => {
+    const element = await opened();
+    await paste(element, "\n\t\n");
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "There was nothing in what was pasted. Nothing was imported."
+    );
+    expect(saveList).not.toHaveBeenCalled();
+    await paste(element, ["Activity", "Hiking"].join("\n"));
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect(rowsOf(element, "new")).toEqual(["Hiking"]);
+  });
+
+  it("INGEST-1.6: pasted cells keep a file's limits: over 20,000 rows is refused", async () => {
+    const element = await opened();
+    await paste(
+      element,
+      ["Activity", ...Array.from({ length: 20001 }, (_, i) => `A${i}`)].join(
+        "\n"
+      )
+    );
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "A sheet in that file has too many rows (over 20,000) to import safely. Nothing was imported."
+    );
+    expect(saveList).not.toHaveBeenCalled();
+  });
+
+  it("INGEST-1.6: a paste while a list is in review changes nothing", async () => {
+    const element = await opened();
+    await paste(element, ["Activity", "Hiking"].join("\n"));
+    const event = await paste(element, ["Activity", "Canoeing"].join("\n"));
+    expect(event.defaultPrevented).toBe(false);
+    expect(rowsOf(element, "new")).toEqual(["Hiking"]);
+  });
+
+  it("INGEST-1.6: when the browser won't hand over the clipboard, ⌘V or Ctrl+V is named", async () => {
+    navigator.clipboard = {
+      readText: jest.fn(() => Promise.reject(new Error("NotAllowedError")))
+    };
+    const element = await opened();
+    $(element, 'button[data-id="paste"]').click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "Shoresh couldn't read what was copied. Paste with ⌘V or Ctrl+V."
+    );
   });
 });

@@ -454,6 +454,31 @@ SpecialDates.place(event.Id, week.Id, 'Wednesday');
 `);
 }
 
+/** The check camp's record id (read once). */
+let campIdRead;
+function checkCampId() {
+  campIdRead =
+    campIdRead ||
+    JSON.parse(
+      run("sf", [
+        "data",
+        "query",
+        "--target-org",
+        ORG,
+        "--json",
+        "--query",
+        `SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1`
+      ])
+    ).result.records[0].Id;
+  return campIdRead;
+}
+
+/**
+ * The Shoresh tab on the check's own camp: Camp setup opens on the first camp by name otherwise
+ * ("Camp Cedar Ridge (made up)" sorts first since 2026-11-02).
+ */
+const campTab = (more = "") => `${TAB_PATH}?c__camp=${checkCampId()}${more}`;
+
 /** The sign-in link, kept in memory only. Any failure is reported without it. */
 function signInUrl() {
   try {
@@ -466,7 +491,7 @@ function signInUrl() {
         "--url-only",
         "--json",
         "--path",
-        TAB_PATH
+        campTab()
       ])
     );
     return out.result.url;
@@ -1530,6 +1555,116 @@ System.debug('A11Y_BUNKS[' + g.Availability__c + ':' + added + ']');
       G,
       "Cancel: the screen's table back, nothing saved",
       `Table shown: ${back}; org: ${org ? org.slice(1).join(", ") : "not read"}.`
+    );
+}
+
+/**
+ * Cells pasted into Import a list on Groups (INGEST-1.6), by keyboard: ⌘V or Ctrl+V with the
+ * cursor on its heading, then Paste cells reached with Tab. Each lays the copied bunks into the
+ * table as a file does; Cancel each time, so nothing is saved. With --shots it saves the pasted
+ * table.
+ */
+async function pasteIntoTable() {
+  const G = "Groups";
+  const NEW = "Check pasted bunk";
+  const cells = [
+    "Division\tBunk\tAvailability",
+    `Juniors\t${NEW}\tAll day`
+  ].join("\n");
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), cells);
+  await openFromMenu(G, /^Groups\b/);
+  const screen = '[data-screen="groups"]';
+  const pasted = () =>
+    page
+      .locator(APP)
+      .locator(`${screen} > [data-id="setup-rail"]`)
+      .evaluate((rail) => {
+        const root = rail.parentElement.querySelector(
+          "c-shoresh-list-import"
+        ).shadowRoot;
+        const tr = [...root.querySelectorAll("tr[data-row]")].find(
+          (row) => row.dataset.row === "Check pasted bunk"
+        );
+        const name = root.querySelector('[data-id="file-name"]');
+        return {
+          kind: tr ? tr.dataset.kind : null,
+          name: name ? name.textContent.trim() : null
+        };
+      });
+  const open = async () => {
+    if (
+      !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+        max: 40,
+        anywhere: true
+      }))
+    )
+      throw new Error("Import a list was not reached with Tab.");
+    await press("Enter", 800);
+  };
+  const cancel = async () => {
+    if (
+      !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+        max: 90,
+        back: true
+      }))
+    )
+      throw new Error("Cancel was not reached with Tab.");
+    await press("Enter", 800);
+  };
+  const check = (how, seen) => {
+    if (seen.kind === "new" && seen.name === "Pasted cells")
+      results.pass(
+        G,
+        `Paste: ${how}, laid into the table`,
+        `${NEW} new, from "Pasted cells".`
+      );
+    else
+      results.fail(
+        G,
+        `Paste: ${how}, laid into the table`,
+        JSON.stringify(seen)
+      );
+  };
+  await open();
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.screenshot({
+      path: join(shotsDir, "setup-list-paste-open.png")
+    });
+  }
+  await press("ControlOrMeta+V", 1500);
+  check("⌘V or Ctrl+V on its heading", await pasted());
+  await axe("Groups, Import a list with pasted cells laid into the table");
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.mouse.move(2, 2);
+    await pause(300);
+    await page.screenshot({ path: join(shotsDir, "setup-list-paste.png") });
+  }
+  await cancel();
+  // Cancel puts the cursor back on Import a list.
+  await press("Enter", 800);
+  if (!(await tabTo(named(/^Paste cells$/, { tag: "button" }), { max: 10 })))
+    throw new Error("Paste cells was not reached with Tab.");
+  await press("Enter", 1500);
+  check("Paste cells by keyboard", await pasted());
+  await cancel();
+  const logs = apex(`
+System.debug('A11Y_PASTED[' + [SELECT COUNT() FROM Group__c WHERE Name = '${NEW}'] + ']');
+`);
+  const org = /A11Y_PASTED\[(\d+)\]/.exec(logs);
+  if (org && org[1] === "0")
+    results.pass(
+      G,
+      "Paste: Cancel saves nothing",
+      "No pasted bunk in the org."
+    );
+  else
+    results.fail(
+      G,
+      "Paste: Cancel saves nothing",
+      org ? `${org[1]} saved.` : "Org not read."
     );
 }
 
@@ -3004,6 +3139,7 @@ async function campSetup() {
   await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
   await step(S, "Groups: a bunk moved to another unit", bunkMoves);
   await step(S, "Groups: Import a list laid into the table", listIntoTable);
+  await step(S, "Groups: cells pasted into Import a list", pasteIntoTable);
   await step(
     S,
     "Programs: Import a list laid into the table",
@@ -6121,7 +6257,7 @@ async function electives() {
         const origin = new URL(page.url()).origin;
         // Since slice E11 the menu opens Electives (ADR 0018 choice 59): the page is loaded
         // with no address, and both electives entries must be listed as built, not Coming.
-        await page.goto(`${origin}${TAB_PATH}`, {
+        await page.goto(`${origin}${campTab()}`, {
           waitUntil: "domcontentloaded",
           timeout: 60000
         });
@@ -6321,7 +6457,7 @@ async function electivesOnGrid(openManual) {
     seedElectivesSetup();
     try {
       const origin = new URL(page.url()).origin;
-      await page.goto(`${origin}${TAB_PATH}`, {
+      await page.goto(`${origin}${campTab()}`, {
         waitUntil: "domcontentloaded",
         timeout: 60000
       });
@@ -6439,7 +6575,7 @@ function downloadedRows(path) {
  */
 async function electivesImport(E, names) {
   const origin = new URL(page.url()).origin;
-  await page.goto(`${origin}${TAB_PATH}?c__preview=electives`, {
+  await page.goto(`${origin}${campTab("&c__preview=electives")}`, {
     waitUntil: "domcontentloaded",
     timeout: 60000
   });
@@ -6644,7 +6780,7 @@ async function bringInChoices() {
   const S = "Bring in choices";
   await step(S, "The cards, by keyboard", async () => {
     const offered = seedElectives();
-    await page.goto(new URL(TAB_PATH, page.url()).href, {
+    await page.goto(new URL(campTab(), page.url()).href, {
       waitUntil: "domcontentloaded",
       timeout: 60000
     });
@@ -6876,7 +7012,7 @@ async function electiveSeats() {
       const first = seedSeats();
       try {
         // From the menu since slice E11 (ADR 0018 choice 59), as a director arrives.
-        const address = new URL(TAB_PATH, page.url()).href;
+        const address = new URL(campTab(), page.url()).href;
         await page.goto(address, {
           waitUntil: "domcontentloaded",
           timeout: 60000
@@ -7060,6 +7196,11 @@ async function main() {
         "Camp setup",
         "Groups: Import a list laid into the table",
         listIntoTable
+      );
+      await step(
+        "Camp setup",
+        "Groups: cells pasted into Import a list",
+        pasteIntoTable
       );
       await step(
         "Camp setup",

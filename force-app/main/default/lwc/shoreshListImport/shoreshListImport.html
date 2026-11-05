@@ -1,6 +1,6 @@
 <template>
   <template lwc:if={open}>
-    <div class={panelClass} data-id="list-import">
+    <div class={panelClass} data-id="list-import" onpaste={handlePaste}>
       <!-- The rail it takes the place of (list-import-a): what this is, the file, then Cancel
            and the button that says what saving does. -->
       <div class="import-rail">
@@ -37,6 +37,25 @@
             >Choose a file
           </button>
           <span class="import-quiet">.xlsx · .xls · .csv</span>
+          <!-- Cells copied from a spreadsheet (INGEST-1.6); ⌘V or Ctrl+V anywhere here does the same -->
+          <button
+            type="button"
+            class="shoresh-item"
+            data-id="paste"
+            disabled={isReading}
+            onclick={handlePasteButton}
+          >
+            <svg
+              class="shoresh-glyph import-glyph"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <path
+                d="M5.5 3H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1h-1.5"
+              ></path>
+              <path d="M6 2h4v2.5H6z"></path></svg
+            >Paste cells
+          </button>
         </template>
         <template lwc:if={showSheetChoice}>
           <lightning-combobox
