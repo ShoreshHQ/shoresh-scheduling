@@ -1437,7 +1437,7 @@ Turn their login off. This is what Salesforce recommends; a login can't be delet
 1. In Setup, **Users**, click the person's name, then **Edit** (in **User Detail**).
 2. Under **General Information**, untick **Active**, and click **Save**.
 
-They can no longer sign in to anything in Salesforce, and their licence is free for someone else.
+They can no longer sign in to anything in Salesforce, and their license is free for someone else.
 Everything they did stays: their seasons, schedules, locks and saved versions are untouched,
 and what they answered on an import is still remembered. Shoresh's own screens then say
 _a former user_ instead of their first name (for example "Deleted by a former user on 3 July");
@@ -1446,9 +1446,10 @@ summer, tick **Active** again.
 
 ### A connected system
 
-A connection user (section 33) can be given **Shoresh Scheduler** the same way. It can then do
-everything a person can in Shoresh. To allow less, give it only the **Send …**
-and **Read …** permission sets it needs (the tables in section 33) instead.
+A connection user (section 33) can be given **Shoresh Scheduler** the same way. It can then use
+every **Send …** and **Read …** in the tables in section 33, but only in the seasons you shared
+with it (section 33, step 4). To allow less, give it only the **Send …** and **Read …**
+permission sets it needs instead.
 
 ## What is not here yet
 
