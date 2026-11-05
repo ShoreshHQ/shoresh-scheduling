@@ -109,6 +109,75 @@ private class AgentElectiveSeatsTest {
     }
   }
 
+  // API-1.106
+  @IsTest
+  static void assignAsksFirstSayingWhatItPlacesReplacesAndKeeps() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+      request.runId = AgentElectivesTestData.runId;
+      request.revision = AgentElectivesTestData.revision();
+      request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+        JSON.serialize(AgentElectivesTestData.everyoneInDrama()),
+        List<ElectiveSeatSaves.SeatIn>.class
+      );
+      ElectiveSeatsController.assignSeats(JSON.serialize(request));
+      update new Assignment__c(
+        Id = AgentElectivesTestData.seats()[0].Id,
+        Locked__c = true
+      );
+      Decimal seen = AgentElectivesTestData.revision();
+      Map<String, Object> body = AgentElectivesTestData.asked(
+        new Map<String, Object>{
+          'seen' => AgentElectivesTestData.seen(seen),
+          'seats' => AgentElectivesTestData.everyoneInDrama()
+        }
+      );
+      Map<String, Object> none = body.clone();
+      none.put('seats', new List<Object>());
+      String noneConfirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentAssignElectiveSeats(),
+        none
+      );
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentAssignElectiveSeats(),
+        body
+      );
+      String preview = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message');
+      Decimal afterPreview = AgentElectivesTestData.revision();
+      Test.startTest();
+      Map<String, Object> wrong = body.clone();
+      wrong.put(AgentAskFirst.FIELD, noneConfirm);
+      List<Object> refused = AgentElectivesTestData.send(
+        'assign_elective_seats',
+        'POST',
+        wrong
+      );
+      Decimal afterRefused = AgentElectivesTestData.revision();
+      Map<String, Object> yes = body.clone();
+      yes.put(AgentAskFirst.FIELD, confirm);
+      List<Object> done = AgentElectivesTestData.send(
+        'assign_elective_seats',
+        'POST',
+        yes
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        AgentAskFirst.NOT_YET +
+        ' This assigns seats in Chugim in Week 1, in the version being worked on: 1 seat placed from the campers\' choices, replacing the 1 seat there now that isn\'t locked; the 1 seat that is locked stays. There is no undo.',
+        preview.substringBefore(' Show the person')
+      );
+      Assert.areEqual(seen, afterPreview, 'nothing done on the preview');
+      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(seen, afterRefused, 'nothing done on another confirm');
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.isTrue(AgentElectivesTestData.revision() > seen, 'assigned');
+    }
+  }
+
   // API-1.68
   @IsTest
   static void aMoveIsTheScreensMoveLockedWithTheSeatsSeen() {

@@ -108,7 +108,7 @@ public with sharing class AgentAskFirst {
       .left(12);
   }
 
-  /** The request's fields in name order, so their order never changes the ticket. */
+  /** The request's fields in name order, so their order (or theirs inside) never changes the ticket. */
   private static String sorted(String body) {
     Object parsed = JSON.deserializeUntyped(body);
     if (!(parsed instanceof Map<String, Object>)) {
@@ -119,8 +119,30 @@ public with sharing class AgentAskFirst {
     keys.sort();
     List<String> parts = new List<String>();
     for (String key : keys) {
-      parts.add(key + '=' + JSON.serialize(given.get(key)));
+      parts.add(key + '=' + inOrder(given.get(key)));
     }
     return String.join(parts, '\n');
+  }
+
+  /** A field's value with every map in it in name order too (a seat's fields, say). */
+  private static String inOrder(Object value) {
+    if (value instanceof List<Object>) {
+      List<String> each = new List<String>();
+      for (Object item : (List<Object>) value) {
+        each.add(inOrder(item));
+      }
+      return '[' + String.join(each, ',') + ']';
+    }
+    if (!(value instanceof Map<String, Object>)) {
+      return JSON.serialize(value);
+    }
+    Map<String, Object> given = (Map<String, Object>) value;
+    List<String> keys = new List<String>(given.keySet());
+    keys.sort();
+    List<String> parts = new List<String>();
+    for (String key : keys) {
+      parts.add(JSON.serialize(key) + ':' + inOrder(given.get(key)));
+    }
+    return '{' + String.join(parts, ',') + '}';
   }
 }

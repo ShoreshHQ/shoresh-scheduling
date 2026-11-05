@@ -1199,16 +1199,18 @@ describe("Shoresh for AI tools and the command line", () => {
       elective_set: "Chugim"
     };
     const view = runView();
-    const assign = async (seen, status = 200) => {
+    const PREVIEW =
+      'Nothing has been done yet. This assigns seats in Chugim in Week 1, in the version being worked on: 20 seats placed from the campers\' choices. There is no undo. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".';
+    const assign = async (seen, more = {}) => {
       const seen_ = [];
       const queue = [
         `HTTP/1.1 200\n\n${JSON.stringify({ view, labels: [] })}`,
-        `HTTP/1.1 ${status}\n\n${JSON.stringify({ message: "Seats assigned in Chugim in Week 1." })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: more.confirm ? "Seats assigned in Chugim in Week 1." : PREVIEW })}`,
         `HTTP/1.1 200\n\n${JSON.stringify({ view: { ...view, revision: 2, assigned: true }, labels: [] })}`
       ];
       const done = await call(
         "assign_elective_seats",
-        { ...asked, seen },
+        { ...asked, seen, ...more },
         {
           run: async (args, stdin) => {
             seen_.push({ args, stdin });
@@ -1219,7 +1221,14 @@ describe("Shoresh for AI tools and the command line", () => {
       );
       return { done, sent: seen_ };
     };
-    const done = await assign("r1:1");
+    // Shoresh asks first (API-1.106): its preview comes back as it is, nothing more read.
+    const previewed = await assign("r1:1");
+    expect(previewed.done).toEqual(
+      expect.objectContaining({ ok: true, asksFirst: true, text: PREVIEW })
+    );
+    expect(previewed.sent).toHaveLength(2);
+    expect(JSON.parse(previewed.sent[1].stdin).confirm).toBeUndefined();
+    const done = await assign("r1:1", { confirm: "t1" });
     expect(done.sent[0].args[3]).toBe(
       "/services/apexrest/v1/assign_elective_seats?season=Summer+2026&week=Week+1&elective_set=Chugim"
     );
@@ -1235,7 +1244,8 @@ describe("Shoresh for AI tools and the command line", () => {
       ...asked,
       seen: "r1:1",
       seats: expected.seats,
-      dropped: expected.dropped
+      dropped: expected.dropped,
+      confirm: "t1"
     });
     expect(body.seats.length).toBeGreaterThan(0);
     expect(done.done.ok).toBe(true);

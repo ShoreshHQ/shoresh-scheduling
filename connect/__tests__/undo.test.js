@@ -104,7 +104,8 @@ describe("actions and their Apex", () => {
       "finalize_electives",
       "clear_electives",
       "copy_season",
-      "change_special_schedule_frame"
+      "change_special_schedule_frame",
+      "assign_elective_seats"
     ].map((name) => [name])
   )("API-1.106: %s asks first, enforced by its Apex", (name) => {
     const capability = CAPABILITIES.find((each) => each.name === name);

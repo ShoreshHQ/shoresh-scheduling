@@ -310,9 +310,27 @@ function electives(tmp) {
         ["API-1.66", has("Chugim in Week 2"), "the run read"]
       ])
     );
-  step("assign_elective_seats", { ...at, seen: now() }, "done", [
-    ["API-1.67", has("3 of 3 placed"), "every camper seated"]
-  ]);
+  // Assign asks first (API-1.106): its preview says what it places and replaces, then the yes.
+  const assign = (seen, preview, done) =>
+    step(
+      "assign_elective_seats",
+      {
+        ...at,
+        seen,
+        confirm: confirmIn(
+          step("assign_elective_seats", { ...at, seen }, "asks first", [
+            ["API-1.106", has(preview), `the preview says: "${preview}"`]
+          ])
+        )
+      },
+      "done",
+      [["API-1.67", has("3 of 3 placed"), done]]
+    );
+  assign(
+    now(),
+    "This assigns seats in Chugim in Week 2, in the version being worked on: 3 seats placed from the campers' choices. There is no undo.",
+    "every camper seated"
+  );
   // Same camp, same choices, Assign again: exactly the same seats (same inputs, same output).
   const seatLines = (text) =>
     text
@@ -320,9 +338,11 @@ function electives(tmp) {
       .filter((l) => / #\d+, Bunk \d: /.test(l))
       .join("\n");
   const once = seatLines(step("read_elective_seats_now", at, "done"));
-  step("assign_elective_seats", { ...at, seen: now() }, "done", [
-    ["API-1.67", has("3 of 3 placed"), "seated again"]
-  ]);
+  assign(
+    now(),
+    "3 seats placed from the campers' choices, replacing the 3 seats there now that aren't locked. There is no undo.",
+    "seated again"
+  );
   step("read_elective_seats_now", at, "done", [
     [
       "API-1.67",
