@@ -102,8 +102,9 @@ Each rule is clue, meaning, example, test.
    Every line read as no page's name or schedule (a dropped note, a title line the page is not
    named by, a title line with no grid under it, a footnote starting "*") is listed once in the
    import's notes ("Good to know"): "“DRAFT v3” was left out." (Greg, 2026-11-04, build log
-   decision 69; the desktop drops them quietly). A sheet with no schedule is said as before,
-   its lines not listed.
+   decision 69; the desktop drops them quietly). A special day's or event's import says them in
+   its own lines: "Left out: “DRAFT v3”, “* Bring water”." A sheet with no schedule is said as
+   before, its lines not listed.
    Example: a sheet per group, each starting "Questions? Ask the head counselor": the groups are
    named by their sheets; days stacked on one sheet, "DRAFT v3" under each day's title: each
    page keeps its day.
@@ -114,8 +115,9 @@ Each rule is clue, meaning, example, test.
    group's only title, the same in a file per week, or on sheets named for weeks, is still its
    name; a single page's two title lines keep the last, as before (known limit below); a title
    that names its page is not listed; a sheet with no schedule is said once, its lines not
-   listed. Code: `sheets.js` `notesAboveEveryPage`, `readSheet` (`skipped`); `plan.js`
-   `importNotes`.
+   listed; `shoreshSpecialSchedule.test.js` "INGEST-2.7: a line read as no schedule's is said as
+   left out". Code: `sheets.js` `notesAboveEveryPage`, `readSheet` (`skipped`); `plan.js`
+   `importNotes`; `shoreshSpecialSchedule` `importSaid`.
 
 8. **A page whose layout is unsure takes its file's sure layout** (level-3 corpus, 2026-10-28).
    Clue: a page rule 6 leaves unsure (its blocks do not call the full roll: a group gone home

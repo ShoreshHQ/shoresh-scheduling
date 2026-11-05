@@ -735,18 +735,17 @@ function readSheet(sheet, options) {
   const reader = new SectionReader(split.table, labelColumns);
   const sections = reader.read();
   const unmerged = { ...sheet, merges: split.merges };
-  sections
-    .filter((section) => !section.header)
-    .forEach((section) => reader.skipped.push(...section.titles));
-  const pages = sections
-    .filter((section) => section.header)
-    .flatMap((section, index) =>
-      byWeek(
-        { ...sectionToPage(section, unmerged, labelColumns), section: index },
-        section.rawIndexes.map((i) => split.weekOf[i])
-      )
-    )
-    .filter((page) => page.columns.some(Boolean) && page.rows.length > 0);
+  const pages = sections.flatMap((section, index) => {
+    const read = byWeek(
+      { ...sectionToPage(section, unmerged, labelColumns), section: index },
+      section.rawIndexes.map((i) => split.weekOf[i])
+    ).filter((page) => page.columns.some(Boolean) && page.rows.length > 0);
+    // A grid with no column names is no page: its title lines are left out too.
+    if (read.length === 0) {
+      reader.skipped.push(...section.titles);
+    }
+    return read;
+  });
   return { pages, skipped: reader.skipped.map(tidy) };
 }
 

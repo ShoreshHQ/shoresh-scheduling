@@ -55,27 +55,30 @@ function turned(sheet) {
 
 /**
  * A file read by the import's reader ({ name, sheets }) as its schedule pages, with its times
- * down the side: { pages, unclear }. The file is read as it is and turned on its side, and the
+ * down the side: { pages, unclear, skipped }, `skipped` the lines read as no schedule's ("DRAFT v3",
+ * INGEST-2.7). The file is read as it is and turned on its side, and the
  * reading whose first schedule has times down its side is kept. When both do, which side holds
  * the times can't be told: `unclear`, and no pages. When neither does (times like "9-10"), it
  * is read as it is.
  */
 export function pagesOf(file) {
   // Read as written: this reader turns the file itself (the import stands grids up, INGEST-2.11).
-  const down = filesToPages([file], { asWritten: true }).pages;
-  const across = filesToPages(
+  const asIs = filesToPages([file], { asWritten: true });
+  const onItsSide = filesToPages(
     [{ ...file, sheets: (file.sheets || []).map(turned) }],
     { asWritten: true }
-  ).pages;
+  );
+  const down = asIs.pages;
+  const across = onItsSide.pages;
   const timed = (pages) =>
     pages.length > 0 && timesAlong(pages[0].rows.map((row) => row.label));
   if (timed(down) && timed(across)) {
-    return { pages: [], unclear: true };
+    return { pages: [], unclear: true, skipped: [] };
   }
   if (timed(across) || (!down.length && across.length)) {
-    return { pages: across, unclear: false };
+    return { pages: across, unclear: false, skipped: onItsSide.skipped };
   }
-  return { pages: down, unclear: false };
+  return { pages: down, unclear: false, skipped: asIs.skipped };
 }
 
 /**
