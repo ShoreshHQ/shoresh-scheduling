@@ -24,6 +24,7 @@ import {
   timeBlocksScreen
 } from "./engine.shoreshLists.programScreens.mjs";
 import { electivesScreen } from "./engine.shoreshLists.electivesScreen.mjs";
+import { specialEventsScreen } from "./engine.shoreshLists.specialScreen.mjs";
 
 // Each screen's fields, as the package names them (c/shoreshSchema).
 const LOCATION = FIELD.Location;
@@ -324,9 +325,13 @@ const WORKBOOK_ONLY = { locationTypes: locationTypesScreen };
 
 /**
  * Lists a screen imports and downloads that are not in the camp workbook: the offerings of the
- * Electives screen (plan §6.2), whose sets the workbook doesn't carry.
+ * Electives screen (plan §6.2), whose sets the workbook doesn't carry; and the Special events
+ * screen's special days and events, which stay in their season (ADR 0014 choice 2).
  */
-const SCREEN_ONLY = { electives: electivesScreen };
+const SCREEN_ONLY = {
+  electives: electivesScreen,
+  specialEvents: specialEventsScreen
+};
 
 /** One screen's list layout, in the camp's words. */
 export function listScreen(key, t) {

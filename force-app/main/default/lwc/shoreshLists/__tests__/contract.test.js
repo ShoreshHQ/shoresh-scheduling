@@ -92,8 +92,13 @@ function fullList(screen) {
     set: "Chugim",
     seats: "12",
     minimum: "2",
-    proposed: "No"
+    proposed: "No",
+    where: "Lake"
   };
+  // The Special events list's Type: an event, so its place is sent too.
+  if (screen.key === "specialEvents") {
+    values.type = "Event";
+  }
   const columns = screen.columns;
   const row = columns.map((c) => values[c.key]);
   // A second row, like the first but its own name and no rain plan.
@@ -118,7 +123,7 @@ describe("the save request and ImportListSaves agree", () => {
   const links = apexMap("LINK_FIELDS");
 
   it("reads the server's lists (not an empty match)", () => {
-    expect(Object.keys(plain)).toHaveLength(13);
+    expect(Object.keys(plain)).toHaveLength(15);
     expect(plain.Activity).toEqual(
       expect.arrayContaining(["Name", "Length__c", "Notes__c"])
     );
@@ -126,8 +131,8 @@ describe("the save request and ImportListSaves agree", () => {
     expect(links.Activity).toEqual(["Location__c", "RainPlan__c"]);
   });
 
-  // The camp workbook's lists, and the Electives screen's (plan §6.2).
-  [...LIST_SCREENS, "electives"].forEach((key) => {
+  // The camp workbook's lists, the Electives screen's (plan §6.2) and Special events'.
+  [...LIST_SCREENS, "electives", "specialEvents"].forEach((key) => {
     it(`${key}: every field sent is one the server writes`, () => {
       const p = listProposal({
         screenKey: key,

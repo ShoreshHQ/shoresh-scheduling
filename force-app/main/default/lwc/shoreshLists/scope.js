@@ -299,3 +299,31 @@ export function resolveSets(read, screen, setup, answers, t, deletions) {
     .map((name) => ({ name }));
   return result;
 }
+
+/**
+ * Which kind each row of the Special events list is (SPECIAL-2.3): its Type, a special day or an
+ * event, read as a choice (a Type that is neither can't be read). A row is matched only with the
+ * season's items of its kind, as a program's row is within its program: r.program = { id (the
+ * kind), name (its word) }. A special day is the whole camp, so its Where is blank (or says
+ * "Whole camp"); a place there can't be read, never dropped quietly (SPECIAL-2.5).
+ */
+export function resolveKinds(read, screen, t) {
+  if (screen.scope !== "kind") {
+    return;
+  }
+  read
+    .filter((r) => !r.problems.length)
+    .forEach((r) => {
+      const kind = screen.kinds.find((k) => k.value === r.values.type);
+      r.program = { id: kind.value, name: kind.label, isNew: false };
+      if (kind.value === "SpecialEvent" || !("where" in r.values)) {
+        return;
+      }
+      if (looseKey(r.values.where) === looseKey("Whole camp")) {
+        delete r.values.where;
+        r.blanks.add("where");
+      } else {
+        r.problems.push(`Where: a ${t.sIn("SpecialDay")} is the whole camp`);
+      }
+    });
+}

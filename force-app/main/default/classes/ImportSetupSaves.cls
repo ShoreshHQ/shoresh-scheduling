@@ -24,6 +24,9 @@ public with sharing class ImportSetupSaves {
     /** The import's record, for Undo last import. */
     @AuraEnabled
     public Id importId { get; set; }
+    /** What special days a list added started from (SPECIAL-2.6); null when it added none. */
+    @AuraEnabled
+    public SpecialDaySeed.Seed seeded { get; set; }
 
     public Result() {
       added = new Map<String, Integer>();

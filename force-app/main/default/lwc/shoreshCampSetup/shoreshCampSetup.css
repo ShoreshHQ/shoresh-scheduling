@@ -249,13 +249,19 @@
   flex-basis: 100%;
 }
 
-.screen_importing > .setup-rail > :not(.rail-import):not(h2) {
+.screen_importing > .setup-rail > :not(.rail-import):not(h2),
+.screen_importing
+  > [data-id="special-list"]
+  > .setup-rail
+  > :not(.rail-import):not(h2) {
   display: none;
 }
 
 .screen_import-review > .shoresh-hairline,
 .screen_import-review > .setup-list,
-.screen_import-review > .setup-split {
+.screen_import-review > .setup-split,
+.screen_import-review > [data-id="special-list"] > .shoresh-hairline,
+.screen_import-review > [data-id="special-list"] > .setup-split {
   display: none;
 }
 

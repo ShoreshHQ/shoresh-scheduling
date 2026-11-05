@@ -313,7 +313,7 @@ async function importFile(capability, given, { read, send, answer, load }) {
   const setup = body.setup;
   const t = m.buildTerms(setup.labels || []);
   const screenKey = input.list;
-  const screens = [...m.LIST_SCREENS, "electives"];
+  const screens = [...m.LIST_SCREENS, "electives", "specialEvents"];
   if (!workbook && !screens.includes(screenKey)) {
     return refused(
       `Say which list: ${screens.map((k) => `"${k}" (${m.screenLabels(t)[k]})`).join(", ")}.`

@@ -347,6 +347,32 @@ describe("the screens' files, made on this computer", () => {
     expect(sheetsIn(path.join(fromWeb.folder, fromWeb.saved[0]))).toEqual(
       asWritten(lists.campWorkbookSheets(setup, st))
     );
+    // The Special events list too, which the worksheet doesn't carry (SPECIAL-2.3).
+    const specialSetup = {
+      ...setup,
+      special: {
+        specialDays: [{ Id: "sd1", Name: "Color War", Notes__c: null }],
+        specialEvents: [],
+        briefs: []
+      }
+    };
+    const special = await make(
+      "download_setup",
+      { list: "specialEvents" },
+      { setup: specialSetup }
+    );
+    const specialName = screens.screenLabels(st).specialEvents;
+    expect(special.saved).toEqual([
+      workbook.fileNameOf(`${specialName} - ${setup.season.Name}`)
+    ]);
+    expect(sheetsIn(path.join(special.folder, special.saved[0]))).toEqual(
+      asWritten([
+        {
+          name: specialName,
+          rows: lists.listRows("specialEvents", specialSetup, st)
+        }
+      ])
+    );
     const unknown = await make("download_setup", { list: "bunks" }, { setup });
     expect(unknown.done.ok).toBe(false);
     expect(unknown.saved).toEqual([]);

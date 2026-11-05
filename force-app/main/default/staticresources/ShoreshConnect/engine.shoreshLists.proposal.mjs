@@ -42,7 +42,12 @@ import {
   unknownRainPlans,
   unknownWho
 } from "./engine.shoreshLists.adds.mjs";
-import { resolveProgramDays, resolvePrograms, resolveSets } from "./engine.shoreshLists.scope.mjs";
+import {
+  resolveKinds,
+  resolveProgramDays,
+  resolvePrograms,
+  resolveSets
+} from "./engine.shoreshLists.scope.mjs";
 import { resolveColumn } from "./engine.shoreshLists.refs.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 
@@ -66,7 +71,9 @@ const PAIR_KIND = {
   TimeBlock: "timeBlock",
   timeBlock: "timeBlock",
   FixedActivity: "fixed",
-  RecurringActivity: "recurring"
+  RecurringActivity: "recurring",
+  SpecialDay: "specialDay",
+  SpecialEvent: "specialEvent"
 };
 
 const HALF_DAY = 12 * 60;
@@ -218,7 +225,7 @@ function matchNames(leads, screen, setup, answers) {
       ...matchScope(
         inThis,
         records.filter((rec) => inBucket(rec, inThis[0])),
-        screen.kind,
+        kindOf(screen, scopeOf(inThis[0])),
         answers
       )
     );
@@ -469,6 +476,19 @@ function scopeOf(row) {
   return row.values.program || row.values.set
     ? `waiting|${row.rowNumber}`
     : "season";
+}
+
+/**
+ * The kind of item a row is: its screen's, or on the Special events list the row's own Type (a
+ * special day or an event; its scope is the kind).
+ */
+function kindOf(screen, scope) {
+  return screen.scope === "kind" ? scope : screen.kind;
+}
+
+/** The scope an item is remembered as deleted in: its program or set; none for a kind. */
+function scopeNameOf(screen, name) {
+  return screen.scope && screen.scope !== "kind" ? name || "" : "";
 }
 
 /**
@@ -1224,6 +1244,7 @@ export function listProposal(input) {
   result.cards.push(...programs.cards);
   const sets = resolveSets(read, screen, setup, answers, t, deletions.gone);
   result.pairs.push(...sets.pairs);
+  resolveKinds(read, screen, t);
   const offered = resolveOfferedActivities(read, screen, setup, {
     answers,
     t,
@@ -1455,9 +1476,9 @@ function deletedOfList(result, deletedRefs) {
     .filter((row) => row.status === "deleted")
     .map((row) => ({
       key: row.deletedKey,
-      kind: result.screen.kind,
+      kind: kindOf(result.screen, row.programId),
       name: row.name,
-      program: result.screen.scope ? row.programName || "" : ""
+      program: scopeNameOf(result.screen, row.programName)
     }));
   deletedRefs
     .filter((d) => !deleted.some((x) => x.key === d.key))
@@ -1561,10 +1582,11 @@ function differs(column, r, from, to) {
  * when this new row would add it again, and the key when it was brought back in this import.
  */
 function deletedRow(r, screen, deletions) {
-  const scope = screen.scope && r.program ? r.program.name : "";
+  const kind = kindOf(screen, r.program && r.program.id);
+  const scope = scopeNameOf(screen, r.program && r.program.name);
   return {
-    gone: deletedAs(deletions.gone, screen.kind, scope, r.name),
-    back: deletedAs(deletions.back, screen.kind, scope, r.name)
+    gone: deletedAs(deletions.gone, kind, scope, r.name),
+    back: deletedAs(deletions.back, kind, scope, r.name)
   };
 }
 

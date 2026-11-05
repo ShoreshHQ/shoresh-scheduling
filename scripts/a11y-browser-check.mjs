@@ -120,8 +120,8 @@
  *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
  *   The check's own elective set is made by Apex first and deleted after.
  *   `--only electives` runs just this step and the next (with the camp's seed), for a change to
- *   those screens; `--only lists` runs just the Import a list steps (Groups, Programs and
- *   Electives);
+ *   those screens; `--only lists` runs just the Import a list steps (Groups, Programs, Special
+ *   events and Electives);
  * - an elective set on Manual Build's grid (repo ADR 0018 slice E5), keyboard only: the drawer's
  *   first tile is the check's set; Enter picks it up, focus to the grid; Space on an Open cell
  *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
@@ -1555,6 +1555,184 @@ System.debug('A11Y_BUNKS[' + g.Availability__c + ':' + added + ']');
       G,
       "Cancel: the screen's table back, nothing saved",
       `Table shown: ${back}; org: ${org ? org.slice(1).join(", ") : "not read"}.`
+    );
+}
+
+// ---------- Special events' list (ADR 0014 choice 37; SPECIAL-2.3) ----------
+
+const CHECK_LIST_EVENT = "Check carnival";
+const S_EVENTS = "Special events";
+
+/** The check's made-up event, gone. */
+function clearSpecialListEvent() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM SpecialEvent__c WHERE Name = '${CHECK_LIST_EVENT}' AND Season__r.Camp__c = :camp.Id];
+`);
+}
+
+/** The check's made-up event, in the season the page opens (the latest), with notes. */
+function seedSpecialListEvent() {
+  clearSpecialListEvent();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Season__c season = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY StartDate__c DESC LIMIT 1];
+insert new SpecialEvent__c(Season__c = season.Id, Name = '${CHECK_LIST_EVENT}', Notes__c = 'Check notes');
+`);
+}
+
+/**
+ * Special events' Import a list and Download this list (ADR 0014 choice 37), by keyboard: the
+ * download is both kinds in the list's layout (Name, Type, Where, Notes), the check's event among
+ * them; Import a list opens with focus on its heading; the download, with that event's notes
+ * changed, is laid into the screen's Events section in the lists' place, the change with its old
+ * notes crossed out (axe); Cancel brings the lists back with focus on Import a list, and nothing
+ * is saved. With --shots it saves the rail and the table.
+ */
+async function specialListIntoTable() {
+  const S = "Special events";
+  await openFromMenu(S, /^Special events\b/);
+  const screen = '[data-screen="specialEvents"] [data-id="special-list"]';
+  const listEl = () => page.locator(APP).locator(screen);
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.mouse.move(2, 2);
+    await pause(300);
+    await page.screenshot({ path: join(shotsDir, "special-events-rail.png") });
+  }
+  if (
+    !(await tabTo(named(/^Download this list$/, { tag: "button" }), {
+      max: 40,
+      anywhere: true
+    }))
+  )
+    throw new Error("Download this list was not reached with Tab.");
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 30000 }),
+    press("Enter", 500)
+  ]);
+  const rows = downloadedRows(await download.path());
+  const event = rows.find((r) => r[0] === CHECK_LIST_EVENT);
+  if (
+    rows[0].join(", ") === "Name, Type, Where, Notes" &&
+    event &&
+    event[3] === "Check notes"
+  )
+    results.pass(
+      S,
+      "Download this list: special days and events in the list's layout",
+      `${download.suggestedFilename()}: ${rows.length - 1} items; ${CHECK_LIST_EVENT} as ${event[1]}.`
+    );
+  else
+    results.fail(
+      S,
+      "Download this list: special days and events in the list's layout",
+      `Headings "${rows[0].join(", ")}"; ${CHECK_LIST_EVENT}'s row ${JSON.stringify(event || null)}.`
+    );
+  if (
+    !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+      max: 10,
+      back: true
+    }))
+  )
+    throw new Error("Import a list was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(S, "Import a list: focus on its heading", {
+    tag: /^h3$/,
+    name: /^Import a list$/
+  });
+  // The download, with the check's event's notes changed.
+  const edited = rows
+    .map((r) => (r === event ? [r[0], r[1], r[2], "Check notes changed"] : r))
+    .map((r) =>
+      r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+  await listEl()
+    .locator('c-shoresh-list-import input[data-id="file"]')
+    .setInputFiles({
+      name: "check-special.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(edited, "utf8")
+    });
+  await pause(1500);
+  const seen = await listEl().evaluate((el, name) => {
+    const root = el.querySelector("c-shoresh-list-import").shadowRoot;
+    const visible = (node) => !!node && node.getClientRects().length > 0;
+    const row = [...root.querySelectorAll("tr[data-row]")].find(
+      (tr) => tr.dataset.row === name
+    );
+    const old = row && row.querySelector(".old");
+    return {
+      listsAway: !visible(el.querySelector(".setup-split")),
+      sections: [...root.querySelectorAll(".part")].map(
+        (part) => part.dataset.partLabel
+      ),
+      row: row
+        ? [row.dataset.kind, row.closest(".part").dataset.partLabel]
+        : null,
+      old: old ? old.textContent : "",
+      crossed: old ? getComputedStyle(old).textDecorationLine : null
+    };
+  }, CHECK_LIST_EVENT);
+  if (
+    seen.listsAway &&
+    seen.row &&
+    seen.row[0] === "changed" &&
+    seen.row[1] === seen.sections[seen.sections.length - 1] &&
+    /Check notes/.test(seen.old) &&
+    /line-through/.test(seen.crossed || "")
+  )
+    results.pass(
+      S,
+      "Import a list: the file laid into the lists' sections in their place",
+      `${CHECK_LIST_EVENT} changed under ${seen.row[1]}, its old notes crossed out; sections ${seen.sections.join(", ")}; the lists put away.`
+    );
+  else
+    results.fail(
+      S,
+      "Import a list: the file laid into the lists' sections in their place",
+      JSON.stringify(seen)
+    );
+  await axe("Special events, Import a list with a file laid into the table");
+  if (args.includes("--shots")) {
+    await page.mouse.move(2, 2);
+    await pause(300);
+    await page.screenshot({
+      path: join(shotsDir, "special-events-list-import.png")
+    });
+  }
+  if (
+    !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+      max: 90,
+      back: true
+    }))
+  )
+    throw new Error("Cancel was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(S, "Cancel: focus back on Import a list", {
+    tag: "button",
+    name: /^Import a list$/
+  });
+  const back = await listEl().evaluate(
+    (el) => el.querySelector(".setup-split").getClientRects().length > 0
+  );
+  const logs = apex(`
+SpecialEvent__c e = [SELECT Notes__c FROM SpecialEvent__c WHERE Name = '${CHECK_LIST_EVENT}' AND Season__r.Camp__r.Name = '${CAMP}' LIMIT 1];
+System.debug('A11Y_EVENT[' + e.Notes__c + ']');
+`);
+  const org = /A11Y_EVENT\[([^\]]*)\]/.exec(logs);
+  if (back && org && org[1] === "Check notes")
+    results.pass(
+      S,
+      "Cancel: the lists back, nothing saved",
+      `${CHECK_LIST_EVENT}'s notes still "Check notes".`
+    );
+  else
+    results.fail(
+      S,
+      "Cancel: the lists back, nothing saved",
+      `Lists shown: ${back}; org: ${org ? org[1] : "not read"}.`
     );
 }
 
@@ -7206,6 +7384,18 @@ async function main() {
         "Camp setup",
         "Programs: Import a list laid into the table",
         programsListIntoTable
+      );
+      await step(
+        S_EVENTS,
+        "Import a list and Download this list by keyboard",
+        async () => {
+          seedSpecialListEvent();
+          try {
+            await specialListIntoTable();
+          } finally {
+            clearSpecialListEvent();
+          }
+        }
       );
       await step(
         "Electives",

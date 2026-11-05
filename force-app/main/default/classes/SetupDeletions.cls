@@ -128,8 +128,37 @@ public with sharing class SetupDeletions {
         program.program = row.Name;
         return program;
       }
+    } else if (
+      type == SpecialDay__c.SObjectType ||
+      type == SpecialEvent__c.SObjectType
+    ) {
+      return specialItemOf(recordId, type);
     } else {
       return programItemOf(recordId, type);
+    }
+    return null;
+  }
+
+  /** A special day or event (SPECIAL-2.7): the season's own, by its kind and name. */
+  private static Item specialItemOf(Id recordId, Schema.SObjectType type) {
+    if (type == SpecialDay__c.SObjectType) {
+      for (SpecialDay__c row : [
+        SELECT Name, Season__r.Camp__c
+        FROM SpecialDay__c
+        WHERE Id = :recordId
+        WITH USER_MODE
+      ]) {
+        return new Item('SpecialDay', row.Name, row.Season__r.Camp__c);
+      }
+      return null;
+    }
+    for (SpecialEvent__c row : [
+      SELECT Name, Season__r.Camp__c
+      FROM SpecialEvent__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return new Item('SpecialEvent', row.Name, row.Season__r.Camp__c);
     }
     return null;
   }

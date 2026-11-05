@@ -34,6 +34,8 @@ public with sharing class ImportFields {
     // Import last year's week day with its own time blocks (INGEST-4.3).
     'SpecialDay' => SpecialDay__c.SObjectType,
     'SpecialDate' => SpecialDate__c.SObjectType,
+    // The Special events screen's list (SPECIAL-2.3).
+    'SpecialEvent' => SpecialEvent__c.SObjectType,
     // A batch from another system (IncomingBatch): campers, their choices and bunks.
     'Camper' => Camper__c.SObjectType,
     'Preference' => Preference__c.SObjectType,
@@ -216,7 +218,14 @@ public with sharing class ImportFields {
     },
     SpecialDay__c.SObjectType => new Set<Schema.SObjectField>{
       SpecialDay__c.Name,
-      SpecialDay__c.Season__c
+      SpecialDay__c.Season__c,
+      SpecialDay__c.Notes__c
+    },
+    SpecialEvent__c.SObjectType => new Set<Schema.SObjectField>{
+      SpecialEvent__c.Name,
+      SpecialEvent__c.Season__c,
+      SpecialEvent__c.Location__c,
+      SpecialEvent__c.Notes__c
     },
     SpecialDate__c.SObjectType => new Set<Schema.SObjectField>{
       SpecialDate__c.Season__c,

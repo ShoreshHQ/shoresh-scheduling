@@ -13,6 +13,8 @@ public with sharing class ImportUndoDeletes {
     // with it (SpecialItemTriggerHandler).
     'SpecialDate',
     'SpecialDay',
+    // An event the Special events list added (SPECIAL-2.8).
+    'SpecialEvent',
     // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
     'WeekException',
     'Schedule',
@@ -79,6 +81,11 @@ public with sharing class ImportUndoDeletes {
     // A special day put on another day by hand: kept.
     'SpecialDay' => new List<Schema.SObjectField>{
       SpecialDate__c.SpecialDay__c
+    },
+    // An event put on a day, or given a schedule, since: kept (a list adds neither).
+    'SpecialEvent' => new List<Schema.SObjectField>{
+      SpecialDate__c.SpecialEvent__c,
+      PlanPart__c.SpecialEvent__c
     },
     'TimeBlock' => new List<Schema.SObjectField>{
       FixedActivity__c.LastTimeBlock__c,

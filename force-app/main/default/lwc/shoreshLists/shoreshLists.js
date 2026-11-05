@@ -5,6 +5,7 @@
  * it, and the panel (c/shoreshListImport) sends the plan to ImportController.saveList.
  */
 export { LIST_SCREENS, listScreen, cellText } from "./screens";
+export { eventWords } from "./specialScreen";
 export { listProposal, KEEP, CHANGE, changeKey, skipKey } from "./proposal";
 export {
   similarCards,

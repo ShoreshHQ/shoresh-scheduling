@@ -38,6 +38,7 @@ import {
   workbookWaiting
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
+import { seededLines } from "c/shoreshSpecialDetails";
 import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
@@ -1112,6 +1113,14 @@ export default class ShoreshListImport extends LightningElement {
     };
     add(this.result && this.result.added, "Added");
     add(this.result && this.result.changed, "Changed");
+    // SPECIAL-2.6: what the special days added left out of the regular day, as a special day
+    // added in its blank row says it (its first line, whose time blocks, is on its row).
+    const seed = this.result && this.result.seeded;
+    if (seed && seed.program) {
+      seededLines(seed, "", t)
+        .slice(1)
+        .forEach((text, i) => lines.push({ key: `seeded-${i}`, text }));
+    }
     return lines;
   }
 
