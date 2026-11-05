@@ -426,7 +426,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
     this.busy = true;
     try {
-      const { pages, unclear } = pagesOf(await this.readFile(file));
+      const { pages, unclear, skipped } = pagesOf(await this.readFile(file));
       // Desktop eventGridPopulate.js: a file whose times side can't be told is not guessed at.
       const noSide = `Couldn't tell which side of ${file.name} is the schedule's times. Check that the file has a clear time column or time row, and try again.`;
       if (unclear) {
@@ -448,6 +448,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
           imported,
           noTimes,
           places,
+          skipped,
           pageCount: pages.length,
           revision: this.view.revision
         },
@@ -489,7 +490,8 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       outcome,
       pending.noTimes,
       pending.places,
-      pending.pageCount
+      pending.pageCount,
+      pending.skipped
     );
     this.announce(this.importLines.join(" "));
     this.markSaved();
@@ -553,7 +555,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   }
 
   /** What an import did and left out, line by line, in the camp's words. */
-  importSaid(fileName, outcome, noTimes, places, pageCount) {
+  importSaid(fileName, outcome, noTimes, places, pageCount, skipped = []) {
     const t = this.t;
     const lines = [
       `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} filled.`
@@ -574,6 +576,10 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
     if (noTimes.length) {
       lines.push(`Left out, no times: ${listed(noTimes)}.`);
+    }
+    // INGEST-2.7: a line read as no schedule's ("DRAFT v3") is said, never dropped quietly.
+    if (skipped.length) {
+      lines.push(`Left out: ${listed(skipped.map((line) => `“${line}”`))}.`);
     }
     if (places) {
       lines.push(

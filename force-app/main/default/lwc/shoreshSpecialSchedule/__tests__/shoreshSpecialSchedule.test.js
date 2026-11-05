@@ -539,6 +539,33 @@ describe("c-shoresh-special-schedule", () => {
     ]);
   });
 
+  it("INGEST-2.7: a line read as no schedule's is said as left out", async () => {
+    const { element } = await render(emptyEvent());
+    const done = dayPlan([",", ","]);
+    importPlan.mockResolvedValue({
+      plan: done,
+      added: [],
+      notGroups: [],
+      placed: 2
+    });
+    openPlan.mockResolvedValue(done);
+    const input = q(element, '[data-id="import-file"]');
+    const file = {
+      name: "Sports Day.csv",
+      text: () =>
+        Promise.resolve(
+          "DRAFT v3\nSports Day\nTime,Blue,Gold\n9:00-9:45,Swim,Swim\n* Bring water"
+        )
+    };
+    Object.defineProperty(input, "files", { value: [file] });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    const lines = [
+      ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
+    ].map((li) => li.textContent);
+    expect(lines).toContain("Left out: “* Bring water”, “DRAFT v3”.");
+  });
+
   it("a file with its times across the top is imported; one with times on both sides is refused", async () => {
     const { element } = await render(emptyEvent());
     const done = dayPlan([",", ","]);

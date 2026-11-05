@@ -587,6 +587,10 @@ export function importNotes(proposal, t) {
       text: `${u.file}, ${u.sheet}: no schedule found on this sheet, so nothing was read from it.`
     })
   );
+  // INGEST-2.7: a line read as no page's name or schedule ("DRAFT v3"), once.
+  (r.skipped || []).forEach((line) =>
+    notes.push({ key: `skipped|${line}`, text: `“${line}” was left out.` })
+  );
   r.pages
     .filter((p) => p.noDay)
     .forEach((p) =>

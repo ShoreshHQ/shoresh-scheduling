@@ -109,7 +109,8 @@ describe("planFromPage", () => {
     ].join("\n");
     expect(pagesOf(csvFile("Both.csv", both))).toEqual({
       pages: [],
-      unclear: true
+      unclear: true,
+      skipped: []
     });
   });
 });
