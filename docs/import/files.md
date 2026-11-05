@@ -4,7 +4,7 @@
 > layers 1, 2 and 6 ([core.md](../protocol/core.md)) and is the first step of reading (layer 2):
 > a file is checked before anything in it is read. Rule n here is statement `INGEST-1.n`.
 
-How big a file every import takes, which kinds of file each takes, and what the director sees when a file is bigger or of another kind. Settled:
+How big a file every import takes, which kinds of file each takes, what the director sees when a file is bigger or of another kind, and cells pasted in place of a file. Settled:
 Shoresh follows the desktop (build log decision 69, 2026-11-04), except the sheet limit (rule 2): desktop
 `src/utils/exportSanitize.js` `IMPORT_LIMITS`, and its ADR
 `docs/adr/2026-08-08-export-formula-injection-sanitizer.md` §3a / F4. The limits are comfortably
@@ -99,3 +99,26 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.5: a .txt is read as the same text, tab- or comma-separated, as the desktop reads it";
    "takes a .tsv and a .txt, as the desktop's choice sheets do, and reads them as the .csv";
    "takes a .tsv as the desktop does, and not yet a .txt copied from a PDF".
+
+6. **Import a list also takes cells pasted from a spreadsheet, read as a file is.**
+   Clue: while Import a list waits for a file, the director presses ⌘V or Ctrl+V anywhere in it,
+   or chooses Paste cells, and the clipboard holds text (Excel, Numbers and Google Sheets copy
+   cells as tab-separated text).
+   Meaning: the text is read as a file of one sheet named "Pasted cells", split on tabs only, so a
+   single column of names with commas in them stays one column. It is held to the limits of rules
+   1 to 3 and goes to the same review a file does, laid into the screen's own table. Nothing in it
+   but blanks is refused: "There was nothing in what was pasted. Nothing was imported." A paste
+   while a list is already in review changes nothing. When the browser won't let Paste cells read
+   the clipboard, the screen says "Shoresh couldn't read what was copied. Paste with ⌘V or
+   Ctrl+V." The desktop has no paste; Greg chose it (build log decision 69, 2026-11-04). Import
+   last year and Bring in choices take files only.
+   Example: three rows of activity names and lengths copied from a sheet and pasted on
+   Activities' Import a list show as two new activities to add, as the same rows saved as a .csv
+   would.
+   Test: "INGEST-1.6: cells pasted with ⌘V are laid into the same review a file is";
+   "INGEST-1.6: Paste cells reads what was copied, as ⌘V does";
+   "INGEST-1.6: a pasted column of names with commas in them stays one column";
+   "INGEST-1.6: nothing but blanks is refused, nothing saved, and the next paste is read";
+   "INGEST-1.6: pasted cells keep a file's limits: over 20,000 rows is refused";
+   "INGEST-1.6: a paste while a list is in review changes nothing";
+   "INGEST-1.6: when the browser won't hand over the clipboard, ⌘V or Ctrl+V is named".

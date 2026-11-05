@@ -16,6 +16,7 @@ import {
   MONDAY_TO_FRIDAY,
   WEEKDAYS,
   readImportFile,
+  pastedCells,
   refusedFile
 } from "c/shoreshImportEngine";
 import {
@@ -343,16 +344,56 @@ export default class ShoreshListImport extends LightningElement {
       this.error = `${chosen.name}: Shoresh reads Excel (.xlsx, .xls) and CSV files.`;
       return;
     }
+    await this.read(chosen.name, () =>
+      readImportFile(chosen, () => this.ensureSheetJs())
+    );
+  }
+
+  /**
+   * Cells copied from a spreadsheet (INGEST-1.6), pasted while Import a list waits for a file
+   * (⌘V or Ctrl+V anywhere in it): read as a file is, into the same review.
+   */
+  handlePaste(event) {
+    if (this.stage !== "pick") {
+      return;
+    }
+    const text = event.clipboardData && event.clipboardData.getData("text");
+    event.preventDefault();
+    this.readPasted(text);
+  }
+
+  /** Paste cells: what was copied, read from the clipboard when the browser lets it. */
+  async handlePasteButton() {
+    let text;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      this.error =
+        "Shoresh couldn't read what was copied. Paste with ⌘V or Ctrl+V.";
+      return;
+    }
+    this.readPasted(text);
+  }
+
+  readPasted(text) {
+    return this.read(
+      "the pasted cells",
+      async () => pastedCells(text || ""),
+      "Those cells could not be read."
+    );
+  }
+
+  async read(name, readIt, unread = "That file could not be read.") {
     this.error = null;
     this.choicesFile = null;
-    this.readingName = chosen.name;
+    this.readingName = name;
     this.stage = "reading";
     try {
-      this.file = await readImportFile(chosen, () => this.ensureSheetJs());
+      this.file = await readIt();
       if (this.screenKey === "electives" && isChoicesFile(this.file)) {
         // Not read as offerings, and nothing saved: the director chooses where it goes.
+        this.choicesFile = this.file.name;
         this.file = null;
-        this.choicesFile = chosen.name;
         this.stage = "pick";
         this.focusNext = { selector: '[data-id="bring-in-choices"]' };
         return;
@@ -363,7 +404,7 @@ export default class ShoreshListImport extends LightningElement {
       this.stage = "review";
     } catch (e) {
       this.stage = "pick";
-      this.error = refusedFile(e) || failed("That file could not be read.", e);
+      this.error = refusedFile(e) || failed(unread, e);
     }
   }
 

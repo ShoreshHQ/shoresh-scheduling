@@ -59,11 +59,12 @@ function delimiterOf(text) {
 
 /**
  * A comma-separated file as rows of cells. Quoted cells may hold commas, line breaks, and
- * doubled quotes; semicolon- and tab-separated files are recognised from the first line.
+ * doubled quotes; semicolon- and tab-separated files are recognised from the first line, unless the
+ * separator is given (pasted cells are always tab-separated, INGEST-1.6).
  */
-export function parseCsv(input) {
+export function parseCsv(input, separator) {
   const text = String(input || "").replace(/^\uFEFF/, "");
-  const delimiter = delimiterOf(text);
+  const delimiter = separator || delimiterOf(text);
   const rows = [];
   let row = [];
   let cell = "";

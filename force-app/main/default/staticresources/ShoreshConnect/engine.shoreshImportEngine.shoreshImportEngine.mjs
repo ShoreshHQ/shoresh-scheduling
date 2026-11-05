@@ -116,6 +116,27 @@ export function csvFile(name, text) {
   return { name, sheets: [{ name, rows, merges: [] }] };
 }
 
+/** The name pasted cells go by in the review, where a file's name would be. */
+export const PASTED = "Pasted cells";
+
+/**
+ * Cells copied from a spreadsheet and pasted (INGEST-1.6): tab-separated text, as Excel, Numbers and
+ * Google Sheets put it on the clipboard, read as a file of one sheet, with a file's limits. Always
+ * split on tabs, so a single column of names with commas in them stays one column. Nothing in it
+ * but blanks is refused.
+ */
+export function pastedCells(text) {
+  checkFileSize(utf8Length(text));
+  const rows = parseCsv(text, "\t");
+  checkSheets([rows.length]);
+  if (!rows.some((row) => row.some((cell) => String(cell).trim() !== ""))) {
+    throw refusal(
+      "There was nothing in what was pasted. Nothing was imported."
+    );
+  }
+  return { name: PASTED, sheets: [{ name: PASTED, rows, merges: [] }] };
+}
+
 /**
  * An Excel file (.xlsx or .xls) as sheets of text cells with their merged ranges, read with
  * SheetJS (passed in: the static resource in Salesforce, the npm build in tests). Cells are read
