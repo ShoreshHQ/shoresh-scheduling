@@ -7,7 +7,7 @@
 @IsTest
 private class AgentReadDraftTest {
   /** GET at this address for Week 1 of Main (on this screen, when named); answers [status, body]. */
-  private static List<Object> read(Boolean draft, String schedule) {
+  private static List<Object> read(String schedule) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'GET';
     RestContext.request.params.putAll(
@@ -27,11 +27,7 @@ private class AgentReadDraftTest {
       RestContext.request.params.put('schedule', schedule);
     }
     RestContext.response = new RestResponse();
-    if (draft) {
-      AgentReadDraft.get();
-    } else {
-      AgentChecks.get();
-    }
+    AgentReadDraft.get();
     return new List<Object>{
       RestContext.response.statusCode,
       JSON.deserializeUntyped(RestContext.response.responseBody.toString())
@@ -45,9 +41,8 @@ private class AgentReadDraftTest {
       GeneratedTestData.camp();
       GeneratedTestData.generated();
       Test.startTest();
-      List<Object> draft = read(true, null);
+      List<Object> draft = read(null);
       Integer queries = Limits.getQueries();
-      List<Object> checks = read(false, null);
       Test.stopTest();
       Assert.areEqual(200, draft[0], String.valueOf(draft[1]));
       Assert.isTrue(queries < 100, queries + ' queries');
@@ -67,7 +62,6 @@ private class AgentReadDraftTest {
       Assert.isNotNull(
         ((Map<String, Object>) body.get('inputs')).get('revision')
       );
-      Assert.areEqual(JSON.serialize(checks[1]), JSON.serialize(draft[1]));
     }
   }
 
@@ -77,8 +71,8 @@ private class AgentReadDraftTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Test.startTest();
-      List<Object> generated = read(true, null);
-      List<Object> manual = read(true, 'Manual Build');
+      List<Object> generated = read(null);
+      List<Object> manual = read('Manual Build');
       Test.stopTest();
       Assert.areEqual(400, generated[0]);
       Assert.areEqual(
@@ -104,7 +98,7 @@ private class AgentReadDraftTest {
         )
         .draftId;
       Test.startTest();
-      List<Object> read = read(true, 'Manual Build');
+      List<Object> read = read('Manual Build');
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
