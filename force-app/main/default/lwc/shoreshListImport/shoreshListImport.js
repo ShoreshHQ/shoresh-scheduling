@@ -17,6 +17,7 @@ import {
   WEEKDAYS,
   readImportFile,
   pastedCells,
+  PASTED,
   refusedFile
 } from "c/shoreshImportEngine";
 import {
@@ -285,7 +286,7 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get choicesFileText() {
-    return `${this.choicesFile}: that file is camper choices, not offerings. Nothing was saved.`;
+    return `${this.choicesFile}: ${this.choicesFile === PASTED ? "those are" : "that file is"} camper choices, not offerings. Nothing was saved.`;
   }
 
   /**

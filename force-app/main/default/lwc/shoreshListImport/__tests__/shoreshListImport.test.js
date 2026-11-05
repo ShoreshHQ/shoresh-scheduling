@@ -1214,6 +1214,36 @@ describe("Import worksheet (Roots)", () => {
       expect($(element, '[data-id="list-import"]')).toBeNull();
     });
 
+    it("INGEST-1.6: pasted camper choices are said as those cells, not a file, and offer Bring in choices", async () => {
+      const element = createElement("c-shoresh-list-import", {
+        is: ShoreshListImport
+      });
+      element.screenKey = "electives";
+      element.setup = nsRecord(ELECTIVES);
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      $(element, 'lightning-button[data-id="open"]').click();
+      await flush();
+      const event = new CustomEvent("paste", {
+        bubbles: true,
+        cancelable: true
+      });
+      event.clipboardData = {
+        getData: () =>
+          [
+            "Camper ID\tChild's name\tChug choice 1\tChug choice 2",
+            "SYN-1\tMaya Fernwood\tArchery\tDrama",
+            "SYN-2\tEli Marblecrest\tDrama\tArchery"
+          ].join("\n")
+      };
+      $(element, '[data-id="list-import"]').dispatchEvent(event);
+      await flush();
+      expect($(element, '[data-id="choices-file"]').textContent).toContain(
+        "Pasted cells: those are camper choices, not offerings. Nothing was saved."
+      );
+      expect(saveList).not.toHaveBeenCalled();
+    });
+
     it("its own download is not taken for camper choices", async () => {
       const element = await openWith(
         [

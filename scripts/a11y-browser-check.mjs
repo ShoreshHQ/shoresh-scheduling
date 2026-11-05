@@ -454,20 +454,30 @@ SpecialDates.place(event.Id, week.Id, 'Wednesday');
 `);
 }
 
-/** The check camp's record id. */
+/** The check camp's record id (read once). */
+let campIdRead;
 function checkCampId() {
-  return JSON.parse(
-    run("sf", [
-      "data",
-      "query",
-      "--target-org",
-      ORG,
-      "--json",
-      "--query",
-      `SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1`
-    ])
-  ).result.records[0].Id;
+  campIdRead =
+    campIdRead ||
+    JSON.parse(
+      run("sf", [
+        "data",
+        "query",
+        "--target-org",
+        ORG,
+        "--json",
+        "--query",
+        `SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1`
+      ])
+    ).result.records[0].Id;
+  return campIdRead;
 }
+
+/**
+ * The Shoresh tab on the check's own camp: Camp setup opens on the first camp by name otherwise
+ * ("Camp Cedar Ridge (made up)" sorts first since 2026-11-02).
+ */
+const campTab = (more = "") => `${TAB_PATH}?c__camp=${checkCampId()}${more}`;
 
 /** The sign-in link, kept in memory only. Any failure is reported without it. */
 function signInUrl() {
@@ -481,9 +491,7 @@ function signInUrl() {
         "--url-only",
         "--json",
         "--path",
-        // The check's own camp, by its id: the tab otherwise opens on the first camp by name
-        // ("Camp Cedar Ridge (made up)" sorts first since 2026-11-02).
-        `${TAB_PATH}?c__camp=${checkCampId()}`
+        campTab()
       ])
     );
     return out.result.url;
@@ -6249,7 +6257,7 @@ async function electives() {
         const origin = new URL(page.url()).origin;
         // Since slice E11 the menu opens Electives (ADR 0018 choice 59): the page is loaded
         // with no address, and both electives entries must be listed as built, not Coming.
-        await page.goto(`${origin}${TAB_PATH}`, {
+        await page.goto(`${origin}${campTab()}`, {
           waitUntil: "domcontentloaded",
           timeout: 60000
         });
@@ -6449,7 +6457,7 @@ async function electivesOnGrid(openManual) {
     seedElectivesSetup();
     try {
       const origin = new URL(page.url()).origin;
-      await page.goto(`${origin}${TAB_PATH}`, {
+      await page.goto(`${origin}${campTab()}`, {
         waitUntil: "domcontentloaded",
         timeout: 60000
       });
@@ -6567,7 +6575,7 @@ function downloadedRows(path) {
  */
 async function electivesImport(E, names) {
   const origin = new URL(page.url()).origin;
-  await page.goto(`${origin}${TAB_PATH}?c__preview=electives`, {
+  await page.goto(`${origin}${campTab("&c__preview=electives")}`, {
     waitUntil: "domcontentloaded",
     timeout: 60000
   });
@@ -6772,7 +6780,7 @@ async function bringInChoices() {
   const S = "Bring in choices";
   await step(S, "The cards, by keyboard", async () => {
     const offered = seedElectives();
-    await page.goto(new URL(TAB_PATH, page.url()).href, {
+    await page.goto(new URL(campTab(), page.url()).href, {
       waitUntil: "domcontentloaded",
       timeout: 60000
     });
@@ -7004,7 +7012,7 @@ async function electiveSeats() {
       const first = seedSeats();
       try {
         // From the menu since slice E11 (ADR 0018 choice 59), as a director arrives.
-        const address = new URL(TAB_PATH, page.url()).href;
+        const address = new URL(campTab(), page.url()).href;
         await page.goto(address, {
           waitUntil: "domcontentloaded",
           timeout: 60000
