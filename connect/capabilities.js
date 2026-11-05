@@ -2065,7 +2065,8 @@ const ASKS_FIRST = [
   "forget_learned_pattern",
   "clear_electives",
   "copy_season",
-  "change_special_schedule_frame"
+  "change_special_schedule_frame",
+  "assign_elective_seats"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;

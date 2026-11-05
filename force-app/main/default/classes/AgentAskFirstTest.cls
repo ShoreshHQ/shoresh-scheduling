@@ -24,7 +24,16 @@ private class AgentAskFirstTest {
       '8'
     );
     String otherWeek = ticket('{"week":"Week 2","version":"First draft"}', '7');
+    String seats = ticket(
+      '{"seats":[{"camperId":"a","day":"2026-06-29"}],"week":"Week 1"}',
+      '7'
+    );
+    String seatsReordered = ticket(
+      '{"week":"Week 1","seats":[{"day":"2026-06-29","camperId":"a"}]}',
+      '7'
+    );
     Assert.areEqual(first, reordered);
+    Assert.areEqual(seats, seatsReordered, 'a seat\'s fields in any order');
     Assert.areNotEqual(first, changedSince);
     Assert.areNotEqual(first, otherWeek);
   }
