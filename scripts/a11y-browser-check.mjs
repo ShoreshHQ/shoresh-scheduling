@@ -1591,6 +1591,7 @@ insert new SpecialEvent__c(Season__c = season.Id, Name = '${CHECK_LIST_EVENT}', 
  */
 async function specialListIntoTable() {
   const S = "Special events";
+  await reloadApp();
   await openFromMenu(S, /^Special events\b/);
   const screen = '[data-screen="specialEvents"] [data-id="special-list"]';
   const listEl = () => page.locator(APP).locator(screen);
@@ -1721,7 +1722,7 @@ async function specialListIntoTable() {
 SpecialEvent__c e = [SELECT Notes__c FROM SpecialEvent__c WHERE Name = '${CHECK_LIST_EVENT}' AND Season__r.Camp__r.Name = '${CAMP}' LIMIT 1];
 System.debug('A11Y_EVENT[' + e.Notes__c + ']');
 `);
-  const org = /A11Y_EVENT\[([^\]]*)\]/.exec(logs);
+  const org = /A11Y_EVENT\[([^\]']*)\]/.exec(logs);
   if (back && org && org[1] === "Check notes")
     results.pass(
       S,
