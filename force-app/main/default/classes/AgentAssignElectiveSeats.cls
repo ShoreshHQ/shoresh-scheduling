@@ -75,60 +75,128 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     AgentWeeks.answer(new AgentAssignElectiveSeats());
   }
 
-  /** What Assign does, said from the run as it is now (API-1.106). */
+  /**
+   * What Assign does, said from the run as it is now (API-1.106): only the seats that change, as
+   * its save writes only what differs (ElectiveSeatSaves.save).
+   */
   public String preview() {
     heldAsSeen();
-    Set<String> locked = new Set<String>();
-    Integer replaced = 0;
+    Map<String, Assignment__c> now = new Map<String, Assignment__c>();
     for (Assignment__c seat : [
-      SELECT Camper__c, Date__c, TimeBlock__c, Locked__c
+      SELECT
+        Camper__c,
+        Date__c,
+        TimeBlock__c,
+        Offering__c,
+        LinkedChoice__c,
+        Locked__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :held.id
       WITH USER_MODE
     ]) {
-      if (ElectiveSeatChecks.kept(seat)) {
-        locked.add(
-          ElectiveSeatChecks.seatKey(
-            seat.Camper__c,
-            seat.Date__c,
-            seat.TimeBlock__c
-          )
-        );
-      } else {
-        replaced++;
-      }
+      now.put(
+        ElectiveSeatChecks.seatKey(
+          seat.Camper__c,
+          seat.Date__c,
+          seat.TimeBlock__c
+        ),
+        seat
+      );
     }
-    Integer placed = 0;
-    for (Object each : (List<Object>) body.get('seats')) {
-      if (!locked.contains(keyOf(each))) {
-        placed++;
-      }
+    Change change = new Change();
+    for (ElectiveSeatSaves.SeatIn seat : sent()) {
+      change.add(
+        now.remove(
+          ElectiveSeatChecks.seatKey(seat.camperId, seat.day, seat.blockId)
+        ),
+        seat
+      );
     }
-    return said(placed, replaced, locked.size());
-  }
-
-  /** Assign said: the set, week and version, what it places and replaces, what stays. */
-  private String said(Integer placed, Integer replaced, Integer locked) {
+    for (Assignment__c left : now.values()) {
+      change.leftOut(left);
+    }
     return 'This assigns seats in ' +
       held.setName +
       ' in ' +
       held.weekName +
       ', in the version being worked on: ' +
-      seats(placed) +
-      ' placed from the campers\' choices' +
-      (replaced == 0
-        ? ''
-        : ', replacing the ' +
-          seats(replaced) +
-          (replaced == 1
-            ? ' there now that isn\'t locked'
-            : ' there now that aren\'t locked')) +
-      (locked == 0
-        ? '.'
-        : '; the ' +
-          seats(locked) +
-          (locked == 1 ? ' that is locked stays.' : ' that are locked stay.')) +
+      change.said() +
       ' There is no undo.';
+  }
+
+  /** The seats Assign would change, keep and leave locked. */
+  private class Change {
+    Integer placed = 0;
+    Integer moved = 0;
+    Integer takenOut = 0;
+    Integer same = 0;
+    Integer locked = 0;
+
+    /** A seat sent, and the seat there now at that camper, day and time (null for none). */
+    void add(Assignment__c there, ElectiveSeatSaves.SeatIn seat) {
+      if (there == null) {
+        placed++;
+      } else if (ElectiveSeatChecks.kept(there)) {
+        locked++;
+      } else if (
+        there.Offering__c == seat.offeringId &&
+        there.LinkedChoice__c == seat.linkedChoiceId
+      ) {
+        same++;
+      } else {
+        moved++;
+      }
+    }
+
+    /** A seat there now that nothing was sent for: taken out, unless locked. */
+    void leftOut(Assignment__c there) {
+      if (ElectiveSeatChecks.kept(there)) {
+        locked++;
+      } else {
+        takenOut++;
+      }
+    }
+
+    String said() {
+      List<String> changed = changes();
+      List<String> kept = stays();
+      return (changed.isEmpty()
+          ? 'no seat changes'
+          : String.join(changed, ', ')) +
+        (kept.isEmpty() ? '' : '; ' + String.join(kept, ', and ')) +
+        '.';
+    }
+
+    private List<String> changes() {
+      List<String> parts = new List<String>();
+      if (placed > 0) {
+        parts.add(seats(placed) + ' placed from the campers\' choices');
+      }
+      if (moved > 0) {
+        parts.add(seats(moved) + ' moved to another elective');
+      }
+      if (takenOut > 0) {
+        parts.add(seats(takenOut) + ' taken out');
+      }
+      return parts;
+    }
+
+    private List<String> stays() {
+      List<String> parts = new List<String>();
+      if (same > 0) {
+        parts.add(
+          seats(same) + (same == 1 ? ' stays as it is' : ' stay as they are')
+        );
+      }
+      if (locked > 0) {
+        parts.add(
+          'the ' +
+            locked +
+            (locked == 1 ? ' locked seat stays' : ' locked seats stay')
+        );
+      }
+      return parts;
+    }
   }
 
   public String run() {
@@ -165,14 +233,12 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     AgentElectives.holdAsSeen(held, seen);
   }
 
-  /** A seat sent, keyed as Assign keys it; refused when it can't be read. */
-  private static String keyOf(Object sent) {
+  /** The seats sent, as Assign reads them; refused when they can't be read. */
+  private List<ElectiveSeatSaves.SeatIn> sent() {
     try {
-      Map<String, Object> seat = (Map<String, Object>) sent;
-      return ElectiveSeatChecks.seatKey(
-        (Id) seat.get('camperId'),
-        Date.valueOf(String.valueOf(seat.get('day'))),
-        (Id) seat.get('blockId')
+      return (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+        JSON.serialize(body.get('seats')),
+        List<ElectiveSeatSaves.SeatIn>.class
       );
     } catch (Exception e) {
       throw unreadable();
