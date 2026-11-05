@@ -5,7 +5,9 @@
  * with the screen's own modules (c/shoreshElectiveSeats seats.js and c/shoreshElectiveEngine,
  * shipped beside this file: planSeats), and
  * saved through the screen's own save (POST /v1/assign_elective_seats) with the run as the agent
- * read it (seen). The answer is the screen's own line, counted with its own board.
+ * read it (seen). Shoresh asks first (API-1.106): sent without confirm, nothing is saved and its
+ * preview comes back as it is; the person's yes sends the same seats again with that confirm. The
+ * answer is then the screen's own line, counted with its own board.
  */
 
 const { changedSince } = require("./imports");
@@ -45,9 +47,11 @@ async function assignElectiveSeats(
     ...fields,
     seen: input.seen,
     seats: request.seats,
-    dropped: request.dropped
+    dropped: request.dropped,
+    ...(input.confirm === undefined ? {} : { confirm: input.confirm })
   });
-  if (saved.status !== 200) return answer(saved);
+  // Without confirm Shoresh saved nothing: its preview, to show the person.
+  if (saved.status !== 200 || input.confirm === undefined) return answer(saved);
   // The screen's own line once saved: "Seats assigned: 18 of 20 placed."
   const again = await readRun();
   if (again.status !== 200) return answer(saved);

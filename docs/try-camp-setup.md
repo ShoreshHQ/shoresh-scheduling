@@ -1406,6 +1406,65 @@ Open **Settings** at the foot of the Shoresh menu.
 time_block, activity, location, source_system, camper_id, camper_name, camper_number, bunk`.
 - Full rules: [docs/protocol/api.md](protocol/api.md), [ADR 0024](adr/0024-data-in-and-out.md).
 
+## 34. People: who can use Shoresh
+
+Shoresh has no screen for people. Who can use it is set in Salesforce **Setup** (the gear, top
+right, then **Setup**; you need to be a Salesforce administrator), with one permission set:
+**Shoresh Scheduler**. The names below are the ones on screen in November 2026.
+
+### Give someone Shoresh
+
+The person needs a Salesforce login first. If they don't have one, your Salesforce administrator
+adds them (**Users**, then **New User**).
+
+1. In Setup, type _Users_ in **Quick Find** and click **Users**. A list of everyone with a login
+   shows, with **Active** ticked for each one who can sign in.
+2. Click the person's name (in **Full Name**, not **Edit**). Their page opens with
+   **User Detail** and a row of links above it.
+3. Click **Permission Set Assignments** in that row of links (not the one ending _Activation
+   Required_), then, in that list, **Edit Assignments**.
+4. The page shows two lists: **Available Permission Sets** and **Enabled Permission Sets**.
+   Scroll **Available Permission Sets** down to **Shoresh Scheduler** (the list is in
+   alphabetical order), click it, then click the arrow under **Add**. It moves to the right.
+5. Click **Save**. You're back on their page, and **Shoresh Scheduler** is in the list
+   **Permission Set Assignments** with today's date.
+6. **Share your seasons with them.** Seasons are private, so they see your camp but none of its
+   seasons until you share one. Open the season's Salesforce record (App Launcher, the nine dots
+   at top left, search _Seasons_, click the season's name). At the top right, click the small
+   **▾** (**Show more actions**), then **Sharing**. In **Search**, find the person, set
+   **Season Access Level** to **Read/Write**, and click **Save**. Do this for each season they
+   work on.
+
+Next time they sign in, **Shoresh** is in their App Launcher (the nine dots, top left), and in
+the seasons you shared they can do everything you can in Shoresh.
+
+### Take Shoresh away from someone who stays
+
+Do steps 1 to 3 above. In **Enabled Permission Sets**, click **Shoresh Scheduler**, click the
+arrow under **Remove**, then **Save**. They keep their Salesforce login; Shoresh disappears from
+their App Launcher. Everything they did in Shoresh stays.
+
+### Someone leaves camp
+
+Turn their login off. This is what Salesforce recommends; a login can't be deleted.
+
+1. In Setup, **Users**, click the person's name, then **Edit** (in **User Detail**).
+2. Under **General Information**, untick **Active**, and click **Save**.
+
+They can no longer sign in to anything in Salesforce, and their license is free for someone else.
+Everything they did stays: their seasons, schedules, locks and saved versions are untouched,
+and what they answered on an import is still remembered. Shoresh's own screens then say
+_a former user_ instead of their first name (for example "Deleted by a former user on 3 July");
+Salesforce's own pages (a record's **Created By**) still show their name. To let them back next
+summer, tick **Active** again.
+
+### A connected system
+
+A connection user (section 33) can be given **Shoresh Scheduler** the same way. It can then use
+every **Send …** and **Read …** in the tables in section 33, but only in the seasons you shared
+with it (section 33, step 4). To allow less, give it only the **Send …** and **Read …**
+permission sets it needs instead.
+
 ## What is not here yet
 
 - Electives: one roster for a linked choice across its periods, and a camper's week on screen,
