@@ -186,8 +186,49 @@ describe("c-shoresh-import", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
-      "schedule.pdf: Shoresh reads Excel (.xlsx, .xls) and CSV files. Nothing was imported."
+      "schedule.pdf: Shoresh reads Excel (.xlsx, .xls), CSV and TSV files. Nothing was imported."
     );
+  });
+
+  // INGEST-1.4
+  it("refuses a file over 10 MB before reading it, saves nothing, and reads the next file chosen", async () => {
+    const element = await render();
+    const big = {
+      ...file("big.csv", "Time,Bunk 1\n"),
+      size: 10 * 1024 * 1024 + 1
+    };
+    big.text = jest.fn(big.text);
+    const input = $(element, 'input[data-id="files"]');
+    Object.defineProperty(input, "files", { value: [big], configurable: true });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "That file is too large to import (over 10 MB). Nothing was imported."
+    );
+    expect(big.text).not.toHaveBeenCalled();
+    expect(saveSetup).not.toHaveBeenCalled();
+
+    const text =
+      "Time,Bunk 1,Bunk 2\n9:00-10:00,Relay races,Tug of war\n10:00-11:00,Tug of war,Relay races\n";
+    await choose(element, ["field-day.csv"], { "field-day.csv": text });
+    expect($(element, '[data-id="error"]')).toBeNull();
+  });
+
+  // INGEST-1.5
+  it("takes a .tsv as the desktop does, and not yet a .txt copied from a PDF", async () => {
+    const element = await render();
+    expect($(element, 'input[data-id="files"]').accept).toBe(
+      ".xlsx,.xlsm,.xls,.csv,.tsv"
+    );
+    await choose(element, ["camp.txt"], { "camp.txt": "Time  Bunk 1\n" });
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "camp.txt: Shoresh reads Excel (.xlsx, .xls), CSV and TSV files. Nothing was imported."
+    );
+    const text =
+      "Time\tBunk 1\tBunk 2\n9:00-10:00\tRelay races\tTug of war\n10:00-11:00\tTug of war\tRelay races\n";
+    await choose(element, ["field-day.tsv"], { "field-day.tsv": text });
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect($(element, '[data-card="oneDay|field-day.tsv"]')).not.toBeNull();
   });
 
   it("INGEST-4.14: a one-day file naming no day is not refused; it asks which day", async () => {

@@ -49,14 +49,28 @@ function asTheScreenReads(value, key = "") {
   return ((hours * 60 + minutes) * 60 + seconds) * 1000 + ms;
 }
 
-/** The agent's file as the screen reads a file: CSV text, or sheets of rows. */
+/**
+ * The agent's file as the screen reads a file: CSV text, or sheets of rows. Held to the screens'
+ * limits (INGEST-1.4): over one, it is refused and nothing is imported.
+ */
 function fileOf(input, m) {
+  try {
+    return readFileOf(input, m);
+  } catch (e) {
+    const refusal = m.refusedFile(e);
+    if (refusal) return { problem: refusal };
+    throw e;
+  }
+}
+
+function readFileOf(input, m) {
   const name = String(input.file_name || "").trim();
   if (!name) return { problem: "Send the file's name as file_name." };
   if (typeof input.csv_text === "string" && input.csv_text.trim()) {
     return { file: m.csvFile(name, input.csv_text) };
   }
   if (Array.isArray(input.sheets) && input.sheets.length) {
+    m.checkSheets(input.sheets.map((s) => ((s && s.rows) || []).length));
     const sheets = input.sheets.map((s, i) => ({
       name: String((s && s.name) || `Sheet${i + 1}`),
       rows: ((s && s.rows) || []).map((row) =>

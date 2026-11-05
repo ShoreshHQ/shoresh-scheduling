@@ -1,0 +1,96 @@
+# Import: which files, and how big, Shoresh reads
+
+> **Sub-protocol INGEST** of the [Shoresh protocol](../protocol/README.md). It sits on CORE
+> layers 1, 2 and 6 ([core.md](../protocol/core.md)) and is the first step of reading (layer 2):
+> a file is checked before anything in it is read. Rule n here is statement `INGEST-1.n`.
+
+How big a file every import takes, which kinds of file each takes, and what the director sees when a file is bigger or of another kind. Settled:
+Shoresh follows the desktop (build log decision 69, 2026-11-04), except the sheet limit (rule 2): desktop
+`src/utils/exportSanitize.js` `IMPORT_LIMITS`, and its ADR
+`docs/adr/2026-08-08-export-formula-injection-sanitizer.md` §3a / F4. The limits are comfortably
+above any real camp and far below a file made to exhaust the browser (a "zip bomb", or millions of
+rows): a file over one is refused whole, never partly read, and nothing is imported.
+
+| Limit           | At most |
+| --------------- | ------- |
+| File size       | 10 MB   |
+| Sheets          | 256     |
+| Rows in a sheet | 20,000  |
+
+Code: `force-app/main/default/lwc/shoreshImportEngine/shoreshImportEngine.js` (`IMPORT_LIMITS`,
+`readImportFile`, `checkFileSize`, `checkSheets`, `csvFile`, `workbookFile`, `refusedFile`);
+the AI's way in, `connect/imports.js` `fileOf`. Tests:
+`shoreshImportEngine/__tests__/limits.test.js`, `connect/__tests__/limits.test.js`, and each
+screen's own test file.
+
+## The rules
+
+Each rule is clue, meaning, example, test.
+
+1. **A file over 10 MB is refused before any of it is read.**
+   Clue: the file's size, as the browser gives it, is over 10 MB (10 × 1024 × 1024 bytes); for a
+   file an AI sends as CSV text, the bytes that text takes.
+   Meaning: the screen says "That file is too large to import (over 10 MB). Nothing was
+   imported." Its contents are never read and the spreadsheet reader is never loaded or run.
+   Example: a 12 MB export from another system is refused; a 10 MB file is read.
+   Test: "INGEST-1.1: a chosen file over 10 MB is refused before any of it is read";
+   "INGEST-1.1: workbook bytes over 10 MB never reach the spreadsheet reader".
+
+2. **A file with more than 256 sheets is refused.**
+   Clue: the workbook, once opened, has more than 256 sheets.
+   Meaning: "That file has too many sheets (over 256) to import safely. Nothing was imported."
+   No sheet is read. This differs from the desktop, whose limit is 32: its ADR §3a calls the
+   bounds "tunable", and a real camp shape, a tab per group per week, passes 32 at once (16
+   groups × 8 weeks = 128 tabs; the level-2 and level-4 corpus camps have 36 to 128). 256 covers
+   it, and the 10 MB limit still bounds the file (coordinator, 2026-11-04).
+   Example: a workbook of 257 tabs is refused; 128 (16 groups × 8 weeks) and 256 are read.
+   Test: "INGEST-1.2: a workbook of 257 sheets is refused; 256 is read";
+   "INGEST-1.2: a camp with a tab per group per week, 16 groups by 8 weeks, is read".
+
+3. **A file with a sheet of more than 20,000 rows is refused.**
+   Clue: a sheet's own extent (the range the file says it covers) is more than 20,000 rows, or a
+   CSV has more than 20,000 lines.
+   Meaning: "A sheet in that file has too many rows (over 20000) to import safely. Nothing was
+   imported." It is checked before any cell is walked, so a sheet that claims a million rows
+   is refused without reading them.
+   Example: a sheet of 20,001 rows is refused; 20,000 is read.
+   Test: "INGEST-1.3: a workbook sheet of 20,001 rows is refused; 20,000 is read";
+   "INGEST-1.3: a sheet claiming a million rows is refused before a cell is walked";
+   "INGEST-1.3: a CSV of 20,001 rows is refused; 20,000 is read".
+
+4. **Every way a file comes in is held to the same limits, in one place.**
+   Clue: a file chosen on Import last year, Import a list (every list, the Electives list among
+   them), Bring in choices or a special day's or event's Import; or a file an AI or the command
+   line sends (`import_list`, `import_worksheet`, `import_last_year`, `bring_in_choices`,
+   `import_special_schedule`).
+   Meaning: the screens read a chosen file only through `readImportFile`, and the AI's file only
+   through `fileOf`, both on the engine's one check. The refusal shows where that screen already
+   shows a file it could not read, nothing is saved, and the director can choose another file at
+   once. The AI gets the same words as its answer.
+   Test: "refuses a file over 10 MB before reading it, saves nothing, and reads the next file
+   chosen" (Import last year, Import a list); "the Electives list refuses a file over 10 MB
+   before reading it"; "refuses a file over 10 MB before reading it, brings nothing in, and reads
+   the next file chosen" (Bring in choices); "refuses a file over 10 MB before reading it,
+   imports nothing, and reads the next file chosen" (special day or event); "is read through
+   fileOf by every action that takes a file"; "is refused in the screens' words, and nothing is
+   sent to be saved".
+
+5. **Each way in takes the desktop's file types for it.**
+   Clue: the file's name ends in one of the door's types (any case); the file picker offers the
+   same list.
+   Meaning: Import last year takes .xlsx, .xlsm, .xls, .csv and .tsv (desktop `ImportScreen.jsx`);
+   Bring in choices takes .xlsx, .xlsm, .xls, .csv, .tsv and .txt (desktop `AssignmentPanel.jsx`:
+   camps export CSV and TSV); Import a list, the Electives list and a special day's or event's
+   Import take .xlsx, .xlsm, .xls and .csv. A .tsv or .txt is read as text, tab-separated when its
+   header line has at least as many tabs as unquoted commas (desktop `exportSanitize.js`
+   `tabSeparated`), so a cell that says "Swim, Archery, Ceramics" stays one cell. Any other file is
+   refused with the types the door reads, and nothing is imported. Not yet: the desktop's .txt on
+   Import last year, offerings and a special event is text copied from a PDF, read by its own
+   reader (`src/ingest/textGrid.js`); Shoresh does not read that kind of file yet.
+   Example: a choices sheet saved from a form tool as `chugim.tsv` reads as the same sheet saved as
+   `.csv`; `camp.txt` on Import last year is refused.
+   Test: "INGEST-1.5: each door takes the desktop's file types";
+   "INGEST-1.5: a .tsv whose cells hold commas is read on its tabs, as the desktop reads it";
+   "INGEST-1.5: a .txt is read as the same text, tab- or comma-separated, as the desktop reads it";
+   "takes a .tsv and a .txt, as the desktop's choice sheets do, and reads them as the .csv";
+   "takes a .tsv as the desktop does, and not yet a .txt copied from a PDF".

@@ -22,7 +22,7 @@ sub-protocol adds statements on top of CORE; it never contradicts a CORE stateme
 
 ```
 CORE  layers 1-6                                 docs/protocol/core.md
- |- INGEST  Import last year, re-import          uses CORE 1-3, 6   docs/import/classification.md, docs/import/names-and-divisions.md, docs/import/weeks.md, docs/import/review.md
+ |- INGEST  Import last year, re-import          uses CORE 1-3, 6   docs/import/files.md, docs/import/classification.md, docs/import/names-and-divisions.md, docs/import/weeks.md, docs/import/review.md
  |- GEN     Building a week                      uses CORE 1-6      docs/engine/protocol.md
  |   |- ELECT    Electives                       sits on GEN's week (its sets are kept cells)
  |   |- SPECIAL  Special events and special days sits on GEN's week (a special day is its own day)
@@ -51,6 +51,7 @@ The existing sub-protocol documents keep their own numbers, read with a prefix:
 | ------------------------------------ | ----------------- | ------------ |
 | `docs/protocol/core.md`              | CORE-layer.n      | as written   |
 | `docs/engine/protocol.md`            | rule n.m, by step | `GEN-n.m`    |
+| `docs/import/files.md`               | rules 1-5         | `INGEST-1.n` |
 | `docs/import/classification.md`      | rules 1-10        | `INGEST-3.n` |
 | `docs/import/names-and-divisions.md` | rules 1-8         | `INGEST-2.n` |
 | `docs/import/weeks.md`               | rules 1-9         | `INGEST-4.n` |

@@ -12,10 +12,10 @@ import { offeringNames } from "c/shoreshElectiveDetails";
 import { scheduleSheets } from "c/shoreshScheduleExport";
 import { shortClock } from "c/shoreshScheduleViews";
 import {
-  csvFile,
-  isCsv,
+  FILE_TYPES,
   isReadable,
-  workbookFile
+  readImportFile,
+  refusedFile
 } from "c/shoreshImportEngine";
 import { pagesOf, planFromPage } from "./fromFile";
 
@@ -104,6 +104,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   focusAfter = null;
   // The editor's own tools (Clear day, Copy day to…) are a week's: this screen has Clear schedule.
   toolsOff = false;
+
+  /** The files the picker offers: the ones this import reads (INGEST-1.5). */
+  get fileTypes() {
+    return FILE_TYPES.list.join(",");
+  }
 
   /** The special day or event shown; setting it opens it. */
   @api
@@ -455,7 +460,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
         false
       );
     } catch (e) {
-      this.error = failed(`${file.name} wasn't imported.`, e);
+      this.error = refusedFile(e) || failed(`${file.name} wasn't imported.`, e);
     } finally {
       this.busy = false;
     }
@@ -545,13 +550,12 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
   }
 
-  async readFile(file) {
-    if (isCsv(file.name)) {
-      return csvFile(file.name, await file.text());
-    }
-    await loadScript(this, SHEETJS);
-    // SheetJS puts itself on window when its script runs.
-    return workbookFile(window.XLSX, file.name, await file.arrayBuffer());
+  readFile(file) {
+    return readImportFile(file, async () => {
+      await loadScript(this, SHEETJS);
+      // SheetJS puts itself on window when its script runs.
+      return window.XLSX;
+    });
   }
 
   /** What an import did and left out, line by line, in the camp's words. */

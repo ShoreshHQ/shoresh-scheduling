@@ -24,9 +24,91 @@ export {
   weeksToFill
 } from "./engine.shoreshImportEngine.weeks.mjs";
 
+/**
+ * How big a file the import reads (INGEST-1, desktop exportSanitize.js IMPORT_LIMITS, desktop ADR
+ * 2026-08-08 §3a / F4): comfortably above any real camp, far below a file made to exhaust the
+ * browser. Over any one, the file is refused whole and nothing is imported. Sheets are 256, not the
+ * desktop's 32 (the ADR calls the bounds tunable): a camp with a tab per group per week, 16 × 8 =
+ * 128 tabs, must import (coordinator, 2026-11-04).
+ */
+export const IMPORT_LIMITS = {
+  maxBytes: 10 * 1024 * 1024,
+  maxSheets: 256,
+  maxRowsPerSheet: 20000
+};
+
+function refusal(text) {
+  const error = new Error(text);
+  error.shoreshWords = true;
+  error.importRefused = true;
+  return error;
+}
+
+/** INGEST-1.1: refused on its size alone, before any of it is read. */
+export function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
+  if (byteLength > limits.maxBytes) {
+    throw refusal(
+      `That file is too large to import (over ${Math.round(limits.maxBytes / (1024 * 1024))} MB). Nothing was imported.`
+    );
+  }
+}
+
+/** INGEST-1.2 and 1.3: refused on its sheets, or a sheet's rows, before a cell is read. */
+export function checkSheets(sheetRows, limits = IMPORT_LIMITS) {
+  if (sheetRows.length > limits.maxSheets) {
+    throw refusal(
+      `That file has too many sheets (over ${limits.maxSheets}) to import safely. Nothing was imported.`
+    );
+  }
+  if (sheetRows.some((rows) => rows > limits.maxRowsPerSheet)) {
+    throw refusal(
+      `A sheet in that file has too many rows (over ${limits.maxRowsPerSheet}) to import safely. Nothing was imported.`
+    );
+  }
+}
+
+/** The refusal's own words when a file was refused for its size, else null. */
+export function refusedFile(error) {
+  return error && error.importRefused ? error.message : null;
+}
+
+/**
+ * The one way a chosen file is read (INGEST-1.4): its size is checked before its bytes are read,
+ * then it is read as CSV or as a workbook. loadSheetJs gives SheetJS, loaded only when needed.
+ */
+export async function readImportFile(file, loadSheetJs) {
+  checkFileSize(file.size);
+  if (isCsv(file.name)) {
+    return csvFile(file.name, await file.text());
+  }
+  return workbookFile(
+    await loadSheetJs(),
+    file.name,
+    new Uint8Array(await file.arrayBuffer())
+  );
+}
+
+/** The bytes text takes in a UTF-8 file (TextEncoder is not in every place this runs). */
+function utf8Length(text) {
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code < 0xdc00) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+  }
+  return bytes;
+}
+
 /** A comma-separated file as a file of one sheet. */
 export function csvFile(name, text) {
-  return { name, sheets: [{ name, rows: parseCsv(text), merges: [] }] };
+  checkFileSize(utf8Length(text));
+  const rows = parseCsv(text);
+  checkSheets([rows.length]);
+  return { name, sheets: [{ name, rows, merges: [] }] };
 }
 
 /**
@@ -35,7 +117,14 @@ export function csvFile(name, text) {
  * as the sheet shows them (raw: false), so times keep their formatting.
  */
 export function workbookFile(XLSX, name, data) {
+  checkFileSize(data.byteLength ?? data.length ?? 0);
   const workbook = XLSX.read(data, { type: "array", cellDates: false });
+  checkSheets(
+    workbook.SheetNames.map((sheetName) => {
+      const ref = workbook.Sheets[sheetName]["!ref"];
+      return ref ? XLSX.utils.decode_range(ref).e.r + 1 : 0;
+    })
+  );
   return {
     name,
     sheets: workbook.SheetNames.map((sheetName) => {
@@ -54,13 +143,27 @@ export function workbookFile(XLSX, name, data) {
   };
 }
 
-/** Whether a file name is one the import reads. */
-export function isReadable(name) {
-  return /\.(xlsx|xlsm|xls|csv)$/i.test(String(name || ""));
+/**
+ * The files each way in takes (INGEST-1.5), as the desktop's pickers: Import last year as
+ * ImportScreen.jsx, camper choice sheets as AssignmentPanel.jsx (camps export CSV and TSV). A .txt
+ * is tab- or comma-separated text here; Import last year's, offerings' and a special event's .txt
+ * (text copied from a PDF on the desktop, src/ingest/textGrid.js) is not read yet.
+ */
+export const FILE_TYPES = {
+  schedule: [".xlsx", ".xlsm", ".xls", ".csv", ".tsv"],
+  list: [".xlsx", ".xlsm", ".xls", ".csv"],
+  choices: [".xlsx", ".xlsm", ".xls", ".csv", ".tsv", ".txt"]
+};
+
+/** Whether a file name is one this way in reads (a list's, unless said). */
+export function isReadable(name, types = FILE_TYPES.list) {
+  const lower = String(name || "").toLowerCase();
+  return types.some((type) => lower.endsWith(type));
 }
 
+/** Whether a file is text (comma- or tab-separated) rather than an Excel workbook. */
 export function isCsv(name) {
-  return /\.csv$/i.test(String(name || ""));
+  return /\.(csv|tsv|txt)$/i.test(String(name || ""));
 }
 
 export { questionCards } from "./engine.shoreshImportEngine.questions.mjs";

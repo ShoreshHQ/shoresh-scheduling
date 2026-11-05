@@ -363,6 +363,51 @@ describe("c-shoresh-special-schedule", () => {
     ]);
   });
 
+  // INGEST-1.4
+  it("refuses a file over 10 MB before reading it, imports nothing, and reads the next file chosen", async () => {
+    const { element } = await render(dayPlan());
+    const text = jest.fn(() =>
+      Promise.resolve("Time,Cedar\n9:00-9:45,Relay races")
+    );
+    const input = q(element, '[data-id="import-file"]');
+    Object.defineProperty(input, "files", {
+      value: [{ name: "Color War.csv", size: 10 * 1024 * 1024 + 1, text }],
+      configurable: true
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      "That file is too large to import (over 10 MB). Nothing was imported."
+    );
+    expect(text).not.toHaveBeenCalled();
+    expect(importPlan).not.toHaveBeenCalled();
+
+    importPlan.mockResolvedValue({
+      plan: dayPlan(["2,", ","]),
+      added: [],
+      notGroups: [],
+      replaced: [],
+      placed: 1,
+      asks: false,
+      frame: {
+        renamed: [],
+        removed: [],
+        added: [],
+        stationsRemoved: [],
+        stationsAdded: []
+      }
+    });
+    openPlan.mockResolvedValue(dayPlan(["2,", ","]));
+    Object.defineProperty(input, "files", {
+      value: [{ name: "Color War.csv", text }],
+      configurable: true
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(q(element, '[data-id="error"]')).toBeNull();
+    expect(importPlan).toHaveBeenCalledTimes(1);
+  });
+
   it("a special day holding only what it started with is imported into, and says what the file replaced", async () => {
     const { element } = await render(dayPlan());
     q(element, '[data-id="import"]').click();

@@ -48,6 +48,7 @@ const DOCUMENTS = [
       return out;
     }
   },
+  numberedRules("docs/import/files.md", "INGEST-1"),
   numberedRules("docs/import/names-and-divisions.md", "INGEST-2"),
   numberedRules("docs/import/classification.md", "INGEST-3"),
   numberedRules("docs/import/weeks.md", "INGEST-4"),
