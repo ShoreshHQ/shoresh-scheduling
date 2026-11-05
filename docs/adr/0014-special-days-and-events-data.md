@@ -567,7 +567,8 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
       (choice 12), in the same save: `SpecialDaySeed.seedAll` works the plan out once and saves
       every new day's in one write (`ImportListSeeds`), so 30 new days cost no more queries than one. What was not
       brought in is named in the import's summary, in the blank row's words ("Not brought in,
-      since they don't run every day: Swim.").
+      since they don't run every day: Swim."), and an AI's `import_list` answer says the same
+      (`c/shoreshLists` seeded.js is the one wording).
     - **Deleting one on the screen is remembered** (`SetupDeletionSpecials`: "deleted|SpecialDay||Field
       Day"), so a later list leaves it out with Bring back.
     - The AI's `import_list` and `download_setup` take `specialEvents` too (API parity).

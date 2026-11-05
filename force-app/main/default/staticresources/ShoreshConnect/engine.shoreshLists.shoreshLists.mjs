@@ -6,6 +6,7 @@
  */
 export { LIST_SCREENS, listScreen, cellText } from "./engine.shoreshLists.screens.mjs";
 export { eventWords } from "./engine.shoreshLists.specialScreen.mjs";
+export { seededLines } from "./engine.shoreshLists.seeded.mjs";
 export { listProposal, KEEP, CHANGE, changeKey, skipKey } from "./engine.shoreshLists.proposal.mjs";
 export {
   similarCards,

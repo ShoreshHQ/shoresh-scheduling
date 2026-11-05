@@ -35,10 +35,10 @@ import {
   workbookCards,
   workbookPlan,
   workbookProposal,
-  workbookWaiting
+  workbookWaiting,
+  seededLines
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
-import { seededLines } from "c/shoreshSpecialDetails";
 import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";

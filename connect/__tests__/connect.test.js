@@ -1431,6 +1431,83 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(conflict.done.status).toBe(409);
   });
 
+  // SPECIAL-2.6
+  it("aSpecialDayListSaysWhatItLeftOut: an AI hears what new special days left out of the regular day, as the screen's summary says it", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists: require(`${LWC}/shoreshLists/shoreshLists.js`),
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
+      });
+    const read = JSON.stringify({
+      season: "Summer 2026",
+      setup: {
+        season: { Id: "a00000000000001AAA", Name: "Summer 2026" },
+        weeks: [],
+        weekExceptions: [],
+        locationTypes: [],
+        locations: [],
+        activities: [],
+        programs: [],
+        schedules: [],
+        labels: [],
+        special: { specialDays: [], specialEvents: [], briefs: [] }
+      },
+      answers: [],
+      seen: "s1"
+    });
+    const save = async (result) => {
+      const queue = [
+        `HTTP/1.1 200\n\n${read}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: JSON.stringify(result) })}`
+      ];
+      return call(
+        "import_list",
+        {
+          season: "Summer 2026",
+          list: "specialEvents",
+          file_name: "special.csv",
+          csv_text: "Name,Type\nMaccabiah,Special day\nField Day,Special day",
+          save: true,
+          seen: "s1"
+        },
+        { run: async () => queue.shift(), imports }
+      );
+    };
+    const leftOut = await save({
+      added: { SpecialDay: 2 },
+      seeded: {
+        program: "Main",
+        timeBlocks: 4,
+        broughtIn: ["Lunch"],
+        notEveryDay: ["Swim"],
+        otherTimes: ["Rest", "Flag"]
+      }
+    });
+    expect(leftOut.text).toMatch(
+      /^Added 2 special days\. Not brought in, since they don't run every day: Swim\. Not brought in, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
+    );
+    const nothingLeftOut = await save({
+      added: { SpecialDay: 2 },
+      seeded: { program: "Main", timeBlocks: 4 }
+    });
+    expect(nothingLeftOut.text).toMatch(/^Added 2 special days\. To undo/);
+    const noRegularDay = await save({
+      added: { SpecialDay: 2 },
+      seeded: { timeBlocks: 0 }
+    });
+    expect(noRegularDay.text).toMatch(/^Added 2 special days\. To undo/);
+  });
+
   // API-1.80, API-1.81, API-1.82, API-1.83
   it("importsAsTheScreens: a file is reviewed with the import screen's own modules and saved with its own plan only with the seen, and undo asks first and says the screen's words", async () => {
     const LWC = "../../force-app/main/default/lwc";

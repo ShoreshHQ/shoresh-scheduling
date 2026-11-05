@@ -248,8 +248,8 @@ const OWN_WORDS = {
   WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
 };
 
-/** The screen's summary once saved: "Added 3 activities", "Changed 1 location". */
-function savedWords(result, t) {
+/** The screen's summary once saved: "Added 3 activities", "Changed 1 location", and what a new special day left out. */
+function savedWords(result, t, m) {
   const lines = [];
   const add = (counts, verb) => {
     Object.keys(counts || {})
@@ -267,7 +267,12 @@ function savedWords(result, t) {
   };
   add(result.added, "Added");
   add(result.changed, "Changed");
-  return lines.length ? `${lines.join(", ")}.` : "Saved.";
+  const said = lines.length ? `${lines.join(", ")}.` : "Saved.";
+  // SPECIAL-2.6: what new special days left out of the regular day, as the screen's summary says.
+  const seed = result.seeded;
+  const leftOut =
+    seed && seed.program ? m.seededLines(seed, "", t).slice(1) : [];
+  return [said, ...leftOut].join(" ");
 }
 
 /** The command line gives every field as text: save as "true", answers as JSON. */
@@ -458,7 +463,7 @@ async function importFile(capability, given, { read, send, answer, load }) {
   return {
     ok: true,
     status: 200,
-    text: `${savedWords(result, t)} To undo this import, use undo_import (read_last_imports gives its seen), after asking the person.`
+    text: `${savedWords(result, t, m)} To undo this import, use undo_import (read_last_imports gives its seen), after asking the person.`
   };
 }
 

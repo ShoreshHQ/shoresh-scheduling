@@ -6,6 +6,7 @@
  */
 export { LIST_SCREENS, listScreen, cellText } from "./screens";
 export { eventWords } from "./specialScreen";
+export { seededLines } from "./seeded";
 export { listProposal, KEEP, CHANGE, changeKey, skipKey } from "./proposal";
 export {
   similarCards,

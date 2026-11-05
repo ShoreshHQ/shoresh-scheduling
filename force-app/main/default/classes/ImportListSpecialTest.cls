@@ -322,9 +322,24 @@ private class ImportListSpecialTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
       Id seasonId = ids.get('Season');
+      Location__c lake = new Location__c(
+        Season__c = seasonId,
+        Name = 'Lake',
+        GroupsThatFit__c = 2
+      );
+      Location__c field = new Location__c(
+        Season__c = seasonId,
+        Name = 'Field',
+        GroupsThatFit__c = 4
+      );
+      Database.insert(
+        new List<Location__c>{ lake, field },
+        AccessLevel.USER_MODE
+      );
       SpecialEvent__c carnival = new SpecialEvent__c(
         Season__c = seasonId,
         Name = 'Carnival',
+        Location__c = lake.Id,
         Notes__c = 'Bring tickets'
       );
       Database.insert(carnival, AccessLevel.USER_MODE);
@@ -336,18 +351,20 @@ private class ImportListSpecialTest {
             added('SpecialDay', 'Field Day', NOTHING),
             added('SpecialEvent', 'Talent Show', NOTHING),
             added('SpecialEvent', 'Campfire', NOTHING),
+            added('SpecialEvent', 'Bonfire', NOTHING),
             changed(
               'SpecialEvent',
               carnival.Id,
               new List<Map<String, Object>>{
                 new Map<String, Object>{ 'Notes__c' => 'Free entry' },
-                new Map<String, Object>()
+                new Map<String, Object>{ 'Location__c' => field.Id }
               }
             )
           }
         )
       );
-      // Since the import: Field Day's schedule saved by the director, Campfire put on a day.
+      // Since the import: Field Day's schedule saved by the director, Campfire put on a day,
+      // Bonfire given a schedule.
       SpecialDay__c fieldDay = [
         SELECT Id
         FROM SpecialDay__c
@@ -368,6 +385,16 @@ private class ImportListSpecialTest {
           Week__c = ids.get('Week 2'),
           Day__c = 'Monday'
         ),
+        AccessLevel.USER_MODE
+      );
+      SpecialEvent__c bonfire = [
+        SELECT Id
+        FROM SpecialEvent__c
+        WHERE Name = 'Bonfire'
+        WITH USER_MODE
+      ];
+      Database.insert(
+        new PlanPart__c(Season__c = seasonId, SpecialEvent__c = bonfire.Id),
         AccessLevel.USER_MODE
       );
       Test.startTest();
@@ -398,10 +425,26 @@ private class ImportListSpecialTest {
       Set<String> kept = new Set<String>(undone.keptInUse);
       Assert.isTrue(kept.contains('Field Day'), String.valueOf(undone));
       Assert.isTrue(kept.contains('Campfire'), String.valueOf(undone));
+      Assert.isTrue(kept.contains('Bonfire'), String.valueOf(undone));
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM SpecialEvent__c WHERE Name = 'Bonfire'],
+        'Bonfire and its schedule stay'
+      );
+      SpecialEvent__c putBack = [
+        SELECT Notes__c, Location__c
+        FROM SpecialEvent__c
+        WHERE Id = :carnival.Id
+      ];
       Assert.areEqual(
         'Bring tickets',
-        [SELECT Notes__c FROM SpecialEvent__c WHERE Id = :carnival.Id].Notes__c,
+        putBack.Notes__c,
         'Carnival\'s notes are put back'
+      );
+      Assert.areEqual(
+        lake.Id,
+        putBack.Location__c,
+        'Carnival\'s place is put back'
       );
     }
   }
