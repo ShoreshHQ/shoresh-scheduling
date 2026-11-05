@@ -83,13 +83,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     heldAsSeen();
     Map<String, Assignment__c> now = new Map<String, Assignment__c>();
     for (Assignment__c seat : [
-      SELECT
-        Camper__c,
-        Date__c,
-        TimeBlock__c,
-        Offering__c,
-        LinkedChoice__c,
-        Locked__c
+      SELECT Camper__c, Date__c, TimeBlock__c, Offering__c, Locked__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :held.id
       WITH USER_MODE
@@ -138,10 +132,8 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
         placed++;
       } else if (ElectiveSeatChecks.kept(there)) {
         locked++;
-      } else if (
-        there.Offering__c == seat.offeringId &&
-        there.LinkedChoice__c == seat.linkedChoiceId
-      ) {
+      } else if (there.Offering__c == seat.offeringId) {
+        // The camper keeps this elective, even when the save refreshes the seat's link or bunk.
         same++;
       } else {
         moved++;

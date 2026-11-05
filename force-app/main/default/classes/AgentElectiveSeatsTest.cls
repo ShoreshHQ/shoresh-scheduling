@@ -155,7 +155,7 @@ private class AgentElectiveSeatsTest {
 
   // API-1.106
   @IsTest
-  static void assignAsksFirstSayingWhatItPlacesReplacesAndKeeps() {
+  static void assignAsksFirstAndIsDoneOnlyWithItsOwnConfirm() {
     System.runAs(ShoreshTestData.scheduler()) {
       lockedCamper();
       Decimal seen = AgentElectivesTestData.revision();
@@ -237,6 +237,43 @@ private class AgentElectiveSeatsTest {
         noneSaid
       );
       Assert.areEqual(seen, AgentElectivesTestData.revision(), 'nothing done');
+    }
+  }
+
+  // API-1.106
+  @IsTest
+  static void aSeatOnlyLinkedDifferentlyStaysInItsElective() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id locked = lockedCamper();
+      LinkedChoice__c link = new LinkedChoice__c(
+        ElectiveSet__c = AgentElectivesTestData.ids.get('Chugim'),
+        Name = 'Drama both days',
+        Offering__c = AgentElectivesTestData.ids.get('Drama'),
+        AppliesTo__c = 'All',
+        SortOrder__c = 1
+      );
+      Database.insert(link, AccessLevel.USER_MODE);
+      Map<String, Object> linking = everyoneInDramaAsSeen();
+      for (Object each : (List<Object>) linking.get('seats')) {
+        Map<String, Object> seat = (Map<String, Object>) each;
+        if (seat.get('camperId') != locked) {
+          seat.put('linkedChoiceId', link.Id);
+        }
+      }
+      String linkAdded = said(linking);
+      // seats() are in camper order and lockedCamper() locked the first.
+      update new Assignment__c(
+        Id = AgentElectivesTestData.seats()[1].Id,
+        LinkedChoice__c = link.Id
+      );
+      Test.startTest();
+      String linkGone = said(everyoneInDramaAsSeen());
+      Test.stopTest();
+      String stays =
+        OPENS +
+        'no seat changes; 1 seat stays as it is, and the 1 locked seat stays. There is no undo.';
+      Assert.isTrue(linkAdded.contains(stays), linkAdded);
+      Assert.isTrue(linkGone.contains(stays), linkGone);
     }
   }
 
