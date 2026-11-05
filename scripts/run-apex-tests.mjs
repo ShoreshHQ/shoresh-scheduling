@@ -310,14 +310,6 @@ async function readCoverage(testClassIds) {
     )
   ).forEach((record) => {
     const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
-    // With no per-test rows (the org stores only aggregate coverage) take every aggregate row,
-    // as the CLI does.
-    if (
-      !name ||
-      (touched.size > 0 && !touched.has(record.ApexClassOrTriggerId))
-    ) {
-      return;
-    }
     const seen = new Map();
     ((record.Coverage && record.Coverage.coveredLines) || []).forEach((line) =>
       seen.set(String(line), true)
@@ -325,14 +317,49 @@ async function readCoverage(testClassIds) {
     ((record.Coverage && record.Coverage.uncoveredLines) || []).forEach(
       (line) => seen.set(String(line), seen.get(String(line)) === true)
     );
+    // With no per-test rows (the org stores only aggregate coverage) take every aggregate row,
+    // as the CLI does. A class the org counts no lines in (only fields, as IncomingResult) has
+    // nothing to run, so it is kept even when no test touched it.
+    if (
+      !name ||
+      (touched.size > 0 &&
+        !touched.has(record.ApexClassOrTriggerId) &&
+        seen.size > 0)
+    ) {
+      return;
+    }
     lines.set(name, seen);
   });
   return lines;
 }
 
 /**
+ * Statements inside a method, constructor or block: each ";" at least two braces deep in a class
+ * (a class's own field declarations sit one deep and run nothing), or inside a trigger's body.
+ * Comments and string literals are left out, so a brace in a string doesn't count.
+ */
+function blockStatements(source, isTrigger) {
+  // Strings and comments in one pass, whichever starts first: a "//" inside a string is text.
+  const code = source.replace(
+    /'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\/|\/\/.*$/gm,
+    (m) => (m[0] === "'" ? "''" : " ")
+  );
+  const inside = isTrigger ? 1 : 2;
+  let depth = 0;
+  let count = 0;
+  for (const ch of code) {
+    if (ch === "{") depth += 1;
+    else if (ch === "}") depth -= 1;
+    else if (ch === ";" && depth >= inside) count += 1;
+  }
+  return count;
+}
+
+/**
  * Coverage of the repository's classes and triggers from these runs. One no run touched counts
- * as 0%, with its statements (lines ending in ";") as an estimate of its lines.
+ * as 0%, with its statements (lines ending in ";") as an estimate of its lines. One the org
+ * counts no lines in, with no statement inside a method or block (only fields, as
+ * IncomingResult), has nothing to run and counts nothing.
  */
 function coverage(lines) {
   let covered = 0;
@@ -340,14 +367,19 @@ function coverage(lines) {
   const untouched = [];
   codeUnderTest().forEach((file) => {
     const seen = lines.get(baseName(file));
-    if (seen && seen.size > 0) {
+    const source = readFileSync(file, "utf8");
+    if (
+      seen &&
+      (seen.size > 0 ||
+        blockStatements(source, file.endsWith(".trigger")) === 0)
+    ) {
       seen.forEach((hit) => {
         covered += hit ? 1 : 0;
         total += 1;
       });
       return;
     }
-    const statements = withoutComments(readFileSync(file, "utf8"))
+    const statements = withoutComments(source)
       .split("\n")
       .filter((line) => line.trim().endsWith(";")).length;
     if (statements > 0) {

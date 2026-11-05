@@ -61,7 +61,8 @@ beforeAll((done) => {
             ApexClassOrTriggerId: "code-1",
             ApexClassOrTrigger: { Name: "Widget" },
             Coverage: { coveredLines: [1, 2, 3, 4], uncoveredLines: [5] }
-          }
+          },
+          ...(behave.aggregate || [])
         ]
       });
     });
@@ -257,6 +258,80 @@ describe("run-apex-tests.mjs", () => {
     expect(runCalls().map((c) => JSON.parse(c.body).tests)).toEqual([
       [{ className: "BetaTest" }]
     ]);
+  });
+
+  it("a class the org counts no lines in (only fields) is not called not run", async () => {
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Result.cls"),
+      "public class Result {\n  public Integer row;\n  public String message;\n}\n"
+    );
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-2",
+        ApexClassOrTrigger: { Name: "Result" },
+        Coverage: { coveredLines: [], uncoveredLines: [] }
+      }
+    ];
+    const { code, out } = await run();
+    expect(out).not.toContain("Not run by any test");
+    expect(out).toContain("Coverage of this repository's Apex: 80%");
+    expect(code).toBe(0);
+  });
+
+  it("a class with code is still not run when the org counts no lines in it", async () => {
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Reset.cls"),
+      "public class Reset {\n  public String row = '}';\n  public String u = 'https://host/x';\n  public void a() { b(); }\n}\n"
+    );
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-4",
+        ApexClassOrTrigger: { Name: "Reset" },
+        Coverage: { coveredLines: [], uncoveredLines: [] }
+      }
+    ];
+    const { out } = await run();
+    expect(out).toContain("Not run by any test (counted as 0%): Reset");
+  });
+
+  it("a trigger is still not run when the org counts no lines in it", async () => {
+    const triggers = path.join(
+      work,
+      "force-app",
+      "main",
+      "default",
+      "triggers"
+    );
+    fs.mkdirSync(triggers, { recursive: true });
+    fs.writeFileSync(
+      path.join(triggers, "Watch.trigger"),
+      "trigger Watch on Account (before insert) {\n  Handler.run();\n}\n"
+    );
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-5",
+        ApexClassOrTrigger: { Name: "Watch" },
+        Coverage: { coveredLines: [], uncoveredLines: [] }
+      }
+    ];
+    const { out } = await run();
+    expect(out).toContain("Not run by any test (counted as 0%): Watch");
+  });
+
+  it("a class with lines that no test of this run touched is still not run", async () => {
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-3",
+        ApexClassOrTrigger: { Name: "Other" },
+        Coverage: { coveredLines: [1], uncoveredLines: [2] }
+      }
+    ];
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Other.cls"),
+      "public class Other {\n  public void a() {\n    b();\n  }\n}\n"
+    );
+    const { out } = await run();
+    expect(out).toContain("Not run by any test (counted as 0%): Other");
   });
 
   it("uses the aggregate totals when the org keeps no per-test coverage", async () => {
