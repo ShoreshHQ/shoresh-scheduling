@@ -1311,7 +1311,8 @@ between releases; the names below are the ones on screen in October 2026.
    you share one. Open the season's Salesforce record (App Launcher, the nine dots at top left,
    search _Seasons_, click the season's name). At the top right, beside **Edit**, click the small **▾**
    (**Show more actions**), then **Sharing**. In the box, search for the connection user, set
-   access to **Read Only**, and click **Save**. Do this for each season it should reach.
+   access to **Read/Write** if it sends anything to Shoresh (**Read Only** if it only reads), and
+   click **Save**. Do this for each season it should reach.
    This was seen on the test org's Season page; the installed AppExchange version may lay the
    page out differently.
 5. **The key.** The outside system needs a key: a name-and-password pair just for software,

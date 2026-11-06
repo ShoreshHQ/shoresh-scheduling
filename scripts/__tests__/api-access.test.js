@@ -11,6 +11,20 @@ const DIR = path.resolve(
   "../../force-app/main/default/permissionsets"
 );
 
+// The one web address each piece opens (API-4.8).
+const WEB_CLASS = {
+  Send_Divisions: "IncomingDivision",
+  Send_Groups: "IncomingGroup",
+  Send_Activities: "IncomingActivity",
+  Send_Campers: "IncomingCamper",
+  Send_Camper_Groups: "IncomingCamperGroup",
+  Send_Elective_Choices: "IncomingCamperElectiveChoice",
+  Read_Group_Schedules: "OutgoingGroupSchedule",
+  Read_Activity_Schedules: "OutgoingActivitySchedule",
+  Read_Elective_Offerings: "OutgoingElectiveOfferings",
+  Read_Elective_Seats: "OutgoingElectiveSeats"
+};
+
 const PIECES = {
   Send_Divisions: ["Send divisions", "Division__c"],
   Send_Groups: ["Send groups", "Group__c"],
@@ -114,6 +128,16 @@ describe("the API's access pieces", () => {
       expect([name, inside]).toEqual([name, []]);
     }
   });
+  // API-4.8
+  it("pieceOpensOnlyItsOneWebAddress: each piece opens its own class and no other", () => {
+    for (const name of Object.keys(PIECES)) {
+      const opened = [
+        ...read(name).xml.matchAll(/<apexClass>\s*(\w+)\s*<\/apexClass>/g)
+      ].map((m) => m[1]);
+      expect([name, opened]).toEqual([name, [WEB_CLASS[name]]]);
+    }
+  });
+
   // API-4.7
   it("schedulerHoldsWhatEveryCapabilitySetGives: Shoresh Scheduler has every object and field access the capability sets give", () => {
     const scheduler = read("Shoresh_Scheduler");
