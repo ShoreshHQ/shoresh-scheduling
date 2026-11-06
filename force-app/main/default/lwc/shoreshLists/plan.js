@@ -5,6 +5,7 @@
  * an answer, and the save is all or none.
  */
 import { FIELD } from "c/shoreshSchema";
+import { eventWords } from "./specialScreen";
 import { LEAVE_OUT, WEEKDAYS, clock } from "c/shoreshImportEngine";
 import { answeredTimes } from "./adds";
 import { answeredDays } from "./scope";
@@ -28,7 +29,9 @@ function kindWord(kind, t) {
     timeBlock: t.sIn("TimeBlock"),
     electiveSet: t.sIn("ElectiveSet"),
     fixed: t.sIn("FixedActivity"),
-    recurring: t.sIn("RecurringActivity")
+    recurring: t.sIn("RecurringActivity"),
+    specialDay: t.sIn("SpecialDay"),
+    specialEvent: eventWords(t).sIn
   }[kind];
 }
 
@@ -509,15 +512,22 @@ export function newKey(screen, row) {
 }
 
 function recordFor(screen, row, columnKeys) {
+  // On the Special events list, each row is the kind its Type says (SPECIAL-2.3).
+  const kind = screen.scope === "kind" ? row.programId : screen.kind;
   const record = row.id
-    ? { kind: screen.kind, id: row.id, fields: {}, refs: {} }
+    ? { kind, id: row.id, fields: {}, refs: {} }
     : {
-        kind: screen.kind,
+        kind,
         key: newKey(screen, row),
         fields: {},
         refs: {}
       };
-  if (!row.id && screen.scope && screen.kind !== "Group") {
+  if (
+    !row.id &&
+    screen.scope &&
+    screen.scope !== "kind" &&
+    screen.kind !== "Group"
+  ) {
     // A group is in its division; everything else of a program's list is in the program, and
     // an offering in its elective set. Each kind's own link to it (FIELD keys objects by their
     // kind's name).
@@ -529,7 +539,8 @@ function recordFor(screen, row, columnKeys) {
     const value = row.id
       ? row.differences.find((d) => d.column === key).to
       : row.values[key];
-    if (column.scope) {
+    // A column only one kind has (an event's place): not written for the other.
+    if (column.scope || (column.onlyKind && column.onlyKind !== kind)) {
       return;
     }
     if (column.refField) {
@@ -540,7 +551,7 @@ function recordFor(screen, row, columnKeys) {
     } else if (column.type === "list") {
       record.who = value || [];
     } else if (column.write) {
-      Object.assign(record.fields, column.write(value));
+      Object.assign(record.fields, column.write(value, kind));
     }
   });
   return record;

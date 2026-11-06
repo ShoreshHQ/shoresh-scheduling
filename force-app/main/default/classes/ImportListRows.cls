@@ -12,7 +12,9 @@ public with sharing class ImportListRows {
     'LocationType' => LocationType__c.Season__c,
     'Location' => Location__c.Season__c,
     'Activity' => Activity__c.Season__c,
-    'ElectiveSet' => ElectiveSet__c.Season__c
+    'ElectiveSet' => ElectiveSet__c.Season__c,
+    'SpecialDay' => SpecialDay__c.Season__c,
+    'SpecialEvent' => SpecialEvent__c.Season__c
   };
   // What a list may write, per kind: plain fields...
   private static final Map<String, Set<Schema.SObjectField>> PLAIN_FIELDS = new Map<String, Set<Schema.SObjectField>>{
@@ -92,6 +94,15 @@ public with sharing class ImportListRows {
       Offering__c.NoSeatLimit__c,
       Offering__c.MinimumToRun__c,
       Offering__c.Proposed__c
+    },
+    // The Special events screen's list (SPECIAL-2.3): a special day or event, its notes.
+    'SpecialDay' => new Set<Schema.SObjectField>{
+      SpecialDay__c.Name,
+      SpecialDay__c.Notes__c
+    },
+    'SpecialEvent' => new Set<Schema.SObjectField>{
+      SpecialEvent__c.Name,
+      SpecialEvent__c.Notes__c
     }
   };
   // ...and fields naming another record.
@@ -129,6 +140,11 @@ public with sharing class ImportListRows {
     'Offering' => new Set<Schema.SObjectField>{
       Offering__c.ElectiveSet__c,
       Offering__c.Activity__c
+    },
+    'SpecialDay' => new Set<Schema.SObjectField>(),
+    // An event's place (a special day is the whole camp).
+    'SpecialEvent' => new Set<Schema.SObjectField>{
+      SpecialEvent__c.Location__c
     }
   };
   // Kinds a list can change once set up (divisions and location types it only adds).
@@ -141,7 +157,9 @@ public with sharing class ImportListRows {
     'Activity',
     'FixedActivity',
     'RecurringActivity',
-    'Offering'
+    'Offering',
+    'SpecialDay',
+    'SpecialEvent'
   };
   // Links set only on a new record: what program it is in (a group moves with its division
   // field, within its program: GroupMoves); an offering's set and activity, which are what it is.

@@ -31,6 +31,7 @@ import {
   realDivisionsOf
 } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
+import { eventWords } from "c/shoreshLists";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
 import {
@@ -1676,16 +1677,7 @@ export default class ShoreshCampSetup extends LightningElement {
    * the approved mock-up and the desktop say it (the screen's own name already says "Special").
    */
   get eventWords() {
-    const t = this.terms;
-    if (t.s("SpecialEvent") === "Special event") {
-      return { s: "Event", p: "Events", sIn: "event", pIn: "events" };
-    }
-    return {
-      s: t.s("SpecialEvent"),
-      p: t.p("SpecialEvent"),
-      sIn: t.sIn("SpecialEvent"),
-      pIn: t.pIn("SpecialEvent")
-    };
+    return eventWords(this.terms);
   }
 
   get special() {

@@ -7952,6 +7952,18 @@ FIELD.Week;/*
  * and linked choices (slice E8).
  */
 FIELD.Offering;/*
+ * The Special events screen's list (ADR 0014; docs/protocol/special.md SPECIAL-2.3 to 2.7): its
+ * special days and events in one list, one row each, as the desktop's one table of both kinds
+ * (SpecialEventsScreen.jsx: Name, Type) with what an item has there besides (EventDetail: notes,
+ * and an event's place). A row's Type says which kind it is, and a row is matched only with the
+ * season's items of that kind (a special day and an event may share a name, ADR 0014 choice 7):
+ * the list is scoped by kind as a program's lists are by program (scope.js resolveKinds).
+ *
+ * Not on the list: an item's schedule and the days it is on (worked out, never typed; putting
+ * one on a day stays on the grid), and a special day's time blocks, which a new one takes from
+ * the camp's regular day as one added by hand does (ImportListSaves, SpecialDaySeed).
+ */
+FIELD.SpecialEvent;/*
  * The setup lists a screen can import and download (slice 4c), one layout per screen: the same
  * columns for the empty list, "Download this list", and the screen's sheet in the camp
  * workbook, so whatever Shoresh writes reads back with no changes. Headings are in the camp's

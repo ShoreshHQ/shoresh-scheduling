@@ -25,6 +25,9 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     // The Electives screen's list: sets, then their offerings (of activities added above).
     'ElectiveSet',
     'Offering',
+    // The Special events screen's list (SPECIAL-2.3), after the places an event names.
+    'SpecialDay',
+    'SpecialEvent',
     'WeekException'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
@@ -152,6 +155,8 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     }
     writeChanged(kind, entries, rows);
     writeLater(type, rows, later);
+    // SPECIAL-2.6: a special day the list adds starts from the regular day, as one by hand.
+    new ImportListSeeds(writer.result).seed(kind, entries, rows);
     if (kind == 'Activity' || kind == 'RecurringActivity') {
       new ImportListWho(writer, kind, plan.seasonId).save(entries, rows);
     }

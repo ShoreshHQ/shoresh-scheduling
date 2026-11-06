@@ -47,6 +47,41 @@ public with sharing class SpecialDaySeed {
   }
 
   /**
+   * Starts each special day a list just added from the regular day (SPECIAL-2.6), as seed() does
+   * one added by hand: the same plan for each, worked out once and saved in one write, so a long
+   * list costs no more queries than one day. The days are new, so each plan is a first save
+   * (revision 1; Undo keeps one saved again since). Returns what they started from, as seed()
+   * does; null when the list added none.
+   */
+  public static Seed seedAll(Id seasonId, List<Id> specialDayIds) {
+    if (specialDayIds.isEmpty()) {
+      return null;
+    }
+    SpecialDayStart start = startOf(seasonId);
+    if (start == null) {
+      return new Seed();
+    }
+    List<String> texts = ScheduleGridParts.split(start.grid);
+    List<PlanPart__c> parts = new List<PlanPart__c>();
+    for (Id dayId : specialDayIds) {
+      for (Integer i = 0; i < texts.size(); i++) {
+        parts.add(
+          new PlanPart__c(
+            Season__c = seasonId,
+            SpecialDay__c = dayId,
+            Part__c = i + 1,
+            Plan__c = texts[i],
+            GridFormatVersion__c = ScheduleGridLocks.formatOf(start.grid),
+            Revision__c = 1
+          )
+        );
+      }
+    }
+    UserModeWrites.save(parts);
+    return start.seed;
+  }
+
+  /**
    * The time blocks a special day of the season starts with, as the setup is now: how an import
    * tells whether the director changed them (SpecialImportFrame). One query.
    */

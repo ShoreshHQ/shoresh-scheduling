@@ -107,8 +107,8 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
     - The season read (`SeasonSetupReader`) carries them (`SpecialItems.forSeason`: the items,
       each plan in brief and its days, in four queries for any number). Someone who may not read
       the four objects gets none rather than a refusal of the whole season.
-    - Not on this screen yet: the mock-up's **Import a list** and **Download this list** (no
-      import or download of special items yet), and putting an item on a day (slice 4).
+    - Not on this screen yet: putting an item on a day (slice 4). The mock-up's **Import a
+      list** and **Download this list** came later (choice 37).
 
 12. **A special day starts from the camp's regular day** (desktop "seeded from time blocks" and
     "bring recurring events in"). The desktop asks "Start from your time blocks?" after a special
@@ -543,6 +543,39 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
     question), and in the test org by `scripts/a11y-browser-check.mjs` (Take off by keyboard in
     the details, what comes back said, focus on Put back, axe; the step no longer takes it off
     by Apex before deleting it).
+37. **Import a list and Download this list** (2026-11-05, Greg: build it now; protocol
+    SPECIAL-2.3 to 2.8), on the rail as on every setup screen, through the one shared
+    `c/shoreshListImport` and its review (laid into the screen's two sections, Leave out, Keep or
+    Change, deleted-before with Bring back), paste and the file limits with it:
+    - **One list of both kinds**, as the desktop's one table of them (`SpecialEventsScreen.jsx`:
+      Name, Type): **Name**, **Type** (the camp's word for a special day, or "Event" as this
+      screen says it), **Where** (an event's place; blank for a special day, which is the whole
+      camp) and **Notes** (`c/shoreshLists` `specialScreen.js`). The desktop has no import or
+      download of this list, and its list carries no program or time blocks for a special day,
+      so neither does this one. Schedule and Placed on are worked out, never typed; putting an
+      item on a day stays on the grid. Not a sheet of the worksheet: items stay in their season
+      (choice 2).
+    - **A row is matched within its Type**, as a program's row within its program (`scope:
+"kind"`, `scope.js` `resolveKinds`): a special day and an event of one name (choice 7) are
+      two items. A Type that is neither, or a place on a special day, can't be read.
+    - **Saved by the list save** (`ImportListSaves`, `ImportListRows`: `SpecialDay` and
+      `SpecialEvent`, their Name and Notes, an event's Location; names never change), user mode,
+      all or none, every Id checked to be in the season (`ImportKeys`), with **Undo this
+      import** (`ImportUndoDeletes`: an event put on a day or given a schedule since is kept, as
+      a special day whose schedule was saved since already is).
+    - **A special day a list adds starts from the regular day**, as one added in its blank row
+      (choice 12), in the same save: `SpecialDaySeed.seedAll` works the plan out once and saves
+      every new day's in one write (`ImportListSeeds`), so 30 new days cost no more queries than one. What was not
+      brought in is named in the import's summary, in the blank row's words ("Not brought in,
+      since they don't run every day: Swim."), and an AI's `import_list` answer says the same
+      (`c/shoreshLists` seeded.js is the one wording).
+    - **Deleting one on the screen is remembered** (`SetupDeletionSpecials`: "deleted|SpecialDay||Field
+      Day"), so a later list leaves it out with Bring back.
+    - The AI's `import_list` and `download_setup` take `specialEvents` too (API parity).
+    - Checked by `ImportListSpecialTest`, `shoreshLists` `special.test.js` and `contract.test.js`,
+      `shoreshListImport` (the two sections), `shoreshCampSetup` (the rail),
+      `connect` `files.test.js`, and in the test org by `scripts/a11y-browser-check.mjs --only
+lists` (download, import one changed item, cancel).
 
 ## Names
 

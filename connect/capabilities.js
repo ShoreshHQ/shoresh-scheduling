@@ -1626,10 +1626,11 @@ const CAPABILITIES = [
           "activities",
           "fixedActivities",
           "recurringActivities",
-          "electives"
+          "electives",
+          "specialEvents"
         ],
         description:
-          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, or electives (offerings, not camper choices)."
+          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (offerings, not camper choices), or special events (special days and events, by Type)."
       },
       sheet: {
         type: "string",
@@ -1919,10 +1920,11 @@ const CAPABILITIES = [
             "activities",
             "fixedActivities",
             "recurringActivities",
-            "electives"
+            "electives",
+            "specialEvents"
           ],
           description:
-            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, or electives (offerings)."
+            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (offerings), or special events (special days and events)."
         }
       },
       additionalProperties: false

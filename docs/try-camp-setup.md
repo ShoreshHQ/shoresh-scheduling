@@ -1152,7 +1152,21 @@ say).
    **Open schedule**.
 10. For _Carnival_ (an event), **Open schedule** says to add a time block and a station. Click
     **+ Station** and name it _Blue_, then **+ Time block**: the grid appears with Blue across.
-11. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
+11. On the rail, next to the counts, are **Import a list** and **Download this list**, as on
+    every setup screen. Click **Download this list**: an Excel file named for the screen and
+    season (_Special events - …xlsx_) saves with **Name**, **Type**, **Where** and **Notes**: one row per special day
+    (_Special day_, Where blank) and per event (_Event_, its place).
+12. In that file give _Carnival_ new notes and add a row _Talent Show_, _Event_, at one of your
+    places. Click **Import a list** and choose the file: the lists make way for it, laid into the
+    same two sections. _Field Day_ is there as it is, _Carnival_ shows its old notes crossed out
+    beside the new with **Keep** and **Change**, and _Talent Show_ is a dashed new row with
+    **Leave out**. A row whose Type is neither (say _Trip_) is marked and says why. Click
+    **Change**, then the button that says what saving does (**Add 1, change 1**): both are saved,
+    and **Undo this import** takes them back. Click **Cancel** instead to save nothing.
+13. A special day added this way starts from your regular day, as one added in its blank row
+    does. Delete one, then import a list that names it again: it is listed as deleted before,
+    with **Bring back**.
+14. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
 
 ## 30. Both schedules: a rainy day
 
@@ -1453,8 +1467,6 @@ permission sets it needs instead.
 
 ## What is not here yet
 
-- Special events: Import a list / Download this list on the Special events list come in a later
-  slice.
 - Electives: one roster for a linked choice across its periods, and a camper's week on screen,
   come later (each camper's week is in the Camper schedules download now).
 - There is no camp map (dropped).

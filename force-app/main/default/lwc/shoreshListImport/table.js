@@ -68,11 +68,13 @@ function sectionMaker(p, setup) {
       ...(p.rows || []).map((r) => r.programName)
     ].filter((name) => name)
   );
-  const several = !!screen.scope && scopes.size > 1;
+  // The Special events list is always in the screen's two sections (sectionOf).
+  const several = !!screen.scope && (scopes.size > 1 || !!screen.sectionOf);
   const blank = column ? `No ${column.heading.toLowerCase()}` : "";
   const label = (scope, value) => {
     const own = column ? value || blank : "";
-    return [several ? scope || "" : "", own].filter((x) => x).join(" · ");
+    const named = screen.sectionOf ? screen.sectionOf(scope) : scope;
+    return [several ? named || "" : "", own].filter((x) => x).join(" · ");
   };
   return {
     // An item set up: from the record.

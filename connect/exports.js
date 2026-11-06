@@ -163,9 +163,11 @@ function setupFile(m, body, input, t) {
     };
   }
   const screenName = m.screenLabels(t)[input.list];
-  if (!m.LIST_SCREENS.includes(input.list) || !screenName) {
+  // The camp workbook's lists, and Special events' (not in the worksheet: items stay in their season).
+  const lists = [...m.LIST_SCREENS, "specialEvents"];
+  if (!lists.includes(input.list) || !screenName) {
     return {
-      problem: `list is worksheet or one of: ${m.LIST_SCREENS.join(", ")}.`
+      problem: `list is worksheet or one of: ${lists.join(", ")}.`
     };
   }
   return {

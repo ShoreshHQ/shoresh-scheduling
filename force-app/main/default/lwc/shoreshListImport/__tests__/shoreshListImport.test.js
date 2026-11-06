@@ -874,6 +874,124 @@ describe("laid into the screen's own table (decision 56)", () => {
   });
 });
 
+describe("the Special events list (SPECIAL-2.3)", () => {
+  // A made-up camp: two special days and an event at the Pool.
+  const SPECIAL = {
+    ...SETUP,
+    special: {
+      specialDays: [
+        { Id: "sd1", Name: "Color War", Notes__c: null },
+        { Id: "sd2", Name: "Visiting Day", Notes__c: null }
+      ],
+      specialEvents: [
+        { Id: "ev1", Name: "Carnival", Location__c: "l2", Notes__c: null }
+      ],
+      briefs: []
+    }
+  };
+  const FILE = [
+    "Name,Type,Where,Notes",
+    "Color War,Special day,,",
+    "Maccabiah,Special day,,Three days",
+    "Carnival,Event,Gym,",
+    "Talent Show,Event,Gym,",
+    "Overnight,Trip,,"
+  ].join("\n");
+
+  beforeEach(() => {
+    getAnswers.mockResolvedValue([]);
+    saveList.mockResolvedValue({
+      added: { SpecialEvent: 1 },
+      changed: { SpecialEvent: 1 },
+      importId: "imp1",
+      seeded: {
+        program: "Main",
+        timeBlocks: 3,
+        broughtIn: ["Lunch"],
+        notEveryDay: ["Swim"],
+        notEveryWeek: [],
+        otherTimes: [],
+        slotTaken: []
+      }
+    });
+  });
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
+
+  function table(element) {
+    return $$(element, ".part").map((part) => ({
+      label: part.dataset.partLabel,
+      rows: [...part.querySelectorAll("tr[data-kind]")].map((tr) => [
+        tr.dataset.row,
+        tr.dataset.kind
+      ])
+    }));
+  }
+
+  it("is laid into the screen's two sections: special days, then events, a row it can't read marked", async () => {
+    const element = await openWith(FILE, {
+      screenKey: "specialEvents",
+      setup: SPECIAL
+    });
+    expect(table(element)).toEqual([
+      {
+        label: "Special days",
+        rows: [
+          ["Color War", "same"],
+          ["Visiting Day", "same"],
+          ["Maccabiah", "new"]
+        ]
+      },
+      {
+        label: "Events",
+        rows: [
+          ["Carnival", "changed"],
+          ["Talent Show", "new"]
+        ]
+      },
+      { label: "Review here", rows: [["Overnight", "unreadable"]] }
+    ]);
+    // A difference is Keep or Change; a new row has Leave out.
+    const carnival = $(element, '[data-row="Carnival"]');
+    expect(textOf(carnival.querySelector(".old"))).toBe("was Pool");
+    choice("Change", carnival).click();
+    await flush();
+    const leave = [...element.shadowRoot.querySelectorAll("button")].find(
+      (b) => b.getAttribute("aria-label") === "Leave out Maccabiah"
+    );
+    leave.click();
+    await flush();
+    expect(rowsOf(element, "skipped")).toEqual(["Maccabiah"]);
+    saveOf(element).click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(plan.screen).toBe("specialEvents");
+    // What a new special day left out of the regular day is said, as its blank row says it.
+    expect(
+      $$(element, '[data-id="summary"] li').map((li) => textOf(li))
+    ).toContain("Not brought in, since they don't run every day: Swim.");
+    expect(plan.records).toEqual([
+      {
+        kind: "SpecialEvent",
+        id: "ev1",
+        fields: {},
+        refs: { Location__c: "l1" }
+      },
+      {
+        kind: "SpecialEvent",
+        key: "SpecialItem:SpecialEvent:Talent Show",
+        fields: { Name: "Talent Show", Notes__c: null },
+        refs: { Location__c: "l1" }
+      }
+    ]);
+  });
+});
+
 describe("Download this list", () => {
   function panel(setup) {
     const element = createElement("c-shoresh-list-import", {

@@ -134,10 +134,13 @@ public with sharing class SetupDeletions {
     return null;
   }
 
-  /** An elective set or an offering (SetupDeletionElectives), as an item (with no camp for anything else). */
+  /**
+   * An elective set or an offering (SetupDeletionElectives), or a special day or event
+   * (SetupDeletionSpecials), as an item (with no camp for anything else).
+   */
   private static Item electiveItemOf(Id recordId) {
     // Nothing found has no camp: remember() leaves it.
-    SetupDeletionElectives.Found found = SetupDeletionElectives.of(recordId);
+    SetupDeletionElectives.Found found = SetupDeletionSpecials.of(recordId);
     Item item = new Item(found.kind, found.name, found.campId);
     item.scope = found.scope;
     return item;

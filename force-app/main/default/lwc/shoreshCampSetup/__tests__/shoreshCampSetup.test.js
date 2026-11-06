@@ -4505,6 +4505,28 @@ describe("c-shoresh-camp-setup", () => {
         )
       ].map((cell) => cell.textContent);
 
+    it("SPECIAL-2.3: the rail has Import a list and Download this list; the import takes the rail's place, then the lists'", async () => {
+      const element = await renderSpecial();
+      const screen = q(element, '[data-screen="specialEvents"]');
+      const importer = screen.querySelector(
+        '[data-id="setup-rail"] c-shoresh-list-import'
+      );
+      expect([importer.variant, importer.screenKey]).toEqual([
+        "rail",
+        "specialEvents"
+      ]);
+      const tell = async (detail) => {
+        importer.dispatchEvent(new CustomEvent("listopen", { detail }));
+        await flush();
+      };
+      await tell({ open: true, review: false });
+      expect(screen.className).toContain("screen_importing");
+      await tell({ open: true, review: true });
+      expect(screen.className).toContain("screen_import-review");
+      await tell({ open: false, review: false });
+      expect(screen.className).not.toContain("screen_importing");
+    });
+
     it("opens from the menu: one list of special days and events, counted on the rail", async () => {
       const element = await renderSpecial();
       expect(shownScreens(element)).toEqual(["specialEvents"]);
