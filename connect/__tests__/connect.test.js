@@ -3392,7 +3392,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(both.records).toHaveLength(4);
     expect(await narrowed({ day: "Sunday" })).toMatchObject({
       ok: false,
-      text: 'Week 1 has no day "Sunday" in its schedule.'
+      text: 'Week 1 has no day "Sunday" in its schedule. The days: Monday, Tuesday.'
     });
     expect(await narrowed({ group: "Bunk 9" })).toMatchObject({
       ok: false,
@@ -3509,6 +3509,96 @@ describe("Shoresh for AI tools and the command line", () => {
       ok: false,
       text: "Week 1 hasn't been built for Main yet, so it has no draft."
     });
+  });
+
+  /** read_week_draft on a Manual Build week of Bunk 1 and Bunk 2, changed by `change`. */
+  const draftAnswer = async (change, extra = {}) => {
+    const LWC = "../../force-app/main/default/lwc";
+    const modules = (files) => async () =>
+      Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
+    const shared = [
+      "shoreshGeneratedWeek/build.js",
+      "shoreshTerms/shoreshTerms.js",
+      "shoreshGeneratedSchedule/counter.js",
+      "shoreshWeekEditor/measure.js"
+    ];
+    const fixture = require(
+      `${LWC}/shoreshWeekEditor/__tests__/data/draftFixture.js`
+    );
+    const draft = fixture.draft(fixture.WITH_SOCCER, ["1,2,", "1,,"]);
+    draft.schedule.days = draft.schedule.days.map(change);
+    return call(
+      "read_week_draft",
+      {
+        season: "Summer 2026",
+        week: "Week 1",
+        program: "Main",
+        schedule: "Manual Build",
+        ...extra
+      },
+      {
+        run: async () =>
+          `HTTP/1.1 200\n\n${JSON.stringify({ draft, setup: {}, labels: [], accepted: "[]" })}`,
+        checks: modules([
+          ...shared,
+          "shoreshWeekEditor/manualChecks.js",
+          "shoreshWeekChecks/lines.js"
+        ]),
+        edits: modules([
+          ...shared,
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ])
+      }
+    );
+  };
+
+  // API-1.123
+  it("draftSameNamedGroupsStayApart: two groups with one name are said, each row says which it is, and a filter that can't tell them apart is refused in the cell edits' words", async () => {
+    const twoBunkOnes = (day) => ({
+      ...day,
+      groups: day.groups.map((g) => ({ ...g, name: "Bunk 1" }))
+    });
+    const got = await draftAnswer(twoBunkOnes);
+    expect(got.ok).toBe(true);
+    expect(got.text.indexOf("groups_with_the_same_name")).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
+    const answer = JSON.parse(got.text);
+    expect(answer.groups_with_the_same_name).toEqual(["Bunk 1"]);
+    const notes = answer.columns.indexOf("notes");
+    const time = answer.columns.indexOf("time_block");
+    const activity = answer.columns.indexOf("activity");
+    expect(
+      answer.records
+        .filter((r) => r[time] === "Period 2")
+        .slice(0, 2)
+        .map((r) => [r[activity], r[notes]])
+    ).toEqual([
+      ["Soccer", "group 1 of 2 called Bunk 1"],
+      ["Open", "group 2 of 2 called Bunk 1"]
+    ]);
+    expect(await draftAnswer(twoBunkOnes, { group: "bunk 1" })).toMatchObject({
+      ok: false,
+      text: 'Two groups are called "bunk 1" on that day. Nothing was changed.'
+    });
+  });
+
+  // API-1.123
+  it("draftDaysNotReadAreNeverRefused: when no day can be read the answer says so, for any group or day asked for, instead of refusing the group", async () => {
+    const unread = (day) => ({ ...day, problem: "It can't be opened." });
+    for (const extra of [{}, { group: "Bunk 1" }, { group: "Bunk 9" }]) {
+      const got = await draftAnswer(unread, extra);
+      expect(got.ok).toBe(true);
+      const answer = JSON.parse(got.text);
+      expect(answer.days_not_read.length).toBeGreaterThan(0);
+      expect(answer.days_not_read[0].problem).toBe("It can't be opened.");
+      expect(answer.records).toEqual([]);
+      expect(answer.checks).toBeDefined();
+    }
   });
 
   // API-1.44, API-1.45
