@@ -3468,10 +3468,16 @@ describe("Shoresh for AI tools and the command line", () => {
                     name: "Chug A",
                     kind: "E",
                     gone: false
+                  },
+                  {
+                    id: "a0R000000000001AAA",
+                    name: "Rest",
+                    kind: "R",
+                    gone: false
                   }
                 ],
                 rows: [
-                  `1,${day.items.length + 1},${day.items.length + 2},`,
+                  `1,${day.items.length + 1},${day.items.length + 2},${day.items.length + 3}`,
                   day.rows[1]
                 ]
               }
@@ -3488,17 +3494,52 @@ describe("Shoresh for AI tools and the command line", () => {
         })
       ).text
     );
-    expect(rows(kinds).slice(1, 3)).toEqual([
+    expect(rows(kinds).slice(1, 4)).toEqual([
       expect.objectContaining({
         activity: "Color War",
         notes: "special event"
       }),
-      expect.objectContaining({ activity: "Chug A", notes: "elective" })
+      expect.objectContaining({ activity: "Chug A", notes: "elective set" }),
+      expect.objectContaining({
+        activity: "Rest",
+        notes: "locked, recurring activity"
+      })
     ]);
     expect(kinds.days_not_read).toEqual([
       { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
     ]);
     expect(kinds.records).toHaveLength(8);
+
+    // CORE-1.0: the kinds in the camp's own words, as typed; the standard ones in lower case.
+    const custom = (term, singular) => ({
+      term,
+      singular,
+      plural: `${singular}s`,
+      isCustom: true
+    });
+    const inCampWords = JSON.parse(
+      (
+        await call("read_week_draft", asked, {
+          run: reading({
+            ...varied,
+            labels: [
+              custom("ElectiveSet", "Chug"),
+              custom("SpecialEvent", "Maccabiah"),
+              custom("FixedActivity", "Flag time"),
+              custom("RecurringActivity", "Rest time")
+            ]
+          }),
+          checks,
+          edits
+        })
+      ).text
+    );
+    expect(rows(inCampWords).slice(0, 4)).toEqual([
+      expect.objectContaining({ notes: "locked, Flag time" }),
+      expect.objectContaining({ activity: "Color War", notes: "Maccabiah" }),
+      expect.objectContaining({ activity: "Chug A", notes: "Chug" }),
+      expect.objectContaining({ activity: "Rest", notes: "locked, Rest time" })
+    ]);
 
     // The counter, exactly as read_week_checks gives it on the same week.
     const counted = await call("read_week_checks", asked, {

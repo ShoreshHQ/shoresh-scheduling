@@ -494,12 +494,12 @@ function lockedCells(m, body) {
   return named;
 }
 
-/** What a cell holds that isn't an activity, as its identity says (handEdits.js nameOfSlot). */
+/** The camp's word for what a cell holds if not an activity, by its identity (nameOfSlot). */
 const KINDS = {
-  "S:": "special event",
-  "E:": "elective",
-  "F:": "fixed activity",
-  "R:": "recurring activity"
+  "S:": "SpecialEvent",
+  "E:": "ElectiveSet",
+  "F:": "FixedActivity",
+  "R:": "RecurringActivity"
 };
 
 /** A draft row's values, in order; notes is left off a row that has none. */
@@ -615,7 +615,7 @@ function draftOf(m, body, input) {
           ...(cells.some((slot) => ctx.isAwayOn(ctx.week, d, g, slot.block))
             ? ["away"]
             : []),
-          ...(kind ? [kind] : []),
+          ...(kind ? [ctx.t.sIn(kind)] : []),
           ...(named.length > 1
             ? [
                 `group ${named.indexOf(group) + 1} of ${named.length} called ${group.name}`
