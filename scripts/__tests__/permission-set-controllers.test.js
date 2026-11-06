@@ -29,6 +29,20 @@ function screenClasses() {
     .sort();
 }
 
+// A web address an AI, the command line or an outside system calls.
+function webClasses() {
+  return fs
+    .readdirSync(CLASSES)
+    .filter((f) => f.endsWith(".cls"))
+    .filter((f) =>
+      /^\s*@RestResource\b/im.test(
+        codeOf(fs.readFileSync(path.join(CLASSES, f), "utf8"))
+      )
+    )
+    .map((f) => f.replace(/\.cls$/, ""))
+    .sort();
+}
+
 function openedClasses() {
   const xml = fs.readFileSync(PERMISSION_SET, "utf8");
   return [...xml.matchAll(/<apexClass>\s*(\w+)\s*<\/apexClass>/g)].map(
@@ -44,5 +58,12 @@ describe("Shoresh Scheduler permission set", () => {
   it("opens every class a screen calls", () => {
     const opened = new Set(openedClasses());
     expect(screenClasses().filter((c) => !opened.has(c))).toEqual([]);
+  });
+
+  // API-4.8
+  it("schedulerOpensEveryWebAddress: opens every class an AI or the command line calls", () => {
+    const opened = new Set(openedClasses());
+    expect(webClasses()).toContain("AgentSeasons");
+    expect(webClasses().filter((c) => !opened.has(c))).toEqual([]);
   });
 });

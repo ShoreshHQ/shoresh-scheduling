@@ -2,6 +2,10 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <description
   >Lets an outside system say which group (bunk) each camper is in. It cannot delete anything.</description>
+    <classAccesses>
+        <apexClass>IncomingCamperGroup</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>false</editable>
         <field>Camper__c.OutsideId__c</field>

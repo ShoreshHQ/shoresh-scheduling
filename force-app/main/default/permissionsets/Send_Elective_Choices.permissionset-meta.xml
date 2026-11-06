@@ -2,6 +2,10 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <description
   >Lets an outside system send each camper's elective choices. It cannot delete anything.</description>
+    <classAccesses>
+        <apexClass>IncomingCamperElectiveChoice</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>false</editable>
         <field>Camper__c.OutsideId__c</field>

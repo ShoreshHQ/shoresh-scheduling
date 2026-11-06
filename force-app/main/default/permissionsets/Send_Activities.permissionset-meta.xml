@@ -2,6 +2,10 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <description
   >Lets an outside system add and change activities. It cannot delete them.</description>
+    <classAccesses>
+        <apexClass>IncomingActivity</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Activity__c.GroupsAtOnce__c</field>
