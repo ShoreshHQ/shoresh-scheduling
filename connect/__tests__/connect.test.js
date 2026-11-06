@@ -3261,7 +3261,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.123
-  it("draftReadAsItsScreen: read_week_draft reads what the counter reads at its own address, lays the cells out as the published read's rows with the cell edits' own reading (locked, away, Open, special days), and gives the counter and, on Generated Schedule, seen", async () => {
+  it("draftReadAsItsScreen: read_week_draft reads what the counter reads at its own address, gives the counter and, on Generated Schedule, seen ahead of compact rows laid out with the cell edits' own reading (the grid's padlocks, away, Open, kinds, special days, days not read), and narrows the rows to a day or group", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const modules = (files) => async () =>
       Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
@@ -3321,34 +3321,138 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(got.ok).toBe(true);
     expect(got.about).toBe(byName("read_week_draft").about);
+    // A long answer cut short loses cells, never the problems or seen.
+    expect(got.text).not.toContain("\n");
+    expect(got.text.indexOf('"checks"')).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
+    expect(got.text.indexOf('"seen"')).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
     const answer = JSON.parse(got.text);
+    const rows = (a) =>
+      a.records.map((r) =>
+        Object.fromEntries(r.map((value, i) => [a.columns[i], value]))
+      );
     expect(answer.schedule).toBe("Generated Schedule");
     expect(answer.records).toHaveLength(16);
-    expect(answer.records.slice(4, 8)).toEqual([
+    expect(rows(answer).slice(4, 8)).toEqual([
       {
-        week: "Week 1",
         date: "2026-06-29",
         day: "Monday",
         group: "Bunk 2",
         time_block: "Flag",
         start_time: "08:30",
         end_time: "09:00",
-        activity: "Flagpole"
+        activity: "Flagpole",
+        // The grid's padlock on a fixed activity, though no one locked it.
+        notes: "locked, fixed activity"
       },
       expect.objectContaining({ time_block: "Period 1", activity: "Art" }),
       expect.objectContaining({
         time_block: "Period 2",
         activity: "Swim",
-        locked: true
+        notes: "locked"
       }),
       expect.objectContaining({
         time_block: "Period 3",
         activity: "Open",
-        away: true
+        notes: "away"
       })
     ]);
-    expect(answer.records.filter((r) => r.locked)).toHaveLength(1);
+    // Monday and Tuesday's four Flagpoles, and the one cell the director locked.
+    expect(
+      rows(answer).filter((r) => r.notes?.includes("locked"))
+    ).toHaveLength(5);
     expect(answer.seen).toBe("2026-06-29:1");
+
+    // One day or one group: fewer rows, the same counter; never no rows for a wrong name.
+    const narrowed = async (extra) =>
+      call(
+        "read_week_draft",
+        { ...asked, ...extra },
+        {
+          run: reading(read),
+          checks,
+          edits
+        }
+      );
+    const monday = JSON.parse((await narrowed({ day: "monday" })).text);
+    expect(monday.records).toHaveLength(8);
+    expect(rows(monday).every((r) => r.date === "2026-06-29")).toBe(true);
+    expect(monday.checks).toEqual(answer.checks);
+    const byDate = JSON.parse((await narrowed({ day: "2026-06-30" })).text);
+    expect(rows(byDate).every((r) => r.day === "Tuesday")).toBe(true);
+    const bunk = JSON.parse((await narrowed({ group: "bunk 2" })).text);
+    expect(bunk.records).toHaveLength(8);
+    expect(rows(bunk).every((r) => r.group === "Bunk 2")).toBe(true);
+    const both = JSON.parse(
+      (await narrowed({ day: "Monday", group: "Bunk 2" })).text
+    );
+    expect(both.records).toHaveLength(4);
+    expect(await narrowed({ day: "Sunday" })).toMatchObject({
+      ok: false,
+      text: 'Week 1 has no day "Sunday" in its schedule.'
+    });
+    expect(await narrowed({ group: "Bunk 9" })).toMatchObject({
+      ok: false,
+      text: 'There is no group called "Bunk 9" on Week 1. The groups: Bunk 1, Bunk 2.'
+    });
+
+    // What a cell holds, and a day that can't be read: said, never left out.
+    const varied = {
+      ...read,
+      inputs: {
+        ...inputs,
+        days: inputs.days.map((day, d) =>
+          d === 0
+            ? {
+                ...day,
+                items: [
+                  ...day.items,
+                  {
+                    id: "a0X000000000001AAA",
+                    name: "Color War",
+                    kind: "S",
+                    gone: false
+                  },
+                  {
+                    id: "a0E000000000001AAA",
+                    name: "Chug A",
+                    kind: "E",
+                    gone: false
+                  }
+                ],
+                rows: [
+                  `1,${day.items.length + 1},${day.items.length + 2},`,
+                  day.rows[1]
+                ]
+              }
+            : { ...day, problem: "It can't be opened." }
+        )
+      }
+    };
+    const kinds = JSON.parse(
+      (
+        await call("read_week_draft", asked, {
+          run: reading(varied),
+          checks,
+          edits
+        })
+      ).text
+    );
+    expect(rows(kinds).slice(1, 3)).toEqual([
+      expect.objectContaining({
+        activity: "Color War",
+        notes: "special event"
+      }),
+      expect.objectContaining({ activity: "Chug A", notes: "elective" })
+    ]);
+    expect(kinds.days_not_read).toEqual([
+      { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
+    ]);
+    expect(kinds.records).toHaveLength(8);
+
     // The counter, exactly as read_week_checks gives it on the same week.
     const counted = await call("read_week_checks", asked, {
       run: reading(read),
@@ -3383,7 +3487,7 @@ describe("Shoresh for AI tools and the command line", () => {
       { date: "2026-06-30", day: "Tuesday", special_day: "Color War" }
     ]);
     expect(
-      manualAnswer.records.map((r) => [r.group, r.time_block, r.activity])
+      rows(manualAnswer).map((r) => [r.group, r.time_block, r.activity])
     ).toEqual([
       ["Bunk 1", "Period 1", "Flagpole"],
       ["Bunk 1", "Period 2", "Soccer"],

@@ -495,22 +495,66 @@ function lockedCells(m, body) {
 }
 
 /** What a cell holds that isn't an activity, as its identity says (handEdits.js nameOfSlot). */
-const KINDS = { "S:": "special event", "E:": "elective" };
+const KINDS = {
+  "S:": "special event",
+  "E:": "elective",
+  "F:": "fixed activity",
+  "R:": "recurring activity"
+};
+
+/** A draft row's values, in order; notes is left off a row that has none. */
+const DRAFT_COLUMNS = [
+  "date",
+  "day",
+  "group",
+  "time_block",
+  "start_time",
+  "end_time",
+  "activity",
+  "notes"
+];
 
 /**
- * read_week_draft (API-1.123): the week as its screen has it (contextOf), in the published read's
- * rows (one per thing a group does, day by day, each group in the day's order, consecutive time
- * blocks of one placement as one row), with Open cells said, each cell named as the grid names
- * it (nameOfSlot), and what only the draft has: locked, away, special event or elective. A day a
- * special day takes over is said as that day, not its cells (its own schedule has them); a day
- * that can't be read is said, never left out.
+ * read_week_draft (API-1.123): the week as its screen has it (contextOf), one compact row per
+ * thing a group does (the published read's rows, day by day, each group in the day's order,
+ * consecutive time blocks of one placement as one row), with Open cells said, each cell named as
+ * the grid names it (nameOfSlot), and notes for what only the draft has: locked wherever the grid
+ * shows a padlock, away, and what the cell holds if not a plain activity. A day a special day
+ * takes over is said as that day, not its cells (its own schedule has them); a day that can't be
+ * read is said, never left out. input.day and input.group narrow the rows, never the checks; one
+ * the week doesn't have is refused, so an empty answer can't read as a clean one.
  */
-function draftOf(m, body, weekName) {
+function draftOf(m, body, input) {
   const ctx = contextOf(m, body);
+  const asked = String(input.day || "").trim();
+  const days = ctx.week.filter(
+    (day) =>
+      !asked ||
+      day.dateValue === asked ||
+      fold(ctx.dayNameOf(day.dateValue)) === fold(asked)
+  );
+  if (!days.length) {
+    throw new Refused(
+      `${input.week} has no day "${asked.slice(0, 40)}" in its schedule.`
+    );
+  }
+  if (input.group) {
+    const groups = [
+      ...new Set(
+        ctx.week.flatMap((day) => (day.groups || []).map((g) => g.name))
+      )
+    ];
+    if (!groups.some((name) => fold(name) === fold(input.group))) {
+      throw new Refused(
+        `There is no group called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid("groups", groups)}`
+      );
+    }
+  }
   const records = [];
   const specialDays = [];
   const unread = [];
-  ctx.week.forEach((day, d) => {
+  days.forEach((day) => {
+    const d = ctx.week.indexOf(day);
     const date = day.dateValue;
     const dayName = ctx.dayNameOf(date);
     const special = ctx.replaced.get(date);
@@ -523,41 +567,47 @@ function draftOf(m, body, weekName) {
       return;
     }
     day.groups.forEach((group, g) => {
+      if (input.group && fold(group.name) !== fold(input.group)) return;
       let b = 0;
       while (b < day.blocks.length) {
         const p = m.placement(day, g, b);
         const first = day.blocks[p.first];
         const last = day.blocks[p.first + p.length - 1];
-        const record = {
-          week: weekName,
-          date,
-          day: dayName,
-          group: group.name,
-          time_block: first.name,
-          start_time: String(first.startTime || "").slice(0, 5),
-          end_time: String(last.endTime || "").slice(0, 5),
-          activity: ctx.nameOf(p.slot, day)
-        };
-        const kind = KINDS[String(p.slot).slice(0, 2)];
-        if (kind) record.kind = kind;
         const cells = [];
         for (let i = 0; i < p.length; i++) {
           cells.push({ day: d, group: g, block: p.first + i });
         }
-        if (cells.some((slot) => ctx.isLocked(slot))) record.locked = true;
-        if (cells.some((slot) => ctx.isAwayOn(ctx.week, d, g, slot.block))) {
-          record.away = true;
-        }
-        records.push(record);
+        const kind = KINDS[m.owner(p.slot).slice(0, 2)];
+        // The grid's padlock: the director's Lock, or a fixed or recurring activity's own.
+        const marks = [
+          ...(m.isSetTime(p.slot) || cells.some((slot) => ctx.isLocked(slot))
+            ? ["locked"]
+            : []),
+          ...(cells.some((slot) => ctx.isAwayOn(ctx.week, d, g, slot.block))
+            ? ["away"]
+            : []),
+          ...(kind ? [kind] : [])
+        ];
+        records.push([
+          date,
+          dayName,
+          group.name,
+          first.name,
+          String(first.startTime || "").slice(0, 5),
+          String(last.endTime || "").slice(0, 5),
+          ctx.nameOf(p.slot, day),
+          ...(marks.length ? [marks.join(", ")] : [])
+        ]);
         b = Math.max(b + 1, p.first + p.length);
       }
     });
   });
   return {
-    records,
     ...(specialDays.length ? { special_days: specialDays } : {}),
-    ...(unread.length ? { days_not_read: unread } : {})
+    ...(unread.length ? { days_not_read: unread } : {}),
+    columns: DRAFT_COLUMNS,
+    records
   };
 }
 
-module.exports = { editCells, lockedCells, draftOf };
+module.exports = { Refused, editCells, lockedCells, draftOf };

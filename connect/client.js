@@ -7,7 +7,7 @@
 const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
-const { editCells, lockedCells, draftOf } = require("./cells");
+const { Refused, editCells, lockedCells, draftOf } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
@@ -438,19 +438,30 @@ async function readDraft(capability, input, at, checks, edits) {
   const m = { ...(await checks()), ...(await edits()) };
   const { measure, accepted } = counterOf(m, body);
   const seen = body.inputs && body.inputs.revision;
+  let draft;
+  try {
+    draft = draftOf(m, body, input);
+  } catch (e) {
+    if (e instanceof Refused) {
+      return { ok: false, status: e.status, text: e.message };
+    }
+    throw e;
+  }
+  // What matters most comes first and the rows are compact: a client that cuts a long answer
+  // loses cells, never the problems or seen.
   const read = {
     ...(body.season ? { season: body.season } : {}),
     week: input.week,
     schedule: body.draft ? "Manual Build" : "Generated Schedule",
-    ...draftOf(m, body, input.week),
     checks: m.counterWords(measure, accepted),
-    ...(seen ? { seen } : {})
+    ...(seen ? { seen } : {}),
+    ...draft
   };
   return {
     ok: true,
     status: 200,
     about: capability.about,
-    text: JSON.stringify(read, null, 2)
+    text: JSON.stringify(read)
   };
 }
 

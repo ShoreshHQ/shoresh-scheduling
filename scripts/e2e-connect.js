@@ -214,9 +214,13 @@ function draftCell(text, group, day, time) {
     const answer = JSON.parse(
       text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)
     );
+    const at = (name) => answer.columns.indexOf(name);
     return answer.records.find(
-      (r) => r.group === group && r.day === day && r.time_block === time
-    )?.activity;
+      (r) =>
+        r[at("group")] === group &&
+        r[at("day")] === day &&
+        r[at("time_block")] === time
+    )?.[at("activity")];
   } catch {
     return undefined;
   }

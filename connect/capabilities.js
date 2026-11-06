@@ -690,12 +690,23 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. records has what each group does, day by day and time by time, in read_group_schedule's rows (Open where nothing is placed), each with locked when its cell is locked, away when the group is away, and kind for a special event or an elective. special_days lists the days a special day takes over (read their cells with read_special_schedule). checks is the screen's counter in its words, as read_week_checks gives it. On Generated Schedule it gives the week as you read it (seen): hand that back to change cells, lock or unlock. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective, fixed activity or recurring activity. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
       type: "object",
-      properties: EITHER_WEEK,
+      properties: {
+        ...EITHER_WEEK,
+        day: {
+          type: "string",
+          description:
+            "Only this day's rows: Monday, or its date like 2026-06-29."
+        },
+        group: {
+          type: "string",
+          description: "Only this group's rows, like Bunk 3."
+        }
+      },
       required: ["week"],
       additionalProperties: false
     }
