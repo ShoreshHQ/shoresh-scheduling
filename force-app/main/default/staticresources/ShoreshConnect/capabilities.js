@@ -126,7 +126,7 @@ const LOCK_FIELDS = {
   seen: {
     type: "string",
     description:
-      "The week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
+      "The week as you read it: the seen read_week_draft or read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
   }
 };
 
@@ -135,7 +135,7 @@ const CELL = {
   seen: {
     type: "string",
     description:
-      "On Generated Schedule, the week as you read it: the seen read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
+      "On Generated Schedule, the week as you read it: the seen read_week_draft or read_week_checks gives. If someone changed the week since, nothing is changed; read it again."
   },
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
@@ -545,7 +545,7 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
@@ -683,6 +683,33 @@ const CAPABILITIES = [
       "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: it keeps the week and changes only what setup now forces). Locked cells and hand edits are kept. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
     ),
     buildsWithEngine: true
+  },
+  {
+    name: "read_week_draft",
+    api: "read_week_draft",
+    method: "GET",
+    readsDraft: true,
+    description:
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective, fixed activity or recurring activity. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+    about:
+      "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...EITHER_WEEK,
+        day: {
+          type: "string",
+          description:
+            "Only this day's rows: Monday, or its date like 2026-06-29."
+        },
+        group: {
+          type: "string",
+          description: "Only this group's rows, like Bunk 3."
+        }
+      },
+      required: ["week"],
+      additionalProperties: false
+    }
   },
   {
     name: "read_week_checks",

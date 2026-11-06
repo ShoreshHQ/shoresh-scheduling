@@ -45,6 +45,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentReadDraft</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>GeneratedScheduleController</apexClass>
         <enabled>true</enabled>
     </classAccesses>

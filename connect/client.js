@@ -7,7 +7,7 @@
 const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
-const { editCells, lockedCells } = require("./cells");
+const { Refused, editCells, lockedCells, draftOf } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
@@ -184,6 +184,15 @@ async function callOnce(
   const request = requestFor(capability, input, namespace);
   if (capability.buildsWithEngine) {
     return build(capability, input, at, () => engine(namespace));
+  }
+  if (capability.readsDraft) {
+    return readDraft(
+      capability,
+      input,
+      at,
+      () => checks(namespace),
+      () => edits(namespace)
+    );
   }
   if (capability.checksWithEngine) {
     return weekChecks(
@@ -410,6 +419,50 @@ async function weekChecks(capability, input, at, checks, edits) {
     })
   );
   return kept.ok ? { ...kept, text: `Accepted: ${m.saidOf(line)}.` } : kept;
+}
+
+/**
+ * read_week_draft (API-1.123): reads the week as its screen opens it (GET /v1/read_week_draft,
+ * what the counter reads), lays out its cells as the published read's rows with the cell edits'
+ * own reading of it (cells.js draftOf), and adds the counter in its words and, on Generated
+ * Schedule, the week as read (seen) that its cell edits, lock_cells and unlock_cells hand back.
+ */
+async function readDraft(capability, input, at, checks, edits) {
+  const fields = {};
+  for (const field of ["season", "week", "program", "schedule"]) {
+    if (input[field] !== undefined) fields[field] = input[field];
+  }
+  const got = await at.read(capability.api, fields);
+  if (got.status !== 200) return answer(got);
+  const body = JSON.parse(got.body);
+  const m = { ...(await checks()), ...(await edits()) };
+  const { measure, accepted } = counterOf(m, body);
+  const seen = body.inputs && body.inputs.revision;
+  let draft;
+  try {
+    draft = draftOf(m, body, input);
+  } catch (e) {
+    if (e instanceof Refused) {
+      return { ok: false, status: e.status, text: e.message };
+    }
+    throw e;
+  }
+  // What matters most comes first and the rows are compact: a client that cuts a long answer
+  // loses cells, never the problems or seen.
+  const read = {
+    ...(body.season ? { season: body.season } : {}),
+    week: input.week,
+    schedule: body.draft ? "Manual Build" : "Generated Schedule",
+    checks: m.counterWords(measure, accepted),
+    ...(seen ? { seen } : {}),
+    ...draft
+  };
+  return {
+    ok: true,
+    status: 200,
+    about: capability.about,
+    text: JSON.stringify(read)
+  };
 }
 
 /**

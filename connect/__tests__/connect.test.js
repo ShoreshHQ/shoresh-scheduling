@@ -70,7 +70,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(85);
+    expect(CAPABILITIES).toHaveLength(86);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -3258,6 +3258,347 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
     expect(done).toEqual({ ok: true, status: 200, text: "Published Week 1." });
+  });
+
+  // API-1.123
+  it("draftReadAsItsScreen: read_week_draft reads what the counter reads at its own address, gives the counter and, on Generated Schedule, seen ahead of compact rows laid out with the cell edits' own reading (the grid's padlocks, away, Open, kinds, special days, days not read), and narrows the rows to a day or group", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const modules = (files) => async () =>
+      Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
+    const shared = [
+      "shoreshGeneratedWeek/build.js",
+      "shoreshTerms/shoreshTerms.js",
+      "shoreshGeneratedSchedule/counter.js",
+      "shoreshWeekEditor/measure.js"
+    ];
+    const checks = modules([
+      ...shared,
+      "shoreshWeekEditor/manualChecks.js",
+      "shoreshWeekChecks/lines.js"
+    ]);
+    const edits = modules([
+      ...shared,
+      "shoreshGeneratedSchedule/locks.js",
+      "shoreshWeekEditor/specials.js",
+      "shoreshWeekEditor/slotEdits.js",
+      "shoreshWeekEditor/locks.js",
+      "shoreshWeekEditor/handEdits.js"
+    ]);
+    const reading =
+      (body, seen = []) =>
+      async (args) => {
+        seen.push(args);
+        return `HTTP/1.1 200\n\n${JSON.stringify(body)}`;
+      };
+
+    // Generated Schedule: Bunk 1 Flagpole, Swim, Art, Open; Bunk 2 Flagpole, Art, Swim (locked
+    // on Monday), Open (mornings only, so away).
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: day.dateValue === "2026-06-29" ? ["", ",,1,"] : ["", ""]
+    }));
+    const read = { inputs, setup: {}, labels: [], accepted: "[]" };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const seen = [];
+    const got = await call("read_week_draft", asked, {
+      run: reading(read, seen),
+      checks,
+      edits
+    });
+    expect(seen[0][3]).toBe(
+      "/services/apexrest/v1/read_week_draft?season=Summer+2026&week=Week+1&program=Main"
+    );
+    expect(got.ok).toBe(true);
+    expect(got.about).toBe(byName("read_week_draft").about);
+    // A long answer cut short loses cells, never the problems or seen.
+    expect(got.text).not.toContain("\n");
+    expect(got.text.indexOf('"checks"')).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
+    expect(got.text.indexOf('"seen"')).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
+    const answer = JSON.parse(got.text);
+    const rows = (a) =>
+      a.records.map((r) =>
+        Object.fromEntries(r.map((value, i) => [a.columns[i], value]))
+      );
+    expect(answer.schedule).toBe("Generated Schedule");
+    expect(answer.records).toHaveLength(16);
+    expect(rows(answer).slice(4, 8)).toEqual([
+      {
+        date: "2026-06-29",
+        day: "Monday",
+        group: "Bunk 2",
+        time_block: "Flag",
+        start_time: "08:30",
+        end_time: "09:00",
+        activity: "Flagpole",
+        // The grid's padlock on a fixed activity, though no one locked it.
+        notes: "locked, fixed activity"
+      },
+      expect.objectContaining({ time_block: "Period 1", activity: "Art" }),
+      expect.objectContaining({
+        time_block: "Period 2",
+        activity: "Swim",
+        notes: "locked"
+      }),
+      expect.objectContaining({
+        time_block: "Period 3",
+        activity: "Open",
+        notes: "away"
+      })
+    ]);
+    // Monday and Tuesday's four Flagpoles, and the one cell the director locked.
+    expect(
+      rows(answer).filter((r) => r.notes?.includes("locked"))
+    ).toHaveLength(5);
+    expect(answer.seen).toBe("2026-06-29:1");
+
+    // One day or one group: fewer rows, the same counter; never no rows for a wrong name.
+    const narrowed = async (extra) =>
+      call(
+        "read_week_draft",
+        { ...asked, ...extra },
+        {
+          run: reading(read),
+          checks,
+          edits
+        }
+      );
+    const monday = JSON.parse((await narrowed({ day: "monday" })).text);
+    expect(monday.records).toHaveLength(8);
+    expect(rows(monday).every((r) => r.date === "2026-06-29")).toBe(true);
+    expect(monday.checks).toEqual(answer.checks);
+    const byDate = JSON.parse((await narrowed({ day: "2026-06-30" })).text);
+    expect(rows(byDate).every((r) => r.day === "Tuesday")).toBe(true);
+    const bunk = JSON.parse((await narrowed({ group: "bunk 2" })).text);
+    expect(bunk.records).toHaveLength(8);
+    expect(rows(bunk).every((r) => r.group === "Bunk 2")).toBe(true);
+    const both = JSON.parse(
+      (await narrowed({ day: "Monday", group: "Bunk 2" })).text
+    );
+    expect(both.records).toHaveLength(4);
+    expect(await narrowed({ day: "Sunday" })).toMatchObject({
+      ok: false,
+      text: 'Week 1 has no day "Sunday" in its schedule. The days: Monday, Tuesday.'
+    });
+    expect(await narrowed({ group: "Bunk 9" })).toMatchObject({
+      ok: false,
+      text: 'There is no group called "Bunk 9" on Week 1. The groups: Bunk 1, Bunk 2.'
+    });
+
+    // What a cell holds, and a day that can't be read: said, never left out.
+    const varied = {
+      ...read,
+      inputs: {
+        ...inputs,
+        days: inputs.days.map((day, d) =>
+          d === 0
+            ? {
+                ...day,
+                items: [
+                  ...day.items,
+                  {
+                    id: "a0X000000000001AAA",
+                    name: "Color War",
+                    kind: "S",
+                    gone: false
+                  },
+                  {
+                    id: "a0E000000000001AAA",
+                    name: "Chug A",
+                    kind: "E",
+                    gone: false
+                  }
+                ],
+                rows: [
+                  `1,${day.items.length + 1},${day.items.length + 2},`,
+                  day.rows[1]
+                ]
+              }
+            : { ...day, problem: "It can't be opened." }
+        )
+      }
+    };
+    const kinds = JSON.parse(
+      (
+        await call("read_week_draft", asked, {
+          run: reading(varied),
+          checks,
+          edits
+        })
+      ).text
+    );
+    expect(rows(kinds).slice(1, 3)).toEqual([
+      expect.objectContaining({
+        activity: "Color War",
+        notes: "special event"
+      }),
+      expect.objectContaining({ activity: "Chug A", notes: "elective" })
+    ]);
+    expect(kinds.days_not_read).toEqual([
+      { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
+    ]);
+    expect(kinds.records).toHaveLength(8);
+
+    // The counter, exactly as read_week_checks gives it on the same week.
+    const counted = await call("read_week_checks", asked, {
+      run: reading(read),
+      checks,
+      edits
+    });
+    const { seen: _, locked, ...words } = JSON.parse(counted.text);
+    expect(answer.checks).toEqual(words);
+    expect(locked).toEqual(["Bunk 2 · Monday · Period 2"]);
+
+    // Manual Build: no locks and no seen; Tuesday is a special day, said by its name.
+    const fixture = require(
+      `${LWC}/shoreshWeekEditor/__tests__/data/draftFixture.js`
+    );
+    const draft = {
+      ...fixture.draft(fixture.WITH_SOCCER, ["1,2,", "1,,"]),
+      specials: { days: [{ dateValue: "2026-06-30", name: "Color War" }] }
+    };
+    const manual = await call(
+      "read_week_draft",
+      { ...asked, schedule: "Manual Build" },
+      {
+        run: reading({ draft, setup: {}, labels: [], accepted: "[]" }),
+        checks,
+        edits
+      }
+    );
+    const manualAnswer = JSON.parse(manual.text);
+    expect(manualAnswer.schedule).toBe("Manual Build");
+    expect(manualAnswer.seen).toBeUndefined();
+    expect(manualAnswer.special_days).toEqual([
+      { date: "2026-06-30", day: "Tuesday", special_day: "Color War" }
+    ]);
+    expect(
+      rows(manualAnswer).map((r) => [r.group, r.time_block, r.activity])
+    ).toEqual([
+      ["Bunk 1", "Period 1", "Flagpole"],
+      ["Bunk 1", "Period 2", "Soccer"],
+      ["Bunk 1", "Lunch", "Open"],
+      ["Bunk 2", "Period 1", "Flagpole"],
+      ["Bunk 2", "Period 2", "Open"],
+      ["Bunk 2", "Lunch", "Open"]
+    ]);
+    expect(manualAnswer.checks.placed).toBe("1 of 3 placed");
+
+    // A week never built: Shoresh's own sentence, passed on.
+    const refused = await call("read_week_draft", asked, {
+      run: async () =>
+        `HTTP/1.1 400\n\n${JSON.stringify({ message: "Week 1 hasn't been built for Main yet, so it has no draft." })}`,
+      checks,
+      edits
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      text: "Week 1 hasn't been built for Main yet, so it has no draft."
+    });
+  });
+
+  /** read_week_draft on a Manual Build week of Bunk 1 and Bunk 2, changed by `change`. */
+  const draftAnswer = async (change, extra = {}) => {
+    const LWC = "../../force-app/main/default/lwc";
+    const modules = (files) => async () =>
+      Object.assign({}, ...files.map((f) => require(`${LWC}/${f}`)));
+    const shared = [
+      "shoreshGeneratedWeek/build.js",
+      "shoreshTerms/shoreshTerms.js",
+      "shoreshGeneratedSchedule/counter.js",
+      "shoreshWeekEditor/measure.js"
+    ];
+    const fixture = require(
+      `${LWC}/shoreshWeekEditor/__tests__/data/draftFixture.js`
+    );
+    const draft = fixture.draft(fixture.WITH_SOCCER, ["1,2,", "1,,"]);
+    draft.schedule.days = draft.schedule.days.map(change);
+    return call(
+      "read_week_draft",
+      {
+        season: "Summer 2026",
+        week: "Week 1",
+        program: "Main",
+        schedule: "Manual Build",
+        ...extra
+      },
+      {
+        run: async () =>
+          `HTTP/1.1 200\n\n${JSON.stringify({ draft, setup: {}, labels: [], accepted: "[]" })}`,
+        checks: modules([
+          ...shared,
+          "shoreshWeekEditor/manualChecks.js",
+          "shoreshWeekChecks/lines.js"
+        ]),
+        edits: modules([
+          ...shared,
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ])
+      }
+    );
+  };
+
+  // API-1.123
+  it("draftSameNamedGroupsStayApart: two groups with one name are said, each row says which it is, and a filter that can't tell them apart is refused in the cell edits' words", async () => {
+    const twoBunkOnes = (day) => ({
+      ...day,
+      groups: day.groups.map((g) => ({ ...g, name: "Bunk 1" }))
+    });
+    const got = await draftAnswer(twoBunkOnes);
+    expect(got.ok).toBe(true);
+    expect(got.text.indexOf("groups_with_the_same_name")).toBeLessThan(
+      got.text.indexOf('"records"')
+    );
+    const answer = JSON.parse(got.text);
+    expect(answer.groups_with_the_same_name).toEqual(["Bunk 1"]);
+    const notes = answer.columns.indexOf("notes");
+    const time = answer.columns.indexOf("time_block");
+    const activity = answer.columns.indexOf("activity");
+    expect(
+      answer.records
+        .filter((r) => r[time] === "Period 2")
+        .slice(0, 2)
+        .map((r) => [r[activity], r[notes]])
+    ).toEqual([
+      ["Soccer", "group 1 of 2 called Bunk 1"],
+      ["Open", "group 2 of 2 called Bunk 1"]
+    ]);
+    expect(await draftAnswer(twoBunkOnes, { group: "bunk 1" })).toMatchObject({
+      ok: false,
+      text: 'Two groups are called "bunk 1" on that day. Nothing was changed.'
+    });
+  });
+
+  // API-1.123
+  it("draftDaysNotReadAreNeverRefused: when no day can be read the answer says so, for any group or day asked for, instead of refusing the group", async () => {
+    const unread = (day) => ({ ...day, problem: "It can't be opened." });
+    for (const extra of [{}, { group: "Bunk 1" }, { group: "Bunk 9" }]) {
+      const got = await draftAnswer(unread, extra);
+      expect(got.ok).toBe(true);
+      const answer = JSON.parse(got.text);
+      expect(answer.days_not_read.length).toBeGreaterThan(0);
+      expect(answer.days_not_read[0].problem).toBe("It can't be opened.");
+      expect(answer.records).toEqual([]);
+      expect(answer.checks).toBeDefined();
+    }
   });
 
   // API-1.44, API-1.45

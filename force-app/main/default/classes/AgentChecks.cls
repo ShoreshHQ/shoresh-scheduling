@@ -12,6 +12,15 @@
 global with sharing class AgentChecks {
   @HttpGet
   global static void get() {
+    respond('checks');
+  }
+
+  /**
+   * Answers what the week's screen reads, or why it can't: here and for /v1/read_week_draft
+   * (AgentReadDraft), so the counter and the draft read read the same week. A week never built
+   * has no <what>.
+   */
+  public static void respond(String what) {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
@@ -27,7 +36,7 @@ global with sharing class AgentChecks {
         asked.put(field, RestContext.request.params.get(field));
       }
       AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
-      requireDraft(week);
+      requireDraft(week, what);
       Map<String, Object> read = readOf(week);
       read.put(
         'setup_changes',
@@ -65,17 +74,23 @@ global with sharing class AgentChecks {
 
   /** Refused before the week is built (Generated Schedule) or started (Manual Build). */
   public static void requireDraft(AgentWeeks.Week week) {
+    requireDraft(week, 'checks');
+  }
+
+  private static void requireDraft(AgentWeeks.Week week, String what) {
     if (week.draft == null && !week.manual) {
-      throw new ShoreshException(notBuilt(week));
+      throw new ShoreshException(notBuilt(week, what));
     }
     AgentSchedules.requireDraft(week);
   }
 
-  /** A week never built has no checks: Generated Schedule shows none until it is. */
-  public static String notBuilt(AgentWeeks.Week week) {
+  /** A week never built has no checks or draft: Generated Schedule shows none until it is. */
+  public static String notBuilt(AgentWeeks.Week week, String what) {
     return week.name +
       ' hasn\'t been built for ' +
       week.program.Name +
-      ' yet, so it has no checks.';
+      ' yet, so it has no ' +
+      what +
+      '.';
   }
 }

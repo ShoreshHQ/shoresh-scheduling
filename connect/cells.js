@@ -494,4 +494,155 @@ function lockedCells(m, body) {
   return named;
 }
 
-module.exports = { editCells, lockedCells };
+/** What a cell holds that isn't an activity, as its identity says (handEdits.js nameOfSlot). */
+const KINDS = {
+  "S:": "special event",
+  "E:": "elective",
+  "F:": "fixed activity",
+  "R:": "recurring activity"
+};
+
+/** A draft row's values, in order; notes is left off a row that has none. */
+const DRAFT_COLUMNS = [
+  "date",
+  "day",
+  "group",
+  "time_block",
+  "start_time",
+  "end_time",
+  "activity",
+  "notes"
+];
+
+/**
+ * read_week_draft (API-1.123): the week as its screen has it (contextOf), one compact row per
+ * thing a group does (the published read's rows, day by day, each group in the day's order,
+ * consecutive time blocks of one placement as one row), with Open cells said, each cell named as
+ * the grid names it (nameOfSlot), and notes for what only the draft has: locked wherever the grid
+ * shows a padlock, away, and what the cell holds if not a plain activity. A day a special day
+ * takes over is said as that day, not its cells (its own schedule has them); a day that can't be
+ * read is said, never left out. Groups with one name stay apart: said, and each row notes which
+ * of them it is. input.day and input.group narrow the rows, never the checks; one the week doesn't
+ * have, or a group name two groups share, is refused, so an empty or blended answer can't read as
+ * a clean one.
+ */
+function draftOf(m, body, input) {
+  const ctx = contextOf(m, body);
+  const asked = String(input.day || "").trim();
+  const days = ctx.week.filter(
+    (day) =>
+      !asked ||
+      day.dateValue === asked ||
+      fold(ctx.dayNameOf(day.dateValue)) === fold(asked)
+  );
+  if (!days.length) {
+    throw new Refused(
+      `${input.week} has no day "${asked.slice(0, 40)}" in its schedule. ${namesSaid(
+        "days",
+        ctx.week.map((day) => ctx.dayNameOf(day.dateValue))
+      )}`
+    );
+  }
+  if (input.group) {
+    const read = days.filter(
+      (day) => !day.problem && !ctx.replaced.get(day.dateValue)
+    );
+    // Two groups with the name asked for can't be told apart: refused, as a cell edit is.
+    read.forEach((day) => {
+      const named = day.groups.filter(
+        (g) => fold(g.name) === fold(input.group)
+      );
+      if (named.length > 1) {
+        onlyOne(
+          day.groups,
+          input.group,
+          (g) => [g.name],
+          "group",
+          " on that day"
+        );
+      }
+    });
+    const groups = [
+      ...new Set(read.flatMap((day) => day.groups.map((g) => g.name)))
+    ];
+    // A day that couldn't be read may hold the group: that day is said, not a wrong "no group".
+    if (
+      read.length &&
+      !days.some((day) => day.problem) &&
+      !groups.some((name) => fold(name) === fold(input.group))
+    ) {
+      throw new Refused(
+        `There is no group called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid("groups", groups)}`
+      );
+    }
+  }
+  const records = [];
+  const specialDays = [];
+  const unread = [];
+  const sameNamed = new Set();
+  days.forEach((day) => {
+    const d = ctx.week.indexOf(day);
+    const date = day.dateValue;
+    const dayName = ctx.dayNameOf(date);
+    const special = ctx.replaced.get(date);
+    if (special) {
+      specialDays.push({ date, day: dayName, special_day: special.name });
+      return;
+    }
+    if (day.problem) {
+      unread.push({ date, day: dayName, problem: day.problem });
+      return;
+    }
+    day.groups.forEach((group, g) => {
+      if (input.group && fold(group.name) !== fold(input.group)) return;
+      const named = day.groups.filter((x) => fold(x.name) === fold(group.name));
+      if (named.length > 1) sameNamed.add(group.name);
+      let b = 0;
+      while (b < day.blocks.length) {
+        const p = m.placement(day, g, b);
+        const first = day.blocks[p.first];
+        const last = day.blocks[p.first + p.length - 1];
+        const cells = [];
+        for (let i = 0; i < p.length; i++) {
+          cells.push({ day: d, group: g, block: p.first + i });
+        }
+        const kind = KINDS[m.owner(p.slot).slice(0, 2)];
+        // The grid's padlock: the director's Lock, or a fixed or recurring activity's own.
+        const marks = [
+          ...(m.isSetTime(p.slot) || cells.some((slot) => ctx.isLocked(slot))
+            ? ["locked"]
+            : []),
+          ...(cells.some((slot) => ctx.isAwayOn(ctx.week, d, g, slot.block))
+            ? ["away"]
+            : []),
+          ...(kind ? [kind] : []),
+          ...(named.length > 1
+            ? [
+                `group ${named.indexOf(group) + 1} of ${named.length} called ${group.name}`
+              ]
+            : [])
+        ];
+        records.push([
+          date,
+          dayName,
+          group.name,
+          first.name,
+          String(first.startTime || "").slice(0, 5),
+          String(last.endTime || "").slice(0, 5),
+          ctx.nameOf(p.slot, day),
+          ...(marks.length ? [marks.join(", ")] : [])
+        ]);
+        b = Math.max(b + 1, p.first + p.length);
+      }
+    });
+  });
+  return {
+    ...(specialDays.length ? { special_days: specialDays } : {}),
+    ...(unread.length ? { days_not_read: unread } : {}),
+    ...(sameNamed.size ? { groups_with_the_same_name: [...sameNamed] } : {}),
+    columns: DRAFT_COLUMNS,
+    records
+  };
+}
+
+module.exports = { Refused, editCells, lockedCells, draftOf };
