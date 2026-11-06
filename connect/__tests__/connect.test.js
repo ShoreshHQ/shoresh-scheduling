@@ -496,6 +496,31 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.32
+  it("versionsOfAProgram: list_versions asks for the program it was told, so a camp with several programs can list a week's versions", async () => {
+    const seen = [];
+    await call(
+      "list_versions",
+      { season: "Summer 2026", week: "Week 1", program: "Teens" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            week: "Week 1",
+            program: "Teens",
+            built: true,
+            versions: []
+          }),
+          seen
+        ),
+        versionWords
+      }
+    );
+    expect(seen[0].args[3]).toBe(
+      "/services/apexrest/v1/versions?season=Summer+2026&week=Week+1&program=Teens"
+    );
+  });
+
+  // API-1.32
   it("versionsInThePanelsWords: list_versions reads the panel's own list and says each version in the panel's words", async () => {
     const seen = [];
     const rows = [

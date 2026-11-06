@@ -766,6 +766,7 @@ const CAPABILITIES = [
     name: "list_versions",
     api: "versions",
     method: "GET",
+    queryFields: ["season", "week", "program"],
     listsVersions: true,
     description:
       "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
