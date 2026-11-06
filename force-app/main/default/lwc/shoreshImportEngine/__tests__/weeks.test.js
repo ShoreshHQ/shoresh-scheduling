@@ -329,6 +329,23 @@ describe("INGEST-4.3: one week's day with its own time blocks", () => {
 });
 
 describe("INGEST-4.4: a week named by a date", () => {
+  // INGEST-4.18
+  it("the day an elective file was finalized is not its week", () => {
+    expect(weekInTitle("Chugim · Week A · Final Oct 14", {})).toBeNull();
+    expect(
+      weekInTitle("Chugim · Color War week · Final Oct 14", {})
+    ).toBeNull();
+    expect(withoutWeek("Chugim · Week A · Final Oct 14", {})).toBe(
+      "Chugim · Week A · Final Oct 14"
+    );
+    expect(weekInTitle("Chugim · Week 2 · Final Oct 14", {})).toBe("Week 2");
+    expect(weekInTitle("Chugim · Week of Jul 6 · Final Oct 14", {})).toBe(
+      "Week of Jul 6"
+    );
+    // A camp's own title is read as before.
+    expect(weekInTitle("Final week of Oct 14", {})).toBe("Week of Oct 14");
+  });
+
   const WEEK1 = {
     Id: "w1",
     Name: "Week 1",
