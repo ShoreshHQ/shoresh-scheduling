@@ -310,7 +310,7 @@ function electives(tmp) {
         ["API-1.66", has("Chugim in Week 2"), "the run read"]
       ])
     );
-  // Assign asks first (API-1.106): its preview says what it places and replaces, then the yes.
+  // Assign asks first (API-1.106): its preview says only the seats that change, then the yes.
   const assign = (seen, preview, done) =>
     step(
       "assign_elective_seats",
@@ -340,7 +340,7 @@ function electives(tmp) {
   const once = seatLines(step("read_elective_seats_now", at, "done"));
   assign(
     now(),
-    "3 seats placed from the campers' choices, replacing the 3 seats there now that aren't locked. There is no undo.",
+    "in the version being worked on: no seat changes; 3 seats stay as they are. There is no undo.",
     "seated again"
   );
   step("read_elective_seats_now", at, "done", [
