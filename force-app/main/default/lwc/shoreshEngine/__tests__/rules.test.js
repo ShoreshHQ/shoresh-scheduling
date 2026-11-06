@@ -7,6 +7,7 @@ import {
   FULL,
   MIN_COST,
   generateWeek,
+  MODE,
   NONE_FOR,
   reasonFor,
   RELAX_ORDER,
@@ -119,6 +120,34 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
+  // CORE-4.8
+  it("a hand edit over who an activity is for, or over groups at once or a place, is kept and dotted", () => {
+    const eligible = handEdited({
+      activities: [activity("swim", { eligible: ["g2"], atOnce: null })],
+      groups: [group("g1"), group("g2")],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "swim" }]
+    });
+    expect(at(eligible, 0, "g1", 0)).toBe("swim");
+    expect(flagAt(eligible, 0, "g1", "b0").bends).toEqual([RULE.ELIGIBILITY]);
+    const both = [
+      { day: 0, group: "g1", block: "b0", act: "swim" },
+      { day: 0, group: "g2", block: "b0", act: "swim" }
+    ];
+    const atOnce = handEdited({
+      groups: [group("g1"), group("g2")],
+      activities: [activity("swim", { atOnce: 1 })],
+      cells: both
+    });
+    expect(flagAt(atOnce, 0, "g2", "b0").bends).toEqual([RULE.GROUPS_AT_ONCE]);
+    const place = handEdited({
+      groups: [group("g1"), group("g2")],
+      locations: [{ id: "pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      cells: both
+    });
+    expect(flagAt(place, 0, "g2", "b0").bends).toEqual([RULE.PLACE_CAPACITY]);
+  });
+
   // CORE-4.3, GEN-7.1, GEN-7.8
   it("never puts one group too many at an activity: the cell stays Open, everything taken, in camp words", () => {
     const result = generateWeek({
@@ -215,18 +244,23 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
 
   // CORE-4.7, GEN-7.3
   it("goes over the weekly max before leaving a cell Open, though a limit stops everything else", () => {
+    // Swim is the only thing Bunk g1 can do, so its second day has to go over.
     const result = run({
       days: 2,
-      groups: [group("g1"), group("g2")],
-      activities: [
-        activity("swim", { max: 1, atOnce: null }),
-        activity("arts", { atOnce: 1, max: null })
-      ]
+      groups: [group("g1")],
+      activities: [activity("swim", { max: 1, atOnce: null })]
     });
     expect(result.openCells).toEqual([]);
-    expect(
-      result.flags.every((f) => f.bends.every((r) => r === RULE.WEEKLY_MAX))
-    ).toBe(true);
+    expect(result.flags.map((f) => [f.date, f.bends, f.reason])).toEqual([
+      [dateAt(1), [RULE.WEEKLY_MAX], "Over its weekly limit"]
+    ]);
+    // A limit doesn't give way as the maximum does: the cell stays Open.
+    const limited = run({
+      groups: [group("g1"), group("g2")],
+      activities: [activity("swim", { atOnce: 1 })]
+    });
+    expect(limited.flags).toEqual([]);
+    expect(limited.openCells).toHaveLength(1);
   });
 
   // GEN-3.6
@@ -886,6 +920,32 @@ describe("what is never touched", () => {
     const cells = cellsOf(run(spec).days)[0].g1;
     expect(cells[1]).toEqual({ kind: "A", id: "hike", head: true });
     expect(cells[2]).toEqual({ kind: "A", id: "hike", head: false });
+  });
+
+  // LOCK-4.6
+  it("a fixed activity cleared by hand stays cleared through every build", () => {
+    // As the server reads such a week: Bunk g1's Lunch gone from its row, the cell locked empty.
+    const spec = {
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      activities: [
+        activity("swim", { atOnce: null }),
+        activity("arts", { atOnce: null })
+      ],
+      fixed: [{ id: "lunch", block: "b1", groups: ["g2"] }],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "b1" }]
+    };
+    for (const build of [{}, { option: 2 }, { mode: MODE.FILL_OPEN }]) {
+      const result = run({ ...spec, ...build });
+      expect(at(result, 0, "g1", 1)).toBeNull();
+      expect(at(result, 0, "g2", 1)).toBe("lunch");
+      // Kept empty, not one still to fill.
+      expect(result.openCells).toEqual([]);
+    }
+    // Without the lock the same cell does fill, so it is the lock that keeps it.
+    const { locks, ...unlocked } = spec;
+    expect(locks).toHaveLength(1);
+    expect(at(run(unlocked), 0, "g1", 1)).not.toBeNull();
   });
 
   // CORE-4.6, GEN-2.5
