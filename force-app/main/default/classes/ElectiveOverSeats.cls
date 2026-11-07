@@ -56,6 +56,20 @@ public with sharing class ElectiveOverSeats {
     return null;
   }
 
+  /**
+   * The screen's "needs its seats chosen" for an offering on the table with blank or 0 seats,
+   * seated with no limit (ELECT-4.1), or null.
+   */
+  public static String noSeatsSet(ElectiveSeats.OfferingInfo offering) {
+    return offering.proposed != true &&
+      offering.noLimit != true &&
+      !limited(offering)
+      ? 'Choose how many seats "' +
+        offering.name +
+        '" has: none are set, so it is seated with no limit.'
+      : null;
+  }
+
   /** Campers per offering then, by group. */
   private static Map<String, Integer> countsOf(ElectiveSeats.RunView view) {
     Map<Id, Id> groupOf = new Map<Id, Id>();

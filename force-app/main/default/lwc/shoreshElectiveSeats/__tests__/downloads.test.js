@@ -188,6 +188,22 @@ describe("the full report", () => {
       ["Monday", "Period 1", "Archery", "Ari Brookfield", "Aspen", 2, 2],
       ["Monday", "Period 1", "Archery", "Maya Fernwood", "Aspen", "", ""]
     ]);
+    // ELECT-4.1: 0 seats is no limit, left blank as blank seats are, never "0".
+    const view = finalView();
+    view.offerings = view.offerings.map((o) =>
+      o.id === "o1" ? { ...o, seats: 0 } : o
+    );
+    expect(
+      fullReportSheets(reading(finalDownload({ view })))[1].rows[1]
+    ).toEqual([
+      "Monday",
+      "Period 1",
+      "Archery",
+      "Ari Brookfield",
+      "Aspen",
+      2,
+      ""
+    ]);
     const problems = sheets[2].rows.map((r) => r[0]);
     expect(problems).toEqual(
       expect.arrayContaining([

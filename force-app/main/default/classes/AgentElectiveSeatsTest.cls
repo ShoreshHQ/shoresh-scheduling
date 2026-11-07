@@ -474,7 +474,7 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // ELECT-4.1: 0 seats is no limit, so no one is over it, as the screen shows it.
+  // ELECT-4.1: 0 seats is no limit, so no one is over it, and that is said, as the screen shows it.
   @IsTest
   static void theSeatsReadNeverSaysAnOfferingWithNoSeatsSetIsOver() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -511,10 +511,18 @@ private class AgentElectiveSeatsTest {
         String.valueOf(read[1]).contains('over its seats'),
         String.valueOf(read[1])
       );
+      // ...and that it has none set is said, as the screen's "needs its seats chosen" says it.
+      Assert.isTrue(
+        String.valueOf(read[1])
+          .contains(
+            'Choose how many seats "Archery" has: none are set, so it is seated with no limit.'
+          ),
+        String.valueOf(read[1])
+      );
     }
   }
 
-  // ELECT-4.1: 0 seats is no limit, so a move into it is never refused as full.
+  // ELECT-4.1: 0 seats is no limit, so a move into it is never full, and that is said.
   @IsTest
   static void aMoveIntoAnOfferingWithNoSeatsSetIsNeverFull() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -530,7 +538,11 @@ private class AgentElectiveSeatsTest {
       List<Object> moved = move('Synthetic Camper 1', 'Archery');
       Test.stopTest();
       Assert.areEqual(200, moved[0], String.valueOf(moved[1]));
-      Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', moved[1]);
+      Assert.areEqual(
+        'Moved Synthetic Camper 1 to Archery, locked. ' +
+        'Choose how many seats "Archery" has: none are set, so it is seated with no limit.',
+        moved[1]
+      );
     }
   }
 

@@ -461,6 +461,43 @@ private class OutgoingTest {
     );
   }
 
+  // ELECT-4.1: an offering with 0 seats goes out with blank seats, as one with no limit does, so a
+  // form never reads it as closed.
+  @IsTest
+  static void anOfferingWithNoSeatsSetGoesOutAsNoLimit() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    Database.update(
+      new Offering__c(
+        Id = [
+          SELECT Id
+          FROM Offering__c
+          WHERE Activity__c = :camp.ids.get('Archery')
+          WITH SYSTEM_MODE
+        ]
+        .Id,
+        Seats__c = 0
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Read_Elective_Offerings')) {
+      answer = get(
+        new OutgoingElectiveOfferings(),
+        new Map<String, String>{ 'season' => 'Summer 2026' }
+      );
+    }
+    Map<String, Object> archery;
+    for (Object each : (List<Object>) answer.get('records')) {
+      Map<String, Object> row = (Map<String, Object>) each;
+      if (row.get('activity') == 'Archery') {
+        archery = row;
+      }
+    }
+    Assert.isNotNull(archery, String.valueOf(answer));
+    Assert.isTrue(archery.containsKey('seats'), String.valueOf(archery));
+    Assert.isNull(archery.get('seats'), String.valueOf(archery));
+  }
+
   // API-6.3: a send that fails is answered in one sentence and shown on Settings until a later
   // send of the same thing to the same destination goes through.
   @IsTest
