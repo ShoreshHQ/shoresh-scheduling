@@ -14,7 +14,8 @@
  * Forget; the newest line of a pattern there is now carries its progress and Forget pattern.
  */
 import { PATTERN_PREFIX, keyParts, patternsOf, whose } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
-import { learnedRow, patternRow, shortDate } from "./engine.shoreshLearned.view.mjs";
+import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { learnedRow, patternRow } from "./engine.shoreshLearned.view.mjs";
 
 const time = (row) => Date.parse(row.savedAt || "") || 0;
 const isMarker = (question) =>

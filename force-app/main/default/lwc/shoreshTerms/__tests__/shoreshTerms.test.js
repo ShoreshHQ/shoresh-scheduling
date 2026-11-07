@@ -1,4 +1,4 @@
-import { buildTerms, guessPlural } from "c/shoreshTerms";
+import { buildTerms, guessPlural, shortDate } from "c/shoreshTerms";
 
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -75,5 +75,27 @@ describe("guessPlural (Camp words, wiki decision 56)", () => {
     expect(guessPlural("")).toBe("");
     expect(guessPlural("   ")).toBe("");
     expect(guessPlural(undefined)).toBe("");
+  });
+});
+
+describe("shortDate", () => {
+  // CORE-6.10
+  it("reads month first: a calendar day as it is, a moment as the day it was here", () => {
+    expect(shortDate("2026-07-03")).toBe("Jul 3");
+    expect(shortDate("2026-10-14")).toBe("Oct 14");
+    expect(shortDate(new Date(2026, 9, 14, 12).toISOString())).toBe("Oct 14");
+  });
+
+  it("says nothing for what it can't read", () => {
+    for (const value of [
+      null,
+      undefined,
+      "",
+      "bad",
+      "2026-13-03",
+      "2026-07-00"
+    ]) {
+      expect(shortDate(value)).toBe("");
+    }
   });
 });

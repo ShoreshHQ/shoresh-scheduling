@@ -26,6 +26,7 @@ public with sharing class OutgoingSpecialDay {
         OutgoingPublished.Thing whole = new OutgoingPublished.Thing();
         whole.day = regular.day;
         whole.groupName = groupRef.name;
+        whole.groupId = groupRef.id;
         whole.block = special.name;
         whole.startTime = '';
         whole.endTime = '';
