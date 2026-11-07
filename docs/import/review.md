@@ -173,14 +173,17 @@ Each rule is clue, meaning, example, test.
     from what is put back. One import log (`ImportUndoLog`) records all of it as the import saves
     and reverses it. Undoing a copy takes the new season away with everything in it, and the
     screen goes back to the camp. Anything changed since, or in use by something the import did
-    not make, is kept and named, never removed silently; a copied season that keeps anything
-    stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
+    not make, is kept and named, never removed silently: that includes every group, time block,
+    activity and place named by a schedule built, locked, placed by hand or published since. The
+    import's own kept version is the import's, and goes with it. A copied season that keeps
+    anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
     as a new holding record of the same name, which the director never sees. Too big a camp for
     Salesforce to undo (or import) in one go changes nothing and says so plainly.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
-    Test: Apex `ImportUndoAsItWasTest` `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
+    Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`; `ImportUndoAsItWasTest`
+    `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
     `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
