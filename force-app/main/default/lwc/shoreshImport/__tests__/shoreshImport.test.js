@@ -916,6 +916,50 @@ describe("c-shoresh-import", () => {
     expect($(element, 'button[data-tile="Group"]')).toBeNull();
   });
 
+  it("INGEST-5.5: while a question waits, the review never promises a week or version the save won't add", async () => {
+    const program = (divisions) => ({
+      program: {
+        Id: "p1",
+        Name: "Main",
+        Monday__c: true,
+        Tuesday__c: true,
+        Wednesday__c: true,
+        Thursday__c: true,
+        Friday__c: true
+      },
+      timeBlocks: [],
+      divisions,
+      fixedActivities: [],
+      recurringActivities: []
+    });
+    const dated = {
+      ...SETUP,
+      season: {
+        Id: "se1",
+        Name: "Summer 2027",
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-02"
+      }
+    };
+    const review = async (divisions) => {
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({ ...dated, programs: [program(divisions)] });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["Maple Grove 2026 - Bunk 1.csv"]);
+      return element.shadowRoot.textContent;
+    };
+    // Bunk 1's division waits: Add saves no week from it, so none is promised.
+    const waiting = await review([
+      { division: { Id: "d1", Name: "Juniors" }, groups: [] },
+      { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+    ]);
+    expect(waiting).toMatch(/1 for later/);
+    expect(waiting).not.toMatch(/added from its dates/);
+    expect(waiting).not.toMatch(/Kept as a version/);
+  });
+
   describe("part 2: version, remembered answers, undo", () => {
     const WITH_WEEK = {
       ...SETUP,
@@ -956,7 +1000,7 @@ describe("c-shoresh-import", () => {
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
       const similar = $(element, `[data-card="${music}"]`);
       expect(similar.querySelector(".tag").textContent).toBe(
-        "Remembered from your answer on 3 Jul"
+        "Remembered from your answer on Jul 3"
       );
       expect(similar.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
@@ -998,7 +1042,7 @@ describe("c-shoresh-import", () => {
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       const card = $(element, `[data-card="${music}"]`);
       expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
-        "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's 10 Jul, yours 3 Jul)"
+        "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's Jul 10, yours Jul 3)"
       );
       // Marked, not chosen: the question is still open, nothing pressed.
       expect(card.querySelector(".corner")).not.toBeNull();
@@ -1077,7 +1121,7 @@ describe("c-shoresh-import", () => {
         const row = section.querySelector(`[data-auto="${spec}"]`);
         expect(row.textContent).toContain("A fixed activity");
         expect(row.querySelector(".tag").textContent).toBe(
-          "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+          "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on Jul 10 and Jul 3"
         );
         expect(pressed(element)).toEqual([`${spec}::fixed`]);
         expect(
@@ -1249,7 +1293,7 @@ describe("c-shoresh-import", () => {
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
       expect(pool.querySelector(".tag").textContent).toBe(
-        "Remembered from a former user's answer on 26 Oct"
+        "Remembered from a former user's answer on Oct 26"
       );
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);

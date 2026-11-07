@@ -2175,6 +2175,24 @@ describe("Shoresh for AI tools and the command line", () => {
       text: 'Brought in 2 campers to "Chugim · Week 2": 2 new.'
     });
     expect(JSON.parse(savedSeen[2].stdin).save).toBe(true);
+
+    // A week with no schedule yet: said as the screen says it, with the step to take, never a
+    // list of none to pick from.
+    const unbuilt = await call("bring_in_choices", input, {
+      run: answering(
+        [
+          ok(
+            JSON.stringify({ ...read, setup: { ...read.setup, schedules: [] } })
+          )
+        ],
+        []
+      ),
+      choices
+    });
+    expect(unbuilt).toMatchObject({
+      ok: false,
+      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
+    });
   });
 
   // API-1.98, API-1.99

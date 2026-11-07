@@ -14,6 +14,7 @@ public with sharing class OutgoingPublished {
   public class Thing {
     public Date day;
     public String groupName;
+    public String groupId;
     public String block;
     public String startTime;
     public String endTime;
@@ -168,6 +169,7 @@ public with sharing class OutgoingPublished {
         open = new Thing();
         open.day = day.day;
         open.groupName = grid.groups[g].name;
+        open.groupId = grid.groups[g].id;
         open.block = grid.blocks[b].name;
         open.startTime = grid.blocks[b].startTime;
         open.endTime = grid.blocks[b].endTime;

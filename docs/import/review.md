@@ -68,6 +68,9 @@ Each rule is clue, meaning, example, test.
    now" (one group split in two, `splitCard`) still has to be answered before Add. Questions
    that do not fit with the import are counted, and the page after Add says "12 more questions
    will be asked next time you import these files"; Roots counts only the ones kept.
+   The review says what Add saves: its notes (a week added from the season's dates) and its
+   "Kept as a version" lines come from the setup as Add would save it, the questions that can
+   wait left out, so it never promises a week or version the save won't add.
    **The kept file** (review of #177): only the files the director chose, as read, linked to the
    import's record only (no other sharing), so it is visible to users who can see the season
    (an import is a detail of its season). It is kept only while its questions are open: it is
@@ -75,7 +78,8 @@ Each rule is clue, meaning, example, test.
    the import is undone.
    Test: "INGEST-5.5: Add saves what is settled; the open question is kept with the files, and
    nothing it decides is guessed"; "INGEST-5.5: an open division choice can wait for later, and
-   its bunk is not guessed"; Roots "INGEST-5.5: the last import's questions kept for later wait
+   its bunk is not guessed"; "INGEST-5.5: while a question waits, the review never promises a
+   week or version the save won't add"; Roots "INGEST-5.5: the last import's questions kept for later wait
    on Roots"; Apex `ImportReviewTest` `ingest55OpenQuestionsAreKeptWithTheFilesAndShownOnRoots`.
    Counter-case: "an import with no questions left shows none".
 
@@ -182,7 +186,9 @@ Each rule is clue, meaning, example, test.
     import's own kept version is the import's, and goes with it. A copied season that keeps
     anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
     as a new holding record of the same name, which the director never sees. Too big a camp for
-    Salesforce to undo (or import) in one go changes nothing and says so plainly.
+    Salesforce to undo (or import) in one go changes nothing and says so plainly. Import a list's
+    own Undo asks first, naming what goes in the camp's words ("Undo specials.csv? Remove 1
+    special day and 1 special event"), never a bare count.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
@@ -190,7 +196,8 @@ Each rule is clue, meaning, example, test.
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
-    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
+    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "INGEST-5.10: saves the list once every
+    difference is answered, then its Undo names what it removes and puts back"; screen "a camp too big for one request says so,
     and that trying again won't help" (`shoreshErrors`).
 
 11. **Days said by number are listed as what each became.**

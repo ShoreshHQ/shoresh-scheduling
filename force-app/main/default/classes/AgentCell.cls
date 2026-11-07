@@ -117,18 +117,34 @@ global with sharing class AgentCell implements AgentWeeks.Action {
         )
       );
     }
+    refuseLonger(now, nowName);
+  }
+
+  /**
+   * Part of a longer placement is refused, saying what an AI can do instead (break-and-rebuild
+   * N2): move it or take it all out, from its first time; only its length is the screen's.
+   */
+  private void refuseLonger(String now, String nowName) {
     Boolean carriesOn =
       b + 1 < row.size() &&
       now != SlotIds.OPEN &&
       row[b + 1] == ScheduleGrid.CARRIES_ON + now;
     if (SlotIds.isCarryOn(now) || carriesOn) {
+      Integer first = b;
+      while (first > 0 && SlotIds.isCarryOn(row[first])) {
+        first--;
+      }
       throw new ShoreshException(
         place +
           ' is part of a longer ' +
           nowName +
-          ', which can be changed only on ' +
+          ', from ' +
+          grid.blocks[first].name +
+          '. Its length can be changed only on ' +
           AgentSchedules.screenOf(week) +
-          '.'
+          '. To change it, move it from ' +
+          grid.blocks[first].name +
+          ' (move_cell) or take it all out (take_out_cell).'
       );
     }
   }

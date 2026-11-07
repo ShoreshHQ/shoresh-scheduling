@@ -17,8 +17,16 @@
 import { UNORDERED_SET } from "c/shoreshElectiveEngine";
 import { headingMeaning } from "c/shoreshChoicesReader";
 import { sanitizeCell } from "c/shoreshLists";
+import { shortDate } from "c/shoreshTerms";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
-import { buildBoard, parseChoices, readRun, timeWords } from "./seats";
+import {
+  buildBoard,
+  parseChoices,
+  readRun,
+  splitWords,
+  timeWords,
+  uncoveredWords
+} from "./seats";
 
 const RANK_NAMES = {
   1: "First",
@@ -32,16 +40,9 @@ const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const guard = (rows) =>
   rows.map((row) => row.map((cell) => sanitizeCell(cell)));
 
-/** "14 Oct", whatever the browser's language. */
-export function shortDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return `${date.getDate()} ${date.toLocaleDateString("en-GB", { month: "short" })}`;
-}
-
 /**
  * Everything the downloads share, worked out once: the run as the screen reads it, its board,
- * the words of its header ("Chugim · Week 3 · Final 14 Oct"), and the names a final run keeps.
+ * the words of its header ("Chugim · Week 3 · Final Oct 14"), and the names a final run keeps.
  */
 export function readDownload(download, t) {
   const view = download.view;
@@ -360,6 +361,42 @@ function exceptionRows(d) {
       "",
       x.column.words,
       `${x.offering.name}: ${x.count} of ${x.seats}`
+    ])
+  );
+  // Blank or 0 seats, seated with no limit: the screen's "needs its seats chosen" (ELECT-4.1).
+  p.noSeats.forEach((o) =>
+    body.push([
+      `Needs its ${t.pIn("Seats")} chosen`,
+      "",
+      "",
+      `Choose how many ${t.pIn("Seats")} "${o.name}" has`
+    ])
+  );
+  // Linked choices, as the screen lists them: not given in full, given one period at a time, and
+  // asked for where they don't apply.
+  p.linked.forEach((l) =>
+    body.push([
+      `${t.s("LinkedChoice")} not given in full`,
+      "",
+      "",
+      `${l.name}: ${l.text}`
+    ])
+  );
+  p.split.forEach((s) =>
+    body.push([
+      `Given their ${t.sIn("LinkedChoice")} one period at a time`,
+      s.camper.name,
+      // The period it shares with a linked choice kept as a set; none when absent or locked.
+      (board.columnByKey.get(s.timeKey) || {}).words || "",
+      splitWords(s, board)
+    ])
+  );
+  p.uncovered.forEach((u) =>
+    body.push([
+      `${t.s("LinkedChoice")} not for their ${t.sIn("Division")}`,
+      u.camper.name,
+      "",
+      uncoveredWords(u)
     ])
   );
   p.stray.forEach((s) =>

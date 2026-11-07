@@ -9,7 +9,7 @@
  * only those no other week has (the rest stay, drawn solid beside them); the whole season's are
  * every camper, so each row's head carries the total that goes. Pure: from ElectiveClear.Picture.
  */
-import { shortDate } from "./downloads";
+import { shortDate } from "c/shoreshTerms";
 
 // Decoration only: the seat dots and the 1-2-3 marks are drawn, not counted.
 const SEAT_DOTS = 12;
