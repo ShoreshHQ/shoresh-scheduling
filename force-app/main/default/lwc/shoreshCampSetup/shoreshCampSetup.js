@@ -25,7 +25,7 @@ import {
   MONDAY_TO_FRIDAY,
   WEEKDAYS,
   firstDayOf,
-  useSeasonDays,
+  nameDaysFor,
   programDays,
   undoMessage,
   holdsNoDivision,
@@ -474,7 +474,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.seasonErrors = {};
     }
     // Before the screens draw this season: they say its days as it does (WEEK-1.5).
-    useSeasonDays(setup);
+    nameDaysFor(setup);
     this.setup = setup;
     this.termLabels = setup.labels;
     this.seasonForm = form;

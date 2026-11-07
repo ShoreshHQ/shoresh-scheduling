@@ -8,7 +8,7 @@
  * One request is about one season, so that season is held here rather than passed to every line
  * that says a day: reading a schedule's days names it (ScheduleDays.read), and a request with no
  * schedule says use(seasonId). It is looked up only when a day is first said: a named season costs
- * one query at most (none when the caller says use(seasonId, numbered)), and only a numbered one
+ * one query at most (none when the caller hands over the season it read), and only a numbered one
  * reads its programs.
  */
 public with sharing class DayWords {
@@ -23,11 +23,11 @@ public with sharing class DayWords {
     scheduleRead = null;
   }
 
-  /** The same when the caller has read the flag: a named season then costs no query. */
-  public static void use(Id seasonId, Boolean numbered) {
-    use(seasonId);
-    if (numbered != true) {
-      FIRST_DAYS.put(seasonId, null);
+  /** The same when the caller has read it (its Id and NumberedDays__c): a named season then costs no query. */
+  public static void use(Season__c season) {
+    use(season.Id);
+    if (season.NumberedDays__c != true) {
+      FIRST_DAYS.put(season.Id, null);
     }
   }
 
@@ -46,11 +46,23 @@ public with sharing class DayWords {
       : dayNumbered(WeekCalendar.weekdayIndex(day), firstDay);
   }
 
+  /** A day for a line of a list of at most mostLines: when only counting, none is kept, so no season is read. */
+  public static String sayInList(Date day, Integer mostLines) {
+    return mostLines == 0 ? WeekCalendar.weekdayName(day) : say(day);
+  }
+
   /** The same for a stored weekday ("Wednesday"); anything else as it is. */
   public static String sayWeekday(String weekday) {
     Integer index = WeekCalendar.indexOfWeekday(weekday);
     Integer firstDay = index < 0 ? null : firstDayInUse();
     return firstDay == null ? weekday : dayNumbered(index, firstDay);
+  }
+
+  /** A stored weekday by its number in a numbered season; otherwise the words given (a season's named days, nothing stored). */
+  public static String sayStored(Object stored, String otherwise) {
+    String weekday = String.valueOf(stored);
+    String said = sayWeekday(weekday);
+    return said == weekday ? otherwise : said;
   }
 
   /** The stored weekday for what was said: "Day 3" in a numbered season; anything else as it is. */
@@ -92,15 +104,12 @@ public with sharing class DayWords {
     }
     if (scheduleRead != null) {
       for (Schedule__c schedule : [
-        SELECT Program__r.Season__c, Program__r.Season__r.NumberedDays__c
+        SELECT Program__r.Season__r.Id, Program__r.Season__r.NumberedDays__c
         FROM Schedule__c
         WHERE Id = :scheduleRead
         WITH USER_MODE
       ]) {
-        use(
-          schedule.Program__r.Season__c,
-          schedule.Program__r.Season__r.NumberedDays__c
-        );
+        use(schedule.Program__r.Season__r);
       }
       scheduleRead = null;
     }

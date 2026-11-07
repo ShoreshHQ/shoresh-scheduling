@@ -54,7 +54,7 @@ public with sharing class BlankWeek {
 
   private Week weekFor(Program__c program, Week__c week) {
     // A first Generate says this week's days before any schedule is read.
-    DayWords.use(program.Season__c);
+    DayWords.use(program.Season__r);
     items = setTimeItems(program, week.Id);
     Week result = new Week();
     for (Date day : runDays(program, week)) {

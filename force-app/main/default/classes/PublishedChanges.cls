@@ -47,9 +47,9 @@ public with sharing class PublishedChanges {
       add(line, 1);
     }
 
-    /** A day for a line; only counting, no line is kept, so no season need be read for it. */
+    /** A day for a line (DayWords.sayInList). */
     public String say(Date day) {
-      return mostLines == 0 ? WeekCalendar.weekdayName(day) : DayWords.say(day);
+      return DayWords.sayInList(day, mostLines);
     }
 
     // A line, and how many cells (or renames) it covers.

@@ -63,15 +63,24 @@ public with sharing class AgentActivityRules {
     );
   }
 
-  /** Days are said, and read, as the activity's season says them (WEEK-1.7). */
-  public static void useSeasonOf(Id activityId) {
+  /** Days are said, and read, as the activity's season says them (WEEK-1.7), when a day is asked. */
+  public static void useSeasonIfDayAsked(
+    Id activityId,
+    Map<String, Object> given
+  ) {
+    if (given.containsKey(EARLY_DAY)) {
+      useSeasonOf(activityId);
+    }
+  }
+
+  private static void useSeasonOf(Id activityId) {
     Activity__c activity = [
-      SELECT Season__c, Season__r.NumberedDays__c
+      SELECT Season__r.Id, Season__r.NumberedDays__c
       FROM Activity__c
       WHERE Id = :activityId
       WITH USER_MODE
     ];
-    DayWords.use(activity.Season__c, activity.Season__r.NumberedDays__c);
+    DayWords.use(activity.Season__r);
   }
 
   /** What was said for a rule as the field stores it: "Day 3" is that weekday (WEEK-1.7). */
@@ -83,7 +92,7 @@ public with sharing class AgentActivityRules {
   public static Map<String, String> now(Id activityId) {
     Activity__c activity = [
       SELECT
-        Season__c,
+        Season__r.Id,
         Season__r.NumberedDays__c,
         SameDivisionOnly__c,
         EarlyWeekCount__c,
@@ -93,7 +102,7 @@ public with sharing class AgentActivityRules {
       WHERE Id = :activityId
       WITH USER_MODE
     ];
-    DayWords.use(activity.Season__c, activity.Season__r.NumberedDays__c);
+    DayWords.use(activity.Season__r);
     Map<String, String> result = new Map<String, String>{
       WHO => AgentActivityWho.said(AgentActivityWho.namesNow(activityId))
     };

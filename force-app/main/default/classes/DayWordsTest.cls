@@ -2,6 +2,8 @@
 private class DayWordsTest {
   // 28 June 2027 is a Monday.
   private static final Date MONDAY = Date.newInstance(2027, 6, 28);
+  // The season starts Monday 29 June 2026, its programs running from Monday.
+  private static final Date CAMP_MONDAY = Date.newInstance(2026, 6, 29);
 
   private static Season__c seasonOn(Boolean numbered, Date start) {
     Season__c made = new Season__c(
@@ -121,9 +123,6 @@ private class DayWordsTest {
       'Schedule' => scheduleId
     };
   }
-
-  // The season starts Monday 29 June 2026, its programs running from Monday.
-  private static final Date CAMP_MONDAY = Date.newInstance(2026, 6, 29);
 
   // WEEK-1.7
   @IsTest
@@ -274,7 +273,7 @@ private class DayWordsTest {
       Assert.areEqual(1, Limits.getQueries() - before);
 
       DayWords.forgetSeasons();
-      DayWords.use(named.Id, false);
+      DayWords.use(new Season__c(Id = named.Id, NumberedDays__c = false));
       before = Limits.getQueries();
       DayWords.say(MONDAY);
       Assert.areEqual(0, Limits.getQueries() - before);

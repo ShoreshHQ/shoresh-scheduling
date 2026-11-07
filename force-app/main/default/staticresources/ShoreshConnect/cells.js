@@ -142,7 +142,7 @@ function checkWas(ctx, m, slot, was) {
  */
 function contextOf(m, body) {
   // WEEK-1.5: days are said as this season says them; an AI may still name the weekday.
-  m.useSeasonDays(body.setup);
+  m.nameDaysFor(body.setup);
   if (body.draft) {
     return manualContextOf(m, body);
   }

@@ -9,7 +9,7 @@ import {
 import {
   campFirstDay,
   campShortWeek,
-  useSeasonDays
+  nameDaysFor
 } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 
@@ -229,7 +229,7 @@ export function buildWeek(loaded, how) {
  * engine's own words.
  */
 export function buildForAgent(read) {
-  useSeasonDays(read.setup);
+  nameDaysFor(read.setup);
   const loaded = loadedOf(read.inputs || {});
   const built = buildWeek(loaded, {
     action: loaded.scheduleId ? ACTION.REBUILD : ACTION.GENERATE,

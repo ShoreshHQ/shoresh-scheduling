@@ -71,6 +71,7 @@ public with sharing class GeneratedDrafts {
         Program__r.Id,
         Program__r.Season__c,
         Program__r.Season__r.Camp__c,
+        Program__r.Season__r.Id,
         Program__r.Season__r.NumberedDays__c
       FROM Schedule__c
       WHERE Id = :scheduleId

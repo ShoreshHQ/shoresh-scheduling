@@ -34,9 +34,7 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     refuseUnknown();
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
     refuseUnseen(seen);
-    if (given.containsKey('early_week_by_day')) {
-      AgentActivityRules.useSeasonOf(found.id);
-    }
+    AgentActivityRules.useSeasonIfDayAsked(found.id, given);
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
     AgentActivityRules.lock(found.id);

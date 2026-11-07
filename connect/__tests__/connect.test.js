@@ -403,7 +403,7 @@ describe("Shoresh for AI tools and the command line", () => {
       wordsOf: (l) => l.said || l.text,
       saidOf: () => "Swim, 2 of 4",
       keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size }),
-      useSeasonDays: () => {}
+      nameDaysFor: () => {}
     });
     const seen = [];
     const answers = (more) => {
@@ -440,7 +440,7 @@ describe("Shoresh for AI tools and the command line", () => {
       counterWeek: () => ({ draft: { schedule: { days: [] } } }),
       lockedKeys: () => new Set(),
       replacedDays: () => [],
-      useSeasonDays: () => {}
+      nameDaysFor: () => {}
     });
     const withSeen = await call("read_week_checks", asked, {
       run: answers([]),
@@ -930,7 +930,7 @@ describe("Shoresh for AI tools and the command line", () => {
         weekMeasure: () => "measure",
         readKept: () => [],
         counterWords: () => ({ placed: "6 of 8 placed" }),
-        useSeasonDays: () => {}
+        nameDaysFor: () => {}
       }),
       edits
     });

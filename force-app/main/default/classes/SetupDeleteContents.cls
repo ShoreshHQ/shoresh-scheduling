@@ -106,7 +106,7 @@ public with sharing class SetupDeleteContents {
         Day__c,
         SpecialDay__c,
         SpecialEvent__c,
-        Season__c,
+        Season__r.Id,
         Season__r.NumberedDays__c
       FROM SpecialDate__c
       WHERE Week__c = :weekId
@@ -119,7 +119,7 @@ public with sharing class SetupDeleteContents {
       List<String> days = daysOf.containsKey(itemId)
         ? daysOf.get(itemId)
         : new List<String>();
-      DayWords.use(row.Season__c, row.Season__r.NumberedDays__c);
+      DayWords.use(row.Season__r);
       days.add(DayWords.sayWeekday(row.Day__c));
       daysOf.put(itemId, days);
     }

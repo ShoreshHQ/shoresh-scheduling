@@ -5,7 +5,7 @@
  * their numbers, and stored keys stay weekdays: this is only for what a person reads.
  *
  * Held here rather than passed to every line that says a day: Camp Setup sets it each time it
- * reads a season (c/shoreshImportEngine useSeasonDays), and the connector before each piece of
+ * reads a season (c/shoreshImportEngine nameDaysFor), and the connector before each piece of
  * work. Apex's DayWords does the same for the server.
  */
 const WEEKDAYS = [

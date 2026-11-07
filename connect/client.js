@@ -471,7 +471,7 @@ async function readDraft(capability, input, at, checks, edits) {
  * counter reads the week's accepts (lines.js).
  */
 function counterOf(m, body) {
-  m.useSeasonDays(body.setup);
+  m.nameDaysFor(body.setup);
   const terms = m.buildTerms(body.labels);
   const dots = (body.setup_changes && body.setup_changes.dots) || [];
   const setupDots = new Map(dots.map((dot) => [dot.key, dot.words]));
@@ -783,7 +783,7 @@ async function loadExports(namespace) {
 /** The names the file actions use, each from its own module. */
 function exportModules(m) {
   return {
-    useSeasonDays: m.weeks.useSeasonDays,
+    nameDaysFor: m.weeks.nameDaysFor,
     scheduleSheets: m.scheduleExport.scheduleSheets,
     printPages: m.scheduleExport.printPages,
     withRaindrops: m.views.withRaindrops,

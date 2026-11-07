@@ -41,7 +41,7 @@ export function campFirstDay(setup) {
 }
 
 /** Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames. */
-export function useSeasonDays(setup) {
+export function nameDaysFor(setup) {
   const season = (setup && setup.season) || {};
   setDayNaming({
     numbered: Boolean(season[SEASON.NumberedDays]),

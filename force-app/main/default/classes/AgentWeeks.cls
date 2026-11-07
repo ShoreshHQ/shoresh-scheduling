@@ -147,12 +147,7 @@ public with sharing class AgentWeeks {
       );
     }
     for (ScheduleDays.DayGrid day : days) {
-      if (
-        String.valueOf(day.day) == asked ||
-        IncomingBatch.fold(WeekCalendar.weekdayName(day.day)) ==
-        IncomingBatch.fold(asked) ||
-        IncomingBatch.fold(DayWords.say(day.day)) == IncomingBatch.fold(asked)
-      ) {
+      if (isDayAsked(day.day, asked)) {
         if (day.grid == null) {
           throw new ShoreshException(
             'This day could not be read: ' + day.problem + '.'
@@ -164,6 +159,14 @@ public with sharing class AgentWeeks {
     throw new ShoreshException(
       weekName + ' has no day "' + asked.left(40) + '" in its schedule.'
     );
+  }
+
+  /** Whether this is the day asked: its date, weekday or number. */
+  private static Boolean isDayAsked(Date day, String asked) {
+    return String.valueOf(day) == asked ||
+      IncomingBatch.fold(WeekCalendar.weekdayName(day)) ==
+      IncomingBatch.fold(asked) ||
+      IncomingBatch.fold(DayWords.say(day)) == IncomingBatch.fold(asked);
   }
 
   /**

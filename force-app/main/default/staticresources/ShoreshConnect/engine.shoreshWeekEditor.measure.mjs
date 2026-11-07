@@ -12,7 +12,7 @@ import { RAIN_PLAN_FULL, isMarked } from "./engine.shoreshWeekEditor.rain.mjs";
  */
 
 // For the connector, which reads a week with this module (WEEK-1.5, WEEK-1.7).
-export { useSeasonDays } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+export { nameDaysFor } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 export { spokenWeekday, weekdayName } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 
 /** What a day is called in lines and questions: its weekday, or the plan's name. */
