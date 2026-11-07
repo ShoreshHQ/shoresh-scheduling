@@ -1468,6 +1468,10 @@ describe("INGEST-4.14: a single-day file", () => {
     expect(plan.programs[0].days).toEqual(DAYS);
     expect(plan.specialDays).toHaveLength(1);
     expect(plan.specialDays[0]).toMatchObject({ day: "Thursday" });
+    // The note names only the file read as the day.
+    const said = importNotes(p, terms).find((n) => /Thursday/.test(n.text));
+    expect(said.text).toMatch(/field-day\.csv/);
+    expect(said.text).not.toMatch(/color-run/);
   });
 
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
