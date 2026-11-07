@@ -61,7 +61,7 @@ public with sharing class ImportUndoLog {
     // Last, what it made, its imported week too, which nothing else may delete.
     ImportedWeekGuard.allow();
     try {
-      new ImportUndoDeletes(result, new ImportUndoLater(done))
+      new ImportUndoDeletes(result, new ImportUndoLater(done), done.Season__c)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
     } finally {
       ImportedWeekGuard.done();
