@@ -21,6 +21,7 @@ import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
+import { FIELD } from "c/shoreshSchema";
 
 /**
  * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
@@ -93,6 +94,8 @@ export default class ShoreshManualBuild extends LightningElement {
   publishState = null;
   // A preview, publish or unpublish is on its way (or its question is open).
   publishing = false;
+  // Apply to other weeks is open (c-shoresh-apply-weeks).
+  applying = false;
   // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview, week }.
   publishAsk = null;
   // The question before unpublishing: { heading, lines, publishedId, week }.
@@ -730,6 +733,7 @@ export default class ShoreshManualBuild extends LightningElement {
   get versionsBusy() {
     return (
       this.versionsWorking ||
+      this.applying ||
       this.editBusy ||
       this.publishing ||
       this.setupWorking ||
@@ -745,10 +749,40 @@ export default class ShoreshManualBuild extends LightningElement {
   get editsWait() {
     return (
       this.versionsWorking ||
+      this.applying ||
       this.publishing ||
       this.setupWorking ||
       !!this.setupAsk
     );
+  }
+
+  /** The season's other weeks, in a season whose days are numbered (WEEK-6.2): else none. */
+  get otherWeeks() {
+    const season = this._setup && this._setup.season;
+    return season && season[FIELD.Season.NumberedDays]
+      ? this.weekOptions.filter((o) => o.value !== this.weekId)
+      : [];
+  }
+  get applyLabel() {
+    return this.otherWeeks.length
+      ? `Apply to other ${this.t.pIn("Week")}`
+      : null;
+  }
+  get applySourceId() {
+    return this.schedule ? this.schedule.schedule.id : null;
+  }
+  get applySeen() {
+    return this.server ? this.server.revisions : null;
+  }
+  handleApply() {
+    this.applying = true;
+  }
+  handleApplyClose(event) {
+    this.applying = false;
+    this.template.querySelector('[data-id="versions"]').focusButton();
+    if (event.detail.sourceChanged) {
+      this.load(true);
+    }
   }
 
   async loadVersions() {
