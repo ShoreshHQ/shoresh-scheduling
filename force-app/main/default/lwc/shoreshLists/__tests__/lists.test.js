@@ -247,6 +247,14 @@ describe("rows", () => {
       ],
       [3, "new", []]
     ]);
+    // A name in another list's column is held to it too: it may add that location.
+    const ref = read("activities", [
+      ["Activity", "Location"],
+      ["Canoe", "L".repeat(81)]
+    ]);
+    expect(ref.rows[0].problems).toEqual([
+      `Location: "${"L".repeat(40)}…" is longer than 80 characters`
+    ]);
   });
 
   it("a new row left out (Leave out) is not saved, nor what only it would add, nor remembered", () => {

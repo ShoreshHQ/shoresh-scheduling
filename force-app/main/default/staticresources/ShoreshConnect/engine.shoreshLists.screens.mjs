@@ -43,8 +43,6 @@ function nameColumn(heading, words) {
     words: ["name", ...words],
     type: "text",
     required: true,
-    // Salesforce keeps 80 characters of a name (INGEST-1.7).
-    maxLength: 80,
     fromRecord: (r) => r.Name,
     write: (v) => ({ Name: v })
   };

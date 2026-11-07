@@ -52,6 +52,9 @@ const NONE_WORDS = new Set([
 ]);
 const EVERYONE = new Set(["everyone", "everybody", "all", "all groups"]);
 
+// The characters Salesforce keeps of a name.
+const NAME_MOST = 80;
+
 function quoted(raw) {
   return `"${tidy(raw)}"`;
 }
@@ -480,10 +483,13 @@ export function readCell(column, raw) {
     case "time":
       return time(text);
     default:
-      // Longer than Salesforce keeps: never Ready to save, for the save to refuse (INGEST-1.7).
-      return column.maxLength && text.length > column.maxLength
+      // Every list's name, and a name in another list's column (which may add it), is a
+      // Salesforce name: longer than it keeps is never Ready to save, for the save to refuse
+      // (INGEST-1.7).
+      return (column.key === "name" || column.type === "ref") &&
+        text.length > NAME_MOST
         ? {
-            problem: `"${text.slice(0, 40)}…" is longer than ${column.maxLength} characters`
+            problem: `"${text.slice(0, 40)}…" is longer than ${NAME_MOST} characters`
           }
         : { value: text };
   }
