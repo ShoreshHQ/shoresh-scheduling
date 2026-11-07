@@ -133,6 +133,7 @@ public with sharing class SpecialDates {
       new Set<Id>(seasonByItem.values())
     );
     for (Id itemId : byItem.keySet()) {
+      DayWords.use(seasonByItem.get(itemId));
       result.put(
         itemId,
         refusal(
@@ -179,7 +180,7 @@ public with sharing class SpecialDates {
 
   /** 'Tuesday of "Week 2"'. */
   public static String onDay(String day, String weekName) {
-    return day + ' of "' + weekName + '"';
+    return DayWords.sayWeekday(day) + ' of "' + weekName + '"';
   }
 
   private static Placement placementOf(SpecialDate__c row) {

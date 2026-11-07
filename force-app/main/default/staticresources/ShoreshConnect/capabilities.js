@@ -111,7 +111,7 @@ const LOCK_FIELDS = {
   day: {
     type: "string",
     description:
-      'The day, like Monday, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
+      'The day, like Monday or Day 3, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
   },
   group: {
     type: "string",
@@ -140,7 +140,7 @@ const CELL = {
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
     type: "string",
-    description: "The day, like Monday, or its date like 2026-06-29."
+    description: "The day, like Monday or Day 3, or its date like 2026-06-29."
   },
   time: {
     type: "string",
@@ -362,7 +362,7 @@ const ACTIVITY_NAME = {
 const SETUP_FIELDS = {
   type: "object",
   description:
-    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day, early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
 };
 
 /**
@@ -419,7 +419,7 @@ function specialDay(name, description, more = {}) {
         week: WEEK,
         day: {
           type: "string",
-          description: "The day of the week, like Friday."
+          description: "The day of the week, like Friday or Day 5."
         },
         ...more,
         seen: {
@@ -550,7 +550,8 @@ const CAPABILITIES = [
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -657,7 +658,7 @@ const CAPABILITIES = [
         day: {
           ...CELL.day,
           description:
-            "The rainy day, like Monday, or its date like 2026-06-29."
+            "The rainy day, like Monday or Day 3, or its date like 2026-06-29."
         },
         seen: CELL.seen
       },
@@ -700,7 +701,7 @@ const CAPABILITIES = [
         day: {
           type: "string",
           description:
-            "Only this day's rows: Monday, or its date like 2026-06-29."
+            "Only this day's rows: Monday or Day 3, or its date like 2026-06-29."
         },
         group: {
           type: "string",
@@ -901,7 +902,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -928,7 +930,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -1087,7 +1090,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes.'
+            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",

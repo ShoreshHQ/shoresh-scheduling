@@ -42,6 +42,7 @@ public with sharing class ScheduleDays {
     if (scheduleIds.isEmpty()) {
       return new Map<Id, List<DayGrid>>();
     }
+    DayWords.useSeasonOf(new List<Id>(scheduleIds)[0]);
     for (ScheduleDay__c part : [
       SELECT
         Schedule__c,
