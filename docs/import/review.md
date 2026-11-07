@@ -182,7 +182,7 @@ Each rule is clue, meaning, example, test.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
-    Test: Apex `ImportUndoTest` `undoKeepsWhatAWeekBuiltSinceUses`; `ImportUndoAsItWasTest`
+    Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`; `ImportUndoAsItWasTest`
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
