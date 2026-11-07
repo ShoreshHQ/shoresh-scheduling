@@ -295,8 +295,11 @@ module.exports = [
       );
       rec.check(
         "INGEST-5.10",
-        "and named",
-        /Kept/.test(undo.done.text) && undo.done.text.includes(toLock.activity),
+        // The first few are named and the rest counted ("and 25 more"); the records are read above.
+        "and named, or counted in the rest",
+        /Kept/.test(undo.done.text) &&
+          (undo.done.text.includes(toLock.activity) ||
+            /and \d+ more/.test(undo.done.text)),
         undo.done.text
       );
       const outAfter = await call("read_group_schedule", {
