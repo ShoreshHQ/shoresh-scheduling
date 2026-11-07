@@ -2,7 +2,8 @@
  * Each offering over its seats at a time, as the Elective seats screen's "over Seats" problems
  * list them (c/shoreshElectiveSeats seats.js: a limited offering with more campers than seats),
  * said to an AI: "Swim is over its seats on Monday, Period 1: 3 of 2." A hand move may put an
- * offering over; it is shown, never refused (repo ADR 0018 choice 32), and never left unsaid.
+ * offering over; it is shown, never refused (repo ADR 0018 choice 32; ELECT-4.5), and never left
+ * unsaid.
  */
 public with sharing class ElectiveOverSeats {
   public static List<String> of(ElectiveSeats.RunView view) {

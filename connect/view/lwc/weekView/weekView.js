@@ -6,6 +6,7 @@ import {
   withSpecials
 } from "c/shoreshScheduleViews";
 import { buildTerms } from "c/shoreshTerms";
+import { setDayNaming } from "c/shoreshDayNames";
 
 // Salesforce's .slds-assistive-text, as SLDS has it.
 const ASSISTIVE =
@@ -49,6 +50,7 @@ export default class WeekView extends LightningElement {
       return [];
     }
     const t = buildTerms(this.week.labels);
+    setDayNaming(this.week.dayNaming);
     const many = this.week.programs.length > 1;
     return this.week.programs.map((p, i) => {
       // As the Schedules page shows a published week (shoreshSchedules: shown).

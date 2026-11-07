@@ -5,12 +5,13 @@
  */
 public with sharing class AgentActivityRules {
   public static final String WHO = 'who_can_do_it';
+  private static final String EARLY_DAY = 'early_week_by_day';
 
   // The panel's rules, in its order (who can do it comes first).
   private static final Map<String, Schema.SObjectField> PANEL_RULES = new Map<String, Schema.SObjectField>{
     'same_division_only' => Activity__c.SameDivisionOnly__c,
     'early_week_count' => Activity__c.EarlyWeekCount__c,
-    'early_week_by_day' => Activity__c.EarlyWeekByDay__c,
+    EARLY_DAY => Activity__c.EarlyWeekByDay__c,
     'notes' => Activity__c.Notes__c
   };
 
@@ -62,21 +63,58 @@ public with sharing class AgentActivityRules {
     );
   }
 
-  /** What the activity holds now, by plain name, as the panel shows it. */
-  public static Map<String, String> now(Id activityId) {
+  /** Days are said, and read, as the activity's season says them (WEEK-1.7), when a day is asked. */
+  public static void useSeasonIfDayAsked(
+    Id activityId,
+    Map<String, Object> given
+  ) {
+    if (given.containsKey(EARLY_DAY)) {
+      useSeasonOf(activityId);
+    }
+  }
+
+  private static void useSeasonOf(Id activityId) {
     Activity__c activity = [
-      SELECT SameDivisionOnly__c, EarlyWeekCount__c, EarlyWeekByDay__c, Notes__c
+      SELECT Season__r.Id, Season__r.NumberedDays__c
       FROM Activity__c
       WHERE Id = :activityId
       WITH USER_MODE
     ];
+    DayWords.use(activity.Season__r);
+  }
+
+  /** What was said for a rule as the field stores it: "Day 3" is that weekday (WEEK-1.7). */
+  public static String asStored(String key, String text) {
+    return key == EARLY_DAY ? DayWords.weekdayFrom(text) : text;
+  }
+
+  /** What the activity holds now, by plain name, as the panel shows it. */
+  public static Map<String, String> now(Id activityId) {
+    Activity__c activity = [
+      SELECT
+        Season__r.Id,
+        Season__r.NumberedDays__c,
+        SameDivisionOnly__c,
+        EarlyWeekCount__c,
+        EarlyWeekByDay__c,
+        Notes__c
+      FROM Activity__c
+      WHERE Id = :activityId
+      WITH USER_MODE
+    ];
+    DayWords.use(activity.Season__r);
     Map<String, String> result = new Map<String, String>{
       WHO => AgentActivityWho.said(AgentActivityWho.namesNow(activityId))
     };
     for (String key : PANEL_RULES.keySet()) {
-      result.put(key, shown(activity.get(PANEL_RULES.get(key))));
+      result.put(key, said(key, activity.get(PANEL_RULES.get(key))));
     }
     return result;
+  }
+
+  /** One rule's value as the panel shows it; a day as the season says it (WEEK-1.7). */
+  private static String said(String key, Object value) {
+    return key == EARLY_DAY ? DayWords.sayWeekday(shown(value)) : shown(value);
   }
 
   /** One value as the panel shows it: yes or no, (blank), notes on one line. */
@@ -104,6 +142,6 @@ public with sharing class AgentActivityRules {
       return text;
     }
     // yes/Yes, Monday/monday: read as the change reads them, then said as the panel does.
-    return shown(AgentSetupValues.valueOf(key, field, text));
+    return said(key, AgentSetupValues.valueOf(key, field, asStored(key, text)));
   }
 }

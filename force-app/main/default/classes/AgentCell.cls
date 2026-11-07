@@ -82,7 +82,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     place = String.join(
       new List<String>{
         grid.groups[g].name,
-        AgentWeeks.dayName(day),
+        DayWords.say(day),
         grid.blocks[b].name
       },
       ' · '
@@ -112,7 +112,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       throw new ShoreshException(
         ScheduleGridLocks.lockedWords(
           grid.groups[g].name,
-          AgentWeeks.dayName(day),
+          DayWords.say(day),
           grid.blocks[b].name
         )
       );
