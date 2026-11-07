@@ -17,12 +17,15 @@
 import {
   cellName,
   dayInTitle,
+  dayNumberOf,
   dayOf,
   divisionInTitle,
   isNotAGroupColumn,
   listedNames,
   looseKey,
-  tidy
+  tidy,
+  titleDayNumber,
+  withoutDayNumber
 } from "./text";
 import { weekInTitle, withoutWeek } from "./weekLabels";
 
@@ -179,6 +182,17 @@ export function pageDay(page) {
   return dayInTitle(n.section) || dayInTitle(n.sheet) || dayInTitle(n.file);
 }
 
+/** The numbers a page says its days by (WEEK-2.6): its day columns', else its title's. */
+export function pageDayNumbers(page, found) {
+  if (found.daysAcross || found.layout === "byGroup") {
+    return page.columns.map(dayNumberOf).filter(Boolean);
+  }
+  const n = page.names || {};
+  const title = [n.section, n.sheet, n.file].find((x) => dayInTitle(x));
+  const number = title ? titleDayNumber(title) : null;
+  return number ? [number] : [];
+}
+
 /** The week a page is for, if its title, sheet, or file names one ("Week 2"); "" otherwise. */
 export function pageWeek(page) {
   const n = page.names || {};
@@ -196,7 +210,7 @@ export function pageWeek(page) {
 
 function isOnlyDayOrWeek(text, maxWeek) {
   // Any script's letters: a Hebrew title is a name, not nothing (INGEST-2.16).
-  const rest = withoutWeek(text, { maxWeek })
+  const rest = withoutDayNumber(withoutWeek(text, { maxWeek }))
     .split(/[^\p{L}]+/u)
     .filter((w) => w && !dayOf(w));
   return rest.length === 0;
