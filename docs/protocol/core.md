@@ -148,7 +148,7 @@ These never bend for Shoresh.
   or an AI) MUST be on the camp's clock, its time zone, as its dates are (MEMO-7.2), so one list
   never mixes two clocks; a camp with no time zone set says it on the person's own. Times already
   written into a saved version's name MUST stay as written. Salesforce's own record pages keep
-  each person's setting (Greg 2026-11-07, break-and-rebuild F2). Tests: SchedulePublishTest
-  aCopyIsNamedOnTheCampsClock; connect.test.js versionsInThePanelsWords; shoreshCampClock.test.js
+  each person's setting (Greg 2026-11-07, break-and-rebuild F2). Tests: CampClockTest
+  aTimeIsSaidOnTheCampsClockNotThePersons; SchedulePublishTest aCopyIsNamedOnTheCampsClock; connect.test.js versionsInThePanelsWords; shoreshCampClock.test.js
   "CORE-6.11: a time is said on the camp's clock once its season is read, and on this computer's
   when the camp has none".

@@ -124,6 +124,11 @@ export default class ShoreshManualBuild extends LightningElement {
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
 
+  /** When it was published, on the camp's clock (CORE-6.11). */
+  get campTimeZone() {
+    return campZone();
+  }
+
   @api
   get setup() {
     return this._setup;
