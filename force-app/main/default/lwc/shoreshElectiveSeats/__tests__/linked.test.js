@@ -12,6 +12,7 @@ import {
   problemSections,
   readRun
 } from "../seats";
+import { fullReportSheets, readDownload } from "../downloads";
 import { linkedIdOf, linkedOf, weekdayOf } from "../linked";
 import { MONDAY, TUESDAY, runView, seat } from "./data/run";
 
@@ -26,6 +27,12 @@ const t = buildTerms([
 ]);
 
 const choices = (list) => JSON.stringify(list);
+
+/** The full report's problem rows (its Exceptions sheet) of this kind, as the screen lists them. */
+const reported = (view, problem) =>
+  fullReportSheets(
+    readDownload({ view, weekName: "Week 1" }, t)
+  )[2].rows.filter((r) => r[0] === problem);
 
 // "Drama both days": Drama (no limit) on Monday and Tuesday's Period 1, for every division.
 const BOTH_DAYS = {
@@ -255,7 +262,8 @@ describe("what keeps a linked choice from being placed as a set", () => {
       ...BOTH_DAYS,
       periods: [...BOTH_DAYS.periods, { weekday: "Wednesday", blockId: "b1" }]
     };
-    const run = readRun(linkedView([wednesday]));
+    const view = linkedView([wednesday]);
+    const run = readRun(view);
     const { input } = engineInput(run, t);
     expect(input.linkedChoiceTimes.map((m) => m.timeId)).toEqual([
       `${MONDAY}|b1|d1`,
@@ -296,6 +304,15 @@ describe("what keeps a linked choice from being placed as a set", () => {
     expect(section.head).toBe("1 linked choice not given in full");
     expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
       ["Drama both days", "Not on this schedule at Wednesday 12:30 for Juniors"]
+    ]);
+    // The full report lists it too.
+    expect(reported(view, "Linked choice not given in full")).toEqual([
+      [
+        "Linked choice not given in full",
+        "",
+        "",
+        "Drama both days: Not on this schedule at Wednesday 12:30 for Juniors"
+      ]
     ]);
   });
 
@@ -395,12 +412,11 @@ describe("a camper a linked choice doesn't cover", () => {
   };
 
   it("whose division holds none of its periods keeps the choice as its activity, and it is said", () => {
-    const run = readRun(
-      seniorsView(
-        [DRAMA],
-        [{ n: "Drama", a: "a2", l: "lc1", r: 1, k: "ranked" }]
-      )
+    const view = seniorsView(
+      [DRAMA],
+      [{ n: "Drama", a: "a2", l: "lc1", r: 1, k: "ranked" }]
     );
+    const run = readRun(view);
     const { input } = engineInput(run, t);
     expect(input.linkedChoices.map((c) => c.id)).toEqual(["lc1|d1"]);
     expect(input.choices.filter((c) => c.camperId === "c5")).toEqual([
@@ -430,6 +446,14 @@ describe("a camper a linked choice doesn't cover", () => {
         "Noa Pinecrest",
         '"Drama" doesn\'t cover Seniors, so it counts as Drama',
         { view: "camper", camperId: "c5" }
+      ]
+    ]);
+    expect(reported(view, "Linked choice not for their division")).toEqual([
+      [
+        "Linked choice not for their division",
+        "Noa Pinecrest",
+        "",
+        '"Drama" doesn\'t cover Seniors, so it counts as Drama'
       ]
     ]);
   });
@@ -539,10 +563,20 @@ describe("a camper who asked for a linked choice but can't have it as a set", ()
         'Asked for "Drama both days" but doesn\'t attend every period it covers'
       ]
     ]);
+    expect(
+      reported(view, "Given their linked choice one period at a time").map(
+        (r) => [r[1], r[3]]
+      )
+    ).toEqual(section.rows.map((r) => [r.text, r.aside]));
   });
 
   it("nothing is said when the set is given", () => {
     const board = buildBoard(readRun(linkedView()), t);
+    expect(
+      fullReportSheets(readDownload({ view: linkedView() }, t))[2]
+        .rows.map((r) => r[0])
+        .filter((p) => /linked choice/i.test(p))
+    ).toEqual([]);
     expect(board.problems.split).toEqual([]);
     expect(board.problems.uncovered).toEqual([]);
     expect(
