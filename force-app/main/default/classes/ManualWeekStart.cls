@@ -68,8 +68,7 @@ public with sharing class ManualWeekStart {
       SlotSaves.Prepared draft = new SlotSaves.Prepared();
       draft.scheduleId = blank.draftId;
       draft.days = read.get(blank.draftId);
-      draft.rules = setup.rules(SlotRules.activityIdsIn(copy.edits))
-        .withEvents(copy.edits, rules.electiveSets ?? new Map<Id, SObject>());
+      draft.rules = rules.rulesFor(copy.edits);
       SlotEdits.Result saved = SlotSaves.makeWith(draft, copy.edits);
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
@@ -109,8 +108,14 @@ public with sharing class ManualWeekStart {
       isManualDraft);
   }
 
+  /** The rules a save of these edits goes by, on the setup and elective sets already read. */
+  public SlotRules rulesFor(List<SlotEdits.Edit> edits) {
+    return setup.rules(SlotRules.activityIdsIn(edits))
+      .withEvents(edits, electiveSets ?? new Map<Id, SObject>());
+  }
+
   /** Setup as it is for this week: what decides where a copied activity may go. */
-  private ManualWeekStart(GeneratedSetup setup) {
+  public ManualWeekStart(GeneratedSetup setup) {
     this.setup = setup;
     activities = new Map<Id, Activity__c>(setup.activityRecords());
     readClosures(setup.exceptions);
@@ -185,6 +190,10 @@ public with sharing class ManualWeekStart {
   public Boolean atCamp(String groupId, String blockId) {
     Group__c grp = groups.get(Id.valueOf(groupId));
     TimeBlock__c block = blocks.get(Id.valueOf(blockId));
-    return grp != null && block != null && SetTimePlan.atCamp(grp, block);
+    // Away this week (a week's existing draft can still have the group's row: WeekApply).
+    return grp != null &&
+      block != null &&
+      !setup.away().contains(grp.Id) &&
+      SetTimePlan.atCamp(grp, block);
   }
 }
