@@ -11,6 +11,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { FIELD } from "c/shoreshSchema";
 import { find } from "shoresh-jest/week-editor";
 import {
   WITH_SOCCER,
@@ -104,14 +105,20 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(first) {
+// The season with its days numbered, in the record's own field name (WEEK-1.5).
+const numbered = (setup) => ({
+  ...setup,
+  season: { ...setup.season, [FIELD.Season.NumberedDays]: true }
+});
+
+async function render(first, setup = nsRecord(SETUP)) {
   getDraft.mockResolvedValue(first);
   getVersions.mockResolvedValue(VERSIONS);
   const element = createElement("c-shoresh-manual-build", {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = nsRecord(SETUP);
+  element.setup = setup;
   document.body.appendChild(element);
   await flush();
   return element;
@@ -159,6 +166,40 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+  });
+
+  // WEEK-6.2: Apply to other weeks is offered only in a numbered-days season.
+  it("WEEK-6.2: a named-days season doesn't offer Apply to other weeks", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const panel = await versionsPanel(element);
+    expect(panel.querySelector('[data-id="apply-weeks"]')).toBeNull();
+  });
+
+  it("WEEK-6.2: a numbered-days season offers it; the question gets this draft and the other weeks; Close comes back", async () => {
+    const element = await render(
+      draft(WITH_SWIM, ["1,2,", "1,,"]),
+      numbered(SETUP)
+    );
+    const panel = await versionsPanel(element);
+    const apply = panel.querySelector('[data-id="apply-weeks"]');
+    expect(apply.textContent.trim()).toBe("Apply to other weeks");
+    expect(q(element, "c-shoresh-apply-weeks")).toBeNull();
+    apply.click();
+    await flush();
+    const question = q(element, "c-shoresh-apply-weeks");
+    expect(question.sourceId).toBe(
+      draft(WITH_SWIM, ["1,2,", "1,,"]).schedule.schedule.id
+    );
+    expect(question.sourceName).toBe("Week 1");
+    expect(question.weeks).toEqual([{ label: "Week 2", value: "w2" }]);
+    // WEEK-6.1: nothing is asked of another week until the person has opened it, and edits wait.
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    question.dispatchEvent(
+      new CustomEvent("close", { detail: { sourceChanged: false } })
+    );
+    await flush();
+    expect(q(element, "c-shoresh-apply-weeks")).toBeNull();
+    expect(q(element, '[data-id="versions"]').busy).toBe(false);
   });
 
   it("lists the week's versions, each with Restore", async () => {

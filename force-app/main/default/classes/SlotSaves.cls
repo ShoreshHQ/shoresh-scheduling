@@ -58,8 +58,9 @@ public with sharing class SlotSaves {
   /**
    * Start from another week's copy: on setup already read (GeneratedSetup.rules) and the draft's
    * days as the start read them (Prepared), and without reading the schedule back (the start reads the
-   * whole draft once afterwards anyway). The draft must be one this request inserted, so nobody
-   * else can save it meanwhile.
+   * whole draft once afterwards anyway). The draft must be one this request inserted or has locked
+   * (Apply to other weeks, WeekApply), so nobody else can save it meanwhile. Nothing it fills is
+   * locked, on a Generated draft too.
    */
   public static SlotEdits.Result makeWith(
     Prepared draft,
@@ -70,7 +71,7 @@ public with sharing class SlotSaves {
     return saves.saveAll(draft.scheduleId, draft.days, edits);
   }
 
-  /** A draft this request made, with its days as read and the rules its edits go by (makeWith). */
+  /** A draft this request made or locked, with its days as read and the rules its edits go by (makeWith). */
   public class Prepared {
     public Id scheduleId;
     public List<ScheduleDays.DayGrid> days;
