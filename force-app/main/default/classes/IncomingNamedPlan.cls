@@ -11,6 +11,7 @@ public with sharing class IncomingNamedPlan {
   private IncomingBatch batch;
   private Kind kind;
   private Set<String> seen = new Set<String>();
+  private IncomingRenamed renamed;
 
   /** One kind: its term, what it belongs to, and what the season has (all read in user mode). */
   public class Kind {
@@ -86,11 +87,21 @@ public with sharing class IncomingNamedPlan {
     if (named == null && !seen.add(key + '|' + parentId)) {
       batch.unchanged(i, 'Already earlier in this batch.');
     } else if (named == null) {
-      add(i, record, parentId);
+      addUnlessRenamed(i, record, parentId);
     } else if (inParent(named, parentId)) {
       batch.unchanged(i, 'Already in Shoresh.');
     } else {
       elsewhere(i, record, named[0]);
+    }
+  }
+
+  /** A new name, unless it is the one a person renamed since (API-4.9). */
+  private void addUnlessRenamed(Integer i, Named record, Id parentId) {
+    if (renamed == null) {
+      renamed = new IncomingRenamed(batch, kind.term, kind.parentLink);
+    }
+    if (!renamed.stopped(i, record.name, parentId)) {
+      add(i, record, parentId);
     }
   }
 

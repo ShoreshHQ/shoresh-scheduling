@@ -387,7 +387,7 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68: a move into a full offering is refused, as the desktop refuses it.
+  // API-1.68, ELECT-4.5: a move into a full offering is refused, as the desktop refuses it.
   @IsTest
   static void aMoveIntoAFullOfferingIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -428,7 +428,7 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68: an offering over its seats (its seats lowered after Assign) is said in the read,
+  // API-1.68, ELECT-4.5: an offering over its seats (its seats lowered after Assign) is said in the read,
   // as the screen's "over Seats" problem shows it.
   @IsTest
   static void theSeatsReadSaysAnOfferingOverItsSeats() {
@@ -467,6 +467,66 @@ private class AgentElectiveSeatsTest {
           .contains('Archery is over its seats on Monday, Period 1: 2 of 1.'),
         String.valueOf(read[1])
       );
+    }
+  }
+
+  // ELECT-4.1: 0 seats is no limit, so no one is over it, as the screen shows it.
+  @IsTest
+  static void theSeatsReadNeverSaysAnOfferingWithNoSeatsSetIsOver() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      List<Object> seats = AgentElectivesTestData.everyoneInDrama();
+      for (Object each : seats) {
+        ((Map<String, Object>) each)
+          .put('offeringId', AgentElectivesTestData.ids.get('Archery'));
+      }
+      ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+      request.runId = AgentElectivesTestData.runId;
+      request.revision = AgentElectivesTestData.revision();
+      request.seats = (List<ElectiveSeatSaves.SeatIn>) JSON.deserialize(
+        JSON.serialize(seats),
+        List<ElectiveSeatSaves.SeatIn>.class
+      );
+      ElectiveSeatsController.assignSeats(JSON.serialize(request));
+      Database.update(
+        new Offering__c(
+          Id = AgentElectivesTestData.ids.get('Archery'),
+          Seats__c = 0
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      List<Object> read = AgentElectivesTestData.send(
+        'elective_seats_now',
+        'GET',
+        AgentElectivesTestData.asked(new Map<String, Object>())
+      );
+      Test.stopTest();
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isFalse(
+        String.valueOf(read[1]).contains('over its seats'),
+        String.valueOf(read[1])
+      );
+    }
+  }
+
+  // ELECT-4.1: 0 seats is no limit, so a move into it is never refused as full.
+  @IsTest
+  static void aMoveIntoAnOfferingWithNoSeatsSetIsNeverFull() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      dramaAndOneArcherySeat();
+      Database.update(
+        new Offering__c(
+          Id = AgentElectivesTestData.ids.get('Archery'),
+          Seats__c = 0
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      List<Object> moved = move('Synthetic Camper 1', 'Archery');
+      Test.stopTest();
+      Assert.areEqual(200, moved[0], String.valueOf(moved[1]));
+      Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', moved[1]);
     }
   }
 

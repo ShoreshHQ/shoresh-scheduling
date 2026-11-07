@@ -173,15 +173,41 @@ Each rule is clue, meaning, example, test.
     from what is put back. One import log (`ImportUndoLog`) records all of it as the import saves
     and reverses it. Undoing a copy takes the new season away with everything in it, and the
     screen goes back to the camp. Anything changed since, or in use by something the import did
-    not make, is kept and named, never removed silently; a copied season that keeps anything
-    stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
+    not make, is kept and named, never removed silently: that includes every group, time block,
+    activity and place named by a schedule built, locked, placed by hand or published since. The
+    import's own kept version is the import's, and goes with it. A copied season that keeps
+    anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
     as a new holding record of the same name, which the director never sees. Too big a camp for
     Salesforce to undo (or import) in one go changes nothing and says so plainly.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
-    Test: Apex `ImportUndoAsItWasTest` `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
+    Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`; `ImportUndoAsItWasTest`
+    `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
     `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
     and that trying again won't help" (`shoreshErrors`).
+
+11. **Days said by number are listed as what each became.**
+    Clue: the files say their days by number ("Day 1" to "Day 6", WEEK-2.6), read as the camp's
+    days of the week counted from its first day as it will be once saved (ADR 0025 choice 6):
+    Day 1 to Day 7 into a season with no programs starts on the season's first date, as the
+    program it makes, running every day, then has it.
+    Meaning: a group "6 days by number" with a line per number, in the season's own way of saying
+    days: "Day 3" in a season that numbers its days; "Day 3 → Wednesday" in a season that names
+    them, so the weekday each number landed on shows (a screen reader hears "Day 3 is Wednesday",
+    not the arrow). Into a season with no weeks and no programs,
+    the save makes the season number its days, and the group's first line says so the way Camp
+    Setup words the choice: "Mon Tue Wed → Day 1 Day 2 Day 3". A season with weeks or programs
+    keeps its own way. Nothing is asked: there is no other way to read it. A number the week does
+    not have (Day 6 in a Monday-to-Friday week) is listed with what could not be placed (WEEK-2.4).
+    Test: "into a season with no weeks and no programs: the season becomes numbered at save, and
+    the review shows it"; "into a named season with weeks: it stays named, and each number shows
+    the weekday it lands on"; "into a numbered season the review just says Day 3, and what cannot
+    be placed says Day 6"; Apex `ImportFillWeeksTest`
+    `aFileSayingDay3MakesASeasonWithNothingInItNumberedAndUndoPutsItBack`; the screen's "days by
+    number: each line shows the weekday its number became, and a screen reader hears it said, not
+    an arrow". Code: `reading.js`
+    `dayNumbers`; `proposal.js` `dayNumbersFor`; `review.js` `dayNumberLines`;
+    `ImportSetupSaves` `numberDays`.

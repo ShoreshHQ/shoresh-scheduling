@@ -70,7 +70,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(86);
+    expect(CAPABILITIES).toHaveLength(87);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -82,12 +82,30 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
+    const capability = byName("apply_to_other_weeks");
+    expect(capability.inputSchema.required).toEqual(["week", "to_week"]);
+    expect(capability.inputSchema.properties.schedule).toBeDefined();
+    expect(capability.asksFirst).toBe(true);
+    const seen = [];
+    const asked = { week: "Week 1", to_week: "Week 2" };
+    await call("apply_to_other_weeks", asked, {
+      run: sfAnswering(200, JSON.stringify({ message: "Done" }), seen)
+    });
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/apply_to_other_weeks",
+      "--method",
+      "POST"
+    ]);
+    expect(JSON.parse(seen[0].stdin)).toEqual(asked);
+  });
+
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -3357,6 +3375,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "save_version",
       "restore_version",
       "delete_version",
+      "apply_to_other_weeks",
       "publish_week",
       "unpublish_week",
       "lock_cells",
@@ -3552,10 +3571,16 @@ describe("Shoresh for AI tools and the command line", () => {
                     name: "Chug A",
                     kind: "E",
                     gone: false
+                  },
+                  {
+                    id: "a0R000000000001AAA",
+                    name: "Rest",
+                    kind: "R",
+                    gone: false
                   }
                 ],
                 rows: [
-                  `1,${day.items.length + 1},${day.items.length + 2},`,
+                  `1,${day.items.length + 1},${day.items.length + 2},${day.items.length + 3}`,
                   day.rows[1]
                 ]
               }
@@ -3572,17 +3597,52 @@ describe("Shoresh for AI tools and the command line", () => {
         })
       ).text
     );
-    expect(rows(kinds).slice(1, 3)).toEqual([
+    expect(rows(kinds).slice(1, 4)).toEqual([
       expect.objectContaining({
         activity: "Color War",
         notes: "special event"
       }),
-      expect.objectContaining({ activity: "Chug A", notes: "elective" })
+      expect.objectContaining({ activity: "Chug A", notes: "elective set" }),
+      expect.objectContaining({
+        activity: "Rest",
+        notes: "locked, recurring activity"
+      })
     ]);
     expect(kinds.days_not_read).toEqual([
       { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
     ]);
     expect(kinds.records).toHaveLength(8);
+
+    // CORE-1.0: the kinds in the camp's own words, as typed; the standard ones in lower case.
+    const custom = (term, singular) => ({
+      term,
+      singular,
+      plural: `${singular}s`,
+      isCustom: true
+    });
+    const inCampWords = JSON.parse(
+      (
+        await call("read_week_draft", asked, {
+          run: reading({
+            ...varied,
+            labels: [
+              custom("ElectiveSet", "Chug"),
+              custom("SpecialEvent", "Maccabiah"),
+              custom("FixedActivity", "Flag time"),
+              custom("RecurringActivity", "Rest time")
+            ]
+          }),
+          checks,
+          edits
+        })
+      ).text
+    );
+    expect(rows(inCampWords).slice(0, 4)).toEqual([
+      expect.objectContaining({ notes: "locked, Flag time" }),
+      expect.objectContaining({ activity: "Color War", notes: "Maccabiah" }),
+      expect.objectContaining({ activity: "Chug A", notes: "Chug" }),
+      expect.objectContaining({ activity: "Rest", notes: "locked, Rest time" })
+    ]);
 
     // The counter, exactly as read_week_checks gives it on the same week.
     const counted = await call("read_week_checks", asked, {
@@ -3821,5 +3881,96 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const run of body.runs) {
       expect(run.locksBefore).toBeUndefined();
     }
+  });
+});
+
+describe("a list import says its days as its own season (WEEK-2.6)", () => {
+  // WEEK-2.6
+  it("a Sunday-to-Thursday camp's first call, a list import, reads Day 2 as Monday", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists: require(`${LWC}/shoreshLists/shoreshLists.js`),
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
+      });
+    // A camp read before, whose week starts on Monday: what the call must not lean on.
+    require(`${LWC}/shoreshDayNames/shoreshDayNames.js`).setDayNaming({
+      numbered: true,
+      firstDay: 1
+    });
+    const sunToThu = {
+      Id: "p1",
+      Name: "Main",
+      Sunday__c: true,
+      Monday__c: true,
+      Tuesday__c: true,
+      Wednesday__c: true,
+      Thursday__c: true,
+      Friday__c: false,
+      Saturday__c: false
+    };
+    const setup = {
+      season: {
+        Id: "a00000000000001AAA",
+        Name: "Summer 2026",
+        NumberedDays__c: true,
+        StartDate__c: "2026-06-28"
+      },
+      weeks: [],
+      weekExceptions: [],
+      locationTypes: [],
+      locations: [{ Id: "l1", Name: "Gym", GroupsThatFit__c: 2 }],
+      activities: [
+        {
+          Id: "a1",
+          Name: "Archery",
+          Location__c: "l1",
+          Length__c: 1,
+          Priority__c: "Low",
+          GroupsAtOnce__c: 1,
+          EarlyWeekCount__c: 2,
+          EarlyWeekByDay__c: "Monday"
+        }
+      ],
+      programs: [
+        {
+          program: sunToThu,
+          timeBlocks: [],
+          divisions: [],
+          fixedActivities: [],
+          recurringActivities: []
+        }
+      ],
+      schedules: [],
+      labels: []
+    };
+    const read = JSON.stringify({
+      season: "Summer 2026",
+      setup,
+      answers: [],
+      seen: "s1"
+    });
+    const done = await call(
+      "import_list",
+      {
+        season: "Summer 2026",
+        list: "activities",
+        file_name: "activities.csv",
+        csv_text: "Activity,Location,Early in week\nArchery,Gym,2 by Day 2"
+      },
+      { run: async () => `HTTP/1.1 200\n\n${read}`, imports }
+    );
+    expect(done.ok).toBe(true);
+    // Day 2 of a Sunday-first week is Monday, as set up: nothing differs.
+    expect(done.text).not.toContain("Keep or Change");
   });
 });
