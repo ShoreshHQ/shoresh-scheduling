@@ -37,6 +37,9 @@ const PAIR = /\b(\d{1,2})[/-](\d{1,2})\b/;
 const ISO = /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/;
 const SPELLED =
   /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i;
+// The end of a Shoresh elective file's title ("Chugim · Week A · Final Oct 14"): the day its
+// seats were finalized, never a week (INGEST-4.18).
+const FINALIZED_ON = /\s*·\s*final\s+[a-z]{3}\s+\d{1,2}\s*$/i;
 const WEEK_OF = /\bweek\s+(?:of|starting|beginning|commencing)\b/i;
 const WEEK_WORD = /\b(?:weeks?|wk)\b/i;
 // Words that make a name a group's, never a bare week ("Bunk W2", "W12 Girls").
@@ -116,7 +119,7 @@ function bareWeek(text, maxWeek) {
  * column's cell (a date of numbers alone counts), maxWeek: the season's weeks }.
  */
 function weekMatch(title, options = {}) {
-  const text = tidy(title);
+  const text = tidy(title).replace(FINALIZED_ON, "");
   const worded = text.match(WORDED);
   const session = text.match(SESSION);
   if (worded && session) {

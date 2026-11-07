@@ -444,7 +444,7 @@ export default class ShoreshRoots extends LightningElement {
     if (!last) {
       return null;
     }
-    const when = new Date(last.CreatedDate).toLocaleString(undefined, {
+    const when = new Date(last.CreatedDate).toLocaleString("en-US", {
       dateStyle: "medium",
       timeStyle: "short"
     });
