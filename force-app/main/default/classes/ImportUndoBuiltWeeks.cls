@@ -57,6 +57,10 @@ public with sharing class ImportUndoBuiltWeeks {
       parts.add(part);
     }
     addFrom(parts, named);
+    // Nothing built since (a copied season's Undo, say): nothing more to read.
+    if (named.isEmpty()) {
+      return named;
+    }
     return withWhatTheyBring(ImportUndoSpecialDays.withPlaces(named));
   }
 
