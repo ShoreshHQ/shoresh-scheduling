@@ -24,6 +24,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { FIELD } from "c/shoreshSchema";
 import { PROGRAM, SCHEDULE, WEEK, camp, keeping } from "./data/camp";
 import { nextTurn } from "../pieces";
 
@@ -187,14 +188,14 @@ function week({ locked = false, option = 1, revision = REVISION } = {}) {
   return inputs;
 }
 
-async function render(inputs = week()) {
+async function render(inputs = week(), setup = SETUP) {
   getInputs.mockResolvedValue(inputs);
   getVersions.mockResolvedValue(VERSIONS);
   const element = createElement("c-shoresh-generated-schedule", {
     is: ShoreshGeneratedSchedule
   });
   element.terms = terms;
-  element.setup = SETUP;
+  element.setup = setup;
   document.body.appendChild(element);
   await flush();
   return element;
@@ -265,6 +266,43 @@ async function undoStep(element) {
 }
 
 describe("Versions on the Generated Schedule screen", () => {
+  // WEEK-6.2: Apply to other weeks is offered only in a numbered-days season.
+  it("WEEK-6.2: a named-days season doesn't offer Apply to other weeks", async () => {
+    const element = await render();
+    await openList(element);
+    expect(
+      versions(element).shadowRoot.querySelector('[data-id="apply-weeks"]')
+    ).toBeNull();
+  });
+
+  it("WEEK-6.2: a numbered-days season offers it on the Generated draft; builds wait while it is open", async () => {
+    const element = await render(week(), {
+      ...SETUP,
+      weeks: [...SETUP.weeks, { Id: "a0K000000000002AAA", Name: "Week 2" }],
+      season: { ...SETUP.season, [FIELD.Season.NumberedDays]: true }
+    });
+    await openList(element);
+    const apply = versions(element).shadowRoot.querySelector(
+      '[data-id="apply-weeks"]'
+    );
+    expect(apply.textContent.trim()).toBe("Apply to other weeks");
+    apply.click();
+    await flush();
+    const question = q(element, "c-shoresh-apply-weeks");
+    expect(question.sourceId).toBe(SCHEDULE);
+    expect(question.seenRevisions).toBe(REVISION);
+    expect(question.weeks).toEqual([
+      { label: "Week 2", value: "a0K000000000002AAA" }
+    ]);
+    expect(versions(element).busy).toBe(true);
+    question.dispatchEvent(
+      new CustomEvent("close", { detail: { sourceChanged: false } })
+    );
+    await flush();
+    expect(q(element, "c-shoresh-apply-weeks")).toBeNull();
+    expect(versions(element).busy).toBe(false);
+  });
+
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);

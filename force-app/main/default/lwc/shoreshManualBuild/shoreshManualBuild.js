@@ -21,6 +21,7 @@ import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
+import { FIELD } from "c/shoreshSchema";
 
 /**
  * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
@@ -31,7 +32,7 @@ function savedWhen(source) {
   if (!source.savedAt || source.namedByPublish) {
     return "";
   }
-  return ` · ${new Date(source.savedAt).toLocaleString(undefined, {
+  return ` · ${new Date(source.savedAt).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -80,6 +81,7 @@ export default class ShoreshManualBuild extends LightningElement {
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
   versions = [];
+  versionsTicket = 0;
   weekSources = [];
   versionsWorking = false;
   // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).
@@ -92,6 +94,8 @@ export default class ShoreshManualBuild extends LightningElement {
   publishState = null;
   // A preview, publish or unpublish is on its way (or its question is open).
   publishing = false;
+  // Apply to other weeks is open (c-shoresh-apply-weeks).
+  applying = false;
   // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview, week }.
   publishAsk = null;
   // The question before unpublishing: { heading, lines, publishedId, week }.
@@ -451,6 +455,9 @@ export default class ShoreshManualBuild extends LightningElement {
       this.restoredId = null;
       this.restoreRefused = false;
       this.waiting = null;
+      this.versions = [];
+      // A list still on its way for the last week is not this one's.
+      this.versionsTicket += 1;
       this.setupPreview = null;
       // A read of the last week's setup changes still on its way is dropped.
       this.setupTicket += 1;
@@ -726,6 +733,7 @@ export default class ShoreshManualBuild extends LightningElement {
   get versionsBusy() {
     return (
       this.versionsWorking ||
+      this.applying ||
       this.editBusy ||
       this.publishing ||
       this.setupWorking ||
@@ -741,25 +749,60 @@ export default class ShoreshManualBuild extends LightningElement {
   get editsWait() {
     return (
       this.versionsWorking ||
+      this.applying ||
       this.publishing ||
       this.setupWorking ||
       !!this.setupAsk
     );
   }
 
+  /** The season's other weeks, in a season whose days are numbered (WEEK-6.2): else none. */
+  get otherWeeks() {
+    const season = this._setup && this._setup.season;
+    return season && season[FIELD.Season.NumberedDays]
+      ? this.weekOptions.filter((o) => o.value !== this.weekId)
+      : [];
+  }
+  get applyLabel() {
+    return this.otherWeeks.length
+      ? `Apply to other ${this.t.pIn("Week")}`
+      : null;
+  }
+  get applySourceId() {
+    return this.schedule ? this.schedule.schedule.id : null;
+  }
+  get applySeen() {
+    return this.server ? this.server.revisions : null;
+  }
+  handleApply() {
+    this.applying = true;
+  }
+  handleApplyClose(event) {
+    this.applying = false;
+    this.template.querySelector('[data-id="versions"]').focusButton();
+    if (event.detail.sourceChanged) {
+      this.load(true);
+    }
+  }
+
   async loadVersions() {
-    const key = `${this.programId}|${this.weekId}`;
+    this.versionsTicket += 1;
+    const ticket = this.versionsTicket;
+    // An older read answering after a newer one (or after another week was chosen) is dropped.
+    const latest = () => ticket === this.versionsTicket;
     try {
       const rows = await getVersions({
         programId: this.programId,
         weekId: this.weekId
       });
-      if (key === `${this.programId}|${this.weekId}`) {
+      if (latest()) {
         this.versions = rows || [];
       }
     } catch {
       // The list shows as empty; the week itself is unaffected.
-      this.versions = [];
+      if (latest()) {
+        this.versions = [];
+      }
     }
   }
 

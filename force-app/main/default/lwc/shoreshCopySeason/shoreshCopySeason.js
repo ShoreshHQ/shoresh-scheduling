@@ -4,6 +4,25 @@ import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { suggestedCopyName, suggestedCopyStart } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { numberedDay } from "c/shoreshDayNames";
+import { dayLabel } from "c/shoreshScheduleViews";
+
+/** "Day 1, Jun 29" in a numbered-days season (WEEK-1.7). */
+function shortDate(value) {
+  const { short, sub } = dayLabel(value);
+  return `${short}, ${sub}`;
+}
+
+/** "Day 1, June 29, 2026" in a numbered-days season (WEEK-1.7). */
+function longDate(value) {
+  const date = new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC"
+  });
+  return `${numberedDay(value)}, ${date}`;
+}
 
 /**
  * Copy season, a page of its own (wiki decision 56, copy-season-a): the new season's name and
@@ -109,18 +128,32 @@ export default class ShoreshCopySeason extends LightningElement {
     if (!this.preview || !this.preview.weekdaysChange) {
       return null;
     }
-    return `${this.season.Name} started on a ${this.preview.oldWeekday}`;
+    const article = this.season[FIELD.Season.NumberedDays] ? "" : "a ";
+    return `${this.season.Name} started on ${article}${this.preview.oldWeekday}`;
   }
 
   get previewWeeks() {
     return ((this.preview && this.preview.weeks) || []).map((w, i) => ({
       key: `w${i}`,
-      ...w
+      ...w,
+      oldDayDate: this.numbered ? shortDate(w.oldStartDate) : null,
+      dayDate: this.numbered ? shortDate(w.startDate) : null
     }));
   }
 
   get hasPreviewWeeks() {
     return this.previewWeeks.length > 0;
+  }
+
+  /** The season says its days by number: dates carry the number, not the weekday. */
+  get numbered() {
+    return !!this.preview && numberedDay(this.preview.startDate) !== null;
+  }
+  get startDateWords() {
+    return this.numbered ? longDate(this.preview.startDate) : null;
+  }
+  get endDateWords() {
+    return this.numbered ? longDate(this.preview.endDate) : null;
   }
 
   /** A season without weeks: its new dates in words instead. */

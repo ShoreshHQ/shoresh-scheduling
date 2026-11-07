@@ -1,5 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
-import { DAY_NAMES, weekdayOf } from "./checks";
+import { dayWord } from "./checks";
 import {
   blankSetupNote,
   floorNote,
@@ -345,7 +345,7 @@ function keepLines(keep, input, { groups, activities, t }) {
       lines.push(
         movedNote({
           groupName: group.name,
-          dayName: DAY_NAMES[weekdayOf(date)] || date,
+          dayName: dayWord(date) || date,
           blockName: blockNames.get(blockId) || "",
           shortGroupName: short.name,
           activityName: activities.get(actId),

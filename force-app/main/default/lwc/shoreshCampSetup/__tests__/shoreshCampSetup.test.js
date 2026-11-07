@@ -1,6 +1,8 @@
 import { createElement } from "lwc";
 import ShoreshCampSetup, { seasonContents } from "c/shoreshCampSetup";
 import { buildTerms } from "c/shoreshTerms";
+import { FIELD as SCHEMA_FIELD } from "c/shoreshSchema";
+import { numberedDay, setDayNaming } from "c/shoreshDayNames";
 import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
@@ -1835,6 +1837,41 @@ describe("c-shoresh-camp-setup", () => {
         element,
         'c-shoresh-saved-mark[data-id="season-saved"]'
       ).shadowRoot.querySelector('[data-id="saved"]');
+
+    // WEEK-1.5
+    it("the days choice shows its values and saves as soon as it is picked", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      saveRecords.mockResolvedValue([]);
+      const element = await render();
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      const choice = q(element, '[data-id="day-naming"]');
+      expect(choice.options.map((o) => o.label)).toEqual([
+        "Mon Tue Wed",
+        "Day 1 Day 2 Day 3"
+      ]);
+      expect(choice.value).toBe("named");
+      const saved = nsRecord(setupWith());
+      saved.season = {
+        ...saved.season,
+        [SCHEMA_FIELD.Season.NumberedDays]: true
+      };
+      getSeasonSetup.mockResolvedValue(saved);
+      choice.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "numbered" } })
+      );
+      await flush();
+      expect(saveRecords.mock.calls.at(-1)[0].records[0]).toMatchObject({
+        Id: SEASON.Id,
+        [SCHEMA_FIELD.Season.NumberedDays]: true
+      });
+      expect(q(element, '[data-id="day-naming"]').value).toBe("numbered");
+      // The screens say this season's days from here on: Monday to Friday, by default.
+      expect(numberedDay("2026-07-01")).toBe("Day 3");
+      setDayNaming(null);
+    });
 
     it("opens from the pencil beside the picker, not on the Weeks screen, and has no Status", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));

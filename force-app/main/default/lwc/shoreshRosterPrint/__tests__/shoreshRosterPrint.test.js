@@ -34,7 +34,7 @@ describe("c-shoresh-roster-print", () => {
       is: ShoreshRosterPrint
     });
     element.pages = PAGES;
-    element.header = "Chugim · Week 3 · Final 14 Oct";
+    element.header = "Chugim · Week 3 · Final Oct 14";
     element.file = "Chugim Week 3 rosters";
     document.body.appendChild(element);
     await Promise.resolve();
@@ -46,7 +46,7 @@ describe("c-shoresh-roster-print", () => {
       "Drama"
     ]);
     expect(pages[0].querySelector(".sub").textContent).toBe(
-      "Chugim · Week 3 · Final 14 Oct"
+      "Chugim · Week 3 · Final Oct 14"
     );
     expect(
       [...pages[0].querySelectorAll(".name")].map((n) =>

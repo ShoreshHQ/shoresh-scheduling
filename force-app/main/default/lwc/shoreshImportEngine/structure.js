@@ -641,10 +641,13 @@ function singleDayFiles(timetables, pages, placements) {
               .map((p) => `${p.week || ""}|${p.day}`)
           ).size > 1
       );
+    // A file left out is read for nothing, so it never stops the rest being one day (INGEST-4.17).
+    const read = t.pages.filter((i) => placements.some((p) => p.page === i));
     if (
       wds.size !== 1 ||
       (t.ownDays || []).length ||
-      !t.pages.every((i) => pages[i].oneDay) ||
+      !read.length ||
+      !read.every((i) => pages[i].oneDay) ||
       (named && !regular)
     ) {
       continue;
@@ -674,7 +677,7 @@ function singleDayFiles(timetables, pages, placements) {
     notes.push({
       type: "oneDay",
       day,
-      files: [...new Set(t.pages.map((i) => pages[i].file))]
+      files: [...new Set(read.map((i) => pages[i].file))]
     });
   }
   timetables.splice(

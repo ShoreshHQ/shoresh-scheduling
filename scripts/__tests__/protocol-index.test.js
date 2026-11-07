@@ -1,14 +1,19 @@
 /**
  * scripts/protocol-index.js: every protocol statement ID is read, each is proved only by a test
  * that names it and asserts, every test a Test column names exists, and each statement proved
- * stays proved (docs/protocol/README.md). A new statement needs its test, or a line in NOT_PROVED.
+ * stays proved, and the number proved may only go up, so a deleted statement is seen too
+ * (docs/protocol/README.md). A new statement needs its test, or a line in NOT_PROVED; raise
+ * ENCODED_FLOOR when a change proves more.
  */
 const {
   protocolIndex,
+  counts,
   testsIn,
   proves,
   missingTests
 } = require("../protocol-index.js");
+
+const ENCODED_FLOOR = 519;
 
 // Built, not written, so this file names no ID itself.
 const ID = ["LOCK", "4.3"].join("-");
@@ -37,6 +42,10 @@ describe("the protocol's conformance index", () => {
       "SPECIAL",
       "WEEK"
     ]);
+  });
+
+  it("never has fewer statements proved by a test than the floor, so deleting one is seen", () => {
+    expect(counts(statements).ENCODED).toBeGreaterThanOrEqual(ENCODED_FLOOR);
   });
 
   it("names every statement no test proves, so one can't quietly take another's place", () => {

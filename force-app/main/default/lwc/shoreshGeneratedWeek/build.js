@@ -6,7 +6,11 @@ import {
   readNotes,
   readOtherPrograms
 } from "c/shoreshEngine";
-import { campFirstDay, campShortWeek } from "c/shoreshImportEngine";
+import {
+  campFirstDay,
+  campShortWeek,
+  nameDaysFor
+} from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 
 /**
@@ -225,6 +229,7 @@ export function buildWeek(loaded, how) {
  * engine's own words.
  */
 export function buildForAgent(read) {
+  nameDaysFor(read.setup);
   const loaded = loadedOf(read.inputs || {});
   const built = buildWeek(loaded, {
     action: loaded.scheduleId ? ACTION.REBUILD : ACTION.GENERATE,

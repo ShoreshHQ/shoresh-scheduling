@@ -266,6 +266,43 @@ private class AgentImportsTest {
     }
   }
 
+  // CORE-6.10: an import's time is said month first, by the read and by the undo's ask-first.
+  @IsTest
+  static void anImportsTimeIsSaidMonthFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id last = ImportController.saveList(activities(camp(), 'Kayaking'))
+        .importId;
+      Test.setCreatedDate(last, Datetime.newInstance(2026, 11, 1, 10, 3, 0));
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, Object>{ 'season' => SEASON, 'seen' => last }
+        )
+      );
+      RestContext.response = new RestResponse();
+      Test.startTest();
+      // Asked first, not yet undone.
+      AgentWeeks.answer(new AgentUndoImport());
+      String undo = RestContext.response.responseBody.toString();
+      List<Object> listed = ask(
+        new AgentReadLastImports(),
+        'GET',
+        new Map<String, Object>{ 'season' => SEASON }
+      );
+      Test.stopTest();
+      Assert.isTrue(
+        ((String) listed[1])
+          .contains(', Nov 1, 2026 10:03 AM, seen: "' + last + '"'),
+        String.valueOf(listed[1])
+      );
+      Assert.isTrue(
+        undo.contains(', Nov 1, 2026 10:03 AM. What it added'),
+        undo
+      );
+    }
+  }
+
   // API-1.82: an Id read with other capitals is another Id, so Undo is refused as not the one read.
   @IsTest
   static void undoRefusesAnIdReadWithOtherCapitals() {

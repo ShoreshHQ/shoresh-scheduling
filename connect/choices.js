@@ -62,6 +62,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = await load();
+  m.nameDaysFor(body.setup);
   const setup = body.setup || {};
   const situation = body.situation || {};
   const t = m.buildTerms(setup.labels || []);
@@ -84,6 +85,12 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   );
   if (week.problem) return refused(week.problem);
   const schedules = schedulesOf(setup, week.item.Id, m);
+  if (schedules.length === 0) {
+    // As the screen's empty state says it ("No schedule for this week yet"), with the step first.
+    return refused(
+      `No schedule for ${week.item.Name} yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in.`
+    );
+  }
   const schedule =
     schedules.length === 1 && input.schedule === undefined
       ? { item: schedules[0] }
