@@ -215,12 +215,12 @@ describe("card 2: what needs a person", () => {
         kind: "same",
         activityId: "a3",
         remembered: true,
-        note: "Remembered from Dana's answer on 3 Jul"
+        note: "Remembered from Dana's answer on Jul 3"
       },
       photoclub: {
         kind: "leave",
         remembered: true,
-        note: "Remembered from your answer on 26 Oct"
+        note: "Remembered from your answer on Oct 26"
       }
     });
     expect(

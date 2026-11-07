@@ -706,7 +706,7 @@ describe("Finalize, Final, and a new version", () => {
     expect(finalizeRun).toHaveBeenCalledWith({ runId: "r1", revision: 2 });
     expect(
       popButton(element, "state").textContent.replace(/\s+/g, " ").trim()
-    ).toBe("Final · 14 Oct · Greg");
+    ).toBe("Final · Oct 14 · Greg");
     expect($(element, '[data-id="primary"]')).toBeNull();
     expect(text(popButton(element, "download"))).toBe("Download");
     expect($(element, '[data-id="assign-again"]')).toBeNull();

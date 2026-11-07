@@ -55,7 +55,7 @@ describe("rosters: one page per offering, its whole week", () => {
       "Willow",
       "No Bunk"
     ]);
-    expect(d.header).toBe("Chugim · Week 1 · Final 14 Oct");
+    expect(d.header).toBe("Chugim · Week 1 · Final Oct 14");
   });
 
   it("a final run's roster keeps the names it was finalized with", () => {
@@ -78,7 +78,7 @@ describe("rosters: one page per offering, its whole week", () => {
     expect(sheets.map((s) => s.name)).toEqual(["Archery", "Drama", "Pottery"]);
     expect(sheets[0].rows.slice(0, 4)).toEqual([
       ["Archery"],
-      ["Chugim · Week 1 · Final 14 Oct"],
+      ["Chugim · Week 1 · Final Oct 14"],
       [],
       ["Mon 12:30", "2 of 2", "Tue 12:30", "2 of 2"]
     ]);
@@ -230,7 +230,7 @@ describe("the full report", () => {
   it("counts seats by how they were chosen, never an unordered choice as a rank", () => {
     const summary = new Map(summaryRows(reading()));
     expect(summary.get("Run")).toBe("Chugim · Week 1");
-    expect(summary.get("Status")).toBe("Final · 14 Oct · Greg");
+    expect(summary.get("Status")).toBe("Final · Oct 14 · Greg");
     expect(summary.get("Source file")).toBe("chugim.xlsx");
     expect(summary.get("Placed")).toBe("3 of 4");
     expect(summary.get("First choice")).toBe(4);
