@@ -9,6 +9,9 @@ public with sharing class ManualWeekCopy {
   private ManualWeekStart rules;
   public List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>();
   public List<String> leftOut = new List<String>();
+  // Why a whole source day the other week lacks can't go; null says "not in this week" (Apply to
+  // other weeks says WEEK-2.4's words: WeekApply).
+  public String noSuchDay;
   // One edit per day of the new week: its runs go in together (one read of the day each).
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
   // How each day is named in what is left out: "Monday", or with its date for a week's second
@@ -73,7 +76,7 @@ public with sharing class ManualWeekCopy {
    * Days (in date order) by weekday and which of that weekday they are: "Monday", then "Monday 2"
    * for a second Monday. Names each day (in names) as it goes.
    */
-  private static Map<String, ScheduleDays.DayGrid> byPlace(
+  public static Map<String, ScheduleDays.DayGrid> byPlace(
     List<ScheduleDays.DayGrid> days,
     Map<Date, String> names
   ) {
@@ -95,7 +98,9 @@ public with sharing class ManualWeekCopy {
     for (ScheduleDays.DayGrid day : byWeekday.values()) {
       if (ManualWeekPlacements.hasActivities(day.grid)) {
         leftOut.add(
-          sourceNames.get(day.day) + ': not in this ' + rules.weekWord()
+          sourceNames.get(day.day) +
+            ': ' +
+            (noSuchDay ?? 'not in this ' + rules.weekWord())
         );
       }
     }
@@ -114,6 +119,13 @@ public with sharing class ManualWeekCopy {
     for (
       ManualWeekPlacements.Placement p : ManualWeekPlacements.of(source, sg)
     ) {
+      // Already there whole, as Apply to other weeks can find it: nothing to do, nothing to say.
+      if (
+        target.g >= 0 &&
+        ManualWeekPlacements.holds(p, target.day.grid, target.row)
+      ) {
+        continue;
+      }
       String why = target.g < 0
         ? 'not at camp this ' + rules.weekWord()
         : whyNot(p, target);
@@ -139,7 +151,10 @@ public with sharing class ManualWeekCopy {
     if (why != null) {
       return why;
     }
-    Integer first = firstBlockOn(p, target);
+    Integer first = ManualWeekPlacements.firstBlockOn(
+      p,
+      target.day.grid.blockIds()
+    );
     if (first < 0) {
       return 'that day has no ' + p.grid.blocks[p.first].name;
     }
@@ -154,31 +169,19 @@ public with sharing class ManualWeekCopy {
             target.row[first + i]
           ) + ' is there';
       }
+      if (ScheduleGridLocks.isLocked(target.day.grid, target.g, first + i)) {
+        return 'locked empty';
+      }
     }
     return null;
   }
 
-  /** Where a placement's blocks start on the target day, or -1 if it lacks any of them in a row. */
-  private static Integer firstBlockOn(
-    ManualWeekPlacements.Placement p,
-    Target target
-  ) {
-    List<String> blockIds = target.day.grid.blockIds();
-    Integer first = SlotIds.indexOf(blockIds, p.grid.blocks[p.first].id);
-    for (Integer i = 1; first >= 0 && i < p.length; i++) {
-      if (
-        blockIds.size() <= first + i ||
-        blockIds[first + i] != p.grid.blocks[p.first + i].id
-      ) {
-        return -1;
-      }
-    }
-    return first;
-  }
-
   /** The edit that puts a placement into Open cells (they are taken from here on). */
   private void add(ManualWeekPlacements.Placement p, Target target) {
-    Integer first = firstBlockOn(p, target);
+    Integer first = ManualWeekPlacements.firstBlockOn(
+      p,
+      target.day.grid.blockIds()
+    );
     SlotEdits.Run run = runFor(p, target.day, first);
     run.groupId = target.day.grid.groups[target.g].id;
     for (Integer i = 0; i < run.after.size(); i++) {

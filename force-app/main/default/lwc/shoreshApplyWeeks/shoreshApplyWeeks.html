@@ -1,0 +1,108 @@
+<template>
+  <section
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="apply-title"
+    class="slds-modal slds-fade-in-open"
+    data-id="apply"
+    onkeydown={handleKeyDown}
+  >
+    <div class="slds-modal__container">
+      <div class="slds-modal__header">
+        <h2 id="apply-title" class="slds-modal__title">{heading}</h2>
+      </div>
+      <!-- Focusable, so a long list scrolls with the keyboard too (WCAG 2.1.1). -->
+      <div
+        class="slds-modal__content slds-p-around_medium"
+        role="region"
+        aria-labelledby="apply-title"
+        tabindex="0"
+        data-id="lines"
+      >
+        <template lwc:if={sourceChanged}>
+          <p role="alert" data-id="source-changed">{sourceChangedText}</p>
+        </template>
+        <template lwc:else>
+          <ul class="weeks">
+            <template for:each={rows} for:item="row">
+              <li key={row.weekId} class="week" data-week={row.weekId}>
+                <label class="week-head">
+                  <input
+                    type="checkbox"
+                    checked={row.checked}
+                    disabled={row.fixed}
+                    data-week={row.weekId}
+                    onchange={handleCheck}
+                  />
+                  <span class="week-name">{row.name}</span>
+                  <span class="week-said" data-id="said">{row.said}</span>
+                  <template lwc:if={row.published}>
+                    <span class="week-published" data-id="published"
+                      >{publishedWords}</span
+                    >
+                  </template>
+                </label>
+                <template lwc:if={row.hasLines}>
+                  <ul class="lines">
+                    <template for:each={row.kept} for:item="line">
+                      <li key={line} class="line" data-id="kept">
+                        <c-shoresh-lock label="Locked"></c-shoresh-lock>
+                        <span>{line}</span>
+                      </li>
+                    </template>
+                    <template for:each={row.cantGo} for:item="line">
+                      <li key={line} class="line" data-id="cant-go">
+                        <span
+                          class="shoresh-look-mark"
+                          aria-hidden="true"
+                        ></span>
+                        <span>{line}</span>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+              </li>
+            </template>
+          </ul>
+        </template>
+      </div>
+      <div class="slds-modal__footer foot">
+        <span class="foot-said" role="status" data-id="progress"
+          >{footWords}</span
+        >
+        <template lwc:if={finished}>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            onclick={handleClose}
+            data-id="close"
+          >
+            Close
+          </button>
+        </template>
+        <template lwc:else>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={applyingNow}
+            onclick={handleClose}
+            data-id="no"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            disabled={applyDisabled}
+            onclick={handleApply}
+            data-id="yes"
+          >
+            {applyWords}
+          </button>
+        </template>
+      </div>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

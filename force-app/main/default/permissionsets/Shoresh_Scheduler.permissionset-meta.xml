@@ -97,6 +97,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentApplyToOtherWeeks</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AgentAssignElectiveSeats</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -418,6 +422,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>OutgoingGroupSchedule</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>WeekApplyController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <applicationVisibilities>
