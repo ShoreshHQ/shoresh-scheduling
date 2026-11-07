@@ -366,7 +366,7 @@ describe("c-shoresh-choices-import", () => {
       row.querySelector('[data-answer="leave"]').getAttribute("aria-pressed")
     ).toBe("true");
     expect(row.querySelector('[data-id="remembered"]').textContent).toBe(
-      "Remembered from a former user's answer on 3 Jul"
+      "Remembered from a former user's answer on Jul 3"
     );
     await click(element, '[data-settle="potterywheel"] [data-answer="add"]');
     await click(element, '[data-id="primary"]');

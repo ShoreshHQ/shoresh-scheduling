@@ -20,6 +20,7 @@ import {
   SEVERAL,
   electiveWord
 } from "./electives";
+import { shortDate } from "c/shoreshTerms";
 import { LEAVE_OUT } from "./reading";
 import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock, weekOrder } from "./text";
@@ -267,7 +268,7 @@ function programCard(ask, t) {
     preselected: ask.preselected,
     options: [
       ...ask.options.map((name, i) => {
-        const start = monthDay((ask.starts || [])[i]);
+        const start = shortDate((ask.starts || [])[i]);
         return {
           value: name,
           label: start ? `${name} (starts ${start})` : name
@@ -383,7 +384,7 @@ function divisionCard(ask, t) {
     preselected: ask.preselected,
     options: [
       ...ask.options.map((name, i) => {
-        const start = monthDay((ask.starts || [])[i]);
+        const start = shortDate((ask.starts || [])[i]);
         return {
           value: name,
           label: start ? `${name} (starts ${start})` : name
@@ -408,7 +409,7 @@ function whichGroupCard(ask, t) {
     subtitle: `There is more than one ${t.sIn("Group")} called ${ask.name}, and the file does not say its ${t.sIn("Division")}.`,
     options: [
       ...ask.options.map((name, i) => {
-        const start = monthDay((ask.starts || [])[i]);
+        const start = shortDate((ask.starts || [])[i]);
         return {
           value: name,
           label: start ? `${name} (starts ${start})` : name
@@ -647,16 +648,6 @@ function specialDayClashCard(ask, t) {
   };
 }
 
-const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
-
-/** "2027-06-28" -> "Jun 28". */
-function monthDay(iso) {
-  const [, m, d] = String(iso || "")
-    .split("-")
-    .map(Number);
-  return m && d ? `${MONTHS[m - 1]} ${d}` : "";
-}
-
 /** Each week by its name and start date ("Week 1 (starts Jun 28)"); its name is the answer. */
 function weekCard(ask, t) {
   return {
@@ -670,7 +661,7 @@ function weekCard(ask, t) {
     subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Saved versions.`,
     options: [
       ...ask.options.map((name, i) => {
-        const start = monthDay((ask.starts || [])[i]);
+        const start = shortDate((ask.starts || [])[i]);
         return {
           value: name,
           label: start ? `${name} (starts ${start})` : name
