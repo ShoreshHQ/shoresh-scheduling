@@ -322,7 +322,7 @@ public with sharing class SchedulePublish {
   }
 
   /** The week's current published schedule (the newest, should there be more), or null. */
-  private static Schedule__c publishedOf(Id programId, Id weekId) {
+  public static Schedule__c publishedOf(Id programId, Id weekId) {
     List<Schedule__c> found = [
       SELECT Id, PublishedAt__c, PublishedBy__r.Name, Origin__c, CreatedDate
       FROM Schedule__c

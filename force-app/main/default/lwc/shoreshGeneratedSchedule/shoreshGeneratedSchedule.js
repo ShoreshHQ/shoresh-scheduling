@@ -39,6 +39,7 @@ import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
 import { clearedDays, editedKeys } from "./week";
 import { lockOf } from "./editing";
 import { checkDays, editorDraftOf } from "./counter";
+import { FIELD } from "c/shoreshSchema";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -194,6 +195,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   versionsTicket = 0;
   // A Save version, Restore, rename or delete is on its way.
   versionsWorking = false;
+  // Apply to other weeks is open (c-shoresh-apply-weeks).
+  applying = false;
   // The version just restored and the revision it was restored at: "on screen now" until the
   // week is saved again (an edit, a Lock, a build), as on the desktop.
   restored = null;
@@ -800,9 +803,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.setupWaits
     );
   }
-  /** "Update to match setup" is read, open or updating: what it shows is the week as it is. */
+  /**
+   * "Update to match setup" is read, open or updating, or Apply to other weeks is open: what each
+   * shows is the week as it is.
+   */
   get setupWaits() {
-    return this.setupWorking || !!this.setupAsk;
+    return this.setupWorking || !!this.setupAsk || this.applying;
   }
   get actionsDisabled() {
     // Also while the week is being read (Reload, coming back to the window): a build started
@@ -2427,6 +2433,35 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return restored && this.loaded && this.loaded.revision === restored.revision
       ? restored.id
       : null;
+  }
+
+  /** The season's other weeks, in a season whose days are numbered (WEEK-6.2): else none. */
+  get otherWeeks() {
+    const season = this._setup && this._setup.season;
+    return season && season[FIELD.Season.NumberedDays]
+      ? this.weekOptions.filter((o) => o.value !== this.weekId)
+      : [];
+  }
+  get applyLabel() {
+    return this.otherWeeks.length
+      ? `Apply to other ${this.t.pIn("Week")}`
+      : null;
+  }
+  get applySourceId() {
+    return this.loaded ? this.loaded.scheduleId : null;
+  }
+  get applySeen() {
+    return this.loaded ? this.loaded.revision : null;
+  }
+  handleApply() {
+    this.applying = true;
+  }
+  handleApplyClose(event) {
+    this.applying = false;
+    this.template.querySelector('[data-id="versions"]').focusButton();
+    if (event.detail.sourceChanged) {
+      this.load(true);
+    }
   }
 
   async loadVersions() {

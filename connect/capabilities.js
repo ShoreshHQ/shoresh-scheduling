@@ -818,6 +818,19 @@ const CAPABILITIES = [
     ["version"]
   ),
   act(
+    "apply_to_other_weeks",
+    "apply_to_other_weeks",
+    "In a numbered-days season, repeat a week on another week of the season by Day number, as the Versions panel's Apply to other weeks does: every Day 3 looks the same. Only when the person asked for it; nothing else ever changes another week. One target week per call, so call it once for each week and show the person all the answers together. A locked cell in that week is kept and listed, a cell that can't go (a day that week doesn't have, a group away, a special event) is listed, what that week has now goes to its Versions first, and its published schedule stays as it is until it is published again. It is done as you, with your own access.",
+    {
+      ...EITHER_WEEK,
+      to_week: {
+        type: "string",
+        description: "The week to repeat it on, like Week 3."
+      }
+    },
+    ["to_week"]
+  ),
+  act(
     "publish_week",
     "publish_week",
     "Publish a week's Generated Schedule or Manual Build, as that screen's Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
@@ -2099,7 +2112,8 @@ const ASKS_FIRST = [
   "clear_electives",
   "copy_season",
   "change_special_schedule_frame",
-  "assign_elective_seats"
+  "assign_elective_seats",
+  "apply_to_other_weeks"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;
