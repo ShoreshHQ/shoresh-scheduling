@@ -842,10 +842,10 @@ function toAgent(answer) {
     : { ...answer, text: `${answer.text} ${PERSON_DECIDES}` };
 }
 
-/** Shoresh's answer as text; a refusal's sentence on its own. */
 const NO_PERMISSION_SET =
   "Your Salesforce account doesn't have the Shoresh permission set for this, so nothing was done. A Salesforce admin can give it to you: Shoresh Scheduler for a person, or the one Send or Read permission set for a connection.";
 
+/** Shoresh's answer as text; a refusal's sentence on its own. */
 function answerText(text) {
   try {
     const parsed = JSON.parse(text);
