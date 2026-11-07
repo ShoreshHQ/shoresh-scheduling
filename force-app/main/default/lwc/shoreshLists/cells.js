@@ -480,6 +480,11 @@ export function readCell(column, raw) {
     case "time":
       return time(text);
     default:
-      return { value: text };
+      // Longer than Salesforce keeps: never Ready to save, for the save to refuse (INGEST-1.7).
+      return column.maxLength && text.length > column.maxLength
+        ? {
+            problem: `"${text.slice(0, 40)}…" is longer than ${column.maxLength} characters`
+          }
+        : { value: text };
   }
 }
