@@ -1,9 +1,10 @@
 /**
  * One seat by hand (electives slice E7; repo ADR 0018 choice 32; desktop setElectiveAssignment.js
  * and DraftRunView.jsx). A move ("Move to…", or a name dropped on another offering) is a hand move
- * and locked, as the desktop makes it ("A move made by hand is a manual, locked placement"); a
- * move into an offering already full then is refused, as the desktop refuses it. The padlock locks or unlocks a
- * seat as it is, a lock that no longer fits included. Checked as Assign's seats are
+ * and locked, as the desktop makes it ("A move made by hand is a manual, locked placement"). A
+ * move into an offering already full then goes through and the offering shows over its seats
+ * (Greg, 2026-11-07: a hand edit is never refused for a setup reason; the desktop refuses it). The
+ * padlock locks or unlocks a seat as it is, a lock that no longer fits included. Checked as Assign's seats are
  * (ElectiveSeatChecks), with the run's revision. In user mode.
  */
 public with sharing class ElectiveSeatChange {
@@ -42,59 +43,6 @@ public with sharing class ElectiveSeatChange {
       throw e;
     }
     return ElectiveSeats.open(request.runId);
-  }
-
-  /**
-   * A move into an offering whose seats are all taken then is refused, as the desktop refuses it
-   * (setElectiveAssignment.js OCCURRENCE_FULL: the seats taken, not counting the one moving).
-   */
-  private static void refuseIfFull(
-    ElectiveRunState state,
-    ChangeRequest request
-  ) {
-    Offering__c offering = [
-      SELECT Seats__c, NoSeatLimit__c, Activity__r.Name
-      FROM Offering__c
-      WHERE Id = :request.offeringId
-      WITH USER_MODE
-    ];
-    // Blank or 0 seats are no limit (ELECT-4.1).
-    if (
-      offering.NoSeatLimit__c == true ||
-      offering.Seats__c == null ||
-      offering.Seats__c == 0
-    ) {
-      return;
-    }
-    Integer taken = takenAt(state, request);
-    if (taken >= offering.Seats__c) {
-      throw new ShoreshException(
-        offering.Activity__r.Name +
-          ' is full then (' +
-          taken +
-          ' of ' +
-          offering.Seats__c.intValue() +
-          ' seats); nothing changed.'
-      );
-    }
-  }
-
-  /** The seats taken in the offering then, not counting the camper moving. */
-  private static Integer takenAt(
-    ElectiveRunState state,
-    ChangeRequest request
-  ) {
-    Integer taken = 0;
-    for (Assignment__c other : state.seats) {
-      Boolean same =
-        other.Offering__c == request.offeringId &&
-        other.Date__c == request.day &&
-        other.TimeBlock__c == request.blockId;
-      if (same && other.Camper__c != request.camperId) {
-        taken++;
-      }
-    }
-    return taken;
   }
 
   /** Why nothing changed: the camper already holds that offering then, or the seat is gone. */
@@ -156,7 +104,6 @@ public with sharing class ElectiveSeatChange {
     wanted.blockId = request.blockId;
     wanted.offeringId = request.offeringId;
     ElectivePeriod at = ElectiveSeatChecks.offeredAt(state, wanted);
-    refuseIfFull(state, request);
     Assignment__c result = seat == null
       ? ElectiveSeatChecks.newSeat(state, wanted, at)
       : seat;
