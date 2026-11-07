@@ -310,8 +310,8 @@ function rosterRows(d) {
           .sort(d.byBunkThenName);
         const seats = row.offering.noLimit
           ? "No limit"
-          : row.offering.seats == null
-            ? ""
+          : row.offering.seats == null || Number(row.offering.seats) === 0
+            ? "" // blank or 0: no limit, its seats not chosen (ELECT-4.1)
             : Number(row.offering.seats);
         people.forEach((p, i) =>
           body.push([

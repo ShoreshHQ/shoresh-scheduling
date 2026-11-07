@@ -54,6 +54,32 @@ public with sharing class ElectiveOverSeats {
     return null;
   }
 
+  /**
+   * The screen's "needs its seats chosen" for an offering on the table with blank or 0 seats,
+   * seated with no limit (ELECT-4.1), or null.
+   */
+  public static String noSeatsSet(ElectiveSeats.OfferingInfo offering) {
+    return offering.proposed != true &&
+      offering.noLimit != true &&
+      !limited(offering)
+      ? 'Choose how many seats "' +
+        offering.name +
+        '" has: none are set, so it is seated with no limit.'
+      : null;
+  }
+
+  /** Each offering's "needs its seats chosen" line, in the screen's order (ELECT-4.1). */
+  public static List<String> noSeatsSet(ElectiveSeats.RunView view) {
+    List<String> lines = new List<String>();
+    for (ElectiveSeats.OfferingInfo offering : view.offerings) {
+      String unset = noSeatsSet(offering);
+      if (unset != null) {
+        lines.add(unset);
+      }
+    }
+    return lines;
+  }
+
   /** The offering the camper sits in on that day and block, or null. */
   private static Id seatedIn(
     ElectiveSeats.RunView view,
