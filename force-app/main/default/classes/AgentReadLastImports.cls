@@ -31,7 +31,9 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
     List<String> said = new List<String>();
     if (setup.lastImport != null) {
       said.add(
-        'Last import: ' + filesOf(setup.lastImport) + lineEnd(setup.lastImport)
+        'Last import: ' +
+          filesOf(setup.lastImport) +
+          lineEnd(setup.lastImport, setup.campTimeZone)
       );
     }
     for (Import__c last : setup.lastFromOutside) {
@@ -40,7 +42,7 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
           last.Source__c +
           ': ' +
           filesOf(last).substringBefore(' from ') +
-          lineEnd(last) +
+          lineEnd(last, setup.campTimeZone) +
           ', from: "' +
           last.Source__c +
           '"'
@@ -62,10 +64,10 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
     return String.isBlank(last.Files__c) ? 'a file' : last.Files__c;
   }
 
-  /** ", 1 Nov 2026 10:03 AM, seen: <id>" in the person's own time zone. */
-  private static String lineEnd(Import__c last) {
+  /** ", 1 Nov 2026 10:03 AM, seen: <id>" on the camp's clock (CORE-6.11). */
+  private static String lineEnd(Import__c last, String zone) {
     return ', ' +
-      last.CreatedDate.format('d MMM yyyy h:mm a') +
+      CampClock.say(last.CreatedDate, 'd MMM yyyy h:mm a', zone) +
       ', seen: "' +
       last.Id +
       '"';

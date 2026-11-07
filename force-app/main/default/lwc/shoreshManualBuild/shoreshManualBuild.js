@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { campZone } from "c/shoreshCampClock";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
@@ -36,7 +37,8 @@ function savedWhen(source) {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: campZone()
   })}`;
 }
 

@@ -444,9 +444,11 @@ export default class ShoreshRoots extends LightningElement {
     if (!last) {
       return null;
     }
+    // On the camp's clock (CORE-6.11).
     const when = new Date(last.CreatedDate).toLocaleString(undefined, {
       dateStyle: "medium",
-      timeStyle: "short"
+      timeStyle: "short",
+      timeZone: this.setup.campTimeZone || undefined
     });
     const what = `Last import: ${last[FIELD.Import.Files] || "a file"}`;
     const open = openQuestions(last[FIELD.Import.Open]);

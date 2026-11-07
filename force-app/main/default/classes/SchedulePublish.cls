@@ -239,7 +239,11 @@ public with sharing class SchedulePublish {
     }
     PublishedGuard.allow();
     try {
-      PublishedRows.keepAsHistory(published, publishedName(draft));
+      PublishedRows.keepAsHistory(
+        published,
+        publishedName(draft),
+        CampClock.zoneOfDraft(draft)
+      );
     } finally {
       PublishedGuard.done();
     }
@@ -260,7 +264,7 @@ public with sharing class SchedulePublish {
     PublishedGuard.allow();
     try {
       String name = publishedName(draft);
-      PublishedRows.keepAsHistory(replaced, name);
+      PublishedRows.keepAsHistory(replaced, name, CampClock.zoneOfDraft(draft));
       Schedule__c copy = new Schedule__c(
         Program__c = draft.Program__c,
         Week__c = draft.Week__c,

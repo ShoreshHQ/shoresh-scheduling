@@ -4,6 +4,7 @@
  */
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { setDayNaming } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+import { setCampZone } from "./engine.shoreshCampClock.shoreshCampClock.mjs";
 import { MONDAY_TO_FRIDAY, WEEKDAYS, firstDayOf } from "./engine.shoreshImportEngine.text.mjs";
 
 const SEASON = FIELD.Season;
@@ -60,8 +61,12 @@ export function firstDayOnceSaved(setup, firstDay, numbers) {
   });
 }
 
-/** Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames. */
+/**
+ * Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames; and times on
+ * its camp's clock (CORE-6.11): c/shoreshCampClock.
+ */
 export function nameDaysFor(setup) {
+  setCampZone(setup && setup.campTimeZone);
   const season = (setup && setup.season) || {};
   setDayNaming({
     numbered: Boolean(season[SEASON.NumberedDays]),
