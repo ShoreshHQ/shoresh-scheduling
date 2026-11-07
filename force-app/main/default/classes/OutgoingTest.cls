@@ -180,13 +180,13 @@ private class OutgoingTest {
     List<String> expected = new List<String>{
       'week=Week 1; date=' +
       day +
-      '; group=Group A; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Swim',
+      '; group=Group A; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Swim; division=Juniors',
       'week=Week 1; date=' +
       day +
-      '; group=Group B; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Flagpole',
+      '; group=Group B; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Flagpole; division=Juniors',
       'week=Week 1; date=' +
       day +
-      '; group=Group B; time_block=Lunch; start_time=09:00; end_time=09:45; activity=Chugim'
+      '; group=Group B; time_block=Lunch; start_time=09:00; end_time=09:45; activity=Chugim; division=Juniors'
     };
     User director = camp.sender('Read_Group_Schedules');
     Test.startTest();
@@ -225,16 +225,16 @@ private class OutgoingTest {
       described(capability, (List<Object>) posted.get('records'))
     );
     Assert.areEqual(
-      'week,date,group,time_block,start_time,end_time,activity\n' +
+      'week,date,group,time_block,start_time,end_time,activity,division\n' +
         'Week 1,' +
         day +
-        ',Group A,Period 1,09:00,09:45,Swim\n' +
+        ',Group A,Period 1,09:00,09:45,Swim,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Period 1,09:00,09:45,Flagpole\n' +
+        ',Group B,Period 1,09:00,09:45,Flagpole,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Lunch,09:00,09:45,Chugim\n',
+        ',Group B,Lunch,09:00,09:45,Chugim,Juniors\n',
       file.get('csv')
     );
   }

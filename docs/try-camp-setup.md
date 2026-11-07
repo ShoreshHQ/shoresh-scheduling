@@ -1401,7 +1401,8 @@ Open **Settings** at the foot of the Shoresh menu.
   - `camper_group`: `camper_id`, `camper_name`, `bunk`, `week` (leave out for every week)
   - `camper_elective_choice`: `camper_id`, `camper_name`, `elective`, `week`,
     `first_choice` … `fifth_choice`, `changed_at`
-- Going out: group schedule `week, date, group, time_block, start_time, end_time, activity`;
+- Going out: group schedule `week, date, group, time_block, start_time, end_time, activity,
+division`;
   activity schedule `week, date, activity, time_block, start_time, end_time, groups`;
   offerings `elective_set, activity, seats, minimum_to_run`; seats `week, elective_set, date,
 time_block, activity, location, source_system, camper_id, camper_name, camper_number, bunk`.
