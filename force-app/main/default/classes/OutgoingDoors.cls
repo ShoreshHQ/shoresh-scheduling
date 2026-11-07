@@ -14,6 +14,8 @@
  */
 public with sharing class OutgoingDoors {
   public static final String CSV = 'csv';
+  // Each season's first day for saying "Day 3", or null when its days are named (WEEK-1.7).
+  private static final Map<Id, Integer> FIRST_DAYS = new Map<Id, Integer>();
   // Salesforce allows 100 sends to other systems in one go.
   private static final Integer MOST_SENDS = 100;
   // A Named Credential's name: letters, numbers and single underscores, starting with a letter.
@@ -58,12 +60,12 @@ public with sharing class OutgoingDoors {
         return;
       }
       Season__c found = OutgoingRows.seasonCalled(season);
-      List<Map<String, Object>> rows = capability.rows(found, week);
+      List<Map<String, Object>> rows = rowsOf(capability, found, week);
       response.statusCode = 200;
       if (asCsv) {
         response.addHeader('Content-Type', 'text/csv');
         response.responseBody = Blob.valueOf(
-          OutgoingRows.csvOf(capability.fields(), rows)
+          OutgoingRows.csvOf(fieldsOf(capability, found), rows)
         );
       } else {
         response.addHeader('Content-Type', 'application/json');
@@ -94,6 +96,55 @@ public with sharing class OutgoingDoors {
     response.responseBody = Blob.valueOf(
       JSON.serialize(OutgoingRows.answered(message))
     );
+  }
+
+  /**
+   * The capability's rows. In a numbered-days season each record with a date also says its day,
+   * "Day 3" (WEEK-1.7), added to what it had (a CSV file's last column), so what already reads it
+   * reads the same; a named season's records are as they always were.
+   */
+  private static List<Map<String, Object>> rowsOf(
+    Capability capability,
+    Season__c season,
+    String week
+  ) {
+    List<Map<String, Object>> rows = capability.rows(season, week);
+    if (numbered(capability, season)) {
+      Integer firstDay = FIRST_DAYS.get(season.Id);
+      for (Map<String, Object> row : rows) {
+        // A seat may have no date: then it has no day either.
+        String day = (String) row.get('date');
+        row.put(
+          'day',
+          String.isBlank(day) || day == 'null'
+            ? null
+            : DayWords.sayNumbered(Date.valueOf(day), firstDay)
+        );
+      }
+    }
+    return rows;
+  }
+
+  /** The fields in a CSV file's order: day last in a numbered-days season. */
+  private static List<String> fieldsOf(
+    Capability capability,
+    Season__c season
+  ) {
+    List<String> fields = capability.fields().clone();
+    if (numbered(capability, season)) {
+      fields.add('day');
+    }
+    return fields;
+  }
+
+  private static Boolean numbered(Capability capability, Season__c season) {
+    if (!capability.fields().contains('date')) {
+      return false;
+    }
+    if (!FIRST_DAYS.containsKey(season.Id)) {
+      FIRST_DAYS.put(season.Id, DayWords.firstDayGoingOut(season.Id));
+    }
+    return FIRST_DAYS.get(season.Id) != null;
   }
 
   // ---------------------------------------------------------------- the Flow action
@@ -226,7 +277,7 @@ public with sharing class OutgoingDoors {
       }
       String key = season.Id + '|' + IncomingBatch.fold(week);
       if (!rows.containsKey(key)) {
-        rows.put(key, capability.rows(season, week));
+        rows.put(key, rowsOf(capability, season, week));
       }
       return rows.get(key);
     }
@@ -237,7 +288,7 @@ public with sharing class OutgoingDoors {
       List<Map<String, Object>> records
     ) {
       if (each.asCsv == true) {
-        return OutgoingRows.csvOf(capability.fields(), records);
+        return OutgoingRows.csvOf(fieldsOf(capability, season), records);
       }
       return JSON.serialize(
         new Map<String, Object>{
