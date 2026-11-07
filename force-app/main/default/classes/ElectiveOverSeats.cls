@@ -26,7 +26,6 @@ public with sharing class ElectiveOverSeats {
     return lines;
   }
 
-  /** Blank or 0 seats are no limit, as the seat run and the screen use them (ELECT-4.1). */
   /**
    * The offering over its seats at the camper's own time, or null: a time is per division, so
    * another division's campers in it then are not counted.
@@ -73,6 +72,7 @@ public with sharing class ElectiveOverSeats {
     return counts;
   }
 
+  /** Blank or 0 seats are no limit, as the seat run and the screen use them (ELECT-4.1). */
   private static Boolean limited(ElectiveSeats.OfferingInfo offering) {
     return offering.noLimit != true &&
       offering.seats != null &&
