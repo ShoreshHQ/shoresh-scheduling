@@ -155,9 +155,7 @@ function cellsAreGroups(page, headings, known) {
  * group names (loose keys), which settle it when they appear.
  */
 export function detectLayout(page, known) {
-  // A camp's own groups across ("D1", "D2" bunks) are groups, never days by number (WEEK-2.6).
-  const daysAcross =
-    columnsAreDays(page) && knownShare(page.columns, known.groups) < 0.5;
+  const daysAcross = columnsAreDays(page);
   // INGEST-2.17: one column, not days: one group's day (a by-activity page names many).
   if (!daysAcross && page.columns.filter(Boolean).length === 1) {
     return { layout: "allCamp", daysAcross, confident: true };

@@ -11,7 +11,10 @@ import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
 import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
-import { numberedCamps } from "../../../../../../scripts/import-corpus/numbered";
+import {
+  dBunkCamps,
+  numberedCamps
+} from "../../../../../../scripts/import-corpus/numbered";
 import {
   decisionCamps,
   earlyEndCamps,
@@ -107,6 +110,18 @@ describe("Import last year on made-up camps that number their days (level 1)", (
     results.forEach((r) =>
       expect([r.camp.id, r.proposal.numberDays]).toEqual([r.camp.id, true])
     );
+  });
+});
+
+// WEEK-2.6
+describe("Import last year on made-up camps whose bunks are named D1, D2, ... (level 1)", () => {
+  it("reads every bunk as a bunk, never a day, nothing asked", () => {
+    const results = dBunkCamps(40).map((camp) =>
+      scoreCamp(camp, { engine, XLSX, terms: buildTerms([]) })
+    );
+    const totals = summarise(results);
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(40);
   });
 });
 

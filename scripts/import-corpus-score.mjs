@@ -59,7 +59,7 @@ const { CORPUS_SIZE, ordinaryCamps } = await import("./import-corpus/camps.js");
 const { LEVEL2_SIZE, variedCamps } = await import("./import-corpus/level2.js");
 const { TRAVEL_SIZE, travellingCamps } =
   await import("./import-corpus/travel.js");
-const { NUMBERED_SIZE, numberedCamps } =
+const { D_BUNKS_SIZE, NUMBERED_SIZE, dBunkCamps, numberedCamps } =
   await import("./import-corpus/numbered.js");
 const { headingReport, plantCamp } =
   await import("./import-corpus/plant-camp.js");
@@ -180,6 +180,12 @@ if (level === 4) {
   console.log(`\nLevel 1, days by number: ${numbered.length} made-up camps\n`);
   console.log(summaryTable(numbered));
   printCamps(numbered);
+  const dBunks = dBunkCamps(D_BUNKS_SIZE).map((camp) => scoreCamp(camp, deps));
+  console.log(
+    `\nLevel 1, bunks named D1, D2, ...: ${dBunks.length} made-up camps\n`
+  );
+  console.log(summaryTable(dBunks));
+  printCamps(dBunks);
   const bytes = readFileSync(
     join(ROOT, "scripts/import-corpus/fixtures/plant-camp.xlsx")
   );

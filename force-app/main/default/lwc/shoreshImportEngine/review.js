@@ -155,24 +155,32 @@ function partOfDayLines(proposal) {
  */
 function dayNumberLines(proposal) {
   const numbered = proposal.numberedSeason || proposal.numberDays;
-  const line = (key, name) => ({
+  // said: what a screen reader reads for the arrow's line ("Day 3 is Wednesday").
+  const line = (key, name, said = "") => ({
     key,
     id: key,
     name,
+    said,
     detail: "",
     answer: null,
     options: []
   });
   return [
     ...(proposal.numberDays
-      ? [line("dayNumbers", "Mon Tue Wed → Day 1 Day 2 Day 3")]
+      ? [
+          line(
+            "dayNumbers",
+            "Mon Tue Wed → Day 1 Day 2 Day 3",
+            "Mon Tue Wed become Day 1 Day 2 Day 3"
+          )
+        ]
       : []),
-    ...(proposal.dayNumbers || []).map(({ number, day }) =>
-      line(
-        `dayNumber|${number}`,
-        numbered ? `Day ${number}` : `Day ${number} → ${day}`
-      )
-    )
+    ...(proposal.dayNumbers || []).map(({ number, day }) => {
+      const key = `dayNumber|${number}`;
+      return numbered
+        ? line(key, `Day ${number}`)
+        : line(key, `Day ${number} → ${day}`, `Day ${number} is ${day}`);
+    })
   ];
 }
 

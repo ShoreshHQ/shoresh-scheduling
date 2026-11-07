@@ -3823,3 +3823,94 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 });
+
+describe("a list import says its days as its own season (WEEK-2.6)", () => {
+  // WEEK-2.6
+  it("a Sunday-to-Thursday camp's first call, a list import, reads Day 2 as Monday", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const imports = async () =>
+      importModules({
+        engine: require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+        lists: require(`${LWC}/shoreshLists/shoreshLists.js`),
+        table: require(`${LWC}/shoreshListImport/table.js`),
+        terms: require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+        screens: require(`${LWC}/shoreshScreens/shoreshScreens.js`),
+        remembered: require(`${LWC}/shoreshRemembered/shoreshRemembered.js`),
+        patterns: require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+        choices: require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+        flow: require(`${LWC}/shoreshImport/flow.js`),
+        summary: require(`${LWC}/shoreshImport/summary.js`),
+        fromFile: require(`${LWC}/shoreshSpecialSchedule/fromFile.js`)
+      });
+    // A camp read before, whose week starts on Monday: what the call must not lean on.
+    require(`${LWC}/shoreshDayNames/shoreshDayNames.js`).setDayNaming({
+      numbered: true,
+      firstDay: 1
+    });
+    const sunToThu = {
+      Id: "p1",
+      Name: "Main",
+      Sunday__c: true,
+      Monday__c: true,
+      Tuesday__c: true,
+      Wednesday__c: true,
+      Thursday__c: true,
+      Friday__c: false,
+      Saturday__c: false
+    };
+    const setup = {
+      season: {
+        Id: "a00000000000001AAA",
+        Name: "Summer 2026",
+        NumberedDays__c: true,
+        StartDate__c: "2026-06-28"
+      },
+      weeks: [],
+      weekExceptions: [],
+      locationTypes: [],
+      locations: [{ Id: "l1", Name: "Gym", GroupsThatFit__c: 2 }],
+      activities: [
+        {
+          Id: "a1",
+          Name: "Archery",
+          Location__c: "l1",
+          Length__c: 1,
+          Priority__c: "Low",
+          GroupsAtOnce__c: 1,
+          EarlyWeekCount__c: 2,
+          EarlyWeekByDay__c: "Monday"
+        }
+      ],
+      programs: [
+        {
+          program: sunToThu,
+          timeBlocks: [],
+          divisions: [],
+          fixedActivities: [],
+          recurringActivities: []
+        }
+      ],
+      schedules: [],
+      labels: []
+    };
+    const read = JSON.stringify({
+      season: "Summer 2026",
+      setup,
+      answers: [],
+      seen: "s1"
+    });
+    const done = await call(
+      "import_list",
+      {
+        season: "Summer 2026",
+        list: "activities",
+        file_name: "activities.csv",
+        csv_text: "Activity,Location,Early in week\nArchery,Gym,2 by Day 2"
+      },
+      { run: async () => `HTTP/1.1 200\n\n${read}`, imports }
+    );
+    expect(done.ok).toBe(true);
+    // Day 2 of a Sunday-first week is Monday, as set up: nothing differs.
+    expect(done.text).not.toContain("Keep or Change");
+  });
+});

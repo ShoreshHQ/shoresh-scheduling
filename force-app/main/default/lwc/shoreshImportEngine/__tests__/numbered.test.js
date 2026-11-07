@@ -2,7 +2,11 @@
 // as the camp's days of the week, never as groups on one day, and the review shows what each
 // number became. Everything here is made up.
 import * as XLSX from "xlsx";
-import { countDaysFrom, setDayNaming } from "c/shoreshDayNames";
+import {
+  countDaysFrom,
+  numberedWeekday,
+  setDayNaming
+} from "c/shoreshDayNames";
 import { dayOf, nameDaysFor, workbookFile } from "c/shoreshImportEngine";
 import { dayInTitle } from "../text";
 import { scheduleSheets } from "c/shoreshScheduleExport";
@@ -97,14 +101,24 @@ afterEach(() => setDayNaming(null));
 
 // WEEK-2.6
 describe("WEEK-2.6: a day said by its number", () => {
-  it("reads Day 3, Day3, day 3, DAY #3 and D3 as the camp's 3rd day, and never a bare number", () => {
+  it("reads Day 3, Day3, day 3 and DAY #3 as the camp's 3rd day, and never a bare number or D3", () => {
     countDaysFrom(1);
-    ["Day 3", "Day3", "day 3", "DAY #3", "D3", "Day-3", "Day 3:"].forEach(
-      (text) => expect([text, dayOf(text)]).toEqual([text, "Wednesday"])
+    ["Day 3", "Day3", "day 3", "DAY #3", "Day-3", "Day 3:"].forEach((text) =>
+      expect([text, dayOf(text)]).toEqual([text, "Wednesday"])
     );
-    ["3", "Day", "Day 10", "Day 8", "Day 0", "3rd", "Field Day 2"].forEach(
-      (text) => expect([text, dayOf(text)]).toEqual([text, null])
-    );
+    [
+      "3",
+      "Day",
+      "Day 10",
+      "Day 8",
+      "Day 0",
+      "3rd",
+      "Field Day 2",
+      "D3",
+      "d 3",
+      "D1"
+    ].forEach((text) => expect([text, dayOf(text)]).toEqual([text, null]));
+    expect(dayInTitle("D3")).toBeNull();
     countDaysFrom(7);
     expect(dayOf("Day 1")).toBe("Sunday");
     expect(dayOf("Day 5")).toBe("Thursday");
@@ -162,31 +176,103 @@ describe("WEEK-2.6: a day said by its number", () => {
     }
   });
 
-  it("never reads Day 3 as a group, while bunks the camp calls D1 and D2 stay bunks", () => {
-    const camp = seasonOf({
-      programs: [
-        program("p1", "Main", {
-          divisions: [
-            [
-              "d1",
-              "Juniors",
-              [
-                ["g1", "D1"],
-                ["g2", "D2"]
-              ]
+  describe("bunks named D1, D2, ... stay bunks, never days", () => {
+    const D_BUNKS = ["D1", "D2", "D3", "D4"];
+    const grid = (heads, d = 0) => [
+      ["Time", ...heads],
+      ...BLOCKS.map((b, i) => [b, ...heads.map((_, g) => cellAt(g, i, d))])
+    ];
+    const empty = () => seasonOf({ dated: true });
+    const hasThem = () =>
+      seasonOf({
+        programs: [
+          program("p1", "Main", {
+            divisions: [
+              ["d1", "Juniors", D_BUNKS.map((name, i) => [`g${i + 1}`, name])]
             ]
-          ]
-        })
+          })
+        ]
+      });
+    const shapes = {
+      "as columns of a day's file": () => [csv("Monday.csv", grid(D_BUNKS))],
+      "as rows of a day's file": () => [
+        csv("Monday.csv", [
+          ["Bunk", ...BLOCKS],
+          ...D_BUNKS.map((b, g) => [
+            b,
+            ...BLOCKS.map((_, i) => cellAt(g, i, 0))
+          ])
+        ])
+      ],
+      "as columns of sheets per day": () => [
+        {
+          name: "camp.xlsx",
+          sheets: ["Monday", "Tuesday"].map((name, d) => ({
+            name,
+            rows: grid(D_BUNKS, d),
+            merges: []
+          }))
+        }
+      ],
+      "under day headings on one sheet": () => [
+        csv(
+          "camp.csv",
+          ["Monday", "Tuesday"].flatMap((day, d) => [
+            [day],
+            ...grid(D_BUNKS, d),
+            []
+          ])
+        )
+      ],
+      "as a sheet per bunk": () => [
+        {
+          name: "camp.xlsx",
+          sheets: D_BUNKS.map((name, g) => ({
+            name,
+            rows: grid(["Monday", "Tuesday"], g),
+            merges: []
+          }))
+        }
+      ],
+      "as a file per bunk": () =>
+        D_BUNKS.map((b, g) => csv(`${b}.csv`, grid(["Monday", "Tuesday"], g))),
+      "as headings over each bunk's week on one sheet": () => [
+        csv(
+          "camp.csv",
+          D_BUNKS.flatMap((b, g) => [
+            [b],
+            ...grid(["Monday", "Tuesday"], g),
+            []
+          ])
+        )
       ]
-    });
+    };
+    for (const [season, existing] of [
+      ["a season with nothing in it", empty],
+      ["a season that has them", hasThem]
+    ]) {
+      for (const [shape, files] of Object.entries(shapes)) {
+        it(`${shape}, into ${season}`, () => {
+          const p = propose(files(), existing());
+          expect(p.groups.map((g) => g.name).sort()).toEqual(D_BUNKS);
+          expect(
+            daysRead(p).every((d) => ["Monday", "Tuesday"].includes(d))
+          ).toBe(true);
+          expect(p.usable.length).toBeGreaterThan(0);
+          expect(p.numberDays).toBe(false);
+          expect(p.dayNumbers).toEqual([]);
+        });
+      }
+    }
+  });
+
+  it("never reads Day 3 as a group", () => {
     const rows = [
-      ["Time", "D1", "D2"],
+      ["Time", "Bunk 1", "Day 3"],
       ...BLOCKS.map((b, i) => [b, ACTIVITIES[i], ACTIVITIES[i + 1]])
     ];
-    const p = propose([csv("Monday.csv", rows)], camp);
-    expect(p.reading.pages[0].layout).toBe("allCamp");
-    expect(p.groups.map((g) => g.name).sort()).toEqual(["D1", "D2"]);
-    expect(daysRead(p)).toEqual(["Monday"]);
+    const p = propose([csv("Monday.csv", rows)], seasonOf());
+    expect(p.groups.map((g) => g.name)).not.toContain("Day 3");
   });
 
   // INGEST-5.11
@@ -215,6 +301,38 @@ describe("WEEK-2.6: a day said by its number", () => {
     expect(plan.numberDays).toBe(true);
     // Its weeks follow the days the grids run (WEEK-2.3): Monday to Saturday.
     expect(plan.fillWeeks[0].days).toBe(MON_SAT.join("+"));
+  });
+
+  it("Day 1 to Day 7 into a season with nothing in it, starting on a Sunday: the review and the saved season number the days alike", () => {
+    const seven = [...NUMBERS, "Day 7"];
+    const base = existingSetup();
+    const existing = {
+      ...base,
+      season: {
+        ...base.season,
+        NumberedDays__c: false,
+        StartDate__c: "2027-06-27",
+        EndDate__c: "2027-07-10"
+      }
+    };
+    const files = byGroup(["Bunk 1", "Bunk 2"], seven);
+    const p = propose(files, existing, { "program|Bunk 1,Bunk 2": "new" });
+    expect(p.numberDays).toBe(true);
+    // The season starts on a Sunday and will run every day, so its week starts on Sunday.
+    expect(p.dayNumbers.slice(0, 2)).toEqual([
+      { number: 1, day: "Sunday" },
+      { number: 2, day: "Monday" }
+    ]);
+    // Reloaded after the save: numbered, a program running all seven days.
+    const saved = {
+      ...existing,
+      season: { ...existing.season, NumberedDays__c: true },
+      programs: [mainProgram([...MON_SAT, "Sunday"])]
+    };
+    nameDaysFor(nsRecord(saved));
+    expect(p.dayNumbers.map(({ day }) => numberedWeekday(day))).toEqual(seven);
+    // Read again into the saved season, each number lands on the same day.
+    expect(propose(files, saved).dayNumbers).toEqual(p.dayNumbers);
   });
 
   // INGEST-5.11
@@ -387,6 +505,29 @@ describe("WEEK-2.6: a numbered season's downloads read back in", () => {
     expect(new Set(numbered.map((x) => x.split("|")[1]))).toEqual(
       new Set(["Monday", "Tuesday"])
     );
+  });
+
+  it("a Sunday-to-Thursday camp's download says Day 2 and Day 3 for Monday and Tuesday, and reads back as those days", () => {
+    const sunToThu = seasonOf({
+      numbered: true,
+      programs: [
+        mainProgram(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"])
+      ]
+    });
+    nameDaysFor(nsRecord(sunToThu));
+    const sheets = scheduleSheets(opened(), [], t);
+    expect(sheets.slice(0, 2).map((s) => s.name)).toEqual(["Day 2", "Day 3"]);
+    const p = propose([downloaded(sheets)], sunToThu);
+    expect(new Set(p.usable.map((x) => x.day))).toEqual(
+      new Set(["Monday", "Tuesday"])
+    );
+    nameDaysFor(nsRecord(camp(false)));
+    const named = propose(
+      [downloaded(scheduleSheets(opened(), [], t))],
+      camp(false)
+    );
+    const said = (x) => `${x.group}|${x.day}|${x.block}|${x.text}`;
+    expect(p.usable.map(said).sort()).toEqual(named.usable.map(said).sort());
   });
 
   it("a setup list's days cell reads Day 2/Day 4 and Day 1-Day 5", () => {

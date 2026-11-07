@@ -24,7 +24,7 @@ import { WEEKDAYS, looseKey } from "./text";
 import { withoutWeek } from "./weekLabels";
 import { identifyGroups } from "./identity";
 import { countDaysFrom } from "c/shoreshDayNames";
-import { campFirstDay } from "./weeks";
+import { campFirstDay, firstDayOnceSaved } from "./weeks";
 import { groupDivisionName } from "./noDivision";
 import { oneGroupDivisions } from "./together";
 
@@ -406,22 +406,39 @@ function byNameThenContent(a, b) {
  */
 export function readImport(input) {
   const answers = input.answers || {};
-  // WEEK-2.6: a file's "Day 1" is the camp's first day of the week, whatever was read before.
-  countDaysFrom(campFirstDay(input.existing));
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
-  const { pages, unread, colours, skipped } = filesToPages(files, {
-    maxWeek: seasonWeekCount(input.existing)
-  });
-  const keys = pageKeys(pages);
-  const read = readPages(
-    pages,
-    keys,
-    input.existing,
-    input.layouts || {},
-    answers
-  );
+  const readFrom = (firstDay) => {
+    // WEEK-2.6: a file's "Day 1" is this first day of the week, whatever was read before.
+    countDaysFrom(firstDay);
+    const found = filesToPages(files, {
+      maxWeek: seasonWeekCount(input.existing)
+    });
+    const keys = pageKeys(found.pages);
+    return {
+      ...found,
+      read: readPages(
+        found.pages,
+        keys,
+        input.existing,
+        input.layouts || {},
+        answers
+      )
+    };
+  };
+  // WEEK-2.6: numbered by the first day the season has once saved, so the review and the saved
+  // season agree: a full week of numbers into a season with no programs starts on its first date.
+  const now = campFirstDay(input.existing);
+  let reading = readFrom(now);
+  const saved = firstDayOnceSaved(input.existing, now, reading.read.dayNumbers);
+  if (saved !== now) {
+    const again = readFrom(saved);
+    const settles =
+      firstDayOnceSaved(input.existing, saved, again.read.dayNumbers) === saved;
+    reading = settles ? again : readFrom(now);
+  }
+  const { unread, colours, skipped, read } = reading;
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(

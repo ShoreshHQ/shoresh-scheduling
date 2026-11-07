@@ -41,29 +41,24 @@ export function looseKey(value) {
   return tidy(value).toLowerCase();
 }
 
-// A day said by its number (WEEK-2.6): "Day 3", "Day3", "DAY #3", "day-3", and on its own "D3".
-// Never a bare number, and never past a week's seven days ("Day 10" is not a day).
+// A day said by its number (WEEK-2.6): "Day 3", "Day3", "DAY #3", "day-3". Never a bare number,
+// never past a week's seven days ("Day 10" is not a day), and never "D3": camps name bunks so.
 const DAY_NUMBER = /^day\s*[#._-]?\s*([1-7])(?!\d)[^\p{L}]*$/iu;
-const SHORT_DAY_NUMBER = /^d\s*([1-7])(?!\d)[^\p{L}]*$/iu;
 // "Day 3" inside a title ("Week 2 - Day 3", "Day 3 (rain plan)").
 const DAY_NUMBER_IN = /(?<![\p{L}\d])day\s*[#._-]?\s*([1-7])(?!\d)/giu;
 
-/** The number a cell says its day by ("Day 3", "D3"), or null. */
+/** The number a cell says its day by ("Day 3"), or null. */
 export function dayNumberOf(text) {
-  const t = tidy(text);
-  const found = t.match(DAY_NUMBER) || t.match(SHORT_DAY_NUMBER);
+  const found = tidy(text).match(DAY_NUMBER);
   return found ? Number(found[1]) : null;
 }
 
 /**
  * "Day 3" in a title: { number, at, rest } (rest: the title without it), or null. Only where no
- * word is joined to it, so "Field Day 2" stays a name; a whole title of "D3" is one too.
+ * word is joined to it, so "Field Day 2" stays a name.
  */
 export function dayNumberIn(title) {
   const text = tidy(title);
-  if (dayNumberOf(text)) {
-    return { number: dayNumberOf(text), at: 0, rest: "" };
-  }
   for (const found of text.matchAll(DAY_NUMBER_IN)) {
     const gap = text.slice(0, found.index);
     // A word joined to it ("Field Day 2", "field-day-2") makes it part of a name; a separator
@@ -485,8 +480,8 @@ const NOT_GROUP_HEADERS = new Set([
 ]);
 
 export function isNotAGroupColumn(header) {
-  // WEEK-2.6: "Day 3" is a day, never a group ("D3" may be a bunk).
+  // WEEK-2.6: "Day 3" is a day, never a group.
   return (
-    NOT_GROUP_HEADERS.has(looseKey(header)) || DAY_NUMBER.test(tidy(header))
+    NOT_GROUP_HEADERS.has(looseKey(header)) || dayNumberOf(header) !== null
   );
 }

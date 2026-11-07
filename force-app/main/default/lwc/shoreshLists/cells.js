@@ -178,7 +178,7 @@ function dayWord(word) {
   // Periods only ("Wed.", "M.W.F"): any other character can't be read, never dropped.
   const w = word.toLowerCase().replace(/\./g, "");
   // WEEK-2.6: "Day3" (days() joined "Day 3"), the camp's 3rd day of the week.
-  if (/^(?:day|d)[1-7]$/.test(w)) {
+  if (/^day[1-7]$/.test(w)) {
     return [dayOf(w)];
   }
   if (!/^[a-z]+$/.test(w)) {
