@@ -85,7 +85,8 @@ module.exports = [
       rec.check("API-1.106", "Undo import asks first", undo.preview.kind === "asks first", undo.preview.text);
       rec.note("Undo import after build and publish says", `${undo.done.kind}: ${undo.done.text}`);
       rec.check("PUB-4.3", "the published week survives Undo import", count("Schedule__c", `Program__r.${inSeason} AND Status__c = 'Published'`) === pub1);
-      rec.note("Activities before and after Undo import", `${beforeUndo.join()} -> ${names("Activity__c", inSeason).join()}`);
+      rec.check("INGEST-5.10", "activities the built week uses are kept", d.rows.filter((r) => !r.notes && r.activity !== "Open").every((r) => names("Activity__c", inSeason).includes(r.activity)), `${beforeUndo.join()} -> ${names("Activity__c", inSeason).join()}`);
+      rec.check("INGEST-5.10", "and named", /Kept/.test(undo.done.text) && undo.done.text.includes(toLock.activity), undo.done.text);
       const outAfter = await call("read_group_schedule", { ...week, as_csv: true });
       rec.check("PUB-4.3", "what's published reads the same after Undo import", outAfter.text === out.text, outAfter.text.slice(0, 500));
       if (undo.done.kind === "done") {
@@ -105,6 +106,7 @@ module.exports = [
       // Import again after the Undo: the camp comes back, hand work kept, ready to copy.
       const back = await importMaple(season);
       rec.check("INGEST-5.10", "after Undo the same files import again", back.kind === "done", back.text);
+      rec.check("INGEST-5.10", "and nothing doubles", new Set(names("Activity__c", inSeason)).size === names("Activity__c", inSeason).length, names("Activity__c", inSeason).join());
       rec.note("Import again after Undo says", back.text);
       let again;
       try {

@@ -63,6 +63,41 @@ module.exports = [
     }
   },
   {
+    id: "S7",
+    title: "an elective on a week through an AI, on both screens; Undo keeps what a built week uses",
+    camps: "BR S7 %",
+    async run(rec) {
+      const { season } = makeCamp("S7 Elective");
+      await importMaple(season);
+      const inSeason = `Season__r.Name = '${season}'`;
+      await call("start_manual_week", { season, week: "Week 2" });
+      const manual = await draft(season, "Week 2", { schedule: "Manual Build", group: "Bunk 1", day: "Monday" });
+      const open = manual.rows.find((r) => r.activity === "Open");
+      const placed = await call("change_schedule_cell", { season, week: "Week 2", schedule: "Manual Build", group: "Bunk 1", day: "Monday", time: open.time_block, was: "Open", activity: "Chugim" });
+      rec.check("API-1.124", "an AI puts the elective on Manual Build", placed.kind === "done", placed.text);
+      const read = await draft(season, "Week 2", { schedule: "Manual Build", group: "Bunk 1", day: "Monday" });
+      rec.check("API-1.124", "read back: the cell holds it, marked", /Chugim/.test(read.cell("Monday", "Bunk 1", open.time_block).activity), JSON.stringify(read.cell("Monday", "Bunk 1", open.time_block)));
+      const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+      await call("build_week", { season, week: "Week 1" });
+      const gen = await draft(season);
+      const cell = gen.rows.find((r) => !r.notes && r.activity !== "Open" && mins(r.end_time) - mins(r.start_time) < 60);
+      const onGen = await call("change_schedule_cell", { season, week: "Week 1", group: cell.group, day: cell.day, time: cell.time_block, was: cell.activity, activity: "Chugim", seen: gen.seen });
+      rec.check("API-1.124", "an AI puts the elective on Generated Schedule, locked", onGen.kind === "done", onGen.text);
+      const genRead = await draft(season);
+      rec.check("API-1.124", "read back on Generated: it's there and locked", /Chugim/.test(genRead.cell(cell.day, cell.group, cell.time_block).activity) && /locked/.test(genRead.cell(cell.day, cell.group, cell.time_block).notes ?? ""), JSON.stringify(genRead.cell(cell.day, cell.group, cell.time_block)));
+      const unknown = await call("change_schedule_cell", { season, week: "Week 1", group: cell.group, day: cell.day, time: cell.time_block, was: "Chugim", activity: "Nope", seen: genRead.seen });
+      rec.check("API-1.105", "a name Shoresh doesn't have names what it has, sets too", unknown.kind === "refused" && /Chugim/.test(unknown.text), unknown.text);
+      const before = names("ElectiveSet__c", inSeason);
+      const seen = /Last import:[^;]*?seen: "([^"]+)"/.exec((await call("read_last_imports", { season })).text)?.[1];
+      const undone = await confirmed("undo_import", { season, seen });
+      rec.check("INGEST-5.10", "Undo works", undone.done.kind === "done", undone.done.text);
+      rec.note("Undo says", undone.done.text);
+      rec.check("INGEST-5.10", "the elective set the built weeks use is kept", names("ElectiveSet__c", inSeason).join() === before.join(), names("ElectiveSet__c", inSeason).join());
+      rec.check("INGEST-5.10", "and named", /Chugim/.test(undone.done.text), undone.done.text);
+      rec.check("INGEST-5.10", "activities the built week uses are kept and named", names("Activity__c", inSeason).includes(cell.activity === "Chugim" ? "Swim" : genRead.rows.find((r) => !r.notes)?.activity) , names("Activity__c", inSeason).join());
+    }
+  },
+  {
     id: "S4",
     title: "special days: on a day, schedule from a file, hand edit, file again, off a day",
     camps: "BR S4 %",

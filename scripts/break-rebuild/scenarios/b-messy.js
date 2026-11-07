@@ -229,7 +229,8 @@ module.exports = [
       const resend = await call("bring_in_activities", { records: [{ ...src, activity_name: "Kayak" }] });
       rec.note("the outside system sends the old name after a person renamed it", resend.text.slice(0, 400));
       rec.check("API-4.1", "a person's rename stands", count("Activity__c", `${inSeason} AND Name = 'Kayaking'`) === 1, names("Activity__c", inSeason).join());
-      rec.note("Activities after that", names("Activity__c", inSeason).join());
+      rec.check("API-4.9", "the old name doesn't add a second activity", !names("Activity__c", inSeason).includes("Kayak"), names("Activity__c", inSeason).join());
+      rec.check("API-4.9", "it's said as a conflict, not saved", /A person renamed/.test(resend.text) && !/"saved": [1-9]/.test(resend.text), resend.text);
       const big = await call("bring_in_campers", { records: Array.from({ length: 3000 }, (_, i) => ({ ...src, camper_id: `BIG-${i}`, camper_name: `Madeup ${i}`, camper_number: String(i) })) });
       rec.check("API-6.3", "3,000 campers in one batch: done or refused in words", big.status < 500 || /too|limit|big/i.test(big.text), `${big.status} ${big.text.slice(0, 400)}`);
       rec.note("3000 campers", `${big.status} ${big.text.slice(0, 300)}`);
