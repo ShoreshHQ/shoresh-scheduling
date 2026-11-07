@@ -194,7 +194,7 @@ public with sharing class AgentSetupFields {
     }
     if (!(fields instanceof Map<String, Object>)) {
       throw new ShoreshException(
-        'The fields are given by name, like "fields": {"length": "2"}.'
+        'These are given by name, like {"length": "2"}, not as one value.'
       );
     }
     return (Map<String, Object>) fields;

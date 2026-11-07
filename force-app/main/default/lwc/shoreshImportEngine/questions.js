@@ -844,6 +844,9 @@ const CARDS = {
 
 /** Every card, preview cards first, then hold, then the rest, each with its answer. */
 export function questionCards(proposal, t, answers) {
+  // INGEST-4.14: which day a one-day file is can't wait when nothing else in the files is read:
+  // there would be nothing to save but a program with no days.
+  const onlyOneDays = proposal.reading.placements.length === 0;
   const cards = [
     ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
     ...proposal.reading.timeAsks.map((ask) => timeCard(ask, t)),
@@ -859,7 +862,8 @@ export function questionCards(proposal, t, answers) {
     .map((c, i) => ({
       ...c,
       answer: answers[c.id] || c.preselected || null,
-      position: i
+      position: i,
+      ...(onlyOneDays && c.id.startsWith("oneDay|") ? { mustAnswer: true } : {})
     }))
     .sort((a, b) => order(a) - order(b) || a.position - b.position);
 }
