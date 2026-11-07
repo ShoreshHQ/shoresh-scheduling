@@ -751,3 +751,19 @@ describe("INGEST-4.13 on a season that has its Dismissal set up already", () => 
     );
   });
 });
+
+// MEMO-6.1
+it("a file's same-name answer is still used once the camp has the name it kept", () => {
+  const id = "similar|activity|music|musik|Music|Musik";
+  const existing = existingSetup({
+    programs: [program("p1", "Main", { blocks: MAPLE_BLOCKS })],
+    activities: [{ Id: "a1", Name: "Music", Length__c: 1 }]
+  });
+  const answers = { [id]: "a" };
+  const p = propose(existing, answers);
+  const card = questionCards(p, terms, answers).find((c) => c.id === id);
+  expect(card.options.find((o) => o.value === card.answer).label).toBe(
+    "Same: use “Music”"
+  );
+  expect(p.activities.map((a) => a.name)).not.toContain("Musik");
+});

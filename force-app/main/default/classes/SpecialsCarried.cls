@@ -22,8 +22,7 @@ public with sharing class SpecialsCarried {
   }
 
   private static List<ScheduleSpecials.Special> readNow(Id scheduleId) {
-    List<ScheduleSpecials.Special> result = new List<ScheduleSpecials.Special>();
-    Map<String, List<PublishedPlan__c>> partsByKey = new Map<String, List<PublishedPlan__c>>();
+    List<PublishedPlan__c> rows = new List<PublishedPlan__c>();
     for (PublishedPlan__c part : [
       SELECT
         Name,
@@ -40,6 +39,62 @@ public with sharing class SpecialsCarried {
       WITH USER_MODE
       ORDER BY Kind__c, Date__c, Name, Item__c, Part__c
     ]) {
+      rows.add(part);
+    }
+    return fromRows(rows);
+  }
+
+  /**
+   * The special days each published schedule carried, for what goes out (API-6.5): by schedule,
+   * then by the day replaced. One query however many schedules; user mode, and a key's permission
+   * set gives it these records.
+   */
+  public static Map<Id, Map<Date, ScheduleSpecials.Special>> daysGoingOut(
+    List<Id> scheduleIds
+  ) {
+    Map<Id, List<PublishedPlan__c>> rowsBySchedule = new Map<Id, List<PublishedPlan__c>>();
+    Map<Id, Map<Date, ScheduleSpecials.Special>> days = new Map<Id, Map<Date, ScheduleSpecials.Special>>();
+    for (Id scheduleId : scheduleIds) {
+      rowsBySchedule.put(scheduleId, new List<PublishedPlan__c>());
+      days.put(scheduleId, new Map<Date, ScheduleSpecials.Special>());
+    }
+    for (PublishedPlan__c part : [
+      SELECT
+        Schedule__c,
+        Name,
+        Kind__c,
+        Item__c,
+        Date__c,
+        Notes__c,
+        Part__c,
+        Plan__c,
+        GridFormatVersion__c,
+        Revision__c
+      FROM PublishedPlan__c
+      WHERE Schedule__c IN :scheduleIds AND Kind__c = :ScheduleSpecials.DAY
+      WITH USER_MODE
+      ORDER BY Kind__c, Date__c, Name, Item__c, Part__c
+    ]) {
+      rowsBySchedule.get(part.Schedule__c).add(part);
+    }
+    for (Id scheduleId : scheduleIds) {
+      for (
+        ScheduleSpecials.Special special : fromRows(
+          rowsBySchedule.get(scheduleId)
+        )
+      ) {
+        days.get(scheduleId).put(special.dateValue, special);
+      }
+    }
+    return days;
+  }
+
+  private static List<ScheduleSpecials.Special> fromRows(
+    List<PublishedPlan__c> rows
+  ) {
+    List<ScheduleSpecials.Special> result = new List<ScheduleSpecials.Special>();
+    Map<String, List<PublishedPlan__c>> partsByKey = new Map<String, List<PublishedPlan__c>>();
+    for (PublishedPlan__c part : rows) {
       ScheduleSpecials.Special special = new ScheduleSpecials.Special();
       special.kind = part.Kind__c;
       special.itemId = part.Item__c;

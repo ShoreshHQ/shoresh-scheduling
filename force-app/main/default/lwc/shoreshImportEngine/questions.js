@@ -112,7 +112,7 @@ function kindShape(f) {
 
 const twoOrMore = (n) => (n === 2 ? "two" : "more");
 
-export function similarCard(pair, t) {
+export function similarCard(pair, t, answer) {
   const term = t.sIn(
     { group: "Group", division: "Division" }[pair.kind] || "Activity"
   );
@@ -130,7 +130,12 @@ export function similarCard(pair, t) {
       ...card,
       subtitle: `${quoted(pair.b)} is already set up. ${quoted(pair.a)} is in the file ${times1(pair.aCount)}.`,
       options: [
-        { value: "b", label: `Same: use ${quoted(pair.b)}` },
+        // MEMO-6.1: the file's two names answered "a" or "b" before the camp had either: both
+        // mean the same now the camp has one, so a remembered answer still fills this question.
+        {
+          value: answer === "a" ? "a" : "b",
+          label: `Same: use ${quoted(pair.b)}`
+        },
         { value: "different", label: `Different: add ${quoted(pair.a)}` },
         leaveOut(`${quoted(pair.a)} is not added this time.`)
       ]
@@ -845,7 +850,9 @@ const CARDS = {
 /** Every card, preview cards first, then hold, then the rest, each with its answer. */
 export function questionCards(proposal, t, answers) {
   const cards = [
-    ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
+    ...proposal.reading.pairs.map((pair) =>
+      similarCard(pair, t, answers[pair.id])
+    ),
     ...proposal.reading.timeAsks.map((ask) => timeCard(ask, t)),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...(proposal.reading.splitAsks || []).map((ask) => splitCard(ask, t)),

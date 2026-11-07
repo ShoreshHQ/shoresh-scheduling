@@ -80,6 +80,7 @@ export default class ShoreshManualBuild extends LightningElement {
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
   versions = [];
+  versionsTicket = 0;
   weekSources = [];
   versionsWorking = false;
   // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).
@@ -451,6 +452,9 @@ export default class ShoreshManualBuild extends LightningElement {
       this.restoredId = null;
       this.restoreRefused = false;
       this.waiting = null;
+      this.versions = [];
+      // A list still on its way for the last week is not this one's.
+      this.versionsTicket += 1;
       this.setupPreview = null;
       // A read of the last week's setup changes still on its way is dropped.
       this.setupTicket += 1;
@@ -748,18 +752,23 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   async loadVersions() {
-    const key = `${this.programId}|${this.weekId}`;
+    this.versionsTicket += 1;
+    const ticket = this.versionsTicket;
+    // An older read answering after a newer one (or after another week was chosen) is dropped.
+    const latest = () => ticket === this.versionsTicket;
     try {
       const rows = await getVersions({
         programId: this.programId,
         weekId: this.weekId
       });
-      if (key === `${this.programId}|${this.weekId}`) {
+      if (latest()) {
         this.versions = rows || [];
       }
     } catch {
       // The list shows as empty; the week itself is unaffected.
-      this.versions = [];
+      if (latest()) {
+        this.versions = [];
+      }
     }
   }
 
