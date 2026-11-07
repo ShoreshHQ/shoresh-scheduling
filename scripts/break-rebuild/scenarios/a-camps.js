@@ -679,10 +679,9 @@ module.exports = [
       rec.check("API-1.20", "Week 2 publishes", pub.kind === "done", pub.text);
       const out = await call("read_group_schedule", {
         season,
-        week: "Week 2",
-        group: "Bet"
+        week: "Week 2"
       });
-      rec.note("Week 2 going out, Bet", out.text.slice(0, 800));
+      rec.note("Week 2 going out", out.text.slice(0, 800));
       rec.check(
         "WEEK-1.7",
         "an AI reads the published week by Day number",
