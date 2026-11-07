@@ -1,7 +1,9 @@
 /**
  * For tests: an AI action as a person who says yes (API-1.106). The action is sent as given;
  * when Shoresh asks first, the same request is sent again with the confirm it gave, as an AI does
- * after the person says yes. Any other answer is left as it came.
+ * after the person says yes. A refusal is left as it came. A change that asks first answering
+ * done without asking fails the test, so one whose preview stops asking can't pass unseen. Only a
+ * special schedule's frame may: a call that takes nothing away doesn't ask.
  */
 @IsTest
 public class AgentAskFirstTestCalls {
@@ -10,6 +12,13 @@ public class AgentAskFirstTestCalls {
     AgentWeeks.answer(action);
     String confirm = confirmIn(RestContext.response);
     if (confirm == null) {
+      Assert.isFalse(
+        action instanceof AgentAskFirst.Preview &&
+          !(action instanceof AgentSpecialFrame) &&
+          RestContext.response.statusCode == 200,
+        'Done without asking first: ' +
+        RestContext.response.responseBody?.toString()
+      );
       return;
     }
     Map<String, Object> body = (Map<String, Object>) JSON.deserializeUntyped(

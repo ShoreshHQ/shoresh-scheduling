@@ -908,6 +908,14 @@ private class GeneratedRefusalsTest {
       Assert.isTrue(saved.conflicts.isEmpty(), String.valueOf(saved.conflicts));
       read.revision = saved.revision;
       read.days = saved.schedule.days;
+      // What the next build starts from holds it empty: the engine never puts it back itself.
+      Assert.areEqual(
+        '',
+        GeneratedTestData.inputs()
+          .days[0]
+          .rows[period1A[0]]
+          .split(',', -1)[period1A[1]]
+      );
       // A build filling it is refused: the director's choice beats anything generated.
       GeneratedWeek.Save filled = request(read, GeneratedSaves.FILL_OPEN);
       GeneratedTestData.put(filled.days[0], period1A, 'Soccer');

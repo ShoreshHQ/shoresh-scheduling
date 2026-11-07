@@ -228,7 +228,11 @@ private class ImportReviewTest {
         refusal = e.getMessage();
       }
       Test.stopTest();
-      Assert.isNotNull(refusal, 'no questions were left open');
+      Assert.areEqual(
+        'Those questions were answered or undone since. Open Import last year again from Roots.',
+        refusal,
+        'no questions were left open'
+      );
     }
   }
 

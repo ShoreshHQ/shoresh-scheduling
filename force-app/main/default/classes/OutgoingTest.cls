@@ -304,6 +304,38 @@ private class OutgoingTest {
     Assert.isFalse(said.contains('Draft swim'), said);
   }
 
+  // API-4.5: neither schedule door sends a draft or a version beside the published week.
+  @IsTest
+  static void aDraftOrVersionNeverGoesOutOfEitherDoor() {
+    IncomingTestData camp = new IncomingTestData();
+    ScheduleGrid draft = grid(camp);
+    draft.items[0].name = 'Draft swim';
+    schedule(camp, 'Draft', draft);
+    ScheduleGrid version = grid(camp);
+    version.items[0].name = 'Version swim';
+    schedule(camp, 'Version', version);
+    schedule(camp, 'Published', grid(camp));
+    Map<String, Object> groups;
+    System.runAs(camp.sender('Read_Group_Schedules')) {
+      groups = get(new OutgoingGroupSchedule(), week1());
+    }
+    Map<String, Object> activities;
+    System.runAs(camp.sender('Read_Activity_Schedules')) {
+      activities = get(new OutgoingActivitySchedule(), week1());
+    }
+    for (
+      Map<String, Object> answer : new List<Map<String, Object>>{
+        groups,
+        activities
+      }
+    ) {
+      String said = JSON.serialize(answer.get('records'));
+      Assert.isTrue(said.contains('"Swim"'), said);
+      Assert.isFalse(said.contains('Draft swim'), said);
+      Assert.isFalse(said.contains('Version swim'), said);
+    }
+  }
+
   // API-4.4: a key reaches only what its permission sets allow, and is told which set it needs.
   @IsTest
   static void aKeyWithoutTheReadPermissionSetIsRefused() {
