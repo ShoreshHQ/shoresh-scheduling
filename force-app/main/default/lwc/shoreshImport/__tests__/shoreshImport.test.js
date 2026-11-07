@@ -495,6 +495,42 @@ describe("c-shoresh-import", () => {
     ).toContain(name);
   });
 
+  // INGEST-5.11
+  it("days by number: each line shows the weekday its number became, and a screen reader hears it said, not an arrow", async () => {
+    const element = createElement("c-shoresh-import", { is: ShoreshImport });
+    element.setup = nsRecord({
+      ...SETUP,
+      weeks: [
+        {
+          Id: "w1",
+          Name: "Week 1",
+          StartDate__c: "2027-06-28",
+          EndDate__c: "2027-07-02"
+        }
+      ]
+    });
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    await flush();
+    const text = [
+      "Time,Day 1,Day 2,Day 3",
+      "9:00-9:45,Swim,Art,Drama",
+      "10:00-10:45,Art,Drama,Swim"
+    ].join("\n");
+    await choose(element, ["Camp - Bunk 1.csv"], { "Camp - Bunk 1.csv": text });
+    const tile = $(element, 'button[data-read-as="dayNumbers"]');
+    expect(tile.textContent).toContain("3 days by number");
+    tile.click();
+    await flush();
+    const names = $$(element, '[data-id="read-as-lines"] .n');
+    expect(
+      names.map((n) => n.querySelector('[aria-hidden="true"]').textContent)
+    ).toEqual(["Day 1 → Monday", "Day 2 → Tuesday", "Day 3 → Wednesday"]);
+    expect(
+      names.map((n) => n.querySelector(".slds-assistive-text").textContent)
+    ).toEqual(["Day 1 is Monday", "Day 2 is Tuesday", "Day 3 is Wednesday"]);
+  });
+
   describe("review.md: questions for later, and a second import", () => {
     beforeEach(() => {
       saveSetup.mockClear();

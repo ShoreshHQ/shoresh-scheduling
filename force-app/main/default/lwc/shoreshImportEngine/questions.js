@@ -7,6 +7,11 @@
  * a bold question, a grey line saying what the file shows, and the answers. "hold" cards (which
  * kind something is, which program, files that disagree) come first, as the desktop's hold lane.
  */
+import {
+  numberedWeekday,
+  spokenWeekday,
+  weekdayNumbered
+} from "c/shoreshDayNames";
 import { FIELD } from "c/shoreshSchema";
 import {
   ELECTIVES,
@@ -462,10 +467,13 @@ function lengthText(length, t) {
   return length > 1 ? `, ${length} ${t.pIn("TimeBlock")} long` : "";
 }
 
-/** INGEST-4.13: ", 1 time block earlier on Friday" for a fixed activity's early day. */
+/**
+ * INGEST-4.13: ", 1 time block earlier on Friday" for a fixed activity's early day ("on Day 5" in
+ * a numbered-days season, WEEK-1.7).
+ */
 function earlyText(day, by, t) {
   return day && by > 0
-    ? `, ${by} ${by === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")} earlier on ${day}`
+    ? `, ${by} ${by === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")} earlier on ${spokenWeekday(day)}`
     : "";
 }
 
@@ -555,6 +563,10 @@ function timeCard(ask, t) {
 
 /** INGEST-4.14: a single-day file whose name and title name no day: which day is it? */
 function oneDayCard(ask, t) {
+  // A numbered-days season offers Day 1 to Day 7, in its own week's order (WEEK-1.7).
+  const days = numberedWeekday(WEEKDAYS[0])
+    ? WEEKDAYS.map((_, i) => weekdayNumbered(i + 1))
+    : WEEKDAYS;
   return {
     id: ask.id,
     stage: "preview",
@@ -563,7 +575,7 @@ function oneDayCard(ask, t) {
     subject: ask.file,
     subtitle: `It comes in as ${article(t.sIn("SpecialDay"))} with its own times.`,
     options: [
-      ...WEEKDAYS.map((day) => ({ value: day, label: day })),
+      ...days.map((day) => ({ value: day, label: spokenWeekday(day) })),
       leaveOut(`${ask.file} is not added this time.`)
     ]
   };

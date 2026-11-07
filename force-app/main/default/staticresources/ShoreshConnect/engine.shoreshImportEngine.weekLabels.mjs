@@ -5,7 +5,7 @@
  * name ("Grades 3-5", "Swim 7-6") or a bare "W2" beside a group's words is not a week, and the
  * name is kept whole.
  */
-import { dayOf, tidy } from "./engine.shoreshImportEngine.text.mjs";
+import { dayNumberIn, dayOf, tidy } from "./engine.shoreshImportEngine.text.mjs";
 
 const MONTHS = [
   "jan",
@@ -53,9 +53,12 @@ function validDay(month, day) {
 }
 
 function namesADay(text) {
-  return tidy(text)
-    .split(/[^A-Za-z]+/)
-    .some((w) => w.length >= 3 && dayOf(w));
+  return (
+    dayNumberIn(text) !== null ||
+    tidy(text)
+      .split(/[^A-Za-z]+/)
+      .some((w) => w.length >= 3 && dayOf(w))
+  );
 }
 
 /** A spelled-out or year-first date: one reading only. "Week of Jul 6". */

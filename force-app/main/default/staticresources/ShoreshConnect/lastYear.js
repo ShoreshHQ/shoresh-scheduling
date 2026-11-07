@@ -141,7 +141,8 @@ function reviewText(m, body, review, input) {
       `Read as, ${g.label}: ${g.lines
         .map(
           (line) =>
-            `${line.name} [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${o.value}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]`
+            // A line with nothing to change (days by number, INGEST-5.11) is only said.
+            `${line.name}${line.options.length ? ` [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${o.value}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]` : ""}`
         )
         .join("; ")}`
     );
