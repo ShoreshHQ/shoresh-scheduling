@@ -545,7 +545,7 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity or an elective set there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
@@ -564,7 +564,8 @@ const CAPABILITIES = [
       },
       activity: {
         type: "string",
-        description: "What it should hold: an activity's name, or Open."
+        description:
+          "What it should hold: an activity's or elective set's name, or Open."
       },
       seen: CELL.seen
     },
@@ -1553,7 +1554,8 @@ const CAPABILITIES = [
         },
         activity: {
           type: "string",
-          description: "What it should hold: an activity's name, or Open."
+          description:
+            "What it should hold: an activity's or elective set's name, or Open."
         }
       },
       required: ["special", "column", "time", "was", "activity"],
