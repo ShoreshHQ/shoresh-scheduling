@@ -9,7 +9,7 @@
  * a menu is told from a planner by how many options a period holds, never by guessing what the
  * page means. See the NOTICE file.
  */
-import { dayOf, tidy } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+import { dayNumberOf, dayOf, tidy } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import {
   CHOICE_KINDS,
   cellAt,
@@ -27,10 +27,10 @@ const GENERIC_SHEET = /^(?:sheet|page|tab|table)\s*\d*$/i;
 const EXTENSION = /\.(?:xlsx|xlsm|xls|csv|tsv|txt)$/i;
 const SCAN = 12;
 
-/** The day a heading cell names when it is only a day ("Monday", "Tue"), else null. */
+/** The day a heading cell names when it is only a day ("Monday", "Tue", "Day 3"), else null. */
 function dayHeading(text) {
   const t = tidy(text);
-  return t && t.split(" ").length === 1 ? dayOf(t) : null;
+  return t && (t.split(" ").length === 1 || dayNumberOf(t)) ? dayOf(t) : null;
 }
 
 /** The days row: day headings in two or more columns after the first. */

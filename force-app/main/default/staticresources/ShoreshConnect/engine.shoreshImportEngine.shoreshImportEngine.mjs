@@ -232,6 +232,8 @@ export {
   tidy,
   looseKey,
   dayOf,
+  dayNumberIn,
+  dayNumberOf,
   timeRange,
   clock,
   shortClock,

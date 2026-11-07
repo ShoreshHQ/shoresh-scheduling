@@ -265,6 +265,8 @@ export function labelHeadings(camp) {
 }
 
 function dayText(camp, d) {
+  // A camp that numbers its days (numbered.js) writes "Day 3", "Day3", "DAY 3" or "D3".
+  if (camp.dayNumber) return camp.dayNumber(d + 1);
   const day = camp.days[d];
   return camp.shortDays ? day.slice(0, 3) : day;
 }
