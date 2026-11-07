@@ -59,9 +59,11 @@ public with sharing class SpecialDayPlacing {
         SpecialDates.place(specialDay.Id, weekId, weekday);
       }
       if (there == null || there == specialDay.Name) {
-        spread.put.add(weekday);
+        spread.put.add(DayWords.sayWeekday(weekday));
       } else {
-        spread.kept.add(weekday + ' already has "' + there + '"');
+        spread.kept.add(
+          DayWords.sayWeekday(weekday) + ' already has "' + there + '"'
+        );
       }
     }
     return spread;
@@ -184,7 +186,12 @@ public with sharing class SpecialDayPlacing {
 
   private static Week__c weekOf(Id weekId) {
     List<Week__c> weeks = [
-      SELECT Id, Name, Season__r.Camp__c
+      SELECT
+        Id,
+        Name,
+        Season__r.Id,
+        Season__r.Camp__c,
+        Season__r.NumberedDays__c
       FROM Week__c
       WHERE Id = :weekId
       WITH USER_MODE
@@ -194,6 +201,7 @@ public with sharing class SpecialDayPlacing {
         'That was not found, or you don\'t have access to it. Reload the page.'
       );
     }
+    DayWords.use(weeks[0].Season__r);
     return weeks[0];
   }
 

@@ -70,7 +70,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(86);
+    expect(CAPABILITIES).toHaveLength(87);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -82,12 +82,30 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
+    const capability = byName("apply_to_other_weeks");
+    expect(capability.inputSchema.required).toEqual(["week", "to_week"]);
+    expect(capability.inputSchema.properties.schedule).toBeDefined();
+    expect(capability.asksFirst).toBe(true);
+    const seen = [];
+    const asked = { week: "Week 1", to_week: "Week 2" };
+    await call("apply_to_other_weeks", asked, {
+      run: sfAnswering(200, JSON.stringify({ message: "Done" }), seen)
+    });
+    expect(seen[0].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/apply_to_other_weeks",
+      "--method",
+      "POST"
+    ]);
+    expect(JSON.parse(seen[0].stdin)).toEqual(asked);
+  });
+
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -175,6 +193,28 @@ describe("Shoresh for AI tools and the command line", () => {
         ]).toEqual([f, false]);
       }
     }
+  });
+
+  // API-1.105
+  it("saysNoPermissionSetInWords: Salesforce's refusal naming a class never reaches the person", async () => {
+    const refused = await callTool(
+      "list_seasons",
+      {},
+      sfAnswering(
+        403,
+        JSON.stringify([
+          {
+            errorCode: "FORBIDDEN",
+            message:
+              "You do not have access to the Apex class named: AgentSeasons"
+          }
+        ])
+      )
+    );
+    const said = refused.result.content[0].text;
+    expect(said).toContain("Shoresh Scheduler");
+    expect(said).not.toContain("AgentSeasons");
+    expect(said).not.toContain("Apex");
   });
 
   // API-1.9
@@ -402,7 +442,8 @@ describe("Shoresh for AI tools and the command line", () => {
       acceptable: (l) => l.acceptable !== false,
       wordsOf: (l) => l.said || l.text,
       saidOf: () => "Swim, 2 of 4",
-      keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size })
+      keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size }),
+      nameDaysFor: () => {}
     });
     const seen = [];
     const answers = (more) => {
@@ -438,7 +479,8 @@ describe("Shoresh for AI tools and the command line", () => {
       loadedOf: (inputs) => ({ input: inputs }),
       counterWeek: () => ({ draft: { schedule: { days: [] } } }),
       lockedKeys: () => new Set(),
-      replacedDays: () => []
+      replacedDays: () => [],
+      nameDaysFor: () => {}
     });
     const withSeen = await call("read_week_checks", asked, {
       run: answers([]),
@@ -728,6 +770,87 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // WEEK-1.7
+  it("numberedDaysForAnAi: in a numbered season an AI may name the number, the date or the weekday, and its answers say the number", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: ["", ""]
+    }));
+    const moveOn = async (numbered, day) => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify({
+          inputs,
+          labels: [],
+          setup: { season: { [FIELD.Season.NumberedDays]: numbered } }
+        })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: "Done." })}`
+      ];
+      const done = await call(
+        "move_cell",
+        {
+          season: "Summer 2026",
+          week: "Week 1",
+          program: "Main",
+          day,
+          group: "Bunk 1",
+          time: "Period 1",
+          was: "Swim",
+          to_day: day,
+          to_group: "Bunk 1",
+          to_time: "Period 3"
+        },
+        {
+          run: async (args, stdin) => {
+            seen.push(stdin);
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, sent: seen[1] };
+    };
+    for (const day of ["Day 1", "day 1", "2026-06-29", "Monday"]) {
+      const { done, sent } = await moveOn(true, day);
+      expect(done.ok).toBe(true);
+      expect(sent).toContain("Day 1");
+      expect(sent).not.toContain("Monday");
+    }
+    // A named-days season has no Day 1, and says Monday as before.
+    const named = await moveOn(false, "Monday");
+    expect(named.done.ok).toBe(true);
+    expect(named.sent).toContain("Monday");
+    expect((await moveOn(false, "Day 1")).done.ok).toBe(false);
+  });
+
   // API-1.38, API-1.39, API-1.40
   it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -846,7 +969,8 @@ describe("Shoresh for AI tools and the command line", () => {
         counterWeek: () => ({ draft: { schedule: { days: [] } } }),
         weekMeasure: () => "measure",
         readKept: () => [],
-        counterWords: () => ({ placed: "6 of 8 placed" })
+        counterWords: () => ({ placed: "6 of 8 placed" }),
+        nameDaysFor: () => {}
       }),
       edits
     });
@@ -3251,6 +3375,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "save_version",
       "restore_version",
       "delete_version",
+      "apply_to_other_weeks",
       "publish_week",
       "unpublish_week",
       "lock_cells",
@@ -3446,10 +3571,16 @@ describe("Shoresh for AI tools and the command line", () => {
                     name: "Chug A",
                     kind: "E",
                     gone: false
+                  },
+                  {
+                    id: "a0R000000000001AAA",
+                    name: "Rest",
+                    kind: "R",
+                    gone: false
                   }
                 ],
                 rows: [
-                  `1,${day.items.length + 1},${day.items.length + 2},`,
+                  `1,${day.items.length + 1},${day.items.length + 2},${day.items.length + 3}`,
                   day.rows[1]
                 ]
               }
@@ -3466,17 +3597,52 @@ describe("Shoresh for AI tools and the command line", () => {
         })
       ).text
     );
-    expect(rows(kinds).slice(1, 3)).toEqual([
+    expect(rows(kinds).slice(1, 4)).toEqual([
       expect.objectContaining({
         activity: "Color War",
         notes: "special event"
       }),
-      expect.objectContaining({ activity: "Chug A", notes: "elective" })
+      expect.objectContaining({ activity: "Chug A", notes: "elective set" }),
+      expect.objectContaining({
+        activity: "Rest",
+        notes: "locked, recurring activity"
+      })
     ]);
     expect(kinds.days_not_read).toEqual([
       { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
     ]);
     expect(kinds.records).toHaveLength(8);
+
+    // CORE-1.0: the kinds in the camp's own words, as typed; the standard ones in lower case.
+    const custom = (term, singular) => ({
+      term,
+      singular,
+      plural: `${singular}s`,
+      isCustom: true
+    });
+    const inCampWords = JSON.parse(
+      (
+        await call("read_week_draft", asked, {
+          run: reading({
+            ...varied,
+            labels: [
+              custom("ElectiveSet", "Chug"),
+              custom("SpecialEvent", "Maccabiah"),
+              custom("FixedActivity", "Flag time"),
+              custom("RecurringActivity", "Rest time")
+            ]
+          }),
+          checks,
+          edits
+        })
+      ).text
+    );
+    expect(rows(inCampWords).slice(0, 4)).toEqual([
+      expect.objectContaining({ notes: "locked, Flag time" }),
+      expect.objectContaining({ activity: "Color War", notes: "Maccabiah" }),
+      expect.objectContaining({ activity: "Chug A", notes: "Chug" }),
+      expect.objectContaining({ activity: "Rest", notes: "locked, Rest time" })
+    ]);
 
     // The counter, exactly as read_week_checks gives it on the same week.
     const counted = await call("read_week_checks", asked, {

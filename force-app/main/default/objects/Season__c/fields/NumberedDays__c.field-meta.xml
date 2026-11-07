@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NumberedDays__c</fullName>
+    <description
+  >A season's days are said by number (Day 3), each date's place from the camp's first day of the week, restarting every week. Off: by name (Wednesday). Nothing is stored per date (WEEK-1.5).</description>
+    <defaultValue>false</defaultValue>
+    <label>Numbered Days</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

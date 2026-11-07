@@ -58,7 +58,12 @@ public with sharing class ElectiveSeatChange {
       WHERE Id = :request.offeringId
       WITH USER_MODE
     ];
-    if (offering.NoSeatLimit__c == true || offering.Seats__c == null) {
+    // Blank or 0 seats are no limit (ELECT-4.1).
+    if (
+      offering.NoSeatLimit__c == true ||
+      offering.Seats__c == null ||
+      offering.Seats__c == 0
+    ) {
       return;
     }
     Integer taken = takenAt(state, request);

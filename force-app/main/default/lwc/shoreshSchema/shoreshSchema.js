@@ -246,6 +246,7 @@ import seasonObject from "@salesforce/schema/Season__c";
 import seasonCamp from "@salesforce/schema/Season__c.Camp__c";
 import seasonCopiedFrom from "@salesforce/schema/Season__c.CopiedFrom__c";
 import seasonEndDate from "@salesforce/schema/Season__c.EndDate__c";
+import seasonNumberedDays from "@salesforce/schema/Season__c.NumberedDays__c";
 import seasonShrinkShortWeek from "@salesforce/schema/Season__c.ShrinkShortWeek__c";
 import seasonStartDate from "@salesforce/schema/Season__c.StartDate__c";
 import seasonStatus from "@salesforce/schema/Season__c.Status__c";
@@ -622,6 +623,7 @@ export const FIELD = Object.freeze({
     Camp: seasonCamp.fieldApiName,
     CopiedFrom: seasonCopiedFrom.fieldApiName,
     EndDate: seasonEndDate.fieldApiName,
+    NumberedDays: seasonNumberedDays.fieldApiName,
     ShrinkShortWeek: seasonShrinkShortWeek.fieldApiName,
     StartDate: seasonStartDate.fieldApiName,
     Status: seasonStatus.fieldApiName

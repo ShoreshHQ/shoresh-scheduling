@@ -239,7 +239,9 @@ Each rule is clue, meaning, example, test.
     never refers to a time block it does not add), and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
     in as a special day on Thursday, with its own times."). Beside other files, a program that
     runs that day joins the special day (rule 11), and the week, if the files do not say it, is
-    asked as any week is. Unanswered, nothing is read from it; left out, and it is the only
+    asked as any week is. Unanswered, nothing is read from it, and when no other file gives a
+    schedule the question can't wait: there would be nothing to save but a program with no days.
+    Left out, and it is the only
     file, the screen goes back to choosing a file ("field-day.csv: left out, so nothing was
     imported.").
     A file with no schedule in it at all is still refused ("notes.csv: no schedule Shoresh could

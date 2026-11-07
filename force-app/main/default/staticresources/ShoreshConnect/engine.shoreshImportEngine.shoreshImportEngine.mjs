@@ -18,6 +18,7 @@ export { NO_DIVISION } from "./engine.shoreshImportEngine.reading-constants.mjs"
 export { LAYOUTS } from "./engine.shoreshImportEngine.layouts.mjs";
 export {
   campFirstDay,
+  nameDaysFor,
   campShortWeek,
   programDays,
   weeksOf,

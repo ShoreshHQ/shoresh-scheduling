@@ -1,4 +1,5 @@
 import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
+import { spokenWeekday } from "c/shoreshDayNames";
 
 // Names as the package has them (c/shoreshSchema). A fixed or recurring activity's fields come
 // in as `fields` (FIELD.FixedActivity or FIELD.RecurringActivity), whichever it is.
@@ -210,7 +211,7 @@ function specialDayProblems(setup, terms) {
       if (week && !weekdaysIn(week).has(onDay.day)) {
         add(
           "specialOffDay",
-          `On ${onDay.day} of "${week.Name}", which that ${terms.sIn("Week")} no longer has. Take it off that day.`,
+          `On ${spokenWeekday(onDay.day)} of "${week.Name}", which that ${terms.sIn("Week")} no longer has. Take it off that day.`,
           onDay.day
         );
       }
@@ -451,7 +452,7 @@ export function earlyNote(entry, item, terms) {
   }
   const program = entry.program || {};
   if (!program[FIELD.Program[day]]) {
-    return `${program.Name} doesn't run on ${day}, so it never starts earlier.`;
+    return `${program.Name} doesn't run on ${spokenWeekday(day)}, so it never starts earlier.`;
   }
   const blocks = entry.timeBlocks || [];
   const start = blocks.findIndex((b) => b.Id === item[fixed.TimeBlock]);

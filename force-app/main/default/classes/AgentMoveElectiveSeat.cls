@@ -109,13 +109,10 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
   ) {
     List<String> said = new List<String>();
     for (ElectivePeriod each : view.times) {
-      String weekday = Datetime.newInstance(
-          each.day,
-          Time.newInstance(12, 0, 0, 0)
-        )
-        .format('EEEE');
+      String weekday = WeekCalendar.weekdayName(each.day);
       if (
         (IncomingBatch.fold(weekday) == IncomingBatch.fold(day) ||
+        IncomingBatch.fold(DayWords.say(each.day)) == IncomingBatch.fold(day) ||
         String.valueOf(each.day) == day) &&
         IncomingBatch.fold(each.blockName) == IncomingBatch.fold(block)
       ) {

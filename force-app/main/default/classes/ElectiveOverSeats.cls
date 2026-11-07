@@ -1,8 +1,9 @@
 /**
  * Each offering over its seats at a time, as the Elective seats screen's "over Seats" problems
  * list them (c/shoreshElectiveSeats seats.js: a limited offering with more campers than seats),
- * said to an AI: "Swim is over its seats on Monday, Period 1: 3 of 2." A hand move may put an
- * offering over; it is shown, never refused (repo ADR 0018 choice 32), and never left unsaid.
+ * said to an AI: "Swim is over its seats on Monday, Period 1: 3 of 2." A hand move into a full
+ * offering is refused (repo ADR 0018 choice 32), but seats lowered after Assign can leave one over:
+ * that is shown, never left unsaid (ELECT-4.5).
  */
 public with sharing class ElectiveOverSeats {
   public static List<String> of(ElectiveSeats.RunView view) {
@@ -36,8 +37,11 @@ public with sharing class ElectiveOverSeats {
     return lines;
   }
 
+  /** Blank or 0 seats are no limit, as the seat run and the screen use them (ELECT-4.1). */
   private static Boolean limited(ElectiveSeats.OfferingInfo offering) {
-    return offering.noLimit != true && offering.seats != null;
+    return offering.noLimit != true &&
+      offering.seats != null &&
+      offering.seats != 0;
   }
 
   private static String keyOf(Date day, String blockId, Id offeringId) {

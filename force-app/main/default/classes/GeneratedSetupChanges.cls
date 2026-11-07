@@ -48,29 +48,28 @@ public with sharing class GeneratedSetupChanges {
 
   /** What changed on one day: its time blocks, its groups, or a fixed or recurring activity. */
   private String onDay(ScheduleDays.DayGrid day, GeneratedWeek.Day built) {
-    String weekday = BlankWeek.weekdayOf(day.day);
     if (!GeneratedFrames.sameIds(day.grid.blockIds(), built.blockIds)) {
       return program.Name +
         '\'s ' +
         setup.labels().pluralInSentence('TimeBlock') +
         ' on ' +
-        weekday;
+        DayWords.say(day.day);
     }
     if (!GeneratedFrames.sameIds(day.grid.groupIds(), built.groupIds)) {
       return program.Name +
         '\'s ' +
         setup.labels().pluralInSentence('Group') +
         ' on ' +
-        weekday;
+        DayWords.say(day.day);
     }
-    return setTimeChange(day.grid, GeneratedGrids.of(day.grid, built), weekday);
+    return setTimeChange(day.grid, GeneratedGrids.of(day.grid, built), day.day);
   }
 
   /** A cell where a fixed or recurring activity is now, or was when the week was opened. */
   private static String setTimeChange(
     ScheduleGrid blank,
     ScheduleGrid built,
-    String weekday
+    Date day
   ) {
     for (Integer g = 0; g < blank.groups.size(); g++) {
       List<String> setup = SlotIds.ofRow(blank, g);
@@ -83,7 +82,7 @@ public with sharing class GeneratedSetupChanges {
             ' for ' +
             blank.groups[g].name +
             ' on ' +
-            weekday;
+            DayWords.say(day);
         }
       }
     }

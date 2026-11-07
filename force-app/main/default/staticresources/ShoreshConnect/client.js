@@ -471,6 +471,7 @@ async function readDraft(capability, input, at, checks, edits) {
  * counter reads the week's accepts (lines.js).
  */
 function counterOf(m, body) {
+  m.nameDaysFor(body.setup);
   const terms = m.buildTerms(body.labels);
   const dots = (body.setup_changes && body.setup_changes.dots) || [];
   const setupDots = new Map(dots.map((dot) => [dot.key, dot.words]));
@@ -743,7 +744,8 @@ async function loadExports(namespace) {
     workbook,
     lists,
     screens,
-    terms
+    terms,
+    weeks
   ] = await loadModules(
     namespace,
     [
@@ -754,7 +756,8 @@ async function loadExports(namespace) {
       "shoreshDownload.workbook",
       "shoreshLists.shoreshLists",
       "shoreshScreens.shoreshScreens",
-      "shoreshTerms.shoreshTerms"
+      "shoreshTerms.shoreshTerms",
+      "shoreshImportEngine.weeks"
     ],
     "can't make a file"
   );
@@ -767,6 +770,7 @@ async function loadExports(namespace) {
     lists,
     screens,
     terms,
+    weeks,
     XLSX: require("./engine.SheetJS.cjs"),
     printPage: () =>
       require("fs").readFileSync(
@@ -779,6 +783,7 @@ async function loadExports(namespace) {
 /** The names the file actions use, each from its own module. */
 function exportModules(m) {
   return {
+    nameDaysFor: m.weeks.nameDaysFor,
     scheduleSheets: m.scheduleExport.scheduleSheets,
     printPages: m.scheduleExport.printPages,
     withRaindrops: m.views.withRaindrops,
@@ -842,10 +847,20 @@ function toAgent(answer) {
     : { ...answer, text: `${answer.text} ${PERSON_DECIDES}` };
 }
 
+const NO_PERMISSION_SET =
+  "Your Salesforce account doesn't have the Shoresh permission set for this, so nothing was done. A Salesforce admin can give it to you: Shoresh Scheduler for a person, or the one Send or Read permission set for a connection.";
+
 /** Shoresh's answer as text; a refusal's sentence on its own. */
 function answerText(text) {
   try {
     const parsed = JSON.parse(text);
+    // Salesforce's own refusal names Shoresh's insides: said in words a person can act on (API-1.105).
+    if (
+      Array.isArray(parsed) &&
+      /access to the Apex class/.test(String(parsed[0]?.message))
+    ) {
+      return NO_PERMISSION_SET;
+    }
     if (
       parsed &&
       !Array.isArray(parsed) &&

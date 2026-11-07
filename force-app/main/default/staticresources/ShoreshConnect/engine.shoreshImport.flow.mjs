@@ -32,7 +32,7 @@ export function layoutWords(t) {
 
 /** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
 export function leaveable(card) {
-  return card.options.some((o) => o.value === LEAVE_OUT);
+  return !card.mustAnswer && card.options.some((o) => o.value === LEAVE_OUT);
 }
 
 export function proposalWith(input, answers) {

@@ -243,6 +243,17 @@ describe("c-shoresh-import", () => {
     );
   });
 
+  it("INGEST-4.14: which day can't wait when no other file gives a schedule: Add stays unavailable", async () => {
+    const element = await render();
+    const text =
+      "Time,Bunk 1,Bunk 2\n9:00-10:00,Relay races,Tug of war\n10:00-11:00,Tug of war,Relay races\n";
+    await choose(element, ["field-day.csv"], { "field-day.csv": text });
+    const add = $(element, '[data-id="save"]');
+    expect(!add || add.disabled).toBe(true);
+    await answer(element, "oneDay|field-day.csv", "Thursday");
+    expect($(element, '[data-id="save"]').disabled).toBe(false);
+  });
+
   it("INGEST-4.14: leaving out the only file goes back to choosing a file", async () => {
     const element = await render();
     const text =
