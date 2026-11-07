@@ -177,6 +177,28 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  // API-1.105
+  it("saysNoPermissionSetInWords: Salesforce's refusal naming a class never reaches the person", async () => {
+    const refused = await callTool(
+      "list_seasons",
+      {},
+      sfAnswering(
+        403,
+        JSON.stringify([
+          {
+            errorCode: "FORBIDDEN",
+            message:
+              "You do not have access to the Apex class named: AgentSeasons"
+          }
+        ])
+      )
+    );
+    const said = refused.result.content[0].text;
+    expect(said).toContain("Shoresh Scheduler");
+    expect(said).not.toContain("AgentSeasons");
+    expect(said).not.toContain("Apex");
+  });
+
   // API-1.9
   // API-1.105
   it("passesOnThePlainSentence: a refusal or a conflict comes through as Shoresh's own sentence", async () => {
