@@ -7916,7 +7916,42 @@ Object.freeze({
   Week: Object.freeze({
     Season: FIELD.Week.Season.replace(/__c$/, "__r")
   })
-});/*
+});/**
+ * The camp's own words for model terms (decision 0006), for every Shoresh screen.
+ * Built from the TermLabel list the server sends (CampLabels.all()).
+ *
+ * s('Group')   -> "Group" or the camp's "Bunk"     (headings, buttons, start of a sentence)
+ * p('Group')   -> "Groups" or "Bunks"
+ * sIn / pIn    -> inside a sentence: model terms in lower case, camp labels exactly as typed
+ */
+function buildTerms(labels) {
+  const byTerm = new Map((labels || []).map(row => [row.term, row]));
+  const word = (term, plural) => {
+    const row = byTerm.get(term);
+    if (!row) {
+      // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
+      const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
+      const readable = words.charAt(0) + words.slice(1).toLowerCase();
+      if (!plural) {
+        return readable;
+      }
+      // As the server makes plurals: "Activity" -> "Activities", "Day" -> "Days".
+      return /[^a]y$/.test(readable) ? `${readable.slice(0, -1)}ies` : `${readable}s`;
+    }
+    return plural ? row.plural : row.singular;
+  };
+  const inSentence = (term, plural) => {
+    const row = byTerm.get(term);
+    const text = word(term, plural);
+    return row && row.isCustom ? text : text.toLowerCase();
+  };
+  return {
+    s: term => word(term, false),
+    p: term => word(term, true),
+    sIn: term => inSentence(term, false),
+    pIn: term => inSentence(term, true)
+  };
+}/*
  * The weeks of a season with no weeks yet, as "Fill in weeks" makes them: shared by the camp
  * workbook import (c/shoreshLists) and Import last year.
  */
@@ -7981,42 +8016,7 @@ FIELD.SpecialEvent;/*
 // Each screen's fields, as the package names them (c/shoreshSchema).
 FIELD.Location;
 FIELD.Activity;
-FIELD.ActivityEligibility;/**
- * The camp's own words for model terms (decision 0006), for every Shoresh screen.
- * Built from the TermLabel list the server sends (CampLabels.all()).
- *
- * s('Group')   -> "Group" or the camp's "Bunk"     (headings, buttons, start of a sentence)
- * p('Group')   -> "Groups" or "Bunks"
- * sIn / pIn    -> inside a sentence: model terms in lower case, camp labels exactly as typed
- */
-function buildTerms(labels) {
-  const byTerm = new Map((labels || []).map(row => [row.term, row]));
-  const word = (term, plural) => {
-    const row = byTerm.get(term);
-    if (!row) {
-      // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
-      const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
-      const readable = words.charAt(0) + words.slice(1).toLowerCase();
-      if (!plural) {
-        return readable;
-      }
-      // As the server makes plurals: "Activity" -> "Activities", "Day" -> "Days".
-      return /[^a]y$/.test(readable) ? `${readable.slice(0, -1)}ies` : `${readable}s`;
-    }
-    return plural ? row.plural : row.singular;
-  };
-  const inSentence = (term, plural) => {
-    const row = byTerm.get(term);
-    const text = word(term, plural);
-    return row && row.isCustom ? text : text.toLowerCase();
-  };
-  return {
-    s: term => word(term, false),
-    p: term => word(term, true),
-    sIn: term => inSentence(term, false),
-    pIn: term => inSentence(term, true)
-  };
-}/*
+FIELD.ActivityEligibility;/*
  * Which sheet of a file is the list, and which column is which (slice 4c). Headings are matched
  * to the camp's own words and the usual other headings, after folding (capitals, spaces, and
  * punctuation ignored), never by guessing from what is in the cells. A heading that matches

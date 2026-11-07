@@ -37,6 +37,25 @@ export function buildTerms(labels) {
   };
 }
 
+export const SHORT_DAYS = Object.freeze({
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
+});
+
+/** "a word" or "an word". */
+export function article(word) {
+  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+}
+
+export function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /**
  * The plural Camp words guesses for a camp's own word (wiki decision 56, camp-words-b): the
  * standard word's own plural when the word is the standard one ("Times per week"), else the

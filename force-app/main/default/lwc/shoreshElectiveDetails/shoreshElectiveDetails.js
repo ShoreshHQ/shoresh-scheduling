@@ -1,3 +1,4 @@
+import { SHORT_DAYS } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
 import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
@@ -18,15 +19,6 @@ const CHOICE = FIELD.LinkedChoice;
 const TIME = FIELD.LinkedChoiceTime;
 const COVERS = FIELD.Coverage;
 const BLOCK = FIELD.TimeBlock;
-const SHORT_DAYS = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun"
-};
 // "Applies to", in the desktop's words (BundleEditor.jsx: All, Only these, All except).
 const APPLIES_TO = [
   { value: "All", label: "All" },

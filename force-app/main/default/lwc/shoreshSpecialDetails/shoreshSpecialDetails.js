@@ -1,3 +1,4 @@
+import { SHORT_DAYS } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
 import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
@@ -40,17 +41,6 @@ export function weekdaysOf(week) {
   }
   return days;
 }
-// Short day names, as the mock-up writes them ("Wk 5 Thu").
-const SHORT_DAYS = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun"
-};
-
 /** The season's special items (SpecialItems.Setup), or an empty one. */
 export function specialOf(setup) {
   const special = (setup && setup.special) || {};

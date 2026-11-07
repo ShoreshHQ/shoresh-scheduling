@@ -1,3 +1,4 @@
+import { SHORT_DAYS } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
 import { looseKey } from "c/shoreshImportEngine";
 import { FIELD, OBJECT } from "c/shoreshSchema";
@@ -38,17 +39,6 @@ const WIDTHS = {
 };
 // A shared column's least room (rem), unless the column says (minWidth).
 const SHARED_MIN = 12;
-// Short day names, as the mock-up writes them ("Mon Wed Fri", "Off Fri").
-const SHORT_DAYS = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun"
-};
-
 /**
  * A table of records edited in place, saved as you go, like the desktop's setup tables (ADR
  * 0011; desktop DESIGN_STANDARD §6a "InlineAddRow"). The last row is always blank: typing there

@@ -1,4 +1,10 @@
-import { buildTerms, guessPlural } from "c/shoreshTerms";
+import {
+  article,
+  buildTerms,
+  capital,
+  guessPlural,
+  SHORT_DAYS
+} from "c/shoreshTerms";
 
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -75,5 +81,14 @@ describe("guessPlural (Camp words, wiki decision 56)", () => {
     expect(guessPlural("")).toBe("");
     expect(guessPlural("   ")).toBe("");
     expect(guessPlural(undefined)).toBe("");
+  });
+});
+
+describe("small words", () => {
+  it("says a or an, starts with a capital, and shortens a day", () => {
+    expect(article("activity")).toBe("an activity");
+    expect(article("group")).toBe("a group");
+    expect(capital("swim")).toBe("Swim");
+    expect(SHORT_DAYS.Wednesday).toBe("Wed");
   });
 });

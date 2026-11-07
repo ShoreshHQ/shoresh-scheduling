@@ -30,29 +30,14 @@ import {
   owner,
   slots
 } from "./grid";
-import { compareText, earlyDates } from "./setup";
+import { compareText, earlyDates, minutes, weekdayOf } from "./setup";
 import { BUSY, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
 
 /** The rules in the order they give way, then the time-overlap check. */
 const RULE = [...RELAX_ORDER, BUSY];
 
-function minutes(time) {
-  const match = /^(\d{1,2}):(\d{2})/.exec(String(time || ""));
-  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
-}
-
-/** 1 for Monday … 7 for Sunday, from "YYYY-MM-DD", the same in every time zone. */
-export function weekdayOf(date) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(date || ""));
-  if (!match) {
-    return null;
-  }
-  const day = new Date(
-    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-  ).getUTCDay();
-  return day === 0 ? 7 : day;
-}
+export { weekdayOf };
 
 /** An activity's SortOrder; none goes last. */
 function sortValue(act) {

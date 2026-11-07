@@ -7,6 +7,7 @@
  * a bold question, a grey line saying what the file shows, and the answers. "hold" cards (which
  * kind something is, which program, files that disagree) come first, as the desktop's hold lane.
  */
+import { article, capital } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import {
   ELECTIVES,
@@ -18,14 +19,6 @@ import {
 import { LEAVE_OUT } from "./reading";
 import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock, weekOrder } from "./text";
-
-function article(word) {
-  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
-}
-
-function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 function quoted(name) {
   return `“${name}”`;
