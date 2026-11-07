@@ -766,7 +766,6 @@ const CAPABILITIES = [
     name: "list_versions",
     api: "versions",
     method: "GET",
-    queryFields: ["season", "week", "program"],
     listsVersions: true,
     description:
       "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
@@ -865,7 +864,6 @@ const CAPABILITIES = [
       "Read a week's elective seats as the Elective seats screen shows them now, being worked on or (when none is) finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
     about:
       "The seats now, as the Elective seats screen shows them: the version being worked on, or the finalized one when none is (it says which). They hold no findings or problems.",
-    queryFields: ["season", "week", "elective_set"],
     inputSchema: {
       type: "object",
       properties: ELECTIVE_RUN,
@@ -958,7 +956,6 @@ const CAPABILITIES = [
       "Read what the Elective seats screen's end-of-season Clear shows before it clears: each week's campers, choices, seats and runs, what is still being worked on, and what stays for next summer (elective sets, offerings, linked choices), with seen. Read it right before clear_electives.",
     about:
       "The season's electives as the Clear shows them now. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1019,8 +1016,7 @@ const CAPABILITIES = [
     method: "GET",
     about:
       "Camp Setup's question before its Delete, word for word. It holds no findings or problems.",
-    sendsFields: false,
-    queryFields: ["season", "kind", "name", "program"]
+    sendsFields: false
   },
   {
     // A read: GET, its fields in the web address (API-1.49).
@@ -1032,8 +1028,7 @@ const CAPABILITIES = [
     method: "GET",
     about:
       "What the setup record holds now, as Camp Setup shows it. It holds no findings or problems.",
-    sendsFields: false,
-    queryFields: ["season", "kind", "name", "program"]
+    sendsFields: false
   },
   setup(
     "change_setup_record",
@@ -1064,7 +1059,6 @@ const CAPABILITIES = [
       "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_setup_record (kind activity) and change them with change_setup_record. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season", "name"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON, name: ACTIVITY_NAME },
@@ -1129,7 +1123,6 @@ const CAPABILITIES = [
       "Read the camp's own words for Shoresh's terms, as Camp Setup's Camp words screen shows them: each of Shoresh's words (like Group) with the camp's singular / plural (like Bunk / Bunks). Read them right before changing them, and send the ones you change back unchanged as seen.",
     about:
       "The camp's words now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1197,7 +1190,6 @@ const CAPABILITIES = [
       "Read Camp Setup's \"Same location?\" question for a place: the season's locations whose names match it, capitals and spacing aside, each with its exact name, groups that fit and how many activities happen there, and which one the question would keep. Read it right before merge_locations and send what it said as seen.",
     about:
       "The matching places now, as Camp Setup's question shows them. They hold no findings or problems.",
-    queryFields: ["season", "name"],
     inputSchema: {
       type: "object",
       properties: {
@@ -1252,7 +1244,6 @@ const CAPABILITIES = [
       "Read what Camp Setup marks as guessed from a file (an import worked it out rather than read it) and no one has said looks right or changed since: each with its kind, name, field (how_often, who, groups_that_fit, division or periods) and value now. Read it right before confirm_setup_guess and send the value it said as seen.",
     about:
       "The guesses still marked now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1310,7 +1301,6 @@ const CAPABILITIES = [
       "Read the offerings Camp Setup shows as proposed and not confirmed yet (an import found them; no camper gets a seat in one until it is confirmed): each activity with its elective set. Read it right before confirm_proposed_offering.",
     about:
       "The offerings still proposed now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1357,7 +1347,6 @@ const CAPABILITIES = [
       "Read what Camp Setup's Copy season page shows before a copy, changing nothing: use it to answer \"what would the copy look like\" questions. For a new first day (start_date), the new season's first and last day, each week's dates in the copy, and whether the weeks land on other weekdays. Read it right before copy_season and send the dates it said as seen.",
     about:
       "The copy's dates now, as Camp Setup's Copy season page shows them. They hold no findings or problems.",
-    queryFields: ["season", "start_date"],
     inputSchema: {
       type: "object",
       properties: {
@@ -1410,7 +1399,6 @@ const CAPABILITIES = [
       'Read what Generated Schedule or Manual Build shows when setup changed since the week started: each change "Update to match setup" can make, by its key, with each cell before and after and why, and the week as read (seen). Read it right before update_to_match_setup.',
     about:
       "The changes setup makes to the week now, as the screen lists them. They are not the week's checks (read those with read_week_checks).",
-    queryFields: ["season", "week", "program", "schedule"],
     inputSchema: {
       type: "object",
       properties: EITHER_WEEK,
@@ -1454,7 +1442,6 @@ const CAPABILITIES = [
       'Read the season\'s special days and special events, as the Special events screen lists them, and the week days each special day is on (like Tuesday of "Week 1"). A special day replaces its day for the whole camp; a week day not named has none, and reads "none". Read it right before put_special_day_on_day or take_special_day_off_day and send what that day has as seen.',
     about:
       "The special days and events now, and where they are. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1519,7 +1506,6 @@ const CAPABILITIES = [
       "Read a special day's or special event's own schedule, as its page on the Special events screen shows it: its time blocks with their times, its columns (a special day's are the camp's groups, an event's are its stations or teams), what each cell holds, and seen (send it with change_special_schedule_frame). Read it right before changing it.",
     about:
       "The special day's or event's own schedule now. It holds no findings or problems.",
-    queryFields: ["season", "special", "kind"],
     inputSchema: {
       type: "object",
       properties: SPECIAL_ITEM,
@@ -1780,7 +1766,6 @@ const CAPABILITIES = [
       "Read the imports that can be undone in a season, as Roots and Settings offer Undo: the person's own last import (a list, a worksheet or Import last year), and each outside system's last batch (bring_in_*), each with when it was made and its seen. Only the last of each can be undone, once.",
     about:
       "The imports Undo is offered for, as Roots and Settings show them. It holds nothing else.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1821,7 +1806,6 @@ const CAPABILITIES = [
       "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Flow sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
     about:
       "The failed sends Settings shows, in its sentences. It holds no destination's address, key or password.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1830,10 +1814,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_schedule",
+    // Used on this computer, never sent.
+    localFields: ["as", "view"],
     api: "schedule_file",
     method: "GET",
     makesFile: "schedule",
-    queryFields: ["season", "week", "program", "version", "saved"],
     description:
       "Make a week's schedule file exactly as the Schedules screen's Excel or Print makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). Excel: a sheet per day, then every group's and every activity's week. Print: a page per day, group or activity, as the view chosen; it is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest version unless you name one (list_versions names them). The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1868,7 +1853,6 @@ const CAPABILITIES = [
     api: "special_schedule_file",
     method: "GET",
     makesFile: "special",
-    queryFields: ["season", "special", "kind"],
     description:
       "Make a special day's or event's own schedule file exactly as Download on its page makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1894,10 +1878,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_elective_files",
+    // Used on this computer, never sent.
+    localFields: ["file"],
     api: "elective_file",
     method: "GET",
     makesFile: "electives",
-    queryFields: ["season", "week", "elective_set"],
     description:
       "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per offering, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and bring back). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1924,10 +1909,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_setup",
+    // Used on this computer, never sent.
+    localFields: ["list"],
     api: "setup_file",
     method: "GET",
     makesFile: "setup",
-    queryFields: ["season"],
     description:
       "Make a setup file exactly as Camp Setup's Download this list or Roots' Download worksheet makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): one screen's list, in the layout its Import a list reads, or the whole-camp worksheet (every list, location types, camp words, weeks and the weeks each item runs in), which Import worksheet reads back. The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1964,7 +1950,6 @@ const CAPABILITIES = [
     api: "read_learned_answers",
     method: "GET",
     readsLearned: true,
-    queryFields: ["season"],
     description:
       'Read "What Shoresh has learned" (under Settings) as the screen lists it: the camp\'s remembered import answers and patterns, newest first, each with when and how it was learned, then what Shoresh already knew. Each answer remembered now has its answer_id, seen and (when it can be changed) the answers it can be changed to; each pattern there now has its pattern and seen. Read it right before change_learned_answer, forget_learned_answer or forget_learned_pattern and send those.',
     about:
