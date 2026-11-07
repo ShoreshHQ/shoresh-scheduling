@@ -1405,6 +1405,7 @@ Open **Settings** at the foot of the Shoresh menu.
   activity schedule `week, date, activity, time_block, start_time, end_time, groups`;
   offerings `elective_set, activity, seats, minimum_to_run`; seats `week, elective_set, date,
 time_block, activity, location, source_system, camper_id, camper_name, camper_number, bunk`.
+  In a numbered-days season each one with a date also has `day` last ("Day 3").
 - Full rules: [docs/protocol/api.md](protocol/api.md), [ADR 0024](adr/0024-data-in-and-out.md).
 
 ## 34. People: who can use Shoresh
