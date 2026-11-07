@@ -171,7 +171,8 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const out of [
       "",
       "Error (ETIMEDOUT): socket hang up",
-      "Error: Command failed: sf api request rest"
+      "Error: Command failed: sf api request rest",
+      "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: connect ETIMEDOUT"
     ]) {
       await expect(
         call("read_elective_seats", {}, { org: "camp", run: async () => out })
@@ -2858,6 +2859,17 @@ describe("Shoresh for AI tools and the command line", () => {
     signedIn = false;
     const plain = await handle(message, { org: "shoresh", callFn, sf });
     expect(plain.result.content[0].text).toMatch(/^Couldn't reach Salesforce/);
+    expect(signedInto).toHaveLength(1);
+    // Salesforce didn't answer (API-1.126): said as it is, and no browser opens.
+    const noAnswer = await handle(message, {
+      ...options,
+      callFn: async () => {
+        throw new Error("Salesforce didn't answer just now.");
+      }
+    });
+    expect(noAnswer.result.content[0].text).toBe(
+      "Salesforce didn't answer just now."
+    );
     expect(signedInto).toHaveLength(1);
     // No Salesforce command line: one plain sentence, no browser.
     const none = await handle(message, {

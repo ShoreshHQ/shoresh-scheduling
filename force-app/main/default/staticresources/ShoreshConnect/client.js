@@ -336,9 +336,10 @@ async function ask(request, org, run) {
   return response;
 }
 
-// What sf says when its sign-in is missing, expired or refused (API-1.126).
+// What sf says when its sign-in is missing, expired or refused (API-1.126): a refresh that failed
+// for the network ("due to: connect ETIMEDOUT") is not one.
 const SIGNED_OUT =
-  /ENOENT|NamedOrgNotFound|NoOrgFound|NoDefaultEnv|No authorization information|No default (target|environment)|RefreshTokenAuthError|expired access\/refresh token|invalid_grant|INVALID_SESSION_ID|Session expired/i;
+  /ENOENT|NamedOrgNotFound|NoOrgFound|NoDefaultEnv|No authorization information|No default (target|environment)|expired access\/refresh token|invalid_grant|inactive user|authentication failure|INVALID_SESSION_ID|Session expired/i;
 
 // Signed in, but Salesforce didn't answer (API-1.126): never a sign-in, and never "nothing changed".
 const NO_ANSWER =
