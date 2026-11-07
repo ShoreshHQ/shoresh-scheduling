@@ -916,6 +916,50 @@ describe("c-shoresh-import", () => {
     expect($(element, 'button[data-tile="Group"]')).toBeNull();
   });
 
+  it("INGEST-5.5: while a question waits, the review never promises a week or version the save won't add", async () => {
+    const program = (divisions) => ({
+      program: {
+        Id: "p1",
+        Name: "Main",
+        Monday__c: true,
+        Tuesday__c: true,
+        Wednesday__c: true,
+        Thursday__c: true,
+        Friday__c: true
+      },
+      timeBlocks: [],
+      divisions,
+      fixedActivities: [],
+      recurringActivities: []
+    });
+    const dated = {
+      ...SETUP,
+      season: {
+        Id: "se1",
+        Name: "Summer 2027",
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-02"
+      }
+    };
+    const review = async (divisions) => {
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = nsRecord({ ...dated, programs: [program(divisions)] });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      await choose(element, ["Maple Grove 2026 - Bunk 1.csv"]);
+      return element.shadowRoot.textContent;
+    };
+    // Bunk 1's division waits: Add saves no week from it, so none is promised.
+    const waiting = await review([
+      { division: { Id: "d1", Name: "Juniors" }, groups: [] },
+      { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+    ]);
+    expect(waiting).toMatch(/1 for later/);
+    expect(waiting).not.toMatch(/added from its dates/);
+    expect(waiting).not.toMatch(/Kept as a version/);
+  });
+
   describe("part 2: version, remembered answers, undo", () => {
     const WITH_WEEK = {
       ...SETUP,
