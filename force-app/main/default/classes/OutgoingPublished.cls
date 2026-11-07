@@ -23,7 +23,37 @@ public with sharing class OutgoingPublished {
   /** Every group's things in the week, day by day, or refused when nothing in it is published. */
   public static List<Thing> of(Season__c season, String week) {
     List<Id> published = publishedIn(season, week);
-    // Each day's parts, by schedule in program order, then by day.
+    Map<Date, Map<Id, List<ScheduleDay__c>>> parts = partsOf(published);
+    // The days a special day replaced when each schedule was published (API-6.5).
+    Map<Id, Map<Date, ScheduleSpecials.Special>> replaced = SpecialsCarried.daysGoingOut(
+      published
+    );
+    List<Date> days = new List<Date>(parts.keySet());
+    days.sort();
+    List<Thing> things = new List<Thing>();
+    for (Date day : days) {
+      for (Id scheduleId : published) {
+        if (parts.get(day).containsKey(scheduleId)) {
+          ScheduleDays.DayGrid regular = ScheduleDays.readDay(
+            day,
+            parts.get(day).get(scheduleId)
+          );
+          ScheduleSpecials.Special special = replaced.get(scheduleId).get(day);
+          if (special == null) {
+            addDay(regular, things);
+          } else {
+            OutgoingSpecialDay.add(special, regular, things);
+          }
+        }
+      }
+    }
+    return things;
+  }
+
+  /** Each day's parts, by schedule in program order, then by day. */
+  private static Map<Date, Map<Id, List<ScheduleDay__c>>> partsOf(
+    List<Id> published
+  ) {
     Map<Date, Map<Id, List<ScheduleDay__c>>> parts = new Map<Date, Map<Id, List<ScheduleDay__c>>>();
     for (ScheduleDay__c part : [
       SELECT
@@ -47,69 +77,7 @@ public with sharing class OutgoingPublished {
       }
       bySchedule.get(part.Schedule__c).add(part);
     }
-    // The days a special day replaced when each schedule was published (API-6.5).
-    Map<Id, Map<Date, ScheduleSpecials.Special>> replaced = SpecialsCarried.daysGoingOut(
-      published
-    );
-    List<Date> days = new List<Date>(parts.keySet());
-    days.sort();
-    List<Thing> things = new List<Thing>();
-    for (Date day : days) {
-      for (Id scheduleId : published) {
-        if (parts.get(day).containsKey(scheduleId)) {
-          ScheduleDays.DayGrid regular = ScheduleDays.readDay(
-            day,
-            parts.get(day).get(scheduleId)
-          );
-          ScheduleSpecials.Special special = replaced.get(scheduleId).get(day);
-          if (special == null) {
-            addDay(regular, things);
-          } else {
-            addSpecialDay(special, regular, things);
-          }
-        }
-      }
-    }
-    return things;
-  }
-
-  /**
-   * A day a special day replaced: its own schedule as published, never the regular cells kept
-   * under it (API-6.5), for this schedule's own groups only. A group with no line in it (no
-   * schedule yet, or added to the camp since) goes out as a row naming the special day, so its
-   * day isn't left looking free.
-   */
-  private static void addSpecialDay(
-    ScheduleSpecials.Special special,
-    ScheduleDays.DayGrid regular,
-    List<Thing> things
-  ) {
-    if (regular.grid == null || String.isNotBlank(special.problem)) {
-      throw new ShoreshException(unreadable(regular.day));
-    }
-    Set<String> inPlan = new Set<String>();
-    if (special.grid != null) {
-      for (ScheduleGrid.GroupRef groupRef : special.grid.groups) {
-        inPlan.add(groupRef.id);
-      }
-    }
-    Set<String> own = new Set<String>();
-    for (ScheduleGrid.GroupRef groupRef : regular.grid.groups) {
-      own.add(groupRef.id);
-      if (!inPlan.contains(groupRef.id)) {
-        Thing whole = new Thing();
-        whole.day = regular.day;
-        whole.groupName = groupRef.name;
-        whole.block = special.name;
-        whole.startTime = '';
-        whole.endTime = '';
-        whole.activity = special.name;
-        things.add(whole);
-      }
-    }
-    if (special.grid != null) {
-      addGroups(regular.day, special.grid, own, things);
-    }
+    return parts;
   }
 
   /** The week's published schedules the user can see, in program order; refused when none. */
@@ -172,31 +140,19 @@ public with sharing class OutgoingPublished {
       ' Schedules go out once a week is published.';
   }
 
-  private static String unreadable(Date day) {
+  public static String unreadable(Date day) {
     return 'The published schedule for ' +
       day.format() +
       ' can\'t be read, so this week can\'t go out. Publish the week again.';
   }
 
-  private static void addDay(ScheduleDays.DayGrid day, List<Thing> things) {
+  public static void addDay(ScheduleDays.DayGrid day, List<Thing> things) {
     // Shown, never hidden: a day that can't be read stops the week going out without it.
     if (day.grid == null) {
       throw new ShoreshException(unreadable(day.day));
     }
-    addGroups(day.day, day.grid, null, things);
-  }
-
-  /** The grid's groups' things, in its order; only those named when only is given. */
-  private static void addGroups(
-    Date day,
-    ScheduleGrid grid,
-    Set<String> only,
-    List<Thing> things
-  ) {
+    ScheduleGrid grid = day.grid;
     for (Integer g = 0; g < grid.groups.size(); g++) {
-      if (only != null && !only.contains(grid.groups[g].id)) {
-        continue;
-      }
       Thing open = null;
       for (Integer b = 0; b < grid.blocks.size(); b++) {
         String cell = b < grid.rows[g].size() ? grid.rows[g][b] : '';
@@ -210,7 +166,7 @@ public with sharing class OutgoingPublished {
           continue;
         }
         open = new Thing();
-        open.day = day;
+        open.day = day.day;
         open.groupName = grid.groups[g].name;
         open.block = grid.blocks[b].name;
         open.startTime = grid.blocks[b].startTime;
