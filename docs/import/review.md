@@ -185,3 +185,21 @@ Each rule is clue, meaning, example, test.
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
     `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
     and that trying again won't help" (`shoreshErrors`).
+
+11. **Days said by number are listed as what each became.**
+    Clue: the files say their days by number ("Day 1" to "Day 6", WEEK-2.6), read as the camp's
+    days of the week counted from its first day (ADR 0025 choice 6).
+    Meaning: a group "6 days by number" with a line per number, in the season's own way of saying
+    days: "Day 3" in a season that numbers its days; "Day 3 → Wednesday" in a season that names
+    them, so the weekday each number landed on shows. Into a season with no weeks and no programs,
+    the save makes the season number its days, and the group's first line says so the way Camp
+    Setup words the choice: "Mon Tue Wed → Day 1 Day 2 Day 3". A season with weeks or programs
+    keeps its own way. Nothing is asked: there is no other way to read it. A number the week does
+    not have (Day 6 in a Monday-to-Friday week) is listed with what could not be placed (WEEK-2.4).
+    Test: "into a season with no weeks and no programs: the season becomes numbered at save, and
+    the review shows it"; "into a named season with weeks: it stays named, and each number shows
+    the weekday it lands on"; "into a numbered season the review just says Day 3, and what cannot
+    be placed says Day 6"; Apex `ImportFillWeeksTest`
+    `aFileSayingDay3MakesASeasonWithNothingInItNumberedAndUndoPutsItBack`. Code: `reading.js`
+    `dayNumbers`; `proposal.js` `dayNumbersFor`; `review.js` `dayNumberLines`;
+    `ImportSetupSaves` `numberDays`.

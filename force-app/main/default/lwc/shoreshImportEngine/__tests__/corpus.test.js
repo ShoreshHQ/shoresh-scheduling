@@ -11,6 +11,7 @@ import { ordinaryCamps } from "../../../../../../scripts/import-corpus/camps";
 import { variedCamps } from "../../../../../../scripts/import-corpus/level2";
 import { travellingCamps } from "../../../../../../scripts/import-corpus/travel";
 import { hardCamps } from "../../../../../../scripts/import-corpus/level3";
+import { numberedCamps } from "../../../../../../scripts/import-corpus/numbered";
 import {
   decisionCamps,
   earlyEndCamps,
@@ -84,6 +85,28 @@ describe("Import last year on ordinary made-up camps (level 1)", () => {
         n: Math.min(n, CEILING.wrong[kind] || 0)
       });
     }
+  });
+});
+
+// WEEK-2.6
+describe("Import last year on made-up camps that number their days (level 1)", () => {
+  const results = numberedCamps(40).map((camp) =>
+    scoreCamp(camp, {
+      engine,
+      XLSX,
+      terms: buildTerms([]),
+      keepProposal: true
+    })
+  );
+  const totals = summarise(results);
+
+  it("reads every camp as well as its named-days twin: Day 1 to Day 5 are days, never groups, nothing asked", () => {
+    expect(totals.errors).toBe(0);
+    expect(totals.perfect).toBe(40);
+    // Into a season with nothing in it, each camp makes the season say its days by number.
+    results.forEach((r) =>
+      expect([r.camp.id, r.proposal.numberDays]).toEqual([r.camp.id, true])
+    );
   });
 });
 

@@ -7,6 +7,7 @@ import {
   detectLayout,
   LAYOUTS,
   pageDay,
+  pageDayNumbers,
   pageName,
   pageWeek,
   readPage
@@ -22,6 +23,8 @@ import {
 import { WEEKDAYS, looseKey } from "./engine.shoreshImportEngine.text.mjs";
 import { withoutWeek } from "./engine.shoreshImportEngine.weekLabels.mjs";
 import { identifyGroups } from "./engine.shoreshImportEngine.identity.mjs";
+import { countDaysFrom } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+import { campFirstDay } from "./engine.shoreshImportEngine.weeks.mjs";
 import { groupDivisionName } from "./engine.shoreshImportEngine.noDivision.mjs";
 import { oneGroupDivisions } from "./engine.shoreshImportEngine.together.mjs";
 
@@ -208,15 +211,22 @@ function readPages(pages, keys, existing, layouts, answers) {
       name: pageName(page),
       // Asked which day instead (INGEST-4.14), so not noted as unread.
       noDay: read.noDay && !(one && one.ask),
-      placements: read.placements.length
+      placements: read.placements.length,
+      // WEEK-2.6: the numbers it said its days by; a page read for nothing said nothing.
+      dayNumbers: read.placements.length ? pageDayNumbers(page, found[i]) : []
     };
   });
+  // Each number once, in order.
+  const dayNumbers = [...new Set(info.flatMap((p) => p.dayNumbers))].sort(
+    (a, b) => a - b
+  );
   return {
     info,
     placements: placesInBrackets(placements, existing),
     noted,
     pages: named,
-    asks
+    asks,
+    dayNumbers
   };
 }
 
@@ -396,6 +406,8 @@ function byNameThenContent(a, b) {
  */
 export function readImport(input) {
   const answers = input.answers || {};
+  // WEEK-2.6: a file's "Day 1" is the camp's first day of the week, whatever was read before.
+  countDaysFrom(campFirstDay(input.existing));
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
@@ -527,6 +539,7 @@ export function readImport(input) {
     groupAsks: identified.asks,
     splitAsks: together.asks,
     timeAsks: [...read.asks, ...timeAsks],
-    identities: identified.rules
+    identities: identified.rules,
+    dayNumbers: read.dayNumbers
   };
 }

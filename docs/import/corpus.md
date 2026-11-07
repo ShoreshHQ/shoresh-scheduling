@@ -64,6 +64,23 @@ no divisions shown (2 "mostly at a set time" questions, one name read as recurri
   only level 3's half days have them), and grid
   cells (group, day, time block: the right activity).
 
+### Days by number
+
+40 more level-1 camps (`scripts/import-corpus/numbered.js`), five in each of the eight layouts,
+scored on their own table in the level-1 report: ordinary camps whose files say their days by
+number (WEEK-2.6, ADR 0025 choice 6) as "Day 3", "Day3" or "DAY 3" in titles, sheet and file
+names, heading rows and columns, and "D3" across a page per group (on its own, never in a title
+or file name). A number says nothing about the weekday, so read into a season with nothing in it
+(as the scorer reads every camp) the week starts on Monday: the truth is the same days counted
+from Monday, and each camp also makes the season number its days. Not covered: a "Day 6" a week
+doesn't have, and a numbered file into a season that already names its days (the unit tests in
+`shoreshImportEngine/__tests__/numbered.test.js` cover both).
+
+Baseline (2026-11-07), before the import read numbers: 0 of 40 perfect; 78 questions (all am/pm,
+in 10 camps); every camp wrong (groups 667, cells 23,687: "Day 1" to "Day 5"
+read as groups on a single day, or pages with no day read as nothing). After WEEK-2.6: **40 of 40
+perfect, nothing asked.** Every other level, the travel camps and Greg's camp unchanged.
+
 ## Greg's camp
 
 `scripts/import-corpus/fixtures/plant-camp.xlsx` is a real camp's schedule made fictional with
