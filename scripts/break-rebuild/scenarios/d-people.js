@@ -171,7 +171,7 @@ module.exports = [
         rec.check("API-1.14", "read back: back as it was", d.cell(cell.day, "Bunk 1", cell.time_block).activity === cell.activity, JSON.stringify(d.cell(cell.day, "Bunk 1", cell.time_block)));
         const words = await call("read_camp_words", { season }, as);
         rec.note("the camp's words, as a Read/Write person reads them", words.text.slice(0, 400));
-        const wordNow = /"group"\s*:\s*"([^"]*)"/.exec(words.text)?.[1] ?? "(blank)";
+        const wordNow = /Group: ([^;]+);?/.exec(words.text)?.[1]?.trim() ?? "(blank)";
         for (const [action, input, ok] of [
           ["lock_cells", { ...week, day: cell.day, group: "Bunk 1", time: cell.time_block, seen: d.seen }],
           ["save_version", { ...week, name: "Person's version" }],

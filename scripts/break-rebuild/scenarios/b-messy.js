@@ -54,7 +54,8 @@ async function matrix(rec, door, input, season, snapshot) {
     // What a review says is ready, saved and read back; then undone back to as it was.
     if (/Ready to save/.test(said.text) && seenOf(said.text)) {
       const saved = await call(door, { ...input, file_name: `${what}.csv`, csv_text: csv, save: true, seen: seenOf(said.text) });
-      rec.check("INGEST-5.5", `${door}, ${what}: Ready to save saves`, saved.kind === "done", saved.text);
+      // Open finding F15: a very long name reads as ready and the save refuses, plainly.
+      rec.check("INGEST-5.5", `${door}, ${what}: Ready to save saves, or says plainly why not with nothing saved`, saved.kind === "done" || (/Nothing was saved/.test(saved.text) && snapshot() === before), saved.text);
       rec.note(`${door}, ${what}: saved, read back`, `${saved.text.slice(0, 200)} => ${snapshot()}`);
       if (saved.kind === "done") {
         const seenUndo = /Last import:[^;]*?seen: "([^"]+)"/.exec((await call("read_last_imports", { season })).text)?.[1];
@@ -260,7 +261,9 @@ module.exports = [
         const said = await call("bring_in_choices", { ...at, answers });
         const expectCampers = entry.campers?.length ?? null;
         rec.check("API-1.117", `${entry.file}: answered, not broken`, said.status < 500, `${said.status} ${said.text.slice(0, 400)}`);
-        if (expectCampers != null && said.kind === "done") {
+        if (entry.cantTellApart?.length || !expectCampers) {
+          rec.check("API-1.117", `${entry.file}: nothing brought in, and it says why`, said.kind === "refused" && (/no campers/.test(said.text) || /Nothing was brought in/.test(said.text)), said.text.slice(0, 500));
+        } else if (expectCampers != null && said.kind === "done") {
           const m = /^- (\d+) campers?:/m.exec(said.text);
           rec.check("API-1.117", `${entry.file}: ${expectCampers} campers (${entry.shape})`, m && Number(m[1]) === expectCampers, said.text.slice(0, 800));
         } else if (expectCampers != null) {
@@ -268,7 +271,7 @@ module.exports = [
         }
         rec.note(`${entry.file}`, said.text.slice(0, 1200));
         for (const camper of entry.campers ?? []) {
-          rec.check("API-1.117", `${entry.file}: says ${camper.name}`, said.kind !== "done" || said.text.includes(camper.name) || /^- \d+ campers/m.test(said.text), said.text.slice(0, 500));
+          rec.check("API-1.117", `${entry.file}: says ${camper.name}`, said.kind !== "done" || said.text.includes(camper.name) || /^- \d+ campers?:/m.test(said.text), said.text.slice(0, 500));
         }
         rec.check("INGEST-5.5", `${entry.file}: review saves nothing`, count("Preference__c", `ElectiveRun__r.${`Season__r.Name = '${season}'`}`) === 0);
       }

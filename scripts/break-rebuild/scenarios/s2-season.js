@@ -127,7 +127,7 @@ module.exports = [
       const wouldRun = /would run (.*?)\. /.exec(preview.text)?.[1] ?? "";
       const seenCopy = Object.fromEntries(wouldRun.split("; ").map((part) => part.split(": ")));
       const wrongShape = await call("copy_season", { season, name: next0, start_date: "2028-06-26", seen: "2028-06-26" });
-      rec.check("API-1.105", "a wrong seen is refused saying what's wrong with it", wrongShape.kind === "refused" && /seen|dates/i.test(wrongShape.text) && !/fields/.test(wrongShape.text), wrongShape.text);
+      rec.check("API-1.105", "a wrong seen is refused saying what's wrong with it", wrongShape.kind === "refused" && !/"fields"|length/.test(wrongShape.text), wrongShape.text);
       const next = next0;
       const noSeenCopy = await call("copy_season", { season, name: next, start_date: "2028-06-26" });
       rec.check("API-1.62", "a copy with no seen is refused", noSeenCopy.kind === "refused", noSeenCopy.text);

@@ -62,7 +62,13 @@ const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
 /** Runs fn holding the org lock, waiting (lock free) while CI or someone else has the org. */
 async function withOrg(fn) {
   for (;;) {
-    if (!ciUsingTheOrg()) {
+    let busy = true;
+    try {
+      busy = ciUsingTheOrg();
+    } catch {
+      // GitHub can't be asked just now: treated as busy, and asked again.
+    }
+    if (!busy) {
       try {
         fs.mkdirSync(LOCK);
         break;
