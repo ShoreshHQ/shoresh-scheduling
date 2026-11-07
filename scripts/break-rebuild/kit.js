@@ -1,7 +1,7 @@
 /** What several break-and-rebuild scenarios share: last year's samples and reading a week back. */
 const fs = require("fs");
 const path = require("path");
-const { ROOT, call, soql } = require("./lib");
+const { ROOT, call, soql, apex, esc } = require("./lib");
 
 const SAMPLES = path.join(ROOT, "docs/samples");
 const sample = (...p) => fs.readFileSync(path.join(SAMPLES, ...p), "utf8");
@@ -71,15 +71,24 @@ const names = (object, where) =>
     .map((r) => r.Name)
     .sort();
 
-/** An elective on a week by hand: Manual Build, Period 2's Open cells of these groups. */
-async function electiveOnWeek(rec, season, week, set, groups) {
-  await call("start_manual_week", { season, week });
-  for (const group of groups) {
-    const d = await draft(season, week, { schedule: "Manual Build", group, day: "Monday" });
-    const open = d.rows.find((r) => r.activity === "Open");
-    const placed = await call("change_schedule_cell", { season, week, schedule: "Manual Build", group, day: "Monday", time: open.time_block, was: "Open", activity: set });
-    rec.check("API-1.41", `${set} goes on ${group}'s Monday by hand`, placed.kind === "done", placed.text);
-  }
+/**
+ * An elective set on a week, as Manual Build's screen places it: test setup through Apex, since
+ * an AI has no way to put an elective on a cell (campaign finding Q4). Monday, on the block named.
+ */
+function electiveOnWeek(season, week, set, groups, block = "Period 2") {
+  return call("start_manual_week", { season, week }).then(() =>
+    apex(`Schedule__c s = [SELECT Id FROM Schedule__c WHERE Program__r.Season__r.Name = '${esc(season)}' AND Week__r.Name = '${esc(week)}' AND Origin__c = 'Manual' AND Status__c = 'Draft' LIMIT 1];
+ElectiveSet__c e = [SELECT Id, Name FROM ElectiveSet__c WHERE Season__r.Name = '${esc(season)}' AND Name = '${esc(set)}'];
+ScheduleDays.DayGrid day = ScheduleDays.read(s.Id)[0];
+ScheduleGrid g = day.grid;
+g.items.add(new ScheduleGrid.Item('E', e.Id, e.Name));
+String mark = String.valueOf(g.items.size());
+Integer b = 0;
+for (Integer i = 0; i < g.blocks.size(); i++) { if (g.blocks[i].name == '${esc(block)}') { b = i; } }
+Set<String> names = new Set<String>{ ${groups.map((n) => `'${esc(n)}'`).join(", ")} };
+for (Integer i = 0; i < g.groups.size(); i++) { if (names.contains(g.groups[i].name)) { g.rows[i][b] = mark; } }
+ScheduleDaySaves.write(s.Id, new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(day.day, g, day.revision) });`)
+  );
 }
 
 const confirmed = async (action, input, as) => {

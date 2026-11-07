@@ -102,7 +102,7 @@ module.exports = [
       rec.check(
         "MEMO-6.1",
         "the next import shows the answer as remembered, still changeable",
-        q2 && /Answered: Same: call it .Music.* \(remembered from before\)/.test(q2),
+        q2 && /Answered: Same: use .Music.* \(remembered from before\)/.test(q2),
         second.text
       );
       rec.check(
@@ -200,7 +200,7 @@ module.exports = [
       rec.check(
         "MEMO-6.4",
         "after the Undo the import uses the first answer again",
-        /Answered: Same: call it .Music/.test(question(fourth.text, MUSIC) ?? ""),
+        /Answered: Same: use .Music/.test(question(fourth.text, MUSIC) ?? ""),
         fourth.text
       );
 

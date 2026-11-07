@@ -249,11 +249,14 @@ module.exports = [
         return { sheets: book.SheetNames.map((name) => ({ name, rows: XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, defval: "" }) })) };
       };
       await importMaple(season);
-      await electiveOnWeek(rec, season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
+      await electiveOnWeek(season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
       for (const entry of manifest) {
         const content = readFile(entry.file);
         const at = { season, elective_set: "Chugim", week: "Week 2", file_name: entry.file, ...content };
-        const said = await call("bring_in_choices", at);
+        const asked = await call("bring_in_choices", at);
+        const unknown = /doesn't have yet: (.*)\.\n/.exec(asked.text)?.[1] ?? "";
+        const answers = Object.fromEntries([...unknown.matchAll(/"([^"]+)"/g)].map((m) => [m[1], "add"]));
+        const said = await call("bring_in_choices", { ...at, answers });
         const expectCampers = entry.campers?.length ?? null;
         rec.check("API-1.117", `${entry.file}: answered, not broken`, said.status < 500, `${said.status} ${said.text.slice(0, 400)}`);
         if (expectCampers != null && said.kind === "done") {
@@ -262,7 +265,10 @@ module.exports = [
         } else if (expectCampers != null) {
           rec.check("API-1.117", `${entry.file}: read, ${expectCampers} campers expected`, false, said.text.slice(0, 800));
         }
-        rec.note(`${entry.file}`, said.text.slice(0, 700));
+        rec.note(`${entry.file}`, said.text.slice(0, 1200));
+        for (const camper of entry.campers ?? []) {
+          rec.check("API-1.117", `${entry.file}: says ${camper.name}`, said.kind !== "done" || said.text.includes(camper.name) || /^- \d+ campers/m.test(said.text), said.text.slice(0, 500));
+        }
         rec.check("INGEST-5.5", `${entry.file}: review saves nothing`, count("Preference__c", `ElectiveRun__r.${`Season__r.Name = '${season}'`}`) === 0);
       }
       void camp;

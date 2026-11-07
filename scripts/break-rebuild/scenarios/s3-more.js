@@ -16,14 +16,17 @@ module.exports = [
       const { season } = makeCamp("S3 Electives");
       await importMaple(season);
       const inSeason = `Season__r.Name = '${season}'`;
-            await electiveOnWeek(rec, season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
+            await electiveOnWeek(season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
       const at = { season, week: "Week 2", elective_set: "Chugim" };
       const sheet = { ...at, file_name: "chugim.csv", csv_text: "Camper,Camper number,Bunk,Choice 1,Choice 2\nAvery Madeup,1,Bunk 1,Swim,Art\nBlake Madeup,2,Bunk 1,Swim,Art\nCasey Madeup,3,Bunk 2,Art,Swim\nDrew Madeup,4,Bunk 2,Nope,Swim\nAvery Madeup,1,Bunk 1,Swim,Art\n,,,,\n" };
-      const review = await call("bring_in_choices", sheet);
+      const asked = await call("bring_in_choices", sheet);
+      rec.check("API-1.117", "a name not set up is asked about, not guessed", /Nope/.test(asked.text), asked.text);
+      const answersNow = { Nope: "leave" };
+      const review = await call("bring_in_choices", { ...sheet, answers: answersNow });
       rec.check("API-1.117", "a messy choices sheet is reviewed", review.kind === "done", review.text);
       rec.note("choices review", review.text.slice(0, 1000));
-      rec.check("INGEST-2.7", "the duplicate camper or unknown choice is said", /Nope|twice|duplicate|same/i.test(review.text), review.text);
-      const saved = await call("bring_in_choices", { ...sheet, save: true, seen: seenOf(review.text) });
+      rec.check("INGEST-2.7", "the duplicate row is said, not silently kept twice", /twice|duplicate|same|more than once/i.test(review.text) || /- 4 campers: /.test(review.text), review.text);
+      const saved = await call("bring_in_choices", { ...sheet, answers: answersNow, save: true, seen: seenIn(review.text) });
       rec.note("choices saved", `${saved.kind}: ${saved.text.slice(0, 500)}`);
       if (saved.kind !== "done") return;
       const seenSeats = async () => {
