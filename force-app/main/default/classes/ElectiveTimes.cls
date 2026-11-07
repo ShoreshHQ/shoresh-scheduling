@@ -40,12 +40,7 @@ public with sharing class ElectiveTimes {
     groups = programGroups;
     for (ScheduleDays.DayGrid each : days) {
       if (each.grid == null) {
-        unreadable.add(
-          Datetime.newInstance(each.day, Time.newInstance(12, 0, 0, 0))
-              .format('EEEE') +
-            ': ' +
-            each.problem
-        );
+        unreadable.add(DayWords.say(each.day) + ': ' + each.problem);
         continue;
       }
       day = each.day;

@@ -1,5 +1,6 @@
 // One offering's linked choices beside the Electives list (slice E4 read only; slice E8 the
 // editor: repo ADR 0018 choices 38 to 44). Names are made up.
+import { setDayNaming } from "c/shoreshDayNames";
 import { createElement } from "lwc";
 import ShoreshElectiveDetails, {
   divisionsCovered,
@@ -479,6 +480,19 @@ describe("c-shoresh-elective-details", () => {
     expect(again.mock.instances).toContain(cell(made[0], "lc9|Tuesday|t1"));
     again.mockRestore();
     expect(q(element, '[data-id="add-linked-choice"]').disabled).toBe(false);
+  });
+
+  // WEEK-1.7: a name is saved, and numbers aren't fixed, so it keeps the weekday.
+  it("a numbered season's new linked choice is still named by the weekday", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    const element = await opened();
+    const sent = saves(element);
+    q(element, '[data-id="add-linked-choice"]').click();
+    await flush();
+    cell(choiceAt(element, 2), "draft|Thursday|t1").click();
+    await flush();
+    setDayNaming(null);
+    expect(sent[0].edit.name).toBe("Pottery · Thu 12:30");
   });
 
   it("a second linked choice of one activity is named by its first period, never the activity's name again", async () => {

@@ -25,6 +25,7 @@ import {
   MONDAY_TO_FRIDAY,
   WEEKDAYS,
   firstDayOf,
+  nameDaysFor,
   programDays,
   undoMessage,
   holdsNoDivision,
@@ -472,6 +473,8 @@ export default class ShoreshCampSetup extends LightningElement {
       this.seasonSending = new Map();
       this.seasonErrors = {};
     }
+    // Before the screens draw this season: they say its days as it does (WEEK-1.5).
+    nameDaysFor(setup);
     this.setup = setup;
     this.termLabels = setup.labels;
     this.seasonForm = form;
@@ -1107,6 +1110,20 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get shortWeekError() {
     return this.seasonErrors.shortWeek;
+  }
+
+  /** A season's days by name or by number (WEEK-1.5), shown as they would read. */
+  get dayNamingOptions() {
+    return [
+      { label: "Mon Tue Wed", value: "named" },
+      { label: "Day 1 Day 2 Day 3", value: "numbered" }
+    ];
+  }
+  get dayNaming() {
+    return this.seasonForm[SEASON.NumberedDays] ? "numbered" : "named";
+  }
+  get dayNamingError() {
+    return this.seasonErrors.dayNaming;
   }
 
   get copiedFromName() {
@@ -2418,19 +2435,35 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** Saves the short-week choice as soon as it is picked (WEEK-4.2). */
   handleShortWeek(event) {
-    const shrink = event.detail.value === "lower";
+    this.saveSeasonChoice(
+      SEASON.ShrinkShortWeek,
+      event.detail.value === "lower",
+      "shortWeek"
+    );
+  }
+
+  /** Saves days by name or by number as soon as it is picked (WEEK-1.5). */
+  handleDayNaming(event) {
+    this.saveSeasonChoice(
+      SEASON.NumberedDays,
+      event.detail.value === "numbered",
+      "dayNaming"
+    );
+  }
+
+  saveSeasonChoice(field, value, errorKey) {
     const seasonId = this.seasonForm.Id;
-    this.seasonForm = { ...this.seasonForm, [SEASON.ShrinkShortWeek]: shrink };
+    this.seasonForm = { ...this.seasonForm, [field]: value };
     const current = () => this.seasonForm.Id === seasonId;
     const showError = (message) => {
-      this.seasonErrors = { ...this.seasonErrors, shortWeek: message };
+      this.seasonErrors = { ...this.seasonErrors, [errorKey]: message };
     };
     this.saveForm({
       records: [
         {
           sobjectType: OBJECT.Season,
           Id: seasonId,
-          [SEASON.ShrinkShortWeek]: shrink
+          [field]: value
         }
       ],
       what: `${this.terms.s("Season")} not saved. Your changes are still here.`,

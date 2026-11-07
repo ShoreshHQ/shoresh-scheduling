@@ -28,7 +28,7 @@ public with sharing class SetupMatchLines {
     line.place =
       names.groupName(SetupMatchCells.groupOf(cells[0])) +
       ' · ' +
-      BlankWeek.weekdayOf(day) +
+      DayWords.say(day) +
       ' · ' +
       names.range(
         SetupMatchCells.blockOf(cells[0]),
@@ -72,7 +72,7 @@ public with sharing class SetupMatchLines {
    * not at camp this week".
    */
   public String summary(ScheduleGrid was, ScheduleGrid now) {
-    String weekday = BlankWeek.weekdayOf(day);
+    String weekday = DayWords.say(day);
     if (was == null) {
       return weekday + ': added';
     }

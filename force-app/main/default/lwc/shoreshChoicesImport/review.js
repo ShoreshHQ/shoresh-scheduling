@@ -12,6 +12,7 @@ import { foldName, holdsNoDivision } from "c/shoreshImportEngine";
 import { CHOICE_KINDS, sheetLayout } from "c/shoreshChoicesReader";
 import { FIELD } from "c/shoreshSchema";
 import { rememberedNote } from "c/shoreshRemembered";
+import { numberedWeekday } from "c/shoreshDayNames";
 
 const { RANKED, UNORDERED } = CHOICE_KINDS;
 
@@ -56,7 +57,8 @@ function spokenRank(n) {
     : `Choice ${n}`;
 }
 
-const shortDay = (day) => (day && SHORT_DAYS[day]) || day || "";
+const shortDay = (day) =>
+  numberedWeekday(day) || (day && SHORT_DAYS[day]) || day || "";
 
 /** "Tue · Period 2", "Period 2", "Tuesday", or "" for a choice for the whole week. */
 export function whenOf(choice) {

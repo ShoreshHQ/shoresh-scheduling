@@ -247,6 +247,7 @@ const seasonObject = schemaName("Season__c");
 const seasonCamp = schemaName("Season__c.Camp__c");
 const seasonCopiedFrom = schemaName("Season__c.CopiedFrom__c");
 const seasonEndDate = schemaName("Season__c.EndDate__c");
+const seasonNumberedDays = schemaName("Season__c.NumberedDays__c");
 const seasonShrinkShortWeek = schemaName("Season__c.ShrinkShortWeek__c");
 const seasonStartDate = schemaName("Season__c.StartDate__c");
 const seasonStatus = schemaName("Season__c.Status__c");
@@ -623,6 +624,7 @@ export const FIELD = Object.freeze({
     Camp: seasonCamp.fieldApiName,
     CopiedFrom: seasonCopiedFrom.fieldApiName,
     EndDate: seasonEndDate.fieldApiName,
+    NumberedDays: seasonNumberedDays.fieldApiName,
     ShrinkShortWeek: seasonShrinkShortWeek.fieldApiName,
     StartDate: seasonStartDate.fieldApiName,
     Status: seasonStatus.fieldApiName
