@@ -7604,6 +7604,11 @@ let firstDay = null;
 /** naming: { numbered, firstDay (1 Monday ... 7 Sunday) }; nothing given, days are named. */
 function setDayNaming(naming) {
   firstDay = naming && naming.numbered ? naming.firstDay : null;
+  countDaysFrom(naming && naming.firstDay);
+}
+
+/** Where a file's "Day 1" lands (1 Monday ... 7 Sunday; Monday when not given), however days are said. */
+function countDaysFrom(first) {
 }
 function numbered(weekday) {
   return `Day ${(weekday - firstDay + 7) % 7 + 1}`;
