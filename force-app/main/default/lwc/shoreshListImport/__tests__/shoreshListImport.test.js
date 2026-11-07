@@ -402,7 +402,7 @@ describe("c-shoresh-list-import", () => {
     );
   });
 
-  it("saves the list once every difference is answered, then can undo it", async () => {
+  it("INGEST-5.10: saves the list once every difference is answered, then its Undo names what it removes and puts back", async () => {
     const element = await openWith(
       ["Activity,Location,Notes", "Archery,Gym,", "Canoeing,Lake,"].join("\n")
     );
@@ -435,7 +435,8 @@ describe("c-shoresh-list-import", () => {
     expect(LightningConfirm.open).toHaveBeenCalledWith(
       expect.objectContaining({
         label: "Undo activities.csv?",
-        message: "Remove 2 · put back 1"
+        // What goes, named (break-and-rebuild N7): never a bare count.
+        message: "Remove 1 activity and 1 location · put back 1 activity"
       })
     );
     expect(undoImport).toHaveBeenCalledWith({ importId: "imp1" });
