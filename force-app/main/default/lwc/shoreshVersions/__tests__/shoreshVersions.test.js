@@ -50,6 +50,24 @@ describe("c-shoresh-versions", () => {
     }
   });
 
+  it("WEEK-6.2: Apply to other weeks shows only when given its words, closes the list and fires", async () => {
+    const element = await render();
+    await openList(element);
+    expect(q(element, '[data-id="apply-weeks"]')).toBeNull();
+    element.applyLabel = "Apply to other weeks";
+    await flush();
+    const applied = jest.fn();
+    element.addEventListener("apply", applied);
+    q(element, '[data-id="apply-weeks"]').click();
+    await flush();
+    expect(applied).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="versions-panel"]')).toBeNull();
+    element.focusButton();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="versions-button"]')
+    );
+  });
+
   it("lists versions, newest first, with how each was made and which is on screen", async () => {
     const element = await render();
     const button = q(element, '[data-id="versions-button"]');

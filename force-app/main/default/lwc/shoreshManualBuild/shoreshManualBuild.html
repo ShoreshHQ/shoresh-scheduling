@@ -73,6 +73,8 @@
           terms={terms}
           busy={versionsBusy}
           announce-with={announceText}
+          apply-label={applyLabel}
+          onapply={handleApply}
           onopen={handleRestore}
           onrename={handleRenameVersion}
           ondelete={handleDeleteVersion}
@@ -282,6 +284,17 @@
         onclose={handleSetupClose}
         data-id="setup-match"
       ></c-shoresh-setup-match>
+    </template>
+    <template lwc:if={applying}>
+      <c-shoresh-apply-weeks
+        source-id={applySourceId}
+        source-name={weekName}
+        seen-revisions={applySeen}
+        weeks={otherWeeks}
+        terms={terms}
+        onclose={handleApplyClose}
+        data-id="apply-weeks"
+      ></c-shoresh-apply-weeks>
     </template>
     <template lwc:if={unpublishAsk}>
       <c-shoresh-ask

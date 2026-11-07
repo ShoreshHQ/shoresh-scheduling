@@ -691,7 +691,7 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective, fixed activity or recurring activity. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -816,6 +816,19 @@ const CAPABILITIES = [
     "Delete one of a week's versions for good, as the Versions panel's delete does; there is no undo. One that was ever the published schedule, or the imported week, is kept and refused. It is done as you, with your own access.",
     { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
+  ),
+  act(
+    "apply_to_other_weeks",
+    "apply_to_other_weeks",
+    "In a numbered-days season, repeat a week on another week of the season by Day number, as the Versions panel's Apply to other weeks does: every Day 3 looks the same. Only when the person asked for it; nothing else ever changes another week. One target week per call, so call it once for each week and show the person all the answers together. A locked cell in that week is kept and listed, a cell that can't go (a day that week doesn't have, a group away, a special event) is listed, what that week has now goes to its Versions first, and its published schedule stays as it is until it is published again. It is done as you, with your own access.",
+    {
+      ...EITHER_WEEK,
+      to_week: {
+        type: "string",
+        description: "The week to repeat it on, like Week 3."
+      }
+    },
+    ["to_week"]
   ),
   act(
     "publish_week",
@@ -2099,7 +2112,8 @@ const ASKS_FIRST = [
   "clear_electives",
   "copy_season",
   "change_special_schedule_frame",
-  "assign_elective_seats"
+  "assign_elective_seats",
+  "apply_to_other_weeks"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;
