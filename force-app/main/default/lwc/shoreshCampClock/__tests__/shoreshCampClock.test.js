@@ -1,5 +1,11 @@
 import { campZone, setCampZone } from "c/shoreshCampClock";
 import { nameDaysFor } from "c/shoreshImportEngine";
+import { FIELD, PARENT } from "c/shoreshSchema";
+
+/** A season as the setup hands it on, with its camp's time zone. */
+const inZone = (zone) => ({
+  season: { [PARENT.Season.Camp]: { [FIELD.Camp.TimeZone]: zone } }
+});
 
 describe("c-shoresh-camp-clock", () => {
   afterEach(() => setCampZone(null));
@@ -14,9 +20,9 @@ describe("c-shoresh-camp-clock", () => {
         minute: "2-digit",
         timeZone: campZone()
       });
-    nameDaysFor({ season: {}, campTimeZone: "America/Los_Angeles" });
+    nameDaysFor(inZone("America/Los_Angeles"));
     expect(said()).toBe("Oct 18, 11:40 AM");
-    nameDaysFor({ season: {}, campTimeZone: "America/New_York" });
+    nameDaysFor(inZone("America/New_York"));
     expect(said()).toBe("Oct 18, 2:40 PM");
     nameDaysFor({ season: {} });
     expect(campZone()).toBeUndefined();

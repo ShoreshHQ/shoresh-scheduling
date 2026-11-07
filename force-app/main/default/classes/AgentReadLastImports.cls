@@ -33,7 +33,7 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
       said.add(
         'Last import: ' +
           filesOf(setup.lastImport) +
-          lineEnd(setup.lastImport, setup.campTimeZone)
+          lineEnd(setup.lastImport, setup.season.Camp__r.TimeZone__c)
       );
     }
     for (Import__c last : setup.lastFromOutside) {
@@ -42,7 +42,7 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
           last.Source__c +
           ': ' +
           filesOf(last).substringBefore(' from ') +
-          lineEnd(last, setup.campTimeZone) +
+          lineEnd(last, setup.season.Camp__r.TimeZone__c) +
           ', from: "' +
           last.Source__c +
           '"'
