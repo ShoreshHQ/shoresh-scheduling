@@ -205,6 +205,18 @@ describe("the full report", () => {
       2,
       ""
     ]);
+    // ...and listed with the problems, as the screen lists it (ELECT-4.1).
+    expect(
+      fullReportSheets(reading(finalDownload({ view })))[2].rows
+    ).toContainEqual([
+      "Needs its seats chosen",
+      "",
+      "",
+      'Choose how many seats "Archery" has'
+    ]);
+    expect(sheets[2].rows.map((r) => r[0])).not.toContain(
+      "Needs its seats chosen"
+    );
     const problems = sheets[2].rows.map((r) => r[0]);
     expect(problems).toEqual(
       expect.arrayContaining([
