@@ -31,6 +31,46 @@ public with sharing class DayWords {
     }
   }
 
+  /**
+   * For what goes out, read by a key that may see a season's name and nothing else: the season's
+   * first day (0 = Monday ... 6 = Sunday), or null when its days are named. Whether they are
+   * numbered, and its programs' days, are read in system mode on purpose (as
+   * OutgoingRows.seasonsSeen reads names); only how a day is said comes of it, and nothing here is
+   * kept for anyone else.
+   */
+  public static Integer firstDayGoingOut(Id seasonId) {
+    List<Season__c> seasons = [
+      SELECT NumberedDays__c, StartDate__c
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH SYSTEM_MODE
+    ];
+    if (seasons.isEmpty() || !seasons[0].NumberedDays__c) {
+      return null;
+    }
+    return firstDayOf(
+      seasons[0],
+      [
+        SELECT
+          Monday__c,
+          Tuesday__c,
+          Wednesday__c,
+          Thursday__c,
+          Friday__c,
+          Saturday__c,
+          Sunday__c
+        FROM Program__c
+        WHERE Season__c = :seasonId
+        WITH SYSTEM_MODE
+      ]
+    );
+  }
+
+  /** "Day 3" for a season whose first day is this (firstDayGoingOut). */
+  public static String sayNumbered(Date day, Integer firstDay) {
+    return dayNumbered(WeekCalendar.weekdayIndex(day), firstDay);
+  }
+
   /** The season is this schedule's, unless the request has already named one. */
   public static void useSeasonOf(Id scheduleId) {
     if (seasonInUse == null) {
@@ -133,25 +173,33 @@ public with sharing class DayWords {
     if (seasons.isEmpty() || !seasons[0].NumberedDays__c) {
       return null;
     }
+    return firstDayOf(
+      seasons[0],
+      [
+        SELECT
+          Monday__c,
+          Tuesday__c,
+          Wednesday__c,
+          Thursday__c,
+          Friday__c,
+          Saturday__c,
+          Sunday__c
+        FROM Program__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+  }
+
+  private static Integer firstDayOf(
+    Season__c season,
+    List<Program__c> programs
+  ) {
     return WeekCalendar.firstDayOf(
-      SeasonWeeks.programDays(
-        [
-          SELECT
-            Monday__c,
-            Tuesday__c,
-            Wednesday__c,
-            Thursday__c,
-            Friday__c,
-            Saturday__c,
-            Sunday__c
-          FROM Program__c
-          WHERE Season__c = :seasonId
-          WITH USER_MODE
-        ]
-      ),
-      seasons[0].StartDate__c == null
+      SeasonWeeks.programDays(programs),
+      season.StartDate__c == null
         ? 0
-        : WeekCalendar.weekdayIndex(seasons[0].StartDate__c)
+        : WeekCalendar.weekdayIndex(season.StartDate__c)
     );
   }
 }
