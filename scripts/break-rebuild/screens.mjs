@@ -294,7 +294,193 @@ async function run() {
   }
 }
 
+/**
+ * The numbered-days screens (ADR 0025): the season form's Days choice, Import last year's "days by
+ * number" tile, and Apply to other weeks' dialog (opened and cancelled; the connector applies in A5).
+ */
+const LIKE2 = "BR E2 %";
+const dayFile = (bunk, turn) => {
+  const acts = ["Swim", "Art", "Soccer", "Music", "Drama", "Tennis"];
+  const days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
+  const rows = [["Time", ...days].join(",")];
+  ["Period 1 (9:00 - 9:50)", "Period 2 (10:00 - 10:50)"].forEach((block, b) =>
+    rows.push(
+      [
+        block,
+        ...days.map((_, d) => acts[(turn + b * 3 + d * 7) % acts.length])
+      ].join(",")
+    )
+  );
+  return {
+    name: `Numbered - ${bunk}.csv`,
+    mimeType: "text/csv",
+    buffer: Buffer.from(`${rows.join("\n")}\n`)
+  };
+};
+
+async function numbered() {
+  cleanup(LIKE2);
+  let browser;
+  let page;
+  let url = "";
+  try {
+    const { season, camp } = makeCamp("E2 Numbered", {
+      weeks: 2,
+      days: 6,
+      numbered: true
+    });
+    const campId = soql(`SELECT Id FROM Camp__c WHERE Name = '${camp}'`)[0].Id;
+    url = sfJson([
+      "org",
+      "open",
+      "--target-org",
+      ORG,
+      "--url-only",
+      "--path",
+      `/lightning/n/Shoresh_Camp_Setup?c__camp=${campId}`
+    ]).result.url;
+    browser = await chromium.launch({ channel: "chrome", headless: true });
+    page = await (
+      await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    ).newPage();
+    page.setDefaultTimeout(45000);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page
+      .locator("c-shoresh-app, c-shoresh-roots")
+      .first()
+      .waitFor({ timeout: 120000 });
+    await page.waitForTimeout(4000);
+
+    // The season form's Days choice: both ways, shown as they read; this season is by number.
+    await page.locator('[data-id="edit-season"]').first().click();
+    await page.waitForTimeout(1500);
+    const days = page.locator('[data-id="day-naming"]');
+    const daysText = await days.innerText();
+    rec.check(
+      "WEEK-1.5",
+      "the season form offers Days by name or by number",
+      /Mon Tue Wed/.test(daysText) && /Day 1 Day 2 Day 3/.test(daysText),
+      daysText
+    );
+    rec.check(
+      "WEEK-1.5",
+      "a numbered season shows Day 1 Day 2 Day 3 chosen",
+      await days.locator("input[value=numbered]").isChecked(),
+      daysText
+    );
+    await page.keyboard.press("Escape");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator("c-shoresh-app, c-shoresh-roots").first().waitFor();
+    await page.waitForTimeout(4000);
+
+    // Import last year: Day 1 to Day 6 files show the "days by number" tile; nothing saved yet.
+    await page
+      .getByRole("button", { name: /Import last year/ })
+      .first()
+      .click();
+    await page.waitForTimeout(1500);
+    await page
+      .locator('c-shoresh-import input[type="file"]')
+      .first()
+      .setInputFiles([dayFile("Aleph", 0), dayFile("Bet", 1)]);
+    await page.waitForTimeout(6000);
+    const review = await page.locator("c-shoresh-import").first().innerText();
+    rec.note("Import last year, numbered files", review.slice(0, 1200));
+    rec.check(
+      "WEEK-2.6",
+      'the review shows a "days by number" tile',
+      /days? by number/.test(review),
+      review.slice(0, 1200)
+    );
+    rec.check(
+      "INGEST-5.5",
+      "the review saves nothing",
+      count(
+        "Group__c",
+        `Division__r.Program__r.Season__r.Name = '${season}'`
+      ) === 0
+    );
+
+    // Apply to other weeks: the Versions panel offers it, and its dialog lists Week 2.
+    const files = ["Aleph", "Bet"].map((bunk, turn) => ({
+      file_name: `Numbered - ${bunk}.csv`,
+      csv_text: dayFile(bunk, turn).buffer.toString()
+    }));
+    const answers = { "week|the file's week": "Week 1" };
+    const looked = await call("import_last_year", { season, files, answers });
+    await call("import_last_year", {
+      season,
+      files,
+      answers,
+      save: true,
+      seen: /seen: "([^"]+)"/.exec(looked.text)?.[1]
+    });
+    await call("build_week", { season, week: "Week 1" });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator("c-shoresh-app, c-shoresh-roots").first().waitFor();
+    await page.waitForTimeout(4000);
+    await page
+      .getByRole("link", { name: /^Generated Schedule/ })
+      .first()
+      .click();
+    await page.waitForTimeout(5000);
+    await page
+      .locator('c-shoresh-generated-schedule [data-id="versions"]:visible')
+      .first()
+      .click();
+    await page.waitForTimeout(2000);
+    const applyButton = page.locator('[data-id="apply-weeks"]:visible').first();
+    rec.check(
+      "WEEK-6.2",
+      "Versions offers Apply to other weeks",
+      (await applyButton.count()) === 1 &&
+        /Apply to other/.test(await applyButton.innerText())
+    );
+    await applyButton.click();
+    await page.waitForTimeout(4000);
+    const dialog = await page.locator('[data-id="apply"]').innerText();
+    rec.note("Apply dialog", dialog.slice(0, 800));
+    rec.check(
+      "WEEK-6.2",
+      "the Apply dialog lists Week 2",
+      /Week 2/.test(dialog),
+      dialog.slice(0, 800)
+    );
+    const draftBefore = count(
+      "Schedule__c",
+      `Program__r.Season__r.Name = '${season}' AND Week__r.Name = 'Week 2'`
+    );
+    await page
+      .locator('[data-id="apply"]')
+      .getByRole("button", { name: "Cancel" })
+      .click();
+    await page.waitForTimeout(1500);
+    rec.check(
+      "WEEK-6.2",
+      "Cancel changes nothing",
+      count(
+        "Schedule__c",
+        `Program__r.Season__r.Name = '${season}' AND Week__r.Name = 'Week 2'`
+      ) === draftBefore
+    );
+  } catch (e) {
+    await page
+      ?.screenshot({ path: `${process.env.TMPDIR || "/tmp"}/br-e2-fail.png` })
+      .catch(() => {});
+    rec.check(
+      "crash",
+      "E2 stopped early",
+      false,
+      url ? String(e.stack).split(url).join("<sign-in link>") : e.stack
+    );
+  } finally {
+    await browser?.close();
+    cleanup(LIKE2);
+  }
+}
+
 await withOrg(run);
+await withOrg(numbered);
 const failed = rec.rows.filter((r) => !r.passed);
 console.log(
   `${rec.rows.filter((r) => !r.note).length - failed.length} passed, ${failed.length} failed.`

@@ -206,15 +206,21 @@ const seenIn = (text) => /seen: "?([^"\s]+?)"?(?:[\s.,;]|$)/.exec(text)?.[1];
 
 const esc = (s) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
-/** A camp and season and nothing else: what the first-time screen makes. Answers the names. */
-function makeCamp(short, { start = "2027-06-28", weeks = 2, days = 5 } = {}) {
+/**
+ * A camp and season and nothing else: what the first-time screen makes (numbered: the season
+ * form's Days choice, "Day 1, Day 2…"). Answers the names.
+ */
+function makeCamp(
+  short,
+  { start = "2027-06-28", weeks = 2, days = 5, numbered = false } = {}
+) {
   const camp = `${PREFIX}${short} (made up)`;
   const season = `${PREFIX}${short} 2027`;
   const [y, m, d] = start.split("-").map(Number);
   apex(`Date s = Date.newInstance(${y}, ${m}, ${d});
 Camp__c c = new Camp__c(Name = '${esc(camp)}', TimeZone__c = 'America/New_York');
 insert c;
-insert new Season__c(Camp__c = c.Id, Name = '${esc(season)}', StartDate__c = s, EndDate__c = s.addDays(${7 * (weeks - 1) + days - 1}), Status__c = 'Planning');`);
+insert new Season__c(Camp__c = c.Id, Name = '${esc(season)}', StartDate__c = s, EndDate__c = s.addDays(${7 * (weeks - 1) + days - 1}), Status__c = 'Planning', NumberedDays__c = ${numbered});`);
   return { camp, season };
 }
 

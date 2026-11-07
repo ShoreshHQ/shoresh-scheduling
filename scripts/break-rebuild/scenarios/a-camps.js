@@ -450,55 +450,247 @@ module.exports = [
   },
   {
     id: "A5",
-    title: "rotating schedule: Day 1 to Day 6 rather than weekdays",
+    title:
+      "numbered days: Day 1 to Day 6 imported, built, applied to another week, published",
     camps: "BR A5 %",
     async run(rec) {
-      const { season } = makeCamp("A5 Rotating", { weeks: 2 });
+      // Six-day weeks from a Monday: Day 1 is Monday, Day 6 Saturday (WEEK-1.5).
+      const { season } = makeCamp("A5 Rotating", {
+        weeks: 2,
+        days: 6,
+        numbered: true
+      });
+      const inSeason = `Season__r.Name = '${season}'`;
       const days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
       const bunks = ["Aleph", "Bet", "Gimel"];
       const acts = ["Swim", "Art", "Soccer", "Music", "Drama", "Tennis"];
       const files = bunks.map((b, i) =>
         bunkFile("Rotating", b, days, DAY_BLOCKS, acts, i)
       );
-      const review = await call("import_last_year", { season, files });
+      const answers = { "week|the file's week": "Week 1" };
+      const review = await call("import_last_year", { season, files, answers });
+      rec.note("numbered review", review.text.slice(0, 1500));
       rec.check(
-        "INGEST-1",
-        "a rotating file is answered, not broken",
-        review.status < 500,
+        "WEEK-2.6",
+        "the review shows the numbered days",
+        review.kind === "done" && /Day 6/.test(review.text),
         review.text
       );
-      rec.note("rotating schedule review", review.text);
-      rec.note(
-        "A5 known open: rotating schedules aren't supported yet (Greg decided to build them)"
+      rec.check(
+        "INGEST-4.14",
+        "the review is ready to save",
+        /Ready to save/.test(review.text),
+        review.text
       );
-      const save = seenOf(review.text)
-        ? await call("import_last_year", {
-            season,
-            files,
-            save: true,
-            seen: seenOf(review.text),
-            answers: { "week|the file's week": "Week 1" }
-          })
-        : review;
-      rec.note(
-        "rotating schedule saved",
-        `${save.kind}: ${save.text.slice(0, 500)}`
+      const saved = await call("import_last_year", {
+        season,
+        files,
+        answers,
+        save: true,
+        seen: seenOf(review.text)
+      });
+      rec.check("API-1.84", "it saves", saved.kind === "done", saved.text);
+      const groups = names("Group__c", `Division__r.Program__r.${inSeason}`);
+      rec.check(
+        "WEEK-2.6",
+        "a numbered day is never read as a group",
+        groups.join() === [...bunks].sort().join(),
+        groups.join()
       );
-      // Known open item: Greg decided to build rotating schedules (2026-11-06). Until then this
-      // logs what the reader does. A review that says ready must still save (INGEST-4.14).
-      if (/Ready to save/.test(review.text)) {
-        rec.check(
-          "INGEST-4.14",
-          "a review that says Ready to save saves",
-          save.kind === "done",
-          save.text
+
+      // Week 1 built: every day said by number, Day 1 on the Monday.
+      const built = await call("build_week", { season, week: "Week 1" });
+      rec.check("API-1.20", "Week 1 builds", built.kind === "done", built.text);
+      const w1 = await draft(season, "Week 1");
+      const dayNames = [...new Set(w1.rows.map((r) => r.day))].sort();
+      rec.check(
+        "WEEK-1.7",
+        "the draft says Day 1 to Day 6, never a weekday",
+        dayNames.join() === days.join(),
+        dayNames.join()
+      );
+      rec.check(
+        "WEEK-1.5",
+        "Day 1 is the camp's first day of the week",
+        w1.rows
+          .filter((r) => r.day === "Day 1")
+          .every((r) => r.date === "2027-06-28"),
+        JSON.stringify(w1.rows.find((r) => r.day === "Day 1"))
+      );
+      holds(rec, w1, "A5 Week 1", { groups: bunks, fixed: { Lunch: "Lunch" } });
+
+      // Week 2: built, one cell locked, a special day on Day 4.
+      await call("build_week", { season, week: "Week 2" });
+      let w2 = await draft(season, "Week 2");
+      const toLock = w2.rows.find(
+        (r) =>
+          r.day === "Day 2" &&
+          r.group === "Aleph" &&
+          !r.notes &&
+          r.activity !== "Open" &&
+          r.activity !== "Lunch"
+      );
+      const lock = await call("lock_cells", {
+        season,
+        week: "Week 2",
+        day: toLock.day,
+        group: toLock.group,
+        time: toLock.time_block,
+        seen: w2.seen
+      });
+      rec.check(
+        "API-1.37",
+        "a Week 2 cell locks",
+        lock.kind === "done",
+        lock.text
+      );
+      await call("add_setup_record", {
+        season,
+        kind: "special day",
+        name: "Field day"
+      });
+      const put = await call("put_special_day_on_day", {
+        season,
+        special_day: "Field day",
+        week: "Week 2",
+        day: "Day 4",
+        seen: "none"
+      });
+      rec.check(
+        "WEEK-1.7",
+        "a special day goes on Day 4",
+        put.kind === "done",
+        put.text
+      );
+      w2 = await draft(season, "Week 2");
+      const lockedBefore = w2.rows.find(
+        (r) =>
+          r.day === toLock.day &&
+          r.group === toLock.group &&
+          r.time_block === toLock.time_block
+      );
+      const versions = () =>
+        count(
+          "Schedule__c",
+          `Program__r.${inSeason} AND Week__r.Name = 'Week 2' AND Status__c = 'Version'`
         );
-      }
-      const groups = names(
-        "Group__c",
-        `Division__r.Program__r.Season__r.Name = '${season}'`
+      const versionsBefore = versions();
+
+      // Apply Week 1 to Week 2 by Day number (WEEK-6.2, API-1.125).
+      const applyInput = { season, week: "Week 1", to_week: "Week 2" };
+      const preview = await call("apply_to_other_weeks", applyInput);
+      const unchanged = JSON.stringify((await draft(season, "Week 2")).rows);
+      const confirm = /confirm: "([^"]+)"/.exec(preview.text)?.[1];
+      const apply = {
+        preview,
+        done: confirm
+          ? await call("apply_to_other_weeks", { ...applyInput, confirm })
+          : preview
+      };
+      rec.note("Apply's preview", apply.preview.text.slice(0, 1200));
+      rec.check(
+        "API-1.125",
+        "Apply asks first",
+        apply.preview.kind === "asks first",
+        apply.preview.text
       );
-      rec.note("rotating groups read back", groups.join());
+      rec.check(
+        "WEEK-6.2",
+        "the preview lists the locked cell kept",
+        /lock/i.test(apply.preview.text) &&
+          apply.preview.text.includes(toLock.group),
+        apply.preview.text
+      );
+      rec.check(
+        "WEEK-6.2",
+        "the preview lists what can't go on the special day",
+        /Field day|special/i.test(apply.preview.text),
+        apply.preview.text
+      );
+      rec.check(
+        "WEEK-6.2",
+        "the preview changes nothing",
+        unchanged === JSON.stringify(w2.rows),
+        "Week 2 changed before the confirm"
+      );
+      rec.check(
+        "API-1.125",
+        "Apply works",
+        apply.done.kind === "done",
+        apply.done.text
+      );
+      rec.note("Apply says", apply.done.text.slice(0, 1200));
+      const after = await draft(season, "Week 2");
+      const at = (d, r) =>
+        d.rows.find(
+          (x) =>
+            x.day === r.day &&
+            x.group === r.group &&
+            x.time_block === r.time_block
+        );
+      const lockedNow = at(after, toLock);
+      rec.check(
+        "WEEK-6.2",
+        "the locked cell is kept",
+        lockedNow?.activity === lockedBefore?.activity,
+        `${lockedBefore?.activity} -> ${lockedNow?.activity}`
+      );
+      const differ = w1.rows.filter(
+        (r) =>
+          r.day !== "Day 4" &&
+          !(
+            r.day === toLock.day &&
+            r.group === toLock.group &&
+            r.time_block === toLock.time_block
+          ) &&
+          at(after, r)?.activity !== r.activity
+      );
+      rec.check(
+        "WEEK-6.2",
+        "every other cell is Week 1's by Day number",
+        differ.length === 0,
+        JSON.stringify(
+          differ
+            .slice(0, 5)
+            .map((r) => [
+              r.day,
+              r.group,
+              r.time_block,
+              r.activity,
+              at(after, r)?.activity
+            ])
+        )
+      );
+      rec.check(
+        "WEEK-6.2",
+        "Day 4 stays the special day",
+        JSON.stringify(after.special_days ?? []).includes("Field day"),
+        JSON.stringify(after.special_days)
+      );
+      rec.check(
+        "WEEK-6.2",
+        "Week 2's draft went to its Versions first",
+        versions() === versionsBefore + 1,
+        `${versionsBefore} -> ${versions()}`
+      );
+
+      // Published and read back as an AI: said by number.
+      const pub = await call("publish_week", { season, week: "Week 2" });
+      rec.check("API-1.20", "Week 2 publishes", pub.kind === "done", pub.text);
+      const out = await call("read_group_schedule", {
+        season,
+        week: "Week 2",
+        group: "Bet"
+      });
+      rec.note("Week 2 going out, Bet", out.text.slice(0, 800));
+      rec.check(
+        "WEEK-1.7",
+        "an AI reads the published week by Day number",
+        out.kind === "done" &&
+          /Day 3/.test(out.text) &&
+          !/Monday|Tuesday|Wednesday|Thursday|Friday|Saturday/.test(out.text),
+        out.text.slice(0, 800)
+      );
     }
   },
   {
