@@ -20,6 +20,9 @@ const {
 // A camp without a namespace, as the test org is; namespaces are camp.test.js's.
 // A packaged camp: the namespace Salesforce says, handed to the screens' modules.
 const packaged = async () => ({ namespace: "shoresh", version: null });
+// What sf prints when the sign-in named isn't there.
+const SIGNED_OUT =
+  "Error (NamedOrgNotFoundError): Parsing --target-org\n\tNo authorization information found for nobody.";
 const call = (name, input, options) =>
   callAs(name, input, {
     camp: async () => ({ namespace: "", version: null }),
@@ -161,6 +164,36 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.8
+  // API-1.126
+  it("signInOnlyWhenSignedOut: a person is told to sign in only when sf says the sign-in is gone; otherwise that Salesforce didn't answer", async () => {
+    const noAnswer =
+      "Salesforce didn't answer just now, so Shoresh can't tell whether this was done. Try again in a moment; if it was a change, read first to see whether it went through.";
+    for (const out of [
+      "",
+      "Error (ETIMEDOUT): socket hang up",
+      "Error: Command failed: sf api request rest"
+    ]) {
+      await expect(
+        call("read_elective_seats", {}, { org: "camp", run: async () => out })
+      ).rejects.toThrow(noAnswer);
+    }
+    for (const out of [
+      SIGNED_OUT,
+      "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: expired access/refresh token",
+      "ENOENT"
+    ]) {
+      await expect(
+        call("read_elective_seats", {}, { org: "camp", run: async () => out })
+      ).rejects.toThrow(/^Couldn't reach Salesforce as "camp". Sign in once/);
+    }
+    // A warning sf prints before the answer is passed over, not taken for no answer.
+    expect(
+      readResponse(
+        " ›   Warning: @salesforce/cli update available.\nHTTP/1.1 200\nx-request-id: 1\n\nok"
+      )
+    ).toEqual({ status: 200, body: "ok" });
+  });
+
   it("neverShowsTheSignIn: no sign-in passes through Shoresh's code, and none is written down", async () => {
     // Only Shoresh's answer is kept from what sf prints; its headers are dropped.
     expect(
@@ -175,7 +208,11 @@ describe("Shoresh for AI tools and the command line", () => {
       )
     ).toEqual({ status: 403, body: '{\n  "message": "No."\n}' });
     await expect(
-      call("read_elective_seats", {}, { org: "nobody", run: async () => "" })
+      call(
+        "read_elective_seats",
+        {},
+        { org: "nobody", run: async () => SIGNED_OUT }
+      )
     ).rejects.toThrow(
       'Couldn\'t reach Salesforce as "nobody". Sign in once with: sf org login web --alias nobody'
     );
@@ -2752,8 +2789,14 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toBe(
       "Shoresh isn't in this Salesforce, or your account can't see it. Ask your Salesforce admin."
     );
-    expect((await check({ org: "shoresh", run: async () => "" })).text).toBe(
+    expect(
+      (await check({ org: "shoresh", run: async () => SIGNED_OUT })).text
+    ).toBe(
       "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
+    );
+    // Signed in, but no answer: never sent to sign in again (API-1.126).
+    expect((await check({ org: "shoresh", run: async () => "" })).text).toBe(
+      "Salesforce didn't answer just now. Try the test again in a moment."
     );
   });
   // API-1.17
