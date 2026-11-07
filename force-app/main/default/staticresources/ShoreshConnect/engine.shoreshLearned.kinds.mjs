@@ -7,7 +7,7 @@
  * checks the same list on the server. A family answered with a name or a value has none: it can
  * only be forgotten, and the next import asks again.
  */
-import { article } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { UNUSED, listScreen } from "./engine.shoreshLists.shoreshLists.mjs";
 import { keyParts } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
 
@@ -41,7 +41,6 @@ const PLAIN = {
 const DELETED_TERM = { ProgramGroup: "Group" };
 
 const quoted = (name) => `“${name}”`;
-const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 function withProgram(name, program) {
   return program ? `${name} (${program})` : name;
 }
