@@ -27,20 +27,19 @@ public with sharing class ElectiveOverSeats {
   }
 
   /**
-   * The offering over its seats at the camper's own time, or null: a time is per division, so
-   * another division's campers in it then are not counted.
+   * The offering the camper sits in on that day and block, if it is over its seats then, or null:
+   * a time is per division, so another division's campers in it then are not counted.
    */
   public static String atCampersTime(
     ElectiveSeats.RunView view,
     ElectiveSeats.CamperInfo camper,
-    Date day,
-    String blockId,
-    Id offeringId
+    ElectivePeriod at
   ) {
+    Id offeringId = seatedIn(view, camper, at);
     for (ElectivePeriod period : view.times) {
       Boolean campersTime =
-        period.day == day &&
-        period.blockId == blockId &&
+        period.day == at.day &&
+        period.blockId == at.blockId &&
         period.groupIds.contains(camper.groupId);
       for (ElectiveSeats.OfferingInfo offering : view.offerings) {
         if (campersTime && offering.id == offeringId && limited(offering)) {
@@ -50,6 +49,24 @@ public with sharing class ElectiveOverSeats {
             countIn(countsOf(view), period, offering)
           );
         }
+      }
+    }
+    return null;
+  }
+
+  /** The offering the camper sits in on that day and block, or null. */
+  private static Id seatedIn(
+    ElectiveSeats.RunView view,
+    ElectiveSeats.CamperInfo camper,
+    ElectivePeriod at
+  ) {
+    for (ElectiveSeats.SeatInfo seat : view.seats) {
+      if (
+        seat.camperId == camper.id &&
+        seat.day == at.day &&
+        seat.blockId == at.blockId
+      ) {
+        return seat.offeringId;
       }
     }
     return null;
