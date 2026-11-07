@@ -302,7 +302,7 @@ describe("c-shoresh-list-import", () => {
     const id = "similar|activity|music|musik|Music|Musik";
     const card = $(element, `[data-card="${id}"]`);
     expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
-      "Suggested from Dana's answers for “Canoing” / “Canoeing” and “Potery” / “Pottery” on 3 Jul"
+      "Suggested from Dana's answers for “Canoing” / “Canoeing” and “Potery” / “Pottery” on Jul 3"
     );
     const marked = [...card.querySelectorAll("lightning-button")].filter(
       (b) => b.variant === "brand-outline"
@@ -348,8 +348,8 @@ describe("c-shoresh-list-import", () => {
     await flush();
     expect($$(element, ".list-heading").map((h) => h.textContent)).toEqual([
       "“Activity”",
-      "“Notes”Remembered from a former user's answer on 14 Aug",
-      "“Colour”Remembered from Dana's answer on 3 Jul"
+      "“Notes”Remembered from a former user's answer on Aug 14",
+      "“Colour”Remembered from Dana's answer on Jul 3"
     ]);
   });
 
