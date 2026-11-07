@@ -177,6 +177,10 @@ const TUE_OR_THU = "T";
 function dayWord(word) {
   // Periods only ("Wed.", "M.W.F"): any other character can't be read, never dropped.
   const w = word.toLowerCase().replace(/\./g, "");
+  // WEEK-2.6: "Day3" (days() joined "Day 3"), the camp's 3rd day of the week.
+  if (/^day[1-7]$/.test(w)) {
+    return [dayOf(w)];
+  }
   if (!/^[a-z]+$/.test(w)) {
     return null;
   }
@@ -228,7 +232,11 @@ const SEPARATOR = new Set(["-", RANGE_WORD]);
  *   "to" are always ranges. A range may run over the weekend ("Fri-Mon").
  */
 export function days(written, said = {}) {
-  const text = plainDashes(written);
+  // WEEK-2.6: "Day 2/Day 4", "Day 1-Day 5": each "Day 3" one word.
+  const text = plainDashes(written).replace(
+    /\bday\s*#?\s*([1-7])(?!\d)/gi,
+    "Day$1"
+  );
   const asWords = text.toLowerCase().replace(/\s*-\s*/g, "-");
   if (WEEKDAY_WORDS.has(asWords)) {
     return { value: [...MONDAY_TO_FRIDAY] };

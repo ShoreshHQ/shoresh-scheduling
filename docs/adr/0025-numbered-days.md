@@ -45,6 +45,27 @@ had this, so there is no desktop spec. Builds on ADR [0022](0022-any-day-of-the-
    - A target week's draft goes to its Versions first, so Apply can be undone there.
    - A cell on a Day the target week doesn't have is listed, never dropped (WEEK-2.4).
    - A published week changes only by publishing it again (PUB-4.2).
+   - **It goes screen to screen.** Manual Build applies to other weeks' Manual Builds, Generated
+     Schedule to their Generated Schedules; a week has one of each, and only that screen's draft
+     changes. A week with none gets one (`WeekApply`).
+   - **The grid repeats, so every unlocked cell follows it,** an empty one too; fixed and recurring
+     activities stay the week's own, and a special event stays where it was placed (listed, as
+     Start from another week lists one).
+   - **What the grid can't say stays as it is, and is listed** (coordinator, 2026-11-07): a date a
+     special day replaces in either week (its grid is hidden, so nothing is copied from or into
+     it: "Day 3: Color War stays"), a day switched to its rain plan in either week, a group away
+     in either week (its row, said once), a group or a time block the source week's day lacks
+     (`WeekApplyKeep`).
+   - **What Apply fills isn't locked, on Generated Schedule too,** though a hand edit's cells are
+     (LOCK-1.1): a lock would keep each cell the next time, and a later change to the grid could
+     never reach it. Only a person's own lock keeps a cell. A Rebuild of that week then moves what
+     Apply filled; that is the person's own action too, and the week goes to Versions first.
+   - **One week per call.** Each week reads its setup and both weeks' days, and writes a version
+     and a draft: reasoned at 12 to 25 queries for the preview and up to 45 for the apply (bounds
+     in `WeekApplyTest`, not yet measured), so 8 weeks can't fit the limit of 100 queries in one
+     request. The screen goes through the weeks one call at a time, says how far it has got, and
+     keeps each week whole; a week that fails is said on its row and the others still go. An AI
+     does the same, one `apply_to_other_weeks` per week (API-1.125).
 
 6. **The import reads "Day 3" as that day.** Columns, pages, heading rows and one file per day,
    recognised in `dayOf` before letters are stripped. A numbered file into a season with no weeks

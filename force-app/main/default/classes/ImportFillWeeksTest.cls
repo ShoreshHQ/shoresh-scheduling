@@ -117,4 +117,30 @@ private class ImportFillWeeksTest {
       );
     }
   }
+
+  // WEEK-2.6
+  @IsTest
+  static void aFileSayingDay3MakesASeasonWithNothingInItNumberedAndUndoPutsItBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = seasonWithoutWeeks();
+      Map<String, Object> plan = planFillingWeeks(season, 6);
+      plan.put('numberDays', true);
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Assert.isTrue(
+        [SELECT NumberedDays__c FROM Season__c WHERE Id = :season.Id]
+        .NumberedDays__c,
+        'the season says its days by number, as the review showed'
+      );
+      Test.startTest();
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.isFalse(
+        [SELECT NumberedDays__c FROM Season__c WHERE Id = :season.Id]
+        .NumberedDays__c,
+        'Undo names its days again'
+      );
+    }
+  }
 }

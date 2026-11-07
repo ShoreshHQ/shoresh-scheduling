@@ -20,10 +20,23 @@ const WEEKDAYS = [
 
 // The first day of the week (1 Monday ... 7 Sunday), or null when days are named.
 let firstDay = null;
+// The camp's first day of the week, named or numbered: where a file's "Day 1" lands (WEEK-2.6).
+let dayOne = 1;
 
 /** naming: { numbered, firstDay (1 Monday ... 7 Sunday) }; nothing given, days are named. */
 export function setDayNaming(naming) {
   firstDay = naming && naming.numbered ? naming.firstDay : null;
+  countDaysFrom(naming && naming.firstDay);
+}
+
+/** Where a file's "Day 1" lands (1 Monday ... 7 Sunday; Monday when not given), however days are said. */
+export function countDaysFrom(first) {
+  dayOne = first >= 1 && first <= 7 ? first : 1;
+}
+
+/** The stored weekday a file's "Day 3" is: the camp's 3rd day of the week (WEEK-2.6). */
+export function weekdayNumbered(number) {
+  return WEEKDAYS[(dayOne - 1 + number - 1) % 7];
 }
 
 function numbered(weekday) {
