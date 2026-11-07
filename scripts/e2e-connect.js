@@ -399,8 +399,9 @@ function electives(tmp) {
     "done",
     [["API-1.69", has("Unlocked Avery Madeup"), "unlocked"]]
   );
-  // Whoever Assign put in Art: Swim (2 seats) is full, so moving them there is refused, and
-  // moving them to Art, where they are, changes nothing.
+  // Whoever Assign put in Art: Swim (2 seats) is full, and a move by hand there goes through and
+  // is said over its seats (ELECT-4.5); moving them to Swim again, where they now are, changes
+  // nothing.
   const seats = step("read_elective_seats_now", at, "done");
   const inArt =
     /- ([^#\n]+?) #\d+, Bunk \d: Monday, Period 1: Art/.exec(seats)?.[1] ??
@@ -415,12 +416,13 @@ function electives(tmp) {
       elective: "Swim",
       seen: seenIn(seats)
     },
-    "refused",
+    "done",
     [
+      ["API-1.68", has(`Moved ${inArt} to Swim, locked.`), "moved by hand"],
       [
-        "API-1.68",
-        has("Swim is full then (2 of 2 seats); nothing changed."),
-        "a full offering refused"
+        "ELECT-4.5",
+        has("Swim is over its seats on Monday, Period 1: 3 of 2."),
+        "a full offering goes over, said"
       ]
     ]
   );
@@ -431,14 +433,14 @@ function electives(tmp) {
       camper: inArt,
       day: "Monday",
       time: "Period 1",
-      elective: "Art",
+      elective: "Swim",
       seen: now()
     },
     "done",
     [
       [
         "API-1.68",
-        has(`${inArt} is already in Art then; nothing changed.`),
+        has(`${inArt} is already in Swim then; nothing changed.`),
         "already there, said truly"
       ]
     ]

@@ -63,7 +63,10 @@ function sfPath(env = process.env, node = process.execPath) {
     .join(path.delimiter);
 }
 
-/** Runs sf; answers its standard output. */
+/**
+ * Runs sf; answers its standard output, or, when that has no answer in it, what sf said went wrong
+ * (so a sign-in that is gone can be told from Salesforce not answering, API-1.126).
+ */
 function runSf(args, stdin, timeout = 0) {
   return new Promise((resolve) => {
     const child = execFile(
@@ -78,7 +81,14 @@ function runSf(args, stdin, timeout = 0) {
           SF_DISABLE_AUTOUPDATE: "true"
         }
       },
-      (error, stdout) => resolve(stdout ?? "")
+      (error, stdout, stderr) =>
+        resolve(
+          /^HTTP\//m.test(stdout ?? "")
+            ? stdout
+            : [stdout, stderr, error?.code ?? error?.message]
+                .filter(Boolean)
+                .join("\n")
+        )
     );
     child.stdin.on("error", () => {}); // sf missing: answered by the callback
     child.stdin.end(stdin ?? "");
@@ -87,12 +97,15 @@ function runSf(args, stdin, timeout = 0) {
 
 /**
  * sf's `--include` output: "HTTP/1.1 <status>", its headers ("name: value", one a line), maybe a
- * blank line, then Shoresh's answer. Only the status and the answer are kept.
+ * blank line, then Shoresh's answer. Only the status and the answer are kept; a line sf prints
+ * before the status (a warning) is passed over.
  */
 function readResponse(stdout) {
-  const status = /^HTTP\/[\d.]+ (\d{3})/.exec(stdout);
-  if (!status) return null;
-  const lines = stdout.split(/\r?\n/).slice(1);
+  const at = stdout.search(/^HTTP\/[\d.]+ \d{3}/m);
+  if (at < 0) return null;
+  const from = stdout.slice(at);
+  const status = /^HTTP\/[\d.]+ (\d{3})/.exec(from);
+  const lines = from.split(/\r?\n/).slice(1);
   let start = 0;
   while (start < lines.length && /^[A-Za-z0-9-]+:( |$)/.test(lines[start]))
     start++;
@@ -303,11 +316,16 @@ async function campFor(org, asked) {
 
 /** One request as the person; Salesforce's status and Shoresh's answer. */
 async function ask(request, org, run) {
-  const response = readResponse(await run(sfArgs(request, org), request.body));
+  const out = await run(sfArgs(request, org), request.body);
+  const response = readResponse(out);
   if (!response) {
-    throw new Error(
-      `Couldn't reach Salesforce${org ? ` as "${org}"` : ""}. Sign in once with: sf org login web${org ? ` --alias ${org}` : ""}`
-    );
+    // Told to sign in only when sf says the sign-in isn't there (or sf itself isn't, ENOENT).
+    if (SIGNED_OUT.test(out)) {
+      throw new Error(
+        `Couldn't reach Salesforce${org ? ` as "${org}"` : ""}. Sign in once with: sf org login web${org ? ` --alias ${org}` : ""}`
+      );
+    }
+    throw new Error(NO_ANSWER);
   }
   if (stoppedByLimit(response)) {
     return {
@@ -317,6 +335,15 @@ async function ask(request, org, run) {
   }
   return response;
 }
+
+// What sf says when its sign-in is missing, expired or refused (API-1.126): a refresh that failed
+// for the network ("due to: connect ETIMEDOUT") is not one.
+const SIGNED_OUT =
+  /ENOENT|NamedOrgNotFound|NoOrgFound|NoDefaultEnv|No authorization information|No default (target|environment)|expired access\/refresh token|invalid_grant|inactive user|authentication failure|INVALID_SESSION_ID|Session expired/i;
+
+// Signed in, but Salesforce didn't answer (API-1.126): never a sign-in, and never "nothing changed".
+const NO_ANSWER =
+  "Salesforce didn't answer just now, so Shoresh can't tell whether this was done. Try again in a moment; if it was a change, read first to see whether it went through.";
 
 // The screens' own sentence for it (shoreshErrors TOO_BIG; connect.test.js keeps the two the same).
 const TOO_BIG =
@@ -917,11 +944,14 @@ async function check({ org, run = runSf } = {}) {
   const old = tooOld(said);
   if (old) return { ok: false, text: old };
   const request = requestFor(byName("read_group_schedule"), {}, said.namespace);
-  const response = readResponse(await run(sfArgs(request, org)));
+  const out = await run(sfArgs(request, org));
+  const response = readResponse(out);
   if (!response) {
     return {
       ok: false,
-      text: "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
+      text: SIGNED_OUT.test(out)
+        ? "Not signed in to Salesforce yet, or the Salesforce command line isn't installed."
+        : "Salesforce didn't answer just now. Try the test again in a moment."
     };
   }
   if (response.status === 403) {
