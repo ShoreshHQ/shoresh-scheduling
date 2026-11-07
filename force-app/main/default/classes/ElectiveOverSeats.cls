@@ -7,18 +7,7 @@
  */
 public with sharing class ElectiveOverSeats {
   public static List<String> of(ElectiveSeats.RunView view) {
-    Map<Id, Id> groupOf = new Map<Id, Id>();
-    for (ElectiveSeats.CamperInfo each : view.campers) {
-      groupOf.put(each.id, each.groupId);
-    }
-    Map<String, Integer> counts = new Map<String, Integer>();
-    for (ElectiveSeats.SeatInfo seat : view.seats) {
-      String key = keyOf(seat.day, seat.blockId, seat.offeringId);
-      counts.put(
-        key + '|' + groupOf.get(seat.camperId),
-        1 + (counts.get(key + '|' + groupOf.get(seat.camperId)) ?? 0)
-      );
-    }
+    Map<String, Integer> counts = countsOf(view);
     List<String> lines = new List<String>();
     for (ElectivePeriod period : view.times) {
       for (ElectiveSeats.OfferingInfo offering : view.offerings) {
@@ -38,6 +27,52 @@ public with sharing class ElectiveOverSeats {
   }
 
   /** Blank or 0 seats are no limit, as the seat run and the screen use them (ELECT-4.1). */
+  /**
+   * The offering over its seats at the camper's own time, or null: a time is per division, so
+   * another division's campers in it then are not counted.
+   */
+  public static String atCampersTime(
+    ElectiveSeats.RunView view,
+    ElectiveSeats.CamperInfo camper,
+    Date day,
+    String blockId,
+    Id offeringId
+  ) {
+    for (ElectivePeriod period : view.times) {
+      Boolean campersTime =
+        period.day == day &&
+        period.blockId == blockId &&
+        period.groupIds.contains(camper.groupId);
+      for (ElectiveSeats.OfferingInfo offering : view.offerings) {
+        if (campersTime && offering.id == offeringId && limited(offering)) {
+          return overWords(
+            period,
+            offering,
+            countIn(countsOf(view), period, offering)
+          );
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Campers per offering then, by group. */
+  private static Map<String, Integer> countsOf(ElectiveSeats.RunView view) {
+    Map<Id, Id> groupOf = new Map<Id, Id>();
+    for (ElectiveSeats.CamperInfo each : view.campers) {
+      groupOf.put(each.id, each.groupId);
+    }
+    Map<String, Integer> counts = new Map<String, Integer>();
+    for (ElectiveSeats.SeatInfo seat : view.seats) {
+      String key =
+        keyOf(seat.day, seat.blockId, seat.offeringId) +
+        '|' +
+        groupOf.get(seat.camperId);
+      counts.put(key, 1 + (counts.get(key) ?? 0));
+    }
+    return counts;
+  }
+
   private static Boolean limited(ElectiveSeats.OfferingInfo offering) {
     return offering.noLimit != true &&
       offering.seats != null &&

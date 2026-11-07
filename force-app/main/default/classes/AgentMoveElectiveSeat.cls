@@ -52,9 +52,10 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       'blockId' => period.blockId,
       'offeringId' => offering.id
     };
+    ElectiveSeats.RunView after;
     try {
       // The screen's own change of one seat.
-      ElectiveSeatsController.changeSeat(JSON.serialize(request));
+      after = ElectiveSeatsController.changeSeat(JSON.serialize(request));
     } catch (Exception e) {
       String words = ScreenErrors.words(e);
       // Already there: said as it is, nothing changed (not a refusal).
@@ -68,23 +69,19 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       );
     }
     // The screen's own words for it, and the offering over its seats then, as the screen shows it.
-    String moved =
-      'Moved ' +
+    String over = ElectiveOverSeats.atCampersTime(
+      after,
+      camper,
+      period.day,
+      period.blockId,
+      offering.id
+    );
+    return 'Moved ' +
       camper.name +
       ' to ' +
       offering.name +
-      ', locked.';
-    String overThen = offering.name + ' is over its seats on ' + period.words();
-    for (
-      String over : ElectiveOverSeats.of(
-        ElectiveSeatsController.openRun(run.id)
-      )
-    ) {
-      if (over.startsWith(overThen + ':')) {
-        moved += ' ' + over;
-      }
-    }
-    return moved;
+      ', locked.' +
+      (over == null ? '' : ' ' + over);
   }
 
   /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
