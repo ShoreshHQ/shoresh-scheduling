@@ -842,10 +842,20 @@ function toAgent(answer) {
     : { ...answer, text: `${answer.text} ${PERSON_DECIDES}` };
 }
 
+const NO_PERMISSION_SET =
+  "Your Salesforce account doesn't have the Shoresh permission set for this, so nothing was done. A Salesforce admin can give it to you: Shoresh Scheduler for a person, or the one Send or Read permission set for a connection.";
+
 /** Shoresh's answer as text; a refusal's sentence on its own. */
 function answerText(text) {
   try {
     const parsed = JSON.parse(text);
+    // Salesforce's own refusal names Shoresh's insides: said in words a person can act on (API-1.105).
+    if (
+      Array.isArray(parsed) &&
+      /access to the Apex class/.test(String(parsed[0]?.message))
+    ) {
+      return NO_PERMISSION_SET;
+    }
     if (
       parsed &&
       !Array.isArray(parsed) &&

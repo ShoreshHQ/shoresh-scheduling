@@ -752,6 +752,28 @@ describe("INGEST-4.13 on a season that has its Dismissal set up already", () => 
   });
 });
 
+// INGEST-4.14
+it("which day a one-day file is can't wait when no other file gives a schedule", () => {
+  const dayFile = csv("field-day.csv", [
+    ["Time", "Bunk 1", "Bunk 2"],
+    ["9:00-10:00", "Relay races", "Tug of war"],
+    ["10:00-11:00", "Tug of war", "Relay races"]
+  ]);
+  const alone = propose(existingSetup(), {}, [dayFile]);
+  const asked = questionCards(alone, terms, {}).find((c) =>
+    c.id.startsWith("oneDay|")
+  );
+  expect(asked.mustAnswer).toBe(true);
+  const beside = propose(existingSetup(), {}, [
+    ...samples("all-camp"),
+    dayFile
+  ]);
+  const besideAsked = questionCards(beside, terms, {}).find((c) =>
+    c.id.startsWith("oneDay|")
+  );
+  expect(besideAsked.mustAnswer).toBeUndefined();
+});
+
 // MEMO-6.1
 it("a file's same-name answer is still used once the camp has the name it kept", () => {
   const id = "similar|activity|music|musik|Music|Musik";
