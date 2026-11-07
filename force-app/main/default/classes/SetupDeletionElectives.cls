@@ -119,14 +119,27 @@ public with sharing class SetupDeletionElectives {
       }
       found.kind = 'LinkedChoice';
       found.scope = row.ElectiveSet__r.Name;
-      found.name =
-        row.Offering__r.Activity__r.Name +
-        '|' +
-        String.join(daysInOrder, '+') +
-        '|' +
-        String.join(blocks, '+');
+      found.name = linkedChoiceName(
+        row.Offering__r.Activity__r.Name,
+        daysInOrder,
+        blocks
+      );
       found.campId = row.ElectiveSet__r.Season__r.Camp__c;
     }
     return found;
+  }
+
+  /** How a deleted linked choice is remembered (c/shoreshImportEngine linkedChoiceName). */
+  @TestVisible
+  private static String linkedChoiceName(
+    String activity,
+    List<String> days,
+    List<String> blocks
+  ) {
+    return activity +
+      '|' +
+      String.join(days, '+') +
+      '|' +
+      String.join(blocks, '+');
   }
 }
