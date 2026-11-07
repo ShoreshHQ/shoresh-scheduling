@@ -95,6 +95,50 @@ private class ScheduleSpecialsTest {
     return draft.Id;
   }
 
+  // API-6.5: on a day a special day replaced, what goes out is its own schedule as published,
+  // never the regular cells kept under it; a key reads it with no access to those records.
+  @IsTest
+  static void whatGoesOutOnAReplacedDayIsTheSpecialDaysOwnSchedule() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      swimInFieldDay(ids);
+    }
+    Test.startTest();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      publishNow(ids.get('Draft'));
+    }
+    Test.stopTest();
+    Season__c season = [
+      SELECT Name
+      FROM Season__c
+      WHERE Id = :ids.get('Season')
+      WITH SYSTEM_MODE
+    ];
+    User key = ShoreshTestData.userWith('Read_Group_Schedules');
+    Database.insert(
+      new Season__Share(
+        ParentId = season.Id,
+        UserOrGroupId = key.Id,
+        AccessLevel = 'Read'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    List<OutgoingPublished.Thing> things;
+    System.runAs(key) {
+      things = OutgoingPublished.of(season, 'Week 1');
+    }
+    List<String> onTheDay = new List<String>();
+    for (OutgoingPublished.Thing thing : things) {
+      if (thing.day == TUESDAY && thing.groupName == 'Group A') {
+        onTheDay.add(thing.activity);
+      }
+    }
+    Assert.isTrue(
+      onTheDay.contains('Swim'),
+      'Field Day\'s own Swim goes out: ' + onTheDay
+    );
+  }
+
   private static SchedulePublish.Result publishNow(Id draftId) {
     SchedulePublish.Preview preview = ManualBuildController.previewPublish(
       draftId
