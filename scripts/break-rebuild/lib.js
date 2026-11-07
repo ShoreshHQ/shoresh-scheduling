@@ -57,7 +57,8 @@ function ciUsingTheOrg() {
   return false;
 }
 
-const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const sleep = (ms) =>
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
 /** Runs fn holding the org lock, waiting (lock free) while CI or someone else has the org. */
 async function withOrg(fn) {
@@ -242,7 +243,9 @@ delete [SELECT Id FROM ImportAnswer__c WHERE Camp__c IN :campIds];
 delete [SELECT Id FROM LearnedEvent__c WHERE Camp__c IN :campIds];
 delete [SELECT Id FROM CampLabel__c WHERE Camp__c IN :campIds];
 delete camps;`;
-  while (soql(`SELECT Id FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 1`).length) {
+  while (
+    soql(`SELECT Id FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 1`).length
+  ) {
     apex(pass);
   }
 }
@@ -262,14 +265,29 @@ class Record {
   }
   /** A check against a rule. Failures keep what was said, so they can be written down. */
   check(rule, what, passed, said = "") {
-    this.rows.push({ rule, what, passed: Boolean(passed), said: String(said).slice(0, 2000) });
-    console.log(`${passed ? "  ok " : "FAIL "} [${rule}] ${what}${passed ? "" : `\n       ${String(said).slice(0, 600).replace(/\n/g, "\n       ")}`}`);
+    this.rows.push({
+      rule,
+      what,
+      passed: Boolean(passed),
+      said: String(said).slice(0, 2000)
+    });
+    console.log(
+      `${passed ? "  ok " : "FAIL "} [${rule}] ${what}${passed ? "" : `\n       ${String(said).slice(0, 600).replace(/\n/g, "\n       ")}`}`
+    );
     return Boolean(passed);
   }
   /** Something seen that needs a person's eye, neither passed nor failed. */
   note(what, said = "") {
-    this.rows.push({ rule: "note", what, passed: true, note: true, said: String(said).slice(0, 2000) });
-    console.log(`note  ${what}${said ? `\n       ${String(said).slice(0, 400).replace(/\n/g, "\n       ")}` : ""}`);
+    this.rows.push({
+      rule: "note",
+      what,
+      passed: true,
+      note: true,
+      said: String(said).slice(0, 2000)
+    });
+    console.log(
+      `note  ${what}${said ? `\n       ${String(said).slice(0, 400).replace(/\n/g, "\n       ")}` : ""}`
+    );
   }
 }
 

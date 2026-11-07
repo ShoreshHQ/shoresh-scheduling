@@ -53,7 +53,10 @@ async function draft(season, week = "Week 1", extra = {}, as) {
       ),
     /** The cells' words, for comparing two reads of the same week. */
     words: rows
-      .map((r) => `${r.date}|${r.group}|${r.time_block}|${r.activity}|${r.notes ?? ""}`)
+      .map(
+        (r) =>
+          `${r.date}|${r.group}|${r.time_block}|${r.activity}|${r.notes ?? ""}`
+      )
       .join("\n")
   };
 }
@@ -101,9 +104,7 @@ const confirmed = async (action, input, as) => {
   const confirm = /confirm: "([^"]+)"/.exec(preview.text)?.[1];
   return {
     preview,
-    done: confirm
-      ? await call(action, { ...input, confirm }, as)
-      : preview
+    done: confirm ? await call(action, { ...input, confirm }, as) : preview
   };
 };
 

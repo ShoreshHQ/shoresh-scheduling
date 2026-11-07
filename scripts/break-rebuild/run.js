@@ -33,9 +33,7 @@ async function main() {
   const args = process.argv.slice(2);
   const keep = args.includes("--keep");
   const wanted = args.filter((a) => !a.startsWith("--"));
-  const chosen = wanted.length
-    ? all.filter((s) => wanted.includes(s.id))
-    : all;
+  const chosen = wanted.length ? all.filter((s) => wanted.includes(s.id)) : all;
   const records = [];
   for (const s of chosen) {
     console.log(`\n=== ${s.id}: ${s.title}`);
@@ -48,11 +46,15 @@ async function main() {
       const off = classesOffBranch();
       const seasons = await call("list_seasons", {});
       if (off.length || /older than your camp|newer than/.test(seasons.text)) {
-        console.log(`    the org's code isn't this branch's (${off.length} classes): deploying`);
+        console.log(
+          `    the org's code isn't this branch's (${off.length} classes): deploying`
+        );
         deployBranch();
         const now = await call("list_seasons", {});
         if (/older than your camp/.test(now.text)) {
-          throw new Error(`The org is ahead of this branch: take in main. ${now.text}`);
+          throw new Error(
+            `The org is ahead of this branch: take in main. ${now.text}`
+          );
         }
       }
       cleanup(s.camps ?? `${PREFIX}${s.id} %`);
@@ -82,7 +84,8 @@ async function main() {
   console.log(
     `\n${checks.length - failed.length} of ${checks.length} checks passed, ${failed.length} failed, ${rows.length - checks.length} notes. Full record: ${out}`
   );
-  for (const f of failed) console.log(`FAIL ${f.scenario} [${f.rule}] ${f.what}`);
+  for (const f of failed)
+    console.log(`FAIL ${f.scenario} [${f.rule}] ${f.what}`);
   return failed.length ? 2 : 0;
 }
 

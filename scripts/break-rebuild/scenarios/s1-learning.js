@@ -68,7 +68,12 @@ module.exports = [
         save: true,
         seen: seenOf(answered.text)
       });
-      rec.check("API-1.84", "the import saves", saved.kind === "done", saved.text);
+      rec.check(
+        "API-1.84",
+        "the import saves",
+        saved.kind === "done",
+        saved.text
+      );
       rec.check(
         "API-1.84",
         "what came in is what the review said: 8 activities, Music once, no Musik",
@@ -102,7 +107,8 @@ module.exports = [
       rec.check(
         "MEMO-6.1",
         "the next import shows the answer as remembered, still changeable",
-        q2 && /Answered: Same: use .Music.* \(remembered from before\)/.test(q2),
+        q2 &&
+          /Answered: Same: use .Music.* \(remembered from before\)/.test(q2),
         second.text
       );
       rec.check(
@@ -167,7 +173,12 @@ module.exports = [
         answer: "different",
         seen: "a"
       });
-      rec.check("MEMO-4.4", "Change takes the question's own answer", changed.kind === "done", changed.text);
+      rec.check(
+        "MEMO-4.4",
+        "Change takes the question's own answer",
+        changed.kind === "done",
+        changed.text
+      );
       rec.check(
         "MEMO-6.4",
         "Change offers Undo",
@@ -195,7 +206,12 @@ module.exports = [
         season,
         undo: /undo[^"]*"([^"]+)"/i.exec(changed.text)?.[1] ?? "none"
       });
-      rec.check("MEMO-6.4", "Undo of the change works", undoChange.kind === "done", `${changed.text}\n${undoChange.text}`);
+      rec.check(
+        "MEMO-6.4",
+        "Undo of the change works",
+        undoChange.kind === "done",
+        `${changed.text}\n${undoChange.text}`
+      );
       const fourth = await review();
       rec.check(
         "MEMO-6.4",
@@ -227,8 +243,18 @@ module.exports = [
         };
       };
       const { preview, done } = await forgetOnce();
-      rec.check("API-1.106", "Forget asks first", preview.kind === "asks first", preview.text);
-      rec.check("MEMO-6.4", "Forget works and offers Undo", done.kind === "done" && /undo/i.test(done.text), done.text);
+      rec.check(
+        "API-1.106",
+        "Forget asks first",
+        preview.kind === "asks first",
+        preview.text
+      );
+      rec.check(
+        "MEMO-6.4",
+        "Forget works and offers Undo",
+        done.kind === "done" && /undo/i.test(done.text),
+        done.text
+      );
       const fifth = await review();
       rec.check(
         "MEMO forget",
@@ -241,7 +267,12 @@ module.exports = [
         season,
         undo: /undo[^"]*"([^"]+)"/i.exec(done.text)?.[1] ?? "none"
       });
-      rec.check("MEMO-6.4", "Undo of the Forget works", undoForget.kind === "done", undoForget.text);
+      rec.check(
+        "MEMO-6.4",
+        "Undo of the Forget works",
+        undoForget.kind === "done",
+        undoForget.text
+      );
       const sixth = await review();
       rec.check(
         "MEMO-6.4",
