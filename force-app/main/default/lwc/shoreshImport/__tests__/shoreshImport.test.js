@@ -956,7 +956,7 @@ describe("c-shoresh-import", () => {
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
       const similar = $(element, `[data-card="${music}"]`);
       expect(similar.querySelector(".tag").textContent).toBe(
-        "Remembered from your answer on 3 Jul"
+        "Remembered from your answer on Jul 3"
       );
       expect(similar.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
@@ -998,7 +998,7 @@ describe("c-shoresh-import", () => {
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       const card = $(element, `[data-card="${music}"]`);
       expect(card.querySelector('[data-id="suggested"]').textContent).toBe(
-        "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's 10 Jul, yours 3 Jul)"
+        "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's Jul 10, yours Jul 3)"
       );
       // Marked, not chosen: the question is still open, nothing pressed.
       expect(card.querySelector(".corner")).not.toBeNull();
@@ -1077,7 +1077,7 @@ describe("c-shoresh-import", () => {
         const row = section.querySelector(`[data-auto="${spec}"]`);
         expect(row.textContent).toContain("A fixed activity");
         expect(row.querySelector(".tag").textContent).toBe(
-          "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+          "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on Jul 10 and Jul 3"
         );
         expect(pressed(element)).toEqual([`${spec}::fixed`]);
         expect(
@@ -1249,7 +1249,7 @@ describe("c-shoresh-import", () => {
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
       expect(pool.querySelector(".tag").textContent).toBe(
-        "Remembered from a former user's answer on 26 Oct"
+        "Remembered from a former user's answer on Oct 26"
       );
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);

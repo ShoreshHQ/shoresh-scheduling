@@ -304,7 +304,7 @@ export function proposalFor(name, activities) {
 /**
  * Answers the camp gave before for names on this sheet (ImportAnswers): "same|Pottery" or
  * "leave". Shown as already answered, marked with who gave it and when ("Remembered from your
- * answer on 3 Jul"), and still changeable: never applied
+ * answer on Jul 3"), and still changeable: never applied
  * without being seen.
  */
 export function rememberedAnswers(newNames, answers, activities) {
