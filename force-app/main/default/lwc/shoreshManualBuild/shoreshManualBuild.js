@@ -33,7 +33,7 @@ function savedWhen(source) {
   if (!source.savedAt || source.namedByPublish) {
     return "";
   }
-  return ` · ${new Date(source.savedAt).toLocaleString(undefined, {
+  return ` · ${new Date(source.savedAt).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",

@@ -232,6 +232,31 @@ describe("rows", () => {
     ]);
   });
 
+  it("INGEST-1.7: a name longer than Salesforce keeps can't be read, with why; it is never Ready to save", () => {
+    const long = "A".repeat(81);
+    const p = read("activities", [
+      ["Activity", "Location"],
+      [long, "Field"],
+      ["B".repeat(80), "Field"]
+    ]);
+    expect(p.rows.map((r) => [r.rowNumber, r.status, r.problems])).toEqual([
+      [
+        2,
+        "unreadable",
+        [`Activity: "${"A".repeat(40)}…" is longer than 80 characters`]
+      ],
+      [3, "new", []]
+    ]);
+    // A name in another list's column is held to it too: it may add that location.
+    const ref = read("activities", [
+      ["Activity", "Location"],
+      ["Canoe", "L".repeat(81)]
+    ]);
+    expect(ref.rows[0].problems).toEqual([
+      `Location: "${"L".repeat(40)}…" is longer than 80 characters`
+    ]);
+  });
+
   it("a new row left out (Leave out) is not saved, nor what only it would add, nor remembered", () => {
     const rows = [
       ["Activity", "Location"],

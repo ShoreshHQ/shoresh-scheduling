@@ -64,10 +64,10 @@ global with sharing class AgentReadLastImports implements AgentWeeks.Action {
     return String.isBlank(last.Files__c) ? 'a file' : last.Files__c;
   }
 
-  /** ", 1 Nov 2026 10:03 AM, seen: <id>" on the camp's clock (CORE-6.11). */
+  /** ", Nov 1, 2026 10:03 AM, seen: <id>" on the camp's clock (CORE-6.10, CORE-6.11). */
   private static String lineEnd(Import__c last, String zone) {
     return ', ' +
-      CampClock.say(last.CreatedDate, 'd MMM yyyy h:mm a', zone) +
+      CampClock.say(last.CreatedDate, 'MMM d, yyyy h:mm a', zone) +
       ', seen: "' +
       last.Id +
       '"';

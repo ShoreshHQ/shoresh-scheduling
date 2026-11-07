@@ -445,7 +445,7 @@ export default class ShoreshRoots extends LightningElement {
       return null;
     }
     // On the camp's clock (CORE-6.11).
-    const when = new Date(last.CreatedDate).toLocaleString(undefined, {
+    const when = new Date(last.CreatedDate).toLocaleString("en-US", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: campTimeZoneOf(this.setup.season)

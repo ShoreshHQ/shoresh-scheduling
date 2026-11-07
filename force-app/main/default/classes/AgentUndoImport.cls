@@ -43,7 +43,7 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
       ', ' +
       CampClock.say(
         made.CreatedDate,
-        'd MMM yyyy h:mm a',
+        'MMM d, yyyy h:mm a',
         CampClock.zoneOfSeason(season.Id)
       ) +
       '. What it added is removed and what it changed goes back to how it was; anything edited since, or still used by something else, stays.';
