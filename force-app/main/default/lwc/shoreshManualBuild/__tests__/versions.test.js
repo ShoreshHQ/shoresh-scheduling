@@ -387,6 +387,72 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(panel.querySelector('[data-action="open"]')).toBeNull();
   });
 
+  it("a list of versions for the week before that fails doesn't empty this week's list", async () => {
+    const slow = pending();
+    let fail;
+    getVersions.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        fail = reject;
+      })
+    );
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    document.body.appendChild(element);
+    await flush();
+    getVersions.mockReturnValueOnce(slow.promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    slow.resolve(VERSIONS);
+    await flush();
+    fail(new Error("no"));
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).not.toBeNull();
+  });
+
+  it("the week before's versions go as soon as another week is chosen", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    getVersions.mockReturnValueOnce(pending().promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).toBeNull();
+  });
+
+  it("an older read of the list answering after a newer one is not shown", async () => {
+    const late = pending();
+    getVersions.mockReturnValueOnce(late.promise);
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    document.body.appendChild(element);
+    await flush();
+    // Save version reads the list again; that newer answer comes first.
+    getVersions.mockResolvedValue(VERSIONS);
+    saveVersion.mockResolvedValue("a0S000000000023AAA");
+    q(element, '[data-id="versions"]').dispatchEvent(
+      new CustomEvent("save", {
+        detail: { name: "Rainy Monday", onDone: () => {} }
+      })
+    );
+    await flush();
+    late.resolve([]);
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).not.toBeNull();
+  });
+
   it("Save version keeps the week under the name typed", async () => {
     const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
     saveVersion.mockResolvedValue("v2");
