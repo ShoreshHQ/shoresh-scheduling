@@ -195,6 +195,63 @@ private class IncomingSetupTest {
     );
   }
 
+  // API-4.9: the name a system first sent for a record a person has renamed adds nothing and
+  // changes nothing: it is shown to a person. A name it never sent is still added.
+  @IsTest
+  static void anOldNameAfterAPersonsRenameIsAConflictNeverASecondRecord() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Activities')) {
+      send(
+        'activity',
+        new List<Map<String, Object>>{ one('activity_name', 'Kayak') }
+      );
+    }
+    Activity__c sent = [
+      SELECT Id
+      FROM Activity__c
+      WHERE Season__c = :camp.season.Id AND Name = 'Kayak'
+      WITH SYSTEM_MODE
+    ];
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Database.update(
+        new Activity__c(Id = sent.Id, Name = 'Kayaking'),
+        AccessLevel.USER_MODE
+      );
+    }
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Send_Activities')) {
+      answer = send(
+        'activity',
+        new List<Map<String, Object>>{
+          one('activity_name', 'Kayak'),
+          one('activity_name', 'Canoe')
+        }
+      );
+    }
+    String body = JSON.serialize(answer);
+    Assert.isTrue(body.contains('A person renamed'), body);
+    Assert.areEqual(
+      new List<String>{ 'Canoe', 'Kayaking' },
+      namesIn(camp),
+      'Kayaking stands, no second Kayak; Canoe is new'
+    );
+    Assert.isTrue(camp.imports()[0].Open__c.contains('Kayaking'));
+  }
+
+  private static List<String> namesIn(IncomingTestData camp) {
+    List<String> names = new List<String>();
+    for (Activity__c activity : [
+      SELECT Name
+      FROM Activity__c
+      WHERE Season__c = :camp.season.Id
+      WITH SYSTEM_MODE
+      ORDER BY Name
+    ]) {
+      names.add(activity.Name);
+    }
+    return names;
+  }
+
   // API-4.4: each capability needs its own permission set.
   @IsTest
   static void eachNeedsItsOwnPermissionSet() {
