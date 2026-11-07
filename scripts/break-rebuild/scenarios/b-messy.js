@@ -112,6 +112,7 @@ module.exports = [
       const planted = { "maple-grove-locations.csv": ["two"], "maple-grove-activities.csv": ["Musik", "Middlers", "Movies"], "maple-grove-program-days.csv": ["Teens", "Weekend"], "maple-grove-units.csv": ["Explorers"], "maple-grove-bunks.csv": ["Bunk 8"], "maple-grove-time-blocks.csv": ["Late pickup", "Swim time"], "maple-grove-fixed.csv": ["Snack break"], "maple-grove-recurring.csv": ["Middlers", "Campfire"] };
       for (const [file, name] of Object.entries(lists)) {
         const said = await call("import_list", { season, list: name, file_name: file, csv_text: sample("lists", file) });
+        rec.note(`sample ${file}, the whole review`, said.text.slice(0, 2000));
         rec.check("API-1.80", `sample ${file}: reviewed`, said.kind === "done", said.text);
         for (const word of planted[file]) {
           rec.check("INGEST shown", `sample ${file}: shows ${word}`, said.text.includes(word), said.text);
@@ -230,6 +231,14 @@ module.exports = [
       const resend = await call("bring_in_activities", { records: [{ ...src, activity_name: "Kayak" }] });
       rec.note("the outside system sends the old name after a person renamed it", resend.text.slice(0, 400));
       rec.check("API-4.1", "a person's rename stands", count("Activity__c", `${inSeason} AND Name = 'Kayaking'`) === 1, names("Activity__c", inSeason).join());
+      const fromSystem = await call("read_last_imports", { season });
+      const seenGroupBatch = /Last from BR made-up system:[^;]*?seen: "([^"]+)"/.exec(fromSystem.text)?.[1];
+      const batchGroup = await call("bring_in_groups", { records: [{ ...src, group_name: "Bunk 8", division: "Bunk 1" }] });
+      rec.check("API-2.3", "a group sent in", /"saved": 1/.test(batchGroup.text), batchGroup.text);
+      const seenNow = /Last from BR made-up system:[^;]*?seen: "([^"]+)"/.exec((await call("read_last_imports", { season })).text)?.[1];
+      const undoGroup = await confirmed("undo_import", { season, from: "BR made-up system", seen: seenNow });
+      rec.check("API-2.6", "the batch's Undo takes the group away", undoGroup.done.kind === "done" && !names("Group__c", `Division__r.Program__r.${inSeason}`).includes("Bunk 8"), undoGroup.done.text);
+      void seenGroupBatch;
       rec.check("API-4.9", "the old name doesn't add a second activity", !names("Activity__c", inSeason).includes("Kayak"), names("Activity__c", inSeason).join());
       rec.check("API-4.9", "it's said as a conflict, not saved", /A person renamed/.test(resend.text) && !/"saved": [1-9]/.test(resend.text), resend.text);
       const big = await call("bring_in_campers", { records: Array.from({ length: 3000 }, (_, i) => ({ ...src, camper_id: `BIG-${i}`, camper_name: `Madeup ${i}`, camper_number: String(i) })) });
