@@ -98,9 +98,9 @@ public with sharing class IncomingNamedPlan {
   /** A new name, unless it is the one a person renamed since (API-4.9). */
   private void addUnlessRenamed(Integer i, Named record, Id parentId) {
     if (renamed == null) {
-      renamed = new IncomingRenamed(batch, kind.term);
+      renamed = new IncomingRenamed(batch, kind.term, kind.parentLink);
     }
-    if (!renamed.stopped(i, record.name)) {
+    if (!renamed.stopped(i, record.name, parentId)) {
       add(i, record, parentId);
     }
   }

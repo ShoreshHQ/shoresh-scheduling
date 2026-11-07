@@ -12,21 +12,29 @@ public with sharing class IncomingRenamed {
   private List<Written> changedSince;
   private IncomingBatch batch;
   private String term;
+  private Schema.SObjectField link;
 
   private class Written {
+    Id recordId;
     SObject record;
     List<String> fields;
     String digest;
   }
 
-  public IncomingRenamed(IncomingBatch batch, String term) {
+  /** link: the field holding what the kind belongs to (null for an activity). */
+  public IncomingRenamed(
+    IncomingBatch batch,
+    String term,
+    Schema.SObjectField link
+  ) {
     this.batch = batch;
     this.term = term;
+    this.link = link;
   }
 
   /** Whether this name is one a person renamed since: if so nothing is added, and it is said. */
-  public Boolean stopped(Integer index, String name) {
-    SObject person = renamedFrom(name);
+  public Boolean stopped(Integer index, String name, Id parentId) {
+    SObject person = renamedFrom(name, link, parentId);
     if (person == null) {
       return false;
     }
@@ -52,13 +60,21 @@ public with sharing class IncomingRenamed {
     return true;
   }
 
-  private SObject renamedFrom(String name) {
+  private SObject renamedFrom(
+    String name,
+    Schema.SObjectField link,
+    Id parentId
+  ) {
     if (changedSince == null) {
       changedSince = read();
     }
     for (Written each : changedSince) {
+      // As this record would be sent now: its name, and what it's said to belong to.
       SObject asSent = each.record.clone(true, true);
-      asSent.put('Name', name);
+      asSent.put('Name', name.trim().left(80));
+      if (link != null) {
+        asSent.put(link, parentId);
+      }
       if (ImportUndoValues.digest(asSent, each.fields) == each.digest) {
         return each.record;
       }
@@ -66,11 +82,14 @@ public with sharing class IncomingRenamed {
     return null;
   }
 
+  /** What this system's batches still standing made of this kind and someone has changed since. */
   private List<Written> read() {
-    List<Written> result = new List<Written>();
     Id seasonId = batch.season.Id;
     String source = IncomingSave.sourceOf(batch);
-    for (Import__c batch : [
+    Set<String> fields = new Set<String>();
+    Set<Id> ids = new Set<Id>();
+    List<Written> written = new List<Written>();
+    for (Import__c done : [
       SELECT Created__c
       FROM Import__c
       WHERE Season__c = :seasonId AND Source__c = :source AND UndoneAt__c = NULL
@@ -78,25 +97,30 @@ public with sharing class IncomingRenamed {
       ORDER BY CreatedDate DESC
       LIMIT :BATCH_LIMIT
     ]) {
-      if (String.isNotBlank(batch.Created__c)) {
+      if (String.isNotBlank(done.Created__c)) {
         addFrom(
-          (Map<String, Object>) JSON.deserializeUntyped(batch.Created__c),
-          result
+          (Map<String, Object>) JSON.deserializeUntyped(done.Created__c),
+          fields,
+          ids,
+          written
         );
       }
     }
-    return result;
+    return changedOf(written, fields, ids);
   }
 
-  private void addFrom(Map<String, Object> created, List<Written> result) {
+  private void addFrom(
+    Map<String, Object> created,
+    Set<String> fields,
+    Set<Id> ids,
+    List<Written> written
+  ) {
     Map<String, Object> kind = (Map<String, Object>) created.get(term);
     if (kind == null) {
       return;
     }
-    List<Object> fieldsets = (List<Object>) kind.get('fieldsets');
-    Set<String> fields = new Set<String>();
     List<List<String>> named = new List<List<String>>();
-    for (Object fieldset : fieldsets) {
+    for (Object fieldset : (List<Object>) kind.get('fieldsets')) {
       List<String> names = new List<String>();
       for (Object name : (List<Object>) fieldset) {
         names.add((String) name);
@@ -104,28 +128,40 @@ public with sharing class IncomingRenamed {
       named.add(names);
       fields.addAll(names);
     }
-    Set<Id> ids = new Set<Id>();
     for (Object row : (List<Object>) kind.get('rows')) {
-      ids.add((Id) (String) ((List<Object>) row)[0]);
+      List<Object> cells = (List<Object>) row;
+      Written each = new Written();
+      each.recordId = (Id) (String) cells[0];
+      each.fields = named[(Integer) cells[1]];
+      each.digest = (String) cells[2];
+      ids.add(each.recordId);
+      written.add(each);
+    }
+  }
+
+  private List<Written> changedOf(
+    List<Written> written,
+    Set<String> fields,
+    Set<Id> ids
+  ) {
+    List<Written> result = new List<Written>();
+    if (ids.isEmpty()) {
+      return result;
     }
     Map<Id, SObject> now = ImportUndoValues.read(
       ImportFields.ofTerm(term),
       fields,
       ids
     );
-    for (Object row : (List<Object>) kind.get('rows')) {
-      List<Object> cells = (List<Object>) row;
-      SObject record = now.get((Id) (String) cells[0]);
-      if (record == null) {
-        continue;
-      }
-      Written each = new Written();
-      each.record = record;
-      each.fields = named[(Integer) cells[1]];
-      each.digest = (String) cells[2];
-      if (ImportUndoValues.digest(record, each.fields) != each.digest) {
+    for (Written each : written) {
+      each.record = now.get(each.recordId);
+      if (
+        each.record != null &&
+        ImportUndoValues.digest(each.record, each.fields) != each.digest
+      ) {
         result.add(each);
       }
     }
+    return result;
   }
 }

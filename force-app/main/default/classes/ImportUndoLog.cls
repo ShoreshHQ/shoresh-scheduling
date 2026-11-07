@@ -229,7 +229,8 @@ public with sharing class ImportUndoLog {
     Map<String, Schema.SObjectField> result = new Map<String, Schema.SObjectField>();
     for (String reported : row.getPopulatedFieldsAsMap().keySet()) {
       Schema.SObjectField field = ShoreshSchema.field(kind, reported);
-      if (reported != 'Id' && field != null) {
+      // A record made with its defaults also reports IsDeleted, which no import writes.
+      if (reported != 'Id' && reported != 'IsDeleted' && field != null) {
         result.put(ShoreshSchema.localName(field), field);
       }
     }

@@ -238,6 +238,90 @@ private class IncomingSetupTest {
     Assert.isTrue(camp.imports()[0].Open__c.contains('Kayaking'));
   }
 
+  // API-2.3: a group a batch added can be undone like any import.
+  @IsTest
+  static void undoTakesAwayAGroupABatchAdded() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Groups')) {
+      send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+    }
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Assert.areEqual(1, ImportUndo.undo(camp.imports()[0].Id).removed);
+    }
+  }
+
+  // API-4.9: the same name in another division is a new group, not the renamed one.
+  @IsTest
+  static void aRenamedGroupsOldNameInAnotherDivisionIsANewGroup() {
+    IncomingTestData camp = new IncomingTestData();
+    insert new Division__c(Program__c = camp.ids.get('Main'), Name = 'Seniors');
+    System.runAs(camp.sender('Send_Groups')) {
+      send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+    }
+    Group__c sent = [
+      SELECT Id
+      FROM Group__c
+      WHERE Name = 'Cabin 9'
+      WITH SYSTEM_MODE
+    ];
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Database.update(
+        new Group__c(Id = sent.Id, Name = 'Cabin Nine'),
+        AccessLevel.USER_MODE
+      );
+    }
+    Map<String, Object> elsewhere;
+    Map<String, Object> same;
+    System.runAs(camp.sender('Send_Groups')) {
+      same = send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+      elsewhere = send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Seniors'
+          }
+        }
+      );
+    }
+    Assert.isTrue(
+      JSON.serialize(same).contains('A person renamed'),
+      JSON.serialize(same)
+    );
+    Assert.isFalse(
+      JSON.serialize(elsewhere).contains('A person renamed'),
+      JSON.serialize(elsewhere)
+    );
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM Group__c WHERE Name = 'Cabin 9' WITH SYSTEM_MODE]
+    );
+  }
+
   private static List<String> namesIn(IncomingTestData camp) {
     List<String> names = new List<String>();
     for (Activity__c activity : [
