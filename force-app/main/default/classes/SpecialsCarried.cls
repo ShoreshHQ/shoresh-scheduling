@@ -45,35 +45,46 @@ public with sharing class SpecialsCarried {
   }
 
   /**
-   * The special days a published schedule carried, for what goes out (API-6.5). System mode on
-   * purpose, as OutgoingPublished reads the schedule's days: a key has no access to these records,
-   * and only a schedule the key found published in user mode is read here.
+   * The special days each published schedule carried, for what goes out (API-6.5): by schedule,
+   * then by the day replaced. One query however many schedules; user mode, and a key's permission
+   * set gives it these records.
    */
-  public static Map<Date, ScheduleSpecials.Special> daysGoingOut(
-    Id scheduleId
+  public static Map<Id, Map<Date, ScheduleSpecials.Special>> daysGoingOut(
+    List<Id> scheduleIds
   ) {
-    Map<Date, ScheduleSpecials.Special> days = new Map<Date, ScheduleSpecials.Special>();
-    for (
-      ScheduleSpecials.Special special : fromRows(
-        [
-          SELECT
-            Name,
-            Kind__c,
-            Item__c,
-            Date__c,
-            Notes__c,
-            Part__c,
-            Plan__c,
-            GridFormatVersion__c,
-            Revision__c
-          FROM PublishedPlan__c
-          WHERE Schedule__c = :scheduleId AND Kind__c = :ScheduleSpecials.DAY
-          WITH SYSTEM_MODE
-          ORDER BY Kind__c, Date__c, Name, Item__c, Part__c
-        ]
-      )
-    ) {
-      days.put(special.dateValue, special);
+    Map<Id, List<PublishedPlan__c>> rowsBySchedule = new Map<Id, List<PublishedPlan__c>>();
+    Map<Id, Map<Date, ScheduleSpecials.Special>> days = new Map<Id, Map<Date, ScheduleSpecials.Special>>();
+    for (Id scheduleId : scheduleIds) {
+      rowsBySchedule.put(scheduleId, new List<PublishedPlan__c>());
+      days.put(scheduleId, new Map<Date, ScheduleSpecials.Special>());
+    }
+    for (PublishedPlan__c part : [
+      SELECT
+        Schedule__c,
+        Name,
+        Kind__c,
+        Item__c,
+        Date__c,
+        Notes__c,
+        Part__c,
+        Plan__c,
+        GridFormatVersion__c,
+        Revision__c
+      FROM PublishedPlan__c
+      WHERE Schedule__c IN :scheduleIds AND Kind__c = :ScheduleSpecials.DAY
+      WITH USER_MODE
+      ORDER BY Kind__c, Date__c, Name, Item__c, Part__c
+    ]) {
+      rowsBySchedule.get(part.Schedule__c).add(part);
+    }
+    for (Id scheduleId : scheduleIds) {
+      for (
+        ScheduleSpecials.Special special : fromRows(
+          rowsBySchedule.get(scheduleId)
+        )
+      ) {
+        days.get(scheduleId).put(special.dateValue, special);
+      }
     }
     return days;
   }

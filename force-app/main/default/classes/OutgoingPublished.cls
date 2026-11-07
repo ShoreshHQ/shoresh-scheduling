@@ -48,10 +48,9 @@ public with sharing class OutgoingPublished {
       bySchedule.get(part.Schedule__c).add(part);
     }
     // The days a special day replaced when each schedule was published (API-6.5).
-    Map<Id, Map<Date, ScheduleSpecials.Special>> replaced = new Map<Id, Map<Date, ScheduleSpecials.Special>>();
-    for (Id scheduleId : published) {
-      replaced.put(scheduleId, SpecialsCarried.daysGoingOut(scheduleId));
-    }
+    Map<Id, Map<Date, ScheduleSpecials.Special>> replaced = SpecialsCarried.daysGoingOut(
+      published
+    );
     List<Date> days = new List<Date>(parts.keySet());
     days.sort();
     List<Thing> things = new List<Thing>();
@@ -76,23 +75,28 @@ public with sharing class OutgoingPublished {
 
   /**
    * A day a special day replaced: its own schedule as published, never the regular cells kept
-   * under it (API-6.5). One with no schedule yet goes out as a row per group naming it, so the day
-   * isn't left looking free.
+   * under it (API-6.5), for this schedule's own groups only. A group with no line in it (no
+   * schedule yet, or added to the camp since) goes out as a row naming the special day, so its
+   * day isn't left looking free.
    */
   private static void addSpecialDay(
     ScheduleSpecials.Special special,
     ScheduleDays.DayGrid regular,
     List<Thing> things
   ) {
-    if (special.grid != null) {
-      ScheduleDays.DayGrid own = new ScheduleDays.DayGrid();
-      own.day = regular.day;
-      own.grid = special.grid;
-      addDay(own, things);
-    } else if (String.isNotBlank(special.problem)) {
+    if (regular.grid == null || String.isNotBlank(special.problem)) {
       throw new ShoreshException(unreadable(regular.day));
-    } else if (regular.grid != null) {
-      for (ScheduleGrid.GroupRef groupRef : regular.grid.groups) {
+    }
+    Set<String> inPlan = new Set<String>();
+    if (special.grid != null) {
+      for (ScheduleGrid.GroupRef groupRef : special.grid.groups) {
+        inPlan.add(groupRef.id);
+      }
+    }
+    Set<String> own = new Set<String>();
+    for (ScheduleGrid.GroupRef groupRef : regular.grid.groups) {
+      own.add(groupRef.id);
+      if (!inPlan.contains(groupRef.id)) {
         Thing whole = new Thing();
         whole.day = regular.day;
         whole.groupName = groupRef.name;
@@ -102,6 +106,9 @@ public with sharing class OutgoingPublished {
         whole.activity = special.name;
         things.add(whole);
       }
+    }
+    if (special.grid != null) {
+      addGroups(regular.day, special.grid, own, things);
     }
   }
 
@@ -176,8 +183,20 @@ public with sharing class OutgoingPublished {
     if (day.grid == null) {
       throw new ShoreshException(unreadable(day.day));
     }
-    ScheduleGrid grid = day.grid;
+    addGroups(day.day, day.grid, null, things);
+  }
+
+  /** The grid's groups' things, in its order; only those named when only is given. */
+  private static void addGroups(
+    Date day,
+    ScheduleGrid grid,
+    Set<String> only,
+    List<Thing> things
+  ) {
     for (Integer g = 0; g < grid.groups.size(); g++) {
+      if (only != null && !only.contains(grid.groups[g].id)) {
+        continue;
+      }
       Thing open = null;
       for (Integer b = 0; b < grid.blocks.size(); b++) {
         String cell = b < grid.rows[g].size() ? grid.rows[g][b] : '';
@@ -191,7 +210,7 @@ public with sharing class OutgoingPublished {
           continue;
         }
         open = new Thing();
-        open.day = day.day;
+        open.day = day;
         open.groupName = grid.groups[g].name;
         open.block = grid.blocks[b].name;
         open.startTime = grid.blocks[b].startTime;

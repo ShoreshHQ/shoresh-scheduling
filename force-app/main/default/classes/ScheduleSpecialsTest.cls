@@ -96,12 +96,32 @@ private class ScheduleSpecialsTest {
   }
 
   // API-6.5: on a day a special day replaced, what goes out is its own schedule as published,
-  // never the regular cells kept under it; a key reads it with no access to those records.
+  // never the regular cells kept under it, and a group with no line in it goes out naming the
+  // special day. A key reads it, in the bound a request must keep (one query for what's carried).
   @IsTest
   static void whatGoesOutOnAReplacedDayIsTheSpecialDaysOwnSchedule() {
     Map<String, Id> ids = KeptCamp.keptIds();
     System.runAs(KeptCamp.scheduler(ids)) {
       swimInFieldDay(ids);
+      // Under Field Day, Group A has something of its own, and a group the plan never had.
+      ScheduleDays.DayGrid regular;
+      for (ScheduleDays.DayGrid day : ScheduleDays.read(ids.get('Draft'))) {
+        if (day.day == TUESDAY) {
+          regular = day;
+        }
+      }
+      regular.grid.items.add(
+        new ScheduleGrid.Item('A', ids.get('Swim'), 'Regular cell')
+      );
+      regular.grid.rows[0] = new List<String>{ '1', '', '' };
+      regular.grid.groups.add(new ScheduleGrid.GroupRef('late', 'Late group'));
+      regular.grid.rows.add(new List<String>{ '', '', '' });
+      ScheduleDaySaves.write(
+        ids.get('Draft'),
+        new List<ScheduleDaySaves.DaySave>{
+          new ScheduleDaySaves.DaySave(TUESDAY, regular.grid, regular.revision)
+        }
+      );
     }
     Test.startTest();
     System.runAs(KeptCamp.scheduler(ids)) {
@@ -124,19 +144,35 @@ private class ScheduleSpecialsTest {
       AccessLevel.SYSTEM_MODE
     );
     List<OutgoingPublished.Thing> things;
+    Integer queries;
     System.runAs(key) {
+      Integer before = Limits.getQueries();
       things = OutgoingPublished.of(season, 'Week 1');
+      queries = Limits.getQueries() - before;
     }
-    List<String> onTheDay = new List<String>();
+    Map<String, List<String>> onTheDay = new Map<String, List<String>>();
     for (OutgoingPublished.Thing thing : things) {
-      if (thing.day == TUESDAY && thing.groupName == 'Group A') {
-        onTheDay.add(thing.activity);
+      if (thing.day == TUESDAY) {
+        if (!onTheDay.containsKey(thing.groupName)) {
+          onTheDay.put(thing.groupName, new List<String>());
+        }
+        onTheDay.get(thing.groupName).add(thing.activity);
       }
     }
     Assert.isTrue(
-      onTheDay.contains('Swim'),
+      onTheDay.get('Group A').contains('Swim'),
       'Field Day\'s own Swim goes out: ' + onTheDay
     );
+    Assert.isFalse(
+      onTheDay.get('Group A').contains('Regular cell'),
+      'The regular cell stays under it: ' + onTheDay
+    );
+    Assert.areEqual(
+      new List<String>{ 'Field Day' },
+      onTheDay.get('Late group'),
+      'A group with no line names the day: ' + onTheDay
+    );
+    Assert.isTrue(queries <= 6, 'Reading what goes out used ' + queries);
   }
 
   private static SchedulePublish.Result publishNow(Id draftId) {
