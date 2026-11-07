@@ -356,6 +356,15 @@ function exceptionRows(d) {
       `${x.offering.name}: ${x.count} of ${x.seats}`
     ])
   );
+  // Blank or 0 seats, seated with no limit: the screen's "needs its seats chosen" (ELECT-4.1).
+  p.noSeats.forEach((o) =>
+    body.push([
+      `Needs its ${t.pIn("Seats")} chosen`,
+      "",
+      "",
+      `Choose how many ${t.pIn("Seats")} "${o.name}" has`
+    ])
+  );
   p.stray.forEach((s) =>
     body.push(["Lock no longer applies", s.camper.name, "", ""])
   );
