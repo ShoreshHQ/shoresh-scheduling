@@ -182,7 +182,9 @@ Each rule is clue, meaning, example, test.
     import's own kept version is the import's, and goes with it. A copied season that keeps
     anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
     as a new holding record of the same name, which the director never sees. Too big a camp for
-    Salesforce to undo (or import) in one go changes nothing and says so plainly.
+    Salesforce to undo (or import) in one go changes nothing and says so plainly. Import a list's
+    own Undo asks first, naming what goes in the camp's words ("Undo specials.csv? Remove 1
+    special day and 1 special event"), never a bare count.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
@@ -190,7 +192,8 @@ Each rule is clue, meaning, example, test.
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
-    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "a camp too big for one request says so,
+    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "INGEST-5.10: saves the list once every
+    difference is answered, then its Undo names what it removes and puts back"; screen "a camp too big for one request says so,
     and that trying again won't help" (`shoreshErrors`).
 
 11. **Days said by number are listed as what each became.**
