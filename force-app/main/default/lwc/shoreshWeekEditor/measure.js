@@ -11,6 +11,10 @@ import { RAIN_PLAN_FULL, isMarked } from "./rain";
  * code (docs/protocol/api.md API-1.30), so the two can never say different things.
  */
 
+// For the connector, which reads a week with this module (WEEK-1.5, WEEK-1.7).
+export { useSeasonDays } from "c/shoreshImportEngine";
+export { spokenWeekday, weekdayName } from "c/shoreshDayNames";
+
 /** What a day is called in lines and questions: its weekday, or the plan's name. */
 export function dayNameOf(dateValue, planName) {
   return planName || dayLabel(dateValue).label;

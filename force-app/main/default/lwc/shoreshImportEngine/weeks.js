@@ -3,6 +3,7 @@
  * workbook import (c/shoreshLists) and Import last year.
  */
 import { FIELD } from "c/shoreshSchema";
+import { setDayNaming } from "c/shoreshDayNames";
 import { MONDAY_TO_FRIDAY, WEEKDAYS, firstDayOf } from "./text";
 
 const SEASON = FIELD.Season;
@@ -37,6 +38,15 @@ export function campFirstDay(setup) {
   const time = Date.parse(`${start}T00:00:00Z`);
   const allDays = Number.isNaN(time) ? 0 : (new Date(time).getUTCDay() + 6) % 7;
   return firstDayOf(programDays(setup), allDays) + 1;
+}
+
+/** Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames. */
+export function useSeasonDays(setup) {
+  const season = (setup && setup.season) || {};
+  setDayNaming({
+    numbered: Boolean(season[SEASON.NumberedDays]),
+    firstDay: campFirstDay(setup)
+  });
 }
 
 /**

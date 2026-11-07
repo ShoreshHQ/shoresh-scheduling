@@ -356,6 +356,57 @@ private class AgentSetupRestTest {
   }
 
   // API-1.49, API-1.50
+  // WEEK-1.7
+  @IsTest
+  static void aFixedActivitysEarlierDayIsReadAndChangedByItsNumber() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id flagpole = GeneratedTestData.ids.get('Flagpole');
+      Database.update(
+        new FixedActivity__c(Id = flagpole, EarlyDay__c = 'Tuesday'),
+        AccessLevel.SYSTEM_MODE
+      );
+      Database.update(
+        new Season__c(
+          Id = GeneratedTestData.ids.get('Season'),
+          NumberedDays__c = true
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      DayWords.forgetSeasons();
+      String season = seasonName();
+      Map<String, Object> flagpoleIs = new Map<String, Object>{
+        'season' => season,
+        'kind' => 'fixed activity',
+        'program' => 'Main',
+        'name' => 'Flagpole'
+      };
+      Test.startTest();
+      List<Object> read = ask(new AgentReadSetup(), 'GET', flagpoleIs);
+      Map<String, Object> change = flagpoleIs.clone();
+      change.put('fields', new Map<String, Object>{ 'early_day' => 'Day 3' });
+      change.put('seen', new Map<String, Object>{ 'early_day' => 'Day 2' });
+      List<Object> changed = ask(new AgentChangeSetup(), 'POST', change);
+      Test.stopTest();
+
+      Assert.isTrue(
+        String.valueOf(read[1]).contains('early_day: Day 2'),
+        String.valueOf(read[1])
+      );
+      Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
+      Assert.isTrue(
+        String.valueOf(changed[1]).contains('early day Day 3'),
+        String.valueOf(changed[1])
+      );
+      Assert.areEqual(
+        'Wednesday',
+        [SELECT EarlyDay__c FROM FixedActivity__c WHERE Id = :flagpole]
+        .EarlyDay__c,
+        'What is stored stays the weekday'
+      );
+    }
+  }
+
   @IsTest
   static void notesWithLineBreaksAndGroupsThatFitAsTheTableHasThem() {
     System.runAs(ShoreshTestData.scheduler()) {

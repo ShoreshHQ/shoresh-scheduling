@@ -141,6 +141,10 @@ public with sharing class SchedulePublish {
 
   /** What publishing the locked draft would do now. */
   public static Preview preview(Schedule__c draft) {
+    DayWords.use(
+      draft.Program__r.Season__c,
+      draft.Program__r.Season__r.NumberedDays__c
+    );
     Preview result = new Preview();
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
@@ -179,6 +183,10 @@ public with sharing class SchedulePublish {
     String seenRevisions,
     Id seenPublishedId
   ) {
+    DayWords.use(
+      draft.Program__r.Season__c,
+      draft.Program__r.Season__r.NumberedDays__c
+    );
     // No program lock (a Generated save takes the program, then its draft; this holds the
     // draft already): the published schedule is locked below, and PublishKey__c's uniqueness
     // refuses a second first publish of the week made at the same moment.
@@ -405,7 +413,7 @@ public with sharing class SchedulePublish {
     for (ScheduleDays.DayGrid day : days) {
       if (day.grid == null) {
         throw new ShoreshException(
-          WeekCalendar.weekdayName(day.day) +
+          DayWords.say(day.day) +
             ' could not be read (' +
             day.problem +
             '), so nothing was published.'

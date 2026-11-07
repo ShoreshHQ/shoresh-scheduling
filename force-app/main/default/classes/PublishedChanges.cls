@@ -47,6 +47,11 @@ public with sharing class PublishedChanges {
       add(line, 1);
     }
 
+    /** A day for a line; only counting, no line is kept, so no season need be read for it. */
+    public String say(Date day) {
+      return mostLines == 0 ? WeekCalendar.weekdayName(day) : DayWords.say(day);
+    }
+
     // A line, and how many cells (or renames) it covers.
     public void add(String line, Integer cells) {
       count += cells;
@@ -91,11 +96,7 @@ public with sharing class PublishedChanges {
     dates.sort();
     PublishedRenames.addTo(result, published, draft);
     for (Date day : dates) {
-      new DayCompare(
-          WeekCalendar.weekdayName(day),
-          wasDays.get(day),
-          nowDays.get(day)
-        )
+      new DayCompare(result.say(day), wasDays.get(day), nowDays.get(day))
         .addTo(result);
       PublishedRain.addTo(result, wasDays.get(day), nowDays.get(day));
     }

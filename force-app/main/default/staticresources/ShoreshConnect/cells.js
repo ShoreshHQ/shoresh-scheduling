@@ -56,15 +56,18 @@ function onlyOne(list, asked, nameOf, what, where) {
   );
 }
 
-/** The week's day (by name, like Monday, or date), as an index; a replaced or unreadable day is refused. */
+/** The week's day (by name, like Monday, by number, like Day 3, or date), as an index; a replaced or unreadable day is refused. */
 function dayIn(ctx, m, asked, weekName) {
   const d = ctx.week.findIndex(
     (day) =>
       day.dateValue === String(asked || "").trim() ||
-      fold(ctx.dayNameOf(day.dateValue)) === fold(asked)
+      fold(ctx.dayNameOf(day.dateValue)) === fold(asked) ||
+      fold(ctx.weekdayOf(day.dateValue)) === fold(asked)
   );
   if (!String(asked || "").trim()) {
-    throw new Refused("Say which day (day), like Monday.");
+    throw new Refused(
+      `Say which day (day), like ${ctx.spokenWeekday("Monday")}.`
+    );
   }
   if (d < 0) {
     throw new Refused(
@@ -138,6 +141,8 @@ function checkWas(ctx, m, slot, was) {
  * Manual Build's draft as that screen gives it to its week editor (no locks there).
  */
 function contextOf(m, body) {
+  // WEEK-1.5: days are said as this season says them; an AI may still name the weekday.
+  m.useSeasonDays(body.setup);
   if (body.draft) {
     return manualContextOf(m, body);
   }
@@ -174,6 +179,8 @@ function contextOf(m, body) {
     // As the screen names a day (shoreshWeekEditor dayNameOf(dateValue, this.planName)): Generated
     // Schedule gives its editor no planName (only a special day's or event's own schedule has one).
     dayNameOf: (dateValue) => m.dayNameOf(dateValue),
+    weekdayOf: (dateValue) => m.weekdayName(dateValue),
+    spokenWeekday: (weekday) => m.spokenWeekday(weekday),
     isAwayOn,
     isLocked: (slot) => {
       const day = week[slot.day];
@@ -210,6 +217,8 @@ function manualContextOf(m, body) {
     draft,
     nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
     dayNameOf: (dateValue) => m.dayNameOf(dateValue),
+    weekdayOf: (dateValue) => m.weekdayName(dateValue),
+    spokenWeekday: (weekday) => m.spokenWeekday(weekday),
     isAwayOn: (w, d, g, b) => {
       const groupId = w[d].groups[g].id;
       const blockId = w[d].blocks[b].id;
@@ -533,7 +542,8 @@ function draftOf(m, body, input) {
     (day) =>
       !asked ||
       day.dateValue === asked ||
-      fold(ctx.dayNameOf(day.dateValue)) === fold(asked)
+      fold(ctx.dayNameOf(day.dateValue)) === fold(asked) ||
+      fold(ctx.weekdayOf(day.dateValue)) === fold(asked)
   );
   if (!days.length) {
     throw new Refused(

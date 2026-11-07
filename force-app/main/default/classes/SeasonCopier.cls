@@ -27,7 +27,14 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     List<Season__c> found = new List<Season__c>();
     if (Schema.sObjectType.Season__c.isAccessible()) {
       found = [
-        SELECT Id, Name, Camp__c, StartDate__c, EndDate__c, ShrinkShortWeek__c
+        SELECT
+          Id,
+          Name,
+          Camp__c,
+          StartDate__c,
+          EndDate__c,
+          ShrinkShortWeek__c,
+          NumberedDays__c
         FROM Season__c
         WHERE Id = :sourceSeasonId
         WITH USER_MODE
@@ -54,8 +61,9 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     Preview result = new Preview();
     result.startDate = source.StartDate__c.addDays(shiftDays);
     result.endDate = source.EndDate__c.addDays(shiftDays);
-    result.oldWeekday = WeekCalendar.weekdayName(source.StartDate__c);
-    result.newWeekday = WeekCalendar.weekdayName(result.startDate);
+    DayWords.use(source.Id);
+    result.oldWeekday = DayWords.say(source.StartDate__c);
+    result.newWeekday = DayWords.say(result.startDate);
     result.weekdaysChange = Math.mod(shiftDays, 7) != 0;
     result.weeks = new List<PreviewWeek>();
     for (Week__c week : sourceWeeks()) {
@@ -92,6 +100,7 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
       EndDate__c = source.EndDate__c.addDays(shiftDays),
       Status__c = 'Planning',
       ShrinkShortWeek__c = source.ShrinkShortWeek__c,
+      NumberedDays__c = source.NumberedDays__c,
       CopiedFrom__c = source.Id
     );
     log.saveTracked('Season', new List<SObject>{ season });

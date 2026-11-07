@@ -47,7 +47,7 @@ public with sharing class SpecialChanges {
     ScheduleSpecials.Special before,
     ScheduleSpecials.Special after
   ) {
-    String dayName = WeekCalendar.weekdayName(day);
+    String dayName = changes.say(day);
     if (before == null || after == null || before.itemId != after.itemId) {
       changes.addSpecialDay(
         dayName + ': ' + nameOf(before) + ' → ' + nameOf(after)

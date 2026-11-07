@@ -6,6 +6,7 @@
  * records share is refused naming both, never picked.
  */
 public with sharing class AgentSetupFields {
+  public static final String EARLY_DAY = 'early_day';
   private static final List<String> DAYS = new List<String>{
     'monday',
     'tuesday',
@@ -63,7 +64,7 @@ public with sharing class AgentSetupFields {
       'time_block' => FixedActivity__c.TimeBlock__c,
       'last_time_block' => FixedActivity__c.LastTimeBlock__c,
       'length' => FixedActivity__c.Length__c,
-      'early_day' => FixedActivity__c.EarlyDay__c,
+      EARLY_DAY => FixedActivity__c.EarlyDay__c,
       'early_blocks' => FixedActivity__c.EarlyBlocks__c,
       'location' => FixedActivity__c.Location__c
     },
@@ -161,6 +162,11 @@ public with sharing class AgentSetupFields {
       }
       Schema.SObjectField field = known.get(key);
       String typed = text(given.get(key));
+      if (key == EARLY_DAY) {
+        // "Day 3" in a numbered season is stored as that weekday (WEEK-1.7).
+        DayWords.use(found.seasonId);
+        typed = DayWords.weekdayFrom(typed);
+      }
       Object value = field.getDescribe().getType() ==
         Schema.DisplayType.REFERENCE
         ? AgentSetupNames.idCalled(key, typed, result)
@@ -168,7 +174,11 @@ public with sharing class AgentSetupFields {
       record.put(field, value);
       result.fields.add(field);
       result.said.add(
-        key.replace('_', ' ') + ' ' + shown(given.get(key), value)
+        key.replace('_', ' ') +
+          ' ' +
+          (key == EARLY_DAY
+            ? shownDay(given.get(key), value)
+            : shown(given.get(key), value))
       );
     }
     return result;
@@ -208,6 +218,13 @@ public with sharing class AgentSetupFields {
 
   private static String shown(Object asked, Object value) {
     return value == null ? 'left blank' : text(asked);
+  }
+
+  /** A stored weekday as the season says it; as it was asked when its days are named. */
+  private static String shownDay(Object asked, Object value) {
+    String stored = String.valueOf(value);
+    String said = DayWords.sayWeekday(stored);
+    return said == stored ? shown(asked, value) : said;
   }
 
   /**

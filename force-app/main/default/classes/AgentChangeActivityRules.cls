@@ -34,6 +34,9 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     refuseUnknown();
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
     refuseUnseen(seen);
+    if (given.containsKey('early_week_by_day')) {
+      AgentActivityRules.useSeasonOf(found.id);
+    }
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
     AgentActivityRules.lock(found.id);
@@ -140,7 +143,11 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
   private static Object valueOf(String key, String text) {
     Object value = text == '(blank)'
       ? null
-      : AgentSetupValues.valueOf(key, AgentActivityRules.fieldOf(key), text);
+      : AgentSetupValues.valueOf(
+          key,
+          AgentActivityRules.fieldOf(key),
+          AgentActivityRules.asStored(key, text)
+        );
     if (key == 'early_week_count' && value != null && (Decimal) value < 1) {
       throw new ShoreshException(
         'Give the early week count as a whole number, 1 or more.'

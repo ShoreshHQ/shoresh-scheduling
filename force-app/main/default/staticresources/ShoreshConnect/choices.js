@@ -62,6 +62,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = await load();
+  m.useSeasonDays(body.setup);
   const setup = body.setup || {};
   const situation = body.situation || {};
   const t = m.buildTerms(setup.labels || []);

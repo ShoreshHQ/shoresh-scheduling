@@ -29,9 +29,6 @@ public with sharing class ElectivePeriod {
 
   /** "Tuesday, Period 3": the time in words, for a message. */
   public String words() {
-    return Datetime.newInstance(day, Time.newInstance(12, 0, 0, 0))
-        .format('EEEE') +
-      ', ' +
-      blockName;
+    return DayWords.say(day) + ', ' + blockName;
   }
 }

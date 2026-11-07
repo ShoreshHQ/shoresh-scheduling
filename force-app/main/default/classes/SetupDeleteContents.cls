@@ -102,7 +102,12 @@ public with sharing class SetupDeleteContents {
     }
     Map<Id, List<String>> daysOf = new Map<Id, List<String>>();
     for (SpecialDate__c row : [
-      SELECT Day__c, SpecialDay__c, SpecialEvent__c
+      SELECT
+        Day__c,
+        SpecialDay__c,
+        SpecialEvent__c,
+        Season__c,
+        Season__r.NumberedDays__c
       FROM SpecialDate__c
       WHERE Week__c = :weekId
       WITH USER_MODE
@@ -114,7 +119,8 @@ public with sharing class SetupDeleteContents {
       List<String> days = daysOf.containsKey(itemId)
         ? daysOf.get(itemId)
         : new List<String>();
-      days.add(row.Day__c);
+      DayWords.use(row.Season__c, row.Season__r.NumberedDays__c);
+      days.add(DayWords.sayWeekday(row.Day__c));
       daysOf.put(itemId, days);
     }
     List<String> off = new List<String>();

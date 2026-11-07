@@ -15,6 +15,9 @@ import {
   UNORDERED_SET
 } from "c/shoreshElectiveEngine";
 import { foldName } from "c/shoreshImportEngine";
+import { weekdayName } from "c/shoreshDayNames";
+// For the connector, which assigns seats with this module (WEEK-1.7).
+export { setDayNaming } from "c/shoreshDayNames";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
 import { linkedIdOf, linkedOf, linkedRows, splitOf } from "./linked";
 
@@ -122,7 +125,14 @@ export function readRun(view) {
 
 const DAY_WORDS = (day) => {
   const label = dayLabel(day);
-  return [foldName(label.label), foldName(label.short)];
+  // A camper's choice may still name the weekday in a numbered-days season.
+  const weekday = weekdayName(day);
+  return [
+    foldName(label.label),
+    foldName(label.short),
+    foldName(weekday),
+    foldName(weekday.slice(0, 3))
+  ];
 };
 
 /** "Period 2", "2" and "Block 2" are one period (desktop preferenceCoordinateKeys.js). */

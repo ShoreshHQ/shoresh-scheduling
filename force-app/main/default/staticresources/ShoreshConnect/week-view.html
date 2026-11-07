@@ -7588,6 +7588,38 @@ if (_implicitStylesheets$1) {
   tmpl$1.stylesheets.push.apply(tmpl$1.stylesheets, _implicitStylesheets$1);
 }
 freezeTemplate(tmpl$1);/**
+ * How the season on screen says a day (WEEK-1.5 to WEEK-1.7, ADR 0025 choice 3): by name, or in a
+ * numbered-days season by number ("Day 3"), the date's place from the camp's first day of the
+ * week, restarting every week. Nothing is stored per date, so a closed date's neighbours keep
+ * their numbers, and stored keys stay weekdays: this is only for what a person reads.
+ *
+ * Held here rather than passed to every line that says a day: Camp Setup sets it each time it
+ * reads a season (c/shoreshImportEngine useSeasonDays), and the connector before each piece of
+ * work. Apex's DayWords does the same for the server.
+ */
+
+// The first day of the week (1 Monday ... 7 Sunday), or null when days are named.
+let firstDay = null;
+
+/** naming: { numbered, firstDay (1 Monday ... 7 Sunday) }; nothing given, days are named. */
+function setDayNaming(naming) {
+  firstDay = naming && naming.numbered ? naming.firstDay : null;
+}
+function numbered(weekday) {
+  return `Day ${(weekday - firstDay + 7) % 7 + 1}`;
+}
+
+/** 0 Monday ... 6 Sunday for "2026-06-29", whatever the browser's time zone; NaN if unreadable. */
+function weekdayIndex(dateValue) {
+  const [y, m, d] = String(dateValue).split("-").map(Number);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+
+/** "Day 3" for a date in a numbered season; null when days are named or it can't be read. */
+function numberedDay(dateValue) {
+  const index = weekdayIndex(dateValue);
+  return firstDay === null || Number.isNaN(index) ? null : numbered(index + 1);
+}/**
  * The schedule page's three views of one opened schedule, worked out from its days as the server
  * sends them (SchedulesController.openSchedule): Daily View (all groups for one day), Group View
  * (one group's week), and Activity View (where one activity runs across the week). Each grid is
@@ -7633,15 +7665,19 @@ function isElectiveItem(item) {
   return !!item && item.kind === "E" && Boolean(item.id);
 }
 
-/** "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
+/**
+ * "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone;
+ * "Day 1", "Day 1" and "Jun 29" in a numbered-days season (WEEK-1.7).
+ */
 function dayLabel(dateValue) {
   const [y, m, d] = String(dateValue).split("-").map(Number);
   const date = new Date(y, m - 1, d);
+  const numbered = numberedDay(dateValue);
   return {
-    label: date.toLocaleDateString("en-US", {
+    label: numbered || date.toLocaleDateString("en-US", {
       weekday: "long"
     }),
-    short: date.toLocaleDateString("en-US", {
+    short: numbered || date.toLocaleDateString("en-US", {
       weekday: "short"
     }),
     sub: date.toLocaleDateString("en-US", {
@@ -8987,6 +9023,7 @@ class WeekView extends LightningElement {
       return [];
     }
     const t = buildTerms(this.week.labels);
+    setDayNaming(this.week.dayNaming);
     const many = this.week.programs.length > 1;
     return this.week.programs.map((p, i) => {
       // As the Schedules page shows a published week (shoreshSchedules: shown).

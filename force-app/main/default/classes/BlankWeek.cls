@@ -53,13 +53,15 @@ public with sharing class BlankWeek {
   }
 
   private Week weekFor(Program__c program, Week__c week) {
+    // A first Generate says this week's days before any schedule is read.
+    DayWords.use(program.Season__c);
     items = setTimeItems(program, week.Id);
     Week result = new Week();
     for (Date day : runDays(program, week)) {
       BlankDay filled = filled(weekdayOf(day));
       result.days.add(new ScheduleDaySaves.DaySave(day, filled.grid, null));
       for (String line : filled.notPlaced) {
-        result.notPlaced.add(line + ' · ' + weekdayOf(day));
+        result.notPlaced.add(line + ' · ' + DayWords.say(day));
       }
     }
     return result;

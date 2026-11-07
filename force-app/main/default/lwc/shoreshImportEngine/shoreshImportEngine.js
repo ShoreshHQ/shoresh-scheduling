@@ -18,6 +18,7 @@ export { NO_DIVISION } from "./reading-constants";
 export { LAYOUTS } from "./layouts";
 export {
   campFirstDay,
+  useSeasonDays,
   campShortWeek,
   programDays,
   weeksOf,
