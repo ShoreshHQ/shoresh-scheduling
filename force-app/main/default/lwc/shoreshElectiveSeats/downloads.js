@@ -392,7 +392,8 @@ function exceptionRows(d) {
     body.push([
       `Given their ${t.sIn("LinkedChoice")} one period at a time`,
       s.camper.name,
-      "",
+      // The period it shares with a linked choice kept as a set; none when absent or locked.
+      (board.columnByKey.get(s.timeKey) || {}).words || "",
       splitWords(s, board)
     ])
   );

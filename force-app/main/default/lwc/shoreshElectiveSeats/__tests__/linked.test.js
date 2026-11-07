@@ -325,15 +325,14 @@ describe("what keeps a linked choice from being placed as a set", () => {
     };
     // Another linked choice of Drama over the same days: it shares their seats.
     const again = { ...BOTH_DAYS, id: "lc3", name: "Drama again" };
-    const run = readRun(
-      linkedView([BOTH_DAYS, pottery, again], {
-        // Pottery isn't offered on Tuesday.
-        times: [
-          runView().times[0],
-          { ...runView().times[1], offeringIds: ["o1", "o2"] }
-        ]
-      })
-    );
+    const view = linkedView([BOTH_DAYS, pottery, again], {
+      // Pottery isn't offered on Tuesday.
+      times: [
+        runView().times[0],
+        { ...runView().times[1], offeringIds: ["o1", "o2"] }
+      ]
+    });
+    const run = readRun(view);
     const { linkedChoices, problems } = linkedOf(run);
     expect(linkedChoices.map((c) => c.id)).toEqual([
       "lc1|d1",
@@ -368,6 +367,14 @@ describe("what keeps a linked choice from being placed as a set", () => {
         'Asked for "Drama both days", which shares Mon 12:30 with "Drama again", kept as a set'
       ]
     ]);
+    // The full report gives the period it shares in its Time column, as other problems do.
+    const shared = board.columnByKey.get(board.problems.split[0].timeKey);
+    expect(
+      reported(view, "Given their linked choice one period at a time").map(
+        (r) => r[2]
+      )
+    ).toEqual([shared.words]);
+    expect(shared.words).toBeTruthy();
   });
 });
 
@@ -563,11 +570,12 @@ describe("a camper who asked for a linked choice but can't have it as a set", ()
         'Asked for "Drama both days" but doesn\'t attend every period it covers'
       ]
     ]);
+    // Absent or locked: no shared period, so no time.
     expect(
       reported(view, "Given their linked choice one period at a time").map(
-        (r) => [r[1], r[3]]
+        (r) => [r[1], r[2], r[3]]
       )
-    ).toEqual(section.rows.map((r) => [r.text, r.aside]));
+    ).toEqual(section.rows.map((r) => [r.text, "", r.aside]));
   });
 
   it("nothing is said when the set is given", () => {
