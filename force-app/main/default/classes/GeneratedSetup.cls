@@ -18,6 +18,7 @@ public with sharing class GeneratedSetup {
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
+    DayWords.use(program.Season__r);
     // With its special days (ADR 0014 slice 4), in the same query.
     week = ProgramReads.weekWithSpecialDays(weekId, program);
     blocks = ProgramReads.blocksOf(program.Id);

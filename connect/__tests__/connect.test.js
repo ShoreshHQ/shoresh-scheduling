@@ -424,7 +424,8 @@ describe("Shoresh for AI tools and the command line", () => {
       acceptable: (l) => l.acceptable !== false,
       wordsOf: (l) => l.said || l.text,
       saidOf: () => "Swim, 2 of 4",
-      keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size })
+      keptLine: (l) => JSON.stringify({ k: l.key, s: l.same, n: l.size }),
+      nameDaysFor: () => {}
     });
     const seen = [];
     const answers = (more) => {
@@ -460,7 +461,8 @@ describe("Shoresh for AI tools and the command line", () => {
       loadedOf: (inputs) => ({ input: inputs }),
       counterWeek: () => ({ draft: { schedule: { days: [] } } }),
       lockedKeys: () => new Set(),
-      replacedDays: () => []
+      replacedDays: () => [],
+      nameDaysFor: () => {}
     });
     const withSeen = await call("read_week_checks", asked, {
       run: answers([]),
@@ -750,6 +752,87 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // WEEK-1.7
+  it("numberedDaysForAnAi: in a numbered season an AI may name the number, the date or the weekday, and its answers say the number", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim, art] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      items: [
+        ...day.items,
+        { id: swim, name: "Swim", kind: "A", gone: false },
+        { id: art, name: "Art", kind: "A", gone: false }
+      ],
+      rows: ["1,2,3,", "1,3,2,"],
+      locks: ["", ""]
+    }));
+    const moveOn = async (numbered, day) => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify({
+          inputs,
+          labels: [],
+          setup: { season: { [FIELD.Season.NumberedDays]: numbered } }
+        })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: "Done." })}`
+      ];
+      const done = await call(
+        "move_cell",
+        {
+          season: "Summer 2026",
+          week: "Week 1",
+          program: "Main",
+          day,
+          group: "Bunk 1",
+          time: "Period 1",
+          was: "Swim",
+          to_day: day,
+          to_group: "Bunk 1",
+          to_time: "Period 3"
+        },
+        {
+          run: async (args, stdin) => {
+            seen.push(stdin);
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, sent: seen[1] };
+    };
+    for (const day of ["Day 1", "day 1", "2026-06-29", "Monday"]) {
+      const { done, sent } = await moveOn(true, day);
+      expect(done.ok).toBe(true);
+      expect(sent).toContain("Day 1");
+      expect(sent).not.toContain("Monday");
+    }
+    // A named-days season has no Day 1, and says Monday as before.
+    const named = await moveOn(false, "Monday");
+    expect(named.done.ok).toBe(true);
+    expect(named.sent).toContain("Monday");
+    expect((await moveOn(false, "Day 1")).done.ok).toBe(false);
+  });
+
   // API-1.38, API-1.39, API-1.40
   it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -868,7 +951,8 @@ describe("Shoresh for AI tools and the command line", () => {
         counterWeek: () => ({ draft: { schedule: { days: [] } } }),
         weekMeasure: () => "measure",
         readKept: () => [],
-        counterWords: () => ({ placed: "6 of 8 placed" })
+        counterWords: () => ({ placed: "6 of 8 placed" }),
+        nameDaysFor: () => {}
       }),
       edits
     });

@@ -85,7 +85,7 @@ public with sharing class ImportUndoSpecialDays {
   }
 
   /** The records named, with the places of the activities among them. */
-  private static Set<Id> withPlaces(Set<Id> named) {
+  public static Set<Id> withPlaces(Set<Id> named) {
     Set<Id> result = new Set<Id>(named);
     for (Activity__c activity : [
       SELECT Location__c
@@ -99,7 +99,7 @@ public with sharing class ImportUndoSpecialDays {
   }
 
   /** Every record a schedule names: its groups and its items (a trip names none). */
-  private static Set<Id> referencesIn(ScheduleGrid grid) {
+  public static Set<Id> referencesIn(ScheduleGrid grid) {
     Set<Id> result = new Set<Id>();
     if (grid == null) {
       return result;
@@ -113,7 +113,7 @@ public with sharing class ImportUndoSpecialDays {
     return result;
   }
 
-  private static void addId(Set<Id> ids, String value) {
+  public static void addId(Set<Id> ids, String value) {
     if (String.isBlank(value)) {
       return;
     }

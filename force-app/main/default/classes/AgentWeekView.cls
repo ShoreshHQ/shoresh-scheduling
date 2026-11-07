@@ -74,6 +74,7 @@ global with sharing class AgentWeekView {
       'season' => season.Name,
       'week' => week.Name,
       'labels' => CampLabels.forCamp(campId).all(),
+      'dayNaming' => DayWords.namingOf(season.Id),
       'programs' => programs,
       'opens' => opens(campId, season.Id, first)
     };

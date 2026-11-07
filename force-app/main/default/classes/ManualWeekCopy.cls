@@ -84,7 +84,8 @@ public with sharing class ManualWeekCopy {
       Integer n = seen.containsKey(weekday) ? seen.get(weekday) + 1 : 1;
       seen.put(weekday, n);
       result.put(n == 1 ? weekday : weekday + ' ' + n, day);
-      names.put(day.day, n == 1 ? weekday : weekday + ' ' + day.day.format());
+      String said = DayWords.say(day.day);
+      names.put(day.day, n == 1 ? said : said + ' ' + day.day.format());
     }
     return result;
   }
