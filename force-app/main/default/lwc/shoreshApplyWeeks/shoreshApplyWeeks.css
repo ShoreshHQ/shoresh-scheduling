@@ -1,0 +1,62 @@
+@import "c/shoreshTokens";
+
+/* Apply to other weeks: the weeks, one row each, in the app's asking dialog (c-shoresh-ask). */
+.weeks,
+.lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week {
+  padding: var(--shoresh-s2) 0;
+  border-bottom: 1px solid var(--shoresh-rule);
+}
+
+.week:last-child {
+  border-bottom: none;
+}
+
+.week-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2);
+  align-items: baseline;
+  /* A target at least 24px tall (WCAG 2.5.8). */
+  min-height: 24px;
+}
+
+.week-name {
+  font-weight: 600;
+}
+
+.week-said,
+.week-published,
+.foot-said {
+  color: var(--shoresh-text-2);
+}
+
+.lines {
+  margin-top: var(--shoresh-s1);
+  padding-left: 22px;
+  font-size: 12px;
+}
+
+.line {
+  display: flex;
+  gap: var(--shoresh-s1);
+  align-items: baseline;
+}
+
+.foot {
+  display: flex;
+  gap: var(--shoresh-s2);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.foot-said {
+  flex: 1;
+  text-align: left;
+  font-size: 12px;
+}

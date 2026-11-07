@@ -14,6 +14,7 @@ public with sharing class OutgoingPublished {
   public class Thing {
     public Date day;
     public String groupName;
+    public String groupId;
     public String block;
     public String startTime;
     public String endTime;
@@ -23,7 +24,37 @@ public with sharing class OutgoingPublished {
   /** Every group's things in the week, day by day, or refused when nothing in it is published. */
   public static List<Thing> of(Season__c season, String week) {
     List<Id> published = publishedIn(season, week);
-    // Each day's parts, by schedule in program order, then by day.
+    Map<Date, Map<Id, List<ScheduleDay__c>>> parts = partsOf(published);
+    // The days a special day replaced when each schedule was published (API-6.5).
+    Map<Id, Map<Date, ScheduleSpecials.Special>> replaced = SpecialsCarried.daysGoingOut(
+      published
+    );
+    List<Date> days = new List<Date>(parts.keySet());
+    days.sort();
+    List<Thing> things = new List<Thing>();
+    for (Date day : days) {
+      for (Id scheduleId : published) {
+        if (parts.get(day).containsKey(scheduleId)) {
+          ScheduleDays.DayGrid regular = ScheduleDays.readDay(
+            day,
+            parts.get(day).get(scheduleId)
+          );
+          ScheduleSpecials.Special special = replaced.get(scheduleId).get(day);
+          if (special == null) {
+            addDay(regular, things);
+          } else {
+            OutgoingSpecialDay.add(special, regular, things);
+          }
+        }
+      }
+    }
+    return things;
+  }
+
+  /** Each day's parts, by schedule in program order, then by day. */
+  private static Map<Date, Map<Id, List<ScheduleDay__c>>> partsOf(
+    List<Id> published
+  ) {
     Map<Date, Map<Id, List<ScheduleDay__c>>> parts = new Map<Date, Map<Id, List<ScheduleDay__c>>>();
     for (ScheduleDay__c part : [
       SELECT
@@ -47,20 +78,7 @@ public with sharing class OutgoingPublished {
       }
       bySchedule.get(part.Schedule__c).add(part);
     }
-    List<Date> days = new List<Date>(parts.keySet());
-    days.sort();
-    List<Thing> things = new List<Thing>();
-    for (Date day : days) {
-      for (Id scheduleId : published) {
-        if (parts.get(day).containsKey(scheduleId)) {
-          addDay(
-            ScheduleDays.readDay(day, parts.get(day).get(scheduleId)),
-            things
-          );
-        }
-      }
-    }
-    return things;
+    return parts;
   }
 
   /** The week's published schedules the user can see, in program order; refused when none. */
@@ -123,14 +141,16 @@ public with sharing class OutgoingPublished {
       ' Schedules go out once a week is published.';
   }
 
-  private static void addDay(ScheduleDays.DayGrid day, List<Thing> things) {
+  public static String unreadable(Date day) {
+    return 'The published schedule for ' +
+      day.format() +
+      ' can\'t be read, so this week can\'t go out. Publish the week again.';
+  }
+
+  public static void addDay(ScheduleDays.DayGrid day, List<Thing> things) {
     // Shown, never hidden: a day that can't be read stops the week going out without it.
     if (day.grid == null) {
-      throw new ShoreshException(
-        'The published schedule for ' +
-          day.day.format() +
-          ' can\'t be read, so this week can\'t go out. Publish the week again.'
-      );
+      throw new ShoreshException(unreadable(day.day));
     }
     ScheduleGrid grid = day.grid;
     for (Integer g = 0; g < grid.groups.size(); g++) {
@@ -149,6 +169,7 @@ public with sharing class OutgoingPublished {
         open = new Thing();
         open.day = day.day;
         open.groupName = grid.groups[g].name;
+        open.groupId = grid.groups[g].id;
         open.block = grid.blocks[b].name;
         open.startTime = grid.blocks[b].startTime;
         open.endTime = grid.blocks[b].endTime;

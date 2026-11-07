@@ -7,6 +7,7 @@ import {
   detectLayout,
   LAYOUTS,
   pageDay,
+  pageDayNumbers,
   pageName,
   pageWeek,
   readPage
@@ -22,6 +23,8 @@ import {
 import { WEEKDAYS, looseKey } from "./engine.shoreshImportEngine.text.mjs";
 import { withoutWeek } from "./engine.shoreshImportEngine.weekLabels.mjs";
 import { identifyGroups } from "./engine.shoreshImportEngine.identity.mjs";
+import { countDaysFrom } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+import { campFirstDay, firstDayOnceSaved } from "./engine.shoreshImportEngine.weeks.mjs";
 import { groupDivisionName } from "./engine.shoreshImportEngine.noDivision.mjs";
 import { oneGroupDivisions } from "./engine.shoreshImportEngine.together.mjs";
 
@@ -208,15 +211,22 @@ function readPages(pages, keys, existing, layouts, answers) {
       name: pageName(page),
       // Asked which day instead (INGEST-4.14), so not noted as unread.
       noDay: read.noDay && !(one && one.ask),
-      placements: read.placements.length
+      placements: read.placements.length,
+      // WEEK-2.6: the numbers it said its days by; a page read for nothing said nothing.
+      dayNumbers: read.placements.length ? pageDayNumbers(page, found[i]) : []
     };
   });
+  // Each number once, in order.
+  const dayNumbers = [...new Set(info.flatMap((p) => p.dayNumbers))].sort(
+    (a, b) => a - b
+  );
   return {
     info,
     placements: placesInBrackets(placements, existing),
     noted,
     pages: named,
-    asks
+    asks,
+    dayNumbers
   };
 }
 
@@ -399,17 +409,36 @@ export function readImport(input) {
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
   const files = [...(input.files || [])].sort(byNameThenContent);
-  const { pages, unread, colours, skipped } = filesToPages(files, {
-    maxWeek: seasonWeekCount(input.existing)
-  });
-  const keys = pageKeys(pages);
-  const read = readPages(
-    pages,
-    keys,
-    input.existing,
-    input.layouts || {},
-    answers
-  );
+  const readFrom = (firstDay) => {
+    // WEEK-2.6: a file's "Day 1" is this first day of the week, whatever was read before.
+    countDaysFrom(firstDay);
+    const found = filesToPages(files, {
+      maxWeek: seasonWeekCount(input.existing)
+    });
+    const keys = pageKeys(found.pages);
+    return {
+      ...found,
+      read: readPages(
+        found.pages,
+        keys,
+        input.existing,
+        input.layouts || {},
+        answers
+      )
+    };
+  };
+  // WEEK-2.6: numbered by the first day the season has once saved, so the review and the saved
+  // season agree: a full week of numbers into a season with no programs starts on its first date.
+  const now = campFirstDay(input.existing);
+  let reading = readFrom(now);
+  const saved = firstDayOnceSaved(input.existing, now, reading.read.dayNumbers);
+  if (saved !== now) {
+    const again = readFrom(saved);
+    const settles =
+      firstDayOnceSaved(input.existing, saved, again.read.dayNumbers) === saved;
+    reading = settles ? again : readFrom(now);
+  }
+  const { unread, colours, skipped, read } = reading;
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -527,6 +556,7 @@ export function readImport(input) {
     groupAsks: identified.asks,
     splitAsks: together.asks,
     timeAsks: [...read.asks, ...timeAsks],
-    identities: identified.rules
+    identities: identified.rules,
+    dayNumbers: read.dayNumbers
   };
 }

@@ -17,6 +17,7 @@
 import { UNORDERED_SET } from "./engine.shoreshElectiveEngine.shoreshElectiveEngine.mjs";
 import { headingMeaning } from "./engine.shoreshChoicesReader.shoreshChoicesReader.mjs";
 import { sanitizeCell } from "./engine.shoreshLists.shoreshLists.mjs";
+import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { dayLabel, shortClock } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
 import { buildBoard, parseChoices, readRun, timeWords } from "./engine.shoreshElectiveSeats.seats.mjs";
 
@@ -32,16 +33,9 @@ const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const guard = (rows) =>
   rows.map((row) => row.map((cell) => sanitizeCell(cell)));
 
-/** "14 Oct", whatever the browser's language. */
-export function shortDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return `${date.getDate()} ${date.toLocaleDateString("en-GB", { month: "short" })}`;
-}
-
 /**
  * Everything the downloads share, worked out once: the run as the screen reads it, its board,
- * the words of its header ("Chugim · Week 3 · Final 14 Oct"), and the names a final run keeps.
+ * the words of its header ("Chugim · Week 3 · Final Oct 14"), and the names a final run keeps.
  */
 export function readDownload(download, t) {
   const view = download.view;
@@ -310,8 +304,8 @@ function rosterRows(d) {
           .sort(d.byBunkThenName);
         const seats = row.offering.noLimit
           ? "No limit"
-          : row.offering.seats == null
-            ? ""
+          : row.offering.seats == null || Number(row.offering.seats) === 0
+            ? "" // blank or 0: no limit, its seats not chosen (ELECT-4.1)
             : Number(row.offering.seats);
         people.forEach((p, i) =>
           body.push([
@@ -360,6 +354,15 @@ function exceptionRows(d) {
       "",
       x.column.words,
       `${x.offering.name}: ${x.count} of ${x.seats}`
+    ])
+  );
+  // Blank or 0 seats, seated with no limit: the screen's "needs its seats chosen" (ELECT-4.1).
+  p.noSeats.forEach((o) =>
+    body.push([
+      `Needs its ${t.pIn("Seats")} chosen`,
+      "",
+      "",
+      `Choose how many ${t.pIn("Seats")} "${o.name}" has`
     ])
   );
   p.stray.forEach((s) =>

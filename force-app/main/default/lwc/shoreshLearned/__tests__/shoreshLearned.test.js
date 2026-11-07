@@ -161,14 +161,14 @@ describe("c-shoresh-learned: one running list", () => {
       [
         "Swim is an activity",
         "From a former user's answer in an import",
-        "12 Jul",
+        "Jul 12",
         null
       ],
-      ["Riflery: Activity deleted", "Deleted by you", "10 Jul", null],
+      ["Riflery: Activity deleted", "Deleted by you", "Jul 10", null],
       [
         "Carpool is a fixed activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         null
       ]
     ]);
@@ -207,7 +207,7 @@ describe("c-shoresh-learned: one running list", () => {
     ]);
     // What Shoresh already knew is not searched.
     expect($$(element, "[data-rule]")).toHaveLength(0);
-    search.value = "20 jul";
+    search.value = "jul 20";
     search.dispatchEvent(new CustomEvent("input"));
     await flush();
     expect(lines(element)).toHaveLength(1);
@@ -255,8 +255,8 @@ describe("c-shoresh-learned: one running list", () => {
       answerId: "2"
     });
     expect(lines(element)).toEqual([
-      ["Riflery: Activity deleted", "Forgotten by you", "28 Oct", null],
-      ["Riflery: Activity deleted", "Deleted by Dana", "3 Jul", "Forgotten"]
+      ["Riflery: Activity deleted", "Forgotten by you", "Oct 28", null],
+      ["Riflery: Activity deleted", "Deleted by Dana", "Jul 3", "Forgotten"]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Forgotten. It can come back next import."
@@ -286,9 +286,9 @@ describe("c-shoresh-learned: one running list", () => {
       answerId: "2"
     });
     expect(lines(element)).toEqual([
-      ["Riflery: Activity deleted", "Undone by you", "28 Oct", null],
-      ["Riflery: Activity deleted", "Forgotten by you", "28 Oct", "Undone"],
-      ["Riflery: Activity deleted", "Deleted by Dana", "3 Jul", "Forgotten"]
+      ["Riflery: Activity deleted", "Undone by you", "Oct 28", null],
+      ["Riflery: Activity deleted", "Forgotten by you", "Oct 28", "Undone"],
+      ["Riflery: Activity deleted", "Deleted by Dana", "Jul 3", "Forgotten"]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Remembered again."
@@ -351,11 +351,11 @@ describe("c-shoresh-learned: one running list", () => {
       answer: "fixed"
     });
     expect(lines(element)).toEqual([
-      ["Lunch is a fixed activity", "Changed by you", "26 Oct", null],
+      ["Lunch is a fixed activity", "Changed by you", "Oct 26", null],
       [
         "Lunch is an activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         "Updated"
       ]
     ]);
@@ -384,12 +384,12 @@ describe("c-shoresh-learned: one running list", () => {
       oldId: "1"
     });
     expect(lines(element)).toEqual([
-      ["Lunch is an activity", "Undone by you", "26 Oct", null],
-      ["Lunch is a fixed activity", "Changed by you", "26 Oct", "Undone"],
+      ["Lunch is an activity", "Undone by you", "Oct 26", null],
+      ["Lunch is a fixed activity", "Changed by you", "Oct 26", "Undone"],
       [
         "Lunch is an activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         "Updated"
       ]
     ]);
@@ -565,8 +565,8 @@ describe("c-shoresh-learned: one running list", () => {
     expect(lines(element)).toEqual([
       [
         "Specialty 4 is a fixed activity",
-        "Auto-applied in the 17 Jul import",
-        "17 Jul",
+        "Auto-applied in the Jul 17 import",
+        "Jul 17",
         null
       ]
     ]);
@@ -750,7 +750,7 @@ describe("patterns, and what Shoresh already knew", () => {
     expect(lines(element)[0]).toEqual([
       "Lunch 1, Lunch 2 and Lunch 3 are recurring activities",
       "Forgotten by you",
-      "11 Jul",
+      "Jul 11",
       null
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(

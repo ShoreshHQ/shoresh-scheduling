@@ -59,15 +59,15 @@ describe("the running list", () => {
       [
         "Swim is an activity",
         "From a former user's answer in an import",
-        "12 Jul",
+        "Jul 12",
         "",
         true
       ],
-      ["Riflery: Activity deleted", "Deleted by you", "10 Jul", "", true],
+      ["Riflery: Activity deleted", "Deleted by you", "Jul 10", "", true],
       [
         "Carpool is a fixed activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         "",
         true
       ]
@@ -86,7 +86,7 @@ describe("the running list", () => {
       [
         "Lunch is a fixed activity",
         "From your answer in an import",
-        "3 Jul",
+        "Jul 3",
         "",
         true
       ]
@@ -107,11 +107,11 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Changed by you", "20 Jul", "", true],
+      ["Lunch is a fixed activity", "Changed by you", "Jul 20", "", true],
       [
         "Lunch is an activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         "Updated",
         false
       ]
@@ -140,25 +140,25 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Undone by you", "11 Jul", "", true],
+      ["Lunch is a fixed activity", "Undone by you", "Jul 11", "", true],
       [
         "Lunch is a fixed activity",
         "Forgotten by you",
-        "11 Jul",
+        "Jul 11",
         "Undone",
         false
       ],
       [
         "Lunch is a fixed activity",
         "From Dana's answer in an import",
-        "10 Jul",
+        "Jul 10",
         "Forgotten",
         false
       ],
       [
         "Lunch is an activity",
         "From Dana's answer in an import",
-        "3 Jul",
+        "Jul 3",
         "Replaced",
         false
       ]
@@ -180,8 +180,8 @@ describe("the running list", () => {
     expect(view(lines)).toEqual([
       [
         "Specialty 4 is a fixed activity",
-        "Auto-applied in the 17 Jul import",
-        "17 Jul",
+        "Auto-applied in the Jul 17 import",
+        "Jul 17",
         "",
         false
       ]
@@ -207,8 +207,8 @@ describe("the patterns' steps, worked out from the history", () => {
       .filter((l) => l.derived && l.template === "numbered")
       .map((l) => [l.how, l.when, !!l.current]);
     expect(steps).toEqual([
-      ["Became Steady (after 3 answers)", "10 Jul", true],
-      ["Became Suggested (after 2 answers)", "3 Jul", false]
+      ["Became Steady (after 3 answers)", "Jul 10", true],
+      ["Became Suggested (after 2 answers)", "Jul 3", false]
     ]);
     const current = lines.find((l) => l.current && l.template === "numbered");
     expect(current.title).toBe(
@@ -232,8 +232,8 @@ describe("the patterns' steps, worked out from the history", () => {
         .filter((l) => l.derived && l.template === "numbered")
         .map((l) => [l.how, l.when])
     ).toEqual([
-      ["Demoted (an answer disagreed)", "17 Jul"],
-      ["Became Suggested (after 2 answers)", "3 Jul"]
+      ["Demoted (an answer disagreed)", "Jul 17"],
+      ["Became Suggested (after 2 answers)", "Jul 3"]
     ]);
   });
 
@@ -260,9 +260,9 @@ describe("the patterns' steps, worked out from the history", () => {
       .filter((l) => l.derived && l.template === "numbered")
       .map((l) => [l.how, l.when]);
     expect(steps).toEqual([
-      ["Became Suggested (after 2 answers)", "12 Jul"],
-      ["Demoted (an answer disagreed)", "11 Jul"],
-      ["Became Suggested (after 2 answers)", "10 Jul"]
+      ["Became Suggested (after 2 answers)", "Jul 12"],
+      ["Demoted (an answer disagreed)", "Jul 11"],
+      ["Became Suggested (after 2 answers)", "Jul 10"]
     ]);
     expect(
       lines.find((l) => l.current && l.template === "numbered")

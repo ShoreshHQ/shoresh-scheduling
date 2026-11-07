@@ -3,6 +3,7 @@ import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 
 export { seededLines } from "c/shoreshLists";
 
@@ -99,7 +100,7 @@ export function placedDays(brief, weeks, weekWords) {
             weekId: onDay.weekId,
             weekName: weeks[at].Name,
             day: onDay.day,
-            text: `${one} ${at + 1} ${SHORT_DAYS[onDay.day] || onDay.day}`
+            text: `${one} ${at + 1} ${numberedWeekday(onDay.day) || SHORT_DAYS[onDay.day] || onDay.day}`
           };
     })
     .filter((placed) => placed);
@@ -307,7 +308,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     return placedDays(this.brief, this.weeks, this.weekWords).map((placed) => ({
       ...placed,
       key: `${placed.weekId}|${placed.day}`,
-      offLabel: `Take ${this.name} off ${placed.day} of ${placed.weekName}`
+      offLabel: `Take ${this.name} off ${spokenWeekday(placed.day)} of ${placed.weekName}`
     }));
   }
 
@@ -388,7 +389,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     const chosen = this.placing && this.placing.day;
     return weekdaysOf(week).map((day) => ({
       value: day,
-      label: day,
+      label: spokenWeekday(day),
       selected: day === chosen
     }));
   }
@@ -548,7 +549,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
       });
     } catch (e) {
       this.placedSaid = failed(
-        `${this.name} wasn't taken off ${placed.day} of ${placed.weekName}. Nothing was changed.`,
+        `${this.name} wasn't taken off ${spokenWeekday(placed.day)} of ${placed.weekName}. Nothing was changed.`,
         e
       );
     } finally {
@@ -557,7 +558,9 @@ export default class ShoreshSpecialDetails extends LightningElement {
   }
 
   get putBackLabel() {
-    return this.takenOff ? `Put back ${this.name} on ${this.takenOff.day}` : "";
+    return this.takenOff
+      ? `Put back ${this.name} on ${spokenWeekday(this.takenOff.day)}`
+      : "";
   }
 
   /**

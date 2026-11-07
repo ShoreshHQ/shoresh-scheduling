@@ -144,3 +144,6 @@ These never bend for Shoresh.
 - **CORE-6.9** An Accept MUST be kept with the week, so the line stays accepted for anyone who
   opens that week later (still under CORE-6.8); a Generated build MUST clear the week's accepts
   (desktop: Rebuild clears set-aside findings; Greg 2026-10-30).
+- **CORE-6.10** A short date MUST read month first, "Jul 3", on every screen, download and message
+  (Greg 2026-11-06). Salesforce differs here from the desktop's "3 Jul" by that decision. A date
+  Salesforce itself formats MUST follow the person's own Salesforce locale instead.

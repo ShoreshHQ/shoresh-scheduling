@@ -10,17 +10,6 @@
 public with sharing class AgentWeeks {
   public static final String THROUGH_AGENT = 'ThroughAgent';
   public static final String NO_ACCESS = 'This user can\'t change schedules in Shoresh. A Salesforce admin can give it the "Shoresh Scheduler" permission set.';
-  // 1900-01-01 was a Monday.
-  private static final Date A_MONDAY = Date.newInstance(1900, 1, 1);
-  private static final List<String> DAY_NAMES = new List<String>{
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday'
-  };
 
   /** Someone else's change got in the way: nothing was changed (answered 409). */
   public class ConflictException extends Exception {
@@ -146,20 +135,19 @@ public with sharing class AgentWeeks {
       : 'The ' + things + ': ' + String.join(names, ', ') + '.';
   }
 
-  /** The day of the week asked for, by its weekday ("Monday") or date ("2026-06-29"). */
+  /** The day of the week asked for, by its weekday ("Monday"), date ("2026-06-29") or number ("Day 3": WEEK-1.7). */
   public static ScheduleDays.DayGrid dayOf(
     List<ScheduleDays.DayGrid> days,
     String asked,
     String weekName
   ) {
     if (String.isBlank(asked)) {
-      throw new ShoreshException('Say which day (day), like Monday.');
+      throw new ShoreshException(
+        'Say which day (day), like ' + DayWords.sayWeekday('Monday') + '.'
+      );
     }
     for (ScheduleDays.DayGrid day : days) {
-      if (
-        String.valueOf(day.day) == asked ||
-        IncomingBatch.fold(dayName(day.day)) == IncomingBatch.fold(asked)
-      ) {
+      if (isDayAsked(day.day, asked)) {
         if (day.grid == null) {
           throw new ShoreshException(
             'This day could not be read: ' + day.problem + '.'
@@ -173,9 +161,12 @@ public with sharing class AgentWeeks {
     );
   }
 
-  /** "Monday", as Generated Schedule names a day. */
-  public static String dayName(Date day) {
-    return DAY_NAMES[Math.mod(A_MONDAY.daysBetween(day), 7)];
+  /** Whether this is the day asked: its date, weekday or number. */
+  private static Boolean isDayAsked(Date day, String asked) {
+    return String.valueOf(day) == asked ||
+      IncomingBatch.fold(WeekCalendar.weekdayName(day)) ==
+      IncomingBatch.fold(asked) ||
+      IncomingBatch.fold(DayWords.say(day)) == IncomingBatch.fold(asked);
   }
 
   /**

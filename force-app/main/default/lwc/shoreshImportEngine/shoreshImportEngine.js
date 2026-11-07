@@ -18,6 +18,7 @@ export { NO_DIVISION } from "./reading-constants";
 export { LAYOUTS } from "./layouts";
 export {
   campFirstDay,
+  nameDaysFor,
   campShortWeek,
   programDays,
   weeksOf,
@@ -231,6 +232,8 @@ export {
   tidy,
   looseKey,
   dayOf,
+  dayNumberIn,
+  dayNumberOf,
   timeRange,
   clock,
   shortClock,

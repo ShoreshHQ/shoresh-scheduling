@@ -45,10 +45,16 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
       new Map<String, Object>{ 'recordId' => found.id },
       AccessLevel.USER_MODE
     )[0];
+    DayWords.use(found.seasonId);
     List<String> said = new List<String>();
     for (String key : keys) {
+      String value = shown(AgentSetupFields.fieldOf(found.term, key), now);
       said.add(
-        key + ': ' + shown(AgentSetupFields.fieldOf(found.term, key), now)
+        key +
+          ': ' +
+          (key == AgentSetupFields.EARLY_DAY
+            ? DayWords.sayWeekday(value)
+            : value)
       );
     }
     // The weeks it runs in and who it covers, as lists (API-1.53, API-1.54).

@@ -1,6 +1,6 @@
 import { buildTerms } from "c/shoreshTerms";
 import { blankSetupNote, floorNote, reasonFor } from "./words";
-import { DAY_NAMES, checkWeek, weekdayOf } from "./checks";
+import { checkWeek, dayWord } from "./checks";
 import {
   readElectivePlaces,
   readLocations as readLocationMap
@@ -284,7 +284,7 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     model.mode = MODE.FILL_OPEN;
   }
   const keeping = model.mode === MODE.FILL_OPEN && Boolean(keep);
-  const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
+  const words = { t, dayName: dayWord };
   // A build fills the bar from `from` by `share`; `once` (it may be the only build in its part of
   // the bar): once that is known, it runs on to `end` instead.
   // The run's work so far, over every build (RUN_WORK).
@@ -642,11 +642,7 @@ export function checkGeneratedWeek(input) {
     days: withReplaced(shown, replaced),
     // The days checked and counted: those a special day doesn't replace.
     checkedDays: shown,
-    checked: checkWeek(
-      shown,
-      { ...check, isAway },
-      { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" }
-    ),
+    checked: checkWeek(shown, { ...check, isAway }, { t, dayName: dayWord }),
     isAway,
     // The Why list's line for each minimum this short week lowered (WEEK-4.2).
     shortWeek: shortWeekLines(activities.running, t),

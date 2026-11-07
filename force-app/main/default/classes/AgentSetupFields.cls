@@ -6,6 +6,7 @@
  * records share is refused naming both, never picked.
  */
 public with sharing class AgentSetupFields {
+  public static final String EARLY_DAY = 'early_day';
   private static final List<String> DAYS = new List<String>{
     'monday',
     'tuesday',
@@ -63,7 +64,7 @@ public with sharing class AgentSetupFields {
       'time_block' => FixedActivity__c.TimeBlock__c,
       'last_time_block' => FixedActivity__c.LastTimeBlock__c,
       'length' => FixedActivity__c.Length__c,
-      'early_day' => FixedActivity__c.EarlyDay__c,
+      EARLY_DAY => FixedActivity__c.EarlyDay__c,
       'early_blocks' => FixedActivity__c.EarlyBlocks__c,
       'location' => FixedActivity__c.Location__c
     },
@@ -138,40 +139,61 @@ public with sharing class AgentSetupFields {
     Map<String, Schema.SObjectField> known = FIELDS.get(found.term);
     Put result = new Put();
     result.found = found;
-    for (String key : given.keySet()) {
-      Schema.SObjectField field = known.get(key);
-      if (field == null) {
-        throw new ShoreshException(
-          known.isEmpty()
-            ? AgentSetupFields.aOrAn(found.kind) +
-              ' has nothing to set but its name (rename_setup_record renames it).'
-            : AgentSetupFields.aOrAn(found.kind) +
-              ' has no field "' +
-              key.left(40) +
-              '". Its fields: ' +
-              String.join(namesOf(found.term), ', ') +
-              '.'
-        );
-      }
-    }
+    refuseUnknown(given, known, found);
     // In the screen's order, whatever order they were asked in (same ask, same answer).
     for (String key : known.keySet()) {
-      if (!given.containsKey(key)) {
-        continue;
+      if (given.containsKey(key)) {
+        record.put(known.get(key), readField(key, given.get(key), result));
       }
-      Schema.SObjectField field = known.get(key);
-      String typed = text(given.get(key));
-      Object value = field.getDescribe().getType() ==
-        Schema.DisplayType.REFERENCE
-        ? AgentSetupNames.idCalled(key, typed, result)
-        : AgentSetupValues.valueOf(key, field, typed);
-      record.put(field, value);
-      result.fields.add(field);
-      result.said.add(
-        key.replace('_', ' ') + ' ' + shown(given.get(key), value)
-      );
     }
     return result;
+  }
+
+  private static void refuseUnknown(
+    Map<String, Object> given,
+    Map<String, Schema.SObjectField> known,
+    AgentSetupRecords.Found found
+  ) {
+    for (String key : given.keySet()) {
+      if (known.get(key) == null) {
+        throw new ShoreshException(noField(key, found));
+      }
+    }
+  }
+
+  private static String noField(String key, AgentSetupRecords.Found found) {
+    List<String> names = namesOf(found.term);
+    return names.isEmpty()
+      ? aOrAn(found.kind) +
+        ' has nothing to set but its name (rename_setup_record renames it).'
+      : aOrAn(found.kind) +
+        ' has no field "' +
+        key.left(40) +
+        '". Its fields: ' +
+        String.join(names, ', ') +
+        '.';
+  }
+
+  /** One field asked: its value as the table would take it, said. */
+  private static Object readField(String key, Object asked, Put result) {
+    Schema.SObjectField field = FIELDS.get(result.found.term).get(key);
+    String typed = text(asked);
+    if (key == EARLY_DAY) {
+      // "Day 3" in a numbered season is stored as that weekday (WEEK-1.7).
+      DayWords.use(result.found.seasonId);
+      typed = DayWords.weekdayFrom(typed);
+    }
+    Object value = field.getDescribe().getType() == Schema.DisplayType.REFERENCE
+      ? AgentSetupNames.idCalled(key, typed, result)
+      : AgentSetupValues.valueOf(key, field, typed);
+    result.fields.add(field);
+    String said = shown(asked, value);
+    result.said.add(
+      key.replace('_', ' ') +
+        ' ' +
+        (key == EARLY_DAY ? DayWords.sayStored(value, said) : said)
+    );
+    return value;
   }
 
   /**
@@ -194,7 +216,7 @@ public with sharing class AgentSetupFields {
     }
     if (!(fields instanceof Map<String, Object>)) {
       throw new ShoreshException(
-        'The fields are given by name, like "fields": {"length": "2"}.'
+        'This has to be given as names and values, not as one value.'
       );
     }
     return (Map<String, Object>) fields;
