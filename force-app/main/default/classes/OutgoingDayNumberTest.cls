@@ -175,16 +175,16 @@ private class OutgoingDayNumberTest {
     sayDay1(new OutgoingGroupSchedule(), answer);
     sayDay1(new OutgoingGroupSchedule(), formstack.received[0].getBody());
     Assert.areEqual(
-      'week,date,group,time_block,start_time,end_time,activity,day\n' +
+      'week,date,group,time_block,start_time,end_time,activity,division,day\n' +
         'Week 1,' +
         day +
-        ',Group A,Period 1,09:00,09:45,Swim,Day 1\n' +
+        ',Group A,Period 1,09:00,09:45,Swim,Juniors,Day 1\n' +
         'Week 1,' +
         day +
-        ',Group B,Period 1,09:00,09:45,Flagpole,Day 1\n' +
+        ',Group B,Period 1,09:00,09:45,Flagpole,Juniors,Day 1\n' +
         'Week 1,' +
         day +
-        ',Group B,Lunch,09:00,09:45,Chugim,Day 1\n',
+        ',Group B,Lunch,09:00,09:45,Chugim,Juniors,Day 1\n',
       file
     );
   }
@@ -247,16 +247,16 @@ private class OutgoingDayNumberTest {
       answer
     );
     Assert.areEqual(
-      'week,date,group,time_block,start_time,end_time,activity\n' +
+      'week,date,group,time_block,start_time,end_time,activity,division\n' +
         'Week 1,' +
         day +
-        ',Group A,Period 1,09:00,09:45,Swim\n' +
+        ',Group A,Period 1,09:00,09:45,Swim,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Period 1,09:00,09:45,Flagpole\n' +
+        ',Group B,Period 1,09:00,09:45,Flagpole,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Lunch,09:00,09:45,Chugim\n',
+        ',Group B,Lunch,09:00,09:45,Chugim,Juniors\n',
       file
     );
   }
