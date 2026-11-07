@@ -25,36 +25,40 @@ const LIKE = "BR E1 %";
 
 async function run() {
   cleanup(LIKE);
-  const { season, camp } = makeCamp("E1 Screens");
-  await importMaple(season);
-  const campId = soql(`SELECT Id FROM Camp__c WHERE Name = '${camp}'`)[0].Id;
-  const url = sfJson([
-    "org",
-    "open",
-    "--target-org",
-    ORG,
-    "--url-only",
-    "--path",
-    `/lightning/n/Shoresh_Camp_Setup?c__camp=${campId}`
-  ]).result.url;
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
-  const page = await (
-    await browser.newContext({ viewport: { width: 1440, height: 900 } })
-  ).newPage();
-  page.setDefaultTimeout(45000);
-  const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const inSeason = `Season__r.Name = '${season}'`;
-  const specials = () =>
-    [
-      ...names("SpecialDay__c", inSeason),
-      ...names("SpecialEvent__c", inSeason)
-    ].join();
-  const openScreen = async (name) => {
-    await page.getByRole("link", { name, exact: false }).first().click();
-    await page.waitForTimeout(2500);
-  };
+  // Everything after the camp is made is inside the try, so a crash still takes the camp out.
+  let browser;
+  let page;
+  let url = "";
   try {
+    const { season, camp } = makeCamp("E1 Screens");
+    await importMaple(season);
+    const campId = soql(`SELECT Id FROM Camp__c WHERE Name = '${camp}'`)[0].Id;
+    url = sfJson([
+      "org",
+      "open",
+      "--target-org",
+      ORG,
+      "--url-only",
+      "--path",
+      `/lightning/n/Shoresh_Camp_Setup?c__camp=${campId}`
+    ]).result.url;
+    browser = await chromium.launch({ channel: "chrome", headless: true });
+    page = await (
+      await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    ).newPage();
+    page.setDefaultTimeout(45000);
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const inSeason = `Season__r.Name = '${season}'`;
+    const specials = () =>
+      [
+        ...names("SpecialDay__c", inSeason),
+        ...names("SpecialEvent__c", inSeason)
+      ].join();
+    const openScreen = async (name) => {
+      await page.getByRole("link", { name, exact: false }).first().click();
+      await page.waitForTimeout(2500);
+    };
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
     await page
       .locator("c-shoresh-app, c-shoresh-roots")
@@ -80,16 +84,17 @@ async function run() {
       .setInputFiles(file(csv));
     await page.waitForTimeout(2000);
     const shown = await panel.locator("c-shoresh-list-import").innerText();
+    // Shown in the review now; never saved (read back after the save below).
     rec.check(
       "SPECIAL-2.4",
-      "a row with no Type isn't read, and says why",
+      "a row with no Type is shown",
       /No kind here/.test(shown),
       shown
     );
     rec.check(
       "SPECIAL-2.5",
-      "a special day with a place isn't read, and says why",
-      /Field trip/.test(shown),
+      "a special day with a place is shown, with why",
+      /Field trip/.test(shown) && /is the whole camp/.test(shown),
       shown
     );
     const review = await call("import_list", {
@@ -118,9 +123,15 @@ async function run() {
       specials()
     );
     rec.check(
+      "SPECIAL-2.4",
+      "the rows that couldn't be read weren't saved",
+      !/No kind here|Field trip/.test(specials()),
+      specials()
+    );
+    rec.check(
       "SPECIAL-2.6",
-      "the save says what a new special day left out, or just what it added",
-      /added|Added|Lake day/.test(after),
+      "the save says what it added",
+      /Added 1 special day[\s\S]*Added 1 special event/.test(after),
       after.slice(0, 800)
     );
     const plan = soql(`SELECT Id FROM PlanPart__c WHERE ${inSeason}`).length;
@@ -219,8 +230,8 @@ async function run() {
       );
       rec.check(
         "SPECIAL-2.8",
-        "and named",
-        /Lake day/.test(said),
+        "and named as kept",
+        /kept[\s\S]{0,300}Lake day|Lake day[\s\S]{0,300}kept/i.test(said),
         said.slice(0, 600)
       );
     } else {
@@ -268,11 +279,17 @@ async function run() {
     );
   } catch (e) {
     await page
-      .screenshot({ path: `${process.env.TMPDIR || "/tmp"}/br-e1-fail.png` })
+      ?.screenshot({ path: `${process.env.TMPDIR || "/tmp"}/br-e1-fail.png` })
       .catch(() => {});
-    rec.check("crash", "E1 stopped early", false, e.stack);
+    // The sign-in link carries a session: never in what's written down.
+    rec.check(
+      "crash",
+      "E1 stopped early",
+      false,
+      url ? String(e.stack).split(url).join("<sign-in link>") : e.stack
+    );
   } finally {
-    await browser.close();
+    await browser?.close();
     cleanup(LIKE);
   }
 }

@@ -22,7 +22,13 @@ const code = require(path.join(SHIPPED, "code.js"));
 // ---------- the org: CI not using it, the lock, the code in it ----------
 
 function ciUsingTheOrg() {
-  for (const status of ["in_progress", "queued"]) {
+  for (const status of [
+    "in_progress",
+    "queued",
+    "waiting",
+    "pending",
+    "requested"
+  ]) {
     const runs = JSON.parse(
       execFileSync("gh", [
         "run",
@@ -47,7 +53,9 @@ function ciUsingTheOrg() {
           "jobs"
         ])
       );
+      // A run that hasn't listed its jobs yet may be about to take the org.
       if (
+        !jobs.length ||
         jobs.some((j) => /Scratch org/.test(j.name) && j.status !== "completed")
       ) {
         return true;
@@ -62,6 +70,7 @@ const sleep = (ms) =>
 
 /** Runs fn holding the org lock, waiting (lock free) while CI or someone else has the org. */
 async function withOrg(fn) {
+  let said = false;
   for (;;) {
     let busy = true;
     try {
@@ -77,11 +86,24 @@ async function withOrg(fn) {
         // someone else has it
       }
     }
+    if (!said) {
+      console.error("  waiting for the org (CI or another session has it)");
+      said = true;
+    }
     sleep(60000);
   }
+  // Stopped by hand: the lock goes, so the next run doesn't wait on it forever.
+  const stopped = () => {
+    fs.rmSync(LOCK, { recursive: true, force: true });
+    process.exit(130);
+  };
+  process.once("SIGINT", stopped);
+  process.once("SIGTERM", stopped);
   try {
     return await fn();
   } finally {
+    process.off("SIGINT", stopped);
+    process.off("SIGTERM", stopped);
     fs.rmdirSync(LOCK);
   }
 }
@@ -179,7 +201,6 @@ async function call(action, input = {}, as = ORG) {
 }
 
 const seenIn = (text) => /seen: "?([^"\s]+?)"?(?:[\s.,;]|$)/.exec(text)?.[1];
-const confirmIn = (text) => /confirm: "([^"]+)"/.exec(text)?.[1];
 
 // ---------- made-up camps ----------
 
@@ -197,9 +218,18 @@ insert new Season__c(Camp__c = c.Id, Name = '${esc(season)}', StartDate__c = s, 
   return { camp, season };
 }
 
-/** Takes out made-up BR camps, children first; touches no other camp. */
+/**
+ * Takes out made-up BR camps, children first; touches no other camp. LIKE ignores case, so the
+ * names are checked again, case and all, before anything is deleted.
+ */
 function cleanup(like = `${PREFIX}%`) {
-  const pass = `List<Camp__c> camps = [SELECT Id FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 5];
+  if (!/^BR [A-Za-z0-9 ]*%$/.test(like)) {
+    throw new Error(`Not a BR camp pattern: ${like}`);
+  }
+  const pass = `List<Camp__c> camps = new List<Camp__c>();
+for (Camp__c c : [SELECT Id, Name FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 5]) {
+  if (c.Name.startsWith('${PREFIX}')) { camps.add(c); }
+}
 if (camps.isEmpty()) { return; }
 Set<Id> campIds = new Map<Id, Camp__c>(camps).keySet();
 Set<Id> s = new Map<Id, Season__c>([SELECT Id FROM Season__c WHERE Camp__c IN :campIds]).keySet();
@@ -243,18 +273,14 @@ delete [SELECT Id FROM ImportAnswer__c WHERE Camp__c IN :campIds];
 delete [SELECT Id FROM LearnedEvent__c WHERE Camp__c IN :campIds];
 delete [SELECT Id FROM CampLabel__c WHERE Camp__c IN :campIds];
 delete camps;`;
-  while (
-    soql(`SELECT Id FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 1`).length
-  ) {
+  const left = () =>
+    soql(
+      `SELECT Name FROM Camp__c WHERE Name LIKE '${esc(like)}' LIMIT 5`
+    ).some((c) => c.Name.startsWith(PREFIX));
+  while (left()) {
     apex(pass);
   }
 }
-
-/** Fails loudly if a query in this kit would ever have touched a camp that isn't made up here. */
-const mine = (season) => {
-  if (!season.startsWith(PREFIX)) throw new Error(`Not a BR season: ${season}`);
-  return season;
-};
 
 // ---------- the record of a run ----------
 
@@ -305,10 +331,8 @@ module.exports = {
   deployBranch,
   call,
   seenIn,
-  confirmIn,
   makeCamp,
   cleanup,
-  mine,
   esc,
   Record
 };

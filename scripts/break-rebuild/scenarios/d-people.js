@@ -54,18 +54,30 @@ function makePerson() {
   fs.rmSync(path.dirname(file), { recursive: true, force: true });
   if (said.status !== 0)
     throw new Error(`Couldn't make the person: ${said.message}`);
-  return {
-    username,
-    id: soql(`SELECT Id FROM User WHERE Username = '${username}'`)[0].Id
-  };
+  const made = soql(`SELECT Id FROM User WHERE Username = '${username}'`)[0];
+  if (!made) {
+    leftOver();
+    throw new Error(`The person was made but can't be read back: ${username}`);
+  }
+  return { username, id: made.Id };
+}
+
+/** Any made-up person a stopped run left active: they hold the org's one free licence. */
+function leftOver() {
+  apex(`List<User> left = [SELECT Id FROM User WHERE Username LIKE 'br.person.%@example.com.shoresh' AND IsActive = true];
+for (User u : left) { u.IsActive = false; }
+update left;`);
 }
 
 function removePerson(person) {
-  apex(`delete [SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = '${person.id}' AND PermissionSet.IsOwnedByProfile = false];
+  try {
+    apex(`delete [SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = '${person.id}' AND PermissionSet.IsOwnedByProfile = false];
 User u = new User(Id = '${person.id}', IsActive = false);
 update u;`);
-  sfJson(["org", "logout", "--target-org", ALIAS, "--no-prompt"]);
-  sfJson(["alias", "unset", ALIAS]);
+  } finally {
+    sfJson(["org", "logout", "--target-org", ALIAS, "--no-prompt"]);
+    sfJson(["alias", "unset", ALIAS]);
+  }
 }
 
 /** Gives the person exactly these permission sets and this share of the season. */
@@ -117,6 +129,7 @@ module.exports = [
       await call("build_week", week);
       await call("publish_week", week);
       await call("save_version", { ...week, name: "Admin's version" });
+      leftOver();
       const person = makePerson();
       const as = ALIAS;
       const src = { season, source_system: "BR made-up system" };
@@ -304,12 +317,16 @@ module.exports = [
         await call("build_week", week);
         const stateBefore =
           names("Activity__c", inSeason).join() +
+          names("Location__c", inSeason).join() +
           count("Schedule__c", `Program__r.${inSeason}`) +
+          count(
+            "Schedule__c",
+            `Program__r.${inSeason} AND Status__c = 'Published'`
+          ) +
           (await draft(season)).words;
         for (const [action, input] of writes) {
           said = await call(action, input, as);
-          const asked =
-            said.kind === "done" && /"saved": 0|"problem"/.test(said.text);
+          const asked = said.kind === "done" && /"saved": 0/.test(said.text);
           rec.check(
             "API-1.7",
             `Read Only: ${action} refused`,
@@ -338,10 +355,22 @@ module.exports = [
             listSave.kind === "refused",
             listSave.text
           );
+        } else {
+          rec.check(
+            "API-1.7",
+            "Read Only: import_list's review gives a seen to try the save with",
+            false,
+            listReview.text.slice(0, 500)
+          );
         }
         const stateAfter =
           names("Activity__c", inSeason).join() +
+          names("Location__c", inSeason).join() +
           count("Schedule__c", `Program__r.${inSeason}`) +
+          count(
+            "Schedule__c",
+            `Program__r.${inSeason} AND Status__c = 'Published'`
+          ) +
           (await draft(season)).words;
         rec.check(
           "API-1.7",
@@ -400,7 +429,7 @@ module.exports = [
         );
         const wordNow =
           /Group: ([^;]+);?/.exec(words.text)?.[1]?.trim() ?? "(blank)";
-        for (const [action, input, ok] of [
+        for (const [action, input] of [
           [
             "lock_cells",
             {
@@ -432,7 +461,7 @@ module.exports = [
           rec.check(
             "API-4.7",
             `Read/Write: ${action} works`,
-            said.kind === "done" && !(ok && false),
+            said.kind === "done",
             `${said.kind}: ${said.text.slice(0, 500)}`
           );
         }
@@ -534,7 +563,8 @@ module.exports = [
           rec.check(
             "API-4.8",
             `${set} reaches ${action}`,
-            said.status !== 403 && !/Apex class/.test(said.text),
+            (said.kind === "done" || !NOT_ACCESS.test(said.text)) &&
+              !/Apex class/.test(said.text),
             `${said.kind} ${said.status}: ${said.text.slice(0, 400)}`
           );
           rec.note(
