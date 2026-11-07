@@ -479,23 +479,20 @@ private class OutgoingTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
+    OutgoingElectiveOfferings capability = new OutgoingElectiveOfferings();
     Map<String, Object> answer;
     System.runAs(camp.sender('Read_Elective_Offerings')) {
       answer = get(
-        new OutgoingElectiveOfferings(),
+        capability,
         new Map<String, String>{ 'season' => 'Summer 2026' }
       );
     }
-    Map<String, Object> archery;
-    for (Object each : (List<Object>) answer.get('records')) {
-      Map<String, Object> row = (Map<String, Object>) each;
-      if (row.get('activity') == 'Archery') {
-        archery = row;
-      }
-    }
-    Assert.isNotNull(archery, String.valueOf(answer));
-    Assert.isTrue(archery.containsKey('seats'), String.valueOf(archery));
-    Assert.isNull(archery.get('seats'), String.valueOf(archery));
+    // Blank seats are left out of the line, so "seats=0" here would be a closed offering.
+    Assert.isTrue(
+      described(capability, (List<Object>) answer.get('records'))
+        .contains('elective_set=Chugim; activity=Archery'),
+      String.valueOf(answer)
+    );
   }
 
   // API-6.3: a send that fails is answered in one sentence and shown on Settings until a later
