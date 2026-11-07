@@ -851,7 +851,7 @@ const CARDS = {
 export function questionCards(proposal, t, answers) {
   const cards = [
     ...proposal.reading.pairs.map((pair) =>
-      similarCard(pair, t, (answers || {})[pair.id])
+      similarCard(pair, t, answers[pair.id])
     ),
     ...proposal.reading.timeAsks.map((ask) => timeCard(ask, t)),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
