@@ -387,7 +387,7 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68, ELECT-4.5: a move into a full offering is refused, as the desktop refuses it.
+  // API-1.68: a move into a full offering is refused, as the desktop refuses it.
   @IsTest
   static void aMoveIntoAFullOfferingIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -428,7 +428,7 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68, ELECT-4.5: an offering over its seats (its seats lowered after Assign) is said in the read,
+  // API-1.68: an offering over its seats (its seats lowered after Assign) is said in the read,
   // as the screen's "over Seats" problem shows it.
   @IsTest
   static void theSeatsReadSaysAnOfferingOverItsSeats() {
