@@ -495,7 +495,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
   });
 
-  // API-1.32
+  // API-1.18: the inputs a read declares are the one list it sends from.
   it("readsSendWhatTheyDeclare: a read sends every input it declares, but what is used on this computer", () => {
     const local = CAPABILITIES.filter((c) => c.localFields).map((c) => [
       c.name,
