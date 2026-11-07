@@ -772,6 +772,8 @@ it("which day a one-day file is can't wait when no other file gives a schedule",
     c.id.startsWith("oneDay|")
   );
   expect(besideAsked.mustAnswer).toBeUndefined();
+});
+
 // MEMO-6.1
 it("a file's same-name answer is still used once the camp has the name it kept", () => {
   const id = "similar|activity|music|musik|Music|Musik";
