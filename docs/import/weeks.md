@@ -308,6 +308,12 @@ Each rule is clue, meaning, example, test.
     never decide the camp's days" (a file left out is read for nothing, so it doesn't stop the
     other being a single-day file). Code: `version.js` `gridDays`; `plan.js` `programRecords`; `structure.js` `singleDayFiles`.
 
+18. **The day a Shoresh elective file was finalized is not a week** (coordinator, 2026-11-06).
+    Clue: a title ending "· Final Oct 14", as an elective roster's second line reads (CORE-6.10).
+    Meaning: that date is never read as the week; the rest of the title still is. Example: "Chugim ·
+    Week A · Final Oct 14" names no week, and "Chugim · Week 2 · Final Oct 14" names Week 2. Test:
+    `weeks.test.js`, "the day an elective file was finalized…".
+
 ## Known limits
 
 - A day whose blocks differ in some weeks and not others, on several weekdays, still reads as a

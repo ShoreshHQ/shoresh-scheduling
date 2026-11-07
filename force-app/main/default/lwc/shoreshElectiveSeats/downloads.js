@@ -17,6 +17,7 @@
 import { UNORDERED_SET } from "c/shoreshElectiveEngine";
 import { headingMeaning } from "c/shoreshChoicesReader";
 import { sanitizeCell } from "c/shoreshLists";
+import { shortDate } from "c/shoreshTerms";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
 import {
   buildBoard,
@@ -39,16 +40,9 @@ const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const guard = (rows) =>
   rows.map((row) => row.map((cell) => sanitizeCell(cell)));
 
-/** "14 Oct", whatever the browser's language. */
-export function shortDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return `${date.getDate()} ${date.toLocaleDateString("en-GB", { month: "short" })}`;
-}
-
 /**
  * Everything the downloads share, worked out once: the run as the screen reads it, its board,
- * the words of its header ("Chugim · Week 3 · Final 14 Oct"), and the names a final run keeps.
+ * the words of its header ("Chugim · Week 3 · Final Oct 14"), and the names a final run keeps.
  */
 export function readDownload(download, t) {
   const view = download.view;
