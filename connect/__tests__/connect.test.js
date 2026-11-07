@@ -82,7 +82,7 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
-  it("API-1.124: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
+  it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
     const capability = byName("apply_to_other_weeks");
     expect(capability.inputSchema.required).toEqual(["week", "to_week"]);
     expect(capability.inputSchema.properties.schedule).toBeDefined();

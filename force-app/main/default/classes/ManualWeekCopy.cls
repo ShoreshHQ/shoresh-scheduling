@@ -12,6 +12,10 @@ public with sharing class ManualWeekCopy {
   // Why a whole source day the other week lacks can't go; null says "not in this week" (Apply to
   // other weeks says WEEK-2.4's words: WeekApply).
   public String noSuchDay;
+  // Apply to other weeks (WeekApplyKeep): places whose target day stays as it is, and groups whose
+  // rows stay; nothing is copied there and nothing is refused one by one.
+  public Set<String> skipPlaces = new Set<String>();
+  public Set<Id> skipGroups = new Set<Id>();
   // One edit per day of the new week: its runs go in together (one read of the day each).
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
   // How each day is named in what is left out: "Monday", or with its date for a week's second
@@ -43,7 +47,11 @@ public with sharing class ManualWeekCopy {
     for (String place : targets.keySet()) {
       ScheduleDays.DayGrid target = targets.get(place);
       ScheduleDays.DayGrid source = byWeekday.remove(place);
-      if (source != null && target.grid != null) {
+      if (
+        source != null &&
+        target.grid != null &&
+        !skipPlaces.contains(place)
+      ) {
         for (Integer sg = 0; sg < source.grid.groups.size(); sg++) {
           copyGroup(source.grid, sg, target);
         }
@@ -112,6 +120,9 @@ public with sharing class ManualWeekCopy {
     ScheduleDays.DayGrid day
   ) {
     String groupId = source.groups[sg].id;
+    if (skipGroups.contains(Id.valueOf(groupId))) {
+      return;
+    }
     Target target = new Target();
     target.day = day;
     target.g = SlotIds.indexOf(day.grid.groupIds(), groupId);

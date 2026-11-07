@@ -131,6 +131,25 @@ describe("c-shoresh-apply-weeks (WEEK-6.2)", () => {
     expect(lines(element, "w3", "kept")).toEqual([]);
   });
 
+  it("WEEK-6.2: a line that repeats shows once with how many times, each row keyed apart", async () => {
+    previewApply.mockImplementationOnce(({ weekId }) =>
+      Promise.resolve(
+        outcome(weekId, {
+          leftOut: [
+            "Swim · Bunk 3 · Day 1: Soccer is there",
+            "Swim · Bunk 3 · Day 1: Soccer is there",
+            "Day 6: that week has no such day"
+          ]
+        })
+      )
+    );
+    const element = await render();
+    expect(lines(element, "w2", "cant-go")).toEqual([
+      "Swim · Bunk 3 · Day 1: Soccer is there ×2",
+      "Day 6: that week has no such day"
+    ]);
+  });
+
   it("WEEK-6.2: a published week says its published schedule stays", async () => {
     previewApply.mockImplementationOnce(({ weekId }) =>
       Promise.resolve(outcome(weekId, { published: true }))

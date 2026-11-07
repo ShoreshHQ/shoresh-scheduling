@@ -46,18 +46,18 @@
                 <template lwc:if={row.hasLines}>
                   <ul class="lines">
                     <template for:each={row.kept} for:item="line">
-                      <li key={line} class="line" data-id="kept">
+                      <li key={line.key} class="line" data-id="kept">
                         <c-shoresh-lock label="Locked"></c-shoresh-lock>
-                        <span>{line}</span>
+                        <span>{line.text}</span>
                       </li>
                     </template>
                     <template for:each={row.cantGo} for:item="line">
-                      <li key={line} class="line" data-id="cant-go">
+                      <li key={line.key} class="line" data-id="cant-go">
                         <span
                           class="shoresh-look-mark"
                           aria-hidden="true"
                         ></span>
-                        <span>{line}</span>
+                        <span>{line.text}</span>
                       </li>
                     </template>
                   </ul>

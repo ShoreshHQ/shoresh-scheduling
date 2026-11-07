@@ -13,6 +13,21 @@ function cellWords(count, done) {
 }
 
 /**
+ * Lines for a list: each once, with how many times it came ("… ×2") when it repeats, keyed by
+ * place (prefix: one list's keys apart from another's in the same row).
+ */
+function listed(lines, prefix) {
+  const counts = new Map();
+  for (const line of lines) {
+    counts.set(line, (counts.get(line) || 0) + 1);
+  }
+  return [...counts].map(([text, count], i) => ({
+    key: `${prefix}${i}`,
+    text: count > 1 ? `${text} ×${count}` : text
+  }));
+}
+
+/**
  * Apply to other weeks (WEEK-6.2, ADR 0025 choice 5), on Manual Build and Generated Schedule: asks
  * first, as c-shoresh-ask does, showing what would change week by week, then applies to the weeks
  * left ticked. A request holds one week (ADR 0025), so it reads, then applies, one week at a time,
@@ -208,8 +223,11 @@ export default class ShoreshApplyWeeks extends LightningElement {
     const finished = this.phase === "finished";
     return this.states.map((state) => {
       const outcome = state.outcome || {};
-      const kept = outcome.keptLocked || [];
-      const cantGo = [...(outcome.leftOut || []), ...(outcome.notPlaced || [])];
+      const kept = listed(outcome.keptLocked || [], "k");
+      const cantGo = listed(
+        [...(outcome.leftOut || []), ...(outcome.notPlaced || [])],
+        "c"
+      );
       return {
         weekId: state.weekId,
         name: state.name,

@@ -1,6 +1,6 @@
 /**
  * apply_to_other_weeks: Apply to other weeks through an agent or the command line
- * (docs/protocol/api.md API-1.124, WEEK-6.2). Web address /v1/apply_to_other_weeks, POST {season,
+ * (docs/protocol/api.md API-1.125, WEEK-6.2). Web address /v1/apply_to_other_weeks, POST {season,
  * week, program, schedule, to_week}: one week per call, as on the screen (WeekApply). It asks
  * first (API-1.106): the preview says what changes, what locks keep and what can't go; the confirm
  * holds only while both weeks are as that preview read them.
@@ -26,7 +26,10 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
   /** What it would do; null, so nothing is asked, when no cell would change (API-1.106). */
   public String preview() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    source = AgentSchedules.eitherOf(body);
+    // Found, not locked: WeekApply takes the program's lock, then the target's, as the screen
+    // does, so an AI and a screen applying opposite ways never wait on each other.
+    source = AgentSchedules.placeOfEither(body);
+    AgentSchedules.requireDraft(source);
     Week__c target = AgentWeeks.weekIn(
       source.season,
       AgentFields.text(body, 'to_week')

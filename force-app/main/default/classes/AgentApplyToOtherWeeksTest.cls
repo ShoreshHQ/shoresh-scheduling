@@ -1,5 +1,5 @@
 /**
- * apply_to_other_weeks through an agent or the command line (docs/protocol/api.md API-1.124), on
+ * apply_to_other_weeks through an agent or the command line (docs/protocol/api.md API-1.125), on
  * SetTimeTestData's synthetic camp with numbered days: it asks first, its confirm holds only for
  * the weeks as they were, and the answer lists what locks keep and what can't go.
  */
@@ -78,7 +78,7 @@ private class AgentApplyToOtherWeeksTest {
     ];
   }
 
-  // API-1.124, API-1.106: nothing without its confirm; with it, the screen's own apply.
+  // API-1.125, API-1.106: nothing without its confirm; with it, the screen's own apply.
   @IsTest
   static void itAsksFirstThenAppliesWithItsConfirm() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -103,7 +103,7 @@ private class AgentApplyToOtherWeeksTest {
     }
   }
 
-  // API-1.124, API-1.106: a confirm from before someone saved either week is refused.
+  // API-1.125, API-1.106: a confirm from before someone saved either week is refused.
   @IsTest
   static void aConfirmFromBeforeAChangeIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -130,7 +130,7 @@ private class AgentApplyToOtherWeeksTest {
     }
   }
 
-  // API-1.124: a week that isn't the season's is refused, naming the weeks there are.
+  // API-1.125: a week that isn't the season's is refused, naming the weeks there are.
   @IsTest
   static void aWeekThatIsntThereIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {

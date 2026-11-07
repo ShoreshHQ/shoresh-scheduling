@@ -9,6 +9,7 @@ public with sharing class WeekApplyPlan {
   private ManualWeekStart rules;
   private Schedule__c source;
   private Boolean manual;
+  private WeekApplyKeep keep;
 
   /** source: the draft being applied (its Origin__c and Week__r.Name). */
   public WeekApplyPlan(GeneratedSetup setup, Schedule__c source) {
@@ -16,6 +17,7 @@ public with sharing class WeekApplyPlan {
     this.source = source;
     rules = new ManualWeekStart(setup);
     manual = source.Origin__c == ManualDrafts.MANUAL;
+    keep = new WeekApplyKeep(setup, source);
   }
 
   /** The target's draft kept first, or made; then the edits; a Generated draft's notes go. */
@@ -73,21 +75,27 @@ public with sharing class WeekApplyPlan {
       sourceDays,
       new Map<Date, String>()
     );
-    WeekApplyClear clear = new WeekApplyClear(rules);
+    keep.lines.clear();
+    WeekApplyClear clear = new WeekApplyClear(rules, keep);
+    ManualWeekCopy copy = new ManualWeekCopy(rules);
+    copy.noSuchDay = 'that week has no such day';
+    copy.skipGroups = clear.away();
     for (String place : targets.keySet()) {
       ScheduleDays.DayGrid target = targets.get(place);
       ScheduleDays.DayGrid other = sources.get(place);
+      String dayName = names.get(target.day);
       if (other == null) {
         // A short week's days only: the target's other days have nothing to repeat.
-        outcome.leftOut.add(names.get(target.day) + ': stays as it is');
+        outcome.leftOut.add(dayName + ': stays as it is');
+      } else if (keep.dayStays(target, other, dayName)) {
+        copy.skipPlaces.add(place);
       } else if (other.grid != null) {
-        clear.clearDay(other.grid, target, names.get(target.day));
+        clear.clearDay(other.grid, target, dayName);
       }
     }
-    ManualWeekCopy copy = new ManualWeekCopy(rules);
-    copy.noSuchDay = 'that week has no such day';
     copy.plan(sourceDays, working);
     outcome.keptLocked.addAll(clear.kept);
+    outcome.leftOut.addAll(keep.lines);
     outcome.leftOut.addAll(clear.leftOut);
     outcome.leftOut.addAll(copy.leftOut);
     List<SlotEdits.Edit> edits = clear.thenFill(copy.edits);
@@ -103,6 +111,7 @@ public with sharing class WeekApplyPlan {
       ScheduleDays.DayGrid copy = new ScheduleDays.DayGrid();
       copy.day = day.day;
       copy.grid = ScheduleGrid.fromText(day.grid.toText());
+      copy.rain = day.rain;
       copies.add(copy);
     }
     return copies;

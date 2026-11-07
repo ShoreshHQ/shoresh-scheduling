@@ -3,11 +3,15 @@
  * (WEEK-6.2, ADR 0025 choice 5), so the copying stays ManualWeekCopy's, into Open cells. Taken off,
  * as runs of the same slot saves as any edit: what the other week's day doesn't have there. Kept:
  * a locked placement or locked empty cell (each listed), fixed and recurring activities (this week
- * has its own, ManualWeekPlacements) and a special event (put on each day by hand, listed), and a
- * group the other week's day has no row for (it was away: there is nothing to repeat).
+ * has its own, ManualWeekPlacements) and a special event (put on each day by hand, listed); and,
+ * each said by WeekApplyKeep, a group away in either week, a group the other week's day has no row
+ * for, and a placement on a time block that day doesn't have.
  */
 public with sharing class WeekApplyClear {
   private ManualWeekStart rules;
+  // What stays and is said so: groups away, a group or time block the source day lacks.
+  private WeekApplyKeep keep;
+  private Set<Id> away;
   // The target day being worked on, and how it is said.
   private ScheduleDays.DayGrid target;
   private String dayName;
@@ -15,8 +19,15 @@ public with sharing class WeekApplyClear {
   public List<String> leftOut = new List<String>();
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
 
-  public WeekApplyClear(ManualWeekStart rules) {
+  public WeekApplyClear(ManualWeekStart rules, WeekApplyKeep keep) {
     this.rules = rules;
+    this.keep = keep;
+    away = keep.awayGroups();
+  }
+
+  /** The groups whose rows stay: away in either week. */
+  public Set<Id> away() {
+    return away;
   }
 
   /** Takes off the target day's working grid what the source day doesn't have. */
@@ -29,8 +40,14 @@ public with sharing class WeekApplyClear {
     this.dayName = dayName;
     List<String> sourceGroups = source.groupIds();
     for (Integer g = 0; g < target.grid.groups.size(); g++) {
-      Integer sg = SlotIds.indexOf(sourceGroups, target.grid.groups[g].id);
-      if (sg >= 0) {
+      ScheduleGrid.GroupRef grp = target.grid.groups[g];
+      Integer sg = SlotIds.indexOf(sourceGroups, grp.id);
+      if (away.contains(Id.valueOf(grp.id))) {
+        continue;
+      }
+      if (sg < 0) {
+        keep.groupMissing(grp.name, dayName);
+      } else {
         clearGroup(source, sg, g);
       }
     }
@@ -49,7 +66,10 @@ public with sharing class WeekApplyClear {
           name + ' · ' + said + ' · ' + target.grid.blocks[p.first].name
         );
       } else if (!ManualWeekPlacements.holds(p, source, sourceRow)) {
-        if (p.slot.startsWith('S:')) {
+        String lacking = blockLacking(p, source);
+        if (lacking != null) {
+          keep.blockMissing(name + ' · ' + said, lacking);
+        } else if (p.slot.startsWith('S:')) {
           leftOut.add(name + ' · ' + said + ': ' + rules.whyNotItem(p.slot));
         } else {
           clear(p, g);
@@ -65,6 +85,21 @@ public with sharing class WeekApplyClear {
         kept.add('Locked empty · ' + said + ' · ' + grid.blocks[b].name);
       }
     }
+  }
+
+  /** The first of a placement's time blocks the source day doesn't have, or null. */
+  private static String blockLacking(
+    ManualWeekPlacements.Placement p,
+    ScheduleGrid source
+  ) {
+    List<String> sourceBlocks = source.blockIds();
+    for (Integer i = 0; i < p.length; i++) {
+      ScheduleGrid.Block block = p.grid.blocks[p.first + i];
+      if (SlotIds.indexOf(sourceBlocks, block.id) < 0) {
+        return block.name;
+      }
+    }
+    return null;
   }
 
   /** A lock on any cell of a placement keeps all of it (LOCK-4.1). */
