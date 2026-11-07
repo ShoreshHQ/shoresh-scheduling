@@ -387,48 +387,52 @@ private class AgentElectiveSeatsTest {
     }
   }
 
-  // API-1.68, ELECT-4.5: a move into a full offering is refused, as the desktop refuses it.
+  // ELECT-4.5, API-1.68: a move into a full offering goes through, locked, and the offering is
+  // said over its seats, on screen and to the AI (Greg, 2026-11-07).
   @IsTest
-  static void aMoveIntoAFullOfferingIsRefused() {
+  static void aMoveIntoAFullOfferingGoesOverAndIsSaid() {
     System.runAs(ShoreshTestData.scheduler()) {
       dramaAndOneArcherySeat();
       Test.startTest();
-      List<Object> first = move('Synthetic Camper 1', 'Archery');
+      // On screen, the first camper takes Archery's one seat.
+      ElectiveSeatChange.ChangeRequest first = new ElectiveSeatChange.ChangeRequest();
+      first.runId = AgentElectivesTestData.runId;
+      first.revision = AgentElectivesTestData.revision();
+      first.camperId = AgentElectivesTestData.campers[0];
+      first.day = AgentElectivesTestData.MONDAY;
+      first.blockId = AgentElectivesTestData.ids.get('Period 1');
+      first.offeringId = AgentElectivesTestData.ids.get('Archery');
+      ElectiveSeatsController.changeSeat(JSON.serialize(first));
+      // Through an AI, the second goes in too.
       List<Object> over = move('Synthetic Camper 2', 'Archery');
-      String screen;
-      try {
-        ElectiveSeatChange.ChangeRequest full = new ElectiveSeatChange.ChangeRequest();
-        full.runId = AgentElectivesTestData.runId;
-        full.revision = AgentElectivesTestData.revision();
-        full.camperId = AgentElectivesTestData.campers[1];
-        full.day = AgentElectivesTestData.MONDAY;
-        full.blockId = AgentElectivesTestData.ids.get('Period 1');
-        full.offeringId = AgentElectivesTestData.ids.get('Archery');
-        ElectiveSeatsController.changeSeat(JSON.serialize(full));
-      } catch (Exception e) {
-        screen = ScreenErrors.words(e);
-      }
-      Test.stopTest();
-      Assert.areEqual(
-        'Archery is full then (1 of 1 seats); nothing changed.',
-        screen,
-        'the screen refuses it the same way'
+      List<String> read = ElectiveOverSeats.of(
+        ElectiveSeatsController.openRun(AgentElectivesTestData.runId)
       );
-      Assert.areEqual('Moved Synthetic Camper 1 to Archery, locked.', first[1]);
-      Assert.areEqual(400, over[0], String.valueOf(over[1]));
+      Test.stopTest();
+      Assert.areEqual(200, over[0], String.valueOf(over[1]));
       Assert.areEqual(
-        'Archery is full then (1 of 1 seats); nothing changed.',
+        'Moved Synthetic Camper 2 to Archery, locked. ' +
+        'Archery is over its seats on Monday, Period 1: 2 of 1.',
         over[1]
       );
       Assert.areEqual(
-        AgentElectivesTestData.ids.get('Drama'),
-        AgentElectivesTestData.seats()[1].Offering__c,
-        'the second camper stays in Drama'
+        new List<String>{
+          'Archery is over its seats on Monday, Period 1: 2 of 1.'
+        },
+        read,
+        'the screen\'s read shows it over'
       );
+      for (Assignment__c seat : AgentElectivesTestData.seats()) {
+        Assert.areEqual(
+          AgentElectivesTestData.ids.get('Archery'),
+          seat.Offering__c
+        );
+        Assert.isTrue(seat.Locked__c && seat.ByHand__c, 'a locked hand move');
+      }
     }
   }
 
-  // API-1.68, ELECT-4.5: an offering over its seats (its seats lowered after Assign) is said in the read,
+  // API-1.68: an offering over its seats (its seats lowered after Assign) is said in the read,
   // as the screen's "over Seats" problem shows it.
   @IsTest
   static void theSeatsReadSaysAnOfferingOverItsSeats() {
