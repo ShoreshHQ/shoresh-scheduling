@@ -195,6 +195,147 @@ private class IncomingSetupTest {
     );
   }
 
+  // API-4.9: the name a system first sent for a record a person has renamed adds nothing and
+  // changes nothing: it is shown to a person. A name it never sent is still added.
+  @IsTest
+  static void anOldNameAfterAPersonsRenameIsAConflictNeverASecondRecord() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Activities')) {
+      send(
+        'activity',
+        new List<Map<String, Object>>{ one('activity_name', 'Kayak') }
+      );
+    }
+    Activity__c sent = [
+      SELECT Id
+      FROM Activity__c
+      WHERE Season__c = :camp.season.Id AND Name = 'Kayak'
+      WITH SYSTEM_MODE
+    ];
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Database.update(
+        new Activity__c(Id = sent.Id, Name = 'Kayaking'),
+        AccessLevel.USER_MODE
+      );
+    }
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Send_Activities')) {
+      answer = send(
+        'activity',
+        new List<Map<String, Object>>{
+          one('activity_name', 'Kayak'),
+          one('activity_name', 'Canoe')
+        }
+      );
+    }
+    String body = JSON.serialize(answer);
+    Assert.isTrue(body.contains('A person renamed'), body);
+    Assert.areEqual(
+      new List<String>{ 'Canoe', 'Kayaking' },
+      namesIn(camp),
+      'Kayaking stands, no second Kayak; Canoe is new'
+    );
+    Assert.isTrue(camp.imports()[0].Open__c.contains('Kayaking'));
+  }
+
+  // API-2.3: a group a batch added can be undone like any import.
+  @IsTest
+  static void undoTakesAwayAGroupABatchAdded() {
+    IncomingTestData camp = new IncomingTestData();
+    System.runAs(camp.sender('Send_Groups')) {
+      send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+    }
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Assert.areEqual(1, ImportUndo.undo(camp.imports()[0].Id).removed);
+    }
+  }
+
+  // API-4.9: the same name in another division is a new group, not the renamed one.
+  @IsTest
+  static void aRenamedGroupsOldNameInAnotherDivisionIsANewGroup() {
+    IncomingTestData camp = new IncomingTestData();
+    insert new Division__c(Program__c = camp.ids.get('Main'), Name = 'Seniors');
+    System.runAs(camp.sender('Send_Groups')) {
+      send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+    }
+    Group__c sent = [
+      SELECT Id
+      FROM Group__c
+      WHERE Name = 'Cabin 9'
+      WITH SYSTEM_MODE
+    ];
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      Database.update(
+        new Group__c(Id = sent.Id, Name = 'Cabin Nine'),
+        AccessLevel.USER_MODE
+      );
+    }
+    Map<String, Object> elsewhere;
+    Map<String, Object> same;
+    System.runAs(camp.sender('Send_Groups')) {
+      same = send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Juniors'
+          }
+        }
+      );
+      elsewhere = send(
+        'group',
+        new List<Map<String, Object>>{
+          new Map<String, Object>{
+            'group_name' => 'Cabin 9',
+            'division' => 'Seniors'
+          }
+        }
+      );
+    }
+    Assert.isTrue(
+      JSON.serialize(same).contains('A person renamed'),
+      JSON.serialize(same)
+    );
+    Assert.isFalse(
+      JSON.serialize(elsewhere).contains('A person renamed'),
+      JSON.serialize(elsewhere)
+    );
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM Group__c WHERE Name = 'Cabin 9' WITH SYSTEM_MODE]
+    );
+  }
+
+  private static List<String> namesIn(IncomingTestData camp) {
+    List<String> names = new List<String>();
+    for (Activity__c activity : [
+      SELECT Name
+      FROM Activity__c
+      WHERE Season__c = :camp.season.Id
+      WITH SYSTEM_MODE
+      ORDER BY Name
+    ]) {
+      names.add(activity.Name);
+    }
+    return names;
+  }
+
   // API-4.4: each capability needs its own permission set.
   @IsTest
   static void eachNeedsItsOwnPermissionSet() {

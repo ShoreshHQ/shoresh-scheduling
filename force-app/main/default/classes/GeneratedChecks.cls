@@ -141,7 +141,7 @@ public with sharing class GeneratedChecks {
       throw new ShoreshException(
         ScheduleGridLocks.lockedWords(
           now.groups[g].name,
-          BlankWeek.weekdayOf(day.day),
+          DayWords.say(day.day),
           now.blocks[b].name
         )
       );

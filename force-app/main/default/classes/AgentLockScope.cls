@@ -35,7 +35,7 @@ public with sharing class AgentLockScope {
       names.add(found.name);
     }
     if (change.dateValue != null) {
-      names.add(AgentWeeks.dayName(change.dateValue));
+      names.add(DayWords.say(change.dateValue));
     }
     if (String.isNotBlank(timeAsked)) {
       ScheduleGrid.Block block = blockIn(grid, timeAsked);

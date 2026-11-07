@@ -58,6 +58,7 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
       AgentFields.text(body, 'season')
     );
     CampLabels labels = CampLabels.forCamp(season.Camp__c);
+    DayWords.use(season.Id);
     SpecialDay__c specialDay = specialDayIn(
       season,
       AgentFields.text(body, 'special_day'),
@@ -177,10 +178,15 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
     );
   }
 
-  /** "Friday" from "friday"; anything else is refused. */
+  /** "Friday" from "friday" (or "Day 5" in a numbered season: WEEK-1.7); anything else is refused. */
+  @TestVisible
   private static String weekdayOf(String asked) {
     for (String weekday : WEEKDAYS) {
-      if (IncomingBatch.fold(weekday) == IncomingBatch.fold(asked)) {
+      if (
+        IncomingBatch.fold(weekday) == IncomingBatch.fold(asked) ||
+        IncomingBatch.fold(DayWords.sayWeekday(weekday)) ==
+        IncomingBatch.fold(asked)
+      ) {
         return weekday;
       }
     }

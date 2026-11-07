@@ -24,6 +24,11 @@ public with sharing class WeekCalendar {
     return DAY_NAMES[weekdayIndex(d)];
   }
 
+  /** 0 = Monday ... 6 = Sunday for "Monday"...; -1 for anything else. */
+  public static Integer indexOfWeekday(String weekday) {
+    return DAY_NAMES.indexOf(weekday);
+  }
+
   /** Monday to Friday: the days a camp runs when nothing says otherwise. */
   public static Set<String> mondayToFriday() {
     return new Set<String>{

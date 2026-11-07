@@ -255,6 +255,24 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // WEEK-1.7: a first Generate says its days before any schedule is read.
+  @IsTest
+  static void aFirstGenerateSaysADayAsItsSeasonDoes() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
+      Database.update(
+        new Season__c(Id = ids.get('Season'), NumberedDays__c = true),
+        AccessLevel.SYSTEM_MODE
+      );
+      DayWords.forgetSeasons();
+      GeneratedWeek.Result result = generateFrom(read);
+      Assert.areEqual('Main\'s time blocks on Day 1' + REOPEN, result.message);
+    }
+  }
+
   @IsTest
   static void aFixedActivityAddedBeforeTheFirstGenerateIsAConflictNotARefusal() {
     Map<String, Id> ids = camp();

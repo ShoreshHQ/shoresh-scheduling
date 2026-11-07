@@ -30,6 +30,7 @@ const workbook = require(`${LWC}/shoreshDownload/workbook.js`);
 const lists = require(`${LWC}/shoreshLists/shoreshLists.js`);
 const screens = require(`${LWC}/shoreshScreens/shoreshScreens.js`);
 const terms = require(`${LWC}/shoreshTerms/shoreshTerms.js`);
+const weeks = require(`${LWC}/shoreshImportEngine/weeks.js`);
 const { LABELS, opened } = require(
   `${LWC}/shoreshScheduleViews/__tests__/data/scheduleFixture.js`
 );
@@ -56,6 +57,7 @@ const files = async () =>
     lists,
     screens,
     terms,
+    weeks,
     XLSX,
     printPage: () => PAGE
   });
