@@ -13,6 +13,8 @@ public with sharing class IncomingRenamed {
   private IncomingBatch batch;
   private String term;
   private Schema.SObjectField link;
+  private Set<String> fields = new Set<String>();
+  private Set<Id> ids = new Set<Id>();
 
   private class Written {
     Id recordId;
@@ -86,8 +88,6 @@ public with sharing class IncomingRenamed {
   private List<Written> read() {
     Id seasonId = batch.season.Id;
     String source = IncomingSave.sourceOf(batch);
-    Set<String> fields = new Set<String>();
-    Set<Id> ids = new Set<Id>();
     List<Written> written = new List<Written>();
     for (Import__c done : [
       SELECT Created__c
@@ -100,21 +100,14 @@ public with sharing class IncomingRenamed {
       if (String.isNotBlank(done.Created__c)) {
         addFrom(
           (Map<String, Object>) JSON.deserializeUntyped(done.Created__c),
-          fields,
-          ids,
           written
         );
       }
     }
-    return changedOf(written, fields, ids);
+    return changedOf(written);
   }
 
-  private void addFrom(
-    Map<String, Object> created,
-    Set<String> fields,
-    Set<Id> ids,
-    List<Written> written
-  ) {
+  private void addFrom(Map<String, Object> created, List<Written> written) {
     Map<String, Object> kind = (Map<String, Object>) created.get(term);
     if (kind == null) {
       return;
@@ -139,11 +132,7 @@ public with sharing class IncomingRenamed {
     }
   }
 
-  private List<Written> changedOf(
-    List<Written> written,
-    Set<String> fields,
-    Set<Id> ids
-  ) {
+  private List<Written> changedOf(List<Written> written) {
     List<Written> result = new List<Written>();
     if (ids.isEmpty()) {
       return result;
