@@ -67,8 +67,24 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
           : 'That seat wasn\'t changed. ' + words
       );
     }
-    // The screen's own words for it.
-    return 'Moved ' + camper.name + ' to ' + offering.name + ', locked.';
+    // The screen's own words for it, and the offering over its seats then, as the screen shows it.
+    String moved =
+      'Moved ' +
+      camper.name +
+      ' to ' +
+      offering.name +
+      ', locked.';
+    String overThen = offering.name + ' is over its seats on ' + period.words();
+    for (
+      String over : ElectiveOverSeats.of(
+        ElectiveSeatsController.openRun(run.id)
+      )
+    ) {
+      if (over.startsWith(overThen + ':')) {
+        moved += ' ' + over;
+      }
+    }
+    return moved;
   }
 
   /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
