@@ -970,10 +970,6 @@ export default class ShoreshListImport extends LightningElement {
     return this.cards.filter((c) => !c.answered).map((c) => c.id);
   }
 
-  get askedCount() {
-    return this.rowsWith("asked").length;
-  }
-
   /** Every difference not yet answered, across the whole file. */
   get changeAll() {
     return this.proposals
