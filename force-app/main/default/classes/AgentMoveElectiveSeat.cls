@@ -70,12 +70,14 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     }
     // The screen's own words for it, and the offering over its seats then, as the screen shows it.
     String over = ElectiveOverSeats.atCampersTime(after, camper, period);
+    String unset = ElectiveOverSeats.noSeatsSet(offering);
     return 'Moved ' +
       camper.name +
       ' to ' +
       offering.name +
       ', locked.' +
-      (over == null ? '' : ' ' + over);
+      (over == null ? '' : ' ' + over) +
+      (unset == null ? '' : ' ' + unset);
   }
 
   /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
