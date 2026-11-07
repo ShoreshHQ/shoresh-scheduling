@@ -1441,6 +1441,39 @@ describe("INGEST-4.14: a single-day file", () => {
     });
   });
 
+  it("INGEST-4.17: two single-day files, one answered and one left out, never decide the camp's days", () => {
+    const dated = {
+      ...existingSetup(),
+      season: {
+        ...existingSetup().season,
+        StartDate__c: "2026-06-29",
+        EndDate__c: "2026-07-10"
+      }
+    };
+    const answers = {
+      "oneDay|field-day.csv": "Thursday",
+      "oneDay|color-run.csv": LEAVE_OUT,
+      "week|the file's week": "Week 1"
+    };
+    const p = propose(
+      [...fieldDay(), ...fieldDay("color-run.csv")],
+      dated,
+      answers
+    );
+    const plan = planFor(p, dated, "a00000000000001AAA", { answers });
+    expect(plan.fillWeeks.map((w) => w.days)).toEqual([
+      "Monday+Tuesday+Wednesday+Thursday+Friday",
+      "Monday+Tuesday+Wednesday+Thursday+Friday"
+    ]);
+    expect(plan.programs[0].days).toEqual(DAYS);
+    expect(plan.specialDays).toHaveLength(1);
+    expect(plan.specialDays[0]).toMatchObject({ day: "Thursday" });
+    // The note names only the file read as the day.
+    const said = importNotes(p, terms).find((n) => /Thursday/.test(n.text));
+    expect(said.text).toMatch(/field-day\.csv/);
+    expect(said.text).not.toMatch(/color-run/);
+  });
+
   it("INGEST-4.14 counter-case: left out, nothing is read from it", () => {
     const answers = { "oneDay|field-day.csv": LEAVE_OUT };
     const p = propose(fieldDay(), existing, answers);

@@ -304,7 +304,9 @@ Each rule is clue, meaning, example, test.
     when none), as for a file that names no days, never only the special day's weekday; a program
     it makes runs those days too.
     Test: "INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow
-    the season's own days". Code: `version.js` `gridDays`; `plan.js` `programRecords`.
+    the season's own days"; "INGEST-4.17: two single-day files, one answered and one left out,
+    never decide the camp's days" (a file left out is read for nothing, so it doesn't stop the
+    other being a single-day file). Code: `version.js` `gridDays`; `plan.js` `programRecords`; `structure.js` `singleDayFiles`.
 
 ## Known limits
 
