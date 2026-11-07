@@ -1554,8 +1554,7 @@ const CAPABILITIES = [
         },
         activity: {
           type: "string",
-          description:
-            "What it should hold: an activity's or elective set's name, or Open."
+          description: "What it should hold: an activity's name, or Open."
         }
       },
       required: ["special", "column", "time", "was", "activity"],

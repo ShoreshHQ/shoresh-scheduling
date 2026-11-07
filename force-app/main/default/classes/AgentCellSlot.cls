@@ -7,7 +7,7 @@ public with sharing class AgentCellSlot {
     String wanted = IncomingBatch.fold(asked);
     List<String> names = new List<String>();
     String activitySlot = activityIn(seasonId, wanted, names);
-    String electiveSlot = electiveIn(seasonId, wanted);
+    String electiveSlot = electiveIn(seasonId, wanted, names);
     if (activitySlot != null && electiveSlot != null) {
       throw new ShoreshException(
         '"' +
@@ -22,7 +22,7 @@ public with sharing class AgentCellSlot {
       'There is no activity or elective set called "' +
         asked.left(80) +
         '" in this season. ' +
-        AgentWeeks.namesSaid('activities', names)
+        AgentWeeks.namesSaid('activities and elective sets', names)
     );
   }
 
@@ -47,7 +47,12 @@ public with sharing class AgentCellSlot {
     return found;
   }
 
-  private static String electiveIn(Id seasonId, String wanted) {
+  private static String electiveIn(
+    Id seasonId,
+    String wanted,
+    List<String> names
+  ) {
+    String found;
     for (ElectiveSet__c electiveSet : [
       SELECT Id, Name
       FROM ElectiveSet__c
@@ -56,9 +61,10 @@ public with sharing class AgentCellSlot {
       ORDER BY Name
     ]) {
       if (IncomingBatch.fold(electiveSet.Name) == wanted) {
-        return 'E:' + electiveSet.Id;
+        found = 'E:' + electiveSet.Id;
       }
+      names.add(electiveSet.Name);
     }
-    return null;
+    return found;
   }
 }
