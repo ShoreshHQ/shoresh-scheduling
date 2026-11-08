@@ -3,6 +3,7 @@
  * reviewable list, grouped, each line with a one-click change. The change is an answer like any
  * other (it goes through buildProposal again and is remembered by the save).
  */
+import { capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { availabilityKey } from "./engine.shoreshImportEngine.availability.mjs";
 import { kindsThatFit } from "./engine.shoreshImportEngine.items.mjs";
 import { dayList } from "./engine.shoreshImportEngine.questions.mjs";
@@ -12,10 +13,6 @@ const KIND_TERM = {
   fixed: "FixedActivity",
   recurring: "RecurringActivity"
 };
-
-function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 function counted(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
