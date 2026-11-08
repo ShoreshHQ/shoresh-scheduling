@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { BuildScreen } from "c/shoreshBuildScreen";
 import { campZone } from "c/shoreshCampClock";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
@@ -16,13 +17,10 @@ import publish from "@salesforce/apex/ManualBuildController.publish";
 import unpublish from "@salesforce/apex/ManualBuildController.unpublish";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetup from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
-import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
-import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
-import { FIELD } from "c/shoreshSchema";
 
 /**
  * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
@@ -57,7 +55,7 @@ function savedWhen(source) {
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
-export default class ShoreshManualBuild extends LightningElement {
+export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   @api terms;
 
   _setup;
@@ -123,11 +121,6 @@ export default class ShoreshManualBuild extends LightningElement {
   setupSaid = 0;
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
-
-  /** When it was published, on the camp's clock (CORE-6.11). */
-  get campTimeZone() {
-    return campZone();
-  }
 
   @api
   get setup() {
@@ -249,16 +242,6 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /**
-   * Asks the page to put focus on the menu's Update to match setup (setupfocus { focused }: the
-   * page says whether it could). False when nothing took it.
-   */
-  focusMenuUpdate() {
-    const detail = { focused: false };
-    this.dispatchEvent(new CustomEvent("setupfocus", { detail }));
-    return detail.focused;
-  }
-
-  /**
    * Focus fell to the page (or stayed on Publish or Unpublish while they were disabled), rather
    * than being on something the director chose since.
    */
@@ -270,10 +253,6 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     const page = document.activeElement;
     return !page || page === document.body;
-  }
-
-  get t() {
-    return this.terms;
   }
 
   /** The editor that draws and edits the week, once it is drawn. */
@@ -346,81 +325,11 @@ export default class ShoreshManualBuild extends LightningElement {
     this.error = event.detail.message;
   }
 
-  /** A save failed: what is saved is read again. */
-  handleEditorReload() {
-    this.load(true);
-  }
-
   // ---------- choosing a program and week ----------
 
-  get programOptions() {
-    return ((this._setup && this._setup.programs) || []).map((entry) => ({
-      label: entry.program.Name,
-      value: entry.program.Id
-    }));
-  }
-  get weekOptions() {
-    return ((this._setup && this._setup.weeks) || []).map((week) => ({
-      label: week.Name,
-      value: week.Id
-    }));
-  }
-  get programLabel() {
-    return this.t.s("Program");
-  }
-  get weekLabel() {
-    return this.t.s("Week");
-  }
-  // No program or week picker beside ‹ Roots: the editor's own separator before Edit is the
-  // only divider it needs.
-  get backStandsAlone() {
-    return !this.hasSeveralPrograms && !this.canChoose;
-  }
-
-  get hasSeveralPrograms() {
-    return this.programOptions.length > 1;
-  }
-  get canChoose() {
-    return !!this.programId && !!this.weekId;
-  }
-  /** What building still needs (desktop readiness.js): Start waits for all of it. */
-  get stillNeeded() {
-    return stillNeeded(this._setup, this.t, this.programId);
-  }
-  /** The desktop's one sentence, each missing thing a link to its screen. */
-  get stillNeededParts() {
-    return stillNeededSentence(this.stillNeeded);
-  }
-  /** The desktop's main action: "Set up <the first thing missing>". */
-  get setUpFirstLabel() {
-    const [first] = this.stillNeeded;
-    return first ? `Set up ${first.label}` : "";
-  }
-  get setUpFirstScreen() {
-    const [first] = this.stillNeeded;
-    return first ? first.screen : null;
-  }
   get showStillNeeded() {
     return !this.loading && !this.draft && this.stillNeeded.length > 0;
   }
-  handleStillNeeded(event) {
-    event.preventDefault();
-    this.dispatchEvent(
-      new CustomEvent("navigate", {
-        detail: { screen: event.currentTarget.dataset.screen }
-      })
-    );
-  }
-
-  handleProgram(event) {
-    this.programId = event.detail.value;
-    this.load();
-  }
-  handleWeek(event) {
-    this.weekId = event.detail.value;
-    this.load();
-  }
-
   /**
    * Opens this screen on a week of the season, as choosing it in the week picker does (the
    * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
@@ -558,18 +467,6 @@ export default class ShoreshManualBuild extends LightningElement {
     this.load(true);
     return done && done.said;
   };
-
-  /** "Open <special day>" from a day it replaces: its schedule, on the Special events screen. */
-  handleOpenSpecial(event) {
-    this.dispatchEvent(
-      new CustomEvent("navigate", {
-        detail: {
-          screen: "specialEvents",
-          specialItemId: event.detail.itemId
-        }
-      })
-    );
-  }
 
   refresh() {
     if (
@@ -763,56 +660,12 @@ export default class ShoreshManualBuild extends LightningElement {
     );
   }
 
-  /** The season's other weeks, in a season whose days are numbered (WEEK-6.2): else none. */
-  get otherWeeks() {
-    const season = this._setup && this._setup.season;
-    return season && season[FIELD.Season.NumberedDays]
-      ? this.weekOptions.filter((o) => o.value !== this.weekId)
-      : [];
-  }
-  get applyLabel() {
-    return this.otherWeeks.length
-      ? `Apply to other ${this.t.pIn("Week")}`
-      : null;
-  }
   get applySourceId() {
     return this.schedule ? this.schedule.schedule.id : null;
   }
   get applySeen() {
     return this.server ? this.server.revisions : null;
   }
-  handleApply() {
-    this.applying = true;
-  }
-  handleApplyClose(event) {
-    this.applying = false;
-    this.template.querySelector('[data-id="versions"]').focusButton();
-    if (event.detail.sourceChanged) {
-      this.load(true);
-    }
-  }
-
-  async loadVersions() {
-    this.versionsTicket += 1;
-    const ticket = this.versionsTicket;
-    // An older read answering after a newer one (or after another week was chosen) is dropped.
-    const latest = () => ticket === this.versionsTicket;
-    try {
-      const rows = await getVersions({
-        programId: this.programId,
-        weekId: this.weekId
-      });
-      if (latest()) {
-        this.versions = rows || [];
-      }
-    } catch {
-      // The list shows as empty; the week itself is unaffected.
-      if (latest()) {
-        this.versions = [];
-      }
-    }
-  }
-
   /**
    * Runs a versions action, then reads the list again before it is done (so the list never shows
    * a version just deleted as if it were there); refused ones say what didn't happen, then why.
@@ -1172,10 +1025,6 @@ export default class ShoreshManualBuild extends LightningElement {
     return `${this.programId}|${this.weekId}`;
   }
 
-  get weekName() {
-    const week = this.weekOptions.find((o) => o.value === this.weekId);
-    return week ? week.label : "";
-  }
   get startFromLabel() {
     return `Start from another ${this.t.sIn("Week")}`;
   }
@@ -1228,24 +1077,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleShowActivity(event) {
     this.weekEditor.showActivity(event.detail.activityId);
   }
-  get programName() {
-    const program = this.programOptions.find((o) => o.value === this.programId);
-    return program ? program.label : "";
-  }
-
   // ---------- setup changed since the week started (ADR 0008 part 6) ----------
-
-  /**
-   * Reads what setup changed since the week started (its own request, so opening the week costs
-   * no more). An answer for a week no longer shown, or older than the latest ask, is dropped.
-   * Returns the preview, or null.
-   */
-  loadSetupChanges() {
-    const read = this.readSetupChanges();
-    // The newest read, for one that finds it was overtaken (handleSetupMatch).
-    this.setupRead = read;
-    return read;
-  }
 
   async readSetupChanges() {
     const scheduleId =
@@ -1305,24 +1137,6 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
-  /** The cells setup changed, as the editor takes them: cell key to the dot's words. */
-  get setupDots() {
-    const preview = this.setupPreview;
-    if (this.setupDotsMemo.preview !== preview) {
-      this.setupDotsMemo = {
-        preview,
-        dots: new Map(
-          ((preview && preview.dots) || []).map((dot) => [dot.key, dot.words])
-        )
-      };
-    }
-    return this.setupDotsMemo.dots;
-  }
-
-  get setupChanges() {
-    return (this.setupPreview && this.setupPreview.changes) || [];
-  }
-
   /** Setup changed (the menu's foot says so), or it can't be compared (said under the rail). */
   get showSetupChanged() {
     return (
@@ -1331,27 +1145,6 @@ export default class ShoreshManualBuild extends LightningElement {
       (this.setupChanges.length > 0 || !!this.setupProblem)
     );
   }
-  get setupProblem() {
-    return this.setupPreview ? this.setupPreview.problem : null;
-  }
-  /**
-   * Tells the page whether this week can be updated to match setup, and whether its Update waits,
-   * when either changes: the menu's foot shows it too (ADR 0015). Fires: setupstate
-   * { changed, busy }.
-   */
-  tellSetupState() {
-    const changed = this.showSetupChanged && this.canUpdateToMatch;
-    const busy = !!this.versionsBusy;
-    const told = this.setupStateTold;
-    if (told && told.changed === changed && told.busy === busy) {
-      return;
-    }
-    this.setupStateTold = { changed, busy };
-    this.dispatchEvent(
-      new CustomEvent("setupstate", { detail: { changed, busy } })
-    );
-  }
-
   /**
    * Tells the page the week shown and whether the week picker waits on work under way, when
    * either changes: the Schedules doorway holds its other weeks for this screen meanwhile, as
@@ -1376,13 +1169,6 @@ export default class ShoreshManualBuild extends LightningElement {
     if (this.showSetupChanged && this.canUpdateToMatch && !this.versionsBusy) {
       this.handleSetupMatch();
     }
-  }
-
-  get canUpdateToMatch() {
-    return this.setupChanges.length > 0 && !this.setupProblem;
-  }
-  get setupHeading() {
-    return `Update ${this.weekName} to match setup?`;
   }
 
   /**
@@ -1526,24 +1312,11 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
-  /** The list, open again with words to read out (read out even when the same as last time). */
-  setupAskWith(notice, announcement, kept, updated = false) {
-    this.setupSaid += 1;
-    return { notice, announcement, kept, updated, said: this.setupSaid };
-  }
-
   // ---------- day and week tools (Greg, Manual Build round 2, decisions 6 and 7) ----------
 
   get showTools() {
     return !!this.draft && !this.hasNoDays && this.view !== "activity";
   }
-  get isDaily() {
-    return this.view === "day";
-  }
-  get isGroup() {
-    return this.view === "group";
-  }
-
   /**
    * The tools in the rail's Edit menu, after Undo and Redo (ADR 0008 part 7): Clear day and
    * Copy day to… for the day shown in Daily View (Clear day for one of the bunk's days in Group
@@ -1706,11 +1479,5 @@ export default class ShoreshManualBuild extends LightningElement {
       fromName: this.dayNameAt(this.dayIndex),
       toName: value === "all" ? "all other days" : this.dayNameAt(targets[0])
     });
-  }
-
-  /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
-  handleBackToRoots(event) {
-    event.stopPropagation();
-    this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
   }
 }
