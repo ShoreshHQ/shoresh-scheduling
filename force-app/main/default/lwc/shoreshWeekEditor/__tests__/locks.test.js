@@ -1,7 +1,19 @@
 // How the editor works out Generated Schedule's locks beforehand (locks.js): the same rule as the
 // server (GeneratedEdits.lock): a lock covers a whole placement.
 import { diffRuns, slots } from "../slotEdits";
-import { foldRun, lockKey, locksOfWeek, marks, noteRows } from "../locks";
+import {
+  alreadySkipped,
+  foldRun,
+  lockKey,
+  lockedSince,
+  locksAfterSave,
+  locksOfWeek,
+  marks,
+  newlyLocked,
+  noteRows,
+  unlockedSince,
+  withLocks
+} from "../locks";
 import { day } from "./data/draftFixture";
 
 const ITEMS = [
@@ -201,5 +213,90 @@ describe("marks and locksOfWeek", () => {
       ])
     );
     expect(locksOfWeek(undefined)).toBeNull();
+  });
+});
+
+describe("around a save", () => {
+  const run = () => runTo(",,", ["", "A:a1", ""]);
+
+  // LOCK-5.2
+  it("withLocks: sends the locks the director saw, and for Undo or Redo the locks to leave", () => {
+    const edit = { runs: [run()] };
+    expect(withLocks({ edit })).toBe(edit);
+    const [plain] = withLocks({ edit, seen: locked(2) }).runs;
+    expect(plain.locksBefore).toEqual(marks(locked(2), edit.runs[0]));
+    expect(plain.locksAfter).toBeUndefined();
+    const [undo] = withLocks({
+      edit,
+      seen: locked(2),
+      locksTarget: new Set()
+    }).runs;
+    expect(undo.locksBefore).toEqual(marks(locked(2), edit.runs[0]));
+    expect(undo.locksAfter).toEqual(marks(new Set(), edit.runs[0]));
+  });
+
+  // LOCK-4.4
+  it("newlyLocked: finds a cell someone locked after the edit was made, and nothing else", () => {
+    const [sent] = withLocks({ edit: { runs: [run()] }, seen: new Set() }).runs;
+    const block = sent.blockIds.indexOf("t2");
+    expect(newlyLocked(locked(2), [sent])).toEqual({ run: sent, block });
+    expect(newlyLocked(new Set(), [sent])).toBeNull();
+    const [sawIt] = withLocks({
+      edit: { runs: [run()] },
+      seen: locked(2)
+    }).runs;
+    expect(newlyLocked(locked(2), [sawIt])).toBeNull();
+    // An edit sent without the locks it saw (no locks on this screen) has nothing to compare.
+    expect(newlyLocked(locked(2), [run()])).toBeNull();
+  });
+
+  it("alreadySkipped: a cell the tool left out once isn't worth working out again", () => {
+    const sent = run();
+    const at = { run: sent, block: sent.blockIds.indexOf("t2") };
+    expect(alreadySkipped({ tool: {} }, at)).toBe(false);
+    expect(alreadySkipped({ tool: { locked: locked(1) } }, at)).toBe(false);
+    expect(alreadySkipped({ tool: { locked: locked(2) } }, at)).toBe(true);
+  });
+
+  // LOCK-4.4
+  it("lockedSince and unlockedSince: what changed since the director looked", () => {
+    const entry = { edit: { runs: [run()] }, seen: locked(1, 2) };
+    expect(lockedSince(locked(1, 2, 3), entry)).toEqual(locked(3));
+    expect(lockedSince(null, entry)).toEqual(new Set());
+    // Only cells this edit touches count as unlocked since: it touches block 2, not block 1.
+    expect(unlockedSince(new Set(), entry)).toEqual(locked(2));
+    expect(unlockedSince(locked(1, 2), entry)).toEqual(new Set());
+    expect(unlockedSince(null, entry)).toEqual(new Set());
+    expect(unlockedSince(new Set(), { edit: entry.edit })).toEqual(new Set());
+  });
+
+  // LOCK-1.1
+  it("locksAfterSave: the saver's own, else the week it sent, else what the edit left", () => {
+    const entry = { edit: { runs: [run()] } };
+    const none = { conflicts: [] };
+    expect(locksAfterSave(null, entry, none)).toBeNull();
+    expect(
+      locksAfterSave(new Set(), entry, { ...none, locks: [key(3)] })
+    ).toEqual(locked(3));
+    const week = [{ ...day(DAY, ITEMS, [",,"]), locks: ["1,,"] }];
+    expect(
+      locksAfterSave(new Set(), entry, {
+        ...none,
+        schedule: { days: week }
+      })
+    ).toEqual(locksOfWeek(week));
+    expect(locksAfterSave(locked(1), entry, none)).toEqual(locked(1, 2));
+    // A conflict: the edit wasn't made, so the locks stay as they were.
+    expect(locksAfterSave(locked(1), entry, { conflicts: [{}] })).toEqual(
+      locked(1)
+    );
+  });
+
+  // LOCK-5.2
+  it("locksAfterSave: an Undo or Redo leaves the locks of its target", () => {
+    const entry = { edit: { runs: [run()] }, locksTarget: new Set() };
+    expect(locksAfterSave(locked(2), entry, { conflicts: [] })).toEqual(
+      new Set()
+    );
   });
 });
