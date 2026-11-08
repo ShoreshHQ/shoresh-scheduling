@@ -14,10 +14,7 @@ public with sharing class GeneratedFrames {
     for (ScheduleDays.DayGrid day : days) {
       if (day.grid == null) {
         throw new ShoreshException(
-          BlankWeek.weekdayOf(day.day) +
-            ' could not be read: ' +
-            day.problem +
-            '.'
+          DayWords.say(day.day) + ' could not be read: ' + day.problem + '.'
         );
       }
     }

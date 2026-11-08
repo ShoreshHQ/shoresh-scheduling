@@ -92,14 +92,19 @@
                 <td key={week.key}>
                   <span class="week week_old">
                     <span class="week-name">{week.name}</span>
-                    <lightning-formatted-date-time
-                      class="week-date"
-                      value={week.oldStartDate}
-                      weekday="short"
-                      month="short"
-                      day="numeric"
-                      time-zone="UTC"
-                    ></lightning-formatted-date-time>
+                    <template lwc:if={numbered}>
+                      <span class="week-date">{week.oldDayDate}</span>
+                    </template>
+                    <template lwc:else>
+                      <lightning-formatted-date-time
+                        class="week-date"
+                        value={week.oldStartDate}
+                        weekday="short"
+                        month="short"
+                        day="numeric"
+                        time-zone="UTC"
+                      ></lightning-formatted-date-time>
+                    </template>
                   </span>
                 </td>
               </template>
@@ -112,14 +117,19 @@
                 <td key={week.key}>
                   <span class="week shoresh-raised">
                     <span class="week-name">{week.name}</span>
-                    <lightning-formatted-date-time
-                      class="week-date"
-                      value={week.startDate}
-                      weekday="short"
-                      month="short"
-                      day="numeric"
-                      time-zone="UTC"
-                    ></lightning-formatted-date-time>
+                    <template lwc:if={numbered}>
+                      <span class="week-date">{week.dayDate}</span>
+                    </template>
+                    <template lwc:else>
+                      <lightning-formatted-date-time
+                        class="week-date"
+                        value={week.startDate}
+                        weekday="short"
+                        month="short"
+                        day="numeric"
+                        time-zone="UTC"
+                      ></lightning-formatted-date-time>
+                    </template>
                   </span>
                 </td>
               </template>
@@ -130,23 +140,28 @@
     </template>
     <template lwc:if={showDates}>
       <p class="dates" data-id="new-dates">
-        <lightning-formatted-date-time
-          value={preview.startDate}
-          weekday="long"
-          year="numeric"
-          month="long"
-          day="numeric"
-          time-zone="UTC"
-        ></lightning-formatted-date-time>
-        to
-        <lightning-formatted-date-time
-          value={preview.endDate}
-          weekday="long"
-          year="numeric"
-          month="long"
-          day="numeric"
-          time-zone="UTC"
-        ></lightning-formatted-date-time>
+        <template lwc:if={numbered}>
+          {startDateWords} to {endDateWords}
+        </template>
+        <template lwc:else>
+          <lightning-formatted-date-time
+            value={preview.startDate}
+            weekday="long"
+            year="numeric"
+            month="long"
+            day="numeric"
+            time-zone="UTC"
+          ></lightning-formatted-date-time>
+          to
+          <lightning-formatted-date-time
+            value={preview.endDate}
+            weekday="long"
+            year="numeric"
+            month="long"
+            day="numeric"
+            time-zone="UTC"
+          ></lightning-formatted-date-time>
+        </template>
       </p>
     </template>
     <section class="what" data-id="comes-along">

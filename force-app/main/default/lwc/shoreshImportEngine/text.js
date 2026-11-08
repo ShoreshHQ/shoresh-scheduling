@@ -8,6 +8,8 @@
  * (day abbreviations). See the NOTICE file at the repository root.
  */
 
+import { weekdayNumbered } from "c/shoreshDayNames";
+
 // Every day Shoresh plans, Monday first: the order keys and saved records use.
 export const WEEKDAYS = [
   "Monday",
@@ -39,11 +41,56 @@ export function looseKey(value) {
   return tidy(value).toLowerCase();
 }
 
+// A day said by its number (WEEK-2.6): "Day 3", "Day3", "DAY #3", "day-3". Never a bare number,
+// never past a week's seven days ("Day 10" is not a day), and never "D3": camps name bunks so.
+const DAY_NUMBER = /^day\s*[#._-]?\s*([1-7])(?!\d)[^\p{L}]*$/iu;
+// "Day 3" inside a title ("Week 2 - Day 3", "Day 3 (rain plan)").
+const DAY_NUMBER_IN = /(?<![\p{L}\d])day\s*[#._-]?\s*([1-7])(?!\d)/giu;
+
+/** The number a cell says its day by ("Day 3"), or null. */
+export function dayNumberOf(text) {
+  const found = tidy(text).match(DAY_NUMBER);
+  return found ? Number(found[1]) : null;
+}
+
 /**
- * The day a word names, written in full or shortened ("Mon", "Tues", "WED."), or null.
- * Two letters at least, so a column called "S" or "M" is not taken for a day.
+ * "Day 3" in a title: { number, at, rest } (rest: the title without it), or null. Only where no
+ * word is joined to it, so "Field Day 2" stays a name.
+ */
+export function dayNumberIn(title) {
+  const text = tidy(title);
+  for (const found of text.matchAll(DAY_NUMBER_IN)) {
+    const gap = text.slice(0, found.index);
+    // A word joined to it ("Field Day 2", "field-day-2") makes it part of a name; a separator
+    // ("Camp - Day 3", "Week 2 Day 3") does not.
+    if (!/\p{L}(?:[\s_]*|-)$/u.test(gap)) {
+      const before = gap.replace(/[\s._-]+$/, "");
+      return {
+        number: Number(found[1]),
+        at: found.index,
+        rest: tidy(`${before} ${text.slice(found.index + found[0].length)}`)
+      };
+    }
+  }
+  return null;
+}
+
+/** A title with its "Day 3" taken out, as it is when it has none. */
+export function withoutDayNumber(title) {
+  const numbered = dayNumberIn(title);
+  return numbered ? numbered.rest : tidy(title);
+}
+
+/**
+ * The day a word names, written in full or shortened ("Mon", "Tues", "WED."), or by its number
+ * ("Day 3": the camp's 3rd day of the week, WEEK-2.6), or null. Two letters at least, so a column
+ * called "S" or "M" is not taken for a day.
  */
 export function dayOf(text) {
+  const number = dayNumberOf(text);
+  if (number) {
+    return weekdayNumbered(number);
+  }
   const word = tidy(text)
     .toLowerCase()
     .replace(/[^a-z]/g, "");
@@ -90,7 +137,7 @@ export function weekOrder(days) {
 }
 
 /** The first day a title names among its words ("Monday - All Camp", "Week 2 Tue"), or null. */
-export function dayInTitle(title) {
+function namedDayInTitle(title) {
   for (const word of tidy(title).split(/[^A-Za-z]+/)) {
     const day = word.length >= 3 ? dayOf(word) : null;
     if (day) {
@@ -98,6 +145,18 @@ export function dayInTitle(title) {
     }
   }
   return null;
+}
+
+/** The number a title gives its day by ("Week 2 - Day 3"), when it names no day by name; else null. */
+export function titleDayNumber(title) {
+  const numbered = namedDayInTitle(title) ? null : dayNumberIn(title);
+  return numbered ? numbered.number : null;
+}
+
+/** The day a title names, by name ("Monday - All Camp", "Week 2 Tue") or number ("Day 3"), or null. */
+export function dayInTitle(title) {
+  const number = titleDayNumber(title);
+  return number ? weekdayNumbered(number) : namedDayInTitle(title);
 }
 
 // Excel stores a time as a fraction of a day: 9:15am is 0.3854166666666667.
@@ -421,5 +480,8 @@ const NOT_GROUP_HEADERS = new Set([
 ]);
 
 export function isNotAGroupColumn(header) {
-  return NOT_GROUP_HEADERS.has(looseKey(header));
+  // WEEK-2.6: "Day 3" is a day, never a group.
+  return (
+    NOT_GROUP_HEADERS.has(looseKey(header)) || dayNumberOf(header) !== null
+  );
 }

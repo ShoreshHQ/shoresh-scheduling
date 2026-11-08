@@ -21,6 +21,8 @@
  * Build and Generated Schedule show a switch as it happens instead.
  */
 
+import { numberedDay } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+
 const CARRIES_ON = "^";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
@@ -44,13 +46,17 @@ export function isElectiveItem(item) {
   return !!item && item.kind === "E" && Boolean(item.id);
 }
 
-/** "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
+/**
+ * "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone;
+ * "Day 1", "Day 1" and "Jun 29" in a numbered-days season (WEEK-1.7).
+ */
 export function dayLabel(dateValue) {
   const [y, m, d] = String(dateValue).split("-").map(Number);
   const date = new Date(y, m - 1, d);
+  const numbered = numberedDay(dateValue);
   return {
-    label: date.toLocaleDateString("en-US", { weekday: "long" }),
-    short: date.toLocaleDateString("en-US", { weekday: "short" }),
+    label: numbered || date.toLocaleDateString("en-US", { weekday: "long" }),
+    short: numbered || date.toLocaleDateString("en-US", { weekday: "short" }),
     sub: date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   };
 }

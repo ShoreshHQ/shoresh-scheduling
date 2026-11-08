@@ -122,3 +122,13 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.6: pasted cells keep a file's limits: over 20,000 rows is refused";
    "INGEST-1.6: a paste while a list is in review changes nothing";
    "INGEST-1.6: when the browser won't hand over the clipboard, ⌘V or Ctrl+V is named".
+
+7. **A name longer than Salesforce keeps is a row that can't be read.**
+   Clue: a list's name cell (any list's own Name: activities, locations, programs, groups, time
+   blocks, special events, offerings), or a name in another list's column that may add it (an
+   activity's Location or Rain plan), holds more than 80 characters.
+   Meaning: the row is listed as one that can't be read, with why ("Activity: "AAAA…" is longer
+   than 80 characters"), and is never counted as ready to save, so the save can't then refuse it
+   ("Something typed is too long"). The rest of the file is read as before.
+   Test: "INGEST-1.7: a name longer than Salesforce keeps can't be read, with why; it is never
+   Ready to save".

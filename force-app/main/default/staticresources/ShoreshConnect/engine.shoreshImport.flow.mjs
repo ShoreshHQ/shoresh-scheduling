@@ -32,7 +32,7 @@ export function layoutWords(t) {
 
 /** A question that can wait: one with "Leave it out for now" (INGEST-5.5). */
 export function leaveable(card) {
-  return card.options.some((o) => o.value === LEAVE_OUT);
+  return !card.mustAnswer && card.options.some((o) => o.value === LEAVE_OUT);
 }
 
 export function proposalWith(input, answers) {
@@ -126,6 +126,22 @@ export function settled(input, proposal, answers) {
     now = proposalWith(input, left);
   }
   return { proposal: now, open: [...open.values()] };
+}
+
+/**
+ * INGEST-5.5: the proposal as Add would save it, the open questions that can wait left out, so
+ * what the review promises (its notes, the weeks added, last year's schedule kept as a version)
+ * is what the save does; the proposal itself when that can't be worked out.
+ */
+export function keptNow(input, proposal, answers) {
+  if (!proposal) {
+    return null;
+  }
+  try {
+    return settled(input, proposal, answers).proposal;
+  } catch {
+    return proposal;
+  }
 }
 
 /** Whether nothing was found to import (a single-day file waiting for its day is something). */

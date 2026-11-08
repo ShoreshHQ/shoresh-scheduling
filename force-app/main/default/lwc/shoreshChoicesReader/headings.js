@@ -12,7 +12,7 @@
  * Headings, never cell contents, decide what a column is (as in ADR 0007 §2). A heading this file
  * does not know is "not used": the reader names it and never copies what the column holds.
  */
-import { dayOf, tidy } from "c/shoreshImportEngine";
+import { dayNumberIn, dayOf, tidy } from "c/shoreshImportEngine";
 
 const ORDINALS = [
   "first",
@@ -138,9 +138,12 @@ const RANK_IN_HEADING = [
 
 /** A heading naming a choice: its rank, day and period (any may be null), or null. */
 function choiceHeading(text) {
-  let rest = ` ${text} `;
-  let day = null;
-  for (const word of text.split(" ")) {
+  // WEEK-2.6: "Day 3" first, so its number is never read as the rank.
+  const numbered = dayNumberIn(text);
+  const words = numbered ? numbered.rest : text;
+  let rest = ` ${words} `;
+  let day = numbered ? dayOf(`day ${numbered.number}`) : null;
+  for (const word of words.split(" ")) {
     const found = word.length >= 3 ? dayOf(word) : null;
     if (found && !day) {
       day = found;

@@ -226,7 +226,7 @@ describe("downloads come once seats are final", () => {
       "Drama",
       "Pottery"
     ]);
-    expect(printout.header).toBe("Chugim · Week 1 · Final 14 Oct");
+    expect(printout.header).toBe("Chugim · Week 1 · Final Oct 14");
     expect(printout.file).toBe("Chugim Week 1 rosters");
     window.dispatchEvent(new CustomEvent("afterprint"));
     await flush();
