@@ -44,7 +44,7 @@ describe("scheduleOptions", () => {
     expect(scheduleOptions(null, "w1")).toEqual([]);
     expect(
       scheduleOptions(
-        { schedules: [schedule("s1", "Manual", "Draft", undefined)] },
+        { schedules: [schedule("s1", "Manual", "Draft", null)] },
         null
       )
     ).toEqual([]);
