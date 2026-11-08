@@ -47,11 +47,12 @@ const MIRRORED_SCREENS = {
   shoreshErrors: "AgentVersions"
 };
 
-// The Apex test that reads each shared-examples static resource: a change to the examples runs it
-// (ci-pr-category.js lists the same resources; a test keeps them so, and keeps this list whole).
+// The Apex tests that read each shared-examples static resource: a change to the examples runs
+// them (ci-pr-category.js lists the same resources; a test keeps them so, and keeps this list to
+// every class that queries a static resource by name).
 const EXAMPLES_READ_BY = {
-  ShoreshCellExamples: "CellExamplesTest",
-  ShoreshSeatExamples: "ElectiveSeatExamplesTest"
+  ShoreshCellExamples: ["CellExamplesTest"],
+  ShoreshSeatExamples: ["ElectiveSeatExamplesTest"]
 };
 
 /** Apex source without comments or strings, so a name in either does not count as a use. */
@@ -130,7 +131,7 @@ function select(files, classes) {
     const resource =
       /^force-app\/main\/default\/staticresources\/(\w+)[./]/.exec(file);
     if (resource && EXAMPLES_READ_BY[resource[1]]) {
-      changed.push(EXAMPLES_READ_BY[resource[1]]);
+      changed.push(...EXAMPLES_READ_BY[resource[1]]);
       continue;
     }
     if (NO_APEX_EFFECT.some((r) => r.test(file))) continue;

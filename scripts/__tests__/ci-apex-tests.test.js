@@ -83,7 +83,7 @@ describe("ci-apex-tests", () => {
       for (const m of source.matchAll(
         /FROM\s+StaticResource\s+WHERE\s+Name\s*=\s*'(\w+)'/gi
       )) {
-        read[m[1]] = file.slice(0, -4);
+        read[m[1]] = [...(read[m[1]] || []), file.slice(0, -4)].sort();
       }
     }
     expect(Object.keys(read).length).toBeGreaterThan(0);
