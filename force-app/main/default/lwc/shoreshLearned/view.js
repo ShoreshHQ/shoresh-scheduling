@@ -11,16 +11,8 @@ import {
   inOrder,
   joinNames
 } from "c/shoreshPatterns";
+import { shortDate } from "c/shoreshTerms";
 import { describe } from "./kinds";
-
-const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
-
-/** "2026-07-03" -> "3 Jul" (desktop shortDate). */
-export function shortDate(iso) {
-  const [, month, day] = String(iso || "").split("-");
-  const name = MONTHS[Number(month) - 1];
-  return name && Number(day) ? `${Number(day)} ${name}` : "";
-}
 
 function whoLine(row, group) {
   const who = row.byYou ? "you" : row.byName || "a former user";

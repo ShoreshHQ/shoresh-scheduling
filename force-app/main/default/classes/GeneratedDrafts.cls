@@ -70,7 +70,10 @@ public with sharing class GeneratedDrafts {
         Week__c,
         Program__r.Id,
         Program__r.Season__c,
-        Program__r.Season__r.Camp__c
+        Program__r.Season__r.Camp__c,
+        Program__r.Season__r.Camp__r.TimeZone__c,
+        Program__r.Season__r.Id,
+        Program__r.Season__r.NumberedDays__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
@@ -129,6 +132,24 @@ public with sharing class GeneratedDrafts {
       Database.rollback(beforeStart);
       throw e;
     }
+  }
+
+  /**
+   * Apply to other weeks on a week not generated yet (WeekApply): the week's Generated draft, as a
+   * blank week as it is now, under the program's lock the caller holds. Nothing is built.
+   */
+  public static Id startBlank(GeneratedSetup setup, BlankWeek.Week blank) {
+    Schedule__c draft = new Schedule__c(
+      Program__c = setup.program.Id,
+      Week__c = setup.week.Id,
+      Name = NAME,
+      Status__c = ManualDrafts.DRAFT,
+      Origin__c = GENERATED,
+      EngineOption__c = 1
+    );
+    Database.insert(draft, AccessLevel.USER_MODE);
+    ScheduleDaySaves.write(draft.Id, blank.days);
+    return draft.Id;
   }
 
   private static ShoreshException notHere(Schedule__c draft) {

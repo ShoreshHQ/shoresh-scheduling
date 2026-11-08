@@ -343,15 +343,15 @@ describe("suggestions on the import's cards", () => {
   // MEMO-6.6
   it("says whose answers and when, in the words of a remembered answer", () => {
     expect(suggestionFor(card("a"), rows).text).toBe(
-      "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's 10 Jul, yours 3 Jul)"
+      "Suggested from answers for “Archary” / “Archery” and “Potery” / “Pottery” (Dana's Jul 10, yours Jul 3)"
     );
     const mine = rows.map((r) => ({ ...r, byYou: true }));
     expect(suggestionFor(card("a"), mine).text).toBe(
-      "Suggested from your answers for “Archary” / “Archery” and “Potery” / “Pottery” on 10 Jul and 3 Jul"
+      "Suggested from your answers for “Archary” / “Archery” and “Potery” / “Pottery” on Jul 10 and Jul 3"
     );
     const former = rows.map((r) => ({ ...r, byYou: false, byName: null }));
     expect(suggestionFor(card("a"), former).text).toBe(
-      "Suggested from a former user's answers for “Archary” / “Archery” and “Potery” / “Pottery” on 10 Jul and 3 Jul"
+      "Suggested from a former user's answers for “Archary” / “Archery” and “Potery” / “Pottery” on Jul 10 and Jul 3"
     );
   });
 
@@ -470,7 +470,7 @@ describe("filled in on its own (MEMO-5.1)", () => {
         value: "fixed",
         band: "established",
         template: "numbered",
-        text: "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on 10 Jul and 3 Jul"
+        text: "Auto-applied from your answers for Specialty 1, Specialty 2 and Specialty 3 on Jul 10 and Jul 3"
       })
     });
   });
@@ -588,7 +588,7 @@ describe("filled in on its own (MEMO-5.1)", () => {
       })
     ];
     expect(autoAnswersFor([card], rows)["kind|Specialty 4"].text).toBe(
-      "Auto-applied from answers for Specialty 1, Specialty 2 and Specialty 3 (Dana's 10 Jul, yours 3 Jul)"
+      "Auto-applied from answers for Specialty 1, Specialty 2 and Specialty 3 (Dana's Jul 10, yours Jul 3)"
     );
   });
 

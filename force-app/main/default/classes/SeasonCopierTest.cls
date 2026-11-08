@@ -263,6 +263,24 @@ private class SeasonCopierTest {
     }
   }
 
+  // WEEK-1.5
+  @IsTest
+  static void aCopyCarriesNumberedDays() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c original = ShoreshTestData.fullSeason(camp.Id);
+      original.NumberedDays__c = true;
+      Database.update(original, AccessLevel.SYSTEM_MODE);
+      SeasonCopier copier = new SeasonCopier(original.Id, NEW_START);
+      Assert.areEqual('Day 1', copier.preview().oldWeekday);
+      Id copied = copier.copy('Summer 2027');
+      Assert.isTrue(
+        [SELECT NumberedDays__c FROM Season__c WHERE Id = :copied]
+        .NumberedDays__c
+      );
+    }
+  }
+
   @IsTest
   static void previewWarnsWhenWeeksLandOnDifferentWeekdays() {
     System.runAs(ShoreshTestData.scheduler()) {

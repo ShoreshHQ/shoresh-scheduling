@@ -227,7 +227,11 @@ describe("Command line", () => {
       { write: (t) => out.push(t) },
       { write: (t) => err.push(t) },
       (name, input, options) =>
-        call(name, input, { ...options, run: async () => "" })
+        call(name, input, {
+          ...options,
+          run: async () =>
+            "Error (NamedOrgNotFoundError): No authorization information found for camp."
+        })
     );
     expect(code).toBe(1);
     expect(err.join("")).toBe(

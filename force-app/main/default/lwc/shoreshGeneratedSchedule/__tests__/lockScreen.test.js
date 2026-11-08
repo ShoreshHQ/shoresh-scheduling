@@ -151,6 +151,7 @@ describe("locks on the Generated Schedule screen", () => {
     expect(cellAt(element, "1-1").querySelector(".cell-lock")).toBeNull();
   });
 
+  // LOCK-4.2
   it("a cell locked empty is kept empty: not Open, not counted to fill", async () => {
     // Monday: Bunk 1's Period 2 Open and locked.
     const element = await render(savedWeek([[",,1,", ",,,"]]));
