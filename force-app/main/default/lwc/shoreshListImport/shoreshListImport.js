@@ -30,6 +30,7 @@ import {
   listProposal,
   questionCards,
   rainAddKey,
+  saveListLabel,
   waitingFor,
   listRows,
   workbookCards,
@@ -1036,14 +1037,7 @@ export default class ShoreshListImport extends LightningElement {
     const changed = this.rowsWith("changed").filter((r) =>
       r.differences.some((d) => d.answer === CHANGE)
     ).length;
-    const parts = [];
-    if (added) {
-      parts.push(`Add ${added}`);
-    }
-    if (changed) {
-      parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
-    }
-    return parts.join(", ") || "Save";
+    return saveListLabel(added, changed);
   }
 
   get saveDisabled() {

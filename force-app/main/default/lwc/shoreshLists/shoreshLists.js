@@ -14,6 +14,7 @@ export {
   shownValue,
   changeAllCounts,
   changeAllLabel,
+  saveListLabel,
   waitingFor,
   listPlan
 } from "./plan";
