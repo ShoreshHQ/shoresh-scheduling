@@ -3,6 +3,7 @@ import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { earlyNote, setTimeNote, spanChange } from "c/shoreshSetupRules";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
 import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
+import { spokenWeekday } from "c/shoreshDayNames";
 import { moveNote } from "./groupMoves";
 
 /**
@@ -230,7 +231,7 @@ export default class ShoreshProgram extends LightningElement {
         more: true,
         options: [
           { label: "No day", value: "" },
-          ...runs.map((day) => ({ label: day, value: day }))
+          ...runs.map((day) => ({ label: spokenWeekday(day), value: day }))
         ]
       },
       {

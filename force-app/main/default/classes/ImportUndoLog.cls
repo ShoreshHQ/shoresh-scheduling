@@ -35,6 +35,11 @@ public with sharing class ImportUndoLog {
   };
   // Everything else in Changed__c: a record's values.
   private static final String RECORD_VALUES = 'values';
+  // Reported by a record but never written by an import: IsDeleted comes with a record's defaults.
+  private static final Set<String> NOT_WRITTEN = new Set<String>{
+    'Id',
+    'IsDeleted'
+  };
 
   /**
    * Puts back what the import did, in this order: what it removed comes back, then what it
@@ -61,7 +66,7 @@ public with sharing class ImportUndoLog {
     // Last, what it made, its imported week too, which nothing else may delete.
     ImportedWeekGuard.allow();
     try {
-      new ImportUndoDeletes(result, new ImportUndoLater(done))
+      new ImportUndoDeletes(result, new ImportUndoLater(done), done.Season__c)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
     } finally {
       ImportedWeekGuard.done();
@@ -229,7 +234,7 @@ public with sharing class ImportUndoLog {
     Map<String, Schema.SObjectField> result = new Map<String, Schema.SObjectField>();
     for (String reported : row.getPopulatedFieldsAsMap().keySet()) {
       Schema.SObjectField field = ShoreshSchema.field(kind, reported);
-      if (reported != 'Id' && field != null) {
+      if (!NOT_WRITTEN.contains(reported) && field != null) {
         result.put(ShoreshSchema.localName(field), field);
       }
     }

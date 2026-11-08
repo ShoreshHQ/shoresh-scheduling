@@ -117,13 +117,6 @@ export function divisionOfIdentity(name, identity) {
     : inside;
 }
 
-/** The identity without its schedule: what the camp's records are matched against. */
-export function baseIdentity(identity) {
-  return identity
-    .replace(/ \(schedule \d+\)$/, "")
-    .replace(/, schedule \d+\)$/, ")");
-}
-
 /**
  * The same division and name in two timetables (two programs, as in program A's "Juniors: Bunk
  * 1" and program B's "Juniors: Bunk 1") are two groups: each gets its schedule's number,

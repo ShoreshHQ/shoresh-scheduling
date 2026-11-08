@@ -262,6 +262,7 @@ describe("the run's work ceiling", () => {
     expect(problems(overfullSpec, overfull, result)).toEqual([]);
   });
 
+  // GEN-8.17
   it("says a cell it stopped on couldn't be finished, never that it was proven", () => {
     // A camp whose search leaves cells Open when stopped early.
     const spec = randomCamp(5);

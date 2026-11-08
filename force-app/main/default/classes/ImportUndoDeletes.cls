@@ -91,6 +91,12 @@ public with sharing class ImportUndoDeletes {
       FixedActivity__c.LastTimeBlock__c,
       RecurringActivity__c.LastTimeBlock__c
     },
+    // A fixed or recurring activity or activity kept keeps its place.
+    'Location' => new List<Schema.SObjectField>{
+      Activity__c.Location__c,
+      FixedActivity__c.Location__c,
+      RecurringActivity__c.Location__c
+    },
     'Activity' => new List<Schema.SObjectField>{
       ActivityEligibility__c.Activity__c,
       Activity__c.RainPlan__c,
@@ -157,10 +163,16 @@ public with sharing class ImportUndoDeletes {
 
   // What later imports from another source changed (API-2.6): theirs too now, so kept.
   private ImportUndoLater later;
+  private ImportUndoBuiltWeeks builtWeeks;
 
-  public ImportUndoDeletes(ImportUndo.Result result, ImportUndoLater later) {
+  public ImportUndoDeletes(
+    ImportUndo.Result result,
+    ImportUndoLater later,
+    Id seasonId
+  ) {
     this.result = result;
     this.later = later;
+    this.builtWeeks = new ImportUndoBuiltWeeks(seasonId, createdIds);
   }
 
   public void run(Map<String, Object> created) {
@@ -287,6 +299,8 @@ public with sharing class ImportUndoDeletes {
     holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
     usedByKeptDays.putAll(ImportUndoSpecialDays.usedBy(keptIds, now.keySet()));
     holding.addAll(usedByKeptDays.keySet());
+    // INGEST-5.10: a week built, locked, placed by hand or published since is using it: kept.
+    holding.addAll(builtWeeks.usedAmong(now.keySet()));
     List<SObject> toDelete = new List<SObject>();
     for (SObject record : now.values()) {
       List<Object> row = rows.get(record.Id);

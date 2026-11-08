@@ -68,6 +68,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - name: ESLint on the screens
+        run: npm run lint
       - name: Every Apex class and trigger has its -meta.xml
         # scripts/apex-meta-files.js: a class without one never reaches the org (#55).
         run: npm run check:meta

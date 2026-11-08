@@ -523,12 +523,42 @@ private class SchedulePublishTest {
       Datetime published = Datetime.newInstanceGmt(2026, 10, 18, 18, 40, 0);
       Assert.areEqual(
         'Published Oct 18, 2:40 PM',
-        PublishedRows.historyName(published)
+        PublishedRows.historyName(published, null)
       );
       // The same moment, the same name.
       Assert.areEqual(
-        PublishedRows.historyName(published),
-        PublishedRows.historyName(published)
+        PublishedRows.historyName(published, null),
+        PublishedRows.historyName(published, null)
+      );
+    }
+  }
+
+  // CORE-6.11: on the camp's clock, whatever the person's own; a name written on the person's
+  // clock before stays as written and is still read as Publish's.
+  @IsTest
+  static void aCopyIsNamedOnTheCampsClock() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Datetime published = Datetime.newInstanceGmt(2026, 10, 18, 18, 40, 0);
+      Assert.areEqual(
+        'Published Oct 18, 11:40 AM',
+        PublishedRows.historyName(published, 'America/Los_Angeles')
+      );
+      Schedule__c older = new Schedule__c(
+        Name = 'Published Oct 18, 2:40 PM',
+        PublishedAt__c = published
+      );
+      Assert.isTrue(
+        PublishedRows.namedByPublish(older, null),
+        'written on the person\'s clock before, still Publish\'s name'
+      );
+      Assert.areEqual(
+        '18 Oct 2026 11:40 AM',
+        CampClock.say(published, 'd MMM yyyy h:mm a', 'America/Los_Angeles')
+      );
+      Assert.areEqual(
+        '18 Oct 2026 2:40 PM',
+        CampClock.say(published, 'd MMM yyyy h:mm a', null),
+        'no camp time zone: the person\'s own'
       );
     }
   }
@@ -545,7 +575,7 @@ private class SchedulePublishTest {
       Datetime published = Datetime.newInstanceGmt(2026, 10, 18, 18, 40, 0);
       Assert.areEqual(
         'Published Oct 18, 14:40',
-        PublishedRows.historyName(published)
+        PublishedRows.historyName(published, null)
       );
     }
   }

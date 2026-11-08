@@ -12,8 +12,13 @@ global with sharing class OutgoingGroupSchedule implements OutgoingDoors.Capabil
     'time_block',
     'start_time',
     'end_time',
-    'activity'
+    'activity',
+    'division'
   };
+
+  private static final Pattern ID_LIKE = Pattern.compile(
+    '[A-Za-z0-9]{15}([A-Za-z0-9]{3})?'
+  );
 
   /** One send a Flow asks for. */
   global class Request {
@@ -84,10 +89,15 @@ global with sharing class OutgoingGroupSchedule implements OutgoingDoors.Capabil
     return FIELDS;
   }
 
-  /** Day by day, each group in the schedule's order, each thing it does in time order. */
+  /**
+   * Day by day, each group in the schedule's order, each thing it does in time order, with the
+   * group's division, so two groups of one name are told apart (API-6.6).
+   */
   public List<Map<String, Object>> rows(Season__c season, String week) {
     List<Map<String, Object>> rows = new List<Map<String, Object>>();
-    for (OutgoingPublished.Thing thing : OutgoingPublished.of(season, week)) {
+    List<OutgoingPublished.Thing> things = OutgoingPublished.of(season, week);
+    Map<String, String> divisions = divisionsOf(things);
+    for (OutgoingPublished.Thing thing : things) {
       rows.add(
         new Map<String, Object>{
           'week' => week,
@@ -96,10 +106,40 @@ global with sharing class OutgoingGroupSchedule implements OutgoingDoors.Capabil
           'time_block' => thing.block,
           'start_time' => thing.startTime,
           'end_time' => thing.endTime,
-          'activity' => thing.activity
+          'activity' => thing.activity,
+          'division' => divisions.get(thing.groupId)
         }
       );
     }
     return rows;
+  }
+
+  /**
+   * Each published group's division by its id; none for a group in no division. Read in system
+   * mode on purpose: a key holds these groups' names already, and only the division's name (or
+   * that there is none) comes of it.
+   */
+  private static Map<String, String> divisionsOf(
+    List<OutgoingPublished.Thing> things
+  ) {
+    Set<String> ids = new Set<String>();
+    for (OutgoingPublished.Thing thing : things) {
+      if (thing.groupId != null && ID_LIKE.matcher(thing.groupId).matches()) {
+        ids.add(thing.groupId);
+      }
+    }
+    Map<String, String> result = new Map<String, String>();
+    for (Group__c each : [
+      SELECT Id, Division__r.Name, Division__r.NoDivision__c
+      FROM Group__c
+      WHERE Id IN :ids
+      WITH SYSTEM_MODE
+    ]) {
+      result.put(
+        each.Id,
+        each.Division__r.NoDivision__c ? null : each.Division__r.Name
+      );
+    }
+    return result;
   }
 }

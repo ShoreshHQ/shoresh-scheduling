@@ -12,7 +12,7 @@ import { loadStyle } from "lightning/platformResourceLoader";
 import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { failed } from "c/shoreshErrors";
-import { buildTerms } from "c/shoreshTerms";
+import { buildTerms, shortDate } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import {
   buildBoard,
@@ -75,7 +75,7 @@ const ICONS = {
  * The rail: the week and the set on the left (and "Assign against" when the week has more than
  * one schedule); By offering and By camper in the middle; on the right the counter ("212 of 214
  * placed", opening to the problems), Bring in choices, Assign again, the run's state (Committed;
- * Final · 14 Oct · Greg; Out of date), and the one main button: Assign seats, then Finalize, then
+ * Final · Oct 14 · Greg; Out of date), and the one main button: Assign seats, then Finalize, then
  * Download (slice E10). Seats are worked out in the browser (c/shoreshElectiveEngine) and checked
  * by the server as it saves them; locks and hand moves always beat the engine.
  */
@@ -516,7 +516,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   // ---------- the run's state ----------
 
-  /** "Committed", "Final · 14 Oct · Greg", or "Out of date" (said on the run's own screen). */
+  /** "Committed", "Final · Oct 14 · Greg", or "Out of date" (said on the run's own screen). */
   get stateLabel() {
     if (!this.view) return "";
     if (this.isFinal && this.view.scheduleChanged) return "Out of date";
@@ -1321,13 +1321,6 @@ function cellName(row, cell) {
 function splitCell(key) {
   const at = String(key || "").lastIndexOf("|");
   return [key.slice(0, at), key.slice(at + 1)];
-}
-
-/** "14 Oct", whatever the browser's language. */
-function shortDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return `${date.getDate()} ${date.toLocaleDateString("en-GB", { month: "short" })}`;
 }
 
 function firstName(name) {

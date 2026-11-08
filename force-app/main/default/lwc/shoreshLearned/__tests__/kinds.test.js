@@ -2,7 +2,8 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { mergesFrom, similarPairs } from "c/shoreshImportEngine";
 import { describe as kindOf, keyParts } from "../kinds";
-import { learnedRow, matches, shortDate, speller } from "../view";
+import { shortDate } from "c/shoreshTerms";
+import { learnedRow, matches, speller } from "../view";
 
 const t = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -146,12 +147,12 @@ describe("each remembered question in camp words", () => {
 describe("who, when, groups and search", () => {
   // MEMO-6.2
   it("says who answered and when", () => {
-    expect(row("kind|Lunch", "fixed").who).toBe("Answered by you on 3 Jul");
+    expect(row("kind|Lunch", "fixed").who).toBe("Answered by you on Jul 3");
     expect(row("kind|Lunch", "fixed", { byYou: false }).who).toBe(
-      "Answered by Dana on 3 Jul"
+      "Answered by Dana on Jul 3"
     );
     expect(row("deleted|Activity||Riflery", "deleted").who).toBe(
-      "Deleted by you on 3 Jul"
+      "Deleted by you on Jul 3"
     );
     expect(shortDate("bad")).toBe("");
   });
@@ -160,13 +161,13 @@ describe("who, when, groups and search", () => {
   it("says a former user when whoever answered is no longer here", () => {
     const former = { byYou: false, byName: null };
     expect(row("kind|Lunch", "fixed", former).who).toBe(
-      "Answered by a former user on 3 Jul"
+      "Answered by a former user on Jul 3"
     );
     expect(row("deleted|Activity||Riflery", "deleted", former).who).toBe(
-      "Deleted by a former user on 3 Jul"
+      "Deleted by a former user on Jul 3"
     );
     expect(row("guessed|a0S|Activity||Archery|often", "3", former).who).toBe(
-      "Guessed in an import by a former user on 3 Jul"
+      "Guessed in an import by a former user on Jul 3"
     );
   });
 
@@ -174,12 +175,12 @@ describe("who, when, groups and search", () => {
     const r = {
       title: "Lunch is a fixed activity",
       how: "From Dana's answer in an import",
-      when: "3 Jul",
+      when: "Jul 3",
       flag: "Updated"
     };
     expect(matches(r, "lunch")).toBe(true);
     expect(matches(r, "dana")).toBe(true);
-    expect(matches(r, "3 jul")).toBe(true);
+    expect(matches(r, "jul 3")).toBe(true);
     expect(matches(r, "updated")).toBe(true);
     expect(matches(r, "swim")).toBe(false);
   });

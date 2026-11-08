@@ -5,31 +5,6 @@
   position: relative;
 }
 
-.viewing {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  margin-bottom: 16px;
-  border-radius: 8px;
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  font-size: 13px;
-}
-
-.viewing-label {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.viewing-name {
-  font-weight: 700;
-}
-
-.viewing-meta {
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
 /*
  * What building still needs: the desktop's bronze-tinted box (ScheduleScreen.jsx), its one
  * sentence with links, and "Set up <first>". Bronze only as the tint and border, never text.

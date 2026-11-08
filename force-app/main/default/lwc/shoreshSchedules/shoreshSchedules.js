@@ -423,9 +423,6 @@ export default class ShoreshSchedules extends LightningElement {
       ? noScheduleYet(day.special.name)
       : null;
   }
-  get showDailyGrid() {
-    return !this.dayProblem && !this.noSpecialSchedule;
-  }
 
   /** The special events on the day shown that have a schedule of their own, to open. */
   get dayEvents() {

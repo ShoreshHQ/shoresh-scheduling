@@ -51,7 +51,8 @@ public with sharing class PublishedRows {
    */
   public static void keepAsHistory(
     List<Schedule__c> published,
-    String publishedName
+    String publishedName,
+    String zone
   ) {
     List<Schedule__c> history = new List<Schedule__c>();
     for (Schedule__c old : published) {
@@ -66,7 +67,7 @@ public with sharing class PublishedRows {
         PublishKey__c = null
       );
       if (old.Name == publishedName) {
-        kept.Name = historyName(publishedAt);
+        kept.Name = historyName(publishedAt, zone);
       }
       history.add(kept);
     }
@@ -74,26 +75,40 @@ public with sharing class PublishedRows {
   }
 
   /**
-   * "Published Oct 18, 2:40 PM": when it was published, in the user's time zone, as the screen
-   * shows "Published Oct 18, 2:40 PM" beside Publish (short month, day, hour and minutes; a
-   * 24-hour clock where the user's locale uses one). The same moment always gives the same name.
+   * "Published Oct 18, 2:40 PM": when it was published, on the camp's clock (CORE-6.11; the
+   * person's own where the camp has none), as the screen shows "Published Oct 18, 2:40 PM" beside
+   * Publish (short month, day, hour and minutes; a 24-hour clock where the user's locale uses
+   * one). The same moment always gives the same name.
    */
-  public static String historyName(Datetime publishedAt) {
+  public static String historyName(Datetime publishedAt, String zone) {
     // The user's locale writes 1 PM as "13" only on a 24-hour clock.
     Boolean twentyFourHour = Datetime.newInstance(2000, 1, 1, 13, 5, 0)
       .format()
       .contains('13');
     return 'Published ' +
-      publishedAt.format(twentyFourHour ? 'MMM d, H:mm' : 'MMM d, h:mm a');
+      CampClock.say(
+        publishedAt,
+        twentyFourHour ? 'MMM d, H:mm' : 'MMM d, h:mm a',
+        zone
+      );
   }
 
   /**
-   * Still named as it was kept (historyName, in this user's time zone and locale): the name
-   * already says it was published and when, so Versions and Start from another week don't say it
-   * again. One someone renamed, or kept for someone in another time zone, is not.
+   * Still named as it was kept (historyName, on the camp's clock, or the person's own for a name
+   * written before CORE-6.11, which stays as written): the name already says it was published and
+   * when, so Versions and Start from another week don't say it again. One someone renamed is not.
+   * The camp's clock is read only for a name that could be one (no read for the rest).
    */
-  public static Boolean namedByPublish(Schedule__c schedule) {
-    return schedule.PublishedAt__c != null &&
-      schedule.Name == historyName(schedule.PublishedAt__c);
+  public static Boolean namedByPublish(Schedule__c schedule, Id programId) {
+    if (schedule.PublishedAt__c == null) {
+      return false;
+    }
+    String written = historyName(schedule.PublishedAt__c, null);
+    if (schedule.Name == written) {
+      return true;
+    }
+    return schedule.Name.substringBefore(' ') == written.substringBefore(' ') &&
+      schedule.Name ==
+      historyName(schedule.PublishedAt__c, CampClock.zoneOfProgram(programId));
   }
 }
