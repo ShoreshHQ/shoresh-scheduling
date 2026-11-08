@@ -104,10 +104,16 @@
   }
 }
 
-/* A phone: the rail's menus open across it (c/shoreshRailPop, c/shoreshVersions). */
+/* A phone: too narrow for a menu to open from its item, so the rail's open across it, under it
+   (c/shoreshRailPop, c/shoreshVersions, c/shoreshWeekChecks). Only the rail's: a menu elsewhere
+   stays by its own item. */
 @media (max-width: 40em) {
   .rail {
     position: relative;
+    --shoresh-pop-host: static;
+    --shoresh-pop-left: 0;
+    --shoresh-pop-right: 0;
+    --shoresh-pop-width: auto;
   }
 }
 

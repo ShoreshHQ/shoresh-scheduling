@@ -435,4 +435,14 @@ describe("the rail's room", () => {
       /flex-wrap: wrap;/
     );
   });
+
+  it("on a phone anchors the rail's menus itself, so they open under it", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekEditor.css"),
+      "utf8"
+    );
+    const phone = css.split("@media (max-width: 40em)")[1];
+    expect(phone).toMatch(/\.rail\s*{[^}]*position: relative;/);
+    expect(phone).toMatch(/--shoresh-pop-host: static;/);
+  });
 });
