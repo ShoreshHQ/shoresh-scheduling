@@ -41,7 +41,11 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
       '": ' +
       (String.isBlank(made.Files__c) ? 'a file' : made.Files__c) +
       ', ' +
-      made.CreatedDate.format('MMM d, yyyy h:mm a') +
+      CampClock.say(
+        made.CreatedDate,
+        'MMM d, yyyy h:mm a',
+        CampClock.zoneOfSeason(season.Id)
+      ) +
       '. What it added is removed and what it changed goes back to how it was; anything edited since, or still used by something else, stays.';
   }
 

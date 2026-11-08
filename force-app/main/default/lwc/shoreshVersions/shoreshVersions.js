@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { canDelete, metaOf } from "./words";
+import { campZone } from "c/shoreshCampClock";
 
 /**
  * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
@@ -120,6 +121,11 @@ export default class ShoreshVersions extends LightningElement {
         button.focus();
       }
     }
+  }
+
+  /** When each was saved, on the camp's clock (CORE-6.11). */
+  get timeZone() {
+    return campZone();
   }
 
   get title() {

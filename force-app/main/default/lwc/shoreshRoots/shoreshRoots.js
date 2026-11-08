@@ -5,7 +5,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { reasonOf } from "c/shoreshErrors";
 import { menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD } from "c/shoreshSchema";
-import { realDivisionsOf } from "c/shoreshImportEngine";
+import { campTimeZoneOf, realDivisionsOf } from "c/shoreshImportEngine";
 import getTable from "@salesforce/apex/RootsController.getTable";
 import {
   MELD_REST,
@@ -444,9 +444,11 @@ export default class ShoreshRoots extends LightningElement {
     if (!last) {
       return null;
     }
+    // On the camp's clock (CORE-6.11).
     const when = new Date(last.CreatedDate).toLocaleString("en-US", {
       dateStyle: "medium",
-      timeStyle: "short"
+      timeStyle: "short",
+      timeZone: campTimeZoneOf(this.setup.season)
     });
     const what = `Last import: ${last[FIELD.Import.Files] || "a file"}`;
     const open = openQuestions(last[FIELD.Import.Open]);

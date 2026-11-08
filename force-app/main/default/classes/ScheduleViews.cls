@@ -97,7 +97,7 @@ public with sharing class ScheduleViews {
       ORDER BY CreatedDate DESC, Id DESC
       LIMIT 1000
     ]) {
-      rows.add(row(schedule));
+      rows.add(row(schedule, programId));
     }
     return rows;
   }
@@ -137,7 +137,8 @@ public with sharing class ScheduleViews {
         VersionReason__c,
         PublishedAt__c,
         CreatedDate,
-        Week__c
+        Week__c,
+        Program__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
@@ -146,7 +147,7 @@ public with sharing class ScheduleViews {
       return null;
     }
     ScheduleView view = new ScheduleView();
-    view.schedule = row(found[0]);
+    view.schedule = row(found[0], found[0].Program__c);
     view.status = found[0].Status__c;
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
     view.revisions = ScheduleDays.stamp(days);
@@ -178,7 +179,7 @@ public with sharing class ScheduleViews {
     return views;
   }
 
-  private static VersionRow row(Schedule__c schedule) {
+  private static VersionRow row(Schedule__c schedule, Id programId) {
     VersionRow row = new VersionRow();
     row.id = schedule.Id;
     row.name = schedule.Name;
@@ -186,7 +187,7 @@ public with sharing class ScheduleViews {
     row.reason = schedule.VersionReason__c;
     row.savedAt = schedule.CreatedDate;
     row.publishedAt = schedule.PublishedAt__c;
-    row.namedByPublish = PublishedRows.namedByPublish(schedule);
+    row.namedByPublish = PublishedRows.namedByPublish(schedule, programId);
     return row;
   }
 

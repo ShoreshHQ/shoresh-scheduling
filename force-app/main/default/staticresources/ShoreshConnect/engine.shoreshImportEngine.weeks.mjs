@@ -2,8 +2,9 @@
  * The weeks of a season with no weeks yet, as "Fill in weeks" makes them: shared by the camp
  * workbook import (c/shoreshLists) and Import last year.
  */
-import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { FIELD, PARENT } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { setDayNaming } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+import { setCampZone } from "./engine.shoreshCampClock.shoreshCampClock.mjs";
 import { MONDAY_TO_FRIDAY, WEEKDAYS, firstDayOf } from "./engine.shoreshImportEngine.text.mjs";
 
 const SEASON = FIELD.Season;
@@ -60,9 +61,19 @@ export function firstDayOnceSaved(setup, firstDay, numbers) {
   });
 }
 
-/** Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames. */
+/** The season's camp's time zone, as the setup hands it on with the season (CORE-6.11). */
+export function campTimeZoneOf(season) {
+  const camp = season && season[PARENT.Season.Camp];
+  return (camp && camp[FIELD.Camp.TimeZone]) || undefined;
+}
+
+/**
+ * Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames; and times on
+ * its camp's clock (CORE-6.11): c/shoreshCampClock.
+ */
 export function nameDaysFor(setup) {
   const season = (setup && setup.season) || {};
+  setCampZone(campTimeZoneOf(season));
   setDayNaming({
     numbered: Boolean(season[SEASON.NumberedDays]),
     firstDay: campFirstDay(setup)

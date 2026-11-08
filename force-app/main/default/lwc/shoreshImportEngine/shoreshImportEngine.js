@@ -19,6 +19,7 @@ export { LAYOUTS } from "./layouts";
 export {
   campFirstDay,
   nameDaysFor,
+  campTimeZoneOf,
   campShortWeek,
   programDays,
   weeksOf,

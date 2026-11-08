@@ -19,6 +19,7 @@ export { LAYOUTS } from "./engine.shoreshImportEngine.layouts.mjs";
 export {
   campFirstDay,
   nameDaysFor,
+  campTimeZoneOf,
   campShortWeek,
   programDays,
   weeksOf,
