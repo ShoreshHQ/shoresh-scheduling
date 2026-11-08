@@ -13,7 +13,7 @@ import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { failed } from "c/shoreshErrors";
 import { buildTerms, shortDate } from "c/shoreshTerms";
-import { FIELD } from "c/shoreshSchema";
+import { scheduleOptions } from "c/shoreshElectiveEngine";
 import {
   buildBoard,
   moveTargets,
@@ -33,7 +33,6 @@ import {
 } from "./downloads";
 import { clearBoard } from "./clear";
 
-const SCHEDULE = FIELD.Schedule;
 const MEMO = new WeakMap();
 const COMMITTED = "Committed";
 const FINAL = "Final";
@@ -318,28 +317,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
   /** The week's working schedules (Bring in choices' list): a run names the one it assigns against. */
   get scheduleOptions() {
-    if (!this._setup || !this.weekId) return [];
-    const programs = new Map(
-      (this._setup.programs || []).map((p) => [p.program.Id, p.program.Name])
-    );
-    const many = programs.size > 1;
-    return (this._setup.schedules || [])
-      .filter(
-        (s) =>
-          s[SCHEDULE.Week] === this.weekId && s[SCHEDULE.Status] !== "Version"
-      )
-      .map((s) => {
-        const kind =
-          s[SCHEDULE.Origin] === "Generated"
-            ? "Generated Schedule"
-            : "Manual Build";
-        const published =
-          s[SCHEDULE.Status] === "Published" ? " · Published" : "";
-        return {
-          label: `${many ? `${programs.get(s[SCHEDULE.Program])} · ` : ""}${kind}${published}`,
-          value: s.Id
-        };
-      });
+    return scheduleOptions(this._setup, this.weekId);
   }
   /** "Assign against:" only when the week has more than one schedule (desktop D2.7). */
   get asksSchedule() {

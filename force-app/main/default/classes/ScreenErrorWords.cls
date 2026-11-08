@@ -1,5 +1,7 @@
 /** The camp's own words for a message about a row that could not be saved. */
 public with sharing class ScreenErrorWords {
+  public static final String SCHEDULE_NOT_FOUND = 'That schedule was not found, or you do not have access to it.';
+
   /** The words of the camp a week belongs to; the model terms if that cannot be read. */
   public static CampLabels forWeek(Week__c week) {
     Id seasonId = week.Season__c;

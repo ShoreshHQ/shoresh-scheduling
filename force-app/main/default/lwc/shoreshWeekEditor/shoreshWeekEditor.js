@@ -58,12 +58,15 @@ import { drawerTiles } from "./counts";
 import { dayNameOf, weekMeasure, withPriority } from "./measure";
 import { checkManualDays } from "./manualChecks";
 import {
-  LOCKED,
+  alreadySkipped,
   foldRun,
   lockKey,
-  locksOfWeek,
+  lockedSince,
+  locksAfterSave,
+  newlyLocked,
   noteRows,
-  stampLocks
+  unlockedSince,
+  withLocks
 } from "./locks";
 import {
   RULE,
@@ -2244,7 +2247,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.saving = true;
     const [entry] = this.queue;
     try {
-      const sent = this.withLocks(entry);
+      const sent = withLocks(entry);
       const result = await this.saveRuns([sent]);
       if (result.status === "refused") {
         // The host's reason, as it would read from a server refusal.
@@ -2252,7 +2255,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
-      this.lockBase = this.locksAfterSave(entry, result);
+      this.lockBase = locksAfterSave(this.lockBase, entry, result);
       this.showServerAndWaiting();
       // The host shows the week the server sent (never a patched copy).
       this.dispatchEvent(
@@ -2269,8 +2272,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       if (result.conflicts.length) {
         // A cell this edit touches that someone locked meanwhile is never sent again over their
         // lock: it is said, and the edit is dropped.
-        const locked = this.newlyLocked(sent.runs);
-        if (locked && entry.tool && !this.alreadySkipped(entry, locked)) {
+        const locked = newlyLocked(this.lockBase, sent.runs);
+        if (locked && entry.tool && !alreadySkipped(entry, locked)) {
           // A tool does what it can: the locked cells are left out and the rest is made.
           this.replanTool(entry);
         } else if (locked) {
@@ -2318,71 +2321,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.saveNext();
   }
 
-  /**
-   * The edit as the server takes it: with the locks the director saw when they made it (and, for
-   * Undo or Redo, to leave). Never the newest locks: a lock that arrived while the edit waited
-   * must come back as a refusal, not be covered.
-   */
-  withLocks(entry) {
-    if (!entry.seen) {
-      return entry.edit;
-    }
-    return {
-      ...entry.edit,
-      runs: stampLocks(entry.edit.runs, entry.seen, entry.locksTarget)
-    };
-  }
-
-  /**
-   * The first cell a sent edit touches that the server now holds locked and the edit did not see
-   * locked (locksBefore): { run, block } (the block's index in the run), or null.
-   */
-  newlyLocked(runs) {
-    for (const run of runs) {
-      if (!run.locksBefore) {
-        continue;
-      }
-      for (let block = 0; block < run.blockIds.length; block++) {
-        if (
-          this.lockBase.has(
-            lockKey(run.day, run.groupId, run.blockIds[block])
-          ) &&
-          run.locksBefore[block] !== LOCKED
-        ) {
-          return { run, block };
-        }
-      }
-    }
-    return null;
-  }
-
-  /** Whether a tool already left this locked cell out (so working it out again would change nothing). */
-  alreadySkipped(entry, { run, block }) {
-    return (
-      !!entry.tool.locked &&
-      entry.tool.locked.has(lockKey(run.day, run.groupId, run.blockIds[block]))
-    );
-  }
-
-  /** The cells locked on the server that the director had not seen locked when they made the edit. */
-  lockedSince(entry) {
-    const lockedNow = this.lockBase || new Set();
-    return new Set([...lockedNow].filter((key) => !entry.seen.has(key)));
-  }
-
-  /** The cells this edit touches that the director saw locked and the server no longer holds locked. */
-  unlockedSince(entry) {
-    if (!entry.seen || !this.lockBase) {
-      return new Set();
-    }
-    const touched = entry.edit.runs.flatMap((run) =>
-      run.blockIds.map((blockId) => lockKey(run.day, run.groupId, blockId))
-    );
-    return new Set(
-      touched.filter((key) => entry.seen.has(key) && !this.lockBase.has(key))
-    );
-  }
-
   /** Someone locked a cell this edit touches: the edit is dropped and the lock is named. */
   refuseNewlyLocked(entry, { run, block }) {
     this.abandon(entry);
@@ -2395,27 +2333,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     this.refuseLocked({ day: at.dayIndex, group: at.g, block: index });
-  }
-
-  /** The locks once a save is answered: the saver's own, else the week it sent, else what the edit left (nothing if it wasn't made). */
-  locksAfterSave(entry, result) {
-    if (!this.lockBase) {
-      return null;
-    }
-    if (result.locks) {
-      return new Set(result.locks);
-    }
-    // The week the server sent says which cells it holds locked, whether or not the edit was made.
-    const served = locksOfWeek(result.schedule && result.schedule.days);
-    if (served) {
-      return served;
-    }
-    return result.conflicts.length
-      ? this.lockBase
-      : entry.edit.runs.reduce(
-          (now, run) => foldRun(now, run, entry.locksTarget),
-          this.lockBase
-        );
   }
 
   // ---------- undo and redo ----------
@@ -2896,7 +2813,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Cells someone locked since the director looked are never covered: left out, and said.
     const locked = new Set([
       ...(tool.locked || []),
-      ...(entry.seen ? this.lockedSince(entry) : [])
+      ...(entry.seen ? lockedSince(this.lockBase, entry) : [])
     ]);
     const result = replan(
       tool,
@@ -3728,7 +3645,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (!made.rows.length) {
-      const unlocked = this.unlockedSince(entry);
+      const unlocked = unlockedSince(this.lockBase, entry);
       if (unlocked.size) {
         // Someone only took a lock off a cell this edit touches: nothing of theirs is covered,
         // so it is sent again, as it was, naming those cells unlocked as they are now. Each time

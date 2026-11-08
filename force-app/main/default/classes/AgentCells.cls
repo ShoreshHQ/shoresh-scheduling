@@ -49,11 +49,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
         )
       : handEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
-      throw new AgentWeeks.ConflictException(
-        'Changed by someone else since you read the week: ' +
-          change +
-          '. Nothing was changed.'
-      );
+      throw AgentWeeks.changedSince(change);
     }
     AgentWeeks.changed(versionId, week.draft.Id);
     String said = AgentFields.text(body, 'said');

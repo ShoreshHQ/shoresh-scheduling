@@ -336,8 +336,6 @@ public with sharing class SetupMatch {
   }
 
   private static ShoreshException notFound() {
-    return new ShoreshException(
-      'That schedule was not found, or you do not have access to it.'
-    );
+    return new ShoreshException(ScreenErrorWords.SCHEDULE_NOT_FOUND);
   }
 }
