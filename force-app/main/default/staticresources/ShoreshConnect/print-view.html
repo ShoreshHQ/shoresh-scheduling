@@ -7922,20 +7922,6 @@ Object.freeze({
  * workbook import (c/shoreshLists) and Import last year.
  */
 FIELD.Season;
-FIELD.Week;/*
- * Last year's week as a version (Greg, 2026-10-16): for each program and week in the files, a
- * schedule named "Imported from <file name>", one grid per day in the compact grid format v1
- * (repo docs/adr/0005), saved with the setup and never changed by later edits.
- *
- * Each placement goes in the cell of its group and time block: a fixed, recurring, or activity
- * item set up by this import (or already in the camp), an elective set by its record (slice E9),
- * or, for a special day, special event, or trip, the name as it was in the file, marked "not set
- * up yet". Placements
- * that cannot be placed (their group, time block, day, or name left out, a week not in the season, two things in one cell) are listed with the reason, never silently dropped.
- *
- * The grid names records by the keys the save uses (new records) or their Ids (records the camp
- * has); the server puts in the Ids once everything is saved.
- */
 FIELD.Week;/**
  * The camp's own words for model terms (decision 0006), for every Shoresh screen.
  * Built from the TermLabel list the server sends (CampLabels.all()).
@@ -7972,6 +7958,20 @@ function buildTerms(labels) {
     pIn: term => inSentence(term, true)
   };
 }/*
+ * Last year's week as a version (Greg, 2026-10-16): for each program and week in the files, a
+ * schedule named "Imported from <file name>", one grid per day in the compact grid format v1
+ * (repo docs/adr/0005), saved with the setup and never changed by later edits.
+ *
+ * Each placement goes in the cell of its group and time block: a fixed, recurring, or activity
+ * item set up by this import (or already in the camp), an elective set by its record (slice E9),
+ * or, for a special day, special event, or trip, the name as it was in the file, marked "not set
+ * up yet". Placements
+ * that cannot be placed (their group, time block, day, or name left out, a week not in the season, two things in one cell) are listed with the reason, never silently dropped.
+ *
+ * The grid names records by the keys the save uses (new records) or their Ids (records the camp
+ * has); the server puts in the Ids once everything is saved.
+ */
+FIELD.Week;/*
  * The Electives screen's list (plan §6.2, slice E4): the offerings of every elective set, one
  * row each. An offering is named by its activity and belongs to one set, so the list is scoped
  * by set as a program's lists are by program (scope.js resolveSets): the set column can be left
