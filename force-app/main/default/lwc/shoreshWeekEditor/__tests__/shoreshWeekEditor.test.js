@@ -436,6 +436,26 @@ describe("the rail's room", () => {
     );
   });
 
+  // The other two rails, and what keeps the grid's hidden words from scrolling the whole page.
+  it("the same on Saved versions and Elective seats", () => {
+    const read = (bundle) =>
+      require("fs").readFileSync(
+        require("path").join(__dirname, `../../${bundle}/${bundle}.css`),
+        "utf8"
+      );
+    for (const bundle of ["shoreshSchedules", "shoreshElectiveSeats"]) {
+      const css = read(bundle);
+      expect(css.split("@media")[0].match(/\.rail\s*{[^}]*}/)[0]).toMatch(
+        /flex-wrap: wrap;/
+      );
+      const phone = css.split("@media (max-width: 40em)")[1];
+      expect(phone).toMatch(/\.rail\s*{[^}]*position: relative;/);
+    }
+    expect(read("shoreshWeekEditor").match(/\.below\s*{[^}]*}/)[0]).toMatch(
+      /position: relative;/
+    );
+  });
+
   it("on a phone anchors the rail's menus itself, so they open under it", () => {
     const css = require("fs").readFileSync(
       require("path").join(__dirname, "../shoreshWeekEditor.css"),

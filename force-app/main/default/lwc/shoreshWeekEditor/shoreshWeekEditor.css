@@ -118,8 +118,10 @@
 }
 
 /* The grid's zone and the drawer's: each with its zone's inset on every side, as wide as each
-   other, scrolling sideways together when the bunks need more room than the frame has. */
+   other, scrolling sideways together when the bunks need more room than the frame has.
+   Positioned, so the grid's screen-reader words scroll with it, not the whole page. */
 .below {
+  position: relative;
   overflow-x: auto;
 }
 
