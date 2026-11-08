@@ -101,6 +101,21 @@
     {
       "question": "cross|Bunk 1|Swim",
       "answers": []
+    },
+    {
+      "question": "change|activity|Archery|2",
+      "answers": [
+        "change",
+        "keep"
+      ]
+    },
+    {
+      "question": "change|block|Main|Period 1|9:00-9:45",
+      "answers": []
+    },
+    {
+      "question": "move|Sam Levi|Bunk 1|Bunk 2",
+      "answers": []
     }
   ]
 }
