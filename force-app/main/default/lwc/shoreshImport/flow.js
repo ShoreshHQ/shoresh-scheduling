@@ -35,6 +35,18 @@ export function leaveable(card) {
   return !card.mustAnswer && card.options.some((o) => o.value === LEAVE_OUT);
 }
 
+/**
+ * What the main button says (INGEST-5.5): "Add 61"; with questions open, how many wait for later
+ * ("Add 58, 3 for later"); while one must be answered first, how many are left.
+ */
+export function saveLabel(open, mustAnswer, adding) {
+  if (mustAnswer > 0) {
+    return `${open} ${open === 1 ? "question" : "questions"} left`;
+  }
+  const base = adding > 0 ? `Add ${adding}` : "Use this setup";
+  return open > 0 ? `${base}, ${open} for later` : base;
+}
+
 export function proposalWith(input, answers) {
   return buildProposal({
     files: input.files,

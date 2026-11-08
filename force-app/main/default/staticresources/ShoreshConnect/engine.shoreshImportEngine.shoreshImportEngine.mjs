@@ -220,8 +220,7 @@ export {
   deletedAs,
   deletionsIn,
   programGroupKeys,
-  broughtBack,
-  nextKeyOf
+  broughtBack
 } from "./engine.shoreshImportEngine.deleted.mjs";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).

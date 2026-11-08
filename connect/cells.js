@@ -328,7 +328,7 @@ function rainyDay(ctx, m, input, weekName) {
 /**
  * place_special_event as choosing a special event from the screen's list puts it over the cells
  * chosen (shoreshWeekEditor placeEvent): the groups side by side and times asked for on one day,
- * widened to whole placements (rowsCovered), each group's cells holding the event (eventRuns: a
+ * widened to whole placements (rowsCovered), each group's cells holding the event (placeOverStep: a
  * fixed or recurring activity is covered, as a hand edit may; a locked cell refuses it), labelled
  * as the screen labels it ("Placed Color War · Bunk 1 to Bunk 2 · Monday · Period 1 to Period 2").
  */
@@ -370,40 +370,17 @@ function placeEvent(ctx, m, input, weekName) {
   const rows = m
     .rowsCovered(ctx.week, cells)
     .sort((a, b) => a.day - b.day || a.group - b.group);
-  const result = m.eventRuns(ctx.week, rows, `S:${event.Id}`, {
-    isAway: () => false,
-    isLocked: (slot) => ctx.isLocked(slot),
-    coversSetTime: true
-  });
+  const result = m.placeOverStep(ctx, rows, `S:${event.Id}`);
   if (result.refused) {
-    // Only a Lock stops a hand edit, in the screen's words.
-    throw new Refused(m.lockedWords(ctx, result.at));
+    throw new Refused(result.refused);
   }
-  const range = rangeName(ctx, rows);
+  const range = m.rangeName(ctx, rows);
   if (!result.runs.length) {
     return {
       nothing: `Nothing to place: ${range} already holds ${event.Name}.`
     };
   }
   return { runs: result.runs, label: `Placed ${event.Name} · ${range}` };
-}
-
-/** "Bunk 1 to Bunk 2 · Monday · Period 1 to Period 2", as the screen names what it covers. */
-function rangeName(ctx, rows) {
-  const first = rows[0];
-  const last = rows[rows.length - 1];
-  const day = ctx.week[first.day];
-  const groupsSaid =
-    rows.length === 1 || first.group === last.group
-      ? day.groups[first.group].name
-      : `${day.groups[first.group].name} to ${day.groups[last.group].name}`;
-  const top = Math.min(...rows.map((r) => r.first));
-  const bottom = Math.max(...rows.map((r) => r.last));
-  const blocks =
-    top === bottom
-      ? day.blocks[top].name
-      : `${day.blocks[top].name} to ${day.blocks[bottom].name}`;
-  return [groupsSaid, ctx.dayNameOf(day.dateValue), blocks].join(" · ");
 }
 
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */

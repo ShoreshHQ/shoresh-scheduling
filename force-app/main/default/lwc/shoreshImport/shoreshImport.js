@@ -36,6 +36,7 @@ import {
   planNow,
   proposalWith,
   recomputed,
+  saveLabel,
   savePlan
 } from "./flow";
 
@@ -936,17 +937,9 @@ export default class ShoreshImport extends LightningElement {
     return this.files.map((f) => f.name).join(", ");
   }
 
-  /**
-   * The main button says what happens: "Add 61"; with questions open, how many wait for later
-   * ("Add 58, 3 for later", INGEST-5.5); while one must be answered first, how many are left.
-   */
+  /** The main button says what happens (flow.js saveLabel). */
   get saveLabel() {
-    const open = this.openCount;
-    if (this.mustAnswerCount > 0) {
-      return `${open} ${open === 1 ? "question" : "questions"} left`;
-    }
-    const base = this.addCount > 0 ? `Add ${this.addCount}` : "Use this setup";
-    return open > 0 ? `${base}, ${open} for later` : base;
+    return saveLabel(this.openCount, this.mustAnswerCount, this.addCount);
   }
   get saveDisabled() {
     return this.isSaving || this.mustAnswerCount > 0 || !this.plan;

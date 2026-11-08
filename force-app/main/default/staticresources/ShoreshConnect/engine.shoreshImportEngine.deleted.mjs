@@ -135,17 +135,3 @@ export function broughtBack(answers) {
     )
     .sort();
 }
-
-/**
- * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
- * one before it; null when none is left.
- */
-export function nextKeyOf(keysBefore, clicked, keysAfter) {
-  const left = new Set(keysAfter);
-  const at = keysBefore.indexOf(clicked);
-  const order = [
-    ...keysBefore.slice(at + 1),
-    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
-  ];
-  return order.find((k) => left.has(k)) || null;
-}
