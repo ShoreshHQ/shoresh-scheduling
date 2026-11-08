@@ -531,18 +531,20 @@ function counterOf(m, body) {
 /**
  * list_versions (API-1.32): the Versions panel's own list (GET /v1/versions), each version said
  * in the panel's words (its own module, shipped beside this file) and when it was saved as the
- * panel shows it ("Oct 31, 3:40 PM", on this computer's clock), with saved as Shoresh keeps it, to
+ * panel shows it ("Oct 31, 3:40 PM", on the camp's clock), with saved as Shoresh keeps it, to
  * name one of two that share a name.
  */
 async function listVersions(capability, got, versionWords) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const { metaOf, canDelete } = await versionWords();
+  // On the camp's clock (CORE-6.11), as the panel says it; this computer's when the camp has none.
   const when = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: body.time_zone || undefined
   });
   const versions = body.versions.map((version) => {
     const { meta, showSaved } = metaOf(version);

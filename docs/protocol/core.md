@@ -147,3 +147,11 @@ These never bend for Shoresh.
 - **CORE-6.10** A short date MUST read month first, "Jul 3", on every screen, download and message
   (Greg 2026-11-06). Salesforce differs here from the desktop's "3 Jul" by that decision. A date
   Salesforce itself formats MUST follow the person's own Salesforce locale instead.
+- **CORE-6.11** Every time Shoresh says (an import, a version saved or published, through a screen
+  or an AI) MUST be on the camp's clock, its time zone, as its dates are (MEMO-7.2), so one list
+  never mixes two clocks; a camp with no time zone set says it on the person's own. Times already
+  written into a saved version's name MUST stay as written. Salesforce's own record pages keep
+  each person's setting (Greg 2026-11-07, break-and-rebuild F2). Tests: CampClockTest
+  aTimeIsSaidOnTheCampsClockNotThePersons; SchedulePublishTest aCopyIsNamedOnTheCampsClock; connect.test.js versionsInThePanelsWords; shoreshCampClock.test.js
+  "CORE-6.11: a time is said on the camp's clock once its season is read, and on this computer's
+  when the camp has none".
