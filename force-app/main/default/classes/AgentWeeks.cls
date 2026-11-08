@@ -15,6 +15,15 @@ public with sharing class AgentWeeks {
   public class ConflictException extends Exception {
   }
 
+  /** Someone saved the week since the AI read it (LOCK-4.8). */
+  public static ConflictException changedSince(String change) {
+    return new ConflictException(
+      'Changed by someone else since you read the week: ' +
+        change +
+        '. Nothing was changed.'
+    );
+  }
+
   /** The week asked for: its Generated draft, locked until the request ends. */
   public class Week {
     public Schedule__c draft;

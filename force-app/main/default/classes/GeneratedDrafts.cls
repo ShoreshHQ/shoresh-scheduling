@@ -80,9 +80,7 @@ public with sharing class GeneratedDrafts {
       FOR UPDATE
     ];
     if (found.isEmpty()) {
-      throw new ShoreshException(
-        'That schedule was not found, or you do not have access to it.'
-      );
+      throw new ShoreshException(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
     Schedule__c draft = found[0];
     // The camp's words are read only for a refusal.

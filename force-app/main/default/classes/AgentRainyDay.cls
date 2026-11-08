@@ -39,7 +39,7 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     if (!sameMarks(days, edit.rain[0].day, (List<Object>) body.get('seen'))) {
-      throw changedSince(change);
+      throw AgentWeeks.changedSince(change);
     }
     // The name the screen keeps the week under: "Before rainy Monday".
     Id versionId = AgentWeeks.keepBefore(
@@ -55,7 +55,7 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
         )
       : AgentCells.handEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
-      throw changedSince(change);
+      throw AgentWeeks.changedSince(change);
     }
     AgentWeeks.changed(versionId, week.draft.Id);
     String said = AgentFields.text(body, 'said');
@@ -117,13 +117,5 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     } catch (Exception e) {
       return null;
     }
-  }
-
-  private static AgentWeeks.ConflictException changedSince(String change) {
-    return new AgentWeeks.ConflictException(
-      'Changed by someone else since you read the week: ' +
-        change +
-        '. Nothing was changed.'
-    );
   }
 }

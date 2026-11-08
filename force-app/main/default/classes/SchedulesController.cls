@@ -28,9 +28,7 @@ public with sharing class SchedulesController {
       throw ScreenErrors.ofLoading(e);
     }
     if (view == null) {
-      throw ScreenErrors.of(
-        'That schedule was not found, or you do not have access to it.'
-      );
+      throw ScreenErrors.of(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
     return view;
   }
@@ -45,9 +43,7 @@ public with sharing class SchedulesController {
       WITH USER_MODE
     ];
     if (found.isEmpty()) {
-      throw ScreenErrors.of(
-        'That schedule was not found, or you do not have access to it.'
-      );
+      throw ScreenErrors.of(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
     String trimmed = checkedName(name, found[0].Program__r.Season__r.Camp__c);
     // A published schedule, or one kept as history, can be renamed here and only here.

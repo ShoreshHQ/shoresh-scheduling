@@ -50,9 +50,7 @@ public with sharing class WeekAccepts {
         FOR UPDATE
       ];
       if (found.isEmpty()) {
-        throw ScreenErrors.of(
-          'That schedule was not found, or you do not have access to it.'
-        );
+        throw ScreenErrors.of(ScreenErrorWords.SCHEDULE_NOT_FOUND);
       }
       String text = withLine(linesOf(found[0].AcceptedLines__c), one);
       UserModeWrites.save(

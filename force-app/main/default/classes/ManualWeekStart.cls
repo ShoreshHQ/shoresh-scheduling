@@ -91,9 +91,7 @@ public with sharing class ManualWeekStart {
       WITH USER_MODE
     ];
     if (found.isEmpty() || !canStartFrom(found[0], programId)) {
-      throw new ShoreshException(
-        'That schedule was not found, or you do not have access to it.'
-      );
+      throw new ShoreshException(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
     return found[0];
   }
