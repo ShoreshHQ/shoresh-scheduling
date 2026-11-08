@@ -113,6 +113,10 @@ Each rule is clue, meaning, example, test.
    it is."
    Example: Lunch an import added at Period 4, untouched, and the new file has it at Lunch: it
    moves to Lunch, listed, one click to keep it at Period 4.
+   The same files imported again keep last year's week as a version once: a version with the
+   same program, week, name and every cell as one an earlier import kept is not kept twice; any
+   difference in a cell keeps a new one (break-and-rebuild N1). Apex `ImportSameVersionTest`
+   `theSameFilesAgainKeepTheirVersionOnceAndADifferenceKeepsANewOne`.
    Test: "INGEST-5.7: untouched since the earlier import: updated without asking, and listed
    with Keep as it is"; "INGEST-5.7: Keep as it is leaves it as it is"; Apex `ImportReviewTest`
    `ingest57WhatAnImportBroughtInIsItsUntilChangedByHand`,
