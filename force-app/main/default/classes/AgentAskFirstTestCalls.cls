@@ -1,7 +1,10 @@
 /**
  * For tests: an AI action as a person who says yes (API-1.106). The action is sent as given;
  * when Shoresh asks first, the same request is sent again with the confirm it gave, as an AI does
- * after the person says yes. Any other answer is left as it came.
+ * after the person says yes. A refusal is left as it came. A change that asks first, sent as a POST
+ * without a confirm, answering done without asking fails the test, so one whose preview stops
+ * asking can't pass unseen. A GET, or a POST already carrying its confirm, is answered straight
+ * away; so is a special schedule's frame, a call that takes nothing away.
  */
 @IsTest
 public class AgentAskFirstTestCalls {
@@ -10,6 +13,11 @@ public class AgentAskFirstTestCalls {
     AgentWeeks.answer(action);
     String confirm = confirmIn(RestContext.response);
     if (confirm == null) {
+      Assert.isFalse(
+        RestContext.response.statusCode == 200 && mustAsk(action, sent),
+        'Done without asking first: ' +
+        RestContext.response.responseBody?.toString()
+      );
       return;
     }
     Map<String, Object> body = (Map<String, Object>) JSON.deserializeUntyped(
@@ -19,6 +27,17 @@ public class AgentAskFirstTestCalls {
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
     AgentWeeks.answer(action);
+  }
+
+  /** A change that asks first, sent as a POST without a confirm: it must ask, not answer done. */
+  private static Boolean mustAsk(AgentWeeks.Action action, Blob sent) {
+    return action instanceof AgentAskFirst.Preview &&
+      !(action instanceof AgentSpecialFrame) &&
+      RestContext.request.httpMethod == 'POST' &&
+      sent != null &&
+      sent.size() > 0 &&
+      !((Map<String, Object>) JSON.deserializeUntyped(sent.toString()))
+        .containsKey(AgentAskFirst.FIELD);
   }
 
   /**
