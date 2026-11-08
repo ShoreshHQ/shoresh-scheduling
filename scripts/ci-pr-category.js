@@ -53,7 +53,11 @@ const MIRRORED_PATHS = MIRRORED_SCREENS.map(
 
 // Shared examples both the screens and an Apex test pass (the same list as ci-apex-tests.js's
 // EXAMPLES_READ_BY; a test keeps them so): a change to one runs that Apex test.
-const APEX_READ_RESOURCES = ["ShoreshCellExamples", "ShoreshSeatExamples"];
+const APEX_READ_RESOURCES = [
+  "ShoreshCellExamples",
+  "ShoreshRuleExamples",
+  "ShoreshSeatExamples"
+];
 const APEX_READ_PATHS = APEX_READ_RESOURCES.map(
   (name) => new RegExp(`^force-app/main/default/staticresources/${name}[./]`)
 );
