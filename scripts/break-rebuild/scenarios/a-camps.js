@@ -737,7 +737,7 @@ module.exports = [
         files,
         answers
       });
-      const promised = /added from its dates|kept as a version/i.test(
+      const promised = /added from its dates|(?<!not )kept as a version/i.test(
         waiting.text
       );
       const later = await call("import_last_year", {
