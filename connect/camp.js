@@ -101,11 +101,21 @@ function send(namespace, api, body) {
   };
 }
 
+/** What a read sends: every input it declares, but what is used only on this computer. */
+function queryFields(capability) {
+  const declared = capability.inputSchema?.properties ?? {
+    season: {},
+    week: {}
+  };
+  const local = ["as_csv", ...(capability.localFields ?? [])];
+  return Object.keys(declared).filter((field) => !local.includes(field));
+}
+
 /** The web address and request for one action, from the person's input. */
 function requestFor(capability, input = {}, namespace = "") {
   if (capability.method === "GET") {
     const query = {};
-    for (const field of capability.queryFields ?? ["season", "week"]) {
+    for (const field of queryFields(capability)) {
       if (input[field]) query[field] = input[field];
     }
     if (input.as_csv) query.format = "csv";
@@ -122,6 +132,7 @@ function requestFor(capability, input = {}, namespace = "") {
 }
 
 module.exports = {
+  queryFields,
   campOf,
   tooOld,
   ownVersion,
