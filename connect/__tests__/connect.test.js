@@ -73,7 +73,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(91);
+    expect(CAPABILITIES).toHaveLength(95);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -105,10 +105,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern or undo_learned_answer, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice or delete_linked_choice, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -349,6 +349,20 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toEqual({ name: "change_schedule_cell", input: fields, org: "my-camp" });
   });
 
+  // API-1.133: a strict AI app can refuse every tool over one list that doesn't say what it holds.
+  it("everyListSaysWhatItHolds", () => {
+    const lists = (schema) =>
+      Object.values(schema.properties || {}).flatMap((field) => [
+        ...(field.type === "array" ? [field] : []),
+        ...(field.items && field.items.properties ? lists(field.items) : [])
+      ]);
+    for (const c of CAPABILITIES) {
+      for (const list of lists(c.inputSchema)) {
+        expect(list.items).toBeDefined();
+      }
+    }
+  });
+
   // API-1.128
   it("anOptionBroughtBackTakesItsNumberOnTheCommandLine", () => {
     const { byName } = require("../capabilities");
@@ -425,6 +439,80 @@ describe("Shoresh for AI tools and the command line", () => {
       expect(done.ok).toBe(ok);
       expect(done.text).toContain(said.error || said.unchanged);
     }
+  });
+
+  // API-1.131, API-1.132, API-1.133
+  it("linkedChoicesReadAndSaveThroughTheEditor: reads with its module, proposes its name and says its marks", async () => {
+    const read = {
+      elective_set: "Chugim",
+      set_id: "s1",
+      setup: {},
+      labels: [],
+      places: { cells: [] }
+    };
+    const runOf = (seen, message) => async (args, stdin) => {
+      seen.push({ args, stdin });
+      return args[3].includes("?") || args[3].endsWith("linked_choices")
+        ? `HTTP/1.1 200\n\n${JSON.stringify(read)}`
+        : `HTTP/1.1 ${message ? 200 : 400}\n\n${JSON.stringify({ message: message ?? "No." })}`;
+    };
+    const linked = async () => ({
+      linkedChoicesForAgent: (got, how) => ({ got, how }),
+      proposedForAgent: () => "Pottery · Mon 9:00",
+      notesForAgent: () => ['Monday Period 1: Also in "X".']
+    });
+
+    const seenRead = [];
+    const said = await call(
+      "read_linked_choices",
+      { season: "Summer 2026", activity: "Pottery" },
+      { run: runOf(seenRead), linked, camp: packaged }
+    );
+    expect(seenRead[0].args[3]).toContain("/shoresh/v1/linked_choices");
+    expect(JSON.parse(said.text).how).toEqual({ activity: "Pottery" });
+
+    const seen = [];
+    const made = await call(
+      "make_linked_choice",
+      { activity: "Pottery", periods: [{ day: "Monday", time: "Period 1" }] },
+      {
+        run: runOf(seen, 'Made the linked choice "x".'),
+        linked,
+        camp: packaged
+      }
+    );
+    const sent = JSON.parse(seen.find((s) => s.stdin).stdin);
+    expect(sent.name).toBe("Pottery · Mon 9:00");
+    expect(made.ok).toBe(true);
+    expect(made.text).toContain('Also in "X"');
+
+    // A read that fails after the save doesn't undo what was said: it was made.
+    const answers = [
+      `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+      'HTTP/1.1 200\n\n{"message":"Made it."}'
+    ];
+    const after = await call(
+      "make_linked_choice",
+      { activity: "Pottery", periods: [{ day: "Monday", time: "Period 1" }] },
+      {
+        run: async () => answers.shift() ?? "",
+        linked,
+        camp: packaged
+      }
+    );
+    expect(after.ok).toBe(true);
+    expect(after.text).toBe("Made it.");
+
+    // A name given is sent as it is; a refusal is said with nothing more read.
+    const refused = [];
+    const no = await call(
+      "change_linked_choice",
+      { name: "Pottery", new_name: "Pots" },
+      { run: runOf(refused), linked, camp: packaged }
+    );
+    expect(no.ok).toBe(false);
+    expect(refused.length).toBe(1);
+    expect(JSON.parse(refused[0].stdin).new_name).toBe("Pots");
   });
 
   // API-1.19

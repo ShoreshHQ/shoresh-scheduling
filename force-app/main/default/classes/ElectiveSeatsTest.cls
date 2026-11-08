@@ -1018,6 +1018,30 @@ private class ElectiveSeatsTest {
         refusal.contains('it has elective runs: "Chugim · Week 1"'),
         refusal
       );
+      // API-1.134: an AI's Delete asks nothing and is refused the same, with nothing deleted.
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, Object>{
+            'season' => [SELECT Name FROM Season__c LIMIT 1]
+            .Name,
+            'elective_set' => 'Chugim',
+            'name' => [SELECT Name FROM LinkedChoice__c WHERE Id = :both.Id]
+            .Name
+          }
+        )
+      );
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentDeleteLinkedChoice());
+      String refused = RestContext.response.responseBody.toString();
+      Assert.areEqual(400, RestContext.response.statusCode, refused);
+      Assert.isTrue(refused.contains('it has elective runs'), refused);
+      Assert.isTrue(refused.contains('Nothing was removed'), refused);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM LinkedChoice__c WHERE Id = :both.Id]
+      );
     }
   }
 

@@ -1,5 +1,5 @@
 /** S3 to S6: electives, special days, versions, and the same inputs giving the same output. */
-const { call, makeCamp, soql, seenIn } = require("../lib");
+const { apex, call, makeCamp, soql, seenIn } = require("../lib");
 const {
   importMaple,
   draft,
@@ -818,6 +818,192 @@ module.exports = [
           undo.done.kind === "done" &&
           (await draft(season)).words === kept.words,
         undo.done.text
+      );
+    }
+  },
+  {
+    id: "S9",
+    title:
+      "linked choices through an AI: read, make, rename, periods, who, delete",
+    camps: "BR S9 %",
+    async run(rec) {
+      const { season } = makeCamp("S9 Linked");
+      await importMaple(season);
+      apex(`Group__c g = [SELECT Id, Division__r.Program__c FROM Group__c WHERE Name = 'Bunk 1' AND Division__r.Program__r.Season__r.Name = '${season}' LIMIT 1];
+Division__c d = new Division__c(Name = 'Juniors', Program__c = g.Division__r.Program__c);
+insert d;
+update new Group__c(Id = g.Id, Division__c = d.Id);`);
+      await call("add_setup_record", {
+        season,
+        kind: "elective set",
+        name: "Chugim"
+      });
+      await electiveOnWeek(
+        season,
+        "Week 1",
+        "Chugim",
+        ["Bunk 1", "Bunk 2"],
+        ["Period 2", "Period 3"]
+      );
+      const at = { season, elective_set: "Chugim" };
+      const read = async () =>
+        JSON.parse((await call("read_linked_choices", at)).text);
+      const first = await read();
+      rec.check(
+        "API-1.131",
+        "the read says where the set sits and has none yet",
+        first.where_it_sits.length === 2 && first.linked_choices.length === 0,
+        JSON.stringify(first)
+      );
+      const two = { day: "Monday", time: "Period 2" };
+      const three = { day: "Monday", time: "Period 3" };
+      const elsewhere = await call("make_linked_choice", {
+        ...at,
+        activity: "Swim",
+        periods: [{ day: "Tuesday", time: "Period 2" }]
+      });
+      rec.check(
+        "API-1.132",
+        "a period where the set doesn't sit is refused",
+        elsewhere.kind === "refused" && /isn't at/.test(elsewhere.text),
+        elsewhere.text
+      );
+      const made = await call("make_linked_choice", {
+        ...at,
+        activity: "swim",
+        periods: [two]
+      });
+      rec.check(
+        "API-1.132",
+        "a name left out is the activity's",
+        made.kind === "done" && /"Swim"/.test(made.text),
+        made.text
+      );
+      const second = await call("make_linked_choice", {
+        ...at,
+        activity: "Swim",
+        periods: [two]
+      });
+      rec.check(
+        "API-1.132",
+        "the next is the activity and its first period",
+        second.kind === "done" && /"Swim · Mon \d+:\d\d"/.test(second.text),
+        second.text
+      );
+      const secondName = /"([^"]+)"/.exec(second.text)[1];
+      const renamed = await call("change_linked_choice", {
+        ...at,
+        name: "Swim",
+        new_name: "Swim double",
+        periods_on: [three]
+      });
+      rec.check(
+        "API-1.133",
+        "a rename and a period save together",
+        renamed.kind === "done" && /"Swim double"/.test(renamed.text),
+        renamed.text
+      );
+      const shares = await call("change_linked_choice", {
+        ...at,
+        name: secondName,
+        periods_on: [three]
+      });
+      await call("change_linked_choice", {
+        ...at,
+        name: secondName,
+        periods_on: [three]
+      });
+      rec.check(
+        "API-1.133",
+        "a period shared is saved, and the editor's mark comes back",
+        shares.kind === "done" && /Also in "Swim double"/.test(shares.text),
+        shares.text
+      );
+      const afterTicks = await read();
+      const shown = afterTicks.linked_choices.find(
+        (c) => c.name === "Swim double"
+      );
+      rec.check(
+        "API-1.131",
+        "the read marks it on the period, and ticking twice was one tick",
+        shown.periods.length === 2 &&
+          afterTicks.linked_choices.find((c) => c.name === secondName).periods
+            .length === 2 &&
+          shown.periods.some((p) => /Also in/.test(p.note ?? "")),
+        JSON.stringify(shown)
+      );
+      const division = first.where_it_sits[0].divisions[0];
+      rec.check(
+        "API-1.131",
+        "the read says the division there",
+        division === "Juniors",
+        JSON.stringify(first.where_it_sits)
+      );
+      const whoAll = await call("change_linked_choice", {
+        ...at,
+        name: "Swim double",
+        divisions_on: [division]
+      });
+      rec.check(
+        "API-1.133",
+        "divisions are refused while it applies to All",
+        whoAll.kind === "refused" && /applies to All/.test(whoAll.text),
+        whoAll.text
+      );
+      const who = await call("change_linked_choice", {
+        ...at,
+        name: "Swim double",
+        applies_to: "Only these",
+        divisions_on: [division]
+      });
+      const whoRead = (await read()).linked_choices.find(
+        (c) => c.name === "Swim double"
+      );
+      rec.check(
+        "API-1.133",
+        "who it applies to is saved",
+        who.kind === "done" &&
+          whoRead.applies_to === "Only these" &&
+          whoRead.divisions.includes(division),
+        `${who.text} ${JSON.stringify(whoRead)}`
+      );
+      const blank = await call("change_linked_choice", {
+        ...at,
+        name: "Swim double",
+        new_name: " "
+      });
+      rec.check(
+        "API-1.133",
+        "a blank name is refused in the editor's words",
+        blank.kind === "refused" &&
+          /a sheet says to choose it/.test(blank.text),
+        blank.text
+      );
+      const parent = soql(
+        `SELECT Id FROM LinkedChoice__c WHERE Name = 'Swim double' AND ElectiveSet__r.Season__r.Name = '${season}'`
+      )[0].Id;
+      const gone = await confirmed("delete_linked_choice", {
+        ...at,
+        name: "Swim double"
+      });
+      rec.check(
+        "API-1.134",
+        "delete asks the screen's own question first",
+        gone.preview.kind === "asks first" &&
+          /Delete "Swim double"\? A sheet that names it then counts as Swim\./.test(
+            gone.preview.text
+          ),
+        gone.preview.text
+      );
+      const after = await read();
+      rec.check(
+        "API-1.134",
+        "then it is gone, with its periods",
+        gone.done.kind === "done" &&
+          !after.linked_choices.some((c) => c.name === "Swim double") &&
+          count("LinkedChoiceTime__c", `LinkedChoice__c = '${parent}'`) === 0 &&
+          count("Coverage__c", `LinkedChoice__c = '${parent}'`) === 0,
+        gone.done.text
       );
     }
   }

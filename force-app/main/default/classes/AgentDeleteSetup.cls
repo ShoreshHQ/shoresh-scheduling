@@ -44,6 +44,11 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
     AgentSetupRecords.Found found = AgentSetupRecords.find(
       AgentFields.body(FIELDS)
     );
+    return removed(found);
+  }
+
+  /** Camp Setup's own Delete, and what it says; or its refusal with nothing deleted. */
+  public static String removed(AgentSetupRecords.Found found) {
     SetupDelete.Preview preview;
     try {
       preview = SetupDelete.preview(found.id);
@@ -55,7 +60,7 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
   }
 
   /** Camp Setup's question before its Delete, or its refusal with nothing deleted. */
-  private static String question(AgentSetupRecords.Found found) {
+  public static String question(AgentSetupRecords.Found found) {
     SetupDelete.Preview preview = SetupDelete.preview(found.id);
     if (preview.refusal != null) {
       throw notDeleted(found, preview.refusal);

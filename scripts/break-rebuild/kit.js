@@ -87,9 +87,16 @@ ScheduleGrid g = day.grid;
 g.items.add(new ScheduleGrid.Item('E', e.Id, e.Name));
 String mark = String.valueOf(g.items.size());
 Integer b = 0;
-for (Integer i = 0; i < g.blocks.size(); i++) { if (g.blocks[i].name == '${esc(block)}') { b = i; } }
+Set<String> blockNames = new Set<String>{ ${[]
+      .concat(block)
+      .map((n) => `'${esc(n)}'`)
+      .join(", ")} };
 Set<String> names = new Set<String>{ ${groups.map((n) => `'${esc(n)}'`).join(", ")} };
-for (Integer i = 0; i < g.groups.size(); i++) { if (names.contains(g.groups[i].name)) { g.rows[i][b] = mark; } }
+for (Integer i = 0; i < g.groups.size(); i++) {
+  for (b = 0; b < g.blocks.size(); b++) {
+    if (names.contains(g.groups[i].name) && blockNames.contains(g.blocks[b].name)) { g.rows[i][b] = mark; }
+  }
+}
 ScheduleDaySaves.write(s.Id, new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(day.day, g, day.revision) });
 List<Offering__c> offered = new List<Offering__c>();
 for (Activity__c a : [SELECT Id, Name FROM Activity__c WHERE Season__r.Name = '${esc(season)}' AND Name IN ('Swim', 'Art')]) {

@@ -469,6 +469,85 @@ function buildMenuAction(
   };
 }
 
+/** Which linked choice: a set's, by its name (API-1.131 to API-1.134). */
+const LINKED_SET = {
+  season: SEASON,
+  elective_set: {
+    type: "string",
+    description:
+      "The electives' name in Shoresh, like Chugim. Leave it out when the season has only one."
+  }
+};
+const LINKED_CHOICE = {
+  ...LINKED_SET,
+  name: {
+    type: "string",
+    description: "Its name, as read_linked_choices says it."
+  },
+  activity: {
+    type: "string",
+    description:
+      "The activity it is of, like Pottery. Needed when two of the set's have one name."
+  }
+};
+const LINKED_PERIODS = (description) => ({
+  type: "array",
+  description: `${description} Each one is where read_linked_choices says the set sits.`,
+  items: {
+    type: "object",
+    properties: {
+      day: { type: "string", description: "Like Monday, or Day 2." },
+      time: { type: "string", description: "Its time block, like Period 2." },
+      program: {
+        type: "string",
+        description: "Only when two programs have that time block there."
+      }
+    },
+    required: ["day", "time"],
+    additionalProperties: false
+  }
+});
+const LINKED_DIVISIONS = (description) => ({
+  type: "array",
+  description: `${description} Each is its name; when two programs have one by that name, { "name": "Juniors", "program": "Main" }.`,
+  items: {
+    anyOf: [
+      { type: "string" },
+      {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          program: { type: "string" }
+        },
+        required: ["name", "program"],
+        additionalProperties: false
+      }
+    ]
+  }
+});
+const LINKED_APPLIES_TO = {
+  type: "string",
+  description: "All, Only these or All except."
+};
+
+/** A change in the linked choices editor (API-1.132, API-1.133). */
+function linkedChange(name, description, properties, required) {
+  return {
+    name,
+    api: name,
+    method: "POST",
+    sendsFields: true,
+    savesLinkedChoice: true,
+    description: `${description} It is made as you, with your own access, exactly as in the editor beside the Electives list. What the editor would then mark on it comes back with the answer: pass that on to the person.`,
+    inputSchema: {
+      type: "object",
+      properties,
+      required,
+      additionalProperties: false
+    }
+  };
+}
+
 const CAPABILITIES = [
   {
     name: "list_seasons",
@@ -735,6 +814,85 @@ const CAPABILITIES = [
     "StartOver",
     "Start a built week over, as Start over in Generated Schedule's Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. The week as it was is kept in Versions first, and undo_last_agent_change brings it back."
   ),
+  {
+    name: "read_linked_choices",
+    api: "linked_choices",
+    method: "GET",
+    readsLinkedChoices: true,
+    description:
+      "Read an elective set's linked choices as the editor beside the Electives list shows them: each one's name, activity, periods, who it applies to and the divisions it names, with the editor's marks on them (a period also held by another of the same activity, a period the set no longer sits in, two with one name, periods guessed from a file), and where_it_sits: the days and times the set sits on a schedule, with the divisions there, which are the periods it can be given. Report what it says; never add a problem Shoresh didn't list.",
+    about:
+      "This elective set's linked choices, as the editor beside the Electives list shows them now. Its marks are the editor's: anything not listed, Shoresh didn't find.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...LINKED_SET,
+        activity: {
+          type: "string",
+          description: "Only this activity's, like Pottery."
+        }
+      },
+      required: [],
+      additionalProperties: false
+    }
+  },
+  linkedChange(
+    "make_linked_choice",
+    "Make a linked choice of an activity an elective set offers, as + Linked choice and the first period picked do in the editor. It needs at least one period, so the set must sit on a schedule. Left out, the name is the editor's own: the activity's for its first, then the activity and the period.",
+    {
+      ...LINKED_SET,
+      activity: {
+        type: "string",
+        description: "The activity it is of, like Pottery."
+      },
+      name: {
+        type: "string",
+        description:
+          "What a sheet says to choose it. Leave it out for the editor's own name."
+      },
+      periods: LINKED_PERIODS("Its periods."),
+      applies_to: LINKED_APPLIES_TO,
+      divisions: LINKED_DIVISIONS(
+        "With Only these or All except: the divisions it names."
+      )
+    },
+    ["activity", "periods"]
+  ),
+  linkedChange(
+    "change_linked_choice",
+    "Change a linked choice, as the editor's fields do: its name, who it applies to, a period or a division ticked or unticked. A change says only what it changes, so ticking twice is the same as once and two people ticking different periods never undo each other.",
+    {
+      ...LINKED_CHOICE,
+      new_name: { type: "string", description: "What to call it now." },
+      applies_to: LINKED_APPLIES_TO,
+      periods_on: LINKED_PERIODS("Periods to tick."),
+      periods_off: {
+        ...LINKED_PERIODS("Periods to untick."),
+        description: "Periods to untick: ones it has now."
+      },
+      divisions_on: LINKED_DIVISIONS(
+        "Divisions to tick, with Only these or All except."
+      ),
+      divisions_off: LINKED_DIVISIONS(
+        "Divisions to untick, with Only these or All except."
+      )
+    },
+    ["name"]
+  ),
+  {
+    name: "delete_linked_choice",
+    api: "delete_linked_choice",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Delete a linked choice, as Delete in the editor beside the Electives list does: its periods and divisions go with it, and a sheet that names it then counts as its activity. It is refused while an elective run's seats are part of it.",
+    inputSchema: {
+      type: "object",
+      properties: LINKED_CHOICE,
+      required: ["name"],
+      additionalProperties: false
+    }
+  },
   {
     name: "read_week_draft",
     api: "read_week_draft",
@@ -2137,6 +2295,7 @@ const CAPABILITIES = [
  */
 const ASKS_FIRST = [
   "delete_setup_record",
+  "delete_linked_choice",
   "delete_version",
   "finalize_electives",
   "undo_last_agent_change",

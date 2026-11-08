@@ -907,6 +907,15 @@ function everyCommand(tmp) {
   step("fill_open_cells", week, "any");
   step("start_over_week", week);
   step("build_week", week);
+  // Linked choices (API-1.131 to API-1.134).
+  step("read_linked_choices", {}, "any");
+  step(
+    "make_linked_choice",
+    { activity: "Nope", periods: [{ day: "Monday", time: "Period 1" }] },
+    "any"
+  );
+  step("change_linked_choice", { name: "Nope", new_name: "Still nope" }, "any");
+  step("delete_linked_choice", { name: "Nope" }, "any");
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.
