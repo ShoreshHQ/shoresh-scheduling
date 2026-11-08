@@ -18,7 +18,8 @@ import {
   readImportFile,
   pastedCells,
   PASTED,
-  refusedFile
+  refusedFile,
+  nextKeyOf
 } from "c/shoreshImportEngine";
 import {
   CHANGE,
@@ -30,6 +31,7 @@ import {
   listProposal,
   questionCards,
   rainAddKey,
+  saveListLabel,
   waitingFor,
   listRows,
   workbookCards,
@@ -41,8 +43,7 @@ import {
 import { screenLabels } from "c/shoreshScreens";
 import { readChoices } from "c/shoreshChoicesReader";
 import { failed, reasonOf } from "c/shoreshErrors";
-import { FIELD } from "c/shoreshSchema";
-import { rememberedByKey } from "c/shoreshRemembered";
+import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
@@ -86,20 +87,6 @@ function isChoicesFile(file) {
   } catch {
     return false;
   }
-}
-
-/**
- * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
- * one before it; null when none is left.
- */
-function nextKeyOf(keysBefore, clicked, keysAfter) {
-  const left = new Set(keysAfter);
-  const at = keysBefore.indexOf(clicked);
-  const order = [
-    ...keysBefore.slice(at + 1),
-    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
-  ];
-  return order.find((k) => left.has(k)) || null;
 }
 
 export default class ShoreshListImport extends LightningElement {
@@ -412,19 +399,13 @@ export default class ShoreshListImport extends LightningElement {
 
   /** Column choices and answers this camp gave before (Greg: remembered per camp and screen). */
   async rememberedAnswers() {
-    const campId =
-      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
-    let saved = [];
-    try {
-      saved = campId ? await getAnswers({ campId }) : [];
-    } catch {
-      // Without them the list still reads: everything is asked.
-      saved = [];
-    }
-    const { answers, notes } = rememberedByKey(saved);
+    const { answers, notes, rows } = await rememberedFor(
+      this.setup,
+      getAnswers
+    );
     this.remembered = { ...answers };
     this.rememberedNotes = notes;
-    this.savedRows = saved || [];
+    this.savedRows = rows;
     return answers;
   }
 
@@ -1036,14 +1017,7 @@ export default class ShoreshListImport extends LightningElement {
     const changed = this.rowsWith("changed").filter((r) =>
       r.differences.some((d) => d.answer === CHANGE)
     ).length;
-    const parts = [];
-    if (added) {
-      parts.push(`Add ${added}`);
-    }
-    if (changed) {
-      parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
-    }
-    return parts.join(", ") || "Save";
+    return saveListLabel(added, changed);
   }
 
   get saveDisabled() {

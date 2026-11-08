@@ -20,11 +20,11 @@ import {
   undoMessage,
   unplacedLines,
   readImportFile,
-  refusedFile
+  refusedFile,
+  nextKeyOf
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
-import { FIELD } from "c/shoreshSchema";
-import { rememberedByKey } from "c/shoreshRemembered";
+import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 import {
@@ -36,22 +36,9 @@ import {
   planNow,
   proposalWith,
   recomputed,
+  saveLabel,
   savePlan
 } from "./flow";
-
-/**
- * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
- * one before it; null when none is left.
- */
-function nextKeyOf(keysBefore, clicked, itemsAfter) {
-  const left = new Set(itemsAfter.map((item) => item.key));
-  const at = keysBefore.indexOf(clicked);
-  const order = [
-    ...keysBefore.slice(at + 1),
-    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
-  ];
-  return order.find((k) => left.has(k)) || null;
-}
 
 /**
  * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
@@ -412,19 +399,13 @@ export default class ShoreshImport extends LightningElement {
 
   /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
   async rememberedAnswers() {
-    const campId =
-      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
-    let saved = [];
-    try {
-      saved = campId ? await getAnswers({ campId }) : [];
-    } catch {
-      // Without remembered answers the import still works: everything is asked.
-      saved = [];
-    }
-    const { answers, notes } = rememberedByKey(saved);
+    const { answers, notes, rows } = await rememberedFor(
+      this.setup,
+      getAnswers
+    );
     this.remembered = { ...answers };
     this.rememberedNotes = notes;
-    this.savedRows = saved || [];
+    this.savedRows = rows;
     return answers;
   }
 
@@ -871,7 +852,13 @@ export default class ShoreshImport extends LightningElement {
     const opened = this.openIds().find((id) => !openBefore.has(id));
     this.focusNext = opened
       ? { question: opened }
-      : { bringBack: nextKeyOf(keysBefore, key, this.deletedItems) };
+      : {
+          bringBack: nextKeyOf(
+            keysBefore,
+            key,
+            this.deletedItems.map((item) => item.key)
+          )
+        };
   }
 
   /** The questions still open, in the order shown. */
@@ -950,17 +937,9 @@ export default class ShoreshImport extends LightningElement {
     return this.files.map((f) => f.name).join(", ");
   }
 
-  /**
-   * The main button says what happens: "Add 61"; with questions open, how many wait for later
-   * ("Add 58, 3 for later", INGEST-5.5); while one must be answered first, how many are left.
-   */
+  /** The main button says what happens (flow.js saveLabel). */
   get saveLabel() {
-    const open = this.openCount;
-    if (this.mustAnswerCount > 0) {
-      return `${open} ${open === 1 ? "question" : "questions"} left`;
-    }
-    const base = this.addCount > 0 ? `Add ${this.addCount}` : "Use this setup";
-    return open > 0 ? `${base}, ${open} for later` : base;
+    return saveLabel(this.openCount, this.mustAnswerCount, this.addCount);
   }
   get saveDisabled() {
     return this.isSaving || this.mustAnswerCount > 0 || !this.plan;
