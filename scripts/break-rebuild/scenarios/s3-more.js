@@ -448,7 +448,7 @@ module.exports = [
         "Wednesday goes out as the special day's own schedule",
         wedOut.length > 0 &&
           wedOut.every((l) => l.includes("9:00 AM")) &&
-          wedOut.some((l) => l.includes("Bunk 2") && l.endsWith(",Art")),
+          wedOut.some((l) => l.includes("Bunk 2") && l.split(",")[6] === "Art"),
         wedOut.slice(0, 6).join("\n")
       );
       const off = await call("take_special_day_off_day", {

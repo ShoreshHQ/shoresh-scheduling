@@ -809,7 +809,7 @@ function everyCommand(tmp) {
   step("read_elective_seats", week, "any");
   // A cell from what was published: Bunk 1, Monday, Period 1.
   const cell =
-    /Week 1,2027-07-05,Bunk 1,Period 1,[^,]*,[^,]*,([^\n]*)/
+    /Week 1,2027-07-05,Bunk 1,Period 1,[^,]*,[^,]*,([^,\n]*)/
       .exec(csv)?.[1]
       ?.trim() ?? "Art";
   const other = cell === "Soccer" ? "Art" : "Soccer";

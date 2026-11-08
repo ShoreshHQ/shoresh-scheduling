@@ -731,22 +731,33 @@ module.exports = [
       );
       const answers = { "week|the file's week": "Week 1" };
       for (const id of asked) answers[id] = "new";
-      // Leaving the can-wait questions for later: does the season get the week the notes promise?
+      // Leaving the can-wait questions for later: the review promises only what the save adds.
+      const waiting = await call("import_last_year", {
+        season,
+        files,
+        answers
+      });
+      const promised = /added from its dates|(?<!not )kept as a version/i.test(
+        waiting.text
+      );
       const later = await call("import_last_year", {
         season,
         files,
         answers,
         save: true,
-        seen: seenOf(review.text)
+        seen: seenOf(waiting.text)
       });
       rec.note(
         "saved with questions left for later",
         `${later.kind}: ${later.text.slice(0, 500)}`
       );
-      // Open finding F13: the review's note and "kept as a version" line promise this; the save follows settled().
-      rec.note(
-        "F13: a week promised while questions wait, weeks after the save",
-        names("Week__c", `Season__r.Name = '${season}'`).join() || "none"
+      // F13 (#321): a week or version is promised only when the save adds one.
+      const weeksAdded = names("Week__c", `Season__r.Name = '${season}'`);
+      rec.check(
+        "INGEST-5.5",
+        "while questions wait, the review promises a week only if the save adds it",
+        promised === weeksAdded.length > 0,
+        `promised: ${promised}; weeks after the save: ${weeksAdded.join() || "none"}`
       );
       const seenUndo = /Last import:[^;]*?seen: "([^"]+)"/.exec(
         (await call("read_last_imports", { season })).text
