@@ -2,11 +2,18 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { categorize } = require("../ci-pr-category");
+const { categorize, MIRRORED_SCREENS } = require("../ci-pr-category");
+const { MIRRORED_SCREENS: pairedWithApex } = require("../ci-apex-tests");
 
 const category = (files) => categorize(files).category;
 
 describe("ci-pr-category", () => {
+  it("names the same mirrored screens as ci-apex-tests", () => {
+    expect([...MIRRORED_SCREENS].sort()).toEqual(
+      Object.keys(pairedWithApex).sort()
+    );
+  });
+
   it("docs: files the test org never sees", () => {
     expect(
       category([

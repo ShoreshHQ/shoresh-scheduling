@@ -23,6 +23,9 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import ciApexTests from "./ci-apex-tests.js";
+
+const { hasTestMethods } = ciApexTests;
 
 const MIN_COVERAGE = 75;
 const CLASS_TIMEOUT_MS = 10 * 60 * 1000;
@@ -54,20 +57,6 @@ const baseName = (file) =>
 /** Apex source without comments, so a commented-out @IsTest does not count. */
 function withoutComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/.*$/gm, " ");
-}
-
-/**
- * Whether a class has test methods: an @IsTest annotation (with or without arguments, before or
- * after other annotations) after the class is declared, or a testMethod. A class marked @IsTest
- * with no test methods (test data helpers) has nothing to run.
- */
-function hasTestMethods(source) {
-  const code = withoutComments(source);
-  const declared = code.search(/\bclass\b/i);
-  return (
-    declared >= 0 &&
-    (/@IsTest\b/i.test(code.slice(declared)) || /\btestMethod\b/i.test(code))
-  );
 }
 
 function testClasses() {
