@@ -10,12 +10,14 @@
  */
 import {
   cellText,
+  dayNumberIn,
   dayOf,
   hasClockTime,
   looseKey,
   looksLikeBlockLabel,
   tidy,
-  timeRange
+  timeRange,
+  withoutDayNumber
 } from "./text";
 import {
   isWeekHeading,
@@ -191,11 +193,21 @@ function labelOf(row, labelColumns) {
   return tidy(row.slice(0, labelColumns).join(" "));
 }
 
-/** A row that only names a day ("Monday", "TUESDAY 6/30"): the next schedule on the sheet. */
+/**
+ * A row that only names a day ("Monday", "TUESDAY 6/30", "Day 3"): the next schedule on the
+ * sheet.
+ */
 function dayHeading(row) {
   const texts = row.filter((c) => c !== "");
   if (texts.length !== 1 || texts[0].length > 30) {
     return null;
+  }
+  // WEEK-2.6: a leading "Day 3" first, before its number is lost with the other non-letters.
+  const numbered = dayNumberIn(texts[0]);
+  if (numbered && numbered.at === 0) {
+    return numbered.rest.split(/[^A-Za-z]+/).filter(Boolean).length <= 2
+      ? texts[0]
+      : null;
   }
   const words = texts[0].split(/[^A-Za-z]+/).filter(Boolean);
   return words.length >= 1 && words.length <= 3 && dayOf(words[0])
@@ -874,7 +886,7 @@ function notesAboveEveryPage(perFile) {
 function sheetsNameTheirPages(read, maxWeek) {
   const names = [...new Set(read.map((p) => p.sheet))];
   const onlyDayOrWeek = (name) =>
-    withoutWeek(name, { maxWeek })
+    withoutDayNumber(withoutWeek(name, { maxWeek }))
       .split(/[^\p{L}]+/u)
       .every((w) => !w || dayOf(w));
   return (

@@ -11,6 +11,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { FIELD } from "c/shoreshSchema";
 import { find } from "shoresh-jest/week-editor";
 import {
   WITH_SOCCER,
@@ -104,14 +105,20 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(first) {
+// The season with its days numbered, in the record's own field name (WEEK-1.5).
+const numbered = (setup) => ({
+  ...setup,
+  season: { ...setup.season, [FIELD.Season.NumberedDays]: true }
+});
+
+async function render(first, setup = nsRecord(SETUP)) {
   getDraft.mockResolvedValue(first);
   getVersions.mockResolvedValue(VERSIONS);
   const element = createElement("c-shoresh-manual-build", {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = nsRecord(SETUP);
+  element.setup = setup;
   document.body.appendChild(element);
   await flush();
   return element;
@@ -159,6 +166,40 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+  });
+
+  // WEEK-6.2: Apply to other weeks is offered only in a numbered-days season.
+  it("WEEK-6.2: a named-days season doesn't offer Apply to other weeks", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const panel = await versionsPanel(element);
+    expect(panel.querySelector('[data-id="apply-weeks"]')).toBeNull();
+  });
+
+  it("WEEK-6.2: a numbered-days season offers it; the question gets this draft and the other weeks; Close comes back", async () => {
+    const element = await render(
+      draft(WITH_SWIM, ["1,2,", "1,,"]),
+      numbered(SETUP)
+    );
+    const panel = await versionsPanel(element);
+    const apply = panel.querySelector('[data-id="apply-weeks"]');
+    expect(apply.textContent.trim()).toBe("Apply to other weeks");
+    expect(q(element, "c-shoresh-apply-weeks")).toBeNull();
+    apply.click();
+    await flush();
+    const question = q(element, "c-shoresh-apply-weeks");
+    expect(question.sourceId).toBe(
+      draft(WITH_SWIM, ["1,2,", "1,,"]).schedule.schedule.id
+    );
+    expect(question.sourceName).toBe("Week 1");
+    expect(question.weeks).toEqual([{ label: "Week 2", value: "w2" }]);
+    // WEEK-6.1: nothing is asked of another week until the person has opened it, and edits wait.
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    question.dispatchEvent(
+      new CustomEvent("close", { detail: { sourceChanged: false } })
+    );
+    await flush();
+    expect(q(element, "c-shoresh-apply-weeks")).toBeNull();
+    expect(q(element, '[data-id="versions"]').busy).toBe(false);
   });
 
   it("lists the week's versions, each with Restore", async () => {
@@ -385,6 +426,72 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     await flush();
     const panel = await versionsPanel(element);
     expect(panel.querySelector('[data-action="open"]')).toBeNull();
+  });
+
+  it("a list of versions for the week before that fails doesn't empty this week's list", async () => {
+    const slow = pending();
+    let fail;
+    getVersions.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        fail = reject;
+      })
+    );
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    document.body.appendChild(element);
+    await flush();
+    getVersions.mockReturnValueOnce(slow.promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    slow.resolve(VERSIONS);
+    await flush();
+    fail(new Error("no"));
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).not.toBeNull();
+  });
+
+  it("the week before's versions go as soon as another week is chosen", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    getVersions.mockReturnValueOnce(pending().promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).toBeNull();
+  });
+
+  it("an older read of the list answering after a newer one is not shown", async () => {
+    const late = pending();
+    getVersions.mockReturnValueOnce(late.promise);
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    document.body.appendChild(element);
+    await flush();
+    // Save version reads the list again; that newer answer comes first.
+    getVersions.mockResolvedValue(VERSIONS);
+    saveVersion.mockResolvedValue("a0S000000000023AAA");
+    q(element, '[data-id="versions"]').dispatchEvent(
+      new CustomEvent("save", {
+        detail: { name: "Rainy Monday", onDone: () => {} }
+      })
+    );
+    await flush();
+    late.resolve([]);
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel)).not.toBeNull();
   });
 
   it("Save version keeps the week under the name typed", async () => {

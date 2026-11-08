@@ -22,6 +22,7 @@
  *
  * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
  */
+import { numberedDay, spokenWeekday } from "c/shoreshDayNames";
 import {
   CARRIES_ON,
   KIND,
@@ -72,6 +73,11 @@ export const DAY_NAMES = [
   "Saturday",
   "Sunday"
 ];
+
+/** A date as the lines say it: its weekday, or "Day 3" in a numbered-days season (WEEK-1.7). */
+export function dayWord(date) {
+  return numberedDay(date) || DAY_NAMES[weekdayOf(date)] || "";
+}
 
 /** Every placement in the readable days: where it starts, how long it runs, what it is. */
 export function placementsOf(days) {
@@ -513,7 +519,7 @@ function stillToPlace(ctx) {
           const missing = act.early.count - done;
           const byDay = DAY_NAMES[act.early.byDay];
           spread.push(
-            `${act.name} · ${groupName}: ${missing} still needed by ${byDay}`
+            `${act.name} · ${groupName}: ${missing} still needed by ${spokenWeekday(byDay)}`
           );
           spreadBy.push({ activityId: act.id, groupId, missing, byDay });
         }

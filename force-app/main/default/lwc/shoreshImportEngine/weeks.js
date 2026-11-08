@@ -3,6 +3,7 @@
  * workbook import (c/shoreshLists) and Import last year.
  */
 import { FIELD } from "c/shoreshSchema";
+import { setDayNaming } from "c/shoreshDayNames";
 import { MONDAY_TO_FRIDAY, WEEKDAYS, firstDayOf } from "./text";
 
 const SEASON = FIELD.Season;
@@ -37,6 +38,35 @@ export function campFirstDay(setup) {
   const time = Date.parse(`${start}T00:00:00Z`);
   const allDays = Number.isNaN(time) ? 0 : (new Date(time).getUTCDay() + 6) % 7;
   return firstDayOf(programDays(setup), allDays) + 1;
+}
+
+/**
+ * The camp's first day of the week once an import saves (WEEK-2.6): a season with programs keeps
+ * campFirstDay; one with none gets a program running the days the file numbers, counted from
+ * firstDay (1 Monday ... 7 Sunday), and so the first day that program gives it.
+ */
+export function firstDayOnceSaved(setup, firstDay, numbers) {
+  if (!numbers.length || ((setup && setup.programs) || []).length) {
+    return firstDay;
+  }
+  const runs = numbers.map((n) => WEEKDAYS[(firstDay - 1 + n - 1) % 7]);
+  return campFirstDay({
+    ...setup,
+    programs: [
+      {
+        program: Object.fromEntries(runs.map((d) => [FIELD.Program[d], true]))
+      }
+    ]
+  });
+}
+
+/** Days are said as this season says them from here on (WEEK-1.5): c/shoreshDayNames. */
+export function nameDaysFor(setup) {
+  const season = (setup && setup.season) || {};
+  setDayNaming({
+    numbered: Boolean(season[SEASON.NumberedDays]),
+    firstDay: campFirstDay(setup)
+  });
 }
 
 /**

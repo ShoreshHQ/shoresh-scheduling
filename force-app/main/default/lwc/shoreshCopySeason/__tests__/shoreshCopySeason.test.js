@@ -1,8 +1,10 @@
+import { setDayNaming } from "c/shoreshDayNames";
 import { createElement } from "lwc";
 import ShoreshCopySeason from "c/shoreshCopySeason";
 import previewCopy from "@salesforce/apex/SeasonSetupController.previewCopy";
 import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { buildTerms } from "c/shoreshTerms";
+import { FIELD } from "c/shoreshSchema";
 import { nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
@@ -176,6 +178,51 @@ describe("c-shoresh-copy-season", () => {
     });
     const element = await render();
     await expect(element).toBeAccessible();
+  });
+
+  // WEEK-1.7
+  it("says a numbered season's week dates and new dates by number", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    previewCopy.mockResolvedValue(SAME_DAYS);
+    const withWeeks = await render();
+    const old = withWeeks.shadowRoot.querySelector('[data-id="old-weeks"]');
+    const now = withWeeks.shadowRoot.querySelector('[data-id="new-weeks"]');
+    expect(old.textContent).toContain("Day 1, Jun 29");
+    expect(now.textContent).toContain("Day 1, Jun 28");
+    expect(old.querySelector("lightning-formatted-date-time")).toBeNull();
+    previewCopy.mockResolvedValue({ ...SAME_DAYS, weeks: [] });
+    const noWeeks = await render();
+    expect(
+      noWeeks.shadowRoot
+        .querySelector('[data-id="new-dates"]')
+        .textContent.trim()
+    ).toBe("Day 1, June 28, 2027 to Day 5, August 6, 2027");
+    setDayNaming(null);
+  });
+
+  // WEEK-1.7
+  it("says a numbered season's first day by its number", async () => {
+    previewCopy.mockResolvedValue(SAME_DAYS);
+    const element = await render();
+    element.season = {
+      ...element.season,
+      [FIELD.Season.NumberedDays]: true
+    };
+    previewCopy.mockResolvedValue({
+      ...SAME_DAYS,
+      oldWeekday: "Day 1",
+      weekdaysChange: true
+    });
+    const date = element.shadowRoot.querySelectorAll("lightning-input")[1];
+    date.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "2027-06-29" } })
+    );
+    await flush();
+    expect(
+      element.shadowRoot
+        .querySelector('[data-id="weekday-warning"]')
+        .textContent.trim()
+    ).toBe("Summer 2026 started on Day 1");
   });
 
   it("warns when the new start date moves weeks to other weekdays", async () => {

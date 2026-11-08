@@ -141,7 +141,8 @@ function reviewText(m, body, review, input) {
       `Read as, ${g.label}: ${g.lines
         .map(
           (line) =>
-            `${line.name} [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${o.value}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]`
+            // A line with nothing to change (days by number, INGEST-5.11) is only said.
+            `${line.name}${line.options.length ? ` [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${o.value}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]` : ""}`
         )
         .join("; ")}`
     );
@@ -179,7 +180,9 @@ function reviewText(m, body, review, input) {
       `Comes in: ${tiles.map((x) => `${x.spoken} (${x.names.join(", ")})`).join("; ")}`
     );
   }
-  (proposal.versions || []).forEach((v) =>
+  // As Add saves it (INGEST-5.5): never a week or version the save won't add.
+  const kept = m.keptNow(flow, proposal, answers);
+  (kept.versions || []).forEach((v) =>
     parts.push(
       `Last year's schedule: ${v.weekName}${v.programName ? ` (${v.programName})` : ""}, kept as a version, ${v.name}`
     )
@@ -190,7 +193,7 @@ function reviewText(m, body, review, input) {
       `Not set up yet: ${noted.items.map((i) => `${i.name}${i.detail ? ` (${i.detail})` : ""}`).join("; ")}`
     );
   }
-  const notes = m.importNotes(proposal, t);
+  const notes = m.importNotes(kept, t);
   if (notes.length) parts.push(`Notes: ${notes.map((n) => n.text).join(" ")}`);
   const open = cards.filter(
     (c) => !c.options.some((o) => o.value === c.answer)

@@ -39,6 +39,39 @@ public with sharing class ManualWeekPlacements {
     return result;
   }
 
+  /** Where a placement's blocks start on a day, or -1 if it lacks any of them in a row. */
+  public static Integer firstBlockOn(Placement p, List<String> blockIds) {
+    Integer first = SlotIds.indexOf(blockIds, p.grid.blocks[p.first].id);
+    for (Integer i = 1; first >= 0 && i < p.length; i++) {
+      if (
+        blockIds.size() <= first + i ||
+        blockIds[first + i] != p.grid.blocks[p.first + i].id
+      ) {
+        return -1;
+      }
+    }
+    return first;
+  }
+
+  /** Whether a row of a grid holds this very placement: the same blocks, no shorter or longer. */
+  public static Boolean holds(
+    Placement p,
+    ScheduleGrid grid,
+    List<String> row
+  ) {
+    Integer first = firstBlockOn(p, grid.blockIds());
+    if (first < 0 || row[first] != p.slot) {
+      return false;
+    }
+    for (Integer i = 1; i < p.length; i++) {
+      if (row[first + i] != ScheduleGrid.CARRIES_ON + p.slot) {
+        return false;
+      }
+    }
+    Integer next = first + p.length;
+    return next == row.size() || row[next] != ScheduleGrid.CARRIES_ON + p.slot;
+  }
+
   /** Whether a grid has any activity placed (set-time items aside). */
   public static Boolean hasActivities(ScheduleGrid grid) {
     for (Integer g = 0; g < grid.groups.size(); g++) {

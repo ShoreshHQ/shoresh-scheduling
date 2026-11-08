@@ -111,7 +111,7 @@ const LOCK_FIELDS = {
   day: {
     type: "string",
     description:
-      'The day, like Monday, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
+      'The day, like Monday or Day 3, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
   },
   group: {
     type: "string",
@@ -140,7 +140,7 @@ const CELL = {
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
     type: "string",
-    description: "The day, like Monday, or its date like 2026-06-29."
+    description: "The day, like Monday or Day 3, or its date like 2026-06-29."
   },
   time: {
     type: "string",
@@ -362,7 +362,7 @@ const ACTIVITY_NAME = {
 const SETUP_FIELDS = {
   type: "object",
   description:
-    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day, early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
 };
 
 /**
@@ -419,7 +419,7 @@ function specialDay(name, description, more = {}) {
         week: WEEK,
         day: {
           type: "string",
-          description: "The day of the week, like Friday."
+          description: "The day of the week, like Friday or Day 5."
         },
         ...more,
         seen: {
@@ -545,12 +545,13 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity or an elective set there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -564,7 +565,8 @@ const CAPABILITIES = [
       },
       activity: {
         type: "string",
-        description: "What it should hold: an activity's name, or Open."
+        description:
+          "What it should hold: an activity's or elective set's name, or Open."
       },
       seen: CELL.seen
     },
@@ -657,7 +659,7 @@ const CAPABILITIES = [
         day: {
           ...CELL.day,
           description:
-            "The rainy day, like Monday, or its date like 2026-06-29."
+            "The rainy day, like Monday or Day 3, or its date like 2026-06-29."
         },
         seen: CELL.seen
       },
@@ -690,7 +692,7 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective, fixed activity or recurring activity. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -700,7 +702,7 @@ const CAPABILITIES = [
         day: {
           type: "string",
           description:
-            "Only this day's rows: Monday, or its date like 2026-06-29."
+            "Only this day's rows: Monday or Day 3, or its date like 2026-06-29."
         },
         group: {
           type: "string",
@@ -816,6 +818,19 @@ const CAPABILITIES = [
     ["version"]
   ),
   act(
+    "apply_to_other_weeks",
+    "apply_to_other_weeks",
+    "In a numbered-days season, repeat a week on another week of the season by Day number, as the Versions panel's Apply to other weeks does: every Day 3 looks the same. Only when the person asked for it; nothing else ever changes another week. One target week per call, so call it once for each week and show the person all the answers together. A locked cell in that week is kept and listed, a cell that can't go (a day that week doesn't have, a group away, a special event) is listed, what that week has now goes to its Versions first, and its published schedule stays as it is until it is published again. It is done as you, with your own access.",
+    {
+      ...EITHER_WEEK,
+      to_week: {
+        type: "string",
+        description: "The week to repeat it on, like Week 3."
+      }
+    },
+    ["to_week"]
+  ),
+  act(
     "publish_week",
     "publish_week",
     "Publish a week's Generated Schedule or Manual Build, as that screen's Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
@@ -899,7 +914,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -926,7 +942,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -1081,7 +1098,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes.'
+            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",
@@ -2081,7 +2098,8 @@ const ASKS_FIRST = [
   "clear_electives",
   "copy_season",
   "change_special_schedule_frame",
-  "assign_elective_seats"
+  "assign_elective_seats",
+  "apply_to_other_weeks"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;
