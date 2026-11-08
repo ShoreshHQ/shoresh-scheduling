@@ -64,9 +64,9 @@
   }
 }
 
-/* A phone: too narrow for a menu to open from its item, so the rail's open across it, under it
-   (c/shoreshRailPop). */
-@media (max-width: 40em) {
+/* Too narrow for a menu to open from its item, so the rail's open across it, under it
+   (c/shoreshRailPop). Wider than the other rails' rule: "Assign against" names a whole schedule. */
+@media (max-width: 48em) {
   .rail {
     position: relative;
     --shoresh-pop-host: static;
