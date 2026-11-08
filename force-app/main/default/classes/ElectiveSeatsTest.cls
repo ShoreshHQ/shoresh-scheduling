@@ -670,7 +670,7 @@ private class ElectiveSeatsTest {
             ElectiveRun__c = :camp.runId
             AND Offering__c = :camp.ids.get('o:Archery')
         ],
-        'Two by hand, up to its seats (a third is refused: AgentElectiveSeatsTest)'
+        'Two by hand, up to its seats (a third goes over: AgentElectiveSeatsTest)'
       );
 
       view = camp.lock(view.revision, 1, false);

@@ -28,6 +28,8 @@ global with sharing class AgentVersions {
             // A delete is on the panel once the week is built or started on Manual Build (API-1.41).
             'built' => week.draft != null ||
             ManualDrafts.find(week.program.Id, week.weekId) != null,
+            // Its saved times are said on the camp's clock (CORE-6.11).
+            'time_zone' => CampClock.zoneOfProgram(week.program.Id),
             'versions' => SchedulesController.getVersions(
               week.program.Id,
               week.weekId

@@ -3,7 +3,15 @@
  */
 const { handle } = require("../mcp");
 const { CAPABILITIES } = require("../capabilities");
-const { scriptTool, signature, runScript } = require("../script");
+const {
+  scriptTool,
+  signature,
+  runScript,
+  CALL_LIMIT,
+  TIME_LIMIT_MS,
+  MEMORY_MB,
+  GRACE_MS
+} = require("../script");
 const { PERSON_DECIDES } = require("../client");
 
 const PREVIEW =
@@ -120,6 +128,13 @@ describe("Code mode for an AI: run_shoresh_script", () => {
     );
     expect(lines(one)).toContain("Season used: Summer 2026.");
     expect(said.isError).toBe(false);
+  });
+
+  // API-1.121
+  it("theLimitsAreTheRules: 40 calls, 120 seconds, 128 MB, and 10 seconds' grace", () => {
+    expect([CALL_LIMIT, TIME_LIMIT_MS, MEMORY_MB, GRACE_MS]).toEqual([
+      40, 120000, 128, 10000
+    ]);
   });
 
   // API-1.121

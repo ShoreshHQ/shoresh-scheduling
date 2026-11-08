@@ -198,6 +198,7 @@ async function makeFile(
   if (got.status !== 200) return answer(got);
   const body = asTheScreenReads(JSON.parse(got.body));
   const m = await load();
+  m.nameDaysFor(body.setup);
   const t = m.buildTerms((body.setup && body.setup.labels) || []);
   let made;
   try {

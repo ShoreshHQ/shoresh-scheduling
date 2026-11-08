@@ -105,6 +105,7 @@ public with sharing class ElectiveFinalize {
    * Which seat no longer fits, and why: "Ivy Snowberry's seat in Pottery (Tuesday, Period 6) no
    * longer fits: Pottery isn't offered to their bunk then." (API-1.105 names the camper.)
    */
+  @TestVisible
   private static String notFitting(
     ElectiveRunState state,
     Assignment__c seat,
@@ -117,11 +118,8 @@ public with sharing class ElectiveFinalize {
     String activity = offering == null
       ? 'a removed ' + labels.singularInSentence('Elective')
       : offering.Activity__r.Name;
-    String day = Datetime.newInstance(
-        seat.Date__c,
-        Time.newInstance(12, 0, 0, 0)
-      )
-      .format('EEEE');
+    DayWords.use(state.run.Season__c);
+    String day = DayWords.say(seat.Date__c);
     return camper +
       '\'s seat in ' +
       activity +

@@ -52,9 +52,10 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       'blockId' => period.blockId,
       'offeringId' => offering.id
     };
+    ElectiveSeats.RunView after;
     try {
       // The screen's own change of one seat.
-      ElectiveSeatsController.changeSeat(JSON.serialize(request));
+      after = ElectiveSeatsController.changeSeat(JSON.serialize(request));
     } catch (Exception e) {
       String words = ScreenErrors.words(e);
       // Already there: said as it is, nothing changed (not a refusal).
@@ -67,8 +68,16 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
           : 'That seat wasn\'t changed. ' + words
       );
     }
-    // The screen's own words for it.
-    return 'Moved ' + camper.name + ' to ' + offering.name + ', locked.';
+    // The screen's own words for it, and the offering over its seats then, as the screen shows it.
+    String over = ElectiveOverSeats.atCampersTime(after, camper, period);
+    String unset = ElectiveOverSeats.noSeatsSet(offering);
+    return 'Moved ' +
+      camper.name +
+      ' to ' +
+      offering.name +
+      ', locked.' +
+      (over == null ? '' : ' ' + over) +
+      (unset == null ? '' : ' ' + unset);
   }
 
   /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
@@ -109,13 +118,10 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
   ) {
     List<String> said = new List<String>();
     for (ElectivePeriod each : view.times) {
-      String weekday = Datetime.newInstance(
-          each.day,
-          Time.newInstance(12, 0, 0, 0)
-        )
-        .format('EEEE');
+      String weekday = WeekCalendar.weekdayName(each.day);
       if (
         (IncomingBatch.fold(weekday) == IncomingBatch.fold(day) ||
+        IncomingBatch.fold(DayWords.say(each.day)) == IncomingBatch.fold(day) ||
         String.valueOf(each.day) == day) &&
         IncomingBatch.fold(each.blockName) == IncomingBatch.fold(block)
       ) {

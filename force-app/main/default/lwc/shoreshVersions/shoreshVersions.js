@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { canDelete, metaOf } from "./words";
+import { campZone } from "c/shoreshCampClock";
 
 /**
  * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
@@ -28,8 +29,9 @@ function keepOwnUndo(event) {
  * reads them out from its own.
  * label: the words on the button instead of "Versions" (the Schedules page names the version
  * on screen there, "Published Oct 18, 2:40 PM"); the button is still named "…, Versions".
+ * applyLabel: the words on Apply to other weeks, only in a numbered-days season (WEEK-6.2).
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
- * delete { id }, save { name, onDone(saved) }
+ * delete { id }, save { name, onDone(saved) }, apply
  */
 export default class ShoreshVersions extends LightningElement {
   _versions = [];
@@ -42,6 +44,7 @@ export default class ShoreshVersions extends LightningElement {
   // as a version, and no week to delete one from).
   @api noDraft = false;
   @api announceWith;
+  @api applyLabel;
 
   isOpen = false;
   renamingId;
@@ -118,6 +121,11 @@ export default class ShoreshVersions extends LightningElement {
         button.focus();
       }
     }
+  }
+
+  /** When each was saved, on the camp's clock (CORE-6.11). */
+  get timeZone() {
+    return campZone();
   }
 
   get title() {
@@ -298,6 +306,20 @@ export default class ShoreshVersions extends LightningElement {
         this.isOpen = false;
         this.focusButtonAfterRender = true;
       }
+    }
+  }
+
+  handleApply() {
+    this.isOpen = false;
+    this.dispatchEvent(new CustomEvent("apply"));
+  }
+
+  /** Back to the Versions button (a question this list opened has closed). */
+  @api
+  focusButton() {
+    const button = this.template.querySelector('[data-id="versions-button"]');
+    if (button) {
+      button.focus();
     }
   }
 

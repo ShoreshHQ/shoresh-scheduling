@@ -3,6 +3,7 @@
  * what is left out and why, what is noted but not set up, and every question still to answer.
  * Pure: the same files and answers always give the same proposal.
  */
+import { weekdayNumbered } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import {
   activityRecord,
@@ -516,6 +517,28 @@ function withOwnDays(specialDays, timetables) {
   return result;
 }
 
+/**
+ * WEEK-2.6: what each number a file said its days by became ({ number, day }), and whether the
+ * save makes the season say its days by number: a season with no weeks and no programs yet,
+ * named so far. A season with either keeps its own way of saying days.
+ */
+function dayNumbersFor(reading, existing) {
+  const season = (existing && existing.season) || {};
+  const numbered = Boolean(season[FIELD.Season.NumberedDays]);
+  const empty =
+    !((existing && existing.weeks) || []).length &&
+    !((existing && existing.programs) || []).length;
+  const dayNumbers = reading.dayNumbers.map((number) => ({
+    number,
+    day: weekdayNumbered(number)
+  }));
+  return {
+    dayNumbers,
+    numberDays: dayNumbers.length > 0 && !numbered && empty,
+    numberedSeason: numbered
+  };
+}
+
 export function buildProposal(input) {
   const answers = input.answers || {};
   const reading = readImport(input);
@@ -629,7 +652,8 @@ export function buildProposal(input) {
     leftOutCells: leftOut,
     notes: ctx.notes,
     asks: [...programs.asks, ...people.asks, ...electives.asks, ...ctx.asks],
-    decisions
+    decisions,
+    ...dayNumbersFor(reading, input.existing)
   };
   const last = versionsFor(proposal, input);
   // review.md INGEST-5.8: what an earlier import brought in that these files lack.

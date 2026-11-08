@@ -249,6 +249,7 @@ public with sharing class ImportFields {
       Season__c.EndDate__c,
       Season__c.Status__c,
       Season__c.ShrinkShortWeek__c,
+      Season__c.NumberedDays__c,
       Season__c.CopiedFrom__c
     },
     Preference__c.SObjectType => new Set<Schema.SObjectField>{

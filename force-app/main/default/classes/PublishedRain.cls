@@ -16,7 +16,7 @@ public with sharing class PublishedRain {
     }
     Date day = was == null ? now.day : was.day;
     result.rainDays++;
-    result.add(WeekCalendar.weekdayName(day) + ': rain marks changed', 1);
+    result.add(result.say(day) + ': rain marks changed', 1);
   }
 
   private static Set<String> keptMarks(ScheduleDays.DayGrid day) {

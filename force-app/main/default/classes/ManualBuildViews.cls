@@ -138,7 +138,7 @@ public with sharing class ManualBuildViews {
       source.isVersion = schedule.Status__c == 'Version';
       source.isPublished = schedule.Status__c == SchedulePublish.PUBLISHED;
       source.savedAt = schedule.CreatedDate;
-      source.namedByPublish = PublishedRows.namedByPublish(schedule);
+      source.namedByPublish = PublishedRows.namedByPublish(schedule, programId);
       result.add(source);
     }
     return result;

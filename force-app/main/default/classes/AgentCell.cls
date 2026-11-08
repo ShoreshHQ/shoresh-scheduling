@@ -82,7 +82,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     place = String.join(
       new List<String>{
         grid.groups[g].name,
-        AgentWeeks.dayName(day),
+        DayWords.say(day),
         grid.blocks[b].name
       },
       ' · '
@@ -112,23 +112,39 @@ global with sharing class AgentCell implements AgentWeeks.Action {
       throw new ShoreshException(
         ScheduleGridLocks.lockedWords(
           grid.groups[g].name,
-          AgentWeeks.dayName(day),
+          DayWords.say(day),
           grid.blocks[b].name
         )
       );
     }
+    refuseLonger(now, nowName);
+  }
+
+  /**
+   * Part of a longer placement is refused, saying what an AI can do instead (break-and-rebuild
+   * N2): move it or take it all out, from its first time; only its length is the screen's.
+   */
+  private void refuseLonger(String now, String nowName) {
     Boolean carriesOn =
       b + 1 < row.size() &&
       now != SlotIds.OPEN &&
       row[b + 1] == ScheduleGrid.CARRIES_ON + now;
     if (SlotIds.isCarryOn(now) || carriesOn) {
+      Integer first = b;
+      while (first > 0 && SlotIds.isCarryOn(row[first])) {
+        first--;
+      }
       throw new ShoreshException(
         place +
           ' is part of a longer ' +
           nowName +
-          ', which can be changed only on ' +
+          ', from ' +
+          grid.blocks[first].name +
+          '. Its length can be changed only on ' +
           AgentSchedules.screenOf(week) +
-          '.'
+          '. To change it, move it from ' +
+          grid.blocks[first].name +
+          ' (move_cell) or take it all out (take_out_cell).'
       );
     }
   }
@@ -198,32 +214,13 @@ global with sharing class AgentCell implements AgentWeeks.Action {
     return IncomingBatch.fold(said) == IncomingBatch.fold(nowName);
   }
 
-  /** The activity asked for, as a slot: Open, or one of the season's activities. */
+  /** What was asked for, as a slot: Open, or what the season has by that name (API-1.124). */
   private String slotOf(Schedule__c draft) {
     String asked = AgentFields.text(body, 'activity');
     if (String.isBlank(asked) || sameName(asked, OPEN_WORD)) {
       return SlotIds.OPEN;
     }
-    Id seasonId = draft.Program__r.Season__c;
-    List<String> names = new List<String>();
-    for (Activity__c activity : [
-      SELECT Id, Name
-      FROM Activity__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY Name
-    ]) {
-      if (IncomingBatch.fold(activity.Name) == IncomingBatch.fold(asked)) {
-        return 'A:' + activity.Id;
-      }
-      names.add(activity.Name);
-    }
-    throw new ShoreshException(
-      'There is no activity called "' +
-        asked.left(80) +
-        '" in this season. ' +
-        AgentWeeks.namesSaid('activities', names)
-    );
+    return AgentCellSlot.named(asked, draft.Program__r.Season__c);
   }
 
   /** The one-cell run the screen sends for the same edit (what it held, what it should hold). */

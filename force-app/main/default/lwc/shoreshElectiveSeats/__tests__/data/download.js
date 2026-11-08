@@ -1,5 +1,5 @@
 // A final run as ElectiveDownloads.forRun sends it, for the downloads' tests. Every name is made
-// up. The run of data/run.js, finalized on 14 Oct by Greg: each seat carries the names copied at
+// up. The run of data/run.js, finalized on Oct 14 by Greg: each seat carries the names copied at
 // Finalize, and each bunk's week is Flag at 9:00, Chugim at 12:30, and (Aspen only) Swim across
 // Period 2 and Period 3.
 import { MONDAY, TUESDAY, assignedView, runView } from "./run";

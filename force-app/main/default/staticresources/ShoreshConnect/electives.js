@@ -41,6 +41,7 @@ async function assignElectiveSeats(
     );
   }
   const m = await load();
+  m.setDayNaming(body.dayNaming);
   const t = m.buildTerms(body.labels);
   const request = m.planSeats(body.view, t);
   const saved = await send(capability.api, {
