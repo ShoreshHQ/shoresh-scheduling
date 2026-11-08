@@ -76,7 +76,7 @@ export const BuildScreen = (Base) =>
         })
       );
     }
-    /** What building still needs: Generate waits for all of it, as Manual Build's Start does. */
+    /** What building still needs (desktop readiness.js): Generate and Start wait for all of it. */
     get stillNeeded() {
       return stillNeeded(this._setup, this.t, this.programId);
     }
@@ -107,12 +107,12 @@ export const BuildScreen = (Base) =>
     get isGroup() {
       return this.view === "group";
     }
-    /** A hand edit failed: what is saved is read again. */
+    /** A save failed: what is saved is read again. */
     handleEditorReload() {
       this.load(true);
     }
     /**
-     * Reads what setup changed since the week was built (its own request, so opening the week costs
+     * Reads what setup changed since the week was made (its own request, so opening the week costs
      * no more). An answer older than the latest ask, or for a week no longer shown, is dropped.
      * Returns the preview, or null.
      */
