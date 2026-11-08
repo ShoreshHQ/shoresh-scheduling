@@ -33,6 +33,18 @@ public with sharing class AgentFields {
     return given;
   }
 
+  /** A list field as sent (none when left out); a value that isn't a list is refused. */
+  public static List<Object> listOf(Map<String, Object> body, String field) {
+    Object value = body.get(field);
+    if (value == null) {
+      return new List<Object>();
+    }
+    if (value instanceof List<Object>) {
+      return (List<Object>) value;
+    }
+    throw new ShoreshException('The ' + field + ' is a list.');
+  }
+
   /** A field as text ('' when left out); a value that isn't text is refused. */
   public static String text(Map<String, Object> body, String field) {
     Object value = body.get(field);

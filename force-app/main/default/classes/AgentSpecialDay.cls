@@ -179,8 +179,7 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
   }
 
   /** "Friday" from "friday" (or "Day 5" in a numbered season: WEEK-1.7); anything else is refused. */
-  @TestVisible
-  private static String weekdayOf(String asked) {
+  public static String weekdayOf(String asked) {
     for (String weekday : WEEKDAYS) {
       if (
         IncomingBatch.fold(weekday) == IncomingBatch.fold(asked) ||
