@@ -95,10 +95,6 @@ const SECTIONS = [
   { key: "settings", foot: true, screens: ["learned"] }
 ];
 
-export function isComing(screen) {
-  return COMING.has(screen);
-}
-
 /**
  * Whether the screen can be opened now: built, and (except camp words) a season exists. preview:
  * the coming screen the page's address names (previewScreen), which opens like a built one.
