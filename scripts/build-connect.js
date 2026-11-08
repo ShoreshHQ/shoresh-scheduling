@@ -31,6 +31,8 @@ const ENGINE_ENTRY = "shoreshGeneratedWeek/build.js";
 // counter is worked out with, from the week checked to the lines its dropdown lists.
 const CHECKS_ENTRIES = [
   "shoreshGeneratedSchedule/counter.js",
+  // The Build menu for an agent (API-1.127 to API-1.130).
+  "shoreshGeneratedSchedule/buildMenu.js",
   "shoreshWeekEditor/measure.js",
   // Manual Build's own check of its week (API-1.44).
   "shoreshWeekEditor/manualChecks.js",

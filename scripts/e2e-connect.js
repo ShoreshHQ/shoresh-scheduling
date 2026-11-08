@@ -901,6 +901,12 @@ function everyCommand(tmp) {
     { ...week, day: "Monday", group: "", seen: ctx.seen },
     "refused"
   );
+  // The Build menu (API-1.127 to API-1.130), ending with the week built again.
+  step("try_another_option", week);
+  step("bring_back_option", { ...week, option: 1 });
+  step("fill_open_cells", week, "any");
+  step("start_over_week", week);
+  step("build_week", week);
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.
