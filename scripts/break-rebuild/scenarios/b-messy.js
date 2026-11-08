@@ -138,6 +138,15 @@ async function matrix(rec, door, input, season, snapshot) {
       again.text
     );
     rec.note(`${door}, ${what}`, said.text.split("\n").slice(2).join("\n"));
+    if (what === "very long name") {
+      // F15 (#318): a name longer than Salesforce keeps is a row that can't be read, with why.
+      rec.check(
+        "INGEST-1.7",
+        `${door}, ${what}: the row can't be read, saying it is longer than 80 characters`,
+        /longer than 80 characters/.test(said.text),
+        said.text.replace(/A{20,}/g, "A…")
+      );
+    }
     // What a review says is ready, saved and read back; then undone back to as it was.
     if (/Ready to save/.test(said.text) && seenOf(said.text)) {
       const saved = await call(door, {
@@ -147,7 +156,6 @@ async function matrix(rec, door, input, season, snapshot) {
         save: true,
         seen: seenOf(said.text)
       });
-      // Open finding F15: a very long name reads as ready and the save refuses, plainly.
       rec.check(
         "INGEST-5.5",
         `${door}, ${what}: Ready to save saves, or says plainly why not with nothing saved`,
