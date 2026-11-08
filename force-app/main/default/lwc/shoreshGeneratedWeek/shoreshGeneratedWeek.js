@@ -13,10 +13,13 @@ export {
   ACTION,
   buildForAgent,
   buildInputOf,
+  buildWeek,
   builtWeekOf,
   engineInputOf,
   inputFor,
-  locksOf
+  loadedOf,
+  locksOf,
+  saveRequestOf
 } from "./build";
 
 /** What a lock change does (setLocks). */

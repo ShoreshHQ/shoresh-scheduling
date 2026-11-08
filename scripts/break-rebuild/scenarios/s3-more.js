@@ -649,5 +649,176 @@ module.exports = [
       const seenA = (await checksOf(a.season)).seen;
       rec.note("seen after two builds", seenA);
     }
+  },
+  {
+    id: "S8",
+    title:
+      "the Build menu through an AI: Try another, an option back, Fill the open cells, Start over",
+    camps: "BR S8 %",
+    async run(rec) {
+      const { season } = makeCamp("S8 Build menu");
+      await importMaple(season);
+      const week = { season, week: "Week 1" };
+      const notBuilt = await call("try_another_option", {
+        season,
+        week: "Week 2"
+      });
+      rec.check(
+        "API-1.127",
+        "a week never built has no Build menu",
+        notBuilt.kind === "refused" &&
+          /hasn't been built yet/.test(notBuilt.text),
+        notBuilt.text
+      );
+      await call("build_week", week);
+      const first = await draft(season);
+      const free = first.rows.find((r) => !r.notes && r.activity !== "Open");
+      const lock = {
+        ...week,
+        day: free.day,
+        group: free.group,
+        time: free.time_block
+      };
+      const locked = await call("lock_cells", { ...lock, seen: first.seen });
+      rec.check("LOCK", "a cell locks", locked.kind === "done", locked.text);
+      const holds = (d) => d.cell(free.day, free.group, free.time_block);
+
+      const tried = await call("try_another_option", week);
+      rec.check(
+        "API-1.127",
+        "Try another builds Option 2 and says the screen's count",
+        tried.kind === "done" &&
+          /^Option 2 of Week 1\. Filled \d+ of \d+\./.test(tried.text),
+        tried.text
+      );
+      const two = await draft(season);
+      rec.check(
+        "API-1.127",
+        "the locked cell is kept",
+        holds(two).activity === free.activity &&
+          /locked/.test(holds(two).notes),
+        JSON.stringify(holds(two))
+      );
+      const versions = await call("list_versions", week);
+      rec.check(
+        "API-1.127",
+        "the week as it was is in Versions, both ways",
+        /Before Try another/.test(versions.text) &&
+          /Before Option 2 of Week 1/.test(versions.text),
+        versions.text.slice(0, 800)
+      );
+
+      const above = await call("bring_back_option", { ...week, option: 5 });
+      rec.check(
+        "API-1.128",
+        "an option never tried is refused",
+        above.kind === "refused" &&
+          /Option 5 hasn't been tried/.test(above.text),
+        above.text
+      );
+      const same = await call("bring_back_option", { ...week, option: 2 });
+      rec.check(
+        "API-1.128",
+        "the option it's on changes nothing",
+        same.kind === "done" && /already on Option 2/.test(same.text),
+        same.text
+      );
+      const back = await call("bring_back_option", { ...week, option: 1 });
+      rec.check(
+        "API-1.128",
+        "an earlier option comes back",
+        back.kind === "done" && /^Option 1 of Week 1\./.test(back.text),
+        back.text
+      );
+      const again = await call("try_another_option", week);
+      rec.check(
+        "API-1.127",
+        "Option 2 again is the same week",
+        again.kind === "done" && (await draft(season)).words === two.words,
+        again.text
+      );
+
+      const before = await draft(season);
+      const out = before.rows.find((r) => !r.notes && r.activity !== "Open");
+      const taken = await call("take_out_cell", {
+        ...week,
+        day: out.day,
+        group: out.group,
+        time: out.time_block,
+        was: out.activity,
+        seen: before.seen
+      });
+      rec.check(
+        "API-1.129",
+        "a cell is opened",
+        taken.kind === "done",
+        taken.text
+      );
+      const opened = await draft(season);
+      const filled = await call("fill_open_cells", week);
+      const after = await draft(season);
+      rec.check(
+        "API-1.129",
+        "Fill the open cells fills, and every filled cell stays",
+        filled.kind === "done" &&
+          after.cell(out.day, out.group, out.time_block).activity !== "Open" &&
+          opened.rows
+            .filter((r) => r.activity !== "Open")
+            .every(
+              (r) =>
+                after.cell(r.day, r.group, r.time_block)?.activity ===
+                r.activity
+            ),
+        filled.text
+      );
+      rec.note("after filling", JSON.stringify(after.checks).slice(0, 300));
+      const none = await call("fill_open_cells", week);
+      rec.check(
+        "API-1.129",
+        "with nothing open it is refused",
+        none.kind === "refused" && /no open cells/.test(none.text),
+        none.text
+      );
+
+      const kept = await draft(season);
+      const over = await call("start_over_week", week);
+      rec.check(
+        "API-1.130",
+        "Start over goes at once and says so",
+        over.kind === "done" && /^Started Week 1 over\./.test(over.text),
+        over.text
+      );
+      const cleared = await draft(season);
+      rec.check(
+        "API-1.130",
+        "every activity is cleared and the lock lifted; what isn't an activity stays",
+        kept.rows
+          .filter((r) => !r.notes || r.notes === "locked")
+          .every(
+            (r) =>
+              cleared.cell(r.day, r.group, r.time_block).activity === "Open"
+          ) &&
+          kept.rows
+            .filter(
+              (r) => r.notes && r.notes !== "locked" && !/locked$/.test(r.notes)
+            )
+            .every(
+              (r) =>
+                cleared.cell(r.day, r.group, r.time_block).activity ===
+                r.activity
+            ) &&
+          !/locked/.test(holds(cleared).notes ?? ""),
+        JSON.stringify(holds(cleared))
+      );
+      const undo = await confirmed("undo_last_agent_change", week);
+      rec.check(
+        "API-1.130",
+        "Undo asks first, then brings the week and its lock back",
+        undo.preview.kind === "asks first" &&
+          undo.done.kind === "done" &&
+          (await draft(season)).words === kept.words,
+        undo.done.text
+      );
+    }
   }
 ];

@@ -196,7 +196,13 @@ async function callOnce(
   };
   const request = requestFor(capability, input, namespace);
   if (capability.buildsWithEngine) {
-    return build(capability, input, at, () => engine(namespace));
+    return build(
+      capability,
+      input,
+      at,
+      () => engine(namespace),
+      () => checks(namespace)
+    );
   }
   if (capability.readsDraft) {
     return readDraft(
@@ -369,8 +375,10 @@ function answer(response) {
  * build_week (API-1.19): reads what Generate reads (GET /v1/build_week), builds the week here with
  * Generated Schedule's own engine module (shipped beside this file, API-1.20), and saves it through
  * the screen's own save (POST /v1/build_week). The engine's refusal comes back in its own words.
+ * An action of the screen's Build menu (API-1.127 to API-1.130) goes the same way, worked out by
+ * the screen's buildMenu.js, and ends with the count the screen says.
  */
-async function build(capability, input, at, engine) {
+async function build(capability, input, at, engine, checks) {
   const fields = JSON.parse(requestFor(capability, input).body);
   const query = {};
   for (const field of ["season", "week", "program"]) {
@@ -379,9 +387,23 @@ async function build(capability, input, at, engine) {
   const got = await at.read(capability.api, query);
   if (got.status !== 200) return answer(got);
   const inputs = JSON.parse(got.body);
-  const built = (await engine()).buildForAgent(inputs);
+  const built = capability.buildAction
+    ? (await checks()).menuForAgent(inputs, {
+        action: capability.buildAction,
+        week: input.week,
+        option: input.option
+      })
+    : (await engine()).buildForAgent(inputs);
   if (!built.ok) return { ok: false, status: 400, text: built.error };
-  return answer(await at.send(capability.api, { ...fields, ...built.save }));
+  if (built.unchanged) {
+    return { ok: true, status: 200, text: built.unchanged };
+  }
+  const saved = answer(
+    await at.send(capability.api, { ...fields, ...built.save })
+  );
+  return saved.ok && built.said
+    ? { ...saved, text: `${saved.text} ${built.said}` }
+    : saved;
 }
 
 /**
@@ -622,6 +644,7 @@ async function loadChecks(namespace) {
       "shoreshGeneratedWeek.build",
       "shoreshTerms.shoreshTerms",
       "shoreshGeneratedSchedule.counter",
+      "shoreshGeneratedSchedule.buildMenu",
       "shoreshWeekEditor.measure",
       "shoreshWeekEditor.manualChecks",
       "shoreshWeekChecks.lines"
