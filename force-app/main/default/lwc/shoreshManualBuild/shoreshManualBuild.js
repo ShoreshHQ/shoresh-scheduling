@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { campZone } from "c/shoreshCampClock";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
@@ -36,7 +37,8 @@ function savedWhen(source) {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: campZone()
   })}`;
 }
 
@@ -121,6 +123,11 @@ export default class ShoreshManualBuild extends LightningElement {
   setupSaid = 0;
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
+
+  /** When it was published, on the camp's clock (CORE-6.11). */
+  get campTimeZone() {
+    return campZone();
+  }
 
   @api
   get setup() {

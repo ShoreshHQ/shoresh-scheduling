@@ -601,6 +601,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.32
+  // CORE-6.11
   it("versionsInThePanelsWords: list_versions reads the panel's own list and says each version in the panel's words", async () => {
     const seen = [];
     const rows = [
@@ -667,6 +668,23 @@ describe("Shoresh for AI tools and the command line", () => {
         }
       ]
     });
+    // CORE-6.11: on the camp's clock when the camp has one, whatever this computer's is.
+    const camps = await call("list_versions", asked, {
+      run: sfAnswering(
+        200,
+        JSON.stringify({
+          week: "Week 1",
+          program: "Main",
+          built: true,
+          time_zone: "America/Los_Angeles",
+          versions: rows
+        })
+      ),
+      versionWords
+    });
+    expect(JSON.parse(camps.text).versions[0].says).toBe(
+      "Generated Schedule · Through an agent · Oct 31, 12:40 PM"
+    );
     const none = await call("list_versions", asked, {
       run: sfAnswering(
         200,
