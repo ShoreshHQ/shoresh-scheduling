@@ -276,8 +276,8 @@ private class OutgoingTest {
     );
   }
 
-  // API-6.2, API-4.5: a week only drafted goes out nowhere, and once published, what goes out is
-  // the published schedule, never the draft beside it.
+  // API-6.2, API-4.5: a week only drafted goes out nowhere, and once published, what goes out of
+  // either schedule door is the published schedule, never the draft or a version beside it.
   @IsTest
   static void aDraftNeverGoesOut() {
     IncomingTestData camp = new IncomingTestData();
@@ -294,46 +294,26 @@ private class OutgoingTest {
       'Nothing in Week 1 of Summer 2026 is published yet. Schedules go out once a week is published.',
       before.get('message')
     );
+    ScheduleGrid version = grid(camp);
+    version.items[0].name = 'Version swim';
+    schedule(camp, 'Version', version);
     schedule(camp, 'Published', grid(camp));
     Map<String, Object> after;
     System.runAs(camp.sender('Read_Group_Schedules')) {
       after = get(capability, week1());
     }
-    String said = JSON.serialize(after.get('records'));
-    Assert.isTrue(said.contains('"Swim"'), said);
-    Assert.isFalse(said.contains('Draft swim'), said);
-  }
-
-  // API-4.5: neither schedule door sends a draft or a version beside the published week.
-  @IsTest
-  static void aDraftOrVersionNeverGoesOutOfEitherDoor() {
-    IncomingTestData camp = new IncomingTestData();
-    ScheduleGrid draft = grid(camp);
-    draft.items[0].name = 'Draft swim';
-    schedule(camp, 'Draft', draft);
-    ScheduleGrid version = grid(camp);
-    version.items[0].name = 'Version swim';
-    schedule(camp, 'Version', version);
-    schedule(camp, 'Published', grid(camp));
-    Map<String, Object> groups;
-    System.runAs(camp.sender('Read_Group_Schedules')) {
-      groups = get(new OutgoingGroupSchedule(), week1());
-    }
     Map<String, Object> activities;
     System.runAs(camp.sender('Read_Activity_Schedules')) {
       activities = get(new OutgoingActivitySchedule(), week1());
     }
-    for (
-      Map<String, Object> answer : new List<Map<String, Object>>{
-        groups,
-        activities
-      }
-    ) {
-      String said = JSON.serialize(answer.get('records'));
-      Assert.isTrue(said.contains('"Swim"'), said);
-      Assert.isFalse(said.contains('Draft swim'), said);
-      Assert.isFalse(said.contains('Version swim'), said);
-    }
+    String said = JSON.serialize(after.get('records'));
+    Assert.isTrue(said.contains('"Swim"'), said);
+    Assert.isFalse(said.contains('Draft swim'), said);
+    Assert.isFalse(said.contains('Version swim'), said);
+    String fromActivities = JSON.serialize(activities.get('records'));
+    Assert.isTrue(fromActivities.contains('"Swim"'), fromActivities);
+    Assert.isFalse(fromActivities.contains('Draft swim'), fromActivities);
+    Assert.isFalse(fromActivities.contains('Version swim'), fromActivities);
   }
 
   // API-4.4: a key reaches only what its permission sets allow, and is told which set it needs.
