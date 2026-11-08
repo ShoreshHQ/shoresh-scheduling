@@ -1,0 +1,121 @@
+{
+  "about": "Rules written in both Apex and the screens. Both sides' tests read these examples: shoreshImportEngine ruleExamples.test.js and RuleExamplesTest.",
+  "foldedNames": [
+    {
+      "name": "Arts & Crafts",
+      "fold": "artsandcrafts"
+    },
+    {
+      "name": "Arts + Crafts",
+      "fold": "artsandcrafts"
+    },
+    {
+      "name": "  Bunk-3 (Girls) ",
+      "fold": "bunk3girls"
+    },
+    {
+      "name": "ÉCOLE d'été",
+      "fold": "écoledété"
+    },
+    {
+      "name": "",
+      "fold": ""
+    }
+  ],
+  "deletedLinkedChoices": [
+    {
+      "activity": "Archery",
+      "days": [
+        "Monday",
+        "Wednesday"
+      ],
+      "blocks": [
+        "Period 1",
+        "Period 2"
+      ],
+      "name": "Archery|Monday+Wednesday|Period 1+Period 2"
+    },
+    {
+      "activity": "Swim",
+      "days": [
+        "Friday"
+      ],
+      "blocks": [
+        "Lunch"
+      ],
+      "name": "Swim|Friday|Lunch"
+    }
+  ],
+  "learnedChoices": [
+    {
+      "question": "kind|Main|Lunch",
+      "answers": [
+        "activity",
+        "fixed",
+        "recurring"
+      ]
+    },
+    {
+      "question": "similar|activity|archery|archary|Archery|Archary",
+      "answers": [
+        "a",
+        "b",
+        "different"
+      ]
+    },
+    {
+      "question": "ampm|Main|5:00",
+      "answers": [
+        "evening",
+        "morning"
+      ]
+    },
+    {
+      "question": "tueThu|Main|T",
+      "answers": [
+        "Thursday",
+        "Tuesday"
+      ]
+    },
+    {
+      "question": "dash|Main|Monday|Friday",
+      "answers": [
+        "list",
+        "range"
+      ]
+    },
+    {
+      "question": "programDay|Main|Sunday",
+      "answers": [
+        "add",
+        "drop"
+      ]
+    },
+    {
+      "question": "list|Chugim",
+      "answers": [
+        "one",
+        "several"
+      ]
+    },
+    {
+      "question": "cross|Bunk 1|Swim",
+      "answers": []
+    },
+    {
+      "question": "change|activity|Archery|2",
+      "answers": [
+        "change",
+        "keep"
+      ]
+    },
+    {
+      "question": "change|block|Main|Period 1|9:00-9:45",
+      "answers": []
+    },
+    {
+      "question": "move|Sam Levi|Bunk 1|Bunk 2",
+      "answers": []
+    }
+  ]
+}

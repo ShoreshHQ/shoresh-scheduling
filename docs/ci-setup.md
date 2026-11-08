@@ -45,8 +45,8 @@ The deploy is always whole, so every class still compiles. But a pull request ru
 Apex test classes its change can reach (`scripts/ci-apex-tests.js`, also the base branch's
 copy): a test class runs if it names a changed class, or names a class that names one, and so on.
 A change to a screen Apex repeats counts as a change to the Apex class that repeats it. A change
-to shared examples (`ShoreshCellExamples`, `ShoreshSeatExamples`) runs the Apex test that reads
-them (`EXAMPLES_READ_BY`), never every class; a test keeps that list to every Apex class that
+to shared examples (`ShoreshCellExamples`, `ShoreshRuleExamples`, `ShoreshSeatExamples`) runs
+the Apex test that reads them (`EXAMPLES_READ_BY`), never every class; a test keeps that list to every Apex class that
 queries a static resource by name (`FROM StaticResource WHERE Name = '…'`), the way both read them. A pull
 request that touches only electives runs a handful of classes in a few minutes; one that changes
 nothing any test reaches runs none.

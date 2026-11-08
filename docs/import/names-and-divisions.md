@@ -45,6 +45,7 @@ Each rule is clue, meaning, example, test.
    Example: "Lunch2" once among "Lunch 2" is Lunch 2; "Arts&Crafts" / "Arts & Crafts".
    Test: "Lunch2 once among Lunch 2 is read as Lunch 2". Counter-case: different numbers never
    merge, "Lunch 2" / "Lunch 3", "Bunk 1 2" / "Bunk 12" ("different numbers never merge").
+   Apex folds names the same way (RuleExamplesTest).
 
 3. **The same name with another ending, in the same place** (Greg, 2026-10-27).
    Clue: an activity name used rarely (at most 2 cells, and at most a fifth as often as the
