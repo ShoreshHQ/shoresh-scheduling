@@ -7,6 +7,7 @@
  * a bold question, a grey line saying what the file shows, and the answers. "hold" cards (which
  * kind something is, which program, files that disagree) come first, as the desktop's hold lane.
  */
+import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import {
   numberedWeekday,
   spokenWeekday,
@@ -24,14 +25,6 @@ import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading.mjs";
 import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, shortClock, weekOrder } from "./engine.shoreshImportEngine.text.mjs";
-
-function article(word) {
-  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
-}
-
-function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 function quoted(name) {
   return `“${name}”`;

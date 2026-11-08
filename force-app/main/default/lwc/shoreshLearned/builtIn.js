@@ -5,11 +5,8 @@
  * (classification.md rule n is INGEST-3.n, names-and-divisions.md rule n is INGEST-2.n), shown
  * in the group its questions belong to. Read-only: they are how Shoresh reads, not answers.
  */
+import { article } from "c/shoreshTerms";
 import { CAMP_WORDS } from "c/shoreshPatterns";
-
-function article(word) {
-  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
-}
 
 /** The rules in the order the import applies them, each { id, rule, group, title }. */
 export function builtInRows(t) {

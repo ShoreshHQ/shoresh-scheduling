@@ -8,6 +8,7 @@
  * them apart, everything not read is listed); the cards are Greg's approved mock-ups
  * (design-research/electives-r1, import-read and import-names; decisions 48 and 53).
  */
+import { SHORT_DAYS } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { foldName, holdsNoDivision } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { CHOICE_KINDS, sheetLayout } from "./engine.shoreshChoicesReader.shoreshChoicesReader.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
@@ -32,16 +33,6 @@ const SPOKEN = [
   "Ninth",
   "Tenth"
 ];
-const SHORT_DAYS = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun"
-};
-
 /** "1st", "2nd", "3rd", "4th" ... "11th", "12th", "21st". */
 export function ordinal(n) {
   if (n >= 1 && n <= 3) return ORDINALS[n - 1];

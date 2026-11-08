@@ -37,6 +37,25 @@ export function buildTerms(labels) {
   };
 }
 
+export const SHORT_DAYS = Object.freeze({
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
+});
+
+/** "a word" or "an word". */
+export function article(word) {
+  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+}
+
+export function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
 /**

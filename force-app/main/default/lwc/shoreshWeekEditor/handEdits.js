@@ -272,6 +272,27 @@ export function resizeStep(ctx, slot, lastBlock) {
   };
 }
 
+/** "Aspen to Oak · Wednesday · 9:00 to 10:35": where a range of rows is, for Undo and the line. */
+export function rangeName(ctx, rows) {
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const day = ctx.week[first.day];
+  const groupsSaid =
+    rows.length === 1 || first.group === last.group
+      ? day.groups[first.group].name
+      : `${day.groups[first.group].name} to ${day.groups[last.group].name}`;
+  const dayNames = [...new Set(rows.map((r) => r.day))]
+    .map((d) => ctx.dayNameOf(ctx.week[d].dateValue))
+    .join(", ");
+  const top = Math.min(...rows.map((r) => r.first));
+  const bottom = Math.max(...rows.map((r) => r.last));
+  const blocks =
+    top === bottom
+      ? day.blocks[top].name
+      : `${day.blocks[top].name} to ${day.blocks[bottom].name}`;
+  return [groupsSaid, dayNames, blocks].join(" · ");
+}
+
 /**
  * A special event or elective set (its identity) put over rows (rowsCovered): { runs } (none
  * when nothing changes) or { refused, locked }. Only a Lock stops a hand edit. eachBlock: as

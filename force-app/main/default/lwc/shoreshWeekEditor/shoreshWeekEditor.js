@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { article } from "c/shoreshTerms";
 import { electivesOf, openCount } from "c/shoreshElectiveDetails";
 import {
   activityCards,
@@ -41,6 +42,7 @@ import {
   pasteTool,
   placeOverStep,
   placeStep,
+  rangeName,
   resizeStep,
   serverRunsOf,
   slotName,
@@ -1245,28 +1247,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     return mergedWith(cells, cell);
   }
 
-  /** "Aspen to Oak · Wednesday · 9:00 to 10:35": where a range is, for Undo and the line. */
-  rangeName(rows) {
-    const weekDays = this.schedule.days;
-    const first = rows[0];
-    const last = rows[rows.length - 1];
-    const day = weekDays[first.day];
-    const groupsSaid =
-      rows.length === 1 || first.group === last.group
-        ? day.groups[first.group].name
-        : `${day.groups[first.group].name} to ${day.groups[last.group].name}`;
-    const dayNames = [...new Set(rows.map((r) => r.day))]
-      .map((d) => this.dayNameOf(weekDays[d].dateValue))
-      .join(", ");
-    const top = Math.min(...rows.map((r) => r.first));
-    const bottom = Math.max(...rows.map((r) => r.last));
-    const blocks =
-      top === bottom
-        ? day.blocks[top].name
-        : `${day.blocks[top].name} to ${day.blocks[bottom].name}`;
-    return [groupsSaid, dayNames, blocks].join(" · ");
-  }
-
   /** Puts a special event over a cell, or the cells it covers (rangeFor), as one Undo step. */
   placeEvent(eventId, cell) {
     const found = this.events.find((e) => e.id === eventId);
@@ -1297,7 +1277,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (
       this.commit(
         result.runs,
-        `Placed ${name} · ${this.rangeName(rows)}`,
+        `Placed ${name} · ${rangeName(this.editCtx, rows)}`,
         cell.key
       )
     ) {
@@ -1336,7 +1316,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rows = rowsCovered(this.schedule.days, merged);
     this.commit(
       result.runs,
-      `Cleared ${cell.text} · ${this.rangeName(rows)}`,
+      `Cleared ${cell.text} · ${rangeName(this.editCtx, rows)}`,
       cell.key
     );
   }
@@ -1381,8 +1361,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (kind === "S") {
       return "an event";
     }
-    const word = this.t.sIn(kind === "E" ? "ElectiveSet" : "SpecialDay");
-    return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+    return article(this.t.sIn(kind === "E" ? "ElectiveSet" : "SpecialDay"));
   }
 
   /** A press on "Set it up" keeps focus on the cell, so the offer stays while it works. */
