@@ -575,6 +575,27 @@ describe("Shoresh for AI tools and the command line", () => {
     });
   });
 
+  // API-1.18: the inputs a read declares are the one list it sends from.
+  it("readsSendWhatTheyDeclare: a read sends every input it declares, but what is used on this computer", () => {
+    const local = CAPABILITIES.filter((c) => c.localFields).map((c) => [
+      c.name,
+      c.localFields
+    ]);
+    expect(local).toEqual([
+      ["download_schedule", ["as", "view"]],
+      ["download_elective_files", ["file"]],
+      ["download_setup", ["list"]]
+    ]);
+    const special = byName("read_special_schedule");
+    const input = Object.fromEntries(
+      Object.keys(special.inputSchema.properties).map((f) => [f, "x"])
+    );
+    const { path } = requestFor(special, input, "");
+    for (const field of Object.keys(input)) {
+      expect(path).toContain(`${field}=x`);
+    }
+  });
+
   // API-1.32
   it("versionsOfAProgram: list_versions asks for the program it was told, so a camp with several programs can list a week's versions", async () => {
     const seen = [];
