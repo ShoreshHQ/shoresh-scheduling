@@ -200,11 +200,11 @@ function reviewText(m, body, review, input) {
   );
   const must = open.filter((c) => !m.leaveable(c)).length;
   const added = tiles.reduce((sum, x) => sum + x.count, 0);
-  const label = m.saveLabel(open.length, must, added);
+  const base = added > 0 ? `Add ${added}` : "Use this setup";
   parts.push(
     must > 0
-      ? `Before it can be saved: ${label}, ${must} of them can't wait.`
-      : `Ready to save: ${label}.`
+      ? `Before it can be saved: ${open.length} ${open.length === 1 ? "question" : "questions"} left, ${must} of them can't wait.`
+      : `Ready to save: ${open.length > 0 ? `${base}, ${open.length} for later` : base}.`
   );
   parts.push(
     `Give every answer in answers (id to answer) and send the review again with the same files; to save, send them with save: true and seen: "${body.seen}". Ask the person about anything not plain from the files.`

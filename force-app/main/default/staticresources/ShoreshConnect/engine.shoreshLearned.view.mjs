@@ -3,6 +3,7 @@
  * answers always show the same screen. history.js makes them one running list.
  */
 
+import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { holdsNoDivision } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import {
   AUTO_ANSWER,
@@ -136,14 +137,6 @@ const MISSING_TEXT = {
 };
 const SUGGEST_AGAIN_ANSWERS = 2;
 const PATTERN_FORGOTTEN = "It won't be suggested again. Its answers stay.";
-
-function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-function article(word) {
-  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
-}
 
 /** What a pattern's answers say, in the words the answers' own rows use (kinds.js). */
 function verdictWords(template, verdict, t) {

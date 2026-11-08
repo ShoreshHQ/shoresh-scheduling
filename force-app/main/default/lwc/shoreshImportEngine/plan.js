@@ -3,6 +3,7 @@
  * show: what was found, what is new, what changes, what is left out and why, and what is noted
  * but not set up.
  */
+import { article } from "c/shoreshTerms";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { FIELD } from "c/shoreshSchema";
 import { availabilityKey } from "./availability";
@@ -14,10 +15,6 @@ import { dayList, nameList } from "./questions";
 /** The highest place in order among records, by the records' own sort-order field. */
 function maxSort(records, sortOrder) {
   return Math.max(0, ...(records || []).map((r) => r[sortOrder] || 0));
-}
-
-function article(word) {
-  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
 }
 
 function partOfDay(minutes) {

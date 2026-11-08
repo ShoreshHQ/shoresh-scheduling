@@ -236,7 +236,10 @@ function saveLabel(proposals, t, setup, m) {
   const changed = rows("changed").filter((r) =>
     r.differences.some((d) => d.answer === m.CHANGE)
   ).length;
-  return m.saveListLabel(added, changed);
+  const parts = [];
+  if (added) parts.push(`Add ${added}`);
+  if (changed) parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
+  return parts.join(", ") || "Save";
 }
 
 // What a camp workbook saves that has no camp word of its own, in the camp's words.

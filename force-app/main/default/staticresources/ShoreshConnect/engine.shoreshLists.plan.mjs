@@ -124,18 +124,6 @@ export function changeAllCounts(proposal) {
   };
 }
 
-/** What saving a list does, as its Save button says it: "Add 3, change 2", or "Save". */
-export function saveListLabel(added, changed) {
-  const parts = [];
-  if (added) {
-    parts.push(`Add ${added}`);
-  }
-  if (changed) {
-    parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
-  }
-  return parts.join(", ") || "Save";
-}
-
 /** The button's words: "Change all from this file: 12 changes, 3 of them clear a value". */
 export function changeAllLabel(counts) {
   const { changes, clears, answered } = counts;

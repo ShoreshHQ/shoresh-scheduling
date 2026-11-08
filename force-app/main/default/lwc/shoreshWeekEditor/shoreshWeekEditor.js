@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { article } from "c/shoreshTerms";
 import { electivesOf, openCount } from "c/shoreshElectiveDetails";
 import {
   activityCards,
@@ -1357,8 +1358,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (kind === "S") {
       return "an event";
     }
-    const word = this.t.sIn(kind === "E" ? "ElectiveSet" : "SpecialDay");
-    return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+    return article(this.t.sIn(kind === "E" ? "ElectiveSet" : "SpecialDay"));
   }
 
   /** A press on "Set it up" keeps focus on the cell, so the offer stays while it works. */
