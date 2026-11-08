@@ -14,7 +14,7 @@ public class AgentAskFirstTestCalls {
     String confirm = confirmIn(RestContext.response);
     if (confirm == null) {
       Assert.isFalse(
-        mustAsk(action, sent) && RestContext.response.statusCode == 200,
+        RestContext.response.statusCode == 200 && mustAsk(action, sent),
         'Done without asking first: ' +
         RestContext.response.responseBody?.toString()
       );
