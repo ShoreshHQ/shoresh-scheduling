@@ -19,7 +19,14 @@ import { headingMeaning } from "c/shoreshChoicesReader";
 import { sanitizeCell } from "c/shoreshLists";
 import { shortDate } from "c/shoreshTerms";
 import { dayLabel, shortClock } from "c/shoreshScheduleViews";
-import { buildBoard, parseChoices, readRun, timeWords } from "./seats";
+import {
+  buildBoard,
+  parseChoices,
+  readRun,
+  splitWords,
+  timeWords,
+  uncoveredWords
+} from "./seats";
 
 const RANK_NAMES = {
   1: "First",
@@ -363,6 +370,33 @@ function exceptionRows(d) {
       "",
       "",
       `Choose how many ${t.pIn("Seats")} "${o.name}" has`
+    ])
+  );
+  // Linked choices, as the screen lists them: not given in full, given one period at a time, and
+  // asked for where they don't apply.
+  p.linked.forEach((l) =>
+    body.push([
+      `${t.s("LinkedChoice")} not given in full`,
+      "",
+      "",
+      `${l.name}: ${l.text}`
+    ])
+  );
+  p.split.forEach((s) =>
+    body.push([
+      `Given their ${t.sIn("LinkedChoice")} one period at a time`,
+      s.camper.name,
+      // The period it shares with a linked choice kept as a set; none when absent or locked.
+      (board.columnByKey.get(s.timeKey) || {}).words || "",
+      splitWords(s, board)
+    ])
+  );
+  p.uncovered.forEach((u) =>
+    body.push([
+      `${t.s("LinkedChoice")} not for their ${t.sIn("Division")}`,
+      u.camper.name,
+      "",
+      uncoveredWords(u)
     ])
   );
   p.stray.forEach((s) =>

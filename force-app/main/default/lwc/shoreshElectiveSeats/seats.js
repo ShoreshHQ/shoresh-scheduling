@@ -786,7 +786,7 @@ export function problemSections(board, t) {
     p.uncovered.map((u) => ({
       key: `c|${u.camper.id}|${u.linkedChoiceId}`,
       text: u.camper.name,
-      aside: `"${u.name}" doesn't cover ${u.division || "them"}, so it counts as ${u.activity}`,
+      aside: uncoveredWords(u),
       target: { view: "camper", camperId: u.camper.id }
     }))
   );
@@ -860,8 +860,13 @@ export function problemSections(board, t) {
   return sections;
 }
 
+/** Why a linked choice a camper asked for counts as its activity for them. */
+export function uncoveredWords(u) {
+  return `"${u.name}" doesn't cover ${u.division || "them"}, so it counts as ${u.activity}`;
+}
+
 /** Why a camper was given their linked choice one period at a time. */
-function splitWords(s, board) {
+export function splitWords(s, board) {
   if (s.reason === "absent") {
     return `Asked for "${s.name}" but doesn't attend every period it covers`;
   }
