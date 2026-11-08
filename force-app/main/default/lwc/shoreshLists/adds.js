@@ -10,7 +10,7 @@
  * activity's starting values (Greg, 2026-10-17); its tick can be taken off.
  * Answers are names and choices, never record Ids, so they still work in a copied season.
  */
-import { LEAVE_OUT, clock, looseKey } from "c/shoreshImportEngine";
+import { LEAVE_OUT, looseKey } from "c/shoreshImportEngine";
 import { dashLabels } from "./cells";
 
 export function whoAddKey(name, program) {
@@ -199,11 +199,6 @@ export function answeredTimes(answer) {
   const start = Number(match[1]) * 60 + Number(match[2]);
   const end = Number(match[3]) * 60 + Number(match[4]);
   return end > start ? { start, end } : null;
-}
-
-/** A new time block's answer: "Start-End". */
-export function timesAnswer(start, end) {
-  return `${clock(start)}-${clock(end)}`;
 }
 
 /**

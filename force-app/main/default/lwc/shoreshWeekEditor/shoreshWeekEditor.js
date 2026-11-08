@@ -42,7 +42,6 @@ import {
   placeOverStep,
   placeStep,
   resizeStep,
-  serverRunOf,
   serverRunsOf,
   slotName,
   takeOutStep,
@@ -54,7 +53,7 @@ import { marksAfter, rainModel, rainReceipt } from "./rain";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
-import { dayNameOf, rainFullAt, weekMeasure, withPriority } from "./measure";
+import { dayNameOf, weekMeasure, withPriority } from "./measure";
 import { checkManualDays } from "./manualChecks";
 import {
   LOCKED,
@@ -1501,14 +1500,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     return result;
   }
 
-  /**
-   * "Rain plan full: choose another" for a cell a rainy day left outdoors (repo docs/adr/0019),
-   * while it still holds that activity, as on the desktop: a row in the Why list.
-   */
-  rainFullFor(slot) {
-    return rainFullAt(this.dayOf(slot), slot.group, slot.block);
-  }
-
   /** The check's key for the placement a slot is in: "date|groupId|firstBlockId". */
   placementKeyOf(slot) {
     const day = this.dayOf(slot);
@@ -1962,15 +1953,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     this.commit(result.runs, result.label, key);
-  }
-
-  /**
-   * A run as the server takes it: the day's date, the group's and first block's Ids, and every
-   * cell's block (blockIds), so it lands on those blocks or comes back as a conflict, now and
-   * when it is undone or redone.
-   */
-  toServerRun(run, week = this.schedule.days) {
-    return serverRunOf(run, week);
   }
 
   /** Runs as the server takes them, each noted with its whole row after it (for the locks it brings). */

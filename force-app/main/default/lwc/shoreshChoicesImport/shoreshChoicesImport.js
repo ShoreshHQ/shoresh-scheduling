@@ -709,9 +709,6 @@ export default class ShoreshChoicesImport extends LightningElement {
     return lines;
   }
 
-  get bunkWord() {
-    return this.t.s("Group");
-  }
   get setWord() {
     return this.t.s("ElectiveSet");
   }
