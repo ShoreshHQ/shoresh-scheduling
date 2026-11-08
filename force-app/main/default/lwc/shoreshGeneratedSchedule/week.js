@@ -91,15 +91,6 @@ export function activityCells(days, isAway = () => false) {
   return n;
 }
 
-/** The blocks a cell covers: from the one it starts in, for as many as it carries on. */
-export function coveredBlocks(day, groupIndex, firstBlock) {
-  const cell = groupCells(day, groupIndex).find(
-    (c) => c.blockIndex === firstBlock
-  );
-  const length = cell ? cell.length : 1;
-  return day.blocks.slice(firstBlock, firstBlock + length);
-}
-
 /**
  * The cells left Open where the group is at camp (what the Open counter counts: Filled's "of"
  * less its filled), one line each, "Bunk 3 · Monday · Period 2", with the engine's reason when

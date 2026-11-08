@@ -635,10 +635,6 @@ export default class ShoreshRoots extends LightningElement {
     this.layout();
   };
 
-  openMeldOf(card) {
-    return this.melded.find((m) => m.cards.includes(card));
-  }
-
   // Hover intent: a meld opens when the pointer rests on it; the table never has to stand still
   // first, since whatever is moving bends toward the new layout.
   handleMeldOver(event) {
