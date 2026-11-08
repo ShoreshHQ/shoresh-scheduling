@@ -3,6 +3,7 @@
  * memoryStripText): who gave it and when, from the record's Created By and date (ImportAnswers,
  * repo ADR 0021). Pure, so the same answer always reads the same.
  */
+import { FIELD } from "c/shoreshSchema";
 import { shortDate } from "c/shoreshTerms";
 
 function whose(row) {
@@ -33,4 +34,19 @@ export function rememberedByKey(rows) {
     notes[row.key] = rememberedNote(row);
   });
   return { answers, notes };
+}
+
+/**
+ * What this camp answered before, read with `read` (ImportController.getAnswers). Without them an
+ * import still works: everything is asked.
+ */
+export async function rememberedFor(setup, read) {
+  const campId = setup && setup.season && setup.season[FIELD.Season.Camp];
+  let rows = [];
+  try {
+    rows = (campId ? await read({ campId }) : []) || [];
+  } catch {
+    rows = [];
+  }
+  return { ...rememberedByKey(rows), rows };
 }

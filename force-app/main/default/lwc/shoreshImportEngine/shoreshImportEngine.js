@@ -220,7 +220,8 @@ export {
   deletedAs,
   deletionsIn,
   programGroupKeys,
-  broughtBack
+  broughtBack,
+  nextKeyOf
 } from "./deleted";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).

@@ -2,6 +2,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { hasOrderingEvidence } from "./rankKind";
 import { minCostAssign } from "./minCostAssign";
 
+export { scheduleOptions } from "./scheduleOptions";
 export {
   CELL_CHOICE,
   ORDERED_FALLBACK,
