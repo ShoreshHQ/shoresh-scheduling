@@ -24,28 +24,92 @@ public with sharing class ImportVersionWrites {
   }
 
   private void write() {
-    List<ImportPlan.Entry> entries = plan.entries('versions');
+    List<ImportPlan.Entry> entries = new List<ImportPlan.Entry>();
     List<SObject> schedules = new List<SObject>();
-    for (ImportPlan.Entry entry : entries) {
-      schedules.add(
-        new Schedule__c(
-          Program__c = writer.keys.of(entry.text('programKey')),
-          Week__c = weekOf(entry),
-          Name = entry.text('name').left(80),
-          Status__c = 'Version',
-          Origin__c = 'Imported',
-          VersionReason__c = 'Imported'
-        )
+    List<List<ScheduleDaySaves.DaySave>> allDays = new List<List<ScheduleDaySaves.DaySave>>();
+    List<ImportPlan.Entry> asked = plan.entries('versions');
+    if (asked.isEmpty()) {
+      return;
+    }
+    Set<String> kept = keptAlready();
+    for (ImportPlan.Entry entry : asked) {
+      Schedule__c schedule = new Schedule__c(
+        Program__c = writer.keys.of(entry.text('programKey')),
+        Week__c = weekOf(entry),
+        Name = entry.text('name').left(80),
+        Status__c = 'Version',
+        Origin__c = 'Imported',
+        VersionReason__c = 'Imported'
       );
+      List<ScheduleDaySaves.DaySave> days = days(entry);
+      // The same files imported again: the version kept last time is the same, so it isn't kept
+      // twice (break-and-rebuild N1). Any difference in a cell keeps a new one.
+      if (kept.contains(fingerprint(schedule, days))) {
+        continue;
+      }
+      entries.add(entry);
+      schedules.add(schedule);
+      allDays.add(days);
     }
     writer.saveTracked('Schedule', schedules);
     // All the versions' days in one save (an import may hold many weeks).
     Map<Id, List<ScheduleDaySaves.DaySave>> daysBySchedule = new Map<Id, List<ScheduleDaySaves.DaySave>>();
-    for (Integer i = 0; i < entries.size(); i++) {
-      daysBySchedule.put(schedules[i].Id, days(entries[i]));
+    for (Integer i = 0; i < schedules.size(); i++) {
+      daysBySchedule.put(schedules[i].Id, allDays[i]);
       writer.result.countAdded('Version');
     }
     ScheduleDaySaves.writeAll(daysBySchedule);
+  }
+
+  /** Each imported version already kept in this season, as fingerprint makes it. */
+  private Set<String> keptAlready() {
+    Id seasonId = plan.seasonId;
+    Map<Id, Schedule__c> versions = new Map<Id, Schedule__c>(
+      [
+        SELECT Id, Program__c, Week__c, Name
+        FROM Schedule__c
+        WHERE
+          Program__r.Season__c = :seasonId
+          AND Status__c = 'Version'
+          AND Origin__c = 'Imported'
+        WITH USER_MODE
+      ]
+    );
+    Set<String> result = new Set<String>();
+    if (versions.isEmpty()) {
+      return result;
+    }
+    Map<Id, List<ScheduleDays.DayGrid>> read = ScheduleDays.read(
+      versions.keySet()
+    );
+    for (Schedule__c version : versions.values()) {
+      List<ScheduleDaySaves.DaySave> days = new List<ScheduleDaySaves.DaySave>();
+      for (ScheduleDays.DayGrid day : read.get(version.Id)) {
+        days.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
+      }
+      result.add(fingerprint(version, days));
+    }
+    return result;
+  }
+
+  /** A version's program, week, name and every day's cells, as one text. */
+  private static String fingerprint(
+    Schedule__c version,
+    List<ScheduleDaySaves.DaySave> days
+  ) {
+    List<String> parts = new List<String>{
+      version.Program__c,
+      version.Week__c,
+      version.Name
+    };
+    for (ScheduleDaySaves.DaySave day : days) {
+      parts.add(
+        String.valueOf(day.day) +
+          '=' +
+          (day.grid == null ? '' : day.grid.toText())
+      );
+    }
+    return String.join(parts, '|');
   }
 
   /** A season week by Id, or one this import filled in from the season's dates, by its key. */

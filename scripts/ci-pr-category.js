@@ -45,7 +45,10 @@ const MIRRORED_SCREENS = [
   "shoreshCampSetup",
   "shoreshProgram",
   "shoreshErrors"
-].map((name) => new RegExp(`^force-app/main/default/lwc/${name}/`));
+];
+const MIRRORED_PATHS = MIRRORED_SCREENS.map(
+  (name) => new RegExp(`^force-app/main/default/lwc/${name}/`)
+);
 
 function categorize(files) {
   if (files.length === 0) {
@@ -56,7 +59,7 @@ function categorize(files) {
   }
   const other = files.filter(
     (f) =>
-      MIRRORED_SCREENS.some((r) => r.test(f)) ||
+      MIRRORED_PATHS.some((r) => r.test(f)) ||
       (!NO_ORG_EFFECT.some((r) => r.test(f)) &&
         !SCREEN_ONLY.some((r) => r.test(f)))
   );
@@ -106,4 +109,4 @@ if (require.main === module) {
   console.log(`reason=${result.reason.replace(/[\r\n]/g, " ")}`);
 }
 
-module.exports = { categorize };
+module.exports = { categorize, MIRRORED_SCREENS };

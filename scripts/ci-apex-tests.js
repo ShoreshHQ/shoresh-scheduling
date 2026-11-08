@@ -38,7 +38,7 @@ const NO_APEX_EFFECT = [
   /^force-app\/main\/default\/staticresources\//
 ];
 
-// The Apex class that repeats each screen's rules (the same list as ci-pr-category.js).
+// The Apex class that repeats each screen's rules (ci-pr-category.js lists the same screens; a test keeps them so).
 const MIRRORED_SCREENS = {
   shoreshWeekEditor: "AgentCell",
   shoreshCampSetup: "AgentSetupNewRow",
@@ -54,7 +54,11 @@ function code(source) {
     .replace(/'(?:\\.|[^'\\])*'/g, "''");
 }
 
-/** As scripts/run-apex-tests.mjs: an @IsTest after the class is declared, or a testMethod. */
+/**
+ * Whether a class has test methods: an @IsTest annotation (with or without arguments, before or
+ * after other annotations) after the class is declared, or a testMethod. A class marked @IsTest
+ * with no test methods (test data helpers) has nothing to run. scripts/run-apex-tests.mjs uses this.
+ */
 function hasTestMethods(source) {
   const c = code(source);
   const declared = c.search(/\bclass\b/i);
@@ -183,4 +187,4 @@ if (require.main === module) {
   console.log(`apex_reason=${result.reason.replace(/[\r\n]/g, " ")}`);
 }
 
-module.exports = { select, affectedTests, hasTestMethods };
+module.exports = { select, affectedTests, hasTestMethods, MIRRORED_SCREENS };

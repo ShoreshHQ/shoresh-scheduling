@@ -16,7 +16,7 @@
  * say what was not read; never guess. The one thing it will not decide is which of two campers
  * with one name and no camper number is which: those rows are set aside (cantTellApart).
  */
-import { dayOf, foldName, tidy } from "c/shoreshImportEngine";
+import { dayNumberOf, dayOf, foldName, tidy } from "c/shoreshImportEngine";
 import {
   CHOICE_KINDS,
   cellAt,
@@ -238,9 +238,13 @@ function valueChoices(sheet, row, r, fields, report, known) {
   }));
 }
 
-/** The day a value names, in full ("Tue" is Tuesday), else the value as written. */
+/** The day a value names, in full ("Tue" is Tuesday, "Day 3" the camp's 3rd), else the value as written. */
 function dayOfValue(text) {
-  return dayOf(tidy(text).split(" ")[0]) || tidy(text);
+  return (
+    (dayNumberOf(text) && dayOf(text)) ||
+    dayOf(tidy(text).split(" ")[0]) ||
+    tidy(text)
+  );
 }
 
 // ---------- campers: one per camper number, else one per name ----------

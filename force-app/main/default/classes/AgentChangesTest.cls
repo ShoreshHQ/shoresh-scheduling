@@ -217,6 +217,41 @@ private class AgentChangesTest {
     }
   }
 
+  // API-1.13: part of a longer placement says where it starts and what an AI can do instead.
+  @IsTest
+  static void partOfALongerPlacementSaysWhatToDoInstead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      Id draftId = GeneratedTestData.generated();
+      // Group A's Gym games carries on from Period 2 into the next block.
+      ScheduleDays.DayGrid monday = ScheduleDays.read(draftId)[0];
+      Integer next = GeneratedTestData.PERIOD_2 + 1;
+      monday.grid.rows[GeneratedTestData.GROUP_A][
+        next
+      ] = ScheduleGrid.CARRIES_ON;
+      ScheduleDaySaves.write(
+        draftId,
+        new List<ScheduleDaySaves.DaySave>{
+          new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
+        }
+      );
+      String later = monday.grid.blocks[next].name;
+      Map<String, Object> body = cell('Gym games', 'Soccer');
+      body.put('time', later);
+      List<Object> answer = send('schedule_cell', body);
+      Test.stopTest();
+      Assert.areEqual(400, answer[0]);
+      Assert.areEqual(
+        'Group A · Monday · ' +
+          later +
+          ' is part of a longer Gym games, from Period 2. Its length can be changed only on Generated Schedule. To change it, move it from Period 2 (move_cell) or take it all out (take_out_cell).',
+        answer[1]
+      );
+      Assert.isTrue(agentVersions().isEmpty());
+    }
+  }
+
   // API-1.14
   @IsTest
   static void undoTakesBackTheLastChangeOnce() {

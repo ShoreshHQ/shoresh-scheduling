@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { looseKey } from "c/shoreshImportEngine";
+import { numberedDay, numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 import { FIELD, OBJECT } from "c/shoreshSchema";
 
 // Each object's fields, by the object's name as the package has it (a week's name gives
@@ -753,10 +754,6 @@ export default class ShoreshEditableTable extends LightningElement {
     );
   }
 
-  get hasVisibleRows() {
-    return this.visibleDrafts.length > 0;
-  }
-
   /**
    * The screen named an object this table doesn't know (none, not one of Shoresh's, or written
    * without the package's prefix): shown as an error, never edited or saved half-right.
@@ -1500,7 +1497,13 @@ export default class ShoreshEditableTable extends LightningElement {
    */
   daysCell(col, draft, className, named) {
     const days = col.days || [];
-    const short = (day) => day.short || SHORT_DAYS[day.label] || day.label;
+    // A strip chooses the days the camp runs, the days numbers count from: always weekdays.
+    const said = (day) => (col.strip ? day.label : spokenWeekday(day.label));
+    const short = (day) =>
+      (!col.strip && numberedWeekday(day.label)) ||
+      day.short ||
+      SHORT_DAYS[day.label] ||
+      day.label;
     const on = days.filter((day) => !!draft.values[day.fieldName]);
     const off = days.filter((day) => !draft.values[day.fieldName]);
     let text;
@@ -1531,7 +1534,7 @@ export default class ShoreshEditableTable extends LightningElement {
         key: `${draft.key}-${day.fieldName}`,
         fieldName: day.fieldName,
         short: short(day),
-        label: named(day.label),
+        label: named(said(day)),
         checked: !!draft.values[day.fieldName],
         disabled: draft.isNew && !!draft.adding
       }))
@@ -2230,12 +2233,16 @@ function shownValue(column, value) {
   if (column.type === "date") {
     // "Sat, Jul 3, 2027", as a camp director reads a date.
     const [y, m, d] = String(value).split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
+    const day = numberedDay(value);
+    return `${day ? `${day}, ` : ""}${new Date(y, m - 1, d).toLocaleDateString(
+      "en-US",
+      {
+        ...(day ? {} : { weekday: "short" }),
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }
+    )}`;
   }
   if (column.type === "time") {
     const [hours, minutes] = timeText(value).split(":").map(Number);

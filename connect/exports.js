@@ -15,6 +15,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { queryFields } = require("./camp");
 const { refused, asTheScreenReads } = require("./imports");
 
 /** The views Print prints, as the Schedules screen names them. */
@@ -189,7 +190,7 @@ async function makeFile(
   { read, answer, load, folder = downloadsFolder() }
 ) {
   const query = {};
-  for (const field of capability.queryFields) {
+  for (const field of queryFields(capability)) {
     if (input[field] !== undefined && input[field] !== "") {
       query[field] = input[field];
     }
@@ -198,6 +199,7 @@ async function makeFile(
   if (got.status !== 200) return answer(got);
   const body = asTheScreenReads(JSON.parse(got.body));
   const m = await load();
+  m.nameDaysFor(body.setup);
   const t = m.buildTerms((body.setup && body.setup.labels) || []);
   let made;
   try {

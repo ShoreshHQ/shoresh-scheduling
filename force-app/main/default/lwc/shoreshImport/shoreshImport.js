@@ -30,6 +30,7 @@ import { comingIn, countTiles, miniCells, total } from "./summary";
 import {
   appliedOnItsOwn,
   foundNothing,
+  keptNow,
   layoutWords,
   leaveable,
   planNow,
@@ -90,6 +91,8 @@ export default class ShoreshImport extends LightningElement {
   sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
   plan = null;
+  // The proposal as Add saves it, the questions that can wait left out (INGEST-5.5).
+  kept = null;
   // The Comes in tile opened into its names (its kind), or null.
   openKind = null;
   // The "Read as" group opened into its lines (its key), or null.
@@ -289,6 +292,7 @@ export default class ShoreshImport extends LightningElement {
     this.answers = next.answers;
     this.autoApplied = next.autoApplied;
     this.plan = this.planNow();
+    this.kept = keptNow(this.flowInput, this.proposal, this.answers);
   }
 
   /** A question a person answers is theirs from then on, not filled in on its own. */
@@ -472,6 +476,7 @@ export default class ShoreshImport extends LightningElement {
     this.answers = next.answers;
     this.autoApplied = next.autoApplied;
     this.plan = this.planNow();
+    this.kept = keptNow(this.flowInput, this.proposal, this.answers);
   }
 
   /** The plan Add would save, for the counts; null if it cannot be made yet. */
@@ -891,7 +896,9 @@ export default class ShoreshImport extends LightningElement {
   }
 
   get notes() {
-    return this.proposal ? importNotes(this.proposal, this.terms) : [];
+    // As Add saves it (INGEST-5.5): never a week or version the save won't add.
+    const kept = this.kept || this.proposal;
+    return kept ? importNotes(kept, this.terms) : [];
   }
   get hasNotes() {
     return this.notes.length > 0;
@@ -900,7 +907,8 @@ export default class ShoreshImport extends LightningElement {
   // ---------- last year's schedule ----------
 
   get versionRows() {
-    return (this.proposal ? this.proposal.versions : []).map((v) => {
+    const kept = this.kept || this.proposal;
+    return (kept ? kept.versions : []).map((v) => {
       const mini = miniCells(v);
       const program = v.programName ? ` (${v.programName})` : "";
       return {
@@ -965,6 +973,7 @@ export default class ShoreshImport extends LightningElement {
     this.files = [];
     this.proposal = null;
     this.plan = null;
+    this.kept = null;
     this.openKind = null;
     this.openReadAs = null;
     this.imported = [];

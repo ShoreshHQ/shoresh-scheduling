@@ -249,6 +249,25 @@
                       </div>
                     </template>
                   </div>
+                  <div class="season-field">
+                    <lightning-radio-group
+                      data-id="day-naming"
+                      type="button"
+                      label="Days"
+                      options={dayNamingOptions}
+                      value={dayNaming}
+                      onchange={handleDayNaming}
+                    ></lightning-radio-group>
+                    <template lwc:if={dayNamingError}>
+                      <div
+                        class="slds-form-element__help slds-text-color_error"
+                        role="alert"
+                        data-error="season-day-naming"
+                      >
+                        {dayNamingError}
+                      </div>
+                    </template>
+                  </div>
                   <template lwc:if={copiedFromName}>
                     <p class="season-note" data-id="copied-from">
                       {labels.copiedFrom}

@@ -15,6 +15,9 @@ import {
   UNORDERED_SET
 } from "./engine.shoreshElectiveEngine.shoreshElectiveEngine.mjs";
 import { foldName } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+import { weekdayName } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+// For the connector, which assigns seats with this module (WEEK-1.7).
+export { setDayNaming } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { dayLabel, shortClock } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
 import { linkedIdOf, linkedOf, linkedRows, splitOf } from "./engine.shoreshElectiveSeats.linked.mjs";
 
@@ -122,7 +125,14 @@ export function readRun(view) {
 
 const DAY_WORDS = (day) => {
   const label = dayLabel(day);
-  return [foldName(label.label), foldName(label.short)];
+  // A camper's choice may still name the weekday in a numbered-days season.
+  const weekday = weekdayName(day);
+  return [
+    foldName(label.label),
+    foldName(label.short),
+    foldName(weekday),
+    foldName(weekday.slice(0, 3))
+  ];
 };
 
 /** "Period 2", "2" and "Block 2" are one period (desktop preferenceCoordinateKeys.js). */
@@ -776,7 +786,7 @@ export function problemSections(board, t) {
     p.uncovered.map((u) => ({
       key: `c|${u.camper.id}|${u.linkedChoiceId}`,
       text: u.camper.name,
-      aside: `"${u.name}" doesn't cover ${u.division || "them"}, so it counts as ${u.activity}`,
+      aside: uncoveredWords(u),
       target: { view: "camper", camperId: u.camper.id }
     }))
   );
@@ -850,8 +860,13 @@ export function problemSections(board, t) {
   return sections;
 }
 
+/** Why a linked choice a camper asked for counts as its activity for them. */
+export function uncoveredWords(u) {
+  return `"${u.name}" doesn't cover ${u.division || "them"}, so it counts as ${u.activity}`;
+}
+
 /** Why a camper was given their linked choice one period at a time. */
-function splitWords(s, board) {
+export function splitWords(s, board) {
   if (s.reason === "absent") {
     return `Asked for "${s.name}" but doesn't attend every period it covers`;
   }

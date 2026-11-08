@@ -111,7 +111,7 @@ const LOCK_FIELDS = {
   day: {
     type: "string",
     description:
-      'The day, like Monday, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
+      'The day, like Monday or Day 3, or its date like 2026-06-29. Always say it: "all" for every day of the week (a group\'s whole week). Left out, nothing is changed.'
   },
   group: {
     type: "string",
@@ -140,7 +140,7 @@ const CELL = {
   group: { type: "string", description: "The group's name, like Bunk 3." },
   day: {
     type: "string",
-    description: "The day, like Monday, or its date like 2026-06-29."
+    description: "The day, like Monday or Day 3, or its date like 2026-06-29."
   },
   time: {
     type: "string",
@@ -362,7 +362,7 @@ const ACTIVITY_NAME = {
 const SETUP_FIELDS = {
   type: "object",
   description:
-    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day, early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
 };
 
 /**
@@ -419,7 +419,7 @@ function specialDay(name, description, more = {}) {
         week: WEEK,
         day: {
           type: "string",
-          description: "The day of the week, like Friday."
+          description: "The day of the week, like Friday or Day 5."
         },
         ...more,
         seen: {
@@ -545,12 +545,13 @@ const CAPABILITIES = [
   change(
     "change_schedule_cell",
     "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
+    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity or an elective set there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
     {
       group: { type: "string", description: "The group's name, like Bunk 3." },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -564,7 +565,8 @@ const CAPABILITIES = [
       },
       activity: {
         type: "string",
-        description: "What it should hold: an activity's name, or Open."
+        description:
+          "What it should hold: an activity's or elective set's name, or Open."
       },
       seen: CELL.seen
     },
@@ -657,7 +659,7 @@ const CAPABILITIES = [
         day: {
           ...CELL.day,
           description:
-            "The rainy day, like Monday, or its date like 2026-06-29."
+            "The rainy day, like Monday or Day 3, or its date like 2026-06-29."
         },
         seen: CELL.seen
       },
@@ -690,7 +692,7 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective, fixed activity or recurring activity. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. records has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -700,7 +702,7 @@ const CAPABILITIES = [
         day: {
           type: "string",
           description:
-            "Only this day's rows: Monday, or its date like 2026-06-29."
+            "Only this day's rows: Monday or Day 3, or its date like 2026-06-29."
         },
         group: {
           type: "string",
@@ -766,7 +768,6 @@ const CAPABILITIES = [
     name: "list_versions",
     api: "versions",
     method: "GET",
-    queryFields: ["season", "week", "program"],
     listsVersions: true,
     description:
       "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
@@ -817,6 +818,19 @@ const CAPABILITIES = [
     ["version"]
   ),
   act(
+    "apply_to_other_weeks",
+    "apply_to_other_weeks",
+    "In a numbered-days season, repeat a week on another week of the season by Day number, as the Versions panel's Apply to other weeks does: every Day 3 looks the same. Only when the person asked for it; nothing else ever changes another week. One target week per call, so call it once for each week and show the person all the answers together. A locked cell in that week is kept and listed, a cell that can't go (a day that week doesn't have, a group away, a special event) is listed, what that week has now goes to its Versions first, and its published schedule stays as it is until it is published again. It is done as you, with your own access.",
+    {
+      ...EITHER_WEEK,
+      to_week: {
+        type: "string",
+        description: "The week to repeat it on, like Week 3."
+      }
+    },
+    ["to_week"]
+  ),
+  act(
     "publish_week",
     "publish_week",
     "Publish a week's Generated Schedule or Manual Build, as that screen's Publish button does, without asking first. It is done as you, with your own access. If someone else changed or published the week since, nothing is published and Shoresh says why in one sentence: pass that on to the person.",
@@ -865,7 +879,6 @@ const CAPABILITIES = [
       "Read a week's elective seats as the Elective seats screen shows them now, being worked on or (when none is) finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
     about:
       "The seats now, as the Elective seats screen shows them: the version being worked on, or the finalized one when none is (it says which). They hold no findings or problems.",
-    queryFields: ["season", "week", "elective_set"],
     inputSchema: {
       type: "object",
       properties: ELECTIVE_RUN,
@@ -901,7 +914,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -928,7 +942,8 @@ const CAPABILITIES = [
       },
       day: {
         type: "string",
-        description: "The day, like Monday, or its date like 2026-06-29."
+        description:
+          "The day, like Monday or Day 3, or its date like 2026-06-29."
       },
       time: {
         type: "string",
@@ -958,7 +973,6 @@ const CAPABILITIES = [
       "Read what the Elective seats screen's end-of-season Clear shows before it clears: each week's campers, choices, seats and runs, what is still being worked on, and what stays for next summer (elective sets, offerings, linked choices), with seen. Read it right before clear_electives.",
     about:
       "The season's electives as the Clear shows them now. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1019,8 +1033,7 @@ const CAPABILITIES = [
     method: "GET",
     about:
       "Camp Setup's question before its Delete, word for word. It holds no findings or problems.",
-    sendsFields: false,
-    queryFields: ["season", "kind", "name", "program"]
+    sendsFields: false
   },
   {
     // A read: GET, its fields in the web address (API-1.49).
@@ -1032,8 +1045,7 @@ const CAPABILITIES = [
     method: "GET",
     about:
       "What the setup record holds now, as Camp Setup shows it. It holds no findings or problems.",
-    sendsFields: false,
-    queryFields: ["season", "kind", "name", "program"]
+    sendsFields: false
   },
   setup(
     "change_setup_record",
@@ -1064,7 +1076,6 @@ const CAPABILITIES = [
       "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_setup_record (kind activity) and change them with change_setup_record. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season", "name"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON, name: ACTIVITY_NAME },
@@ -1087,7 +1098,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday; set both or blank both with (blank)), notes.'
+            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",
@@ -1129,7 +1140,6 @@ const CAPABILITIES = [
       "Read the camp's own words for Shoresh's terms, as Camp Setup's Camp words screen shows them: each of Shoresh's words (like Group) with the camp's singular / plural (like Bunk / Bunks). Read them right before changing them, and send the ones you change back unchanged as seen.",
     about:
       "The camp's words now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1197,7 +1207,6 @@ const CAPABILITIES = [
       "Read Camp Setup's \"Same location?\" question for a place: the season's locations whose names match it, capitals and spacing aside, each with its exact name, groups that fit and how many activities happen there, and which one the question would keep. Read it right before merge_locations and send what it said as seen.",
     about:
       "The matching places now, as Camp Setup's question shows them. They hold no findings or problems.",
-    queryFields: ["season", "name"],
     inputSchema: {
       type: "object",
       properties: {
@@ -1252,7 +1261,6 @@ const CAPABILITIES = [
       "Read what Camp Setup marks as guessed from a file (an import worked it out rather than read it) and no one has said looks right or changed since: each with its kind, name, field (how_often, who, groups_that_fit, division or periods) and value now. Read it right before confirm_setup_guess and send the value it said as seen.",
     about:
       "The guesses still marked now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1310,7 +1318,6 @@ const CAPABILITIES = [
       "Read the offerings Camp Setup shows as proposed and not confirmed yet (an import found them; no camper gets a seat in one until it is confirmed): each activity with its elective set. Read it right before confirm_proposed_offering.",
     about:
       "The offerings still proposed now, as Camp Setup shows them. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1357,7 +1364,6 @@ const CAPABILITIES = [
       "Read what Camp Setup's Copy season page shows before a copy, changing nothing: use it to answer \"what would the copy look like\" questions. For a new first day (start_date), the new season's first and last day, each week's dates in the copy, and whether the weeks land on other weekdays. Read it right before copy_season and send the dates it said as seen.",
     about:
       "The copy's dates now, as Camp Setup's Copy season page shows them. They hold no findings or problems.",
-    queryFields: ["season", "start_date"],
     inputSchema: {
       type: "object",
       properties: {
@@ -1410,7 +1416,6 @@ const CAPABILITIES = [
       'Read what Generated Schedule or Manual Build shows when setup changed since the week started: each change "Update to match setup" can make, by its key, with each cell before and after and why, and the week as read (seen). Read it right before update_to_match_setup.',
     about:
       "The changes setup makes to the week now, as the screen lists them. They are not the week's checks (read those with read_week_checks).",
-    queryFields: ["season", "week", "program", "schedule"],
     inputSchema: {
       type: "object",
       properties: EITHER_WEEK,
@@ -1454,7 +1459,6 @@ const CAPABILITIES = [
       'Read the season\'s special days and special events, as the Special events screen lists them, and the week days each special day is on (like Tuesday of "Week 1"). A special day replaces its day for the whole camp; a week day not named has none, and reads "none". Read it right before put_special_day_on_day or take_special_day_off_day and send what that day has as seen.',
     about:
       "The special days and events now, and where they are. They hold no findings or problems.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1519,7 +1523,6 @@ const CAPABILITIES = [
       "Read a special day's or special event's own schedule, as its page on the Special events screen shows it: its time blocks with their times, its columns (a special day's are the camp's groups, an event's are its stations or teams), what each cell holds, and seen (send it with change_special_schedule_frame). Read it right before changing it.",
     about:
       "The special day's or event's own schedule now. It holds no findings or problems.",
-    queryFields: ["season", "special", "kind"],
     inputSchema: {
       type: "object",
       properties: SPECIAL_ITEM,
@@ -1780,7 +1783,6 @@ const CAPABILITIES = [
       "Read the imports that can be undone in a season, as Roots and Settings offer Undo: the person's own last import (a list, a worksheet or Import last year), and each outside system's last batch (bring_in_*), each with when it was made and its seen. Only the last of each can be undone, once.",
     about:
       "The imports Undo is offered for, as Roots and Settings show them. It holds nothing else.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1821,7 +1823,6 @@ const CAPABILITIES = [
       "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Flow sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
     about:
       "The failed sends Settings shows, in its sentences. It holds no destination's address, key or password.",
-    queryFields: ["season"],
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1830,10 +1831,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_schedule",
+    // Used on this computer, never sent.
+    localFields: ["as", "view"],
     api: "schedule_file",
     method: "GET",
     makesFile: "schedule",
-    queryFields: ["season", "week", "program", "version", "saved"],
     description:
       "Make a week's schedule file exactly as the Schedules screen's Excel or Print makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). Excel: a sheet per day, then every group's and every activity's week. Print: a page per day, group or activity, as the view chosen; it is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest version unless you name one (list_versions names them). The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1868,7 +1870,6 @@ const CAPABILITIES = [
     api: "special_schedule_file",
     method: "GET",
     makesFile: "special",
-    queryFields: ["season", "special", "kind"],
     description:
       "Make a special day's or event's own schedule file exactly as Download on its page makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1894,10 +1895,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_elective_files",
+    // Used on this computer, never sent.
+    localFields: ["file"],
     api: "elective_file",
     method: "GET",
     makesFile: "electives",
-    queryFields: ["season", "week", "elective_set"],
     description:
       "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per offering, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and bring back). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1924,10 +1926,11 @@ const CAPABILITIES = [
   },
   {
     name: "download_setup",
+    // Used on this computer, never sent.
+    localFields: ["list"],
     api: "setup_file",
     method: "GET",
     makesFile: "setup",
-    queryFields: ["season"],
     description:
       "Make a setup file exactly as Camp Setup's Download this list or Roots' Download worksheet makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): one screen's list, in the layout its Import a list reads, or the whole-camp worksheet (every list, location types, camp words, weeks and the weeks each item runs in), which Import worksheet reads back. The answer is the file's name and where it was saved: tell the person.",
     about:
@@ -1964,7 +1967,6 @@ const CAPABILITIES = [
     api: "read_learned_answers",
     method: "GET",
     readsLearned: true,
-    queryFields: ["season"],
     description:
       'Read "What Shoresh has learned" (under Settings) as the screen lists it: the camp\'s remembered import answers and patterns, newest first, each with when and how it was learned, then what Shoresh already knew. Each answer remembered now has its answer_id, seen and (when it can be changed) the answers it can be changed to; each pattern there now has its pattern and seen. Read it right before change_learned_answer, forget_learned_answer or forget_learned_pattern and send those.',
     about:
@@ -2096,7 +2098,8 @@ const ASKS_FIRST = [
   "clear_electives",
   "copy_season",
   "change_special_schedule_frame",
-  "assign_elective_seats"
+  "assign_elective_seats",
+  "apply_to_other_weeks"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;

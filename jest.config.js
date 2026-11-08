@@ -3,6 +3,11 @@ const { jestConfig } = require("@salesforce/sfdx-lwc-jest/config");
 module.exports = {
   ...jestConfig,
   modulePathIgnorePatterns: ["<rootDir>/.localdevserver"],
+  // Before LWC loads: its list tidying must not freeze a later test (see the file).
+  setupFiles: [
+    ...(jestConfig.setupFiles || []),
+    "<rootDir>/jest/no-finalizers.js"
+  ],
   // Accessibility checks in tests: toBeAccessible() (jest/sa11y-setup.js).
   setupFilesAfterEnv: [
     ...(jestConfig.setupFilesAfterEnv || []),

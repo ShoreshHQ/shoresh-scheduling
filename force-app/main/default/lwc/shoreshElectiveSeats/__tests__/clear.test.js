@@ -42,7 +42,7 @@ describe("the picture", () => {
     });
     expect(view.columns[0].runs).toMatchObject({
       final: true,
-      state: "Final · 14 Oct"
+      state: "Final · Oct 14"
     });
     // A run still being worked on is drawn so, and named.
     expect(view.columns[1].runs).toMatchObject({

@@ -4,6 +4,7 @@ import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
 import { holdsNoDivision } from "c/shoreshImportEngine";
 import { leftField } from "c/shoreshSavedMark";
 import { rainPlanChoices } from "c/shoreshSetupRules";
+import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 
 // The days an early-week goal can be by (EarlyWeekByDay__c).
 const DAYS = [
@@ -297,7 +298,12 @@ export default class ShoreshActivityDetails extends LightningElement {
   get dayOptions() {
     return [
       { label: "No day", value: "" },
-      ...DAYS.map((day) => ({ label: day, value: day }))
+      ...(numberedWeekday(DAYS[0])
+        ? [...DAYS].sort((a, b) =>
+            numberedWeekday(a).localeCompare(numberedWeekday(b))
+          )
+        : DAYS
+      ).map((day) => ({ label: spokenWeekday(day), value: day }))
     ];
   }
 

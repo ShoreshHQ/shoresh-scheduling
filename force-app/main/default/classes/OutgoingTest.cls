@@ -180,13 +180,13 @@ private class OutgoingTest {
     List<String> expected = new List<String>{
       'week=Week 1; date=' +
       day +
-      '; group=Group A; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Swim',
+      '; group=Group A; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Swim; division=Juniors',
       'week=Week 1; date=' +
       day +
-      '; group=Group B; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Flagpole',
+      '; group=Group B; time_block=Period 1; start_time=09:00; end_time=09:45; activity=Flagpole; division=Juniors',
       'week=Week 1; date=' +
       day +
-      '; group=Group B; time_block=Lunch; start_time=09:00; end_time=09:45; activity=Chugim'
+      '; group=Group B; time_block=Lunch; start_time=09:00; end_time=09:45; activity=Chugim; division=Juniors'
     };
     User director = camp.sender('Read_Group_Schedules');
     Test.startTest();
@@ -225,16 +225,16 @@ private class OutgoingTest {
       described(capability, (List<Object>) posted.get('records'))
     );
     Assert.areEqual(
-      'week,date,group,time_block,start_time,end_time,activity\n' +
+      'week,date,group,time_block,start_time,end_time,activity,division\n' +
         'Week 1,' +
         day +
-        ',Group A,Period 1,09:00,09:45,Swim\n' +
+        ',Group A,Period 1,09:00,09:45,Swim,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Period 1,09:00,09:45,Flagpole\n' +
+        ',Group B,Period 1,09:00,09:45,Flagpole,Juniors\n' +
         'Week 1,' +
         day +
-        ',Group B,Lunch,09:00,09:45,Chugim\n',
+        ',Group B,Lunch,09:00,09:45,Chugim,Juniors\n',
       file.get('csv')
     );
   }
@@ -489,6 +489,40 @@ private class OutgoingTest {
     Assert.areEqual(
       new List<String>{ 'elective_set=Chugim; activity=Archery; seats=10' },
       described(capability, (List<Object>) answer.get('records')),
+      String.valueOf(answer)
+    );
+  }
+
+  // ELECT-4.1: an offering with 0 seats goes out with blank seats, as one with no limit does, so a
+  // form never reads it as closed.
+  @IsTest
+  static void anOfferingWithNoSeatsSetGoesOutAsNoLimit() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    Database.update(
+      new Offering__c(
+        Id = [
+          SELECT Id
+          FROM Offering__c
+          WHERE Activity__c = :camp.ids.get('Archery')
+          WITH SYSTEM_MODE
+        ]
+        .Id,
+        Seats__c = 0
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    OutgoingElectiveOfferings capability = new OutgoingElectiveOfferings();
+    Map<String, Object> answer;
+    System.runAs(camp.sender('Read_Elective_Offerings')) {
+      answer = get(
+        capability,
+        new Map<String, String>{ 'season' => 'Summer 2026' }
+      );
+    }
+    // Blank seats are left out of the line, so "seats=0" here would be a closed offering.
+    Assert.isTrue(
+      described(capability, (List<Object>) answer.get('records'))
+        .contains('elective_set=Chugim; activity=Archery'),
       String.valueOf(answer)
     );
   }

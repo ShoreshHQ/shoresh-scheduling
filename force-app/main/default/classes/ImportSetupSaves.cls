@@ -107,6 +107,7 @@ public with sharing class ImportSetupSaves {
       // to (Greg: an import adds what's missing; coordinator, 2026-10-17).
       new ImportWorkbookExtras(writer, plan.seasonId, campId)
         .fillWeeks(plan.entries('fillWeeks'));
+      numberDays();
       new ImportStructureWrites(plan, writer).run();
       new ImportItemWrites(plan, writer).run();
       // Electives read in the file (slice E9): after the activities, before the versions.
@@ -121,6 +122,24 @@ public with sharing class ImportSetupSaves {
       SetupGuesses.rememberFromPlan(campId, plan, writer.keys);
       writer.result.importId = record(plan, writer);
       writer.result.openNotKept = ImportLog.openNotKept;
+    }
+
+    /**
+     * WEEK-2.6: a file that says its days by number ("Day 3") into a season with no weeks and no
+     * programs makes the season say its days by number, as the review showed. Logged as a change,
+     * so Undo puts it back.
+     */
+    private void numberDays() {
+      if (plan.text('numberDays') != 'true') {
+        return;
+      }
+      writer.writeTracked(
+        'Season',
+        new List<SObject>(),
+        new List<SObject>{
+          new Season__c(Id = plan.seasonId, NumberedDays__c = true)
+        }
+      );
     }
   }
 

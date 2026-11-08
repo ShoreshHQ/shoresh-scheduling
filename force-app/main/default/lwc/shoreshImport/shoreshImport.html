@@ -285,7 +285,14 @@
                     class="row shoresh-raised"
                     data-line={line.id}
                   >
-                    <span class="n">{line.name}</span>
+                    <span class="n"
+                      ><template lwc:if={line.said}
+                        ><span aria-hidden="true">{line.name}</span
+                        ><span class="slds-assistive-text"
+                          >{line.said}</span
+                        ></template
+                      ><template lwc:else>{line.name}</template></span
+                    >
                     <span class="d"
                       >{line.detail}<template lwc:if={line.auto}>
                         <span class="tag" data-id="auto-mark"

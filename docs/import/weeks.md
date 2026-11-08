@@ -239,7 +239,9 @@ Each rule is clue, meaning, example, test.
     never refers to a time block it does not add), and the notes say so ("field-day.csv looks like a single-day schedule, so it comes
     in as a special day on Thursday, with its own times."). Beside other files, a program that
     runs that day joins the special day (rule 11), and the week, if the files do not say it, is
-    asked as any week is. Unanswered, nothing is read from it; left out, and it is the only
+    asked as any week is. Unanswered, nothing is read from it, and when no other file gives a
+    schedule the question can't wait: there would be nothing to save but a program with no days.
+    Left out, and it is the only
     file, the screen goes back to choosing a file ("field-day.csv: left out, so nothing was
     imported.").
     A file with no schedule in it at all is still refused ("notes.csv: no schedule Shoresh could
@@ -302,7 +304,15 @@ Each rule is clue, meaning, example, test.
     when none), as for a file that names no days, never only the special day's weekday; a program
     it makes runs those days too.
     Test: "INGEST-4.17: a special-day file alone never decides the camp's days: weeks added follow
-    the season's own days". Code: `version.js` `gridDays`; `plan.js` `programRecords`.
+    the season's own days"; "INGEST-4.17: two single-day files, one answered and one left out,
+    never decide the camp's days" (a file left out is read for nothing, so it doesn't stop the
+    other being a single-day file). Code: `version.js` `gridDays`; `plan.js` `programRecords`; `structure.js` `singleDayFiles`.
+
+18. **The day a Shoresh elective file was finalized is not a week** (coordinator, 2026-11-06).
+    Clue: a title ending "· Final Oct 14", as an elective roster's second line reads (CORE-6.10).
+    Meaning: that date is never read as the week; the rest of the title still is. Example: "Chugim ·
+    Week A · Final Oct 14" names no week, and "Chugim · Week 2 · Final Oct 14" names Week 2. Test:
+    `weeks.test.js`, "the day an elective file was finalized…".
 
 ## Known limits
 
