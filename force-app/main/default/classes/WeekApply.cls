@@ -108,9 +108,7 @@ public with sharing class WeekApply {
       (found[0].Origin__c != ManualDrafts.MANUAL &&
       found[0].Origin__c != GeneratedDrafts.GENERATED)
     ) {
-      throw new ShoreshException(
-        'That schedule was not found, or you do not have access to it.'
-      );
+      throw new ShoreshException(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
     return found[0];
   }

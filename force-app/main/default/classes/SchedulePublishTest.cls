@@ -276,6 +276,29 @@ private class SchedulePublishTest {
         message
       );
       Assert.isTrue(protectedIds.contains(ids.get('Week 1')));
+      // PUB-4.3: previews and history read Status and PublishedAt__c, the guard also PublishedBy__c
+      // and PublishKey__c. Publish, publish again and unpublish never leave those without these.
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE
+            (PublishedBy__c != NULL
+            OR PublishKey__c != NULL)
+            AND Status__c != :SchedulePublish.PUBLISHED
+            AND PublishedAt__c = NULL
+          WITH SYSTEM_MODE
+        ]
+      );
+      Assert.isTrue(
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE PublishedBy__c != NULL
+          WITH SYSTEM_MODE
+        ] >= 2
+      );
     }
   }
 
