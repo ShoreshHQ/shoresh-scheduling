@@ -25,6 +25,18 @@
   overflow: hidden;
 }
 
+/* A phone: too narrow to open from the button, so it opens across the rail, under it. */
+@media (max-width: 40em) {
+  .versions {
+    position: static;
+  }
+
+  .panel {
+    left: 0;
+    width: auto;
+  }
+}
+
 .panel-head {
   padding: var(--shoresh-s3) var(--shoresh-s3) var(--shoresh-s2);
   border-bottom: 1px solid var(--shoresh-rule);

@@ -420,3 +420,19 @@ describe("c-shoresh-week-editor", () => {
     });
   });
 });
+
+describe("the rail's room", () => {
+  // Jest draws no layout, so this can only hold the rule in place. Measured in a real browser when
+  // it was made: the rail sits beside the menu, so a width-of-the-window rule let Publish run past
+  // the frame from 1201 to 1600 wide.
+  it("wraps whenever its parts don't fit, not at a width of the window", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekEditor.css"),
+      "utf8"
+    );
+    const beforeAnyWidth = css.split("@media")[0];
+    expect(beforeAnyWidth.match(/\.rail\s*{[^}]*}/)[0]).toMatch(
+      /flex-wrap: wrap;/
+    );
+  });
+});

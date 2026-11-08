@@ -24,3 +24,16 @@
 .pop[hidden] {
   display: none;
 }
+
+/* A phone: too narrow to open from the item, so it opens across the rail, under it. */
+@media (max-width: 40em) {
+  :host {
+    position: static;
+  }
+
+  .pop,
+  .pop_right {
+    left: 0;
+    right: 0;
+  }
+}

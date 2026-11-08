@@ -15,12 +15,15 @@
  * plus the zone's inset, three parts. Left and right share the free width, but the left starts
  * with a head start of the grid's time column and its gap, so the days in the middle sit over
  * the grid's cells, not the page's centre. Inside each part, the round 11 grammar: items 4
- * apart, a thin line with 8 each side between groups.
+ * apart, a thin line with 8 each side between groups. It sits beside the menu, so how much room it
+ * has isn't the window's width: when its parts don't fit on one line they wrap, in order.
  */
 .rail {
   --offset: calc(var(--shoresh-head-w) + var(--shoresh-space-cell-gap));
   box-sizing: border-box;
   display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--shoresh-s2);
   align-items: center;
   min-height: calc(var(--shoresh-control-h) + 2 * var(--shoresh-space-pad));
   padding: var(--shoresh-space-pad);
@@ -85,21 +88,26 @@
   transform: rotate(180deg);
 }
 
-/* Too narrow for one line: the rail's parts wrap, in order. */
+/* Narrow: a part takes its own line, and wraps inside itself if it's wider than the frame. */
 @media (max-width: 75em) {
-  .rail {
-    flex-wrap: wrap;
-    row-gap: var(--shoresh-s2);
-  }
-
   .side,
   .side_left,
   .mid {
     flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .views {
     margin-left: 0;
+  }
+}
+
+/* A phone: the rail's menus open across it (c/shoreshRailPop, c/shoreshVersions). */
+@media (max-width: 40em) {
+  .rail {
+    position: relative;
   }
 }
 
