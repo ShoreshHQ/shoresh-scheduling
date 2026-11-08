@@ -17,7 +17,8 @@ import {
   deletedKey,
   deletionsIn,
   deletedAs,
-  broughtBack
+  broughtBack,
+  nextKeyOf
 } from "../deleted";
 
 /** A program deleted on its setup screen, remembered with its groups (Apex SetupDeletions). */
@@ -287,5 +288,14 @@ describe("a deleted program stays deleted", () => {
         ...bunks.map((g) => deletedKey("ProgramGroup", "Juniors", g))
       ].sort()
     );
+  });
+});
+
+describe("nextKeyOf", () => {
+  it("the next Bring back still listed, else the one before, else none", () => {
+    expect(nextKeyOf(["a", "b", "c"], "b", ["a", "c"])).toBe("c");
+    expect(nextKeyOf(["a", "b", "c"], "c", ["a", "b"])).toBe("b");
+    expect(nextKeyOf(["a", "b", "c"], "b", ["a"])).toBe("a");
+    expect(nextKeyOf(["a"], "a", [])).toBeNull();
   });
 });

@@ -12,9 +12,9 @@ import {
   refusedFile
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
+import { scheduleOptions } from "c/shoreshElectiveEngine";
 import { failed } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
-import { FIELD } from "c/shoreshSchema";
 import {
   allSettled,
   buildRequest,
@@ -33,7 +33,6 @@ import {
 } from "./review";
 
 const STEPS = 3;
-const SCHEDULE = FIELD.Schedule;
 
 /**
  * Bring in choices (electives slice E6; ADR 0017): a camp's own choices sheet, read in the browser
@@ -184,29 +183,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   }
   /** The week's working schedules (not saved versions), each named by its program and kind. */
   get scheduleOptions() {
-    if (!this._setup || !this.weekId) return [];
-    const programs = new Map(
-      (this._setup.programs || []).map((p) => [p.program.Id, p.program.Name])
-    );
-    const many = programs.size > 1;
-    return (this._setup.schedules || [])
-      .filter(
-        (s) =>
-          s[SCHEDULE.Week] === this.weekId && s[SCHEDULE.Status] !== "Version"
-      )
-      .map((s) => {
-        const kind =
-          s[SCHEDULE.Origin] === "Generated"
-            ? "Generated Schedule"
-            : "Manual Build";
-        const published =
-          s[SCHEDULE.Status] === "Published" ? " · Published" : "";
-        return {
-          label: `${many ? `${programs.get(s[SCHEDULE.Program])} · ` : ""}${kind}${published}`,
-          value: s.Id,
-          programId: s[SCHEDULE.Program]
-        };
-      });
+    return scheduleOptions(this._setup, this.weekId);
   }
   /** "Assign against:" is asked only when the week has more than one (desktop D2.7). */
   get asksSchedule() {

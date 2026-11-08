@@ -2,6 +2,7 @@ import { buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { hasOrderingEvidence } from "./engine.shoreshElectiveEngine.rankKind.mjs";
 import { minCostAssign } from "./engine.shoreshElectiveEngine.minCostAssign.mjs";
 
+export { scheduleOptions } from "./engine.shoreshElectiveEngine.scheduleOptions.mjs";
 export {
   CELL_CHOICE,
   ORDERED_FALLBACK,

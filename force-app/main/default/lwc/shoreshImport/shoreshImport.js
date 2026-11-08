@@ -20,11 +20,11 @@ import {
   undoMessage,
   unplacedLines,
   readImportFile,
-  refusedFile
+  refusedFile,
+  nextKeyOf
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
-import { FIELD } from "c/shoreshSchema";
-import { rememberedByKey } from "c/shoreshRemembered";
+import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
 import {
@@ -38,20 +38,6 @@ import {
   recomputed,
   savePlan
 } from "./flow";
-
-/**
- * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
- * one before it; null when none is left.
- */
-function nextKeyOf(keysBefore, clicked, itemsAfter) {
-  const left = new Set(itemsAfter.map((item) => item.key));
-  const at = keysBefore.indexOf(clicked);
-  const order = [
-    ...keysBefore.slice(at + 1),
-    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
-  ];
-  return order.find((k) => left.has(k)) || null;
-}
 
 /**
  * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
@@ -412,19 +398,13 @@ export default class ShoreshImport extends LightningElement {
 
   /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
   async rememberedAnswers() {
-    const campId =
-      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
-    let saved = [];
-    try {
-      saved = campId ? await getAnswers({ campId }) : [];
-    } catch {
-      // Without remembered answers the import still works: everything is asked.
-      saved = [];
-    }
-    const { answers, notes } = rememberedByKey(saved);
+    const { answers, notes, rows } = await rememberedFor(
+      this.setup,
+      getAnswers
+    );
     this.remembered = { ...answers };
     this.rememberedNotes = notes;
-    this.savedRows = saved || [];
+    this.savedRows = rows;
     return answers;
   }
 
@@ -871,7 +851,13 @@ export default class ShoreshImport extends LightningElement {
     const opened = this.openIds().find((id) => !openBefore.has(id));
     this.focusNext = opened
       ? { question: opened }
-      : { bringBack: nextKeyOf(keysBefore, key, this.deletedItems) };
+      : {
+          bringBack: nextKeyOf(
+            keysBefore,
+            key,
+            this.deletedItems.map((item) => item.key)
+          )
+        };
   }
 
   /** The questions still open, in the order shown. */
