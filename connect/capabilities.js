@@ -448,6 +448,27 @@ const SPECIAL_ITEM = {
   }
 };
 
+/** An action of Generated Schedule's Build menu (API-1.127 to API-1.130), built as build_week is. */
+function buildMenuAction(
+  name,
+  buildAction,
+  description,
+  more = {},
+  required = []
+) {
+  return {
+    ...act(
+      name,
+      "build_week",
+      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+      { ...WEEK_FIELDS, ...more },
+      required
+    ),
+    buildsWithEngine: true,
+    buildAction
+  };
+}
+
 const CAPABILITIES = [
   {
     name: "list_seasons",
@@ -686,6 +707,34 @@ const CAPABILITIES = [
     ),
     buildsWithEngine: true
   },
+  buildMenuAction(
+    "try_another_option",
+    "TryAnother",
+    "Build the next option of a week already built, as Generated Schedule's Try another does: the week is built fresh, so hand edits that aren't locked are replaced; locked cells are kept. The week as it was is kept in Versions first."
+  ),
+  buildMenuAction(
+    "bring_back_option",
+    "BringBack",
+    "Bring back an earlier option of a week already built, as the Option rows in Generated Schedule's Build menu do: that option is built again on the week as set up now, so hand edits that aren't locked are replaced; locked cells are kept. The week as it was is kept in Versions first. An option above the one the week is on hasn't been tried: try_another_option builds the next one.",
+    {
+      option: {
+        type: "number",
+        description:
+          "The option's number, like 1: from 1 up to the option the week is on."
+      }
+    },
+    ["option"]
+  ),
+  buildMenuAction(
+    "fill_open_cells",
+    "FillOpen",
+    "Fill a built week's open cells, as Fill the open cells in Generated Schedule's Build menu does: every filled cell stays as it is, and a cell locked empty stays empty."
+  ),
+  buildMenuAction(
+    "start_over_week",
+    "StartOver",
+    "Start a built week over, as Start over in Generated Schedule's Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. The week as it was is kept in Versions first, and undo_last_agent_change brings it back."
+  ),
   {
     name: "read_week_draft",
     api: "read_week_draft",

@@ -16,6 +16,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { MODE, generateWeek } from "c/shoreshEngine";
 import { buildForAgent, loadWeek } from "c/shoreshGeneratedWeek";
+import { menuForAgent } from "../buildMenu";
 import { NAMESPACE_PREFIX } from "c/shoreshSchema";
 import { nextTurn } from "../pieces";
 import {
@@ -385,6 +386,136 @@ describe("c-shoresh-generated-schedule", () => {
     expect(
       buildForAgent({ inputs: builtOnce, setup: SETUP, labels: LABELS }).save
     ).toEqual(asSent(sent(1)));
+  });
+
+  // API-1.127, API-1.128, API-1.129, API-1.130
+  describe("the Build menu for an agent sends what the screen's own buttons send", () => {
+    const ids = { programId: PROGRAM, weekId: WEEK };
+    const asSent = (r) => ({
+      action: r.action,
+      revision: r.revision,
+      option: r.option,
+      days: r.days,
+      engine_notes: r.engineNotes
+    });
+    const read = (inputs) => ({ inputs, setup: SETUP, labels: LABELS });
+    const menu = (inputs, how) =>
+      menuForAgent(read(inputs), { week: "Week 1", ...how });
+
+    /** The week built once, on an option, as it opens after a reload. */
+    function builtWeek(option = 1) {
+      return { ...camp({ ...SMALL, scheduleId: SCHEDULE, option }), ...ids };
+    }
+    async function opened(inputs) {
+      getInputs.mockResolvedValue(inputs);
+      const element = await render(inputs);
+      saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
+      return element;
+    }
+
+    // API-1.127
+    it("tryAnotherIsTheScreensTryAnother: the next option, and the count it says", async () => {
+      const inputs = builtWeek();
+      const element = await opened(inputs);
+      action(element, "TryAnother").click();
+      await settle(element);
+      const agent = menu(inputs, { action: "TryAnother" });
+      expect(agent.save).toEqual(asSent(sent(0)));
+      expect(agent.save.option).toBe(2);
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        agent.said
+      );
+    });
+
+    // API-1.128
+    it("anOptionBroughtBackIsTheScreensOption: an earlier one, nothing on the one it's on, refused above it", async () => {
+      const inputs = builtWeek(2);
+      const element = await opened(inputs);
+      chooseOption(element, "1");
+      await settle(element);
+      const agent = menu(inputs, { action: "BringBack", option: 1 });
+      expect(agent.save).toEqual(asSent(sent(0)));
+      // The command line sends it as typed.
+      expect(menu(inputs, { action: "BringBack", option: "1" }).save).toEqual(
+        agent.save
+      );
+      expect(menu(inputs, { action: "BringBack", option: 2 })).toEqual({
+        ok: true,
+        unchanged: "Week 1 is already on Option 2. Nothing was changed."
+      });
+      for (const option of [0, 3, 1.5, "x"]) {
+        expect(menu(inputs, { action: "BringBack", option })).toEqual({
+          ok: false,
+          error: `Option ${option} hasn't been tried for Week 1, which is on Option 2. Nothing was changed.`
+        });
+      }
+      // Without a number it is refused, never Try another.
+      expect(menu(inputs, { action: "BringBack" })).toEqual({
+        ok: false,
+        error: "No option was named. Nothing was changed."
+      });
+    });
+
+    // API-1.129
+    it("fillingIsTheScreensFillTheOpenCells: refused where its button is off", async () => {
+      const inputs = builtWeek();
+      const element = await opened(inputs);
+      action(element, "FillOpen").click();
+      await settle(element);
+      const agent = menu(inputs, { action: "FillOpen" });
+      expect(agent.save).toEqual(asSent(sent(0)));
+
+      // The week it filled has nothing open, so the button is off and the agent is refused.
+      const full = {
+        ...inputs,
+        days: inputs.days.map((day, i) => ({
+          ...day,
+          items: sent(0).days[i].items,
+          rows: sent(0).days[i].rows
+        }))
+      };
+      const fullScreen = await render(full);
+      expect(action(fullScreen, "FillOpen").disabled).toBe(true);
+      expect(menu(full, { action: "FillOpen" })).toEqual({
+        ok: false,
+        error: "Week 1 has no open cells to fill. Nothing was changed."
+      });
+    });
+
+    // API-1.130, LOCK-5.1
+    it("startingOverIsTheScreensStartOver: nothing built, and the same count", async () => {
+      const inputs = builtWeek(2);
+      const element = await opened(inputs);
+      action(element, "StartOver").click();
+      await settle(element);
+      const agent = menu(inputs, { action: "StartOver" });
+      expect(agent.save).toEqual(asSent(sent(0)));
+      expect(agent.save.option).toBe(2);
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        agent.said
+      );
+    });
+
+    // API-1.127
+    it("aWeekNeverBuiltHasNoBuildMenu, nor one with no days", () => {
+      const inputs = { ...camp(SMALL), ...ids };
+      const noDays = { ...builtWeek(), days: [] };
+      for (const asked of [
+        "TryAnother",
+        "BringBack",
+        "FillOpen",
+        "StartOver"
+      ]) {
+        expect(menu(inputs, { action: asked })).toEqual({
+          ok: false,
+          error: "Week 1 hasn't been built yet. Nothing was changed."
+        });
+        expect(menu(noDays, { action: asked, option: 1 })).toEqual({
+          ok: false,
+          error: "Week 1 has no days its program runs. Nothing was changed."
+        });
+      }
+    });
   });
 
   // GEN-10.11, GEN-10.6
