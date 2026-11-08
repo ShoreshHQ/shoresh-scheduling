@@ -218,78 +218,133 @@ describe("marks and locksOfWeek", () => {
 
 describe("around a save", () => {
   const run = () => runTo(",,", ["", "A:a1", ""]);
+  // Two blocks of one group, and a run of the next group: a rule must look at every one.
+  const twoBlocks = () => ({
+    day: DAY,
+    groupId: "g1",
+    firstBlockId: "t1",
+    before: ["", ""],
+    after: ["A:a1", "^A:a1"],
+    blockIds: ["t1", "t2"]
+  });
+  const otherGroup = () => ({
+    day: DAY,
+    groupId: "g2",
+    firstBlockId: "t1",
+    before: [""],
+    after: ["A:a1"],
+    blockIds: ["t1"]
+  });
+  const g2 = lockKey(DAY, "g2", "t1");
 
   // LOCK-5.2
   it("withLocks: sends the locks the director saw, and for Undo or Redo the locks to leave", () => {
-    const edit = { runs: [run()] };
+    const edit = { runs: [run()], rain: "marks" };
     expect(withLocks({ edit })).toBe(edit);
-    const [plain] = withLocks({ edit, seen: locked(2) }).runs;
-    expect(plain.locksBefore).toEqual(marks(locked(2), edit.runs[0]));
-    expect(plain.locksAfter).toBeUndefined();
+    const plain = withLocks({ edit, seen: locked(2) });
+    expect(plain.rain).toBe("marks");
+    expect(plain.runs[0].locksBefore).toEqual(["1"]);
+    expect(plain.runs[0].locksAfter).toBeUndefined();
     const [undo] = withLocks({
       edit,
       seen: locked(2),
       locksTarget: new Set()
     }).runs;
-    expect(undo.locksBefore).toEqual(marks(locked(2), edit.runs[0]));
-    expect(undo.locksAfter).toEqual(marks(new Set(), edit.runs[0]));
+    expect(undo.locksBefore).toEqual(["1"]);
+    expect(undo.locksAfter).toEqual([""]);
   });
 
-  // LOCK-4.4
-  it("newlyLocked: finds a cell someone locked after the edit was made, and nothing else", () => {
-    const [sent] = withLocks({ edit: { runs: [run()] }, seen: new Set() }).runs;
-    const block = sent.blockIds.indexOf("t2");
-    expect(newlyLocked(locked(2), [sent])).toEqual({ run: sent, block });
-    expect(newlyLocked(new Set(), [sent])).toBeNull();
-    const [sawIt] = withLocks({
-      edit: { runs: [run()] },
-      seen: locked(2)
+  // LOCK-4.4: never overwritten silently.
+  it("newlyLocked: finds a cell locked after the edit was made, in any block of any run", () => {
+    const sent = withLocks({
+      edit: { runs: [twoBlocks(), otherGroup()] },
+      seen: locked(1)
     }).runs;
-    expect(newlyLocked(locked(2), [sawIt])).toBeNull();
-    // An edit sent without the locks it saw (no locks on this screen) has nothing to compare.
-    expect(newlyLocked(locked(2), [run()])).toBeNull();
+    // Block 1 was seen locked; block 2 is the one locked since.
+    expect(sent[0].locksBefore).toEqual(["1", ""]);
+    expect(newlyLocked(locked(1), sent)).toBeNull();
+    expect(newlyLocked(locked(1, 2), sent)).toEqual({
+      run: sent[0],
+      block: 1
+    });
+    expect(newlyLocked(new Set([g2]), sent)).toEqual({
+      run: sent[1],
+      block: 0
+    });
+    // A run sent without the locks it saw has nothing to compare; the next one still counts.
+    expect(newlyLocked(new Set([g2]), [otherGroup(), sent[1]])).toEqual({
+      run: sent[1],
+      block: 0
+    });
+    expect(newlyLocked(locked(1, 2), [twoBlocks()])).toBeNull();
   });
 
+  // LOCK-4.5
   it("alreadySkipped: a cell the tool left out once isn't worth working out again", () => {
-    const sent = run();
-    const at = { run: sent, block: sent.blockIds.indexOf("t2") };
-    expect(alreadySkipped({ tool: {} }, at)).toBe(false);
-    expect(alreadySkipped({ tool: { locked: locked(1) } }, at)).toBe(false);
-    expect(alreadySkipped({ tool: { locked: locked(2) } }, at)).toBe(true);
+    const sent = twoBlocks();
+    const second = { run: sent, block: 1 };
+    expect(alreadySkipped({ tool: {} }, second)).toBe(false);
+    expect(alreadySkipped({ tool: { locked: locked(1) } }, second)).toBe(false);
+    expect(alreadySkipped({ tool: { locked: locked(2) } }, second)).toBe(true);
   });
 
-  // LOCK-4.4
-  it("lockedSince and unlockedSince: what changed since the director looked", () => {
-    const entry = { edit: { runs: [run()] }, seen: locked(1, 2) };
+  // LOCK-4.5
+  it("lockedSince: the cells locked that the director hadn't seen locked", () => {
+    const entry = { seen: locked(1, 2) };
     expect(lockedSince(locked(1, 2, 3), entry)).toEqual(locked(3));
     expect(lockedSince(null, entry)).toEqual(new Set());
-    // Only cells this edit touches count as unlocked since: it touches block 2, not block 1.
-    expect(unlockedSince(new Set(), entry)).toEqual(locked(2));
-    expect(unlockedSince(locked(1, 2), entry)).toEqual(new Set());
-    expect(unlockedSince(null, entry)).toEqual(new Set());
-    expect(unlockedSince(new Set(), { edit: entry.edit })).toEqual(new Set());
+  });
+
+  it("unlockedSince: cells this edit touches that were seen locked and no longer are", () => {
+    const edit = { runs: [twoBlocks(), otherGroup()] };
+    const seen = new Set([key(2), key(3), g2]);
+    // Block 3 isn't touched; block 1 is touched but was never seen locked.
+    expect(unlockedSince(new Set(), { edit, seen })).toEqual(
+      new Set([key(2), g2])
+    );
+    expect(unlockedSince(new Set([g2]), { edit, seen })).toEqual(locked(2));
+    expect(unlockedSince(new Set([key(2), g2]), { edit, seen })).toEqual(
+      new Set()
+    );
+    expect(unlockedSince(null, { edit, seen })).toEqual(new Set());
+    expect(unlockedSince(new Set(), { edit })).toEqual(new Set());
+  });
+
+  it("locksAfterSave: the saver's own, else the week it sent", () => {
+    const entry = { edit: { runs: [run()] } };
+    const week = [{ ...day(DAY, ITEMS, [",,"]), locks: ["1,,"] }];
+    const schedule = { days: week };
+    expect(locksAfterSave(null, entry, { conflicts: [] })).toBeNull();
+    expect(
+      locksAfterSave(new Set(), entry, {
+        conflicts: [],
+        locks: [key(3)],
+        schedule
+      })
+    ).toEqual(locked(3));
+    expect(
+      locksAfterSave(new Set(), entry, { conflicts: [], schedule })
+    ).toEqual(locksOfWeek(week));
   });
 
   // LOCK-1.1
-  it("locksAfterSave: the saver's own, else the week it sent, else what the edit left", () => {
-    const entry = { edit: { runs: [run()] } };
-    const none = { conflicts: [] };
-    expect(locksAfterSave(null, entry, none)).toBeNull();
-    expect(
-      locksAfterSave(new Set(), entry, { ...none, locks: [key(3)] })
-    ).toEqual(locked(3));
-    const week = [{ ...day(DAY, ITEMS, [",,"]), locks: ["1,,"] }];
-    expect(
-      locksAfterSave(new Set(), entry, {
-        ...none,
-        schedule: { days: week }
-      })
-    ).toEqual(locksOfWeek(week));
-    expect(locksAfterSave(locked(1), entry, none)).toEqual(locked(1, 2));
-    // A conflict: the edit wasn't made, so the locks stay as they were.
-    expect(locksAfterSave(locked(1), entry, { conflicts: [{}] })).toEqual(
+  it("locksAfterSave: else what the edit left, every run of it, and nothing if it wasn't made", () => {
+    const placed = run();
+    const edit = { runs: [placed, otherGroup()] };
+    expect(locksAfterSave(locked(1), { edit }, { conflicts: [] })).toEqual(
+      new Set([key(1), key(2), g2])
+    );
+    expect(locksAfterSave(locked(1), { edit }, { conflicts: [{}] })).toEqual(
       locked(1)
     );
+    const cleared = runTo(",2,", ["", "", ""]);
+    expect(
+      locksAfterSave(
+        locked(2),
+        { edit: { runs: [cleared] } },
+        { conflicts: [] }
+      )
+    ).toEqual(new Set());
   });
 
   // LOCK-5.2
