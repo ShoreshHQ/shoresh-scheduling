@@ -52,6 +52,7 @@ const MIRRORED_SCREENS = {
 // every class that queries a static resource by name).
 const EXAMPLES_READ_BY = {
   ShoreshCellExamples: ["CellExamplesTest"],
+  ShoreshRuleExamples: ["RuleExamplesTest"],
   ShoreshSeatExamples: ["ElectiveSeatExamplesTest"]
 };
 
