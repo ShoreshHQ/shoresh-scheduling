@@ -65,7 +65,7 @@ describe("its proofs hold against an exhaustive search", () => {
     ).toEqual([]);
   });
 
-  // GEN-8.17, GEN-9.6
+  // GEN-9.6
   it("says plainly when it ran out of work (never silent)", () => {
     for (const r of rows) {
       for (const c of r.result.openCells) {
@@ -77,6 +77,10 @@ describe("its proofs hold against an exhaustive search", () => {
 
   // GEN-8.31
   it("says a trade only where it holds: the group that gained has the activity, no more than its minimum", () => {
+    // These camps hold a trade to check, or this says nothing (trade.test.js builds its own).
+    expect(
+      rows.some((r) => r.result.openCells.some((c) => c.why === "trade"))
+    ).toBe(true);
     for (const { seed, spec, result } of rows) {
       const count = new Map();
       cellsOf(result.days).forEach((byGroup) => {
