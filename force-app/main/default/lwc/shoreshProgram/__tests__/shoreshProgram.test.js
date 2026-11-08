@@ -1,3 +1,4 @@
+import { setDayNaming } from "c/shoreshDayNames";
 import { createElement } from "lwc";
 import ShoreshProgram from "c/shoreshProgram";
 import { buildTerms } from "c/shoreshTerms";
@@ -711,6 +712,15 @@ describe("c-shoresh-program", () => {
     };
     const table = (element) =>
       element.shadowRoot.querySelector("c-shoresh-editable-table");
+
+    // WEEK-1.7
+    it("a fixed activity's earlier day says its number in a numbered season, and stores the weekday", async () => {
+      setDayNaming({ numbered: true, firstDay: 1 });
+      const element = await render("fixedActivities", SET_TIME);
+      const [day] = table(element).columns.slice(-2);
+      setDayNaming(null);
+      expect(day.options[1]).toEqual({ label: "Day 1", value: "Monday" });
+    });
 
     it("CORE-3.7: a fixed activity's details offer the day it starts earlier, among the program's days, and by how many time blocks", async () => {
       const element = await render("fixedActivities", SET_TIME);

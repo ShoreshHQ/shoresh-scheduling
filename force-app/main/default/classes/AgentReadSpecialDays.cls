@@ -88,6 +88,7 @@ global with sharing class AgentReadSpecialDays implements AgentWeeks.Action {
   /** Each special day's and event's week days, as the screen says them ('Tuesday of "Week 1"'). */
   private static Map<Id, List<String>> placedAt(Id seasonId) {
     Map<Id, List<String>> result = new Map<Id, List<String>>();
+    DayWords.use(seasonId);
     for (SpecialDates.Placement placed : SpecialDates.forSeason(seasonId)) {
       if (!result.containsKey(placed.itemId)) {
         result.put(placed.itemId, new List<String>());

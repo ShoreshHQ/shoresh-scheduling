@@ -90,6 +90,7 @@ public with sharing class AgentGuesses {
 
     Reading(SeasonSetupReader.SeasonSetup setup) {
       this.setup = setup;
+      DayWords.use(setup.season.Id);
       this.activities = new Map<Id, Activity__c>(setup.activities);
       this.locations = new Map<Id, Location__c>(setup.locations);
       for (Activity__c row : setup.activities) {
@@ -144,7 +145,9 @@ public with sharing class AgentGuesses {
         List<String> periods = new List<String>();
         for (LinkedChoiceTime__c period : row.Times__r) {
           periods.add(
-            (period.Weekday__c == null ? '' : period.Weekday__c + ' ') +
+            (period.Weekday__c == null
+              ? ''
+              : DayWords.sayWeekday(period.Weekday__c) + ' ') +
             blockNames.get(period.TimeBlock__c)
           );
         }

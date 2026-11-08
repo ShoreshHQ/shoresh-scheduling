@@ -22,6 +22,7 @@
  *
  * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
  */
+import { numberedDay, spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import {
   CARRIES_ON,
   KIND,
@@ -30,14 +31,29 @@ import {
   owner,
   slots
 } from "./engine.shoreshEngine.grid.mjs";
-import { compareText, earlyDates, minutes, weekdayOf } from "./engine.shoreshEngine.setup.mjs";
+import { compareText, earlyDates } from "./engine.shoreshEngine.setup.mjs";
 import { BUSY, RELAX_ORDER, RULE as RULES } from "./engine.shoreshEngine.week.mjs";
 import { reasonFor } from "./engine.shoreshEngine.words.mjs";
 
 /** The rules in the order they give way, then the time-overlap check. */
 const RULE = [...RELAX_ORDER, BUSY];
 
-export { weekdayOf };
+function minutes(time) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(time || ""));
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/** 1 for Monday … 7 for Sunday, from "YYYY-MM-DD", the same in every time zone. */
+export function weekdayOf(date) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(date || ""));
+  if (!match) {
+    return null;
+  }
+  const day = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  ).getUTCDay();
+  return day === 0 ? 7 : day;
+}
 
 /** An activity's SortOrder; none goes last. */
 function sortValue(act) {
@@ -57,6 +73,11 @@ export const DAY_NAMES = [
   "Saturday",
   "Sunday"
 ];
+
+/** A date as the lines say it: its weekday, or "Day 3" in a numbered-days season (WEEK-1.7). */
+export function dayWord(date) {
+  return numberedDay(date) || DAY_NAMES[weekdayOf(date)] || "";
+}
 
 /** Every placement in the readable days: where it starts, how long it runs, what it is. */
 export function placementsOf(days) {
@@ -498,7 +519,7 @@ function stillToPlace(ctx) {
           const missing = act.early.count - done;
           const byDay = DAY_NAMES[act.early.byDay];
           spread.push(
-            `${act.name} · ${groupName}: ${missing} still needed by ${byDay}`
+            `${act.name} · ${groupName}: ${missing} still needed by ${spokenWeekday(byDay)}`
           );
           spreadBy.push({ activityId: act.id, groupId, missing, byDay });
         }

@@ -24,6 +24,7 @@
  * to learn from.
  */
 import { similarity } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { CAMP_WORDS } from "./engine.shoreshPatterns.campWords.mjs";
 
 export { CAMP_WORDS };
@@ -334,15 +335,6 @@ export function patternsOf(rows) {
     .map((g) => ({ ...g, ...evaluate(g) }));
 }
 
-const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
-
-/** "2026-07-03" -> "3 Jul" (desktop shortDate). */
-export function shortDate(iso) {
-  const [, month, day] = String(iso || "").split("-");
-  const name = MONTHS[Number(month) - 1];
-  return name && Number(day) ? `${Number(day)} ${name}` : "";
-}
-
 function firstName(row) {
   return String(row.byName || "")
     .trim()
@@ -383,8 +375,8 @@ function joinWords(words) {
 
 /**
  * Whose answers and when, as PR 2's cards word one answer: "your answers for Lunch 1, Lunch 2
- * and Lunch 3 on 3 Jul and 12 Oct"; when people differ, each with theirs: "answers for ...
- * (yours 3 Jul, Dana's 12 Oct)".
+ * and Lunch 3 on Jul 3 and Oct 12"; when people differ, each with theirs: "answers for ...
+ * (yours Jul 3, Dana's Oct 12)".
  */
 export function fromAnswers(supporters) {
   const shown = supporters.slice(0, LEARNING_BAR.instances);

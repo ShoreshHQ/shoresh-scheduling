@@ -146,6 +146,42 @@ function partOfDayLines(proposal) {
 }
 
 /**
+ * INGEST-5.11 (WEEK-2.6): what each "Day 3" in the files became, in the season's own way of saying
+ * days: "Day 3" where the season says its days by number, "Day 3 → Wednesday" where it names them.
+ * A season this import makes numbered shows that first, as Camp Setup words the choice.
+ */
+function dayNumberLines(proposal) {
+  const numbered = proposal.numberedSeason || proposal.numberDays;
+  // said: what a screen reader reads for the arrow's line ("Day 3 is Wednesday").
+  const line = (key, name, said = "") => ({
+    key,
+    id: key,
+    name,
+    said,
+    detail: "",
+    answer: null,
+    options: []
+  });
+  return [
+    ...(proposal.numberDays
+      ? [
+          line(
+            "dayNumbers",
+            "Mon Tue Wed → Day 1 Day 2 Day 3",
+            "Mon Tue Wed become Day 1 Day 2 Day 3"
+          )
+        ]
+      : []),
+    ...(proposal.dayNumbers || []).map(({ number, day }) => {
+      const key = `dayNumber|${number}`;
+      return numbered
+        ? line(key, `Day ${number}`)
+        : line(key, `Day ${number} → ${day}`, `Day ${number} is ${day}`);
+    })
+  ];
+}
+
+/**
  * The "Read as" groups, in order, each { key, label, lines }; a group with no line is left out.
  * cards: questionCards(proposal, t, answers) (a division of one is changed by its card).
  */
@@ -206,14 +242,18 @@ export function readAsGroups(proposal, t, cards = []) {
           `${t.pIn("Group")} here part of the day`
         ),
       lines: partOfDayLines(proposal)
+    },
+    {
+      key: "dayNumbers",
+      count: (proposal.dayNumbers || []).length,
+      label: (n) => counted(n, "day by number", "days by number"),
+      lines: dayNumberLines(proposal)
     }
   ];
   return groups
     .filter((g) => g.lines.length > 0)
-    .map((g) => ({
-      key: g.key,
-      count: g.lines.length,
-      label: g.label(g.lines.length),
-      lines: g.lines
-    }));
+    .map((g) => {
+      const count = g.count === undefined ? g.lines.length : g.count;
+      return { key: g.key, count, label: g.label(count), lines: g.lines };
+    });
 }

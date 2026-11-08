@@ -124,7 +124,10 @@ public with sharing class SpecialDateTriggerHandler {
         SpecialDates.dateOf(week.StartDate__c, week.EndDate__c, row.Day__c) ==
         null
       ) {
-        row.Day__c.addError('"' + week.Name + '" has no ' + row.Day__c + '.');
+        DayWords.use(row.Season__c);
+        row.Day__c.addError(
+          '"' + week.Name + '" has no ' + DayWords.sayWeekday(row.Day__c) + '.'
+        );
       }
     }
 
@@ -147,6 +150,7 @@ public with sharing class SpecialDateTriggerHandler {
           continue;
         }
         CampLabels labels = labelsBySeason.get(row.Season__c);
+        DayWords.use(row.Season__c);
         String onDay = SpecialDates.onDay(
           row.Day__c,
           weeks.get(row.Week__c)?.Name

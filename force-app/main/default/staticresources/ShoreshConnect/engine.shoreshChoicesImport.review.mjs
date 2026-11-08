@@ -8,11 +8,11 @@
  * them apart, everything not read is listed); the cards are Greg's approved mock-ups
  * (design-research/electives-r1, import-read and import-names; decisions 48 and 53).
  */
-import { SHORT_DAYS } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { foldName, holdsNoDivision } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { CHOICE_KINDS, sheetLayout } from "./engine.shoreshChoicesReader.shoreshChoicesReader.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { rememberedNote } from "./engine.shoreshRemembered.shoreshRemembered.mjs";
+import { numberedWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 
 const { RANKED, UNORDERED } = CHOICE_KINDS;
 
@@ -32,6 +32,16 @@ const SPOKEN = [
   "Ninth",
   "Tenth"
 ];
+const SHORT_DAYS = {
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
+};
+
 /** "1st", "2nd", "3rd", "4th" ... "11th", "12th", "21st". */
 export function ordinal(n) {
   if (n >= 1 && n <= 3) return ORDINALS[n - 1];
@@ -47,7 +57,8 @@ function spokenRank(n) {
     : `Choice ${n}`;
 }
 
-const shortDay = (day) => (day && SHORT_DAYS[day]) || day || "";
+const shortDay = (day) =>
+  numberedWeekday(day) || (day && SHORT_DAYS[day]) || day || "";
 
 /** "Tue · Period 2", "Period 2", "Tuesday", or "" for a choice for the whole week. */
 export function whenOf(choice) {
@@ -293,7 +304,7 @@ export function proposalFor(name, activities) {
 /**
  * Answers the camp gave before for names on this sheet (ImportAnswers): "same|Pottery" or
  * "leave". Shown as already answered, marked with who gave it and when ("Remembered from your
- * answer on 3 Jul"), and still changeable: never applied
+ * answer on Jul 3"), and still changeable: never applied
  * without being seen.
  */
 export function rememberedAnswers(newNames, answers, activities) {

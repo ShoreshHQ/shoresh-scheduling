@@ -4,6 +4,7 @@
  * but not set up.
  */
 import { article } from "c/shoreshTerms";
+import { spokenWeekday } from "c/shoreshDayNames";
 import { FIELD } from "c/shoreshSchema";
 import { availabilityKey } from "./availability";
 import { broughtBack } from "./deleted";
@@ -296,6 +297,8 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
     open: extra.open || [],
     ...(extra.fileData ? { fileData: extra.fileData } : {}),
     ...answersToKeep(proposal, extra.answers || {}),
+    // WEEK-2.6: a file saying its days by number makes a season with nothing in it say them so.
+    numberDays: Boolean(proposal.numberDays),
     // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
     fillWeeks: (proposal.fillWeeks || []).map((w) => ({
       start: w[FIELD.Week.StartDate],
@@ -559,7 +562,7 @@ export function unplacedLines(proposal, t) {
     const entry = groups.get(key);
     entry.count++;
     if (entry.where.length < 3) {
-      entry.where.push(`${p.group}, ${p.day}, ${p.block}`);
+      entry.where.push(`${p.group}, ${spokenWeekday(p.day)}, ${p.block}`);
     }
   }
   return [...groups.values()]

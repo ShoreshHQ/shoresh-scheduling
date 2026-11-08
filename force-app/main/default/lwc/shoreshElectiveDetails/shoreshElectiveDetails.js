@@ -10,6 +10,7 @@ import {
   realDivisionsOf
 } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
+import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 import { electivesOf, offeringNames, openCount } from "./offerings";
 
 export { electivesOf, offeringNames, openCount };
@@ -517,8 +518,8 @@ export default class ShoreshElectiveDetails extends LightningElement {
         : null,
       days: weekDays.map((day) => ({
         key: `${key}-${day}`,
-        short: SHORT_DAYS[day],
-        label: day
+        short: numberedWeekday(day) || SHORT_DAYS[day],
+        label: spokenWeekday(day)
       })),
       rows,
       hasRows: rows.length > 0,
@@ -610,6 +611,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
     const clock = block
       ? clockOf(block.block[BLOCK.StartTime]) || block.block.Name
       : "";
+    // A saved name, and numbers aren't fixed: the weekday, as an import names one.
     return `${activity} · ${SHORT_DAYS[firstPeriod.weekday]} ${clock}`.trim();
   }
 

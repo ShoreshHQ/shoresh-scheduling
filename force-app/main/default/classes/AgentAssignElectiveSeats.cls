@@ -39,19 +39,19 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       }
       AgentElectives.Run run = AgentElectives.committed(asked);
       ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
-      Id campId = [
-        SELECT Season__r.Camp__c
+      ElectiveSet__c electiveSet = [
+        SELECT Season__c, Season__r.Camp__c
         FROM ElectiveSet__c
         WHERE Id = :view.run.setId
         WITH USER_MODE
-      ]
-      .Season__r.Camp__c;
+      ];
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
           new Map<String, Object>{
             'view' => view,
-            'labels' => CampLabels.forCamp(campId).all()
+            'labels' => CampLabels.forCamp(electiveSet.Season__r.Camp__c).all(),
+            'dayNaming' => DayWords.namingOf(electiveSet.Season__c)
           },
           true
         )

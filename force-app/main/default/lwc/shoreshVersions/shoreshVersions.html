@@ -58,6 +58,7 @@
                         day="numeric"
                         hour="numeric"
                         minute="2-digit"
+                        time-zone={timeZone}
                         data-id="saved-at"
                       ></lightning-formatted-date-time>
                     </template>
@@ -105,6 +106,19 @@
             </div>
           </template>
         </div>
+        <template lwc:if={applyLabel}>
+          <div class="panel-foot">
+            <button
+              type="button"
+              class="link"
+              disabled={busy}
+              onclick={handleApply}
+              data-id="apply-weeks"
+            >
+              {applyLabel}
+            </button>
+          </div>
+        </template>
         <template lwc:if={canSave}>
           <div class="panel-foot" data-id="save-version">
             <input

@@ -5,7 +5,8 @@
  *             and never waits in line for the test org.
  * - `screen`: only screens (LWC bundles) or static resources changed. No Apex test can see
  *             those, so the check deploys to prove the source deploys, and runs no Apex tests.
- *             Except the screens in MIRRORED_SCREENS, whose rules Apex repeats: those are `full`.
+ *             Except the screens in MIRRORED_SCREENS, whose rules Apex repeats, and the shared
+ *             examples in APEX_READ_RESOURCES, which Apex tests read: those are `full`.
  * - `full`:   anything else (Apex, objects, fields, permission sets, CI, scripts, project
  *             config, or any path not listed below): deploy and every Apex test, as on main.
  * When in doubt it says `full`: an unknown path, an empty file list, or a failed `git diff`.
@@ -28,7 +29,7 @@ const NO_ORG_EFFECT = [
 ];
 
 // Metadata no Apex test can read: LWC bundles (their Jest tests live in __tests__, which
-// .forceignore keeps out of the deploy) and static resources (no Apex class reads one).
+// .forceignore keeps out of the deploy) and static resources (but APEX_READ_RESOURCES).
 const SCREEN_ONLY = [
   /^force-app\/main\/default\/lwc\//,
   /^force-app\/main\/default\/staticresources\//
@@ -45,7 +46,17 @@ const MIRRORED_SCREENS = [
   "shoreshCampSetup",
   "shoreshProgram",
   "shoreshErrors"
-].map((name) => new RegExp(`^force-app/main/default/lwc/${name}/`));
+];
+const MIRRORED_PATHS = MIRRORED_SCREENS.map(
+  (name) => new RegExp(`^force-app/main/default/lwc/${name}/`)
+);
+
+// Shared examples both the screens and an Apex test pass (the same list as ci-apex-tests.js's
+// EXAMPLES_READ_BY; a test keeps them so): a change to one runs that Apex test.
+const APEX_READ_RESOURCES = ["ShoreshCellExamples", "ShoreshSeatExamples"];
+const APEX_READ_PATHS = APEX_READ_RESOURCES.map(
+  (name) => new RegExp(`^force-app/main/default/staticresources/${name}[./]`)
+);
 
 function categorize(files) {
   if (files.length === 0) {
@@ -56,7 +67,8 @@ function categorize(files) {
   }
   const other = files.filter(
     (f) =>
-      MIRRORED_SCREENS.some((r) => r.test(f)) ||
+      MIRRORED_PATHS.some((r) => r.test(f)) ||
+      APEX_READ_PATHS.some((r) => r.test(f)) ||
       (!NO_ORG_EFFECT.some((r) => r.test(f)) &&
         !SCREEN_ONLY.some((r) => r.test(f)))
   );
@@ -106,4 +118,4 @@ if (require.main === module) {
   console.log(`reason=${result.reason.replace(/[\r\n]/g, " ")}`);
 }
 
-module.exports = { categorize };
+module.exports = { categorize, MIRRORED_SCREENS, APEX_READ_RESOURCES };

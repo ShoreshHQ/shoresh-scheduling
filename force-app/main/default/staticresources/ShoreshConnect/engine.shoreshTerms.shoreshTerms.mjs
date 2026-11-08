@@ -37,23 +37,22 @@ export function buildTerms(labels) {
   };
 }
 
-export const SHORT_DAYS = Object.freeze({
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun"
-});
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
-/** "a word" or "an word". */
-export function article(word) {
-  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
-}
-
-export function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+/**
+ * A short date, month first, on every screen (CORE-6.10): "2026-07-03" -> "Jul 3", never shifted
+ * by a time zone; a moment in time -> the day it was where the person is. "" when it can't be read.
+ */
+export function shortDate(value) {
+  const day = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(value || ""));
+  if (day) {
+    const name = MONTHS[Number(day[1]) - 1];
+    return name && Number(day[2]) ? `${name} ${Number(day[2])}` : "";
+  }
+  const date = new Date(value || NaN);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**

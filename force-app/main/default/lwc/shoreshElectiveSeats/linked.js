@@ -23,6 +23,7 @@
  */
 
 import { linkedSetPlan } from "c/shoreshElectiveEngine";
+import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 
 const WEEKDAYS = [
   "Sunday",
@@ -202,21 +203,23 @@ export function linkedOf(run) {
 }
 
 function timeWordsOf(time) {
-  return `${weekdayOf(time.day)} ${time.startTime || time.blockName}`;
+  return `${spokenWeekday(weekdayOf(time.day))} ${time.startTime || time.blockName}`;
 }
 
 /** "Thu 12:30": a period this run doesn't have, as findings say it. */
 function missingName(run, period) {
   const block = run.times.find((t) => t.blockId === period.blockId);
   const when = block ? block.startTime || block.blockName : "";
-  return `${String(period.weekday).slice(0, 3)} ${when}`.trim();
+  const day =
+    numberedWeekday(period.weekday) || String(period.weekday).slice(0, 3);
+  return `${day} ${when}`.trim();
 }
 
 /** "at Thursday 12:30 for Seniors": a period by its weekday and its block's start or name. */
 function missingWhere(run, period, division) {
   const block = run.times.find((t) => t.blockId === period.blockId);
   const when = block ? block.startTime || block.blockName : "that period";
-  return `at ${period.weekday} ${when}${division ? ` for ${division}` : ""}`;
+  return `at ${spokenWeekday(period.weekday)} ${when}${division ? ` for ${division}` : ""}`;
 }
 
 /**

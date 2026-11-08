@@ -19,7 +19,6 @@
  *   adds is linked across them (a linked choice per choice and day), unless the groups holding it
  *   that day hold it across different periods, which is said instead.
  */
-import { SHORT_DAYS } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { notedKindByWords } from "./engine.shoreshImportEngine.classify.mjs";
 import { deletedAs } from "./engine.shoreshImportEngine.deleted.mjs";
@@ -38,6 +37,16 @@ const MAX_WORDS = 4;
 // Passing time between two periods (ADR 0006 choice 2: a row of ten minutes or less is not a
 // block), so 9:45 then 9:50 is still back to back; lunch or anything else between is not.
 const PASSING_MINUTES = 10;
+const SHORT_DAYS = {
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
+};
+
 function byText(a, b) {
   return a.localeCompare(b);
 }

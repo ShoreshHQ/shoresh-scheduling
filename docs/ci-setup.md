@@ -27,11 +27,11 @@ A full check takes about 20 minutes, and every pull request waits for the one be
 first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
 the files the pull request changes and picks one of three:
 
-| Category | What changed                                                                                                                                          | What the org check does                                            |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings                                                    | Passes at once. Doesn't wait in line for the test org or touch it. |
-| `screen` | Only screens (`force-app/main/default/lwc/`, except those Apex repeats: `MIRRORED_SCREENS` in the script) and static resources, plus any `docs` files | Deploys to the test org (proves it deploys); no Apex tests.        |
-| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/`                                      | Deploys and runs the Apex tests the change can affect (below).     |
+| Category | What changed                                                                                                                                                                                                             | What the org check does                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings                                                                                                                       | Passes at once. Doesn't wait in line for the test org or touch it. |
+| `screen` | Only screens (`force-app/main/default/lwc/`, except those Apex repeats: `MIRRORED_SCREENS` in the script) and static resources (except shared examples an Apex test reads: `APEX_READ_RESOURCES`), plus any `docs` files | Deploys to the test org (proves it deploys); no Apex tests.        |
+| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/`                                                                                                         | Deploys and runs the Apex tests the change can affect (below).     |
 
 When in doubt it picks `full`: a path not in the first two rows, a failure to list the
 changed files, or the quick check itself failing runs everything. It uses the rules as they are
@@ -44,7 +44,10 @@ in every category; its log and summary say which category it chose and why.
 The deploy is always whole, so every class still compiles. But a pull request runs only the
 Apex test classes its change can reach (`scripts/ci-apex-tests.js`, also the base branch's
 copy): a test class runs if it names a changed class, or names a class that names one, and so on.
-A change to a screen Apex repeats counts as a change to the Apex class that repeats it. A pull
+A change to a screen Apex repeats counts as a change to the Apex class that repeats it. A change
+to shared examples (`ShoreshCellExamples`, `ShoreshSeatExamples`) runs the Apex test that reads
+them (`EXAMPLES_READ_BY`), never every class; a test keeps that list to every Apex class that
+queries a static resource by name (`FROM StaticResource WHERE Name = '…'`), the way both read them. A pull
 request that touches only electives runs a handful of classes in a few minutes; one that changes
 nothing any test reaches runs none.
 

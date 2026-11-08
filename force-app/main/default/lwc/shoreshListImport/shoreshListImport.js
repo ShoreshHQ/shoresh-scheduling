@@ -970,10 +970,6 @@ export default class ShoreshListImport extends LightningElement {
     return this.cards.filter((c) => !c.answered).map((c) => c.id);
   }
 
-  get askedCount() {
-    return this.rowsWith("asked").length;
-  }
-
   /** Every difference not yet answered, across the whole file. */
   get changeAll() {
     return this.proposals
@@ -1098,16 +1094,9 @@ export default class ShoreshListImport extends LightningElement {
       Object.keys(counts || {})
         .sort()
         .forEach((term) => {
-          const n = counts[term];
-          const own = OWN_WORDS[term] && OWN_WORDS[term](t);
-          const word = own
-            ? own[n === 1 ? 0 : 1]
-            : n === 1
-              ? t.sIn(term)
-              : t.pIn(term);
           lines.push({
             key: `${verb}-${term}`,
-            text: `${verb} ${n} ${word}`
+            text: `${verb} ${this.counted(counts[term], term)}`
           });
         });
     };
@@ -1147,13 +1136,29 @@ export default class ShoreshListImport extends LightningElement {
     }
   }
 
-  /** "Remove 5 · put back 2": what Undo does, in counts. */
+  /** "1 special day", "2 activities": a count in the camp's words. */
+  counted(n, term) {
+    const t = this.terms;
+    const own = OWN_WORDS[term] && OWN_WORDS[term](t);
+    const word = own
+      ? own[n === 1 ? 0 : 1]
+      : n === 1
+        ? t.sIn(term)
+        : t.pIn(term);
+    return `${n} ${word}`;
+  }
+
+  /** "Remove 1 special day and 1 special event · put back 2 activities": what Undo does. */
   get undoCounts() {
-    const total = (counts) =>
-      Object.values(counts || {}).reduce((sum, n) => sum + n, 0);
+    const said = (counts) =>
+      Object.keys(counts || {})
+        .sort()
+        .filter((term) => counts[term])
+        .map((term) => this.counted(counts[term], term))
+        .join(" and ");
     const parts = [];
-    const added = total(this.result && this.result.added);
-    const changed = total(this.result && this.result.changed);
+    const added = said(this.result && this.result.added);
+    const changed = said(this.result && this.result.changed);
     if (added) {
       parts.push(`Remove ${added}`);
     }

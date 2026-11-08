@@ -1,3 +1,4 @@
+import { setDayNaming } from "c/shoreshDayNames";
 import { createElement } from "lwc";
 import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
@@ -175,6 +176,22 @@ describe("c-shoresh-activity-details", () => {
       "Who can do it: everyone"
     );
     expect(q(element, '[data-field="earlyDay"]').value).toBe("Tuesday");
+  });
+
+  // WEEK-1.7: as the check line says it; what is stored stays the weekday.
+  it("offers the early-week day by number, in the week's order, in a numbered season", async () => {
+    setDayNaming({ numbered: true, firstDay: 7 });
+    const element = await render();
+    await element.open("a2");
+    await flush();
+    const day = q(element, '[data-field="earlyDay"]');
+    setDayNaming(null);
+    expect(day.options.slice(0, 3)).toEqual([
+      { label: "No day", value: "" },
+      { label: "Day 1", value: "Sunday" },
+      { label: "Day 2", value: "Monday" }
+    ]);
+    expect(day.value).toBe("Tuesday");
   });
 
   it("Close hides the details and says which activity they were for", async () => {

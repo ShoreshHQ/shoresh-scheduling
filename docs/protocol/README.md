@@ -54,8 +54,8 @@ The existing sub-protocol documents keep their own numbers, read with a prefix:
 | `docs/import/files.md`               | rules 1-6         | `INGEST-1.n` |
 | `docs/import/classification.md`      | rules 1-10        | `INGEST-3.n` |
 | `docs/import/names-and-divisions.md` | rules 1-8         | `INGEST-2.n` |
-| `docs/import/weeks.md`               | rules 1-9         | `INGEST-4.n` |
-| `docs/import/review.md`              | rules 1-8         | `INGEST-5.n` |
+| `docs/import/weeks.md`               | rules 1-18        | `INGEST-4.n` |
+| `docs/import/review.md`              | rules 1-11        | `INGEST-5.n` |
 | `docs/protocol/div.md`               | DIV-layer.n       | as written   |
 | `docs/protocol/prog.md`              | PROG-layer.n      | as written   |
 | `docs/protocol/week.md`              | WEEK-layer.n      | as written   |
@@ -95,5 +95,7 @@ The Test column is checked too: every Apex method (after its class, `GeneratedLo
 aBuildThatChangesALockedCellIsRefused` or `GeneratedLocksTest.aBuild...`), quoted Jest title (up
 to any "…") and test file it names must exist, so a renamed or deleted test fails the check.
 
-`scripts/__tests__/protocol-index.test.js` pins the number of ENCODED statements as a floor: it
-may only go up. When a change adds citations, raise the floor in that test.
+`scripts/__tests__/protocol-index.test.js` names every statement that is not ENCODED, so a statement
+that loses its only test fails the check even if another gains one. A new statement needs its test,
+or a line in that list. It also pins the number of ENCODED statements as a floor that may only go
+up, so a statement deleted outright is seen; raise the floor when a change adds citations.

@@ -316,6 +316,8 @@ async function importFile(capability, given, { read, send, answer, load }) {
   }
   const m = await load();
   const setup = body.setup;
+  // WEEK-2.6: a list's "Day 3" counts from this season's first day, whatever was read before.
+  m.nameDaysFor(setup);
   const t = m.buildTerms(setup.labels || []);
   const screenKey = input.list;
   const screens = [...m.LIST_SCREENS, "electives", "specialEvents"];

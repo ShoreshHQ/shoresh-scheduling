@@ -1,3 +1,4 @@
+import { setDayNaming } from "c/shoreshDayNames";
 import { checkWeek } from "../checks";
 import { buildTerms } from "c/shoreshTerms";
 import { dayName, weekOf } from "./data/checkWeeks";
@@ -438,6 +439,24 @@ describe("checks: still to place and the counters", () => {
       { activityId: "hike", groupId: "g1", missing: 1 },
       { activityId: "hike", groupId: "g2", missing: 2 }
     ]);
+  });
+
+  // WEEK-1.7
+  it("spread across the week says the number, and its data keeps the weekday", () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    const early = { count: 2, byDay: 3 };
+    const days = weekOf(
+      { [MON]: [["A:swim"], [""]], [THU]: [[""], [""]] },
+      { width: 1 }
+    );
+    const result = checkWeek(days, model([activity("swim", { early })]), words);
+    setDayNaming(null);
+    expect(result.spread).toEqual([
+      "Swim · Bunk 1: 1 still needed by Day 3",
+      "Swim · Bunk 2: 2 still needed by Day 3"
+    ]);
+    // What Accept compares stays the same whichever way the season says its days.
+    expect(result.spreadBy[0].byDay).toBe("Wednesday");
   });
 
   it("spread across the week as data: entry i is line i", () => {

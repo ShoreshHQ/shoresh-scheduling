@@ -40,6 +40,7 @@ public with sharing class SeasonSetupReader {
         EndDate__c,
         Status__c,
         ShrinkShortWeek__c,
+        NumberedDays__c,
         CopiedFrom__c,
         CopiedFrom__r.Name
       FROM Season__c
@@ -51,6 +52,12 @@ public with sharing class SeasonSetupReader {
     }
     SeasonSetup result = new SeasonSetup();
     result.season = seasons[0];
+    // Its camp's time zone, so every time a screen says is on the camp's clock (CORE-6.11): read
+    // in system mode (CampClock) and handed on with the season, as its camp.
+    result.season.Camp__r = new Camp__c(
+      Id = seasons[0].Camp__c,
+      TimeZone__c = CampClock.zoneOfSeason(seasonId)
+    );
     result.weeks = [
       SELECT Id, Name, StartDate__c, EndDate__c, SortOrder__c
       FROM Week__c

@@ -3,7 +3,6 @@
  * answers always show the same screen. history.js makes them one running list.
  */
 
-import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { holdsNoDivision } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import {
   AUTO_ANSWER,
@@ -12,16 +11,8 @@ import {
   inOrder,
   joinNames
 } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
+import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { describe } from "./engine.shoreshLearned.kinds.mjs";
-
-const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
-
-/** "2026-07-03" -> "3 Jul" (desktop shortDate). */
-export function shortDate(iso) {
-  const [, month, day] = String(iso || "").split("-");
-  const name = MONTHS[Number(month) - 1];
-  return name && Number(day) ? `${Number(day)} ${name}` : "";
-}
 
 function whoLine(row, group) {
   const who = row.byYou ? "you" : row.byName || "a former user";
@@ -145,6 +136,14 @@ const MISSING_TEXT = {
 };
 const SUGGEST_AGAIN_ANSWERS = 2;
 const PATTERN_FORGOTTEN = "It won't be suggested again. Its answers stay.";
+
+function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function article(word) {
+  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+}
 
 /** What a pattern's answers say, in the words the answers' own rows use (kinds.js). */
 function verdictWords(template, verdict, t) {

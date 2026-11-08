@@ -7,7 +7,8 @@
  * A changed class counts, and so does every class that names it, and every class that names
  * those, and so on (Apex ignores case, so names are compared in lower case). The test classes
  * among them are the ones to run. A screen Apex repeats (MIRRORED_SCREENS) counts as a change to
- * its Apex class. Files that cannot affect Apex (docs, other screens, static resources) are
+ * its Apex class, and shared examples an Apex test reads (EXAMPLES_READ_BY) count as a change to
+ * that test. Files that cannot affect Apex (docs, other screens, other static resources) are
  * ignored.
  * It says `all` whenever in doubt: a test data builder (*TestData), a trigger, an object or
  * field, a permission set, project or CI files, any other path, an empty file list, or more than
@@ -38,12 +39,20 @@ const NO_APEX_EFFECT = [
   /^force-app\/main\/default\/staticresources\//
 ];
 
-// The Apex class that repeats each screen's rules (the same list as ci-pr-category.js).
+// The Apex class that repeats each screen's rules (ci-pr-category.js lists the same screens; a test keeps them so).
 const MIRRORED_SCREENS = {
   shoreshWeekEditor: "AgentCell",
   shoreshCampSetup: "AgentSetupNewRow",
   shoreshProgram: "AgentSetupNewRow",
   shoreshErrors: "AgentVersions"
+};
+
+// The Apex tests that read each shared-examples static resource: a change to the examples runs
+// them (ci-pr-category.js lists the same resources; a test keeps them so, and keeps this list to
+// every class that queries a static resource by name).
+const EXAMPLES_READ_BY = {
+  ShoreshCellExamples: ["CellExamplesTest"],
+  ShoreshSeatExamples: ["ElectiveSeatExamplesTest"]
 };
 
 /** Apex source without comments or strings, so a name in either does not count as a use. */
@@ -54,7 +63,11 @@ function code(source) {
     .replace(/'(?:\\.|[^'\\])*'/g, "''");
 }
 
-/** As scripts/run-apex-tests.mjs: an @IsTest after the class is declared, or a testMethod. */
+/**
+ * Whether a class has test methods: an @IsTest annotation (with or without arguments, before or
+ * after other annotations) after the class is declared, or a testMethod. A class marked @IsTest
+ * with no test methods (test data helpers) has nothing to run. scripts/run-apex-tests.mjs uses this.
+ */
 function hasTestMethods(source) {
   const c = code(source);
   const declared = c.search(/\bclass\b/i);
@@ -113,6 +126,12 @@ function select(files, classes) {
     const screen = /^force-app\/main\/default\/lwc\/(\w+)\//.exec(file);
     if (screen && MIRRORED_SCREENS[screen[1]]) {
       changed.push(MIRRORED_SCREENS[screen[1]]);
+      continue;
+    }
+    const resource =
+      /^force-app\/main\/default\/staticresources\/(\w+)[./]/.exec(file);
+    if (resource && EXAMPLES_READ_BY[resource[1]]) {
+      changed.push(...EXAMPLES_READ_BY[resource[1]]);
       continue;
     }
     if (NO_APEX_EFFECT.some((r) => r.test(file))) continue;
@@ -183,4 +202,10 @@ if (require.main === module) {
   console.log(`apex_reason=${result.reason.replace(/[\r\n]/g, " ")}`);
 }
 
-module.exports = { select, affectedTests, hasTestMethods };
+module.exports = {
+  select,
+  affectedTests,
+  hasTestMethods,
+  MIRRORED_SCREENS,
+  EXAMPLES_READ_BY
+};

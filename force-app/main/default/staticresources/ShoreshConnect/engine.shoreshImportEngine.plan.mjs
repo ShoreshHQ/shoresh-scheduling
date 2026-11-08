@@ -3,7 +3,7 @@
  * show: what was found, what is new, what changes, what is left out and why, and what is noted
  * but not set up.
  */
-import { article } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { availabilityKey } from "./engine.shoreshImportEngine.availability.mjs";
 import { broughtBack } from "./engine.shoreshImportEngine.deleted.mjs";
@@ -14,6 +14,10 @@ import { dayList, nameList } from "./engine.shoreshImportEngine.questions.mjs";
 /** The highest place in order among records, by the records' own sort-order field. */
 function maxSort(records, sortOrder) {
   return Math.max(0, ...(records || []).map((r) => r[sortOrder] || 0));
+}
+
+function article(word) {
+  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
 }
 
 function partOfDay(minutes) {
@@ -296,6 +300,8 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
     open: extra.open || [],
     ...(extra.fileData ? { fileData: extra.fileData } : {}),
     ...answersToKeep(proposal, extra.answers || {}),
+    // WEEK-2.6: a file saying its days by number makes a season with nothing in it say them so.
+    numberDays: Boolean(proposal.numberDays),
     // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
     fillWeeks: (proposal.fillWeeks || []).map((w) => ({
       start: w[FIELD.Week.StartDate],
@@ -559,7 +565,7 @@ export function unplacedLines(proposal, t) {
     const entry = groups.get(key);
     entry.count++;
     if (entry.where.length < 3) {
-      entry.where.push(`${p.group}, ${p.day}, ${p.block}`);
+      entry.where.push(`${p.group}, ${spokenWeekday(p.day)}, ${p.block}`);
     }
   }
   return [...groups.values()]

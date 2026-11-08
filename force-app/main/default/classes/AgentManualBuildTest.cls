@@ -123,6 +123,43 @@ private class AgentManualBuildTest {
   }
 
   // API-1.42
+  // API-1.124: an AI puts an elective set on a cell by name, as the drawer does: the screen's own
+  // save, read back as that set; a name an activity also has is refused, never guessed.
+  @IsTest
+  static void anElectiveSetGoesOnACellAsTheDrawerPutsIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id seasonId = GeneratedTestData.ids.get('Season');
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = seasonId,
+        Name = 'Chugim'
+      );
+      ElectiveSet__c sameName = new ElectiveSet__c(
+        Season__c = seasonId,
+        Name = 'Soccer'
+      );
+      Database.insert(
+        new List<ElectiveSet__c>{ chugim, sameName },
+        AccessLevel.USER_MODE
+      );
+      Id draftId = manualDraft();
+      Test.startTest();
+      List<Object> both = post('cell', cell('Open', 'Soccer'));
+      List<Object> done = post('cell', cell('Open', 'Chugim'));
+      Test.stopTest();
+      Assert.areEqual(400, both[0], String.valueOf(both[1]));
+      Assert.isTrue(
+        String.valueOf(both[1]).contains('both an activity and an elective set')
+      );
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.areEqual('Placed Chugim · ' + WHERE_A + '.', done[1]);
+      ScheduleGrid grid = ScheduleDays.read(draftId)[0].grid;
+      ScheduleGrid.Item placed = grid.items[grid.items.size() - 1];
+      Assert.areEqual('E', placed.kind);
+      Assert.areEqual(String.valueOf(chugim.Id), placed.id);
+    }
+  }
+
   @IsTest
   static void aManualCellChangeIsManualBuildsSaveAndIsUndone() {
     System.runAs(ShoreshTestData.scheduler()) {
