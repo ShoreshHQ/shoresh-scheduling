@@ -2,7 +2,7 @@
 
 /* A rail menu: the item, and its dropdown under it (ADR 0008 part 7). */
 :host {
-  position: relative;
+  position: var(--shoresh-pop-host, relative);
   display: inline-flex;
   flex: none;
 }
@@ -12,13 +12,15 @@
   transform: translateY(-3px);
 }
 
+/* The week editor's rail sets these on a phone, to open its menus across the rail. */
 .pop {
-  left: 0;
+  left: var(--shoresh-pop-left, 0);
+  right: var(--shoresh-pop-right, auto);
 }
 
 .pop_right {
-  left: auto;
-  right: 0;
+  left: var(--shoresh-pop-left, auto);
+  right: var(--shoresh-pop-right, 0);
 }
 
 .pop[hidden] {

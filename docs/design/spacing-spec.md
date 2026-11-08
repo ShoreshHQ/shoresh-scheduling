@@ -22,6 +22,8 @@ How it's built, with no measuring script: the rail is three parts, Left | Centre
 | Centre | Days, centred on the cells |
 | Right | Counter · Versions · Publish (Publish at the right edge, 12 in) |
 
+When the three parts don't fit on one line (the rail sits beside the menu, so that depends on what the camp's week holds, not only the window), they wrap in this order, and nothing is cut off. On a phone, the rail's menus open across the rail, under it.
+
 Views sit beside the days, not inside the centred group. Measured reason: with Views + Days centred on the cells (about 500 wide), the right part is only about 296 wide, which cannot hold the counter, Versions and Publish (about 345). Centring the days alone gives the right part about 416 and nothing collides. Views still read as one unit with the days because only the normal 8 | 8 group line separates them.
 
 ### Arrangement A: even gaps
