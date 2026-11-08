@@ -95,5 +95,7 @@ The Test column is checked too: every Apex method (after its class, `GeneratedLo
 aBuildThatChangesALockedCellIsRefused` or `GeneratedLocksTest.aBuild...`), quoted Jest title (up
 to any "…") and test file it names must exist, so a renamed or deleted test fails the check.
 
-`scripts/__tests__/protocol-index.test.js` pins the number of ENCODED statements as a floor: it
-may only go up. When a change adds citations, raise the floor in that test.
+`scripts/__tests__/protocol-index.test.js` names every statement that is not ENCODED, so a statement
+that loses its only test fails the check even if another gains one. A new statement needs its test,
+or a line in that list. It also pins the number of ENCODED statements as a floor that may only go
+up, so a statement deleted outright is seen; raise the floor when a change adds citations.
