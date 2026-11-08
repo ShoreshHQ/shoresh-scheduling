@@ -42,6 +42,11 @@ describe("scheduleOptions", () => {
 
   it("offers nothing before there is a setup and a week", () => {
     expect(scheduleOptions(null, "w1")).toEqual([]);
-    expect(scheduleOptions({ schedules: [] }, null)).toEqual([]);
+    expect(
+      scheduleOptions(
+        { schedules: [schedule("s1", "Manual", "Draft", undefined)] },
+        null
+      )
+    ).toEqual([]);
   });
 });
