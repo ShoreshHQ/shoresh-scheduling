@@ -14,6 +14,11 @@ import ShoreshElectiveDetails, {
   withPending
 } from "c/shoreshElectiveDetails";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
+import {
+  linkedChoicesForAgent,
+  notesForAgent,
+  proposedForAgent
+} from "../linkedChoices";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 
@@ -593,6 +598,130 @@ describe("c-shoresh-elective-details", () => {
       "Chugim isn't here on any schedule now"
     ]);
     await expect(element).toBeAccessible();
+  });
+
+  // API-1.131
+  it("anAgentReadsWhatTheEditorMarks: the same words, on the same periods", async () => {
+    const linked = SETUP.electives.linkedChoices;
+    const setup = withChoices([
+      linked[0],
+      {
+        Id: "lc3",
+        Name: "Pottery double",
+        ElectiveSet__c: "es1",
+        Offering__c: "o1",
+        AppliesTo__c: "OnlyThese",
+        Times__r: [
+          { Id: "y1", Weekday__c: "Tuesday", TimeBlock__c: "t1" },
+          { Id: "y2", Weekday__c: "Wednesday", TimeBlock__c: "t1" }
+        ],
+        Coverages__r: [{ Id: "c3", Division__c: "d1" }]
+      }
+    ]);
+    const element = await opened("o1", setup);
+    const read = {
+      elective_set: "Chugim",
+      set_id: "es1",
+      setup: nsRecord(setup),
+      labels: [],
+      places: PLACES
+    };
+    const said = linkedChoicesForAgent(read);
+    const looksOn = (place) =>
+      [...choiceAt(element, place).querySelectorAll('[data-id="period-look"]')]
+        .map((l) => l.label)
+        .sort();
+    const notesOf = (choice) =>
+      choice.periods
+        .map((p) => p.note)
+        .filter(Boolean)
+        .sort();
+    expect(said.linked_choices.map(notesOf)).toEqual([looksOn(0), looksOn(1)]);
+    expect(said.linked_choices[0].notes).toEqual([
+      choiceAt(element, 0).querySelector('[data-id="name-look"]').label
+    ]);
+    expect(said.linked_choices[1]).toMatchObject({
+      name: "Pottery double",
+      activity: "Pottery",
+      applies_to: "Only these",
+      divisions: ["Inters"]
+    });
+    expect(said.where_it_sits).toContainEqual({
+      day: "Thursday",
+      time: "Period 5",
+      divisions: ["Seniors"]
+    });
+    // Only one activity's; none for another's; one not offered is said.
+    expect(
+      linkedChoicesForAgent(read, { activity: "archery" }).linked_choices
+    ).toEqual([]);
+    expect(linkedChoicesForAgent(read, { activity: "Potery" }).error).toBe(
+      'Chugim doesn\'t offer "Potery". It offers: Pottery, Archery.'
+    );
+    // In the order the week runs; the editor shows no divisions while it applies to All.
+    expect(said.where_it_sits.map((p) => p.day)).toEqual([
+      "Tuesday",
+      "Tuesday",
+      "Thursday",
+      "Thursday"
+    ]);
+    expect(
+      linkedChoicesForAgent({
+        ...read,
+        setup: nsRecord(
+          withChoices([
+            {
+              ...linked[1],
+              AppliesTo__c: "All",
+              Coverages__r: [{ Id: "c1", Division__c: "d2" }]
+            }
+          ])
+        )
+      }).linked_choices[0].divisions
+    ).toEqual([]);
+    // Two of one name: which is which can't be told, so only that is said after a save.
+    expect(
+      notesForAgent(read, { name: "Pottery double", activity: "Pottery" })
+    ).toEqual([
+      "Another linked choice in Chugim is called this, so a sheet can't tell them apart."
+    ]);
+    // One of that name: an answer ends with the marks on its periods.
+    const renamed = {
+      ...read,
+      setup: nsRecord(
+        withChoices([
+          linked[0],
+          { ...setup.electives.linkedChoices[1], Name: "Other" }
+        ])
+      )
+    };
+    expect(notesForAgent(renamed, { name: "Other" })).toContain(
+      'Tuesday Period 3: Also in "Pottery double", so neither is placed as a set; their periods are filled one at a time.'
+    );
+    expect(
+      linkedChoicesForAgent({ ...read, places: { complete: false, cells: [] } })
+        .note
+    ).toBe(
+      "Not every schedule could be read, so some places Chugim sits may be missing."
+    );
+  });
+
+  // API-1.132
+  it("anAgentsNameIsTheEditorsProposal: the activity's, then the activity and its first period", () => {
+    const read = (setup) => ({
+      elective_set: "Chugim",
+      set_id: "es1",
+      setup: nsRecord(setup),
+      labels: [],
+      places: PLACES
+    });
+    const period = { day: "tuesday", time: "Period 3" };
+    expect(proposedForAgent(read(SETUP), { activity: "Archery", period })).toBe(
+      "Archery"
+    );
+    expect(proposedForAgent(read(SETUP), { activity: "pottery", period })).toBe(
+      "Pottery · Tue 12:30"
+    );
   });
 
   it("two offerings' linked choices sharing a period are not marked: each has its own seats (slice E9)", async () => {

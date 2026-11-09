@@ -1,31 +1,30 @@
 import { SHORT_DAYS } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
-import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
+import { FIELD } from "c/shoreshSchema";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
-import {
-  WEEKDAYS,
-  foldName,
-  programDays,
-  weekOrder,
-  realDivisionsOf
-} from "c/shoreshImportEngine";
+import { WEEKDAYS, programDays, weekOrder } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 import { electivesOf, offeringNames, openCount } from "./offerings";
+import {
+  APPLIES_TO,
+  blocksOf,
+  clockOf,
+  divisionsCovered,
+  divisionsOf,
+  periodKey,
+  periodLook,
+  placeMapOf,
+  proposedName,
+  sameNameLook,
+  savedChoicesOf
+} from "./linkedChoices";
 
-export { electivesOf, offeringNames, openCount };
+export { divisionsCovered, divisionsOf, electivesOf, offeringNames, openCount };
 
 const OFFER = FIELD.Offering;
 const CHOICE = FIELD.LinkedChoice;
-const TIME = FIELD.LinkedChoiceTime;
-const COVERS = FIELD.Coverage;
 const BLOCK = FIELD.TimeBlock;
-// "Applies to", in the desktop's words (BundleEditor.jsx: All, Only these, All except).
-const APPLIES_TO = [
-  { value: "All", label: "All" },
-  { value: "OnlyThese", label: "Only these" },
-  { value: "AllExcept", label: "All except" }
-];
 const DRAFT = "draft";
 
 /**
@@ -53,50 +52,6 @@ export function linkedNames(setup, offeringId) {
   return electivesOf(setup)
     .linkedChoices.filter((choice) => choice[CHOICE.Offering] === offeringId)
     .map((choice) => choice.Name);
-}
-
-/** Every time block of the season, by Id, with its program's place (for ordering). */
-function blocksOf(setup) {
-  const blocks = new Map();
-  ((setup && setup.programs) || []).forEach((entry, programAt) => {
-    (entry.timeBlocks || []).forEach((block, at) => {
-      blocks.set(block.Id, { block, order: programAt * 1000 + at });
-    });
-  });
-  return blocks;
-}
-
-/** Every division of the season, in the season's order: [{ id, name }]. */
-export function divisionsOf(setup) {
-  const result = [];
-  ((setup && setup.programs) || []).forEach((entry) => {
-    // DIV-1.1: a holding record is no division.
-    realDivisionsOf(entry).forEach((d) =>
-      result.push({ id: d.division.Id, name: d.division.Name })
-    );
-  });
-  return result;
-}
-
-/** "12:30" from a time block's start (milliseconds after midnight). */
-function clockOf(value) {
-  if (typeof value !== "number") {
-    return "";
-  }
-  const minutes = Math.round(value / 60000);
-  const hours = Math.floor(minutes / 60) % 24;
-  const hour = hours % 12 || 12;
-  return `${hour}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
-const periodKey = (weekday, blockId) => `${weekday}|${blockId}`;
-
-/** The divisions a linked choice is for, among those given (desktop bundleOverlap.js resolveScope). */
-export function divisionsCovered(appliesTo, named, present) {
-  const chosen = new Set(named || []);
-  if (appliesTo === "OnlyThese") return present.filter((d) => chosen.has(d));
-  if (appliesTo === "AllExcept") return present.filter((d) => !chosen.has(d));
-  return [...present];
 }
 
 /**
@@ -319,21 +274,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
 
   /** The set's linked choices as saved: { id, name, offeringId, appliesTo, periods, divisionIds }. */
   get savedChoices() {
-    const setId = this.setId;
-    return electivesOf(this._setup)
-      .linkedChoices.filter((c) => !setId || c[CHOICE.ElectiveSet] === setId)
-      .map((c) => ({
-        id: c.Id,
-        name: c.Name,
-        offeringId: c[CHOICE.Offering],
-        appliesTo: c[CHOICE.AppliesTo] || "All",
-        periods: childRows(c, CHILDREN.LinkedChoice.Times).map((t) =>
-          periodKey(t[TIME.Weekday], t[TIME.TimeBlock])
-        ),
-        divisionIds: childRows(c, CHILDREN.LinkedChoice.Coverages).map(
-          (row) => row[COVERS.Division]
-        )
-      }));
+    return savedChoicesOf(this._setup, this.setId);
   }
 
   /** The set's linked choices as shown: saved, with the gestures on their way laid over them. */
@@ -349,11 +290,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
 
   /** Where the set sits: "Tuesday|<block>" -> the division Ids there. */
   get placeMap() {
-    const map = new Map();
-    ((this.places && this.places.cells) || []).forEach((cell) => {
-      map.set(periodKey(cell.weekday, cell.blockId), cell.divisionIds || []);
-    });
-    return map;
+    return placeMapOf(this.places);
   }
 
   get placesRead() {
@@ -444,9 +381,6 @@ export default class ShoreshElectiveDetails extends LightningElement {
             (blocks.get(b).block[BLOCK.StartTime] ?? 0) ||
           blocks.get(a).order - blocks.get(b).order
       );
-    const others = shown.filter(
-      (c) => c.id !== choice.id && c.periods.size > 1
-    );
     const sending = isDraft && this.draft && this.draft.sending;
     // Columns: the days the camp's programs run, and any day the set sits or a period is on,
     // in the order the week runs.
@@ -479,10 +413,14 @@ export default class ShoreshElectiveDetails extends LightningElement {
             label: words,
             look: null
           };
-          if (ticked && this.placesRead && !sits) {
-            cell.look = `${this.setName} isn't here on any schedule now`;
-          } else if (ticked && choice.periods.size > 1) {
-            cell.look = this.sharedWith(choice, k, others, allDivisions);
+          if (ticked) {
+            cell.look = periodLook(choice, k, {
+              shown,
+              placeMap: places,
+              placesRead: this.placesRead,
+              setName: this.setName,
+              allDivisions
+            });
           }
           cell.lookName = cell.look ? `${words}: ${cell.look}` : null;
           return cell;
@@ -492,12 +430,6 @@ export default class ShoreshElectiveDetails extends LightningElement {
     const appliesTo = choice.appliesTo || "All";
     const names = new Map(divisionsOf(this._setup).map((d) => [d.id, d.name]));
     const named = [...choice.divisionIds].filter((id) => names.has(id));
-    const sameName = shown.some(
-      (c) =>
-        c.id !== choice.id &&
-        foldName(c.name) &&
-        foldName(c.name) === foldName(choice.name)
-    );
     return {
       key,
       isDraft,
@@ -513,9 +445,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
         )
           ? `Periods for ${choice.name}: guessed from your file`
           : null,
-      nameLook: sameName
-        ? `Another ${this.term("sIn", "LinkedChoice", "linked choice")} in ${this.setName} is called this, so a sheet can't tell them apart.`
-        : null,
+      nameLook: sameNameLook(choice, shown, {
+        terms: this.terms,
+        setName: this.setName
+      }),
       days: weekDays.map((day) => ({
         key: `${key}-${day}`,
         short: numberedWeekday(day) || SHORT_DAYS[day],
@@ -552,30 +485,6 @@ export default class ShoreshElectiveDetails extends LightningElement {
   }
 
   /**
-   * Another linked choice of the same offering holding this period for a division this one is for
-   * too: neither is placed as a set (the seat engine's known limit, desktop ADR 2026-09-29 D8), so
-   * it is said. Two offerings' linked choices may share a period (slice E9: a double period links
-   * every choice across it): each takes its own offering's seats there.
-   */
-  sharedWith(choice, k, others, allDivisions) {
-    const present = this.placeMap.get(k) || allDivisions;
-    const mine = new Set(
-      divisionsCovered(choice.appliesTo, [...choice.divisionIds], present)
-    );
-    const clash = others.find(
-      (other) =>
-        other.offeringId === choice.offeringId &&
-        other.periods.has(k) &&
-        divisionsCovered(other.appliesTo, [...other.divisionIds], present).some(
-          (d) => mine.has(d)
-        )
-    );
-    return clash
-      ? `Also in "${clash.name}", so neither is placed as a set; their periods are filled one at a time`
-      : null;
-  }
-
-  /**
    * Looks right on periods an import guessed (ADR 0006 choice 21): the page forgets the guess;
    * the cursor goes to the linked choice's first period, and it is said.
    */
@@ -600,19 +509,12 @@ export default class ShoreshElectiveDetails extends LightningElement {
 
   /** The desktop's name for a new linked choice: the activity's, then the activity and a period. */
   proposedName(firstPeriod) {
-    const activity = this.name;
-    const hasOne = this.savedChoices.some(
-      (c) => c.offeringId === this.offeringId
+    return proposedName(
+      this.name,
+      this.savedChoices.some((c) => c.offeringId === this.offeringId),
+      firstPeriod,
+      this._setup
     );
-    if (!hasOne || !firstPeriod) {
-      return activity;
-    }
-    const block = blocksOf(this._setup).get(firstPeriod.blockId);
-    const clock = block
-      ? clockOf(block.block[BLOCK.StartTime]) || block.block.Name
-      : "";
-    // A saved name, and numbers aren't fixed: the weekday, as an import names one.
-    return `${activity} · ${SHORT_DAYS[firstPeriod.weekday]} ${clock}`.trim();
   }
 
   // ---------- gestures ----------

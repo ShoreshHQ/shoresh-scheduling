@@ -9,6 +9,7 @@ const path = require("path");
 const { byName } = require("./capabilities");
 const { Refused, editCells, lockedCells, draftOf } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
+const { readLinkedChoices, saveLinkedChoice } = require("./linked");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
@@ -174,6 +175,7 @@ async function callOnce(
     versionWords = loadVersionWords,
     edits = loadEdits,
     electives = loadElectives,
+    linked = loadLinked,
     imports = loadImports,
     files = loadExports,
     learned = loadLearned,
@@ -226,6 +228,18 @@ async function callOnce(
     return editCells(capability, input, {
       ...at,
       load: () => edits(namespace)
+    });
+  }
+  if (capability.readsLinkedChoices) {
+    return readLinkedChoices(capability, input, {
+      ...at,
+      load: () => linked(namespace)
+    });
+  }
+  if (capability.savesLinkedChoice) {
+    return saveLinkedChoice(capability, input, {
+      ...at,
+      load: () => linked(namespace)
     });
   }
   if (capability.assignsWithEngine) {
@@ -693,6 +707,16 @@ async function loadElectives(namespace) {
     "can't assign elective seats"
   );
   return Object.assign({}, ...modules);
+}
+
+/** The linked choices editor's own module (API-1.131), as scripts/build-connect.js ships it. */
+async function loadLinked(namespace) {
+  const [module] = await loadModules(
+    namespace,
+    ["shoreshElectiveDetails.linkedChoices"],
+    "can't read or change linked choices"
+  );
+  return module;
 }
 
 /**
