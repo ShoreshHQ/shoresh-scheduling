@@ -623,8 +623,7 @@ const CAPABILITIES = [
             "The season's name, exactly as list_seasons gives it. Always say it."
         }
       },
-      // Not required here, as no action's season is (chat.test.js): Shoresh refuses it unnamed.
-      required: [],
+      required: ["season"],
       additionalProperties: false
     }
   },
