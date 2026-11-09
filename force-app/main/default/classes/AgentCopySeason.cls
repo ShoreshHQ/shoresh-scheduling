@@ -167,7 +167,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
       throw new ShoreshException(
         'There is already a season called "' +
           name.left(80) +
-          '". Give the new one another name.'
+          '". Nothing was changed.'
       );
     }
   }

@@ -107,7 +107,7 @@ public with sharing class OutgoingRows {
       );
     }
     return names.isEmpty()
-      ? 'This user can\'t see any season.'
+      ? 'Shoresh has no season this user can see yet.'
       : 'Seasons this user can see: ' + String.join(names, ', ') + '.';
   }
 

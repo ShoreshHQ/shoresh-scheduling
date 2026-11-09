@@ -46,10 +46,12 @@ private class AgentCampSeasonTest {
       Assert.isTrue(
         String.valueOf(noCamp[1]).startsWith('There is no camp yet')
       );
-      Assert.areEqual(
-        400,
-        sent(new AgentCreateCamp(), new Map<String, Object>{ 'name' => ' ' })[0]
+      List<Object> blank = sent(
+        new AgentCreateCamp(),
+        new Map<String, Object>{ 'name' => ' ' }
       );
+      Assert.areEqual(400, blank[0]);
+      Assert.areEqual('Say the camp\'s name (name).', blank[1]);
       List<Object> made = sent(
         new AgentCreateCamp(),
         new Map<String, Object>{ 'name' => 'Camp Willow' }
@@ -136,7 +138,12 @@ private class AgentCampSeasonTest {
       }
       Map<String, Object> longName = newSeason('x'.repeat(81));
       longName.put('camp', 'Camp Oak');
-      Assert.areEqual(400, sent(new AgentCreateSeason(), longName)[0]);
+      List<Object> tooLong = sent(new AgentCreateSeason(), longName);
+      Assert.areEqual(400, tooLong[0]);
+      Assert.isTrue(
+        String.valueOf(tooLong[1]).contains('longer than 80 characters'),
+        String.valueOf(tooLong[1])
+      );
       Map<String, Object> backwards = newSeason('Summer');
       backwards.put('camp', 'Camp Oak');
       backwards.put('end_date', '2027-01-01');
