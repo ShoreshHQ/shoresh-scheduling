@@ -261,6 +261,9 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(refused.textContent).toContain(
       "Someone else changed this week since you opened it, so nothing was restored."
     );
+    // Reload is the way on: focus goes to it (WCAG 2.4.3), as on Generated Schedule.
+    const focused = element.shadowRoot.activeElement;
+    expect(focused && focused.dataset.id).toBe("reload");
     getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,,", "1,,"]));
     getDraft.mockClear();
     q(element, '[data-id="reload"]').click();
