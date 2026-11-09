@@ -1821,12 +1821,17 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const week = { season, week: "Week 1" };
       const manual = { season, week: "Week 2", schedule: "Manual Build" };
       const onGenerated = await call("build_week", week);
-      await call("publish_week", week);
-      await call("start_manual_week", {
+      const published = await call("publish_week", week);
+      const started = await call("start_manual_week", {
         season,
         week: "Week 2",
         from_week: "Week 1"
       });
+      if (published.kind !== "done" || started.kind !== "done") {
+        throw new Error(
+          `Week 2 not started: ${published.text} ${started.text}`
+        );
+      }
       const before = await draft(season, "Week 2", {
         schedule: "Manual Build"
       });

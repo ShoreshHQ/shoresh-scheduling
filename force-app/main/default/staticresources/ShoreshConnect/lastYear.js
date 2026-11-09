@@ -274,9 +274,12 @@ async function importLastYear(capability, given, { read, send, answer, load }) {
     );
   }
   const fields = input.season !== undefined ? { season: input.season } : {};
-  // INGEST-5.5: Roots' "import questions left" opens the last import's own files, as it read them.
-  if (reopened) fields.open_questions = "true";
-  const got = await read(capability.api, fields);
+  // INGEST-5.5: Roots' "import questions left" opens the last import's own files, as it read them;
+  // Add saves them as a second import of the same files (INGEST-5.7), so the save is a plain one.
+  const got = await read(
+    capability.api,
+    reopened ? { ...fields, open_questions: "true" } : fields
+  );
   if (got.status !== 200) return answer(got);
   const raw = JSON.parse(got.body);
   const body = asTheScreenReads(raw);
