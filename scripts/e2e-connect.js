@@ -916,6 +916,14 @@ function everyCommand(tmp) {
   );
   step("change_linked_choice", { name: "Nope", new_name: "Still nope" }, "any");
   step("delete_linked_choice", { name: "Nope" }, "any");
+  // Offerings (API-1.135 to API-1.137).
+  step("read_offerings", {}, "any");
+  step(
+    "change_offering",
+    { activity: "Nope", fields: { seats: "1" }, seen: { seats: "2" } },
+    "any"
+  );
+  step("delete_offering", { activity: "Nope" }, "any");
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.

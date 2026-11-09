@@ -6,6 +6,8 @@
  */
 public with sharing class AgentLinkedDivisions {
   private AgentLinkedChoiceRefs refs;
+  // The ones it names: one of them settles a name two programs share.
+  public Set<Id> held = new Set<Id>();
 
   public AgentLinkedDivisions(AgentLinkedChoiceRefs refs) {
     this.refs = refs;
@@ -79,6 +81,7 @@ public with sharing class AgentLinkedDivisions {
         programs.add(each.Program__r.Name);
       }
     }
+    settle(found);
     if (found.size() == 1) {
       return found[0].Id;
     }
@@ -100,6 +103,20 @@ public with sharing class AgentLinkedDivisions {
           '", so Shoresh can\'t tell which you mean ({"name", "program"} says whose).' +
           ' Nothing was changed.'
     );
+  }
+
+  /** A name two programs share, where only one of them is held: that one. */
+  private void settle(List<Division__c> found) {
+    List<Division__c> own = new List<Division__c>();
+    for (Division__c each : found) {
+      if (held.contains(each.Id)) {
+        own.add(each);
+      }
+    }
+    if (found.size() > 1 && own.size() == 1) {
+      found.clear();
+      found.addAll(own);
+    }
   }
 
   private static Boolean isNamed(

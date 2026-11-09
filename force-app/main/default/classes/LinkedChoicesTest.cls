@@ -734,11 +734,23 @@ private class LinkedChoicesTest {
         WHERE Name = 'Juniors'
       ];
       Assert.areEqual(2, both.size());
-      try {
-        divisions.idsOf(new List<Object>{ 'Juniors' }, both);
-        Assert.fail('A division two programs share was picked');
-      } catch (ShoreshException e) {
-        Assert.isTrue(e.getMessage().contains('both have'), e.getMessage());
+      List<Division__c> reversed = new List<Division__c>{ both[1], both[0] };
+      for (
+        List<Division__c> offered : new List<List<Division__c>>{
+          both,
+          reversed
+        }
+      ) {
+        try {
+          divisions.idsOf(new List<Object>{ 'Juniors' }, offered);
+          Assert.fail('A division two programs share was picked');
+        } catch (ShoreshException e) {
+          // The same words whichever order they come in.
+          Assert.isTrue(
+            e.getMessage().contains(' and Teen both have'),
+            e.getMessage()
+          );
+        }
       }
       Assert.areEqual(
         juniors.Id,
@@ -760,12 +772,105 @@ private class LinkedChoicesTest {
         periods.of(asked, offered);
         Assert.fail('A time block two programs share was picked');
       } catch (ShoreshException e) {
-        Assert.isTrue(e.getMessage().contains('both have'), e.getMessage());
+        // In a fixed order, so the same ask gets the same words.
+        Assert.isTrue(
+          e.getMessage().startsWith('Main and Teen both have'),
+          e.getMessage()
+        );
       }
       // Its own period settles it, when unticking.
       periods.held = new Set<String>{ 'Monday|' + block.Id };
       Assert.areEqual(block.Id, periods.of(asked, offered)[0].blockId);
       Test.stopTest();
+    }
+  }
+
+  // API-1.133: asked through the tool itself; what it holds settles it, so nothing is asked.
+  @IsTest
+  static void unTickingAPeriodItHoldsAsksNothingWhenTwoProgramsShareTheName() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      Program__c teen = new Program__c(
+        Season__c = menu.ids.get('Season'),
+        Name = 'Teen'
+      );
+      Database.insert(teen, AccessLevel.USER_MODE);
+      TimeBlock__c period = [
+        SELECT StartTime__c, EndTime__c
+        FROM TimeBlock__c
+        WHERE Id = :menu.ids.get('Period 1')
+      ];
+      TimeBlock__c block = new TimeBlock__c(
+        Program__c = teen.Id,
+        Name = 'Period 1',
+        StartTime__c = period.StartTime__c,
+        EndTime__c = period.EndTime__c
+      );
+      Database.insert(block, AccessLevel.USER_MODE);
+      LinkedChoiceSaves.Period teens = new LinkedChoiceSaves.Period();
+      teens.weekday = 'Monday';
+      teens.blockId = block.Id;
+      LinkedChoiceSaves.Edit first = new LinkedChoiceSaves.Edit();
+      first.offeringId = menu.dramaId;
+      first.name = 'Drama';
+      first.periodsOn.add(teens);
+      first.periodsOn.add(menu.period('Tuesday', 'Period 1'));
+      Id choiceId = save(first);
+      Test.startTest();
+      // Main's Period 1 sits on Monday too, so the name alone is two places.
+      List<Object> answer = sent(
+        new AgentChangeLinkedChoice(),
+        atMenu(
+          menu,
+          new Map<String, Object>{
+            'name' => 'Drama',
+            'periods_off' => periods('Monday', 'Period 1')
+          }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      List<LinkedChoiceTime__c> left = saved(choiceId).Times__r;
+      Assert.areEqual(1, left.size());
+      Assert.areEqual('Tuesday', left[0].Weekday__c);
+    }
+  }
+
+  // API-1.133: asked through the tool itself, as for a period.
+  @IsTest
+  static void unTickingADivisionItNamesAsksNothingWhenTwoProgramsShareTheName() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      Id choiceId = made(menu);
+      Program__c teen = new Program__c(
+        Season__c = menu.ids.get('Season'),
+        Name = 'Teen'
+      );
+      Database.insert(teen, AccessLevel.USER_MODE);
+      Division__c juniors = new Division__c(
+        Program__c = teen.Id,
+        Name = 'Juniors'
+      );
+      Database.insert(juniors, AccessLevel.USER_MODE);
+      LinkedChoiceSaves.Edit named = new LinkedChoiceSaves.Edit();
+      named.id = choiceId;
+      named.appliesTo = 'OnlyThese';
+      named.divisionsOn.add(menu.ids.get('Juniors'));
+      save(named);
+      Test.startTest();
+      List<Object> answer = sent(
+        new AgentChangeLinkedChoice(),
+        atMenu(
+          menu,
+          new Map<String, Object>{
+            'name' => 'Drama',
+            'divisions_off' => new List<Object>{ 'Juniors' }
+          }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      Assert.areEqual(0, saved(choiceId).Coverages__r.size());
     }
   }
 
@@ -898,6 +1003,209 @@ private class LinkedChoicesTest {
       Assert.areEqual('Deleted "Drama".', answer[1]);
       Assert.areEqual(0, [SELECT COUNT() FROM LinkedChoice__c]);
       Assert.areEqual(0, [SELECT COUNT() FROM LinkedChoiceTime__c]);
+    }
+  }
+
+  // ---------------------------------------------------------------- an offering's row, through an AI
+
+  /** What change_offering sends for Drama: fields, and what was read as seen. */
+  private static Map<String, Object> rowChange(
+    Menu menu,
+    Map<String, Object> fields,
+    Map<String, Object> seen
+  ) {
+    return atMenu(
+      menu,
+      new Map<String, Object>{
+        'activity' => 'drama',
+        'fields' => fields,
+        'seen' => seen
+      }
+    );
+  }
+
+  private static Offering__c dramaRow(Menu menu) {
+    return [
+      SELECT Seats__c, NoSeatLimit__c, MinimumToRun__c
+      FROM Offering__c
+      WHERE Id = :menu.dramaId
+    ];
+  }
+
+  // API-1.135
+  @IsTest
+  static void anAgentReadsWhatTheListReads() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.params.put(
+        'season',
+        (String) atMenu(menu, new Map<String, Object>()).get('season')
+      );
+      RestContext.response = new RestResponse();
+      AgentOfferings.get();
+      Test.stopTest();
+      String text = RestContext.response.responseBody.toString();
+      Assert.areEqual(200, RestContext.response.statusCode, text);
+      Assert.isTrue(text.contains(menu.dramaId), 'The row is in what is read');
+      Assert.areEqual(
+        new Set<String>{
+          'elective_set',
+          'set_id',
+          'setup',
+          'labels',
+          'season'
+        },
+        ((Map<String, Object>) JSON.deserializeUntyped(text)).keySet()
+      );
+    }
+  }
+
+  // API-1.136, ELECT-4.1
+  @IsTest
+  static void anAgentChangesARowThroughTheTablesSave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      Test.startTest();
+      // Drama starts with No limit: taking it off and setting seats and a minimum go together.
+      List<Object> answer = sent(
+        new AgentChangeOffering(),
+        rowChange(
+          menu,
+          new Map<String, Object>{
+            'no_seat_limit' => 'no',
+            'seats' => '12',
+            'minimum_to_run' => '3'
+          },
+          new Map<String, Object>{
+            'no_seat_limit' => 'yes',
+            'seats' => '(blank)',
+            'minimum_to_run' => '(blank)'
+          }
+        )
+      );
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      Offering__c row = dramaRow(menu);
+      Assert.areEqual(12, row.Seats__c);
+      Assert.isFalse(row.NoSeatLimit__c);
+      Assert.areEqual(3, row.MinimumToRun__c);
+      // Blank and 0 keep their meaning: saved, for the seat run to place with no limit.
+      for (String seats : new List<String>{ '0', '(blank)' }) {
+        String before = String.valueOf(dramaRow(menu).Seats__c ?? null);
+        answer = sent(
+          new AgentChangeOffering(),
+          rowChange(
+            menu,
+            new Map<String, Object>{ 'seats' => seats },
+            new Map<String, Object>{ 'seats' => before ?? '(blank)' }
+          )
+        );
+        Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+        if (seats == '0') {
+          Assert.areEqual(0, dramaRow(menu).Seats__c);
+        }
+      }
+      Test.stopTest();
+      Assert.isNull(dramaRow(menu).Seats__c);
+    }
+  }
+
+  // API-1.136
+  @IsTest
+  static void anAgentIsRefusedWhatTheRowRefuses() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      Test.startTest();
+      // Drama has No limit: its seats can't be typed.
+      List<Object> answer = sent(
+        new AgentChangeOffering(),
+        rowChange(
+          menu,
+          new Map<String, Object>{ 'seats' => '5' },
+          new Map<String, Object>{ 'seats' => '(blank)' }
+        )
+      );
+      Assert.areEqual(400, answer[0]);
+      Assert.isTrue(String.valueOf(answer[1]).contains('has No limit'));
+      Assert.areEqual(
+        400,
+        sent(
+          new AgentChangeOffering(),
+          rowChange(
+            menu,
+            new Map<String, Object>{ 'no_seat_limit' => 'no', 'seats' => '-1' },
+            new Map<String, Object>{
+              'no_seat_limit' => 'yes',
+              'seats' => '(blank)'
+            }
+          )
+        )[0]
+      );
+      // The object's own rule, said in its words; and nothing asked.
+      answer = sent(
+        new AgentChangeOffering(),
+        rowChange(
+          menu,
+          new Map<String, Object>{ 'minimum_to_run' => '0' },
+          new Map<String, Object>{ 'minimum_to_run' => '(blank)' }
+        )
+      );
+      Assert.areEqual(400, answer[0]);
+      Assert.isTrue(
+        String.valueOf(answer[1]).contains('Must be 1 or more'),
+        String.valueOf(answer[1])
+      );
+      answer = sent(
+        new AgentChangeOffering(),
+        rowChange(menu, new Map<String, Object>(), new Map<String, Object>())
+      );
+      Assert.areEqual(400, answer[0]);
+      // Someone else changed it since: a conflict, nothing saved.
+      answer = sent(
+        new AgentChangeOffering(),
+        rowChange(
+          menu,
+          new Map<String, Object>{ 'minimum_to_run' => '4' },
+          new Map<String, Object>{ 'minimum_to_run' => '9' }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(409, answer[0], String.valueOf(answer[1]));
+      Assert.isNull(dramaRow(menu).MinimumToRun__c);
+    }
+  }
+
+  // API-1.137
+  @IsTest
+  static void anAgentsDeleteOfARowAsksTheScreensQuestionAndKeepsTheActivity() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Menu menu = new Menu();
+      made(menu);
+      Map<String, Object> asked = atMenu(
+        menu,
+        new Map<String, Object>{ 'activity' => 'Drama' }
+      );
+      Test.startTest();
+      String question = 'Take "Drama" off "Chugim"? The activity is kept.';
+      Assert.areEqual(question, SetupDelete.preview(menu.dramaId).message);
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(asked));
+      Assert.areEqual(question, new AgentDeleteOffering().preview());
+      List<Object> answer = sent(new AgentDeleteOffering(), asked);
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Offering__c WHERE Id = :menu.dramaId]
+      );
+      Assert.areEqual(0, [SELECT COUNT() FROM LinkedChoice__c]);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Activity__c WHERE Name = 'Drama']
+      );
     }
   }
 }

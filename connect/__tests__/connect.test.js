@@ -73,7 +73,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(95);
+    expect(CAPABILITIES).toHaveLength(98);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -105,10 +105,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice or delete_linked_choice, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice or delete_offering, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -439,6 +439,71 @@ describe("Shoresh for AI tools and the command line", () => {
       expect(done.ok).toBe(ok);
       expect(done.text).toContain(said.error || said.unchanged);
     }
+  });
+
+  // API-1.135, API-1.136
+  it("offeringsReadAndSaveThroughTheList: reads with its module and says the row's mark", async () => {
+    const read = {
+      elective_set: "Chugim",
+      set_id: "s1",
+      setup: {},
+      labels: []
+    };
+    const offerings = async () => ({
+      offeringsForAgent: (got, how) =>
+        how.activity === "Nope"
+          ? { error: "Chugim doesn't offer." }
+          : {
+              offerings: [
+                { activity: "Swim", look: 'Choose how many seats "Swim" has' }
+              ]
+            }
+    });
+    const runOf =
+      (seen, status = 200) =>
+      async (args, stdin) => {
+        seen.push({ args, stdin });
+        return stdin
+          ? `HTTP/1.1 ${status}\n\n${JSON.stringify({ message: "Changed." })}`
+          : `HTTP/1.1 200\n\n${JSON.stringify(read)}`;
+      };
+    const seenRead = [];
+    const said = await call(
+      "read_offerings",
+      {},
+      { run: runOf(seenRead), offerings, camp: packaged }
+    );
+    expect(seenRead[0].args[3]).toContain("/shoresh/v1/offerings");
+    expect(JSON.parse(said.text).offerings[0].activity).toBe("Swim");
+    const none = await call(
+      "read_offerings",
+      { activity: "Nope" },
+      { run: runOf([]), offerings, camp: packaged }
+    );
+    expect(none.ok).toBe(false);
+
+    const change = {
+      activity: "Swim",
+      fields: { seats: "(blank)" },
+      seen: { seats: "2" }
+    };
+    const seen = [];
+    const changed = await call("change_offering", change, {
+      run: runOf(seen),
+      offerings,
+      camp: packaged
+    });
+    expect(JSON.parse(seen[0].stdin).fields).toEqual({ seats: "(blank)" });
+    expect(changed.text).toBe('Changed. Choose how many seats "Swim" has.');
+    // A read that fails after the save doesn't undo what was said.
+    const answers = ['HTTP/1.1 200\n\n{"message":"Changed."}'];
+    const after = await call("change_offering", change, {
+      run: async () => answers.shift() ?? "",
+      offerings,
+      camp: packaged
+    });
+    expect(after.ok).toBe(true);
+    expect(after.text).toBe("Changed.");
   });
 
   // API-1.131, API-1.132, API-1.133
