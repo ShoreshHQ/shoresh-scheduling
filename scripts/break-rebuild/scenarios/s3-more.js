@@ -9,6 +9,8 @@ const {
   confirmed,
   seenOf,
   electiveOnWeek
+  mapleFiles,
+  MUSIC,
 } = require("../kit");
 
 /** Told apart only by the seed: each camp still places every cell, and the same way around locks. */
@@ -1760,6 +1762,155 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           /as a date like/.test(copy.text) &&
           count("Season__c", `Name = 'BR S13 Copy'`) === 0,
         copy.text
+      );
+    }
+  },
+  {
+    id: "S14",
+    title: "open items through an AI: clear a day and a week, questions left by an import, an elective on a special day",
+    camps: "BR S14 %",
+    async run(rec) {
+      const { season } = makeCamp("S14 Open");
+      // Last year's files, Music left to answer later: a question waits on Roots.
+      const first = await call("import_last_year", {
+        season,
+        files: mapleFiles(),
+        answers: { "week|the file's week": "Week 1" }
+      });
+      const kept = await call("import_last_year", {
+        season,
+        files: mapleFiles(),
+        answers: { "week|the file's week": "Week 1" },
+        save: true,
+        seen: seenOf(first.text)
+      });
+      rec.note("import with a question left", kept.text.slice(0, 300));
+      const reopened = await call("import_last_year", {
+        season,
+        open_questions: true
+      });
+      rec.check(
+        "API-1.144",
+        "the questions the last import left are asked again, with its own files",
+        reopened.kind === "done" && /Music/i.test(reopened.text),
+        reopened.text.slice(0, 600)
+      );
+      const answered = await call("import_last_year", {
+        season,
+        open_questions: true,
+        answers: { [MUSIC]: "a" },
+        save: true,
+        seen: seenOf(reopened.text)
+      });
+      const again = await call("import_last_year", { season, open_questions: true });
+      rec.check(
+        "API-1.144",
+        "answered and saved: no question is left",
+        answered.kind === "done" &&
+          again.kind === "refused" &&
+          /no import with questions left|answered or undone/.test(again.text),
+        `${answered.text.slice(0, 200)} ${again.text}`
+      );
+
+      // Clear day and Clear week, on Manual Build as its Edit menu does.
+      const week = { season, week: "Week 1" };
+      const manual = { ...week, schedule: "Manual Build" };
+      await call("start_manual_week", week);
+      const before = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const monday = before.rows.find((r) => r.day === "Monday");
+      const onGenerated = await call("build_week", week);
+      const refusedThere = await call("clear_day", { ...week, schedule: "Generated Schedule", day: "Monday" });
+      rec.check(
+        "API-1.143",
+        "Generated Schedule has no Clear day",
+        onGenerated.kind === "done" &&
+          refusedThere.kind === "refused" &&
+          /Manual Build only/.test(refusedThere.text),
+        refusedThere.text
+      );
+      const oneGroup = await call("clear_day", {
+        ...manual,
+        day: "Monday",
+        group: monday.group
+      });
+      const afterGroup = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const plain = (r) => !r.notes && r.activity !== "Open";
+      rec.check(
+        "API-1.143",
+        "one group's day is cleared, its fixed activities stay, other groups untouched",
+        oneGroup.kind === "done" &&
+          /^Cleared /.test(oneGroup.text) &&
+          !afterGroup.rows.some(
+            (r) => r.day === "Monday" && r.group === monday.group && plain(r)
+          ) &&
+          afterGroup.rows.some(
+            (r) => r.day === "Monday" && r.group === monday.group && /fixed|recurring/.test(r.notes ?? "")
+          ) &&
+          afterGroup.rows.some(
+            (r) => r.day === "Monday" && r.group !== monday.group && plain(r)
+          ),
+        oneGroup.text
+      );
+      const undo = await confirmed("undo_last_agent_change", { ...manual });
+      const back = await draft(season, "Week 1", { schedule: "Manual Build" });
+      rec.check(
+        "API-1.143",
+        "Undo asks first, then the day is back",
+        undo.preview.kind === "asks first" &&
+          undo.done.kind === "done" &&
+          back.words === before.words,
+        undo.done.text
+      );
+      const all = await call("clear_week", manual);
+      const cleared = await draft(season, "Week 1", { schedule: "Manual Build" });
+      rec.check(
+        "API-1.143",
+        "the whole week is cleared; what isn't an activity stays",
+        all.kind === "done" &&
+          !cleared.rows.some(plain) &&
+          cleared.rows.some((r) => /fixed|recurring/.test(r.notes ?? "")),
+        all.text
+      );
+      const nothing = await call("clear_week", manual);
+      rec.check(
+        "API-1.143",
+        "nothing to clear is said",
+        nothing.kind === "done" && /^Nothing to clear/.test(nothing.text),
+        nothing.text
+      );
+
+      // An elective on a special day's own schedule: by its file, as the screen does.
+      await call("add_setup_record", { season, kind: "elective set", name: "Chugim" });
+      await call("add_setup_record", { season, kind: "special day", name: "Color war" });
+      let plan = await call("read_special_schedule", { season, special: "Color war" });
+      const csv = "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n";
+      const fromFile = await call("import_special_schedule", {
+        season,
+        special: "Color war",
+        seen: seenIn(plan.text),
+        file_name: "cw.csv",
+        csv_text: csv
+      });
+      plan = await call("read_special_schedule", { season, special: "Color war" });
+      rec.check(
+        "API-1.85",
+        "an elective set in a special day's file is placed as an elective",
+        fromFile.kind === "done" && /Chugim/.test(plan.text) && /elective/i.test(plan.text),
+        `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
+      );
+      const byHand = await call("change_special_schedule_cell", {
+        season,
+        special: "Color war",
+        column: "Bunk 2",
+        time: "10:00 AM",
+        was: "Art",
+        activity: "Chugim"
+      });
+      rec.check(
+        "API-1.77",
+        "by hand, as on its page, an elective isn't one of the choices",
+        byHand.kind === "refused" && /no activity called "Chugim"/.test(byHand.text),
+        byHand.text
       );
     }
   }

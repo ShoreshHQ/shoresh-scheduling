@@ -293,6 +293,42 @@ function copyTool(ctx, m, input, weekName) {
 }
 
 /**
+ * clear_day and clear_week (API-1.143) as Manual Build's Edit menu clears (shoreshManualBuild
+ * handleClearDay, handleClearGroupDay, handleClearWeek): the day for every group, or for one
+ * group, or the whole week, by the week editor's own tool. Generated Schedule has no such tool.
+ */
+function clearStep(capability, ctx, m, input, weekName) {
+  if (ctx.liveLocks) {
+    throw new Refused(
+      `Clear ${capability.name === "clear_week" ? "week" : "day"} is on Manual Build only. Nothing was changed.`
+    );
+  }
+  let tool;
+  if (capability.name === "clear_week") {
+    tool = {
+      kind: "clear",
+      dates: ctx.week.map((day) => day.dateValue),
+      name: weekName,
+      inWeek: true
+    };
+  } else {
+    const d = dayIn(ctx, m, input.day, weekName);
+    const day = ctx.week[d];
+    const name = ctx.dayNameOf(day.dateValue);
+    tool = { kind: "clear", dates: [day.dateValue], name };
+    if (input.group !== undefined) {
+      const grp = day.groups[groupIn(ctx, d, input.group)];
+      tool = { ...tool, groupId: grp.id, name: `${grp.name} · ${name}` };
+    }
+  }
+  const step = m.toolStep(ctx, tool);
+  if (step.nothing) {
+    return { nothing: step.nothing };
+  }
+  return { runs: step.result.runs, label: step.label, said: step.said };
+}
+
+/**
  * switch_to_rain_plans as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
  * runRainyDay): the day's outdoor activities switched to their rain plans by the editor's own tool,
  * locked cells (Generated) left as they are. With the marks it leaves on the day ("Rain plan full",
@@ -416,6 +452,9 @@ function stepOf(capability, ctx, m, input, weekName) {
   }
   if (capability.name === "switch_to_rain_plans") {
     return rainyDay(ctx, m, input, weekName);
+  }
+  if (capability.name === "clear_day" || capability.name === "clear_week") {
+    return clearStep(capability, ctx, m, input, weekName);
   }
   if (capability.name === "copy_cells") {
     const step = m.toolStep(ctx, copyTool(ctx, m, input, weekName));

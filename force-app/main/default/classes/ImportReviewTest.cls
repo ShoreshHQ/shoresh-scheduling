@@ -689,4 +689,69 @@ private class ImportReviewTest {
       Assert.isTrue(refusal.contains('Swim is on Week 1 by hand'), refusal);
     }
   }
+
+  // API-1.144: an AI asks for the last import's questions and gets the very files it read; none
+  // open is said.
+  @IsTest
+  static void anAgentReopensTheQuestionsTheLastImportLeft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
+      plan.put(
+        'open',
+        new List<Object>{
+          new Map<String, Object>{
+            'key' => 'kind|Archery',
+            'title' => 'Archery?'
+          }
+        }
+      );
+      String files = '[{"name":"maple-grove.xlsx","sheets":[]}]';
+      plan.put('fileData', files);
+      ImportController.saveSetup(JSON.serialize(plan));
+      String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
+      Test.startTest();
+      Map<String, Object> read = asked(name, true);
+      Map<String, Object> plain = asked(name, false);
+      Test.stopTest();
+      Assert.areEqual(files, read.get('open_files'));
+      Assert.isFalse(plain.containsKey('open_files'));
+    }
+  }
+
+  // API-1.144
+  @IsTest
+  static void anAgentIsToldWhenNoImportHasQuestionsLeft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.params.put('season', name);
+      RestContext.request.params.put('open_questions', 'true');
+      RestContext.response = new RestResponse();
+      AgentImportLastYear.get();
+      Test.stopTest();
+      Assert.areEqual(400, RestContext.response.statusCode);
+      Assert.isTrue(
+        RestContext.response.responseBody.toString()
+          .contains('no import with questions left')
+      );
+    }
+  }
+
+  private static Map<String, Object> asked(String season, Boolean open) {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'GET';
+    RestContext.request.params.put('season', season);
+    if (open) {
+      RestContext.request.params.put('open_questions', 'true');
+    }
+    RestContext.response = new RestResponse();
+    AgentImportLastYear.get();
+    String body = RestContext.response.responseBody.toString();
+    Assert.areEqual(200, RestContext.response.statusCode, body);
+    return (Map<String, Object>) JSON.deserializeUntyped(body);
+  }
 }

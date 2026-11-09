@@ -73,7 +73,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(102);
+    expect(CAPABILITIES).toHaveLength(104);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -105,10 +105,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season or delete_season, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, clear_day or clear_week, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season)$/
+        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|clear_day|clear_week)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -2772,7 +2772,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(comes).not.toMatch(/group|division|program/);
   });
 
-  // API-1.84, API-1.85
+  // API-1.84, API-1.85, API-1.144
   it("lastYearAndSpecialFilesAsTheScreens: Import last year reviews with the screen's own steps and saves its own plan only with the seen; a special schedule's file is read with its page's own module", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const imports = async () =>
@@ -2897,6 +2897,35 @@ describe("Shoresh for AI tools and the command line", () => {
       plan: JSON.stringify(plan)
     });
     expect(saved.done.text).toMatch(/^Added 2 groups\./);
+
+    // API-1.144: the last import's questions left for later, with the very files it read.
+    const openRead = JSON.stringify({
+      ...JSON.parse(read),
+      open_files: JSON.stringify(flow.files)
+    });
+    const reopenSent = [];
+    const reopened = await call(
+      "import_last_year",
+      { season: "Summer 2026", open_questions: true },
+      {
+        run: async (args, stdin) => {
+          reopenSent.push({ args, stdin });
+          return `HTTP/1.1 200\n\n${openRead}`;
+        },
+        imports
+      }
+    );
+    expect(reopenSent[0].args[3]).toBe(
+      "/services/apexrest/v1/import_last_year?season=Summer+2026&open_questions=true"
+    );
+    expect(reopened.text).toBe(review.done.text);
+    const both = await send({
+      season: "Summer 2026",
+      files,
+      open_questions: true
+    });
+    expect(both.done.ok).toBe(false);
+    expect(both.sent).toHaveLength(0);
 
     // A special schedule's file: read with the page's own module, sent with what was seen.
     expect(byName("import_special_schedule").inputSchema.required).toEqual([
@@ -4280,7 +4309,7 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
-  // API-1.44, API-1.45
+  // API-1.44, API-1.45, API-1.143
   it("manualBuildAsItsScreen: on a Manual Build week, read_week_checks measures the draft as its week editor does, and move_cell works the edit out with the editor's own module and sends it without locks", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const modules = (files) => async () =>
@@ -4369,6 +4398,63 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const run of body.runs) {
       expect(run.locksBefore).toBeUndefined();
     }
+
+    // API-1.143: Clear day and Clear week, as Manual Build's Edit menu runs them.
+    const { toolRuns } = require(`${LWC}/shoreshWeekEditor/tools.js`);
+    const { serverRunsOf } = require(`${LWC}/shoreshWeekEditor/handEdits.js`);
+    const asTheScreen = (tool) =>
+      serverRunsOf(
+        toolRuns(tool, draft.schedule.days, { isAway: () => false }).runs,
+        draft.schedule.days
+      );
+    const clearSent = [];
+    const cleared = await call(
+      "clear_day",
+      { ...asked, day: "Monday" },
+      { run: answering(clearSent), edits }
+    );
+    expect(cleared.ok).toBe(true);
+    expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/copy_cells");
+    const dayBody = JSON.parse(clearSent[1].stdin);
+    expect(dayBody.change).toBe("Cleared Monday");
+    expect(dayBody.runs).toEqual(
+      asTheScreen({
+        kind: "clear",
+        dates: [draft.schedule.days[0].dateValue],
+        name: "Monday"
+      })
+    );
+    const groupSent = [];
+    await call(
+      "clear_day",
+      { ...asked, day: "Monday", group: "Bunk 1" },
+      { run: answering(groupSent), edits }
+    );
+    expect(JSON.parse(groupSent[1].stdin).change).toBe(
+      "Cleared Bunk 1 · Monday"
+    );
+    const weekSent = [];
+    await call("clear_week", asked, { run: answering(weekSent), edits });
+    const weekBody = JSON.parse(weekSent[1].stdin);
+    expect(weekBody.change).toBe("Cleared Week 1");
+    expect(weekBody.runs).toEqual(
+      asTheScreen({
+        kind: "clear",
+        dates: draft.schedule.days.map((d) => d.dateValue),
+        name: "Week 1",
+        inWeek: true
+      })
+    );
+    // Nothing to clear is said, and nothing is sent.
+    const emptySent = [];
+    const empty = await call(
+      "clear_day",
+      { ...asked, day: "Tuesday" },
+      { run: answering(emptySent), edits }
+    );
+    expect(empty.ok).toBe(true);
+    expect(empty.text).toMatch(/^Nothing to clear/);
+    expect(emptySent).toHaveLength(1);
   });
 });
 

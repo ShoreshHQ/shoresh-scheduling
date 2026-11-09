@@ -27,8 +27,10 @@ public with sharing class AgentImports {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
+      Boolean open = door == LAST_YEAR &&
+        RestContext.request.params.get('open_questions') == 'true';
       for (String key : RestContext.request.params.keySet()) {
-        if (key != 'season') {
+        if (key != 'season' && !(open && key == 'open_questions')) {
           throw new ShoreshException(
             'Shoresh doesn\'t know the field "' +
               key.left(40) +
@@ -39,10 +41,13 @@ public with sharing class AgentImports {
       Season__c season = AgentChangeCampWords.seasonOf(
         RestContext.request.params.get('season')
       );
+      Map<String, Object> read = readOf(season, door);
+      if (open) {
+        // INGEST-5.5: the last import's files as it read them, as Roots' questions left open it.
+        read.put('open_files', openFilesOf(season.Id));
+      }
       response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(readOf(season, door), true)
-      );
+      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
     } catch (Exception e) {
       Boolean ours =
         e instanceof ShoreshException || e instanceof AuraHandledException;
@@ -55,6 +60,15 @@ public with sharing class AgentImports {
         )
       );
     }
+  }
+
+  /** The person's last import's files, while it has questions open (ImportLog.openFiles). */
+  private static String openFilesOf(Id seasonId) {
+    Id last = ImportUndo.latestFrom(seasonId, null);
+    if (last == null) {
+      throw new ShoreshException('There is no import with questions left. Nothing was changed.');
+    }
+    return ImportController.getOpenFiles(last);
   }
 
   /** The screen's own reads, and the stamp a save carries back as seen. */
