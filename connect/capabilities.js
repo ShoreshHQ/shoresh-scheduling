@@ -699,7 +699,7 @@ const CAPABILITIES = [
     ...change(
       "change_cell_length",
       "move_cell",
-      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity is a hand edit like any other, as on the screen, though the draft marks it locked. A special event or elective set has no handle. Undo it with undo_last_agent_change.",
+      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity changes as on the screen, though the draft marks it locked. A special event or elective set has no handle. On Generated Schedule, what is left of an activity is then locked, so changing it again takes unlock_cells first, and cells it frees are Open; a fixed or recurring activity isn't locked, and a cell it frees is locked empty. Manual Build has no locks. Undo it with undo_last_agent_change.",
       {
         day: CELL.day,
         group: CELL.group,

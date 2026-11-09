@@ -1255,7 +1255,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       rec.check(
         "API-1.138",
         "a week changed since it was read is a conflict",
-        staleWeek.kind === "refused",
+        staleWeek.kind === "refused" &&
+          /Someone else changed/.test(staleWeek.text),
         staleWeek.text
       );
       d = await draft(season);
@@ -1295,21 +1296,9 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         longer.kind === "done" &&
           /runs \d+ /.test(longer.text) &&
           stretched.end_time === next.end_time &&
+          /locked/.test(stretched.notes ?? "") &&
           !d.cell(next.day, next.group, next.time_block),
         `${longer.text} ${JSON.stringify(stretched)}`
-      );
-      const part = await call("change_schedule_cell", {
-        ...week,
-        ...nextAt,
-        was: cell.activity,
-        activity: "Art",
-        seen: d.seen
-      });
-      rec.check(
-        "API-1.13",
-        "part of a longer one says the tool",
-        part.kind === "refused" && /change_cell_length/.test(part.text),
-        part.text
       );
       const undo = await confirmed("undo_last_agent_change", week);
       d = await draft(season);
@@ -1325,6 +1314,30 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         ...at,
         ends_at: next.time_block
       });
+      // A hand edit locks what it changed, as on the screen: unlocked, the rest can go on.
+      d = await draft(season);
+      const free = await call("unlock_cells", {
+        ...week,
+        day: cell.day,
+        group: cell.group,
+        time: cell.time_block,
+        seen: d.seen
+      });
+      rec.check("LOCK", "it unlocks", free.kind === "done", free.text);
+      d = await draft(season);
+      const part = await call("change_schedule_cell", {
+        ...week,
+        ...nextAt,
+        was: cell.activity,
+        activity: "Art",
+        seen: d.seen
+      });
+      rec.check(
+        "API-1.13",
+        "part of a longer one says the tool",
+        part.kind === "refused" && /change_cell_length/.test(part.text),
+        part.text
+      );
       const shorter = await length({
         ...at,
         time: next.time_block,
@@ -1384,6 +1397,26 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         stretchedSet.kind === "done" && /runs \d+ /.test(stretchedSet.text),
         stretchedSet.text
       );
+      const setBack = await length({
+        ...week,
+        day: set.day,
+        group: set.group,
+        time: set.time_block,
+        was: set.activity,
+        ends_at: set.time_block
+      });
+      const freed = await draft(season);
+      const freedCell = freed.cell(
+        setNext.day,
+        setNext.group,
+        setNext.time_block
+      );
+      rec.check(
+        "API-1.138",
+        "it wasn't locked, so it changes again; the cell it frees is locked empty",
+        setBack.kind === "done" && /locked/.test(freedCell?.notes ?? ""),
+        `${setBack.text} ${JSON.stringify(freedCell)}`
+      );
       // Manual Build: the same tool on that screen's draft.
       const manualAt = { ...week, week: "Week 2", schedule: "Manual Build" };
       await call("start_manual_week", { season, week: "Week 2" });
@@ -1420,6 +1453,20 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           manual.kind === "done" &&
           /runs 2 /.test(manual.text),
         `${placed.text} ${manual.text}`
+      );
+      const manualAgain = await call("change_cell_length", {
+        ...manualAt,
+        day: first.day,
+        group: first.group,
+        time: first.time_block,
+        was: "Art",
+        ends_at: first.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "Manual Build has no locks: it changes again at once",
+        manualAgain.kind === "done" && /runs 1 /.test(manualAgain.text),
+        manualAgain.text
       );
     }
   }
