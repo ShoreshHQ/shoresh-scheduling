@@ -122,7 +122,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
 
   /**
    * Part of a longer placement is refused, saying what an AI can do instead (break-and-rebuild
-   * N2): move it or take it all out, from its first time; only its length is the screen's.
+   * N2): change its length, move it or take it all out, from its first time.
    */
   private void refuseLonger(String now, String nowName) {
     Boolean carriesOn =
@@ -140,13 +140,20 @@ global with sharing class AgentCell implements AgentWeeks.Action {
           nowName +
           ', from ' +
           grid.blocks[first].name +
-          '. Its length can be changed only on ' +
-          AgentSchedules.screenOf(week) +
-          '. To change it, move it from ' +
-          grid.blocks[first].name +
-          ' (move_cell) or take it all out (take_out_cell).'
+          '.' +
+          whatElse(now, grid.blocks[first].name)
       );
     }
+  }
+
+  /** What an AI has for a placement the screen's handle can change; an event or elective has none. */
+  private static String whatElse(String now, String firstBlock) {
+    String owner = SlotIds.owner(now);
+    return owner.startsWith(SlotIds.ACTIVITY) || SlotIds.isSetTime(owner)
+      ? ' change_cell_length changes its length; from ' +
+        firstBlock +
+        ', move_cell moves it and take_out_cell takes it all out.'
+      : ' Nothing was changed.';
   }
 
   private Integer groupIn(ScheduleGrid grid) {

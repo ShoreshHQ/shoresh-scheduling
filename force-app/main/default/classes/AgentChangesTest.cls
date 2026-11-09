@@ -245,7 +245,7 @@ private class AgentChangesTest {
       Assert.areEqual(
         'Group A · Monday · ' +
           later +
-          ' is part of a longer Gym games, from Period 2. Its length can be changed only on Generated Schedule. To change it, move it from Period 2 (move_cell) or take it all out (take_out_cell).',
+          ' is part of a longer Gym games, from Period 2. change_cell_length changes its length; from Period 2, move_cell moves it and take_out_cell takes it all out.',
         answer[1]
       );
       Assert.isTrue(agentVersions().isEmpty());

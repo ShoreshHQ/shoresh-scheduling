@@ -383,6 +383,32 @@ function placeEvent(ctx, m, input, weekName) {
   return { runs: result.runs, label: `Placed ${event.Name} · ${range}` };
 }
 
+/**
+ * change_cell_length (API-1.138): the placement made to end at a time, as its bottom handle does,
+ * by the week editor's own step. What has no handle on the screen is said; the same end is nothing.
+ */
+function lengthStep(ctx, m, from, input) {
+  const day = ctx.week[from.day];
+  const at = m.placement(day, from.group, from.block);
+  const name = ctx.nameOf(at.slot, day);
+  const last = blockIn(ctx, from.day, input.ends_at);
+  if (!m.canMove(at.slot)) {
+    throw new Refused(
+      `${m.slotName(ctx, from)} holds ${name}, which has no length to change. Nothing was changed.`
+    );
+  }
+  const step = m.resizeStep(ctx, from, last);
+  if (!step) {
+    return {
+      nothing: `${name} already ends at ${day.blocks[last].name}. Nothing was changed.`
+    };
+  }
+  if (step.refused) {
+    throw new Refused(step.refused);
+  }
+  return { runs: step.runs, label: step.label, said: null };
+}
+
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */
 function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "place_special_event") {
@@ -400,6 +426,9 @@ function stepOf(capability, ctx, m, input, weekName) {
   }
   const from = cellOf(ctx, m, input, weekName);
   checkWas(ctx, m, from, input.was);
+  if (capability.name === "change_cell_length") {
+    return lengthStep(ctx, m, from, input);
+  }
   const step =
     capability.name === "move_cell"
       ? m.moveStep(ctx, from, cellOf(ctx, m, input, weekName, "to_"))

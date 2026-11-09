@@ -924,6 +924,19 @@ function everyCommand(tmp) {
     "any"
   );
   step("delete_offering", { activity: "Nope" }, "any");
+  // A placement's length (API-1.138).
+  step(
+    "change_cell_length",
+    {
+      ...week,
+      day: "Monday",
+      group: "Bunk 1",
+      time: "Period 1",
+      was: "Nope",
+      ends_at: "Period 1"
+    },
+    "any"
+  );
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.

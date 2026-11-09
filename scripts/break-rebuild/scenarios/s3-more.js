@@ -1155,5 +1155,272 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         gone.done.text
       );
     }
+  },
+  {
+    id: "S11",
+    title:
+      "an activity's length through an AI: longer, shorter, what stops it, Undo",
+    camps: "BR S11 %",
+    async run(rec) {
+      const { season } = makeCamp("S11 Length");
+      await importMaple(season);
+      const week = { season, week: "Week 1" };
+      await call("build_week", week);
+      let d = await draft(season);
+      // The week as read goes with each change, as read_week_checks gives it (API-1.38).
+      const length = async (more) =>
+        call("change_cell_length", {
+          ...more,
+          seen: (await draft(season)).seen
+        });
+      // A plain activity with another plain one right after it, in one group on one day, and a row before.
+      const sameRow = (a, b) =>
+        a && b && a.date === b.date && a.group === b.group;
+      const plain = (r) => !r.notes && r.activity !== "Open";
+      const here = d.rows.findIndex(
+        (r, i) =>
+          i > 0 &&
+          plain(r) &&
+          sameRow(r, d.rows[i - 1]) &&
+          sameRow(r, d.rows[i + 1]) &&
+          plain(d.rows[i + 1]) &&
+          d.rows[i + 1].activity !== r.activity
+      );
+      const cell = d.rows[here];
+      const earlier = d.rows[here - 1];
+      const next = d.rows[here + 1];
+      const nextAt = {
+        day: next.day,
+        group: next.group,
+        time: next.time_block
+      };
+      const at = {
+        ...week,
+        day: cell.day,
+        group: cell.group,
+        time: cell.time_block,
+        was: cell.activity
+      };
+      const stopped = await length({
+        ...at,
+        ends_at: next.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "longer over what is there is refused",
+        stopped.kind === "refused" && /doesn't fit there/.test(stopped.text),
+        stopped.text
+      );
+      const beforeIt = await length({
+        ...at,
+        ends_at: earlier.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "an end before its start is refused",
+        beforeIt.kind === "refused" &&
+          /can't end before it starts/.test(beforeIt.text),
+        beforeIt.text
+      );
+      const wasWrong = await length({
+        ...at,
+        was: "Nope",
+        ends_at: next.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "a cell changed since is a conflict",
+        wasWrong.kind === "refused" &&
+          /Changed by someone else/.test(wasWrong.text),
+        wasWrong.text
+      );
+      const out = await call("take_out_cell", {
+        ...week,
+        ...nextAt,
+        was: next.activity,
+        seen: d.seen
+      });
+      rec.check(
+        "API-1.138",
+        "the next cell is opened",
+        out.kind === "done",
+        out.text
+      );
+      const oldSeen = d.seen;
+      const staleWeek = await call("change_cell_length", {
+        ...at,
+        ends_at: next.time_block,
+        seen: oldSeen
+      });
+      rec.check(
+        "API-1.138",
+        "a week changed since it was read is a conflict",
+        staleWeek.kind === "refused",
+        staleWeek.text
+      );
+      d = await draft(season);
+      const lockedOpen = await call("lock_cells", {
+        ...week,
+        ...nextAt,
+        seen: d.seen
+      });
+      const refused = await length({
+        ...at,
+        ends_at: next.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "a lock wins: longer over a cell locked empty is refused",
+        lockedOpen.kind === "done" &&
+          refused.kind === "refused" &&
+          /is locked/.test(refused.text),
+        `${lockedOpen.text} ${refused.text}`
+      );
+      d = await draft(season);
+      const unlocked = await call("unlock_cells", {
+        ...week,
+        ...nextAt,
+        seen: d.seen
+      });
+      rec.check("LOCK", "it unlocks", unlocked.kind === "done", unlocked.text);
+      const longer = await length({
+        ...at,
+        ends_at: next.time_block
+      });
+      d = await draft(season);
+      const stretched = d.cell(cell.day, cell.group, cell.time_block);
+      rec.check(
+        "API-1.138",
+        "longer over Open: it ends where asked, said as the screen says it",
+        longer.kind === "done" &&
+          /runs \d+ /.test(longer.text) &&
+          stretched.end_time === next.end_time &&
+          !d.cell(next.day, next.group, next.time_block),
+        `${longer.text} ${JSON.stringify(stretched)}`
+      );
+      const part = await call("change_schedule_cell", {
+        ...week,
+        ...nextAt,
+        was: cell.activity,
+        activity: "Art",
+        seen: d.seen
+      });
+      rec.check(
+        "API-1.13",
+        "part of a longer one says the tool",
+        part.kind === "refused" && /change_cell_length/.test(part.text),
+        part.text
+      );
+      const undo = await confirmed("undo_last_agent_change", week);
+      d = await draft(season);
+      rec.check(
+        "API-1.138",
+        "Undo asks first, then the next cell is Open again",
+        undo.preview.kind === "asks first" &&
+          undo.done.kind === "done" &&
+          d.cell(next.day, next.group, next.time_block)?.activity === "Open",
+        undo.done.text
+      );
+      const again = await length({
+        ...at,
+        ends_at: next.time_block
+      });
+      const shorter = await length({
+        ...at,
+        time: next.time_block,
+        ends_at: cell.time_block
+      });
+      d = await draft(season);
+      rec.check(
+        "API-1.138",
+        "shorter, asked from its later cell: it ends sooner, the rest Open",
+        again.kind === "done" &&
+          shorter.kind === "done" &&
+          /runs 1 /.test(shorter.text) &&
+          d.cell(next.day, next.group, next.time_block)?.activity === "Open" &&
+          d.cell(cell.day, cell.group, cell.time_block).activity ===
+            cell.activity,
+        shorter.text
+      );
+      const same = await length({
+        ...at,
+        ends_at: cell.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "the end it has changes nothing",
+        same.kind === "done" && /already ends at/.test(same.text),
+        same.text
+      );
+      // A fixed or recurring activity is a hand edit like any other, as on the screen.
+      const f = d.rows.findIndex(
+        (r, i) =>
+          /fixed|recurring/.test(r.notes ?? "") &&
+          sameRow(r, d.rows[i + 1]) &&
+          plain(d.rows[i + 1])
+      );
+      const set = d.rows[f];
+      const setNext = d.rows[f + 1];
+      d = await draft(season);
+      await call("take_out_cell", {
+        ...week,
+        day: setNext.day,
+        group: setNext.group,
+        time: setNext.time_block,
+        was: setNext.activity,
+        seen: d.seen
+      });
+      const stretchedSet = await length({
+        ...week,
+        day: set.day,
+        group: set.group,
+        time: set.time_block,
+        was: set.activity,
+        ends_at: setNext.time_block
+      });
+      rec.check(
+        "API-1.138",
+        "a fixed or recurring activity stretches, as its handle does",
+        stretchedSet.kind === "done" && /runs \d+ /.test(stretchedSet.text),
+        stretchedSet.text
+      );
+      // Manual Build: the same tool on that screen's draft.
+      const manualAt = { ...week, week: "Week 2", schedule: "Manual Build" };
+      await call("start_manual_week", { season, week: "Week 2" });
+      const m = await draft(season, "Week 2", { schedule: "Manual Build" });
+      const start = m.rows.findIndex(
+        (r, i) =>
+          r.activity === "Open" &&
+          !r.notes &&
+          sameRow(r, m.rows[i + 1]) &&
+          m.rows[i + 1].activity === "Open" &&
+          !m.rows[i + 1].notes
+      );
+      const first = m.rows[start];
+      const placed = await call("change_schedule_cell", {
+        ...manualAt,
+        day: first.day,
+        group: first.group,
+        time: first.time_block,
+        was: "Open",
+        activity: "Art"
+      });
+      const manual = await call("change_cell_length", {
+        ...manualAt,
+        day: first.day,
+        group: first.group,
+        time: first.time_block,
+        was: "Art",
+        ends_at: m.rows[start + 1].time_block
+      });
+      rec.check(
+        "API-1.138",
+        "on Manual Build too",
+        placed.kind === "done" &&
+          manual.kind === "done" &&
+          /runs 2 /.test(manual.text),
+        `${placed.text} ${manual.text}`
+      );
+    }
   }
 ];

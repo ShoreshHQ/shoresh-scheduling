@@ -697,6 +697,29 @@ const CAPABILITIES = [
   },
   {
     ...change(
+      "change_cell_length",
+      "move_cell",
+      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity is a hand edit like any other, as on the screen, though the draft marks it locked. A special event or elective set has no handle. Undo it with undo_last_agent_change.",
+      {
+        day: CELL.day,
+        group: CELL.group,
+        time: CELL.time,
+        was: CELL.was,
+        seen: CELL.seen,
+        ends_at: {
+          ...CELL.time,
+          description:
+            "The time it should end in: its name, like Period 3, or its start, like 09:00."
+        }
+      },
+      ["day", "group", "time", "was", "ends_at"],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
+  },
+  {
+    ...change(
       "take_out_cell",
       "take_out_cell",
       "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change, which takes back only your last change.",
