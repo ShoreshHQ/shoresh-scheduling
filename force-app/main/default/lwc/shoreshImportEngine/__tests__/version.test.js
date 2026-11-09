@@ -332,6 +332,7 @@ describe("part 2 review", () => {
         "electiveSets"
       ].flatMap((list) => plan[list].map((e) => e.key))
     );
+    let checked = 0;
     for (const day of plan.versions.flatMap((v) => v.days)) {
       const keys = [
         ...day.grid.b.map((b) => b[0]),
@@ -339,7 +340,9 @@ describe("part 2 review", () => {
         ...day.grid.i.map((i) => i[1]).filter(Boolean)
       ];
       keys.forEach((key) => expect(planned.has(key)).toBe(true));
+      checked += keys.length;
     }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it("two recurring records differing only in length have their own keys", () => {

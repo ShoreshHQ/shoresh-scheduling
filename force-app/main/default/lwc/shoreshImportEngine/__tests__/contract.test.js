@@ -179,7 +179,9 @@ describe("the save request matches what the server reads", () => {
   });
 
   it("every list the server reads is in the plan", () => {
-    for (const list of readByApex(/plan\.entries\('(\w+)'\)/g)) {
+    const lists = readByApex(/plan\.entries\('(\w+)'\)/g);
+    expect(lists.size).toBeGreaterThan(5);
+    for (const list of lists) {
       expect([...Object.keys(plan), ...Object.keys(learning)]).toContain(list);
     }
   });
@@ -205,8 +207,18 @@ describe("the save request matches what the server reads", () => {
       "fixedActivities",
       "recurringActivities"
     ];
+    // The full plan's camp has its division already and its files name no place: a new
+    // camp's plan brings both in.
+    const places = placesPlan();
+    const plans = {
+      ...plan,
+      divisions: places.divisions,
+      locations: places.locations
+    };
     for (const name of setupLists) {
-      for (const entry of plan[name]) {
+      // Each list has entries to check.
+      expect(`${name}:${plans[name].length > 0}`).toBe(`${name}:true`);
+      for (const entry of plans[name]) {
         // ImportPlan.Entry.isNew() is "no id": every entry says, one way or the other.
         expect(`${name}:${"id" in entry}`).toBe(`${name}:true`);
         const needsKey = entry.id === null && !/Activities$/.test(name);
