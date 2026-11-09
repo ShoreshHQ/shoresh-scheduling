@@ -1816,15 +1816,23 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         `${answered.text.slice(0, 200)} ${again.text}`
       );
 
-      // Clear day and Clear week, on Manual Build as its Edit menu does.
+      // Clear day and Clear week, on Manual Build as its Edit menu does: Week 2 starts from Week 1
+      // as published, so it has activities to clear.
       const week = { season, week: "Week 1" };
-      const manual = { ...week, schedule: "Manual Build" };
-      await call("start_manual_week", week);
-      const before = await draft(season, "Week 1", {
+      const manual = { season, week: "Week 2", schedule: "Manual Build" };
+      const onGenerated = await call("build_week", week);
+      await call("publish_week", week);
+      await call("start_manual_week", {
+        season,
+        week: "Week 2",
+        from_week: "Week 1"
+      });
+      const before = await draft(season, "Week 2", {
         schedule: "Manual Build"
       });
-      const monday = before.rows.find((r) => r.day === "Monday");
-      const onGenerated = await call("build_week", week);
+      const monday = before.rows.find(
+        (r) => r.day === "Monday" && !r.notes && r.activity !== "Open"
+      );
       const refusedThere = await call("clear_day", {
         ...week,
         schedule: "Generated Schedule",
@@ -1843,7 +1851,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         day: "Monday",
         group: monday.group
       });
-      const afterGroup = await draft(season, "Week 1", {
+      const afterGroup = await draft(season, "Week 2", {
         schedule: "Manual Build"
       });
       const plain = (r) => !r.notes && r.activity !== "Open";
@@ -1867,7 +1875,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         oneGroup.text
       );
       const undo = await confirmed("undo_last_agent_change", { ...manual });
-      const back = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const back = await draft(season, "Week 2", { schedule: "Manual Build" });
       rec.check(
         "API-1.143",
         "Undo asks first, then the day is back",
@@ -1877,13 +1885,14 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         undo.done.text
       );
       const all = await call("clear_week", manual);
-      const cleared = await draft(season, "Week 1", {
+      const cleared = await draft(season, "Week 2", {
         schedule: "Manual Build"
       });
       rec.check(
         "API-1.143",
         "the whole week is cleared; what isn't an activity stays",
         all.kind === "done" &&
+          /^Cleared /.test(all.text) &&
           !cleared.rows.some(plain) &&
           cleared.rows.some((r) => /fixed|recurring/.test(r.notes ?? "")),
         all.text
@@ -1912,7 +1921,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         special: "Color war"
       });
       const csv =
-        "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n";
+        "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n11:00 AM,,\n";
       const fromFile = await call("import_special_schedule", {
         season,
         special: "Color war",
@@ -1924,12 +1933,21 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         season,
         special: "Color war"
       });
+      // The readout names a cell as the page does; what was saved says it is the set itself.
+      const chugim = soql(
+        `SELECT Id FROM ElectiveSet__c WHERE Season__r.Name = '${season}' AND Name = 'Chugim'`
+      )[0].Id;
+      const saved = soql(
+        `SELECT Plan__c FROM PlanPart__c WHERE SpecialDay__r.Name = 'Color war' AND SpecialDay__r.Season__r.Name = '${season}'`
+      )
+        .map((r) => r.Plan__c)
+        .join("");
       rec.check(
         "API-1.85",
         "an elective set in a special day's file is placed as an elective",
         fromFile.kind === "done" &&
-          /Chugim/.test(plan.text) &&
-          /elective/i.test(plan.text),
+          /Bunk 1 Chugim/.test(plan.text) &&
+          saved.includes(chugim),
         `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
       );
       const byHand = await call("change_special_schedule_cell", {

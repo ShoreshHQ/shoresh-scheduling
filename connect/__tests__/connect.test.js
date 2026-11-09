@@ -2919,6 +2919,27 @@ describe("Shoresh for AI tools and the command line", () => {
       "/services/apexrest/v1/import_last_year?season=Summer+2026&open_questions=true"
     );
     expect(reopened.text).toBe(review.done.text);
+    // Add saves them as a second import of the same files: the save is the plain one.
+    const reopenSaved = [];
+    await call(
+      "import_last_year",
+      { season: "Summer 2026", open_questions: true, save: true, seen: "s1" },
+      {
+        run: async (args, stdin) => {
+          reopenSaved.push({ args, stdin });
+          return reopenSaved.length === 1
+            ? `HTTP/1.1 200\n\n${openRead}`
+            : `HTTP/1.1 200\n\n${JSON.stringify({ message: JSON.stringify({ added: { Group: 2 }, changed: {}, removed: {}, leftAsIs: [], openNotKept: 0 }) })}`;
+        },
+        imports
+      }
+    );
+    expect(reopenSaved[1].args[3]).toBe(
+      "/services/apexrest/v1/import_last_year"
+    );
+    expect(JSON.parse(reopenSaved[1].stdin)).toEqual(
+      JSON.parse(saved.sent[1].stdin)
+    );
     const both = await send({
       season: "Summer 2026",
       files,
