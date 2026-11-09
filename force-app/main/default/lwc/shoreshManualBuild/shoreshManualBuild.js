@@ -104,6 +104,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   focusOn = null;
   // A start just gave the week: its Start buttons are gone, so focus goes to the grid once drawn.
   focusGridAfterStart = false;
+  // A Restore was refused: focus goes to its line's Reload once drawn, as on Generated Schedule.
+  focusReloadAfterRender = false;
   // What setup changed since the week started (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
   setupTicket = 0;
@@ -177,6 +179,18 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     // the director has put it somewhere else meanwhile.
     if (this.focusOn && !this.publishDisabled) {
       this.focusBack();
+    }
+    // A refused Restore's Reload is the way on (WCAG 2.4.3): focus goes to it once drawn.
+    if (this.focusReloadAfterRender) {
+      const reload = this.template.querySelector(
+        '[data-id="restore-refused"] [data-id="reload"]'
+      );
+      if (reload || !this.restoreRefused) {
+        this.focusReloadAfterRender = false;
+      }
+      if (reload) {
+        reload.focus();
+      }
     }
     // After a start the button that was clicked is gone (WCAG 2.4.3): focus goes to the new
     // week's first cell, unless the director has put it somewhere else meanwhile.
@@ -735,7 +749,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       if (draft.changedSince) {
         // Nothing was changed: someone else's newer week is never replaced unseen.
         this.restoreRefused = true;
-        // Its line (with Reload) is on screen; said aloud too.
+        // Its line (with Reload) is on screen, with focus on Reload; said aloud too.
+        this.focusReloadAfterRender = true;
         this.announce(this.restoreRefusedText);
         return;
       }
