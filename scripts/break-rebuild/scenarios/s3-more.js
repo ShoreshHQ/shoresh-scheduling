@@ -1911,7 +1911,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         nothing.text
       );
 
-      // An elective on a special day's own schedule: by its file, as the screen does.
+      // An elective on a special day's own schedule: its page offers none (the typed choices are
+      // activities), and its file import holds a name as an activity of that name. An AI gets the same.
       await call("add_setup_record", {
         season,
         kind: "elective set",
@@ -1926,6 +1927,23 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         season,
         special: "Color war"
       });
+      const frameRow =
+        /Times: (.+?) \([^)]*\): Bunk 1 [^;]*; Bunk 2 ([^;|]*)/.exec(plan.text);
+      const byHand = await call("change_special_schedule_cell", {
+        season,
+        special: "Color war",
+        column: "Bunk 2",
+        time: frameRow?.[1],
+        was: frameRow?.[2]?.trim(),
+        activity: "Chugim"
+      });
+      rec.check(
+        "API-1.77",
+        "by hand, as on its page, an elective isn't one of the choices",
+        byHand.kind === "refused" &&
+          /no activity called "Chugim"/.test(byHand.text),
+        `${byHand.text} ${plan.text.slice(0, 300)}`
+      );
       const csv =
         "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n11:00 AM,,\n";
       const fromFile = await call("import_special_schedule", {
@@ -1939,7 +1957,6 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         season,
         special: "Color war"
       });
-      // The readout names a cell as the page does; what was saved says it is the set itself.
       const chugim = soql(
         `SELECT Id FROM ElectiveSet__c WHERE Season__r.Name = '${season}' AND Name = 'Chugim'`
       )[0].Id;
@@ -1950,26 +1967,15 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         .join("");
       rec.check(
         "API-1.85",
-        "an elective set in a special day's file is placed as an elective",
+        "as on its page, a special day's file holds an elective's name as an activity of that name",
         fromFile.kind === "done" &&
           /Bunk 1 Chugim/.test(plan.text) &&
-          saved.includes(chugim),
+          !saved.includes(chugim) &&
+          count(
+            "Activity__c",
+            `Season__r.Name = '${season}' AND Name = 'Chugim'`
+          ) === 1,
         `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
-      );
-      const byHand = await call("change_special_schedule_cell", {
-        season,
-        special: "Color war",
-        column: "Bunk 2",
-        time: "10:00 AM",
-        was: "Art",
-        activity: "Chugim"
-      });
-      rec.check(
-        "API-1.77",
-        "by hand, as on its page, an elective isn't one of the choices",
-        byHand.kind === "refused" &&
-          /no activity called "Chugim"/.test(byHand.text),
-        byHand.text
       );
     }
   }
