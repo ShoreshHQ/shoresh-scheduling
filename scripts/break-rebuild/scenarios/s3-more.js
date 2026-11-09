@@ -1589,9 +1589,13 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       );
       const unpublished = await confirmed("unpublish_week", week);
       const stillKept = await call("delete_season", { season });
-      rec.note(
-        "after unpublishing",
-        `${unpublished.done.text} ${stillKept.kind}: ${stillKept.text}`
+      rec.check(
+        "API-1.141",
+        "unpublishing doesn't clear the history: it is still refused",
+        unpublished.done.kind === "done" &&
+          stillKept.kind === "refused" &&
+          /kept as history/.test(stillKept.text),
+        `${unpublished.done.text} ${stillKept.text}`
       );
       // A season with no history goes, and the camp stays.
       const other = "BR S12 Other 2027";
