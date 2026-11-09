@@ -695,28 +695,41 @@ private class ImportReviewTest {
   @IsTest
   static void anAgentReopensTheQuestionsTheLastImportLeft() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = newSeason();
-      Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
-      plan.put(
-        'open',
-        new List<Object>{
-          new Map<String, Object>{
-            'key' => 'kind|Archery',
-            'title' => 'Archery?'
-          }
-        }
-      );
-      String files = '[{"name":"maple-grove.xlsx","sheets":[]}]';
-      plan.put('fileData', files);
-      ImportController.saveSetup(JSON.serialize(plan));
-      String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
-      Test.startTest();
-      Map<String, Object> read = asked(name, true);
-      Map<String, Object> plain = asked(name, false);
-      Test.stopTest();
-      Assert.areEqual(files, read.get('open_files'));
+      Map<String, Object> read = afterAnOpenImport(true);
+      Assert.areEqual(OPEN_FILES, read.get('open_files'));
+    }
+  }
+
+  // API-1.144
+  @IsTest
+  static void anAgentReadsNoQuestionsUnlessItAsks() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Object> plain = afterAnOpenImport(false);
       Assert.isFalse(plain.containsKey('open_files'));
     }
+  }
+
+  private static final String OPEN_FILES = '[{"name":"maple-grove.xlsx","sheets":[]}]';
+
+  private static Map<String, Object> afterAnOpenImport(Boolean open) {
+    Season__c season = newSeason();
+    Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
+    plan.put(
+      'open',
+      new List<Object>{
+        new Map<String, Object>{
+          'key' => 'kind|Archery',
+          'title' => 'Archery?'
+        }
+      }
+    );
+    plan.put('fileData', OPEN_FILES);
+    ImportController.saveSetup(JSON.serialize(plan));
+    String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
+    Test.startTest();
+    Map<String, Object> read = asked(name, open);
+    Test.stopTest();
+    return read;
   }
 
   // API-1.144
