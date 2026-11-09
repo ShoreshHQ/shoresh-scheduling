@@ -937,6 +937,14 @@ function everyCommand(tmp) {
     },
     "any"
   );
+  // A camp and seasons (API-1.139 to API-1.141); this org has camps, so a new one is refused.
+  step("create_camp", { name: "Nope" }, "refused");
+  step(
+    "create_season",
+    { name: "Nope", start_date: "soon", end_date: "soon" },
+    "refused"
+  );
+  step("delete_season", { season: SEASON }, "refused");
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.

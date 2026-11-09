@@ -156,7 +156,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
    * A name a season the person sees already has is refused: the AI, and every season named
    * after it, could no longer tell the two apart (OutgoingRows.seasonCalled).
    */
-  private static void refuseTaken(String name) {
+  public static void refuseTaken(String name) {
     if (String.isBlank(name)) {
       return; // The page's own Copy says to give it a name.
     }
@@ -167,7 +167,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
       throw new ShoreshException(
         'There is already a season called "' +
           name.left(80) +
-          '". Give the new one another name.'
+          '". Nothing was changed.'
       );
     }
   }

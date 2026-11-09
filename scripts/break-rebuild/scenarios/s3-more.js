@@ -1469,5 +1469,182 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         manualAgain.text
       );
     }
+  },
+  {
+    id: "S12",
+    title:
+      "starting through an AI: a season from nothing to a built week, deleting a season",
+    camps: "BR S12 %",
+    async run(rec) {
+      // A camp already exists on this org, so the camp is made as makeCamp makes one; its first
+      // tool with none is proved in AgentCampSeasonTest.
+      const camp = "BR S12 Start (made up)";
+      // As create_camp makes one: a name, no time zone.
+      apex(`insert new Camp__c(Name = '${camp}');`);
+      const refused = await call("create_camp", {
+        name: "BR S12 Other (made up)"
+      });
+      rec.check(
+        "API-1.139",
+        "a camp already there: a new one is refused, naming them",
+        refused.kind === "refused" && refused.text.includes(camp),
+        refused.text
+      );
+      const listed = JSON.parse((await call("list_seasons", {})).text);
+      rec.check(
+        "API-1.139",
+        "list_seasons says the camp, with no season in it yet",
+        listed.camps.includes(camp) &&
+          !listed.seasons.some((x) => x.camp === camp),
+        JSON.stringify(listed.camps)
+      );
+      const season = "BR S12 Start 2027";
+      const first = "2027-06-28";
+      const made = await call("create_season", {
+        camp,
+        name: season,
+        start_date: first,
+        end_date: "2027-07-09"
+      });
+      const seen = JSON.parse(
+        (await call("list_seasons", {})).text
+      ).seasons.find((x) => x.season === season);
+      rec.check(
+        "API-1.140",
+        "a blank season, listed in its camp with nothing in it",
+        made.kind === "done" &&
+          seen?.camp === camp &&
+          seen.weeks.length === 0 &&
+          seen.programs.length === 0,
+        `${made.text} ${JSON.stringify(seen)}`
+      );
+      const backwards = await call("create_season", {
+        camp,
+        name: "BR S12 Backwards",
+        start_date: "2027-07-09",
+        end_date: first
+      });
+      rec.check(
+        "API-1.140",
+        "the season's own rule refuses a last day before its first",
+        backwards.kind === "refused" &&
+          /Season not created/.test(backwards.text),
+        backwards.text
+      );
+      const blankAsk = await call("delete_season", { season });
+      rec.check(
+        "API-1.141",
+        "delete asks first, saying nothing is set up in it",
+        blankAsk.kind === "asks first" &&
+          blankAsk.text.includes(`Delete ${season}? Nothing set up in it yet.`),
+        blankAsk.text
+      );
+      // On through the existing tools: last year's files, then a week built and checked.
+      await importMaple(season);
+      const filled = JSON.parse(
+        (await call("list_seasons", {})).text
+      ).seasons.find((x) => x.season === season);
+      rec.check(
+        "API-1.140",
+        "it carries on through the import tools",
+        filled.weeks.length > 0 && filled.programs.length > 0,
+        JSON.stringify(filled)
+      );
+      const week = { season, week: filled.weeks[0] };
+      const built = await call("build_week", week);
+      const d = await draft(season, filled.weeks[0]);
+      rec.check(
+        "API-1.19",
+        "from nothing to a built week",
+        built.kind === "done" &&
+          d.rows.some((r) => r.activity !== "Open" && !r.notes),
+        `${built.text} ${JSON.stringify(d.checks).slice(0, 200)}`
+      );
+      const asked = await call("delete_season", { season });
+      rec.check(
+        "API-1.141",
+        "delete asks first, counting what goes with it in the camp's words",
+        asked.kind === "asks first" &&
+          /Delete BR S12 Start 2027\? \d+ Weeks?, 1 Program/.test(asked.text) &&
+          /saved schedules?\./.test(asked.text),
+        asked.text
+      );
+      rec.check(
+        "API-1.141",
+        "asking changes nothing",
+        count("Season__c", `Name = '${season}'`) === 1,
+        asked.text
+      );
+      const published = await call("publish_week", week);
+      const history = await call("delete_season", { season });
+      rec.check(
+        "API-1.141",
+        "published history refuses it before anyone is asked, and keeps the season",
+        history.kind === "refused" &&
+          /Nothing was removed/.test(history.text) &&
+          /kept as history/.test(history.text) &&
+          !/Mark it Finished/.test(history.text) &&
+          count("Season__c", `Name = '${season}'`) === 1,
+        `${published.text} ${history.text}`
+      );
+      const unpublished = await confirmed("unpublish_week", week);
+      const stillKept = await call("delete_season", { season });
+      rec.check(
+        "API-1.141",
+        "unpublishing doesn't clear the history: it is still refused",
+        unpublished.done.kind === "done" &&
+          stillKept.kind === "refused" &&
+          /kept as history/.test(stillKept.text),
+        `${unpublished.done.text} ${stillKept.text}`
+      );
+      // A season with no history goes, and the camp stays.
+      const other = "BR S12 Other 2027";
+      await call("create_season", {
+        camp,
+        name: other,
+        start_date: "2028-06-26",
+        end_date: "2028-07-07"
+      });
+      await importMaple(other);
+      const inOther = JSON.parse(
+        (await call("list_seasons", {})).text
+      ).seasons.find((x) => x.season === other);
+      rec.check(
+        "API-1.141",
+        "the other season has something in it to delete",
+        inOther.weeks.length > 0,
+        JSON.stringify(inOther)
+      );
+      const taken = await call("create_season", {
+        camp,
+        name: other,
+        start_date: "2029-06-25",
+        end_date: "2029-07-06"
+      });
+      rec.check(
+        "API-1.140",
+        "a name another season has is refused",
+        taken.kind === "refused" && /already a season/.test(taken.text),
+        taken.text
+      );
+      const gone = await confirmed("delete_season", { season: other });
+      rec.check(
+        "API-1.141",
+        "a yes deletes it, and only it",
+        gone.preview.kind === "asks first" &&
+          gone.done.kind === "done" &&
+          count("Season__c", `Name = '${other}'`) === 0 &&
+          count("Season__c", `Name = '${season}'`) === 1 &&
+          count("Camp__c", `Name = '${camp}'`) === 1,
+        gone.done.text
+      );
+      const named = await call("delete_season", {});
+      rec.check(
+        "API-1.141",
+        "never without naming the season",
+        named.kind === "refused" && /Say which season/.test(named.text),
+        named.text
+      );
+    }
   }
 ];

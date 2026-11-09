@@ -123,11 +123,14 @@ public with sharing class IncomingNamedPlan {
       batch.problem(
         i,
         kind.parents.containsKey(key)
-          ? 'More than one ' +
-            word +
-            ' is called "' +
-            record.parent.left(80) +
-            '". Rename one in Shoresh, then send this again.'
+          ? AgentRefusal.withFix(
+              'More than one ' +
+                word +
+                ' is called "' +
+                record.parent.left(80) +
+                '".',
+              'Rename one in Shoresh, then send this again.'
+            )
           : 'There is no ' +
             word +
             ' called "' +

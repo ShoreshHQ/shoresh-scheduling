@@ -40,6 +40,21 @@ public with sharing class PublishedHistory {
     }
   }
 
+  /** Why this season can't be deleted, in the camp's words, or null: its Delete asks with this. */
+  public static String refusalForSeason(Id seasonId, String name) {
+    if (finder.withPublishedHistory(new Set<Id>{ seasonId }).isEmpty()) {
+      return null;
+    }
+    Id campId = [
+      SELECT Camp__c
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH USER_MODE
+    ]
+    .Camp__c;
+    return message(CampLabels.forCamp(campId), 'Season', name);
+  }
+
   @TestVisible
   private static String message(CampLabels labels, String term, String name) {
     String text =
@@ -50,10 +65,9 @@ public with sharing class PublishedHistory {
       ', which are kept as history, so this ' +
       labels.singularInSentence(term) +
       ' can\'t be deleted.';
-    if (term == 'Season') {
-      text += ' Mark it Finished instead.';
-    }
-    return text;
+    return term == 'Season'
+      ? AgentRefusal.withFix(text, 'Mark it Finished instead.')
+      : text;
   }
 
   private with sharing class PublishedSchedules implements Finder {

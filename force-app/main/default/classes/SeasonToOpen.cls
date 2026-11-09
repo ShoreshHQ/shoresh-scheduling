@@ -22,7 +22,7 @@ public with sharing class SeasonToOpen {
     }
     throw new ShoreshException(
       seen.isEmpty()
-        ? 'This user can\'t see any season in Shoresh.'
+        ? 'Shoresh has no season this user can see yet.'
         : 'Say which season (season)' +
           (notEnded(its) > 1
             ? ': more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. '
