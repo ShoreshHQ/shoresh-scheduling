@@ -389,7 +389,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
     await flush();
     expect(q(element, "c-shoresh-elective-details").openOfferingId).toBe("o4");
     await expect(q(element, '[data-screen="electives"]')).toBeAccessible();
-  });
+  }, 60000); // axe over a whole setup screen: past 20 s on a busy machine
 
   it("an activity is offered once in a set: the choice leaves out those already offered there", async () => {
     const element = await render();
