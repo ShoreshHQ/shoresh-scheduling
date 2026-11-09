@@ -169,6 +169,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentDeleteSeason</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AgentLinkedChoiceRefs</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -198,6 +202,14 @@
     </classAccesses>
     <classAccesses>
         <apexClass>AgentCopySeason</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AgentCreateCamp</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AgentCreateSeason</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>

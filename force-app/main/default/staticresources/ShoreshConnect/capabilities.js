@@ -554,10 +554,78 @@ const CAPABILITIES = [
     api: "seasons",
     method: "GET",
     description:
-      "List the seasons the person can see in Shoresh, each with its camp, dates, weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one.",
+      "List the seasons the person can see in Shoresh, each with its camp, dates, weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season.",
     about:
       "The seasons this person can see in Shoresh, with their weeks and programs. These are the only names that exist.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
+    name: "create_camp",
+    api: "create_camp",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Name the person's camp, as Camp Setup's first screen does. It is only for when the person can see no camp yet (list_seasons's camps is empty): otherwise it is refused, naming the camps there are. It is made as you, with your own access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The camp's name." }
+      },
+      required: ["name"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "create_season",
+    api: "create_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. Then fill it with import_last_year, import_worksheet, or the bring_in tools. It is made as you, with your own access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        camp: {
+          type: "string",
+          description:
+            "The camp, as list_seasons's camps says it. Leave it out when there is only one."
+        },
+        name: {
+          type: "string",
+          description: "What to call it, like Summer 2027."
+        },
+        start_date: {
+          type: "string",
+          description: "Its first day, like 2027-06-28."
+        },
+        end_date: {
+          type: "string",
+          description: "Its last day, like 2027-08-06."
+        }
+      },
+      required: ["name", "start_date", "end_date"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "delete_season",
+    api: "delete_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has published schedules, which are kept as history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: {
+          type: "string",
+          description:
+            "The season's name, exactly as list_seasons gives it. Always say it."
+        }
+      },
+      required: ["season"],
+      additionalProperties: false
+    }
   },
   read(
     "read_group_schedule",
@@ -2393,6 +2461,7 @@ const ASKS_FIRST = [
   "delete_setup_record",
   "delete_linked_choice",
   "delete_offering",
+  "delete_season",
   "delete_version",
   "finalize_electives",
   "undo_last_agent_change",

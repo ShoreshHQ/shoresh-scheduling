@@ -1,6 +1,5 @@
 import { createElement } from "lwc";
-import ShoreshCampSetup, { seasonContents } from "c/shoreshCampSetup";
-import { buildTerms } from "c/shoreshTerms";
+import ShoreshCampSetup from "c/shoreshCampSetup";
 import { FIELD as SCHEMA_FIELD } from "c/shoreshSchema";
 import { numberedDay, setDayNaming } from "c/shoreshDayNames";
 import LightningConfirm from "lightning/confirm";
@@ -1916,23 +1915,38 @@ describe("c-shoresh-camp-setup", () => {
 
     it("deleting it asks first, showing what goes with it as counts", async () => {
       deleteRecord.mockResolvedValue();
+      // The question and its counts are the server's (SetupDelete), as an AI hears them.
+      deletePreview.mockResolvedValueOnce({
+        label: "Delete Summer 2026?",
+        lines: ["1 Week", "1 Program"]
+      });
       const element = await renderSeason();
       button(element, "Delete season").click();
       await flush();
+      expect(deletePreview).toHaveBeenCalledWith({ recordId: "s1" });
       expect(LightningConfirm.open).not.toHaveBeenCalled();
       const ask = q(element, "c-shoresh-ask");
       expect(ask.heading).toBe("Delete Summer 2026?");
-      expect(ask.lines).toEqual([
-        "1 Week",
-        "1 Program",
-        "1 Division",
-        "1 Time block"
-      ]);
+      expect(ask.lines).toEqual(["1 Week", "1 Program"]);
       expect(ask.confirmLabel).toBe("Delete season");
       expect(deleteRecord).not.toHaveBeenCalled();
       ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
       await flush();
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
+    });
+
+    it("a season the server won't let go says why, and asks nothing", async () => {
+      deletePreview.mockResolvedValueOnce({
+        refusal: "It has published schedules, kept as history."
+      });
+      const element = await renderSeason();
+      button(element, "Delete season").click();
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(deleteRecord).not.toHaveBeenCalled();
+      expect(element.shadowRoot.textContent).toContain(
+        "It has published schedules, kept as history."
+      );
     });
 
     it("Cancel on delete season deletes nothing", async () => {
@@ -2199,38 +2213,6 @@ describe("c-shoresh-camp-setup", () => {
         NoGroupLimit__c: false
       }
     });
-  });
-
-  it("counts what a season holds, in the camp's words, saved schedules last", () => {
-    const t = buildTerms(LABELS);
-    expect(
-      seasonContents(
-        {
-          weeks: [{}, {}],
-          locations: [{}],
-          activities: [],
-          schedules: [{}, {}, {}],
-          programs: [
-            {
-              divisions: [{ groups: [{}, {}] }, { groups: [{}] }],
-              timeBlocks: [],
-              fixedActivities: [{}],
-              recurringActivities: []
-            }
-          ]
-        },
-        t
-      )
-    ).toEqual([
-      "2 Weeks",
-      "1 Program",
-      "2 Divisions",
-      "3 Bunks",
-      "1 Location",
-      "1 Fixed activity",
-      "3 saved schedules"
-    ]);
-    expect(seasonContents({}, t)).toEqual(["Nothing set up in it yet"]);
   });
 
   it("a screen picked from the menu gets the cursor on its heading", async () => {
@@ -4815,23 +4797,6 @@ describe("c-shoresh-camp-setup", () => {
       expect(onDeleted).toHaveBeenCalled();
     });
 
-    it("deleting a season counts its special days and events", () => {
-      const t = buildTerms(LABELS);
-      expect(
-        seasonContents(
-          {
-            weeks: [],
-            programs: [],
-            special: {
-              specialDays: [{ Id: "sd1" }],
-              specialEvents: [{ Id: "se1" }, { Id: "se2" }]
-            }
-          },
-          t
-        )
-      ).toEqual(["1 Special day", "2 Special events"]);
-    });
-
     it("an empty season shows each section's blank row", async () => {
       const element = await renderSpecial(null);
       expect(list(element, "days").rows).toEqual([]);
@@ -4843,25 +4808,6 @@ describe("c-shoresh-camp-setup", () => {
 
 // DIV-1.1
 describe("a group in no division", () => {
-  it("counts its group, never its holding record as a division", () => {
-    const t = buildTerms(LABELS);
-    expect(
-      seasonContents(
-        nsRecord({
-          programs: [
-            {
-              divisions: [
-                { division: { Id: "d1" }, groups: [{}] },
-                { division: { Id: "d9", NoDivision__c: true }, groups: [{}] }
-              ]
-            }
-          ]
-        }),
-        t
-      )
-    ).toEqual(["1 Program", "1 Division", "2 Bunks"]);
-  });
-
   // API-1.28
   it("aScheduleLinkOpensTheWeekOnTheSchedulesScreen: a chat's link opens Schedules on its camp, season, program, week and version", async () => {
     const OTHER = { Id: "c2", Name: "Camp Cedar" };

@@ -26,7 +26,16 @@ global with sharing class AgentSeasons {
     }
   }
 
-  /** { opens_on: the season the screens open on, or null; seasons: [ ... ] }. */
+  /** The camps the person can see, so an AI can tell no camp from a camp with no season (API-1.139). */
+  private static List<String> camps() {
+    List<String> names = new List<String>();
+    for (Camp__c camp : SeasonSetupController.getCamps()) {
+      names.add(camp.Name);
+    }
+    return names;
+  }
+
+  /** { opens_on: the season the screens open on, or null; seasons: [ ... ]; camps: their names }. */
   public static Map<String, Object> answer() {
     List<Season__c> seen = OutgoingRows.seasonsSeen();
     Map<Id, List<String>> weeks = new Map<Id, List<String>>();
@@ -74,7 +83,8 @@ global with sharing class AgentSeasons {
     }
     return new Map<String, Object>{
       'opens_on' => opensOn,
-      'seasons' => seasons
+      'seasons' => seasons,
+      'camps' => camps()
     };
   }
 }

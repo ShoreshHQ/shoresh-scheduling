@@ -149,48 +149,6 @@ const WEEK_SCREENS = {
 /** A card from Roots' hand (repo ADR 0020 choice 10), not one of its melds'. */
 const isHandCard = (key) => typeof key === "string" && key.startsWith("hand:");
 
-/**
- * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
- * camp's words; saved schedules last. A season with nothing in it says so.
- */
-export function seasonContents(setup, t) {
-  const programs = setup.programs || [];
-  const inPrograms = (pick) =>
-    programs.reduce((sum, entry) => sum + pick(entry), 0);
-  const counts = [
-    ["Week", (setup.weeks || []).length],
-    ["Program", programs.length],
-    // DIV-1.1: holding records are not counted as divisions.
-    ["Division", inPrograms((e) => realDivisionsOf(e).length)],
-    [
-      "Group",
-      inPrograms((e) =>
-        (e.divisions || []).reduce((n, d) => n + (d.groups || []).length, 0)
-      )
-    ],
-    ["TimeBlock", inPrograms((e) => (e.timeBlocks || []).length)],
-    ["Location", (setup.locations || []).length],
-    ["Activity", (setup.activities || []).length],
-    ["FixedActivity", inPrograms((e) => (e.fixedActivities || []).length)],
-    [
-      "RecurringActivity",
-      inPrograms((e) => (e.recurringActivities || []).length)
-    ],
-    ["SpecialDay", specialOf(setup).specialDays.length],
-    ["SpecialEvent", specialOf(setup).specialEvents.length]
-  ];
-  const lines = counts
-    .filter(([, n]) => n > 0)
-    .map(([term, n]) => `${n} ${n === 1 ? t.s(term) : t.p(term)}`);
-  const schedules = (setup.schedules || []).length;
-  if (schedules) {
-    lines.push(
-      `${schedules} saved ${schedules === 1 ? "schedule" : "schedules"}`
-    );
-  }
-  return lines.length ? lines : ["Nothing set up in it yet"];
-}
-
 /** The element with focus, looking inside components (their shadow roots). */
 /** An activity's priority section: High, or Low (blank is Low, ADR 0002 choice 10). */
 function isHighPriority(activity) {
@@ -2494,9 +2452,23 @@ export default class ShoreshCampSetup extends LightningElement {
    * the button.
    */
   async handleDeleteSeason() {
+    const notDeleted = `"${this.setup.season.Name}" not deleted. Nothing was removed.`;
+    // The server's question (SetupDelete), as the AI asks it: what goes with the season, or why
+    // it can't be deleted.
+    let preview;
+    try {
+      preview = await deletePreview({ recordId: this.seasonId });
+    } catch (e) {
+      this.showError(e, notDeleted);
+      return;
+    }
+    if (preview.refusal) {
+      this.showError({ body: { message: preview.refusal } }, notDeleted);
+      return;
+    }
     const ok = await this.askFirst({
-      heading: `Delete ${this.setup.season.Name}?`,
-      lines: seasonContents(this.setup, this.terms),
+      heading: preview.label,
+      lines: preview.lines,
       confirmLabel: this.labels.deleteSeason
     });
     if (!ok) {
@@ -2510,7 +2482,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.seasonOpen = false;
       this.screen = "roots";
       await this.loadCamp();
-    }, `"${this.setup.season.Name}" not deleted. Nothing was removed.`);
+    }, notDeleted);
   }
 
   /** The camp row's small menu (step 3b): New season, or Copy this season. */

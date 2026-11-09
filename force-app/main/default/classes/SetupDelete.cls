@@ -45,6 +45,9 @@ public with sharing class SetupDelete {
     public String label = 'Delete';
     @AuraEnabled
     public String message;
+    /** A season's: each kind that goes with it ("4 Weeks"), for the question's lines. */
+    @AuraEnabled
+    public List<String> lines;
     /** How many schedules a bunk or activity is in; none counted for anything else. */
     public ScheduleUses.Count uses = new ScheduleUses.Count();
   }
@@ -59,6 +62,9 @@ public with sharing class SetupDelete {
     }
     if (kind == LinkedChoice__c.SObjectType) {
       return linkedChoice(recordId, result);
+    }
+    if (kind == Season__c.SObjectType) {
+      return season(recordId, result);
     }
     String name = nameOf(recordId);
     if (kind == Group__c.SObjectType || kind == Activity__c.SObjectType) {
@@ -123,6 +129,16 @@ public with sharing class SetupDelete {
     ) {
       throw ScreenErrors.of('These screens can\'t delete that.');
     }
+  }
+
+  /** A season: the question, what goes with it, and published history refusing it. */
+  private static Preview season(Id seasonId, Preview result) {
+    String name = nameOf(seasonId);
+    result.refusal = PublishedHistory.refusalForSeason(seasonId, name);
+    result.lines = SeasonContents.of(seasonId);
+    result.label = 'Delete ' + name + '?';
+    result.message = result.label + ' ' + String.join(result.lines, ', ') + '.';
+    return result;
   }
 
   /** An offering is taken off its set; the activity is kept (desktop "Remove …?"). */
