@@ -1006,5 +1006,154 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         gone.done.text
       );
     }
+  },
+  {
+    id: "S10",
+    title:
+      "offerings through an AI: read, seats and minimum directly, over its seats, delete",
+    camps: "BR S10 %",
+    async run(rec) {
+      const { season } = makeCamp("S10 Offerings");
+      await importMaple(season);
+      await call("add_setup_record", {
+        season,
+        kind: "elective set",
+        name: "Chugim"
+      });
+      await electiveOnWeek(season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
+      const at = { season, elective_set: "Chugim" };
+      const row = async (activity) =>
+        JSON.parse((await call("read_offerings", { ...at, activity })).text)
+          .offerings[0];
+      const change = (activity, fields, seen) =>
+        call("change_offering", { ...at, activity, fields, seen });
+      let swim = await row("Swim");
+      const art = await row("Art");
+      rec.check(
+        "API-1.135",
+        "the read has its seats, No limit and no minimum",
+        swim.seats === "2" &&
+          art.seats === "No limit" &&
+          swim.minimum_to_run === "No minimum",
+        JSON.stringify([swim, art])
+      );
+      const typed = await change("Art", { seats: "3" }, art.seen);
+      rec.check(
+        "API-1.136",
+        "seats are refused while No limit is ticked",
+        typed.kind === "refused" && /has No limit/.test(typed.text),
+        typed.text
+      );
+      const direct = await change(
+        "Swim",
+        { seats: "5", minimum_to_run: "1" },
+        swim.seen
+      );
+      swim = await row("Swim");
+      rec.check(
+        "API-1.136",
+        "seats and minimum change directly",
+        direct.kind === "done" &&
+          swim.seats === "5" &&
+          swim.minimum_to_run === "1",
+        direct.text
+      );
+      const stale = await change("Swim", { seats: "6" }, { seats: "2" });
+      rec.check(
+        "API-1.136",
+        "what someone changed since is a conflict",
+        stale.kind === "refused" &&
+          /Someone else changed/.test(stale.text) &&
+          (await row("Swim")).seats === "5",
+        stale.text
+      );
+      const zero = await change(
+        "Swim",
+        { minimum_to_run: "0" },
+        { minimum_to_run: swim.seen.minimum_to_run }
+      );
+      rec.check(
+        "API-1.136",
+        "the object's own rule refuses a minimum of 0",
+        zero.kind === "refused" && /Must be 1 or more/.test(zero.text),
+        zero.text
+      );
+      for (const seats of ["0", "(blank)"]) {
+        const now = await row("Swim");
+        const look = await change("Swim", { seats }, { seats: now.seen.seats });
+        rec.check(
+          "ELECT-4.1",
+          `seats ${seats} is saved, and the list's mark comes back`,
+          look.kind === "done" &&
+            /Choose how many seats "Swim" has/.test(look.text) &&
+            (await row("Swim")).seats === seats,
+          look.text
+        );
+      }
+      // Seats given, then fewer seats than campers have: saved, and shown over.
+      await change("Swim", { seats: "2" }, { seats: "(blank)" });
+      const run = { ...at, week: "Week 2" };
+      const sheet = {
+        ...run,
+        file_name: "chugim.csv",
+        csv_text:
+          "Camper,Camper number,Bunk,Choice 1,Choice 2\nAvery Madeup,1,Bunk 1,Swim,Art\nBlake Madeup,2,Bunk 1,Swim,Art\n"
+      };
+      const review = await call("bring_in_choices", sheet);
+      await call("bring_in_choices", {
+        ...sheet,
+        save: true,
+        seen: seenIn(review.text)
+      });
+      const before = await call("read_elective_seats_now", run);
+      await confirmed("assign_elective_seats", {
+        ...run,
+        seen: seenIn(before.text)
+      });
+      const lower = await change("Swim", { seats: "1" }, { seats: "2" });
+      const over = await call("read_elective_seats_now", run);
+      rec.check(
+        "ELECT-4.5",
+        "fewer seats than campers is saved, and shown over its seats",
+        lower.kind === "done" && /Swim is over its seats/.test(over.text),
+        `${lower.text} ${over.text.slice(0, 500)}`
+      );
+      const used = await call("delete_offering", { ...at, activity: "Swim" });
+      rec.check(
+        "API-1.137",
+        "delete is refused while seats use it",
+        used.kind === "refused" && /Nothing was removed/.test(used.text),
+        used.text
+      );
+      const other = soql(
+        `SELECT Id FROM Activity__c WHERE Season__r.Name = '${season}' AND Name NOT IN ('Swim', 'Art') LIMIT 1`
+      )[0].Id;
+      apex(
+        `insert new Offering__c(ElectiveSet__c = [SELECT Id FROM ElectiveSet__c WHERE Season__r.Name = '${season}' AND Name = 'Chugim'].Id, Activity__c = '${other}', NoSeatLimit__c = true);`
+      );
+      const name = soql(`SELECT Name FROM Activity__c WHERE Id = '${other}'`)[0]
+        .Name;
+      const gone = await confirmed("delete_offering", {
+        ...at,
+        activity: name
+      });
+      rec.check(
+        "API-1.137",
+        "delete asks the screen's own question first",
+        gone.preview.kind === "asks first" &&
+          gone.preview.text.includes(
+            `Take "${name}" off "Chugim"? The activity is kept.`
+          ),
+        gone.preview.text
+      );
+      rec.check(
+        "API-1.137",
+        "then the row is gone and the activity kept",
+        gone.done.kind === "done" &&
+          count("Offering__c", `Activity__c = '${other}'`) === 0 &&
+          count("Activity__c", `Id = '${other}'`) === 1,
+        gone.done.text
+      );
+    }
   }
 ];

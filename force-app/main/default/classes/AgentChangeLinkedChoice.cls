@@ -58,15 +58,23 @@ global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
     edit.periodsOn = new AgentLinkedPeriods(refs)
       .of(AgentFields.listOf(body, 'periods_on'), offered);
     // Unticking what is already off is the same as once: the save leaves it.
-    edit.periodsOff = new AgentLinkedPeriods(refs)
-      .of(AgentFields.listOf(body, 'periods_off'), offered);
+    AgentLinkedPeriods unticking = new AgentLinkedPeriods(refs);
+    unticking.held = held;
+    edit.periodsOff = unticking.of(
+      AgentFields.listOf(body, 'periods_off'),
+      offered
+    );
     edit.divisionsOn = new AgentLinkedDivisions(refs)
       .idsOf(ticked(body, refs, choice), offeredTo(refs, choice));
-    edit.divisionsOff = new AgentLinkedDivisions(refs)
-      .idsOf(
-        AgentFields.listOf(body, 'divisions_off'),
-        offeredTo(refs, choice)
-      );
+    AgentLinkedDivisions untickingDivisions = new AgentLinkedDivisions(refs);
+    untickingDivisions.held = new Map<Id, Division__c>(
+        untickingDivisions.namedBy(choice)
+      )
+      .keySet();
+    edit.divisionsOff = untickingDivisions.idsOf(
+      AgentFields.listOf(body, 'divisions_off'),
+      offeredTo(refs, choice)
+    );
     if (
       edit.name == null &&
       edit.appliesTo == null &&

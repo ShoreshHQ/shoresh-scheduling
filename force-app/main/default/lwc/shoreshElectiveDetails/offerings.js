@@ -4,6 +4,8 @@
  * (API-1.86, API-1.87).
  */
 import { FIELD } from "c/shoreshSchema";
+import { foldName } from "c/shoreshImportEngine";
+import { buildTerms } from "c/shoreshTerms";
 
 const OFFER = FIELD.Offering;
 
@@ -44,4 +46,75 @@ export function offeringNames(setup) {
       out.set(set, [...(out.get(set) || []), names.get(o[OFFER.Activity])]);
     });
   return out;
+}
+
+/**
+ * Why a limited offering's seats need a look, or null: "blank" (not filled in yet) or "zero".
+ * Either way the seat run places it with no limit and says so (engine care PR 8).
+ */
+export function seatsNeedingLook(offering) {
+  if (offering[OFFER.NoSeatLimit]) {
+    return null;
+  }
+  const seats = offering[OFFER.Seats];
+  if (seats === null || seats === undefined || seats === "") {
+    return "blank";
+  }
+  return Number(seats) === 0 ? "zero" : null;
+}
+
+/** What to do when seatsNeedingLook says so (Greg, 2026-10-26: the flag says what to do). */
+export function seatsLookWords(name, seatsWord = "seats") {
+  return `Choose how many ${seatsWord} "${name}" has`;
+}
+
+const BLANK = "(blank)";
+function asRead(value) {
+  return value === null || value === undefined || value === ""
+    ? BLANK
+    : String(value);
+}
+
+/** One row of the list, as an AI reads it, with what to send back as seen to change it. */
+function rowForAgent(offering, activity, seatsWord) {
+  const seen = {
+    seats: asRead(offering[OFFER.Seats]),
+    no_seat_limit: offering[OFFER.NoSeatLimit] ? "yes" : "no",
+    minimum_to_run: asRead(offering[OFFER.MinimumToRun])
+  };
+  const look = seatsNeedingLook(offering);
+  return {
+    activity,
+    seats: offering[OFFER.NoSeatLimit] ? "No limit" : seen.seats,
+    minimum_to_run:
+      seen.minimum_to_run === BLANK ? "No minimum" : seen.minimum_to_run,
+    ...(offering[OFFER.Proposed] ? { proposed: true } : {}),
+    ...(look ? { look: seatsLookWords(activity, seatsWord) } : {}),
+    seen
+  };
+}
+
+/**
+ * A set's rows on the Electives list (API-1.135). read: what /v1/offerings answers ({ elective_set,
+ * set_id, setup, labels }). activity: only that row; one the set doesn't offer is said.
+ */
+export function offeringsForAgent(read, { activity } = {}) {
+  const { setup } = read;
+  const terms = buildTerms(read.labels);
+  const names = new Map(
+    ((setup && setup.activities) || []).map((a) => [a.Id, a.Name])
+  );
+  const rows = electivesOf(setup)
+    .offerings.filter((o) => o[OFFER.ElectiveSet] === read.set_id)
+    .map((o) =>
+      rowForAgent(o, names.get(o[OFFER.Activity]) || "", terms.pIn("Seats"))
+    );
+  const mine = activity
+    ? rows.filter((r) => foldName(r.activity) === foldName(activity))
+    : rows;
+  return activity && mine.length === 0
+    ? {
+        error: `${read.elective_set} doesn't offer "${activity}". It offers: ${rows.map((r) => r.activity).join(", ")}.`
+      }
+    : { elective_set: read.elective_set, offerings: mine };
 }
