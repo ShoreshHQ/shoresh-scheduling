@@ -1825,7 +1825,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const started = await call("start_manual_week", {
         season,
         week: "Week 2",
-        from_week: "Week 1"
+        from_week: "Week 1",
+        from: "Published schedule"
       });
       if (published.kind !== "done" || started.kind !== "done") {
         throw new Error(
