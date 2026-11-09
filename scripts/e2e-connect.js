@@ -944,7 +944,7 @@ function everyCommand(tmp) {
     { name: "Nope", start_date: "soon", end_date: "soon" },
     "refused"
   );
-  step("delete_season", { season: "Nope, no such season" }, "refused");
+  step("delete_season", { season: SEASON }, "refused");
   step("read_setup_changes", week, "any");
   step("update_to_match_setup", { ...week, changes: [], seen: "x" }, "any");
   // Versions.
