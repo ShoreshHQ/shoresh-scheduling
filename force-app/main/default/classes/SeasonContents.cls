@@ -20,28 +20,19 @@ public with sharing class SeasonContents {
     for (SeasonSetupReader.ProgramSetup entry : setup.programs) {
       counts.add(entry);
     }
-    List<String> lines = new List<String>();
-    addLine(lines, labels, 'Week', sizeOf(setup.weeks));
-    addLine(lines, labels, 'Program', sizeOf(setup.programs));
-    addLine(lines, labels, 'Division', counts.divisions);
-    addLine(lines, labels, 'Group', counts.groups);
-    addLine(lines, labels, 'TimeBlock', counts.timeBlocks);
-    addLine(lines, labels, 'Location', sizeOf(setup.locations));
-    addLine(lines, labels, 'Activity', sizeOf(setup.activities));
-    addLine(lines, labels, 'FixedActivity', counts.fixedActivities);
-    addLine(lines, labels, 'RecurringActivity', counts.recurringActivities);
-    addLine(
-      lines,
-      labels,
-      'SpecialDay',
-      setup.special?.specialDays?.size() ?? 0
-    );
-    addLine(
-      lines,
-      labels,
-      'SpecialEvent',
-      setup.special?.specialEvents?.size() ?? 0
-    );
+    Lines said = new Lines(labels);
+    said.add('Week', sizeOf(setup.weeks));
+    said.add('Program', sizeOf(setup.programs));
+    said.add('Division', counts.divisions);
+    said.add('Group', counts.groups);
+    said.add('TimeBlock', counts.timeBlocks);
+    said.add('Location', sizeOf(setup.locations));
+    said.add('Activity', sizeOf(setup.activities));
+    said.add('FixedActivity', counts.fixedActivities);
+    said.add('RecurringActivity', counts.recurringActivities);
+    said.add('SpecialDay', setup.special?.specialDays?.size() ?? 0);
+    said.add('SpecialEvent', setup.special?.specialEvents?.size() ?? 0);
+    List<String> lines = said.lines;
     Integer schedules = sizeOf(setup.schedules);
     if (schedules > 0) {
       lines.add(
@@ -57,16 +48,22 @@ public with sharing class SeasonContents {
     return rows == null ? 0 : rows.size();
   }
 
-  private static void addLine(
-    List<String> lines,
-    CampLabels labels,
-    String term,
-    Integer count
-  ) {
-    if (count > 0) {
-      lines.add(
-        count + ' ' + (count == 1 ? labels.singular(term) : labels.plural(term))
-      );
+  private class Lines {
+    List<String> lines = new List<String>();
+    CampLabels labels;
+
+    Lines(CampLabels labels) {
+      this.labels = labels;
+    }
+
+    void add(String term, Integer count) {
+      if (count > 0) {
+        lines.add(
+          count +
+            ' ' +
+            (count == 1 ? labels.singular(term) : labels.plural(term))
+        );
+      }
     }
   }
 
