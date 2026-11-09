@@ -1710,7 +1710,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       );
       rec.check(
         "WEEK-4.2",
-        "the engine reads it: what the screen reads says lower",
+        "the field the engine's build reads now holds it",
         soql(
           `SELECT ShrinkShortWeek__c FROM Season__c WHERE Name = '${season}'`
         )[0].ShrinkShortWeek__c === true,

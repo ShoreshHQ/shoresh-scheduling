@@ -369,6 +369,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentSeasonDates</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AgentSeasons</apexClass>
         <enabled>true</enabled>
     </classAccesses>

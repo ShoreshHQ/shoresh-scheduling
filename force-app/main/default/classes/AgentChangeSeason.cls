@@ -56,7 +56,7 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
         said.add(key.replace('_', ' ') + ' ' + text(given.get(key)));
       }
     }
-    datesTogether(record, given, now);
+    AgentSeasonDates.together(record, given, now);
     try {
       // Camp Setup's own season form save.
       SeasonSetupController.saveRecords(new List<SObject>{ record });
@@ -104,21 +104,6 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
           now.Name +
           '" since, so nothing was saved. Read it again in Shoresh.'
       );
-    }
-  }
-
-  /** The form sends the two dates together: the last day may not come before the first. */
-  private static void datesTogether(
-    Season__c record,
-    Map<String, Object> given,
-    Season__c now
-  ) {
-    Boolean start = given.containsKey('start_date');
-    Boolean last = given.containsKey('end_date');
-    if (start && !last) {
-      record.EndDate__c = now.EndDate__c;
-    } else if (last && !start) {
-      record.StartDate__c = now.StartDate__c;
     }
   }
 
