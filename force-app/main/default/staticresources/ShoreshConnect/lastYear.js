@@ -207,7 +207,7 @@ function reviewText(m, body, review, input) {
       : `Ready to save: ${label}.`
   );
   parts.push(
-    `Give every answer in answers (id to answer) and send the review again with the same files; to save, send them with save: true and seen: "${body.seen}". Ask the person about anything not plain from the files.`
+    `Give every answer in answers (id to answer) and send the review again ${input.open_questions === true ? "with open_questions: true (no files)" : "with the same files"}; to save, send them with save: true and seen: "${body.seen}". Ask the person about anything not plain from the files.`
   );
   return parts.join("\n");
 }
