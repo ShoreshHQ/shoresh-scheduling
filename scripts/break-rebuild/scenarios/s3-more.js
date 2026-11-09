@@ -8,9 +8,9 @@ const {
   names,
   confirmed,
   seenOf,
-  electiveOnWeek
+  electiveOnWeek,
   mapleFiles,
-  MUSIC,
+  MUSIC
 } = require("../kit");
 
 /** Told apart only by the seed: each camp still places every cell, and the same way around locks. */
@@ -1767,7 +1767,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
   },
   {
     id: "S14",
-    title: "open items through an AI: clear a day and a week, questions left by an import, an elective on a special day",
+    title:
+      "open items through an AI: clear a day and a week, questions left by an import, an elective on a special day",
     camps: "BR S14 %",
     async run(rec) {
       const { season } = makeCamp("S14 Open");
@@ -1802,7 +1803,10 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         save: true,
         seen: seenOf(reopened.text)
       });
-      const again = await call("import_last_year", { season, open_questions: true });
+      const again = await call("import_last_year", {
+        season,
+        open_questions: true
+      });
       rec.check(
         "API-1.144",
         "answered and saved: no question is left",
@@ -1816,10 +1820,16 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const week = { season, week: "Week 1" };
       const manual = { ...week, schedule: "Manual Build" };
       await call("start_manual_week", week);
-      const before = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const before = await draft(season, "Week 1", {
+        schedule: "Manual Build"
+      });
       const monday = before.rows.find((r) => r.day === "Monday");
       const onGenerated = await call("build_week", week);
-      const refusedThere = await call("clear_day", { ...week, schedule: "Generated Schedule", day: "Monday" });
+      const refusedThere = await call("clear_day", {
+        ...week,
+        schedule: "Generated Schedule",
+        day: "Monday"
+      });
       rec.check(
         "API-1.143",
         "Generated Schedule has no Clear day",
@@ -1833,7 +1843,9 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         day: "Monday",
         group: monday.group
       });
-      const afterGroup = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const afterGroup = await draft(season, "Week 1", {
+        schedule: "Manual Build"
+      });
       const plain = (r) => !r.notes && r.activity !== "Open";
       rec.check(
         "API-1.143",
@@ -1844,7 +1856,10 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
             (r) => r.day === "Monday" && r.group === monday.group && plain(r)
           ) &&
           afterGroup.rows.some(
-            (r) => r.day === "Monday" && r.group === monday.group && /fixed|recurring/.test(r.notes ?? "")
+            (r) =>
+              r.day === "Monday" &&
+              r.group === monday.group &&
+              /fixed|recurring/.test(r.notes ?? "")
           ) &&
           afterGroup.rows.some(
             (r) => r.day === "Monday" && r.group !== monday.group && plain(r)
@@ -1862,7 +1877,9 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         undo.done.text
       );
       const all = await call("clear_week", manual);
-      const cleared = await draft(season, "Week 1", { schedule: "Manual Build" });
+      const cleared = await draft(season, "Week 1", {
+        schedule: "Manual Build"
+      });
       rec.check(
         "API-1.143",
         "the whole week is cleared; what isn't an activity stays",
@@ -1880,10 +1897,22 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       );
 
       // An elective on a special day's own schedule: by its file, as the screen does.
-      await call("add_setup_record", { season, kind: "elective set", name: "Chugim" });
-      await call("add_setup_record", { season, kind: "special day", name: "Color war" });
-      let plan = await call("read_special_schedule", { season, special: "Color war" });
-      const csv = "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n";
+      await call("add_setup_record", {
+        season,
+        kind: "elective set",
+        name: "Chugim"
+      });
+      await call("add_setup_record", {
+        season,
+        kind: "special day",
+        name: "Color war"
+      });
+      let plan = await call("read_special_schedule", {
+        season,
+        special: "Color war"
+      });
+      const csv =
+        "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n";
       const fromFile = await call("import_special_schedule", {
         season,
         special: "Color war",
@@ -1891,11 +1920,16 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         file_name: "cw.csv",
         csv_text: csv
       });
-      plan = await call("read_special_schedule", { season, special: "Color war" });
+      plan = await call("read_special_schedule", {
+        season,
+        special: "Color war"
+      });
       rec.check(
         "API-1.85",
         "an elective set in a special day's file is placed as an elective",
-        fromFile.kind === "done" && /Chugim/.test(plan.text) && /elective/i.test(plan.text),
+        fromFile.kind === "done" &&
+          /Chugim/.test(plan.text) &&
+          /elective/i.test(plan.text),
         `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
       );
       const byHand = await call("change_special_schedule_cell", {
@@ -1909,7 +1943,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       rec.check(
         "API-1.77",
         "by hand, as on its page, an elective isn't one of the choices",
-        byHand.kind === "refused" && /no activity called "Chugim"/.test(byHand.text),
+        byHand.kind === "refused" &&
+          /no activity called "Chugim"/.test(byHand.text),
         byHand.text
       );
     }
