@@ -2990,8 +2990,12 @@ describe("Shoresh for AI tools and the command line", () => {
     const calls = [
       ...source.matchAll(/loadModules\(\s*namespace,\s*\[([^\]]*)\]/g)
     ];
-    // Every call is read, so a new loader can't slip past this check.
-    expect(calls.length).toBe(source.match(/await loadModules\(/g).length);
+    // Every call is read (all but the function's own line), so a new loader can't slip past.
+    expect(calls.length).toBe(source.match(/\bloadModules\(/g).length - 1);
+    // Each list holds only names written out, so none is skipped.
+    for (const [, list] of calls) {
+      expect(list.replace(/"[^"]+"/g, "").replace(/[\s,]/g, "")).toBe("");
+    }
     const loaded = calls.flatMap(([, list]) =>
       [...list.matchAll(/"([^"]+)"/g)].map(([, name]) => name)
     );
