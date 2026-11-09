@@ -135,3 +135,7 @@
   align-items: center;
   padding: var(--shoresh-s2) var(--shoresh-s3);
 }
+
+.panel-foot lightning-button {
+  flex: none;
+}

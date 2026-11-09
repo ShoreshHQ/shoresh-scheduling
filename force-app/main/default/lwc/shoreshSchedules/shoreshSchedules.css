@@ -20,6 +20,8 @@
   --offset: calc(var(--shoresh-head-w) + var(--shoresh-space-cell-gap));
   box-sizing: border-box;
   display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--shoresh-s2);
   align-items: center;
   min-height: calc(var(--shoresh-control-h) + 2 * var(--shoresh-space-pad));
   padding: var(--shoresh-space-pad);
@@ -67,19 +69,29 @@
 
 /* Too narrow for one line: the rail's parts wrap, in order. */
 @media (max-width: 75em) {
-  .rail {
-    flex-wrap: wrap;
-    row-gap: var(--shoresh-s2);
-  }
-
   .side,
   .side_left,
   .mid {
     flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .views {
     margin-left: 0;
+  }
+}
+
+/* A phone: too narrow for a menu to open from its item, so the rail's open across it, under it
+   (c/shoreshRailPop, c/shoreshVersions). */
+@media (max-width: 40em) {
+  .rail {
+    position: relative;
+    --shoresh-pop-host: static;
+    --shoresh-pop-left: 0;
+    --shoresh-pop-right: 0;
+    --shoresh-pop-width: auto;
   }
 }
 

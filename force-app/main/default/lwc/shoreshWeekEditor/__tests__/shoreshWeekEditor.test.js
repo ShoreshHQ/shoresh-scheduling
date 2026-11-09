@@ -436,6 +436,42 @@ describe("the rail's room", () => {
     );
   });
 
+  it("the same on Saved versions and Elective seats, each part holding its width", () => {
+    const read = (bundle) =>
+      require("fs").readFileSync(
+        require("path").join(__dirname, `../../${bundle}/${bundle}.css`),
+        "utf8"
+      );
+    for (const [bundle, narrow] of [
+      ["shoreshSchedules", "40em"],
+      ["shoreshElectiveSeats", "57em"]
+    ]) {
+      const css = read(bundle);
+      const wide = css.split("@media")[0];
+      expect(wide.match(/\.rail\s*{[^}]*}/)[0]).toMatch(/flex-wrap: wrap;/);
+      // A part that may shrink to nothing never makes the rail wrap.
+      expect(wide.match(/\.side\s*{[^}]*}/)[0]).toMatch(
+        /min-width: max-content;/
+      );
+      const phone = css.split(`@media (max-width: ${narrow})`)[1];
+      expect(phone).toMatch(/\.rail\s*{[^}]*position: relative;/);
+      expect(phone).toMatch(/--shoresh-pop-host: static;/);
+    }
+  });
+
+  it("keeps the grid's screen-reader words inside what scrolls, not widening the page", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(
+        __dirname,
+        "../../shoreshScheduleGrid/shoreshScheduleGrid.css"
+      ),
+      "utf8"
+    );
+    expect(css.match(/\.frame-scroll\s*{[^}]*}/)[0]).toMatch(
+      /position: relative;/
+    );
+  });
+
   it("on a phone anchors the rail's menus itself, so they open under it", () => {
     const css = require("fs").readFileSync(
       require("path").join(__dirname, "../shoreshWeekEditor.css"),
