@@ -19,6 +19,11 @@ public with sharing class OutgoingRows {
    */
   public static Season__c used { get; private set; }
 
+  /** A season just made is the one this request used, so its answer says so (API-1.108). */
+  public static void usedIs(Season__c season) {
+    used = season;
+  }
+
   /** An AI answer: its message, and which season it used, named or not (API-1.108). */
   public static Map<String, String> answered(String message) {
     Map<String, String> result = new Map<String, String>{
@@ -60,7 +65,7 @@ public with sharing class OutgoingRows {
           seasonsSaid()
         : 'More than one season is called "' +
           given.left(80) +
-          '". Rename one in Shoresh, then ask again.'
+          '", so Shoresh can\'t tell which you mean.'
     );
   }
 

@@ -1479,9 +1479,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       // A camp already exists on this org, so the camp is made as makeCamp makes one; its first
       // tool with none is proved in AgentCampSeasonTest.
       const camp = "BR S12 Start (made up)";
-      apex(
-        `insert new Camp__c(Name = '${camp}', TimeZone__c = 'America/New_York');`
-      );
+      // As create_camp makes one: a name, no time zone.
+      apex(`insert new Camp__c(Name = '${camp}');`);
       const refused = await call("create_camp", {
         name: "BR S12 Other (made up)"
       });
@@ -1588,6 +1587,12 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           count("Season__c", `Name = '${season}'`) === 1,
         `${published.text} ${history.text}`
       );
+      const unpublished = await confirmed("unpublish_week", week);
+      const stillKept = await call("delete_season", { season });
+      rec.note(
+        "after unpublishing",
+        `${unpublished.done.text} ${stillKept.kind}: ${stillKept.text}`
+      );
       // A season with no history goes, and the camp stays.
       const other = "BR S12 Other 2027";
       await call("create_season", {
@@ -1597,6 +1602,27 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         end_date: "2028-07-07"
       });
       await importMaple(other);
+      const inOther = JSON.parse(
+        (await call("list_seasons", {})).text
+      ).seasons.find((x) => x.season === other);
+      rec.check(
+        "API-1.141",
+        "the other season has something in it to delete",
+        inOther.weeks.length > 0,
+        JSON.stringify(inOther)
+      );
+      const taken = await call("create_season", {
+        camp,
+        name: other,
+        start_date: "2029-06-25",
+        end_date: "2029-07-06"
+      });
+      rec.check(
+        "API-1.140",
+        "a name another season has is refused",
+        taken.kind === "refused" && /already a season/.test(taken.text),
+        taken.text
+      );
       const gone = await confirmed("delete_season", { season: other });
       rec.check(
         "API-1.141",

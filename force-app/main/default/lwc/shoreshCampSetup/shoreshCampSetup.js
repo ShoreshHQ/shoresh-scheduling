@@ -2451,15 +2451,35 @@ export default class ShoreshCampSetup extends LightningElement {
    * as counts, one line each, rather than told in a sentence. Cancel puts the cursor back on
    * the button.
    */
+  /**
+   * The season shown when Delete season was pressed is the one asked about and the one deleted,
+   * whatever is picked while the server answers; a second press while it does is ignored.
+   */
   async handleDeleteSeason() {
-    const notDeleted = `"${this.setup.season.Name}" not deleted. Nothing was removed.`;
+    if (this.deleting) {
+      return;
+    }
+    this.deleting = true;
+    try {
+      await this.askAndDeleteSeason(this.seasonId, this.setup.season.Name);
+    } finally {
+      this.deleting = false;
+    }
+  }
+
+  async askAndDeleteSeason(seasonId, name) {
+    const notDeleted = `"${name}" not deleted. Nothing was removed.`;
     // The server's question (SetupDelete), as the AI asks it: what goes with the season, or why
     // it can't be deleted.
     let preview;
     try {
-      preview = await deletePreview({ recordId: this.seasonId });
+      preview = await deletePreview({ recordId: seasonId });
     } catch (e) {
       this.showError(e, notDeleted);
+      return;
+    }
+    // Another season was picked meanwhile: nothing to ask about any more.
+    if (this.seasonId !== seasonId) {
       return;
     }
     if (preview.refusal) {
@@ -2475,9 +2495,9 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     await this.run(async () => {
-      await deleteRecord({ recordId: this.seasonId });
+      await deleteRecord({ recordId: seasonId });
       this.changedOnServer = true;
-      this.toast(`Deleted "${this.setup.season.Name}".`);
+      this.toast(`Deleted "${name}".`);
       this.seasonId = null;
       this.seasonOpen = false;
       this.screen = "roots";

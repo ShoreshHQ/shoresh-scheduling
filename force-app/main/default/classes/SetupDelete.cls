@@ -135,6 +135,9 @@ public with sharing class SetupDelete {
   private static Preview season(Id seasonId, Preview result) {
     String name = nameOf(seasonId);
     result.refusal = PublishedHistory.refusalForSeason(seasonId, name);
+    if (result.refusal != null) {
+      return result;
+    }
     result.lines = SeasonContents.of(seasonId);
     result.label = 'Delete ' + name + '?';
     result.message = result.label + ' ' + String.join(result.lines, ', ') + '.';

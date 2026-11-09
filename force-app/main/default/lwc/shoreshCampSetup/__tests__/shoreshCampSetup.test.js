@@ -1935,6 +1935,51 @@ describe("c-shoresh-camp-setup", () => {
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
     });
 
+    it("deletes the season it asked about: a second press and another pick change nothing", async () => {
+      let answer;
+      deletePreview.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      deleteRecord.mockResolvedValue();
+      const element = await renderSeason();
+      button(element, "Delete season").click();
+      button(element, "Delete season").click();
+      await flush();
+      expect(deletePreview).toHaveBeenCalledTimes(1);
+      answer({ label: "Delete Summer 2026?", lines: ["1 Week"] });
+      await flush();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe("Delete Summer 2026?");
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+      await flush();
+      expect(deleteRecord).toHaveBeenCalledTimes(1);
+      expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
+    });
+
+    it("another season picked while the server answers: nothing is asked or deleted", async () => {
+      let answer;
+      deletePreview.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      const element = await renderSeason();
+      button(element, "Delete season").click();
+      await flush();
+      const other = { ...SEASON, Id: "s2", Name: "Summer 2027" };
+      getSeasons.mockResolvedValue(nsRecord([SEASON, other]));
+      element.shadowRoot
+        .querySelector('[data-id="season"]')
+        ?.dispatchEvent(new CustomEvent("change", { detail: { value: "s2" } }));
+      await flush();
+      answer({ label: "Delete Summer 2026?", lines: ["1 Week"] });
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(deleteRecord).not.toHaveBeenCalled();
+    });
+
     it("a season the server won't let go says why, and asks nothing", async () => {
       deletePreview.mockResolvedValueOnce({
         refusal: "It has published schedules, kept as history."

@@ -119,20 +119,52 @@ private class AgentCampSeasonTest {
       List<Object> which = sent(new AgentCreateSeason(), newSeason('Summer'));
       Assert.areEqual(400, which[0]);
       Assert.isTrue(String.valueOf(which[1]).contains('Say which camp'));
-      Map<String, Object> asked = newSeason('Summer');
-      asked.put('camp', 'camp oak');
-      asked.put('start_date', 'soon');
-      Assert.areEqual(400, sent(new AgentCreateSeason(), asked)[0]);
-      asked = newSeason('Summer');
-      asked.put('camp', 'Camp Oak');
-      asked.put('end_date', '2027-01-01');
-      List<Object> backwards = sent(new AgentCreateSeason(), asked);
-      Test.stopTest();
-      Assert.areEqual(400, backwards[0], String.valueOf(backwards[1]));
+      Map<String, Object> wrongCamp = newSeason('Summer');
+      wrongCamp.put('camp', 'Camp Elm');
       Assert.isTrue(
-        String.valueOf(backwards[1]).startsWith('Season not created')
+        String.valueOf(sent(new AgentCreateSeason(), wrongCamp)[1])
+          .contains('No camp called "Camp Elm"')
       );
+      // A date that isn't one, or doesn't exist, isn't moved to one that does.
+      for (String day : new List<String>{ 'soon', '2027-02-30' }) {
+        Map<String, Object> asked = newSeason('Summer');
+        asked.put('camp', 'camp oak');
+        asked.put('start_date', day);
+        List<Object> refused = sent(new AgentCreateSeason(), asked);
+        Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
+        Assert.isTrue(String.valueOf(refused[1]).contains('that exists'));
+      }
+      Map<String, Object> longName = newSeason('x'.repeat(81));
+      longName.put('camp', 'Camp Oak');
+      Assert.areEqual(400, sent(new AgentCreateSeason(), longName)[0]);
+      Map<String, Object> backwards = newSeason('Summer');
+      backwards.put('camp', 'Camp Oak');
+      backwards.put('end_date', '2027-01-01');
+      List<Object> answer = sent(new AgentCreateSeason(), backwards);
+      Test.stopTest();
+      Assert.areEqual(400, answer[0], String.valueOf(answer[1]));
+      Assert.isTrue(String.valueOf(answer[1]).startsWith('Season not created'));
       Assert.areEqual(0, [SELECT COUNT() FROM Season__c]);
+    }
+  }
+
+  // API-1.140: an AI finds a season by its name, so two of one name would lock it out of both.
+  @IsTest
+  static void aNameAnotherSeasonHasIsRefusedAndTheAnswerSaysTheSeason() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ShoreshTestData.camp('Camp Willow');
+      Test.startTest();
+      Map<String, Object> asked = newSeason('Summer');
+      Assert.areEqual(200, sent(new AgentCreateSeason(), asked)[0]);
+      Map<String, Object> answered = (Map<String, Object>) JSON.deserializeUntyped(
+        RestContext.response.responseBody.toString()
+      );
+      Assert.areEqual('Summer', answered.get('season'));
+      List<Object> again = sent(new AgentCreateSeason(), asked);
+      Test.stopTest();
+      Assert.areEqual(400, again[0]);
+      Assert.isTrue(String.valueOf(again[1]).contains('already a season'));
+      Assert.areEqual(1, [SELECT COUNT() FROM Season__c]);
     }
   }
 
@@ -222,21 +254,135 @@ private class AgentCampSeasonTest {
     }
   }
 
-  // API-1.141
+  // API-1.141: each kind, numbered, in the camp's words, a holding record's group counted but not
+  // the record; saved schedules last.
   @IsTest
   static void aSeasonsLinesCountEachKindInTheCampsWords() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       ShoreshTestData.fullSeason(camp.Id);
-      Id seasonId = ShoreshTestData.lastSeasonIds.get('Season');
+      Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
+      Id seasonId = ids.get('Season');
+      Id programId = ids.get('Main');
+      Division__c holding = new Division__c(
+        Program__c = programId,
+        Name = 'Solo',
+        NoDivision__c = true
+      );
+      Database.insert(holding, AccessLevel.USER_MODE);
+      Database.insert(
+        new List<SObject>{
+          new Group__c(Division__c = holding.Id, Name = 'Solo'),
+          new SpecialDay__c(Season__c = seasonId, Name = 'Color War'),
+          new SpecialEvent__c(Season__c = seasonId, Name = 'Campfire')
+        },
+        AccessLevel.USER_MODE
+      );
+      ShoreshTestData.savedVersion(programId, ids.get('Week 1'), 'Kept');
+      Integer divisions = [
+        SELECT COUNT()
+        FROM Division__c
+        WHERE Program__r.Season__c = :seasonId AND NoDivision__c = FALSE
+      ];
+      Integer groups = [
+        SELECT COUNT()
+        FROM Group__c
+        WHERE Division__r.Program__r.Season__c = :seasonId
+      ];
+      CampLabels.TermLabel bunk = new CampLabels.TermLabel();
+      bunk.term = 'Group';
+      bunk.singular = 'Bunk';
+      bunk.plural = 'Bunks';
+      SeasonSetupController.saveCampLabels(
+        camp.Id,
+        new List<CampLabels.TermLabel>{ bunk }
+      );
       Test.startTest();
-      List<String> lines = SeasonContents.of(seasonId);
+      String all = String.join(SeasonContents.of(seasonId), '|');
       Test.stopTest();
-      String all = String.join(lines, '|');
-      Assert.isTrue(all.contains('Week'), all);
-      Assert.isTrue(all.contains('Program'), all);
-      Assert.isTrue(all.contains('Time block'), all);
-      Assert.isTrue(all.contains(' Group'), all);
+      Assert.isTrue(all.contains(divisions + ' Division'), all);
+      Assert.isTrue(all.contains(groups + ' Bunks'), all);
+      Assert.isTrue(all.contains('|1 Special day|1 Special event|'), all);
+      Assert.isTrue(
+        all.endsWith(' saved schedule') || all.endsWith(' saved schedules'),
+        all
+      );
+      Assert.isTrue(all.indexOf(' Week') < all.indexOf(' Program'), all);
+    }
+  }
+
+  // API-1.141: asked and done in one request, on a season with something in it, inside the limits.
+  @IsTest
+  static void aYesOnAFullSeasonFitsOneRequest() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      ShoreshTestData.fullSeason(camp.Id);
+      Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
+      for (Integer i = 0; i < 3; i++) {
+        ShoreshTestData.savedVersion(
+          ids.get('Main'),
+          ids.get('Week 1'),
+          'Kept ' + i
+        );
+      }
+      String name = [SELECT Name FROM Season__c WHERE Id = :ids.get('Season')]
+      .Name;
+      Map<String, Object> body = new Map<String, Object>{ 'season' => name };
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentDeleteSeason(),
+        body
+      );
+      body.put(AgentAskFirst.FIELD, confirm);
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentDeleteSeason());
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      Assert.areEqual(
+        200,
+        RestContext.response.statusCode,
+        RestContext.response.responseBody.toString()
+      );
+      Assert.isTrue(queries < 90, 'Queries: ' + queries);
+      Assert.areEqual(0, [SELECT COUNT() FROM Season__c WHERE Name = :name]);
+    }
+  }
+
+  // API-1.141: a yes is for the very season asked about, not another given the same name since.
+  @IsTest
+  static void aYesIsForTheSeasonAskedAbout() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c first = new Season__c(
+        Camp__c = camp.Id,
+        Name = 'Summer',
+        Status__c = 'Planning',
+        StartDate__c = Date.newInstance(2027, 6, 28),
+        EndDate__c = Date.newInstance(2027, 8, 6)
+      );
+      Database.insert(first, AccessLevel.USER_MODE);
+      Map<String, Object> body = new Map<String, Object>{
+        'season' => 'Summer'
+      };
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentDeleteSeason(),
+        body
+      );
+      Database.delete(first, AccessLevel.USER_MODE);
+      Database.insert(first.clone(false), AccessLevel.USER_MODE);
+      body.put(AgentAskFirst.FIELD, confirm);
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentDeleteSeason());
+      Test.stopTest();
+      Assert.areEqual(409, RestContext.response.statusCode);
+      Assert.areEqual(1, [SELECT COUNT() FROM Season__c]);
     }
   }
 

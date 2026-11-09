@@ -18,13 +18,16 @@ public with sharing class ScreenErrors {
     StatusCode.INVALID_FIELD_FOR_INSERT_UPDATE => 'You don\'t have access to change that.',
     StatusCode.ENTITY_IS_DELETED => 'That was removed. Reload the page.',
     StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
-    StatusCode.STRING_TOO_LONG => 'Something typed is too long. Shorten it and save again.'
+    StatusCode.STRING_TOO_LONG => 'Something typed is too long.'
   };
 
   /** The plain words; a screen also says to change what still uses it (API-1.105: an AI doesn't). */
   private static String plain(StatusCode code) {
-    return code == StatusCode.DELETE_FAILED
-      ? AgentRefusal.withFix(PLAIN.get(code), 'Change that first.')
+    if (code == StatusCode.DELETE_FAILED) {
+      return AgentRefusal.withFix(PLAIN.get(code), 'Change that first.');
+    }
+    return code == StatusCode.STRING_TOO_LONG
+      ? AgentRefusal.withFix(PLAIN.get(code), 'Shorten it and save again.')
       : PLAIN.get(code);
   }
 

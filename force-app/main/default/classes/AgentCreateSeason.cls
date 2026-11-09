@@ -29,6 +29,8 @@ global with sharing class AgentCreateSeason implements AgentWeeks.Action {
         'Say its name, first day and last day (name, start_date, end_date).'
       );
     }
+    AgentCopySeason.refuseTaken(name);
+    AgentLinkedChoiceRefs.refuseLongName(name);
     Season__c season = new Season__c(
       Camp__c = camp.Id,
       Status__c = 'Planning',
@@ -37,7 +39,10 @@ global with sharing class AgentCreateSeason implements AgentWeeks.Action {
       EndDate__c = dateOf('end_date', last)
     );
     try {
-      SeasonSetupController.saveRecords(new List<SObject>{ season });
+      List<Id> made = SeasonSetupController.saveRecords(
+        new List<SObject>{ season }
+      );
+      OutgoingRows.usedIs(new Season__c(Id = made[0], Name = name));
     } catch (Exception e) {
       throw new ShoreshException(
         'Season not created. Nothing was saved. ' + ScreenErrors.words(e)
@@ -75,13 +80,19 @@ global with sharing class AgentCreateSeason implements AgentWeeks.Action {
     );
   }
 
+  /** A date as written; one that doesn't exist (February 30) isn't moved to one that does. */
   private static Date dateOf(String field, String asked) {
+    Date read;
     try {
-      return Date.valueOf(asked);
+      read = Date.valueOf(asked);
     } catch (Exception e) {
+      read = null;
+    }
+    if (read == null || String.valueOf(read) != asked) {
       throw new ShoreshException(
-        'Give ' + field + ' as a date like 2027-06-28.'
+        'Give ' + field + ' as a date that exists, like 2027-06-28.'
       );
     }
+    return read;
   }
 }

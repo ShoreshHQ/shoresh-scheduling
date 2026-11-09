@@ -19,6 +19,7 @@ global with sharing class AgentCreateCamp implements AgentWeeks.Action {
     if (String.isBlank(name)) {
       throw new ShoreshException('Say the camp\'s name (name).');
     }
+    AgentLinkedChoiceRefs.refuseLongName(name);
     List<String> camps = new List<String>();
     for (Camp__c camp : SeasonSetupController.getCamps()) {
       camps.add(camp.Name);

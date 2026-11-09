@@ -581,7 +581,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. Then fill it with import_last_year, import_worksheet, or the bring_in tools. It is made as you, with your own access.",
+      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet or add_setup_record; the bring_in tools need its programs first. It is made as you, with your own access.",
     inputSchema: {
       type: "object",
       properties: {
@@ -613,7 +613,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has published schedules, which are kept as history.",
+      "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has any schedule that was ever published, kept as history, even if it has since been unpublished or replaced.",
     inputSchema: {
       type: "object",
       properties: {

@@ -3086,7 +3086,11 @@ describe("Shoresh for AI tools and the command line", () => {
     const sources = [
       ...fs
         .readdirSync(classes)
-        .filter((f) => /^Agent.*\.cls$/.test(f) && !/Test(Data)?\.cls$/.test(f))
+        .filter(
+          (f) =>
+            (/^Agent.*\.cls$/.test(f) && !/Test(Data)?\.cls$/.test(f)) ||
+            f === "OutgoingRows.cls"
+        )
         .map((f) => path.join(classes, f)),
       ...[
         "cells.js",
