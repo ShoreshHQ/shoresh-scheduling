@@ -7,6 +7,8 @@
  * cells and set like a resting rail item.
  */
 .frame-scroll {
+  /* Holds the screen-reader words in, so they scroll with the grid, not the whole page. */
+  position: relative;
   overflow-x: auto;
   font-family: var(--shoresh-font-sans);
   font-size: var(--shoresh-font-size);

@@ -23,17 +23,20 @@
 
 .rail {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--shoresh-space-in-group);
+  row-gap: var(--shoresh-s2);
   min-height: var(--shoresh-control-h);
   padding: var(--shoresh-space-pad);
 }
 
+/* A part never gets narrower than what it holds: when they don't all fit, the rail wraps. */
 .side {
   display: flex;
   align-items: center;
   gap: var(--shoresh-space-in-group);
-  min-width: 0;
+  min-width: max-content;
 }
 
 .side_left {
@@ -47,6 +50,30 @@
 .side_right {
   flex: 1 1 0;
   justify-content: flex-end;
+}
+
+/* Narrow: a part takes its own line, and wraps inside itself if it's wider than the frame. */
+@media (max-width: 75em) {
+  .side,
+  .side_left,
+  .side_right {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Too narrow for a menu to open from its item, so the rail's open across it, under it
+   (c/shoreshRailPop). Wider than the other rails' rule: "Assign against" names a whole schedule. */
+@media (max-width: 57em) {
+  .rail {
+    position: relative;
+    --shoresh-pop-host: static;
+    --shoresh-pop-left: 0;
+    --shoresh-pop-right: 0;
+    --shoresh-pop-width: auto;
+  }
 }
 
 .problems {
