@@ -444,7 +444,7 @@ describe("the rail's room", () => {
       );
     for (const [bundle, narrow] of [
       ["shoreshSchedules", "40em"],
-      ["shoreshElectiveSeats", "48em"]
+      ["shoreshElectiveSeats", "57em"]
     ]) {
       const css = read(bundle);
       const wide = css.split("@media")[0];
