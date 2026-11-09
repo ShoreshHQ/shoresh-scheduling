@@ -1159,7 +1159,6 @@ describe("Shoresh for AI tools and the command line", () => {
     expect((await moveOn(false, "Day 1")).done.ok).toBe(false);
   });
 
-  // API-1.38, API-1.39, API-1.40, API-1.138
   // LOCK-4.1
   it("cellContextAsTheScreensEditor: an AI's edits work with what the week editor gives its edits, and a lock on any block of an activity locks all of it for an AI too", () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -1235,6 +1234,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(manual.isLocked(cell(1))).toBe(false);
   });
 
+  // API-1.38, API-1.39, API-1.40, API-1.138
   it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const edits = async () =>
