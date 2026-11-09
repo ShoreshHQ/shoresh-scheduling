@@ -14,6 +14,7 @@ import ShoreshElectiveDetails, {
   withPending
 } from "c/shoreshElectiveDetails";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
+import { offeringsForAgent } from "../offerings";
 import {
   linkedChoicesForAgent,
   notesForAgent,
@@ -704,6 +705,77 @@ describe("c-shoresh-elective-details", () => {
     ).toBe(
       "Not every schedule could be read, so some places Chugim sits may be missing."
     );
+  });
+
+  // API-1.135, ELECT-4.1
+  it("anAgentReadsTheListsRows: seats, No limit, blank or 0 marked as the list marks them", () => {
+    const offerings = [
+      {
+        Id: "o1",
+        ElectiveSet__c: "es1",
+        Activity__c: "a1",
+        NoSeatLimit__c: true
+      },
+      {
+        Id: "o2",
+        ElectiveSet__c: "es1",
+        Activity__c: "a2",
+        Seats__c: 12,
+        MinimumToRun__c: 3
+      },
+      { Id: "o3", ElectiveSet__c: "es1", Activity__c: "a3", Proposed__c: true },
+      { Id: "o4", ElectiveSet__c: "es1", Activity__c: "a4", Seats__c: 0 },
+      { Id: "o5", ElectiveSet__c: "other", Activity__c: "a1", Seats__c: 9 }
+    ];
+    const read = {
+      elective_set: "Chugim",
+      set_id: "es1",
+      labels: [
+        { term: "Seats", singular: "Seats", plural: "Seats", isCustom: false }
+      ],
+      setup: nsRecord({
+        activities: [
+          { Id: "a1", Name: "Pottery" },
+          { Id: "a2", Name: "Archery" },
+          { Id: "a3", Name: "Drama" },
+          { Id: "a4", Name: "Swim" }
+        ],
+        electives: { sets: [], offerings, linkedChoices: [] }
+      })
+    };
+    const rows = offeringsForAgent(read).offerings;
+    expect(rows.map((r) => [r.activity, r.seats, r.minimum_to_run])).toEqual([
+      ["Pottery", "No limit", "No minimum"],
+      ["Archery", "12", "3"],
+      ["Drama", "(blank)", "No minimum"],
+      ["Swim", "0", "No minimum"]
+    ]);
+    expect(rows.map((r) => r.look)).toEqual([
+      undefined,
+      undefined,
+      'Choose how many seats "Drama" has',
+      'Choose how many seats "Swim" has'
+    ]);
+    expect(rows[2].proposed).toBe(true);
+    expect(rows[1].seen).toEqual({
+      seats: "12",
+      no_seat_limit: "no",
+      minimum_to_run: "3"
+    });
+    expect(
+      offeringsForAgent(read, { activity: "archery" }).offerings
+    ).toHaveLength(1);
+    expect(offeringsForAgent(read, { activity: "Nope" }).error).toBe(
+      'Chugim doesn\'t offer "Nope". It offers: Pottery, Archery, Drama, Swim.'
+    );
+    // The camp's own word, as the list's mark says it.
+    const spots = offeringsForAgent({
+      ...read,
+      labels: [
+        { term: "Seats", singular: "Spot", plural: "Spots", isCustom: true }
+      ]
+    });
+    expect(spots.offerings[2].look).toBe('Choose how many Spots "Drama" has');
   });
 
   // API-1.132

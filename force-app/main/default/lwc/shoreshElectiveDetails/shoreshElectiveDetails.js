@@ -5,7 +5,13 @@ import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedC
 import { WEEKDAYS, programDays, weekOrder } from "c/shoreshImportEngine";
 import { failed } from "c/shoreshErrors";
 import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
-import { electivesOf, offeringNames, openCount } from "./offerings";
+import {
+  electivesOf,
+  offeringNames,
+  openCount,
+  seatsLookWords,
+  seatsNeedingLook
+} from "./offerings";
 import {
   APPLIES_TO,
   blocksOf,
@@ -20,32 +26,20 @@ import {
   savedChoicesOf
 } from "./linkedChoices";
 
-export { divisionsCovered, divisionsOf, electivesOf, offeringNames, openCount };
+export {
+  divisionsCovered,
+  divisionsOf,
+  electivesOf,
+  offeringNames,
+  openCount,
+  seatsLookWords,
+  seatsNeedingLook
+};
 
 const OFFER = FIELD.Offering;
 const CHOICE = FIELD.LinkedChoice;
 const BLOCK = FIELD.TimeBlock;
 const DRAFT = "draft";
-
-/**
- * Why a limited offering's seats need a look, or null: "blank" (not filled in yet) or "zero".
- * Either way the seat run places it with no limit and says so (engine care PR 8).
- */
-export function seatsNeedingLook(offering) {
-  if (offering[OFFER.NoSeatLimit]) {
-    return null;
-  }
-  const seats = offering[OFFER.Seats];
-  if (seats === null || seats === undefined || seats === "") {
-    return "blank";
-  }
-  return Number(seats) === 0 ? "zero" : null;
-}
-
-/** What to do when seatsNeedingLook says so (Greg, 2026-10-26: the flag says what to do). */
-export function seatsLookWords(name, seatsWord = "seats") {
-  return `Choose how many ${seatsWord} "${name}" has`;
-}
 
 /** The names of an offering's linked choices, in their order. */
 export function linkedNames(setup, offeringId) {

@@ -82,7 +82,7 @@ public with sharing class AgentLinkedChoiceRefs {
   public Offering__c offeringOf(String activity) {
     List<String> names = new List<String>();
     for (Offering__c each : [
-      SELECT Id, Activity__r.Name
+      SELECT Id, NoSeatLimit__c, Activity__r.Name
       FROM Offering__c
       WHERE ElectiveSet__c = :electiveSet.Id
       WITH USER_MODE

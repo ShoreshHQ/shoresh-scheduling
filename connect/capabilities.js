@@ -815,6 +815,79 @@ const CAPABILITIES = [
     "Start a built week over, as Start over in Generated Schedule's Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. The week as it was is kept in Versions first, and undo_last_agent_change brings it back."
   ),
   {
+    name: "read_offerings",
+    api: "offerings",
+    method: "GET",
+    readsOfferings: true,
+    description:
+      "Read an elective set's rows on the Electives list: each activity offered with its seats (a number, No limit, or (blank) while it isn't filled in), its minimum to run, whether it is still proposed, the list's mark when its seats need a look, and seen: what to send back to change it. Report what it says; never add a problem Shoresh didn't list.",
+    about:
+      "This elective set's rows on the Electives list as they are now. Its marks are the list's: anything not listed, Shoresh didn't find.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...LINKED_SET,
+        activity: {
+          type: "string",
+          description: "Only this activity's row, like Pottery."
+        }
+      },
+      required: [],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "change_offering",
+    api: "change_offering",
+    method: "POST",
+    sendsFields: true,
+    changesOffering: true,
+    description:
+      "Change an offering's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: the seat run then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the offering shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...LINKED_SET,
+        activity: {
+          type: "string",
+          description: "The activity offered, like Pottery."
+        },
+        fields: {
+          type: "object",
+          description:
+            "What to set: seats (a number, or (blank) for none yet), no_seat_limit (yes or no), minimum_to_run (a number from 1, or (blank) for no minimum)."
+        },
+        seen: {
+          type: "object",
+          description:
+            "What read_offerings said those fields held, under seen, so a change someone made since isn't overwritten."
+        }
+      },
+      required: ["activity", "fields", "seen"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "delete_offering",
+    api: "delete_offering",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Take an activity off an elective set, as Delete on its row of the Electives list does: the activity itself is kept, and the offering's linked choices go with it. It is refused while an elective run's seats use it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...LINKED_SET,
+        activity: {
+          type: "string",
+          description: "The activity offered, like Pottery."
+        }
+      },
+      required: ["activity"],
+      additionalProperties: false
+    }
+  },
+  {
     name: "read_linked_choices",
     api: "linked_choices",
     method: "GET",
@@ -2296,6 +2369,7 @@ const CAPABILITIES = [
 const ASKS_FIRST = [
   "delete_setup_record",
   "delete_linked_choice",
+  "delete_offering",
   "delete_version",
   "finalize_electives",
   "undo_last_agent_change",

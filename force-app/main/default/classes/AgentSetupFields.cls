@@ -88,7 +88,13 @@ public with sharing class AgentSetupFields {
       'location' => SpecialEvent__c.Location__c,
       'notes' => SpecialEvent__c.Notes__c
     },
-    'ElectiveSet' => new Map<String, Schema.SObjectField>()
+    'ElectiveSet' => new Map<String, Schema.SObjectField>(),
+    // Reached only by change_offering, which finds its row by set and activity (API-1.136).
+    'Offering' => new Map<String, Schema.SObjectField>{
+      'seats' => Offering__c.Seats__c,
+      'no_seat_limit' => Offering__c.NoSeatLimit__c,
+      'minimum_to_run' => Offering__c.MinimumToRun__c
+    }
   };
 
   /** What a set of fields became: the row's extras (a group sent to no division) and the words. */

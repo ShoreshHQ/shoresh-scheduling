@@ -145,6 +145,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentChangeOffering</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AgentConfirmGuess</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -154,6 +158,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>AgentDeleteLinkedChoice</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AgentDeleteOffering</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -174,6 +182,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>AgentMakeLinkedChoice</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AgentOfferings</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>

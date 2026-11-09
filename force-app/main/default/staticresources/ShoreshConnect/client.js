@@ -10,6 +10,7 @@ const { byName } = require("./capabilities");
 const { Refused, editCells, lockedCells, draftOf } = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { readLinkedChoices, saveLinkedChoice } = require("./linked");
+const { readOfferings, changeOffering } = require("./offerings");
 const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
@@ -176,6 +177,7 @@ async function callOnce(
     edits = loadEdits,
     electives = loadElectives,
     linked = loadLinked,
+    offerings = loadOfferings,
     imports = loadImports,
     files = loadExports,
     learned = loadLearned,
@@ -228,6 +230,18 @@ async function callOnce(
     return editCells(capability, input, {
       ...at,
       load: () => edits(namespace)
+    });
+  }
+  if (capability.readsOfferings) {
+    return readOfferings(capability, input, {
+      ...at,
+      load: () => offerings(namespace)
+    });
+  }
+  if (capability.changesOffering) {
+    return changeOffering(capability, input, {
+      ...at,
+      load: () => offerings(namespace)
     });
   }
   if (capability.readsLinkedChoices) {
@@ -715,6 +729,16 @@ async function loadLinked(namespace) {
     namespace,
     ["shoreshElectiveDetails.linkedChoices"],
     "can't read or change linked choices"
+  );
+  return module;
+}
+
+/** The Electives list's own module (API-1.135), as scripts/build-connect.js ships it. */
+async function loadOfferings(namespace) {
+  const [module] = await loadModules(
+    namespace,
+    ["shoreshElectiveDetails.offerings"],
+    "can't read or change offerings"
   );
   return module;
 }
