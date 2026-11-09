@@ -27,25 +27,14 @@ public with sharing class AgentImports {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
-      Boolean open =
-        door == LAST_YEAR &&
-        RestContext.request.params.get('open_questions') == 'true';
-      for (String key : RestContext.request.params.keySet()) {
-        if (key != 'season' && !(open && key == 'open_questions')) {
-          throw new ShoreshException(
-            'Shoresh doesn\'t know the field "' +
-              key.left(40) +
-              '". The fields are: season.'
-          );
-        }
-      }
+      Boolean open = AgentImportQuestions.asked(door);
       Season__c season = AgentChangeCampWords.seasonOf(
         RestContext.request.params.get('season')
       );
       Map<String, Object> read = readOf(season, door);
       if (open) {
         // INGEST-5.5: the last import's files as it read them, as Roots' questions left open it.
-        read.put('open_files', openFilesOf(season.Id));
+        read.put('open_files', AgentImportQuestions.openFilesOf(season.Id));
       }
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(JSON.serialize(read, true));
@@ -61,32 +50,6 @@ public with sharing class AgentImports {
         )
       );
     }
-  }
-
-  /**
-   * The person's last import's files, while it has questions open (ImportLog.openFiles). None
-   * open (no import, answered, or undone) is said one way, as Roots then shows no questions.
-   */
-  private static String openFilesOf(Id seasonId) {
-    Id last = ImportUndo.latestFrom(seasonId, null);
-    List<Import__c> found = last == null
-      ? new List<Import__c>()
-      : [
-          SELECT Open__c, UndoneAt__c
-          FROM Import__c
-          WHERE Id = :last
-          WITH USER_MODE
-        ];
-    if (
-      found.isEmpty() ||
-      String.isBlank(found[0].Open__c) ||
-      found[0].UndoneAt__c != null
-    ) {
-      throw new ShoreshException(
-        'There is no import with questions left. Nothing was changed.'
-      );
-    }
-    return ImportController.getOpenFiles(last);
   }
 
   /** The screen's own reads, and the stamp a save carries back as seen. */
