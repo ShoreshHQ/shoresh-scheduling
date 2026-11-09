@@ -1970,9 +1970,9 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       const other = { ...SEASON, Id: "s2", Name: "Summer 2027" };
       getSeasons.mockResolvedValue(nsRecord([SEASON, other]));
-      element.shadowRoot
-        .querySelector('[data-id="season"]')
-        ?.dispatchEvent(new CustomEvent("change", { detail: { value: "s2" } }));
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
       await flush();
       answer({ label: "Delete Summer 2026?", lines: ["1 Week"] });
       await flush();

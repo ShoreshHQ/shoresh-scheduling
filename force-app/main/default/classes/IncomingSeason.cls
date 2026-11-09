@@ -35,9 +35,10 @@ public with sharing class IncomingSeason {
       ? 'There is no season called "' +
         name.left(80) +
         '" that this user can see.'
-      : 'More than one season is called "' +
-        name.left(80) +
-        '". Rename one in Shoresh, then send this again.';
+      : AgentRefusal.withFix(
+          'More than one season is called "' + name.left(80) + '".',
+          'Rename one in Shoresh, then send this again.'
+        );
     for (Integer i = 0; i < records.size(); i++) {
       batch.problem(i, why);
     }
