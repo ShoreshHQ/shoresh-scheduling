@@ -554,7 +554,7 @@ const CAPABILITIES = [
     api: "seasons",
     method: "GET",
     description:
-      "List the seasons the person can see in Shoresh, each with its camp, dates, weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season.",
+      "List the seasons the person can see in Shoresh, each with its camp, dates, short_week choice (keep or lower), weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season.",
     about:
       "The seasons this person can see in Shoresh, with their weeks and programs. These are the only names that exist.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
@@ -1549,7 +1549,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date) or its last day (end_date). Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
+      "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date), its last day (end_date), or what happens to each activity's weekly minimum in a short week (short_week: keep, the default, or lower to match the days; a schedule already built isn't changed, but its checks then count the lowered minimums, as on screen). A name another season has is refused. Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1557,7 +1557,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'What to set: name, start_date, end_date (dates like 2026-06-29), like {"name": "Summer 2027"}.'
+            'What to set: name, start_date, end_date (dates like 2026-06-29), short_week (keep or lower), like {"name": "Summer 2027"}.'
         },
         seen: {
           type: "object",

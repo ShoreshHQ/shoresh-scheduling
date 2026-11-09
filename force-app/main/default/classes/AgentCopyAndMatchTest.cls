@@ -362,4 +362,41 @@ private class AgentCopyAndMatchTest {
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
     }
   }
+
+  // API-1.142: a date that doesn't exist is refused through the tool, never moved to one that does.
+  @IsTest
+  static void copyRefusesADateThatDoesNotExist() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Database.insert(
+        new Season__c(
+          Camp__c = camp.Id,
+          Name = 'Summer',
+          Status__c = 'Planning',
+          StartDate__c = Date.newInstance(2027, 6, 28),
+          EndDate__c = Date.newInstance(2027, 8, 6)
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, Object>{
+            'season' => 'Summer',
+            'name' => 'Summer two',
+            'start_date' => '2027-02-30'
+          }
+        )
+      );
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentCopySeason());
+      Test.stopTest();
+      String said = RestContext.response.responseBody.toString();
+      Assert.areEqual(400, RestContext.response.statusCode, said);
+      Assert.isTrue(said.contains('as a date like'), said);
+      Assert.areEqual(1, [SELECT COUNT() FROM Season__c]);
+    }
+  }
 }
