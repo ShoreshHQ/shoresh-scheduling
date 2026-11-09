@@ -182,12 +182,8 @@ function contextOf(m, body) {
     weekdayOf: (dateValue) => m.weekdayName(dateValue),
     spokenWeekday: (weekday) => m.spokenWeekday(weekday),
     isAwayOn,
-    isLocked: (slot) => {
-      const day = week[slot.day];
-      return locks.has(
-        `${day.dateValue}|${day.groups[slot.group].id}|${day.blocks[slot.block].id}`
-      );
-    },
+    // As the screen asks it: any block of the placement locked locks the cell (LOCK-4.1).
+    isLocked: (slot) => m.isLockedAt(week, locks, slot),
     liveLocks: locks,
     events,
     replaced: m.replacedDays(draft)
@@ -661,4 +657,4 @@ function draftOf(m, body, input) {
   };
 }
 
-module.exports = { Refused, editCells, lockedCells, draftOf };
+module.exports = { Refused, editCells, lockedCells, draftOf, contextOf };
