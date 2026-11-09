@@ -323,7 +323,8 @@ private class AgentManualBuildTest {
           'labels',
           'setup_changes',
           'accepted',
-          'season'
+          'season',
+          'week_name'
         },
         body.keySet()
       );

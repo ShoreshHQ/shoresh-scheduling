@@ -56,8 +56,11 @@ function onlyOne(list, asked, nameOf, what, where) {
   );
 }
 
-/** The week's day (by name, like Monday, by number, like Day 3, or date), as an index; a replaced or unreadable day is refused. */
-function dayIn(ctx, m, asked, weekName) {
+/**
+ * The week's day (by name, like Monday, by number, like Day 3, or date), as an index; an
+ * unreadable day is refused, and a replaced one too unless the tool says so itself (clear).
+ */
+function dayIn(ctx, m, asked, weekName, toolSaysReplaced = false) {
   const d = ctx.week.findIndex(
     (day) =>
       day.dateValue === String(asked || "").trim() ||
@@ -79,7 +82,7 @@ function dayIn(ctx, m, asked, weekName) {
     throw new Refused(`This day could not be read: ${day.problem}.`);
   }
   const special = ctx.replaced.get(day.dateValue);
-  if (special) {
+  if (special && !toolSaysReplaced) {
     // The screen's words when a tool reaches it (handEdits.js withoutReplaced).
     throw new Refused(
       `${ctx.dayNameOf(day.dateValue)} is ${special.name}: open it to change that day.`
@@ -312,7 +315,8 @@ function clearStep(capability, ctx, m, input, weekName) {
       inWeek: true
     };
   } else {
-    const d = dayIn(ctx, m, input.day, weekName);
+    // The screen offers Clear day on a special day too; its tool says it is left as it is.
+    const d = dayIn(ctx, m, input.day, weekName, true);
     const day = ctx.week[d];
     const name = ctx.dayNameOf(day.dateValue);
     tool = { kind: "clear", dates: [day.dateValue], name };
@@ -500,7 +504,8 @@ async function editCells(capability, input, { read, send, answer, load }) {
   const body = JSON.parse(got.body);
   const m = await load();
   const ctx = contextOf(m, body);
-  const weekName = input.week;
+  // The week as it is called, as the screen's labels say it (the AI may spell it loosely).
+  const weekName = body.week_name ?? input.week;
   let step;
   try {
     step = stepOf(capability, ctx, m, input, weekName);

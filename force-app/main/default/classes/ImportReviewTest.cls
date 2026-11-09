@@ -754,6 +754,31 @@ private class ImportReviewTest {
     }
   }
 
+  // API-1.144: an import whose questions were all answered leaves none to reopen, said the same way.
+  @IsTest
+  static void anAgentIsToldWhenTheLastImportLeftNoQuestions() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Map<String, Object> plan = ImportTestPlans.newCamp(season.Id);
+      plan.put('fileData', OPEN_FILES);
+      ImportController.saveSetup(JSON.serialize(plan));
+      String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.params.put('season', name);
+      RestContext.request.params.put('open_questions', 'true');
+      RestContext.response = new RestResponse();
+      AgentImportLastYear.get();
+      Test.stopTest();
+      Assert.areEqual(400, RestContext.response.statusCode);
+      Assert.isTrue(
+        RestContext.response.responseBody.toString()
+          .contains('no import with questions left')
+      );
+    }
+  }
+
   private static Map<String, Object> asked(String season, Boolean open) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'GET';

@@ -27,7 +27,8 @@ public with sharing class AgentImports {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
-      Boolean open = door == LAST_YEAR &&
+      Boolean open =
+        door == LAST_YEAR &&
         RestContext.request.params.get('open_questions') == 'true';
       for (String key : RestContext.request.params.keySet()) {
         if (key != 'season' && !(open && key == 'open_questions')) {
@@ -62,11 +63,28 @@ public with sharing class AgentImports {
     }
   }
 
-  /** The person's last import's files, while it has questions open (ImportLog.openFiles). */
+  /**
+   * The person's last import's files, while it has questions open (ImportLog.openFiles). None
+   * open (no import, answered, or undone) is said one way, as Roots then shows no questions.
+   */
   private static String openFilesOf(Id seasonId) {
     Id last = ImportUndo.latestFrom(seasonId, null);
-    if (last == null) {
-      throw new ShoreshException('There is no import with questions left. Nothing was changed.');
+    List<Import__c> found = last == null
+      ? new List<Import__c>()
+      : [
+          SELECT Open__c, UndoneAt__c
+          FROM Import__c
+          WHERE Id = :last
+          WITH USER_MODE
+        ];
+    if (
+      found.isEmpty() ||
+      String.isBlank(found[0].Open__c) ||
+      found[0].UndoneAt__c != null
+    ) {
+      throw new ShoreshException(
+        'There is no import with questions left. Nothing was changed.'
+      );
     }
     return ImportController.getOpenFiles(last);
   }

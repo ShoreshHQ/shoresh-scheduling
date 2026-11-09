@@ -84,11 +84,17 @@ private class AgentChecksTest {
           'labels',
           'setup_changes',
           'accepted',
-          'season'
+          'season',
+          'week_name'
         },
         body.keySet()
       );
       Assert.areEqual(WeekAccepts.accepted(draftId), body.get('accepted'));
+      // API-1.143: the week as it is called, for an edit's labels.
+      Assert.areEqual(
+        [SELECT Week__r.Name FROM Schedule__c WHERE Id = :draftId].Week__r.Name,
+        body.get('week_name')
+      );
     }
   }
 

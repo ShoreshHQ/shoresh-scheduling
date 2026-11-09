@@ -43,6 +43,8 @@ global with sharing class AgentChecks {
         SetupMatchController.getSetupChanges(week.draft.Id)
       );
       read.put('accepted', WeekAccepts.accepted(week.draft.Id));
+      // The week as it is called, for the labels an edit's version and Undo line carry.
+      read.put('week_name', week.name);
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(OutgoingRows.said(read));
     } catch (Exception e) {

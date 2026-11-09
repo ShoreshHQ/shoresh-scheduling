@@ -1474,6 +1474,19 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(unknown.done.text).toBe(
       'There is no group called "Bunk 9" on that day. The groups: Bunk 1, Bunk 2.'
     );
+    // API-1.143: Generated Schedule has no Clear day or Clear week; nothing is sent.
+    const noClear = await send("clear_day", { ...monday });
+    expect(noClear.done).toEqual({
+      ok: false,
+      status: 400,
+      text: "Clear day is on Manual Build only. Nothing was changed."
+    });
+    expect(noClear.seen).toHaveLength(1);
+    const noWeek = await send("clear_week", { ...monday });
+    expect(noWeek.done.text).toBe(
+      "Clear week is on Manual Build only. Nothing was changed."
+    );
+    expect(noWeek.seen).toHaveLength(1);
 
     // Taken out whole.
     const out = await send("take_out_cell", {
@@ -2918,7 +2931,14 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(reopenSent[0].args[3]).toBe(
       "/services/apexrest/v1/import_last_year?season=Summer+2026&open_questions=true"
     );
-    expect(reopened.text).toBe(review.done.text);
+    // The same review; only the way back names open_questions, since the AI never had the files.
+    expect(reopened.text).toBe(
+      review.done.text.replace(
+        "send the review again with the same files",
+        "send the review again with open_questions: true (no files)"
+      )
+    );
+    expect(reopened.text).not.toBe(review.done.text);
     // Add saves them as a second import of the same files: the save is the plain one.
     const reopenSaved = [];
     await call(
@@ -4451,11 +4471,35 @@ describe("Shoresh for AI tools and the command line", () => {
       { ...asked, day: "Monday", group: "Bunk 1" },
       { run: answering(groupSent), edits }
     );
-    expect(JSON.parse(groupSent[1].stdin).change).toBe(
-      "Cleared Bunk 1 · Monday"
+    const groupBody = JSON.parse(groupSent[1].stdin);
+    expect(groupBody.change).toBe("Cleared Bunk 1 · Monday");
+    const monday = draft.schedule.days[0];
+    expect(groupBody.runs).toEqual(
+      asTheScreen({
+        kind: "clear",
+        dates: [monday.dateValue],
+        groupId: monday.groups.find((g) => g.name === "Bunk 1").id,
+        name: "Bunk 1 · Monday"
+      })
     );
+    // Bunk 2 has nothing on Monday: its own day clears nothing, Bunk 1's cells untouched.
+    const otherSent = [];
+    const other = await call(
+      "clear_day",
+      { ...asked, day: "Monday", group: "Bunk 2" },
+      { run: answering(otherSent), edits }
+    );
+    expect(other.text).toMatch(/^Nothing to clear/);
+    expect(otherSent).toHaveLength(1);
+    // The week as it is called, though the AI spelled it loosely.
+    read.week_name = "Week 1";
     const weekSent = [];
-    await call("clear_week", asked, { run: answering(weekSent), edits });
+    await call(
+      "clear_week",
+      { ...asked, week: "week 1" },
+      { run: answering(weekSent), edits }
+    );
+    delete read.week_name;
     const weekBody = JSON.parse(weekSent[1].stdin);
     expect(weekBody.change).toBe("Cleared Week 1");
     expect(weekBody.runs).toEqual(
@@ -4476,6 +4520,25 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(empty.ok).toBe(true);
     expect(empty.text).toMatch(/^Nothing to clear/);
     expect(emptySent).toHaveLength(1);
+    // A day a special day replaces: offered, as on the screen, and its tool's words said.
+    draft.specials = {
+      days: [
+        { dateValue: draft.schedule.days[1].dateValue, name: "Visiting Day" }
+      ]
+    };
+    const specialSent = [];
+    const special = await call(
+      "clear_day",
+      { ...asked, day: "Tuesday" },
+      { run: answering(specialSent), edits }
+    );
+    delete draft.specials;
+    expect(special).toEqual({
+      ok: true,
+      status: 200,
+      text: "Tuesday is Visiting Day: left as it is."
+    });
+    expect(specialSent).toHaveLength(1);
   });
 });
 
