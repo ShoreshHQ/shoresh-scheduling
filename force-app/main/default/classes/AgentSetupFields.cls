@@ -262,11 +262,7 @@ public with sharing class AgentSetupFields {
       throw new ShoreshException(
         'Say what each field held when you read it (seen: ' +
           String.join(missing, ', ') +
-          '), as ' +
-          (changed.found.term == 'Offering'
-            ? 'read_offerings'
-            : 'read_setup_record') +
-          ' gives it, so a change someone made since isn\'t overwritten.'
+          '), as read_setup_record gives it, so a change someone made since isn\'t overwritten.'
       );
     }
     SObject seen = recordId.getSObjectType().newSObject(recordId);

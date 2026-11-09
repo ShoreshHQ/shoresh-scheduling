@@ -35,6 +35,7 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
     );
     refuseNothingAsked(put);
     refuseSeatsWithNoLimit(put, record, now);
+    refuseSeenLeftOut(body, put);
     SObject seen = AgentSetupFields.seen(now.Id, body.get('seen'), put);
     RowSaves.Result result;
     try {
@@ -73,6 +74,26 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
     found.labels = refs.labels;
     found.seasonId = refs.season.Id;
     return found;
+  }
+
+  /** What each field held is read_offerings's to say (seen), so one changed since is kept. */
+  private static void refuseSeenLeftOut(
+    Map<String, Object> body,
+    AgentSetupFields.Put put
+  ) {
+    Map<String, Object> said = AgentSetupFields.given(body.get('seen'));
+    for (String key : AgentSetupFields.namesOf('Offering')) {
+      if (
+        put.fields.contains(AgentSetupFields.fieldOf('Offering', key)) &&
+        !said.containsKey(key)
+      ) {
+        throw new ShoreshException(
+          'Say what ' +
+            key +
+            ' held when you read it (seen), as read_offerings gives it, so a change someone made since isn\'t overwritten.'
+        );
+      }
+    }
   }
 
   private static void refuseNothingAsked(AgentSetupFields.Put put) {

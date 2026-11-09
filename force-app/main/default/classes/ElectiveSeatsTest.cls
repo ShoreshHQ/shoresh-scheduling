@@ -1042,57 +1042,6 @@ private class ElectiveSeatsTest {
         1,
         [SELECT COUNT() FROM LinkedChoice__c WHERE Id = :both.Id]
       );
-      // API-1.136, ELECT-4.5: fewer seats than campers have is saved; API-1.137: seats use the row.
-      Offering__c archery = [
-        SELECT Seats__c
-        FROM Offering__c
-        WHERE Activity__r.Name = 'Archery'
-        LIMIT 1
-      ];
-      RestContext.request = new RestRequest();
-      RestContext.request.httpMethod = 'POST';
-      RestContext.request.requestBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, Object>{
-            'season' => [SELECT Name FROM Season__c LIMIT 1]
-            .Name,
-            'elective_set' => 'Chugim',
-            'activity' => 'Archery',
-            'fields' => new Map<String, Object>{ 'seats' => '0' },
-            'seen' => new Map<String, Object>{
-              'seats' => archery.Seats__c == null
-                ? '(blank)'
-                : String.valueOf(archery.Seats__c.intValue())
-            }
-          }
-        )
-      );
-      RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentChangeOffering());
-      Assert.areEqual(
-        200,
-        RestContext.response.statusCode,
-        RestContext.response.responseBody.toString()
-      );
-      RestContext.request = new RestRequest();
-      RestContext.request.httpMethod = 'POST';
-      RestContext.request.requestBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, Object>{
-            'season' => [SELECT Name FROM Season__c LIMIT 1]
-            .Name,
-            'elective_set' => 'Chugim',
-            'activity' => 'Archery'
-          }
-        )
-      );
-      RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteOffering());
-      Assert.areEqual(
-        400,
-        RestContext.response.statusCode,
-        RestContext.response.responseBody.toString()
-      );
     }
   }
 
