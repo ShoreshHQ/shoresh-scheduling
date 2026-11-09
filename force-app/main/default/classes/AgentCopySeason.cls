@@ -157,11 +157,22 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
    * after it, could no longer tell the two apart (OutgoingRows.seasonCalled).
    */
   public static void refuseTaken(String name) {
+    refuseTaken(name, null);
+  }
+
+  /** The same, but for the season being renamed itself, whose capitals may change. */
+  public static void refuseTaken(String name, Id itself) {
     if (String.isBlank(name)) {
       return; // The page's own Copy says to give it a name.
     }
     if (
-      ![SELECT Id FROM Season__c WHERE Name = :name WITH USER_MODE LIMIT 1]
+      ![
+          SELECT Id
+          FROM Season__c
+          WHERE Name = :name AND Id != :itself
+          WITH USER_MODE
+          LIMIT 1
+        ]
         .isEmpty()
     ) {
       throw new ShoreshException(

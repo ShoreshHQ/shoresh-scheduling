@@ -26,6 +26,11 @@ global with sharing class AgentSeasons {
     }
   }
 
+  /** The camp's "In a short week" choice, as the season form has it (WEEK-4.2). */
+  public static String shortWeekOf(Season__c season) {
+    return season.ShrinkShortWeek__c ? 'lower' : 'keep';
+  }
+
   /** The camps the person can see, so an AI can tell no camp from a camp with no season (API-1.139). */
   private static List<String> camps() {
     List<String> names = new List<String>();
@@ -70,6 +75,7 @@ global with sharing class AgentSeasons {
           'camp' => season.Camp__r.Name,
           'start_date' => season.StartDate__c,
           'end_date' => season.EndDate__c,
+          'short_week' => shortWeekOf(season),
           'weeks' => weeks.get(season.Id),
           'programs' => programs.get(season.Id)
         }

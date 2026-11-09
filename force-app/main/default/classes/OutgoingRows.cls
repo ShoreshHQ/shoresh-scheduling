@@ -80,7 +80,14 @@ public with sharing class OutgoingRows {
     );
     Set<Id> ids = seen.keySet();
     return [
-      SELECT Id, Name, Camp__c, Camp__r.Name, StartDate__c, EndDate__c
+      SELECT
+        Id,
+        Name,
+        Camp__c,
+        Camp__r.Name,
+        StartDate__c,
+        EndDate__c,
+        ShrinkShortWeek__c
       FROM Season__c
       WHERE Id IN :ids
       WITH SYSTEM_MODE

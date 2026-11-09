@@ -686,6 +686,11 @@ function everyCommand(tmp) {
     { fields: { end_date: "2027-07-16" }, seen: { end_date: "2027-07-16" } },
     "any"
   );
+  // The short-week choice (API-1.142), keep to keep, so the rest of the run is unchanged.
+  step("change_season", {
+    fields: { short_week: "keep" },
+    seen: { short_week: "keep" }
+  });
   step("read_same_locations", { name: "Pool" }, "any");
   step("merge_locations", { name: "Pool", seen: { Pool: "3" } }, "any");
   step("read_setup_guesses");

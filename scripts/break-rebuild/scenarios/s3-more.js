@@ -1646,5 +1646,121 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         named.text
       );
     }
+  },
+  {
+    id: "S13",
+    title: "the short-week choice through an AI, and season names and dates",
+    camps: "BR S13 %",
+    async run(rec) {
+      const { camp, season } = makeCamp("S13 Short");
+      await importMaple(season);
+      const listed = async () =>
+        JSON.parse((await call("list_seasons", {})).text).seasons.find(
+          (x) => x.season === season
+        );
+      const first = await listed();
+      rec.check(
+        "API-1.142",
+        "list_seasons says the choice, keep by default",
+        first.short_week === "keep",
+        JSON.stringify(first)
+      );
+      const week = { season, week: "Week 1" };
+      const allBuilt = await call("build_week", week);
+      const before = await draft(season);
+      const stale = await call("change_season", {
+        season,
+        fields: { short_week: "lower" },
+        seen: { short_week: "lower" }
+      });
+      rec.check(
+        "API-1.142",
+        "changed since it was read is a conflict",
+        stale.kind === "refused" && /Someone else changed/.test(stale.text),
+        stale.text
+      );
+      const unknown = await call("change_season", {
+        season,
+        fields: { short_week: "sometimes" },
+        seen: { short_week: "keep" }
+      });
+      rec.check(
+        "API-1.142",
+        "anything but keep or lower is refused",
+        unknown.kind === "refused" && /Say keep or lower/.test(unknown.text),
+        unknown.text
+      );
+      const lower = await call("change_season", {
+        season,
+        fields: { short_week: "lower" },
+        seen: { short_week: "keep" }
+      });
+      rec.check(
+        "API-1.142",
+        "the choice saves, and list_seasons says it",
+        lower.kind === "done" && (await listed()).short_week === "lower",
+        lower.text
+      );
+      rec.check(
+        "API-1.142",
+        "a week already built stays as it is",
+        allBuilt.kind === "done" &&
+          (await draft(season)).words === before.words,
+        "the draft read the same"
+      );
+      rec.check(
+        "WEEK-4.2",
+        "the engine reads it: what the screen reads says lower",
+        soql(
+          `SELECT ShrinkShortWeek__c FROM Season__c WHERE Name = '${season}'`
+        )[0].ShrinkShortWeek__c === true,
+        "Season__c.ShrinkShortWeek__c"
+      );
+      const other = `BR S13 Other 2027`;
+      const made = await call("create_season", {
+        camp,
+        name: other,
+        start_date: "2028-06-26",
+        end_date: "2028-07-07"
+      });
+      const taken = await call("change_season", {
+        season: other,
+        fields: { name: season },
+        seen: { name: other }
+      });
+      rec.check(
+        "API-1.142",
+        "change_season refuses a name another season has",
+        made.kind === "done" &&
+          taken.kind === "refused" &&
+          /already a season/.test(taken.text) &&
+          count("Season__c", `Name = '${other}'`) === 1,
+        taken.text
+      );
+      const caps = await call("change_season", {
+        season: other,
+        fields: { name: other.toUpperCase() },
+        seen: { name: other }
+      });
+      rec.check(
+        "API-1.142",
+        "its own name in other capitals is its own",
+        caps.kind === "done",
+        caps.text
+      );
+      const copy = await call("copy_season", {
+        season,
+        name: "BR S13 Copy",
+        start_date: "2029-02-30"
+      });
+      rec.check(
+        "API-1.142",
+        "copy_season refuses a date that doesn't exist",
+        copy.kind === "refused" &&
+          /as a date like/.test(copy.text) &&
+          count("Season__c", `Name = 'BR S13 Copy'`) === 0,
+        copy.text
+      );
+    }
   }
 ];

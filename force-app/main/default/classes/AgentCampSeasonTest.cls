@@ -393,6 +393,122 @@ private class AgentCampSeasonTest {
     }
   }
 
+  private static Season__c madeSeason(Id campId, String name, Integer year) {
+    Season__c season = new Season__c(
+      Camp__c = campId,
+      Name = name,
+      Status__c = 'Planning',
+      StartDate__c = Date.newInstance(year, 6, 28),
+      EndDate__c = Date.newInstance(year, 8, 6)
+    );
+    Database.insert(season, AccessLevel.USER_MODE);
+    return season;
+  }
+
+  private static Map<String, Object> changed(
+    String season,
+    Map<String, Object> fields,
+    Map<String, Object> seen
+  ) {
+    return new Map<String, Object>{
+      'season' => season,
+      'fields' => fields,
+      'seen' => seen
+    };
+  }
+
+  // API-1.142, WEEK-4.2
+  @IsTest
+  static void theShortWeekChoiceIsTheFormsSave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = madeSeason(camp.Id, 'Summer', 2027);
+      Test.startTest();
+      // list_seasons says it, and what it says is what a change sends back.
+      Map<String, Object> listed = (Map<String, Object>) ((List<Object>) AgentSeasons.answer()
+        .get('seasons'))[0];
+      Assert.areEqual('keep', listed.get('short_week'));
+      List<Object> stale = sent(
+        new AgentChangeSeason(),
+        changed(
+          'Summer',
+          new Map<String, Object>{ 'short_week' => 'lower' },
+          new Map<String, Object>{ 'short_week' => 'lower' }
+        )
+      );
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      List<Object> unknown = sent(
+        new AgentChangeSeason(),
+        changed(
+          'Summer',
+          new Map<String, Object>{ 'short_week' => 'sometimes' },
+          new Map<String, Object>{ 'short_week' => 'keep' }
+        )
+      );
+      Assert.areEqual(400, unknown[0]);
+      Assert.isTrue(String.valueOf(unknown[1]).contains('Say keep or lower'));
+      Assert.isFalse(
+        [SELECT ShrinkShortWeek__c FROM Season__c WHERE Id = :season.Id]
+        .ShrinkShortWeek__c
+      );
+      List<Object> answer = sent(
+        new AgentChangeSeason(),
+        changed(
+          'Summer',
+          new Map<String, Object>{ 'short_week' => 'Lower' },
+          new Map<String, Object>{ 'short_week' => 'keep' }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
+      Assert.isTrue(
+        [SELECT ShrinkShortWeek__c FROM Season__c WHERE Id = :season.Id]
+        .ShrinkShortWeek__c
+      );
+      Assert.areEqual(
+        'lower',
+        ((Map<String, Object>) ((List<Object>) AgentSeasons.answer()
+            .get('seasons'))[0])
+          .get('short_week')
+      );
+    }
+  }
+
+  // API-1.142, API-1.57
+  @IsTest
+  static void changeSeasonRefusesANameAnotherSeasonHas() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = madeSeason(camp.Id, 'Summer', 2027);
+      madeSeason(camp.Id, 'Winter', 2028);
+      Test.startTest();
+      List<Object> taken = sent(
+        new AgentChangeSeason(),
+        changed(
+          'Summer',
+          new Map<String, Object>{ 'name' => 'winter' },
+          new Map<String, Object>{ 'name' => 'Summer' }
+        )
+      );
+      Assert.areEqual(400, taken[0], String.valueOf(taken[1]));
+      Assert.isTrue(String.valueOf(taken[1]).contains('already a season'));
+      // Its own name in other capitals is its own, and saved.
+      List<Object> capitals = sent(
+        new AgentChangeSeason(),
+        changed(
+          'Summer',
+          new Map<String, Object>{ 'name' => 'SUMMER' },
+          new Map<String, Object>{ 'name' => 'Summer' }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, capitals[0], String.valueOf(capitals[1]));
+      Assert.isTrue(
+        [SELECT Name FROM Season__c WHERE Id = :season.Id].Name.equals('SUMMER')
+      );
+    }
+  }
+
   private class AlwaysPublished implements PublishedHistory.Finder {
     public Set<Id> withPublishedHistory(Set<Id> recordIds) {
       return recordIds;
