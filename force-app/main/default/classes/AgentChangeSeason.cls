@@ -91,12 +91,12 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
     // "summer 2026" is not "Summer 2026" (Apex's == ignores case).
     // Compared as sent: a name's spaces count too.
     Object said = seen.get(key);
-    if (
-      !SeenSaves.value(
-        shownNow(key, now),
-        said == null ? '' : String.valueOf(said)
-      )
-    ) {
+    String asSaid = said == null ? '' : String.valueOf(said);
+    // keep and lower are words, not a name: any capitals or spaces read the same.
+    if (key == 'short_week') {
+      asSaid = asSaid.trim().toLowerCase();
+    }
+    if (!SeenSaves.value(shownNow(key, now), asSaid)) {
       throw new AgentWeeks.ConflictException(
         'Someone else changed the ' +
           word +

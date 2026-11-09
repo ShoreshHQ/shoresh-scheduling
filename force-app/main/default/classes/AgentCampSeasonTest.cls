@@ -456,7 +456,7 @@ private class AgentCampSeasonTest {
         changed(
           'Summer',
           new Map<String, Object>{ 'short_week' => 'Lower' },
-          new Map<String, Object>{ 'short_week' => 'keep' }
+          new Map<String, Object>{ 'short_week' => ' Keep ' }
         )
       );
       Test.stopTest();

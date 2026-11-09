@@ -1549,7 +1549,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date), its last day (end_date), or what happens to each activity's weekly minimum in a short week (short_week: keep, the default, or lower to match the days; the next build uses it, a week already built is not changed). A name another season has is refused. Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
+      "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date), its last day (end_date), or what happens to each activity's weekly minimum in a short week (short_week: keep, the default, or lower to match the days; a schedule already built isn't changed, but its checks then count the lowered minimums, as on screen). A name another season has is refused. Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
     inputSchema: {
       type: "object",
       properties: {
