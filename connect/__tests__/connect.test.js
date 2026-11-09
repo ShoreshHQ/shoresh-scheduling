@@ -3055,6 +3055,34 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  it("everyModuleTheConnectorLoadsShips: each screen module connect/client.js loads is one scripts/build-connect.js ships", () => {
+    const { engineFiles } = require("../../scripts/build-connect");
+    const shipped = Object.keys(engineFiles());
+    const source = fs.readFileSync(
+      path.join(__dirname, "../client.js"),
+      "utf8"
+    );
+    const calls = [
+      ...source.matchAll(/loadModules\(\s*namespace,\s*\[([^\]]*)\]/g)
+    ];
+    // Every call is read (all but the function's own line), so a new loader can't slip past.
+    expect(calls.length).toBe(source.match(/\bloadModules\(/g).length - 1);
+    // Each list holds only names written out, so none is skipped.
+    for (const [, list] of calls) {
+      expect(list.replace(/"[^"]+"/g, "").replace(/[\s,]/g, "")).toBe("");
+    }
+    const loaded = calls.flatMap(([, list]) =>
+      [...list.matchAll(/"([^"]+)"/g)].map(([, name]) => name)
+    );
+    expect(loaded.length).toBeGreaterThan(10);
+    for (const name of loaded) {
+      expect([name, shipped.includes(`engine.${name}.mjs`)]).toEqual([
+        name,
+        true
+      ]);
+    }
+  });
+
   // API-1.22, API-1.23
   it("publishesAndFinalizesAsThePerson: publish_week and finalize_electives send the person's fields to /v1/publish_week and /v1/finalize_electives", async () => {
     const seen = [];
