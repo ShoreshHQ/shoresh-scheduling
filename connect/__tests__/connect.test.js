@@ -73,7 +73,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(98);
+    expect(CAPABILITIES).toHaveLength(99);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -1159,7 +1159,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect((await moveOn(false, "Day 1")).done.ok).toBe(false);
   });
 
-  // API-1.38, API-1.39, API-1.40
+  // API-1.38, API-1.39, API-1.40, API-1.138
   it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const edits = async () =>
@@ -1299,6 +1299,146 @@ describe("Shoresh for AI tools and the command line", () => {
       to_time: "Period 1"
     });
     expect(swapped.sent.change).toBe("Swapped Swim and Art");
+
+    // API-1.138: longer over Open, shorter, and what the bottom handle refuses, through the tool.
+    const longer = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Art",
+      ends_at: "Period 3"
+    });
+    expect(longer.seen[1].args[3]).toBe("/services/apexrest/v1/move_cell");
+    expect(longer.sent.change).toBe(
+      "Art runs 2 time blocks · Bunk 1 · Monday · Period 2"
+    );
+    expect(longer.sent.runs).toEqual([
+      expect.objectContaining({
+        firstBlockId: inputs.timeBlocks[2].Id,
+        blockIds: [inputs.timeBlocks[2].Id, inputs.timeBlocks[3].Id],
+        before: [`A:${art}`, ""],
+        after: [`A:${art}`, `^A:${art}`]
+      })
+    ]);
+    const noRoom = await send("change_cell_length", {
+      ...monday,
+      time: "Period 1",
+      was: "Swim",
+      ends_at: "Period 2"
+    });
+    expect(noRoom.done.ok).toBe(false);
+    expect(noRoom.done.text).toContain("Swim doesn't fit there.");
+    expect(noRoom.seen).toHaveLength(1);
+    const beforeIt = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Art",
+      ends_at: "Period 1"
+    });
+    expect(beforeIt.done.text).toContain("Art can't end before it starts.");
+    expect(beforeIt.seen).toHaveLength(1);
+    const lockedLonger = await send("change_cell_length", {
+      day: "Monday",
+      group: "Bunk 2",
+      time: "Period 2",
+      was: "Swim",
+      ends_at: "Period 3"
+    });
+    expect(lockedLonger.done.text).toContain(
+      "Bunk 2 · Monday · Period 2 is locked."
+    );
+    expect(lockedLonger.seen).toHaveLength(1);
+    const sameEnd = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Art",
+      ends_at: "Period 2"
+    });
+    expect(sameEnd.done.ok).toBe(true);
+    expect(sameEnd.done.text).toBe(
+      "Art already ends at Period 2. Nothing was changed."
+    );
+    expect(sameEnd.seen).toHaveLength(1);
+    // An Open cell has no handle, whichever end is asked for.
+    for (const ends_at of ["Period 3", "Period 1"]) {
+      const openCell = await send("change_cell_length", {
+        ...monday,
+        time: "Period 3",
+        was: "Open",
+        ends_at
+      });
+      expect(openCell.done.ok).toBe(false);
+      expect(openCell.done.text).toContain("no length to change");
+    }
+    // Someone else's change: the cell, and the week as read.
+    const stale = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Swim",
+      ends_at: "Period 3"
+    });
+    expect(stale.done.status).toBe(409);
+    expect(stale.seen).toHaveLength(1);
+    const withWeek = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Art",
+      ends_at: "Period 3",
+      seen: "3,1"
+    });
+    expect(withWeek.sent.revision).toBe("3,1");
+    // A longer one, from a cell in its middle; a fixed activity, as a hand edit; an event's none.
+    const asRead = inputs.days[0];
+    inputs.days[0] = {
+      ...asRead,
+      rows: ["1,2,^,", "1,3,2,"],
+      locks: ["", ""]
+    };
+    const shorter = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Swim",
+      ends_at: "Period 1"
+    });
+    expect(shorter.sent.change).toBe(
+      "Swim runs 1 time block · Bunk 1 · Monday · Period 1"
+    );
+    const longerStill = await send("change_cell_length", {
+      ...monday,
+      time: "Period 2",
+      was: "Swim",
+      ends_at: "Period 3"
+    });
+    expect(longerStill.sent.change).toBe(
+      "Swim runs 3 time blocks · Bunk 1 · Monday · Period 1"
+    );
+    inputs.days[0] = { ...asRead, rows: ["1,,3,", "1,3,2,"], locks: ["", ""] };
+    const fixedName = asRead.items[0].name;
+    const firstBlock = asRead.blocks[0].name;
+    const fixed = await send("change_cell_length", {
+      ...monday,
+      time: firstBlock,
+      was: fixedName,
+      ends_at: "Period 1"
+    });
+    expect(fixed.sent.change).toBe(
+      `${fixedName} runs 2 time blocks · Bunk 1 · Monday · ${firstBlock}`
+    );
+    const event = "a1B000000000001AAA";
+    inputs.days[0] = {
+      ...asRead,
+      items: [...asRead.items, { id: event, name: "Color War", kind: "S" }],
+      rows: [`${asRead.items.length + 1},,3,`, "1,3,2,"],
+      locks: ["", ""]
+    };
+    const onEvent = await send("change_cell_length", {
+      ...monday,
+      time: firstBlock,
+      was: "Color War",
+      ends_at: "Period 1"
+    });
+    expect(onEvent.done.ok).toBe(false);
+    expect(onEvent.done.text).toContain("no length to change");
+    inputs.days[0] = asRead;
 
     // A locked cell, someone else's change and a name that isn't there: refused, nothing sent.
     const locked = await send("move_cell", {
@@ -3710,6 +3850,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const either = [
       "change_schedule_cell",
       "move_cell",
+      "change_cell_length",
       "take_out_cell",
       "copy_cells",
       "read_week_checks",

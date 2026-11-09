@@ -122,7 +122,7 @@ global with sharing class AgentCell implements AgentWeeks.Action {
 
   /**
    * Part of a longer placement is refused, saying what an AI can do instead (break-and-rebuild
-   * N2): move it or take it all out, from its first time; only its length is the screen's.
+   * N2): change its length, move it or take it all out, from its first time.
    */
   private void refuseLonger(String now, String nowName) {
     Boolean carriesOn =
@@ -140,11 +140,8 @@ global with sharing class AgentCell implements AgentWeeks.Action {
           nowName +
           ', from ' +
           grid.blocks[first].name +
-          '. Its length can be changed only on ' +
-          AgentSchedules.screenOf(week) +
-          '. To change it, move it from ' +
-          grid.blocks[first].name +
-          ' (move_cell) or take it all out (take_out_cell).'
+          '.' +
+          AgentCellWords.whatElse(now, grid.blocks[first].name)
       );
     }
   }
