@@ -1402,7 +1402,7 @@ describe("c-shoresh-camp-setup", () => {
     await expect(q(element, '[data-id="problems"]')).toBeAccessible();
     // The Bunks screen itself: the other screens are on the page too, hidden.
     await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
-  });
+  }, 60000); // axe over a whole setup screen: 3 s on a quiet Mac, past 20 s on a busy one
 
   // WEEK-2.2
   it("fills in weeks from the season dates", async () => {
