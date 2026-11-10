@@ -813,7 +813,7 @@ describe("c-shoresh-elective-seats: the names' column", () => {
       "utf8"
     );
     expect(css).toMatch(
-      /\.corner,\s*\.offer-head,\s*\.camper-head\s*{\s*width: max\(var\(--shoresh-head-w\), 12rem\);/
+      /\.corner,\s*\.offer-head,\s*\.camper-head\s*{\s*width: max\(var\(--shoresh-head-w\), min\(12rem, 30%\)\);/
     );
     expect(css).toMatch(
       /\.offer-head,\s*\.camper-row th\s*{[^}]*overflow-wrap: anywhere;/

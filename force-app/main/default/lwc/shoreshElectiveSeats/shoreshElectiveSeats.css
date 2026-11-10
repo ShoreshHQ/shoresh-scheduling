@@ -141,7 +141,7 @@ table {
 .corner,
 .offer-head,
 .camper-head {
-  width: max(var(--shoresh-head-w), 12rem);
+  width: max(var(--shoresh-head-w), min(12rem, 30%));
 }
 
 .offer-head,
