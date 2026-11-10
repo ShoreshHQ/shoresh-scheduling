@@ -8,7 +8,7 @@
  * Pure: no screen.
  */
 
-import { isSetTime, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
+import { isSetTime, placement, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 
 export const LOCKED = "1";
 
@@ -70,6 +70,23 @@ export function locksOfWeek(week) {
 
 export function lockKey(dateValue, groupId, blockId) {
   return `${dateValue}|${groupId}|${blockId}`;
+}
+
+/**
+ * Whether a cell ({ day, group, block }, indexes into week) is locked: any time block of the
+ * placement it is part of being locked locks it all, as the grid shows it. The screen and an AI
+ * (connect/cells.js) both ask this, so a person's lock holds for both (LOCK-4.1).
+ */
+export function isLockedAt(week, locks, slot) {
+  if (!locks || !locks.size) {
+    return false;
+  }
+  const day = week[slot.day];
+  const groupId = day.groups[slot.group].id;
+  const at = placement(day, slot.group, slot.block);
+  return day.blocks
+    .slice(at.first, at.first + at.length)
+    .some((block) => locks.has(lockKey(day.dateValue, groupId, block.id)));
 }
 
 /** A run's locks in a set of locks: one entry per time block of the run, "1" or "". */

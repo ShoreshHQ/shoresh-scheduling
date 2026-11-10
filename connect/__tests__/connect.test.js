@@ -1162,6 +1162,81 @@ describe("Shoresh for AI tools and the command line", () => {
     expect((await moveOn(false, "Day 1")).done.ok).toBe(false);
   });
 
+  // LOCK-4.1
+  it("cellContextAsTheScreensEditor: an AI's edits work with what the week editor gives its edits, and a lock on any block of an activity locks all of it for an AI too", () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const m = Object.assign(
+      {},
+      ...[
+        "shoreshGeneratedWeek/build.js",
+        "shoreshTerms/shoreshTerms.js",
+        "shoreshGeneratedSchedule/counter.js",
+        "shoreshGeneratedSchedule/locks.js",
+        "shoreshWeekEditor/measure.js",
+        "shoreshWeekEditor/specials.js",
+        "shoreshWeekEditor/slotEdits.js",
+        "shoreshWeekEditor/locks.js",
+        "shoreshWeekEditor/handEdits.js"
+      ].map((f) => require(`${LWC}/${f}`))
+    );
+    const { contextOf, lockedCells } = require("../cells");
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    // Bunk 2 on Monday: Swim for Periods 2 and 3, with only Period 3 locked.
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const [swim] = inputs.activities.map((a) => a.Id);
+    inputs.days = inputs.days.map((day) => {
+      const at = day.items.length + 1;
+      return {
+        ...day,
+        items: [
+          ...day.items,
+          { id: swim, name: "Swim", kind: "A", gone: false }
+        ],
+        rows: [",,,", `,${at},^,`],
+        locks: day.dateValue === "2026-06-29" ? ["", ",,1,"] : ["", ""]
+      };
+    });
+    const generated = contextOf(m, { inputs, setup: {}, labels: [] });
+    const manual = contextOf(m, {
+      draft: { schedule: { days: generated.week }, activities: [], away: [] },
+      setup: {},
+      labels: []
+    });
+
+    // Every field the week editor gives its edits (shoreshWeekEditor editCtx), an AI's have too:
+    // one added on screen and not here fails this.
+    const source = fs.readFileSync(
+      path.join(__dirname, `${LWC}/shoreshWeekEditor/shoreshWeekEditor.js`),
+      "utf8"
+    );
+    const body = /get editCtx\(\) \{\s*return \{([\s\S]*?)\n {4}\};/.exec(
+      source
+    )[1];
+    const keys = [...body.matchAll(/^ {6}(\w+):/gm)].map(([, key]) => key);
+    expect(keys).toEqual(expect.arrayContaining(["week", "isLocked"]));
+    for (const ctx of [generated, manual]) {
+      for (const key of keys) {
+        expect([key, key in ctx]).toEqual([key, true]);
+      }
+    }
+
+    // Both blocks of the half-locked Swim are locked, as the grid shows them; Open is not.
+    const monday = generated.week.findIndex(
+      (day) => day.dateValue === "2026-06-29"
+    );
+    const cell = (block) => ({ day: monday, group: 1, block });
+    expect([1, 2, 3].map((b) => generated.isLocked(cell(b)))).toEqual([
+      true,
+      true,
+      false
+    ]);
+    expect(lockedCells(m, { inputs, setup: {}, labels: [] })).toHaveLength(2);
+    // Manual Build has no locks.
+    expect(manual.isLocked(cell(1))).toBe(false);
+  });
+
   // API-1.38, API-1.39, API-1.40, API-1.138
   it("severalCellsAsTheGridDoes: move_cell, take_out_cell and copy_cells work the edit out with the week editor's own module and send its runs and words to their own addresses", async () => {
     const LWC = "../../force-app/main/default/lwc";
