@@ -458,3 +458,17 @@ describe("c-shoresh-menu", () => {
     expect(nextScreen("campWords", terms, false)).toBeNull();
   });
 });
+
+// At 1024 "Activities & events" wrapped onto two lines and climbed into "Camp words" above it
+// (UI pass, 2026-11-10, measured in Chrome): a section title is at least one item tall, not fixed.
+describe("c-shoresh-menu: a section title's room", () => {
+  it("grows down when it wraps", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshMenu.css"),
+      "utf8"
+    );
+    const title = css.match(/\.section-title\s*{[^}]*}/)[0];
+    expect(title).toMatch(/min-height: var\(--shoresh-control-h\);/);
+    expect(title).not.toMatch(/[^-]height:/);
+  });
+});

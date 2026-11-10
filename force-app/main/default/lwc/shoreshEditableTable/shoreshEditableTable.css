@@ -38,9 +38,10 @@
   letter-spacing: 0;
 }
 
-/* Wide tables (many columns) scroll inside themselves, never the page. */
+/* Wide tables (many columns) scroll inside themselves, never the page; on a setup screen the
+   whole list scrolls instead, so the column names and every section stay lined up. */
 .scroll {
-  overflow-x: auto;
+  overflow-x: var(--shoresh-table-scroll, auto);
 }
 
 .list {

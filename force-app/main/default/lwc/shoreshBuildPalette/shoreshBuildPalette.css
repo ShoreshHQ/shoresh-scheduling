@@ -170,6 +170,13 @@
   gap: var(--shoresh-s2);
 }
 
+/* The name beside the flag ends in "…" as a plain tile's does (a flex row's own text can't). */
+.tile-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .flag {
   flex: none;
   width: 12px;

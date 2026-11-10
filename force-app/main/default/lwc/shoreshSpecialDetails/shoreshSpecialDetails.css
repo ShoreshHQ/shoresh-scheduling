@@ -49,7 +49,10 @@
   padding-left: var(--shoresh-space-control-x);
 }
 
+/* Positioned, so its " details" for screen readers is cut off with a long name, not left
+   hanging past the page's edge. */
 .panel-title {
+  position: relative;
   flex: 1;
   min-width: 0;
   margin: 0;

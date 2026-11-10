@@ -38,6 +38,14 @@
   overflow-y: auto;
 }
 
+/* A line and its numbers ("Spread across the week · 54 of 54 on different days"): the numbers
+   go under, on the right, when they don't fit beside, never cut off at the edge. */
+.list > p.shoresh-pop-row {
+  flex-wrap: wrap;
+  padding-top: var(--shoresh-s1);
+  padding-bottom: var(--shoresh-s1);
+}
+
 ul {
   margin: 0;
   padding: 0;
