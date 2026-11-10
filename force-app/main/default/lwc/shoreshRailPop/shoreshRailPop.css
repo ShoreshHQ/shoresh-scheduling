@@ -20,10 +20,12 @@
   transform: translateY(-3px);
 }
 
-/* The week editor's rail sets these on a phone, to open its menus across the rail. */
+/* The week editor's rail sets these on a phone, to open its menus across the rail. A picker
+   also sets how wide its menu may grow (--shoresh-pop-max). */
 .pop {
   left: var(--shoresh-pop-left, 0);
   right: var(--shoresh-pop-right, auto);
+  max-width: var(--shoresh-pop-max, none);
 }
 
 .pop_right {

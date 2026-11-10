@@ -82,6 +82,16 @@ describe("c-shoresh-rail-pop", () => {
     expect(css("shoreshRailPicker")).toMatch(
       /--shoresh-pop-label-max: min\(20em, calc\(100vw - 10rem\)\);/
     );
+    // Open, the menu shows each name whole, wrapping inside the screen.
+    expect(css("shoreshRailPop").match(/\.pop\s*{[^}]*}/)[0]).toMatch(
+      /max-width: var\(--shoresh-pop-max, none\);/
+    );
+    expect(css("shoreshRailPicker")).toMatch(
+      /--shoresh-pop-max: min\(32em, calc\(100vw - 4rem\)\);/
+    );
+    expect(
+      css("shoreshRailPicker").match(/\.shoresh-pop-row\s*{[^}]*}/)[0]
+    ).toMatch(/white-space: normal;/);
   });
 
   it("a count is set as a value, with the needs-a-look mark before it", async () => {
