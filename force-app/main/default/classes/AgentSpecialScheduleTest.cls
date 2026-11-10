@@ -113,6 +113,76 @@ private class AgentSpecialScheduleTest {
     }
   }
 
+  // API-1.77, SPECIAL-1.3: an AI puts an elective set in a special day's cell as typing does; an
+  // event's refuses it in the screen's words, with nothing changed.
+  @IsTest
+  static void aCellOfASpecialDayTakesAnElectiveSetAndAnEventsRefusesIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      SpecialScheduleTestData.colorWar(ids);
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      String season = seasonName(ids.get('Season'));
+      ScheduleViews.DayView fieldDay = SpecialScheduleController.openPlan(
+          ids.get('Field Day')
+        )
+        .schedule.days[0];
+      String column = fieldDay.groups[0].name;
+      String blockName = fieldDay.blocks[0].name;
+      Test.startTest();
+      List<Object> placed = ask(
+        new AgentSpecialCell(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'special' => 'field day',
+          'column' => column,
+          'time' => blockName,
+          'was' => 'Open',
+          'activity' => 'chugim'
+        }
+      );
+      List<Object> inEvent = ask(
+        new AgentSpecialCell(),
+        'POST',
+        colorWar(
+          season,
+          new Map<String, Object>{
+            'column' => 'Blue',
+            'time' => 'Relays',
+            'was' => 'Open',
+            'activity' => 'Chugim'
+          }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, placed[0], String.valueOf(placed[1]));
+      Assert.areEqual(
+        'Placed chugim · ' +
+          column +
+          ' · ' +
+          blockName +
+          '. To undo it, change the cell back (was: Open).',
+        placed[1]
+      );
+      ScheduleViews.DayView after = SpecialScheduleController.openPlan(
+          ids.get('Field Day')
+        )
+        .schedule.days[0];
+      Integer token = Integer.valueOf(after.rows[0].split(',', -1)[0]);
+      Assert.areEqual('E', after.items[token - 1].kind);
+      Assert.areEqual(String.valueOf(chugim.Id), after.items[token - 1].id);
+      Assert.areEqual(
+        'Nothing was changed. Color War\'s columns are stations, not groups, so it can\'t hold elective sets.',
+        inEvent[1],
+        String.valueOf(inEvent[0])
+      );
+    }
+  }
+
   // API-1.78
   @IsTest
   static void theFrameIsTheScreensChangeAtTheRevisionSeen() {

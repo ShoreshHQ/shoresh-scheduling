@@ -94,7 +94,8 @@ public with sharing class ElectiveLinkedSeats {
   }
 
   private static String periodKey(String weekday, String blockId) {
-    return weekday + '|' + Id.valueOf(blockId);
+    // A special day's own time block ("b2") is in no linked choice (ADR 0018 choice 63).
+    return weekday + '|' + (GridItems.isId(blockId) ? String.valueOf(Id.valueOf(blockId)) : blockId);
   }
 
   private static ShoreshException refused() {

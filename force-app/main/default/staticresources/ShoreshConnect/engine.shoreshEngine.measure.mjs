@@ -60,6 +60,7 @@ export function measureWeek(checked, list, days) {
     (a) => !checkedIds || checkedIds.has(a.id)
   );
   const cells = (checked && checked.cells) || { filled: 0, total: 0 };
+  const lowered = (checked && checked.lowered) || {};
   const groupIds = groupIdsOf(days);
   const counts = new Map();
   ((checked && checked.placements) || [])
@@ -95,7 +96,8 @@ export function measureWeek(checked, list, days) {
   activities.forEach((a) => {
     const notFor = a.notFor || [];
     const eligible = groupIds.filter((id) => !notFor.includes(id));
-    const min = Math.max(0, Number(a.minPerWeek) || 0);
+    // The minimum this week has: a short week's lowered one when the camp chose that (WEEK-4.2).
+    const min = Math.max(0, Number(lowered[a.id] ?? a.minPerWeek) || 0);
     const placed = groupIds.reduce((sum, id) => sum + count(id, a.id), 0);
     const goal = min * eligible.length;
     const got = eligible.reduce(

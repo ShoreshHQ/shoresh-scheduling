@@ -146,8 +146,9 @@ public with sharing class ElectiveSeats {
     public Id camperId;
     @AuraEnabled
     public Date day;
+    // A time block's Id, or a special day's own time block ("b2", ELECT-4.8).
     @AuraEnabled
-    public Id blockId;
+    public String blockId;
     @AuraEnabled
     public Id offeringId;
     @AuraEnabled
@@ -302,7 +303,7 @@ public with sharing class ElectiveSeats {
     made.id = seat.Id;
     made.camperId = seat.Camper__c;
     made.day = seat.Date__c;
-    made.blockId = seat.TimeBlock__c;
+    made.blockId = ElectiveSeatChecks.blockOf(seat);
     made.offeringId = seat.Offering__c;
     made.linkedChoiceId = seat.LinkedChoice__c;
     made.locked = seat.Locked__c == true;

@@ -190,7 +190,7 @@ public with sharing class AgentElectives {
 
   private static String wordsOf(
     Date day,
-    Id blockId,
+    String blockId,
     List<ElectivePeriod> times
   ) {
     for (ElectivePeriod period : times) {

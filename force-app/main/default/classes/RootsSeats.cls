@@ -94,7 +94,7 @@ public with sharing class RootsSeats {
       FROM Assignment__c
       WHERE ElectiveRun__c = :runId AND Offering__c != NULL
       WITH USER_MODE
-      GROUP BY Offering__c, Date__c, TimeBlock__c
+      GROUP BY Offering__c, Date__c, TimeBlock__c, SpecialBlock__c
     ]) {
       Id offering = (Id) row.get('offering');
       Integer seated = (Integer) row.get('seated');

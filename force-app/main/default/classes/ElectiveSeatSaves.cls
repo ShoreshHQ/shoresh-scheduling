@@ -31,7 +31,8 @@ public with sharing class ElectiveSeatSaves {
   public class SeatIn {
     public Id camperId;
     public Date day;
-    public Id blockId;
+    // A time block's Id, or a special day's own time block ("b2", ELECT-4.8).
+    public String blockId;
     public Id offeringId;
     public Id linkedChoiceId;
   }
@@ -100,7 +101,7 @@ public with sharing class ElectiveSeatSaves {
           ElectiveSeatChecks.seatKey(
             seat.Camper__c,
             seat.Date__c,
-            seat.TimeBlock__c
+            ElectiveSeatChecks.blockOf(seat)
           ),
           seat
         );
@@ -113,7 +114,7 @@ public with sharing class ElectiveSeatSaves {
         ElectiveSeatChecks.seatKey(
           seat.Camper__c,
           seat.Date__c,
-          seat.TimeBlock__c
+          ElectiveSeatChecks.blockOf(seat)
         )
       );
       if (held == null) {

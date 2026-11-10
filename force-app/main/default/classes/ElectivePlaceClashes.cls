@@ -21,7 +21,7 @@ public with sharing class ElectivePlaceClashes {
 
   /** "Pool, Tuesday, Period 3": each place over what fits, in the order of the week. */
   public List<String> find() {
-    for (ScheduleDays.DayGrid day : state.liveDays) {
+    for (ScheduleDays.DayGrid day : state.days.live) {
       if (day.grid != null) {
         readDay(day);
       }

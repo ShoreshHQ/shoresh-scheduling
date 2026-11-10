@@ -248,6 +248,44 @@ private class SetupDeleteTest {
     }
   }
 
+  private class EverythingPublished implements PublishedHistory.Finder {
+    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
+      return recordIds;
+    }
+  }
+
+  // API-1.141: a season with published history is refused before its question (the screen's
+  // preview), in the camp's words, with what to do instead; nothing is asked about or deleted.
+  @IsTest
+  static void aSeasonWithPublishedHistoryIsRefusedWithMarkItFinished() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      String name = [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :ids.get('Season')
+        WITH USER_MODE
+      ]
+      .Name;
+      PublishedHistory.finder = new EverythingPublished();
+      Test.startTest();
+      SetupDelete.Preview preview = SetupDelete.preview(ids.get('Season'));
+      Test.stopTest();
+      Assert.areEqual(
+        '"' +
+          name +
+          '" has published schedules, which are kept as history, so this season can\'t be deleted. Mark it Finished instead.',
+        preview.refusal
+      );
+      Assert.isNull(preview.message);
+      Assert.isNull(preview.lines);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Season__c WHERE Id = :ids.get('Season')]
+      );
+    }
+  }
+
   @IsTest
   static void aCampOrUnknownRecordIsNotTheseScreensToDelete() {
     System.runAs(ShoreshTestData.scheduler()) {

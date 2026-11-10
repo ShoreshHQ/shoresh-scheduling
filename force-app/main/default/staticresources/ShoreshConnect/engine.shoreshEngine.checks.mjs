@@ -715,6 +715,13 @@ export function checkWeek(days, model, words) {
     cells: filledCount(ctx),
     hasCoverageTargets: activities.some((a) => a.min > 0),
     hasSpreadTargets: activities.some((a) => !!a.early),
-    activityIds: [...ctx.activities.keys()]
+    activityIds: [...ctx.activities.keys()],
+    // The minimums a short week lowered (WEEK-4.2, shortWeekMinimums), by activity Id: the
+    // counter measures against these, as the build placed them.
+    lowered: Object.fromEntries(
+      [...ctx.activities]
+        .filter(([, a]) => a.fullMin !== undefined && a.fullMin !== a.min)
+        .map(([id, a]) => [id, a.min])
+    )
   };
 }

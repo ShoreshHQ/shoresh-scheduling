@@ -46,7 +46,9 @@ import assignmentLinkedChoice from "@salesforce/schema/Assignment__c.LinkedChoic
 import assignmentLocationName from "@salesforce/schema/Assignment__c.LocationName__c";
 import assignmentLocked from "@salesforce/schema/Assignment__c.Locked__c";
 import assignmentOffering from "@salesforce/schema/Assignment__c.Offering__c";
+import assignmentSpecialBlock from "@salesforce/schema/Assignment__c.SpecialBlock__c";
 import assignmentTimeBlock from "@salesforce/schema/Assignment__c.TimeBlock__c";
+import assignmentTimeName from "@salesforce/schema/Assignment__c.TimeName__c";
 import campLabelObject from "@salesforce/schema/CampLabel__c";
 import campLabelCamp from "@salesforce/schema/CampLabel__c.Camp__c";
 import campLabelKey from "@salesforce/schema/CampLabel__c.Key__c";
@@ -398,7 +400,9 @@ export const FIELD = Object.freeze({
     LocationName: assignmentLocationName.fieldApiName,
     Locked: assignmentLocked.fieldApiName,
     Offering: assignmentOffering.fieldApiName,
-    TimeBlock: assignmentTimeBlock.fieldApiName
+    SpecialBlock: assignmentSpecialBlock.fieldApiName,
+    TimeBlock: assignmentTimeBlock.fieldApiName,
+    TimeName: assignmentTimeName.fieldApiName
   }),
   CampLabel: Object.freeze({
     Camp: campLabelCamp.fieldApiName,
