@@ -605,46 +605,59 @@ async function rotating() {
         `SELECT PublishedAt__c FROM Schedule__c WHERE Program__r.Season__r.Name = '${season}' AND Week__r.Name = '${week}' AND PublishedAt__c != NULL`
       );
       rec.check("PUB", `${week} is published by clicking`, at.length === 1);
-    }
 
-    // The Schedules page: Week 2 and 3's published version, Daily View and Group View.
-    await page
-      .getByRole("link", { name: /^Saved versions/ })
-      .first()
-      .click();
-    await page.waitForTimeout(5000);
-    const schedules = page.locator("c-shoresh-schedules");
-    const week1Day1 = week1.rows.filter(
-      (r) => r.day === "Day 1" && r.activity !== "Open"
-    );
-    for (const week of ["Week 2", "Week 3"]) {
-      await schedules.locator('[data-id="week"] [data-id="next"]').click();
-      await page.waitForTimeout(5000);
-      const rail = await schedules.locator('[data-id="rail"]').innerText();
+      // Read back as a person reads a published week (ADR 0008 item 10: Saved versions keeps
+      // the newest saved version, not the published copy): the Published line, unchanged since,
+      // over the grid it was published from, day by numbered day.
+      await screen.locator('[data-id="published-menu"]').click();
+      const line = await screen.locator('[data-id="published"]').innerText();
       rec.check(
         "PUB",
-        `the Schedules page opens ${week}'s published version`,
-        rail.includes(week) && /Published/.test(rail),
-        rail.slice(0, 400)
+        `${week}'s Published line says it went out from Generated Schedule, unchanged since`,
+        /Published from Generated Schedule/.test(line) &&
+          (await screen.locator('[data-id="changed-since"]').count()) === 0,
+        line
       );
-      const pills = await schedules
-        .locator('[data-id="day-pills"]')
-        .innerText();
+      await page.keyboard.press("Escape");
+      const pills = screen.locator('[data-id="day-pills"] button');
       rec.check(
         "WEEK-1.7",
         `${week}'s days are Day 1 to Day 6`,
-        DAYS.every((d) => pills.includes(d)) &&
-          !/Mon|Tue|Wed|Thu|Fri|Sat/.test(pills),
-        pills
+        (await pills.allInnerTexts()).map((d) => d.trim()).join() ===
+          DAYS.join(),
+        (await pills.allInnerTexts()).join()
       );
-      const daily = await schedules
-        .locator('[data-id="daily-grid"]')
-        .innerText();
+      const differs = [];
+      for (const day of DAYS) {
+        await pills.filter({ hasText: day }).first().click();
+        await page.waitForTimeout(1200);
+        const grid = await screen.locator('[data-id="edit-grid"]').innerText();
+        // Row by row as the grid lays it out: each time block, the groups left to right.
+        const want = week1.rows
+          .filter((r) => r.day === day && r.activity !== "Open")
+          .sort(
+            (a, b) =>
+              a.time_block.localeCompare(b.time_block) ||
+              a.group.localeCompare(b.group)
+          )
+          .map((r) => r.activity);
+        let from = 0;
+        for (const name of want) {
+          const at = grid.indexOf(name, from);
+          if (at < 0) {
+            differs.push(
+              `${day}: ${want.join(", ")} | ${grid.replace(/\s+/g, " ")}`
+            );
+            break;
+          }
+          from = at + name.length;
+        }
+      }
       rec.check(
         "WEEK-6.2",
-        `${week}'s Day 1 shows what Week 1's Day 1 holds`,
-        week1Day1.every((r) => daily.includes(r.activity)),
-        daily.slice(0, 600)
+        `${week} on screen holds Week 1, cell by cell, Day 1 to Day 6`,
+        differs.length === 0,
+        differs.join("\n").slice(0, 800)
       );
       const out = await call("read_group_schedule", { season, week });
       rec.check(
@@ -652,22 +665,10 @@ async function rotating() {
         `an AI reads ${week} as published, by Day number`,
         out.kind === "done" &&
           DAYS.every((d) => out.text.includes(d)) &&
-          week1Day1.every((r) => out.text.includes(r.activity)),
+          week1.rows.every((r) => out.text.includes(r.activity)),
         out.text.slice(0, 600)
       );
     }
-    await schedules.locator('button[data-view="group"]').click();
-    await page.waitForTimeout(2500);
-    const group = await schedules.locator('[data-id="group-grid"]').innerText();
-    const firstGroup = week1.rows.find((r) => r.activity !== "Open").group;
-    rec.check(
-      "WEEK-6.2",
-      `Group View shows ${firstGroup}'s whole week of Week 1's activities`,
-      week1.rows
-        .filter((r) => r.group === firstGroup && r.activity !== "Open")
-        .every((r) => group.includes(r.activity)),
-      group.slice(0, 600)
-    );
     rec.check(
       "crash",
       "no page errors",
