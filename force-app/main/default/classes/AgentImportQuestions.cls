@@ -3,7 +3,7 @@
  * of Import last year asks for them (open_questions=true), and the last import's own files.
  */
 public with sharing class AgentImportQuestions {
-  private static final String OPEN = 'open_questions';
+  private static final String QUESTIONS_FIELD = 'open_questions';
 
   /**
    * Whether the read asks for the questions left open (only Import last year's may), refusing a
@@ -11,9 +11,11 @@ public with sharing class AgentImportQuestions {
    */
   public static Boolean asked(String door) {
     Map<String, String> params = RestContext.request.params;
-    Boolean open = door == AgentImports.LAST_YEAR && params.get(OPEN) == 'true';
+    Boolean open =
+      door == AgentImports.LAST_YEAR &&
+      params.get(QUESTIONS_FIELD) == 'true';
     for (String key : params.keySet()) {
-      if (key != 'season' && !(open && key == OPEN)) {
+      if (key != 'season' && !(open && key == QUESTIONS_FIELD)) {
         throw new ShoreshException(
           'Shoresh doesn\'t know the field "' +
             key.left(40) +
