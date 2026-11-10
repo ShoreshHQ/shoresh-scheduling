@@ -1978,5 +1978,80 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
       );
     }
+  },
+  {
+    id: "S15",
+    title: "the short-week choice on a real short week",
+    camps: "BR S15 %",
+    async run(rec) {
+      const { season } = makeCamp("S15 Short week");
+      await importMaple(season);
+      // Week 2 ends on its Wednesday: three days of the camp's five.
+      apex(`Season__c s = [SELECT Id FROM Season__c WHERE Name = '${season}'];
+Week__c w = [SELECT Id, StartDate__c FROM Week__c WHERE Season__c = :s.Id AND Name = 'Week 2'];
+w.EndDate__c = w.StartDate__c.addDays(2);
+update w;
+s.EndDate__c = w.EndDate__c;
+update s;`);
+      const short = { season, week: "Week 2" };
+      const full = { season, week: "Week 1" };
+      for (const week of [full, short]) {
+        const built = await call("build_week", week);
+        if (built.kind !== "done") {
+          throw new Error(`build_week ${week.week}: ${built.text}`);
+        }
+      }
+      const shortKeep = await checksOf(season, "Week 2");
+      const fullKeep = await checksOf(season, "Week 1");
+      rec.note(
+        "Week 2 (three days), keep",
+        JSON.stringify(shortKeep).slice(0, 700)
+      );
+      const lower = await call("change_season", {
+        season,
+        fields: { short_week: "lower" },
+        seen: { short_week: "keep" }
+      });
+      rec.check(
+        "API-1.142",
+        "the choice saves through an AI",
+        lower.kind === "done",
+        lower.text
+      );
+      const shortLower = await checksOf(season, "Week 2");
+      const fullLower = await checksOf(season, "Week 1");
+      rec.note(
+        "Week 2 (three days), lower",
+        JSON.stringify(shortLower).slice(0, 700)
+      );
+      const met = (c) => c.priorities.join(" | ");
+      rec.check(
+        "WEEK-4.2",
+        "the short week's checks count the lowered minimums",
+        JSON.stringify([shortLower.priorities, shortLower.under]) !==
+          JSON.stringify([shortKeep.priorities, shortKeep.under]) &&
+          shortLower.under.count <= shortKeep.under.count,
+        `keep: ${met(shortKeep)}, ${shortKeep.under.count} under; lower: ${met(shortLower)}, ${shortLower.under.count} under`
+      );
+      rec.check(
+        "WEEK-4.2",
+        "a full week's checks are as they were",
+        JSON.stringify(fullLower) === JSON.stringify(fullKeep),
+        `keep: ${met(fullKeep)}; lower: ${met(fullLower)}`
+      );
+      const rebuilt = await confirmed("build_week", short);
+      const after = await checksOf(season, "Week 2");
+      rec.note(
+        "Week 2 rebuilt with lower",
+        JSON.stringify(after).slice(0, 700)
+      );
+      rec.check(
+        "WEEK-4.2",
+        "the short week builds again with the lowered minimums",
+        rebuilt.done.kind === "done" &&
+          after.under.count <= shortLower.under.count,
+        `${after.under.count} under after, ${shortLower.under.count} before`
+      );
+    }
   }
 ];
