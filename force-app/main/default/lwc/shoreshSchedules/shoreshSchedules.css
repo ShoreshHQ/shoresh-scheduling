@@ -89,6 +89,7 @@
   .rail {
     position: relative;
     --shoresh-pop-host: static;
+    --shoresh-pop-across: none;
     --shoresh-pop-left: 0;
     --shoresh-pop-right: 0;
     --shoresh-pop-width: auto;
