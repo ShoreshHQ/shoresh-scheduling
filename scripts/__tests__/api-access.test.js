@@ -143,8 +143,10 @@ describe("the API's access pieces", () => {
     const scheduler = read("Shoresh_Scheduler");
     const objects = new Map(scheduler.objects.map((o) => [o.object, o]));
     const fields = new Map(scheduler.fields.map((f) => [f.field, f]));
+    let checked = 0;
     for (const name of Object.keys(PIECES)) {
       const piece = read(name);
+      checked += piece.objects.length + piece.fields.length;
       for (const o of piece.objects) {
         const has = objects.get(o.object);
         expect([name, o.object, !!has]).toEqual([name, o.object, true]);
@@ -166,5 +168,6 @@ describe("the API's access pieces", () => {
         );
       }
     }
+    expect(checked).toBeGreaterThan(0);
   });
 });

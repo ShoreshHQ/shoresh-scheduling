@@ -5,7 +5,7 @@
  */
 import { NOW, generateWeek, generateWeekSteps } from "c/shoreshEngine";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
-import { randomCamp } from "./data/randomCamp";
+import { randomCamp, withHistory } from "./data/randomCamp";
 import { settledRules } from "./data/settledRules";
 import { sampled } from "shoresh-jest/sample";
 
@@ -162,7 +162,22 @@ describe("fills by rearranging what the earlier steps placed", () => {
 
   // GEN-8.13
   it("never moves a locked cell or anything kept (fixed, set-time, special)", () => {
-    for (const { spec, input, result } of moved) {
+    // Random camps carry no locks: these do, from a week built before (withHistory), so the
+    // locked check below has locks to check.
+    const withLocks = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const spec = withHistory(randomCamp(seed), seed);
+      const input = camp(spec);
+      if (!(input.locks || []).length) {
+        continue;
+      }
+      const result = generateWeek(input);
+      if (result.ok && result.moved.length) {
+        withLocks.push({ spec, input, result });
+      }
+    }
+    expect(withLocks.length).toBeGreaterThan(5);
+    for (const { spec, input, result } of [...moved, ...withLocks]) {
       const locked = new Set(
         (input.locks || []).map((l) => `${l.date}|${l.groupId}|${l.blockId}`)
       );

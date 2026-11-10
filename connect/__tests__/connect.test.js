@@ -356,11 +356,14 @@ describe("Shoresh for AI tools and the command line", () => {
         ...(field.type === "array" ? [field] : []),
         ...(field.items && field.items.properties ? lists(field.items) : [])
       ]);
+    let checked = 0;
     for (const c of CAPABILITIES) {
       for (const list of lists(c.inputSchema)) {
         expect(list.items).toBeDefined();
+        checked += 1;
       }
     }
+    expect(checked).toBeGreaterThan(0);
   });
 
   // API-1.128
