@@ -60,7 +60,7 @@ import { checkManualDays } from "./manualChecks";
 import {
   alreadySkipped,
   foldRun,
-  lockKey,
+  isLockedAt,
   lockedSince,
   locksAfterSave,
   newlyLocked,
@@ -1390,17 +1390,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
   }
 
-  /** Whether any time block of the placement a slot is part of is locked. */
+  /** Whether any time block of the placement a slot is part of is locked (locks.js isLockedAt). */
   isLockedSlot(slot, locks = this.liveLocks) {
-    if (!locks || !locks.size) {
-      return false;
-    }
-    const day = this.dayOf(slot);
-    const groupId = day.groups[slot.group].id;
-    const at = placement(day, slot.group, slot.block);
-    return day.blocks
-      .slice(at.first, at.first + at.length)
-      .some((block) => locks.has(lockKey(day.dateValue, groupId, block.id)));
+    return isLockedAt(this.schedule.days, locks, slot);
   }
 
   decorate(cell, saving, locks) {
