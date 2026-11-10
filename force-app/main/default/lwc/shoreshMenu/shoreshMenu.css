@@ -73,11 +73,13 @@ ul {
   margin: var(--shoresh-space-pad) calc(-1 * var(--shoresh-space-pad));
 }
 
-/* Section titles: small capitals in the one mono, sitting on the rows they head. */
+/* Section titles: small capitals in the one mono, sitting on the rows they head. At least one
+   item tall: a title that wraps on a narrow menu ("Activities & events" at 1024) grows down,
+   never up into the entry above it. */
 .section-title {
   display: flex;
   align-items: flex-end;
-  height: var(--shoresh-control-h);
+  min-height: var(--shoresh-control-h);
   margin: var(--shoresh-s2) 0 0;
   padding: 0 var(--shoresh-space-control-x) var(--shoresh-s2);
   font-family: var(--shoresh-font-mono);
