@@ -7401,7 +7401,8 @@ function tmpl$1($api, $cmp, $slotset, $ctx) {
         return api_element("td", {
           className: api_normalize_class_name(cell.className),
           attrs: {
-            "rowspan": cell.rowspan
+            "rowspan": cell.rowspan,
+            "colspan": cell.colspan
           },
           key: api_key(23, cell.key)
         }, api_flatten([api_iterator(cell.parts, function (part) {

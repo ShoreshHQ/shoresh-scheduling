@@ -1280,6 +1280,42 @@ describe("c-shoresh-camp-setup", () => {
       expect(menu.setupBusy).toBe(true);
     });
 
+    // The foot sat below the fold at 1440x900 (UI pass, 2026-11-10): the schedule's own entry
+    // carries the setup-changed dot too, whichever screen is shown (coordinator's call).
+    it("a schedule whose week can be updated to match setup carries the dot on its menu entry", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const menu = q(element, "c-shoresh-menu");
+      const entry = (key) =>
+        menu.sections.flatMap((s) => s.items).find((i) => i.key === key);
+      expect(entry("manualBuild").mark).toBeNull();
+      q(element, '[data-setup-state="manualBuild"]').dispatchEvent(
+        new CustomEvent("setupstate", {
+          detail: { changed: true, busy: false }
+        })
+      );
+      await flush();
+      expect(entry("manualBuild").mark).toEqual({
+        kind: "changed",
+        symbol: "",
+        label: "Setup changed"
+      });
+      expect(entry("generatedSchedule").mark).toBeNull();
+      const dot = menu.shadowRoot.querySelector(
+        'a[data-screen="manualBuild"] [data-mark="changed"]'
+      );
+      expect(dot.className).toBe("menu-mark menu-mark_changed");
+      q(element, '[data-setup-state="manualBuild"]').dispatchEvent(
+        new CustomEvent("setupstate", {
+          detail: { changed: false, busy: false }
+        })
+      );
+      await flush();
+      expect(entry("manualBuild").mark).toBeNull();
+    });
+
     it("the menu's foot drops the old season's setup changed when another season is picked", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
@@ -2293,6 +2329,23 @@ describe("c-shoresh-camp-setup", () => {
     // The Schedules page is laid out as Manual Build: its name read out, not shown (the menu
     // shows it), and its rail and grid the frame's own zones.
     expect(heading.classList.contains("slds-assistive-text")).toBe(true);
+    expect(q(element, ".body_flush")).not.toBeNull();
+  });
+
+  // Import last year's rail sat 12 px lower than every other screen's, its hairline short of the
+  // frame's edges (UI pass, 2026-11-10): it draws its own rail and inset, as the others do.
+  it("Import last year's rail and hairline run edge to edge, as every screen's", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    q(element, "c-shoresh-roots").dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "import" } })
+    );
+    await flush();
+    expect(
+      q(element, '[data-screen="import"] c-shoresh-import')
+    ).not.toBeNull();
     expect(q(element, ".body_flush")).not.toBeNull();
   });
 

@@ -297,11 +297,12 @@
   color: var(--shoresh-text-1);
 }
 
-/* The drawer's place on a replaced day: the special day's name and kind in the time column, its
-   notes across, and the way to open it at the end (mockup placed-day.png). */
+/* The drawer's place on a replaced day: the special day's name and kind, its notes (when it has
+   any) across, and the way to open it at the end (mockup placed-day.png). */
 .special-line {
   box-sizing: border-box;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--shoresh-space-cell-gap);
   min-height: var(--shoresh-tile-h);
@@ -311,9 +312,11 @@
   color: var(--shoresh-text-1);
 }
 
+/* The name takes the row's room, as a full-width cell does, never the time column's narrow width
+   (a long name read one word per line); the notes move under it when the row runs out. */
 .special-name {
-  flex: none;
-  width: var(--shoresh-head-w);
+  flex: 0 1 auto;
+  min-width: var(--shoresh-head-w);
   display: flex;
   flex-direction: column;
   gap: var(--shoresh-s1);
@@ -329,7 +332,7 @@
 }
 
 .special-notes {
-  flex: 1;
+  flex: 1 1 16em;
   min-width: 0;
   margin: 0;
   padding: 0 var(--shoresh-space-control-x);

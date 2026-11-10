@@ -6,6 +6,7 @@
 import { createElement } from "lwc";
 import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
+import { setDayNaming } from "c/shoreshDayNames";
 import { nsRecord } from "shoresh-jest/namespace";
 import { GROUPS, draft } from "./data/draftFixture";
 
@@ -183,6 +184,54 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(
       q(host.element, '[data-id="take-off-special"]').textContent.trim()
     ).toBe("Take off Tuesday");
+  });
+
+  // In a season of numbered days it said "Take off Tuesday" on the pill "Day 2" (UI pass,
+  // 2026-11-10): it names the day as the pill does.
+  it("says Take off Day 2 in a season of numbered days", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const host = await render(undefined, undefined, {
+        takeOffWith: jest.fn()
+      });
+      await showTuesday(host.element);
+      expect(
+        q(host.element, '[data-id="take-off-special"]').textContent.trim()
+      ).toBe("Take off Day 2");
+    } finally {
+      setDayNaming(null);
+    }
+  });
+
+  it("names the day as its pill does when it couldn't be taken off, too", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const takeOffWith = jest
+        .fn()
+        .mockRejectedValue({ body: { message: "No access." } });
+      const { element } = await render(undefined, undefined, { takeOffWith });
+      const errors = jest.fn();
+      element.addEventListener("errorchange", errors);
+      await showTuesday(element);
+      q(element, '[data-id="take-off-special"]').click();
+      await flush();
+      expect(errors.mock.calls[0][0].detail.message).toMatch(
+        /^Visiting Day wasn't taken off Day 2\. Nothing was changed\./
+      );
+    } finally {
+      setDayNaming(null);
+    }
+  });
+
+  // An empty notes place took the row's room, pushing Take off and Open under it on a narrow
+  // window (review of the UI pass): a special day with no notes has none.
+  it("a special day with no notes has no notes place on its line", async () => {
+    const { element } = await render(undefined, undefined, {
+      specials: { days: [{ ...VISITING_DAY, notes: "" }] }
+    });
+    await showTuesday(element);
+    expect(q(element, '[data-id="special-line"]')).not.toBeNull();
+    expect(q(element, '[data-id="special-notes"]')).toBeNull();
   });
 
   // SPECIAL-4.2

@@ -137,10 +137,18 @@ table {
   table-layout: fixed;
 }
 
+/* The names' column: room for an offering's or a camper's name (the grid's time column held them
+   to one word a line), and a long name breaks inside it, never spilling into the next cell. */
 .corner,
 .offer-head,
 .camper-head {
-  width: var(--shoresh-head-w);
+  width: max(var(--shoresh-head-w), min(12rem, 30%));
+}
+
+.offer-head,
+.camper-row th {
+  hyphens: auto;
+  overflow-wrap: anywhere;
 }
 
 .time-head {
@@ -148,6 +156,12 @@ table {
   color: var(--shoresh-text-2);
   text-align: center;
   padding-bottom: var(--shoresh-s1);
+}
+
+/* Which groups a time is, when a set runs for several at once ("Bunk Bet"), under the time. */
+.time-groups {
+  display: block;
+  color: var(--shoresh-text-1);
 }
 
 .camper-table .time-head,
@@ -177,6 +191,11 @@ table {
 .offer-table td {
   padding: 0;
   height: calc(var(--shoresh-u) * 28);
+}
+
+/* The heading row's empty corner is no seat: it takes the headings' height, not a seat's. */
+.offer-table .corner {
+  height: auto;
 }
 
 .seat-cell {

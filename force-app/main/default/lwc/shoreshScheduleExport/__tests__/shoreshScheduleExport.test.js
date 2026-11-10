@@ -1,5 +1,10 @@
 // The schedule's Excel sheets and printed pages, worked out from an opened version (made-up data).
-import { blockText, printPages, scheduleSheets } from "c/shoreshScheduleExport";
+import {
+  blockText,
+  printPages,
+  printTable,
+  scheduleSheets
+} from "c/shoreshScheduleExport";
 import { buildTerms } from "c/shoreshTerms";
 import {
   LABELS,
@@ -236,5 +241,66 @@ describe("c-shoresh-schedule-export", () => {
     it("prints nothing for nothing open", () => {
       expect(printPages(null, "day", CATALOGUE, t)).toEqual([]);
     });
+  });
+});
+
+// An elective set across three bunks printed as three cells, each with its full name, where the
+// screen draws one wide cell (UI pass, 2026-11-10): the printout spans it the same way.
+describe("the printout's cells", () => {
+  const cell = (row, column, extra = {}) => ({
+    key: `${row}-${column}`,
+    row,
+    column,
+    length: 1,
+    text: "Chugim (5)",
+    ...extra
+  });
+  const grid = (cells) => ({
+    columns: [0, 1, 2, 3].map((i) => ({ key: `g${i}`, label: `Bunk ${i}` })),
+    rows: [
+      { key: "b0", time: "10:00" },
+      { key: "b1", time: "11:00" }
+    ],
+    cells
+  });
+
+  it("one set across bunks side by side is one cell spanning them", () => {
+    const table = printTable(
+      grid([
+        cell(0, 0, { mergeKey: "set|0|1" }),
+        cell(0, 1, { mergeKey: "set|0|1" }),
+        cell(0, 2, { mergeKey: "set|0|1" }),
+        cell(0, 3, { text: "Soccer" })
+      ])
+    );
+    expect(table.rows[0].cells.map((c) => [c.text, c.colspan])).toEqual([
+      ["Chugim (5)", 3],
+      ["Soccer", 1]
+    ]);
+    // The next row is untouched: four cells.
+    expect(table.rows[1].cells).toHaveLength(4);
+  });
+
+  it("the same set in bunks apart stays two cells", () => {
+    const table = printTable(
+      grid([
+        cell(0, 0, { mergeKey: "set|0|1" }),
+        cell(0, 1, { text: "Soccer" }),
+        cell(0, 2, { mergeKey: "set|0|1" })
+      ])
+    );
+    expect(table.rows[0].cells.map((c) => c.colspan)).toEqual([1, 1, 1, 1]);
+  });
+
+  it("a set over two blocks spans both ways", () => {
+    const table = printTable(
+      grid([
+        cell(0, 1, { mergeKey: "set|0|2", length: 2 }),
+        cell(0, 2, { mergeKey: "set|0|2", length: 2 })
+      ])
+    );
+    const first = table.rows[0].cells.find((c) => c.text);
+    expect([first.colspan, first.rowspan]).toEqual([2, 2]);
+    expect(table.rows[1].cells).toHaveLength(2);
   });
 });

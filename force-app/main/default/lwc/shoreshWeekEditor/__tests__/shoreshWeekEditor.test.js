@@ -449,6 +449,21 @@ describe("the rail's room", () => {
     expect(css.match(/\.group_days\s*{[^}]*}/)[0]).toMatch(/flex-wrap: wrap;/);
   });
 
+  // A long special day's name was held to the time column's width, one word per line (UI pass,
+  // 2026-11-10): it takes the row's room, the notes moving under it when the row runs out.
+  it("a replaced day's line gives the special day's name the row's room", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekEditor.css"),
+      "utf8"
+    );
+    const name = css.match(/\.special-name\s*{[^}]*}/)[0];
+    expect(name).toMatch(/flex: 0 1 auto;/);
+    expect(name).not.toMatch(/[^-]width: var\(--shoresh-head-w\)/);
+    expect(css.match(/\.special-line\s*{[^}]*}/)[0]).toMatch(
+      /flex-wrap: wrap;/
+    );
+  });
+
   it("the same on Saved versions and Elective seats, each part holding its width", () => {
     const read = (bundle) =>
       require("fs").readFileSync(

@@ -560,6 +560,8 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     ]);
     const element = await render(null);
     const menu = q(element, '[data-id="start-from"]');
+    // The outline chevron, as every other menu (UI pass, 2026-11-10: it had the filled triangle).
+    expect(menu.iconName).toBe("utility:chevrondown");
     // The week's published schedule now, and the one it replaced (a version).
     expect(
       [...menu.querySelectorAll("lightning-menu-item")].map((i) => i.label)

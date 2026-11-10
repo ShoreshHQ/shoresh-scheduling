@@ -38,6 +38,7 @@
                       key={cell.key}
                       class={cell.className}
                       rowspan={cell.rowspan}
+                      colspan={cell.colspan}
                     >
                       <template for:each={cell.parts} for:item="part"
                         ><span key={part.key}

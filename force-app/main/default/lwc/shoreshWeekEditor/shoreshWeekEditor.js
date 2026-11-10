@@ -928,9 +928,15 @@ export default class ShoreshWeekEditor extends LightningElement {
       kind: this.t.s("SpecialDay"),
       notes: shown.notes || "",
       open: `Open ${shown.name}`,
-      // The mock-up's "Take off Friday" (placed-day.png), when the host can.
-      takeOff: this.takeOffWith ? `Take off ${shown.day}` : null
+      // The mock-up's "Take off Friday" (placed-day.png), when the host can: the day as its pill
+      // calls it, so "Take off Day 4" in a season of numbered days.
+      takeOff: this.takeOffWith ? `Take off ${this.shownDayName}` : null
     };
+  }
+
+  /** The day shown, as its pill calls it ("Thursday", or "Day 4" in a numbered season). */
+  get shownDayName() {
+    return dayLabel(this.schedule.days[this.dayIndex].dateValue).label;
   }
 
   /**
@@ -950,12 +956,12 @@ export default class ShoreshWeekEditor extends LightningElement {
         specialDayId: shown.specialDayId,
         day: shown.day
       });
-      this.sayOnce(said || `${shown.name} is off ${shown.day}.`);
+      this.sayOnce(said || `${shown.name} is off ${this.shownDayName}.`);
       this.focusPillAfterRender = { index };
     } catch (e) {
       this.reportError(
         failed(
-          `${shown.name} wasn't taken off ${shown.day}. Nothing was changed.`,
+          `${shown.name} wasn't taken off ${this.shownDayName}. Nothing was changed.`,
           e
         )
       );

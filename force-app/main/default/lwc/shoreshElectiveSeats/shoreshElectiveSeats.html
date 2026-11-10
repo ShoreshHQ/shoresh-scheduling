@@ -547,7 +547,11 @@
                     <td class="corner"></td>
                     <template for:each={columns} for:item="column">
                       <th key={column.key} scope="col" class="time-head">
-                        {column.label}
+                        <template lwc:if={column.groups}
+                          >{column.heading}<span class="time-groups"
+                            >{column.groups}</span
+                          ></template
+                        ><template lwc:else>{column.label}</template>
                       </th>
                     </template>
                   </tr>
@@ -624,7 +628,11 @@
                     <th scope="col" class="camper-head">Camper</th>
                     <template for:each={columns} for:item="column">
                       <th key={column.key} scope="col" class="time-head">
-                        {column.label}
+                        <template lwc:if={column.groups}
+                          >{column.heading}<span class="time-groups"
+                            >{column.groups}</span
+                          ></template
+                        ><template lwc:else>{column.label}</template>
                       </th>
                     </template>
                   </tr>
