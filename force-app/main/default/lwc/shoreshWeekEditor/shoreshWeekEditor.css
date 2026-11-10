@@ -282,7 +282,7 @@
   max-width: min(16em, calc(100vw - 14rem));
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: pre;
+  white-space: nowrap;
   font-weight: 400;
   color: var(--shoresh-text-2);
 }
