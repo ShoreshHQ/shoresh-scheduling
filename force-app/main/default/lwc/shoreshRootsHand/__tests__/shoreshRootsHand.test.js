@@ -413,3 +413,18 @@ describe("c-shoresh-roots-hand", () => {
     await expect(element).toBeAccessible();
   });
 });
+
+// On a hand card the week's label ("WEEK 3") ended 6 px from the needs-a-look corner, measured in
+// Chrome at 1440, 1024 and 768 (UI pass, 2026-11-10): the name row keeps 16 px clear of it.
+describe("c-shoresh-roots-hand-face: the corner's room", () => {
+  it("the name row stays clear of the needs-a-look corner", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(
+        __dirname,
+        "../../shoreshRootsHandFace/shoreshRootsHandFace.css"
+      ),
+      "utf8"
+    );
+    expect(css.match(/\.name\s*{[^}]*}/)[0]).toMatch(/padding-right: 16px;/);
+  });
+});

@@ -20,7 +20,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding-right: 10px;
+  /* Clear of the needs-a-look corner: the week's label sat 6 px from it, reading as one. */
+  padding-right: 16px;
   font-weight: 500;
   letter-spacing: -0.005em;
   white-space: nowrap;
