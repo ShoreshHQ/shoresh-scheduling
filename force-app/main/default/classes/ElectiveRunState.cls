@@ -22,8 +22,8 @@ public with sharing class ElectiveRunState {
   public ElectiveOpenness openness;
   // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
-  // Where the set sits on the run's schedule now, and (for a final run) as it was finalized.
-  public List<ScheduleDays.DayGrid> liveDays;
+  // The run's schedule's days, with the special days replacing some of them (ELECT-4.8).
+  public ElectiveDays.Read days;
   public ElectiveTimes live;
   public ElectiveTimes shown;
   // The campers' choices, by camper.
@@ -37,16 +37,12 @@ public with sharing class ElectiveRunState {
     readGroups();
     readOfferings();
     readLinkedChoices();
-    liveDays = ScheduleDays.read(run.Schedule__c);
-    live = new ElectiveTimes(liveDays, run.ElectiveSet__c, groups);
+    days = ElectiveDays.ofRun(run);
+    live = new ElectiveTimes(days.live, run.ElectiveSet__c, groups);
     live.offer(offerings, openness);
     shown = live;
-    if (isFinal() && run.FinalSchedule__c != null) {
-      shown = new ElectiveTimes(
-        ScheduleDays.read(run.FinalSchedule__c),
-        run.ElectiveSet__c,
-        groups
-      );
+    if (days.shown != days.live) {
+      shown = new ElectiveTimes(days.shown, run.ElectiveSet__c, groups);
       shown.offer(offerings, openness);
     }
     readChoices();
@@ -225,6 +221,7 @@ public with sharing class ElectiveRunState {
         Group__c,
         Date__c,
         TimeBlock__c,
+        SpecialBlock__c,
         Offering__c,
         LinkedChoice__c,
         Locked__c,
@@ -235,7 +232,7 @@ public with sharing class ElectiveRunState {
       FROM Assignment__c
       WHERE ElectiveRun__c = :run.Id
       WITH USER_MODE
-      ORDER BY Date__c, TimeBlock__c, Camper__c
+      ORDER BY Date__c, TimeBlock__c, SpecialBlock__c, Camper__c
     ];
   }
 

@@ -83,7 +83,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     heldAsSeen();
     Map<String, Assignment__c> now = new Map<String, Assignment__c>();
     for (Assignment__c seat : [
-      SELECT Camper__c, Date__c, TimeBlock__c, Offering__c, Locked__c
+      SELECT Camper__c, Date__c, TimeBlock__c, SpecialBlock__c, Offering__c, Locked__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :held.id
       WITH USER_MODE
@@ -92,7 +92,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
         ElectiveSeatChecks.seatKey(
           seat.Camper__c,
           seat.Date__c,
-          seat.TimeBlock__c
+          ElectiveSeatChecks.blockOf(seat)
         ),
         seat
       );

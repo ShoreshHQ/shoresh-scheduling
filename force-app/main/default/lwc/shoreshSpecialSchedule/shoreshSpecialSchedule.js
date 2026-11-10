@@ -230,6 +230,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   get isEvent() {
     return !!this.view && this.view.kind === "SpecialEvent";
   }
+
+  /** A special day's cells take the season's elective sets (SPECIAL-1.3); an event's don't. */
+  get takesElectives() {
+    return !!this.view && !this.isEvent;
+  }
   get notes() {
     return (this.view && this.view.notes) || "";
   }

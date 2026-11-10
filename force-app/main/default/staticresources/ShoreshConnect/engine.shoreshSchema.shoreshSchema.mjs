@@ -47,7 +47,9 @@ const assignmentLinkedChoice = schemaName("Assignment__c.LinkedChoice__c");
 const assignmentLocationName = schemaName("Assignment__c.LocationName__c");
 const assignmentLocked = schemaName("Assignment__c.Locked__c");
 const assignmentOffering = schemaName("Assignment__c.Offering__c");
+const assignmentSpecialBlock = schemaName("Assignment__c.SpecialBlock__c");
 const assignmentTimeBlock = schemaName("Assignment__c.TimeBlock__c");
+const assignmentTimeName = schemaName("Assignment__c.TimeName__c");
 const campLabelObject = schemaName("CampLabel__c");
 const campLabelCamp = schemaName("CampLabel__c.Camp__c");
 const campLabelKey = schemaName("CampLabel__c.Key__c");
@@ -399,7 +401,9 @@ export const FIELD = Object.freeze({
     LocationName: assignmentLocationName.fieldApiName,
     Locked: assignmentLocked.fieldApiName,
     Offering: assignmentOffering.fieldApiName,
-    TimeBlock: assignmentTimeBlock.fieldApiName
+    SpecialBlock: assignmentSpecialBlock.fieldApiName,
+    TimeBlock: assignmentTimeBlock.fieldApiName,
+    TimeName: assignmentTimeName.fieldApiName
   }),
   CampLabel: Object.freeze({
     Camp: campLabelCamp.fieldApiName,
