@@ -84,7 +84,7 @@ describe("c-shoresh-rail-pop", () => {
     );
     // Open, the menu shows each name whole, wrapping inside the screen.
     expect(css("shoreshRailPop").match(/\.pop\s*{[^}]*}/)[0]).toMatch(
-      /max-width: var\(--shoresh-pop-max, none\);/
+      /max-width: var\(--shoresh-pop-across, var\(--shoresh-pop-max, none\)\);/
     );
     expect(css("shoreshRailPicker")).toMatch(
       /--shoresh-pop-max: min\(32em, calc\(100vw - 4rem\)\);/
@@ -92,6 +92,16 @@ describe("c-shoresh-rail-pop", () => {
     expect(
       css("shoreshRailPicker").match(/\.shoresh-pop-row\s*{[^}]*}/)[0]
     ).toMatch(/white-space: normal;/);
+    // Where a rail opens its menus across itself (narrow screens), the menu keeps the rail's width.
+    for (const rail of [
+      "shoreshElectiveSeats",
+      "shoreshSchedules",
+      "shoreshWeekEditor"
+    ]) {
+      expect(css(rail)).toMatch(
+        /--shoresh-pop-host: static;\s*--shoresh-pop-across: none;/
+      );
+    }
   });
 
   it("a count is set as a value, with the needs-a-look mark before it", async () => {

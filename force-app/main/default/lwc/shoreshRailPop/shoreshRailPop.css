@@ -21,11 +21,12 @@
 }
 
 /* The week editor's rail sets these on a phone, to open its menus across the rail. A picker
-   also sets how wide its menu may grow (--shoresh-pop-max). */
+   also sets how wide its menu may grow (--shoresh-pop-max), except where a rail opens its menus
+   across itself (--shoresh-pop-across: none). */
 .pop {
   left: var(--shoresh-pop-left, 0);
   right: var(--shoresh-pop-right, auto);
-  max-width: var(--shoresh-pop-max, none);
+  max-width: var(--shoresh-pop-across, var(--shoresh-pop-max, none));
 }
 
 .pop_right {
