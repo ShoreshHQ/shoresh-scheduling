@@ -110,9 +110,12 @@
   box-shadow: var(--shoresh-raise);
 }
 
+/* A long word in a narrow cell breaks with a hyphen, in the page's language ("Synchroni-
+   zed"); one the language can't hyphenate still breaks rather than spill out of the cell. */
 .cell-name {
   font-weight: 500;
   letter-spacing: -0.005em;
+  hyphens: auto;
   overflow-wrap: anywhere;
 }
 

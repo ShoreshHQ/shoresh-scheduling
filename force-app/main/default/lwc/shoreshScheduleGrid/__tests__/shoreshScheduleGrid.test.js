@@ -179,6 +179,17 @@ describe("c-shoresh-schedule-grid", () => {
       await expect(element).toBeAccessible();
     });
 
+    // At 390, "Synchronized" broke as "Synchroniz / ed" with no hyphen (UI pass, 2026-11-10).
+    it("a long word in a cell breaks with a hyphen, never spilling out", () => {
+      const css = require("fs").readFileSync(
+        require("path").join(__dirname, "../shoreshScheduleGrid.css"),
+        "utf8"
+      );
+      const name = css.match(/\.cell-name\s*{[^}]*}/)[0];
+      expect(name).toMatch(/hyphens: auto;/);
+      expect(name).toMatch(/overflow-wrap: anywhere;/);
+    });
+
     it("the padlock sits in the bottom-right corner, and a lock draws no edge", () => {
       const fs = require("fs");
       const path = require("path");
