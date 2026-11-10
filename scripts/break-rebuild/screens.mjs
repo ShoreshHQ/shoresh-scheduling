@@ -590,11 +590,15 @@ async function rotating() {
     for (const week of ["Week 2", "Week 3"]) {
       await pickNext();
       await screen.locator('[data-id="publish"]').click();
+      // A week with nothing to warn about publishes at once; otherwise the screen asks first.
       const ask = page.locator('[data-id="ask"]');
-      await ask.waitFor();
-      rec.note(`Publish ${week} asks`, (await ask.innerText()).slice(0, 500));
-      await ask.locator("button.slds-button_brand").click();
-      await screen.locator('[data-id="published-menu"]').waitFor();
+      const said = screen.getByText(`Published ${week}.`);
+      await ask.or(said).first().waitFor();
+      if (await ask.isVisible()) {
+        rec.note(`Publish ${week} asks`, (await ask.innerText()).slice(0, 500));
+        await ask.locator("button.slds-button_brand").click();
+      }
+      await said.waitFor();
       const at = soql(
         `SELECT PublishedAt__c FROM Schedule__c WHERE Program__r.Season__r.Name = '${season}' AND Week__r.Name = '${week}' AND PublishedAt__c != NULL`
       );
