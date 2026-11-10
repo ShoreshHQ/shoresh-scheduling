@@ -2,16 +2,15 @@
 const { call, makeCamp, seenIn } = require("../lib");
 const { importMaple, confirmed, electiveOnWeek } = require("../kit");
 
-/** The cells of one time block as read_special_schedule says them: { Bunk 1: "Open", ... }. */
+/** The cells of one time block as read_special_schedule says them: { "Bunk 1": "Open", ... }. */
 function cellsAt(text, block) {
-  const line = text
-    .split("\n")
-    .find((l) => l.trim().startsWith(`${block} (`) || l.includes(` ${block} (`));
-  if (!line) return null;
+  const times = text.slice(text.indexOf("Times:") + 6).split(" | ");
+  const segment = times.find((t) => t.trim().startsWith(`${block} (`));
+  if (!segment) return null;
   const cells = {};
-  for (const part of line.slice(line.indexOf("):") + 2).split(";")) {
-    const m = /^\s*(Bunk \d+) (.+?)\s*\.?$/.exec(part);
-    if (m) cells[m[1]] = m[2];
+  for (const part of segment.slice(segment.indexOf("):") + 2).split(";")) {
+    const m = /^\s*(Bunk \d+) ([^.;]+)/.exec(part);
+    if (m) cells[m[1]] = m[2].trim();
   }
   return cells;
 }
@@ -149,7 +148,8 @@ module.exports = [
         season,
         special_day: "Color war",
         week: "Week 2",
-        day: "Tuesday"
+        day: "Tuesday",
+        seen: "Color war"
       });
       rec.check(
         "SPECIAL-4.2",
@@ -158,7 +158,10 @@ module.exports = [
         off.text
       );
       seats = await call("read_elective_seats_now", at);
-      rec.note("seats after the special day came off", seats.text.slice(0, 900));
+      rec.note(
+        "seats after the special day came off",
+        seats.text.slice(0, 900)
+      );
       rec.check(
         "ELECT-6.4",
         "the final run says the schedule changed, with nothing removed",
