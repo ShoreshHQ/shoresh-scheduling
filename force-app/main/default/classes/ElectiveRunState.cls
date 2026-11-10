@@ -23,7 +23,7 @@ public with sharing class ElectiveRunState {
   // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
   // The run's schedule's days as stored: what Finalize keeps a version of.
-  public List<ScheduleDays.DayGrid> scheduleDays;
+  public List<ScheduleDays.DayGrid> storedDays;
   // The special days replacing some of them now, with their own grids (ELECT-4.8).
   public List<ScheduleSpecials.Special> specialDays;
   // Where the set sits on the run's schedule now (a replaced day read from its special day), and
@@ -43,9 +43,9 @@ public with sharing class ElectiveRunState {
     readGroups();
     readOfferings();
     readLinkedChoices();
-    scheduleDays = ScheduleDays.read(run.Schedule__c);
-    specialDays = ElectiveDays.replacingNow(run.Week__c, scheduleDays);
-    liveDays = ElectiveDays.withSpecialDays(scheduleDays, specialDays);
+    storedDays = ScheduleDays.read(run.Schedule__c);
+    specialDays = ElectiveDays.replacingNow(run.Week__c, storedDays);
+    liveDays = ElectiveDays.withSpecialDays(storedDays, specialDays);
     live = new ElectiveTimes(liveDays, run.ElectiveSet__c, groups);
     live.offer(offerings, openness);
     shown = live;

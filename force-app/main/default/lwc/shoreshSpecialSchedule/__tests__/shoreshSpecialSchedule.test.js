@@ -258,11 +258,9 @@ describe("c-shoresh-special-schedule", () => {
     const { element } = await render(dayPlan());
     element.setup = withChugim();
     await flush();
-    saveCells.mockResolvedValue({
-      conflicts: [],
-      revision: "2",
-      schedule: dayPlan(["3,1", ",1"]).schedule
-    });
+    const saved = dayPlan(["3,1", ",1"]).schedule;
+    saved.days[0].items.push(ref("es1", "Chugim", "E"));
+    saveCells.mockResolvedValue({ conflicts: [], revision: "2", schedule: saved });
     const input = await typeInto(element, "0-0", "chu");
     expect(optionLabels(element)[0]).toBe("Chugim (2)");
     await press(input, "Enter");
@@ -274,6 +272,8 @@ describe("c-shoresh-special-schedule", () => {
       before: [""],
       after: ["E:es1"]
     });
+    // Drawn as the set, with its count, as on Manual Build.
+    expect(cell(element, "0-0").textContent).toContain("Chugim (2)");
   });
 
   // SPECIAL-1.3
