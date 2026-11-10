@@ -12,8 +12,38 @@ public with sharing class ElectiveDays {
   // shown). Forgotten when any is put on, changed or taken off (SpecialDateTrigger).
   private static Map<Id, List<SpecialDate__c>> placedByWeek = new Map<Id, List<SpecialDate__c>>();
 
+  /** A run's days: as stored, the special days replacing some now, and the days read with them. */
+  public class Read {
+    // The run's schedule's days as stored: what Finalize keeps a version of.
+    public List<ScheduleDays.DayGrid> stored;
+    // The special days replacing some of them now, with their own grids.
+    public List<ScheduleSpecials.Special> specials;
+    // Where the set sits now, and (a final run) as it was finalized.
+    public List<ScheduleDays.DayGrid> live;
+    public List<ScheduleDays.DayGrid> shown;
+  }
+
   public static void forget() {
     placedByWeek.clear();
+  }
+
+  /** The run's days now; a final run's shown as the version kept at Finalize carries them. */
+  public static Read ofRun(ElectiveRun__c run) {
+    Read result = new Read();
+    result.stored = ScheduleDays.read(run.Schedule__c);
+    result.specials = replacingNow(run.Week__c, result.stored);
+    result.live = withSpecialDays(result.stored, result.specials);
+    result.shown = result.live;
+    if (
+      run.Status__c == ElectiveRunState.FINAL_STATUS &&
+      run.FinalSchedule__c != null
+    ) {
+      result.shown = withSpecialDays(
+        ScheduleDays.read(run.FinalSchedule__c),
+        carriedBy(run.FinalSchedule__c)
+      );
+    }
+    return result;
   }
 
   /**

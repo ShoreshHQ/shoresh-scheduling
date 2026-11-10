@@ -61,12 +61,12 @@ public with sharing class ElectiveFinalize {
     Id versionId = ManualVersions.keepAutomatically(
       scheduleOf(state.run),
       (electives + ' finalized: ' + state.run.Name).left(80),
-      state.storedDays
+      state.days.stored
     );
     // ELECT-5.6: the version keeps the special days as they are, so the final run's times and
     // downloads never change when one is edited later. One with no schedule yet is kept too (a
     // row with no plan, as Publish keeps it), so the regular day under it never comes back.
-    ScheduleSpecials.carry(versionId, state.specialDays);
+    ScheduleSpecials.carry(versionId, state.days.specials);
     Database.update(
       new Schedule__c(Id = versionId, VersionReason__c = ELECTIVES_FINALIZED),
       AccessLevel.USER_MODE

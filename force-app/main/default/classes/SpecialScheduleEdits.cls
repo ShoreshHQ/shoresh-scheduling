@@ -8,7 +8,7 @@
  * (SpecialDayGridEditor.jsx): typed over, cleared, moved, copied or put back by Undo like any
  * other; only those the special day starts with are put back by Id (SpecialSetTimes). A special
  * day's cell also takes one of the season's elective sets, placed as Manual Build places one
- * (SlotEvents; SPECIAL-1.3); an event's, whose columns are stations, never does. The plan is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
+ * (SpecialScheduleSets; SPECIAL-1.3); an event's, whose columns are stations, never does. The plan is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
  */
 public with sharing class SpecialScheduleEdits {
   private final SpecialSchedule.Owner owner;
@@ -38,7 +38,7 @@ public with sharing class SpecialScheduleEdits {
     SpecialScheduleEdits saver = new SpecialScheduleEdits(owner);
     saver.readActivities(SlotRules.activityIdsIn(edits));
     saver.setTimes = SpecialSetTimes.dropped(edits, plan.grid, owner);
-    saver.readSets(edits);
+    saver.sets = SpecialScheduleSets.read(owner, saver.labels, edits);
     SlotEdits.Result result = new SlotEdits.Result();
     ScheduleGrid grid = plan.grid;
     Boolean changed = false;
@@ -73,46 +73,6 @@ public with sharing class SpecialScheduleEdits {
         WITH USER_MODE
       ]
     );
-  }
-
-  /**
-   * The season's elective sets the edits place, read once (SPECIAL-1.3). An event's columns are
-   * stations, with no campers to seat, so a set is refused there with nothing saved.
-   */
-  private void readSets(List<SlotEdits.Edit> edits) {
-    Boolean placesSet = false;
-    for (SlotEdits.Edit edit : edits) {
-      for (SlotEdits.Run run : edit.runs) {
-        for (String slot : run.after ?? new List<String>()) {
-          placesSet = placesSet || SlotIds.electiveIn(slot) != null;
-        }
-      }
-    }
-    if (!placesSet) {
-      return;
-    }
-    if (owner.isEvent()) {
-      // No article built from a camp word (design guide): the camp's plurals.
-      throw new ShoreshException(
-        AgentRefusal.withFix(
-          owner.name +
-            '\'s columns are stations, not ' +
-            labels.pluralInSentence('Group') +
-            ', so it can\'t hold ' +
-            labels.pluralInSentence('ElectiveSet') +
-            '.',
-          'Put them in ' +
-            labels.pluralInSentence('SpecialDay') +
-            ', where the columns are ' +
-            labels.pluralInSentence('Group') +
-            '.'
-        )
-      );
-    }
-    SlotRules.Setup setup = new SlotRules.Setup();
-    setup.seasonId = owner.seasonId;
-    setup.labels = labels;
-    sets = SlotEvents.read(setup, edits, new Map<Id, SObject>());
   }
 
   /** Makes one edit, or returns false when someone changed its cells since. */

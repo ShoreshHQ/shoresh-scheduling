@@ -22,14 +22,8 @@ public with sharing class ElectiveRunState {
   public ElectiveOpenness openness;
   // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
-  // The run's schedule's days as stored: what Finalize keeps a version of.
-  public List<ScheduleDays.DayGrid> storedDays;
-  // The special days replacing some of them now, with their own grids (ELECT-4.8).
-  public List<ScheduleSpecials.Special> specialDays;
-  // Where the set sits on the run's schedule now (a replaced day read from its special day), and
-  // (for a final run) as it was finalized.
-  public List<ScheduleDays.DayGrid> liveDays;
-  public List<ScheduleDays.DayGrid> shownDays;
+  // The run's schedule's days, with the special days replacing some of them (ELECT-4.8).
+  public ElectiveDays.Read days;
   public ElectiveTimes live;
   public ElectiveTimes shown;
   // The campers' choices, by camper.
@@ -43,20 +37,12 @@ public with sharing class ElectiveRunState {
     readGroups();
     readOfferings();
     readLinkedChoices();
-    storedDays = ScheduleDays.read(run.Schedule__c);
-    specialDays = ElectiveDays.replacingNow(run.Week__c, storedDays);
-    liveDays = ElectiveDays.withSpecialDays(storedDays, specialDays);
-    live = new ElectiveTimes(liveDays, run.ElectiveSet__c, groups);
+    days = ElectiveDays.ofRun(run);
+    live = new ElectiveTimes(days.live, run.ElectiveSet__c, groups);
     live.offer(offerings, openness);
     shown = live;
-    shownDays = liveDays;
-    if (isFinal() && run.FinalSchedule__c != null) {
-      // ELECT-5.6: the special days as the version kept at Finalize carries them.
-      shownDays = ElectiveDays.withSpecialDays(
-        ScheduleDays.read(run.FinalSchedule__c),
-        ElectiveDays.carriedBy(run.FinalSchedule__c)
-      );
-      shown = new ElectiveTimes(shownDays, run.ElectiveSet__c, groups);
+    if (days.shown != days.live) {
+      shown = new ElectiveTimes(days.shown, run.ElectiveSet__c, groups);
       shown.offer(offerings, openness);
     }
     readChoices();
