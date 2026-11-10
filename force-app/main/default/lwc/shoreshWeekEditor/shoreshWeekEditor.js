@@ -923,13 +923,17 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!shown) {
       return null;
     }
+    const day = this.schedule.days[this.dayIndex];
     return {
       name: shown.name,
       kind: this.t.s("SpecialDay"),
       notes: shown.notes || "",
       open: `Open ${shown.name}`,
-      // The mock-up's "Take off Friday" (placed-day.png), when the host can.
-      takeOff: this.takeOffWith ? `Take off ${shown.day}` : null
+      // The mock-up's "Take off Friday" (placed-day.png), when the host can: the day as its pill
+      // calls it, so "Take off Day 4" in a season of numbered days.
+      takeOff: this.takeOffWith
+        ? `Take off ${dayLabel(day.dateValue).label}`
+        : null
     };
   }
 

@@ -6,6 +6,7 @@
 import { createElement } from "lwc";
 import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
+import { setDayNaming } from "c/shoreshDayNames";
 import { nsRecord } from "shoresh-jest/namespace";
 import { GROUPS, draft } from "./data/draftFixture";
 
@@ -183,6 +184,23 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(
       q(host.element, '[data-id="take-off-special"]').textContent.trim()
     ).toBe("Take off Tuesday");
+  });
+
+  // In a season of numbered days it said "Take off Tuesday" on the pill "Day 2" (UI pass,
+  // 2026-11-10): it names the day as the pill does.
+  it("says Take off Day 2 in a season of numbered days", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const host = await render(undefined, undefined, {
+        takeOffWith: jest.fn()
+      });
+      await showTuesday(host.element);
+      expect(
+        q(host.element, '[data-id="take-off-special"]').textContent.trim()
+      ).toBe("Take off Day 2");
+    } finally {
+      setDayNaming(null);
+    }
   });
 
   // SPECIAL-4.2
