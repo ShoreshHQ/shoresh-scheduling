@@ -64,14 +64,9 @@ public with sharing class ElectiveFinalize {
       state.storedDays
     );
     // ELECT-5.6: the version keeps the special days as they are, so the final run's times and
-    // downloads never change when one is edited later.
-    List<ScheduleSpecials.Special> kept = new List<ScheduleSpecials.Special>();
-    for (ScheduleSpecials.Special special : state.specialDays) {
-      if (special.grid != null) {
-        kept.add(special);
-      }
-    }
-    ScheduleSpecials.carry(versionId, kept);
+    // downloads never change when one is edited later. One with no schedule yet is kept too (a
+    // row with no plan, as Publish keeps it), so the regular day under it never comes back.
+    ScheduleSpecials.carry(versionId, state.specialDays);
     Database.update(
       new Schedule__c(Id = versionId, VersionReason__c = ELECTIVES_FINALIZED),
       AccessLevel.USER_MODE

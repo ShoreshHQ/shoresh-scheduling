@@ -133,6 +133,10 @@ private class SpecialDayElectivesTest {
       SpecialPlacingController.putOnDay(onDay(day));
     }
 
+    void takeOff(String day) {
+      SpecialPlacingController.takeOffDay(onDay(day));
+    }
+
     /** Types Chugim into the special day's first time block, as its page saves typed cells. */
     void typeChugim(List<String> groups) {
       SlotEdits.Edit edit = new SlotEdits.Edit();
@@ -474,6 +478,37 @@ private class SpecialDayElectivesTest {
     );
     run.before = new List<String>{ 'E:' + camp.setId };
     return run;
+  }
+
+  // ELECT-4.8, ELECT-5.6: a special day with no schedule yet holds no elective time, before or
+  // after Finalize; the regular cells under it never come back.
+  @IsTest
+  static void aSpecialDayWithNoScheduleYetHoldsNoTimeEvenWhenFinal() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      camp.takeOff('Tuesday');
+      SpecialDay__c empty = new SpecialDay__c(
+        Season__c = camp.ids.get('Season'),
+        Name = 'Visiting Day',
+        SortOrder__c = 2
+      );
+      Database.insert(empty, AccessLevel.USER_MODE);
+      camp.dayId = empty.Id;
+      camp.putOn('Tuesday');
+      ElectiveSeats.RunView view = camp.assignEveryoneInDrama();
+
+      Test.startTest();
+      view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
+      view = ElectiveSeatsController.openRun(camp.runId);
+      Test.stopTest();
+
+      Assert.areEqual('Final', view.run.status);
+      Assert.areEqual(
+        new List<String>{ 'Monday, Period 1 (2)' },
+        camp.timesOf(view)
+      );
+      Assert.isFalse(view.scheduleChanged);
+    }
   }
 
   // ELECT-6.4
