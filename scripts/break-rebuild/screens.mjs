@@ -592,7 +592,9 @@ async function rotating() {
       await screen.locator('[data-id="publish"]').click();
       // A week with nothing to warn about publishes at once; otherwise the screen asks first.
       const ask = page.locator('[data-id="ask"]');
-      const said = screen.getByText(`Published ${week}.`);
+      const said = screen
+        .locator('[data-id="notice"]')
+        .filter({ hasText: `Published ${week}.` });
       await ask.or(said).first().waitFor();
       if (await ask.isVisible()) {
         rec.note(`Publish ${week} asks`, (await ask.innerText()).slice(0, 500));
