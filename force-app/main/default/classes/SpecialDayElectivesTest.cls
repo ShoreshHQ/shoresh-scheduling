@@ -33,10 +33,10 @@ private class SpecialDayElectivesTest {
       makeSchedule();
       dayId = SpecialScheduleTestData.addDay(ids.get('Season'), 'Color War');
       putOn('Tuesday');
-      ScheduleViews.DayView plan = SpecialScheduleController.openPlan(dayId)
-        .schedule.days[0];
-      firstBlock = plan.blocks[0].id;
-      firstBlockName = plan.blocks[0].name;
+      // The plan as it started (setup reads it directly: the screen's own read comes in the tests).
+      ScheduleGrid.Block first = SpecialPlans.read(dayId).grid.blocks[0];
+      firstBlock = first.id;
+      firstBlockName = first.name;
       typeChugim(new List<String>{ 'Group A', 'Group B' });
       makeRun();
     }
@@ -121,7 +121,7 @@ private class SpecialDayElectivesTest {
       return result;
     }
 
-    SpecialDayPlacing.Request on(String day) {
+    SpecialDayPlacing.Request onDay(String day) {
       SpecialDayPlacing.Request request = new SpecialDayPlacing.Request();
       request.specialDayId = dayId;
       request.weekId = ids.get('Week 1');
@@ -130,23 +130,26 @@ private class SpecialDayElectivesTest {
     }
 
     void putOn(String day) {
-      SpecialPlacingController.putOnDay(on(day));
+      SpecialPlacingController.putOnDay(onDay(day));
     }
 
-    /** Types Chugim into the special day's first time block, as its page saves a typed cell. */
+    /** Types Chugim into the special day's first time block, as its page saves typed cells. */
     void typeChugim(List<String> groups) {
+      SlotEdits.Edit edit = new SlotEdits.Edit();
+      edit.runs = new List<SlotEdits.Run>();
       for (String grp : groups) {
-        SpecialScheduleController.saveCells(
-          dayId,
-          SpecialScheduleTestData.edits(
-            SpecialScheduleTestData.run(
-              ids.get(grp),
-              new List<String>{ firstBlock },
-              new List<String>{ 'E:' + setId }
-            )
+        edit.runs.add(
+          SpecialScheduleTestData.run(
+            ids.get(grp),
+            new List<String>{ firstBlock },
+            new List<String>{ 'E:' + setId }
           )
         );
       }
+      SpecialScheduleController.saveCells(
+        dayId,
+        new List<SlotEdits.Edit>{ edit }
+      );
     }
 
     void makeRun() {
@@ -256,11 +259,11 @@ private class SpecialDayElectivesTest {
   }
 
   private class TypingInAnEvent implements Callable {
-    Camp camp;
+    Id setId;
     Id eventId;
     String blockId;
-    TypingInAnEvent(Camp camp, Id eventId, String blockId) {
-      this.camp = camp;
+    TypingInAnEvent(Id setId, Id eventId, String blockId) {
+      this.setId = setId;
       this.eventId = eventId;
       this.blockId = blockId;
     }
@@ -271,7 +274,7 @@ private class SpecialDayElectivesTest {
           SpecialScheduleTestData.run(
             's1',
             new List<String>{ blockId },
-            new List<String>{ 'E:' + camp.setId }
+            new List<String>{ 'E:' + setId }
           )
         )
       );
@@ -309,7 +312,9 @@ private class SpecialDayElectivesTest {
       Assert.areEqual(
         new List<String>{
           'Monday, Period 1 (2)',
-          'Tuesday, ' + camp.firstBlockName + ' (2)'
+          'Tuesday, ' +
+          camp.firstBlockName +
+          ' (2)'
         },
         camp.timesOf(view)
       );
@@ -331,16 +336,22 @@ private class SpecialDayElectivesTest {
   @IsTest
   static void anEventsScheduleRefusesASet() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Camp camp = new Camp();
-      Id eventId = SpecialScheduleTestData.colorWar(
-        new Map<String, Id>{ 'Season' => camp.ids.get('Season') }
+      Camp__c campRecord = ShoreshTestData.camp('Camp Willow');
+      ShoreshTestData.fullSeason(campRecord.Id);
+      Map<String, Id> ids = ShoreshTestData.lastSeasonIds.clone();
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
       );
-      SpecialSchedule.PlanView before = SpecialScheduleController.openPlan(
-        eventId
-      );
-      String blockId = before.schedule.days[0].blocks[0].id;
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+      SpecialPlans.Plan before = SpecialPlans.read(eventId);
 
-      String refusal = refusalOf(new TypingInAnEvent(camp, eventId, blockId));
+      Test.startTest();
+      String refusal = refusalOf(
+        new TypingInAnEvent(chugim.Id, eventId, before.grid.blocks[0].id)
+      );
+      Test.stopTest();
 
       Assert.areEqual(
         'Color War\'s columns are stations, not groups, so it can\'t hold elective sets. Put them in special days, where the columns are groups.',
@@ -348,7 +359,7 @@ private class SpecialDayElectivesTest {
       );
       Assert.areEqual(
         before.revision,
-        SpecialScheduleController.openPlan(eventId).revision,
+        SpecialPlans.read(eventId).revision,
         'Nothing saved'
       );
     }
@@ -356,15 +367,33 @@ private class SpecialDayElectivesTest {
 
   // ELECT-4.8, ELECT-5.6
   @IsTest
-  static void seatsInASpecialDayAreAssignedMovedFinalizedAndSentAsTheyWere() {
+  static void seatsInASpecialDayAreMovedFinalizedAndSentWithItsOwnTime() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp camp = new Camp();
       ElectiveSeats.RunView view = camp.assignEveryoneInDrama();
       Assert.areEqual(4, view.seats.size());
-      view = camp.moveOnTuesday(view.revision, 0, 'Archery');
 
       Test.startTest();
+      view = camp.moveOnTuesday(view.revision, 0, 'Archery');
       view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
+      Season__c season = [
+        SELECT Id, Name
+        FROM Season__c
+        WHERE Id = :camp.ids.get('Season')
+      ];
+      List<String> sent = new List<String>();
+      for (
+        Map<String, Object> row : new OutgoingElectiveSeats()
+          .rows(season, 'Week 1')
+      ) {
+        sent.add(
+          row.get('date') +
+            ' ' +
+            row.get('time_block') +
+            ' ' +
+            row.get('activity')
+        );
+      }
       Test.stopTest();
 
       Assert.areEqual('Final', view.run.status);
@@ -386,52 +415,53 @@ private class SpecialDayElectivesTest {
       Assert.areEqual(camp.firstBlockName, moved.TimeName__c);
       Assert.areEqual('Archery', moved.ActivityName__c);
       Assert.isTrue(moved.Locked__c, 'A move by hand is locked');
-
-      // The special day edited after Finalize: the final run still reads it as finalized.
-      SpecialScheduleController.saveCells(
-        camp.dayId,
-        SpecialScheduleTestData.edits(clearRun(camp, 'Group B'))
-      );
-      view = ElectiveSeatsController.openRun(camp.runId);
-      Assert.areEqual(
-        new List<String>{
-          'Monday, Period 1 (2)',
-          'Tuesday, ' + camp.firstBlockName + ' (2)'
-        },
-        camp.timesOf(view),
-        'Shown from the version kept'
-      );
-      Assert.isTrue(view.scheduleChanged, 'Out of date: said on the screen');
-
       // What goes out names the special day's own time.
-      Season__c season = [
-        SELECT Id, Name
-        FROM Season__c
-        WHERE Id = :camp.ids.get('Season')
-      ];
-      List<String> sent = new List<String>();
-      for (
-        Map<String, Object> row : new OutgoingElectiveSeats()
-          .rows(season, 'Week 1')
-      ) {
-        sent.add(
-          row.get('date') +
-            ' ' +
-            row.get('time_block') +
-            ' ' +
-            row.get('activity')
-        );
-      }
       sent.sort();
       Assert.areEqual(
         new List<String>{
           '2026-06-29 Period 1 Drama',
           '2026-06-29 Period 1 Drama',
-          '2026-06-30 ' + camp.firstBlockName + ' Archery',
-          '2026-06-30 ' + camp.firstBlockName + ' Drama'
+          '2026-06-30 ' +
+          camp.firstBlockName +
+          ' Archery',
+          '2026-06-30 ' +
+          camp.firstBlockName +
+          ' Drama'
         },
         sent
       );
+    }
+  }
+
+  // ELECT-5.6
+  @IsTest
+  static void aFinalRunReadsTheSpecialDayAsItWasAtFinalize() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp camp = new Camp();
+      ElectiveSeats.RunView view = camp.assignEveryoneInDrama();
+
+      Test.startTest();
+      view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
+      // The special day edited after Finalize: Chugim taken off Group B.
+      SpecialScheduleController.saveCells(
+        camp.dayId,
+        SpecialScheduleTestData.edits(clearRun(camp, 'Group B'))
+      );
+      view = ElectiveSeatsController.openRun(camp.runId);
+      Test.stopTest();
+
+      Assert.areEqual(
+        new List<String>{
+          'Monday, Period 1 (2)',
+          'Tuesday, ' +
+          camp.firstBlockName +
+          ' (2)'
+        },
+        camp.timesOf(view),
+        'Shown from the version kept'
+      );
+      Assert.isTrue(view.scheduleChanged, 'Out of date: said on the screen');
+      Assert.areEqual(4, view.seats.size());
     }
   }
 
@@ -452,12 +482,10 @@ private class SpecialDayElectivesTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp camp = new Camp();
       ElectiveSeats.RunView view = camp.assignEveryoneInDrama();
-      view = camp.moveOnTuesday(view.revision, 0, 'Archery');
 
       Test.startTest();
-      SpecialPlacingController.takeOffDay(camp.on('Tuesday'));
+      SpecialPlacingController.takeOffDay(camp.onDay('Tuesday'));
       view = ElectiveSeatsController.openRun(camp.runId);
-      Test.stopTest();
 
       // The regular day is back with its own Period 1; nothing was taken out of the run.
       Assert.areEqual(
@@ -474,6 +502,7 @@ private class SpecialDayElectivesTest {
       // Put back: its period returns, as it was.
       camp.putOn('Tuesday');
       view = ElectiveSeatsController.openRun(camp.runId);
+      Test.stopTest();
       Assert.isFalse(view.scheduleChanged);
       Assert.areEqual(camp.firstBlock, view.times[1].blockId);
     }

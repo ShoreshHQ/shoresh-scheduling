@@ -8,9 +8,18 @@
  * schedule's days as they are.
  */
 public with sharing class ElectiveDays {
+  // The special days on each week, read once per request: a save reads its run twice (held, then
+  // shown). Forgotten when any is put on, changed or taken off (SpecialDateTrigger).
+  private static Map<Id, List<SpecialDate__c>> placedByWeek = new Map<Id, List<SpecialDate__c>>();
+
+  public static void forget() {
+    placedByWeek.clear();
+  }
+
   /**
    * The week's special days on days of these, now, each with its own grid (null with a problem
-   * when it can't be read). Two queries when the week has special days, one when it has none.
+   * when it can't be read). Two queries when the week has special days, one when it has none;
+   * none for the special days once read in this request.
    */
   public static List<ScheduleSpecials.Special> replacingNow(
     Id weekId,
@@ -25,18 +34,7 @@ public with sharing class ElectiveDays {
       dates.add(day.day);
     }
     Set<Id> dayIds = new Set<Id>();
-    for (SpecialDate__c row : [
-      SELECT
-        Day__c,
-        SpecialDay__c,
-        SpecialDay__r.Name,
-        Week__r.StartDate__c,
-        Week__r.EndDate__c
-      FROM SpecialDate__c
-      WHERE Week__c = :weekId AND SpecialDay__c != NULL
-      WITH USER_MODE
-      ORDER BY Day__c, Id
-    ]) {
+    for (SpecialDate__c row : placedOn(weekId)) {
       Date onDate = SpecialDates.dateOf(
         row.Week__r.StartDate__c,
         row.Week__r.EndDate__c,
@@ -62,6 +60,27 @@ public with sharing class ElectiveDays {
       special.problem = plan.problem;
     }
     return result;
+  }
+
+  private static List<SpecialDate__c> placedOn(Id weekId) {
+    if (!placedByWeek.containsKey(weekId)) {
+      placedByWeek.put(
+        weekId,
+        [
+          SELECT
+            Day__c,
+            SpecialDay__c,
+            SpecialDay__r.Name,
+            Week__r.StartDate__c,
+            Week__r.EndDate__c
+          FROM SpecialDate__c
+          WHERE Week__c = :weekId AND SpecialDay__c != NULL
+          WITH USER_MODE
+          ORDER BY Day__c, Id
+        ]
+      );
+    }
+    return placedByWeek.get(weekId);
   }
 
   /** The special days a version kept at Finalize carries (one query). */
