@@ -551,12 +551,17 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- menu and screens ----------
 
   get menu() {
-    return menuSections(
-      this.terms,
-      !!this.setup,
-      menuMarks(this.setup),
-      this.preview
-    );
+    const marks = { ...menuMarks(this.setup) };
+    // Generated Schedule and Manual Build carry the setup-changed dot while their week can be
+    // updated to match setup, so it is seen without scrolling to the menu's foot.
+    if (this.setup) {
+      for (const screen of ["generatedSchedule", "manualBuild"]) {
+        if (this.setupStates[screen] && this.setupStates[screen].changed) {
+          marks[screen] = "changed";
+        }
+      }
+    }
+    return menuSections(this.terms, !!this.setup, marks, this.preview);
   }
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;

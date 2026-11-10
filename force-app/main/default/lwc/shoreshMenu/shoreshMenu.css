@@ -277,6 +277,15 @@ ul {
   color: var(--shoresh-color-highlight);
 }
 
+/* Setup changed: the foot's own dot, no words (they are read out). */
+.menu-mark_changed::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-color-highlight);
+}
+
 /* The foot section (What Shoresh has learned, desktop Sidebar.jsx's footer link): at the bottom,
    a hairline above it. The setup notice, when there is one, sits right under it. */
 .section_foot {
