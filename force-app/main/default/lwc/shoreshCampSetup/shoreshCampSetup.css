@@ -205,11 +205,16 @@
   padding: 0 var(--shoresh-space-control-x);
 }
 
-/* The list under the rail; a short list reads as a list, not a band (880 at 1440). */
+/* The list under the rail; a short list reads as a list, not a band (880 at 1440). Wider than
+   the frame (a narrow screen, a row's details open), it scrolls as one, column names and all,
+   never the page (positioned, so its cells' screen-reader words scroll inside it too). */
 .setup-list {
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: var(--shoresh-space-pad);
+  overflow-x: auto;
+  --shoresh-table-scroll: visible;
 }
 
 .list_narrow > * {
