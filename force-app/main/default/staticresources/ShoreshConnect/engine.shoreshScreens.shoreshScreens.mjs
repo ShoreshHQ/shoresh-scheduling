@@ -134,7 +134,10 @@ export function nextScreen(screen, t, hasSeason) {
 // The words on each mark (Shoresh desktop Sidebar.jsx: "Needed" on "!", "Done" on "✓").
 const MARKS = {
   needed: { symbol: "!", label: "Needed" },
-  done: { symbol: "✓", label: "Done" }
+  done: { symbol: "✓", label: "Done" },
+  // A schedule whose week can be updated to match setup: the foot's dot, beside its entry too,
+  // where it is seen without scrolling (coordinator call on the UI pass, 2026-11-10).
+  changed: { symbol: "", label: "Setup changed" }
 };
 
 /** Why a screen can't open now, read with it ("Coming", "Needs a Season"), or null. */
@@ -149,7 +152,8 @@ function whyClosed(screen, t, hasSeason, preview) {
 
 /**
  * The menu: sections, each with its items ({ key, label, coming, disabled, reason, mark }). marks:
- * screen -> "needed" | "done" (shoreshSetupRules.menuMarks); mark is { kind, symbol, label }.
+ * screen -> "needed" | "done" (shoreshSetupRules.menuMarks) | "changed" (a schedule whose week can
+ * be updated to match setup); mark is { kind, symbol, label }.
  * preview: the coming screen the page's address opened (previewScreen), listed as built.
  * door: the screen a section's title opens ({ key, disabled, reason }), or null (a plain title).
  */

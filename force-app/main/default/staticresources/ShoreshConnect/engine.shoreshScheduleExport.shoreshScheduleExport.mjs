@@ -278,13 +278,40 @@ function printText(cell) {
 
 /**
  * A schedule grid ({ columns, rows, cells }) as table rows: each row its time block, then a cell
- * per column that starts there (rowspan for one running several blocks; covered places left out).
+ * per column that starts there (rowspan for one running several blocks; colspan for one item
+ * across groups side by side, as the screen draws it, mergeKey; covered places left out).
  */
 export function printTable(grid) {
   const rowCount = grid.rows.length;
   const colCount = grid.columns.length;
   const starts = new Map();
   const covered = new Set();
+  const spans = new Map();
+  const runs = new Map();
+  grid.cells.forEach((cell) => {
+    if (cell.mergeKey) {
+      const key = `${cell.row}|${cell.mergeKey}`;
+      if (!runs.has(key)) runs.set(key, []);
+      runs.get(key).push(cell);
+    }
+  });
+  runs.forEach((list) => {
+    list.sort((a, b) => a.column - b.column);
+    let start = 0;
+    for (let i = 1; i <= list.length; i++) {
+      if (i === list.length || list[i].column !== list[i - 1].column + 1) {
+        if (i - start > 1) {
+          spans.set(list[start], i - start);
+          list.slice(start + 1, i).forEach((c) => {
+            for (let r = c.row; r < c.row + c.length; r++) {
+              covered.add(`${r}:${c.column}`);
+            }
+          });
+        }
+        start = i;
+      }
+    }
+  });
   grid.cells.forEach((cell) => {
     starts.set(`${cell.row}:${cell.column}`, cell);
     for (let r = cell.row + 1; r < cell.row + cell.length; r++) {
@@ -308,6 +335,7 @@ export function printTable(grid) {
         parts: cell ? printParts(cell) : [],
         note: cell && cell.note && text ? cell.note : null,
         rowspan: cell ? cell.length : 1,
+        colspan: (cell && spans.get(cell)) || 1,
         className: text ? "cell" : "cell cell_empty"
       });
     }
