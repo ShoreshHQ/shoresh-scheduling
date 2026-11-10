@@ -436,9 +436,6 @@ describe("the rail's room", () => {
     );
   });
 
-  // A long special day's name was held to the time column's width, one word per line (UI pass,
-  // 2026-11-10): it takes the row's room, the notes moving under it when the row runs out.
-  it("a replaced day's line gives the special day's name the row's room", () => {
   // A long special day's name on its day's pill pushed Week 2's rail 320px past a phone's edge
   // (UI pass, 2026-11-10; measured in Chrome at 390): the name ends in "…", the days wrap.
   it("a special day's long name on a day pill ends in …, and the day pills wrap", () => {
