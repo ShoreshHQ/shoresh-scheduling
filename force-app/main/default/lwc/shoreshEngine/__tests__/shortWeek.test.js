@@ -4,6 +4,9 @@
  */
 import { checkGeneratedWeek, generateWeek } from "c/shoreshEngine";
 import { measureWeek } from "../measure";
+import { checkWeek } from "../checks";
+import { buildTerms } from "c/shoreshTerms";
+import { dayName, weekOf } from "./data/checkWeeks";
 import { activity, block, camp } from "./data/camp";
 import { campShortWeek } from "c/shoreshImportEngine";
 import { FIELD } from "c/shoreshSchema";
@@ -61,6 +64,40 @@ describe("a short week's minimums (WEEK-4.2)", () => {
     const loweredMeasure = measureWeek(lowered.checked, swim, lowered.days);
     expect(loweredMeasure.under).toEqual({ count: 0, rows: [] });
     expect(loweredMeasure.priorities).toEqual([
+      { priority: "low", met: 1, total: 1 }
+    ]);
+  });
+
+  // WEEK-4.2
+  it("Manual Build's counter measures the same: its activities lowered as it reads them, then checked", () => {
+    const days = weekOf({
+      "2026-06-29": [["A:swim"]],
+      "2026-06-30": [[""]],
+      "2026-07-01": [[""]]
+    });
+    const swim = [{ id: "swim", name: "Swim", minPerWeek: 2 }];
+    const measured = (shortWeek) => {
+      const acts = shortWeekMinimums(
+        [{ id: "swim", name: "Swim", min: 2, max: null }],
+        shortWeek,
+        days.length
+      );
+      const checked = checkWeek(
+        days,
+        {
+          activities: new Map(acts.map((a) => [a.id, a])),
+          locations: new Map(),
+          divisions: new Map(),
+          setTimeLocations: new Map(),
+          notFor: new Map()
+        },
+        { t: buildTerms([]), dayName }
+      );
+      return measureWeek(checked, swim, days);
+    };
+    expect(measured(FIVE_DAY_CAMP).under.count).toBe(1);
+    expect(measured(LOWER).under).toEqual({ count: 0, rows: [] });
+    expect(measured(LOWER).priorities).toEqual([
       { priority: "low", met: 1, total: 1 }
     ]);
   });
