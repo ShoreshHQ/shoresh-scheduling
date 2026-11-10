@@ -2631,6 +2631,16 @@ describe("c-shoresh-editable-table", () => {
       const list = read("shoreshCampSetup").match(/\.setup-list\s*{[^}]*}/)[0];
       expect(list).toMatch(/overflow-x: auto;/);
       expect(list).toMatch(/position: relative;/);
+      // A details panel's long name, with its hidden " details", stays inside the panel too.
+      for (const panel of [
+        "shoreshActivityDetails",
+        "shoreshElectiveDetails",
+        "shoreshSpecialDetails"
+      ]) {
+        expect(read(panel).match(/\.panel-title\s*{[^}]*}/)[0]).toMatch(
+          /position: relative;/
+        );
+      }
       expect(list).toMatch(/--shoresh-table-scroll: visible;/);
     });
 
