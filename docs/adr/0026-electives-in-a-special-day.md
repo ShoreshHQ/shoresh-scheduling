@@ -62,7 +62,7 @@ activities, so "Chugim" there was an activity of that name.
 7. **An AI does it as the screen does** (API-1.77): `change_special_schedule_cell` takes an
    elective set's name, read as `change_schedule_cell` reads one (`AgentCellSlot`, API-1.124: a
    name that is both an activity and a set is refused); an event refuses it in the screen's words.
-   Every seats tool works on the special-day time with no change of its own. Connector 1.0.140.
+   Every seats tool works on the special-day time with no change of its own. Connector 1.0.141.
 
 8. **Not included.** A linked choice can't take a special-day period: its periods are the camp's
    time blocks (`LinkedChoiceTime__c`), so the engine treats a special-day period as an ordinary
