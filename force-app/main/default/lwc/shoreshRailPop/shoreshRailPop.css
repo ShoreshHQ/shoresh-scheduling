@@ -7,15 +7,26 @@
   flex: none;
 }
 
+/* A long name ends in "…" where a rail sets a limit (a picker's choice); the menu shows it whole. */
+.label {
+  max-width: var(--shoresh-pop-label-max, none);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The needs-a-look corner sits on the words' cap height, as in the mock-up. */
 .mark {
   transform: translateY(-3px);
 }
 
-/* The week editor's rail sets these on a phone, to open its menus across the rail. */
+/* The week editor's rail sets these on a phone, to open its menus across the rail. A picker
+   also sets how wide its menu may grow (--shoresh-pop-max), except where a rail opens its menus
+   across itself (--shoresh-pop-across: none). */
 .pop {
   left: var(--shoresh-pop-left, 0);
   right: var(--shoresh-pop-right, auto);
+  max-width: var(--shoresh-pop-across, var(--shoresh-pop-max, none));
 }
 
 .pop_right {
