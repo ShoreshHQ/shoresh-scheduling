@@ -803,3 +803,20 @@ describe("Finalize, Final, and a new version", () => {
     ]);
   });
 });
+
+// A camper's long name ran out of its cell into the next, and offerings' names went one word a
+// line, in the grid's narrow time column (UI pass, 2026-11-10, seen in Chrome at 1440).
+describe("c-shoresh-elective-seats: the names' column", () => {
+  it("is wide enough for a name, and a long one breaks inside it", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshElectiveSeats.css"),
+      "utf8"
+    );
+    expect(css).toMatch(
+      /\.corner,\s*\.offer-head,\s*\.camper-head\s*{\s*width: max\(var\(--shoresh-head-w\), 12rem\);/
+    );
+    expect(css).toMatch(
+      /\.offer-head,\s*\.camper-row th\s*{[^}]*overflow-wrap: anywhere;/
+    );
+  });
+});

@@ -136,10 +136,18 @@ table {
   table-layout: fixed;
 }
 
+/* The names' column: room for an offering's or a camper's name (the grid's time column held them
+   to one word a line), and a long name breaks inside it, never spilling into the next cell. */
 .corner,
 .offer-head,
 .camper-head {
-  width: var(--shoresh-head-w);
+  width: max(var(--shoresh-head-w), 12rem);
+}
+
+.offer-head,
+.camper-row th {
+  hyphens: auto;
+  overflow-wrap: anywhere;
 }
 
 .time-head {
