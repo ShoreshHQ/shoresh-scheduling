@@ -2630,6 +2630,7 @@ describe("c-shoresh-editable-table", () => {
       ).toMatch(/overflow-x: var\(--shoresh-table-scroll, auto\);/);
       const list = read("shoreshCampSetup").match(/\.setup-list\s*{[^}]*}/)[0];
       expect(list).toMatch(/overflow-x: auto;/);
+      expect(list).toMatch(/position: relative;/);
       expect(list).toMatch(/--shoresh-table-scroll: visible;/);
     });
 
