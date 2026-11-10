@@ -151,6 +151,29 @@ describe("c-shoresh-build-palette (the drawer)", () => {
     expect(filters.mock.calls[0][0].detail).toEqual({ value: "sw" });
   });
 
+  // A long set or event name ends in "…" like an activity's, not cut mid-letter (UI pass,
+  // 2026-11-10): the words sit in their own box beside the flag, which the stylesheet trims.
+  it("an elective set's and an event's name sit in their own trimmed box beside the flag", () => {
+    const element = render({
+      electives: [
+        { id: "e1", name: "Afternoon Chugim", said: "Afternoon Chugim" }
+      ],
+      events: [{ id: "v1", name: "Overnight trip", said: "Overnight trip" }]
+    });
+    const labels = qa(element, ".tile_event .tile-name > .tile-label");
+    expect(labels.map((n) => n.textContent)).toEqual([
+      "Afternoon Chugim",
+      "Overnight trip"
+    ]);
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshBuildPalette.css"),
+      "utf8"
+    );
+    expect(css.match(/\.tile-label\s*{[^}]*}/)[0]).toMatch(
+      /text-overflow: ellipsis;/
+    );
+  });
+
   it("says No matches when the filter finds nothing", () => {
     const element = render({ tiles: [], filter: "zz" });
     expect(q(element, ".no-matches").textContent).toBe("No matches");
