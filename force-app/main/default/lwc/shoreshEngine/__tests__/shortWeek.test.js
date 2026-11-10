@@ -3,6 +3,7 @@
  * 0022) each weekly minimum is kept unless the camp chose to lower it to match the days.
  */
 import { checkGeneratedWeek, generateWeek } from "c/shoreshEngine";
+import { measureWeek } from "../measure";
 import { activity, block, camp } from "./data/camp";
 import { campShortWeek } from "c/shoreshImportEngine";
 import { FIELD } from "c/shoreshSchema";
@@ -42,6 +43,25 @@ describe("a short week's minimums (WEEK-4.2)", () => {
     expect(week.checked.stillNeeded).toEqual([]);
     expect(week.shortWeek).toEqual([
       "Short week: Swim needs 1 this week, not 2"
+    ]);
+  });
+
+  // WEEK-4.2
+  it("the counter measures the minimum the week has: under and minimums met follow the choice", () => {
+    const swim = [{ id: "swim", name: "Swim", minPerWeek: 2 }];
+    const kept = checkGeneratedWeek(holidayWeek(FIVE_DAY_CAMP));
+    const keptMeasure = measureWeek(kept.checked, swim, kept.days);
+    expect(keptMeasure.under.rows).toEqual([
+      { id: "swim", name: "Swim", placed: 1, goal: 2 }
+    ]);
+    expect(keptMeasure.priorities).toEqual([
+      { priority: "low", met: 0, total: 1 }
+    ]);
+    const lowered = checkGeneratedWeek(holidayWeek(LOWER));
+    const loweredMeasure = measureWeek(lowered.checked, swim, lowered.days);
+    expect(loweredMeasure.under).toEqual({ count: 0, rows: [] });
+    expect(loweredMeasure.priorities).toEqual([
+      { priority: "low", met: 1, total: 1 }
     ]);
   });
 
