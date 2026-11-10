@@ -62,6 +62,45 @@ describe("reading a run", () => {
   });
 });
 
+// A set across three bunks in no division showed three columns all headed "Day 2 10:00" (UI
+// pass, 2026-11-10): each time names its bunks under it, as the build screens name a column.
+describe("the board's columns", () => {
+  it("names the groups under a time shared by several, when they're in no division", () => {
+    const base = runView();
+    const view = runView({
+      groups: [
+        { id: "g1", name: "Aspen", divisionId: null, divisionName: null },
+        { id: "g2", name: "Willow", divisionId: null, divisionName: null }
+      ],
+      times: [
+        {
+          ...base.times[0],
+          key: `${MONDAY}|b1|g1`,
+          divisionId: null,
+          groupIds: ["g1"]
+        },
+        {
+          ...base.times[0],
+          key: `${MONDAY}|b1|g2`,
+          divisionId: null,
+          groupIds: ["g2"]
+        }
+      ]
+    });
+    const board = buildBoard(readRun(view), t);
+    expect(board.columns.map((c) => [c.label, c.groups])).toEqual([
+      [timeLabel(base.times[0]), "Aspen"],
+      [timeLabel(base.times[0]), "Willow"]
+    ]);
+    expect(board.columns[1].words).toMatch(/, Willow$/);
+  });
+
+  it("a time on its own, or one named by its division, has no groups line", () => {
+    const board = buildBoard(readRun(runView()), t);
+    expect(board.columns.every((c) => c.groups === "")).toBe(true);
+  });
+});
+
 describe("choices", () => {
   it("matches a choice for a day and period to that time, by the period's name or number", () => {
     const run = readRun(runView());

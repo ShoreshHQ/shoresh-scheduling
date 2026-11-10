@@ -463,11 +463,22 @@ export function buildBoard(run, t) {
   const columns = run.times.map((time) => {
     const shared = slotCount.get(slotOf(time.day, time.blockId)) > 1;
     const division = shared ? divisionName.get(time.divisionId) : null;
+    // Groups in no division: the time's groups under it, as the build screens name a column.
+    const groups =
+      shared && !division
+        ? (time.groupIds || [])
+            .map((id) => run.groups.get(id))
+            .filter(Boolean)
+            .map((g) => g.name)
+            .join(", ")
+        : "";
+    const who = division || groups;
     return {
       key: time.key,
       time,
       label: division ? `${timeLabel(time)} · ${division}` : timeLabel(time),
-      words: division ? `${timeWords(time)}, ${division}` : timeWords(time)
+      groups,
+      words: who ? `${timeWords(time)}, ${who}` : timeWords(time)
     };
   });
   const columnByKey = new Map(columns.map((c) => [c.key, c]));

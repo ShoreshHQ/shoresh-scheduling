@@ -818,5 +818,7 @@ describe("c-shoresh-elective-seats: the names' column", () => {
     expect(css).toMatch(
       /\.offer-head,\s*\.camper-row th\s*{[^}]*overflow-wrap: anywhere;/
     );
+    // The heading row's empty corner left a ~70 px band above the times: it isn't a seat's height.
+    expect(css).toMatch(/\.offer-table \.corner\s*{\s*height: auto;/);
   });
 });

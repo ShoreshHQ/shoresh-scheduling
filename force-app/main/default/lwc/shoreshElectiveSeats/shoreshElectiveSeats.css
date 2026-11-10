@@ -157,6 +157,12 @@ table {
   padding-bottom: var(--shoresh-s1);
 }
 
+/* Which groups a time is, when a set runs for several at once ("Bunk Bet"), under the time. */
+.time-groups {
+  display: block;
+  color: var(--shoresh-text-1);
+}
+
 .camper-table .time-head,
 .camper-head {
   text-align: left;
@@ -184,6 +190,11 @@ table {
 .offer-table td {
   padding: 0;
   height: calc(var(--shoresh-u) * 28);
+}
+
+/* The heading row's empty corner is no seat: it takes the headings' height, not a seat's. */
+.offer-table .corner {
+  height: auto;
 }
 
 .seat-cell {
