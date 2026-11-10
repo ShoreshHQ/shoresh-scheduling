@@ -1994,16 +1994,34 @@ describe("c-shoresh-camp-setup", () => {
       );
     });
 
-    it("Cancel on delete season deletes nothing", async () => {
+    it("Cancel on delete season deletes nothing, and the cursor is back on the button", async () => {
       const element = await renderSeason();
-      button(element, "Delete season").click();
-      await flush();
-      q(element, "c-shoresh-ask").dispatchEvent(
-        new CustomEvent("answer", { detail: { yes: false } })
-      );
-      await flush();
-      expect(q(element, "c-shoresh-ask")).toBeNull();
-      expect(deleteRecord).not.toHaveBeenCalled();
+      const del = button(element, "Delete season");
+      // The director's cursor is on Delete season when they press it (jsdom can't focus the stub).
+      const active = jest
+        .spyOn(document, "activeElement", "get")
+        .mockReturnValue(del);
+      const focused = [];
+      const spy = jest
+        .spyOn(HTMLElement.prototype, "focus")
+        .mockImplementation(function record() {
+          focused.push(this);
+        });
+      try {
+        del.click();
+        await flush();
+        active.mockReturnValue(q(element, "c-shoresh-ask"));
+        q(element, "c-shoresh-ask").dispatchEvent(
+          new CustomEvent("answer", { detail: { yes: false } })
+        );
+        await flush();
+        expect(q(element, "c-shoresh-ask")).toBeNull();
+        expect(deleteRecord).not.toHaveBeenCalled();
+        expect(focused.pop()).toBe(del);
+      } finally {
+        spy.mockRestore();
+        active.mockRestore();
+      }
     });
 
     it("a date saves when the director leaves it, with the other date, and no toast", async () => {

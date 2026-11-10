@@ -3,6 +3,10 @@
  * 0022) each weekly minimum is kept unless the camp chose to lower it to match the days.
  */
 import { checkGeneratedWeek, generateWeek } from "c/shoreshEngine";
+import { measureWeek } from "../measure";
+import { checkWeek } from "../checks";
+import { buildTerms } from "c/shoreshTerms";
+import { dayName, weekOf } from "./data/checkWeeks";
 import { activity, block, camp } from "./data/camp";
 import { campShortWeek } from "c/shoreshImportEngine";
 import { FIELD } from "c/shoreshSchema";
@@ -42,6 +46,59 @@ describe("a short week's minimums (WEEK-4.2)", () => {
     expect(week.checked.stillNeeded).toEqual([]);
     expect(week.shortWeek).toEqual([
       "Short week: Swim needs 1 this week, not 2"
+    ]);
+  });
+
+  // WEEK-4.2
+  it("the counter measures the minimum the week has: under and minimums met follow the choice", () => {
+    const swim = [{ id: "swim", name: "Swim", minPerWeek: 2 }];
+    const kept = checkGeneratedWeek(holidayWeek(FIVE_DAY_CAMP));
+    const keptMeasure = measureWeek(kept.checked, swim, kept.days);
+    expect(keptMeasure.under.rows).toEqual([
+      { id: "swim", name: "Swim", placed: 1, goal: 2 }
+    ]);
+    expect(keptMeasure.priorities).toEqual([
+      { priority: "low", met: 0, total: 1 }
+    ]);
+    const lowered = checkGeneratedWeek(holidayWeek(LOWER));
+    const loweredMeasure = measureWeek(lowered.checked, swim, lowered.days);
+    expect(loweredMeasure.under).toEqual({ count: 0, rows: [] });
+    expect(loweredMeasure.priorities).toEqual([
+      { priority: "low", met: 1, total: 1 }
+    ]);
+  });
+
+  // WEEK-4.2
+  it("Manual Build's counter measures the same: its activities lowered as it reads them, then checked", () => {
+    const days = weekOf({
+      "2026-06-29": [["A:swim"]],
+      "2026-06-30": [[""]],
+      "2026-07-01": [[""]]
+    });
+    const swim = [{ id: "swim", name: "Swim", minPerWeek: 2 }];
+    const measured = (shortWeek) => {
+      const acts = shortWeekMinimums(
+        [{ id: "swim", name: "Swim", min: 2, max: null }],
+        shortWeek,
+        days.length
+      );
+      const checked = checkWeek(
+        days,
+        {
+          activities: new Map(acts.map((a) => [a.id, a])),
+          locations: new Map(),
+          divisions: new Map(),
+          setTimeLocations: new Map(),
+          notFor: new Map()
+        },
+        { t: buildTerms([]), dayName }
+      );
+      return measureWeek(checked, swim, days);
+    };
+    expect(measured(FIVE_DAY_CAMP).under.count).toBe(1);
+    expect(measured(LOWER).under).toEqual({ count: 0, rows: [] });
+    expect(measured(LOWER).priorities).toEqual([
+      { priority: "low", met: 1, total: 1 }
     ]);
   });
 
