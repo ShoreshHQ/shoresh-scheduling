@@ -18,7 +18,7 @@ const {
   ORG,
   Record
 } = require("./lib");
-const { importMaple, names, count } = require("./kit");
+const { importMaple, names, count, draft } = require("./kit");
 
 const rec = new Record("E1");
 const LIKE = "BR E1 %";
@@ -479,8 +479,227 @@ async function numbered() {
   }
 }
 
-await withOrg(run);
-await withOrg(numbered);
+/**
+ * Rotating days by clicking: Week 1 of a Day 1 to Day 6 camp applied to Weeks 2 and 3 through
+ * Apply to other weeks, each published with Publish, and read back on the Schedules page.
+ * Week 1 is imported and built through the connector (setup, not what is checked here).
+ */
+const LIKE3 = "BR E3 %";
+const DAYS = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
+const placed = (rows) =>
+  rows
+    .map((r) => `${r.day}|${r.group}|${r.time_block}|${r.activity}`)
+    .sort()
+    .join("\n");
+
+async function rotating() {
+  cleanup(LIKE3);
+  let browser;
+  let page;
+  let url = "";
+  try {
+    const { season, camp } = makeCamp("E3 Rotating", {
+      weeks: 3,
+      days: 6,
+      numbered: true
+    });
+    const files = ["Aleph", "Bet", "Gimel"].map((bunk, turn) => ({
+      file_name: `Numbered - ${bunk}.csv`,
+      csv_text: dayFile(bunk, turn).buffer.toString()
+    }));
+    const answers = { "week|the file's week": "Week 1" };
+    const looked = await call("import_last_year", { season, files, answers });
+    await call("import_last_year", {
+      season,
+      files,
+      answers,
+      save: true,
+      seen: /seen: "([^"]+)"/.exec(looked.text)?.[1]
+    });
+    const built = await call("build_week", { season, week: "Week 1" });
+    if (built.kind !== "done") throw new Error(`build_week: ${built.text}`);
+    const week1 = await draft(season, "Week 1");
+    rec.note("Week 1 as built", placed(week1.rows).slice(0, 600));
+
+    const campId = soql(`SELECT Id FROM Camp__c WHERE Name = '${camp}'`)[0].Id;
+    url = sfJson([
+      "org",
+      "open",
+      "--target-org",
+      ORG,
+      "--url-only",
+      "--path",
+      `/lightning/n/Shoresh_Camp_Setup?c__camp=${campId}`
+    ]).result.url;
+    browser = await chromium.launch({ channel: "chrome", headless: true });
+    page = await (
+      await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    ).newPage();
+    page.setDefaultTimeout(45000);
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page
+      .locator("c-shoresh-app, c-shoresh-roots")
+      .first()
+      .waitFor({ timeout: 120000 });
+    await page.waitForTimeout(4000);
+    await page
+      .getByRole("link", { name: /^Generated Schedule/ })
+      .first()
+      .click();
+    await page.waitForTimeout(5000);
+    const screen = page.locator("c-shoresh-generated-schedule");
+
+    // Apply to other weeks: Weeks 2 and 3 ticked, applied, Close.
+    await screen.locator('[data-id="versions"]:visible').first().click();
+    await page.waitForTimeout(2000);
+    await page.locator('[data-id="apply-weeks"]:visible').first().click();
+    const dialog = page.locator('[data-id="apply"]');
+    await dialog.locator("[data-week]").first().waitFor();
+    await page.waitForTimeout(3000);
+    rec.note("Apply dialog", (await dialog.innerText()).slice(0, 800));
+    for (const box of await dialog.locator("input[type=checkbox]").all()) {
+      if (!(await box.isDisabled()) && !(await box.isChecked())) {
+        await box.check();
+      }
+    }
+    const yes = dialog.locator('[data-id="yes"]');
+    rec.note("Apply button", await yes.innerText());
+    await yes.click();
+    await dialog.locator('[data-id="close"]').waitFor({ timeout: 120000 });
+    const applied = await dialog.innerText();
+    rec.note("Apply dialog when done", applied.slice(0, 800));
+    await dialog.locator('[data-id="close"]').click();
+    await page.waitForTimeout(1500);
+    for (const week of ["Week 2", "Week 3"]) {
+      const after = await draft(season, week);
+      rec.check(
+        "WEEK-6.2",
+        `${week} holds Week 1, day by numbered day`,
+        placed(after.rows) === placed(week1.rows),
+        placed(after.rows).slice(0, 600)
+      );
+    }
+
+    // Publish Weeks 2 and 3 with the week picker's next arrow and Publish.
+    const pickNext = async () => {
+      await screen.locator('[data-id="week"] [data-id="next"]').click();
+      await page.waitForTimeout(5000);
+    };
+    for (const week of ["Week 2", "Week 3"]) {
+      await pickNext();
+      await screen.locator('[data-id="publish"]').click();
+      // A week with nothing to warn about publishes at once; otherwise the screen asks first.
+      const ask = page.locator('[data-id="ask"]');
+      const said = screen
+        .locator('[data-id="notice"]')
+        .filter({ hasText: `Published ${week}.` });
+      await ask.or(said).first().waitFor();
+      if (await ask.isVisible()) {
+        rec.note(`Publish ${week} asks`, (await ask.innerText()).slice(0, 500));
+        await ask.locator("button.slds-button_brand").click();
+      }
+      await said.waitFor();
+      const at = soql(
+        `SELECT PublishedAt__c FROM Schedule__c WHERE Program__r.Season__r.Name = '${season}' AND Week__r.Name = '${week}' AND PublishedAt__c != NULL`
+      );
+      rec.check("PUB", `${week} is published by clicking`, at.length === 1);
+
+      // Read back as a person reads a published week (ADR 0008 item 10: Saved versions keeps
+      // the newest saved version, not the published copy): the Published line, unchanged since,
+      // over the grid it was published from, day by numbered day.
+      await screen.locator('[data-id="published-menu"]').click();
+      const line = await screen.locator('[data-id="published"]').innerText();
+      rec.check(
+        "PUB",
+        `${week}'s Published line says it went out from Generated Schedule, unchanged since`,
+        /Published from Generated Schedule/.test(line) &&
+          (await screen.locator('[data-id="changed-since"]').count()) === 0,
+        line
+      );
+      await page.keyboard.press("Escape");
+      const pills = screen.locator('[data-id="day-pills"] button');
+      rec.check(
+        "WEEK-1.7",
+        `${week}'s days are Day 1 to Day 6`,
+        (await pills.allInnerTexts()).map((d) => d.trim()).join() ===
+          DAYS.join(),
+        (await pills.allInnerTexts()).join()
+      );
+      const differs = [];
+      for (const day of DAYS) {
+        await pills.filter({ hasText: day }).first().click();
+        await page.waitForTimeout(1200);
+        const grid = await screen.locator('[data-id="edit-grid"]').innerText();
+        // Row by row as the grid lays it out: each time block, the groups left to right.
+        const want = week1.rows
+          .filter((r) => r.day === day && r.activity !== "Open")
+          .sort(
+            (a, b) =>
+              a.time_block.localeCompare(b.time_block) ||
+              a.group.localeCompare(b.group)
+          )
+          .map((r) => r.activity);
+        let from = 0;
+        for (const name of want) {
+          const at = grid.indexOf(name, from);
+          if (at < 0) {
+            differs.push(
+              `${day}: ${want.join(", ")} | ${grid.replace(/\s+/g, " ")}`
+            );
+            break;
+          }
+          from = at + name.length;
+        }
+      }
+      rec.check(
+        "WEEK-6.2",
+        `${week} on screen holds Week 1, cell by cell, Day 1 to Day 6`,
+        differs.length === 0,
+        differs.join("\n").slice(0, 800)
+      );
+      const out = await call("read_group_schedule", { season, week });
+      rec.check(
+        "PUB",
+        `an AI reads ${week} as published, by Day number`,
+        out.kind === "done" &&
+          DAYS.every((d) => out.text.includes(d)) &&
+          week1.rows.every((r) => out.text.includes(r.activity)),
+        out.text.slice(0, 600)
+      );
+    }
+    rec.check(
+      "crash",
+      "no page errors",
+      errors.length === 0,
+      errors.join("\n").slice(0, 600)
+    );
+  } catch (e) {
+    await page
+      ?.screenshot({ path: `${process.env.TMPDIR || "/tmp"}/br-e3-fail.png` })
+      .catch(() => {});
+    rec.check(
+      "crash",
+      "E3 stopped early",
+      false,
+      url ? String(e.stack).split(url).join("<sign-in link>") : e.stack
+    );
+  } finally {
+    await browser?.close();
+    cleanup(LIKE3);
+  }
+}
+
+// `node screens.mjs E3` runs only E3; with no name, all of them.
+const only = process.argv[2];
+for (const [id, fn] of [
+  ["E1", run],
+  ["E2", numbered],
+  ["E3", rotating]
+]) {
+  if (!only || only === id) await withOrg(fn);
+}
 const failed = rec.rows.filter((r) => !r.passed);
 console.log(
   `${rec.rows.filter((r) => !r.note).length - failed.length} passed, ${failed.length} failed.`
