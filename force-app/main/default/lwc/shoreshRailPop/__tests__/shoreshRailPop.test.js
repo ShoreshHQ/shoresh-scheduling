@@ -59,6 +59,31 @@ describe("c-shoresh-rail-pop", () => {
     await expect(element).toBeAccessible();
   });
 
+  // A long program, set or "Assign against" name ran past the rail and scrolled the page at
+  // 1440, 768 and on a phone (UI pass, 2026-11-10): a picker's choice now stops at a limit.
+  it("a picker's long choice ends in … at the picker's limit, so the rail keeps to the frame", async () => {
+    const element = createElement("c-shoresh-rail-pop", {
+      is: ShoreshRailPop
+    });
+    element.label =
+      "Day Camp Kindergarten Through Second Grade Explorers Program · Generated Schedule";
+    document.body.appendChild(element);
+    await flush();
+    const label = element.shadowRoot.querySelector('[data-id="button"] .label');
+    expect(label.textContent).toBe(element.label);
+    const css = (bundle) =>
+      require("fs").readFileSync(
+        require("path").join(__dirname, `../../${bundle}/${bundle}.css`),
+        "utf8"
+      );
+    const rule = css("shoreshRailPop").match(/\.label\s*{[^}]*}/)[0];
+    expect(rule).toMatch(/max-width: var\(--shoresh-pop-label-max, none\);/);
+    expect(rule).toMatch(/text-overflow: ellipsis;/);
+    expect(css("shoreshRailPicker")).toMatch(
+      /--shoresh-pop-label-max: min\(20em, calc\(100vw - 10rem\)\);/
+    );
+  });
+
   it("a count is set as a value, with the needs-a-look mark before it", async () => {
     const element = createElement("c-shoresh-rail-pop", {
       is: ShoreshRailPop

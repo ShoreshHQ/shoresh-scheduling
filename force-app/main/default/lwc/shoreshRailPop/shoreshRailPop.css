@@ -7,6 +7,14 @@
   flex: none;
 }
 
+/* A long name ends in "…" where a rail sets a limit (a picker's choice); the menu shows it whole. */
+.label {
+  max-width: var(--shoresh-pop-label-max, none);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The needs-a-look corner sits on the words' cap height, as in the mock-up. */
 .mark {
   transform: translateY(-3px);
