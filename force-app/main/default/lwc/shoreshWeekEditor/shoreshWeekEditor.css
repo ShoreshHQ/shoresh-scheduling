@@ -277,10 +277,19 @@
 }
 
 /* A day a special day replaces: its name after the day on the pill, "Fri · Visiting Day"
-   (mockup design-research/special-r1 placed.html); quiet until the pill is the one shown. */
+   (mockup design-research/special-r1 placed.html); quiet until the pill is the one shown. A long
+   name ends in "…" (the pill's own name says it whole), and on a phone the days wrap. */
 .pill-special {
+  max-width: min(16em, calc(100vw - 14rem));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 400;
   color: var(--shoresh-text-2);
+}
+
+.group_days {
+  flex-wrap: wrap;
 }
 
 .pill_on .pill-special {
