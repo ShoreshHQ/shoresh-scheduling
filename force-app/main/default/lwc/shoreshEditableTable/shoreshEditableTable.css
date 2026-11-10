@@ -39,8 +39,10 @@
 }
 
 /* Wide tables (many columns) scroll inside themselves, never the page; on a setup screen the
-   whole list scrolls instead, so the column names and every section stay lined up. */
-.scroll {
+   whole list scrolls instead, so the column names and every section stay lined up. Not called
+   "scroll": Salesforce's page has .forceStyle .scroll { overflow: auto }, which reached in and
+   kept every table scrolling on its own. */
+.table-scroll {
   overflow-x: var(--shoresh-table-scroll, auto);
 }
 
