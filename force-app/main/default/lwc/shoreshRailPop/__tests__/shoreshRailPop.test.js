@@ -59,6 +59,51 @@ describe("c-shoresh-rail-pop", () => {
     await expect(element).toBeAccessible();
   });
 
+  // A long program, set or "Assign against" name ran past the rail and scrolled the page at
+  // 1440, 768 and on a phone (UI pass, 2026-11-10): a picker's choice now stops at a limit.
+  it("a picker's long choice ends in … at the picker's limit, so the rail keeps to the frame", async () => {
+    const element = createElement("c-shoresh-rail-pop", {
+      is: ShoreshRailPop
+    });
+    element.label =
+      "Day Camp Kindergarten Through Second Grade Explorers Program · Generated Schedule";
+    document.body.appendChild(element);
+    await flush();
+    const label = element.shadowRoot.querySelector('[data-id="button"] .label');
+    expect(label.textContent).toBe(element.label);
+    const css = (bundle) =>
+      require("fs").readFileSync(
+        require("path").join(__dirname, `../../${bundle}/${bundle}.css`),
+        "utf8"
+      );
+    const rule = css("shoreshRailPop").match(/\.label\s*{[^}]*}/)[0];
+    expect(rule).toMatch(/max-width: var\(--shoresh-pop-label-max, none\);/);
+    expect(rule).toMatch(/text-overflow: ellipsis;/);
+    expect(css("shoreshRailPicker")).toMatch(
+      /--shoresh-pop-label-max: min\(20em, calc\(100vw - 10rem\)\);/
+    );
+    // Open, the menu shows each name whole, wrapping inside the screen.
+    expect(css("shoreshRailPop").match(/\.pop\s*{[^}]*}/)[0]).toMatch(
+      /max-width: var\(--shoresh-pop-across, var\(--shoresh-pop-max, none\)\);/
+    );
+    expect(css("shoreshRailPicker")).toMatch(
+      /--shoresh-pop-max: min\(32em, calc\(100vw - 4rem\)\);/
+    );
+    expect(
+      css("shoreshRailPicker").match(/\.shoresh-pop-row\s*{[^}]*}/)[0]
+    ).toMatch(/white-space: normal;/);
+    // Where a rail opens its menus across itself (narrow screens), the menu keeps the rail's width.
+    for (const rail of [
+      "shoreshElectiveSeats",
+      "shoreshSchedules",
+      "shoreshWeekEditor"
+    ]) {
+      expect(css(rail)).toMatch(
+        /--shoresh-pop-host: static;\s*--shoresh-pop-across: none;/
+      );
+    }
+  });
+
   it("a count is set as a value, with the needs-a-look mark before it", async () => {
     const element = createElement("c-shoresh-rail-pop", {
       is: ShoreshRailPop
