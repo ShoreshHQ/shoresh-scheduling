@@ -2296,6 +2296,23 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, ".body_flush")).not.toBeNull();
   });
 
+  // Import last year's rail sat 12 px lower than every other screen's, its hairline short of the
+  // frame's edges (UI pass, 2026-11-10): it draws its own rail and inset, as the others do.
+  it("Import last year's rail and hairline run edge to edge, as every screen's", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    q(element, "c-shoresh-roots").dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "import" } })
+    );
+    await flush();
+    expect(
+      q(element, '[data-screen="import"] c-shoresh-import')
+    ).not.toBeNull();
+    expect(q(element, ".body_flush")).not.toBeNull();
+  });
+
   describe("the menu's Schedules title is a doorway (wiki decision 61)", () => {
     const twoWeeks = () =>
       setupWith({

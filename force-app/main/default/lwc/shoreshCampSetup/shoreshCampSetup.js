@@ -101,7 +101,8 @@ const FLUSH_SCREENS = new Set([
   "bringInChoices",
   "electiveSeats",
   "schedules",
-  "learned"
+  "learned",
+  "import"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
