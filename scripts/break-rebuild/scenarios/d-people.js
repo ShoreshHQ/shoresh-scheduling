@@ -594,5 +594,218 @@ module.exports = [
         removePerson(person);
       }
     }
+  },
+  {
+    id: "D2",
+    title:
+      "a Scheduler-only person builds and publishes a whole week through their AI",
+    async run(rec) {
+      // The admin sets the camp up; everything from the build on is the person's.
+      const { season } = makeCamp("D2 Scheduler");
+      const week = { season, week: "Week 1" };
+      await importMaple(season);
+      leftOver();
+      const person = makePerson();
+      const as = ALIAS;
+      const draftId = () =>
+        soql(
+          `SELECT Id FROM Schedule__c WHERE Program__r.Season__r.Name = '${esc(season)}' AND Week__r.Name = 'Week 1' AND Status__c = 'Draft'`
+        );
+      const publishedOf = () =>
+        soql(
+          `SELECT Id, Status__c, PublishedBy__c FROM Schedule__c WHERE Program__r.Season__r.Name = '${esc(season)}' AND Week__r.Name = 'Week 1' AND PublishedAt__c != NULL ORDER BY PublishedAt__c`
+        );
+      // Every placed cell of the draft, as one line of what goes out (as_csv).
+      const goesOut = async (d) => {
+        const out = await call(
+          "read_group_schedule",
+          { ...week, as_csv: true },
+          as
+        );
+        const lines = out.text.split("\n");
+        const missing = d.rows
+          .filter((r) => r.activity !== "Open")
+          .filter(
+            (r) =>
+              !lines.some(
+                (l) =>
+                  l.includes(`,${r.date},${r.group},${r.time_block},`) &&
+                  l.split(",")[6]?.trim() === r.activity
+              )
+          );
+        return { out, missing };
+      };
+      try {
+        setAccess(person, [season], ["Shoresh_Scheduler"], "Edit");
+        let said = await call("list_seasons", {}, as);
+        rec.check(
+          "API-1.7",
+          "the person's AI finds the season shared with them",
+          said.kind === "done" && said.text.includes(season),
+          said.text.slice(0, 400)
+        );
+        rec.check("API-1.20", "no week built yet", draftId().length === 0);
+
+        // Build: a week never built, built by the person.
+        said = await call("build_week", week, as);
+        rec.check(
+          "API-1.20",
+          "the person's AI builds Week 1",
+          said.kind === "done",
+          said.text.slice(0, 500)
+        );
+        let checks = await checksOf(season, "Week 1", as);
+        rec.note(
+          "the counter, as the person reads it",
+          JSON.stringify(checks).slice(0, 500)
+        );
+        let d = await draft(season, "Week 1", {}, as);
+        rec.check(
+          "API-1.20",
+          "the person reads the whole built week",
+          d.rows.length > 0 && d.rows.some((r) => r.activity !== "Open"),
+          `${d.rows.length} rows`
+        );
+
+        // A change by hand: it locks, and a rebuild keeps it.
+        const cell = d.rows.find(
+          (r) => !r.notes && r.group === "Bunk 1" && r.activity !== "Open"
+        );
+        const change = {
+          ...week,
+          group: "Bunk 1",
+          day: cell.day,
+          time: cell.time_block,
+          was: cell.activity,
+          activity: cell.activity === "Art" ? "Soccer" : "Art",
+          seen: d.seen
+        };
+        said = await call("change_schedule_cell", change, as);
+        rec.check(
+          "API-1.11",
+          "the person's AI changes a cell",
+          said.kind === "done",
+          said.text.slice(0, 500)
+        );
+        const rebuilt = await confirmed("build_week", week, as);
+        rec.note(
+          "building again, as the person's AI is asked",
+          rebuilt.preview.text.slice(0, 500)
+        );
+        rec.check(
+          "API-1.20",
+          "the person's AI builds the week again",
+          rebuilt.done.kind === "done",
+          rebuilt.done.text.slice(0, 500)
+        );
+        d = await draft(season, "Week 1", {}, as);
+        const kept = d.cell(cell.day, "Bunk 1", cell.time_block);
+        rec.check(
+          "LOCK-1.1",
+          "the rebuild kept the person's locked change",
+          kept.activity === change.activity && /locked/.test(kept.notes ?? ""),
+          JSON.stringify(kept)
+        );
+
+        // Publish: the person's, and what goes out is the week as built, cell by cell.
+        const first = await confirmed("publish_week", week, as);
+        rec.note(
+          "the first publish, as the person's AI is asked",
+          first.preview.text.slice(0, 500)
+        );
+        rec.check(
+          "API-1.20",
+          "the person's AI publishes Week 1",
+          first.done.kind === "done",
+          first.done.text.slice(0, 500)
+        );
+        let published = publishedOf();
+        rec.check(
+          "PUB-1.1",
+          "one published schedule, published by the person",
+          published.length === 1 && published[0].PublishedBy__c === person.id,
+          JSON.stringify(published)
+        );
+        let read = await goesOut(d);
+        rec.check(
+          "PUB-4.1",
+          "the person reads what went out: the week as built, cell by cell",
+          read.out.kind === "done" && read.missing.length === 0,
+          read.missing.length
+            ? JSON.stringify(read.missing.slice(0, 5))
+            : read.out.text.slice(0, 300)
+        );
+
+        // Publish again after a change: it shows the change first, then keeps the old copy.
+        d = await draft(season, "Week 1", {}, as);
+        const other = d.rows.find(
+          (r) =>
+            !r.notes &&
+            r.group === "Bunk 2" &&
+            r.activity !== "Open" &&
+            r.activity !== "Art"
+        );
+        said = await call(
+          "change_schedule_cell",
+          {
+            ...week,
+            group: "Bunk 2",
+            day: other.day,
+            time: other.time_block,
+            was: other.activity,
+            activity: "Art",
+            seen: d.seen
+          },
+          as
+        );
+        rec.check(
+          "API-1.11",
+          "the person's AI changes a cell after publishing",
+          said.kind === "done",
+          said.text.slice(0, 500)
+        );
+        const again = await confirmed("publish_week", week, as);
+        rec.check(
+          "PUB-6.3",
+          "publishing again shows what changes first",
+          /Art/.test(again.preview.text) &&
+            again.preview.text.includes(other.activity),
+          again.preview.text.slice(0, 600)
+        );
+        rec.check(
+          "API-1.20",
+          "the person's AI publishes it again",
+          again.done.kind === "done",
+          again.done.text.slice(0, 500)
+        );
+        published = publishedOf();
+        rec.check(
+          "PUB-6.1",
+          "the earlier published copy is kept as history",
+          published.length === 2 &&
+            published[0].Status__c === "Version" &&
+            published[1].Status__c === "Published" &&
+            published.every((p) => p.PublishedBy__c === person.id),
+          JSON.stringify(published)
+        );
+        d = await draft(season, "Week 1", {}, as);
+        read = await goesOut(d);
+        rec.check(
+          "PUB-4.1",
+          "what goes out now has the second change, cell by cell",
+          read.out.kind === "done" && read.missing.length === 0,
+          read.missing.length
+            ? JSON.stringify(read.missing.slice(0, 5))
+            : read.out.text.slice(0, 300)
+        );
+        checks = await checksOf(season, "Week 1", as);
+        rec.note(
+          "the counter at the end",
+          JSON.stringify(checks).slice(0, 500)
+        );
+      } finally {
+        removePerson(person);
+      }
+    }
   }
 ];
