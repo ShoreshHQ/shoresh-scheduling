@@ -436,6 +436,19 @@ describe("the rail's room", () => {
     );
   });
 
+  // A long special day's name on its day's pill pushed Week 2's rail 320px past a phone's edge
+  // (UI pass, 2026-11-10; measured in Chrome at 390): the name ends in "…", the days wrap.
+  it("a special day's long name on a day pill ends in …, and the day pills wrap", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekEditor.css"),
+      "utf8"
+    );
+    const name = css.match(/\.pill-special\s*{[^}]*}/)[0];
+    expect(name).toMatch(/max-width: min\(16em, calc\(100vw - 14rem\)\);/);
+    expect(name).toMatch(/text-overflow: ellipsis;/);
+    expect(css.match(/\.group_days\s*{[^}]*}/)[0]).toMatch(/flex-wrap: wrap;/);
+  });
+
   it("the same on Saved versions and Elective seats, each part holding its width", () => {
     const read = (bundle) =>
       require("fs").readFileSync(
