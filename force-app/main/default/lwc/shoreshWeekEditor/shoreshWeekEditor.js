@@ -216,6 +216,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
   // no views, day pills or drawer. Left out for a week.
   @api planName;
+  // A special day's own schedule takes the season's elective sets as a week does (SPECIAL-1.3);
+  // an event's, whose columns are stations, doesn't.
+  @api takesElectives = false;
   // Sets up what a cell noted from a file names (ADR 0014 slice 4): ({ kind, name }) => Promise
   // of the words to say. Left out, no "Set it up" is offered.
   @api setUpWith;
@@ -1147,6 +1150,11 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.electives && this.electivesMemo.places;
   }
 
+  /** The sets a cell can be given: a week's, or a special day's own schedule's (SPECIAL-1.3). */
+  get offeredElectives() {
+    return this.ownPlan && !this.takesElectives ? [] : this.electives;
+  }
+
   electiveFor(item) {
     return this.electives.find((e) => `E:${e.id}` === item) || null;
   }
@@ -1712,9 +1720,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       options.push({ key: "open", kind: "open", label: "Open" });
     }
     // The season's elective sets first, as in the drawer (mock-up electives-r1 grid-a; desktop
-    // CellInlineEditor offers them), each with its mark; a week's, not a special day's or
+    // CellInlineEditor offers them), each with its mark; a week's or a special day's, not an
     // event's own schedule.
-    (this.ownPlan ? [] : this.electives)
+    this.offeredElectives
       .filter((e) => !typed || loose(e.name).includes(typed))
       .forEach((e) =>
         options.push({
@@ -1753,7 +1761,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (
       name &&
       !this.events.some((e) => loose(e.name) === typed) &&
-      (this.ownPlan || !this.electives.some((e) => loose(e.name) === typed)) &&
+      !this.offeredElectives.some((e) => loose(e.name) === typed) &&
       !((this.draft && this.draft.activities) || []).some(
         (a) => loose(a.name) === typed
       )

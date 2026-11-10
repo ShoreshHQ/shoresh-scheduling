@@ -225,6 +225,70 @@ describe("c-shoresh-special-schedule", () => {
     );
   });
 
+  /** The season's Chugim, with two confirmed offerings. */
+  const withChugim = () =>
+    nsRecord({
+      activities: [],
+      locations: [],
+      electives: {
+        sets: [{ Id: "es1", Name: "Chugim" }],
+        offerings: [
+          { Id: "o1", ElectiveSet__c: "es1", Activity__c: "a7" },
+          { Id: "o2", ElectiveSet__c: "es1", Activity__c: "a8" }
+        ]
+      }
+    });
+
+  async function typeInto(element, key, text) {
+    await press(cell(element, key), "Enter");
+    const input = inEditor(element, '[data-id="slot-input"]');
+    input.value = text;
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    return input;
+  }
+
+  const optionLabels = (element) =>
+    [...editor(element).shadowRoot.querySelectorAll("[data-option]")].map(
+      (option) => option.textContent.trim()
+    );
+
+  // SPECIAL-1.3
+  it("a special day's cell takes an elective set typed into it, saved as Manual Build saves one", async () => {
+    const { element } = await render(dayPlan());
+    element.setup = withChugim();
+    await flush();
+    saveCells.mockResolvedValue({
+      conflicts: [],
+      revision: "2",
+      schedule: dayPlan(["3,1", ",1"]).schedule
+    });
+    const input = await typeInto(element, "0-0", "chu");
+    expect(optionLabels(element)[0]).toBe("Chugim (2)");
+    await press(input, "Enter");
+    await flush();
+    expect(saveCells).toHaveBeenCalledTimes(1);
+    expect(saveCells.mock.calls[0][0].edits[0].runs[0]).toMatchObject({
+      groupId: "g1",
+      firstBlockId: "b1",
+      before: [""],
+      after: ["E:es1"]
+    });
+  });
+
+  // SPECIAL-1.3
+  it("an event's cell offers no elective set: its columns are stations", async () => {
+    const plan = dayPlan();
+    plan.kind = "SpecialEvent";
+    const { element } = await render(plan);
+    element.setup = withChugim();
+    await flush();
+    await typeInto(element, "0-0", "chu");
+    expect(optionLabels(element).some((label) => /Chugim/.test(label))).toBe(
+      false
+    );
+  });
+
   it("an event with nothing yet says what to add; + Period adds one with its times", async () => {
     const { element } = await render(emptyEvent());
     expect(q(element, '[data-id="empty"]').title).toBe(

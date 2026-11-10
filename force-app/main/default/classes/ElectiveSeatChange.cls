@@ -14,7 +14,7 @@ public with sharing class ElectiveSeatChange {
     public Decimal revision;
     public Id camperId;
     public Date day;
-    public Id blockId;
+    public String blockId;
     public Id offeringId;
     public Boolean locked;
   }
@@ -129,7 +129,7 @@ public with sharing class ElectiveSeatChange {
         ElectiveSeatChecks.seatKey(
           seat.Camper__c,
           seat.Date__c,
-          seat.TimeBlock__c
+          ElectiveSeatChecks.blockOf(seat)
         ) == key
       ) {
         return seat;

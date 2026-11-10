@@ -61,8 +61,17 @@ public with sharing class ElectiveFinalize {
     Id versionId = ManualVersions.keepAutomatically(
       scheduleOf(state.run),
       (electives + ' finalized: ' + state.run.Name).left(80),
-      state.liveDays
+      state.scheduleDays
     );
+    // ELECT-5.6: the version keeps the special days as they are, so the final run's times and
+    // downloads never change when one is edited later.
+    List<ScheduleSpecials.Special> kept = new List<ScheduleSpecials.Special>();
+    for (ScheduleSpecials.Special special : state.specialDays) {
+      if (special.grid != null) {
+        kept.add(special);
+      }
+    }
+    ScheduleSpecials.carry(versionId, kept);
     Database.update(
       new Schedule__c(Id = versionId, VersionReason__c = ELECTIVES_FINALIZED),
       AccessLevel.USER_MODE
@@ -88,7 +97,7 @@ public with sharing class ElectiveFinalize {
       ElectivePeriod at = state.live.periodOf(
         state.groupOf(seat.Camper__c),
         seat.Date__c,
-        seat.TimeBlock__c
+        ElectiveSeatChecks.blockOf(seat)
       );
       if (at == null || !at.offeringIds.contains(seat.Offering__c)) {
         throw new ShoreshException(
@@ -155,9 +164,15 @@ public with sharing class ElectiveFinalize {
     for (Assignment__c seat : state.seats) {
       Offering__c offering = state.offeringsById.get(seat.Offering__c);
       Group__c grp = state.groups.get(seat.Group__c);
+      ElectivePeriod at = state.live.periodOf(
+        state.groupOf(seat.Camper__c),
+        seat.Date__c,
+        ElectiveSeatChecks.blockOf(seat)
+      );
       result.add(
         new Assignment__c(
           Id = seat.Id,
+          TimeName__c = at?.blockName?.left(80),
           ActivityName__c = offering?.Activity__r?.Name?.left(80),
           LocationName__c = offering?.Activity__r?.Location__r?.Name?.left(80),
           GroupName__c = grp?.Name?.left(80)
@@ -261,6 +276,7 @@ public with sharing class ElectiveFinalize {
           Group__c = seat.Group__c,
           Date__c = seat.Date__c,
           TimeBlock__c = seat.TimeBlock__c,
+          SpecialBlock__c = seat.SpecialBlock__c,
           Offering__c = seat.Offering__c,
           LinkedChoice__c = seat.LinkedChoice__c,
           Locked__c = seat.Locked__c,

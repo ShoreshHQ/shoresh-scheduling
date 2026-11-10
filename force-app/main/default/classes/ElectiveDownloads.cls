@@ -75,11 +75,8 @@ public with sharing class ElectiveDownloads {
     result.view = ElectiveSeats.viewOf(state);
     result.weekName = state.run.Week__r.Name;
     String setId = String.valueOf(state.run.ElectiveSet__c);
-    // The version kept at Finalize (read once more here), or the live days without one.
-    List<ScheduleDays.DayGrid> days = state.run.FinalSchedule__c == null
-      ? state.liveDays
-      : ScheduleDays.read(state.run.FinalSchedule__c);
-    for (ScheduleDays.DayGrid each : days) {
+    // The version kept at Finalize with the special days it carries, or the live days without one.
+    for (ScheduleDays.DayGrid each : state.shownDays) {
       if (each.grid != null) {
         result.days.add(dayOf(each, state.groups, setId));
       }

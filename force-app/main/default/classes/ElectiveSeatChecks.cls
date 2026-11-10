@@ -6,7 +6,7 @@
  */
 public with sharing class ElectiveSeatChecks {
   /** "camper|2027-07-06|block": one seat per camper per time (Assignment__c.Key__c's own). */
-  public static String seatKey(Id camperId, Date day, Id blockId) {
+  public static String seatKey(Id camperId, Date day, String blockId) {
     return camperId + '|' + String.valueOf(day) + '|' + blockId;
   }
 
@@ -47,20 +47,39 @@ public with sharing class ElectiveSeatChecks {
     return at;
   }
 
+  /**
+   * A seat's time block: the camp's time block, or on a day a special day replaces that special
+   * day's own ("b2", ELECT-4.8), which is no record. Text, so both are one key.
+   */
+  public static String blockOf(Assignment__c seat) {
+    return seat.TimeBlock__c != null
+      ? String.valueOf(seat.TimeBlock__c)
+      : seat.SpecialBlock__c;
+  }
+
+  /** Puts a time on a seat: a time block's Id in TimeBlock__c, a special day's own in SpecialBlock__c. */
+  public static Assignment__c atBlock(Assignment__c seat, String blockId) {
+    if (GridItems.isId(blockId)) {
+      seat.TimeBlock__c = Id.valueOf(blockId);
+    } else {
+      seat.SpecialBlock__c = blockId;
+    }
+    return seat;
+  }
+
   /** A new seat for the run, at the time checked. */
   public static Assignment__c newSeat(
     ElectiveRunState state,
     ElectiveSeatSaves.SeatIn seat,
     ElectivePeriod at
   ) {
-    return new Assignment__c(
+    return atBlock(new Assignment__c(
       ElectiveRun__c = state.run.Id,
       Camper__c = seat.camperId,
       Group__c = state.groupOf(seat.camperId),
       Date__c = at.day,
-      TimeBlock__c = Id.valueOf(at.blockId),
       Offering__c = seat.offeringId,
       LinkedChoice__c = seat.linkedChoiceId
-    );
+    ), at.blockId);
   }
 }
