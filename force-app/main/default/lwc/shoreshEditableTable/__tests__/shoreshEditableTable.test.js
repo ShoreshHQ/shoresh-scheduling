@@ -2616,6 +2616,34 @@ describe("c-shoresh-editable-table", () => {
       ).toBe("Bunks in Juniors");
     });
 
+    // At 1024, 768 and on a phone a wide table's column names pushed the whole page sideways,
+    // and with a row's details open one section scrolled while the names stayed put (UI pass,
+    // 2026-11-10): on a setup screen the list scrolls as one, never the page.
+    it("on a setup screen the whole list scrolls sideways as one, not each table", () => {
+      const read = (bundle) =>
+        require("fs").readFileSync(
+          require("path").join(__dirname, `../../${bundle}/${bundle}.css`),
+          "utf8"
+        );
+      expect(
+        read("shoreshEditableTable").match(/\.scroll\s*{[^}]*}/)[0]
+      ).toMatch(/overflow-x: var\(--shoresh-table-scroll, auto\);/);
+      const list = read("shoreshCampSetup").match(/\.setup-list\s*{[^}]*}/)[0];
+      expect(list).toMatch(/overflow-x: auto;/);
+      expect(list).toMatch(/position: relative;/);
+      // A details panel's long name, with its hidden " details", stays inside the panel too.
+      for (const panel of [
+        "shoreshActivityDetails",
+        "shoreshElectiveDetails",
+        "shoreshSpecialDetails"
+      ]) {
+        expect(read(panel).match(/\.panel-title\s*{[^}]*}/)[0]).toMatch(
+          /position: relative;/
+        );
+      }
+      expect(list).toMatch(/--shoresh-table-scroll: visible;/);
+    });
+
     it("the count is what the section shows", async () => {
       const element = renderSection({
         heading: "Juniors",
