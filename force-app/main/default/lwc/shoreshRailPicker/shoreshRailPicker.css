@@ -1,9 +1,19 @@
 @import "c/shoreshTokens";
 
-/* The arrows and the choice: one group, items 4 apart. */
+/* The arrows and the choice: one group, items 4 apart. A long program, set or schedule name
+   stops at 20em (less on a phone), so the rail keeps to the frame at every width; in the open
+   menu it is whole, wrapping at 32em (less on a phone). */
 :host {
   display: inline-flex;
   flex: none;
+  --shoresh-pop-label-max: min(20em, calc(100vw - 10rem));
+  --shoresh-pop-max: min(32em, calc(100vw - 4rem));
+}
+
+.shoresh-pop-row {
+  white-space: normal;
+  padding-top: var(--shoresh-s1);
+  padding-bottom: var(--shoresh-s1);
 }
 
 .picker {

@@ -723,4 +723,16 @@ describe("c-shoresh-week-checks: the counter", () => {
       "Spread across the week18of 20 on different days"
     );
   });
+
+  // "Spread across the week 54 of 54 on c" was cut at the dropdown's edge (UI pass, 2026-11-10):
+  // a line's numbers go under it, on the right, when they don't fit beside it.
+  it("a line's numbers wrap under it rather than run past the dropdown's edge", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekChecks.css"),
+      "utf8"
+    );
+    expect(css.match(/\.list > p\.shoresh-pop-row\s*{[^}]*}/)[0]).toMatch(
+      /flex-wrap: wrap;/
+    );
+  });
 });
