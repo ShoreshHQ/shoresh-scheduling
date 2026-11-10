@@ -423,9 +423,11 @@
             <span class="special-title">{specialLine.name}</span>
             <span class="special-kind">{specialLine.kind}</span>
           </div>
-          <p class="special-notes" data-id="special-notes">
-            {specialLine.notes}
-          </p>
+          <template lwc:if={specialLine.notes}>
+            <p class="special-notes" data-id="special-notes">
+              {specialLine.notes}
+            </p>
+          </template>
           <div class="special-actions">
             <template lwc:if={specialLine.takeOff}>
               <button

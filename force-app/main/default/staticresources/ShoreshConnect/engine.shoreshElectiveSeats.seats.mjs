@@ -476,7 +476,11 @@ export function buildBoard(run, t) {
     return {
       key: time.key,
       time,
-      label: division ? `${timeLabel(time)} · ${division}` : timeLabel(time),
+      // Everywhere a time is named (downloads, problems, a seat's dialog): with its division or
+      // groups when it shares its day and block.
+      label: who ? `${timeLabel(time)} · ${who}` : timeLabel(time),
+      // The board's heading: the time, its groups on the line under it.
+      heading: groups ? timeLabel(time) : null,
       groups,
       words: who ? `${timeWords(time)}, ${who}` : timeWords(time)
     };

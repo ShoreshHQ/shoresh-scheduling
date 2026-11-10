@@ -297,8 +297,8 @@
   color: var(--shoresh-text-1);
 }
 
-/* The drawer's place on a replaced day: the special day's name and kind in the time column, its
-   notes across, and the way to open it at the end (mockup placed-day.png). */
+/* The drawer's place on a replaced day: the special day's name and kind, its notes (when it has
+   any) across, and the way to open it at the end (mockup placed-day.png). */
 .special-line {
   box-sizing: border-box;
   display: flex;

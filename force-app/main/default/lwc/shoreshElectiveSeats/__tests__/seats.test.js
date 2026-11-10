@@ -88,9 +88,14 @@ describe("the board's columns", () => {
       ]
     });
     const board = buildBoard(readRun(view), t);
-    expect(board.columns.map((c) => [c.label, c.groups])).toEqual([
+    expect(board.columns.map((c) => [c.heading, c.groups])).toEqual([
       [timeLabel(base.times[0]), "Aspen"],
       [timeLabel(base.times[0]), "Willow"]
+    ]);
+    // Wherever else the time is named (downloads, problems, a seat's dialog), the group with it.
+    expect(board.columns.map((c) => c.label)).toEqual([
+      `${timeLabel(base.times[0])} · Aspen`,
+      `${timeLabel(base.times[0])} · Willow`
     ]);
     expect(board.columns[1].words).toMatch(/, Willow$/);
   });

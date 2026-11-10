@@ -203,6 +203,37 @@ describe("c-shoresh-week-editor: special days and events", () => {
     }
   });
 
+  it("names the day as its pill does when it couldn't be taken off, too", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const takeOffWith = jest
+        .fn()
+        .mockRejectedValue({ body: { message: "No access." } });
+      const { element } = await render(undefined, undefined, { takeOffWith });
+      const errors = jest.fn();
+      element.addEventListener("errorchange", errors);
+      await showTuesday(element);
+      q(element, '[data-id="take-off-special"]').click();
+      await flush();
+      expect(errors.mock.calls[0][0].detail.message).toMatch(
+        /^Visiting Day wasn't taken off Day 2\. Nothing was changed\./
+      );
+    } finally {
+      setDayNaming(null);
+    }
+  });
+
+  // An empty notes place took the row's room, pushing Take off and Open under it on a narrow
+  // window (review of the UI pass): a special day with no notes has none.
+  it("a special day with no notes has no notes place on its line", async () => {
+    const { element } = await render(undefined, undefined, {
+      specials: { days: [{ ...VISITING_DAY, notes: "" }] }
+    });
+    await showTuesday(element);
+    expect(q(element, '[data-id="special-line"]')).not.toBeNull();
+    expect(q(element, '[data-id="special-notes"]')).toBeNull();
+  });
+
   // SPECIAL-4.2
   it("takes the special day off: the day's own cells are back, said, focus on its pill", async () => {
     const host = {};
