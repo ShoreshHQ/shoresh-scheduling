@@ -101,6 +101,7 @@ global with sharing class OutgoingElectiveSeats implements OutgoingDoors.Capabil
         ElectiveRun__r.ElectiveSet__r.Name,
         Date__c,
         TimeBlock__r.Name,
+        TimeName__c,
         ActivityName__c,
         LocationName__c,
         GroupName__c,
@@ -115,6 +116,7 @@ global with sharing class OutgoingElectiveSeats implements OutgoingDoors.Capabil
         ElectiveRun__r.ElectiveSet__r.Name,
         Date__c,
         TimeBlock__r.SortOrder__c,
+        SpecialBlock__c,
         ActivityName__c,
         Camper__r.Name,
         Id
@@ -159,7 +161,10 @@ global with sharing class OutgoingElectiveSeats implements OutgoingDoors.Capabil
       'week' => week,
       'elective_set' => seat.ElectiveRun__r.ElectiveSet__r.Name,
       'date' => String.valueOf(seat.Date__c),
-      'time_block' => seat.TimeBlock__r.Name,
+      // Copied at Finalize, so a special day's own time is named too (ELECT-4.8).
+      'time_block' => String.isBlank(seat.TimeName__c)
+        ? seat.TimeBlock__r?.Name
+        : seat.TimeName__c,
       'activity' => seat.ActivityName__c,
       'location' => seat.LocationName__c,
       'source_system' => outside ? seat.Camper__r.SourceSystem__c : null,

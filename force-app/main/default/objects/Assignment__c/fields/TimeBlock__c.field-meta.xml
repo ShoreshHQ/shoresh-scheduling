@@ -3,12 +3,12 @@
     <fullName>TimeBlock__c</fullName>
     <deleteConstraint>Restrict</deleteConstraint>
     <description
-  >The elective time's time block. A time block named here cannot be deleted until this is removed.</description>
+  >The elective time's time block; blank on a day a special day replaces (Special Day Time Block). A time block named here cannot be deleted until this is removed.</description>
     <label>Time Block</label>
     <referenceTo>TimeBlock__c</referenceTo>
     <relationshipLabel>Assignments</relationshipLabel>
     <relationshipName>Assignments</relationshipName>
-    <required>true</required>
+    <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Lookup</type>
 </CustomField>

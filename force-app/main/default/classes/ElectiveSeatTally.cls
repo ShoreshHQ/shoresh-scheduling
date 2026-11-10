@@ -26,14 +26,14 @@ public with sharing class ElectiveSeatTally {
         ElectiveSeatChecks.seatKey(
           seat.Camper__c,
           seat.Date__c,
-          seat.TimeBlock__c
+          ElectiveSeatChecks.blockOf(seat)
         ),
         seat
       );
       ElectivePeriod at = state.live.periodOf(
         state.groupOf(seat.Camper__c),
         seat.Date__c,
-        seat.TimeBlock__c
+        ElectiveSeatChecks.blockOf(seat)
       );
       if (at != null) {
         count(lockedCount, at, seat.Offering__c);

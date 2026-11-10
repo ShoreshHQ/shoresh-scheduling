@@ -549,7 +549,8 @@ private class ElectiveSeatsTest {
       Test.stopTest();
 
       Assert.isTrue(rows <= 4, 'Three seats and the run: ' + rows);
-      Assert.isTrue(queries <= 20, 'Assign again is bounded: ' + queries);
+      // 21: one more since the week's special days are read with the run (ELECT-4.8).
+      Assert.isTrue(queries <= 21, 'Assign again is bounded: ' + queries);
       Assert.areEqual(1000, view.seats.size());
       Assert.areEqual(
         camp.ids.get('o:Pottery'),

@@ -211,7 +211,7 @@ public with sharing class ElectiveRunTriggers {
         '|' +
         String.valueOf(row.Date__c) +
         '|' +
-        row.TimeBlock__c;
+        ElectiveSeatChecks.blockOf(row);
     }
   }
 }

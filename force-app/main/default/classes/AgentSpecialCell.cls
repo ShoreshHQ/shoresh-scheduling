@@ -4,7 +4,8 @@
  * API-1.77). Web address /v1/change_special_schedule_cell, POST {season, special, kind, column,
  * time, was, activity}. It is the screen's own save (SpecialScheduleController.saveCells), the run
  * made only while the cell holds what the agent saw (was), compared under the item's lock; only
- * the season's activities can be typed in, as on the screen.
+ * the season's activities and, in a special day, its elective sets can be typed in, as on the
+ * screen.
  */
 @RestResource(urlMapping='/v1/change_special_schedule_cell')
 global with sharing class AgentSpecialCell implements AgentWeeks.Action {
@@ -92,7 +93,11 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
     return SlotIds.isCarryOn(now) || carriesOn;
   }
 
-  /** Open, or one of the season's activities (the only things the screen's cells take). */
+  /**
+   * Open, one of the season's activities, or one of its elective sets (API-1.124's own reading,
+   * AgentCellSlot): a special day's cell takes a set as typing does (SPECIAL-1.3); an event's
+   * refuses it with the screen's words.
+   */
   private static String slotOf(Id seasonId, Map<String, Object> body) {
     String asked = AgentFields.text(body, 'activity');
     if (
@@ -101,25 +106,7 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
     ) {
       return SlotIds.OPEN;
     }
-    List<String> names = new List<String>();
-    for (Activity__c activity : [
-      SELECT Id, Name
-      FROM Activity__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY Name
-    ]) {
-      if (IncomingBatch.fold(activity.Name) == IncomingBatch.fold(asked)) {
-        return 'A:' + activity.Id;
-      }
-      names.add(activity.Name);
-    }
-    throw new ShoreshException(
-      'There is no activity called "' +
-        asked.left(80) +
-        '" in this season. ' +
-        AgentWeeks.namesSaid('activities', names)
-    );
+    return AgentCellSlot.named(asked, seasonId);
   }
 
   private static AgentWeeks.ConflictException changed(

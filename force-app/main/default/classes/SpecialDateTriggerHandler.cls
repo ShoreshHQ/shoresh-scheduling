@@ -8,6 +8,17 @@ public with sharing class SpecialDateTriggerHandler {
   // In the key, every special day shares one mark, so a week day holds at most one of them.
   private static final String ANY_SPECIAL_DAY = 'D';
 
+  /**
+   * Before any change: where special days are changes where electives sit, so a run read again in
+   * this request reads them again (ElectiveDays). rows: null on delete.
+   */
+  public static void beforeChange(List<SpecialDate__c> rows) {
+    ElectiveDays.forget();
+    if (rows != null) {
+      beforeSave(rows);
+    }
+  }
+
   public static void beforeSave(List<SpecialDate__c> rows) {
     Set<Id> seasonIds = new Set<Id>();
     Set<Id> weekIds = new Set<Id>();

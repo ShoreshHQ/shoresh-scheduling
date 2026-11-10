@@ -1939,7 +1939,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, or Open to clear it. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. There is no undo here: to undo it, change the cell back to what it was.",
+      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, in a special day also one of its elective sets (its seats are then assigned on Elective seats for that week, like any other elective time), or Open to clear it. An event's columns are stations, so it takes no elective set. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. There is no undo here: to undo it, change the cell back to what it was.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1955,11 +1955,12 @@ const CAPABILITIES = [
         was: {
           type: "string",
           description:
-            "What the cell holds now as read_special_schedule said it: an activity's name, or Open."
+            "What the cell holds now as read_special_schedule said it: an activity's or elective set's name, or Open."
         },
         activity: {
           type: "string",
-          description: "What it should hold: an activity's name, or Open."
+          description:
+            "What it should hold: an activity's name, an elective set's name (a special day only), or Open."
         }
       },
       required: ["special", "column", "time", "was", "activity"],
