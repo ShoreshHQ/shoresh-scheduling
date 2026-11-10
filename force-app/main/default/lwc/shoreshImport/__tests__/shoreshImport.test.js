@@ -1493,3 +1493,34 @@ describe("c-shoresh-import", () => {
     });
   });
 });
+
+// At 768 and 390 the review's file name ran under "Use this setup" and off the screen, and "6 days
+// by number" spilled out of its tile (UI pass, 2026-11-10, measured in Chrome: the page scrolled
+// 105 and 318 px). Jest draws no layout: these hold the rules the browser measurement checked.
+describe("c-shoresh-import: a narrow window", () => {
+  const css = require("fs").readFileSync(
+    require("path").join(__dirname, "../shoreshImport.css"),
+    "utf8"
+  );
+  const rule = (selector) =>
+    css.match(
+      new RegExp(`(^|\\n)${selector.replace(".", "\\.")}\\s*{[^}]*}`)
+    )[0];
+
+  it("the rail wraps, the buttons going under the files' name", () => {
+    expect(rule(".rail")).toMatch(/flex-wrap: wrap;/);
+    expect(rule(".side_left")).toMatch(/flex: 1 1 12rem;/);
+  });
+
+  it("a long file name ends in …", () => {
+    const name = rule(".file-name");
+    expect(name).toMatch(/display: block;/);
+    expect(name).toMatch(/text-overflow: ellipsis;/);
+    expect(name).toMatch(/white-space: nowrap;/);
+  });
+
+  it("a tile grows with its words, never spilling", () => {
+    expect(rule(".tile")).toMatch(/min-height: var\(--shoresh-tile-h\);/);
+    expect(rule(".tile")).not.toMatch(/[^-]height:/);
+  });
+});
