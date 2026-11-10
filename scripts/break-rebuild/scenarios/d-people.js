@@ -736,7 +736,7 @@ module.exports = [
             : read.out.text.slice(0, 300)
         );
 
-        // Publish again after a change: it shows the change first, then keeps the old copy.
+        // Publish again after a change: at once, as API-1.19 lets an AI, and the old copy kept.
         d = await draft(season, "Week 1", {}, as);
         const other = d.rows.find(
           (r) =>
@@ -766,10 +766,10 @@ module.exports = [
         );
         const again = await confirmed("publish_week", week, as);
         rec.check(
-          "PUB-6.3",
-          "publishing again shows what changes first",
-          /Art/.test(again.preview.text) &&
-            again.preview.text.includes(other.activity),
+          "API-1.19",
+          "publishing again goes at once, in the screen's words (an AI doesn't ask first)",
+          !/confirm: "/.test(again.preview.text) &&
+            again.preview.text.trim() === "Published Week 1.",
           again.preview.text.slice(0, 600)
         );
         rec.check(
