@@ -841,6 +841,38 @@ const CAPABILITIES = [
     editsWithEngine: true
   },
   {
+    ...change(
+      "clear_day",
+      "copy_cells",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. Undo it with undo_last_agent_change.",
+      {
+        day: CELL.day,
+        group: {
+          ...CELL.group,
+          description:
+            "Only this group's day, as Group View's Clear day does. Leave it out for every group."
+        },
+        seen: CELL.seen
+      },
+      ["day"],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
+  },
+  {
+    ...change(
+      "clear_week",
+      "copy_cells",
+      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. Undo it with undo_last_agent_change.",
+      { seen: CELL.seen },
+      [],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
+  },
+  {
     // API-1.65: worked out here with the week editor's own rainy day, as copy_cells is.
     ...change(
       "switch_to_rain_plans",
@@ -2071,6 +2103,11 @@ const CAPABILITIES = [
           description:
             "A file's layout when the review isn't sure of it, by file name: allCamp, byGroup or byActivity."
         },
+        open_questions: {
+          type: "boolean",
+          description:
+            "true, instead of files, to answer the questions the last import left for later (Roots' import questions left), with the very files it read."
+        },
         answers: {
           type: "object",
           description:
@@ -2092,7 +2129,7 @@ const CAPABILITIES = [
           description: "With save: the seen the review gave."
         }
       },
-      required: ["files"],
+      required: [],
       additionalProperties: false
     }
   },

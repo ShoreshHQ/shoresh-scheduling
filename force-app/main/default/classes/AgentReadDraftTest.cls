@@ -59,7 +59,8 @@ private class AgentReadDraftTest {
           'labels',
           'setup_changes',
           'accepted',
-          'season'
+          'season',
+          'week_name'
         },
         body.keySet()
       );

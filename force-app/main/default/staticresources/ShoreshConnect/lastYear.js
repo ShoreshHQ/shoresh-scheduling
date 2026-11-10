@@ -207,7 +207,7 @@ function reviewText(m, body, review, input) {
       : `Ready to save: ${label}.`
   );
   parts.push(
-    `Give every answer in answers (id to answer) and send the review again with the same files; to save, send them with save: true and seen: "${body.seen}". Ask the person about anything not plain from the files.`
+    `Give every answer in answers (id to answer) and send the review again ${input.open_questions === true ? "with open_questions: true (no files)" : "with the same files"}; to save, send them with save: true and seen: "${body.seen}". Ask the person about anything not plain from the files.`
   );
   return parts.join("\n");
 }
@@ -262,24 +262,40 @@ async function importLastYear(capability, given, { read, send, answer, load }) {
       "Send the seen the review gave, so a change someone made since isn't replaced unseen."
     );
   }
-  if (!Array.isArray(input.files) || input.files.length === 0) {
+  const reopened = input.open_questions === true;
+  if (reopened && input.files !== undefined) {
+    return refused(
+      "Send either the files or open_questions, not both: the questions left open are about the last import's own files."
+    );
+  }
+  if (!reopened && (!Array.isArray(input.files) || input.files.length === 0)) {
     return refused(
       "Send the files: each with file_name and its contents (csv_text, or sheets of rows)."
     );
   }
   const fields = input.season !== undefined ? { season: input.season } : {};
-  const got = await read(capability.api, fields);
+  // INGEST-5.5: Roots' "import questions left" opens the last import's own files, as it read them;
+  // Add saves them as a second import of the same files (INGEST-5.7), so the save is a plain one.
+  const got = await read(
+    capability.api,
+    reopened ? { ...fields, open_questions: "true" } : fields
+  );
   if (got.status !== 200) return answer(got);
-  const body = asTheScreenReads(JSON.parse(got.body));
+  const raw = JSON.parse(got.body);
+  const body = asTheScreenReads(raw);
   if (input.save && body.seen !== String(input.seen).trim()) {
     return changedSince();
   }
   const m = await load();
   const files = [];
-  for (const f of input.files) {
-    const { file, problem } = fileOf(f || {}, m);
-    if (problem) return refused(problem);
-    files.push(file);
+  if (reopened) {
+    files.push(...JSON.parse(raw.open_files));
+  } else {
+    for (const f of input.files) {
+      const { file, problem } = fileOf(f || {}, m);
+      if (problem) return refused(problem);
+      files.push(file);
+    }
   }
   const review = reviewOf(m, body, input, files);
   const { flow, t, remembered, state } = review;

@@ -27,22 +27,17 @@ public with sharing class AgentImports {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
     try {
-      for (String key : RestContext.request.params.keySet()) {
-        if (key != 'season') {
-          throw new ShoreshException(
-            'Shoresh doesn\'t know the field "' +
-              key.left(40) +
-              '". The fields are: season.'
-          );
-        }
-      }
+      Boolean open = AgentImportQuestions.asked(door);
       Season__c season = AgentChangeCampWords.seasonOf(
         RestContext.request.params.get('season')
       );
+      Map<String, Object> read = readOf(season, door);
+      if (open) {
+        // INGEST-5.5: the last import's files as it read them, as Roots' questions left open it.
+        read.put('open_files', AgentImportQuestions.openFilesOf(season.Id));
+      }
       response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(readOf(season, door), true)
-      );
+      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
     } catch (Exception e) {
       Boolean ours =
         e instanceof ShoreshException || e instanceof AuraHandledException;

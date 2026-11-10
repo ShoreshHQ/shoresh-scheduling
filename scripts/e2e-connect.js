@@ -691,6 +691,10 @@ function everyCommand(tmp) {
     fields: { short_week: "keep" },
     seen: { short_week: "keep" }
   });
+  // Clear day and week are Manual Build's (API-1.143); questions left by the last import (API-1.144).
+  step("clear_day", { ...week, day: "Monday" }, "any");
+  step("clear_week", week, "any");
+  step("import_last_year", { open_questions: true }, "any");
   step("read_same_locations", { name: "Pool" }, "any");
   step("merge_locations", { name: "Pool", seen: { Pool: "3" } }, "any");
   step("read_setup_guesses");

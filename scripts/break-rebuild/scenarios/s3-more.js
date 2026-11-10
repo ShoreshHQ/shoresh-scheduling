@@ -8,7 +8,9 @@ const {
   names,
   confirmed,
   seenOf,
-  electiveOnWeek
+  electiveOnWeek,
+  mapleFiles,
+  MUSIC
 } = require("../kit");
 
 /** Told apart only by the seed: each camp still places every cell, and the same way around locks. */
@@ -1760,6 +1762,220 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           /as a date like/.test(copy.text) &&
           count("Season__c", `Name = 'BR S13 Copy'`) === 0,
         copy.text
+      );
+    }
+  },
+  {
+    id: "S14",
+    title:
+      "open items through an AI: clear a day and a week, questions left by an import, an elective on a special day",
+    camps: "BR S14 %",
+    async run(rec) {
+      const { season } = makeCamp("S14 Open");
+      // Last year's files, Music left to answer later: a question waits on Roots.
+      const first = await call("import_last_year", {
+        season,
+        files: mapleFiles(),
+        answers: { "week|the file's week": "Week 1" }
+      });
+      const kept = await call("import_last_year", {
+        season,
+        files: mapleFiles(),
+        answers: { "week|the file's week": "Week 1" },
+        save: true,
+        seen: seenOf(first.text)
+      });
+      rec.note("import with a question left", kept.text.slice(0, 300));
+      const reopened = await call("import_last_year", {
+        season,
+        open_questions: true
+      });
+      rec.check(
+        "API-1.144",
+        "the questions the last import left are asked again, with its own files",
+        reopened.kind === "done" && /Music/i.test(reopened.text),
+        reopened.text.slice(0, 600)
+      );
+      const answered = await call("import_last_year", {
+        season,
+        open_questions: true,
+        answers: { [MUSIC]: "a" },
+        save: true,
+        seen: seenOf(reopened.text)
+      });
+      const again = await call("import_last_year", {
+        season,
+        open_questions: true
+      });
+      rec.check(
+        "API-1.144",
+        "answered and saved: no question is left",
+        answered.kind === "done" &&
+          again.kind === "refused" &&
+          /no import with questions left|answered or undone/.test(again.text),
+        `${answered.text.slice(0, 200)} ${again.text}`
+      );
+
+      // Clear day and Clear week, on Manual Build as its Edit menu does: Week 2 starts from Week 1
+      // as published, so it has activities to clear.
+      const week = { season, week: "Week 1" };
+      const manual = { season, week: "Week 2", schedule: "Manual Build" };
+      const onGenerated = await call("build_week", week);
+      const published = await call("publish_week", week);
+      const started = await call("start_manual_week", {
+        season,
+        week: "Week 2",
+        from_week: "Week 1",
+        from: "Published schedule"
+      });
+      if (published.kind !== "done" || started.kind !== "done") {
+        throw new Error(
+          `Week 2 not started: ${published.text} ${started.text}`
+        );
+      }
+      const before = await draft(season, "Week 2", {
+        schedule: "Manual Build"
+      });
+      const monday = before.rows.find(
+        (r) => r.day === "Monday" && !r.notes && r.activity !== "Open"
+      );
+      const refusedThere = await call("clear_day", {
+        ...week,
+        schedule: "Generated Schedule",
+        day: "Monday"
+      });
+      rec.check(
+        "API-1.143",
+        "Generated Schedule has no Clear day",
+        onGenerated.kind === "done" &&
+          refusedThere.kind === "refused" &&
+          /Manual Build only/.test(refusedThere.text),
+        refusedThere.text
+      );
+      const oneGroup = await call("clear_day", {
+        ...manual,
+        day: "Monday",
+        group: monday.group
+      });
+      const afterGroup = await draft(season, "Week 2", {
+        schedule: "Manual Build"
+      });
+      const plain = (r) => !r.notes && r.activity !== "Open";
+      rec.check(
+        "API-1.143",
+        "one group's day is cleared, its fixed activities stay, other groups untouched",
+        oneGroup.kind === "done" &&
+          /^Cleared /.test(oneGroup.text) &&
+          !afterGroup.rows.some(
+            (r) => r.day === "Monday" && r.group === monday.group && plain(r)
+          ) &&
+          afterGroup.rows.some(
+            (r) =>
+              r.day === "Monday" &&
+              r.group === monday.group &&
+              /fixed|recurring/.test(r.notes ?? "")
+          ) &&
+          afterGroup.rows.some(
+            (r) => r.day === "Monday" && r.group !== monday.group && plain(r)
+          ),
+        oneGroup.text
+      );
+      const undo = await confirmed("undo_last_agent_change", { ...manual });
+      const back = await draft(season, "Week 2", { schedule: "Manual Build" });
+      rec.check(
+        "API-1.143",
+        "Undo asks first, then the day is back",
+        undo.preview.kind === "asks first" &&
+          undo.done.kind === "done" &&
+          back.words === before.words,
+        undo.done.text
+      );
+      const all = await call("clear_week", manual);
+      const cleared = await draft(season, "Week 2", {
+        schedule: "Manual Build"
+      });
+      rec.check(
+        "API-1.143",
+        "the whole week is cleared; what isn't an activity stays",
+        all.kind === "done" &&
+          /^Cleared /.test(all.text) &&
+          !cleared.rows.some(plain) &&
+          cleared.rows.some((r) => /fixed|recurring/.test(r.notes ?? "")),
+        all.text
+      );
+      const nothing = await call("clear_week", manual);
+      rec.check(
+        "API-1.143",
+        "nothing to clear is said",
+        nothing.kind === "done" && /^Nothing to clear/.test(nothing.text),
+        nothing.text
+      );
+
+      // An elective on a special day's own schedule: its page offers none (the typed choices are
+      // activities), and its file import holds a name as an activity of that name. An AI gets the same.
+      await call("add_setup_record", {
+        season,
+        kind: "elective set",
+        name: "Chugim"
+      });
+      await call("add_setup_record", {
+        season,
+        kind: "special day",
+        name: "Color war"
+      });
+      let plan = await call("read_special_schedule", {
+        season,
+        special: "Color war"
+      });
+      const frameRow =
+        /Times: (.+?) \([^)]*\): Bunk 1 [^;]*; Bunk 2 ([^;|]*)/.exec(plan.text);
+      const byHand = await call("change_special_schedule_cell", {
+        season,
+        special: "Color war",
+        column: "Bunk 2",
+        time: frameRow?.[1],
+        was: frameRow?.[2]?.trim(),
+        activity: "Chugim"
+      });
+      rec.check(
+        "API-1.77",
+        "by hand, as on its page, an elective isn't one of the choices",
+        byHand.kind === "refused" &&
+          /no activity called "Chugim"/.test(byHand.text),
+        `${byHand.text} ${plan.text.slice(0, 300)}`
+      );
+      const csv =
+        "Time,Bunk 1,Bunk 2\n9:00 AM,Chugim,Chugim\n10:00 AM,Swim,Art\n11:00 AM,,\n";
+      const fromFile = await call("import_special_schedule", {
+        season,
+        special: "Color war",
+        seen: seenIn(plan.text),
+        file_name: "cw.csv",
+        csv_text: csv
+      });
+      plan = await call("read_special_schedule", {
+        season,
+        special: "Color war"
+      });
+      const chugim = soql(
+        `SELECT Id FROM ElectiveSet__c WHERE Season__r.Name = '${season}' AND Name = 'Chugim'`
+      )[0].Id;
+      const saved = soql(
+        `SELECT Plan__c FROM PlanPart__c WHERE SpecialDay__r.Name = 'Color war' AND SpecialDay__r.Season__r.Name = '${season}'`
+      )
+        .map((r) => r.Plan__c)
+        .join("");
+      rec.check(
+        "API-1.85",
+        "as on its page, a special day's file holds an elective's name as an activity of that name",
+        fromFile.kind === "done" &&
+          /Bunk 1 Chugim/.test(plan.text) &&
+          !saved.includes(chugim) &&
+          count(
+            "Activity__c",
+            `Season__r.Name = '${season}' AND Name = 'Chugim'`
+          ) === 1,
+        `${fromFile.text.slice(0, 200)} ${plan.text.slice(0, 500)}`
       );
     }
   }
