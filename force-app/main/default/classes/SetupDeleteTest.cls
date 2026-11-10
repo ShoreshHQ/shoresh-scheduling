@@ -277,7 +277,7 @@ private class SetupDeleteTest {
           '" has published schedules, which are kept as history, so this season can\'t be deleted. Mark it Finished instead.',
         preview.refusal
       );
-      Assert.isNull(preview.label);
+      Assert.isNull(preview.message);
       Assert.isNull(preview.lines);
       Assert.areEqual(
         1,
