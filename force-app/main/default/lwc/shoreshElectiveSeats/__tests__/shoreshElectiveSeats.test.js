@@ -285,6 +285,26 @@ describe("the start", () => {
     );
   });
 
+  // ELECT-4.9
+  it.each([
+    ["before", runView({ times: [] })],
+    ["after Assign seats", assignedView({ times: [] })]
+  ])(
+    "says when the set isn't on the week's schedule (%s), with no Assign seats or Finalize",
+    async (_when, view) => {
+      // The walk-through's camp: choices brought in against a week whose schedule has no Chugim
+      // cell. Assign seats used to say "0 of 0 placed" and offer Finalize, seating nobody.
+      const element = await render({ view });
+      expect($(element, '[data-id="no-times"]').title).toBe(
+        "Chugim isn't on Week 1's Manual Build yet."
+      );
+      expect($(element, '[data-id="primary"]')).toBeNull();
+      expect($(element, '[data-id="assign-again"]')).toBeNull();
+      expect($(element, '[data-id="counter"]')).toBeNull();
+      expect($(element, '[data-id="by-offering"]')).toBeNull();
+    }
+  );
+
   it("says electives in the camp's word: Chug seats, Chugim (wiki decision 66)", async () => {
     const words = [
       { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
