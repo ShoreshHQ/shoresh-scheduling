@@ -163,6 +163,9 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(text(q(element, '[data-id="under"]'))).toBe("0under");
     expect(text(q(element, '[data-id="over"]'))).toBe("0over");
     expect(q(element, '[data-id="look"]')).toBeNull();
+    // Every cell filled: no "0 still needed" line (UX pass 2026-11-10; design guide, a zero that
+    // asks for attention is left out). Under and over keep the desktop's grey 0 (ADR 0008).
+    expect(q(element, '[data-id="still-needed"]')).toBeNull();
   });
 
   it("without goals or limits there is no under or over", async () => {
