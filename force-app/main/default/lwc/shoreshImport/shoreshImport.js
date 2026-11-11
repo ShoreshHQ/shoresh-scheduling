@@ -590,9 +590,13 @@ export default class ShoreshImport extends LightningElement {
     }
     return readAsGroups(this.proposal, this.terms, this.cards).map((g) => {
       const open = g.key === this.openReadAs;
+      // Under the tile's number, the words without it, as Comes in's tiles ("9", "Activities"),
+      // never "9", "9 activities" (UX pass 2026-11-10).
+      const words = g.label.replace(/^\d+\s+/, "");
       return {
         ...g,
         spoken: g.label,
+        words: words.charAt(0).toUpperCase() + words.slice(1),
         expanded: open ? "true" : "false",
         className: open
           ? "tile tile_button shoresh-raised tile_open"

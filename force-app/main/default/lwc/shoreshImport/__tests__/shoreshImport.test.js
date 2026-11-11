@@ -520,6 +520,13 @@ describe("c-shoresh-import", () => {
     await choose(element, ["Camp - Bunk 1.csv"], { "Camp - Bunk 1.csv": text });
     const tile = $(element, 'button[data-read-as="dayNumbers"]');
     expect(tile.textContent).toContain("3 days by number");
+    // Seen: the number once, then its words ("3", "Days by number"), never "3", "3 days by
+    // number" (UX pass 2026-11-10); a screen reader hears "3 days by number" once.
+    expect(
+      [...tile.querySelectorAll('[aria-hidden="true"]')].map((n) =>
+        n.textContent.trim()
+      )
+    ).toEqual(["3", "Days by number"]);
     tile.click();
     await flush();
     const names = $$(element, '[data-id="read-as-lines"] .n');

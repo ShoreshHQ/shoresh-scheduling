@@ -635,6 +635,74 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(built).toEqual({ ok: true, status: 200, text: "Built Week 1." });
 
+    // With the counter's own modules: after the save, the week's checks are read as the counter
+    // reads them and said with the build, so an AI can pass on what the screen shows beside the
+    // grid (UX pass 2026-11-10: it said only "Built Week 1.").
+    const counted = [
+      ...[
+        `HTTP/1.1 200\ncontent-type: application/json\n\n${JSON.stringify({ inputs: {}, setup: {}, labels: [] })}`,
+        'HTTP/1.1 200\n\n{"message":"Built Week 1."}',
+        `HTTP/1.1 200\n\n${JSON.stringify({ inputs: {}, setup: {}, labels: [], accepted: "[]" })}`
+      ]
+    ];
+    const countedSeen = [];
+    const withCounter = await call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        run: async (args, stdin) => {
+          countedSeen.push({ args, stdin });
+          return counted.shift();
+        },
+        engine,
+        camp: packaged,
+        checks: async () => ({
+          buildTerms: () => ({}),
+          loadedOf: (inputs) => ({ input: inputs }),
+          counterWeek: () => ({
+            draft: { schedule: { days: [] } },
+            checked: "checked"
+          }),
+          weekMeasure: () => "measure",
+          readKept: (text) => JSON.parse(text),
+          counterWords: () => ({
+            placed: "174 of 174 placed",
+            over: { count: 1, lines: [{ line: "Art: 1 group over" }] },
+            to_look_at: [
+              { line: "Bunk 6 · Wednesday · Period 5: Over its weekly limit" }
+            ]
+          }),
+          nameDaysFor: () => {}
+        })
+      }
+    );
+    expect(countedSeen[2].args.slice(3, 6)).toEqual([
+      "/services/apexrest/shoresh/v1/week_checks?season=Summer+2026&week=Week+1",
+      "--method",
+      "GET"
+    ]);
+    expect(withCounter.text).toBe(
+      "Built Week 1. 174 of 174 placed. To look at: Art: 1 group over; Bunk 6 · Wednesday · Period 5: Over its weekly limit."
+    );
+
+    // A counter that can't be worked out adds nothing: the week is saved and said as built.
+    const broken = [
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${JSON.stringify({ inputs: {}, setup: {}, labels: [] })}`,
+      'HTTP/1.1 200\n\n{"message":"Built Week 1."}',
+      "HTTP/1.1 200\n\nnot json"
+    ];
+    const stillBuilt = await call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        run: async () => broken.shift(),
+        engine,
+        camp: packaged,
+        checks: async () => ({ nameDaysFor: () => {} })
+      }
+    );
+    expect(stillBuilt).toMatchObject({ ok: true, text: "Built Week 1." });
+
     // A refusal while reading, or the engine's own, comes back as one sentence; nothing is saved.
     const refused = await call(
       "build_week",
@@ -2619,6 +2687,20 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(review.ok).toBe(true);
     expect(review.text).toContain("2 campers: 2 new, 0 already here");
+
+    // A name Shoresh doesn't have: the review says what the screen starts it at, for the AI to
+    // offer the person (UX pass 2026-11-10: the screen starts every name at an answer).
+    const unknown = await call(
+      "bring_in_choices",
+      {
+        ...input,
+        csv_text:
+          "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Drama,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
+      },
+      { run: answering([ok(JSON.stringify(read))], []), choices }
+    );
+    expect(unknown.text).toContain('"Drama" (the screen starts it at "add")');
+    expect(unknown.text).toContain("at How often 0");
     expect(review.text).toContain('save: true and seen: "none"');
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
@@ -2693,6 +2775,37 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(unbuilt).toMatchObject({
       ok: false,
       text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
+    });
+    // A week with its Generated Schedule both drafted and published: the two are named apart,
+    // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).
+    const generated = {
+      [S.Week]: "w2",
+      [S.Origin]: "Generated",
+      [S.Program]: "p1"
+    };
+    const both = await call("bring_in_choices", input, {
+      run: answering(
+        [
+          ok(
+            JSON.stringify({
+              ...read,
+              setup: {
+                ...read.setup,
+                schedules: [
+                  { ...generated, Id: "g2", [S.Status]: "Draft" },
+                  { ...generated, Id: "g3", [S.Status]: "Published" }
+                ]
+              }
+            })
+          )
+        ],
+        []
+      ),
+      choices
+    });
+    expect(both).toMatchObject({
+      ok: false,
+      text: "Say which schedule (schedule). The schedules: Generated Schedule, Generated Schedule · Published."
     });
   });
 

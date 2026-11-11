@@ -230,14 +230,10 @@ export function answersToKeep(proposal, answers) {
  */
 function guessedRecords(proposal) {
   return [
-    // Who is a guess only when it names someone: "everyone" is every activity's starting point,
-    // not something read into the file (coordinator, UX pass 2026-11-10), so an import marks one
-    // field per activity, as the desktop's one dot per activity row.
     ...proposal.activities.map((a) => ({
       kind: "Activity",
       key: `A|${a.name}`,
-      fields:
-        a.who && a.who.keys && a.who.keys.length ? ["often", "who"] : ["often"]
+      fields: ["often", "who"]
     })),
     ...proposal.locations
       .filter((l) => l.isNew)

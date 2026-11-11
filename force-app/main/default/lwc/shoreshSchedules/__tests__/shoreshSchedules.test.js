@@ -190,6 +190,28 @@ describe("c-shoresh-schedules", () => {
     await expect(element).toBeAccessible();
   });
 
+  // UI pass item 23: Activity View with no activity placed printed a blank page.
+  it("Print is off in Activity View when no activity is placed, and on again in Daily", async () => {
+    getVersions.mockResolvedValue(VERSIONS);
+    openSchedule.mockImplementation(() => {
+      const view = opened();
+      return Promise.resolve({
+        ...view,
+        days: view.days.map((day) => ({
+          ...day,
+          rows: day.rows.map((row) => row.replace(/[^,]/g, ""))
+        }))
+      });
+    });
+    const element = await render();
+    q(element, '[data-view="activity"]').click();
+    await flush();
+    expect(q(element, '[data-id="print"]').disabled).toBe(true);
+    q(element, '[data-view="day"]').click();
+    await flush();
+    expect(q(element, '[data-id="print"]').disabled).toBe(false);
+  });
+
   it("never says nothing is saved or open while the newest version is loading", async () => {
     const list = later();
     const version = later();

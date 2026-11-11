@@ -227,7 +227,10 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     counterWord(element).click();
     await flush();
     expect(counterWord(element).getAttribute("aria-expanded")).toBe("true");
-    expect(activityRows(element)).toEqual(["Swim0of 1", "Soccer2of 4"]);
+    expect(activityRows(element)).toEqual([
+      "Swim1 short · 1 Bunk",
+      "Soccer2 short · 2 Bunks"
+    ]);
     expect(listLines(element)).toEqual([
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
       "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once"
@@ -393,13 +396,16 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(input, "Enter");
     await openCounter(element);
     // Once a week for each bunk: Bunk 2 has it, Bunk 1 not yet.
-    expect(activityRows(element)).toContain("Kayak1of 2");
+    expect(activityRows(element)).toContain("Kayak1 short · 1 Bunk");
   });
 
   it("an under or over row shows that activity, in Activity View", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
     await openCounter(element);
-    expect(activityRows(element)).toEqual(["Swim0of 1", "Soccer1of 4"]);
+    expect(activityRows(element)).toEqual([
+      "Swim1 short · 1 Bunk",
+      "Soccer3 short · 2 Bunks"
+    ]);
     activityRow(element, "Soccer").click();
     await flush();
     expect(
@@ -430,9 +436,30 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     expect(q(element, '[data-id="edit-grid"]').label).toBe("Bunk 1");
     // Group View: Monday's column, Period 2.
+    const grid = q(element, '[data-id="edit-grid"]');
+    const landed = grid.shadowRoot.activeElement;
+    expect(landed.dataset.cell).toBe("0-1");
+    // Ringed as keyboard focus is, so a click on the line shows where it landed too (UX pass
+    // 2026-11-10: a mouse click showed no ring), until focus moves on.
+    expect(landed.className).toContain("cell_located");
+    await press(landed, "ArrowDown");
     expect(
-      q(element, '[data-id="edit-grid"]').shadowRoot.activeElement.dataset.cell
-    ).toBe("0-1");
+      grid.shadowRoot.querySelector('[data-cell="0-1"]').className
+    ).not.toContain("cell_located");
+    // Located again, then another bunk: the same place on its grid is not ringed.
+    await openCounter(element);
+    lineButton(
+      element,
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
+    ).click();
+    await flush();
+    q(element, '[data-view="day"]').click();
+    await flush();
+    expect(
+      q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
+        ".cell_located"
+      )
+    ).toBeNull();
   });
 
   it("a screen reader hears, once, the line an edit brings and the one it takes away", async () => {

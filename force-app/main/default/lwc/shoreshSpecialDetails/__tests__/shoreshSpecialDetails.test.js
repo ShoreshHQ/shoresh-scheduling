@@ -53,7 +53,7 @@ const SETUP = {
           {
             name: "Lunch",
             startTime: "11:30",
-            endTime: "12:20",
+            endTime: "13:05",
             items: ["Lunch", "Rest"]
           }
         ],
@@ -200,7 +200,8 @@ describe("c-shoresh-special-details", () => {
     ].map((p) => p.textContent.replace(/\s+/g, " ").trim());
     expect(periods).toEqual([
       "9:00–9:45Opening",
-      "11:30–12:20LunchLunch, Rest"
+      // As the grid's time column says it: 1:05, never 13:05 (UX pass 2026-11-10).
+      "11:30–1:05LunchLunch, Rest"
     ]);
     expect(element.shadowRoot.querySelector(".periods-title").textContent).toBe(
       "Periods"

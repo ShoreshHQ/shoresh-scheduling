@@ -2,5 +2,5 @@
 <StaticResource xmlns="http://soap.sforce.com/2006/04/metadata">
     <cacheControl>Private</cacheControl>
     <contentType>application/zip</contentType>
-    <description>Shoresh's connector for AI apps and the command line (connect/ in the repo, copied by scripts/build-connect.js). A person's AI downloads it with their own Salesforce sign-in. Version 1.0.145.</description>
+    <description>Shoresh's connector for AI apps and the command line (connect/ in the repo, copied by scripts/build-connect.js). A person's AI downloads it with their own Salesforce sign-in. Version 1.0.151.</description>
 </StaticResource>

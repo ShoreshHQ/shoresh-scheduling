@@ -1883,6 +1883,10 @@ describe("c-shoresh-camp-setup", () => {
       q(element, '[data-id="edit-season"]').click();
       await flush();
       const choice = q(element, '[data-id="day-naming"]');
+      // One under the other, never buttons side by side: those were cut off in the narrow
+      // column (UX pass 2026-11-10).
+      expect(choice.type).not.toBe("button");
+      expect(q(element, '[data-id="short-week"]').type).not.toBe("button");
       expect(choice.options.map((o) => o.label)).toEqual([
         "Mon Tue Wed",
         "Day 1 Day 2 Day 3"
@@ -4894,6 +4898,55 @@ describe("c-shoresh-camp-setup", () => {
       expect(details.shadowRoot.activeElement).toBe(
         details.shadowRoot.querySelector('[data-id="open-schedule"]')
       );
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    });
+
+    // UX pass 2026-11-10: Relay race typed into Field day, then Manual Build chosen in the menu,
+    // showed Field day's Thursday without it until the page was reloaded.
+    it("a schedule saved, then left through the menu, reads the season again for the days it replaces", async () => {
+      const element = await renderSpecial();
+      openPlan.mockResolvedValue({
+        itemId: "se1",
+        kind: "SpecialEvent",
+        name: "Carnival",
+        revision: null,
+        schedule: {
+          schedule: { id: "se1", name: "Carnival" },
+          days: [
+            {
+              dateValue: "2000-01-03",
+              blocks: [],
+              groups: [],
+              items: [],
+              rows: [],
+              locks: []
+            }
+          ]
+        },
+        activities: []
+      });
+      list(element, "events")
+        .shadowRoot.querySelector('[data-id="details"][data-row-key="row-se1"]')
+        .click();
+      await flush();
+      q(element, "c-shoresh-special-details")
+        .shadowRoot.querySelector('[data-id="open-schedule"]')
+        .click();
+      await flush();
+      const reads = getSeasonSetup.mock.calls.length;
+      q(element, "c-shoresh-special-schedule").dispatchEvent(
+        new CustomEvent("changed")
+      );
+      q(element, "c-shoresh-menu").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "groups" } })
+      );
+      await flush();
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+      // Read once: another screen chosen after that reads nothing more.
+      q(element, "c-shoresh-menu").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "weeks" } })
+      );
+      await flush();
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
     });
 

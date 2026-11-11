@@ -249,6 +249,7 @@ private class ChoicesImportTest {
     }
   }
 
+  // ELECT-2.3
   @IsTest
   static void anAddedNameBecomesAnActivityOfferedAsProposed() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -275,10 +276,13 @@ private class ChoicesImportTest {
 
       Assert.areEqual(1, done.activitiesAdded);
       Activity__c added = [
-        SELECT Id
+        SELECT Id, TimesPerWeekMin__c, TimesPerWeekMax__c
         FROM Activity__c
         WHERE Season__c = :camp.season.Id AND Name = 'Photo club'
       ];
+      // How often 0: the generator never puts an elective's new offering in regular weeks.
+      Assert.areEqual(0, added.TimesPerWeekMin__c);
+      Assert.areEqual(0, added.TimesPerWeekMax__c);
       Offering__c offering = [
         SELECT Proposed__c
         FROM Offering__c
