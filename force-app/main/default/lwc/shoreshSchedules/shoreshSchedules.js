@@ -577,7 +577,21 @@ export default class ShoreshSchedules extends LightningElement {
     return this.cannotGetOut || this.exporting;
   }
   get cannotPrint() {
-    return this.cannotGetOut || !!this.printout;
+    return this.cannotGetOut || this.nothingToPrint || !!this.printout;
+  }
+  /**
+   * Activity View with no activity placed has no page to print: Print is off rather than giving a
+   * blank sheet (UI pass item 23). Daily and Group always print their days and groups.
+   */
+  get nothingToPrint() {
+    return (
+      this.view === "activity" &&
+      !!this.opened &&
+      printPages(this.shown, this.view, this.catalogue, this.t).length === 0
+    );
+  }
+  get printOff() {
+    return this.cannotGetOut || this.nothingToPrint;
   }
   /** The version on screen as an Excel file: a sheet per day, then every group's and activity's week. */
   async handleExport() {

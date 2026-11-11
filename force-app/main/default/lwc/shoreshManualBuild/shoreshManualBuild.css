@@ -27,7 +27,12 @@
 .start {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: 60px 16px;
+  /* Room under the buttons for Start from another week's menu: the zone around it scrolls
+     sideways, so a menu taller than the zone was cut off after its first row (UX pass). */
+  min-height: 60vh;
+  box-sizing: border-box;
 }
 
 /* After Start a blank week: what could not be placed, with the "needs a look" dot. */

@@ -230,10 +230,11 @@
                       </div>
                     </template>
                   </div>
+                  <!-- Plain radios, one under the other: as buttons side by side, these choices
+                       were cut off in the narrow column (UX pass 2026-11-10). -->
                   <div class="season-field">
                     <lightning-radio-group
                       data-id="short-week"
-                      type="button"
                       label={shortWeekLabel}
                       options={shortWeekOptions}
                       value={shortWeek}
@@ -252,7 +253,6 @@
                   <div class="season-field">
                     <lightning-radio-group
                       data-id="day-naming"
-                      type="button"
                       label="Days"
                       options={dayNamingOptions}
                       value={dayNaming}
