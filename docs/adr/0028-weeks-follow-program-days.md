@@ -21,6 +21,11 @@ nothing said why. The desktop has no dated weeks to compare with.
 4. **No week made or dropped by itself:** when the new days would give the season a different
    number of weeks, nothing changes and the line says why ("would have 3, not 2: change them on
    Weeks").
-5. **Schedules:** a week's drafts keep their cells; its next build uses its new days. A published
-   week is never republished by this, and shows as changed by the setup-changed mark it already
-   has.
+5. **Schedules:** a week's drafts keep their cells; their next build, or Update to match setup,
+   uses the new days (the draft shows the setup-changed mark when opened). A week whose schedules
+   hold a day it would lose stays as it is, and the line says which week: those days would leave
+   its schedule unable to be published or restored. A published copy is never republished by
+   this; its "changed since" corner compares the draft with it, so moving dates alone does not
+   mark it.
+6. **An AI** changing a program's days (change_setup_record) gets the same: the weeks follow, and
+   its answer says what moved.

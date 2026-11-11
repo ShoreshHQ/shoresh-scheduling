@@ -195,9 +195,45 @@ public with sharing class SeasonWeeks {
     if (changed.isEmpty()) {
       return result;
     }
+    // A week that would lose a day its schedules hold stays as it is: those days would no longer
+    // be in it, and its schedule could no longer be published or restored.
+    String held = dayHeld(result.moved);
+    if (held != null) {
+      result.moved = new List<Moved>();
+      result.said =
+        'The ' +
+        labels.pluralInSentence('Week') +
+        ' were left as they are: ' +
+        held +
+        ' has a schedule on a day it would no longer have. Change them on ' +
+        labels.plural('Week') +
+        '.';
+      return result;
+    }
     Database.update(changed, AccessLevel.USER_MODE);
     result.said = saidOf(result.moved, season, labels);
     return result;
+  }
+
+  /** The first week moved whose schedules hold a day outside its new dates, by name; or null. */
+  private static String dayHeld(List<Moved> moved) {
+    Map<Id, Moved> byWeek = new Map<Id, Moved>();
+    for (Moved week : moved) {
+      byWeek.put(week.weekId, week);
+    }
+    for (ScheduleDay__c day : [
+      SELECT Date__c, Schedule__r.Week__c
+      FROM ScheduleDay__c
+      WHERE Schedule__r.Week__c IN :byWeek.keySet()
+      WITH USER_MODE
+      ORDER BY Date__c
+    ]) {
+      Moved week = byWeek.get(day.Schedule__r.Week__c);
+      if (day.Date__c < week.startDate || day.Date__c > week.endDate) {
+        return week.name;
+      }
+    }
+    return null;
   }
 
   /** Undo of followProgramDays: each week back on the dates it had. */
@@ -226,19 +262,29 @@ public with sharing class SeasonWeeks {
       names.add(week.name);
     }
     Moved last = moved[moved.size() - 1];
+    // The days of a whole week: the longest one moved (a first or last week may be short).
+    Moved whole = moved[0];
+    for (Moved week : moved) {
+      if (
+        week.startDate.daysBetween(week.endDate) >
+        whole.startDate.daysBetween(whole.endDate)
+      ) {
+        whole = week;
+      }
+    }
     String said =
       String.join(names, names.size() == 2 ? ' and ' : ', ') +
       ' now ' +
       (moved.size() == 1 ? 'runs' : 'run') +
       ' ' +
-      WeekCalendar.weekdayName(moved[0].startDate) +
+      WeekCalendar.weekdayName(whole.startDate) +
       ' to ' +
-      WeekCalendar.weekdayName(moved[0].endDate) +
+      WeekCalendar.weekdayName(whole.endDate) +
       '.';
     if (
       last.endDate == season.EndDate__c &&
-      last.endDate.daysBetween(last.startDate) !=
-      moved[0].endDate.daysBetween(moved[0].startDate)
+      last.startDate.daysBetween(last.endDate) <
+      whole.startDate.daysBetween(whole.endDate)
     ) {
       said +=
         ' ' +

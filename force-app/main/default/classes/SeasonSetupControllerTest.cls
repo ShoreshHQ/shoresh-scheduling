@@ -132,6 +132,53 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // WEEK-2.7
+  @IsTest
+  static void aWeekWhoseScheduleHoldsADayItWouldLoseIsLeftAsItIs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      // Main runs Monday to Thursday; Week 1's Manual Build holds those days.
+      Map<String, Id> ids = SetTimeTestData.camp();
+      ManualBuildController.startBlankWeek(ids.get('Main'), ids.get('Week 1'));
+      Date endBefore = [
+        SELECT EndDate__c
+        FROM Week__c
+        WHERE Id = :ids.get('Week 1')
+        WITH USER_MODE
+      ]
+      .EndDate__c;
+      SetTimeGuard.defer();
+      try {
+        update new Program__c(Id = ids.get('Main'), Thursday__c = false);
+      } finally {
+        SetTimeGuard.resume();
+      }
+
+      Test.startTest();
+      SeasonWeeks.Followed followed = SeasonSetupController.followProgramDays(
+        ids.get('Season')
+      );
+      Test.stopTest();
+
+      Assert.isTrue(
+        followed.said.contains(
+          'has a schedule on a day it would no longer have'
+        ),
+        followed.said
+      );
+      Assert.isTrue(followed.moved.isEmpty());
+      Assert.areEqual(
+        endBefore,
+        [
+          SELECT EndDate__c
+          FROM Week__c
+          WHERE Id = :ids.get('Week 1')
+          WITH USER_MODE
+        ]
+        .EndDate__c
+      );
+    }
+  }
+
   private static List<Week__c> weeksOf(Id seasonId) {
     return [
       SELECT StartDate__c, EndDate__c

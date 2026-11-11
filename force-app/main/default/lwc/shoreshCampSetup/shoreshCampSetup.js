@@ -2831,11 +2831,20 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!isProgram || !days.some((field) => field in record)) {
       return;
     }
-    const followed = await followProgramDays({ seasonId: this.seasonId });
-    this.weeksFollowed =
-      followed && followed.said
-        ? { said: followed.said, moved: followed.moved || [] }
-        : null;
+    // The program is saved by now: trouble here is said on its own, and the season still reads.
+    try {
+      const followed = await followProgramDays({ seasonId: this.seasonId });
+      this.weeksFollowed =
+        followed && followed.said
+          ? { said: followed.said, moved: followed.moved || [] }
+          : null;
+    } catch (e) {
+      this.weeksFollowed = null;
+      this.showError(
+        e,
+        `The ${this.terms.pIn("Week")} didn't follow the new days.`
+      );
+    }
   }
 
   get weeksFollowedCanUndo() {
