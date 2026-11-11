@@ -109,7 +109,11 @@ export default class ShoreshNamePick extends LightningElement {
       : null;
   }
 
-  handleFocus() {
+  handleFocus(event) {
+    // What it holds is selected, so typing replaces it rather than adding to it.
+    if (event && event.target && typeof event.target.select === "function") {
+      event.target.select();
+    }
     if (!this.disabled) {
       this.open = true;
       this.highlighted = this.choices.findIndex((l) => l.value === this._value);
