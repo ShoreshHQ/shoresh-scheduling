@@ -479,8 +479,40 @@ export function electiveRecords(electives, ctx) {
     .map(({ name, cells }) => choiceActivity(name, cells, ctx));
   for (const set of electives.sets) {
     deleted.push(...linkSet(set, ctx));
+    set.time = set.isNew ? setTime(set, ctx.timetables) : null;
   }
   return { activities, deleted };
+}
+
+/**
+ * A new set's time, as the file shows it (repo ADR 0027; ELECT-7.2): the days it is on, when every
+ * cell of it is one time block, the same one, on days of the week ("Tuesday, Period 6"); else
+ * none, and the set is placed by hand as before. { days: ["Tuesday"], blockKey } or null.
+ */
+function setTime(set, timetables) {
+  const blocks = new Set();
+  const days = new Set();
+  for (const cell of set.cells) {
+    const t = timetables[cell.timetable];
+    // A double period (a linked choice's) is more than one block: placed by hand, as before.
+    if (
+      !t ||
+      cell.blockIndex === undefined ||
+      (cell.span || 1) !== 1 ||
+      !WEEKDAYS.includes(cell.day)
+    ) {
+      return null;
+    }
+    blocks.add(blockKeyOf(t, cell.blockIndex));
+    days.add(cell.day);
+  }
+  if (blocks.size !== 1 || days.size === 0) {
+    return null;
+  }
+  return {
+    days: WEEKDAYS.filter((d) => days.has(d)),
+    blockKey: [...blocks][0]
+  };
 }
 
 /**

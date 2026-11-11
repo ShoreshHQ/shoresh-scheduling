@@ -55,7 +55,7 @@ describe("a short week's minimums (WEEK-4.2)", () => {
     const kept = checkGeneratedWeek(holidayWeek(FIVE_DAY_CAMP));
     const keptMeasure = measureWeek(kept.checked, swim, kept.days);
     expect(keptMeasure.under.rows).toEqual([
-      { id: "swim", name: "Swim", placed: 1, goal: 2 }
+      { id: "swim", name: "Swim", placed: 1, goal: 2, groups: 1 }
     ]);
     expect(keptMeasure.priorities).toEqual([
       { priority: "low", met: 0, total: 1 }

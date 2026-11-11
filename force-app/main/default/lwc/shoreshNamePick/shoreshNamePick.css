@@ -1,0 +1,35 @@
+@import "c/shoreshTokens";
+
+/* A picklist you type into (as the grid's typing box): the names that match, under the field. */
+.pick {
+  position: relative;
+}
+
+.options {
+  position: absolute;
+  z-index: 9000;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--shoresh-edge);
+  border-radius: var(--shoresh-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.option {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option_on {
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+}

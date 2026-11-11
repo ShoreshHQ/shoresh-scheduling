@@ -38,7 +38,9 @@ const NOT_RESTRICT = new Set([
   "Offering__c.CopiedFrom__c",
   "LinkedChoice__c.CopiedFrom__c",
   "ElectiveRun__c.NewVersionOf__c",
-  "ElectiveRun__c.FinalizedBy__c"
+  "ElectiveRun__c.FinalizedBy__c",
+  // Deleting a time block leaves the set with no time (repo ADR 0027 choice 5).
+  "ElectiveSet__c.TimeBlock__c"
 ]);
 
 function tag(xml, name) {

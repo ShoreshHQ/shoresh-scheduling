@@ -272,8 +272,9 @@ private class RootsTableTest {
       Integer queries = Limits.getQueries() - before;
       Test.stopTest();
 
-      // Eight queries whatever the size of the camp: well under 100.
-      Assert.isTrue(queries <= 8, 'Roots read with ' + queries + ' queries');
+      // Nine queries whatever the size of the camp: well under 100.
+      // 9: one more since what last year's schedule named is read (RootsNoted, ADR 0027).
+      Assert.isTrue(queries <= 9, 'Roots read with ' + queries + ' queries');
       // Outside the season: no week is this week; the cards show the first week with a draft.
       Assert.isNull(table.thisWeekId);
       Assert.areEqual(camp.ids.get('Week 2'), table.shownWeekId);
@@ -356,7 +357,8 @@ private class RootsTableTest {
       Integer before = Limits.getQueries();
       RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
       Integer queries = Limits.getQueries() - before;
-      Assert.isTrue(queries <= 8, 'Roots read with ' + queries + ' queries');
+      // 9: one more since what last year's schedule named is read (RootsNoted, ADR 0027).
+      Assert.isTrue(queries <= 9, 'Roots read with ' + queries + ' queries');
       Assert.areEqual(camp.runId, table.seatsRunId);
       Assert.areEqual(generatedId, table.seatsScheduleId);
       Assert.areEqual(setId, table.seatsSetId);

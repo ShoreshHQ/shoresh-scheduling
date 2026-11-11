@@ -230,10 +230,14 @@ export function answersToKeep(proposal, answers) {
  */
 function guessedRecords(proposal) {
   return [
+    // Who is a guess only when it names someone: "everyone" is every activity's starting point,
+    // not something read into the file (coordinator, UX pass 2026-11-10), so an import marks one
+    // field per activity, as the desktop's one dot per activity row.
     ...proposal.activities.map((a) => ({
       kind: "Activity",
       key: `A|${a.name}`,
-      fields: ["often", "who"]
+      fields:
+        a.who && a.who.keys && a.who.keys.length ? ["often", "who"] : ["often"]
     })),
     ...proposal.locations
       .filter((l) => l.isNew)
@@ -261,9 +265,15 @@ function linkedChoices(proposal) {
 function electiveLists(proposal) {
   const sets = proposal.electives.sets;
   return {
+    // A new set with its time, when the file shows one (ADR 0027): its days and time block.
     electiveSets: sets
       .filter((x) => x.isNew)
-      .map((x) => ({ key: x.key, id: null, name: x.name })),
+      .map((x) => ({
+        key: x.key,
+        id: null,
+        name: x.name,
+        ...(x.time ? { days: x.time.days, blockKey: x.time.blockKey } : {})
+      })),
     offerings: sets.flatMap((x) =>
       x.offerings.map((o) => ({
         key: o.key,

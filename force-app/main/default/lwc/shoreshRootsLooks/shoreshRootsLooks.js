@@ -537,6 +537,27 @@ function eventCards(setup, t) {
     });
 }
 
+/**
+ * What last year's schedule named and the season hasn't set up (repo ADR 0027; SPECIAL-1.4):
+ * one card each, "Field day, not set up yet". Opening it sets it up by name, on no day yet, and
+ * opens it on Special events, where it is put on a day.
+ */
+function notedCards(table, t) {
+  return (table.noted || []).map((noted) => {
+    const kind = noted.kind === "D" ? t.s("SpecialDay") : t.s("SpecialEvent");
+    return {
+      id: `noted|${noted.kind}|${noted.name}`,
+      screen: "specialEvents",
+      name: noted.name,
+      small: kind.toUpperCase(),
+      off: "not set up yet",
+      label: `${noted.name} isn't set up yet. Set it up.`,
+      picture: emptyEvent(),
+      nav: { setUpNoted: { kind: noted.kind, name: noted.name } }
+    };
+  });
+}
+
 function seatCards(table, t, labels) {
   const short = table.shortSeats || [];
   if (!short.length) {
@@ -617,6 +638,7 @@ export function looksOf({ problems, setup, table, terms, openable }) {
   if (table) {
     cards.push(...weekCards(setup, table));
     cards.push(...seatCards(table, terms, labels));
+    cards.push(...notedCards(table, terms));
   }
   cards.push(...placeCard(setup, terms));
   cards.push(...eventCards(setup, terms));

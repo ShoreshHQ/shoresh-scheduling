@@ -377,7 +377,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     `GroupsScreen.jsx` DivisionProvenanceDot, ADR 2026-08-09 activity-rule hand-edit
     provenance). Until now what the import worked out was shown only in the review (item 10).
     - **What counts as guessed** is what the desktop marks "inferred": a new activity's times a
-      week and who can do it; a new place's groups that fit ("Shoresh set a few capacities from
+      week and who can do it (who only when it names divisions or groups: "everyone" is every
+      activity's starting point, not read into the file, so it carries no mark; coordinator,
+      UX pass 2026-11-10, after one import left two corners on every activity); a new place's groups that fit ("Shoresh set a few capacities from
       your old schedule"); and a new group's division when only its file's name gave it (item
       15: a file-name hint matching a division the camp has or a page states, left as
       preselected). The desktop's "observed" values are read outright and carry no mark: an

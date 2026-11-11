@@ -69,9 +69,16 @@ ul {
   background: var(--shoresh-color-highlight);
 }
 
+/* An under or over row's activity wraps rather than ending in "…": its unit ("5 groups over")
+   is longer than "5 of 4" was, and the name is what the director reads first. */
 .name {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.line .shoresh-pop-end {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .mark {

@@ -279,7 +279,7 @@ function bringInChoicesFile() {
       schedule: {
         type: "string",
         description:
-          "Generated Schedule or Manual Build (with its program first when the camp has several, like Main · Manual Build). Leave it out when the week has one."
+          'Generated Schedule or Manual Build, with " · Published" after the one published (Generated Schedule · Published), and its program first when the camp has several (Main · Manual Build). Leave it out when the week has one.'
       }
     },
     ["elective_set", "week"]

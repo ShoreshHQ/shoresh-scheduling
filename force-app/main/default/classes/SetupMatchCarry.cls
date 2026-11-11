@@ -13,6 +13,10 @@ public with sharing class SetupMatchCarry {
   // Why each cell of a placement left out can't go.
   public Map<String, String> whyByCell = new Map<String, String>();
 
+  private static final String AT_ITS_TIME = 'Now at its set time';
+  // The elective sets the day now has at their time, each with a group it is there for
+  // ("setId|groupId"): a group the set's time left out (taken, or not at camp) keeps its own.
+  private Set<String> timedSets = new Set<String>();
   private SetupMatchRules rules;
   private SetupMatchNames names;
   private ScheduleGrid target;
@@ -26,6 +30,12 @@ public with sharing class SetupMatchCarry {
     this.names = names;
     this.target = target;
     cells = new Map<String, String>(new SetupMatchCells(target).held);
+    for (String cell : cells.keySet()) {
+      Id setId = SlotIds.electiveIn(SlotIds.owner(cells.get(cell)));
+      if (setId != null) {
+        timedSets.add(setId + '|' + SetupMatchCells.groupOf(cell));
+      }
+    }
   }
 
   /**
@@ -43,6 +53,10 @@ public with sharing class SetupMatchCarry {
         explainSetTime(placement);
         continue;
       }
+      if (atItsTime(owner, first)) {
+        leaveOut(placement, AT_ITS_TIME);
+        continue;
+      }
       String why = whyNot(owner, placement);
       for (String cell : placement) {
         if (why == null) {
@@ -52,6 +66,23 @@ public with sharing class SetupMatchCarry {
         }
       }
     }
+  }
+
+  private void leaveOut(List<String> placement, String why) {
+    for (String cell : placement) {
+      whyByCell.put(cell, why);
+    }
+  }
+
+  /**
+   * An elective set that now has a time is at it in the day now (BlankDay.placeSet): a placement
+   * of it elsewhere for the same group isn't carried as well, so the set is never there twice for
+   * a group that day (repo ADR 0027).
+   */
+  private Boolean atItsTime(String owner, String first) {
+    Id setId = SlotIds.electiveIn(SlotIds.owner(owner));
+    return setId != null &&
+      timedSets.contains(setId + '|' + SetupMatchCells.groupOf(first));
   }
 
   /** A set-time item's placement: why, when its group or time blocks changed. */

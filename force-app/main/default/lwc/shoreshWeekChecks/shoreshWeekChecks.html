@@ -23,9 +23,11 @@
       <div class="bar" aria-hidden="true" data-id="bar">
         <span class="bar-fill" style={barStyle}></span>
       </div>
-      <p class="shoresh-pop-row" data-id="still-needed">
-        <b>{stillNeeded}</b><span>still needed</span>
-      </p>
+      <template lwc:if={showStillNeeded}>
+        <p class="shoresh-pop-row" data-id="still-needed">
+          <b>{stillNeeded}</b><span>still needed</span>
+        </p>
+      </template>
       <template for:each={priorityRows} for:item="row">
         <p key={row.key} class="shoresh-pop-row" data-id={row.key}>
           <span>{row.label}</span
@@ -94,9 +96,7 @@
                   onclick={handleActivity}
                 >
                   <span class="name">{row.name}</span>
-                  <span class="shoresh-pop-end"
-                    ><b>{row.placed}</b><span>of {row.goal}</span></span
-                  >
+                  <span class="shoresh-pop-end"><span>{row.unit}</span></span>
                 </button>
                 <button
                   type="button"
@@ -137,7 +137,7 @@
                       class="shoresh-look-mark mark"
                       aria-hidden="true"
                     ></span
-                    ><b>{row.placed}</b><span>of {row.goal}</span></span
+                    ><span>{row.unit}</span></span
                   >
                 </button>
                 <button

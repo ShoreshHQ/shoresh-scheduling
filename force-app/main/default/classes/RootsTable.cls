@@ -55,6 +55,9 @@ public with sharing class RootsTable {
     public Id seatsRunId;
     @AuraEnabled
     public Version latestVersion;
+    /** What last year's schedule named and the season hasn't set up yet (RootsNoted, read by RootsController). */
+    @AuraEnabled
+    public List<RootsNoted.Noted> noted = new List<RootsNoted.Noted>();
   }
 
   /** The first day of a draft, its first groups across and its time blocks down. */

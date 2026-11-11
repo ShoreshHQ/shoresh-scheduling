@@ -5,6 +5,7 @@ import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
+import { shortClock } from "c/shoreshScheduleViews";
 
 export { seededLines } from "c/shoreshLists";
 
@@ -112,11 +113,6 @@ export function scheduleText(brief, isEvent, t) {
   }
   const n = brief.periods.length;
   return `${n} ${n === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
-}
-
-/** "09:00" -> "9:00". */
-function clock(value) {
-  return (value || "").replace(/^0(\d)/, "$1");
 }
 
 /**
@@ -337,7 +333,8 @@ export default class ShoreshSpecialDetails extends LightningElement {
   get periods() {
     return (this.brief.periods || []).map((period, index) => ({
       key: `period-${index}`,
-      when: `${clock(period.startTime)}–${clock(period.endTime)}`,
+      // As the grid's time column says them: 1:05, never 13:05 beside a grid that says 1:05.
+      when: `${shortClock(period.startTime)}–${shortClock(period.endTime)}`,
       name: period.name,
       items: (period.items || []).join(", "),
       hasItems: (period.items || []).length > 0
