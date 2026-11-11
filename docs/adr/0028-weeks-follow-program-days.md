@@ -17,7 +17,7 @@ nothing said why. The desktop has no dated weeks to compare with.
    same save as changing a week's dates on Weeks (WEEK-2.7).
 2. **Said, with Undo:** Programs shows "Week 1 and Week 2 now run Monday to Saturday." and Undo
    puts every week back on the dates it had. Nothing is said when no week moved.
-3. **Never past the season:** a week stops at the season's last day, and the line says so.
+3. **Never past the season:** a week stops at the season's last day, and the line says so, for the season's last week even when it didn't move ("Week 2 stops at the season's last day.").
 4. **No week made or dropped by itself:** when the new days would give the season a different
    number of weeks, nothing changes and the line says why ("would have 3, not 2: change them on
    Weeks").
