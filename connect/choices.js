@@ -37,9 +37,11 @@ function schedulesOf(setup, weekId, m) {
     .map((s) => ({
       id: s.Id,
       programId: s[S.Program],
+      // "· Published" as the screen's list says it, so a draft and the week's published
+      // schedule never share one name (c/shoreshElectiveEngine scheduleOptions).
       name: `${many ? `${programs.get(s[S.Program])} · ` : ""}${
         s[S.Origin] === "Generated" ? "Generated Schedule" : "Manual Build"
-      }`
+      }${s[S.Status] === "Published" ? " · Published" : ""}`
     }));
 }
 
