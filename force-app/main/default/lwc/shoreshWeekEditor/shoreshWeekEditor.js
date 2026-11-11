@@ -2927,6 +2927,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   letGoOfCells() {
     this.chosen = null;
     this.focusKey = null;
+    // Another view, day or bunk: the same key would ring another cell.
+    this.locatedKey = null;
   }
 
   /**

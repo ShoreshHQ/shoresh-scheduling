@@ -440,6 +440,20 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(
       grid.shadowRoot.querySelector('[data-cell="0-1"]').className
     ).not.toContain("cell_located");
+    // Located again, then another bunk: the same place on its grid is not ringed.
+    await openCounter(element);
+    lineButton(
+      element,
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
+    ).click();
+    await flush();
+    q(element, '[data-view="day"]').click();
+    await flush();
+    expect(
+      q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
+        ".cell_located"
+      )
+    ).toBeNull();
   });
 
   it("a screen reader hears, once, the line an edit brings and the one it takes away", async () => {
