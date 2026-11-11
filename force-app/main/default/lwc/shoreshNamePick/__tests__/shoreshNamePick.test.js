@@ -99,6 +99,15 @@ describe("c-shoresh-name-pick", () => {
     expect(input(element).value).toBe("Swim");
   });
 
+  it("a name there already, though not listed here (offered elsewhere), is never added again", async () => {
+    const element = await render({
+      options: OPTIONS.slice(1),
+      taken: ["Archery", "Art", "Swim"]
+    });
+    await type(element, "archery");
+    expect(lines(element)).toEqual([]);
+  });
+
   it("without addTo nothing new is offered", async () => {
     const element = await render({ addTo: undefined });
     await type(element, "Drama");

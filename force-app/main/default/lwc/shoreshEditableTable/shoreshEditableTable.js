@@ -1246,6 +1246,7 @@ export default class ShoreshEditableTable extends LightningElement {
         // A picklist a new name can be added to (col.addName: c/shoreshNamePick).
         isNamePick: col.type === "picklist" && !!col.addName,
         addTo: col.addName ? col.addName.to : undefined,
+        taken: col.addName ? col.options.map((o) => o.label) : undefined,
         isPicklist: col.type === "picklist" && !col.addName,
         isWho: col.type === "who",
         whoSummary:
@@ -1737,6 +1738,11 @@ export default class ShoreshEditableTable extends LightningElement {
     this.setValue(draft, field, id);
     draft.dirty = true;
     this.touch(draft);
+    // A saved row is saved now, as a week's tick is: the row may have been left while the
+    // activity was being made, and its own save would then have gone without it.
+    if (!draft.isNew) {
+      this.commit(draft.key, false);
+    }
   }
 
   setValue(draft, field, value) {
@@ -1774,7 +1780,9 @@ export default class ShoreshEditableTable extends LightningElement {
     } else if (
       event.key === "Escape" &&
       key !== ADD &&
-      ["LIGHTNING-INPUT", "LIGHTNING-COMBOBOX"].includes(from) &&
+      ["LIGHTNING-INPUT", "LIGHTNING-COMBOBOX", "C-SHORESH-NAME-PICK"].includes(
+        from
+      ) &&
       !event.defaultPrevented &&
       // Escape in a date or time field closes its picker; it doesn't undo the row.
       !["date", "time"].includes(event.target.type)

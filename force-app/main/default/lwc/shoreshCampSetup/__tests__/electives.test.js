@@ -486,6 +486,40 @@ describe("c-shoresh-camp-setup: Electives", () => {
     );
   });
 
+  it("a saved offering given a new name is saved with it at once, even if its row was left meanwhile", async () => {
+    const element = await render();
+    const chugim = section(element, "es1");
+    const saved = chugim.shadowRoot.querySelector(
+      'c-shoresh-name-pick[data-row-key="row-o1"]'
+    );
+    saveRecords.mockResolvedValue(["a10"]);
+    saveRow.mockResolvedValue(nsRecord({ id: "o1", changed: [] }));
+    // The season read again has the new activity, as the server's would.
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({ activities: [...ACTIVITIES, { Id: "a10", Name: "Drama" }] })
+      )
+    );
+    // Salesforce's own inputs are stand-ins here: the row's are valid.
+    chugim.shadowRoot
+      .querySelectorAll('[data-row-key="row-o1"]')
+      .forEach((input) => {
+        input.reportValidity = () => true;
+        input.checkValidity = () => true;
+      });
+    saved.dispatchEvent(
+      new CustomEvent("addname", { detail: { name: "Drama" } })
+    );
+    await flush();
+    await flush();
+    await flush();
+    expect(saveRow).toHaveBeenCalled();
+    expect(bareRecord(saveRow.mock.calls[0][0].record)).toMatchObject({
+      Id: "o1",
+      Activity__c: "a10"
+    });
+  });
+
   it("an offering's row is saved as every setup row is, and the screen says Saved", async () => {
     const element = await render();
     saveRow.mockResolvedValue(nsRecord({ id: "o10", changed: [] }));

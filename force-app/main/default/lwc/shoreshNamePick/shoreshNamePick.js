@@ -15,13 +15,15 @@ const fold = (text) =>
  * offering's picklist picked Art).
  *
  * options: [{ label, value }]. value: the one picked. addTo: the words after "to" ("activities");
- * left out, nothing new can be added. Says "change" { value } for an option, "addname" { name }
- * for Add.
+ * left out, nothing new can be added. taken: every name there already is, offered here or not, so
+ * one already offered elsewhere ("Archery" in this set) is never added a second time. Says
+ * "change" { value } for an option, "addname" { name } for Add.
  */
 export default class ShoreshNamePick extends LightningElement {
   @api label;
   @api options = [];
   @api addTo;
+  @api taken = [];
   @api placeholder;
   @api disabled = false;
   @api required = false;
@@ -67,7 +69,8 @@ export default class ShoreshNamePick extends LightningElement {
       label: o.label,
       value: o.value
     }));
-    if (this.addTo && typed && !all.some((o) => fold(o.label) === want)) {
+    const there = [...all.map((o) => o.label), ...(this.taken || [])];
+    if (this.addTo && typed && !there.some((name) => fold(name) === want)) {
       lines.push({
         kind: "add",
         label: `Add "${typed}" to ${this.addTo}`,
