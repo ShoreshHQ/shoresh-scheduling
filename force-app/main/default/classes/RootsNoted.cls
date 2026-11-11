@@ -34,10 +34,11 @@ public with sharing class RootsNoted {
     if (versions.isEmpty()) {
       return result;
     }
-    Set<String> known = knownNames(seasonId);
     Map<Id, List<ScheduleDays.DayGrid>> days = ScheduleDays.read(
       versions.keySet()
     );
+    // The season's own names, read only when the versions name something (two queries).
+    Set<String> known = null;
     for (Id versionId : versions.keySet()) {
       for (ScheduleDays.DayGrid day : days.get(versionId)) {
         if (day.grid == null) {
@@ -46,11 +47,16 @@ public with sharing class RootsNoted {
         for (ScheduleGrid.Item item : day.grid.items) {
           String loose = NotedItems.loose(item.name);
           if (
-            KINDS.contains(item.kind) &&
-            String.isBlank(item.id) &&
-            String.isNotBlank(loose) &&
-            known.add(loose)
+            !KINDS.contains(item.kind) ||
+            String.isNotBlank(item.id) ||
+            String.isBlank(loose)
           ) {
+            continue;
+          }
+          if (known == null) {
+            known = knownNames(seasonId);
+          }
+          if (known.add(loose)) {
             Noted noted = new Noted();
             noted.kind = item.kind;
             noted.name = item.name.trim();

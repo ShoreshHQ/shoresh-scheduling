@@ -184,6 +184,13 @@ public with sharing class BlankWeek {
 
   /** The program's elective sets with a time, in name order, so the same setup gives the same week. */
   private static List<ElectiveSet__c> setTimesOf(Id programId) {
+    // Someone who can't read elective sets' times starts the week without them, as before.
+    if (
+      !Schema.sObjectType.ElectiveSet__c.isAccessible() ||
+      !Schema.sObjectType.ElectiveSet__c.fields.TimeBlock__c.isAccessible()
+    ) {
+      return new List<ElectiveSet__c>();
+    }
     return [
       SELECT
         Id,

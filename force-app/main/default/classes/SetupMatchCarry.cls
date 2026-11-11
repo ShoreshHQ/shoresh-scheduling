@@ -13,6 +13,9 @@ public with sharing class SetupMatchCarry {
   // Why each cell of a placement left out can't go.
   public Map<String, String> whyByCell = new Map<String, String>();
 
+  private static final String AT_ITS_TIME = 'Now at its set time';
+  // The elective sets the day now has at their time.
+  private Set<Id> timedSets = new Set<Id>();
   private SetupMatchRules rules;
   private SetupMatchNames names;
   private ScheduleGrid target;
@@ -26,6 +29,12 @@ public with sharing class SetupMatchCarry {
     this.names = names;
     this.target = target;
     cells = new Map<String, String>(new SetupMatchCells(target).held);
+    for (ScheduleGrid.Item item : target.items) {
+      Id setId = item.kind == 'E' ? SlotIds.electiveIn('E:' + item.id) : null;
+      if (setId != null) {
+        timedSets.add(setId);
+      }
+    }
   }
 
   /**
@@ -41,6 +50,15 @@ public with sharing class SetupMatchCarry {
       List<String> placement = before.cellsOf.get(first);
       if (SlotIds.isSetTime(owner)) {
         explainSetTime(placement);
+        continue;
+      }
+      // An elective set that now has a time is at it in the day now (BlankDay.placeSet): a
+      // placement of it elsewhere isn't carried as well, so the set is never there twice that
+      // day (repo ADR 0027).
+      if (timedSets.contains(SlotIds.electiveIn(SlotIds.owner(owner)))) {
+        for (String cell : placement) {
+          whyByCell.put(cell, AT_ITS_TIME);
+        }
         continue;
       }
       String why = whyNot(owner, placement);

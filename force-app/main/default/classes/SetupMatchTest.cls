@@ -129,6 +129,66 @@ private class SetupMatchTest {
     }
   }
 
+  // ELECT-7.1
+  @IsTest
+  static void aSetGivenATimeIsThereOnceAfterUpdateNeverTwice() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      // By hand in Group B's Monday Period 1; then the set is given its time, Period 2.
+      SlotEdits.Result placed = ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY,
+              ids.get('Group B'),
+              ids.get('Period 1')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'E:' + chugim.Id }
+          )
+        }
+      );
+      Assert.isTrue(placed.conflicts.isEmpty());
+      Database.update(
+        new ElectiveSet__c(
+          Id = chugim.Id,
+          TimeBlock__c = ids.get('Period 2'),
+          Monday__c = true
+        ),
+        AccessLevel.USER_MODE
+      );
+
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      List<String> keys = new List<String>();
+      for (SetupMatch.Change change : preview.changes) {
+        keys.add(change.key);
+      }
+      SetupMatch.Updated updated = makeChanges(draftId, keys, preview);
+      Test.stopTest();
+
+      Assert.isNull(updated.refused);
+      Assert.areEqual(
+        '',
+        SetupMatchTestData.mondayAt(updated.view, 'Group B', 'Period 1'),
+        'Not carried: the set is at its time now'
+      );
+      Assert.areEqual(
+        'Chugim',
+        SetupMatchTestData.mondayAt(updated.view, 'Group B', 'Period 2')
+      );
+    }
+  }
+
   @IsTest
   static void aDeletedActivityGetsADotAndUpdateClearsItAfterKeepingAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
