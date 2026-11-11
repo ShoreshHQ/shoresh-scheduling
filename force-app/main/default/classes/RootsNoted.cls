@@ -34,38 +34,54 @@ public with sharing class RootsNoted {
     if (versions.isEmpty()) {
       return result;
     }
-    Map<Id, List<ScheduleDays.DayGrid>> days = ScheduleDays.read(
-      versions.keySet()
+    List<ScheduleGrid.Item> named = namedItems(
+      versions.keySet(),
+      ScheduleDays.read(versions.keySet())
     );
     // The season's own names, read only when the versions name something (two queries).
-    Set<String> known = null;
-    for (Id versionId : versions.keySet()) {
+    Set<String> known = named.isEmpty()
+      ? new Set<String>()
+      : knownNames(seasonId);
+    for (ScheduleGrid.Item item : named) {
+      if (known.add(NotedItems.loose(item.name))) {
+        Noted noted = new Noted();
+        noted.kind = item.kind;
+        noted.name = item.name.trim();
+        result.add(noted);
+      }
+    }
+    return result;
+  }
+
+  /** The special days and events the versions name with no record, in the versions' order. */
+  private static List<ScheduleGrid.Item> namedItems(
+    Set<Id> versionIds,
+    Map<Id, List<ScheduleDays.DayGrid>> days
+  ) {
+    List<ScheduleGrid.Item> result = new List<ScheduleGrid.Item>();
+    for (Id versionId : versionIds) {
       for (ScheduleDays.DayGrid day : days.get(versionId)) {
-        if (day.grid == null) {
-          continue;
-        }
-        for (ScheduleGrid.Item item : day.grid.items) {
-          String loose = NotedItems.loose(item.name);
-          if (
-            !KINDS.contains(item.kind) ||
-            String.isNotBlank(item.id) ||
-            String.isBlank(loose)
-          ) {
-            continue;
-          }
-          if (known == null) {
-            known = knownNames(seasonId);
-          }
-          if (known.add(loose)) {
-            Noted noted = new Noted();
-            noted.kind = item.kind;
-            noted.name = item.name.trim();
-            result.add(noted);
-          }
+        if (day.grid != null) {
+          addNamed(result, day.grid.items);
         }
       }
     }
     return result;
+  }
+
+  private static void addNamed(
+    List<ScheduleGrid.Item> result,
+    List<ScheduleGrid.Item> items
+  ) {
+    for (ScheduleGrid.Item item : items) {
+      if (
+        KINDS.contains(item.kind) &&
+        String.isBlank(item.id) &&
+        String.isNotBlank(NotedItems.loose(item.name))
+      ) {
+        result.add(item);
+      }
+    }
   }
 
   /** The season's special days' and events' names, spaces and capitals aside. */

@@ -21,8 +21,6 @@ public with sharing class BlankWeek {
   private List<TimeBlock__c> blocks;
   private List<Group__c> groups;
   private List<SetTimePlan.Item> items;
-  // The elective sets with a time in this program's blocks (repo ADR 0027).
-  private List<ElectiveSet__c> setTimes = new List<ElectiveSet__c>();
 
   /** A blank week: its days, and any fixed or recurring activity whose slot was taken. */
   public class Week {
@@ -36,7 +34,10 @@ public with sharing class BlankWeek {
     Program__c program = ProgramReads.programOf(programId);
     Week__c week = ProgramReads.weekOf(weekId, program);
     BlankWeek blank = new BlankWeek();
-    blank.blocks = checkedBlocks(program, ProgramReads.blocksOf(program.Id));
+    blank.blocks = checkedBlocks(
+      program,
+      ElectiveSetTimes.blocksOf(program.Id)
+    );
     checkActivities(program);
     blank.groups = checkedGroups(
       program,
@@ -58,7 +59,6 @@ public with sharing class BlankWeek {
     // A first Generate says this week's days before any schedule is read.
     DayWords.use(program.Season__r);
     items = setTimeItems(program, week.Id);
-    setTimes = setTimesOf(program.Id);
     Week result = new Week();
     for (Date day : runDays(program, week)) {
       BlankDay filled = filled(weekdayOf(day));
@@ -168,55 +168,10 @@ public with sharing class BlankWeek {
         day.place(item, weekday);
       }
     }
-    // Then each elective set at its time: a fixed or recurring activity there keeps its slot.
-    Map<Id, TimeBlock__c> blockById = new Map<Id, TimeBlock__c>(blocks);
-    Schema.SObjectField onDay = SetTimePlan.dayField(
-      ElectiveSet__c.SObjectType,
-      weekday
-    );
-    for (ElectiveSet__c electiveSet : setTimes) {
-      if (onDay != null && electiveSet.get(onDay) == true) {
-        day.placeSet(electiveSet, blockById.get(electiveSet.TimeBlock__c));
-      }
-    }
+    // Then each elective set at its time (repo ADR 0027): a fixed or recurring activity there
+    // keeps its slot.
+    ElectiveSetTimes.placeAll(day, blocks, weekday);
     return day;
-  }
-
-  /** The program's elective sets with a time, in name order, so the same setup gives the same week. */
-  private static List<ElectiveSet__c> setTimesOf(Id programId) {
-    // Someone who can't read elective sets' times starts the week without them, as before.
-    if (
-      !Schema.sObjectType.ElectiveSet__c.isAccessible() ||
-      !Schema.sObjectType.ElectiveSet__c.fields.TimeBlock__c.isAccessible()
-    ) {
-      return new List<ElectiveSet__c>();
-    }
-    for (String day : ALL_DAYS) {
-      Schema.SObjectField field = SetTimePlan.dayField(
-        ElectiveSet__c.SObjectType,
-        day
-      );
-      if (!field.getDescribe().isAccessible()) {
-        return new List<ElectiveSet__c>();
-      }
-    }
-    return [
-      SELECT
-        Id,
-        Name,
-        TimeBlock__c,
-        Monday__c,
-        Tuesday__c,
-        Wednesday__c,
-        Thursday__c,
-        Friday__c,
-        Saturday__c,
-        Sunday__c
-      FROM ElectiveSet__c
-      WHERE TimeBlock__r.Program__c = :programId
-      WITH USER_MODE
-      ORDER BY Name, Id
-    ];
   }
 
   /**

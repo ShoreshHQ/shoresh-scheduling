@@ -53,17 +53,8 @@ public with sharing class SetupMatchCarry {
         explainSetTime(placement);
         continue;
       }
-      // An elective set that now has a time is at it in the day now (BlankDay.placeSet): a
-      // placement of it elsewhere for the same group isn't carried as well, so the set is never
-      // there twice for a group that day (repo ADR 0027).
-      Id setId = SlotIds.electiveIn(SlotIds.owner(owner));
-      if (
-        setId != null &&
-        timedSets.contains(setId + '|' + SetupMatchCells.groupOf(first))
-      ) {
-        for (String cell : placement) {
-          whyByCell.put(cell, AT_ITS_TIME);
-        }
+      if (atItsTime(owner, first)) {
+        leaveOut(placement, AT_ITS_TIME);
         continue;
       }
       String why = whyNot(owner, placement);
@@ -75,6 +66,23 @@ public with sharing class SetupMatchCarry {
         }
       }
     }
+  }
+
+  private void leaveOut(List<String> placement, String why) {
+    for (String cell : placement) {
+      whyByCell.put(cell, why);
+    }
+  }
+
+  /**
+   * An elective set that now has a time is at it in the day now (BlankDay.placeSet): a placement
+   * of it elsewhere for the same group isn't carried as well, so the set is never there twice for
+   * a group that day (repo ADR 0027).
+   */
+  private Boolean atItsTime(String owner, String first) {
+    Id setId = SlotIds.electiveIn(SlotIds.owner(owner));
+    return setId != null &&
+      timedSets.contains(setId + '|' + SetupMatchCells.groupOf(first));
   }
 
   /** A set-time item's placement: why, when its group or time blocks changed. */

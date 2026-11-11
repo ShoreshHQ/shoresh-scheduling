@@ -55,7 +55,7 @@ public with sharing class RootsTable {
     public Id seatsRunId;
     @AuraEnabled
     public Version latestVersion;
-    /** What last year's schedule named and the season hasn't set up yet (RootsNoted). */
+    /** What last year's schedule named and the season hasn't set up yet (RootsNoted, read by RootsController). */
     @AuraEnabled
     public List<RootsNoted.Noted> noted = new List<RootsNoted.Noted>();
   }
@@ -151,7 +151,6 @@ public with sharing class RootsTable {
     RootsGlimpses.read(result, schedules);
     readVersions(result, seasonId);
     RootsSeats.read(result, seasonId);
-    result.noted = RootsNoted.read(seasonId);
     return result;
   }
 

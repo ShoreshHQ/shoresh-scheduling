@@ -73,35 +73,19 @@ public with sharing class BlankDay {
     }
   }
 
-  /**
-   * An elective set at its time (repo ADR 0027; ELECT-7.1): in the block, every group of the day
-   * at camp then, as one set cell, as a director would type it. A slot already taken (a fixed or
-   * recurring activity there first) is left as it is and named in notPlaced.
-   */
-  public void placeSet(ElectiveSet__c electiveSet, TimeBlock__c block) {
-    Integer b = block == null ? null : blockIndex.get(block.Id);
-    if (b == null) {
-      return;
-    }
-    String position = null;
-    for (ScheduleGrid.GroupRef ref : grid.groups) {
-      Group__c grp = groupsById.get(Id.valueOf(ref.id));
-      if (grp == null || !SetTimePlan.atCamp(grp, block)) {
-        continue;
-      }
-      List<String> row = grid.rows[groupIndex.get(grp.Id)];
-      if (String.isNotBlank(row[b])) {
-        notPlaced.add(electiveSet.Name + ' · ' + grp.Name);
-        continue;
-      }
-      if (position == null) {
-        grid.items.add(
-          new ScheduleGrid.Item('E', electiveSet.Id, electiveSet.Name)
-        );
-        position = String.valueOf(grid.items.size());
-      }
-      row[b] = position;
-    }
+  /** The index of a time block in the day, or null (ElectiveSetTimes places sets with it). */
+  public Integer blockAt(Id blockId) {
+    return blockIndex.get(blockId);
+  }
+
+  /** A group of the day by its Id ("GroupRef.id"), or null. */
+  public Group__c groupOf(String groupId) {
+    return groupsById.get(Id.valueOf(groupId));
+  }
+
+  /** A group's row of the day. */
+  public List<String> rowOf(Id groupId) {
+    return grid.rows[groupIndex.get(groupId)];
   }
 
   /** The group's row of this day, when the item takes the group and the group is on it. */

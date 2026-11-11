@@ -192,7 +192,16 @@ public with sharing class ImportFields {
     ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
       ElectiveSet__c.Name,
       ElectiveSet__c.Season__c,
-      ElectiveSet__c.CopiedFrom__c
+      ElectiveSet__c.CopiedFrom__c,
+      // Its time (repo ADR 0027): Import last year and Copy season write it.
+      ElectiveSet__c.TimeBlock__c,
+      ElectiveSet__c.Monday__c,
+      ElectiveSet__c.Tuesday__c,
+      ElectiveSet__c.Wednesday__c,
+      ElectiveSet__c.Thursday__c,
+      ElectiveSet__c.Friday__c,
+      ElectiveSet__c.Saturday__c,
+      ElectiveSet__c.Sunday__c
     },
     Offering__c.SObjectType => new Set<Schema.SObjectField>{
       Offering__c.ElectiveSet__c,

@@ -64,36 +64,6 @@ public with sharing class SpecialSetUp {
     }
   }
 
-  /** A special day or event set up from Roots (RootsNoted): made by name, put on no day. */
-  public class Named {
-    @AuraEnabled
-    public Id itemId;
-    @AuraEnabled
-    public String said;
-  }
-
-  /**
-   * "Set it up" on Roots' card for what last year's schedule named (repo ADR 0027; SPECIAL-1.4):
-   * the season's special day ('D') or event ('S') of that name, made when there is none, on no
-   * day yet: the director puts it on a day of their choosing on Special events.
-   */
-  public static Named setUpNamed(Id seasonId, String kind, String name) {
-    String trimmed = name == null ? '' : name.trim();
-    if (String.isBlank(trimmed) || (kind != 'S' && kind != 'D')) {
-      throw new ShoreshException('That can\'t be set up here.');
-    }
-    SObject record = kind == 'D'
-      ? (SObject) SpecialNamed.specialDay(seasonId, trimmed)
-      : (SObject) SpecialNamed.event(seasonId, trimmed);
-    Named result = new Named();
-    result.itemId = record.Id;
-    result.said =
-      '"' +
-      (String) record.get('Name') +
-      '" is set up. Put it on a day here.';
-    return result;
-  }
-
   private SpecialSetUp(Schedule__c draft) {
     this.draft = draft;
     labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);

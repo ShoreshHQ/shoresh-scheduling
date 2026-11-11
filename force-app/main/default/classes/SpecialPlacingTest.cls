@@ -296,7 +296,7 @@ private class SpecialPlacingTest {
 
       Test.startTest();
       List<RootsNoted.Noted> before = RootsNoted.read(ids.get('Season'));
-      SpecialSetUp.Named done = SpecialPlacingController.setUpNamed(
+      SpecialNamed.Named done = SpecialPlacingController.setUpNamed(
         ids.get('Season'),
         'D',
         'Field day'

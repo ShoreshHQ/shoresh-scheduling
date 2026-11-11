@@ -55,13 +55,13 @@ public with sharing class SpecialPlacingController {
 
   /** Roots' "Set it up" for what last year's schedule named (repo ADR 0027). */
   @AuraEnabled
-  public static SpecialSetUp.Named setUpNamed(
+  public static SpecialNamed.Named setUpNamed(
     Id seasonId,
     String kind,
     String name
   ) {
     try {
-      return SpecialSetUp.setUpNamed(seasonId, kind, name);
+      return SpecialNamed.setUpNamed(seasonId, kind, name);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

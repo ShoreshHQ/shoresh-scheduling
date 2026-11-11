@@ -123,13 +123,15 @@ private class BlankDayTest {
       ElectiveSet__c chugim = new ElectiveSet__c(
         // Never saved: placing reads only its Id and name.
         Id = Id.valueOf(
-          ElectiveSet__c.SObjectType.getDescribe().getKeyPrefix() +
-          '000000000001'
+          ElectiveSet__c.SObjectType.getDescribe(
+              SObjectDescribeOptions.DEFERRED
+            )
+            .getKeyPrefix() + '000000000001'
         ),
         Name = 'Chugim'
       );
 
-      day.placeSet(chugim, period1);
+      ElectiveSetTimes.placeSet(day, chugim, period1);
 
       // Group A takes the set; Group B's Rest keeps its slot and the set's is named; Group C
       // isn't at camp in the morning.
