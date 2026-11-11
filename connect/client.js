@@ -429,9 +429,42 @@ async function build(capability, input, at, engine, checks) {
   const saved = answer(
     await at.send(capability.api, { ...fields, ...built.save })
   );
-  return saved.ok && built.said
-    ? { ...saved, text: `${saved.text} ${built.said}` }
-    : saved;
+  if (!saved.ok) return saved;
+  const done = built.said ? `${saved.text} ${built.said}` : saved.text;
+  return { ...saved, text: `${done}${await counterAfter(fields, at, checks)}` };
+}
+
+/**
+ * What the counter shows of a week just built, as the screen shows it beside the grid (UX pass
+ * 2026-11-10: build_week said only "Built Week 2.", so an AI had nothing to pass on): its
+ * "N of M placed", then every line to look at in the counter's words. A counter that can't be
+ * read adds nothing; the build itself is saved and said.
+ */
+async function counterAfter(fields, at, checks) {
+  const query = {};
+  for (const field of ["season", "week", "program"]) {
+    if (fields[field] !== undefined) query[field] = fields[field];
+  }
+  let got;
+  try {
+    got = await at.read("week_checks", query);
+  } catch {
+    return "";
+  }
+  if (!got || got.status !== 200) return "";
+  const m = await checks();
+  const { measure, accepted, groupWords } = counterOf(m, JSON.parse(got.body));
+  const words = m.counterWords(measure, accepted, groupWords);
+  const lines = [
+    ...(words.open || []),
+    ...((words.under && words.under.lines) || []),
+    ...((words.over && words.over.lines) || []),
+    ...(words.to_look_at || []),
+    ...(words.notes || [])
+  ].map((l) => l.line);
+  return lines.length
+    ? ` ${words.placed}. To look at: ${lines.join("; ")}.`
+    : ` ${words.placed}.`;
 }
 
 /**
