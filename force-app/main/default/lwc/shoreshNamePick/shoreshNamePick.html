@@ -1,0 +1,47 @@
+<template>
+  <div class="pick" onfocusout={handleFocusOut}>
+    <input
+      class="slds-input"
+      type="text"
+      role="combobox"
+      aria-label={label}
+      aria-autocomplete="list"
+      aria-expanded={expanded}
+      aria-controls="name-pick-options"
+      aria-activedescendant={activeId}
+      aria-required={ariaRequired}
+      autocomplete="off"
+      placeholder={placeholder}
+      value={text}
+      disabled={disabled}
+      oninput={handleInput}
+      onfocus={handleFocus}
+      onkeydown={handleKeyDown}
+      data-id="name-input"
+    />
+    <template lwc:if={open}>
+      <ul
+        class="options"
+        role="listbox"
+        id="name-pick-options"
+        aria-label={label}
+        data-id="name-options"
+      >
+        <template for:each={shownOptions} for:item="option">
+          <li
+            key={option.id}
+            id={option.id}
+            role="option"
+            aria-selected={option.selected}
+            class={option.className}
+            data-index={option.index}
+            onmousedown={handleOptionMouseDown}
+            onclick={handleOptionClick}
+          >
+            {option.label}
+          </li>
+        </template>
+      </ul>
+    </template>
+  </div>
+</template>

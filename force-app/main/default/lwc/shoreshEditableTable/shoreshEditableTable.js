@@ -1243,7 +1243,10 @@ export default class ShoreshEditableTable extends LightningElement {
         isDate: col.type === "date",
         isTime: col.type === "time",
         isCheckbox: col.type === "checkbox",
-        isPicklist: col.type === "picklist",
+        // A picklist a new name can be added to (col.addName: c/shoreshNamePick).
+        isNamePick: col.type === "picklist" && !!col.addName,
+        addTo: col.addName ? col.addName.to : undefined,
+        isPicklist: col.type === "picklist" && !col.addName,
         isWho: col.type === "who",
         whoSummary:
           col.type === "who" ? this.whoSummary(col, draft) : undefined,
@@ -1716,6 +1719,22 @@ export default class ShoreshEditableTable extends LightningElement {
       value = value === "" || value === null ? null : Number(value);
     }
     this.setValue(draft, field, value);
+    draft.dirty = true;
+    this.touch(draft);
+  }
+
+  /**
+   * 'Add "Drama" to activities' in a picklist that takes new names: the column makes it
+   * (col.addName.make(name), giving its record Id) and the row takes it as if picked.
+   */
+  async handleAddName(event) {
+    const { rowKey, field } = event.target.dataset;
+    const column = this.fieldColumn(field);
+    if (!column || !column.addName) return;
+    const id = await column.addName.make(event.detail.name);
+    const draft = this.rowFor(rowKey);
+    if (!id || !draft) return;
+    this.setValue(draft, field, id);
     draft.dirty = true;
     this.touch(draft);
   }

@@ -14,6 +14,7 @@ import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
+import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
@@ -35,6 +36,9 @@ jest.mock(
   { virtual: true }
 );
 jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/SeasonSetupController.saveRecords", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
@@ -452,6 +456,34 @@ describe("c-shoresh-camp-setup: Electives", () => {
       ],
       ["Woodworking", 'In "Chugim": proposed, not confirmed yet.']
     ]);
+  });
+
+  // ELECT-2.4
+  it("a name the season doesn't have is typed and added: the activity is made at How often 0 and the row takes it", async () => {
+    // UX pass 2026-11-10: the offering was a list that jumped as letters were typed ("Drama"
+    // picked Art), with no way to add a name.
+    const element = await render();
+    const chugim = section(element, "es1");
+    const pick = chugim.shadowRoot.querySelector("c-shoresh-name-pick");
+    expect(pick.addTo).toBe("activities");
+    saveRecords.mockResolvedValue(["a10"]);
+    const reads = getSeasonSetup.mock.calls.length;
+    pick.dispatchEvent(
+      new CustomEvent("addname", { detail: { name: "Drama" } })
+    );
+    await flush();
+    await flush();
+    expect(bareRecord(saveRecords.mock.calls[0][0].records[0])).toEqual({
+      sobjectType: "Activity__c",
+      Name: "Drama",
+      Season__c: SEASON.Id,
+      TimesPerWeekMin__c: 0,
+      TimesPerWeekMax__c: 0
+    });
+    expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    expect(chugim.shadowRoot.querySelector("c-shoresh-name-pick").value).toBe(
+      "a10"
+    );
   });
 
   it("an offering's row is saved as every setup row is, and the screen says Saved", async () => {
