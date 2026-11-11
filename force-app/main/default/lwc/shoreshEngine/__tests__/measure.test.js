@@ -39,7 +39,8 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
     // Counted toward the goal: 2 + 1 + 0 = 3 of 6; 3 short.
     expect(m.under).toEqual({
       count: 3,
-      rows: [{ id: "swim", name: "Swim", placed: 3, goal: 6 }]
+      // groups: b2 and b3 are short (b1 has its two).
+      rows: [{ id: "swim", name: "Swim", placed: 3, goal: 6, groups: 2 }]
     });
     expect(m.byActivity.get("swim")).toEqual({
       placed: 4,
@@ -63,7 +64,7 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
     );
     expect(m.under).toEqual({
       count: 2,
-      rows: [{ id: "arch", name: "Archery", placed: 1, goal: 3 }]
+      rows: [{ id: "arch", name: "Archery", placed: 1, goal: 3, groups: 2 }]
     });
     expect(m.hasLimits).toBe(false);
     expect(m.byActivity.has("swim")).toBe(false);
@@ -76,7 +77,7 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
       DAYS
     );
     expect(m.under.rows).toEqual([
-      { id: "ropes", name: "Ropes", placed: 0, goal: 2 }
+      { id: "ropes", name: "Ropes", placed: 0, goal: 2, groups: 2 }
     ]);
     expect(m.under.count).toBe(2);
   });
@@ -95,7 +96,8 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
     );
     expect(m.over).toEqual({
       count: 1,
-      rows: [{ id: "soccer", name: "Soccer", placed: 3, goal: 2 }]
+      // groups: only b1 is past the limit.
+      rows: [{ id: "soccer", name: "Soccer", placed: 3, goal: 2, groups: 1 }]
     });
     expect(m.under.count).toBe(0);
     expect(m.hasLimits).toBe(true);

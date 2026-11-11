@@ -94,9 +94,7 @@
                   onclick={handleActivity}
                 >
                   <span class="name">{row.name}</span>
-                  <span class="shoresh-pop-end"
-                    ><b>{row.placed}</b><span>of {row.goal}</span></span
-                  >
+                  <span class="shoresh-pop-end"><span>{row.unit}</span></span>
                 </button>
                 <button
                   type="button"
@@ -137,7 +135,7 @@
                       class="shoresh-look-mark mark"
                       aria-hidden="true"
                     ></span
-                    ><b>{row.placed}</b><span>of {row.goal}</span></span
+                    ><span>{row.unit}</span></span
                   >
                 </button>
                 <button

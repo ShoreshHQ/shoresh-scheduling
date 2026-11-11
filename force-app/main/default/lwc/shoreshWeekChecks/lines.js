@@ -6,13 +6,20 @@
  * API-1.30, API-1.31), so the two can never say or keep different things.
  */
 
+// The unit of an under or over row when the camp's own word isn't given (the connector).
+const GROUP_WORDS = { one: "group", many: "groups" };
+
 /**
  * The lines still shown: { open, under, over, look, notes }. measure: c/shoreshEngine
  * measureWeek's answer with the Why list's rows; accepted: the lines accepted, as kept with the
  * week ({ key, same, size }).
  */
-export function checkLines(m, accepted) {
+export function checkLines(m, accepted, groupWords = GROUP_WORDS) {
   const shown = (line) => !tucked(accepted, line);
+  // An under or over row in its unit, "2 bunks short", "1 bunk over": never "6 of 12" beside
+  // "20 of 12" for one activity, which read as a contradiction (UX pass 2026-11-10).
+  const unit = (row, how) =>
+    `${row.groups} ${row.groups === 1 ? groupWords.one : groupWords.many} ${how}`;
   return {
     open: (m.open || [])
       .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))
@@ -23,8 +30,9 @@ export function checkLines(m, accepted) {
         key: `under|${row.id}|${row.placed}|${row.goal}`,
         same: `under|${row.id}`,
         size: row.goal - row.placed,
-        said: `${row.name}: ${row.placed} of ${row.goal}`,
-        acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}`
+        unit: unit(row, "short"),
+        said: `${row.name}: ${unit(row, "short")}`,
+        acceptLabel: `Accept: ${row.name}, ${unit(row, "short")}`
       }))
       .filter(shown),
     over: m.over.rows
@@ -33,8 +41,9 @@ export function checkLines(m, accepted) {
         key: `over|${row.id}|${row.placed}|${row.goal}`,
         same: `over|${row.id}`,
         size: row.placed - row.goal,
-        said: `${row.name}: ${row.placed} of ${row.goal}, over`,
-        acceptLabel: `Accept: ${row.name}, ${row.placed} of ${row.goal}, over`
+        unit: unit(row, "over"),
+        said: `${row.name}: ${unit(row, "over")}`,
+        acceptLabel: `Accept: ${row.name}, ${unit(row, "over")}`
       }))
       .filter(shown),
     look: m.look
@@ -63,7 +72,12 @@ export function tucked(accepted, line) {
 
 /** What Accept says it hid: the line's words, or "<activity>, <placed> of <goal>". */
 export function saidOf(line) {
-  return line.text || `${line.name}, ${line.placed} of ${line.goal}`;
+  return (
+    line.text ||
+    (line.unit
+      ? `${line.name}, ${line.unit}`
+      : `${line.name}, ${line.placed} of ${line.goal}`)
+  );
 }
 
 /** An accepted line as the week keeps it (Apex WeekAccepts): { k, s, n } as JSON. */
@@ -115,8 +129,8 @@ export function wordsOf(line) {
  * lines still shown, each with whether it has an Accept. Sections the dropdown leaves out are
  * left out.
  */
-export function counterWords(m, accepted) {
-  const lines = checkLines(m, accepted);
+export function counterWords(m, accepted, groupWords) {
+  const lines = checkLines(m, accepted, groupWords);
   const listed = (rows) =>
     rows.map((line) => ({ line: wordsOf(line), can_accept: acceptable(line) }));
   const shown =

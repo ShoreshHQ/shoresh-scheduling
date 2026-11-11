@@ -48,6 +48,8 @@ import {
  */
 export default class ShoreshWeekChecks extends LightningElement {
   @api measure;
+  // The camp's words, for an under or over row's unit ("2 bunks short").
+  @api terms;
   _resetKey;
   _scheduleId;
   // Lines accepted, as kept with the week: { key, same, size }. A line is the same one when its
@@ -189,7 +191,12 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
   /** The counter's lines still shown (c/shoreshWeekChecks lines.js). */
   get lines() {
-    return checkLines(this.m, this.accepted);
+    const t = this.terms;
+    return checkLines(
+      this.m,
+      this.accepted,
+      t ? { one: t.sIn("Group"), many: t.pIn("Group") } : undefined
+    );
   }
   get underRows() {
     return this.lines.under;
