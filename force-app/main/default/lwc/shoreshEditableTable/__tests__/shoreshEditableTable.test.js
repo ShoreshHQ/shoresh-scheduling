@@ -2626,8 +2626,13 @@ describe("c-shoresh-editable-table", () => {
           "utf8"
         );
       expect(
-        read("shoreshEditableTable").match(/\.scroll\s*{[^}]*}/)[0]
+        read("shoreshEditableTable").match(/\.table-scroll\s*{[^}]*}/)[0]
       ).toMatch(/overflow-x: var\(--shoresh-table-scroll, auto\);/);
+      // Never the class "scroll": Salesforce's own .forceStyle .scroll { overflow: auto } reached
+      // in and kept each table scrolling apart from its column names (seen in Chrome, 2026-11-10).
+      expect(
+        read("shoreshEditableTable").replace(/\/\*[\s\S]*?\*\//g, "")
+      ).not.toMatch(/(^|[\s,])\.scroll\b/m);
       const list = read("shoreshCampSetup").match(/\.setup-list\s*{[^}]*}/)[0];
       expect(list).toMatch(/overflow-x: auto;/);
       expect(list).toMatch(/position: relative;/);
