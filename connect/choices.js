@@ -37,9 +37,11 @@ function schedulesOf(setup, weekId, m) {
     .map((s) => ({
       id: s.Id,
       programId: s[S.Program],
+      // "· Published" as the screen's list says it, so a draft and the week's published
+      // schedule never share one name (c/shoreshElectiveEngine scheduleOptions).
       name: `${many ? `${programs.get(s[S.Program])} · ` : ""}${
         s[S.Origin] === "Generated" ? "Generated Schedule" : "Manual Build"
-      }`
+      }${s[S.Status] === "Published" ? " · Published" : ""}`
     }));
 }
 
@@ -142,10 +144,11 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
         `Names on the sheet Shoresh doesn't have yet: ${open
           .map((n) => {
             const proposal = m.proposalFor(n.name, activities);
-            return `${JSON.stringify(n.name)}${proposal ? ` (maybe the same as ${proposal.Name || proposal.name})` : ""}`;
+            // What the screen starts it at (UX pass 2026-11-10), for the AI to put to the person.
+            return `${JSON.stringify(n.name)} (the screen starts it at ${proposal ? `"same as ${proposal.Name || proposal.name}"` : '"add"'})`;
           })
           .join(", ")}.`,
-        'Answer each in answers, by its name: "add" (a new activity), "leave" (leave it out) or "same:<activity>". Ask the person about any that the sheet doesn\'t make plain.'
+        'Answer each in answers, by its name: "add" (a new activity, at How often 0), "leave" (leave it out) or "same:<activity>". Ask the person, offering the screen\'s start, about any that the sheet doesn\'t make plain.'
       ].join("\n")
     };
   }

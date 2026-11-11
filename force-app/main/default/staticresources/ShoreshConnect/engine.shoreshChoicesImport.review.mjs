@@ -272,8 +272,9 @@ const words = (text) =>
 
 /**
  * The activity a name most likely means, offered first ("Same as Pottery" for "Pottery Wheel"):
- * one whose words begin the name's, or whose name begins with the name's words. A proposal is
- * offered, never chosen for the director (desktop ParseSummary.jsx).
+ * one whose words begin the name's, or whose name begins with the name's words. The screen
+ * starts the name at it, marked for a look until the director picks an answer (UX pass
+ * 2026-11-10: every question has a pre-selected answer); it is never remembered as theirs.
  */
 export function proposalFor(name, activities) {
   const mine = words(name);
@@ -664,6 +665,8 @@ export function buildRequest({
     const item = (reading.newNames || []).find((n) => foldName(n.name) === key);
     if (!item) continue;
     if (answer.kind === "add") addActivities.push(item.name);
+    // An answer Shoresh started from, not one the director gave: nothing to remember.
+    if (answer.started) continue;
     if (answer.kind === "leave") remember[`${ANSWER_PREFIX}${key}`] = "leave";
     if (answer.kind === "same" && byId.has(answer.activityId)) {
       remember[`${ANSWER_PREFIX}${key}`] =

@@ -783,8 +783,10 @@ describe("c-shoresh-generated-schedule", () => {
     }).toEqual(screen);
     // The counter's number and its words, drawn side by side.
     expect(agent.placed.replace(" ", "")).toBe(counterText(element));
+    // Every cell filled: the screen leaves out "0 still needed"; the agent's number is 0.
+    const stillNeeded = root.querySelector('[data-id="still-needed"] b');
     expect(agent.still_needed).toBe(
-      Number(root.querySelector('[data-id="still-needed"] b').textContent)
+      stillNeeded ? Number(stillNeeded.textContent) : 0
     );
     // The counter's numbers and words are drawn side by side: compared without the spaces.
     const bare = (text) => (text || "").replace(/\s+/g, "");
@@ -1610,7 +1612,7 @@ describe("c-shoresh-generated-schedule", () => {
       "button[data-activity]"
     );
     expect(swim.textContent.replace(/\s+/g, " ").trim()).toMatch(
-      /^Swim\d+of 6$/
+      /^Swim\d+ short · \d+ Bunks?$/
     );
     swim.click();
     await flush();
