@@ -687,14 +687,14 @@ export default class ShoreshCampSetup extends LightningElement {
     // A Roots card: its screen grows out of it; and back to Roots: home into the same card
     // (repo ADR 0020). Without motion, the screen simply shows.
     if (this.travelFrom(screen, fromCard)) {
-      this.openSpecialItem(event.detail.specialItemId);
+      this.openSpecialItem(event.detail.specialItemId, event.detail.detailsOnly);
       return;
     }
     // Bring in choices from Elective seats starts on the set, week and schedule shown there.
     this.choicesOpening =
       screen === "bringInChoices" ? event.detail.choices || null : null;
     this.openScreen(screen);
-    this.openSpecialItem(event.detail.specialItemId);
+    this.openSpecialItem(event.detail.specialItemId, event.detail.detailsOnly);
     this.resumeImport(event.detail.resumeImport);
   }
 
@@ -715,6 +715,7 @@ export default class ShoreshCampSetup extends LightningElement {
         detail: {
           screen: "specialEvents",
           specialItemId: done.itemId,
+          detailsOnly: true,
           fromCard
         }
       });
@@ -739,7 +740,7 @@ export default class ShoreshCampSetup extends LightningElement {
    * "Open <special day>" from a day it replaces (ADR 0014 slice 4), or a hand card about one: its
    * details, then its schedule in the list's place, as Open schedule there does.
    */
-  openSpecialItem(itemId) {
+  openSpecialItem(itemId, detailsOnly) {
     if (itemId) {
       Promise.resolve().then(() => {
         const details = this.template.querySelector(
@@ -747,7 +748,8 @@ export default class ShoreshCampSetup extends LightningElement {
         );
         if (details && details.open(itemId)) {
           this.specialDetailsFor = itemId;
-          this.specialScheduleFor = itemId;
+          // One just set up from Roots is on no day yet: its details, to put it on one.
+          this.specialScheduleFor = detailsOnly ? null : itemId;
         }
       });
     }

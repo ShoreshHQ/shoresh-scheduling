@@ -4927,6 +4927,10 @@ describe("c-shoresh-camp-setup", () => {
       });
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
       expect(shownScreens(element)).toContain("specialEvents");
+      // On no day yet: its details open (to put it on one), not its schedule.
+      await flush();
+      expect(q(element, "c-shoresh-special-details").openItemId).toBe("sd1");
+      expect(q(element, "c-shoresh-special-schedule")).toBeNull();
     });
 
     it("a row's delete asks, then deletes it and reads the season again", async () => {
