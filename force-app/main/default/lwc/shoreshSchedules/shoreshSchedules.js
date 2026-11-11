@@ -338,6 +338,8 @@ export default class ShoreshSchedules extends LightningElement {
    * #129; on paper too, as the desktop prints what its screen shows; not in Excel, as the
    * desktop's workbook has no marks).
    */
+  printableMemo = {};
+
   get shown() {
     if (this.shownMemo.of !== this.opened) {
       this.shownMemo = {
@@ -577,7 +579,29 @@ export default class ShoreshSchedules extends LightningElement {
     return this.cannotGetOut || this.exporting;
   }
   get cannotPrint() {
-    return this.cannotGetOut || !!this.printout;
+    return this.cannotGetOut || this.nothingToPrint || !!this.printout;
+  }
+  /**
+   * Activity View with no activity placed has no page to print: Print is off rather than giving a
+   * blank sheet (UI pass item 23). Daily and Group always print their days and groups.
+   */
+  get nothingToPrint() {
+    if (this.view !== "activity" || !this.opened) {
+      return false;
+    }
+    // Worked out once per schedule opened, not on every redraw (it lays out every activity).
+    if (this.printableMemo.of !== this.opened) {
+      this.printableMemo = {
+        of: this.opened,
+        none:
+          printPages(this.shown, "activity", this.catalogue, this.t).length ===
+          0
+      };
+    }
+    return this.printableMemo.none;
+  }
+  get printOff() {
+    return this.cannotGetOut || this.nothingToPrint;
   }
   /** The version on screen as an Excel file: a sheet per day, then every group's and activity's week. */
   async handleExport() {

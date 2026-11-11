@@ -678,6 +678,24 @@ export default class ShoreshChoicesImport extends LightningElement {
     }
   }
 
+  /** Brought in: the next step is the seats, "Elective seats →" (the guide's arrow means next). */
+  get toSeatsLabel() {
+    return `${this.t.s("Elective")} seats →`;
+  }
+  handleToSeats() {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: {
+          screen: "electiveSeats",
+          weekId: this.weekId,
+          setId: this.setId,
+          scheduleId: this.scheduleId,
+          runId: this.done ? this.done.runId : null
+        }
+      })
+    );
+  }
+
   get doneText() {
     if (!this.done) return "";
     const n = this.done.campers;

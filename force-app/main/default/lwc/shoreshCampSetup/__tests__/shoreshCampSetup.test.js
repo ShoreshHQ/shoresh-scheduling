@@ -1883,6 +1883,10 @@ describe("c-shoresh-camp-setup", () => {
       q(element, '[data-id="edit-season"]').click();
       await flush();
       const choice = q(element, '[data-id="day-naming"]');
+      // One under the other, never buttons side by side: those were cut off in the narrow
+      // column (UX pass 2026-11-10).
+      expect(choice.type).not.toBe("button");
+      expect(q(element, '[data-id="short-week"]').type).not.toBe("button");
       expect(choice.options.map((o) => o.label)).toEqual([
         "Mon Tue Wed",
         "Day 1 Day 2 Day 3"
