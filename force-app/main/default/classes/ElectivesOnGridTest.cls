@@ -2,7 +2,8 @@
  * Elective sets on the week grid (repo ADR 0018 slice E5): placed on Manual Build by their record
  * (one cell per time block), shown as still there, another season's refused; "Set it up" binds the
  * cells a file noted by name to the season's set (made when there is none); Start from another
- * week carries them; a Generated build keeps them and never places one. As a scheduler, with
+ * week carries them; a Generated build keeps them and never places one, but a set with a time (repo
+ * ADR 0027) starts a fresh week there, as Start a blank week and a first Generate begin. As a scheduler, with
  * records made inside the same System.runAs; each request's queries are bounded. Synthetic data.
  */
 @IsTest
@@ -103,6 +104,40 @@ private class ElectivesOnGridTest {
         monday.rows[g].split(',', -1)[0],
         monday.rows[g].split(',', -1)[1]
       );
+    }
+  }
+
+  // ELECT-7.1
+  @IsTest
+  static void aSetWithATimeStartsAFreshWeekThereForEveryGroup() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id setId = chugim(ids);
+      Database.update(
+        new ElectiveSet__c(
+          Id = setId,
+          TimeBlock__c = ids.get('Period 2'),
+          Monday__c = true
+        ),
+        AccessLevel.USER_MODE
+      );
+
+      Test.startTest();
+      ManualBuildViews.DraftView view = blankWeek(ids, 'Week 1');
+      Test.stopTest();
+
+      // Monday, Period 2: the set, as one cell across the groups, as typed by hand.
+      ScheduleViews.DayView monday = view.schedule.days[0];
+      Assert.areEqual(3, monday.groups.size());
+      for (Integer g = 0; g < monday.groups.size(); g++) {
+        ScheduleViews.Ref cell = mondayItem(monday, g, 1);
+        Assert.areEqual('E', cell.kind, monday.groups[g].name);
+        Assert.areEqual(String.valueOf(setId), cell.id);
+        Assert.isNull(mondayItem(monday, g, 0), 'Period 1 stays Open');
+      }
+      // Not on Tuesday: its days are its own.
+      ScheduleViews.DayView tuesday = view.schedule.days[1];
+      Assert.isNull(mondayItem(tuesday, 0, 1));
     }
   }
 

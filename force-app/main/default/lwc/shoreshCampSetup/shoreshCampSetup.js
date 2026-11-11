@@ -11,6 +11,7 @@ import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
+import setUpNamed from "@salesforce/apex/SpecialPlacingController.setUpNamed";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
@@ -651,7 +652,13 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // Roots' card for what last year's schedule named: set up by name first, then opened.
+    if (event.detail.setUpNoted) {
+      this.setUpNoted(event.detail.setUpNoted, event.detail.fromCard);
+      return;
+    }
     // A week chosen on the Schedules doorway, or a hand card's week: that schedule opens on it.
+
     // Refused while its week picker waits on work under way: the doorway (or Roots) stays, that
     // week's button held (weekStates), rather than opening the screen on another week.
     const weekId = event.detail.weekId;
@@ -689,6 +696,31 @@ export default class ShoreshCampSetup extends LightningElement {
     this.openScreen(screen);
     this.openSpecialItem(event.detail.specialItemId);
     this.resumeImport(event.detail.resumeImport);
+  }
+
+  /**
+   * "Set it up" on Roots' card for a special day or event last year's schedule named (repo ADR
+   * 0027): made by name on no day, the season read again, then its details open on Special
+   * events, where it is put on a day.
+   */
+  async setUpNoted({ kind, name }, fromCard) {
+    try {
+      const done = await setUpNamed({
+        seasonId: this.seasonId,
+        kind,
+        name
+      });
+      await this.loadSeason();
+      this.handleNavigate({
+        detail: {
+          screen: "specialEvents",
+          specialItemId: done.itemId,
+          fromCard
+        }
+      });
+    } catch (e) {
+      this.showError(e, `"${name}" wasn't set up.`);
+    }
   }
 
   /** Roots' "N import questions left": Import last year opens on them (review.md INGEST-5.5). */
@@ -2063,12 +2095,46 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   get electiveSetColumns() {
-    return this.memo("electiveSetColumns", [], () =>
+    return this.memo("electiveSetColumns", [this.setup, this.terms], () =>
       this.readElectiveSetColumns()
     );
   }
+  /**
+   * A set's name, then its time, as a recurring activity's (repo ADR 0027): the time block (none
+   * left blank: no time, placed by hand) and its days. A fresh week starts with the set there.
+   */
   readElectiveSetColumns() {
-    return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
+    const t = this.terms;
+    const programs = (this.setup && this.setup.programs) || [];
+    const many = programs.length > 1;
+    const blocks = programs.flatMap((entry) =>
+      (entry.timeBlocks || []).map((block) => ({
+        label: many ? `${entry.program.Name} · ${block.Name}` : block.Name,
+        value: block.Id
+      }))
+    );
+    const SET = FIELD.ElectiveSet;
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: SET.TimeBlock,
+        label: t.s("TimeBlock"),
+        type: "picklist",
+        options: blocks
+      },
+      {
+        fieldName: "days",
+        label: "Days",
+        type: "days",
+        width: 9,
+        days: campWeek(this.setup).map((day) => ({
+          fieldName: SET[day],
+          label: day
+        })),
+        every: "Every day",
+        none: "No days"
+      }
+    ];
   }
 
   get electiveSetDefaults() {

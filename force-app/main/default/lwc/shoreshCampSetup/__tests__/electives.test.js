@@ -604,6 +604,30 @@ describe("c-shoresh-camp-setup: Electives", () => {
     expect(onDeleted).toHaveBeenCalled();
   });
 
+  // ELECT-7.3
+  it("a set's row has its time, as a recurring activity's: a time block and its days", async () => {
+    const element = await render();
+    const sets = q(
+      element,
+      'c-shoresh-editable-table[data-id="elective-sets"]'
+    );
+    const [name, block, days] = sets.columns;
+    expect(name.fieldName).toBe("Name");
+    expect(block).toMatchObject({
+      fieldName: nsName("TimeBlock__c"),
+      type: "picklist",
+      label: "Time block"
+    });
+    expect(block.required).toBeFalsy();
+    expect(block.options.map((o) => o.label)).toEqual([
+      "Period 1",
+      "Period 3",
+      "Period 4"
+    ]);
+    expect(days).toMatchObject({ type: "days", every: "Every day" });
+    expect(days.days[0].fieldName).toBe(nsName("Monday__c"));
+  });
+
   it("a season with no elective sets yet shows the sets list, ready for the first", async () => {
     const element = await render(
       { c__preview: "electives" },

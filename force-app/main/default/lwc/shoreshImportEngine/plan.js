@@ -261,9 +261,15 @@ function linkedChoices(proposal) {
 function electiveLists(proposal) {
   const sets = proposal.electives.sets;
   return {
+    // A new set with its time, when the file shows one (ADR 0027): its days and time block.
     electiveSets: sets
       .filter((x) => x.isNew)
-      .map((x) => ({ key: x.key, id: null, name: x.name })),
+      .map((x) => ({
+        key: x.key,
+        id: null,
+        name: x.name,
+        ...(x.time ? { days: x.time.days, blockKey: x.time.blockKey } : {})
+      })),
     offerings: sets.flatMap((x) =>
       x.offerings.map((o) => ({
         key: o.key,

@@ -55,6 +55,9 @@ public with sharing class RootsTable {
     public Id seatsRunId;
     @AuraEnabled
     public Version latestVersion;
+    /** What last year's schedule named and the season hasn't set up yet (RootsNoted). */
+    @AuraEnabled
+    public List<RootsNoted.Noted> noted = new List<RootsNoted.Noted>();
   }
 
   /** The first day of a draft, its first groups across and its time blocks down. */
@@ -148,6 +151,7 @@ public with sharing class RootsTable {
     RootsGlimpses.read(result, schedules);
     readVersions(result, seasonId);
     RootsSeats.read(result, seasonId);
+    result.noted = RootsNoted.read(seasonId);
     return result;
   }
 
