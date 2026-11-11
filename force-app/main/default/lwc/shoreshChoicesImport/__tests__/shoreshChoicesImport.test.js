@@ -413,6 +413,41 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-settle="potterywheel"]')).toBeNull();
   });
 
+  // UX pass 2026-11-10: once brought in, the only button was "Choose another file"; the seats
+  // are the next step, so they are the main button, opening on this set, week and run.
+  it("once brought in, Elective seats → is the next step, on this set, week and run", async () => {
+    bringInChoices.mockResolvedValue({
+      runId: "r1",
+      runName: "Chugim · Week 1",
+      campers: 3,
+      added: 3,
+      handKept: 0,
+      activitiesAdded: 0
+    });
+    const element = await render();
+    const navigate = jest.fn();
+    element.addEventListener("navigate", navigate);
+    await choose(element, "chugim-week1.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-settle="potterywheel"] [data-answer="add"]');
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-id="primary"]');
+    const next = $(element, '[data-id="to-seats"]');
+    expect(next.textContent.trim()).toBe("Elective seats →");
+    expect(next.className).toContain("shoresh-item_primary");
+    expect($(element, '[data-id="another"]').className).not.toContain(
+      "shoresh-item_primary"
+    );
+    await click(element, '[data-id="to-seats"]');
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate.mock.calls[0][0].detail).toMatchObject({
+      screen: "electiveSeats",
+      runId: "r1"
+    });
+    const { weekId, setId, scheduleId } = navigate.mock.calls[0][0].detail;
+    expect([weekId, setId, scheduleId].every(Boolean)).toBe(true);
+  });
+
   it("refuses a sheet with two campers it can't tell apart, naming the rows and bunks, with no Bring in", async () => {
     const element = await render();
     await choose(element, "same.csv", SAME_NAME);

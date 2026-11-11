@@ -430,9 +430,16 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     expect(q(element, '[data-id="edit-grid"]').label).toBe("Bunk 1");
     // Group View: Monday's column, Period 2.
+    const grid = q(element, '[data-id="edit-grid"]');
+    const landed = grid.shadowRoot.activeElement;
+    expect(landed.dataset.cell).toBe("0-1");
+    // Ringed as keyboard focus is, so a click on the line shows where it landed too (UX pass
+    // 2026-11-10: a mouse click showed no ring), until focus moves on.
+    expect(landed.className).toContain("cell_located");
+    await press(landed, "ArrowDown");
     expect(
-      q(element, '[data-id="edit-grid"]').shadowRoot.activeElement.dataset.cell
-    ).toBe("0-1");
+      grid.shadowRoot.querySelector('[data-cell="0-1"]').className
+    ).not.toContain("cell_located");
   });
 
   it("a screen reader hears, once, the line an edit brings and the one it takes away", async () => {

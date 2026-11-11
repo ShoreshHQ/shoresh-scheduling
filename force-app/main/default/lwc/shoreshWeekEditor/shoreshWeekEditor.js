@@ -288,6 +288,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusCellWhenDrawn = null;
   // Cells a rainy day just switched to their rain plan: a quiet pulse shows what changed.
   pulseKeys = [];
+  // The cell a counter line took the director to: ringed as keyboard focus is, so a click on the
+  // line shows where it landed too (UX pass 2026-11-10), until focus moves on.
+  locatedKey = null;
   pulseFlip = false;
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
@@ -513,6 +516,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api
   clear() {
     this.focusCellWhenDrawn = null;
+    this.locatedKey = null;
     this.draft = null;
     this.notice = null;
     this.unrepeated = null;
@@ -699,7 +703,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.view = "group";
     this.activityId = null;
     this.groupKey = line.groupId;
-    this.focusAfterRender = { cellKey: this.cellKeyOf(line) };
+    const cellKey = this.cellKeyOf(line);
+    this.locatedKey = cellKey;
+    this.focusAfterRender = { cellKey };
   }
 
   /** In Group View, the grid cell holding a line's day and time block, if it names one. */
@@ -1467,6 +1473,9 @@ export default class ShoreshWeekEditor extends LightningElement {
         result.className = `${result.className} cell_chosen`;
         result.selected = true;
       }
+      if (this.locatedKey === cell.key) {
+        result.className = `${result.className} cell_located`;
+      }
       if (this.pulseKeys.includes(this.placementKeyOf(cell.slot))) {
         // Two names in turn, so a second change to the same cell pulses again.
         result.className = `${result.className} ${this.pulseFlip ? "cell_pulse2" : "cell_pulse"}`;
@@ -1680,6 +1689,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Focus moved on by itself (an arrow, a click): the cells chosen together are let go.
     if (!event.detail.extend) {
       this.chosen = null;
+    }
+    if (event.detail.key !== this.locatedKey) {
+      this.locatedKey = null;
     }
     this.focusKey = event.detail.key;
     const cell = this.cellByKey(event.detail.key);
