@@ -193,6 +193,28 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
     );
   });
 
+  // SPECIAL-1.4
+  it("deals a card for each special day or event last year's schedule named and the season hasn't set up", () => {
+    const cards = hand(MESSY, {
+      ...TABLE,
+      noted: [
+        { kind: "D", name: "Field day" },
+        { kind: "S", name: "Zoo trip" }
+      ]
+    });
+    expect(byId(cards, "noted|D|Field day")).toMatchObject({
+      screen: "specialEvents",
+      name: "Field day",
+      small: "SPECIAL DAY",
+      off: "not set up yet",
+      label: "Field day isn't set up yet. Set it up.",
+      nav: { setUpNoted: { kind: "D", name: "Field day" } }
+    });
+    expect(byId(cards, "noted|S|Zoo trip").nav).toEqual({
+      setUpNoted: { kind: "S", name: "Zoo trip" }
+    });
+  });
+
   it("deals what the table draws as missing: a week close at hand not built, places, a special day not planned, seats short", () => {
     const cards = hand();
     const week = byId(cards, "weekNotBuilt|w2");

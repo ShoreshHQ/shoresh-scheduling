@@ -19,6 +19,7 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
+import setUpNamed from "@salesforce/apex/SpecialPlacingController.setUpNamed";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
@@ -64,6 +65,11 @@ jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
 jest.mock("@salesforce/apex/ElectiveSeatsController.openRun", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/SpecialPlacingController.setUpNamed",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
   virtual: true
 });
@@ -4899,6 +4905,36 @@ describe("c-shoresh-camp-setup", () => {
         details.shadowRoot.querySelector('[data-id="open-schedule"]')
       );
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    });
+
+    // SPECIAL-1.4
+    it("Roots' card for a day last year's schedule named sets it up by name, then opens it", async () => {
+      const element = await renderSpecial();
+      await openScreen(element, "roots");
+      setUpNamed.mockResolvedValue({ itemId: "sd1", said: "set up" });
+      const reads = getSeasonSetup.mock.calls.length;
+      q(element, "c-shoresh-roots").dispatchEvent(
+        new CustomEvent("navigate", {
+          detail: {
+            screen: "specialEvents",
+            setUpNoted: { kind: "D", name: "Field day" },
+            fromCard: "hand:noted|D|Field day"
+          }
+        })
+      );
+      await flush();
+      await flush();
+      expect(setUpNamed).toHaveBeenCalledWith({
+        seasonId: SEASON.Id,
+        kind: "D",
+        name: "Field day"
+      });
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+      expect(shownScreens(element)).toContain("specialEvents");
+      // On no day yet: its details open (to put it on one), not its schedule.
+      await flush();
+      expect(q(element, "c-shoresh-special-details").openItemId).toBe("sd1");
+      expect(q(element, "c-shoresh-special-schedule")).toBeNull();
     });
 
     // UX pass 2026-11-10: Relay race typed into Field day, then Manual Build chosen in the menu,

@@ -270,6 +270,36 @@ private class ImportElectivesTest {
     }
   }
 
+  // ELECT-7.2
+  @IsTest
+  static void aSetKeepsTheTimeTheFileShowsItAt() {
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
+      Map<String, Object> plan = planWithElectives(season);
+      Map<String, Object> chugimEntry = (Map<String, Object>) ((List<Object>) plan.get(
+        'electiveSets'
+      ))[0];
+      chugimEntry.put('days', new List<Object>{ 'Tuesday', 'Thursday' });
+      chugimEntry.put('blockKey', 'B|P0|2');
+
+      Test.startTest();
+      save(plan);
+      Test.stopTest();
+
+      ElectiveSet__c chugim = [
+        SELECT TimeBlock__r.Name, Monday__c, Tuesday__c, Thursday__c
+        FROM ElectiveSet__c
+        WHERE Season__c = :season.Id
+        WITH USER_MODE
+      ];
+      Assert.areEqual('Period 2', chugim.TimeBlock__r.Name);
+      Assert.isTrue(chugim.Tuesday__c);
+      Assert.isTrue(chugim.Thursday__c);
+      Assert.isFalse(chugim.Monday__c);
+    }
+  }
+
   @IsTest
   static void linkedPeriodsAreMarkedAsGuessedUntilLooksRightOrAChange() {
     Map<String, Id> kept = KeptCamp.keptIds();

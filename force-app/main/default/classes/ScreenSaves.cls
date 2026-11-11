@@ -116,7 +116,16 @@ public with sharing class ScreenSaves {
     },
     // The Electives screen (repo ADR 0018, slice E4); linked choices are edited in slice E8.
     ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
-      ElectiveSet__c.Name
+      ElectiveSet__c.Name,
+      // Its time (repo ADR 0027): a time block and its days.
+      ElectiveSet__c.TimeBlock__c,
+      ElectiveSet__c.Monday__c,
+      ElectiveSet__c.Tuesday__c,
+      ElectiveSet__c.Wednesday__c,
+      ElectiveSet__c.Thursday__c,
+      ElectiveSet__c.Friday__c,
+      ElectiveSet__c.Saturday__c,
+      ElectiveSet__c.Sunday__c
     },
     Offering__c.SObjectType => new Set<Schema.SObjectField>{
       Offering__c.Activity__c,

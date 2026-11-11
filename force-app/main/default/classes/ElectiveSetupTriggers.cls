@@ -54,6 +54,7 @@ public with sharing class ElectiveSetupTriggers {
     SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
       seasonIds
     );
+    ElectiveSetSeasonBlocks.refuse(sets, labelsBySeason);
     for (ElectiveSet__c item : sets) {
       if (!taken.add(item.Key__c)) {
         CampLabels labels = labelsBySeason.get(item.Season__c);

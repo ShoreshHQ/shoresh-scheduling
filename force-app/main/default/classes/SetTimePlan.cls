@@ -17,7 +17,8 @@ public with sharing class SetTimePlan {
     'Saturday',
     'Sunday'
   };
-  // The field for each day, on the objects that have days (a program, a recurring activity).
+  // The field for each day, on the objects that have days (a program, a recurring activity, an
+  // elective set's time).
   private static final Map<Schema.SObjectType, Map<String, Schema.SObjectField>> DAY_FIELDS = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>{
     Program__c.SObjectType => new Map<String, Schema.SObjectField>{
       'Monday' => Program__c.Monday__c,
@@ -27,6 +28,16 @@ public with sharing class SetTimePlan {
       'Friday' => Program__c.Friday__c,
       'Saturday' => Program__c.Saturday__c,
       'Sunday' => Program__c.Sunday__c
+    },
+    // An elective set's time (repo ADR 0027): read by BlankWeek, never by the clash checks.
+    ElectiveSet__c.SObjectType => new Map<String, Schema.SObjectField>{
+      'Monday' => ElectiveSet__c.Monday__c,
+      'Tuesday' => ElectiveSet__c.Tuesday__c,
+      'Wednesday' => ElectiveSet__c.Wednesday__c,
+      'Thursday' => ElectiveSet__c.Thursday__c,
+      'Friday' => ElectiveSet__c.Friday__c,
+      'Saturday' => ElectiveSet__c.Saturday__c,
+      'Sunday' => ElectiveSet__c.Sunday__c
     },
     RecurringActivity__c.SObjectType => new Map<String, Schema.SObjectField>{
       'Monday' => RecurringActivity__c.Monday__c,

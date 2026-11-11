@@ -8,6 +8,7 @@ public with sharing class BlankDay {
   public List<String> notPlaced = new List<String>();
   private Map<Id, Integer> blockIndex = new Map<Id, Integer>();
   private Map<Id, Integer> groupIndex = new Map<Id, Integer>();
+  private Map<Id, Group__c> groupsById = new Map<Id, Group__c>();
 
   public BlankDay(List<TimeBlock__c> blocks, List<Group__c> groups) {
     for (TimeBlock__c block : blocks) {
@@ -21,6 +22,7 @@ public with sharing class BlankDay {
       );
     }
     for (Group__c grp : groups) {
+      groupsById.put(grp.Id, grp);
       groupIndex.put(grp.Id, grid.groups.size());
       grid.groups.add(new ScheduleGrid.GroupRef(grp.Id, grp.Name));
       List<String> row = new List<String>();
@@ -69,6 +71,21 @@ public with sharing class BlankDay {
         row[b] = ScheduleGrid.CARRIES_ON;
       }
     }
+  }
+
+  /** The index of a time block in the day, or null (ElectiveSetTimes places sets with it). */
+  public Integer blockAt(Id blockId) {
+    return blockIndex.get(blockId);
+  }
+
+  /** A group of the day by its Id ("GroupRef.id"), or null. */
+  public Group__c groupOf(String groupId) {
+    return groupsById.get(Id.valueOf(groupId));
+  }
+
+  /** A group's row of the day. */
+  public List<String> rowOf(Id groupId) {
+    return grid.rows[groupIndex.get(groupId)];
   }
 
   /** The group's row of this day, when the item takes the group and the group is on it. */

@@ -604,6 +604,15 @@ private class ElectivesDataTest {
   static void copySeasonCarriesTheMenuButNotCampersOrRuns() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp().withRun();
+      // Chugim's time (repo ADR 0027): Tuesdays in Period 1.
+      Database.update(
+        new ElectiveSet__c(
+          Id = camp.chugim.Id,
+          TimeBlock__c = camp.ids.get('Period 1'),
+          Tuesday__c = true
+        ),
+        AccessLevel.USER_MODE
+      );
       Test.startTest();
       Integer before = Limits.getQueries();
       Id copyId = new SeasonCopier(
@@ -615,13 +624,23 @@ private class ElectivesDataTest {
       Test.stopTest();
 
       ElectiveSet__c menu = [
-        SELECT Id, Name, CopiedFrom__c
+        SELECT
+          Id,
+          Name,
+          CopiedFrom__c,
+          Tuesday__c,
+          TimeBlock__r.Name,
+          TimeBlock__r.Program__r.Season__c
         FROM ElectiveSet__c
         WHERE Season__c = :copyId
         WITH USER_MODE
       ];
       Assert.areEqual('Chugim', menu.Name);
       Assert.areEqual(camp.chugim.Id, menu.CopiedFrom__c);
+      // ELECT-7.3: its time comes along, in the copy's own Period 1.
+      Assert.isTrue(menu.Tuesday__c);
+      Assert.areEqual('Period 1', menu.TimeBlock__r.Name);
+      Assert.areEqual(copyId, menu.TimeBlock__r.Program__r.Season__c);
       Map<Id, Offering__c> offerings = new Map<Id, Offering__c>();
       for (Offering__c offering : [
         SELECT
