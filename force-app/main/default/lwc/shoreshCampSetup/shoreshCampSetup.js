@@ -651,6 +651,12 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // A special day's schedule saved, then left through the menu rather than its own back: the
+    // season is read again, as that back does, so the days it replaces show what was saved.
+    if (this.specialScheduleChanged && screen !== "specialEvents") {
+      this.specialScheduleChanged = false;
+      this.loadSeason().catch(() => {});
+    }
     // A week chosen on the Schedules doorway, or a hand card's week: that schedule opens on it.
     // Refused while its week picker waits on work under way: the doorway (or Roots) stays, that
     // week's button held (weekStates), rather than opening the screen on another week.

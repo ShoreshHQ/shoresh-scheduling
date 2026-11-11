@@ -171,6 +171,10 @@ export default class ShoreshWeekChecks extends LightningElement {
   get stillNeeded() {
     return this.m.stillNeeded;
   }
+  /** No "0 still needed" line: a zero that asks for attention (design guide, wording rules). */
+  get showStillNeeded() {
+    return this.m.stillNeeded > 0;
+  }
   /** Priorities met (CORE-6.4): "High priority 9 of 10 minimums met", then Low. Counts only. */
   get priorityRows() {
     return priorityRowsOf(this.m);

@@ -2708,6 +2708,37 @@ describe("Shoresh for AI tools and the command line", () => {
       ok: false,
       text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
     });
+    // A week with its Generated Schedule both drafted and published: the two are named apart,
+    // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).
+    const generated = {
+      [S.Week]: "w2",
+      [S.Origin]: "Generated",
+      [S.Program]: "p1"
+    };
+    const both = await call("bring_in_choices", input, {
+      run: answering(
+        [
+          ok(
+            JSON.stringify({
+              ...read,
+              setup: {
+                ...read.setup,
+                schedules: [
+                  { ...generated, Id: "g2", [S.Status]: "Draft" },
+                  { ...generated, Id: "g3", [S.Status]: "Published" }
+                ]
+              }
+            })
+          )
+        ],
+        []
+      ),
+      choices
+    });
+    expect(both).toMatchObject({
+      ok: false,
+      text: "Say which schedule (schedule). The schedules: Generated Schedule, Generated Schedule · Published."
+    });
   });
 
   // API-1.98, API-1.99
