@@ -275,11 +275,15 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="step"]').textContent).toBe("2 of 3");
     const row = $(element, '[data-settle="potterywheel"]');
     expect(row.textContent).toContain("Pottery Wheel");
+    // Started from Shoresh's proposal, so Next is never held back (UX pass 2026-11-10: it was
+    // disabled until every name was answered, none pre-selected).
+    // Marked for a look until the director picks an answer.
     expect(row.querySelector(".corner")).not.toBeNull();
-    expect($(element, '[data-id="primary"]').disabled).toBe(true);
+    expect($(element, '[data-id="primary"]').disabled).toBe(false);
     const proposal = row.querySelector('[data-answer="proposal"]');
     expect(proposal.textContent.trim()).toBe("Same as Pottery");
-    expect(proposal.getAttribute("aria-pressed")).toBe("false");
+    expect(proposal.getAttribute("aria-pressed")).toBe("true");
+    // Pressed by the director, it is theirs: remembered for the camp (below).
     proposal.click();
     await flush();
     expect(
@@ -411,6 +415,17 @@ describe("c-shoresh-choices-import", () => {
     await choose(element, "chugim-week2.csv", SHEET);
     await click(element, '[data-id="primary"]');
     expect($(element, '[data-settle="potterywheel"]')).toBeNull();
+  });
+
+  it("a name left as Shoresh started it goes on to Bring in, and isn't remembered as the director's", async () => {
+    const element = await render();
+    await choose(element, "chugim-week1.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    // 2 of 3, nothing clicked: Next goes on.
+    await click(element, '[data-id="primary"]');
+    const sent = JSON.parse(checkChoices.mock.calls[0][0].request);
+    expect(sent.campers[1].choices[0]).toMatchObject({ a: "a3" });
+    expect(sent.remember).toEqual({});
   });
 
   // UX pass 2026-11-10: once brought in, the only button was "Choose another file"; the seats
