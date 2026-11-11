@@ -1515,6 +1515,8 @@ describe("c-shoresh-import: a narrow window", () => {
   it("a long file name ends in …", () => {
     const name = rule(".file-name");
     expect(name).toMatch(/display: block;/);
+    // An item (.shoresh-item) never shrinks; the name must, or the "…" never comes.
+    expect(name).toMatch(/flex: 0 1 auto;/);
     expect(name).toMatch(/text-overflow: ellipsis;/);
     expect(name).toMatch(/white-space: nowrap;/);
   });

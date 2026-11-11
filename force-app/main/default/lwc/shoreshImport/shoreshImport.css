@@ -64,9 +64,11 @@
   box-shadow: var(--shoresh-focus-ring);
 }
 
-/* A block, not the item's flex row (whose own text can't end in "…"): a long name ends in "…". */
+/* A block, not the item's flex row (whose own text can't end in "…"), and free to shrink (an item
+   never does): a long name ends in "…". */
 .file-name {
   display: block;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
