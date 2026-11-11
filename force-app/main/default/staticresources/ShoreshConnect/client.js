@@ -452,9 +452,9 @@ async function weekChecks(capability, input, at, checks, edits) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = await checks();
-  const { measure, accepted, groupWords } = counterOf(m, body);
+  const { measure, accepted } = counterOf(m, body);
   if (capability.name === "read_week_checks") {
-    const words = m.counterWords(measure, accepted, groupWords);
+    const words = m.counterWords(measure, accepted);
     // A Generated Schedule week as read (its revision): its edits, locks and unlocks hand it
     // back. Its locked cells, as the screen shows each with its lock.
     const seen = body.inputs && body.inputs.revision;
@@ -468,7 +468,7 @@ async function weekChecks(capability, input, at, checks, edits) {
       text: JSON.stringify(read, null, 2)
     };
   }
-  const lines = m.checkLines(measure, accepted, groupWords);
+  const lines = m.checkLines(measure, accepted);
   const shown = [
     ...lines.open,
     ...lines.under,
@@ -513,7 +513,7 @@ async function readDraft(capability, input, at, checks, edits) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = { ...(await checks()), ...(await edits()) };
-  const { measure, accepted, groupWords } = counterOf(m, body);
+  const { measure, accepted } = counterOf(m, body);
   const seen = body.inputs && body.inputs.revision;
   let draft;
   try {
@@ -530,7 +530,7 @@ async function readDraft(capability, input, at, checks, edits) {
     ...(body.season ? { season: body.season } : {}),
     week: input.week,
     schedule: body.draft ? "Manual Build" : "Generated Schedule",
-    checks: m.counterWords(measure, accepted, groupWords),
+    checks: m.counterWords(measure, accepted),
     ...(seen ? { seen } : {}),
     ...draft
   };
@@ -550,11 +550,6 @@ async function readDraft(capability, input, at, checks, edits) {
 function counterOf(m, body) {
   m.nameDaysFor(body.setup);
   const terms = m.buildTerms(body.labels);
-  // An under or over row's unit in the camp's word, as the counter says it ("2 Bunks short").
-  const groupWords =
-    terms && typeof terms.sIn === "function"
-      ? { one: terms.sIn("Group"), many: terms.pIn("Group") }
-      : undefined;
   const dots = (body.setup_changes && body.setup_changes.dots) || [];
   const setupDots = new Map(dots.map((dot) => [dot.key, dot.words]));
   if (body.draft) {
@@ -565,8 +560,7 @@ function counterOf(m, body) {
         setup: body.setup,
         setupDots
       }),
-      accepted: m.readKept(body.accepted),
-      groupWords
+      accepted: m.readKept(body.accepted)
     };
   }
   const loaded = m.loadedOf(body.inputs || {});
@@ -581,7 +575,7 @@ function counterOf(m, body) {
     setupDots,
     planName: null
   });
-  return { measure, accepted: m.readKept(body.accepted), groupWords };
+  return { measure, accepted: m.readKept(body.accepted) };
 }
 
 /**

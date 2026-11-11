@@ -2619,6 +2619,20 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(review.ok).toBe(true);
     expect(review.text).toContain("2 campers: 2 new, 0 already here");
+
+    // A name Shoresh doesn't have: the review says what the screen starts it at, for the AI to
+    // offer the person (UX pass 2026-11-10: the screen starts every name at an answer).
+    const unknown = await call(
+      "bring_in_choices",
+      {
+        ...input,
+        csv_text:
+          "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Drama,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
+      },
+      { run: answering([ok(JSON.stringify(read))], []), choices }
+    );
+    expect(unknown.text).toContain('"Drama" (the screen starts it at "add")');
+    expect(unknown.text).toContain("at How often 0");
     expect(review.text).toContain('save: true and seen: "none"');
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
@@ -2693,6 +2707,37 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(unbuilt).toMatchObject({
       ok: false,
       text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
+    });
+    // A week with its Generated Schedule both drafted and published: the two are named apart,
+    // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).
+    const generated = {
+      [S.Week]: "w2",
+      [S.Origin]: "Generated",
+      [S.Program]: "p1"
+    };
+    const both = await call("bring_in_choices", input, {
+      run: answering(
+        [
+          ok(
+            JSON.stringify({
+              ...read,
+              setup: {
+                ...read.setup,
+                schedules: [
+                  { ...generated, Id: "g2", [S.Status]: "Draft" },
+                  { ...generated, Id: "g3", [S.Status]: "Published" }
+                ]
+              }
+            })
+          )
+        ],
+        []
+      ),
+      choices
+    });
+    expect(both).toMatchObject({
+      ok: false,
+      text: "Say which schedule (schedule). The schedules: Generated Schedule, Generated Schedule · Published."
     });
   });
 
