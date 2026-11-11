@@ -652,13 +652,18 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // A special day's schedule saved, then left through the menu rather than its own back: the
+    // season is read again, as that back does, so the days it replaces show what was saved.
+    if (this.specialScheduleChanged && screen !== "specialEvents") {
+      this.specialScheduleChanged = false;
+      this.loadSeason().catch(() => {});
+    }
     // Roots' card for what last year's schedule named: set up by name first, then opened.
     if (event.detail.setUpNoted) {
       this.setUpNoted(event.detail.setUpNoted, event.detail.fromCard);
       return;
     }
     // A week chosen on the Schedules doorway, or a hand card's week: that schedule opens on it.
-
     // Refused while its week picker waits on work under way: the doorway (or Roots) stays, that
     // week's button held (weekStates), rather than opening the screen on another week.
     const weekId = event.detail.weekId;
@@ -687,7 +692,10 @@ export default class ShoreshCampSetup extends LightningElement {
     // A Roots card: its screen grows out of it; and back to Roots: home into the same card
     // (repo ADR 0020). Without motion, the screen simply shows.
     if (this.travelFrom(screen, fromCard)) {
-      this.openSpecialItem(event.detail.specialItemId, event.detail.detailsOnly);
+      this.openSpecialItem(
+        event.detail.specialItemId,
+        event.detail.detailsOnly
+      );
       return;
     }
     // Bring in choices from Elective seats starts on the set, week and schedule shown there.
@@ -1938,6 +1946,33 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
+   * 'Add "Drama" to activities' on an offering: the activity is made at How often 0, as a
+   * choices sheet's Add makes it (ELECT-2.3), so the generator leaves it out of regular weeks;
+   * the season is read again and its Id given back for the row. Null when it couldn't be saved.
+   */
+  async addOfferingActivity(name) {
+    const A = FIELD.Activity;
+    try {
+      const [id] = await saveRecords({
+        records: [
+          {
+            sobjectType: OBJECT.Activity,
+            Name: name,
+            [A.Season]: this.setup.season.Id,
+            [A.TimesPerWeekMin]: 0,
+            [A.TimesPerWeekMax]: 0
+          }
+        ]
+      });
+      await this.loadSeason();
+      return id || null;
+    } catch (e) {
+      this.showError(e, `"${name}" wasn't added.`);
+      return null;
+    }
+  }
+
+  /**
    * An offering's row, as the approved mock-up draws it (setup-a; desktop ElectiveSetDetail.jsx):
    * the activity, its seats (a number, "No limit", or nothing while blank), its minimum ("No minimum"
    * quiet), who can take it and where it happens (the activity's, read only, never typed twice),
@@ -1982,7 +2017,13 @@ export default class ShoreshCampSetup extends LightningElement {
         optionsFor: (saved) =>
           options.filter(
             (o) => o.value === saved[OFFER.Activity] || !offered.has(o.value)
-          )
+          ),
+        // Typed, not picked from a list that jumps: a name the season doesn't have is offered as
+        // 'Add "Drama" to activities' (UX pass 2026-11-10), as a choices sheet's Add does.
+        addName: {
+          to: t.pIn("Activity"),
+          make: (name) => this.addOfferingActivity(name)
+        }
       },
       {
         fieldName: OFFER.Seats,

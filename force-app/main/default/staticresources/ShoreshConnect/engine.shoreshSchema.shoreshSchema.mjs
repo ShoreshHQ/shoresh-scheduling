@@ -97,16 +97,8 @@ const electiveRunTimesFingerprint = schemaName("ElectiveRun__c.TimesFingerprint_
 const electiveRunWeek = schemaName("ElectiveRun__c.Week__c");
 const electiveSetObject = schemaName("ElectiveSet__c");
 const electiveSetCopiedFrom = schemaName("ElectiveSet__c.CopiedFrom__c");
-const electiveSetFriday = schemaName("ElectiveSet__c.Friday__c");
 const electiveSetKey = schemaName("ElectiveSet__c.Key__c");
-const electiveSetMonday = schemaName("ElectiveSet__c.Monday__c");
-const electiveSetSaturday = schemaName("ElectiveSet__c.Saturday__c");
 const electiveSetSeason = schemaName("ElectiveSet__c.Season__c");
-const electiveSetSunday = schemaName("ElectiveSet__c.Sunday__c");
-const electiveSetThursday = schemaName("ElectiveSet__c.Thursday__c");
-const electiveSetTimeBlock = schemaName("ElectiveSet__c.TimeBlock__c");
-const electiveSetTuesday = schemaName("ElectiveSet__c.Tuesday__c");
-const electiveSetWednesday = schemaName("ElectiveSet__c.Wednesday__c");
 const fixedActivityObject = schemaName("FixedActivity__c");
 const fixedActivityCopiedFrom = schemaName("FixedActivity__c.CopiedFrom__c");
 const fixedActivityEarlyBlocks = schemaName("FixedActivity__c.EarlyBlocks__c");
@@ -466,16 +458,8 @@ export const FIELD = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     CopiedFrom: electiveSetCopiedFrom.fieldApiName,
-    Friday: electiveSetFriday.fieldApiName,
     Key: electiveSetKey.fieldApiName,
-    Monday: electiveSetMonday.fieldApiName,
-    Saturday: electiveSetSaturday.fieldApiName,
-    Season: electiveSetSeason.fieldApiName,
-    Sunday: electiveSetSunday.fieldApiName,
-    Thursday: electiveSetThursday.fieldApiName,
-    TimeBlock: electiveSetTimeBlock.fieldApiName,
-    Tuesday: electiveSetTuesday.fieldApiName,
-    Wednesday: electiveSetWednesday.fieldApiName
+    Season: electiveSetSeason.fieldApiName
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: fixedActivityCopiedFrom.fieldApiName,
@@ -750,8 +734,7 @@ export const PARENT = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     CopiedFrom: FIELD.ElectiveSet.CopiedFrom.replace(/__c$/, "__r"),
-    Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r"),
-    TimeBlock: FIELD.ElectiveSet.TimeBlock.replace(/__c$/, "__r")
+    Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r")
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: FIELD.FixedActivity.CopiedFrom.replace(/__c$/, "__r"),
@@ -989,7 +972,6 @@ export const CHILDREN = Object.freeze({
   TimeBlock: Object.freeze({
     Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
-    ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,
     EndingFixedActivities: `${NAMESPACE_PREFIX}EndingFixedActivities__r`,
     EndingRecurringActivities: `${NAMESPACE_PREFIX}EndingRecurringActivities__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,

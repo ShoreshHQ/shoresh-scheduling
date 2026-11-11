@@ -446,8 +446,33 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get showsBoard() {
     return !!this.view;
   }
+  /**
+   * The run's schedule holds no cell of the set, so there is no elective time to seat anyone at:
+   * said in place of the seats, with no Assign seats or Finalize ("0 of 0 placed" read as done).
+   * Only while no one has a seat: seats from before the set left the schedule stay on the board,
+   * with their locks, under "Schedule changed since seats were assigned" (ELECT-6.4).
+   */
+  get hasNoTimes() {
+    return (
+      !!this.view &&
+      !this.isFinal &&
+      !(this.view.times || []).length &&
+      !(this.view.seats || []).length
+    );
+  }
+  get noTimesText() {
+    const set = this.sets.find((s) => s.Id === this.setId);
+    const week = this.weeks.find((w) => w.Id === this.weekId);
+    const schedule = this.scheduleOptions.find(
+      (o) => o.value === this.scheduleId
+    );
+    return `${set ? set.Name : ""} isn't on ${week ? week.Name : ""}'s ${schedule ? schedule.label : "schedule"} yet.`;
+  }
+  get showsPrimary() {
+    return !this.hasNoTimes;
+  }
   get showsCounter() {
-    return this.isAssigned || this.isFinal;
+    return !this.hasNoTimes && (this.isAssigned || this.isFinal);
   }
   get counter() {
     const board = this.board;
@@ -547,7 +572,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return this.busy;
   }
   get showsAssignAgain() {
-    return this.isCommitted && this.isAssigned;
+    return this.isCommitted && this.isAssigned && !this.hasNoTimes;
   }
   get showsBringIn() {
     return !this.isFinal;
