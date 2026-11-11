@@ -14,8 +14,9 @@ public with sharing class SetupMatchCarry {
   public Map<String, String> whyByCell = new Map<String, String>();
 
   private static final String AT_ITS_TIME = 'Now at its set time';
-  // The elective sets the day now has at their time.
-  private Set<Id> timedSets = new Set<Id>();
+  // The elective sets the day now has at their time, each with a group it is there for
+  // ("setId|groupId"): a group the set's time left out (taken, or not at camp) keeps its own.
+  private Set<String> timedSets = new Set<String>();
   private SetupMatchRules rules;
   private SetupMatchNames names;
   private ScheduleGrid target;
@@ -29,10 +30,10 @@ public with sharing class SetupMatchCarry {
     this.names = names;
     this.target = target;
     cells = new Map<String, String>(new SetupMatchCells(target).held);
-    for (ScheduleGrid.Item item : target.items) {
-      Id setId = item.kind == 'E' ? SlotIds.electiveIn('E:' + item.id) : null;
+    for (String cell : cells.keySet()) {
+      Id setId = SlotIds.electiveIn(SlotIds.owner(cells.get(cell)));
       if (setId != null) {
-        timedSets.add(setId);
+        timedSets.add(setId + '|' + SetupMatchCells.groupOf(cell));
       }
     }
   }
@@ -53,9 +54,13 @@ public with sharing class SetupMatchCarry {
         continue;
       }
       // An elective set that now has a time is at it in the day now (BlankDay.placeSet): a
-      // placement of it elsewhere isn't carried as well, so the set is never there twice that
-      // day (repo ADR 0027).
-      if (timedSets.contains(SlotIds.electiveIn(SlotIds.owner(owner)))) {
+      // placement of it elsewhere for the same group isn't carried as well, so the set is never
+      // there twice for a group that day (repo ADR 0027).
+      Id setId = SlotIds.electiveIn(SlotIds.owner(owner));
+      if (
+        setId != null &&
+        timedSets.contains(setId + '|' + SetupMatchCells.groupOf(first))
+      ) {
         for (String cell : placement) {
           whyByCell.put(cell, AT_ITS_TIME);
         }

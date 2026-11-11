@@ -191,6 +191,15 @@ public with sharing class BlankWeek {
     ) {
       return new List<ElectiveSet__c>();
     }
+    for (String day : ALL_DAYS) {
+      Schema.SObjectField field = SetTimePlan.dayField(
+        ElectiveSet__c.SObjectType,
+        day
+      );
+      if (!field.getDescribe().isAccessible()) {
+        return new List<ElectiveSet__c>();
+      }
+    }
     return [
       SELECT
         Id,

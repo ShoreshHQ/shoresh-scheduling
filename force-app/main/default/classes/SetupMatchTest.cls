@@ -189,6 +189,86 @@ private class SetupMatchTest {
     }
   }
 
+  // ELECT-7.1: a group the set's time leaves out (its slot taken) keeps its own placement.
+  @IsTest
+  static void aGroupItsSetTimeLeavesOutKeepsTheSetWhereTheDirectorPutIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      SlotEdits.Result placed = ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY,
+              ids.get('Group B'),
+              ids.get('Period 1')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'E:' + chugim.Id }
+          )
+        }
+      );
+      Assert.isTrue(placed.conflicts.isEmpty());
+      // Group B's Period 2 is taken on Mondays (a recurring activity for Group B only), then
+      // the set is given Period 2 on Mondays.
+      RecurringActivity__c rest = SetTimeTestData.recurring(
+        ids,
+        'Rest',
+        'Period 2'
+      );
+      SetTimeGuard.defer();
+      try {
+        Database.insert(rest, AccessLevel.SYSTEM_MODE);
+        Database.insert(
+          new Coverage__c(
+            RecurringActivity__c = rest.Id,
+            Group__c = ids.get('Group B'),
+            Season__c = ids.get('Season')
+          ),
+          AccessLevel.SYSTEM_MODE
+        );
+      } finally {
+        SetTimeGuard.resume();
+      }
+      Database.update(
+        new ElectiveSet__c(
+          Id = chugim.Id,
+          TimeBlock__c = ids.get('Period 2'),
+          Monday__c = true
+        ),
+        AccessLevel.USER_MODE
+      );
+
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      List<String> keys = new List<String>();
+      for (SetupMatch.Change change : preview.changes) {
+        keys.add(change.key);
+      }
+      SetupMatch.Updated updated = makeChanges(draftId, keys, preview);
+      Test.stopTest();
+
+      Assert.isNull(updated.refused);
+      Assert.areEqual(
+        'Rest',
+        SetupMatchTestData.mondayAt(updated.view, 'Group B', 'Period 2')
+      );
+      Assert.areEqual(
+        'Chugim',
+        SetupMatchTestData.mondayAt(updated.view, 'Group B', 'Period 1'),
+        'Kept: the set\'s time left Group B out'
+      );
+    }
+  }
+
   @IsTest
   static void aDeletedActivityGetsADotAndUpdateClearsItAfterKeepingAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
