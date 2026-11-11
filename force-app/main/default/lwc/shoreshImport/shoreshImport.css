@@ -21,8 +21,11 @@
 
 /* ---------- the rail ---------- */
 
+/* When the files' name and the buttons don't fit on one line (a narrow window), the buttons
+   go under, on the right, rather than the name running under them. */
 .rail {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--shoresh-space-in-group);
   min-height: var(--shoresh-control-h);
@@ -37,7 +40,7 @@
 }
 
 .side_left {
-  flex: 1 1 0;
+  flex: 1 1 12rem;
 }
 
 .side_right {
@@ -61,10 +64,15 @@
   box-shadow: var(--shoresh-focus-ring);
 }
 
+/* A block, not the item's flex row (whose own text can't end in "…"), and free to shrink (an item
+   never does): a long name ends in "…". */
 .file-name {
+  display: block;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: default;
 }
 
@@ -246,7 +254,8 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
-  height: var(--shoresh-tile-h);
+  /* At least a tile tall: its words ("6 days by number") may take two lines in a narrow one. */
+  min-height: var(--shoresh-tile-h);
   padding: var(--shoresh-s2) var(--shoresh-space-control-x);
   border: 0;
   margin: 0;
