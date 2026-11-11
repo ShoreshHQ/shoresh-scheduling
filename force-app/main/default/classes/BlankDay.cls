@@ -8,6 +8,7 @@ public with sharing class BlankDay {
   public List<String> notPlaced = new List<String>();
   private Map<Id, Integer> blockIndex = new Map<Id, Integer>();
   private Map<Id, Integer> groupIndex = new Map<Id, Integer>();
+  private Map<Id, Group__c> groupsById = new Map<Id, Group__c>();
 
   public BlankDay(List<TimeBlock__c> blocks, List<Group__c> groups) {
     for (TimeBlock__c block : blocks) {
@@ -21,6 +22,7 @@ public with sharing class BlankDay {
       );
     }
     for (Group__c grp : groups) {
+      groupsById.put(grp.Id, grp);
       groupIndex.put(grp.Id, grid.groups.size());
       grid.groups.add(new ScheduleGrid.GroupRef(grp.Id, grp.Name));
       List<String> row = new List<String>();
@@ -68,6 +70,37 @@ public with sharing class BlankDay {
       for (Integer b = first + 1; b < first + part.size(); b++) {
         row[b] = ScheduleGrid.CARRIES_ON;
       }
+    }
+  }
+
+  /**
+   * An elective set at its time (repo ADR 0027; ELECT-7.1): in the block, every group of the day
+   * at camp then, as one set cell, as a director would type it. A slot already taken (a fixed or
+   * recurring activity there first) is left as it is and named in notPlaced.
+   */
+  public void placeSet(ElectiveSet__c electiveSet, TimeBlock__c block) {
+    Integer b = block == null ? null : blockIndex.get(block.Id);
+    if (b == null) {
+      return;
+    }
+    String position = null;
+    for (ScheduleGrid.GroupRef ref : grid.groups) {
+      Group__c grp = groupsById.get(Id.valueOf(ref.id));
+      if (grp == null || !SetTimePlan.atCamp(grp, block)) {
+        continue;
+      }
+      List<String> row = grid.rows[groupIndex.get(grp.Id)];
+      if (String.isNotBlank(row[b])) {
+        notPlaced.add(electiveSet.Name + ' · ' + grp.Name);
+        continue;
+      }
+      if (position == null) {
+        grid.items.add(
+          new ScheduleGrid.Item('E', electiveSet.Id, electiveSet.Name)
+        );
+        position = String.valueOf(grid.items.size());
+      }
+      row[b] = position;
     }
   }
 

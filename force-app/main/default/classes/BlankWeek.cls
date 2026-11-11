@@ -21,6 +21,8 @@ public with sharing class BlankWeek {
   private List<TimeBlock__c> blocks;
   private List<Group__c> groups;
   private List<SetTimePlan.Item> items;
+  // The elective sets with a time in this program's blocks (repo ADR 0027).
+  private List<ElectiveSet__c> setTimes = new List<ElectiveSet__c>();
 
   /** A blank week: its days, and any fixed or recurring activity whose slot was taken. */
   public class Week {
@@ -56,6 +58,7 @@ public with sharing class BlankWeek {
     // A first Generate says this week's days before any schedule is read.
     DayWords.use(program.Season__r);
     items = setTimeItems(program, week.Id);
+    setTimes = setTimesOf(program.Id);
     Week result = new Week();
     for (Date day : runDays(program, week)) {
       BlankDay filled = filled(weekdayOf(day));
@@ -165,7 +168,39 @@ public with sharing class BlankWeek {
         day.place(item, weekday);
       }
     }
+    // Then each elective set at its time: a fixed or recurring activity there keeps its slot.
+    Map<Id, TimeBlock__c> blockById = new Map<Id, TimeBlock__c>(blocks);
+    Schema.SObjectField onDay = SetTimePlan.dayField(
+      ElectiveSet__c.SObjectType,
+      weekday
+    );
+    for (ElectiveSet__c electiveSet : setTimes) {
+      if (onDay != null && electiveSet.get(onDay) == true) {
+        day.placeSet(electiveSet, blockById.get(electiveSet.TimeBlock__c));
+      }
+    }
     return day;
+  }
+
+  /** The program's elective sets with a time, in name order, so the same setup gives the same week. */
+  private static List<ElectiveSet__c> setTimesOf(Id programId) {
+    return [
+      SELECT
+        Id,
+        Name,
+        TimeBlock__c,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        Saturday__c,
+        Sunday__c
+      FROM ElectiveSet__c
+      WHERE TimeBlock__r.Program__c = :programId
+      WITH USER_MODE
+      ORDER BY Name, Id
+    ];
   }
 
   /**
