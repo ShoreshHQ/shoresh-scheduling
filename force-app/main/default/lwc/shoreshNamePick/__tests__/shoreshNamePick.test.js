@@ -36,7 +36,7 @@ async function type(element, text) {
   const field = input(element);
   field.dispatchEvent(new FocusEvent("focus"));
   field.value = text;
-  field.dispatchEvent(new Event("input"));
+  field.dispatchEvent(new CustomEvent("input"));
   await flush();
 }
 async function key(element, name) {
