@@ -449,9 +449,16 @@ export default class ShoreshElectiveSeats extends LightningElement {
   /**
    * The run's schedule holds no cell of the set, so there is no elective time to seat anyone at:
    * said in place of the seats, with no Assign seats or Finalize ("0 of 0 placed" read as done).
+   * Only while no one has a seat: seats from before the set left the schedule stay on the board,
+   * with their locks, under "Schedule changed since seats were assigned" (ELECT-6.4).
    */
   get hasNoTimes() {
-    return !!this.view && !this.isFinal && !(this.view.times || []).length;
+    return (
+      !!this.view &&
+      !this.isFinal &&
+      !(this.view.times || []).length &&
+      !(this.view.seats || []).length
+    );
   }
   get noTimesText() {
     const set = this.sets.find((s) => s.Id === this.setId);

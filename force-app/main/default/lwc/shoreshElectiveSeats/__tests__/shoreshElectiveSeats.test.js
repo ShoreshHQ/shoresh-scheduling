@@ -288,7 +288,10 @@ describe("the start", () => {
   // ELECT-4.9
   it.each([
     ["before", runView({ times: [] })],
-    ["after Assign seats", assignedView({ times: [] })]
+    [
+      "after Assign seats, with no one seated",
+      assignedView({ times: [], seats: [] })
+    ]
   ])(
     "says when the set isn't on the week's schedule (%s), with no Assign seats or Finalize",
     async (_when, view) => {
@@ -304,6 +307,12 @@ describe("the start", () => {
       expect($(element, '[data-id="by-offering"]')).toBeNull();
     }
   );
+
+  it("keeps seats on the board when the set left the schedule after they were assigned", async () => {
+    const element = await render({ view: assignedView({ times: [] }) });
+    expect($(element, '[data-id="no-times"]')).toBeNull();
+    expect($(element, '[data-id="by-offering"]')).not.toBeNull();
+  });
 
   it("says electives in the camp's word: Chug seats, Chugim (wiki decision 66)", async () => {
     const words = [
