@@ -664,6 +664,8 @@ export function buildRequest({
     const item = (reading.newNames || []).find((n) => foldName(n.name) === key);
     if (!item) continue;
     if (answer.kind === "add") addActivities.push(item.name);
+    // An answer Shoresh started from, not one the director gave: nothing to remember.
+    if (answer.started) continue;
     if (answer.kind === "leave") remember[`${ANSWER_PREFIX}${key}`] = "leave";
     if (answer.kind === "same" && byId.has(answer.activityId)) {
       remember[`${ANSWER_PREFIX}${key}`] =

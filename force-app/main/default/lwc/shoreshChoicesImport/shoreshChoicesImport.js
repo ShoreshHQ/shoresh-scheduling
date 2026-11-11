@@ -304,10 +304,24 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.file = file;
       this.fileName = chosen.name;
       this.reading = reading;
-      this.answers = rememberedAnswers(
+      // Every name gets an answer to start from, so Next is never held back (the design guide:
+      // every question has a pre-selected answer; UX pass 2026-11-10): one remembered for this
+      // camp, else the near name Shoresh proposes ("Same as Pottery"), else "Add as an
+      // activity", what the sheet asks for. One click changes it; only a click is remembered.
+      const remembered = rememberedAnswers(
         reading.newNames,
         this.situation.answers,
         activities
+      );
+      this.answers = Object.fromEntries(
+        reading.newNames.map((item) => {
+          const key = foldName(item.name);
+          const proposal = proposalFor(item.name, activities);
+          const start = proposal
+            ? { kind: "same", activityId: proposal.id, started: true }
+            : { kind: "add", started: true };
+          return [key, remembered[key] || start];
+        })
       );
       this.check = null;
       this.done = null;
