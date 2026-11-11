@@ -118,9 +118,9 @@ public with sharing class SeasonSetupController {
 
   /** A program's days changed: the weeks follow them (repo ADR 0028; WEEK-2.7). */
   @AuraEnabled
-  public static SeasonWeeks.Followed followProgramDays(Id seasonId) {
+  public static SeasonWeeksFollow.Followed followProgramDays(Id seasonId) {
     try {
-      return SeasonWeeks.followProgramDays(seasonId);
+      return SeasonWeeksFollow.followProgramDays(seasonId);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
@@ -130,10 +130,10 @@ public with sharing class SeasonSetupController {
   @AuraEnabled
   public static void putWeeksBack(String moved) {
     try {
-      SeasonWeeks.putBack(
-        (List<SeasonWeeks.Moved>) JSON.deserialize(
+      SeasonWeeksFollow.putBack(
+        (List<SeasonWeeksFollow.Moved>) JSON.deserialize(
           moved,
-          List<SeasonWeeks.Moved>.class
+          List<SeasonWeeksFollow.Moved>.class
         )
       );
     } catch (Exception e) {

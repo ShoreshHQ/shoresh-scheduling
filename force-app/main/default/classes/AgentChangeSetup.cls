@@ -89,7 +89,7 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
       WHERE Id = :record.Id
       WITH USER_MODE
     ];
-    SeasonWeeks.Followed followed = SeasonWeeks.followProgramDays(
+    SeasonWeeksFollow.Followed followed = SeasonWeeksFollow.followProgramDays(
       program.Season__c
     );
     return followed.said == null ? '' : ' ' + followed.said;

@@ -113,7 +113,7 @@ private class SeasonSetupControllerTest {
       SeasonSetupController.saveRecords(
         new List<SObject>{ new Program__c(Id = programId, Saturday__c = true) }
       );
-      SeasonWeeks.Followed followed = SeasonSetupController.followProgramDays(
+      SeasonWeeksFollow.Followed followed = SeasonSetupController.followProgramDays(
         seasonId
       );
       List<Week__c> after = weeksOf(seasonId);
@@ -154,7 +154,7 @@ private class SeasonSetupControllerTest {
       }
 
       Test.startTest();
-      SeasonWeeks.Followed followed = SeasonSetupController.followProgramDays(
+      SeasonWeeksFollow.Followed followed = SeasonSetupController.followProgramDays(
         ids.get('Season')
       );
       Test.stopTest();
