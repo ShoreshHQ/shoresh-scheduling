@@ -417,10 +417,12 @@ export default class ShoreshChoicesImport extends LightningElement {
         key,
         name: item.name,
         count: `${item.campers} ${camperWord(item.campers)}`,
-        className: answer
-          ? "row shoresh-raised"
-          : "row row_look shoresh-raised",
-        unsettled: !answer,
+        // An answer Shoresh started it at keeps the corner until the director picks one.
+        className:
+          answer && !answer.started
+            ? "row shoresh-raised"
+            : "row row_look shoresh-raised",
+        unsettled: !answer || !!answer.started,
         remembered: !!(answer && answer.remembered),
         rememberedNote: (answer && answer.note) || "Remembered",
         proposal,

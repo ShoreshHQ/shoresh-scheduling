@@ -277,7 +277,8 @@ describe("c-shoresh-choices-import", () => {
     expect(row.textContent).toContain("Pottery Wheel");
     // Started from Shoresh's proposal, so Next is never held back (UX pass 2026-11-10: it was
     // disabled until every name was answered, none pre-selected).
-    expect(row.querySelector(".corner")).toBeNull();
+    // Marked for a look until the director picks an answer.
+    expect(row.querySelector(".corner")).not.toBeNull();
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
     const proposal = row.querySelector('[data-answer="proposal"]');
     expect(proposal.textContent.trim()).toBe("Same as Pottery");
