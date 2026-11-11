@@ -121,10 +121,11 @@
 }
 
 /* Versions, then Published and Publish, 4 apart at the rail's right edge (as Manual Build). */
+/* Publish and, once published, its own menu beside it: one split button. */
 .publish {
   display: flex;
   align-items: center;
-  gap: var(--shoresh-space-in-group);
+  gap: 1px;
 }
 
 /* When the week was published, in Published's dropdown: it may wrap. */
