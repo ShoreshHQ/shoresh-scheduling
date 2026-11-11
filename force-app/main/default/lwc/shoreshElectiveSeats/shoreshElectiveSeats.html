@@ -333,7 +333,7 @@
                 </button>
               </c-shoresh-rail-pop>
             </template>
-            <template lwc:else>
+            <template lwc:elseif={showsPrimary}>
               <button
                 type="button"
                 class="shoresh-item shoresh-item_primary"
@@ -518,6 +518,12 @@
             <c-shoresh-empty-state
               title={noRunText}
               data-id="no-run"
+            ></c-shoresh-empty-state>
+          </template>
+          <template lwc:elseif={hasNoTimes}>
+            <c-shoresh-empty-state
+              title={noTimesText}
+              data-id="no-times"
             ></c-shoresh-empty-state>
           </template>
           <template lwc:elseif={showsBoard}>
