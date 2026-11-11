@@ -1,19 +1,32 @@
 /**
  * "Update to match setup" with an elective set given a time (repo ADR 0027; ELECT-7.1), as a
  * scheduler with the Shoresh Scheduler permission set. Synthetic camp (SetupMatchTestData, as
- * SetupMatchTest): Group A and Group B, Period 1 and Period 2, Main on Mondays.
+ * SetupMatchTest): Group A and Group B, Period 1 and Period 2, Main on Mondays; Week 1's Manual
+ * Build starts with Swim in Group A's Monday Period 2.
  */
 @IsTest
 private class SetupMatchSetTimesTest {
   private static final Date MONDAY = SetupMatchTestData.MONDAY;
 
-  /** Week 1's Manual Build, blank. */
+  /** Week 1's Manual Build with Swim in Group A's Monday Period 2, as SetupMatchTest starts. */
   private static Id started(Map<String, Id> ids) {
-    return ManualBuildController.startBlankWeek(
+    Id draftId = ManualBuildController.startBlankWeek(
         ids.get('Main'),
         ids.get('Week 1')
       )
       .schedule.schedule.id;
+    SlotEdits.Result swim = ManualBuildController.saveSlots(
+      draftId,
+      new List<SlotEdits.Edit>{
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+          new List<String>{ '' },
+          new List<String>{ 'A:' + ids.get('Swim') }
+        )
+      }
+    );
+    Assert.isTrue(swim.conflicts.isEmpty());
+    return draftId;
   }
 
   /** Every change the preview lists, made. */

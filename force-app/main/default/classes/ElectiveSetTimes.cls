@@ -91,7 +91,9 @@ public with sharing class ElectiveSetTimes {
   /** A block's sets, when it was read with them (blocksOf); none otherwise. */
   private static List<ElectiveSet__c> setsAt(TimeBlock__c block) {
     try {
-      return block.ElectiveSets__r;
+      return block.ElectiveSets__r == null
+        ? new List<ElectiveSet__c>()
+        : block.ElectiveSets__r;
     } catch (SObjectException e) {
       return new List<ElectiveSet__c>();
     }
