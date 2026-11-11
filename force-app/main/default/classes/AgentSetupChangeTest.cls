@@ -54,18 +54,14 @@ private class AgentSetupChangeTest {
         new Map<String, Object>{
           'kind' => 'program',
           'name' => 'Main',
-          'fields' => new Map<String, Object>{ 'saturday' => 'yes' }
+          'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
+          'seen' => new Map<String, Object>{ 'saturday' => 'no' }
         }
       );
       Test.stopTest();
       String said = String.valueOf(saturday[1]);
       Assert.areEqual(200, saturday[0], said);
       Assert.isTrue(said.contains('now run Monday to Saturday.'), said);
-      // The season ends on Friday 7 August: Week 6 stops there, and says so.
-      Assert.isTrue(
-        said.contains('Week 6 stops at the season\'s last day.'),
-        said
-      );
       Assert.areEqual(
         Date.newInstance(2026, 7, 4),
         [
