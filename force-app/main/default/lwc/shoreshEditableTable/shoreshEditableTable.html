@@ -348,6 +348,22 @@
                         </button>
                       </div>
                     </template>
+                    <template lwc:elseif={cell.isNamePick}>
+                      <c-shoresh-name-pick
+                        label={cell.label}
+                        value={cell.value}
+                        placeholder={cell.pickPlaceholder}
+                        options={cell.options}
+                        add-to={cell.addTo}
+                        taken={cell.taken}
+                        required={cell.required}
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        disabled={cell.disabled}
+                        onchange={handleChange}
+                        onaddname={handleAddName}
+                      ></c-shoresh-name-pick>
+                    </template>
                     <template lwc:elseif={cell.isPicklist}>
                       <lightning-combobox
                         label={cell.label}

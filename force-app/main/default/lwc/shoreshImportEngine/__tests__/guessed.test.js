@@ -51,9 +51,11 @@ describe("what the import guessed, for the setup screens", () => {
     const guessed = guessedOf(files, null, answers);
     const activities = guessed.filter((g) => g.kind === "Activity");
     expect(activities.length).toBeGreaterThan(0);
+    // Every activity here is for everyone: who is not a guess, only how often (UX pass
+    // 2026-11-10: "Who: everyone" carried a corner on every activity).
     activities.forEach((g) => {
       expect(g.key).toMatch(/^A\|/);
-      expect(g.fields).toEqual(["often", "who"]);
+      expect(g.fields).toEqual(["often"]);
     });
     // The place ticked is added and guessed; the one not ticked (Hall) is not added at all.
     expect(guessed.filter((g) => g.kind === "Location")).toEqual([
@@ -61,6 +63,25 @@ describe("what the import guessed, for the setup screens", () => {
     ]);
     // A division the page states is read outright, not guessed.
     expect(guessed.filter((g) => g.kind === "Group")).toEqual([]);
+  });
+
+  it("who can do an activity is a guess only when it names some groups, not everyone", () => {
+    // Archery only ever in Juniors: who is read as Juniors, a guess to look at.
+    const files = DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["", "Juniors", "Seniors"],
+        ["Time", "Bunk 1", "Bunk 2"],
+        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)]),
+        ["1:00-1:45", d % 2 ? "Archery" : "Music", "Swim @ Pool"],
+        ["2:00-2:45", d % 2 ? "Art" : "Archery", "Soccer"]
+      ])
+    );
+    const guessed = guessedOf(files, null, { "place|Pool": "add" });
+    expect(guessed.find((g) => g.key === "A|Archery").fields).toEqual([
+      "often",
+      "who"
+    ]);
+    expect(guessed.find((g) => g.key === "A|Art").fields).toEqual(["often"]);
   });
 
   it("a group's division only its file's name gave, left as suggested, is guessed", () => {

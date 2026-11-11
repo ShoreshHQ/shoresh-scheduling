@@ -280,6 +280,54 @@ private class SpecialPlacingTest {
     return draftId;
   }
 
+  // SPECIAL-1.4
+  @IsTest
+  static void rootsListsWhatLastYearsScheduleNamedUntilItIsSetUpByName() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('D', '', 'Field day'),
+        MONDAY
+      );
+      // Last year's schedule, kept as the import keeps it: a version from the file.
+      Id imported = ManualBuildController.saveVersion(draftId, 'Last year');
+      update new Schedule__c(Id = imported, Origin__c = 'Imported');
+
+      Test.startTest();
+      List<RootsNoted.Noted> before = RootsNoted.read(ids.get('Season'));
+      SpecialNamed.Named done = SpecialPlacingController.setUpNamed(
+        ids.get('Season'),
+        'D',
+        'Field day'
+      );
+      List<RootsNoted.Noted> after = RootsNoted.read(ids.get('Season'));
+      Test.stopTest();
+
+      Assert.areEqual(1, before.size());
+      Assert.areEqual('D', before[0].kind);
+      Assert.areEqual('Field day', before[0].name);
+      SpecialDay__c made = [
+        SELECT Name
+        FROM SpecialDay__c
+        WHERE Id = :done.itemId
+        WITH USER_MODE
+      ];
+      Assert.areEqual('Field day', made.Name);
+      // On no day: the director puts it on one on Special events.
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM SpecialDate__c
+          WHERE SpecialDay__c = :done.itemId
+          WITH USER_MODE
+        ]
+      );
+      Assert.isTrue(after.isEmpty(), 'Set up: no longer on Roots');
+    }
+  }
+
   @IsTest
   static void settingUpANotedEventMakesItAndPointsItsCellsAtIt() {
     System.runAs(ShoreshTestData.scheduler()) {

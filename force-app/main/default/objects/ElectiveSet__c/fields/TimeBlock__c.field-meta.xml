@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TimeBlock__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The time block the set's time is in, on its days, for every group of that block's program: Start a blank week and a first Generate put the set there. Deleting the time block leaves the set with no time.</description>
+    <label>Time Block</label>
+    <referenceTo>TimeBlock__c</referenceTo>
+    <relationshipLabel>Elective Sets</relationshipLabel>
+    <relationshipName>ElectiveSets</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

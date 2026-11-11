@@ -252,6 +252,11 @@
   box-shadow: var(--shoresh-focus-ring);
 }
 
+/* Where a counter line took the director: the focus ring, shown after a click too. */
+.cell_located .cell-inner {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
 /* Selected (picked up from the keyboard or a click): the highlight outline. */
 .cell_picked .cell-inner {
   outline: 2px solid var(--shoresh-color-highlight);

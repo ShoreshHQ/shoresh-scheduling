@@ -23,17 +23,38 @@ public with sharing class ElectiveCopier {
   public void copy() {
     Map<Id, ElectiveSet__c> setCopies = new Map<Id, ElectiveSet__c>();
     for (ElectiveSet__c item : [
-      SELECT Id, Name
+      SELECT
+        Id,
+        Name,
+        TimeBlock__c,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        Saturday__c,
+        Sunday__c
       FROM ElectiveSet__c
       WHERE Season__c = :sourceSeasonId
       WITH USER_MODE
     ]) {
+      // Its time too (repo ADR 0027), in the copy's own time block.
       setCopies.put(
         item.Id,
         new ElectiveSet__c(
           Season__c = newSeasonId,
           Name = item.Name,
-          CopiedFrom__c = item.Id
+          CopiedFrom__c = item.Id,
+          TimeBlock__c = item.TimeBlock__c == null
+            ? null
+            : copies.get(item.TimeBlock__c),
+          Monday__c = item.Monday__c,
+          Tuesday__c = item.Tuesday__c,
+          Wednesday__c = item.Wednesday__c,
+          Thursday__c = item.Thursday__c,
+          Friday__c = item.Friday__c,
+          Saturday__c = item.Saturday__c,
+          Sunday__c = item.Sunday__c
         )
       );
     }
