@@ -2,7 +2,8 @@
  * Where an elective set sits on a schedule (electives slice E7; repo ADR 0018 choice 30; plan §2
  * "Where electives happen"): its elective times (ElectivePeriod), worked out from the schedule's
  * days each time they are needed, never stored. One time per day, time block and division, as the
- * desktop's deriveOccurrences.js makes them: the bunks of one division holding the set in one
+ * desktop's deriveOccurrences.js makes them: the bunks of one division (or all those in No
+ * division, Greg 2026-11-11) holding the set in one
  * block share its seats. Also the fingerprint of where it sits (ElectiveRun__c.TimesFingerprint__c),
  * so a change to the schedule after seats were assigned is noticed, and which of the set's
  * offerings each time offers.
@@ -82,7 +83,12 @@ public with sharing class ElectiveTimes {
 
   private ElectivePeriod periodFor(Integer b, Group__c grp) {
     ScheduleGrid.Block block = grid.blocks[b];
-    String key = keyOf(day, block.id, grp.Division__c);
+    // Bunks in No division holding the set at one time share one session and its seats: campers
+    // mix (Greg 2026-11-11; ELECT-4.10). Every other rule keeps DIV-1.1's "shares a division with
+    // nobody". The shared session has no division.
+    Boolean shared = grp.Division__r?.NoDivision__c == true;
+    Id divisionId = shared ? null : grp.Division__c;
+    String key = keyOf(day, block.id, divisionId);
     ElectivePeriod found = periodsByKey.get(key);
     if (found == null) {
       found = new ElectivePeriod();
@@ -92,9 +98,9 @@ public with sharing class ElectiveTimes {
       found.blockName = block.name;
       found.startTime = block.startTime;
       found.blockOrder = b;
-      found.divisionId = grp.Division__c;
+      found.divisionId = divisionId;
       Decimal order = grp.Division__r?.SortOrder__c;
-      found.divisionOrder = order == null ? 0 : order.intValue();
+      found.divisionOrder = shared || order == null ? 0 : order.intValue();
       periodsByKey.put(key, found);
       periods.add(found);
     }
