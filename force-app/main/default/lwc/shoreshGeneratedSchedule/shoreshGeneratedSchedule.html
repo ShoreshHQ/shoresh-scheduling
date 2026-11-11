@@ -356,11 +356,22 @@
           data-id="versions"
         ></c-shoresh-versions>
         <div class="publish" slot="end" data-id="publish-area">
-          <!-- Published: when, and Unpublish, in a dropdown; the corner when the week changed
-               since. As Manual Build. -->
+          <button
+            type="button"
+            class="shoresh-item shoresh-item_primary"
+            data-id="publish"
+            disabled={publishDisabled}
+            onclick={handlePublish}
+          >
+            {publishLabel}
+          </button>
+          <!-- Published: when, and Unpublish, in the Publish button's own menu (a split
+               "Publish ▾"), the corner when the week changed since: the bar never grows when
+               a week is published (UX pass 2026-11-10: the grid jumped under the cursor). -->
           <template lwc:if={publishState}>
             <c-shoresh-rail-pop
-              label="Published"
+              label=""
+              primary
               mark={publishState.changedSince}
               alternative-text={publishedName}
               align="right"
@@ -400,15 +411,6 @@
               </button>
             </c-shoresh-rail-pop>
           </template>
-          <button
-            type="button"
-            class="shoresh-item shoresh-item_primary"
-            data-id="publish"
-            disabled={publishDisabled}
-            onclick={handlePublish}
-          >
-            Publish
-          </button>
         </div>
       </template>
     </c-shoresh-week-editor>

@@ -121,10 +121,14 @@
 }
 
 /* Versions, then Published and Publish, 4 apart at the rail's right edge (as Manual Build). */
+/* Publish and, once published, its own menu beside it: one split button. Wide enough for
+   "Published ▾" from the start, so the word changing or the menu coming never moves the bar. */
 .publish {
   display: flex;
   align-items: center;
-  gap: var(--shoresh-space-in-group);
+  justify-content: flex-end;
+  gap: 1px;
+  min-width: 8.75rem;
 }
 
 /* When the week was published, in Published's dropdown: it may wrap. */

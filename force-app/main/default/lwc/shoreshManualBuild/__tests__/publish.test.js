@@ -992,13 +992,21 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     element.remove();
     const published = await render(finished(PUBLISHED));
     expect(unpublishButton(published).textContent.trim()).toBe("Unpublish");
-    // In Published's dropdown, beside Publish on the rail.
+    // In Publish's own menu, right after it: a split "Publish ▾" with no words of its own, so
+    // the rail doesn't grow when the week is published (UX pass 2026-11-10); it is named
+    // "Published" for a screen reader.
     const menu = q(published, '[data-id="published-menu"]');
     expect(unpublishButton(published).parentElement).toBe(menu);
-    expect(menu.parentElement).toBe(
-      q(published, '[data-id="publish"]').parentElement
+    expect(menu.previousElementSibling).toBe(
+      q(published, '[data-id="publish"]')
     );
-    expect(menu.label).toBe("Published");
+    expect(menu.label).toBe("");
+    expect(menu.primary).toBe(true);
+    expect(menu.alternativeText).toBe("Published");
+    // The button's own word says the week is out: "Published", "Publish" before.
+    expect(q(published, '[data-id="publish"]').textContent.trim()).toBe(
+      "Published"
+    );
   });
 
   it("asks first, with Cancel focused; Cancel unpublishes nothing and focus goes back", async () => {
