@@ -112,7 +112,9 @@ export function measureWeek(checked, list, days) {
     }
     if (short > 0) {
       under.count += short;
-      under.rows.push({ id: a.id, name: a.name, placed: got, goal });
+      // groups: how many bunks are short, the row's unit on screen ("2 bunks short").
+      const groups = eligible.filter((id) => count(id, a.id) < min).length;
+      under.rows.push({ id: a.id, name: a.name, placed: got, goal, groups });
     }
     let extra = 0;
     if (hasNumber(a.maxPerWeek)) {
@@ -123,7 +125,13 @@ export function measureWeek(checked, list, days) {
         const may = max * past.length;
         extra = has - may;
         over.count += extra;
-        over.rows.push({ id: a.id, name: a.name, placed: has, goal: may });
+        over.rows.push({
+          id: a.id,
+          name: a.name,
+          placed: has,
+          goal: may,
+          groups: past.length
+        });
       }
     }
     byActivity.set(a.id, { placed, goal, short, extra });
