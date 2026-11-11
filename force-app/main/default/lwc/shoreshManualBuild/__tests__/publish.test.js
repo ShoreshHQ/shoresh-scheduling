@@ -1003,6 +1003,10 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(menu.label).toBe("");
     expect(menu.primary).toBe(true);
     expect(menu.alternativeText).toBe("Published");
+    // The button's own word says the week is out: "Published", "Publish" before.
+    expect(q(published, '[data-id="publish"]').textContent.trim()).toBe(
+      "Published"
+    );
   });
 
   it("asks first, with Cancel focused; Cancel unpublishes nothing and focus goes back", async () => {
