@@ -134,7 +134,11 @@ public with sharing class SeasonWeeksFollow {
       return result;
     }
     Database.update(changed, AccessLevel.USER_MODE);
-    result.said = saidOf(result.moved, season, labels);
+    result.said = saidOf(
+      result.moved,
+      lastWeek(weeks, ranges, season.EndDate__c),
+      labels
+    );
     return result;
   }
 
@@ -174,17 +178,39 @@ public with sharing class SeasonWeeksFollow {
     Database.update(back, AccessLevel.USER_MODE);
   }
 
-  /** "Week 1 and Week 2 now run to Saturday." and, when one stops early, why. */
+  /**
+   * The season's last week on its new dates, moved or not, when it ends on the season's last day
+   * (it may stop short of the new days there); else null.
+   */
+  private static Moved lastWeek(
+    List<Week__c> weeks,
+    List<WeekCalendar.DateRange> ranges,
+    Date seasonEnd
+  ) {
+    WeekCalendar.DateRange range = ranges[ranges.size() - 1];
+    if (range.endDate != seasonEnd) {
+      return null;
+    }
+    Moved last = new Moved();
+    last.name = weeks[weeks.size() - 1].Name;
+    last.startDate = range.startDate;
+    last.endDate = range.endDate;
+    return last;
+  }
+
+  /**
+   * "Week 1 now runs Monday to Saturday." and, when the season's last week stops short of those
+   * days at the season's end (moved or not), that it does.
+   */
   private static String saidOf(
     List<Moved> moved,
-    Season__c season,
+    Moved last,
     CampLabels labels
   ) {
     List<String> names = new List<String>();
     for (Moved week : moved) {
       names.add(week.name);
     }
-    Moved last = moved[moved.size() - 1];
     // The days of a whole week: the longest one moved (a first or last week may be short).
     Moved whole = moved[0];
     for (Moved week : moved) {
@@ -205,7 +231,7 @@ public with sharing class SeasonWeeksFollow {
       WeekCalendar.weekdayName(whole.endDate) +
       '.';
     if (
-      last.endDate == season.EndDate__c &&
+      last != null &&
       last.startDate.daysBetween(last.endDate) <
       whole.startDate.daysBetween(whole.endDate)
     ) {

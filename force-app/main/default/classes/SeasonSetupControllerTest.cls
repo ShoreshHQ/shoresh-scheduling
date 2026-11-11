@@ -132,6 +132,60 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // WEEK-2.7: the last week, cut short by the season's end, is said to stop there though it
+  // didn't move.
+  @IsTest
+  static void aLastWeekTheSeasonsEndCutsShortIsSaidToStopThere() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      // Two weeks, Monday 29 June to Friday 10 July 2026; Main runs Monday to Friday.
+      Id seasonId = SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Season__c(
+            Name = 'Summer 2026',
+            Camp__c = camp.Id,
+            StartDate__c = Date.newInstance(2026, 6, 29),
+            EndDate__c = Date.newInstance(2026, 7, 10)
+          )
+        }
+      )[0];
+      Id programId = SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Program__c(
+            Season__c = seasonId,
+            Name = 'Main',
+            Monday__c = true,
+            Tuesday__c = true,
+            Wednesday__c = true,
+            Thursday__c = true,
+            Friday__c = true
+          )
+        }
+      )[0];
+      SeasonSetupController.addWeeksFromSeasonDates(seasonId);
+
+      Test.startTest();
+      SeasonSetupController.saveRecords(
+        new List<SObject>{ new Program__c(Id = programId, Saturday__c = true) }
+      );
+      SeasonWeeksFollow.Followed followed = SeasonSetupController.followProgramDays(
+        seasonId
+      );
+      Test.stopTest();
+
+      Assert.areEqual(
+        'Week 1 now runs Monday to Saturday. Week 2 stops at the season\'s last day.',
+        followed.said
+      );
+      Assert.areEqual(1, followed.moved.size());
+      Assert.areEqual(
+        Date.newInstance(2026, 7, 10),
+        weeksOf(seasonId)[1].EndDate__c
+      );
+    }
+  }
+
   // WEEK-2.7
   @IsTest
   static void aWeekWhoseScheduleHoldsADayItWouldLoseIsLeftAsItIs() {
