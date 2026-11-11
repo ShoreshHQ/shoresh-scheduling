@@ -36,8 +36,15 @@ public with sharing class ChoicesImportActivities {
       }
       added.put(key, seasonIds.get(key));
       if (!seasonIds.containsKey(key)) {
+        // How often 0, as a special day's typed activity: an elective's offering, never put in
+        // regular weeks by the generator until the director says how often (UX pass 2026-11-10).
         made.add(
-          new Activity__c(Season__c = request.seasonId, Name = name.trim())
+          new Activity__c(
+            Season__c = request.seasonId,
+            Name = name.trim(),
+            TimesPerWeekMin__c = 0,
+            TimesPerWeekMax__c = 0
+          )
         );
       }
     }
