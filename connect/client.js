@@ -430,8 +430,14 @@ async function build(capability, input, at, engine, checks) {
     await at.send(capability.api, { ...fields, ...built.save })
   );
   if (!saved.ok) return saved;
-  const done = built.said ? `${saved.text} ${built.said}` : saved.text;
-  return { ...saved, text: `${done}${await counterAfter(fields, at, checks)}` };
+  if (built.said) {
+    // A Build menu action already ends with its own count (API-1.127 to API-1.130).
+    return { ...saved, text: `${saved.text} ${built.said}` };
+  }
+  return {
+    ...saved,
+    text: `${saved.text}${await counterAfter(fields, at, checks)}`
+  };
 }
 
 /**
@@ -445,26 +451,30 @@ async function counterAfter(fields, at, checks) {
   for (const field of ["season", "week", "program"]) {
     if (fields[field] !== undefined) query[field] = fields[field];
   }
-  let got;
+  // The week is saved by now: nothing here may make it look as if the build failed (an AI would
+  // build it again), so any trouble reading the counter adds nothing.
   try {
-    got = await at.read("week_checks", query);
+    const got = await at.read("week_checks", query);
+    if (!got || got.status !== 200) return "";
+    const m = await checks();
+    const { measure, accepted, groupWords } = counterOf(
+      m,
+      JSON.parse(got.body)
+    );
+    const words = m.counterWords(measure, accepted, groupWords);
+    const lines = [
+      ...(words.open || []),
+      ...((words.under && words.under.lines) || []),
+      ...((words.over && words.over.lines) || []),
+      ...(words.to_look_at || []),
+      ...(words.notes || [])
+    ].map((l) => l.line);
+    return lines.length
+      ? ` ${words.placed}. To look at: ${lines.join("; ")}.`
+      : ` ${words.placed}.`;
   } catch {
     return "";
   }
-  if (!got || got.status !== 200) return "";
-  const m = await checks();
-  const { measure, accepted, groupWords } = counterOf(m, JSON.parse(got.body));
-  const words = m.counterWords(measure, accepted, groupWords);
-  const lines = [
-    ...(words.open || []),
-    ...((words.under && words.under.lines) || []),
-    ...((words.over && words.over.lines) || []),
-    ...(words.to_look_at || []),
-    ...(words.notes || [])
-  ].map((l) => l.line);
-  return lines.length
-    ? ` ${words.placed}. To look at: ${lines.join("; ")}.`
-    : ` ${words.placed}.`;
 }
 
 /**

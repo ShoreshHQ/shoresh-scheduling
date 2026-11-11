@@ -685,6 +685,24 @@ describe("Shoresh for AI tools and the command line", () => {
       "Built Week 1. 174 of 174 placed. To look at: Art: 1 group over; Bunk 6 · Wednesday · Period 5: Over its weekly limit."
     );
 
+    // A counter that can't be worked out adds nothing: the week is saved and said as built.
+    const broken = [
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${JSON.stringify({ inputs: {}, setup: {}, labels: [] })}`,
+      'HTTP/1.1 200\n\n{"message":"Built Week 1."}',
+      "HTTP/1.1 200\n\nnot json"
+    ];
+    const stillBuilt = await call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        run: async () => broken.shift(),
+        engine,
+        camp: packaged,
+        checks: async () => ({ nameDaysFor: () => {} })
+      }
+    );
+    expect(stillBuilt).toMatchObject({ ok: true, text: "Built Week 1." });
+
     // A refusal while reading, or the engine's own, comes back as one sentence; nothing is saved.
     const refused = await call(
       "build_week",
