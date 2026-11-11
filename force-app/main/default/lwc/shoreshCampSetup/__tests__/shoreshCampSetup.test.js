@@ -19,6 +19,8 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
+import followProgramDays from "@salesforce/apex/SeasonSetupController.followProgramDays";
+import putWeeksBack from "@salesforce/apex/SeasonSetupController.putWeeksBack";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
@@ -62,6 +64,14 @@ jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/ElectiveSeatsController.openRun", () => apex(), {
+  virtual: true
+});
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.followProgramDays",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock("@salesforce/apex/SeasonSetupController.putWeeksBack", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
@@ -3998,6 +4008,59 @@ describe("c-shoresh-camp-setup", () => {
         Id: "p1",
         Friday__c: true
       });
+      saveRow.mockReset();
+    });
+
+    // WEEK-2.7
+    it("a program's days saved: the weeks follow them, Programs says so, and Undo puts them back", async () => {
+      const moved = [
+        {
+          weekId: "w1",
+          name: "Week 1",
+          startDate: "2026-06-29",
+          endDate: "2026-07-04",
+          wasStart: "2026-06-29",
+          wasEnd: "2026-07-03"
+        }
+      ];
+      followProgramDays.mockResolvedValue({
+        said: "Week 1 now runs Monday to Saturday.",
+        moved
+      });
+      saveRow.mockResolvedValue(nsRecord({ id: "p1", changed: [] }));
+      const element = await renderWith();
+      // A name alone moves no week.
+      q(element, 'c-shoresh-editable-table[data-id="programs"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord(
+            rowSave({
+              record: { sobjectType: "Program__c", Id: "p1", Name: "A" }
+            }).detail
+          )
+        })
+      );
+      await flush();
+      expect(followProgramDays).not.toHaveBeenCalled();
+      q(element, 'c-shoresh-editable-table[data-id="programs"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord(
+            rowSave({
+              record: { sobjectType: "Program__c", Id: "p1", Saturday__c: true }
+            }).detail
+          )
+        })
+      );
+      await flush();
+      await flush();
+      expect(followProgramDays).toHaveBeenCalledWith({ seasonId: SEASON.Id });
+      const line = q(element, '[data-id="weeks-followed"]');
+      expect(line.textContent).toContain("Week 1 now runs Monday to Saturday.");
+      q(element, '[data-id="weeks-back"]').click();
+      await flush();
+      expect(JSON.parse(putWeeksBack.mock.calls[0][0].moved)).toEqual(moved);
+      expect(q(element, '[data-id="weeks-followed"]').textContent.trim()).toBe(
+        ""
+      );
       saveRow.mockReset();
     });
 

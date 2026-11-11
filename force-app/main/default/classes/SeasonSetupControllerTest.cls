@@ -77,6 +77,71 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // WEEK-2.7
+  @IsTest
+  static void theWeeksFollowAProgramsNewDaysAndGoBackOnUndo() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      // Two weeks, Monday 29 June to Saturday 11 July 2026; Main runs Monday to Friday.
+      Id seasonId = SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Season__c(
+            Name = 'Summer 2026',
+            Camp__c = camp.Id,
+            StartDate__c = Date.newInstance(2026, 6, 29),
+            EndDate__c = Date.newInstance(2026, 7, 11)
+          )
+        }
+      )[0];
+      Id programId = SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Program__c(
+            Season__c = seasonId,
+            Name = 'Main',
+            Monday__c = true,
+            Tuesday__c = true,
+            Wednesday__c = true,
+            Thursday__c = true,
+            Friday__c = true
+          )
+        }
+      )[0];
+      SeasonSetupController.addWeeksFromSeasonDates(seasonId);
+
+      Test.startTest();
+      SeasonSetupController.saveRecords(
+        new List<SObject>{ new Program__c(Id = programId, Saturday__c = true) }
+      );
+      SeasonWeeks.Followed followed = SeasonSetupController.followProgramDays(
+        seasonId
+      );
+      List<Week__c> after = weeksOf(seasonId);
+      SeasonSetupController.putWeeksBack(JSON.serialize(followed.moved));
+      Test.stopTest();
+
+      Assert.areEqual(
+        'Week 1 and Week 2 now run Monday to Saturday.',
+        followed.said
+      );
+      Assert.areEqual(Date.newInstance(2026, 7, 4), after[0].EndDate__c);
+      Assert.areEqual(Date.newInstance(2026, 7, 11), after[1].EndDate__c);
+      List<Week__c> back = weeksOf(seasonId);
+      Assert.areEqual(Date.newInstance(2026, 7, 3), back[0].EndDate__c);
+      Assert.areEqual(Date.newInstance(2026, 7, 10), back[1].EndDate__c);
+    }
+  }
+
+  private static List<Week__c> weeksOf(Id seasonId) {
+    return [
+      SELECT StartDate__c, EndDate__c
+      FROM Week__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY StartDate__c
+    ];
+  }
+
   @IsTest
   static void schedulerSetsUpASeasonFromScratch() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');

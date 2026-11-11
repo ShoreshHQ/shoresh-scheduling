@@ -597,6 +597,23 @@
                     onsave={handleSaveRecords}
                     ondelete={handleDeleteRecord}
                   ></c-shoresh-editable-table>
+                  <!-- The weeks followed the programs' new days, said with Undo (ADR 0028). -->
+                  <p class="seeded-note" role="status" data-id="weeks-followed">
+                    <template lwc:if={weeksFollowed}>
+                      <span>{weeksFollowed.said}</span>
+                      <template lwc:if={weeksFollowedCanUndo}>
+                        <span> · </span>
+                        <button
+                          type="button"
+                          class="slds-button"
+                          data-id="weeks-back"
+                          onclick={handleWeeksBack}
+                        >
+                          Undo
+                        </button>
+                      </template>
+                    </template>
+                  </p>
                   <template lwc:if={next.programs}>
                     <div class="next">
                       <lightning-button
