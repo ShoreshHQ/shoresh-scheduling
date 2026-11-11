@@ -1610,7 +1610,7 @@ describe("c-shoresh-generated-schedule", () => {
       "button[data-activity]"
     );
     expect(swim.textContent.replace(/\s+/g, " ").trim()).toMatch(
-      /^Swim\d+ Bunks? short$/
+      /^Swim\d+ short · \d+ Bunks?$/
     );
     swim.click();
     await flush();

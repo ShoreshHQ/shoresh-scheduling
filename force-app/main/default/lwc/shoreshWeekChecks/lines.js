@@ -16,10 +16,15 @@ const GROUP_WORDS = { one: "group", many: "groups" };
  */
 export function checkLines(m, accepted, groupWords = GROUP_WORDS) {
   const shown = (line) => !tucked(accepted, line);
-  // An under or over row in its unit, "2 bunks short", "1 bunk over": never "6 of 12" beside
-  // "20 of 12" for one activity, which read as a contradiction (UX pass 2026-11-10).
-  const unit = (row, how) =>
-    `${row.groups} ${row.groups === 1 ? groupWords.one : groupWords.many} ${how}`;
+  // An under or over row in its units, "3 short · 2 Bunks", "1 over · 1 Bunk": never "6 of 12"
+  // beside "20 of 12" for one activity, which read as a contradiction (UX pass 2026-11-10). The
+  // first number is what the heading adds up ("3 under"), and grows when the week gets worse.
+  const unit = (row, how) => {
+    const size =
+      how === "short" ? row.goal - row.placed : row.placed - row.goal;
+    const who = row.groups === 1 ? groupWords.one : groupWords.many;
+    return `${size} ${how} · ${row.groups} ${who}`;
+  };
   return {
     open: (m.open || [])
       .map((line) => ({ ...line, acceptLabel: `Accept: ${line.text}` }))

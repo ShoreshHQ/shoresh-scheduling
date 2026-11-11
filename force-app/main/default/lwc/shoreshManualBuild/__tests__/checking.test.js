@@ -228,8 +228,8 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     expect(counterWord(element).getAttribute("aria-expanded")).toBe("true");
     expect(activityRows(element)).toEqual([
-      "Swim1 Bunk short",
-      "Soccer2 Bunks short"
+      "Swim1 short · 1 Bunk",
+      "Soccer2 short · 2 Bunks"
     ]);
     expect(listLines(element)).toEqual([
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
@@ -396,15 +396,15 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(input, "Enter");
     await openCounter(element);
     // Once a week for each bunk: Bunk 2 has it, Bunk 1 not yet.
-    expect(activityRows(element)).toContain("Kayak1 Bunk short");
+    expect(activityRows(element)).toContain("Kayak1 short · 1 Bunk");
   });
 
   it("an under or over row shows that activity, in Activity View", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
     await openCounter(element);
     expect(activityRows(element)).toEqual([
-      "Swim1 Bunk short",
-      "Soccer2 Bunks short"
+      "Swim1 short · 1 Bunk",
+      "Soccer3 short · 2 Bunks"
     ]);
     activityRow(element, "Soccer").click();
     await flush();

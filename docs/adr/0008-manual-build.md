@@ -1103,10 +1103,10 @@ the grid and the activity list on its left keep their look.
    needed, Spread across the week) with one rail item, **29 of 35 placed**, and the needs-a-look
    corner when anything is off target. It opens a dropdown in Edit's look: a slim bar of what is
    placed, **N still needed** (cells still to fill), **N under** with each activity short of its
-   weekly goal (_Swim 3 of 4_; since 2026-11-10 in its unit, _Swim 2 bunks short_), **N over**
-   with each activity past its weekly limit (the corner, _Soccer 4 of 3_; now _Soccer 1 bunk
-   over_: the coordinator's UX-pass decision, as "6 of 12" under beside "20 of 12" over for one
-   activity read as a contradiction), then **N to look at**: each cell whose placement breaks a rule shared with
+   weekly goal (_Swim 3 of 4_; since 2026-11-10 in its units, _Swim 1 short · 1 bunk_), **N over**
+   with each activity past its weekly limit (the corner, _Soccer 4 of 3_; now _Soccer 1 over ·
+   1 bunk_: the coordinator's UX-pass decision, as "6 of 12" under beside "20 of 12" over for
+   one activity read as a contradiction; the first number adds up to the heading), then **N to look at**: each cell whose placement breaks a rule shared with
    other cells and each bunk still short of an early-week goal, in checkWeek's words (the earlier
    Overlapping and Spread lines). An under or over row shows that activity in Activity View; a
    line to look at takes the director to the bunk's week with focus on the cell, as before.
