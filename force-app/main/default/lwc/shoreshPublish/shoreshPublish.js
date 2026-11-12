@@ -65,8 +65,8 @@ function changeWords(preview, t) {
  * What is still to do: "N of M placed" while cells are still Open, then what the Why list shows; without
  * the list, the counters instead (each line only when it is above 0). counts: what the counters count now
  * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
- * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it: every row in it
- * is counted, accepted or not, in the counter's words ("3 under", "2 over", "4 to look at"). Without it, the placements the check flags are
+ * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it, counted as its
+ * headings count, accepted or not ("5 under", "2 over", "4 to look at", "1 note"). Without it, the placements the check flags are
  * ("2 activities need a look."). t: the camp's words (c/shoreshTerms).
  */
 export function problemLines(checked, counts, t = buildTerms([]), measure) {
@@ -78,15 +78,13 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   if (total > filled) {
     lines.push(`${filled} of ${total} placed`);
   }
-  // In the counter's own words ("3 under", "2 over", "4 to look at"), each only above 0, so the
-  // ask says what is left, not just how much (UX pass finding 15).
-  const look = measure
-    ? (measure.open || []).length +
-      measure.look.length +
-      (measure.notes || []).length
-    : 0;
-  const under = measure ? measure.under.rows.length : 0;
-  const over = measure ? measure.over.rows.length : 0;
+  // As the counter says them beside the button ("5 under", "2 over", "4 to look at", "1 note"),
+  // with its own numbers: under and over count sessions, as its headings do (UX pass finding
+  // 15). Open cells are the "N of M placed" line above.
+  const under = measure ? measure.under.count : 0;
+  const over = measure ? measure.over.count : 0;
+  const look = measure ? measure.look.length : 0;
+  const notes = measure ? (measure.notes || []).length : 0;
   // Without the list: every placement the check flags (over its weekly limit, not set up for a
   // bunk, twice in a day, overlapping...): some have no counter of their own.
   const dotted = !measure && checked.flags ? checked.flags.size : 0;
@@ -98,6 +96,9 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   }
   if (look > 0) {
     lines.push(`${look} to look at`);
+  }
+  if (notes > 0) {
+    lines.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
   }
   if (dotted > 0) {
     lines.push(
