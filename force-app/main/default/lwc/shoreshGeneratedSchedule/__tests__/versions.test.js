@@ -337,10 +337,10 @@ describe("Versions on the Generated Schedule screen", () => {
     const element = await render();
     await openList(element);
     const [mine, history] = rows(element);
-    expect(mine).toContain("delete");
+    expect(mine).toContain("Delete");
     expect(history).toContain("Published Oct 18, 10:04 AM");
-    expect(history).not.toContain("delete");
-    expect(history).toContain("rename");
+    expect(history).not.toContain("Delete");
+    expect(history).toContain("Rename");
     expect(history).toContain("Restore");
   });
 
@@ -366,8 +366,8 @@ describe("Versions on the Generated Schedule screen", () => {
     // Restore and rename; nothing to save as a version, and no week to delete one from.
     const [mine] = rows(element);
     expect(mine).toContain("Restore");
-    expect(mine).toContain("rename");
-    expect(mine).not.toContain("delete");
+    expect(mine).toContain("Rename");
+    expect(mine).not.toContain("Delete");
     expect(
       list.shadowRoot.querySelector('[data-id="save-version"]')
     ).toBeNull();

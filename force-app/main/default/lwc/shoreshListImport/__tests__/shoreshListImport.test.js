@@ -845,6 +845,11 @@ describe("laid into the screen's own table (decision 56)", () => {
     const bad = $(element, '[data-row="Bunk 12"]');
     expect(bad.querySelector(".end-note").textContent).toMatch(/^Row 5 · /);
     expect(bad.querySelector(".row-mark")).not.toBeNull();
+    // The mark explains itself on hover and to a screen reader (word walk 2026-11-12).
+    expect(bad.querySelector(".row-mark").title).toBe("Needs a look");
+    expect(bad.querySelector('[data-id="row-look"]').textContent).toBe(
+      "Needs a look"
+    );
     // The rail it took the place of: the file, and what saving waits for.
     expect(textOf($(element, '[data-id="file-name"]'))).toBe("activities.csv");
     expect(textOf($(element, '[data-id="waiting"]'))).toContain(

@@ -32,8 +32,7 @@ import {
   groupGrid,
   groups,
   isElectiveItem,
-  isSetUpItem,
-  kindLabel
+  isSetUpItem
 } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
 
 const REMOVED = "(removed)";
@@ -56,27 +55,24 @@ export function blockText(block) {
 }
 
 /**
- * What a placed item says in a cell. bracket: the flat sheets name the kind of anything that is
- * not an activity, as the desktop's All Groups sheet does ("[Fixed activity] Lunch").
+ * What a placed item says in a cell: its name only, on every sheet (word walk 2026-11-12: no
+ * "[Fixed activity]" tag in a sheet a counselor reads; the import reads names, not tags).
  */
-export function itemText(item, t, bracket = false) {
+export function itemText(item) {
   if (!item) {
     return "";
   }
-  const name = withRemoved(item.name, item.gone && isSetUpItem(item));
-  return bracket && item.kind !== "A"
-    ? `[${kindLabel(item.kind, t)}] ${name}`
-    : name;
+  return withRemoved(item.name, item.gone && isSetUpItem(item));
 }
 
 /**
  * An elective set's cell lists its offerings, as the desktop's Excel export does
- * ("Chugim (Archery, Drama)"), on every sheet and with no kind in brackets (ELECT-6.3). offerings:
+ * ("Chugim (Archery, Drama)"), on every sheet (ELECT-6.3). offerings:
  * a Map of set Id to its offerings' names; a set with none reads as its name; one removed as itemText.
  */
-function cellText(item, t, offerings, bracket = false) {
+function cellText(item, t, offerings) {
   if (!isElectiveItem(item) || item.gone) {
-    return itemText(item, t, bracket);
+    return itemText(item);
   }
   const names = offerings.get(item.id) || [];
   return names.length ? `${item.name} (${names.join(", ")})` : item.name;
@@ -190,7 +186,7 @@ export function scheduleSheets(view, catalogue, t, offerings = new Map()) {
             withRemoved(grp.name, grp.gone),
             labels[i].label,
             blockText(day.blocks[b]),
-            cellText(item, t, offerings, true)
+            cellText(item, t, offerings)
           ]);
         }
       });
@@ -333,7 +329,8 @@ export function printTable(grid) {
         key: at,
         text,
         parts: cell ? printParts(cell) : [],
-        note: cell && cell.note && text ? cell.note : null,
+        // Paper staff carry says nothing about setup: "not set up yet" stays on screen.
+        note: cell && cell.note && text && !cell.notSetUp ? cell.note : null,
         rowspan: cell ? cell.length : 1,
         colspan: (cell && spans.get(cell)) || 1,
         className: text ? "cell" : "cell cell_empty"

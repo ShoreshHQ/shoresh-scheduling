@@ -2917,6 +2917,13 @@ describe("c-shoresh-editable-table", () => {
         ...element.shadowRoot.querySelectorAll('[data-id="readonly"]')
       ].map((el) => el.textContent);
       expect(held).toEqual(["Swim, Canoe", "", ""]);
+      // No tooltip repeats the words already shown (guide §2; word walk 2026-11-12).
+      const titled = [
+        ...element.shadowRoot.querySelectorAll(
+          '[data-id="readonly"], .head-text'
+        )
+      ].filter((el) => el.hasAttribute("title"));
+      expect(titled).toEqual([]);
       change(field(element, 2, "Name"), "Field");
       await flush();
       allValid(element);

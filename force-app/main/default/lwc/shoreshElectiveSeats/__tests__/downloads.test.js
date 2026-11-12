@@ -165,12 +165,12 @@ describe("camper schedules: each camper's week", () => {
 });
 
 describe("the full report", () => {
-  it("has the desktop's four sheets", () => {
+  it("has the desktop's four sheets, the problems sheet named Problems", () => {
     const sheets = fullReportSheets(reading());
     expect(sheets.map((s) => s.name)).toEqual([
       "Camper schedules",
       "Rosters",
-      "Exceptions",
+      "Problems",
       "Summary"
     ]);
     const roster = sheets[1].rows;
@@ -230,8 +230,10 @@ describe("the full report", () => {
   it("counts seats by how they were chosen, never an unordered choice as a rank", () => {
     const summary = new Map(summaryRows(reading()));
     expect(summary.get("Seats")).toBe("Chugim · Week 1");
-    expect(summary.get("Status")).toBe("Final · Oct 14 · Greg");
-    expect(summary.get("Source file")).toBe("chugim.xlsx");
+    // Plain labels (word walk 2026-11-12), never "Status" or "Source file".
+    expect(summary.get("Final")).toBe("Oct 14 · Greg");
+    expect(summary.get("Choices from")).toBe("chugim.xlsx");
+    expect(summary.has("Status")).toBe(false);
     expect(summary.get("Placed")).toBe("3 of 4");
     expect(summary.get("First choice")).toBe(4);
     expect(summary.get("Second choice")).toBe(1);
@@ -256,13 +258,20 @@ describe("the full report", () => {
     expect(labels).not.toContain("Couldn't be placed");
     expect(labels).not.toContain("In one elective more than once");
     expect(labels).toContain("Placed");
+    // No empty line for a file that was never named.
+    const noFile = reading(
+      finalDownload({ view: finalView({ sourceFile: "" }) })
+    );
+    expect(summaryRows(noFile).map((row) => row[0])).not.toContain(
+      "Choices from"
+    );
   });
 
   it("final seats whose schedule changed say Changed since (Greg's pick, 2026-11-12)", () => {
     const d = reading(
       finalDownload({ view: finalView({ scheduleChanged: true }) })
     );
-    expect(new Map(summaryRows(d)).get("Status")).toBe("Final · Changed since");
+    expect(new Map(summaryRows(d)).get("Final")).toBe("Changed since");
     expect(fullReportSheets(d)[2].rows.map((r) => r[0])).toContain(
       "Changed since"
     );

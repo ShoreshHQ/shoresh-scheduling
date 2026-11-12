@@ -1,17 +1,18 @@
 /**
- * "What Shoresh has learned" as one running list, newest first (repo ADR 0023; Greg
- * 2026-10-28): each line says what was learned in camp words, when, and how. Pure: the same
- * history and answers always give the same lines (MEMO-7.6).
+ * "What Shoresh has learned" as one row per answer, newest first (repo ADR 0023, as changed by
+ * the word walk of 2026-11-12: no history log on screen). Each row says what is learned now in
+ * camp words, when, and its state: "Answered as before", "Asks first" once forgotten, "Guessed in
+ * an import", a pattern's band. Pure: the same history and answers always give the same rows
+ * (MEMO-7.6).
  *
- * The lines come from the camp's stored events (LearnedEvents.cls: answered, changed, forgotten,
+ * The rows come from the camp's stored events (LearnedEvents.cls: answered, changed, forgotten,
  * undone, auto). A remembered answer older than the events has none: it is read as answered
  * when it was saved. The patterns' steps (became Suggested, became Steady, demoted) are not
  * stored: they are worked out by replaying the events in order and reading the patterns
- * (c/shoreshPatterns) after each save, as the import would have read them then.
- *
- * A line is never edited: a later line about the same question marks it (Replaced, Updated,
- * Forgotten, Undone), and it stays. The line of the answer remembered now carries Change and
- * Forget; the newest line of a pattern there is now carries its progress and Forget pattern.
+ * (c/shoreshPatterns) after each save, as the import would have read them then. Only the newest
+ * line of each question and of each pattern is kept: its state now. The row of the answer
+ * remembered now carries Change and Forget; a pattern's row there is now carries its progress
+ * and Forget pattern.
  */
 import { PATTERN_PREFIX, keyParts, patternsOf } from "c/shoreshPatterns";
 import { shortDate } from "c/shoreshTerms";
@@ -22,12 +23,13 @@ const isMarker = (question) =>
   String(question || "").startsWith(PATTERN_PREFIX);
 const RANK = { none: 0, ask: 0, suggest: 1, established: 2 };
 const HOLDS = new Set(["answered", "changed", "undone"]);
-// What a later line about the same question says of an earlier one.
-const LATER = {
-  answered: "Replaced",
-  changed: "Updated",
-  forgotten: "Forgotten",
-  undone: "Undone"
+// The events that make a line (an auto-applied answer has one of its own).
+const LINES = new Set([...HOLDS, "forgotten"]);
+// Greg's picks (2026-11-12): an answer remembered is "Answered as before"; one forgotten "Asks
+// first". A deleted thing or a guess forgotten is no question the import asks.
+const FORGOTTEN = {
+  deleted: "Can come back",
+  guessed: "No longer guessed"
 };
 
 function who(row) {
@@ -38,26 +40,27 @@ function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** How a line came to be, in words (MEMO-7.2). */
+/** What holds now: an answer's state, in words (MEMO-7.2). */
+function heldBy(row, group) {
+  if (group === "deleted") {
+    return `Deleted by ${who(row)}`;
+  }
+  if (group === "guessed") {
+    return "Guessed in an import";
+  }
+  // Greg's pick (2026-11-12): the import's own words, "Answered as before", and whose.
+  return row.byYou ? "Answered as before" : `Answered as before · ${who(row)}`;
+}
+
+/** A line's state, in words: what its newest event left. */
 function howOf(kind, row, group, extra = {}) {
   switch (kind) {
     case "answered":
-      if (group === "deleted") {
-        return `Deleted by ${who(row)}`;
-      }
-      if (group === "guessed") {
-        return `Guessed in an import by ${who(row)}`;
-      }
-      // Greg's pick (2026-11-12): the import's own words, "Answered as before", and whose.
-      return row.byYou
-        ? "Answered as before"
-        : `Answered as before · ${who(row)}`;
     case "changed":
-      return `Changed by ${who(row)}`;
-    case "forgotten":
-      return `Forgotten by ${who(row)}`;
     case "undone":
-      return `Undone by ${who(row)}`;
+      return group === null ? `Undone by ${who(row)}` : heldBy(row, group);
+    case "forgotten":
+      return FORGOTTEN[group] || "Asks first";
     case "auto":
       return `Auto-applied in the ${shortDate(row.answeredOn)} import`;
     case "suggested":
@@ -131,9 +134,9 @@ function markerId(question) {
 }
 
 /**
- * The running list's lines, newest first, without what Shoresh already knew (the screen adds
+ * The rows, newest first, one per question and pattern, without what Shoresh already knew (the screen adds
  * it last). events: LearnedEvents.forCamp; answers: LearnedAnswers.forCamp (what is remembered
- * now). Each line { key, kind, title, how, when, time, flag, question, answerId, pattern, ...,
+ * now). Each line { key, kind, title, how, when, time, question, answerId, pattern, ...,
  * current, answer (the row Change and Forget act on), patternNow (the pattern row) }.
  */
 export function historyLines(events, answers, t, spell) {
@@ -159,6 +162,8 @@ export function historyLines(events, answers, t, spell) {
     for (const e of group) {
       const row = rowOf(e);
       const marker = isMarker(e.question);
+      // Whose answer the line says holds: an Undo brings back the answer as it was.
+      let source = e;
       if (e.what === "answered" || e.what === "changed") {
         state.set(e.question, row);
         byAnswer.set(e.answerId, row);
@@ -178,6 +183,7 @@ export function historyLines(events, answers, t, spell) {
               rowOf({ ...live.get(e.answerId), answerId: e.answerId })) ||
             (marker ? null : row));
         if (back) {
+          source = back;
           state.set(e.question, back);
           byAnswer.set(e.answerId, back);
         } else {
@@ -187,7 +193,7 @@ export function historyLines(events, answers, t, spell) {
           markers.add(markerId(e.question));
         }
       }
-      if (!LATER[e.what] && e.what !== "auto") {
+      if (!LINES.has(e.what) && e.what !== "auto") {
         continue;
       }
       if (marker) {
@@ -196,7 +202,7 @@ export function historyLines(events, answers, t, spell) {
           key: `e:${e.id}`,
           kind: e.what,
           title: titles.get(id) || keyParts(e.question)[2] || "",
-          how: howOf(e.what, e),
+          how: howOf(e.what, e, null),
           when: shortDate(e.answeredOn),
           time: step,
           question: e.question,
@@ -210,7 +216,7 @@ export function historyLines(events, answers, t, spell) {
         key: `e:${e.id}`,
         kind: e.what,
         title: shown.title,
-        how: howOf(e.what, e, shown.group),
+        how: howOf(e.what, source, shown.group),
         when: shortDate(e.answeredOn),
         time: step,
         question: e.question,
@@ -262,30 +268,10 @@ export function historyLines(events, answers, t, spell) {
   return finish(lines, answers, t, spell);
 }
 
-/** Marks earlier lines, orders newest first, and finds the lines that act on what is now. */
+/** Orders newest first, keeps each question's and pattern's newest line, and finds the rows
+ * that act on what is now. */
 function finish(lines, answers, t, spell) {
-  // A later line about the same question marks the one before it (true history: it stays).
-  const byQuestion = new Map();
-  for (const line of lines) {
-    if (!line.question || line.kind === "auto") {
-      continue;
-    }
-    if (!byQuestion.has(line.question)) {
-      byQuestion.set(line.question, []);
-    }
-    byQuestion.get(line.question).push(line);
-  }
-  for (const list of byQuestion.values()) {
-    list.forEach((line, i) => {
-      const next = list[i + 1];
-      if (!next) {
-        return;
-      }
-      if (HOLDS.has(line.kind) || next.kind === "undone") {
-        line.flag = LATER[next.kind];
-      }
-    });
-  }
+  const kept = new Set();
   const sorted = lines
     .map((line, i) => ({ line, i }))
     .sort(
@@ -295,7 +281,16 @@ function finish(lines, answers, t, spell) {
         compare(a.line.title, b.line.title) ||
         a.i - b.i
     )
-    .map((x) => x.line);
+    .map((x) => x.line)
+    .filter((line) => {
+      // One row per question and per pattern: its newest line, the state it is in now.
+      const id = line.pattern || line.question;
+      if (!id || kept.has(id)) {
+        return !id;
+      }
+      kept.add(id);
+      return true;
+    });
 
   // The line of each answer remembered now (Change, Forget), and of each pattern there is now.
   const live = new Map(
@@ -309,7 +304,7 @@ function finish(lines, answers, t, spell) {
   const seen = new Set();
   for (const line of sorted) {
     if (HOLDS.has(line.kind) && live.has(line.answerId)) {
-      if (!seen.has(line.answerId) && !line.flag) {
+      if (!seen.has(line.answerId)) {
         line.current = true;
         line.answer = live.get(line.answerId);
       }

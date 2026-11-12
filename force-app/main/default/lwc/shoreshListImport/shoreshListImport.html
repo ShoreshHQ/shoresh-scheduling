@@ -464,10 +464,18 @@
                                     </template>
                                   </div>
                                   <template lwc:if={row.look}>
+                                    <!-- The mark explains itself on hover and to a screen reader
+                                         (guide §3; word walk 2026-11-12). -->
                                     <span
                                       class="shoresh-look-mark row-mark"
+                                      title="Needs a look"
                                       aria-hidden="true"
                                     ></span>
+                                    <span
+                                      class="slds-assistive-text"
+                                      data-id="row-look"
+                                      >Needs a look</span
+                                    >
                                   </template>
                                 </td>
                               </tr>

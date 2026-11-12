@@ -286,6 +286,25 @@ private class ElectiveClearTest {
     }
   }
 
+  @IsTest
+  static void aWeeksChoicesImportedAgainstTwoSchedulesCountOnce() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ClearCamp camp = new ClearCamp();
+      // The same sheet imported against Week 1's second schedule (word walk 2026-11-12).
+      camp.makeRun('Week 1', WEEK_1_MONDAY, WEEK_1);
+
+      Test.startTest();
+      ElectiveClear.Picture picture = ElectiveSeatsController.clearPicture(
+        camp.ids.get('Season')
+      );
+      Test.stopTest();
+
+      ElectiveClear.WeekCounts week1 = weekNamed(picture, 'Week 1');
+      Assert.areEqual(2, week1.runs);
+      Assert.areEqual(WEEK_1 * 2, week1.choices, 'Each camper\'s two once');
+    }
+  }
+
   // ---------------------------------------------------------------- the whole season
 
   @IsTest

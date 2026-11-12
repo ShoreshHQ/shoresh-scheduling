@@ -30,10 +30,9 @@ const now = (id, question, answer, day, extra = {}) => ({
   answeredOn: day
 });
 
-const view = (lines) =>
-  lines.map((l) => [l.title, l.how, l.when, l.flag || "", !!l.current]);
+const view = (lines) => lines.map((l) => [l.title, l.how, l.when, !!l.current]);
 
-describe("the running list", () => {
+describe("one row per answer", () => {
   // MEMO-7.2
   it("says what, when and how, newest first, in camp words", () => {
     const events = [
@@ -60,15 +59,13 @@ describe("the running list", () => {
         "Swim is an activity",
         "Answered as before · a former user",
         "Jul 12",
-        "",
         true
       ],
-      ["Riflery: Activity deleted", "Deleted by you", "Jul 10", "", true],
+      ["Riflery: Activity deleted", "Deleted by you", "Jul 10", true],
       [
         "Carpool is a fixed activity",
         "Answered as before · Dana",
         "Jul 3",
-        "",
         true
       ]
     ]);
@@ -83,13 +80,13 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Answered as before", "Jul 3", "", true]
+      ["Lunch is a fixed activity", "Answered as before", "Jul 3", true]
     ]);
     expect(lines[0].answer.id).toBe("x");
   });
 
-  // MEMO-7.3
-  it("a change adds a line; the one before stays, marked, and only the newest acts", () => {
+  // MEMO-7.3 (word walk 2026-11-12: one row per answer, no history log)
+  it("a change leaves one row: the answer now, and nothing of the one before", () => {
     const events = [
       ev("1", "answered", "kind|Lunch", "activity", "2026-07-03"),
       ev("2", "changed", "kind|Lunch", "fixed", "2026-07-20", { byYou: true })
@@ -101,19 +98,12 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Changed by you", "Jul 20", "", true],
-      [
-        "Lunch is an activity",
-        "Answered as before · Dana",
-        "Jul 3",
-        "Updated",
-        false
-      ]
+      ["Lunch is a fixed activity", "Answered as before", "Jul 20", true]
     ]);
   });
 
   // MEMO-7.3
-  it("marks a line replaced by an import, forgotten, and undone", () => {
+  it("shows each answer once, in the state its newest event left", () => {
     const events = [
       ev("1", "answered", "kind|Lunch", "activity", "2026-07-03"),
       ev("2", "answered", "kind|Lunch", "fixed", "2026-07-10"),
@@ -125,7 +115,29 @@ describe("the running list", () => {
         answerId: "a2",
         byYou: true,
         savedAt: "2026-07-11T12:05:00.000Z"
-      })
+      }),
+      ev("5", "answered", "kind|Swim", "activity", "2026-07-03"),
+      ev("6", "forgotten", "kind|Swim", "activity", "2026-07-12", {
+        answerId: "a5",
+        byYou: true
+      }),
+      ev(
+        "7",
+        "answered",
+        "guessed|s|Activity||Boating|often",
+        "1-1",
+        "2026-07-03"
+      ),
+      ev(
+        "8",
+        "forgotten",
+        "guessed|s|Activity||Boating|often",
+        "1-1",
+        "2026-07-04",
+        {
+          answerId: "a7"
+        }
+      )
     ];
     const lines = historyLines(
       events,
@@ -134,28 +146,14 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Undone by you", "Jul 11", "", true],
+      ["Swim is an activity", "Asks first", "Jul 12", false],
       [
         "Lunch is a fixed activity",
-        "Forgotten by you",
+        "Answered as before · Dana",
         "Jul 11",
-        "Undone",
-        false
+        true
       ],
-      [
-        "Lunch is a fixed activity",
-        "Answered as before · Dana",
-        "Jul 10",
-        "Forgotten",
-        false
-      ],
-      [
-        "Lunch is an activity",
-        "Answered as before · Dana",
-        "Jul 3",
-        "Replaced",
-        false
-      ]
+      ["Boating: 1 a week", "No longer guessed", "Jul 4", false]
     ]);
   });
 
@@ -176,7 +174,6 @@ describe("the running list", () => {
         "Specialty 4 is a fixed activity",
         "Auto-applied in the Jul 17 import",
         "Jul 17",
-        "",
         false
       ]
     ]);
@@ -200,9 +197,9 @@ describe("the patterns' steps, worked out from the history", () => {
     const steps = lines
       .filter((l) => l.derived && l.template === "numbered")
       .map((l) => [l.how, l.when, !!l.current]);
+    // One row per pattern: its newest step.
     expect(steps).toEqual([
-      ["Became Steady (after 3 answers)", "Jul 10", true],
-      ["Became Suggested (after 2 answers)", "Jul 3", false]
+      ["Became Steady (after 3 answers)", "Jul 10", true]
     ]);
     const current = lines.find((l) => l.current && l.template === "numbered");
     expect(current.title).toBe(
@@ -225,10 +222,7 @@ describe("the patterns' steps, worked out from the history", () => {
       lines
         .filter((l) => l.derived && l.template === "numbered")
         .map((l) => [l.how, l.when])
-    ).toEqual([
-      ["Demoted (an answer disagreed)", "Jul 17"],
-      ["Became Suggested (after 2 answers)", "Jul 3"]
-    ]);
+    ).toEqual([["Demoted (an answer disagreed)", "Jul 17"]]);
   });
 
   // MEMO-7.4
@@ -253,11 +247,7 @@ describe("the patterns' steps, worked out from the history", () => {
     const steps = lines
       .filter((l) => l.derived && l.template === "numbered")
       .map((l) => [l.how, l.when]);
-    expect(steps).toEqual([
-      ["Became Suggested (after 2 answers)", "Jul 12"],
-      ["Demoted (an answer disagreed)", "Jul 11"],
-      ["Became Suggested (after 2 answers)", "Jul 10"]
-    ]);
+    expect(steps).toEqual([["Became Suggested (after 2 answers)", "Jul 12"]]);
     expect(
       lines.find((l) => l.current && l.template === "numbered")
     ).toBeDefined();
@@ -297,7 +287,7 @@ describe("the patterns' steps, worked out from the history", () => {
     const top = lines[0];
     expect([top.title, top.how, top.pattern]).toEqual([
       "Lunch 1 and Lunch 2 are recurring activities",
-      "Forgotten by you",
+      "Asks first",
       "pattern:numbered:lunch"
     ]);
     expect(lines.some((l) => l.how.startsWith("Demoted"))).toBe(false);

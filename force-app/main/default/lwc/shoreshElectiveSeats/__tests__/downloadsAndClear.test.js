@@ -172,7 +172,7 @@ describe("downloads come once seats are final", () => {
     [
       "report",
       "Chugim Week 1 full report.xlsx",
-      ["Camper schedules", "Rosters", "Exceptions", "Summary"]
+      ["Camper schedules", "Rosters", "Problems", "Summary"]
     ],
     ["campers", "Chugim Week 1 campers.xlsx", ["Campers"]]
   ])(

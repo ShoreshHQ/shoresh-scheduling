@@ -134,12 +134,13 @@
             >
               Choose files
             </button>
-            <!-- Opened by "Choose files": named, and out of the tab order. -->
+            <!-- Opened by "Choose files": out of the tab order, and hidden from screen readers,
+                 which would read "Choose files" twice (word walk 2026-11-12). -->
             <input
               class="slds-assistive-text"
               type="file"
               tabindex="-1"
-              aria-label="Choose files"
+              aria-hidden="true"
               multiple
               accept={fileTypes}
               data-id="files"

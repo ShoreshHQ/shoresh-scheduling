@@ -74,7 +74,7 @@ export const LEGAL = {
   title: "Legal",
   copyright: "Copyright 2026 Gregory Feitel, doing business as Shoresh",
   licence: "Licensed under the Apache License 2.0.",
-  licenceText: "Full licence text",
+  licenceText: "Full license text",
   code: "The code on GitHub",
   codeUrl: "https://github.com/ShoreshHQ/shoresh-scheduling",
   partsTitle: "Open-source parts Shoresh includes",

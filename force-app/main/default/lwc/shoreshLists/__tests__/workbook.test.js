@@ -705,6 +705,20 @@ describe("independent review of PR D", () => {
     ]);
     expect(runsIn.rows.some((r) => r.differences.length)).toBe(false);
   });
+  it("reads a Which weeks column headed by the week and its start as downloads write it", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        const rows = sheets["Which weeks"];
+        rows[0].push("Week 1 (Jun 28, 2027)");
+        rows.slice(1).forEach((r) => r.push(r[4] === "Yes" ? "No" : "Yes"));
+      })
+    );
+    expect(p.sections.find((x) => x.key === "runsIn").rows[0].problems).toEqual(
+      ['"Week 1" and "Week 1 (Jun 28, 2027)" are the same week']
+    );
+  });
 });
 
 describe("coordinator's review of PR D", () => {

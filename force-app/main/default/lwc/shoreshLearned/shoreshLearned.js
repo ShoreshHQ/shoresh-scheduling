@@ -24,13 +24,12 @@ const STALE = "Someone else changed this just now. Showing the latest.";
 
 /**
  * What Shoresh has learned, under Settings (repo ADR 0023, after ADR 0021; Greg 2026-10-28):
- * one running list, newest first. Each line says what was learned in camp words, when, and how
- * (from whose answer in an import, became Suggested or Steady, demoted, auto-applied, changed,
- * forgotten, undone). A change adds a line; the line before it stays, marked. The line of an
- * answer remembered now has Change and Forget; the newest line of a pattern there is now has its
- * progress (MEMO-6.7) and Forget pattern (MEMO-4.5). What Shoresh already knew comes last
- * (MEMO-6.8). Forget and Change add their line with Undo, until the screen is next opened
- * (MEMO-6.4). Past 15 lines a search shows in the rail.
+ * one row per answer, newest first (word walk 2026-11-12: no history log). Each row says what is
+ * learned in camp words, when, and its state ("Answered as before", "Asks first", "Guessed in an
+ * import", a pattern's band). The row of an answer remembered now has Change and Forget; a
+ * pattern's row has its progress (MEMO-6.7) and Forget pattern (MEMO-4.5). What Shoresh already
+ * knew comes last (MEMO-6.8). Forget and Change leave the row with Undo, until the screen is next
+ * opened (MEMO-6.4). Past 15 rows a search shows in the rail.
  *
  * campId: the camp shown. terms: the camp's words (c/shoreshTerms). setup: the open season's
  * setup, if any (names a key keeps in lower case show as the camp writes them). active: shown;
@@ -178,8 +177,9 @@ export default class ShoreshLearned extends LightningElement {
     return this.answers.filter(isAnswer).length;
   }
 
+  // "11 learned" (Greg's pick, 2026-11-12): Shoresh's own guesses are no answers.
   get countWord() {
-    return this.count === 1 ? "answer" : "answers";
+    return "learned";
   }
 
   get hasCount() {
@@ -260,8 +260,6 @@ export default class ShoreshLearned extends LightningElement {
     const busy = !!state.pending;
     return {
       ...line,
-      liClass: line.flag ? "row row_past" : "row",
-      hasFlag: !!line.flag,
       editing,
       // Change and Forget on the answer remembered now; Undo on what this visit just did.
       canUndo: !!undo,
@@ -371,7 +369,7 @@ export default class ShoreshLearned extends LightningElement {
     this.focusAfter = `[data-id="change"][data-line="${line.key}"]`;
   }
 
-  /** Change adds a line, newest, with Undo; the line it replaced stays, marked Updated. */
+  /** Change: the row shows the new answer, with Undo. */
   handleSave(event) {
     const line = this.lineOf(event);
     if (!line) {
@@ -393,7 +391,7 @@ export default class ShoreshLearned extends LightningElement {
     });
   }
 
-  /** Forget adds a "Forgotten by you" line with Undo (Forget pattern too: its answers stay). */
+  /** Forget: the row says "Asks first", with Undo (Forget pattern too: its answers stay). */
   handleForget(event) {
     const line = this.lineOf(event);
     if (!line) {
@@ -447,8 +445,7 @@ export default class ShoreshLearned extends LightningElement {
   }
 
   /**
-   * Undo: the answer (or pattern) back as it was, with who answered it and when; it adds an
-   * "Undone by you" line. Never over a newer answer (MEMO-4.3): the latest shows instead.
+   * Undo: the answer (or pattern) back as it was, with who answered it and when. Never over a newer answer (MEMO-4.3): the latest shows instead.
    */
   handleUndo(event) {
     const line = this.lineOf(event);

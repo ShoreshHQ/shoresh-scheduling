@@ -1002,6 +1002,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
     if (!board) return [];
     return board.camperSections.map((section) => ({
       ...section,
+      // Said as one name: "Bunk 1, 2 campers", never "Bunk 12" (word walk 2026-11-12).
+      spoken: `${section.name}, ${countOf(this.t, section.count, "Camper")}${
+        section.noBunk ? ", needs a look" : ""
+      }`,
       dataId: section.noBunk ? "no-bunk" : `group-${section.key}`,
       rows: section.rows.map((row) => ({
         key: row.key,

@@ -10,6 +10,7 @@
 import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { UNUSED, listScreen } from "./engine.shoreshLists.shoreshLists.mjs";
 import { keyParts } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
+import { clockText } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 
 export const GROUPS = [
   { key: "classify", label: "Classification" },
@@ -27,7 +28,8 @@ export const GROUPS = [
 // again.").
 const ASKS_AGAIN = "Shoresh will ask this question again.";
 const COMES_BACK = "It can come back next import.";
-const NO_LONGER_GUESSED = "It's no longer marked for a look.";
+// A guess forgotten loses its Guessed mark on the setup screen (SetupGuesses).
+const NO_LONGER_GUESSED = "It's no longer marked Guessed.";
 
 const KEEP_OR_CHANGE = ["keep", "change"];
 // Words for answers no family gives its own (a place ticked, a new one).
@@ -43,6 +45,37 @@ const DELETED_TERM = { ProgramGroup: "Group" };
 const quoted = (name) => `“${name}”`;
 function withProgram(name, program) {
   return program ? `${name} (${program})` : name;
+}
+
+// Import last year's week question for a file that names no week (c/shoreshImportEngine
+// version.js): the key keeps its words; the screen says what it was.
+const FILE_WEEK = "the file's week";
+const LAST_YEAR = "Last year's schedule";
+
+// A time block in a cell key: "name:<name>", "<start>-<end>" in minutes after midnight (a "?"
+// when morning or evening is still asked), or a time block's Id. Shown as the camp's time block
+// at those times, else as the times.
+function blockWords(key, spell) {
+  if (key.startsWith("name:")) {
+    return spell(key.slice(5));
+  }
+  const times = /^(\d+)-(\d*)\??$/.exec(key);
+  if (!times) {
+    return (spell.nameOf && spell.nameOf(key)) || key;
+  }
+  const [start, end] = [Number(times[1]), times[2] ? Number(times[2]) : null];
+  const block = spell.blockAt && spell.blockAt(start, end);
+  return (
+    block ||
+    (end === null ? clockText(start) : `${clockText(start)}–${clockText(end)}`)
+  );
+}
+
+// "cross|<week>|<group>|<day>|<time block>": the cell, "Bunk 3, Tuesday, Period 2".
+function cellName(p, spell) {
+  return [p[1], p[2], p[3], p[4] && blockWords(p[4], spell)]
+    .filter(Boolean)
+    .join(", ");
 }
 
 /** The parts of a key (c/shoreshPatterns, shared with the pattern layer). */
@@ -185,15 +218,40 @@ function deleted(p, t) {
   };
 }
 
+// Times a week as saved ("2-3", "1-1", "2-" or "2-none": no most) as a director says it.
+function oftenWords(answer) {
+  const [low, high] = answer.split("-");
+  if (!high || high === "none") {
+    return `${low} or more a week`;
+  }
+  return low === high ? `${low} a week` : `${low}–${high} a week`;
+}
+
+// Who as saved ("everyone", or "<program>/<name>" lower case, joined by "|", or a digest) in the
+// camp's own spelling: "Seniors (Main)".
+function whoWords(answer, spell) {
+  if (answer === "everyone") {
+    return "Everyone";
+  }
+  if (/^(sha256:)?[0-9a-f]{64}$/.test(answer)) {
+    return "a long list";
+  }
+  return answer
+    .split("|")
+    .map((target) => {
+      const [program, name] = target.split("/");
+      return name ? withProgram(spell(name), spell(program)) : spell(target);
+    })
+    .join(", ");
+}
+
 // "guessed|<season>|<kind>|<program>|<name>|<field>" answered with the value saved.
-function guessedWords(field, answer, t) {
+function guessedWords(field, answer, t, spell) {
   if (field === "often") {
-    const [low, high] = answer.split("-");
-    const times = high === "none" ? `${low} or more` : `${low}–${high}`;
-    return `${t.s("TimesPerWeek")}: ${times}`;
+    return oftenWords(answer);
   }
   if (field === "who") {
-    return `Who: ${/^[0-9a-f]{64}$/.test(answer) ? "a long list" : answer}`;
+    return `Who: ${whoWords(answer, spell)}`;
   }
   if (field === "fits") {
     return `${t.s("GroupsThatFit")}: ${answer}`;
@@ -201,11 +259,11 @@ function guessedWords(field, answer, t) {
   return field === "division" ? `${t.s("Division")}: ${answer}` : answer;
 }
 
-function guessed(p, answer, t) {
+function guessed(p, answer, t, spell) {
   return {
     group: "guessed",
     name: withProgram(p[4], p[3]),
-    words: { [answer]: guessedWords(p[5], answer, t) },
+    words: { [answer]: guessedWords(p[5], answer, t, spell) },
     choices: [],
     forgotten: NO_LONGER_GUESSED
   };
@@ -247,11 +305,11 @@ const FAMILIES = {
       add: `Added ${p[2]}`,
       drop: `Without ${p[2]}`
     }),
-  cross: (p) => ({ ...named(p.slice(1).join(", ")), group: "value" }),
+  cross: (p, a, t, spell) => ({ ...named(cellName(p, spell)), group: "value" }),
   choiceName: (p, a) => choiceName(p, a),
   columns: (p, a, t) => columns(p, a, t),
   deleted: (p, a, t) => deleted(p, t),
-  guessed: (p, a, t) => guessed(p, a, t),
+  guessed: (p, a, t, spell) => guessed(p, a, t, spell),
   whoAdd: (p, a, t) => whoAdd(p, a, t),
   program: (p, a, t) =>
     named(p[1].split(",").join(", "), { new: `A new ${t.sIn("Program")}` }),
@@ -263,7 +321,7 @@ const FAMILIES = {
       keep: `Kept in ${p[2]}`,
       new: `A new one in ${p[3]}`
     }),
-  week: (p) => named(p[1])
+  week: (p) => named(p[1] === FILE_WEEK ? LAST_YEAR : p[1])
 };
 
 /**

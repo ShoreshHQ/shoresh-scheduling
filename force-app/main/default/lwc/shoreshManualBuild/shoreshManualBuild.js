@@ -1069,11 +1069,13 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       : "Publish";
   }
 
+  // The menu beside Publish has a name of its own, never the main button's (word walk
+  // 2026-11-12: two buttons both read "Published").
   get publishedName() {
     return this.publishState && this.publishState.changedSince
       ? // Greg's pick (2026-11-12): "Changed since" and what changed.
-        "Published · Changed since: cells edited"
-      : "Published";
+        "Published: options · Changed since: cells edited"
+      : "Published: options";
   }
 
   /** The program and week shown. */

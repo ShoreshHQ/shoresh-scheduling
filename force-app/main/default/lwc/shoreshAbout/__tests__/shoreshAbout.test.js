@@ -117,6 +117,8 @@ describe("c-shoresh-about", () => {
     const licence = $(element, 'a[data-id="licence-text"]');
     expect(licence.getAttribute("href")).toMatch(/ShoreshLicense/);
     expect(licence.getAttribute("target")).toBe("_blank");
+    // One spelling beside "Apache License 2.0" (word walk 2026-11-12).
+    expect(licence.textContent.trim()).toBe("Full license text");
     expect($(element, 'a[data-id="code"]').getAttribute("href")).toBe(
       "https://github.com/ShoreshHQ/shoresh-scheduling"
     );

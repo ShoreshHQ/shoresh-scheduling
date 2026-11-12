@@ -49,8 +49,9 @@ describe("c-shoresh-rail-picker", () => {
     expect(word(element).textContent.trim()).toBe("Week 2");
     expect(word(element).className).toContain("shoresh-raised");
     expect(word(element).querySelector(".shoresh-chevron")).toBeNull();
-    // Its name starts with the words shown (WCAG 2.5.3), then what it is a choice of.
-    expect(word(element).getAttribute("aria-label")).toBe("Week 2, Week");
+    // Its name is the words shown (WCAG 2.5.3); the group says what it is a choice of, so it is
+    // not said twice ("Week 2, Week", word walk 2026-11-12).
+    expect(word(element).getAttribute("aria-label")).toBe("Week 2");
     expect(q(element, '[data-id="previous"]').getAttribute("aria-label")).toBe(
       "Previous: Week 1"
     );
@@ -72,11 +73,18 @@ describe("c-shoresh-rail-picker", () => {
     });
     await flush();
     expect(q(element, '[data-id="previous"]').disabled).toBe(true);
+    // At an end the arrow still says what it moves (word walk 2026-11-12).
+    expect(q(element, '[data-id="previous"]').getAttribute("aria-label")).toBe(
+      "Previous week"
+    );
     q(element, '[data-id="next"]').click();
     expect(changes).toEqual(["w2"]);
     element.value = "w3";
     await flush();
     expect(q(element, '[data-id="next"]').disabled).toBe(true);
+    expect(q(element, '[data-id="next"]').getAttribute("aria-label")).toBe(
+      "Next week"
+    );
     q(element, '[data-id="previous"]').click();
     expect(changes).toEqual(["w2", "w2"]);
   });
@@ -106,7 +114,7 @@ describe("c-shoresh-rail-picker", () => {
     expect(element.value).toBe("w1");
     expect(q(element, '[data-id="previous"]').disabled).toBe(true);
     expect(focused()).toBe(word(element));
-    expect(word(element).getAttribute("aria-label")).toBe("Week 1, Week");
+    expect(word(element).getAttribute("aria-label")).toBe("Week 1");
 
     // Not at an end: focus stays on the arrow.
     q(element, '[data-id="next"]').focus();

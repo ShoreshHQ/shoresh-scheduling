@@ -34,6 +34,8 @@ describe("c-shoresh-guess-mark", () => {
       "How often for Swim: guessed from your file"
     );
     expect(mark.getAttribute("aria-expanded")).toBe("false");
+    // On hover the mark says what it means (guide §3; word walk 2026-11-12).
+    expect(mark.getAttribute("title")).toBe(element.label);
     // Guessed has its own mark, not the needs-a-look dot (word walk W3).
     expect(mark.querySelector(".shoresh-guess-mark")).not.toBeNull();
     expect(mark.querySelector(".shoresh-look-mark")).toBeNull();

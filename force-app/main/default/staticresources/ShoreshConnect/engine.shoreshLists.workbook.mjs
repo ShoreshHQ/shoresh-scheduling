@@ -13,7 +13,7 @@
  * ImportController.saveWorkbook.
  */
 import { CHILDREN, FIELD, localName } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms, fullDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import {
   LEAVE_OUT,
   WEEKDAYS,
@@ -637,8 +637,10 @@ function readWeeks(sheet, setup, answers, t) {
         });
       }
     }
-    // A Runs in column is headed by the week's name, or "Name (start date)" when two share it.
+    // A Runs in column is headed by the week's name, or "Name (start date)" when two share it:
+    // "Jun 28, 2027", or "2027-06-28" as worksheets before the word walk wrote it.
     result.refs.set(foldName(`${row.name} (${row.start})`), row.ref);
+    result.refs.set(foldName(`${row.name} (${fullDate(row.start)})`), row.ref);
     if (named.length === 1) {
       result.refs.set(foldName(row.name), row.ref);
     }

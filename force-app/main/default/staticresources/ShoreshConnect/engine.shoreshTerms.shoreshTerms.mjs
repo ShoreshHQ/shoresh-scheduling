@@ -163,6 +163,18 @@ export function shortDate(value) {
 }
 
 /**
+ * A date with its year, as downloads write it: "2027-06-28" -> "Jun 28, 2027" (word walk
+ * 2026-11-12: never the database's form). Anything else as it is.
+ */
+export function fullDate(value) {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+  const name = day && MONTHS[Number(day[2]) - 1];
+  return name && Number(day[3])
+    ? `${name} ${Number(day[3])}, ${day[1]}`
+    : (value ?? "");
+}
+
+/**
  * The plural Camp words guesses for a camp's own word (wiki decision 56, camp-words-b): the
  * standard word's own plural when the word is the standard one ("Times per week"), else the
  * English rule the server uses for the standard words ("Activity" -> "Activities"), with "es"
