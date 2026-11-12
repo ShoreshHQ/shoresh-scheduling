@@ -1,5 +1,17 @@
 /** Camp labels: fills the hidden key (camp + model term) so a camp has one label per term. */
 public with sharing class CampLabelTriggerHandler {
+  /** Before a save: keys and checks (beforeSave). After a delete: camp words read are forgotten. */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<CampLabel__c> labels
+  ) {
+    if (operation == System.TriggerOperation.AFTER_DELETE) {
+      CampLabels.forget();
+    } else {
+      beforeSave(labels);
+    }
+  }
+
   public static void beforeSave(List<CampLabel__c> labels) {
     // Camp words read earlier in this request are out of date now.
     CampLabels.forget();

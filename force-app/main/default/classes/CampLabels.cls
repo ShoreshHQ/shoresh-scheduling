@@ -61,19 +61,14 @@ public with sharing class CampLabels {
    * saving or changing any camp word forgets them (forget).
    */
   public static Map<Id, CampLabels> forCamps(Set<Id> campIds) {
-    Map<Id, CampLabels> result = new Map<Id, CampLabels>();
-    Set<Id> toRead = new Set<Id>();
-    for (Id campId : campIds) {
-      if (READ.containsKey(campId)) {
-        result.put(campId, READ.get(campId));
-      } else {
-        toRead.add(campId);
-      }
-    }
+    Set<Id> toRead = new Set<Id>(campIds);
+    toRead.removeAll(READ.keySet());
     if (!toRead.isEmpty()) {
-      Map<Id, CampLabels> read = readCamps(toRead);
-      READ.putAll(read);
-      result.putAll(read);
+      READ.putAll(readCamps(toRead));
+    }
+    Map<Id, CampLabels> result = new Map<Id, CampLabels>();
+    for (Id campId : campIds) {
+      result.put(campId, READ.get(campId));
     }
     return result;
   }
