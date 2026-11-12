@@ -340,6 +340,34 @@ describe("c-shoresh-special-schedule", () => {
     );
   });
 
+  // Word walk W6: an overlapping time block and a second station of the same name are marked.
+  it("marks a period that overlaps another, and stations with the same name", async () => {
+    const plan = dayPlan([",", ",", ","], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      notes: null
+    });
+    const day = plan.schedule.days[0];
+    day.blocks = [
+      block("b1", "Opening", "09:00", "09:45"),
+      block("b2", "Warm-up", "09:30", "10:00"),
+      block("b3", "Lunch", "11:30", "12:20")
+    ];
+    day.groups = [ref("g1", "Stage"), ref("g2", "stage "), ref("g3", "Field")];
+    day.rows = [",,", ",,", ",,"];
+    const { element } = await render(plan);
+    q(element, '[data-id="edit-blocks"]').click();
+    q(element, '[data-id="edit-stations"]').click();
+    await flush();
+    const marked = (selector, attr) =>
+      [...element.shadowRoot.querySelectorAll(selector)]
+        .filter((li) => li.querySelector("c-shoresh-dot"))
+        .map((li) => li.dataset[attr]);
+    expect(marked("li[data-block]", "block")).toEqual(["b1", "b2"]);
+    expect(marked("li[data-station]", "station")).toEqual(["g1", "g2"]);
+  });
+
   it("taking out a period with something in it asks first", async () => {
     const { element } = await render(dayPlan());
     q(element, '[data-id="edit-blocks"]').click();

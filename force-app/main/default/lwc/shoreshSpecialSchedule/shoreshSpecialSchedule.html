@@ -223,7 +223,16 @@
           <template for:each={blocks} for:item="block">
             <li key={block.key} class="frame-row" data-block={block.id}>
               <span class="frame-when shoresh-num">{block.when}</span>
-              <span class="frame-name">{block.name}</span>
+              <span class="frame-name"
+                >{block.name}
+                <template lwc:if={block.overlaps}>
+                  <c-shoresh-dot
+                    data-id="overlaps"
+                    shape="overlap"
+                    label={block.overlapLabel}
+                    focusable
+                  ></c-shoresh-dot> </template
+              ></span>
               <span class="frame-buttons">
                 <button
                   type="button"
@@ -287,7 +296,15 @@
         <ol class="frame-list" id="frame-stations" data-id="stations">
           <template for:each={stations} for:item="station">
             <li key={station.key} class="frame-row" data-station={station.id}>
-              <span class="frame-name">{station.name}</span>
+              <span class="frame-name"
+                >{station.name}
+                <template lwc:if={station.sameName}>
+                  <c-shoresh-dot
+                    data-id="same-name"
+                    label="Same name as another"
+                    focusable
+                  ></c-shoresh-dot> </template
+              ></span>
               <span class="frame-buttons">
                 <button
                   type="button"
