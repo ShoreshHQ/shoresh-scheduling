@@ -114,11 +114,9 @@ describe("menuMarks", () => {
         locations: []
       })
     ).toEqual({
+      // Word walk W6: what a program owns waits for a program, as Roots' hand says it.
       weeks: "needed",
       programs: "needed",
-      divisions: "needed",
-      groups: "needed",
-      timeBlocks: "needed",
       activities: "needed"
     });
     expect(

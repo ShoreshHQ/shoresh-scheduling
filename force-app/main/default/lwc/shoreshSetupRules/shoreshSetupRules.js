@@ -839,11 +839,17 @@ export function menuMarks(setup) {
     "timeBlocks",
     "activities"
   ]);
+  // With no program yet, what a program owns waits for it: only Programs is needed, as Roots'
+  // hand says it (word walk W6: the menu and the hand named different things).
+  const ownedByAProgram = new Set(["divisions", "groups", "timeBlocks"]);
   const marks = {};
   Object.entries(has).forEach(([screen, filled]) => {
     if (filled) {
       marks[screen] = "done";
-    } else if (required.has(screen)) {
+    } else if (
+      required.has(screen) &&
+      (programs.length > 0 || !ownedByAProgram.has(screen))
+    ) {
       marks[screen] = "needed";
     }
   });
