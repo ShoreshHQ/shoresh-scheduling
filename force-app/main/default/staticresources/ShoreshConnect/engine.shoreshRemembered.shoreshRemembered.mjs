@@ -6,23 +6,29 @@
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
-function whose(row) {
+/** Whose answer it was: nobody named when it was yours. */
+function byWhom(row) {
   if (row.byYou) {
-    return "your";
+    return "";
   }
   const first = String(row.byName || "")
     .trim()
     .split(/\s+/)[0];
-  return first ? `${first}'s` : "a former user's";
+  return first || "a former user";
 }
 
-/** "Remembered from your answer on Jul 3", "Remembered from Dana's answer on Jul 3". */
+/** Greg's pick (2026-11-12): "Answered as before", then who (when not you) and when. */
+export const ANSWERED_AS_BEFORE = "Answered as before";
+
+/** "Answered as before · Jul 3", "Answered as before · Dana, Jul 3". */
 export function rememberedNote(row) {
   if (!row) {
-    return "Remembered";
+    return ANSWERED_AS_BEFORE;
   }
-  const on = shortDate(row.answeredOn);
-  return `Remembered from ${whose(row)} answer${on ? ` on ${on}` : ""}`;
+  const tail = [byWhom(row), shortDate(row.answeredOn)]
+    .filter(Boolean)
+    .join(", ");
+  return tail ? `${ANSWERED_AS_BEFORE} · ${tail}` : ANSWERED_AS_BEFORE;
 }
 
 /** The camp's remembered answers by question: { answers: key -> answer, notes: key -> note }. */

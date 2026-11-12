@@ -138,7 +138,7 @@ export function keepNote(
       return "Nothing in setup needed a change, so everything was kept as it was.";
     }
     const opened = filled
-      ? `Filled ${filled} Open ${filled === 1 ? "cell" : "cells"}. `
+      ? `Placed ${filled} in Open ${filled === 1 ? "cell" : "cells"}. `
       : "";
     return `${opened}Kept everything else as it was.`;
   }

@@ -15,7 +15,7 @@ const KINDS = [
   ["recurringActivities", "RecurringActivity"],
   // Electives read from the file (slice E9).
   ["electiveSets", "ElectiveSet"],
-  ["offerings", "Offering"],
+  ["offerings", "Elective"],
   ["linkedChoices", "LinkedChoice"],
   ["programs", "Program"]
 ];

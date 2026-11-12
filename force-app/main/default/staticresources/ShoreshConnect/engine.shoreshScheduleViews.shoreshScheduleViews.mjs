@@ -668,7 +668,7 @@ export function activityGrid(view, activityId, t) {
                 return entry.rain ? `${entry.name} (${RAIN_PLAN})` : entry.name;
               })
               .join(", ")
-          : "Not scheduled"
+          : "Open"
       });
     });
   });

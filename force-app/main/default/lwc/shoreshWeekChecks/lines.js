@@ -123,7 +123,7 @@ export function priorityRowsOf(m, activity = "activity") {
       key: `priority-${row.priority}`,
       label,
       ofTotal,
-      words: `${label} · ${row.met}${ofTotal ? ` ${ofTotal}` : ""}`
+      words: `${label} ${row.met}${ofTotal ? ` ${ofTotal}` : ""}`
     };
   });
 }

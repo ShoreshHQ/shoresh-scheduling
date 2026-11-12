@@ -157,7 +157,8 @@ export function campWorkbookSheets(setup, t) {
     { name: t.p("LocationType"), rows: locationTypeRows(setup, t) },
     { name: "Camp words", rows: campWordRows(setup) },
     { name: t.p("Week"), rows: weekRows(setup, t) },
-    { name: "Runs in", rows: runsInRows(setup, t) }
+    // Never "Runs in" (Greg's pick, 2026-11-12: "run" only in "Minimum to run" and "Runs on").
+    { name: "Which weeks", rows: runsInRows(setup, t) }
   ]);
 }
 
