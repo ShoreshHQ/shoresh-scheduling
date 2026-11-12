@@ -306,17 +306,11 @@ public with sharing class ManualBuildViews {
     if (read.activities.isEmpty()) {
       return new List<ManualSetUpCells.Cell>();
     }
-    Set<Id> away = new Set<Id>();
-    for (WeekException__c mark : read.exceptions) {
-      away.add(mark.Group__c);
-    }
-    List<Group__c> atCamp = new List<Group__c>();
-    for (Group__c grp : read.groups) {
-      if (!away.contains(grp.Id)) {
-        atCamp.add(grp);
-      }
-    }
-    return ManualSetUpCells.of(read.program, read.week, read.blocks, atCamp);
+    GeneratedSetup setup = new GeneratedSetup(read.program, read.week);
+    setup.blocks = read.blocks;
+    setup.groups = read.groups;
+    setup.exceptions = read.exceptions;
+    return ManualSetUpCells.of(setup);
   }
 
   /** Setup's names now, from what the view has read (ManualBuildNamesNow). */

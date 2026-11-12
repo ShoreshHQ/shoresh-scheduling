@@ -18,23 +18,9 @@ public with sharing class ManualSetUpCells {
   }
 
   /**
-   * The program's week, on setup a screen has already read (BlankWeek.build): only the fixed and
-   * recurring activities are read here.
+   * The program's week, on setup already read (Generated Schedule's, a start's, or Manual Build's
+   * open, a GeneratedSetup made on what it read): only the fixed and recurring activities are read here.
    */
-  public static List<Cell> of(
-    Program__c program,
-    Week__c week,
-    List<TimeBlock__c> blocks,
-    List<Group__c> atCamp
-  ) {
-    try {
-      return of(BlankWeek.build(program, week, blocks, atCamp));
-    } catch (ShoreshException notReady) {
-      return new List<Cell>();
-    }
-  }
-
-  /** The same, on setup Generated Schedule or a start has already read. */
   public static List<Cell> of(GeneratedSetup setup) {
     try {
       return of(BlankWeek.build(setup));
