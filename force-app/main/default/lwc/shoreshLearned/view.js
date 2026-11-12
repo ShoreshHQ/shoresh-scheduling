@@ -13,6 +13,7 @@ import {
   joinNames
 } from "c/shoreshPatterns";
 import { shortDate } from "c/shoreshTerms";
+import { FIELD } from "c/shoreshSchema";
 import { describe } from "./kinds";
 
 function whoLine(row, group) {
@@ -22,7 +23,7 @@ function whoLine(row, group) {
     return `Deleted by ${who} on ${on}`;
   }
   if (group === "guessed") {
-    return `Guessed in an import by ${who} on ${on}`;
+    return `Guessed in an import on ${on}`;
   }
   return `Answered by ${who} on ${on}`;
 }
@@ -65,6 +66,29 @@ function setupRecords(setup) {
   return records.filter((r) => r && r.Name);
 }
 
+// A time as setup reads it (milliseconds after midnight, or "09:30") in minutes, else null.
+function minutesOf(time) {
+  if (typeof time === "number") {
+    return Math.round(time / 60000);
+  }
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(time || ""));
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/** The time blocks of the open season by their times: "<start>-<end>" in minutes to a name. */
+function blocksByTime(setup) {
+  const byTime = new Map();
+  ((setup && setup.programs) || [])
+    .flatMap((p) => p.timeBlocks || [])
+    .forEach((b) => {
+      const key = `${minutesOf(b[FIELD.TimeBlock.StartTime])}-${minutesOf(b[FIELD.TimeBlock.EndTime])}`;
+      if (b.Name && !byTime.has(key)) {
+        byTime.set(key, b.Name);
+      }
+    });
+  return byTime;
+}
+
 /**
  * A key part as the camp writes that name now: matched ignoring capitals and spacing (as the
  * import's own keys are made), else as stored. Ties: the first in setup order.
@@ -85,6 +109,9 @@ export function speller(setup) {
   spell.nameOf = (id) => byId.get(id) ?? null;
   // Whether a name is one the camp has set up (ignoring capitals and spacing).
   spell.isCamp = (name) => byLoose.has(loose(name));
+  // The time block at these times (minutes after midnight), or null.
+  const byTime = blocksByTime(setup);
+  spell.blockAt = (start, end) => byTime.get(`${start}-${end}`) ?? null;
   return spell;
 }
 

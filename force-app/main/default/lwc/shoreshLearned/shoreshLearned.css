@@ -179,8 +179,7 @@
   color: var(--shoresh-danger-text);
 }
 
-/* A line a later one replaced, and what Shoresh already knew: quieter, still there. */
-.row_past .title,
+/* What Shoresh already knew: quieter. */
 .row_knew .title {
   color: var(--shoresh-text-2);
   font-weight: 400;

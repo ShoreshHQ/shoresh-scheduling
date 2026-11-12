@@ -96,7 +96,52 @@ describe("each remembered question in camp words", () => {
       "guessed|a0S|Activity||Archery|often",
       "2-none",
       "guessed",
-      "Archery: Times per week: 2 or more",
+      "Archery: 2 or more a week",
+      0
+    ],
+    // Word walk 2026-11-12: "1 a week", never "1–1"; a unit on the count.
+    [
+      "guessed|a0S|Activity||Boating|often",
+      "1-1",
+      "guessed",
+      "Boating: 1 a week",
+      0
+    ],
+    [
+      "guessed|a0S|Activity||Swim|often",
+      "2-3",
+      "guessed",
+      "Swim: 2–3 a week",
+      0
+    ],
+    [
+      "guessed|a0S|Activity||Swim|who",
+      "everyone",
+      "guessed",
+      "Swim: Who: Everyone",
+      0
+    ],
+    // A cell two files disagree about: no leading comma when the file named no week.
+    [
+      "cross||Bunk 3|Tuesday|name:period 2",
+      "Soccer",
+      "value",
+      "Bunk 3, Tuesday, period 2: Soccer",
+      0
+    ],
+    [
+      "cross|Week 1|Bunk 3|Tuesday|590-635",
+      "Soccer",
+      "value",
+      "Week 1, Bunk 3, Tuesday, 9:50 AM–10:35 AM: Soccer",
+      0
+    ],
+    // The week question of a file that names no week says whose schedule it was.
+    [
+      "week|the file's week",
+      "Week 1",
+      "other",
+      "Last year's schedule: Week 1",
       0
     ],
     ["program|Group A,Group B", "Main", "other", "Group A, Group B: Main", 0],
@@ -123,6 +168,34 @@ describe("each remembered question in camp words", () => {
     expect(
       kindOf("similar|g|a|b|A|B", "a", t).choices.map((c) => c.value)
     ).toEqual(["a", "b", "different"]);
+  });
+
+  it("names a cell's time block, and who, as the camp writes them now", () => {
+    const setup = {
+      programs: [
+        {
+          program: nsRecord({ Id: "p1", Name: "Main" }),
+          divisions: [{ division: nsRecord({ Id: "d1", Name: "Seniors" }) }],
+          timeBlocks: [
+            nsRecord({
+              Id: "b2",
+              Name: "Period 2",
+              StartTime__c: 590 * 60000,
+              EndTime__c: 635 * 60000
+            })
+          ]
+        }
+      ]
+    };
+    const spell = speller(setup);
+    const at = (question, answer) =>
+      learnedRow({ id: "x", question, answer, byYou: true }, t, spell).title;
+    expect(at("cross||Bunk 3|Tuesday|590-635", "Soccer")).toBe(
+      "Bunk 3, Tuesday, Period 2: Soccer"
+    );
+    expect(at("guessed|a0S|Activity||Boating|who", "main/seniors")).toBe(
+      "Boating: Who: Seniors (Main)"
+    );
   });
 
   it("says plainly what forgetting means", () => {
@@ -167,7 +240,7 @@ describe("who, when, groups and search", () => {
       "Deleted by a former user on Jul 3"
     );
     expect(row("guessed|a0S|Activity||Archery|often", "3", former).who).toBe(
-      "Guessed in an import by a former user on Jul 3"
+      "Guessed in an import on Jul 3"
     );
   });
 

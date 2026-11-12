@@ -75,6 +75,16 @@ suggestions and auto-apply stands.
    it). Nothing is released and no camp uses it, so no back-fill is written. The history reads the newest 5000 events, as the answers'
    read does; past that the oldest lines are left out, and the list ends with "Older entries not shown" (MEMO-7.7) so nothing is hidden silently.
 
+## Changed by the word walk (2026-11-12)
+
+The screen no longer shows a change log (design guide §2: no op-log on screen). The events are
+still stored and replayed as above, but only the newest line of each question and of each pattern
+is shown: one row per answer, in the state it is in now. Its words are Greg's picks: "Answered as
+before" (with whose answer when it is someone else's), "Asks first" once forgotten, "Guessed in an
+import", "Deleted by ...", and a pattern's newest step. The Replaced / Updated / Forgotten / Undone
+marks of choice 5 are gone with the earlier lines. Forget and Change keep Undo on the row until
+the screen is next opened. The rail counts "11 learned".
+
 ## What was considered
 
 - **Keeping old answers as records** (a history flag on `ImportAnswer__c` instead of deleting):

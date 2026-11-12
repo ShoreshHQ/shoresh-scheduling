@@ -72,16 +72,13 @@
         <template for:each={shown} for:item="line">
           <li
             key={line.key}
-            class={line.liClass}
+            class="row"
             data-line={line.key}
             data-kind={line.kind}
           >
             <div class="line1">
               <span class="title" data-id="title">{line.title}</span>
-              <template lwc:if={line.hasFlag}>
-                <span class="flag" data-id="flag">{line.flag}</span>
-              </template>
-              <template lwc:elseif={line.isPattern}>
+              <template lwc:if={line.isPattern}>
                 <span class="flag" data-id="flag">{line.patternFlag}</span>
               </template>
             </div>

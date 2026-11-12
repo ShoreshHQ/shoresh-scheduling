@@ -102,7 +102,7 @@ const text = (node, id) => {
   const found = node.querySelector(`[data-id="${id}"]`);
   return found ? found.textContent.trim() : null;
 };
-// The learned lines (not what Shoresh already knew): [what, how, when, mark].
+// The learned rows (not what Shoresh already knew): [what, state, when, mark].
 const lines = (element) =>
   $$(element, "li[data-line]").map((li) => [
     text(li, "title"),
@@ -119,7 +119,7 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-describe("c-shoresh-learned: one running list", () => {
+describe("c-shoresh-learned: one row per answer", () => {
   // MEMO-7.1
   it("says nothing is learned yet, then lists what Shoresh already knew", async () => {
     const element = await mount([]);
@@ -173,7 +173,8 @@ describe("c-shoresh-learned: one running list", () => {
       ]
     ]);
     expect($(element, '[data-id="group-toggle"]')).toBeNull();
-    expect(text(element.shadowRoot, "count")).toBe("3 answers");
+    // Greg's pick (2026-11-12): "3 learned", not "answers".
+    expect(text(element.shadowRoot, "count")).toBe("3 learned");
     await expect(element).toBeAccessible();
   });
 
@@ -223,7 +224,7 @@ describe("c-shoresh-learned: one running list", () => {
   });
 
   // MEMO-6.4, MEMO-7.3
-  it("Forget adds a line with Undo; Undo adds another and the answer is back", async () => {
+  it("Forget leaves the row saying Asks first, with Undo; Undo brings the answer back", async () => {
     const riflery = answer("2", "deleted|Activity||Riflery", "deleted");
     const deleted = event(
       "e0",
@@ -254,9 +255,9 @@ describe("c-shoresh-learned: one running list", () => {
       campId: "a00",
       answerId: "2"
     });
+    // One row per answer, in its state now: no change log (word walk 2026-11-12).
     expect(lines(element)).toEqual([
-      ["Riflery: Activity deleted", "Forgotten by you", "Oct 28", null],
-      ["Riflery: Activity deleted", "Deleted by Dana", "Jul 3", "Forgotten"]
+      ["Riflery: Activity deleted", "Can come back", "Oct 28", null]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Forgotten. It can come back next import."
@@ -286,9 +287,7 @@ describe("c-shoresh-learned: one running list", () => {
       answerId: "2"
     });
     expect(lines(element)).toEqual([
-      ["Riflery: Activity deleted", "Undone by you", "Oct 28", null],
-      ["Riflery: Activity deleted", "Forgotten by you", "Oct 28", "Undone"],
-      ["Riflery: Activity deleted", "Deleted by Dana", "Jul 3", "Forgotten"]
+      ["Riflery: Activity deleted", "Deleted by Dana", "Oct 28", null]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Remembered again."
@@ -298,7 +297,7 @@ describe("c-shoresh-learned: one running list", () => {
   });
 
   // MEMO-6.4, MEMO-7.3
-  it("Change adds a line with Undo; the line before stays, marked Updated", async () => {
+  it("Change shows the new answer on its row with Undo; nothing of the one before stays", async () => {
     const lunch = answer("1", "kind|Lunch", "activity");
     const answered = event(
       "e0",
@@ -351,8 +350,7 @@ describe("c-shoresh-learned: one running list", () => {
       answer: "fixed"
     });
     expect(lines(element)).toEqual([
-      ["Lunch is a fixed activity", "Changed by you", "Oct 26", null],
-      ["Lunch is an activity", "Answered as before · Dana", "Jul 3", "Updated"]
+      ["Lunch is a fixed activity", "Answered as before", "Oct 26", null]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe("Updated.");
     expect(element.shadowRoot.activeElement.dataset.id).toBe("undo");
@@ -379,9 +377,7 @@ describe("c-shoresh-learned: one running list", () => {
       oldId: "1"
     });
     expect(lines(element)).toEqual([
-      ["Lunch is an activity", "Undone by you", "Oct 26", null],
-      ["Lunch is a fixed activity", "Changed by you", "Oct 26", "Undone"],
-      ["Lunch is an activity", "Answered as before · Dana", "Jul 3", "Updated"]
+      ["Lunch is an activity", "Answered as before · Dana", "Oct 26", null]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Changed back."
@@ -497,7 +493,11 @@ describe("c-shoresh-learned: one running list", () => {
     );
     $(element, '[data-id="retry"]').click();
     await flush();
-    expect(text(line(element), "how")).toBe("Forgotten by you");
+    expect(text(line(element), "how")).toBe("Asks first");
+    // The screen-reader line says what forgetting really does.
+    expect($(element, '[data-id="said"]').textContent.trim()).toBe(
+      "Forgotten. Shoresh will ask this question again."
+    );
   });
 
   it("shows the latest when the answer was changed somewhere else", async () => {
@@ -627,7 +627,7 @@ describe("patterns, and what Shoresh already knew", () => {
   });
 
   // MEMO-6.7, MEMO-7.4
-  it("shows each pattern's steps, the newest with its progress in counts", async () => {
+  it("shows each pattern once, at its newest step, with its progress in counts", async () => {
     const element = await mount(lunches());
     expect(patternLines(element)).toEqual([
       {
@@ -643,9 +643,10 @@ describe("patterns, and what Shoresh already knew", () => {
         progress: "3 of 3 answers - suggested every time"
       }
     ]);
+    // No earlier step of either pattern stays on screen (no history log).
     expect(
       lines(element).filter((l) => l[1].startsWith("Became Suggested"))
-    ).toHaveLength(2);
+    ).toHaveLength(0);
     expect($$(element, ".dot_on")).toHaveLength(6);
     await expect(element).toBeAccessible();
   });
@@ -705,7 +706,7 @@ describe("patterns, and what Shoresh already knew", () => {
   });
 
   // MEMO-4.5
-  it("Forget pattern keeps its answers, adds a line, with Undo", async () => {
+  it("Forget pattern keeps its answers; its row says Asks first, with Undo", async () => {
     const element = await mount(lunches());
     forgetLearnedPattern.mockResolvedValue(["m1"]);
     const marker = event(
@@ -739,7 +740,7 @@ describe("patterns, and what Shoresh already knew", () => {
     });
     expect(lines(element)[0]).toEqual([
       "Lunch 1, Lunch 2 and Lunch 3 are recurring activities",
-      "Forgotten by you",
+      "Asks first",
       "Jul 11",
       null
     ]);
@@ -747,7 +748,7 @@ describe("patterns, and what Shoresh already knew", () => {
       "Forgotten. It won't be suggested again. Its answers stay."
     );
     // The answers stay remembered, each with Forget.
-    expect(text(element.shadowRoot, "count")).toBe("3 answers");
+    expect(text(element.shadowRoot, "count")).toBe("3 learned");
     expect(element.shadowRoot.activeElement.dataset.id).toBe("undo");
     forgetLearned.mockResolvedValue(true);
     serve(lunches());
@@ -805,7 +806,7 @@ describe("patterns, and what Shoresh already knew", () => {
       ...lunches(),
       answer("m", "pattern|numbered|lunch", "forgotten", "2026-07-11")
     ]);
-    expect(text(element.shadowRoot, "count")).toBe("3 answers");
+    expect(text(element.shadowRoot, "count")).toBe("3 learned");
     expect(lines(element).map((l) => l[0])).not.toContain(
       "pattern, numbered, lunch: forgotten"
     );
