@@ -228,7 +228,12 @@ function manualContextOf(m, body) {
     isLocked: () => false,
     liveLocks: null,
     events,
-    replaced: m.replacedDays(draft)
+    replaced: m.replacedDays(draft),
+    // Where setup puts each fixed and recurring activity, so a clear puts back one typed over
+    // (shoreshWeekEditor manualChecks setUpOf; LOCK-4.9).
+    setUp: (draft.setUpCells || []).length
+      ? Object.fromEntries(draft.setUpCells.map((c) => [c.key, c.slot]))
+      : null
   };
 }
 

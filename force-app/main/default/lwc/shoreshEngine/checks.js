@@ -541,9 +541,14 @@ export function countedCells(ctx, days) {
     day.groups.forEach((grp, g) => {
       slots(day, g).forEach((slot, b) => {
         const item = owner(slot);
+        // Where setup's own fixed and recurring cells are known (Manual Build), those are left
+        // out whatever they hold, so the total never moves as cells change (LOCK-4.10).
+        const setTime = ctx.setUpAt
+          ? !!ctx.setUpAt(day.dateValue, grp.id, day.blocks[b].id)
+          : holdsSetTime(item);
         if (
           ctx.isAway(grp.id, day.blocks[b].id) ||
-          holdsSetTime(item) ||
+          setTime ||
           item.startsWith(`${KIND.EVENT}:`) ||
           item.startsWith(`${KIND.SPECIAL_DAY}:`) ||
           PLACED_ELECTIVE.test(item) ||
@@ -606,6 +611,8 @@ export function checkWeek(days, model, words) {
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
     isLockedOpen: model.isLockedOpen || (() => false),
+    // Manual Build: what setup puts in a cell (dateValue, groupId, blockId), or null.
+    setUpAt: model.setUpAt || null,
     locked: model.locked || new Set(),
     // The camp's normal first day of the week: an early-week goal's days count from it.
     firstDay: model.firstDay || 1,

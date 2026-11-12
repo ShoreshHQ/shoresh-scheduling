@@ -5,6 +5,9 @@
  * week, and the week's published schedule. Worked out from today's setup. Runs in user mode.
  */
 public with sharing class ManualBuildViews {
+  // One answer the screen reads in one call: each field is a separate thing the week's screen
+  // shows or checks, so it is kept whole rather than split to stay under PMD's field count.
+  @SuppressWarnings('PMD.TooManyFields')
   public class DraftView {
     @AuraEnabled
     public ScheduleViews.ScheduleView schedule;
@@ -53,6 +56,9 @@ public with sharing class ManualBuildViews {
     // The week's days a special day replaces (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
+    // Where setup puts each fixed and recurring activity this week (ManualSetUpCells).
+    @AuraEnabled
+    public List<ManualSetUpCells.Cell> setUpCells = new List<ManualSetUpCells.Cell>();
   }
 
   public class ActivityOption {
@@ -165,6 +171,8 @@ public with sharing class ManualBuildViews {
     private List<Activity__c> activities;
     // The week was read with its special days (GeneratedSetup): none to read again.
     private Boolean weekHasSpecialDays = false;
+    // The setup a start has read, or null when the draft is opened on its own.
+    private GeneratedSetup setup;
   }
 
   /** The draft opened for Manual Build. */
@@ -201,6 +209,7 @@ public with sharing class ManualBuildViews {
     read.exceptions = setup.exceptions;
     read.activities = setup.activityRecords();
     read.weekHasSpecialDays = true;
+    read.setup = setup;
     return viewOf(read);
   }
 
@@ -254,6 +263,11 @@ public with sharing class ManualBuildViews {
     view.specials = read.weekHasSpecialDays
       ? WeekSpecials.ofWeek(read.week, read.groups)
       : WeekSpecials.read(read.week, read.groups);
+    view.setUpCells.addAll(
+      read.setup != null
+        ? ManualSetUpCells.of(read.setup)
+        : ManualSetUpCells.of(read.program.Id, read.week.Id)
+    );
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
     // Beside the days as Publish would put them out (SchedulePublish), so a rename since the

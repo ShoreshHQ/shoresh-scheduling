@@ -56,7 +56,7 @@ import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
 import { dayNameOf, weekMeasure, withPriority } from "./measure";
-import { checkManualDays } from "./manualChecks";
+import { checkManualDays, setUpOf } from "./manualChecks";
 import {
   alreadySkipped,
   foldRun,
@@ -1589,7 +1589,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       isAwayOn: (week, d, g, b) => this.isAwayOn(week, d, g, b),
       isLocked: (slot) => this.isLockedSlot(slot),
       liveLocks: this.liveLocks,
-      replaced: this.replaced
+      replaced: this.replaced,
+      setUp: setUpOf(this.draft)
     };
   }
 
@@ -2231,6 +2232,13 @@ export default class ShoreshWeekEditor extends LightningElement {
         if (found) {
           return { kind: found.kind, id: found.id, name: found.name };
         }
+      }
+      // One put back by Clear where it was typed over everywhere: setup's name for it.
+      const cell = ((this.draft && this.draft.setUpCells) || []).find(
+        (c) => c.slot === item
+      );
+      if (cell) {
+        return { kind: item[0], id: item.slice(2), name: cell.name };
       }
     }
     if (item.startsWith("S:")) {

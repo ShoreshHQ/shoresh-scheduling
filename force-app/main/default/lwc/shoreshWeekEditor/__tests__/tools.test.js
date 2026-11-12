@@ -31,6 +31,32 @@ function after(days, runs) {
 
 const why = (list) => list.map((o) => [o.slot, o.why]);
 
+// LOCK-4.9
+describe("a clear puts back the fixed activity something was typed over", () => {
+  // Setup puts Flagpole in Period 1 for both bunks on Monday.
+  const SET_UP = {
+    "2026-06-29|g1|t1": "F:f1",
+    "2026-06-29|g2|t1": "F:f1"
+  };
+
+  // LOCK-4.9
+  it("Clear day puts Flagpole back where Swim was typed over it, and leaves a cell emptied by hand empty", () => {
+    // Bunk 1: Swim typed over Flagpole; Bunk 2: Flagpole cleared by hand.
+    const days = week(["2,3,", ",4,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: SET_UP }).runs);
+    expect(rows[0]).toEqual([
+      ["F:f1", "", ""],
+      ["", "", ""]
+    ]);
+  });
+
+  // LOCK-4.9
+  it("without setup's cells, a clear empties the cell as before", () => {
+    const days = week(["2,3,", "1,,"], ["1,,", "1,,"]);
+    expect(after(days, clearEdit(days, [0]).runs)[0][0]).toEqual(["", "", ""]);
+  });
+});
+
 describe("Clear day and Clear week", () => {
   it("clears the day's activities for every bunk, and says what stays and why", () => {
     const days = week(["1,2,4", "1,4,5"], ["1,2,", "1,,"]);

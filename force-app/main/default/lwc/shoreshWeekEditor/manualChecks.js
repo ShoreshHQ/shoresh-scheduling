@@ -28,6 +28,18 @@ export function electivePlacesOf(setup) {
 }
 
 /**
+ * Where setup puts each fixed and recurring activity this week (the draft's setUpCells, Apex
+ * ManualSetUpCells): { "date|groupId|blockId": "F:<Id>" | "^F:<Id>" }, or null when the draft
+ * has none (setup places none, or a draft read without them).
+ */
+export function setUpOf(draft) {
+  const cells = (draft && draft.setUpCells) || [];
+  return cells.length
+    ? Object.fromEntries(cells.map((cell) => [cell.key, cell.slot]))
+    : null;
+}
+
+/**
  * The days checked. draft: Manual Build's draft (its records, away blocks and activities);
  * weekDays: the days; how: { t, setup, electivePlaces, replaced (the days a special day replaces,
  * by date), dayName(dateValue) }.
@@ -44,6 +56,7 @@ export function checkManualDays(draft, weekDays, how) {
     fixedActivities: records.fixedActivityRecords || [],
     recurringActivities: records.recurringActivityRecords || []
   };
+  const setUp = setUpOf(records);
   const away = new Set();
   (records.away || []).forEach((row) =>
     row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
@@ -64,6 +77,12 @@ export function checkManualDays(draft, weekDays, how) {
         (records.activities || []).map((a) => [a.id, a.notFor || []])
       ),
       isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
+      // One total per week (LOCK-4.10): setup's fixed and recurring cells are left out whatever
+      // they hold, so typing over one or clearing it doesn't change the total.
+      setUpAt: setUp
+        ? (dateValue, groupId, blockId) =>
+            setUp[`${dateValue}|${groupId}|${blockId}`] || null
+        : null,
       // The camp's normal first day of the week: an early-week goal counts from it.
       firstDay: campFirstDay(setup),
       ...otherProgramsAt(readOtherPrograms(records.otherPrograms), days)

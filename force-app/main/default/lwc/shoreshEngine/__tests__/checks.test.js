@@ -528,6 +528,36 @@ describe("checks: still to place and the counters", () => {
   });
 });
 
+// LOCK-4.10
+describe("checks: one total per week on Manual Build", () => {
+  // Setup puts Flag in t1 for both groups on Monday.
+  function setUpAt(dateValue, groupId, blockId) {
+    return dateValue === MON && blockId === "t1" ? "F:flag" : null;
+  }
+
+  // LOCK-4.10
+  it("the total stays the same when a fixed activity is typed over or cleared", () => {
+    const totalOf = (rows) =>
+      checkWeek(
+        weekOf({ [MON]: rows }),
+        model([activity("swim")], { setUpAt }),
+        words
+      ).cells.total;
+    const asSetUp = totalOf([
+      ["F:flag", "", ""],
+      ["F:flag", "", ""]
+    ]);
+    expect(asSetUp).toBe(4);
+    // Swim typed over Bunk 1's Flag, and Bunk 2's Flag cleared.
+    expect(
+      totalOf([
+        ["A:swim", "", ""],
+        ["", "", ""]
+      ])
+    ).toBe(asSetUp);
+  });
+});
+
 describe("checks: nothing to say", () => {
   it("an empty week has no marks", () => {
     const days = weekOf({

@@ -57,6 +57,17 @@ describe("hand edits without the screen", () => {
     expect(step.label).toMatch(/^Cleared /);
   });
 
+  // LOCK-4.9
+  it("typing over a fixed activity says what it took the place of", () => {
+    const step = placeStep(ctxOf(), at(0, 0), SWIM, 1);
+    expect(step.runs[0].before).toEqual(["F:f1"]);
+    expect(step.label).toMatch(/^Placed Swim · .* in place of Flagpole$/);
+    // An Open cell names nothing.
+    expect(placeStep(ctxOf(), at(0, 2), SWIM, 1).label).not.toMatch(
+      /in place of/
+    );
+  });
+
   it("a locked cell refuses the edit, naming the cell", () => {
     const step = placeStep(ctxOf([at(0, 1)]), at(0, 1), "", 1);
     expect(step.runs).toBeUndefined();

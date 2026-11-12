@@ -110,11 +110,44 @@ function clearPlacements(row, placements) {
 }
 
 /**
+ * A fixed or recurring activity setup puts where this clear just emptied cells (something had
+ * been typed over it), put back whole (LOCK-4.9): a clear never leaves its cells empty. A cell
+ * the person had already emptied by hand stays as they left it. setUpAt(b): what setup puts in
+ * block b ("F:<Id>", "^F:<Id>"), or nothing; cleared: the blocks this clear emptied.
+ */
+function putBackSetTime(row, setUpAt, cleared) {
+  row.forEach((slot, b) => {
+    const head = setUpAt(b);
+    if (!head || head.startsWith(CARRIES_ON) || slot !== OPEN) {
+      return;
+    }
+    let length = 1;
+    while (
+      b + length < row.length &&
+      setUpAt(b + length) === CARRIES_ON + head
+    ) {
+      length += 1;
+    }
+    const cells = [...Array(length).keys()].map((i) => b + i);
+    if (
+      cells.some((c) => cleared.has(c)) &&
+      cells.every((c) => row[c] === OPEN)
+    ) {
+      cells.forEach((c, i) => {
+        row[c] = i === 0 ? head : CARRIES_ON + head;
+      });
+    }
+  });
+}
+
+/**
  * Clears the activities of the given days (indexes), for every group, or for one group (its Id)
- * when `groupId` is given. Returns { runs, stayed: [{ day, group, block, slot, why }], skipped }.
+ * when `groupId` is given; setUp ({ "date|groupId|blockId": slot }, Manual Build's setUpCells)
+ * puts back a fixed or recurring activity something was typed over. Returns { runs, stayed:
+ * [{ day, group, block, slot, why }], skipped }.
  */
 export function clearEdit(days, dayIndexes, options = {}) {
-  const { groupId, isAway = never, skip = never } = options;
+  const { groupId, isAway = never, skip = never, setUp = null } = options;
   const rows = new Rows(days);
   const stayed = [];
   const skipped = new Set();
@@ -135,6 +168,18 @@ export function clearEdit(days, dayIndexes, options = {}) {
         (b) => skip(d, g, b)
       );
       clearPlacements(row, sorted.clear);
+      if (setUp) {
+        const cleared = new Set(
+          sorted.clear.flatMap((p) =>
+            [...Array(p.length).keys()].map((i) => p.first + i)
+          )
+        );
+        putBackSetTime(
+          row,
+          (b) => (skip(d, g, b) ? null : setUp[cellKey(day, g, b)]),
+          cleared
+        );
+      }
       sorted.stayed.forEach((s) =>
         stayed.push({
           day: d,
@@ -514,7 +559,8 @@ export function toolRuns(tool, week, options = {}) {
       ...clearEdit(week, dayIndexes, {
         groupId: tool.groupId,
         isAway: away,
-        skip: skipAt
+        skip: skipAt,
+        setUp: tool.setUp
       }),
       week
     };
