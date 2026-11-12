@@ -270,6 +270,29 @@ describe("the start", () => {
     expect(picker.value).toBe("s1");
   });
 
+  // Word walk W6: Week 1's choices may be on its other schedule, so the one shown is named.
+  it("with two schedules, says which one has no choices yet", async () => {
+    const element = await render({
+      situation: { runs: [] },
+      setup: {
+        ...SETUP,
+        schedules: [
+          ...SETUP.schedules,
+          {
+            Id: "s2",
+            Program__c: "p1",
+            Week__c: "w1",
+            Status__c: "Draft",
+            Origin__c: "Generated"
+          }
+        ]
+      }
+    });
+    expect($(element, '[data-id="no-run"]').title).toBe(
+      "No choices imported for Chugim on Week 1's Manual Build yet."
+    );
+  });
+
   it("says when no choices are in yet, and when there is no elective set", async () => {
     let element = await render({ situation: { runs: [] } });
     expect($(element, '[data-id="no-run"]').title).toBe(

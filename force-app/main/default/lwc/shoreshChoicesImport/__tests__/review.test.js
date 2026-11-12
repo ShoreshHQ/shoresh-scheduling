@@ -248,8 +248,14 @@ describe("card 2: what needs a person", () => {
     expect(rows.map((r) => [r.name, r.where, r.why])).toEqual([
       ["Timestamp", "Column A", "Not read"],
       ["Parent email", "Column I", "Not read"],
-      ["Ari Quillfield", "Row 4", 'No Bunk "Cedar"'],
-      ["Ruby Pebblestone", "Row 7", "No Bunk"]
+      // Word walk W6: a bunk Shoresh doesn't have is said so, and the camper isn't imported.
+      [
+        "Ari Quillfield",
+        "Row 4",
+        "Cedar isn't one of your Bunks: not imported"
+      ],
+      ["Ruby Pebblestone", "Row 7", "No Bunk"],
+      ["Ari Quillfield", "Row 4", "Comment not kept: not imported"]
     ]);
   });
 
@@ -378,14 +384,14 @@ describe("the request: what the director confirmed", () => {
         "choiceName|photoclub": "leave"
       }
     });
-    // Noa Oakhollow, twice with no number, is not among them.
+    // Noa Oakhollow, twice with no number, is not among them; nor is Ari Quillfield, whose
+    // bunk (Cedar) isn't one of the program's (word walk W6: not imported, counted or seated).
     expect(request.campers.map((c) => c.name)).toEqual([
       "Maya Fernwood",
       "Eli Marblecrest",
-      "Ari Quillfield",
       "Ruby Pebblestone"
     ]);
-    const [maya, eli, ari, ruby] = request.campers;
+    const [maya, eli, ruby] = request.campers;
     expect(maya).toMatchObject({
       row: 2,
       camperNumber: "1001",
@@ -399,10 +405,6 @@ describe("the request: what the director confirmed", () => {
     ]);
     // Photo club left out: that one choice only.
     expect(eli.choices.map((c) => c.n)).toEqual(["Pottery Wheel", "Archery"]);
-    expect(ari).toMatchObject({
-      groupId: null,
-      comment: "Would love to be with his cousin"
-    });
     expect(ruby.choices).toEqual([
       { n: "Archery", a: "a1", k: "unordered" },
       { n: "Drama", a: "a2", k: "unordered" },
@@ -514,7 +516,7 @@ describe("card 3: the count", () => {
         runId: "r1",
         runName: "Chugim · Week 3",
         added: 1,
-        known: 3,
+        known: 2,
         handChanged: [0],
         differs: [0],
         renamed: [{ index: 1, savedName: "Eli Marblecreste" }],
@@ -525,7 +527,7 @@ describe("card 3: the count", () => {
       activities: ACTIVITIES
     });
     expect(out.map((l) => [l.text, !!l.look])).toEqual([
-      ["4 campers: 1 new, 3 already here", false],
+      ["3 campers: 1 new, 2 already here", false],
       ['Imported into "Chugim · Week 3" again', false],
       ["1 camper's choices were changed by hand: kept", false],
       [
@@ -540,7 +542,7 @@ describe("card 3: the count", () => {
         '2 campers in "Chugim · Week 3" aren\'t on this sheet: their choices stay',
         false
       ],
-      ["Pottery isn't offered in Chugim: 4 choices", true]
+      ["Pottery isn't offered in Chugim: 3 choices", true]
     ]);
   });
 });

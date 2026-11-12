@@ -401,6 +401,14 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get noRunText() {
     const set = this.sets.find((s) => s.Id === this.setId);
     const week = this.weeks.find((w) => w.Id === this.weekId);
+    // With more than one schedule, the one picked: Week 1's choices may be on the other one
+    // (word walk W6: "…on Week 1's Generated Schedule yet.").
+    const schedule = this.asksSchedule
+      ? this.scheduleOptions.find((o) => o.value === this.scheduleId)
+      : null;
+    if (schedule && week) {
+      return `No choices imported for ${set ? set.Name : ""} on ${week.Name}'s ${schedule.label.replace(" · Published", "")} yet.`;
+    }
     return `No choices imported for ${set ? set.Name : ""} in ${week ? week.Name : ""} yet.`;
   }
 
