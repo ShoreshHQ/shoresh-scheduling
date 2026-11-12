@@ -2052,7 +2052,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         counts: null,
         measure: this.measure,
         weekName: this.weekName,
-        t: this.t
+        t: this.t,
+        origin: "Generated"
       });
       if (question.kind === "same") {
         this.publishState = { ...preview.published, changedSince: false };

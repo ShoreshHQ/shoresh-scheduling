@@ -129,13 +129,34 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   return lines;
 }
 
+// The screen a published schedule came from, by its Origin.
+const FROM_SCREEN = { Manual: "Manual Build", Generated: "Generated Schedule" };
+
+/**
+ * The question's heading: "Publish Week 1?"; "Publish Week 1 again?" when this screen's schedule
+ * is the one published; "Replace Week 1's published schedule (from Manual Build)?" when another
+ * screen's is (word walk W6). origin: this screen's ("Generated" or "Manual").
+ */
+function headingOf(preview, origin, weekName, t) {
+  const from = preview.published ? preview.published.origin : null;
+  if (!preview.published) {
+    return `Publish ${weekName}?`;
+  }
+  if (!origin || !from || from === origin) {
+    return `Publish ${weekName} again?`;
+  }
+  const screen = FROM_SCREEN[from];
+  return `Replace ${weekName}'s ${t.sIn("PublishedSchedule")}${screen ? ` (from ${screen})` : ""}?`;
+}
+
 export function publishQuestion({
   preview,
   checked,
   counts,
   measure,
   weekName,
-  t
+  t,
+  origin = null
 }) {
   const replacing = !!preview.published;
   if (replacing && preview.changeCount === 0) {
@@ -151,8 +172,12 @@ export function publishQuestion({
       `This replaces the ${t.sIn("PublishedSchedule")}. ${changeWords(preview, t)}:`
     );
     lines.push(...preview.changes);
-    // Lines not listed (a line can cover several cells, so not changeCount less those shown).
-    const more = preview.moreLines || 0;
+    // What the lines not listed cover, so the lines shown and this add up to the count said
+    // (word walk W6: 30 lines and "135 more" read as 165, not 172). Older answers: the lines.
+    const more =
+      preview.moreCount === undefined || preview.moreCount === null
+        ? preview.moreLines || 0
+        : preview.moreCount;
     if (more > 0) {
       lines.push(`…and ${more} more.`);
     }
@@ -160,7 +185,7 @@ export function publishQuestion({
   lines.push(...problems);
   return {
     kind: "ask",
-    heading: replacing ? `Publish ${weekName} again?` : `Publish ${weekName}?`,
+    heading: headingOf(preview, origin, weekName, t),
     lines,
     confirmLabel: "Publish"
   };
