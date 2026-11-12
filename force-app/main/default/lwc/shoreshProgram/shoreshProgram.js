@@ -308,12 +308,6 @@ export default class ShoreshProgram extends LightningElement {
       : undefined;
   }
 
-  get recurringNotesHeading() {
-    return Object.values(this.recurringNotes).some((note) => note)
-      ? this.labels.leftOut
-      : undefined;
-  }
-
   /**
    * Recurring activities in sections (docs/design/setup/fixed.html): the whole camp's, then one
    * per division, then those covering more than one division (only while there are any). An

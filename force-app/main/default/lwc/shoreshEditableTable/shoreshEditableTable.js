@@ -195,6 +195,10 @@ export default class ShoreshEditableTable extends LightningElement {
 
   @api notesHeading;
   @api rowNotes = {};
+  // The row's note as the bronze needs-a-look dot beside its name, its words on hover and read
+  // out, rather than a column that comes and goes (word walk W6: Recurring's columns shifted
+  // and its blank row was cut to "Add Repeat peu…").
+  @api notesAsDot = false;
   @api flagSameNames = false;
   // Weeks: the tag for a row whose dates overlap another row's (StartDate__c to EndDate__c).
   @api overlapLabel;
@@ -686,6 +690,9 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get hasNotes() {
+    if (this.notesAsDot) {
+      return false;
+    }
     return (
       !!this.notesHeading ||
       this.visibleDrafts.some((d) => !!this.draftNotes.get(d.key))
@@ -1310,6 +1317,12 @@ export default class ShoreshEditableTable extends LightningElement {
         // Named for its row, so a screen reader can tell the buttons apart.
         mergeName: `${this.mergeLabel} ${this.nameOf(draft.original)}`.trim(),
         overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
+        lookNote:
+          this.notesAsDot && col.fieldName === "Name" && !draft.isNew
+            ? this.draftNotes.get(draft.key) ||
+              (this.rowNotes || {})[draft.original.Id] ||
+              ""
+            : "",
         overlapLabel: this.overlapLabel,
         isNumber: col.type === "number",
         // A number's unit beside it (col.unitFor(value)): "1 time block" (word walk W1).

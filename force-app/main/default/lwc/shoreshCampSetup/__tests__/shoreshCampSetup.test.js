@@ -3163,6 +3163,21 @@ describe("c-shoresh-camp-setup", () => {
     saveRow.mockReset();
   });
 
+  // Word walk W6: Locations sits in the same narrow frame as the other short lists.
+  it("draws Locations in the narrow frame, as Weeks and Time blocks", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
+    const element = await render();
+    const narrow = (screen) =>
+      q(element, `[data-screen="${screen}"] .setup-list`).classList.contains(
+        "list_narrow"
+      );
+    expect(narrow("weeks")).toBe(true);
+    expect(narrow("timeBlocks")).toBe(true);
+    expect(narrow("locations")).toBe(true);
+  });
+
   it("flags same names on the season's location types, locations, activities and weeks", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

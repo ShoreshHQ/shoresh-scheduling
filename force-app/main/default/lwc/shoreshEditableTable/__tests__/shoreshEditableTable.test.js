@@ -3154,6 +3154,25 @@ describe("c-shoresh-editable-table", () => {
     );
   });
 
+  // Word walk W6: a row's note as the needs-a-look dot by its name, no column coming and going.
+  it("with notesAsDot, a row's note is a dot beside its name and there is no notes column", async () => {
+    const element = render({
+      columns: COLUMNS,
+      rows: ROWS,
+      rowNotes: { a2: "Bunk 1 is morning only and is left out." },
+      notesAsDot: true
+    });
+    await flush();
+    expect(element.shadowRoot.querySelector('[data-id="note"]')).toBeNull();
+    const dots = [
+      ...element.shadowRoot.querySelectorAll('[data-id="look-note"]')
+    ];
+    expect(dots.map((d) => d.label)).toEqual([
+      "Bunk 1 is morning only and is left out."
+    ]);
+    expect(rows(element)[1].contains(dots[0])).toBe(true);
+  });
+
   // Word walk W6: overlapping time blocks are marked, as overlapping weeks are.
   describe("overlapping time blocks", () => {
     it("tags each time block whose times overlap another's; one ending as the next starts doesn't", async () => {
