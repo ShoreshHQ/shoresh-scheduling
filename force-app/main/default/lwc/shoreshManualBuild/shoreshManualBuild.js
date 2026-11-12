@@ -1066,7 +1066,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
 
   get publishedName() {
     return this.publishState && this.publishState.changedSince
-      ? "Published, changed since"
+      ? // Greg's pick (2026-11-12): "Changed since" and what changed.
+        "Published · Changed since: cells edited"
       : "Published";
   }
 
@@ -1345,7 +1346,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       const done =
         keys.length === 1
           ? "Updated to match setup."
-          : `Updated ${keys.length} changes to match setup.`;
+          : `Made ${keys.length} changes to match setup.`;
       const fresh = await this.loadSetupChanges();
       const all = keys.length === preview.changes.length;
       // While the list stays open it says so itself: a screen reader in the dialog hears only

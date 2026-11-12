@@ -126,10 +126,12 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(q(element, ".bar-fill").getAttribute("style")).toBe("width: 40%;");
     expect(text(q(element, '[data-id="still-needed"]'))).toBe("6still needed");
     // Swim: two a week for two bunks; Bunk 1 has one, Bunk 2 none: 1 of 4, 3 under.
-    expect(text(q(element, '[data-id="under"]'))).toBe("3under");
+    expect(text(q(element, '[data-id="under"]'))).toBe("3short");
     const under = qa(element, 'ul[aria-labelledby] button[data-activity="a1"]');
     expect(under.map(text)).toEqual(["Swim3 short · 2 groups"]);
-    expect(under[0].getAttribute("aria-label")).toBe("Swim: 3 short · 2 groups");
+    expect(under[0].getAttribute("aria-label")).toBe(
+      "Swim: 3 short · 2 groups"
+    );
     // Soccer: one a week at most, Bunk 1 has two: 2 of 1, 1 over, with the corner.
     expect(text(q(element, '[data-id="over"]'))).toBe("1over");
     const over = q(element, 'button[data-activity="a2"]');
@@ -160,7 +162,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       )
     });
     await flush();
-    expect(text(q(element, '[data-id="under"]'))).toBe("0under");
+    expect(text(q(element, '[data-id="under"]'))).toBe("0short");
     expect(text(q(element, '[data-id="over"]'))).toBe("0over");
     expect(q(element, '[data-id="look"]')).toBeNull();
     // Every cell filled: no "0 still needed" line (UX pass 2026-11-10; design guide, a zero that
@@ -304,7 +306,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         q(element, 'button[data-activity="a2"]')
       );
       // The numbers stay the week's: the drawer shows the same ones.
-      expect(text(q(element, '[data-id="under"]'))).toBe("3under");
+      expect(text(q(element, '[data-id="under"]'))).toBe("3short");
     });
 
     it("the keyboard reaches Accept: Down from a line, Enter accepts it", async () => {
@@ -662,7 +664,8 @@ describe("c-shoresh-week-checks: the counter", () => {
         );
       qa(element, ".accept")
         .find(
-          (b) => b.getAttribute("aria-label") === "Accept: Soccer, 1 over · 1 group"
+          (b) =>
+            b.getAttribute("aria-label") === "Accept: Soccer, 1 over · 1 group"
         )
         .click();
       await flush();
@@ -718,13 +721,30 @@ describe("c-shoresh-week-checks: the counter", () => {
     word(element).click();
     await flush();
     expect(text(q(element, '[data-id="priority-high"]'))).toBe(
-      "High priority9of 10 minimums met"
+      "High priority minimums met9of 10"
     );
     expect(text(q(element, '[data-id="priority-low"]'))).toBe(
-      "Low priority4of 6 minimums met"
+      "Minimums met4of 6"
     );
     expect(text(q(element, '[data-id="spread"]'))).toBe(
       "Spread across the week18of 20 on different days"
+    );
+  });
+
+  // Coordinator's wording (Greg: "use your picks", 2026-11-12): never "Low priority"; all met
+  // reads "Every activity's minimum met · 39", in the camp's word.
+  it("every minimum met reads Every activity's minimum met, with the count alone", async () => {
+    const element = render({
+      measure: {
+        ...MEASURE,
+        priorities: [{ priority: "low", met: 39, total: 39 }]
+      }
+    });
+    await flush();
+    word(element).click();
+    await flush();
+    expect(text(q(element, '[data-id="priority-low"]'))).toBe(
+      "Every activity's minimum met39"
     );
   });
 

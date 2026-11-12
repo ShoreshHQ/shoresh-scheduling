@@ -1481,7 +1481,7 @@ describe("c-shoresh-import", () => {
         "Imported from maple-grove-2026-all-camp.xlsx"
       );
       expect(version.textContent).toContain("Week 1 (Main)");
-      expect(version.textContent).toContain("Open it on Saved versions");
+      expect(version.textContent).toContain("View it on Saved versions");
       // Last year's schedule drawn small beside its words, hidden from screen readers.
       const mini = version.querySelector(".mini");
       expect(mini.getAttribute("aria-hidden")).toBe("true");

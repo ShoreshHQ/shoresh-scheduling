@@ -116,7 +116,7 @@ const FLAGPOLE_NOW = {
       place: "Bunk 2 · Monday · Period 2",
       before: "Open",
       after: "Flagpole",
-      reason: "Flagpole is set up here now"
+      reason: "Flagpole goes here"
     }
   ]
 };
@@ -126,7 +126,7 @@ const PREVIEW = {
   problem: null,
   dots: [
     { key: "2026-06-29|g1|t2", words: "Deleted from setup" },
-    { key: "2026-06-29|g2|t2", words: "Flagpole is set up here now" }
+    { key: "2026-06-29|g2|t2", words: "Flagpole goes here" }
   ],
   changes: [SWIM_DELETED, FLAGPOLE_NOW]
 };
@@ -307,7 +307,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getSetupChanges).toHaveBeenCalledWith({ scheduleId: "d1" });
     // Bunk 1's Swim and Bunk 2's Open Period 2: the server's words, in the Why list.
     expect(whyFor(element, "0-1")).toBe("Deleted from setup");
-    expect(whyFor(element, "1-1")).toBe("Flagpole is set up here now");
+    expect(whyFor(element, "1-1")).toBe("Flagpole goes here");
     expect(whyFor(element, "0-2")).toBeNull();
   });
 
@@ -421,7 +421,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
     expect(rowsIn(element)).toEqual([
       "Bunk 1 · Monday · Period 2 | Swim → Open | Deleted from setup",
-      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
+      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"
     ]);
     // Each row's Update is named for its cell.
     expect(
@@ -460,7 +460,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     // The week as the server now has it: Swim is gone, and its dot with it.
     expect(whyFor(element, "0-1")).toBeNull();
     expect(rowsIn(element)).toEqual([
-      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
+      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"
     ]);
     // Something was updated: closing no longer reads as cancelling it.
     expect(inDialog(element, '[data-id="close"]').textContent.trim()).toBe(
@@ -637,9 +637,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       saveSlots.mockResolvedValue(answered([FLAGPOLE, SWIM], ["2,,", "1,,"]));
       getSetupChanges.mockResolvedValue({
         ...NOTHING,
-        dots: [
-          { key: "2026-06-29|g1|t1", words: "Flagpole is set up here now" }
-        ]
+        dots: [{ key: "2026-06-29|g1|t1", words: "Flagpole goes here" }]
       });
       await typeInto(element, "0-0", "swim");
       expect(saveSlots.mock.calls[0][0].edits[0].runs[0]).toMatchObject({
@@ -648,7 +646,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       });
       expect(getSetupChanges).toHaveBeenCalledTimes(2);
       expect(whyLines(element)).toEqual([
-        "Bunk 1 · Monday · Period 1 · Swim: Flagpole is set up here now"
+        "Bunk 1 · Monday · Period 1 · Swim: Flagpole goes here"
       ]);
     });
 
@@ -1086,7 +1084,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expectFocusInGrid(element);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Updated 2 changes to match setup."
+      "Made 2 changes to match setup."
     );
   });
 
@@ -1105,7 +1103,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(dialog(element)).toBeNull();
     expect(asked).toEqual([true]);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Updated 2 changes to match setup."
+      "Made 2 changes to match setup."
     );
   });
 

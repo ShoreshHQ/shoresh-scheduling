@@ -215,7 +215,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await openCounter(element);
     expect(heads(element)).toEqual([
       "4still needed",
-      "3under",
+      "3short",
       "0over",
       "2to look at"
     ]);
@@ -266,7 +266,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(cell(element, "1-1"), "Delete");
     expect(dotIn(element, "0-1")).toBeNull();
     await openCounter(element);
-    expect(heads(element)).toEqual(["5still needed", "4under", "0over"]);
+    expect(heads(element)).toEqual(["5still needed", "4short", "0over"]);
   });
 
   it("under and over show their 0 when the camp has goals and limits; nothing to look at shows nothing", async () => {
@@ -275,7 +275,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     );
     // Nothing overlaps and nothing is over; Soccer is one short for each bunk.
     await openCounter(element);
-    expect(heads(element)).toEqual(["3still needed", "2under", "0over"]);
+    expect(heads(element)).toEqual(["3still needed", "2short", "0over"]);
     expect(qc(element, '[data-id="look"]')).toBeNull();
     // Off target (under), so the counter carries the corner.
     expect(
@@ -597,7 +597,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await openCounter(element);
     expect(heads(element)).toEqual([
       "5still needed",
-      "4under",
+      "4short",
       "0over",
       "1to look at"
     ]);

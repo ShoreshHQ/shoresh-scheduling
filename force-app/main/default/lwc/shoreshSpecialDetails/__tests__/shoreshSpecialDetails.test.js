@@ -170,7 +170,7 @@ describe("c-shoresh-special-details", () => {
           plain
         )
       ).toEqual([
-        '"Field Day" starts from Main\'s 3 time blocks, with Lunch brought in.',
+        '"Field Day" starts from Main\'s 3 time blocks, with Lunch copied.',
         "Not copied, since they don't run every day: Swim and Art.",
         "Not copied, since they don't run every week: Flag.",
         "Not copied, since they are in other time blocks: Campfire."
@@ -222,7 +222,7 @@ describe("c-shoresh-special-details", () => {
     // The door to the schedule inside opens it.
     const door = element.shadowRoot.querySelector('[data-id="open-schedule"]');
     expect(door.getAttribute("aria-disabled")).toBeNull();
-    expect(door.textContent.trim()).toBe("Open schedule");
+    expect(door.textContent.trim()).toBe("View schedule");
     const opened = jest.fn();
     element.addEventListener("openschedule", opened);
     door.click();

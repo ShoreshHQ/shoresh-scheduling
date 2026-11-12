@@ -191,7 +191,7 @@ describe("c-shoresh-menu", () => {
     await flush();
     const foot = element.shadowRoot.querySelector('[data-id="setup-notice"]');
     expect(foot.querySelector(".notice-what").textContent.trim()).toBe(
-      "Setup changed"
+      "Changed since: setup"
     );
     const go = foot.querySelector('[data-id="menu-update-to-match"]');
     expect(go.textContent.trim()).toBe("Update to match setup");

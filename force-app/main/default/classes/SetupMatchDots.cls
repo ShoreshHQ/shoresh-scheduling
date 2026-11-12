@@ -54,9 +54,7 @@ public with sharing class SetupMatchDots {
     String owner = before.at(first);
     if (owner == SlotIds.OPEN) {
       String there = after.at(first);
-      return SlotIds.isSetTime(there)
-        ? rules.setUpHere(names.nameOf(SlotIds.owner(there)))
-        : null;
+      return SlotIds.isSetTime(there) ? arrived(first, there) : null;
     }
     if (dayGoes) {
       return rules.notADay();
@@ -66,7 +64,50 @@ public with sharing class SetupMatchDots {
     }
     return whyByCell.containsKey(first)
       ? whyByCell.get(first)
-      : SetupMatchRules.NOT_HERE_NOW;
+      : left(first, owner);
+  }
+
+  /**
+   * A fixed or recurring activity setup now puts in an Open cell, named with its change: "Morning
+   * meeting moved to Period 2" when the group had it elsewhere that day, else "Lunch goes here"
+   * (coordinator's wording for Greg, 2026-11-12).
+   */
+  private String arrived(String cell, String there) {
+    String name = names.nameOf(SlotIds.owner(there));
+    String was = firstWith(SetupMatchCells.groupOf(cell), there, before);
+    return was == null ? rules.setUpHere(name) : movedTo(name, cell);
+  }
+
+  /** A placement setup no longer has here: where it went that day, or that it is gone. */
+  private String left(String cell, String owner) {
+    String name = names.nameOf(SlotIds.owner(owner));
+    String now = firstWith(SetupMatchCells.groupOf(cell), owner, after);
+    return now == null || now.equals(cell)
+      ? name + ' is no longer set up here'
+      : movedTo(name, now);
+  }
+
+  /** "Morning meeting moved to Period 2". */
+  private String movedTo(String name, String cell) {
+    String blockId = SetupMatchCells.blockOf(cell);
+    return name + ' moved to ' + names.range(blockId, blockId);
+  }
+
+  /** The first cell of the group's placement holding this identity, or null. */
+  private static String firstWith(
+    String groupId,
+    String identity,
+    SetupMatchCells cells
+  ) {
+    for (String first : cells.placements) {
+      if (
+        SetupMatchCells.groupOf(first).equals(groupId) &&
+        cells.at(first).equals(identity)
+      ) {
+        return first;
+      }
+    }
+    return null;
   }
 
   /** Whether the day now holds the placement exactly where it is. */

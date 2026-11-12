@@ -113,7 +113,7 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
         ': ' +
         outcome.placed +
         (outcome.placed == 1 ? ' cell' : ' cells') +
-        ' filled.'
+        ' placed.'
       };
       if (!outcome.replaced.isEmpty()) {
         lines.add(

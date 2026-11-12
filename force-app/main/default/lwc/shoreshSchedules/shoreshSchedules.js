@@ -433,7 +433,7 @@ export default class ShoreshSchedules extends LightningElement {
       .filter((item) => plans.has(item.id))
       .map((item) => {
         const name = plans.get(item.id).name;
-        return { id: item.id, name, open: `Open ${name}` };
+        return { id: item.id, name, open: `View ${name}` };
       });
   }
   get hasDayEvents() {

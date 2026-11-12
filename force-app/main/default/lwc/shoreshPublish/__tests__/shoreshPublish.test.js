@@ -72,7 +72,7 @@ describe("c/shoreshPublish", () => {
           notes: [row]
         }
       )
-    ).toEqual(["7 of 10 placed", "5 under", "1 to look at", "1 note"]);
+    ).toEqual(["7 of 10 placed", "5 short", "1 to look at", "1 note"]);
   });
 
   it("says one in the singular", () => {

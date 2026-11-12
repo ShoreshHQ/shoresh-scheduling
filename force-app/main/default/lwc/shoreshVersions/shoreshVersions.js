@@ -186,7 +186,8 @@ export default class ShoreshVersions extends LightningElement {
   }
 
   get actionLabel() {
-    return this.restore ? "Restore" : "Open";
+    // Opening is "View": "Open" is the empty cell's word (Greg's pick, 2026-11-12).
+    return this.restore ? "Restore" : "View";
   }
   /** Restore waits while an edit is saving (it would paint over it); Open never does. */
   get actionDisabled() {

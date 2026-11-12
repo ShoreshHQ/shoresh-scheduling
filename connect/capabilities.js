@@ -184,7 +184,7 @@ function change(
   return act(
     name,
     api,
-    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "By your AI" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
     { ...week, ...more },
     required
   );
@@ -460,7 +460,7 @@ function buildMenuAction(
     ...act(
       name,
       "build_week",
-      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "By your AI" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
       { ...WEEK_FIELDS, ...more },
       required
     ),
@@ -1173,7 +1173,7 @@ const CAPABILITIES = [
     method: "GET",
     listsVersions: true,
     description:
-      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
+      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · By your AI · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. By your AI marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
     about:
       "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
     inputSchema: {

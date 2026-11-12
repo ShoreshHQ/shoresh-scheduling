@@ -1317,7 +1317,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(entry("manualBuild").mark).toEqual({
         kind: "changed",
         symbol: "",
-        label: "Setup changed"
+        label: "Changed since: setup"
       });
       expect(entry("generatedSchedule").mark).toBeNull();
       const dot = menu.shadowRoot.querySelector(

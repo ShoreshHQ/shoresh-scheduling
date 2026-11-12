@@ -516,7 +516,7 @@ describe("c-shoresh-special-schedule", () => {
     ].map((li) => li.textContent);
     // Every change to the frame is named where what it replaced is.
     expect(lines).toEqual([
-      "Imported Color War.csv: 1 cell filled.",
+      "Imported Color War.csv: 1 cell placed.",
       "Replaced by the file, copied when Color War started: Lunch.",
       "Periods renamed by the file: Opening to 9:00 AM – 9:45 AM.",
       "Periods removed by the file: Lunch."
@@ -589,7 +589,7 @@ describe("c-shoresh-special-schedule", () => {
       ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
     ].map((li) => li.textContent);
     expect(lines).toEqual([
-      "Imported Sports Day.csv: 1 cell filled.",
+      "Imported Sports Day.csv: 1 cell placed.",
       "Periods renamed by the file: Relays to Stations.",
       "Stations removed by the file: Gold.",
       "Stations added by the file: Green."
@@ -646,7 +646,7 @@ describe("c-shoresh-special-schedule", () => {
       ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
     ].map((li) => li.textContent);
     expect(lines).toEqual([
-      "Imported Sports Day.csv: 3 cells filled.",
+      "Imported Sports Day.csv: 3 cells placed.",
       "Added to activities: Opening ceremony.",
       "Left out, no times: Period 2."
     ]);

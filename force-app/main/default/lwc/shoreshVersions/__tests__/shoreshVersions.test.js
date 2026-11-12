@@ -88,7 +88,7 @@ describe("c-shoresh-versions", () => {
     expect(element.shadowRoot.textContent).not.toMatch(/Restore|delete/i);
     expect(q(element, '[data-action="delete"]')).toBeNull();
     expect(q(element, '[data-id="save-version"]')).toBeNull();
-    expect(q(element, '[data-action="open"]').textContent.trim()).toBe("Open");
+    expect(q(element, '[data-action="open"]').textContent.trim()).toBe("View");
     // No line telling the director what to do.
     expect(q(element, ".panel-head").textContent.trim()).toBe("Versions");
     await expect(element).toBeAccessible();
@@ -351,7 +351,7 @@ describe("c-shoresh-versions", () => {
       ]);
       const row = qa(element, ".version")[0];
       expect(row.querySelector(".version-meta").textContent).toContain(
-        "Generated Schedule · Through an agent"
+        "Generated Schedule · By your AI"
       );
     });
 

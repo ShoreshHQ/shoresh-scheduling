@@ -32,7 +32,7 @@
         <p key={row.key} class="shoresh-pop-row" data-id={row.key}>
           <span>{row.label}</span
           ><span class="shoresh-pop-end"
-            ><b>{row.met}</b><span>of {row.total} minimums met</span></span
+            ><b>{row.met}</b><span>{row.ofTotal}</span></span
           >
         </p>
       </template>
@@ -80,7 +80,7 @@
       <template lwc:if={showUnder}>
         <div class="shoresh-pop-divider" role="presentation"></div>
         <p class="shoresh-pop-row shoresh-pop-head" id="under" data-id="under">
-          <b>{underCount}</b><span>under</span>
+          <b>{underCount}</b><span>short</span>
         </p>
         <template lwc:if={underRows.length}>
           <ul aria-labelledby="under">

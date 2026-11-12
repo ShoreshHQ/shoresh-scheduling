@@ -253,7 +253,7 @@ describe("the engine's notes kept with the week", () => {
       "Sports was removed, so its 3 cells were emptied and 2 refilled.",
       "Arts was over its weekly limit, so its cell was refilled.",
       "Bunk 1 · Monday · Period 6: moved so Bunk 1 still gets Swim twice.",
-      "Filled 1 Open cell. Kept everything else as it was."
+      "Placed 1 in Open cell. Kept everything else as it was."
     ]);
     // Nothing changed: said once, plainly.
     const none = notesOf({

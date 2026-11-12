@@ -173,7 +173,7 @@ describe("c/shoreshScheduleViews", () => {
     expect(
       grid.cells.find((c) => c.key === "0-1").names.map((n) => n.name)
     ).toEqual(["Bunk 1"]);
-    expect(grid.cells.find((c) => c.key === "0-2").title).toBe("Not scheduled");
+    expect(grid.cells.find((c) => c.key === "0-2").title).toBe("Open");
     // Tuesday: Bunk 2 in Period 1, Bunk 1 in Period 2.
     expect(
       grid.cells.find((c) => c.key === "1-0").names.map((n) => n.name)

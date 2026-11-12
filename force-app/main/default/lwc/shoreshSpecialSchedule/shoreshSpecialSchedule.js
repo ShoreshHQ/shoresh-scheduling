@@ -576,7 +576,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   importSaid(fileName, outcome, noTimes, places, pageCount, skipped = []) {
     const t = this.t;
     const lines = [
-      `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} filled.`
+      `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} placed.`
     ];
     if (outcome.replaced && outcome.replaced.length) {
       lines.push(

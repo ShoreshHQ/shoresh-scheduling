@@ -217,7 +217,7 @@ describe("c-shoresh-generated-schedule", () => {
       weekId: WEEK
     });
     expect(q(element, '[data-id="start"]').textContent).toContain(
-      "Let the app propose one"
+      "Let Shoresh propose one"
     );
     expect(q(element, '[data-id="generate"]').label).toBe(
       "Generate a schedule"
@@ -350,7 +350,7 @@ describe("c-shoresh-generated-schedule", () => {
       `${expected.cells.filled}of ${expected.cells.total} placed`
     );
     expect(q(element, '[data-id="announce"]').textContent).toContain(
-      `Filled ${expected.cells.filled} of ${expected.cells.total}.`
+      `${expected.cells.filled} of ${expected.cells.total} placed.`
     );
   });
 
@@ -952,7 +952,8 @@ describe("c-shoresh-generated-schedule", () => {
         });
         // What was said while building: "Generating…" first, then progress lines.
         const progress = said.filter(
-          (s) => s.text !== "Generating…" && !/^Generated|Filled/.test(s.text)
+          (s) =>
+            s.text !== "Generating…" && !/^Generated| placed\.$/.test(s.text)
         );
         expect(progress.length).toBeGreaterThan(0);
         expect(progress.length).toBeLessThan(clock / 5000 + 2);
@@ -1250,7 +1251,7 @@ describe("c-shoresh-generated-schedule", () => {
     await settle(element);
     await flush();
     expect(q(element, '[data-id="announce"]').textContent).toMatch(
-      /^\s*Option 2\. Filled \d+ of \d+\.\s*$/
+      /^\s*Option 2\. \d+ of \d+ placed\.\s*$/
     );
     // One polite region on the screen: the editor's (Versions says things through it).
     expect(element.shadowRoot.querySelectorAll("[aria-live]")).toHaveLength(0);

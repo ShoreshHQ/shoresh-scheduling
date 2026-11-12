@@ -179,7 +179,10 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
   /** Priorities met (CORE-6.4): "High priority 9 of 10 minimums met", then Low. Counts only. */
   get priorityRows() {
-    return priorityRowsOf(this.m);
+    return priorityRowsOf(
+      this.m,
+      this.terms ? this.terms.sIn("Activity") : undefined
+    );
   }
   /** Spread across the week (CORE-6.4): sessions on a day of their own, of repeated sessions. */
   get spread() {
