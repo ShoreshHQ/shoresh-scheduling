@@ -64,13 +64,16 @@ const BUILD_MENU = '[data-id="build-menu"]';
 // While a week is built, the line saying what it is doing changes at most this often (ms), so it
 // can be read; and is said aloud to a screen reader at most this often.
 const LINE_MS = 300;
+// What a build offers Undo for, bringing back the version it kept first.
+const UNDOABLE = new Set([ACTION.START_OVER, ACTION.REBUILD]);
 const SAY_MS = 5000;
 
 /**
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
  * by the engine (c/shoreshEngine) in the browser and saved whole (c/shoreshGeneratedWeek, ADR
  * 0010). A week not generated yet offers "Generate a schedule". Then:
- *   Rebuild updates the week to setup as it is now (after a confirm; a version is kept first):
+ *   Rebuild updates the week to setup as it is now, at once: the week is kept as a version first,
+ *     with an Undo that brings it back, so nothing is lost and nothing is asked (Greg 2026-11-12):
  *     every cell setup still allows stays, and only what a setup change forces is emptied and
  *     filled again, each change said in the Why list (Greg 2026-10-27, protocol section 10);
  *   Try another builds the next option, and Option brings back any option tried;
@@ -141,13 +144,11 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   busy;
   // Cancel was chosen: the build stops before its next piece (buildInPieces' stillWanted).
   stopAsked = false;
-  // The confirm open: { action }.
   // A Lock or Unlock being saved; the cell keyboard focus last reached in the editor's grid (its
   // grid key, and the slot: day, group and block positions in the week shown).
   locking = false;
   focusedCellKey = null;
   focusedSlot = null;
-  confirming;
   // The highest option tried this visit, so each stays in Option to bring back.
   triedUpTo = 1;
   // How the editor shows the week (it says so with statechange): what Lock (in Edit) offers.
@@ -203,8 +204,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   // A Restore done whose week couldn't be read just after it ({ id, said }): the next read of
   // this week shows it as the restored week (Undo started over, on screen now, said so).
   restoreUnread = null;
-  // Start over just saved: { versionId (the version it kept first), revision (the week it
-  // saved), label }. Its Undo is offered while the week is still as Start over left it.
+  // Start over or Rebuild just saved: { versionId (the version it kept first), revision (the
+  // week it saved), label }. Its Undo is offered while the week is still as it left it.
   startedOver = null;
   // The editor is showing this screen's week (it is told to let it go once there is none).
   editorHasWeek = false;
@@ -242,14 +243,13 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.weekId = weeks[0];
     }
     // The season was read again (setup changed): read the week's inputs again too. For this same
-    // week, a build under way or a confirm open goes on first (it is the director's own action),
+    // week, a build under way goes on first (it is the director's own action),
     // then the week is read again; a conflict stays until the director answers it (Reload reads
     // the week). A build for a week that is gone stops.
     const same = `${this.programId}|${this.weekId}` === this.loadedFor;
     if (
       same &&
       (this.busy ||
-        this.confirming ||
         this.locking ||
         this.editBusy ||
         this.publishing ||
@@ -407,7 +407,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.busy = null;
     this.locking = false;
     this.readAfterRun = false;
-    this.confirming = null;
     // The week shown goes from the editor along with it (never drawn over the next one's checks).
     if ((!key || fresh) && this.editorHasWeek && this.weekEditor) {
       this.hideWeekInEditor();
@@ -560,7 +559,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       !this.reading &&
       !this.busy &&
       !this.locking &&
-      !this.confirming &&
       !this.conflict &&
       !this.publishing &&
       !this.versionsWorking &&
@@ -800,9 +798,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   handleGenerate() {
     this.run(ACTION.GENERATE, this.option);
   }
+  /** Rebuild goes at once, with Undo (Greg 2026-11-12); it keeps a version first. */
   handleRebuild() {
-    this.confirming = { action: ACTION.REBUILD };
-    this.focusConfirm();
+    this.run(ACTION.REBUILD, this.option);
   }
   /** Start over goes at once, with Undo (Greg's decision 2, 2026-10-20); it keeps a version first. */
   handleStartOver() {
@@ -941,13 +939,16 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         // Beside the week as saved: a Rebuild that changed nothing is not "changed since".
         this.publishState = saved.published;
         this.triedUpTo = Math.max(this.triedUpTo, option);
-        // Start over offers Undo: the version it kept first, brought back.
+        // Start over and Rebuild offer Undo: the version they kept first, brought back.
         this.startedOver =
-          action === ACTION.START_OVER && saved.versionId
+          UNDOABLE.has(action) && saved.versionId
             ? {
                 versionId: saved.versionId,
                 revision: saved.revision,
-                label: `Started ${this.weekName} over`
+                label:
+                  action === ACTION.REBUILD
+                    ? `Rebuilt ${this.weekName}`
+                    : `Started ${this.weekName} over`
               }
             : null;
         this.resetChecks();
@@ -1055,9 +1056,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   }
 
   /**
-   * Start over's Undo: the version it kept first is restored (its cells, locks and option), the
+   * Start over's or Rebuild's Undo: the version it kept first is restored (its cells, locks and option), the
    * same way Restore does it, so someone else's newer save is never replaced unseen. Focus goes
-   * back to Start over (the line goes with the week it was about).
+   * back to the Build menu (the line goes with the week it was about).
    */
   handleUndoStartOver() {
     const started = this.startedOver;
@@ -1072,8 +1073,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   }
 
   /**
-   * Where focus goes once a build is over: the button that started it (the confirm's is gone,
-   * and the others were held while building); Reload after a conflict; Rebuild after the first
+   * Where focus goes once a build is over: the button that started it (the others were held
+   * while building); Reload after a conflict; Rebuild after the first
    * Generate (its button is gone too).
    */
   focusAfterRun(action) {
@@ -1083,8 +1084,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     if (!this.isGenerated) {
       return '[data-id="generate"]';
     }
-    // Start over: its Undo, the most useful next stop (as after Clear week on Manual Build).
-    if (action === ACTION.START_OVER && this.startedOverText) {
+    // Start over or Rebuild: its Undo, the most useful next stop (as after Clear week on Manual
+    // Build).
+    if (UNDOABLE.has(action) && this.startedOverText) {
       return '[data-id="start-over-undo"]';
     }
     // Every build action is in the Build menu, closed by now: back to Build.
@@ -1161,86 +1163,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       selector: this.isGenerated ? BUILD_MENU : '[data-id="generate"]'
     };
     this.announce(`${this.weekName} as saved now.`);
-  }
-
-  // ---------- the confirm (Rebuild) ----------
-
-  get confirmTitle() {
-    return "Rebuild this schedule?";
-  }
-  /**
-   * The desktop's ConfirmRegenModal, as Greg's decisions change it: hand edits are locks and
-   * stay (decision 2), so Rebuild no longer says it replaces them. It names the week, then that a
-   * version is kept first. Start over asks nothing: it goes at once, with Undo (decision 2,
-   * 2026-10-20).
-   */
-  get confirmBody() {
-    if (!this.confirming || !this.checked) {
-      return "";
-    }
-    // Rebuild keeps the week and changes only what setup forces (Greg 2026-10-27). Locked cells
-    // stay too (decision 2); said only when the week has some.
-    const anyLocked = this.week.locked.size > 0;
-    return `Updates ${this.weekName} to your setup, keeping everything that still fits.${anyLocked ? " Locked cells stay as they are." : ""}`;
-  }
-  get confirmNote() {
-    return `Saved to ${this.t.p("Version")} first.`;
-  }
-  get confirmLabel() {
-    return "Rebuild it";
-  }
-
-  focusConfirm() {
-    // Cancel gets focus first, as on the desktop.
-    Promise.resolve().then(() => {
-      const cancel = this.template.querySelector('[data-id="confirm-cancel"]');
-      if (cancel) {
-        cancel.focus();
-      }
-    });
-  }
-
-  handleConfirm() {
-    const { action } = this.confirming;
-    this.confirming = null;
-    this.run(action, this.option);
-  }
-  handleCancelConfirm() {
-    const action = this.confirming && this.confirming.action;
-    this.confirming = null;
-    // The season was read again while the confirm was open: the week now.
-    if (this.readAfterRun) {
-      this.readAfterRun = false;
-      this.load(true);
-    }
-    // Back to the Build menu, which Rebuild was chosen from.
-    Promise.resolve().then(() => {
-      const back = action ? this.template.querySelector(BUILD_MENU) : null;
-      if (back) {
-        back.focus();
-      }
-    });
-  }
-  handleConfirmKeyDown(event) {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      this.handleCancelConfirm();
-      return;
-    }
-    if (event.key === "Tab") {
-      // Focus stays in the dialog.
-      const buttons = [
-        ...this.template.querySelectorAll('[data-id="confirm"] button')
-      ];
-      const at = buttons.indexOf(this.template.activeElement);
-      const next = event.shiftKey
-        ? (at - 1 + buttons.length) % buttons.length
-        : (at + 1) % buttons.length;
-      if (buttons.length) {
-        event.preventDefault();
-        buttons[next].focus();
-      }
-    }
   }
 
   // ---------- the counter ----------
@@ -1676,7 +1598,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.readAfterRun &&
       !this.busy &&
       !this.locking &&
-      !this.confirming &&
       !this.conflict &&
       !this.publishing &&
       !this.versionsWorking &&
@@ -2386,7 +2307,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   }
 
   /**
-   * Restores a version (Restore, and Start over's Undo): said is what the line says once the
+   * Restores a version (Restore, and Start over's or Rebuild's Undo): said is what the line says once the
    * week is on screen; focus, where focus goes after (a selector), when the control used is gone.
    */
   async restore(id, said, { focus = null, name = null, undo = false } = {}) {

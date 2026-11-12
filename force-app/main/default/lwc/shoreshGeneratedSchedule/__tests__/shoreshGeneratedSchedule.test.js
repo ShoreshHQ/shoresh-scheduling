@@ -377,10 +377,8 @@ describe("c-shoresh-generated-schedule", () => {
     };
     getInputs.mockResolvedValue(builtOnce);
     const again = await render(builtOnce);
-    action(again, "Rebuild").click();
-    await flush();
     saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
-    q(again, '[data-id="confirm-go"]').click();
+    action(again, "Rebuild").click();
     await settle(again);
     expect(sent(1).action).toBe("Rebuild");
     expect(
@@ -549,10 +547,8 @@ describe("c-shoresh-generated-schedule", () => {
       );
       q(element, '[data-id="generate"]').click();
       await settle(element);
-      action(element, "Rebuild").click();
-      await flush();
       saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
-      q(element, '[data-id="confirm-go"]').click();
+      action(element, "Rebuild").click();
       await settle(element);
       return element;
     }
@@ -1053,83 +1049,20 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
-  it("Rebuild asks first, in the desktop's words without replacing edits, then builds the same option again", async () => {
+  // GEN-10.12 (Greg 2026-11-12): Rebuild never loses the schedule it replaces, so it asks nothing.
+  it("Rebuild goes at once, with no question, and builds the same option again", async () => {
     const element = await render();
     await generate(element);
+    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "Rebuild").click();
     await flush();
-    const dialog = q(element, '[data-id="confirm"]');
-    expect(dialog.getAttribute("role")).toBe("alertdialog");
-    expect(dialog.textContent).toContain("Rebuild this schedule?");
-    const body = q(element, '[data-id="confirm-body"]').textContent;
-    expect(body).toBe(
-      "Updates Week 1 to your setup, keeping everything that still fits."
-    );
-    // Hand edits are locks and stay (decision 2): never "replaces your edits". Locks come in G4.
-    expect(body).not.toMatch(/your edits|replaces|lock/i);
-    expect(q(element, '[data-id="confirm-note"]').textContent).toBe(
-      "Saved to Versions first."
-    );
-    await expect(element).toBeAccessible();
-    // Cancel has focus first, as on the desktop.
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="confirm-cancel"]')
-    );
-    saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
-    q(element, '[data-id="confirm-go"]').click();
+    expect(q(element, '[data-id="confirm"]')).toBeNull();
     await settle(element);
     expect(sent(1).action).toBe("Rebuild");
     expect(sent(1).option).toBe(1);
     // The next save goes from what this one was saved at.
     expect(sent(1).revision).toBe("2026-06-29:1|2026-06-30:1");
     expect(sent(1).scheduleId).toBe(SCHEDULE);
-    // Focus is back on Build, where Rebuild is, not lost with the dialog.
-    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
-  });
-
-  it("Cancel and Escape close the confirm without building, focus back on Build", async () => {
-    const element = await render();
-    await generate(element);
-    action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm-cancel"]').click();
-    await flush();
-    expect(q(element, '[data-id="confirm"]')).toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
-
-    action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm"]').dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-    );
-    await flush();
-    expect(q(element, '[data-id="confirm"]')).toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
-    expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
-  });
-
-  it("Tab stays inside the confirm", async () => {
-    const element = await render();
-    await generate(element);
-    action(element, "Rebuild").click();
-    await flush();
-    const dialog = q(element, '[data-id="confirm"]');
-    const tab = (shiftKey) =>
-      dialog.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true })
-      );
-    tab(false);
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="confirm-go"]')
-    );
-    tab(false);
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="confirm-cancel"]')
-    );
-    tab(true);
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="confirm-go"]')
-    );
   });
 
   it("Try another builds the next option, and Option brings an earlier one back exactly", async () => {
@@ -1284,8 +1217,6 @@ describe("c-shoresh-generated-schedule", () => {
     });
     jest.spyOn(console, "error").mockImplementation(() => {});
     action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
     await settle(element);
     expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
       "Week 1 wasn't rebuilt. Nothing was changed. Try again."
@@ -1502,10 +1433,8 @@ describe("c-shoresh-generated-schedule", () => {
     const element = await render(inputs);
     await generate(element);
     const first = sent(0).days.map((d) => d.rows);
-    action(element, "Rebuild").click();
-    await flush();
     saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
-    q(element, '[data-id="confirm-go"]').click();
+    action(element, "Rebuild").click();
     await settle(element);
     expect(sent(1).action).toBe("Rebuild");
     expect(sent(1).days.map((d) => d.rows)).toEqual(first);
@@ -1903,17 +1832,6 @@ describe("c-shoresh-generated-schedule", () => {
       );
     });
 
-    it("the week a confirm is about is gone from setup: the confirm closes", async () => {
-      const element = await render();
-      await generate(element);
-      action(element, "Rebuild").click();
-      await flush();
-      getInputs.mockResolvedValueOnce(camp(SMALL));
-      element.setup = { ...SETUP, weeks: [{ Id: WEEK_2, Name: "Week 2" }] };
-      await flush();
-      expect(q(element, '[data-id="confirm"]')).toBeNull();
-    });
-
     it("another season chosen mid-build: the build stops and nothing is saved", async () => {
       const element = await render(camp(BIG));
       q(element, '[data-id="generate"]').click();
@@ -1936,32 +1854,6 @@ describe("c-shoresh-generated-schedule", () => {
       expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
       expect(getInputs).toHaveBeenCalledTimes(1);
       expect(grid(element)).not.toBeNull();
-    });
-
-    it("coming back to the window with the confirm open leaves it open", async () => {
-      const element = await render();
-      await generate(element);
-      action(element, "Rebuild").click();
-      await flush();
-      window.dispatchEvent(new CustomEvent("focus"));
-      await flush();
-      expect(q(element, '[data-id="confirm"]')).not.toBeNull();
-      expect(getInputs).toHaveBeenCalledTimes(1);
-    });
-
-    it("the season read again with the confirm open: it stays, and the week is read once it closes", async () => {
-      const element = await render();
-      await generate(element);
-      action(element, "Rebuild").click();
-      await flush();
-      element.setup = { ...SETUP };
-      await flush();
-      expect(q(element, '[data-id="confirm"]')).not.toBeNull();
-      expect(getInputs).toHaveBeenCalledTimes(1);
-      getInputs.mockResolvedValueOnce(camp({ ...SMALL, scheduleId: SCHEDULE }));
-      q(element, '[data-id="confirm-cancel"]').click();
-      await flush();
-      expect(getInputs).toHaveBeenCalledTimes(2);
     });
 
     it("leaving the page mid-save: the answer changes nothing", async () => {
@@ -2084,31 +1976,6 @@ describe("c-shoresh-generated-schedule", () => {
       button.click();
       await settle(none);
       expect(button.focus).toHaveBeenCalled();
-    });
-
-    it("Escape in the confirm goes no further; Tab is kept from moving focus twice", async () => {
-      const element = await render();
-      await generate(element);
-      action(element, "Rebuild").click();
-      await flush();
-      const dialog = q(element, '[data-id="confirm"]');
-      const outside = jest.fn();
-      element.shadowRoot
-        .querySelector('[data-id="generated-schedule"]')
-        .addEventListener("keydown", outside);
-      const tab = new KeyboardEvent("keydown", {
-        key: "Tab",
-        bubbles: true,
-        cancelable: true
-      });
-      dialog.dispatchEvent(tab);
-      expect(tab.defaultPrevented).toBe(true);
-      dialog.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-      );
-      expect(
-        outside.mock.calls.filter((c) => c[0].key === "Escape")
-      ).toHaveLength(0);
     });
   });
 });

@@ -138,8 +138,9 @@
         </div>
       </template>
 
-      <!-- Start over happened at once: Undo brings back the version it kept first, as Manual
-           Build's Clear week offers Undo (Greg's decision 2, 2026-10-20). -->
+      <!-- Start over or Rebuild happened at once: Undo brings back the version it kept first, as
+           Manual Build's Clear week offers Undo (Greg's decision 2, 2026-10-20; Rebuild, Greg
+           2026-11-12). -->
       <template lwc:if={startedOverText}>
         <p class="notice" slot="status" data-id="started-over">
           <span>{startedOverText} ·</span>
@@ -457,48 +458,6 @@
         onanswer={handleUnpublishAnswer}
         data-id="unpublish-ask"
       ></c-shoresh-ask>
-    </template>
-
-    <!-- Rebuild: the desktop's ConfirmRegenModal. -->
-    <template lwc:if={confirming}>
-      <section
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-body"
-        class="slds-modal slds-fade-in-open"
-        data-id="confirm"
-        onkeydown={handleConfirmKeyDown}
-      >
-        <div class="slds-modal__container">
-          <div class="slds-modal__header">
-            <h2 id="confirm-title" class="slds-modal__title">{confirmTitle}</h2>
-          </div>
-          <div class="slds-modal__content slds-p-around_medium">
-            <p id="confirm-body" data-id="confirm-body">{confirmBody}</p>
-            <p class="confirm-note" data-id="confirm-note">{confirmNote}</p>
-          </div>
-          <div class="slds-modal__footer">
-            <button
-              type="button"
-              class="slds-button slds-button_neutral"
-              onclick={handleCancelConfirm}
-              data-id="confirm-cancel"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="slds-button slds-button_destructive"
-              onclick={handleConfirm}
-              data-id="confirm-go"
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </div>
-      </section>
-      <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
     </template>
   </div>
 </template>

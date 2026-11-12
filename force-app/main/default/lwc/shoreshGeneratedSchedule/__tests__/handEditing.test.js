@@ -309,8 +309,6 @@ describe("hand editing on the Generated Schedule screen", () => {
       })
     );
     action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
     expect(saveWeekOnServer.mock.calls[0][0].request.revision).toBe(
@@ -376,8 +374,6 @@ describe("hand editing on the Generated Schedule screen", () => {
       })
     );
     action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
     expect(saveWeekOnServer.mock.calls[0][0].request.revision).toBe(

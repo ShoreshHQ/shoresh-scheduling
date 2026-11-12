@@ -5145,38 +5145,31 @@ async function generated(openGenerated) {
   await step(S, "Same-activity outlines: point at a cell", () =>
     hoverOutlines(S)
   );
-  await step(S, "Rebuild: the question, Escape, then Rebuild it", async () => {
-    // Rebuild is in the rail's Build menu, first.
-    if (!(await openRailMenu(/^Build$/))) throw new Error("Build not reached.");
-    await expectFocus(S, "Build opens: focus on Rebuild", {
-      role: "menuitem",
-      name: /^Rebuild$/
-    });
-    await axe("Generated Schedule: Build open");
-    await press("Enter", 600);
-    await expectFocus(S, "Rebuild asks: focus on Cancel", {
-      inDialog: true,
-      name: /^Cancel$/
-    });
-    await axe("Generated Schedule: Rebuild question");
-    await press("Escape", 600);
-    await expectFocus(S, "Escape: focus back on Build", {
-      name: /^Build$/
-    });
-    await press("Enter", 600);
-    if (!(await arrowTo(/^Rebuild$/))) throw new Error("Rebuild not reached.");
-    await press("Enter", 600);
-    if (!(await tabTo(named(/^Rebuild it$/), { max: 6 })))
-      throw new Error("Rebuild it not reached.");
-    await expectLive(
-      S,
-      "Rebuild it: it is said when it ends",
-      /Filled \d+ of \d+/,
-      () => press("Enter"),
-      90000
-    );
-    await expectFocusKept(S, "After Rebuild: focus not lost");
-  });
+  // Greg 2026-11-12: Rebuild keeps the week as a version first and asks nothing; Undo is next.
+  await step(
+    S,
+    "Rebuild: at once, said when it ends, focus on its Undo",
+    async () => {
+      // Rebuild is in the rail's Build menu, first.
+      if (!(await openRailMenu(/^Build$/)))
+        throw new Error("Build not reached.");
+      await expectFocus(S, "Build opens: focus on Rebuild", {
+        role: "menuitem",
+        name: /^Rebuild$/
+      });
+      await axe("Generated Schedule: Build open");
+      await expectLive(
+        S,
+        "Rebuild: it is said when it ends",
+        /Filled \d+ of \d+/,
+        () => press("Enter"),
+        90000
+      );
+      await expectFocus(S, "After Rebuild: focus on its Undo", {
+        name: /^Undo Rebuilt /
+      });
+    }
+  );
   await step(S, "Lock, in Edit: open, Escape, lock a cell", async () => {
     if (!(await tabTo(grid))) throw new Error("No grid cell reached with Tab.");
     await press("ArrowDown", 200);

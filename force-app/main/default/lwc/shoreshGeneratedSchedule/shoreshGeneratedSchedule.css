@@ -96,12 +96,6 @@
   font-size: 13px;
 }
 
-.confirm-note {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--shoresh-text-secondary);
-}
-
 /* Until a long build says how far it has got: a short stripe that moves along the track
    (desktop IndeterminateBar). Under reduced motion, a still, half-filled track. */
 .progress_moving .progress-fill {

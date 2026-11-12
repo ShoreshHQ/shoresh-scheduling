@@ -1,6 +1,6 @@
 /**
  * Locks on the Generated Schedule screen (ADR 0010 decision 3, G4): the lock icon, the Lock menu
- * (a cell, the day, the bunk, the bunk's day), builds that keep locks, and the confirms' words.
+ * (a cell, the day, the bunk, the bunk's day), and builds that keep locks.
  * Synthetic data only.
  */
 import { createElement } from "lwc";
@@ -274,15 +274,9 @@ describe("locks on the Generated Schedule screen", () => {
     );
   });
 
-  it("Rebuild's confirm speaks of locks only when there are some; Start over asks nothing", async () => {
+  // GEN-10.12 (Greg 2026-11-12): Rebuild keeps the week as a version first, so it asks nothing.
+  it("Rebuild with locks asks nothing: it goes at once", async () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
-    q(element, '[data-action="Rebuild"]').click();
-    await flush();
-    expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "Updates Week 1 to your setup, keeping everything that still fits. Locked cells stay as they are."
-    );
-    q(element, '[data-id="confirm-cancel"]').click();
-    await flush();
     saveWeekOnServer.mockImplementation(
       keeping({
         conflict: false,
@@ -291,10 +285,11 @@ describe("locks on the Generated Schedule screen", () => {
         locks: []
       })
     );
-    q(element, '[data-action="StartOver"]').click();
+    q(element, '[data-action="Rebuild"]').click();
     await flush();
     expect(q(element, '[data-id="confirm"]')).toBeNull();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
+    expect(saveWeekOnServer.mock.calls[0][0].request.action).toBe("Rebuild");
   });
 
   it("Start over: the server clears the locks, and none show after", async () => {

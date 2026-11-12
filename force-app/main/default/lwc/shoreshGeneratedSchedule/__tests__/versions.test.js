@@ -896,6 +896,38 @@ describe("Versions on the Generated Schedule screen", () => {
       );
     });
 
+    // GEN-10.12 (Greg 2026-11-12): Rebuild keeps the schedule it replaces as a version, with Undo.
+    it("Rebuild goes at once and offers Undo, which brings back the schedule it kept", async () => {
+      const element = await render(week({ locked: true }));
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({
+          conflict: false,
+          scheduleId: SCHEDULE,
+          revision: STARTED_AT,
+          versionId: KEPT,
+          locks: []
+        })
+      );
+      action(element, "Rebuild").click();
+      await until(() => !q(element, '[data-id="busy"]'));
+      expect(q(element, '[data-id="confirm"]')).toBeNull();
+      expect(startedLine(element).textContent).toContain("Rebuilt Week 1");
+      expect(undoButton(element).getAttribute("aria-label")).toBe(
+        "Undo Rebuilt Week 1"
+      );
+      expect(element.shadowRoot.activeElement).toBe(undoButton(element));
+      restoreVersion.mockResolvedValue(true);
+      getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
+      undoButton(element).click();
+      await until(() => !versions(element).busy);
+      expect(restoreVersion).toHaveBeenCalledWith({
+        scheduleId: SCHEDULE,
+        versionId: KEPT,
+        seenRevisions: STARTED_AT
+      });
+      expect(notice(element)).toBe("Undone: Rebuilt Week 1.");
+    });
+
     it("Undo brings back the version Start over kept, locks and all, and says so", async () => {
       const element = await render(week({ locked: true }));
       await startOver(element);
