@@ -2029,12 +2029,12 @@ const CAPABILITIES = [
   change(
     "set_up_noted_item",
     "set_up_noted_item",
-    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back while it is your last change; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
+    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there; a trip is set up as a special day), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back while it is your last change; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
     {
       kind: {
         type: "string",
         description:
-          "special event, special day or elective set: what the cell notes."
+          "special event, special day or elective set: what the cell notes (a trip: special day)."
       },
       name: {
         type: "string",

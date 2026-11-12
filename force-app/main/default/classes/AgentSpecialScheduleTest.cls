@@ -374,4 +374,48 @@ private class AgentSpecialScheduleTest {
       Assert.isTrue(String.isBlank(item.id), 'The cell is noted again');
     }
   }
+
+  @IsTest
+  static void aTripIsSetUpAsASpecialDay() {
+    // SPECIAL-1.5: a trip is set up as a special day, through an AI as on the screen.
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id draftId = ManualBuildController.startBlankWeek(
+          ids.get('Main'),
+          ids.get('Week 1')
+        )
+        .schedule.schedule.id;
+      for (ScheduleDays.DayGrid read : ScheduleDays.read(draftId)) {
+        if (read.day == MONDAY) {
+          read.grid.items.add(new ScheduleGrid.Item('T', '', 'Zoo trip'));
+          read.grid.rows[0][0] = String.valueOf(read.grid.items.size());
+          ScheduleDaySaves.write(
+            draftId,
+            new List<ScheduleDaySaves.DaySave>{
+              new ScheduleDaySaves.DaySave(read.day, read.grid, read.revision)
+            }
+          );
+        }
+      }
+      Test.startTest();
+      List<Object> setUp = ask(
+        new AgentSetUpNoted(),
+        'POST',
+        new Map<String, Object>{
+          'season' => seasonName(ids.get('Season')),
+          'week' => 'Week 1',
+          'program' => 'Main',
+          'kind' => 'Special day',
+          'name' => 'zoo trip'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, setUp[0], String.valueOf(setUp[1]));
+      Assert.isTrue(
+        String.valueOf(setUp[1])
+          .startsWith('"Zoo trip" is set up as a special day, on Monday.'),
+        String.valueOf(setUp[1])
+      );
+    }
+  }
 }

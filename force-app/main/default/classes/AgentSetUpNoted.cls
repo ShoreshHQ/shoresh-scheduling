@@ -41,8 +41,12 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
     // Locked as the screen's save locks it.
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
-    // The name as the cell notes it, as the screen sends it.
-    String noted = notedName(days, kind, name);
+    // The cell's item as noted, as the screen sends it: a special day may be a noted trip, which
+    // is set up as one (SPECIAL-1.5).
+    ScheduleGrid.Item noted = notedItem(days, kind, name);
+    if (noted == null && kind == 'D') {
+      noted = notedItem(days, 'T', name);
+    }
     if (noted == null) {
       throw new AgentWeeks.ConflictException(
         'Nothing in this week is noted as "' +
@@ -50,11 +54,15 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
           '" not set up yet (someone may have set it up or changed it since). Nothing was changed.'
       );
     }
-    String change = 'Set up ' + noted;
+    String change = 'Set up ' + noted.name;
     Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
     SpecialSetUp.Done done;
     try {
-      done = SpecialPlacingController.setUpItem(week.draft.Id, kind, noted);
+      done = SpecialPlacingController.setUpItem(
+        week.draft.Id,
+        noted.kind,
+        noted.name
+      );
     } catch (Exception e) {
       throw new ShoreshException(
         'Nothing was changed. ' + ScreenErrors.words(e)
@@ -65,8 +73,8 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
       ' undo_last_agent_change brings the week\'s cells back; what was made stays in setup, and a special day put on a day stays there (take_special_day_off_day takes it off).';
   }
 
-  /** The name a noted cell of that kind has, read as NotedItems reads it; null when none. */
-  private static String notedName(
+  /** The noted cell's item of that kind and name, read as NotedItems reads it; null when none. */
+  private static ScheduleGrid.Item notedItem(
     List<ScheduleDays.DayGrid> days,
     String kind,
     String name
@@ -81,7 +89,7 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
         ScheduleGrid one = new ScheduleGrid();
         one.items.add(item);
         if (asked.isIn(one)) {
-          return item.name;
+          return item;
         }
       }
     }
