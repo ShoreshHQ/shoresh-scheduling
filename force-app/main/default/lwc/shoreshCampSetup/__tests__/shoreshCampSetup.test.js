@@ -5318,6 +5318,41 @@ describe("a reload stays where you were", () => {
     ).toMatchObject({ seasonId: "s2", screen: "roots" });
   });
 
+  // WEEK-6.5
+  it("a menu click made while the reload is still bringing the tab back wins over it", async () => {
+    window.sessionStorage.setItem(
+      "shoresh.place",
+      JSON.stringify({ ...PLACE, screen: "groups", weekId: null })
+    );
+    let readSeason;
+    getSeasonSetup.mockReturnValueOnce(
+      new Promise((resolve) => {
+        readSeason = resolve;
+      })
+    );
+    const element = await open();
+    element.shadowRoot
+      .querySelector("c-shoresh-menu")
+      .dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "campWords" } })
+      );
+    await flush();
+    readSeason(
+      nsRecord(
+        setupWith({
+          season: CEDAR,
+          weeks: [{ Id: "w1", Name: "Week 1" }]
+        })
+      )
+    );
+    await flush();
+    await flush();
+    expect(shownScreens(element)).toEqual(["campWords"]);
+    expect(
+      JSON.parse(window.sessionStorage.getItem("shoresh.place"))
+    ).toMatchObject({ seasonId: "s2", screen: "campWords" });
+  });
+
   // WEEK-6.3
   it("keeps the screen this tab is on for a reload, and a new tab starts on Roots", async () => {
     window.sessionStorage.clear();

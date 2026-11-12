@@ -815,6 +815,10 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // The person's own click wins over a reload still bringing the tab back (WEEK-6.5): the
+    // screen and week it was on are not opened over it later.
+    this.placeToRestore = null;
+    this.weekToRestore = null;
     // A special day's schedule saved, then left through the menu rather than its own back: the
     // season is read again, as that back does, so the days it replaces show what was saved.
     if (this.specialScheduleChanged && screen !== "specialEvents") {
