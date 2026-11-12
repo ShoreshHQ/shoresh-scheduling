@@ -443,8 +443,8 @@ async function build(capability, input, at, engine, checks) {
 /**
  * What the counter shows of a week just built, as the screen shows it beside the grid (UX pass
  * 2026-11-10: build_week said only "Built Week 2.", so an AI had nothing to pass on): its
- * "N of M placed", then every line to look at in the counter's words. A counter that can't be
- * read adds nothing; the build itself is saved and said.
+ * "N of M placed", then every line to look at in the counter's words, then its notes. A counter
+ * that can't be read adds nothing; the build itself is saved and said.
  */
 async function counterAfter(fields, at, checks) {
   const query = {};
@@ -462,16 +462,21 @@ async function counterAfter(fields, at, checks) {
       JSON.parse(got.body)
     );
     const words = m.counterWords(measure, accepted, groupWords);
-    const lines = [
+    // A line's own full stop goes, so the list ends with one ("…kept as it was..").
+    const said = (rows) => rows.map((l) => l.line.replace(/\.$/, ""));
+    const look = said([
       ...(words.open || []),
       ...((words.under && words.under.lines) || []),
       ...((words.over && words.over.lines) || []),
-      ...(words.to_look_at || []),
-      ...(words.notes || [])
-    ].map((l) => l.line);
-    return lines.length
-      ? ` ${words.placed}. To look at: ${lines.join("; ")}.`
-      : ` ${words.placed}.`;
+      ...(words.to_look_at || [])
+    ]);
+    // Notes are the counter's own heading, not something to look at.
+    const notes = said(words.notes || []);
+    return (
+      ` ${words.placed}.` +
+      (look.length ? ` To look at: ${look.join("; ")}.` : "") +
+      (notes.length ? ` Notes: ${notes.join("; ")}.` : "")
+    );
   } catch {
     return "";
   }
