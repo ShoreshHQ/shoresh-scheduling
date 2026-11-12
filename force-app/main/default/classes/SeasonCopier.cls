@@ -85,6 +85,7 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
         'Give the new ' + labels.singularInSentence('Season') + ' a name.'
       );
     }
+    SeasonNames.refuseTaken(newName, source.Camp__c, null);
     this.newName = newName;
     // Copied a piece at a time; fixed and recurring activities are checked once all is in.
     SetupWrite.run(SetupWrite.Kind.COPY, this);

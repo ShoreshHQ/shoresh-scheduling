@@ -226,6 +226,11 @@ public with sharing class ScreenSaves {
     if (ownRainPlan != null) {
       throw ScreenErrors.of(ownRainPlan);
     }
+    try {
+      SeasonNames.refuseTaken(records);
+    } catch (ShoreshException taken) {
+      throw ScreenErrors.of(taken.getMessage());
+    }
   }
 
   /** Each kind's own fields only; its parent only on a new row. */
