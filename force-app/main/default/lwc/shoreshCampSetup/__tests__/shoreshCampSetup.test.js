@@ -5374,4 +5374,30 @@ describe("a reload stays where you were", () => {
       window.sessionStorage.clear();
     }
   });
+
+  // Word walk W6: what another screen did shows without a reload.
+  describe("a screen opened again reads what other screens changed", () => {
+    it("Elective seats and Bring in choices read the season again; Saved versions its versions", async () => {
+      const element = await render();
+      await flush();
+      const menu = element.shadowRoot.querySelector("c-shoresh-menu");
+      const go = async (screen) => {
+        menu.dispatchEvent(new CustomEvent("navigate", { detail: { screen } }));
+        await flush();
+      };
+      const seasonReads = getSeasonSetup.mock.calls.length;
+      await go("electiveSeats");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 1);
+      await go("bringInChoices");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 2);
+      // The screen already shown isn't read again by choosing it.
+      await go("bringInChoices");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 2);
+      await go("schedules");
+      const versionReads = getVersions.mock.calls.length;
+      await go("roots");
+      await go("schedules");
+      expect(getVersions.mock.calls.length).toBe(versionReads + 1);
+    });
+  });
 });
