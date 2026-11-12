@@ -13,12 +13,19 @@
  *   each weekday of the week where the file had it. A day that already has another special day
  *   keeps it, and is named in the answer. The draft's cells are kept as they are, out of sight
  *   while the special day is on the day.
+ * - A trip: a special day of its name, as above (Greg 2026-11-12; SPECIAL-1.5).
  * Works on Manual Build's draft and on Generated Schedule's alike. Runs in user mode, under the
  * draft's lock.
  */
 public with sharing class SpecialSetUp {
-  // What can be set up from a noted cell: a special event, a special day, an elective set.
-  private static final Set<String> KINDS = new Set<String>{ 'S', 'D', 'E' };
+  // What can be set up from a noted cell: a special event, a special day, a trip (as a special
+  // day), an elective set.
+  private static final Set<String> KINDS = new Set<String>{
+    'S',
+    'D',
+    'T',
+    'E'
+  };
 
   // The draft, its days as read, and the camp's words.
   private Schedule__c draft;
@@ -32,8 +39,8 @@ public with sharing class SpecialSetUp {
   }
 
   /**
-   * Sets up what a not-set-up cell names. kind: 'S' (special event), 'D' (special day) or 'E'
-   * (elective set, ADR 0018 slice E5).
+   * Sets up what a not-set-up cell names. kind: 'S' (special event), 'D' (special day), 'T' (a
+   * trip, set up as a special day) or 'E' (elective set, ADR 0018 slice E5).
    */
   public static Done setUp(Id scheduleId, String kind, String name) {
     String trimmed = name == null ? '' : name.trim();
@@ -43,25 +50,30 @@ public with sharing class SpecialSetUp {
     SpecialSetUp setUp = new SpecialSetUp(lockedDraft(scheduleId));
     Savepoint beforeSetUp = Database.setSavepoint();
     try {
-      if (kind == 'D') {
-        return setUp.specialDay(new NotedItems('D', trimmed), trimmed);
-      }
-      Id seasonId = setUp.draft.Program__r.Season__c;
-      return kind == 'S'
-        ? setUp.bind(
-            new NotedItems('S', trimmed),
-            SpecialNamed.event(seasonId, trimmed),
-            'SpecialEvent'
-          )
-        : setUp.bind(
-            new NotedItems('E', trimmed),
-            SpecialNamed.electiveSet(seasonId, trimmed),
-            'ElectiveSet'
-          );
+      return setUp.made(kind, trimmed);
     } catch (Exception e) {
       Database.rollback(beforeSetUp);
       throw e;
     }
+  }
+
+  /** The special day (a trip is one), event or elective set the noted cells name, made. */
+  private Done made(String kind, String name) {
+    if (kind == 'D' || kind == 'T') {
+      return specialDay(new NotedItems(kind, name), name);
+    }
+    Id seasonId = draft.Program__r.Season__c;
+    return kind == 'S'
+      ? bind(
+          new NotedItems('S', name),
+          SpecialNamed.event(seasonId, name),
+          'SpecialEvent'
+        )
+      : bind(
+          new NotedItems('E', name),
+          SpecialNamed.electiveSet(seasonId, name),
+          'ElectiveSet'
+        );
   }
 
   private SpecialSetUp(Schedule__c draft) {

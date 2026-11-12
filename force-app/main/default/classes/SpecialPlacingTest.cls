@@ -416,6 +416,69 @@ private class SpecialPlacingTest {
   }
 
   @IsTest
+  static void aTripIsSetUpAsASpecialDayOnTheDaysTheFileHadIt() {
+    // Greg 2026-11-12 (SPECIAL-1.5): a trip a file noted is a special day.
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('T', '', 'Zoo trip'),
+        WEDNESDAY
+      );
+
+      Test.startTest();
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
+        draftId,
+        'T',
+        'Zoo trip'
+      );
+      Test.stopTest();
+
+      Assert.areEqual(
+        '"Zoo trip" is set up as a special day, on Wednesday.',
+        done.said
+      );
+      List<SpecialDate__c> days = daysOf(ids.get('Week 1'));
+      Assert.areEqual(1, days.size());
+      Assert.areEqual('Zoo trip', days[0].SpecialDay__r.Name);
+      Assert.areEqual('Wednesday', days[0].Day__c);
+    }
+  }
+
+  @IsTest
+  static void rootsOffersATripLastYearsScheduleNamedAsASpecialDay() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('T', '', 'Zoo trip'),
+        MONDAY
+      );
+      Id imported = ManualBuildController.saveVersion(draftId, 'Last year');
+      update new Schedule__c(Id = imported, Origin__c = 'Imported');
+
+      Test.startTest();
+      List<RootsNoted.Noted> before = RootsNoted.read(ids.get('Season'));
+      SpecialNamed.Named done = SpecialPlacingController.setUpNamed(
+        ids.get('Season'),
+        'T',
+        'Zoo trip'
+      );
+      List<RootsNoted.Noted> after = RootsNoted.read(ids.get('Season'));
+      Test.stopTest();
+
+      Assert.areEqual(1, before.size());
+      Assert.areEqual('T', before[0].kind);
+      Assert.areEqual(
+        'Zoo trip',
+        [SELECT Name FROM SpecialDay__c WHERE Id = :done.itemId WITH USER_MODE]
+        .Name
+      );
+      Assert.isTrue(after.isEmpty(), 'Set up: no longer on Roots');
+    }
+  }
+
+  @IsTest
   static void settingUpADayAlreadyTakenLeavesTheOtherSpecialDay() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();

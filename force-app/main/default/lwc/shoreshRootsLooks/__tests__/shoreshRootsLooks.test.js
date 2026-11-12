@@ -199,7 +199,8 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
       ...TABLE,
       noted: [
         { kind: "D", name: "Field day" },
-        { kind: "S", name: "Zoo trip" }
+        { kind: "S", name: "Color War" },
+        { kind: "T", name: "Zoo trip" }
       ]
     });
     expect(byId(cards, "noted|D|Field day")).toMatchObject({
@@ -210,8 +211,14 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
       label: "Field day isn't set up yet. Set it up.",
       nav: { setUpNoted: { kind: "D", name: "Field day" } }
     });
-    expect(byId(cards, "noted|S|Zoo trip").nav).toEqual({
-      setUpNoted: { kind: "S", name: "Zoo trip" }
+    expect(byId(cards, "noted|S|Color War")).toMatchObject({
+      small: "SPECIAL EVENT",
+      nav: { setUpNoted: { kind: "S", name: "Color War" } }
+    });
+    // SPECIAL-1.5: a trip is set up as a special day (Greg 2026-11-12).
+    expect(byId(cards, "noted|T|Zoo trip")).toMatchObject({
+      small: "SPECIAL DAY",
+      nav: { setUpNoted: { kind: "T", name: "Zoo trip" } }
     });
   });
 

@@ -117,9 +117,10 @@ function takesTyping(node) {
   );
 }
 
-// What "Set it up" makes from a cell a file noted: a special event or day (ADR 0014 slice 4), or
-// an elective set, which binds the cells by name (ADR 0018 slice E5).
-const SET_UP_HERE = new Set(["S", "D", "E"]);
+// What "Set it up" makes from a cell a file noted: a special event or day (ADR 0014 slice 4), a
+// trip as a special day (SPECIAL-1.5), or an elective set, which binds the cells by name (ADR 0018
+// slice E5).
+const SET_UP_HERE = new Set(["S", "D", "T", "E"]);
 
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
