@@ -65,6 +65,24 @@ describe("c-shoresh-same-location", () => {
     expect($(element, "fits").label).toBe("Bunks that fit");
   });
 
+  // Word walk W6: two Pools that read the same are told apart by their kind, else their place.
+  it("never offers two choices that read the same", async () => {
+    const element = render({
+      places: [
+        { id: "l1", name: "Pool", fits: 1, activities: 0, kind: "Water" },
+        { id: "l2", name: "Pool", fits: 1, activities: 0, kind: "Indoor" },
+        { id: "l3", name: "Pool", fits: 1, activities: 0, kind: "Indoor" }
+      ]
+    });
+    await flush();
+    expect($(element, "keep").options.map((o) => o.label)).toEqual([
+      "Pool (Water) · Bunks that fit: 1 · 0 activities here",
+      "Pool (Indoor) · Bunks that fit: 1 · 0 activities here · second in the list",
+      "Pool (Indoor) · Bunks that fit: 1 · 0 activities here · third in the list"
+    ]);
+    expect($(element, "keep").label).toBe("Which location to keep");
+  });
+
   it("starts on the choice to keep; a place with no number shows a dash, and the number starts at 1 or more", async () => {
     const focus = jest.spyOn(HTMLElement.prototype, "focus");
     const element = render({

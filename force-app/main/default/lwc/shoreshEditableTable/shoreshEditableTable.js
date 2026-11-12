@@ -1337,9 +1337,9 @@ export default class ShoreshEditableTable extends LightningElement {
           col.type === "who" && !this.whoIsRule(draft)
             ? "who exception"
             : "who",
-        whoButton: draft.whoOpen ? "Done" : "Change",
+        whoButton: draft.whoOpen ? "Done" : "Edit",
         // Named for its row, so a screen reader can tell the buttons apart.
-        whoName: `${draft.whoOpen ? "Done" : "Change"}: ${col.label}, ${
+        whoName: `${draft.whoOpen ? "Done" : "Edit"}: ${col.label}, ${
           name || this.addLabel
         }`,
         value: this.shownChoice(col, draft, value),

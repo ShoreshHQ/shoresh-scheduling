@@ -3360,12 +3360,18 @@ export default class ShoreshCampSetup extends LightningElement {
   placesFor(recordIds) {
     const locations = (this.setup && this.setup.locations) || [];
     const activities = (this.setup && this.setup.activities) || [];
+    const types = (this.setup && this.setup.locationTypes) || [];
     return recordIds
       .map((id) => locations.find((l) => l.Id === id))
       .filter((location) => location)
       .map((location) => ({
         id: location.Id,
         name: location.Name,
+        // Its kind, so two places of one name read apart (word walk W6).
+        kind: (
+          types.find((type) => type.Id === location[LOCATION.LocationType]) ||
+          {}
+        ).Name,
         fits: location[LOCATION.GroupsThatFit],
         activities: activities.filter(
           (a) => a[ACTIVITY.Location] === location.Id

@@ -2369,7 +2369,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(review.done.text).toContain("Swimming");
     expect(review.done.text).toContain('seen: "s1"');
     expect(review.done.text).toMatch(
-      /Before it can be saved: 1 difference to Keep or Change/
+      /Before it can be saved: 1 difference to answer/
     );
 
     // No seen: nothing read or sent. Another seen: refused before anything is sent.

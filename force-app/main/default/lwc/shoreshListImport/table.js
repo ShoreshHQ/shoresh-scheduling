@@ -124,8 +124,8 @@ function choiceOf(p, row, d, name, shown) {
     clears: d.clears,
     keepPressed: String(d.answer === KEEP),
     changePressed: String(d.answer === CHANGE),
-    keepLabel: `Keep, ${name}: ${text}`,
-    changeLabel: `Change, ${name}: ${text}`,
+    keepLabel: `Keep ours, ${name}: ${text}`,
+    changeLabel: `Use the file's, ${name}: ${text}`,
     keepClass:
       d.answer === KEEP
         ? "shoresh-item choice shoresh-raised"

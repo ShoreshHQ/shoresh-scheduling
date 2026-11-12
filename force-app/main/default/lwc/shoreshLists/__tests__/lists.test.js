@@ -417,9 +417,7 @@ describe("matching what is set up", () => {
     ];
     const p = read("activities", rows);
     const [max, priority] = rowNamed(p, "Music").differences;
-    expect(waitingFor(p, terms, {})).toEqual([
-      "2 differences to Keep or Change"
-    ]);
+    expect(waitingFor(p, terms, {})).toEqual(["2 differences to answer"]);
     const answers = { [max.id]: CHANGE, [priority.id]: KEEP };
     const done = read("activities", rows, answers);
     expect(waitingFor(done, terms, answers)).toEqual([]);
@@ -1078,7 +1076,7 @@ describe("PR 19 review", () => {
     ];
     const p = read("activities", rows);
     expect(changeAllLabel(changeAllCounts(p))).toBe(
-      "Change all from this file: 4 changes, 1 of them clears a value"
+      "Use the file's for all: 4 changes, 1 of them clears a value"
     );
     const location = rowNamed(p, "Archery").differences.find(
       (d) => d.column === "location"
@@ -1087,7 +1085,7 @@ describe("PR 19 review", () => {
     const kept = read("activities", rows, answers);
     const counts = changeAllCounts(kept);
     expect(counts.ids).not.toContain(location.id);
-    expect(changeAllLabel(counts)).toBe("Change the other 3");
+    expect(changeAllLabel(counts)).toBe("Use the file's for the other 3");
   });
 
   it("5a. two items set up with one name: asked which, never picked by order", () => {

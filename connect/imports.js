@@ -171,7 +171,7 @@ function tableLines(p, setup, m, leaveOut) {
             : `${heading}: ${c.text}${c.after || ""}`;
         });
       const choices = row.choices.map((choice) => {
-        const said = choice.keepLabel.replace(/^Keep, /, "");
+        const said = choice.keepLabel.replace(/^Keep ours, /, "");
         const chosen =
           choice.keepPressed === "true"
             ? " (Keep chosen)"

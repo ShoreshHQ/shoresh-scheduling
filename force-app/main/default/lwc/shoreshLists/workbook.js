@@ -1278,7 +1278,7 @@ export function workbookWaiting(proposal, answers) {
       if (
         s.rows.some((r) => (r.differences || []).some((d) => !answers[d.id]))
       ) {
-        waiting.push(`${s.label}: Keep or Change`);
+        waiting.push(`${s.label}: differences to answer`);
       }
       return;
     }

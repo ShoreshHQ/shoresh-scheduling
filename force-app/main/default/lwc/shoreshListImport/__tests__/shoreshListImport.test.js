@@ -393,15 +393,15 @@ describe("c-shoresh-list-import", () => {
     expect(archery.dataset.kind).toBe("changed");
     expect(textOf(archery.querySelector(".old"))).toBe("was Bring arm guards");
     expect(archery.textContent).toContain("clears");
-    expect(choice("Change", archery).getAttribute("aria-label")).toBe(
-      "Change, Archery: Notes: Bring arm guards → none"
+    expect(choice("Use the file's", archery).getAttribute("aria-label")).toBe(
+      "Use the file's, Archery: Notes: Bring arm guards → none"
     );
     expect(textOf($(element, 'button[data-id="change-all"]'))).toBe(
-      "Change all from this file: 1 change, 1 of them clears a value"
+      "Use the file's for all: 1 change, 1 of them clears a value"
     );
     expect(saveOf(element).disabled).toBe(true);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
-      "1 difference to Keep or Change"
+      "1 difference to answer"
     );
   });
 
@@ -425,7 +425,7 @@ describe("c-shoresh-list-import", () => {
     const element = await openWith(
       ["Activity,Location,Notes", "Archery,Gym,", "Canoeing,Lake,"].join("\n")
     );
-    choice("Keep", $(element, '[data-row="Archery"]')).click();
+    choice("Keep ours", $(element, '[data-row="Archery"]')).click();
     await flush();
     const save = saveOf(element);
     expect(save.disabled).toBe(false);
@@ -555,10 +555,10 @@ describe("c-shoresh-list-import", () => {
       ["Activity,Location,Notes", "Archery,Field,x"].join("\n")
     );
     const archery = $(element, '[data-row="Archery"]');
-    choice("Keep", archery).click();
+    choice("Keep ours", archery).click();
     await flush();
     const all = $(element, 'button[data-id="change-all"]');
-    expect(textOf(all)).toBe("Change the other 1");
+    expect(textOf(all)).toBe("Use the file's for the other 1");
     all.click();
     await flush();
     saveOf(element).click();
@@ -869,7 +869,7 @@ describe("laid into the screen's own table (decision 56)", () => {
     // The rail it took the place of: the file, and what saving waits for.
     expect(textOf($(element, '[data-id="file-name"]'))).toBe("activities.csv");
     expect(textOf($(element, '[data-id="waiting"]'))).toContain(
-      "1 difference to Keep or Change"
+      "1 difference to answer"
     );
     expect(textOf($(element, 'button[data-id="close"]'))).toBe("Cancel");
   });
@@ -887,7 +887,7 @@ describe("laid into the screen's own table (decision 56)", () => {
         screenKey: "groups",
         setup: GROUPS
       });
-      choice("Change", $(element, '[data-row="Aspen"]')).click();
+      choice("Use the file's", $(element, '[data-row="Aspen"]')).click();
       await flush();
       expect(textOf(saveOf(element))).toBe("Add 1 group, change 1 group");
       const leave = () => $(element, '[data-row="Fern"] button[data-leave]');
@@ -1061,7 +1061,7 @@ describe("the Special events list (SPECIAL-2.3)", () => {
     // A difference is Keep or Change; a new row has Leave out.
     const carnival = $(element, '[data-row="Carnival"]');
     expect(textOf(carnival.querySelector(".old"))).toBe("was Pool");
-    choice("Change", carnival).click();
+    choice("Use the file's", carnival).click();
     await flush();
     const leave = [...element.shadowRoot.querySelectorAll("button")].find(
       (b) => b.getAttribute("aria-label") === "Leave out Maccabiah"
@@ -1276,15 +1276,21 @@ describe("Import worksheet (Roots)", () => {
       $(element, '[data-section="section-groups"] [data-id="unchanged"]')
         .textContent
     ).toMatch(/^\s*\d+ the same as here\s*$/);
-    expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("false");
-    expect(choice("Change", weeks).getAttribute("aria-label")).toBe(
-      "Change, Opening week: Name: Week 1 → Opening week"
+    expect(choice("Use the file's", weeks).getAttribute("aria-pressed")).toBe(
+      "false"
+    );
+    expect(choice("Use the file's", weeks).getAttribute("aria-label")).toBe(
+      "Use the file's, Opening week: Name: Week 1 → Opening week"
     );
     expect(weeks.querySelector("h4").textContent).toBe("Weeks");
-    choice("Change", weeks).click();
+    choice("Use the file's", weeks).click();
     await flush();
-    expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("true");
-    expect(choice("Keep", weeks).getAttribute("aria-pressed")).toBe("false");
+    expect(choice("Use the file's", weeks).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(choice("Keep ours", weeks).getAttribute("aria-pressed")).toBe(
+      "false"
+    );
     const save = saveOf(element);
     expect(textOf(save)).toBe("Change 1 week");
     saveWorkbook.mockResolvedValue({

@@ -1599,7 +1599,7 @@ describe("c-shoresh-editable-table", () => {
         rows(element)[0]
           .querySelector('[data-id="who-toggle"]')
           .getAttribute("aria-label")
-      ).toBe("Change: Who, Swim");
+      ).toBe("Edit: Who, Swim");
     });
 
     it("a refused add puts the cursor back where it was: the field, or the Add button", async () => {
