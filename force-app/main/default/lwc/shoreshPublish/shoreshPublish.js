@@ -66,7 +66,7 @@ function changeWords(preview, t) {
  * the list, the counters instead (each line only when it is above 0). counts: what the counters count now
  * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
  * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it: every row in it
- * is counted ("To look at: 5"), accepted or not. Without it, the placements the check flags are
+ * is counted, accepted or not, in the counter's words ("3 under", "2 over", "4 to look at"). Without it, the placements the check flags are
  * ("2 activities need a look."). t: the camp's words (c/shoreshTerms).
  */
 export function problemLines(checked, counts, t = buildTerms([]), measure) {
@@ -78,18 +78,26 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   if (total > filled) {
     lines.push(`${filled} of ${total} placed`);
   }
-  const rows = measure
+  // In the counter's own words ("3 under", "2 over", "4 to look at"), each only above 0, so the
+  // ask says what is left, not just how much (UX pass finding 15).
+  const look = measure
     ? (measure.open || []).length +
-      measure.under.rows.length +
-      measure.over.rows.length +
       measure.look.length +
       (measure.notes || []).length
     : 0;
+  const under = measure ? measure.under.rows.length : 0;
+  const over = measure ? measure.over.rows.length : 0;
   // Without the list: every placement the check flags (over its weekly limit, not set up for a
   // bunk, twice in a day, overlapping...): some have no counter of their own.
   const dotted = !measure && checked.flags ? checked.flags.size : 0;
-  if (rows > 0) {
-    lines.push(`To look at: ${rows}`);
+  if (under > 0) {
+    lines.push(`${under} under`);
+  }
+  if (over > 0) {
+    lines.push(`${over} over`);
+  }
+  if (look > 0) {
+    lines.push(`${look} to look at`);
   }
   if (dotted > 0) {
     lines.push(
