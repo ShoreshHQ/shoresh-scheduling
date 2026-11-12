@@ -1,9 +1,11 @@
+@import "c/shoreshTokens";
+
 .fits {
   max-width: 12rem;
 }
 
 /* A refused merge: a faint brick box (design guide, inline recoverable error). */
 .refusal {
-  border-color: var(--slds-g-color-error-base-50, #b44e48);
-  background: var(--slds-g-color-error-base-95, #faf0ef);
+  border-color: var(--shoresh-danger);
+  background: var(--shoresh-danger-tint);
 }
