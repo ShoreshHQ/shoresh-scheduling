@@ -555,12 +555,12 @@ private class ElectivesDataTest {
       Test.stopTest();
 
       Assert.areEqual(
-        'This can\'t be deleted yet: it has spots in "Chugim · Week 1". First clear them, then delete it.',
+        'This can\'t be deleted yet: it has Spots in "Chugim · Week 1". First clear them, then delete it.',
         week
       );
       Assert.areEqual(
         // Word walk W4: in the camp's Seats word, naming the weeks.
-        'Chugim has spots in Week 1. Clear them first.',
+        'Chugim has Spots in Week 1. Clear them first.',
         setResult.getErrors()[0].getMessage()
       );
       Assert.isTrue(used <= 12, 'Queries for one refusal: ' + used);
