@@ -276,6 +276,7 @@ describe("c-shoresh-import", () => {
     );
   });
 
+  // CORE-6.12: the questions are headed Needs a look, and its count drops to nothing as they are answered.
   it("one page: the questions first, then what comes in as counts; Add says how many, then the summary", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
@@ -284,12 +285,10 @@ describe("c-shoresh-import", () => {
     expect($(element, '[data-id="file-name"]').textContent).toContain(
       "maple-grove-2026-all-camp.xlsx"
     );
-    // Check these first: every question on the one page, the file's names first, each marked
-    // until it is answered.
+    // Needs a look: every question on the one page, the file's names first, each marked
+    // until it is answered (word walk W3: one phrase).
     const questions = $(element, '[data-id="questions"]');
-    expect(questions.querySelector("h3").textContent).toContain(
-      "Check these first"
-    );
+    expect(questions.querySelector("h3").textContent).toContain("Needs a look");
     const rows = $$(element, '[data-id="questions"] [data-card]');
     // Library time (all of Juniors on Wednesday) is recurring (rule 7, Greg 2026-10-27), not asked.
     expect(rows.map((r) => r.dataset.card)).toEqual([similarId(element)]);
@@ -343,6 +342,8 @@ describe("c-shoresh-import", () => {
     expect(pressed.textContent).toContain("Same: call it");
     expect(pressed.classList).toContain("shoresh-raised");
     expect(similar.querySelector(".corner")).toBeNull();
+    // CORE-6.12: a needs-a-look count counts what is left, so it drops to nothing (no "0").
+    expect($(element, '[data-id="questions-count"]').textContent).toBe("");
 
     // Comes in: a count per kind, and Add says the total.
     const tiles = $$(element, "[data-tile]");
@@ -405,7 +406,7 @@ describe("c-shoresh-import", () => {
     expect(row.textContent).toContain(
       "3 choices proposed: Fishing, Hiking, and Kayaking. Each choice taken as a set across Period 1 and Period 2 on Tuesday."
     );
-    // Not a question: nothing in Check these first is about it.
+    // Not a question: nothing in Needs a look is about it.
     expect(
       $$(element, '[data-id="questions"] [data-card]').some((r) =>
         r.dataset.card.startsWith("elective|")

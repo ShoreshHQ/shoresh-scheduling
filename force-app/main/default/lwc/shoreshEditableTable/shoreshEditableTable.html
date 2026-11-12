@@ -51,9 +51,11 @@
     <template lwc:if={heading}>
       <h3 class="section-head" data-id="section-head">
         <span class="section-name">{heading}</span
-        ><span class="slds-assistive-text">, </span>
-        <span class="section-count shoresh-num" data-id="section-count"
-          >{shownCount}</span
+        ><template lwc:if={shownCount}
+          ><span class="slds-assistive-text">, </span>
+          <span class="section-count shoresh-num" data-id="section-count"
+            >{shownCount}</span
+          ></template
         >
       </h3>
     </template>
@@ -395,7 +397,6 @@
                         <c-shoresh-dot
                           class="problem"
                           data-id="problem"
-                          shape="corner"
                           label={cell.problem}
                           focusable
                         ></c-shoresh-dot>

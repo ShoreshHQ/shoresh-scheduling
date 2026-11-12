@@ -271,22 +271,13 @@ ul {
   line-height: 1;
 }
 
-.menu-mark_needed {
-  color: var(--shoresh-text-1);
-}
-
 .menu-mark_done {
   color: var(--shoresh-color-highlight);
 }
 
-/* Setup changed: the foot's own dot, no words (they are read out). */
-.menu-mark_changed::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-color-highlight);
-}
+/* Needs a look is the bronze dot (.shoresh-look-mark), Changed since the hollow bronze ring
+   (.shoresh-changed-mark): no words beside either (they are on hover and read out; word walk W3,
+   CORE-6.14). */
 
 /* The foot section (What Shoresh has learned, desktop Sidebar.jsx's footer link): at the bottom,
    a hairline above it. The setup notice, when there is one, sits right under it. */
@@ -328,14 +319,6 @@ ul {
   margin: 0;
   padding: 0 var(--shoresh-space-control-x);
   color: var(--shoresh-text-2);
-}
-
-.notice-dot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-color-highlight);
 }
 
 .notice-go {

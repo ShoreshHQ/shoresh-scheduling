@@ -162,3 +162,15 @@ These never bend for Shoresh.
   aTimeIsSaidOnTheCampsClockNotThePersons; SchedulePublishTest aCopyIsNamedOnTheCampsClock; connect.test.js versionsInThePanelsWords; shoreshCampClock.test.js
   "CORE-6.11: a time is said on the camp's clock once its season is read, and on this computer's
   when the camp has none".
+- **CORE-6.12** What needs a look MUST be called **Needs a look** (never Needs attention, Review
+  here, Questions for you, Check these first, To check or Names to settle), shown as a row or the
+  bronze dot, never a banner. Its count MUST count what is left, so it drops as answers come in
+  and shows nothing at 0 (word walk W3).
+- **CORE-6.13** A zero that asks for attention MUST NOT be shown ("0 under", "0 changed", "0
+  seats free", "Chugim (0)", a report row of 0): the line or number is left out. A zero a person
+  typed (a minimum of 0) is a value and stays (design guide §2; word walk W3).
+- **CORE-6.14** One mark, one meaning: the bronze dot means needs a look, everywhere (a menu
+  entry, a row, a cell); Guessed has its own mark, the corner; Changed since has its own mark, a
+  hollow bronze ring. A mark carries no words beside it; its words are on hover or focus and in
+  assistive text (design guide §3; word walk W3). Marks are drawn in the mark bronze, which reads
+  at 3:1 or better on every surface (WCAG 1.4.11).

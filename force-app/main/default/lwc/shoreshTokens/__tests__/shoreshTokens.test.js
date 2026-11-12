@@ -151,6 +151,34 @@ describe("c/shoreshTokens", () => {
   });
 
   // Greg 2026-11-12: no pink buttons. The one red is the design guide's --danger, kept rare.
+  it("CORE-6.14: the marks (needs-a-look dot, changed-since ring) read at 3:1 on every surface (WCAG 1.4.11)", () => {
+    const surfaces = [
+      "--shoresh-surface-page",
+      "--shoresh-surface-shelf",
+      "--shoresh-surface-grid",
+      "--shoresh-surface-drawer",
+      "--shoresh-surface-hover",
+      "--shoresh-color-primary-50",
+      "--shoresh-caution-tint"
+    ];
+    const mark = colour("--shoresh-caution-mark");
+    expect(mark).toMatch(/^#[0-9a-f]{6}$/);
+    surfaces.forEach((surface) =>
+      expect(contrast(mark, colour(surface))).toBeGreaterThanOrEqual(3)
+    );
+    expect(contrast(mark, "#ffffff")).toBeGreaterThanOrEqual(3);
+    // Both marks are drawn in it, not in the lighter bronze kept for borders.
+    const rule = (name) =>
+      new RegExp(`\\${name}\\s*\\{([^}]*)\\}`).exec(css)[1];
+    expect(rule(".shoresh-look-mark")).toContain(
+      "background: var(--shoresh-caution-mark)"
+    );
+    expect(rule(".shoresh-changed-mark")).toContain(
+      "var(--shoresh-caution-mark)"
+    );
+    expect(rule(".shoresh-changed-mark")).toContain("background: transparent");
+  });
+
   it("has one red, the guide's muted brick, and Salesforce's error hooks take it", () => {
     expect(tokens["--shoresh-danger"]).toBe("#b44e48");
     [

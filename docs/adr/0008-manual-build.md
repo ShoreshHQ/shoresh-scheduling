@@ -1462,3 +1462,12 @@ and screen behaviour only).
 
 - **Truly simultaneous Starts** are not exercised by a test (Apex tests run one at a time). The
   test calls Start twice; the code takes the program lock before looking again.
+
+## Amendment (2026-11-12, word walk W3)
+
+Greg, 2026-11-12: "use your picks" for the word walk. Superseded in part 7, choice 6 (the
+counter), without rewriting it above: **under and over no longer show their 0** when the camp has
+goals or limits (the desktop's grey 0 is gone). A zero that asks for attention is left out
+(CORE-6.13), so the counter shows its under line (since W2 worded _N short_) and _N over_ only
+when there is one, on screen and in what the AI connector reads; a camp's typed minimum of 0 is a
+value and still shows.

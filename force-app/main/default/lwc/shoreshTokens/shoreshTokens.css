@@ -1,6 +1,6 @@
 /*
  * Shoresh's design system: colours, surfaces, spacing, type, the one raised treatment, the
- * hairline and the needs-a-look mark. Import with @import "c/shoreshTokens"; then use the
+ * hairline and the marks (needs a look, changed since, guessed). Import with @import "c/shoreshTokens"; then use the
  * variables and classes. The visual spec is docs/design/ (round 13 mock-up and its spacing
  * specs); the choices are docs/adr/0015-design-system.md.
  */
@@ -179,11 +179,16 @@
    * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
    * structural accent, never a status; success (done) is for small marks only, never text.
    * Manual Build, Generated and the setup screens still use these; each restyle PR moves its
-   * screen onto the colours above and the last one removes these.
+   * screen onto the colours above and the last one removes these, except bronze: it stays as the
+   * needs-a-look dot (.shoresh-look-mark below; design guide §3, word walk W3).
    */
   --shoresh-primary: #173b63;
   --shoresh-secondary: #2f6b58;
   --shoresh-caution: #b8833a;
+  /* The bronze a mark is drawn in (the needs-a-look dot, the changed-since ring): the same hue,
+     one step deeper, so a mark reads at 3:1 or better on every surface and on the bronze tint
+     (WCAG 1.4.11). Bronze itself stays for borders. */
+  --shoresh-caution-mark: #a87835;
   --shoresh-success: #4c8a63;
   --shoresh-caution-tint: #f6efe4;
   --shoresh-text: #1e2a34;
@@ -214,9 +219,34 @@
   margin: 0;
 }
 
-/* The needs-a-look mark: a small solid corner in the text colour, the same on a cell's corner
-   and beside a count. 8 by 8, so it reads as a mark, not as text. */
+/* The needs-a-look mark (design guide §3, word walk W3): the bronze dot, 6 px, the same on a
+   cell's corner, beside a count and on a menu entry. It carries no words; its words are on hover
+   or focus and in assistive text. One mark, one meaning: Guessed has its own mark below. */
 .shoresh-look-mark {
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution-mark);
+}
+
+/* Changed since (something changed after it was finished): a hollow ring in the mark bronze, the
+   dot's size, so it never reads as needs a look, with or without colour (CORE-6.14). */
+.shoresh-changed-mark {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--shoresh-caution-mark);
+  background: transparent;
+}
+
+/* Guessed (from an imported file, until Looks right): a small solid corner in the text colour,
+   a different shape from the dot, so the two never read alike without colour (WCAG 1.4.1). */
+.shoresh-guess-mark {
   display: inline-block;
   flex: none;
   width: 8px;
@@ -226,12 +256,18 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
-/* High contrast (forced colours) paints every background over, which would leave the mark
-   blank: there it is drawn in the system's text colour. */
+/* High contrast (forced colours) paints every background over, which would leave the marks
+   blank: there they are drawn in the system's text colour. */
 @media (forced-colors: active) {
-  .shoresh-look-mark {
+  .shoresh-look-mark,
+  .shoresh-guess-mark {
     forced-color-adjust: none;
     background: CanvasText;
+  }
+
+  .shoresh-changed-mark {
+    forced-color-adjust: none;
+    border-color: CanvasText;
   }
 }
 

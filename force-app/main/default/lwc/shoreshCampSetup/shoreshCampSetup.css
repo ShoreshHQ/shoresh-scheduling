@@ -238,8 +238,38 @@
   padding-top: var(--shoresh-s3);
 }
 
+/* Needs a look: quiet rows, the bronze dot before each, never a banner (word walk W3). */
+.problems {
+  margin-bottom: var(--shoresh-s6);
+}
+
 .body_flush > .problems {
   margin: var(--shoresh-space-pad);
+}
+
+.problems-head {
+  margin: 0 0 var(--shoresh-s2);
+  font-weight: 600;
+  color: var(--shoresh-text-1);
+}
+
+.problems-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.problem-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--shoresh-space-word);
+  padding: var(--shoresh-s1) 0;
+  color: var(--shoresh-text-1);
+}
+
+.problem-dot {
+  transform: translateY(-2px);
 }
 
 .list_narrow > c-shoresh-program,

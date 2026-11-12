@@ -213,12 +213,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // As the desktop counts it: each cell that overlaps (a bunk in a time block). Swim (once a
     // week for Bunk 1) and Soccer (twice for each bunk) are 3 short.
     await openCounter(element);
-    expect(heads(element)).toEqual([
-      "4still needed",
-      "3short",
-      "0over",
-      "2to look at"
-    ]);
+    expect(heads(element)).toEqual(["4still needed", "3short", "2to look at"]);
   });
 
   it("the counter opens its dropdown: under and over by activity, then the cells to look at; again, it closes", async () => {
@@ -266,16 +261,16 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(cell(element, "1-1"), "Delete");
     expect(dotIn(element, "0-1")).toBeNull();
     await openCounter(element);
-    expect(heads(element)).toEqual(["5still needed", "4short", "0over"]);
+    expect(heads(element)).toEqual(["5still needed", "4short"]);
   });
 
-  it("under and over show their 0 when the camp has goals and limits; nothing to look at shows nothing", async () => {
+  it("CORE-6.13: no 0 over when nothing is over; nothing to look at shows nothing", async () => {
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
     );
     // Nothing overlaps and nothing is over; Soccer is one short for each bunk.
     await openCounter(element);
-    expect(heads(element)).toEqual(["3still needed", "2short", "0over"]);
+    expect(heads(element)).toEqual(["3still needed", "2short"]);
     expect(qc(element, '[data-id="look"]')).toBeNull();
     // Off target (under), so the counter carries the corner.
     expect(
@@ -288,7 +283,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     start.activities = start.activities.map((a) => ({ ...a, minPerWeek: 0 }));
     const element = await render(start, NO_MINIMUMS);
     await openCounter(element);
-    expect(heads(element)).toEqual(["5still needed", "0over"]);
+    expect(heads(element)).toEqual(["5still needed"]);
     expect(counterWord(element).querySelector(".shoresh-look-mark")).toBeNull();
   });
 
@@ -310,7 +305,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     start.activities = start.activities.map((a) => ({ ...a, minPerWeek: 0 }));
     const element = await render(start, NO_MINIMUMS);
     await openCounter(element);
-    expect(heads(element)).toEqual(["4still needed", "0over", "2to look at"]);
+    expect(heads(element)).toEqual(["4still needed", "2to look at"]);
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
@@ -318,7 +313,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(cell(element, "1-1"), "Delete");
     expect(counterWord(element).getAttribute("aria-expanded")).toBe("true");
     // Bunk 1: Period 2 filled, Lunch open on both days; Bunk 2: Period 2 open on both days.
-    expect(heads(element)).toEqual(["5still needed", "0over"]);
+    expect(heads(element)).toEqual(["5still needed"]);
   });
 
   it("over its weekly limit: only the session past the limit is listed, the latest in the week", async () => {
@@ -595,12 +590,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       earlySwim
     );
     await openCounter(element);
-    expect(heads(element)).toEqual([
-      "5still needed",
-      "4short",
-      "0over",
-      "1to look at"
-    ]);
+    expect(heads(element)).toEqual(["5still needed", "4short", "1to look at"]);
     expect(listLines(element)).toEqual([
       "Swim · Bunk 1: 1 still needed by Monday"
     ]);

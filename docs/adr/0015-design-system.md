@@ -478,3 +478,28 @@ than cut off, and a solid dot field for Roots' table._
 - Programs' week strip shows all seven days since ADR 0022, in the order the camp's week runs.
 - The mock-up's chevron on a program's row (its details, as on Activities) is not built: every
   field a program has is already in its row.
+
+## Amendment (2026-11-12, word walk W3)
+
+Greg, 2026-11-12: "use your picks" for the word walk. W3 made **Needs a look** one phrase with one
+mark. These choices above are superseded; the text above is kept as it was decided.
+
+- **Choice 6 (shared marks):** the needs-a-look mark is no longer the 8 px solid corner in the
+  text colour. It is the bronze dot (`.shoresh-look-mark`, 6 px round), the same on a cell's
+  corner, beside a count and on a menu entry, with its words on hover or focus and in assistive
+  text. It is drawn in `--shoresh-caution-mark` (#a87835), bronze one step deeper, so it reads at
+  3:1 or better on every surface and on the bronze tint (WCAG 1.4.11; the lighter
+  `--shoresh-caution` measured 2.70 to 3.31 and stays for borders only). The corner shape now
+  means Guessed only (`.shoresh-guess-mark`, `c-shoresh-guess-mark`).
+- **Choice 8 (the menu):** the desktop's `!` Needed is the bronze dot, with no words beside it
+  ("Needs a look" on hover and read out); `✓` Done stays in the highlight. Bronze is therefore a
+  mark colour beside the three colours: for marks and borders, never words or fills. **Changed
+  since: setup** has its own mark, a hollow ring in the mark bronze (`.shoresh-changed-mark`), on
+  the schedule's menu entry and at the menu's foot, so the two never share a mark.
+- **Choice 14 (Programs) and Not done here (the cells):** the needs-a-look corner drawn by
+  `c-shoresh-dot` shape `corner` is the dot; `c-shoresh-dot` has the shapes `dot` and `overlap`
+  only.
+
+Rules: CORE-6.12 (one phrase, its count what is left), CORE-6.13 (no zero that asks for
+attention), CORE-6.14 (one mark, one meaning) in `docs/protocol/core.md`; the marks' contrast is
+tested in `shoreshTokens.test.js`.

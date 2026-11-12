@@ -455,8 +455,10 @@ export default class ShoreshChoicesImport extends LightningElement {
   get hasSettle() {
     return this.settleRows.length > 0;
   }
+  /** Needs a look's count: the names still to settle, so it drops as they are (CORE-6.12). */
   get settleCount() {
-    return this.settleRows.length;
+    const left = this.settleRows.filter((row) => row.unsettled).length;
+    return left ? String(left) : "";
   }
   get apartRows() {
     return this.reading ? cantTellApartRows(this.reading) : [];
@@ -470,11 +472,12 @@ export default class ShoreshChoicesImport extends LightningElement {
   get hasNotRead() {
     return this.notReadList.length > 0;
   }
+  /**
+   * How a few things were read (a list in one cell, a rank given twice): information, with nothing
+   * to answer, so it is not Needs a look and carries no count (CORE-6.12).
+   */
   get checkList() {
     return this.reading ? toCheckRows(this.reading, this.t) : [];
-  }
-  get checkCount() {
-    return this.checkList.length;
   }
   get notReadCount() {
     return this.notReadList.length;

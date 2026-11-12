@@ -16,24 +16,11 @@
   border-radius: 50%;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-caution);
-  flex: none;
-}
-
-/* The needs-a-look corner (shape "corner"): the mark itself comes from c/shoreshTokens. */
-.corner {
-  display: block;
-}
-
 /* Overlap: two linked rings in the same hue, a different shape from the dot. */
 .overlap {
   flex: none;
   fill: none;
-  stroke: var(--shoresh-caution);
+  stroke: var(--shoresh-caution-mark);
   stroke-width: 1.5;
 }
 

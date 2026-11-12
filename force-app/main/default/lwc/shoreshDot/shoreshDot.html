@@ -23,15 +23,8 @@
         <circle cx="8" cy="4" r="3"></circle>
       </svg>
     </template>
-    <template lwc:elseif={isCorner}>
-      <span
-        class="shoresh-look-mark corner"
-        data-id="corner-mark"
-        aria-hidden="true"
-      ></span>
-    </template>
     <template lwc:else>
-      <span class="dot" aria-hidden="true"></span>
+      <span class="dot shoresh-look-mark" aria-hidden="true"></span>
     </template>
     <span class="slds-assistive-text" data-id="dot-words">{label}</span>
     <template lwc:if={showTip}>

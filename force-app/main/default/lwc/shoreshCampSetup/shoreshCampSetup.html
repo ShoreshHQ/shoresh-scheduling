@@ -369,17 +369,20 @@
             </template>
 
             <template lwc:if={hasScreenProblems}>
-              <div
-                class="problems slds-box slds-theme_warning slds-m-bottom_large"
-                data-id="problems"
-              >
-                <h3 class="slds-text-heading_small slds-m-bottom_x-small">
-                  {labels.problems}
-                </h3>
-                <ul class="slds-list_dotted">
+              <!-- Needs a look (word walk W3, CORE-6.12): quiet rows, each with the bronze dot,
+                   never a banner. -->
+              <div class="problems" data-id="problems">
+                <h3 class="problems-head">{labels.problems}</h3>
+                <ul class="problems-list">
                   <template for:each={screenProblems} for:item="problem">
-                    <li key={problem.key}>
-                      <strong>{problem.name}</strong>: {problem.why}
+                    <li key={problem.key} class="problem-row">
+                      <span
+                        class="shoresh-look-mark problem-dot"
+                        aria-hidden="true"
+                      ></span>
+                      <span
+                        ><strong>{problem.name}</strong>: {problem.why}</span
+                      >
                       <template for:each={problem.actions} for:item="action">
                         <lightning-button
                           key={action.key}
@@ -499,10 +502,12 @@
                     {labels.screens.weeks}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.weeks.count}</b
-                    >{counts.weeks.noun}</span
-                  >
+                  <template lwc:if={counts.weeks.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.weeks.count}</b
+                      >{counts.weeks.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -558,10 +563,12 @@
                     {labels.screens.programs}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.programs.count}</b
-                    >{counts.programs.noun}</span
-                  >
+                  <template lwc:if={counts.programs.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.programs.count}</b
+                      >{counts.programs.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -637,10 +644,12 @@
                     {labels.screens.divisions}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.divisions.count}</b
-                    >{counts.divisions.noun}</span
-                  >
+                  <template lwc:if={counts.divisions.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.divisions.count}</b
+                      >{counts.divisions.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -703,10 +712,12 @@
                     {labels.screens.groups}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.groups.count}</b
-                    >{counts.groups.noun}</span
-                  >
+                  <template lwc:if={counts.groups.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.groups.count}</b
+                      >{counts.groups.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -775,10 +786,12 @@
                     {labels.screens.timeBlocks}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.timeBlocks.count}</b
-                    >{counts.timeBlocks.noun}</span
-                  >
+                  <template lwc:if={counts.timeBlocks.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.timeBlocks.count}</b
+                      >{counts.timeBlocks.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -839,10 +852,12 @@
                     {labels.screens.locations}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.locations.count}</b
-                    >{counts.locations.noun}</span
-                  >
+                  <template lwc:if={counts.locations.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.locations.count}</b
+                      >{counts.locations.noun}</span
+                    >
+                  </template>
                   <!-- Which types show: all, or one (the old "Show" list, as rail items). -->
                   <template lwc:if={hasLocationTypes}>
                     <div
@@ -967,10 +982,12 @@
                     {labels.screens.activities}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.activities.count}</b
-                    >{counts.activities.noun}</span
-                  >
+                  <template lwc:if={counts.activities.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.activities.count}</b
+                      >{counts.activities.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -1056,10 +1073,12 @@
                     {labels.screens.fixedActivities}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{counts.fixedActivities.count}</b
-                    >{counts.fixedActivities.noun}</span
-                  >
+                  <template lwc:if={counts.fixedActivities.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.fixedActivities.count}</b
+                      >{counts.fixedActivities.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -1128,11 +1147,13 @@
                     {labels.screens.recurringActivities}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num"
-                      >{counts.recurringActivities.count}</b
-                    >{counts.recurringActivities.noun}</span
-                  >
+                  <template lwc:if={counts.recurringActivities.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num"
+                        >{counts.recurringActivities.count}</b
+                      >{counts.recurringActivities.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"
@@ -1213,14 +1234,18 @@
                       {labels.screens.specialEvents}
                     </h2>
                     <c-shoresh-roots-back></c-shoresh-roots-back>
-                    <span class="rail-count" data-id="count"
-                      ><b class="shoresh-num">{specialCounts.days}</b
-                      >{specialCounts.daysNoun}</span
-                    >
-                    <span class="rail-count" data-id="count-events"
-                      ><b class="shoresh-num">{specialCounts.events}</b
-                      >{specialCounts.eventsNoun}</span
-                    >
+                    <template lwc:if={specialCounts.days}>
+                      <span class="rail-count" data-id="count"
+                        ><b class="shoresh-num">{specialCounts.days}</b
+                        >{specialCounts.daysNoun}</span
+                      >
+                    </template>
+                    <template lwc:if={specialCounts.events}>
+                      <span class="rail-count" data-id="count-events"
+                        ><b class="shoresh-num">{specialCounts.events}</b
+                        >{specialCounts.eventsNoun}</span
+                      >
+                    </template>
                     <span class="rail-spacer"></span>
                     <c-shoresh-saved-mark
                       class="rail-saved"
@@ -1325,10 +1350,12 @@
                     {labels.screens.electives}
                   </h2>
                   <c-shoresh-roots-back></c-shoresh-roots-back>
-                  <span class="rail-count" data-id="count"
-                    ><b class="shoresh-num">{electiveCount.count}</b
-                    >{electiveCount.noun}</span
-                  >
+                  <template lwc:if={electiveCount.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{electiveCount.count}</b
+                      >{electiveCount.noun}</span
+                    >
+                  </template>
                   <span class="rail-spacer"></span>
                   <c-shoresh-saved-mark
                     class="rail-saved"

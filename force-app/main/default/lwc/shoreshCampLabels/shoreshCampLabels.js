@@ -151,7 +151,7 @@ export default class ShoreshCampLabels extends LightningElement {
     return this.loaded && !!this.blockedReason;
   }
 
-  /** How many words are the camp's own, for the rail ("4 changed"). */
+  /** How many words are the camp's own, for the rail ("4 changed"); no line at 0 (CORE-6.13). */
   get changedCount() {
     return this.rows.filter((row) => row.singular.trim()).length;
   }

@@ -1172,9 +1172,17 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.electives.find((e) => `E:${e.id}` === item) || null;
   }
 
-  /** "Chugim (4)": the set and how many of its offerings are confirmed and open. */
+  /** "Chugim (4)": the set and how many of its offerings are confirmed and open; "Chugim" at 0 (CORE-6.13). */
   electiveLabel(set) {
-    return `${set.name} (${set.count})`;
+    return set.count ? `${set.name} (${set.count})` : set.name;
+  }
+
+  /** "4 Chugim" for a set's tile, or nothing at 0 (CORE-6.13). */
+  electiveCount(set) {
+    if (!set.count) return "";
+    const word =
+      set.count === 1 ? this.t.sIn("Elective") : this.t.pIn("Elective");
+    return `${set.count} ${word}`;
   }
 
   /**
@@ -1189,8 +1197,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       .map((e) => ({
         id: e.id,
         name: e.name,
-        words: `${e.count} ${e.count === 1 ? this.t.sIn("Elective") : this.t.pIn("Elective")}`,
-        said: `${e.name}, ${word}, ${e.count} ${e.count === 1 ? this.t.sIn("Elective") : this.t.pIn("Elective")}`
+        words: this.electiveCount(e),
+        said: [e.name, word, this.electiveCount(e)].filter(Boolean).join(", ")
       }));
   }
 

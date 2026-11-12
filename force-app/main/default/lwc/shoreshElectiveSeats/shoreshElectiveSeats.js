@@ -727,7 +727,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
       cells: row.cells.map((cell) => ({
         ...cell,
         className: cellClass(cell, cell.key === this.openCell),
-        name: cellName(row, cell),
+        name: cellName(row, cell, this.lookWords(cell)),
+        lookWords: this.lookWords(cell),
         countText: cell.dropped ? "Dropped" : String(cell.count),
         droppedText: cell.dropped
           ? `had ${cell.dropped.had} of ${cell.dropped.needed}`
@@ -736,6 +737,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
         offeredNot: !cell.offered
       }))
     }));
+  }
+  /** What a seat cell's needs-a-look dot is about, on hover and read out (word walk W3). */
+  lookWords(cell) {
+    if (cell.dropped) return "";
+    if (cell.over) return `Over its ${this.t.pIn("Seats")}`;
+    return cell.below ? "Below its minimum" : "";
   }
   get columns() {
     const board = this.board;
@@ -776,8 +783,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
       heading: `${cell.offering.name} · ${cell.column.label}`,
       people,
       empty: people.length === 0,
-      free:
-        cell.free == null ? "" : `${countOf(this.t, cell.free, "Seats")} free`,
+      // No line at 0 (or with no limit): a zero never asks for attention (word walk W3).
+      free: cell.free ? `${countOf(this.t, cell.free, "Seats")} free` : "",
       day: cell.column.time.day,
       blockId: cell.column.time.blockId
     };
@@ -987,7 +994,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
             : "camper-cell",
           text: cell.attends && !cell.unplaced ? cell.name : "",
           words: cell.words ? ` · ${cell.words}` : "",
-          unplacedName: `${row.camper.name}: no ${this.t.sIn("Seats")}`
+          unplacedName: `${row.camper.name}: no ${this.t.sIn("Seats")}`,
+          unplacedWords: `No ${this.t.sIn("Seats")} yet`
         }))
       }))
     }));
@@ -1336,13 +1344,14 @@ function cellClass(cell, open) {
   return classes.join(" ");
 }
 
-function cellName(row, cell) {
+function cellName(row, cell, lookWords) {
   if (!cell.offered) return `${row.name}, ${cell.column.words}: not offered`;
   if (cell.dropped) {
     return `${row.name}, ${cell.column.words}: dropped, had ${cell.dropped.had} of ${cell.dropped.needed}`;
   }
   const of = cell.seats == null ? "" : ` of ${cell.seats}`;
-  return `${row.name}, ${cell.column.words}: ${cell.count}${of}`;
+  const look = lookWords ? `, ${lookWords.toLowerCase()}` : "";
+  return `${row.name}, ${cell.column.words}: ${cell.count}${of}${look}`;
 }
 
 function splitCell(key) {

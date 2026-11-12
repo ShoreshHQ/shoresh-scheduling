@@ -2673,6 +2673,21 @@ describe("c-shoresh-editable-table", () => {
       );
     });
 
+    it('CORE-6.13: an empty section shows no count (no "Main track 0")', async () => {
+      const element = renderSection({
+        heading: "Seniors",
+        filterField: "Division__c",
+        filterValue: "d9",
+        rows: GROUPS,
+        countWords: ["Bunk", "Bunks"]
+      });
+      await flush();
+      expect(q(element, '[data-id="section-count"]')).toBeNull();
+      expect(q(element, '[data-id="section-head"]').textContent).not.toMatch(
+        /0/
+      );
+    });
+
     it("without a heading the table's title is read out, not shown", async () => {
       const element = renderSection();
       await flush();
@@ -3502,7 +3517,7 @@ describe("c-shoresh-editable-table", () => {
       expect(element.shadowRoot.querySelector("td.days_strip")).toBeNull();
     });
 
-    it("a worked-out column's problem carries the needs-a-look corner, with its words", async () => {
+    it("a worked-out column's problem carries the bronze needs-a-look dot, with its words", async () => {
       const element = render({
         objectApiName: "Program__c",
         columns: [
@@ -3529,7 +3544,8 @@ describe("c-shoresh-editable-table", () => {
       ];
       // Only the saved row with the problem: never the blank row.
       expect(marks.length).toBe(1);
-      expect(marks[0].shape).toBe("corner");
+      // The needs-a-look dot, not Guessed's corner (word walk W3: one mark, one meaning).
+      expect(marks[0].shape).toBe("dot");
       expect(marks[0].label).toBe("No time blocks yet");
       expect(marks[0].focusable).toBe(true);
       expect(marks[0].closest("td").classList.contains("has-guess")).toBe(true);

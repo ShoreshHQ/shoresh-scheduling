@@ -6,9 +6,11 @@
     <c-shoresh-roots-back
       onbacktoroots={handleBackToRoots}
     ></c-shoresh-roots-back>
-    <span class="rail-count" data-id="count"
-      ><b class="shoresh-num">{changedCount}</b> changed</span
-    >
+    <template lwc:if={changedCount}>
+      <span class="rail-count" data-id="count"
+        ><b class="shoresh-num">{changedCount}</b> changed</span
+      >
+    </template>
     <span class="rail-spacer"></span>
     <c-shoresh-saved-mark class="rail-saved"></c-shoresh-saved-mark>
   </div>

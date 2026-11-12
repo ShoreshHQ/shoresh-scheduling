@@ -2,8 +2,8 @@ import { LightningElement, api } from "lwc";
 
 /**
  * Something Shoresh guessed from an imported file, marked for a look (Greg, decision 45; ADR
- * 0006 §21). The design system's needs-a-look corner (ADR 0015 choice 6) in a cell's top right
- * corner, as on the desktop's provenance dot (ActivitiesScreen.jsx RuleProvenanceDot): pressed,
+ * 0006 §21). Guessed's own mark, a small corner (not the bronze needs-a-look dot; word walk
+ * W3), in a cell's top right corner, as on the desktop's provenance dot (ActivitiesScreen.jsx RuleProvenanceDot): pressed,
  * it opens a small pop with what it means ("Guessed from your file") and **Looks right**, which
  * asks the screen to forget the guess (`confirm`). Changing the value clears it too (the screen
  * stops passing it).
@@ -14,7 +14,7 @@ import { LightningElement, api } from "lwc";
  * Opening puts the cursor on Looks right; Escape, or leaving the pop, closes it, Escape putting
  * the cursor back on the mark.
  *
- * wordsOnly: the same corner for a problem the director fixes in the cell itself (an offering's
+ * wordsOnly: the bronze needs-a-look dot instead, for a problem the director fixes in the cell itself (an offering's
  * seats not filled in yet, repo ADR 0018): its words only, no Looks right; the cursor stays on
  * the mark.
  */
@@ -26,6 +26,14 @@ export default class ShoreshGuessMark extends LightningElement {
 
   open = false;
   focusLooksRight = false;
+
+  /**
+   * One mark, one meaning (design guide §3, word walk W3): Guessed is the corner; a problem the
+   * director fixes in the cell (wordsOnly) needs a look, so it is the bronze dot.
+   */
+  get markClass() {
+    return this.wordsOnly ? "shoresh-look-mark" : "shoresh-guess-mark";
+  }
 
   get expanded() {
     return this.open ? "true" : "false";

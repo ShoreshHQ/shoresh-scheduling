@@ -300,7 +300,7 @@ function danglingLinks(proposal, answers) {
       broken.push(record.fields.Name || record.key || record.id);
     }
   });
-  return broken.map((name) => `Review here: ${name}`);
+  return broken.map((name) => `Needs a look: ${name}`);
 }
 
 /** What still needs an answer (or a fix in the file) before the list can be saved. */

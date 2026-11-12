@@ -276,7 +276,10 @@
         <template lwc:if={hasSettle}>
           <section class="section" data-section="settle">
             <h4 class="section-head">
-              Names to settle <span class="shoresh-num">{settleCount}</span>
+              Needs a look
+              <span class="shoresh-num" data-id="settle-count"
+                >{settleCount}</span
+              >
             </h4>
             <template for:each={settleRows} for:item="row">
               <div key={row.key} class={row.className} data-settle={row.key}>
@@ -370,9 +373,7 @@
         </template>
         <template lwc:if={hasCheck}>
           <section class="section" data-section="check">
-            <h4 class="section-head">
-              To check <span class="shoresh-num">{checkCount}</span>
-            </h4>
+            <h4 class="section-head">How it was read</h4>
             <template for:each={checkList} for:item="row">
               <div
                 key={row.key}

@@ -189,9 +189,9 @@ export default class ShoreshWeekChecks extends LightningElement {
     return spreadOf(this.m);
   }
 
-  /** Under, with a 0 when the camp has goals and none is short (the desktop's grey 0). */
+  /** Short, only while something is: no "0 short" (CORE-6.13; the desktop's grey 0 is gone). */
   get showUnder() {
-    return this.m.hasGoals || this.m.under.count > 0;
+    return this.m.under.count > 0;
   }
   get underCount() {
     return this.m.under.count;
@@ -208,8 +208,9 @@ export default class ShoreshWeekChecks extends LightningElement {
   get underRows() {
     return this.lines.under;
   }
+  /** Over, only while something is: no "0 over" (CORE-6.13). */
   get showOver() {
-    return this.m.hasLimits || this.m.over.count > 0;
+    return this.m.over.count > 0;
   }
   get overCount() {
     return this.m.over.count;

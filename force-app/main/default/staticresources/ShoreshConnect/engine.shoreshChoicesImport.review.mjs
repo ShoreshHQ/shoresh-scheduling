@@ -699,9 +699,14 @@ export function countLines({ request, check, set, t, activities }) {
   const lines = [];
   const camperWords = (n) =>
     `${n} ${n === 1 ? t.sIn("Camper") : t.pIn("Camper")}`;
+  // No "0 new" or "0 already here": a zero is left out (CORE-6.13).
+  const parts = [
+    check.added ? `${check.added} new` : "",
+    check.known ? `${check.known} already here` : ""
+  ].filter(Boolean);
   lines.push({
     key: "count",
-    text: `${camperWords(request.campers.length)}: ${check.added} new, ${check.known} already here`
+    text: `${camperWords(request.campers.length)}: ${parts.join(", ")}`
   });
   if (check.runId) {
     lines.push({

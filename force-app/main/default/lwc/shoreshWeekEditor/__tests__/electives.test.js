@@ -174,6 +174,24 @@ describe("c-shoresh-week-editor: elective sets", () => {
     );
   });
 
+  it("CORE-6.13: a set with no open offerings shows no 0, on its tile or its cell", async () => {
+    const { element } = await render(undefined, undefined, {
+      setup: { ...SETUP, electives: { ...ELECTIVES, offerings: [] } }
+    });
+    expect(palette(element).electives).toEqual([
+      {
+        id: SET_ID,
+        name: "Chugim",
+        words: "",
+        said: "Chugim, Elective set"
+      }
+    ]);
+    await pickSet(element);
+    await fromGrid(element, "cellclick", { key: "0-1" });
+    const cell = grid(element).shadowRoot.querySelector('[data-cell="0-1"]');
+    expect(cell.querySelector(".cell-name").textContent).toBe("Chugim");
+  });
+
   it("has no elective tiles when the camp has no sets", async () => {
     const { element } = await render(undefined, undefined, {
       setup: { activities: [], locations: [] }

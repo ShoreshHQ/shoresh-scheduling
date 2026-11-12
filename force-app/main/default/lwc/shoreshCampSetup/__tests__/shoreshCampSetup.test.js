@@ -1429,10 +1429,10 @@ describe("c-shoresh-camp-setup", () => {
       "Juniors"
     ]);
     expect(q(element, '[data-id="problems"]')).toBeNull();
+    // "No Bunks yet" is said by the Bunks screen's own empty list, not again above it (word
+    // walk W3).
     await openScreen(element, "groups");
-    expect(q(element, '[data-id="problems"]').textContent).toContain(
-      "Juniors: No Bunks yet."
-    );
+    expect(q(element, '[data-id="problems"]')).toBeNull();
     await openScreen(element, "weeks");
     expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
@@ -1445,14 +1445,38 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
-  it("the Bunks screen's problems and table are accessible", async () => {
+  // CORE-6.12: a screen's problems are headed Needs a look, quiet rows with the bronze dot, never a banner.
+  it("a screen's Needs a look and the Bunks screen are accessible", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          programs: [
+            {
+              program: { Id: "p1", Name: "Main", Monday__c: true },
+              timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+              divisions: [
+                {
+                  division: { Id: "d1", Name: "Juniors" },
+                  groups: [{ Id: "g1", Name: "Bunk 1", Division__c: "d1" }]
+                }
+              ]
+            }
+          ],
+          activities: [{ Id: "a1", Name: "Swim", Outdoor__c: true }]
+        })
+      )
+    );
     const element = await render();
-    await openScreen(element, "groups");
+    await openScreen(element, "activities");
+    const problems = q(element, '[data-id="problems"]');
+    expect(problems.querySelector("h3").textContent).toBe("Needs a look");
+    expect(problems.className).not.toContain("slds-theme_warning");
+    expect(problems.querySelector(".shoresh-look-mark")).not.toBeNull();
     // Only these two parts: axe over the whole setup screen takes about 5 s on its own.
-    await expect(q(element, '[data-id="problems"]')).toBeAccessible();
+    await expect(problems).toBeAccessible();
+    await openScreen(element, "groups");
     // The Bunks screen itself: the other screens are on the page too, hidden.
     await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
   }, 60000); // axe over a whole setup screen: 3 s on a quiet Mac, past 20 s on a busy one
@@ -3666,7 +3690,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(line.textContent).toContain(said);
   });
 
-  it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
+  it("offers a changed fixed activity's fixes in Needs a look, and saves the one chosen", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(
