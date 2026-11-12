@@ -300,6 +300,17 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-settle="potterywheel"] .corner')).toBeNull();
     // Settled: the count drops to nothing, never "0".
     expect($(element, '[data-id="settle-count"]').textContent).toBe("");
+    // CORE-6.12: one Needs a look on the card, for what needs an answer. How a list in one cell
+    // was read has nothing to answer: plain information under its own heading, with no count.
+    const heads = $$(element, ".section-head").map((h) => h.textContent.trim());
+    expect(heads.filter((h) => h.startsWith("Needs a look"))).toHaveLength(1);
+    const check = $(element, '[data-section="check"]');
+    expect(check.querySelector(".section-head").textContent.trim()).toBe(
+      "How it was read"
+    );
+    expect(check.querySelector(".shoresh-num")).toBeNull();
+    expect(check.querySelector(".shoresh-look-mark")).toBeNull();
+    expect(check.textContent).toContain("Read as choices in no order");
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
     expect($(element, '[data-section="not-read"]').textContent).toContain(
       'No Bunk "Pine"'

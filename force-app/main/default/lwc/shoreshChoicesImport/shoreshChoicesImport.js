@@ -472,11 +472,12 @@ export default class ShoreshChoicesImport extends LightningElement {
   get hasNotRead() {
     return this.notReadList.length > 0;
   }
+  /**
+   * How a few things were read (a list in one cell, a rank given twice): information, with nothing
+   * to answer, so it is not Needs a look and carries no count (CORE-6.12).
+   */
   get checkList() {
     return this.reading ? toCheckRows(this.reading, this.t) : [];
-  }
-  get checkCount() {
-    return this.checkList.length;
   }
   get notReadCount() {
     return this.notReadList.length;

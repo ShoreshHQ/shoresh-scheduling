@@ -373,9 +373,7 @@
         </template>
         <template lwc:if={hasCheck}>
           <section class="section" data-section="check">
-            <h4 class="section-head">
-              Needs a look <span class="shoresh-num">{checkCount}</span>
-            </h4>
+            <h4 class="section-head">How it was read</h4>
             <template for:each={checkList} for:item="row">
               <div
                 key={row.key}
