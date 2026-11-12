@@ -485,6 +485,25 @@ describe("c-shoresh-week-editor: special days and events", () => {
     );
   });
 
+  // SPECIAL-1.5
+  it("offers Set it up as a special day on a cell a file noted as a trip", async () => {
+    const setUpWith = jest
+      .fn()
+      .mockResolvedValue('"Zoo trip" is set up as a special day, on Monday.');
+    const noted = { kind: "T", id: "", name: "Zoo trip", gone: false };
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith
+    });
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    const button = q(element, '[data-id="set-up"]');
+    expect(button.getAttribute("aria-label")).toBe(
+      "Set up Zoo trip as a special day"
+    );
+    button.click();
+    await flush();
+    expect(setUpWith).toHaveBeenCalledWith({ kind: "T", name: "Zoo trip" });
+  });
+
   it("lets the offer go once a noted special day is set up and replaces its day", async () => {
     const noted = { kind: "D", id: "", name: "Visiting Day", gone: false };
     const mondayVisit = {

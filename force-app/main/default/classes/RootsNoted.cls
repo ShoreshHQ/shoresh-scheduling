@@ -7,8 +7,9 @@
 public with sharing class RootsNoted {
   private static final String IMPORTED = 'Imported';
   private static final String VERSION = 'Version';
-  // What Roots offers to set up: a special event ('S') or a special day ('D').
-  private static final Set<String> KINDS = new Set<String>{ 'S', 'D' };
+  // What Roots offers to set up: a special event ('S'), a special day ('D') or a trip ('T'), which
+  // is set up as a special day (SPECIAL-1.5).
+  private static final Set<String> KINDS = new Set<String>{ 'S', 'D', 'T' };
 
   public class Noted {
     @AuraEnabled

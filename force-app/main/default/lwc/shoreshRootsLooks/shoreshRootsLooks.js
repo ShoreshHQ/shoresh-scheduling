@@ -544,7 +544,8 @@ function eventCards(setup, t) {
  */
 function notedCards(table, t) {
   return (table.noted || []).map((noted) => {
-    const kind = noted.kind === "D" ? t.s("SpecialDay") : t.s("SpecialEvent");
+    // A trip is set up as a special day (SPECIAL-1.5).
+    const kind = noted.kind === "S" ? t.s("SpecialEvent") : t.s("SpecialDay");
     return {
       id: `noted|${noted.kind}|${noted.name}`,
       screen: "specialEvents",

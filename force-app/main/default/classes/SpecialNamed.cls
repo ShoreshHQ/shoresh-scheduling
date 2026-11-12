@@ -15,15 +15,18 @@ public with sharing class SpecialNamed {
 
   /**
    * "Set it up" on Roots' card for what last year's schedule named (repo ADR 0027; SPECIAL-1.4):
-   * the season's special day ('D') or event ('S') of that name, made when there is none, on no
-   * day yet: the director puts it on a day of their choosing on Special events.
+   * the season's special day ('D', or a trip 'T': SPECIAL-1.5) or event ('S') of that name, made
+   * when there is none, on no day yet: the director puts it on a day of their choosing on Special
+   * events.
    */
   public static Named setUpNamed(Id seasonId, String kind, String name) {
     String trimmed = name == null ? '' : name.trim();
-    if (String.isBlank(trimmed) || (kind != 'S' && kind != 'D')) {
+    if (
+      String.isBlank(trimmed) || (kind != 'S' && kind != 'D' && kind != 'T')
+    ) {
       throw new ShoreshException('That can\'t be set up here.');
     }
-    SObject record = kind == 'D'
+    SObject record = kind != 'S'
       ? (SObject) specialDay(seasonId, trimmed)
       : (SObject) event(seasonId, trimmed);
     Named result = new Named();
