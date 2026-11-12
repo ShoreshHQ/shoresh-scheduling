@@ -18,15 +18,74 @@ public with sharing class ManualSetUpCells {
   }
 
   /**
-   * The program's week, on setup already read (Generated Schedule's, a start's, or Manual Build's
-   * open, a GeneratedSetup made on what it read): only the fixed and recurring activities are read here.
+   * The program's week, on setup already read (a start's, or Manual Build's open, a GeneratedSetup
+   * made on what it read) and the program's fixed and recurring activities as fixedOf and
+   * recurringOf read them: reads nothing.
    */
-  public static List<Cell> of(GeneratedSetup setup) {
+  public static List<Cell> of(
+    GeneratedSetup setup,
+    List<FixedActivity__c> fixed,
+    List<RecurringActivity__c> recurring
+  ) {
     try {
-      return of(BlankWeek.build(setup));
+      return of(
+        BlankWeek.build(
+          setup,
+          SetTimePlanReader.planOf(setup, fixed, recurring)
+        )
+      );
     } catch (ShoreshException notReady) {
       return new List<Cell>();
     }
+  }
+
+  /**
+   * The program's fixed activities, with what placing them needs (as SetTimePlanReader reads
+   * them, in its order). For a user who can read it all (SetTimeAccess).
+   */
+  public static List<FixedActivity__c> fixedOf(Id programId) {
+    return [
+      SELECT
+        Id,
+        Name,
+        Program__c,
+        TimeBlock__c,
+        Length__c,
+        EarlyDay__c,
+        EarlyBlocks__c,
+        Location__c,
+        (SELECT Week__c FROM WeekExceptions__r)
+      FROM FixedActivity__c
+      WHERE Program__c = :programId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ];
+  }
+
+  /** The same for its recurring activities. */
+  public static List<RecurringActivity__c> recurringOf(Id programId) {
+    return [
+      SELECT
+        Id,
+        Name,
+        Program__c,
+        TimeBlock__c,
+        Length__c,
+        Location__c,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        Saturday__c,
+        Sunday__c,
+        (SELECT Week__c FROM WeekExceptions__r),
+        (SELECT Division__c, Group__c FROM Coverages__r)
+      FROM RecurringActivity__c
+      WHERE Program__c = :programId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ];
   }
 
   private static List<Cell> of(BlankWeek.Week week) {

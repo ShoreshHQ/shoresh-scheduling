@@ -72,13 +72,46 @@ public with sharing class SetTimePlanReader {
     }
     reader.readSeasons(used);
     reader.readPrograms(used);
+    reader.addAll(fixed, recurring);
+    return reader.plans;
+  }
+
+  /**
+   * The plan of the setup's program in its week, on the program's fixed and recurring activities
+   * a screen has read with the fields read() reads (ManualSetUpCells.fixedOf, recurringOf), so
+   * Manual Build's open reads nothing again for where setup puts them. Reads nothing.
+   */
+  public static SetTimePlan planOf(
+    GeneratedSetup setup,
+    List<FixedActivity__c> fixed,
+    List<RecurringActivity__c> recurring
+  ) {
+    SetTimePlanReader reader = new SetTimePlanReader();
+    SetTimePlan plan = new SetTimePlan();
+    plan.weekIds.add(setup.week.Id);
+    reader.plans.put(setup.program.Season__c, plan);
+    SetTimePlan.ProgramPlan program = new SetTimePlan.ProgramPlan(
+      setup.program
+    );
+    program.addBlocks(setup.blocks);
+    program.groups.addAll(setup.groups);
+    reader.programs.put(setup.program.Id, program);
+    reader.seasonByProgram.put(setup.program.Id, setup.program.Season__c);
+    reader.addAll(fixed, recurring);
+    return plan;
+  }
+
+  /** The fixed activities, then the recurring ones, as items of their season's plan. */
+  private void addAll(
+    List<FixedActivity__c> fixed,
+    List<RecurringActivity__c> recurring
+  ) {
     for (FixedActivity__c item : fixed) {
-      reader.addFixed(item);
+      addFixed(item);
     }
     for (RecurringActivity__c item : recurring) {
-      reader.addRecurring(item);
+      addRecurring(item);
     }
-    return reader.plans;
   }
 
   /** A bunk away, or a location closed, in the mark's week. */
@@ -160,9 +193,7 @@ public with sharing class SetTimePlanReader {
       WITH SYSTEM_MODE
     ]) {
       SetTimePlan.ProgramPlan plan = new SetTimePlan.ProgramPlan(program);
-      for (TimeBlock__c block : program.TimeBlocks__r) {
-        plan.addBlock(block);
-      }
+      plan.addBlocks(program.TimeBlocks__r);
       programs.put(program.Id, plan);
       seasonByProgram.put(program.Id, program.Season__c);
     }

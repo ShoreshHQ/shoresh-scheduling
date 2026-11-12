@@ -84,6 +84,13 @@ public with sharing class SetTimePlan {
       blockIndex.put(block.Id, blocks.size());
       blocks.add(block);
     }
+
+    /** Its time blocks, in the order of the day. */
+    public void addBlocks(List<TimeBlock__c> inOrder) {
+      for (TimeBlock__c block : inOrder) {
+        addBlock(block);
+      }
+    }
   }
 
   /** One fixed or recurring activity, as the cells it takes. */

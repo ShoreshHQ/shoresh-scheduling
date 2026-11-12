@@ -254,20 +254,7 @@ public with sharing class ManualBuildViews {
       read.program.Season__c
     );
     view.groupRecords = read.groups;
-    view.fixedActivityRecords = [
-      SELECT Id, Name, Location__c
-      FROM FixedActivity__c
-      WHERE Program__c = :read.program.Id
-      WITH USER_MODE
-      ORDER BY Id
-    ];
-    view.recurringActivityRecords = [
-      SELECT Id, Name, Location__c
-      FROM RecurringActivity__c
-      WHERE Program__c = :read.program.Id
-      WITH USER_MODE
-      ORDER BY Id
-    ];
+    readSetTimes(view, read);
     ManualBuildNamesNow names = namesNow(view, read);
     if (view.schedule != null) {
       names.applyTo(view.schedule);
@@ -276,7 +263,6 @@ public with sharing class ManualBuildViews {
     view.specials = read.weekHasSpecialDays
       ? WeekSpecials.ofWeek(read.week, read.groups)
       : WeekSpecials.read(read.week, read.groups);
-    view.setUpCells.addAll(setUpCellsOf(read));
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
     // Beside the days as Publish would put them out (SchedulePublish), so a rename since the
@@ -295,22 +281,50 @@ public with sharing class ManualBuildViews {
   }
 
   /**
-   * Where setup puts each fixed and recurring activity this week (ManualSetUpCells), on what the
-   * view has read: only the fixed and recurring activities are read again. As Start a blank
-   * week, none until the season has activities (BlankWeek.checkActivities).
+   * The program's fixed and recurring activities, and where setup puts them this week
+   * (ManualSetUpCells), worked out on them and what the view has read: nothing read again. Read
+   * as they are named for a user who can't read all that placing them needs (SetTimeAccess), and
+   * none placed until the season has activities, as Start a blank week (BlankWeek.checkActivities).
    */
-  private static List<ManualSetUpCells.Cell> setUpCellsOf(Read read) {
-    if (read.setup != null) {
-      return ManualSetUpCells.of(read.setup);
+  private static void readSetTimes(DraftView view, Read read) {
+    if (!SetTimeAccess.canRead()) {
+      view.fixedActivityRecords = [
+        SELECT Id, Name, Location__c
+        FROM FixedActivity__c
+        WHERE Program__c = :read.program.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ];
+      view.recurringActivityRecords = [
+        SELECT Id, Name, Location__c
+        FROM RecurringActivity__c
+        WHERE Program__c = :read.program.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ];
+      return;
     }
+    view.fixedActivityRecords = ManualSetUpCells.fixedOf(read.program.Id);
+    view.recurringActivityRecords = ManualSetUpCells.recurringOf(
+      read.program.Id
+    );
     if (read.activities.isEmpty()) {
-      return new List<ManualSetUpCells.Cell>();
+      return;
     }
-    GeneratedSetup setup = new GeneratedSetup(read.program, read.week);
-    setup.blocks = read.blocks;
-    setup.groups = read.groups;
-    setup.exceptions = read.exceptions;
-    return ManualSetUpCells.of(setup);
+    GeneratedSetup setup = read.setup;
+    if (setup == null) {
+      setup = new GeneratedSetup(read.program, read.week);
+      setup.blocks = read.blocks;
+      setup.groups = read.groups;
+      setup.exceptions = read.exceptions;
+    }
+    view.setUpCells.addAll(
+      ManualSetUpCells.of(
+        setup,
+        view.fixedActivityRecords,
+        view.recurringActivityRecords
+      )
+    );
   }
 
   /** Setup's names now, from what the view has read (ManualBuildNamesNow). */
