@@ -279,6 +279,11 @@ describe("c-shoresh-choices-import", () => {
     // disabled until every name was answered, none pre-selected).
     // Marked for a look until the director picks an answer.
     expect(row.querySelector(".corner")).not.toBeNull();
+    // CORE-6.12: headed Needs a look, its count what is left to settle.
+    expect(
+      $(element, '[data-section="settle"] .section-head').textContent
+    ).toContain("Needs a look");
+    expect($(element, '[data-id="settle-count"]').textContent).toBe("1");
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
     const proposal = row.querySelector('[data-answer="proposal"]');
     expect(proposal.textContent.trim()).toBe("Same as Pottery");
@@ -293,6 +298,8 @@ describe("c-shoresh-choices-import", () => {
       ).getAttribute("aria-pressed")
     ).toBe("true");
     expect($(element, '[data-settle="potterywheel"] .corner')).toBeNull();
+    // Settled: the count drops to nothing, never "0".
+    expect($(element, '[data-id="settle-count"]').textContent).toBe("");
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
     expect($(element, '[data-section="not-read"]').textContent).toContain(
       'No Bunk "Pine"'
@@ -327,7 +334,7 @@ describe("c-shoresh-choices-import", () => {
       k: "ranked"
     });
     expect($(element, '[data-line="count"]').textContent).toContain(
-      "3 campers: 3 new, 0 already here"
+      "3 campers: 3 new"
     );
     expect($(element, '[data-line="offered-a3"]').textContent).toContain(
       "Pottery isn't offered in Chugim"
