@@ -150,7 +150,7 @@ describe("the start", () => {
     // No seats yet: no counter, no Assign again.
     expect($(element, '[data-id="counter"]')).toBeNull();
     expect($(element, '[data-id="assign-again"]')).toBeNull();
-    expect(text($(element, '[data-id="bring-in"]'))).toBe("Bring in choices");
+    expect(text($(element, '[data-id="bring-in"]'))).toBe("Import choices");
     await expect(element).toBeAccessible();
   });
 
@@ -244,7 +244,7 @@ describe("the start", () => {
     });
   });
 
-  it("asks Assign against when the week has two schedules", async () => {
+  it("asks Schedule when the week has two schedules, its name shown, not only read out", async () => {
     const element = await render({
       setup: {
         ...SETUP,
@@ -261,7 +261,8 @@ describe("the start", () => {
       }
     });
     const picker = $(element, 'c-shoresh-rail-picker[data-id="schedule"]');
-    expect(picker.label).toBe("Assign against");
+    expect(picker.label).toBe("Schedule");
+    expect(text($(element, ".rail-word"))).toBe("Schedule");
     expect(picker.options.map((o) => o.label)).toEqual([
       "Manual Build",
       "Generated Schedule"
@@ -272,7 +273,7 @@ describe("the start", () => {
   it("says when no choices are in yet, and when there is no elective set", async () => {
     let element = await render({ situation: { runs: [] } });
     expect($(element, '[data-id="no-run"]').title).toBe(
-      "No choices brought in for Chugim in Week 1 yet."
+      "No choices imported for Chugim in Week 1 yet."
     );
     expect($(element, '[data-id="primary"]')).toBeNull();
     document.body.removeChild(element);
@@ -656,9 +657,7 @@ describe("Assign seats", () => {
     sent.seats.forEach((s) =>
       expect(["o1", "o2", "o3"]).toContain(s.offeringId)
     );
-    expect(text($(element, '[data-id="status"]'))).toBe(
-      "Seats assigned: 3 of 4 placed."
-    );
+    expect(text($(element, '[data-id="status"]'))).toBe("3 of 4 placed.");
     // Now: the counter, Assign again beside the main button, and Finalize.
     const counter = $(element, 'c-shoresh-rail-pop[data-id="counter"]');
     expect([counter.count, counter.label]).toEqual(["3", "of 4 placed"]);
@@ -756,10 +755,16 @@ describe("Finalize, Final, and a new version", () => {
     const element = await render({
       view: assignedView({ scheduleChanged: true })
     });
+    // Greg's picks (2026-11-12): Changed since, and what changed is the menu's first line.
+    // A draft always says Draft.
+    const state = $(element, 'c-shoresh-rail-pop[data-id="state"]');
     expect(
       popButton(element, "state").textContent.replace(/\s+/g, " ").trim()
-    ).toBe("Committed");
-    expect($(element, 'c-shoresh-rail-pop[data-id="state"]').mark).toBe(true);
+    ).toBe("Draft · Changed since");
+    expect(state.mark).toBe(true);
+    expect(text(state.querySelector('[data-id="state-note"]'))).toBe(
+      "Schedule changed since seats were assigned"
+    );
     finalizeRun.mockRejectedValue({
       body: { message: "Schedule changed. Assign again first." }
     });
@@ -784,7 +789,7 @@ describe("Finalize, Final, and a new version", () => {
     );
   });
 
-  it("a final run whose schedule changed reads Out of date, and offers Start a new version", async () => {
+  it("final seats whose schedule changed read Changed since, and offer Change seats (Greg's picks, 2026-11-12)", async () => {
     const final = assignedView({
       scheduleChanged: true,
       run: {
@@ -801,13 +806,20 @@ describe("Finalize, Final, and a new version", () => {
     const state = $(element, 'c-shoresh-rail-pop[data-id="state"]');
     expect(
       popButton(element, "state").textContent.replace(/\s+/g, " ").trim()
-    ).toBe("Out of date");
+    ).toBe("Changed since");
     expect(text(state.querySelector('[data-id="state-note"]'))).toBe(
       "Schedule changed since it was finalized"
     );
-    expect(text(state.querySelector('[data-id="new-version"]'))).toBe(
-      "Start a new version"
+    expect(state.alternativeText).toBe(
+      "Chugim · Week 1: Changed since, Schedule changed since it was finalized"
     );
+    expect(text(state.querySelector('[data-id="new-version"]'))).toBe(
+      "Change seats"
+    );
+    // Final is a check mark, not the padlock (which means a locked seat here).
+    const finalRow = state.querySelector(".run-row");
+    expect(finalRow.querySelector('[data-id="final-mark"]')).not.toBeNull();
+    expect(finalRow.querySelector("c-shoresh-lock")).toBeNull();
     const copy = runView({
       run: { ...RUN_INFO, id: "r2", newVersionOf: "r1" },
       revision: 1
@@ -820,7 +832,7 @@ describe("Finalize, Final, and a new version", () => {
     await flush();
     expect(startNewVersion).toHaveBeenCalledWith({ runId: "r1" });
     expect(text($(element, '[data-id="status"]'))).toBe(
-      "A new version started, with the choices, locks and moves made by hand."
+      "A new draft of these seats, with the choices, locks and moves made by hand."
     );
     expect(text($(element, '[data-id="primary"]'))).toBe("Assign seats");
     // The menu it was chosen from was held while saving: the cursor is back on it.

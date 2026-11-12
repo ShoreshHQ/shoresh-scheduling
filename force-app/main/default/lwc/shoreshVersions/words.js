@@ -25,7 +25,7 @@ export function metaOf(version) {
   const meta = [
     ORIGINS[version.origin] || version.origin,
     version.reason === AUTO_SAVED ? "Auto-saved" : null,
-    version.reason === THROUGH_AGENT ? "Through an agent" : null,
+    version.reason === THROUGH_AGENT ? "By your AI" : null,
     version.publishedAt && showSaved ? "Published" : null
   ]
     .filter(Boolean)

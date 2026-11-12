@@ -170,10 +170,10 @@ describe("c-shoresh-special-details", () => {
           plain
         )
       ).toEqual([
-        '"Field Day" starts from Main\'s 3 time blocks, with Lunch brought in.',
-        "Not brought in, since they don't run every day: Swim and Art.",
-        "Not brought in, since they don't run every week: Flag.",
-        "Not brought in, since they are in other time blocks: Campfire."
+        '"Field Day" starts from Main\'s 3 time blocks, with Lunch copied.',
+        "Not copied, since they don't run every day: Swim and Art.",
+        "Not copied, since they don't run every week: Flag.",
+        "Not copied, since they are in other time blocks: Campfire."
       ]);
       expect(
         seededLines(
@@ -222,7 +222,7 @@ describe("c-shoresh-special-details", () => {
     // The door to the schedule inside opens it.
     const door = element.shadowRoot.querySelector('[data-id="open-schedule"]');
     expect(door.getAttribute("aria-disabled")).toBeNull();
-    expect(door.textContent.trim()).toBe("Open schedule");
+    expect(door.textContent.trim()).toBe("View schedule");
     const opened = jest.fn();
     element.addEventListener("openschedule", opened);
     door.click();
@@ -248,11 +248,11 @@ describe("c-shoresh-special-details", () => {
     await flush();
     expect(text(element, "where")).toBe("Main field");
     expect(text(element, "placed-on")).toBe("Week 2 · Tue, Week 5 · Tue");
-    expect(text(element, "event-schedule")).toBe("None yet");
+    expect(text(element, "event-schedule")).toBe("No schedule yet");
     expect(element.shadowRoot.querySelector('[data-id="periods"]')).toBeNull();
     element.open("se2");
     await flush();
-    expect(text(element, "where")).toBe("None");
+    expect(text(element, "where")).toBe("—");
     expect(text(element, "event-schedule")).toBe("Can't be read");
     await expect(element).toBeAccessible();
   });

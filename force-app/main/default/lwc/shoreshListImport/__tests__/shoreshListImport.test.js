@@ -348,8 +348,8 @@ describe("c-shoresh-list-import", () => {
     await flush();
     expect($$(element, ".list-heading").map((h) => h.textContent)).toEqual([
       "“Activity”",
-      "“Notes”Remembered from a former user's answer on Aug 14",
-      "“Colour”Remembered from Dana's answer on Jul 3"
+      "“Notes”Answered as before · a former user, Aug 14",
+      "“Colour”Answered as before · Dana, Jul 3"
     ]);
   });
 
@@ -647,7 +647,7 @@ describe("c-shoresh-list-import", () => {
   it("a new row's blank required cell shows its starting value", async () => {
     const element = await openWith(["Activity,Length", "Canoeing,"].join("\n"));
     const length = $(element, '[data-row="Canoeing"] td.cell_quiet');
-    expect(textOf(length)).toBe("1, starting value");
+    expect(textOf(length)).toBe("1, Guessed");
   });
   // INGEST-1.4
   it("refuses a file over 10 MB before reading it, saves nothing, and reads the next file chosen", async () => {
@@ -978,7 +978,7 @@ describe("the Special events list (SPECIAL-2.3)", () => {
     // What a new special day left out of the regular day is said, as its blank row says it.
     expect(
       $$(element, '[data-id="summary"] li').map((li) => textOf(li))
-    ).toContain("Not brought in, since they don't run every day: Swim.");
+    ).toContain("Not copied, since they don't run every day: Swim.");
     expect(plan.records).toEqual([
       {
         kind: "SpecialEvent",
@@ -1141,7 +1141,7 @@ describe("Import worksheet (Roots)", () => {
       "Activities",
       "Fixed activities",
       "Recurring activities",
-      "Runs in"
+      "Which weeks"
     ]);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
       "Nothing to change"
@@ -1322,11 +1322,11 @@ describe("Import worksheet (Roots)", () => {
       );
       const note = $(element, '[data-id="choices-file"]');
       expect(note.textContent).toContain(
-        "activities.csv: that file is camper choices, not offerings. Nothing was saved."
+        "activities.csv: that file is camper choices, not electives. Nothing was saved."
       );
       expect($(element, 'tr[data-kind="new"]')).toBeNull();
       const button = $(element, 'lightning-button[data-id="bring-in-choices"]');
-      expect(button.label).toBe("Bring in choices");
+      expect(button.label).toBe("Import choices");
       const heard = jest.fn();
       element.addEventListener("bringinchoices", heard);
       button.click();
@@ -1361,7 +1361,7 @@ describe("Import worksheet (Roots)", () => {
       $(element, '[data-id="list-import"]').dispatchEvent(event);
       await flush();
       expect($(element, '[data-id="choices-file"]').textContent).toContain(
-        "Pasted cells: those are camper choices, not offerings. Nothing was saved."
+        "Pasted cells: those are camper choices, not electives. Nothing was saved."
       );
       expect(saveList).not.toHaveBeenCalled();
     });

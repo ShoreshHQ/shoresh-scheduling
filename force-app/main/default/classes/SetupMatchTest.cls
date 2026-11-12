@@ -299,9 +299,9 @@ private class SetupMatchTest {
       Assert.isFalse(groupB.takesChoices);
       Assert.areEqual('Open', groupB.lines[0].before);
       Assert.areEqual('Assembly', groupB.lines[0].after);
-      Assert.areEqual('Assembly is set up here now', groupB.lines[0].reason);
+      Assert.areEqual('Assembly goes here', groupB.lines[0].reason);
       Assert.areEqual(
-        'Assembly is set up here now',
+        'Assembly goes here',
         SetupMatchTestData.dotsOf(preview)
           .get(mondayKey(ids, 'Group B', 'Period 1'))
       );
@@ -357,7 +357,7 @@ private class SetupMatchTest {
       Assert.isTrue(change.takesChoices);
       Assert.areEqual('Swim', change.lines[0].before);
       Assert.areEqual('Assembly', change.lines[0].after);
-      Assert.areEqual('Assembly is set up here now', change.lines[0].reason);
+      Assert.areEqual('Assembly goes here', change.lines[0].reason);
       SetupMatch.Updated updated = makeChanges(
         draftId,
         SetupMatchTestData.keysOf(preview),
@@ -938,8 +938,9 @@ private class SetupMatchTest {
         draftId
       );
       Test.stopTest();
+      // Named, with its change (coordinator's wording for Greg, 2026-11-12).
       Assert.areEqual(
-        'Not set up here now',
+        'Assembly is no longer set up here',
         SetupMatchTestData.dotsOf(preview)
           .get(mondayKey(ids, 'Group A', 'Period 1'))
       );
@@ -978,7 +979,7 @@ private class SetupMatchTest {
       );
       Test.stopTest();
       Map<String, String> dots = SetupMatchTestData.dotsOf(preview);
-      // Not "Not set up here now": Assembly still is; the group changed.
+      // Not "Assembly is no longer set up here": Assembly still is; the group changed.
       Assert.areEqual(
         'Not at camp this week',
         dots.get(mondayKey(ids, 'Group A', 'Lunch')),

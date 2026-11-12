@@ -197,10 +197,13 @@ private class AgentBuildTest {
       List<Object> answer = send('build_week', body);
       Test.stopTest();
       Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
-      Assert.areEqual('Filled the open cells of Week 1.', answer[1]);
+      Assert.areEqual(
+        'Placed what fits in the open cells of Week 1.',
+        answer[1]
+      );
       Set<String> names = versionsMade();
       Assert.isTrue(
-        names.contains('Before Filled the open cells of Week 1'),
+        names.contains('Before Placed what fits in the open cells of Week 1'),
         names.toString()
       );
       Assert.isFalse(names.contains('Before Fill the open cells'));

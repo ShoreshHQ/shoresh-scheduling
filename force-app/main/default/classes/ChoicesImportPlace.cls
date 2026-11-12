@@ -126,7 +126,7 @@ public with sharing class ChoicesImportPlace {
     Decimal now = run == null ? null : run.Revision__c;
     if (now != request.runRevision) {
       throw new ShoreshException(
-        'Someone else brought in choices for this run since you started. Choose the file again to see them.'
+        'Someone else imported choices for these seats since you started. Choose the file again to see them.'
       );
     }
   }

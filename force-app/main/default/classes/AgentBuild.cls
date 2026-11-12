@@ -180,7 +180,7 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
         return 'Option ' + option + ' of ' + weekName;
       }
       when 'FillOpen' {
-        return 'Filled the open cells of ' + weekName;
+        return 'Placed what fits in the open cells of ' + weekName;
       }
       when 'StartOver' {
         return 'Started ' + weekName + ' over';

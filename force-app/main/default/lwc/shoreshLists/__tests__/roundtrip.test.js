@@ -74,7 +74,7 @@ describe("round trip", () => {
       "Location types",
       "Camp words",
       "Weeks",
-      "Runs in"
+      "Which weeks"
     ]);
     LIST_SCREENS.forEach((screenKey) => expectNoChanges(screenKey, file));
   });
@@ -121,7 +121,7 @@ describe("round trip", () => {
       ["Division", "Unit", "Units"]
     ]);
     expect(sheets.Weeks[1]).toEqual(["Week 1", "2027-06-28", "2027-07-02"]);
-    expect(sheets["Runs in"][0]).toEqual([
+    expect(sheets["Which weeks"][0]).toEqual([
       "Kind",
       "Program",
       "Unit",
@@ -129,7 +129,7 @@ describe("round trip", () => {
       "Week 1",
       "Week 2"
     ]);
-    expect(sheets["Runs in"]).toContainEqual([
+    expect(sheets["Which weeks"]).toContainEqual([
       "Bunk",
       "Main",
       "Juniors",
@@ -137,7 +137,7 @@ describe("round trip", () => {
       "Yes",
       "Yes"
     ]);
-    expect(sheets["Runs in"]).toContainEqual([
+    expect(sheets["Which weeks"]).toContainEqual([
       "Activity",
       "",
       "",
@@ -535,11 +535,11 @@ describe("PR C own review: what the probes found", () => {
     });
   });
 
-  it("two weeks of one name are told apart on Runs in by their start dates", () => {
+  it("two weeks of one name are told apart on Which weeks by their start dates", () => {
     const s = camp();
     s.weeks[1].Name = "Week 1";
     const runsIn = campWorkbookSheets(s, terms).find(
-      (x) => x.name === "Runs in"
+      (x) => x.name === "Which weeks"
     ).rows[0];
     expect(runsIn.slice(4)).toEqual([
       "Week 1 (2027-06-28)",
@@ -670,7 +670,7 @@ const WORKBOOK_WEEKS = [
     ]
   },
   {
-    name: "Runs in",
+    name: "Which weeks",
     rows: [
       ["Kind", "Program", "Unit", "Name", "Week 1", "Week 2"],
       ["Bunk", "Main", "Juniors", "Bunk 1", "Yes", "Yes"],
@@ -701,7 +701,7 @@ describe("the downloads say the season as it is", () => {
   it("the workbook's weeks and the weeks each item runs in", () => {
     expect(
       campWorkbookSheets(camp(), terms).filter((sheet) =>
-        ["Weeks", "Runs in"].includes(sheet.name)
+        ["Weeks", "Which weeks"].includes(sheet.name)
       )
     ).toEqual(WORKBOOK_WEEKS);
   });

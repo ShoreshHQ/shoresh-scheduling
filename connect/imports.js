@@ -327,7 +327,7 @@ async function importFile(capability, given, { read, send, answer, load }) {
     }
     if (choices) {
       return refused(
-        `${file.name}: that file is camper choices, not offerings. Nothing was saved. Bring it in with bring_in_camper_elective_choices.`
+        `${file.name}: that file is camper choices, not electives. Nothing was saved. Import it with bring_in_camper_elective_choices.`
       );
     }
   }

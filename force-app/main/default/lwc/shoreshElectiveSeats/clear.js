@@ -1,7 +1,7 @@
 /**
  * End-of-season Clear, as a picture (electives slice E10; repo ADR 0018 choices 55 to 58; Greg's
  * decision 59, design-research/electives-r1 clear-b and clear-b-week): the whole summer drawn,
- * weeks across, with rows for Campers, Choices, Seats and Runs; what goes is dashed, faded and its
+ * weeks across, with rows for Campers, Choices, Seats and Draft / Final; what goes is dashed, faded and its
  * number struck through; Sets, Offerings and Linked stay as solid bars with a padlock. Picking one
  * week dashes only that week. No sentences: the picture says it.
  *
@@ -9,7 +9,7 @@
  * only those no other week has (the rest stay, drawn solid beside them); the whole season's are
  * every camper, so each row's head carries the total that goes. Pure: from ElectiveClear.Picture.
  */
-import { shortDate } from "c/shoreshTerms";
+import { setsBesideElectives, shortDate } from "c/shoreshTerms";
 
 // Decoration only: the seat dots and the 1-2-3 marks are drawn, not counted.
 const SEAT_DOTS = 12;
@@ -81,16 +81,21 @@ export function clearBoard(picture, weekId, t) {
         final,
         state: final
           ? `Final${week.lastFinalized ? ` · ${shortDate(week.lastFinalized)}` : ""}`
-          : "Committed",
-        words: `${week.name}, runs: ${week.runs}${final ? "" : ", not final"}, ${goneWord}`
+          : "Draft",
+        // Named, never "runs" (Greg's pick, 2026-11-12): the week's seats, draft or final.
+        words: `${week.name}, ${t.pIn("Seats")}: ${final ? "Final" : "Draft"}, ${goneWord}`
       }
     };
   });
   // The whole season: every camper goes, those in no run too.
   if (!weekId) totals.campers = (picture && picture.campers) || 0;
   const stays = [
-    ["sets", t.p("ElectiveSet"), (picture && picture.sets) || []],
-    ["offerings", t.p("Offering"), (picture && picture.offerings) || []],
+    [
+      "sets",
+      setsBesideElectives(t, true) || t.p("ElectiveSet"),
+      (picture && picture.sets) || []
+    ],
+    ["offerings", t.p("Elective"), (picture && picture.offerings) || []],
     ["linked", t.p("LinkedChoice"), (picture && picture.linked) || []]
   ].map(([key, label, names]) => ({
     key,

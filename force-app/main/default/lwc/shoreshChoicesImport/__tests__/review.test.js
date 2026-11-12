@@ -215,12 +215,12 @@ describe("card 2: what needs a person", () => {
         kind: "same",
         activityId: "a3",
         remembered: true,
-        note: "Remembered from Dana's answer on Jul 3"
+        note: "Answered as before · Dana, Jul 3"
       },
       photoclub: {
         kind: "leave",
         remembered: true,
-        note: "Remembered from your answer on Oct 26"
+        note: "Answered as before · Oct 26"
       }
     });
     expect(
@@ -526,7 +526,7 @@ describe("card 3: the count", () => {
     });
     expect(out.map((l) => [l.text, !!l.look])).toEqual([
       ["4 campers: 1 new, 3 already here", false],
-      ['Brought into "Chugim · Week 3" again', false],
+      ['Imported into "Chugim · Week 3" again', false],
       ["1 camper's choices were changed by hand: kept", false],
       [
         "Maya Fernwood: the sheet now says something else; the hand change is kept",
@@ -536,7 +536,10 @@ describe("card 3: the count", () => {
         'Camper number 1002 is "Eli Marblecreste" here; the sheet says "Eli Marblecrest". Kept "Eli Marblecreste".',
         true
       ],
-      ["2 campers in this run aren't on this sheet: their choices stay", false],
+      [
+        '2 campers in "Chugim · Week 3" aren\'t on this sheet: their choices stay',
+        false
+      ],
       ["Pottery isn't offered in Chugim: 4 choices", true]
     ]);
   });

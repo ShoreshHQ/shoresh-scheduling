@@ -75,7 +75,7 @@ function howOf(action, option, loaded) {
 /**
  * read: what /v1/build_week answers. how: { action (ACTION's TRY_ANOTHER, FILL_OPEN or START_OVER,
  * or BRING_BACK), week (its name), option (only to bring one back) }. Answers { ok: true, save,
- * said } (save: what /v1/build_week takes back; said: the screen's "Filled 30 of 35."),
+ * said } (save: what /v1/build_week takes back; said: the screen's "30 of 35 placed."),
  * { ok: true, unchanged } (the option the week is already on: on screen, a click that does
  * nothing), or { ok: false, error }.
  */
@@ -118,7 +118,7 @@ export function menuForAgent(read, { action, week, option }) {
   ).checked.cells;
   return {
     ok: true,
-    said: `Filled ${filled} of ${total}.`,
+    said: `${filled} of ${total} placed.`,
     save: {
       action: how.action,
       revision: request.revision,

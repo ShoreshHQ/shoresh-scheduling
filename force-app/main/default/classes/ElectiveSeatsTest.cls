@@ -456,7 +456,7 @@ private class ElectiveSeatsTest {
 
       // A final run never changes.
       Assert.areEqual(
-        '"Chugim · Week 1" is final, so its seats can\'t change. Start a new version first.',
+        '"Chugim · Week 1" is final, so its seats can\'t change. Choose Change seats first.',
         refusalOf(new Assigning(camp, camp.everyoneInDrama(view.revision)))
       );
     }
@@ -796,7 +796,7 @@ private class ElectiveSeatsTest {
         refusal = e.getMessage();
       }
       Assert.areEqual(
-        'A new version of "Chugim · Week 1" is already being worked on. Choose Committed in the run\'s menu.',
+        '"Chugim · Week 1" is already being changed. Choose Draft in its menu.',
         refusal
       );
       Test.stopTest();
@@ -865,7 +865,10 @@ private class ElectiveSeatsTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.areEqual('This run is no longer there. Reload the page.', message);
+      Assert.areEqual(
+        'These seats are no longer there. Reload the page.',
+        message
+      );
       Assert.isTrue(used <= 3, 'Queries for one refusal: ' + used);
     }
   }

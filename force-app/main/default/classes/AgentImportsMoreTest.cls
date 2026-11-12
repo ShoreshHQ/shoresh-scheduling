@@ -322,7 +322,7 @@ private class AgentImportsMoreTest {
       Assert.areEqual(200, imported[0], String.valueOf(imported[1]));
       Assert.isTrue(
         ((String) imported[1])
-          .startsWith('Imported color-war.csv: 3 cells filled.'),
+          .startsWith('Imported color-war.csv: 3 cells placed.'),
         String.valueOf(imported[1])
       );
       Assert.areEqual(409, again[0], String.valueOf(again[1]));

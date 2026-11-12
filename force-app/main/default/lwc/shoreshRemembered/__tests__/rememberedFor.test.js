@@ -15,7 +15,7 @@ describe("rememberedFor", () => {
     const read = jest.fn().mockResolvedValue([row]);
     await expect(rememberedFor(setup, read)).resolves.toEqual({
       answers: { "kind|Main|Lunch": "fixed" },
-      notes: { "kind|Main|Lunch": "Remembered from your answer on Jul 3" },
+      notes: { "kind|Main|Lunch": "Answered as before · Jul 3" },
       rows: [row]
     });
     expect(read).toHaveBeenCalledWith({ campId: "camp1" });

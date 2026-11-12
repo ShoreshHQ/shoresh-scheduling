@@ -159,7 +159,7 @@ private class AgentElectivesRestTest {
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
       Assert.isTrue(
-        ((String) read[1]).contains('finalized;'),
+        ((String) read[1]).contains('Final;'),
         String.valueOf(read[1])
       );
       Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
@@ -230,11 +230,16 @@ private class AgentElectivesRestTest {
         ((String) read[1]).contains('seen: ' + stamp),
         String.valueOf(read[1])
       );
+      // Said as a person says it: never "1 draft or final (1 final)".
+      Assert.isTrue(
+        ((String) read[1]).contains(' seats, 1 set of seats, final'),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(1, runsAfterRefused, 'nothing cleared when refused');
       Assert.areEqual(200, cleared[0], String.valueOf(cleared[1]));
-      Assert.areEqual('Cleared: 1 run, 2 campers.', cleared[1]);
+      Assert.areEqual('Cleared these seats and 2 campers.', cleared[1]);
       Assert.areEqual(0, [SELECT COUNT() FROM ElectiveRun__c WITH SYSTEM_MODE]);
       Assert.areEqual(
         1,

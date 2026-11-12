@@ -563,10 +563,10 @@ describe("c-shoresh-schedules", () => {
       const element = await render();
       const group = q(element, '[aria-label="Versions and export"]');
       expect(group.getAttribute("role")).toBe("group");
-      // "Excel" on the rail, the desktop's "Export to Excel" as its name (it holds the words shown).
+      // "Excel" on the rail, "Download Excel" as its name (Greg's pick, 2026-11-12: Download).
       const excel = group.querySelector('[data-id="export"]');
       expect(excel.textContent.trim()).toBe("Excel");
-      expect(excel.getAttribute("aria-label")).toBe("Export to Excel");
+      expect(excel.getAttribute("aria-label")).toBe("Download Excel");
       expect(group.querySelector('[data-id="print"]').textContent.trim()).toBe(
         "Print"
       );

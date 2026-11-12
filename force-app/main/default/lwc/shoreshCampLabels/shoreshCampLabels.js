@@ -49,14 +49,7 @@ const SECTIONS = [
   {
     key: "electives",
     title: "Electives",
-    terms: [
-      "Elective",
-      "ElectiveSet",
-      "Offering",
-      "Seats",
-      "MinimumToRun",
-      "LinkedChoice"
-    ]
+    terms: ["Elective", "ElectiveSet", "Seats", "MinimumToRun", "LinkedChoice"]
   },
   { key: "schedules", title: "Schedules", terms: [] }
 ];

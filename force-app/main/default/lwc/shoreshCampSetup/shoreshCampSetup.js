@@ -48,6 +48,8 @@ import {
 import { leftField } from "c/shoreshSavedMark";
 import {
   briefOf,
+  NO_PLACE,
+  NO_SCHEDULE,
   placedOnText,
   scheduleText,
   seededLines,
@@ -1860,7 +1862,8 @@ export default class ShoreshCampSetup extends LightningElement {
           type: "picklist",
           width: 11,
           options: [
-            { label: "None", value: "" },
+            // No place: a dash; "None" read two ways (coordinator's wording, 2026-11-12).
+            { label: NO_PLACE, value: "" },
             ...((setup && setup.locations) || []).map((l) => ({
               label: l.Name,
               value: l.Id
@@ -1885,7 +1888,7 @@ export default class ShoreshCampSetup extends LightningElement {
         // The blank row has nothing to show yet.
         textFor: (saved) => {
           if (!saved.Id) return "";
-          return scheduleText(brief(saved), isEvent, t) || "None";
+          return scheduleText(brief(saved), isEvent, t) || NO_SCHEDULE;
         },
         exceptionFor: (saved) => !!saved.Id && brief(saved).planned
       },
@@ -2053,7 +2056,7 @@ export default class ShoreshCampSetup extends LightningElement {
         heading: set.Name,
         first: index === 0,
         count: openCount(mine),
-        title: `${set.Name}: ${this.terms.p("Offering")}`,
+        title: `${set.Name}: ${this.terms.p("Elective")}`,
         addLabel: `Add to ${set.Name}`,
         columns: this.offeringColumns(set.Id),
         defaults: { [OFFER.ElectiveSet]: set.Id }
@@ -2125,7 +2128,7 @@ export default class ShoreshCampSetup extends LightningElement {
     return [
       {
         fieldName: OFFER.Activity,
-        label: t.s("Offering"),
+        label: t.s("Elective"),
         type: "picklist",
         required: true,
         width: 14,
@@ -2211,16 +2214,22 @@ export default class ShoreshCampSetup extends LightningElement {
     return result;
   }
 
-  /** A proposed offering's Confirm: saved at once, as the row's change. */
+  /**
+   * A guessed elective's Looks right (Greg's pick, 2026-11-12: Guessed + Looks right, never
+   * Proposed/Confirm): saved at once, as the row's change; read out as guessed.
+   */
   get offeringActions() {
     const result = {};
+    const names = this.activityNames;
     this.electives.offerings
       .filter((o) => o[OFFER.Proposed])
       .forEach((o) => {
+        const name = names.get(o[OFFER.Activity]) || "";
         result[o.Id] = [
           {
             key: "confirm",
-            label: "Confirm",
+            label: "Looks right",
+            title: `${name ? `${name}: ` : ""}Guessed. Looks right`,
             changes: { [OFFER.Proposed]: false }
           }
         ];
@@ -2439,7 +2448,7 @@ export default class ShoreshCampSetup extends LightningElement {
       electiveSets: t.p("ElectiveSet"),
       addElectiveSet: `Add ${t.s("ElectiveSet")}`,
       noElectiveSets: `No ${t.pIn("ElectiveSet")} yet`,
-      noOfferings: `No ${t.pIn("Offering")} yet`
+      noOfferings: `No ${t.pIn("Elective")} yet`
     };
   }
 

@@ -58,7 +58,7 @@ describe("the running list", () => {
     expect(view(historyLines(events, answers, t, spell))).toEqual([
       [
         "Swim is an activity",
-        "From a former user's answer in an import",
+        "Answered as before · a former user",
         "Jul 12",
         "",
         true
@@ -66,7 +66,7 @@ describe("the running list", () => {
       ["Riflery: Activity deleted", "Deleted by you", "Jul 10", "", true],
       [
         "Carpool is a fixed activity",
-        "From Dana's answer in an import",
+        "Answered as before · Dana",
         "Jul 3",
         "",
         true
@@ -83,13 +83,7 @@ describe("the running list", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      [
-        "Lunch is a fixed activity",
-        "From your answer in an import",
-        "Jul 3",
-        "",
-        true
-      ]
+      ["Lunch is a fixed activity", "Answered as before", "Jul 3", "", true]
     ]);
     expect(lines[0].answer.id).toBe("x");
   });
@@ -110,7 +104,7 @@ describe("the running list", () => {
       ["Lunch is a fixed activity", "Changed by you", "Jul 20", "", true],
       [
         "Lunch is an activity",
-        "From Dana's answer in an import",
+        "Answered as before · Dana",
         "Jul 3",
         "Updated",
         false
@@ -150,14 +144,14 @@ describe("the running list", () => {
       ],
       [
         "Lunch is a fixed activity",
-        "From Dana's answer in an import",
+        "Answered as before · Dana",
         "Jul 10",
         "Forgotten",
         false
       ],
       [
         "Lunch is an activity",
-        "From Dana's answer in an import",
+        "Answered as before · Dana",
         "Jul 3",
         "Replaced",
         false

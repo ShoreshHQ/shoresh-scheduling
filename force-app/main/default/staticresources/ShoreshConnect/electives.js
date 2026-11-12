@@ -63,7 +63,7 @@ async function assignElectiveSeats(
   return {
     ok: true,
     status: 200,
-    text: `${t.p("Seats")} assigned: ${board.counter.placed} of ${board.counter.total} placed.`
+    text: `${board.counter.placed} of ${board.counter.total} placed.`
   };
 }
 

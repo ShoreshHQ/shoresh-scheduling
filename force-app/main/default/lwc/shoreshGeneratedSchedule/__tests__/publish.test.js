@@ -315,6 +315,10 @@ describe("Publish on the Generated Schedule screen", () => {
       cleanWeek({ published: { ...PUBLISHED, changedSince: true } })
     );
     expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
+    // Greg's pick (2026-11-12): one "Changed since", with what changed.
+    expect(q(element, '[data-id="published-menu"]').alternativeText).toBe(
+      "Published · Changed since: cells edited"
+    );
     previewPublish.mockResolvedValue(
       preview({
         published: PUBLISHED,

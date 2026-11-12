@@ -463,7 +463,7 @@ private class ChoicesImportTest {
       Test.stopTest();
 
       Assert.areEqual(
-        'Someone else brought in choices for this run since you started. Choose the file again to see them.',
+        'Someone else imported choices for these seats since you started. Choose the file again to see them.',
         message
       );
     }

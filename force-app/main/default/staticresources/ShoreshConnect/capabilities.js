@@ -184,7 +184,7 @@ function change(
   return act(
     name,
     api,
-    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "Through an agent" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "By your AI" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
     { ...week, ...more },
     required
   );
@@ -262,14 +262,14 @@ function importFile(name, api, description, more = {}, required = []) {
 }
 
 /**
- * bring_in_choices (API-1.117): the Elective seats screen's own Bring in choices, a file like an
+ * bring_in_choices (API-1.117): the Elective seats screen's own Import choices, a file like an
  * import's, worked out with the screen's own modules (connect/choices.js).
  */
 function bringInChoicesFile() {
   const c = importFile(
     "bring_in_choices",
     "bring_in_choices",
-    "Bring in campers' elective choices from a file, as the Elective seats screen's Bring in choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet) and its seen. Answer any new names (ask the person about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet) and its seen. Answer any new names (ask the person about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
     {
       elective_set: {
         type: "string",
@@ -460,7 +460,7 @@ function buildMenuAction(
     ...act(
       name,
       "build_week",
-      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "Through an agent" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "By your AI" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
       { ...WEEK_FIELDS, ...more },
       required
     ),
@@ -688,13 +688,13 @@ const CAPABILITIES = [
   bringIn(
     "bring_in_camper_groups",
     "camper_group",
-    "Bring in which bunk each camper is in, from another system. Shoresh keeps a bunk with the camper's choices, so their choices come first (bring_in_choices starts a week's electives).",
+    "Import which bunk each camper is in, from another system. Shoresh keeps a bunk with the camper's choices, so their choices come first (bring_in_choices starts a week's electives).",
     ["season", "source_system", "camper_id", "camper_name", "bunk", "week"]
   ),
   bringIn(
     "bring_in_camper_elective_choices",
     "camper_elective_choice",
-    "Bring in each camper's elective choices, from another system. A week's electives start with bring_in_choices (a choices file, as the Elective seats screen's Bring in choices); before that, these come back as a problem.",
+    "Import each camper's elective choices, from another system. A week's electives start with bring_in_choices (a choices file, as the Elective seats screen's Import choices); before that, these come back as a problem.",
     [
       "season",
       "source_system",
@@ -943,7 +943,7 @@ const CAPABILITIES = [
     method: "GET",
     readsOfferings: true,
     description:
-      "Read an elective set's rows on the Electives list: each activity offered with its seats (a number, No limit, or (blank) while it isn't filled in), its minimum to run, whether it is still proposed, the list's mark when its seats need a look, and seen: what to send back to change it. Report what it says; never add a problem Shoresh didn't list.",
+      "Read an elective set's rows on the Electives list: each activity offered with its seats (a number, No limit, or (blank) while it isn't filled in), its minimum to run, whether it is still guessed (not marked Looks right), the list's mark when its seats need a look, and seen: what to send back to change it. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This elective set's rows on the Electives list as they are now. Its marks are the list's: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -966,7 +966,7 @@ const CAPABILITIES = [
     sendsFields: true,
     changesOffering: true,
     description:
-      "Change an offering's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: the seat run then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the offering shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
+      "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: the seat run then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
     inputSchema: {
       type: "object",
       properties: {
@@ -996,7 +996,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Take an activity off an elective set, as Delete on its row of the Electives list does: the activity itself is kept, and the offering's linked choices go with it. It is refused while an elective run's seats use it.",
+      "Take an activity off an elective set, as Delete on its row of the Electives list does: the activity itself is kept, and its linked choices go with it. It is refused while a week's elective seats use it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1081,7 +1081,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Delete a linked choice, as Delete in the editor beside the Electives list does: its periods and divisions go with it, and a sheet that names it then counts as its activity. It is refused while an elective run's seats are part of it.",
+      "Delete a linked choice, as Delete in the editor beside the Electives list does: its periods and divisions go with it, and a sheet that names it then counts as its activity. It is refused while a week's elective seats are part of it.",
     inputSchema: {
       type: "object",
       properties: LINKED_CHOICE,
@@ -1122,7 +1122,7 @@ const CAPABILITIES = [
     method: "GET",
     checksWithEngine: true,
     description:
-      "Read a week's checks exactly as the counter on Generated Schedule or Manual Build shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities under their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. On Generated Schedule it also lists the locked cells (locked), as the screen shows each with its lock, and gives the week as you read it (seen): hand that back to change cells, lock or unlock. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
+      "Read a week's checks exactly as the counter on Generated Schedule or Manual Build shows them, in its words: how many cells are placed, how many are still needed, priorities met, and its lines (Open cells and why, activities short of their weekly goal or over their weekly limit, things to look at, notes), each saying whether it has an Accept. Lines someone accepted, and no worse since, are left out, as on screen. On Generated Schedule it also lists the locked cells (locked), as the screen shows each with its lock, and gives the week as you read it (seen): hand that back to change cells, lock or unlock. They are worked out here, on this computer, with the same code as the screen, from the week as it is now (built, not necessarily published). Report the lines as they are; never add a problem Shoresh didn't list.",
     about:
       "The counter for this week on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now. These are all of Shoresh's checks of the week: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -1173,7 +1173,7 @@ const CAPABILITIES = [
     method: "GET",
     listsVersions: true,
     description:
-      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Through an agent · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Through an agent marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
+      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · By your AI · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. By your AI marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
     about:
       "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
     inputSchema: {
@@ -1279,9 +1279,9 @@ const CAPABILITIES = [
     api: "elective_seats_now",
     method: "GET",
     description:
-      "Read a week's elective seats as the Elective seats screen shows them now, being worked on or (when none is) finalized: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
+      "Read a week's elective seats as the Elective seats screen shows them now, the Draft or (when none is) the Final seats: each time and what is offered then, and each camper's seat at each time (locked, or moved by hand), and the seats as read (seen). Read it right before assign_elective_seats or move_elective_seat and send its seen.",
     about:
-      "The seats now, as the Elective seats screen shows them: the version being worked on, or the finalized one when none is (it says which). They hold no findings or problems.",
+      "The seats now, as the Elective seats screen shows them: the Draft, or the Final seats when there is no Draft (it says which). They hold no findings or problems.",
     inputSchema: {
       type: "object",
       properties: ELECTIVE_RUN,
@@ -1363,7 +1363,7 @@ const CAPABILITIES = [
   act(
     "start_new_elective_version",
     "start_new_elective_version",
-    "Start a new version of a week's finalized elective seats, as the Elective seats screen's Start a new version does: a new version to work on, with the campers' choices, locks and moves made by hand; the finalized seats stay as they were until the new version is finalized. Read the seats first with read_elective_seats_now (it says when they are finalized) and send its seen. It is done as you, with your own access.",
+    "Change a week's final elective seats, as the Elective seats screen's Change seats does: a new draft to work on, with the campers' choices, locks and moves made by hand; the final seats stay as they were until the draft is finalized. Read the seats first with read_elective_seats_now (it says when they are finalized) and send its seen. It is done as you, with your own access.",
     { ...ELECTIVE_RUN, seen: ELECTIVE_SEEN },
     ["seen"]
   ),
@@ -1373,7 +1373,7 @@ const CAPABILITIES = [
     api: "electives_to_clear",
     method: "GET",
     description:
-      "Read what the Elective seats screen's end-of-season Clear shows before it clears: each week's campers, choices, seats and runs, what is still being worked on, and what stays for next summer (elective sets, offerings, linked choices), with seen. Read it right before clear_electives.",
+      "Read what the Elective seats screen's end-of-season Clear shows before it clears: each week's campers, choices and seats, whether they are draft or final, what is still a draft, and what stays for next summer (elective sets, electives, linked choices), with seen. Read it right before clear_electives.",
     about:
       "The season's electives as the Clear shows them now. They hold no findings or problems.",
     inputSchema: {
@@ -1389,7 +1389,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Clear a season's electives at the end of the season, as the Elective seats screen's Clear does, the whole season or one week: the runs with their choices and seats go, and every camper no remaining run uses, for good; elective sets, offerings and linked choices stay for next summer. It can't be undone: ask the person first. Read it first with read_electives_to_clear and send its seen. Seats still being worked on (not finalized) are refused. It is done as you, with your own access. If anything changed since, nothing is cleared and Shoresh says so.",
+      "Clear a season's electives at the end of the season, as the Elective seats screen's Clear does, the whole season or one week: each week's seats with their choices go, and every camper no remaining week uses, for good; elective sets, electives and linked choices stay for next summer. It can't be undone: ask the person first. Read it first with read_electives_to_clear and send its seen. Seats still being worked on (not finalized) are refused. It is done as you, with your own access. If anything changed since, nothing is cleared and Shoresh says so.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1718,9 +1718,9 @@ const CAPABILITIES = [
     api: "read_proposed_offerings",
     method: "GET",
     description:
-      "Read the offerings Camp Setup shows as proposed and not confirmed yet (an import found them; no camper gets a seat in one until it is confirmed): each activity with its elective set. Read it right before confirm_proposed_offering.",
+      "Read the electives Camp Setup shows as guessed and not yet marked Looks right (an import found them; no camper gets a seat in one until it is): each activity with its elective set. Read it right before confirm_proposed_offering.",
     about:
-      "The offerings still proposed now, as Camp Setup shows them. They hold no findings or problems.",
+      "The electives still guessed now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
       type: "object",
       properties: { season: SEASON },
@@ -1733,7 +1733,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      'Confirm a proposed offering, as Camp Setup\'s Confirm on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_proposed_offerings and send seen "proposed". It is done as you, with your own access. If someone confirmed it since, nothing is changed and Shoresh says so.',
+      'Say a guessed elective looks right, as Camp Setup\'s Looks right on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_proposed_offerings and send seen "proposed". It is done as you, with your own access. If someone said it looks right since, nothing is changed and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
@@ -1751,7 +1751,7 @@ const CAPABILITIES = [
           type: "string",
           enum: ["proposed"],
           description:
-            "What read_proposed_offerings said it is: proposed. If it was confirmed since, nothing is changed and the person should be told."
+            "What read_proposed_offerings said it is: proposed (guessed). If someone said it looks right since, nothing is changed and the person should be told."
         }
       },
       required: ["activity", "seen"],
@@ -2065,7 +2065,7 @@ const CAPABILITIES = [
           "specialEvents"
         ],
         description:
-          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (offerings, not camper choices), or special events (special days and events, by Type)."
+          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (not camper choices), or special events (special days and events, by Type)."
       },
       sheet: {
         type: "string",
@@ -2088,7 +2088,7 @@ const CAPABILITIES = [
     sendsFields: true,
     importsLastYear: true,
     description:
-      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, places named in the files, what an earlier import brought in that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
+      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, places named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2310,7 +2310,7 @@ const CAPABILITIES = [
     method: "GET",
     makesFile: "electives",
     description:
-      "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per offering, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and bring back). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
+      "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per elective, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and import again). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
     about:
       "The file was made on this computer exactly as the Elective seats screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
     inputSchema: {
@@ -2364,7 +2364,7 @@ const CAPABILITIES = [
             "specialEvents"
           ],
           description:
-            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (offerings), or special events (special days and events)."
+            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives, or special events (special days and events)."
         }
       },
       additionalProperties: false

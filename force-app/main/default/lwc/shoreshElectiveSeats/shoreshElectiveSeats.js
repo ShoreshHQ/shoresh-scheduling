@@ -41,6 +41,9 @@ import { clearBoard } from "./clear";
 
 const MEMO = new WeakMap();
 const COMMITTED = "Committed";
+// What people see for a run being worked on (stored as Committed): Greg's pick, 2026-11-12.
+const DRAFT = "Draft";
+const CHANGED = "Changed since";
 const FINAL = "Final";
 const ROSTER_HEADING = '[data-id="roster-heading"]';
 const PRIMARY = '[data-id="primary"]';
@@ -77,10 +80,10 @@ const ICONS = {
  * seats-out-of-date) and decisions 48 and 53; behaviour and words from the desktop's
  * ScheduleElectivesScreen.jsx and elective/run (DraftRunView, FinalRunView, runStateCopy.js).
  *
- * The rail: the week and the set on the left (and "Assign against" when the week has more than
+ * The rail: the week and the set on the left (and "Schedule" when the week has more than
  * one schedule); By offering and By camper in the middle; on the right the counter ("212 of 214
- * placed", opening to the problems), Bring in choices, Assign again, the run's state (Committed;
- * Final · Oct 14 · Greg; Out of date), and the one main button: Assign seats, then Finalize, then
+ * placed", opening to the problems), Import choices, Assign again, the seats' state (Draft;
+ * Final · Oct 14 · Greg; Changed since), and the one main button: Assign seats, then Finalize, then
  * Download (slice E10). Seats are worked out in the browser (c/shoreshElectiveEngine) and checked
  * by the server as it saves them; locks and hand moves always beat the engine.
  */
@@ -325,7 +328,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get scheduleOptions() {
     return scheduleOptions(this._setup, this.weekId);
   }
-  /** "Assign against:" only when the week has more than one schedule (desktop D2.7). */
+  /** "Schedule:" only when the week has more than one schedule (desktop D2.7). */
   get asksSchedule() {
     return this.scheduleOptions.length > 1;
   }
@@ -373,7 +376,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get noRunText() {
     const set = this.sets.find((s) => s.Id === this.setId);
     const week = this.weeks.find((w) => w.Id === this.weekId);
-    return `No choices brought in for ${set ? set.Name : ""} in ${week ? week.Name : ""} yet.`;
+    return `No choices imported for ${set ? set.Name : ""} in ${week ? week.Name : ""} yet.`;
   }
 
   async handleSet(event) {
@@ -501,8 +504,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   get viewButtons() {
     return [
-      ["offering", "By offering"],
-      ["camper", "By camper"]
+      ["offering", `By ${this.t.sIn("Activity")}`],
+      ["camper", `By ${this.t.sIn("Camper")}`]
     ].map(([key, label]) => ({
       key,
       label,
@@ -525,12 +528,17 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   // ---------- the run's state ----------
 
-  /** "Committed", "Final · Oct 14 · Greg", or "Out of date" (said on the run's own screen). */
+  /**
+   * "Draft", "Final · Oct 14 · Greg", or "Changed since" (said on the seats' own screen; what
+   * changed is the menu's first line). Greg's picks, 2026-11-12: Draft, never "Committed"; one
+   * "Changed since" for something that changed after. A draft always says Draft: "Draft ·
+   * Changed since".
+   */
   get stateLabel() {
     if (!this.view) return "";
-    if (this.isFinal && this.view.scheduleChanged) return "Out of date";
-    if (this.isFinal) return `Final · ${this.finalWhen}`;
-    return COMMITTED;
+    const changed = this.view.scheduleChanged;
+    if (this.isFinal) return changed ? CHANGED : `Final · ${this.finalWhen}`;
+    return changed ? `${DRAFT} · ${CHANGED}` : DRAFT;
   }
   get stateMark() {
     return !!this.view && this.view.scheduleChanged;
@@ -540,8 +548,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
     const when = run.finalizedAt ? shortDate(run.finalizedAt) : "";
     return run.finalizedBy ? `${when} · ${firstName(run.finalizedBy)}` : when;
   }
+  /** Named, never "the run": "Chugim · Week 1: Draft", and what changed when it did. */
   get stateName() {
-    return `${this.stateLabel}, the run`;
+    const name = this.view && this.view.run ? this.view.run.name : "";
+    const note = this.stateNote ? `, ${this.stateNote}` : "";
+    return `${name ? `${name}: ` : ""}${this.stateLabel}${note}`;
   }
   /** Why the state needs a look, at the top of its menu. */
   get stateNote() {
@@ -556,14 +567,18 @@ export default class ShoreshElectiveSeats extends LightningElement {
       value: r.id,
       checked: String(r.id === this.runId),
       locked: r.status === FINAL,
-      label: r.status === FINAL ? "Final" : COMMITTED,
+      label: r.status === FINAL ? "Final" : DRAFT,
       aside:
         r.status === FINAL
           ? `${r.finalizedAt ? shortDate(r.finalizedAt) : ""}${r.finalizedBy ? ` · ${firstName(r.finalizedBy)}` : ""}`
           : shortDate(r.createdAt)
     }));
   }
-  /** Start a new version: from a final run, while no version is being worked on. */
+  /** "Change seats" (the camp's word), in the menu of final seats. */
+  get changeSeatsLabel() {
+    return `Change ${this.t.pIn("Seats")}`;
+  }
+  /** Change seats: from final seats, while no draft is being worked on. */
   get offersNewVersion() {
     return this.isFinal && !this.runsHere.some((r) => r.status === COMMITTED);
   }
@@ -626,7 +641,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       });
       this.view = view;
       const board = buildBoard(readRun(view), this.t);
-      this.status = `${this.t.p("Seats")} assigned: ${board.counter.placed} of ${board.counter.total} placed.`;
+      this.status = `${board.counter.placed} of ${board.counter.total} placed.`;
       await this.refreshRuns();
     } catch (e) {
       this.error = failed(`${this.t.p("Seats")} weren't assigned.`, e);
@@ -667,11 +682,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
     try {
       this.view = await startNewVersion({ runId: this.view.run.id });
       this.runId = this.view.run.id;
-      this.status =
-        "A new version started, with the choices, locks and moves made by hand.";
+      this.status = `A new draft of these ${this.t.pIn("Seats")}, with the choices, locks and moves made by hand.`;
       await this.refreshRuns();
     } catch (e) {
-      this.error = failed("No new version was started.", e);
+      this.error = failed(`${this.t.p("Seats")} not reopened.`, e);
     } finally {
       this.focusAfter = STATE_MENU;
       this.busy = false;
@@ -687,8 +701,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
   }
 
-  /** Bring in choices, for this set and week (its own screen). */
-  /** Bring in choices, for the set, week and schedule on screen (not the season's first). */
+  /** Import choices, for the set, week and schedule on screen (not the season's first). */
   handleBringIn() {
     this.dispatchEvent(
       new CustomEvent("navigate", {
@@ -1015,7 +1028,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       ["print", "Print rosters", ICONS.print, ""],
       ["schedules", "Camper schedules", ICONS.person, ""],
       ["report", "Full report", ICONS.sheet, ""],
-      ["campers", this.t.p("Camper"), ICONS.edit, "to edit and bring back"]
+      ["campers", this.t.p("Camper"), ICONS.edit, "to edit and import again"]
     ].map(([value, label, icon, aside]) => ({
       value,
       label,
@@ -1202,7 +1215,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       ["campers", this.t.p("Camper"), ICONS.person, view.totals.campers],
       ["choices", "Choices", ICONS.choices, view.totals.choices],
       ["seats", this.t.p("Seats"), ICONS.seats, view.totals.seats],
-      ["runs", "Runs", ICONS.runs, view.totals.runs]
+      ["runs", "Draft / Final", ICONS.runs, view.totals.runs]
     ];
     return rows.map(([key, label, icon, total]) => ({
       key,
@@ -1287,9 +1300,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
       });
       this.clearing = false;
       this.clearData = null;
-      this.status = `Cleared: ${result.runs} ${result.runs === 1 ? "run" : "runs"}, ${result.campers} ${
-        result.campers === 1 ? this.t.sIn("Camper") : this.t.pIn("Camper")
-      }.`;
+      // Named, never "runs" (Greg's pick, 2026-11-12): these seats, and the campers that went.
+      const campers = result.campers
+        ? ` and ${result.campers} ${result.campers === 1 ? this.t.sIn("Camper") : this.t.pIn("Camper")}`
+        : "";
+      this.status = `Cleared these ${this.t.pIn("Seats")}${campers}.`;
       this.runId = null;
       this.view = null;
       this.downloadHeld = null;

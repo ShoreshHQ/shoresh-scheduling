@@ -13,7 +13,7 @@
  * Forgotten, Undone), and it stays. The line of the answer remembered now carries Change and
  * Forget; the newest line of a pattern there is now carries its progress and Forget pattern.
  */
-import { PATTERN_PREFIX, keyParts, patternsOf, whose } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
+import { PATTERN_PREFIX, keyParts, patternsOf } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
 import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { learnedRow, patternRow } from "./engine.shoreshLearned.view.mjs";
 
@@ -48,7 +48,10 @@ function howOf(kind, row, group, extra = {}) {
       if (group === "guessed") {
         return `Guessed in an import by ${who(row)}`;
       }
-      return `From ${whose(row)} answer in an import`;
+      // Greg's pick (2026-11-12): the import's own words, "Answered as before", and whose.
+      return row.byYou
+        ? "Answered as before"
+        : `Answered as before · ${who(row)}`;
     case "changed":
       return `Changed by ${who(row)}`;
     case "forgotten":

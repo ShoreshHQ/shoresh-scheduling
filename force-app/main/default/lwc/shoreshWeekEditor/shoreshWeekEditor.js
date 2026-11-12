@@ -1189,8 +1189,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       .map((e) => ({
         id: e.id,
         name: e.name,
-        words: `${e.count} ${e.count === 1 ? "offering" : "offerings"}`,
-        said: `${e.name}, ${word}, ${e.count} ${e.count === 1 ? "offering" : "offerings"}`
+        words: `${e.count} ${e.count === 1 ? this.t.sIn("Elective") : this.t.pIn("Elective")}`,
+        said: `${e.name}, ${word}, ${e.count} ${e.count === 1 ? this.t.sIn("Elective") : this.t.pIn("Elective")}`
       }));
   }
 

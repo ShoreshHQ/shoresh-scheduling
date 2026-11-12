@@ -18,7 +18,7 @@ export function checkLines(m, accepted, groupWords = GROUP_WORDS) {
   const shown = (line) => !tucked(accepted, line);
   // An under or over row in its units, "3 short · 2 Bunks", "1 over · 1 Bunk": never "6 of 12"
   // beside "20 of 12" for one activity, which read as a contradiction (UX pass 2026-11-10). The
-  // first number is what the heading adds up ("3 under"), and grows when the week gets worse.
+  // first number is what the heading adds up ("3 short"), and grows when the week gets worse.
   const unit = (row, how) => {
     const size =
       how === "short" ? row.goal - row.placed : row.placed - row.goal;
@@ -103,13 +103,29 @@ export function readKept(text) {
   }));
 }
 
-/** Priorities met (CORE-6.4): "High priority 9 of 10 minimums met", then Low. Counts only. */
-export function priorityRowsOf(m) {
-  return (m.priorities || []).map((row) => ({
-    ...row,
-    key: `priority-${row.priority}`,
-    label: row.priority === "high" ? "High priority" : "Low priority"
-  }));
+/**
+ * Priorities met (CORE-6.4), counts only: "High priority minimums met · 9 of 10", then the rest:
+ * "Every activity's minimum met · 39" when all are, else "Minimums met · 37 of 39" (coordinator's
+ * wording for Greg, 2026-11-12: never "Low priority"). activity: the camp's word, as in a sentence.
+ */
+export function priorityRowsOf(m, activity = "activity") {
+  return (m.priorities || []).map((row) => {
+    const high = row.priority === "high";
+    const all = !high && row.met === row.total;
+    const label = high
+      ? "High priority minimums met"
+      : all
+        ? `Every ${activity}'s minimum met`
+        : "Minimums met";
+    const ofTotal = all ? "" : `of ${row.total}`;
+    return {
+      ...row,
+      key: `priority-${row.priority}`,
+      label,
+      ofTotal,
+      words: `${label} ${row.met}${ofTotal ? ` ${ofTotal}` : ""}`
+    };
+  });
 }
 
 /** Spread across the week (CORE-6.4): sessions on a day of their own, of repeated sessions. */
@@ -132,9 +148,9 @@ export function wordsOf(line) {
  * What the counter shows, in its own words, as one object an agent reads (API-1.30): the
  * counter's "29 of 35 placed", whether it needs a look, its dropdown's rows in order, and the
  * lines still shown, each with whether it has an Accept. Sections the dropdown leaves out are
- * left out.
+ * left out. activity: the camp's Activity word, as in a sentence, as the counter says it.
  */
-export function counterWords(m, accepted, groupWords) {
+export function counterWords(m, accepted, groupWords, activity) {
   const lines = checkLines(m, accepted, groupWords);
   const listed = (rows) =>
     rows.map((line) => ({ line: wordsOf(line), can_accept: acceptable(line) }));
@@ -149,9 +165,7 @@ export function counterWords(m, accepted, groupWords) {
     placed: `${m.placed} of ${m.total} placed`,
     needs_a_look: shown,
     still_needed: m.stillNeeded,
-    priorities: priorityRowsOf(m).map(
-      (row) => `${row.label} ${row.met} of ${row.total} minimums met`
-    )
+    priorities: priorityRowsOf(m, activity).map((row) => row.words)
   };
   const spread = spreadOf(m);
   if (spread) {

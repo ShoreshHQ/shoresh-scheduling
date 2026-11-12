@@ -8,7 +8,6 @@
 public with sharing class SetupMatchRules {
   public static final String DELETED = 'Deleted from setup';
   public static final String NOT_AT_CAMP_THEN = 'Not at camp then';
-  public static final String NOT_HERE_NOW = 'Not set up here now';
 
   private GeneratedSetup setup;
   public Map<Id, Activity__c> activities;
@@ -129,9 +128,9 @@ public with sharing class SetupMatchRules {
     }
   }
 
-  /** "Lunch is set up here now". */
+  /** "Lunch goes here": setup puts it in this cell now (coordinator's wording, 2026-11-12). */
   public String setUpHere(String name) {
-    return name + ' is set up here now';
+    return name + ' goes here';
   }
 
   /** "Not a day of Main now". */

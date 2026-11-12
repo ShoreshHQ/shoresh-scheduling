@@ -104,8 +104,22 @@ export const UNSHOWN_TERMS = Object.freeze([
   "Conflict",
   "Shortfall",
   "Lock",
-  "Team"
+  "Team",
+  // Word walk W2: every screen says the camp's Elective word instead.
+  "Offering"
 ]);
+
+/**
+ * The Elective set word where it would read the same as the Elective word beside it (a camp's
+ * "Chugim" is followed by its sets, CORE-1.34): "Chug sets" ("Chug set" for one), so two rows
+ * never read alike. Null when the two words already differ.
+ */
+export function setsBesideElectives(t, plural) {
+  if (t.p("ElectiveSet") !== t.p("Elective")) {
+    return null;
+  }
+  return `${t.s("Elective")} ${plural ? "sets" : "set"}`;
+}
 
 export const SHORT_DAYS = Object.freeze({
   Monday: "Mon",

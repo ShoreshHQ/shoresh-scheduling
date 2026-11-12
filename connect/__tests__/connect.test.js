@@ -400,7 +400,7 @@ describe("Shoresh for AI tools and the command line", () => {
           asked.push(how);
           return {
             ok: true,
-            said: "Filled 3 of 4.",
+            said: "3 of 4 placed.",
             save: { action: buildAction, revision: "r1", option: 2, days: [] }
           };
         }
@@ -416,7 +416,7 @@ describe("Shoresh for AI tools and the command line", () => {
       expect(seen[1].args[3]).toBe("/services/apexrest/shoresh/v1/build_week");
       expect(JSON.parse(seen[1].stdin).action).toBe(buildAction);
       expect(done.ok).toBe(true);
-      expect(done.text).toBe("Done with Week 1. Filled 3 of 4.");
+      expect(done.text).toBe("Done with Week 1. 3 of 4 placed.");
     }
 
     // A refusal is the screen's, and nothing is sent; so is the option the week is already on.
@@ -984,7 +984,7 @@ describe("Shoresh for AI tools and the command line", () => {
       versions: [
         {
           name: "Before Placed Soccer",
-          says: `Generated Schedule · Through an agent · ${when}`,
+          says: `Generated Schedule · By your AI · ${when}`,
           saved: "2026-10-31T19:40:00.000Z",
           can_delete: true
         },
@@ -1011,7 +1011,7 @@ describe("Shoresh for AI tools and the command line", () => {
       versionWords
     });
     expect(JSON.parse(camps.text).versions[0].says).toBe(
-      "Generated Schedule · Through an agent · Oct 31, 12:40 PM"
+      "Generated Schedule · By your AI · Oct 31, 12:40 PM"
     );
     const none = await call("list_versions", asked, {
       run: sfAnswering(
@@ -2010,7 +2010,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(body.seats.length).toBeGreaterThan(0);
     expect(done.done.ok).toBe(true);
-    expect(done.done.text).toMatch(/^Seats assigned: \d+ of \d+ placed\.$/);
+    expect(done.done.text).toMatch(/^\d+ of \d+ placed\.$/);
 
     // Read at another revision: refused before anything is sent.
     const stale = await assign("r1:0");
@@ -2255,7 +2255,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     });
     expect(leftOut.text).toMatch(
-      /^Added 2 special days\. Not brought in, since they don't run every day: Swim\. Not brought in, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
+      /^Added 2 special days\. Not copied, since they don't run every day: Swim\. Not copied, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
     );
     const nothingLeftOut = await save({
       added: { SpecialDay: 2 },
@@ -2548,7 +2548,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(said.ok).toBe(true);
     expect(said.text).toContain(
-      "lunch is a fixed activity (From your answer in an import)"
+      "lunch is a fixed activity (Answered as before)"
     );
     expect(said.text).toContain(
       'answer_id a01, seen "fixed", can be changed to recurring'
@@ -2760,7 +2760,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(done).toMatchObject({
       ok: true,
-      text: 'Brought in 2 campers to "Chugim · Week 2": 2 new.'
+      text: 'Imported 2 campers to "Chugim · Week 2": 2 new.'
     });
     expect(JSON.parse(savedSeen[2].stdin).save).toBe(true);
 
@@ -2779,7 +2779,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(unbuilt).toMatchObject({
       ok: false,
-      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
+      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was imported."
     });
     // A week with its Generated Schedule both drafted and published: the two are named apart,
     // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).

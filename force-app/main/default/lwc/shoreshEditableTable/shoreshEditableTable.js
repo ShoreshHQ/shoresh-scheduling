@@ -62,7 +62,8 @@ const SHARED_MIN = 12;
  *
  * weeks / weekExceptions / weeksHeading: with weeks and a heading (such as "Runs in"), each row
  * gets a tick per week, ticked unless a week exception names the row in that week. The blank
- * row starts with every week ticked. weekPhrase words each tick for screen readers ("runs in").
+ * row starts with every week ticked. Each tick is read as "Bunk 1 · Week 6" (Greg's pick,
+ * 2026-11-12: no "runs in", and "open" is the empty cell's word).
  *
  * A "who" column (type "who", fieldName: the child rows' relationship, such as Coverages__r,
  * options: the divisions and groups to choose from, everyone: what an empty choice means,
@@ -164,7 +165,7 @@ export default class ShoreshEditableTable extends LightningElement {
   @api emptyMessage = "Nothing here yet.";
   @api busy = false;
   @api weeksHeading;
-  @api weekPhrase = "runs in";
+
   @api notesHeading;
   @api rowNotes = {};
   @api flagSameNames = false;
@@ -209,6 +210,8 @@ export default class ShoreshEditableTable extends LightningElement {
    * ({ ids, words }: a division's section, [division], "Every bunk"); anything else is a value.
    */
   @api whoRule;
+  // Saved row Id -> names of those its rule covers that aren't there: "Every Bunk but Bunk 1".
+  @api whoMissing = {};
   /**
    * The weeks column's widest (rem): a long season's strip wraps rather than squeeze the other
    * columns. Narrower where a panel shares the screen (Activities' details).
@@ -1317,8 +1320,8 @@ export default class ShoreshEditableTable extends LightningElement {
             key: `${draft.key}-end-${action.key}`,
             name: action.key,
             label: action.label,
-            // Named for its row, so a screen reader can tell the buttons apart.
-            title: `${action.label} ${name}`.trim()
+            // Named for its row, so a screen reader can tell the buttons apart; or the screen's.
+            title: action.title || `${action.label} ${name}`.trim()
           })),
       isNew: draft.isNew,
       rowClass: [
@@ -1410,7 +1413,7 @@ export default class ShoreshEditableTable extends LightningElement {
       checked: draft.weekTicks.has(week.Id)
         ? draft.weekTicks.get(week.Id)
         : !saved.has(week.Id),
-      label: `${name} ${this.weekPhrase} ${week.Name}`
+      label: `${name} · ${week.Name}`
     }));
   }
 
@@ -1433,11 +1436,18 @@ export default class ShoreshEditableTable extends LightningElement {
     };
   }
 
-  /** The section's rule in its words ("Every bunk"), "Everyone", or the names chosen. */
+  /**
+   * The section's rule in its words ("Every bunk", "Every bunk but Bunk 1" when one isn't there
+   * then), "Everyone", or the names chosen.
+   */
   whoSummary(column, draft) {
     const rule = this.whoRule;
     if (rule && sameIds(draft.who, rule.ids || [])) {
-      return rule.words;
+      const id = draft.original && draft.original.Id;
+      const missing = (id && (this.whoMissing || {})[id]) || [];
+      return missing.length
+        ? `${rule.words} but ${missing.join(", ")}`
+        : rule.words;
     }
     return this.whoNames(column, draft.who);
   }

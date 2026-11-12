@@ -70,7 +70,8 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
     found.id = offering.Id;
     found.name = offering.Activity__r.Name;
     found.term = 'Offering';
-    found.kind = refs.labels.singularInSentence('Offering');
+    // Said in the camp's Elective word: no screen says "offering" (word walk W2).
+    found.kind = refs.labels.singularInSentence('Elective');
     found.labels = refs.labels;
     found.seasonId = refs.season.Id;
     return found;

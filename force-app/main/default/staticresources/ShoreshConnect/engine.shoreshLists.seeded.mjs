@@ -27,12 +27,12 @@ export function seededLines(seed, name, t) {
   const brought = seed.broughtIn || [];
   const lines = [
     `"${name}" starts from ${seed.program}'s ${blocks}${
-      brought.length ? `, with ${listed(brought)} brought in` : ""
+      brought.length ? `, with ${listed(brought)} copied` : ""
     }.`
   ];
   const left = (names, why) => {
     if (names && names.length) {
-      lines.push(`Not brought in, since ${why}: ${listed(names)}.`);
+      lines.push(`Not copied, since ${why}: ${listed(names)}.`);
     }
   };
   left(seed.notEveryDay, "they don't run every day");

@@ -162,7 +162,7 @@ public with sharing class ElectiveRunTriggers {
       notOfWeek(weekOfSchedule, run.FinalSchedule__c, run.Week__c)
     ) {
       run.addError(
-        'This schedule is not for the run\'s ' +
+        'This schedule is not for these seats\' ' +
           labelsBySeason.get(run.Season__c).singularInSentence('Week') +
           '.'
       );
@@ -191,7 +191,7 @@ public with sharing class ElectiveRunTriggers {
       labels.singularInSentence(term) +
       ' belongs to a different ' +
       labels.singularInSentence('Season') +
-      ' than the run.';
+      ' than these seats.';
   }
 
   // ---------------------------------------------------------------- choices and seats

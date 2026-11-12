@@ -59,7 +59,7 @@ describe("c-shoresh-build-palette (the drawer)", () => {
 
   it("says N under in the time column, then one tile per activity on the grid's columns, its name only", () => {
     const element = render();
-    expect(q(element, '[data-id="drawer-under"]').textContent).toBe("3under");
+    expect(q(element, '[data-id="drawer-under"]').textContent).toBe("3short");
     expect(
       q(element, '[data-id="drawer-tiles"]').getAttribute("style")
     ).toContain("grid-template-columns: repeat(7, minmax(0, 1fr))");

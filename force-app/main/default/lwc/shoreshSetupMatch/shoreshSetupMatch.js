@@ -10,7 +10,7 @@ import { LightningElement, api } from "lwc";
  *
  * changes: SetupMatch.Change rows. busy: an update is on its way (the buttons, Cancel and Escape
  * wait: the update's answer is for the list as it was; focus waits on the list itself, inside the
- * dialog). notice: a line above the list ("Setup changed again, so nothing was updated.").
+ * dialog). notice: a line above the list ("Something changed while you looked, so nothing was updated.").
  * updated: an update was made in this opening, so Cancel says Close (cancelling would read as
  * taking back what was updated).
  * announcement: words for screen readers only ("Updated to match setup."). Both are read out

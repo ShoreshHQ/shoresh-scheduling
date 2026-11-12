@@ -12,6 +12,10 @@ export { seededLines } from "c/shoreshLists";
 const DAY = FIELD.SpecialDay;
 const EVENT = FIELD.SpecialEvent;
 const WEEK = FIELD.Week;
+// One word each for nothing there (coordinator's wording for Greg, 2026-11-12): no place is a
+// dash; no schedule says so.
+export const NO_PLACE = "—";
+export const NO_SCHEDULE = "No schedule yet";
 // The days a special day can be put on (SpecialDate__c.Day__c), Monday first.
 const WEEKDAYS = [
   "Monday",
@@ -264,11 +268,11 @@ export default class ShoreshSpecialDetails extends LightningElement {
     const place = ((this._setup && this._setup.locations) || []).find(
       (l) => l.Id === id
     );
-    return place ? place.Name : "None";
+    return place ? place.Name : NO_PLACE;
   }
 
   get whereClass() {
-    return this.isEvent && this.where !== "None" ? "value" : "value quiet";
+    return this.isEvent && this.where !== NO_PLACE ? "value" : "value quiet";
   }
 
   get placedOn() {
@@ -567,6 +571,6 @@ export default class ShoreshSpecialDetails extends LightningElement {
 
   /** An event's schedule in brief, or none yet. */
   get eventSchedule() {
-    return scheduleText(this.brief, true, this.terms) || "None yet";
+    return scheduleText(this.brief, true, this.terms) || NO_SCHEDULE;
   }
 }

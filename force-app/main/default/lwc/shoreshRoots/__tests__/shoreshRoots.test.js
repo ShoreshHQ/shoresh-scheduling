@@ -659,7 +659,7 @@ describe("c-shoresh-roots: the camp's workbook", () => {
       reader.readAsArrayBuffer(blobs.get(saved[0].href));
     });
     const wb = XLSX.read(bytes, { type: "array" });
-    expect(wb.SheetNames).toContain("Runs in");
+    expect(wb.SheetNames).toContain("Which weeks");
     spy.mockRestore();
     delete window.XLSX;
     delete URL.createObjectURL;

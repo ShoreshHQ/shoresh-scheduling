@@ -90,7 +90,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (schedules.length === 0) {
     // As the screen's empty state says it ("No schedule for this week yet"), with the step first.
     return refused(
-      `No schedule for ${week.item.Name} yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in.`
+      `No schedule for ${week.item.Name} yet: build it on Generated Schedule or start it on Manual Build first. Nothing was imported.`
     );
   }
   const schedule =
@@ -110,14 +110,14 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   });
   if (reading.campers.length === 0 && reading.cantTellApart.length === 0) {
     return refused(
-      `${file.name}: no campers with choices found. Nothing was brought in.`
+      `${file.name}: no campers with choices found. Nothing was imported.`
     );
   }
   if (reading.cantTellApart.length) {
     // The screen brings nothing in while two rows can't be told apart (its refusal card).
     const rows = m.cantTellApartRows(reading);
     return refused(
-      `Nothing was brought in: ${rows.map((r) => `${r.name}: ${r.where}. ${r.why}`).join(" ")}`
+      `Nothing was imported: ${rows.map((r) => `${r.name}: ${r.where}. ${r.why}`).join(" ")}`
     );
   }
 
@@ -140,7 +140,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       ok: true,
       status: 200,
       text: [
-        `Review of ${file.name} for ${set.item.name} in ${week.item.Name}, as the Elective seats screen's Bring in choices shows it. Nothing is brought in yet.`,
+        `Review of ${file.name} for ${set.item.name} in ${week.item.Name}, as the Elective seats screen's Import choices shows it. Nothing is imported yet.`,
         `Names on the sheet Shoresh doesn't have yet: ${open
           .map((n) => {
             const proposal = m.proposalFor(n.name, activities);
@@ -197,9 +197,9 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       ok: true,
       status: 200,
       text: [
-        `Review of ${file.name} for ${set.item.name} in ${week.item.Name} (${schedule.item.name}), as the Elective seats screen's Bring in choices shows it. Nothing is brought in yet.`,
+        `Review of ${file.name} for ${set.item.name} in ${week.item.Name} (${schedule.item.name}), as the Elective seats screen's Import choices shows it. Nothing is imported yet.`,
         ...lines,
-        `Ready to bring in. To bring it in, send the same file and answers with save: true and seen: ${JSON.stringify(seen)}.`
+        `Ready to import. To import it, send the same file and answers with save: true and seen: ${JSON.stringify(seen)}.`
       ].join("\n")
     };
   }
@@ -207,7 +207,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     return {
       ok: false,
       status: 409,
-      text: "Someone brought choices in since the file was reviewed, so nothing was brought in. Review the file again (without save) and use the new seen."
+      text: "Someone imported choices since the file was reviewed, so nothing was imported. Review the file again (without save) and use the new seen."
     };
   }
   const saved = await send(capability.api, {
@@ -221,7 +221,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   return {
     ok: true,
     status: 200,
-    text: `Brought in ${n} ${n === 1 ? t.sIn("Camper") : t.pIn("Camper")} to "${done.runName}": ${done.added} new.`
+    text: `Imported ${n} ${n === 1 ? t.sIn("Camper") : t.pIn("Camper")} to "${done.runName}": ${done.added} new.`
   };
 }
 

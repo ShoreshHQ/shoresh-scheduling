@@ -106,7 +106,7 @@ global with sharing class IncomingCamperElectiveChoice implements IncomingBatch.
 
   @InvocableMethod(
     label='camper_elective_choice'
-    description='Bring in each camper\'s elective choices, first choice first. Choices a person changed in Shoresh are kept.'
+    description='Import each camper\'s elective choices, first choice first. Choices a person changed in Shoresh are kept.'
     category='Shoresh'
   )
   global static List<IncomingResult> camperElectiveChoice(

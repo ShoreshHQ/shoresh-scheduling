@@ -1,6 +1,11 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
-import { earlyNote, setTimeNote, spanChange } from "c/shoreshSetupRules";
+import {
+  earlyNote,
+  missingGroups,
+  setTimeNote,
+  spanChange
+} from "c/shoreshSetupRules";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
 import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { spokenWeekday } from "c/shoreshDayNames";
@@ -36,6 +41,8 @@ const RECURRING = FIELD.RecurringActivity;
 const GROUP = FIELD.Group;
 // The section of what everyone in the program does (docs/design/setup/fixed.html).
 const WHOLE_CAMP = "Whole camp";
+// The run pick (Greg, 2026-11-12): "run" only in "Minimum to run" and "Runs on".
+const RUNS_ON = "Runs on";
 
 /**
  * One part of one program, for the screen showing it (show): "timeBlocks", "divisions",
@@ -278,7 +285,7 @@ export default class ShoreshProgram extends LightningElement {
       this.timeColumn(RECURRING),
       {
         fieldName: "days",
-        label: "Days",
+        label: RUNS_ON,
         type: "days",
         width: 9,
         days,
@@ -363,7 +370,8 @@ export default class ShoreshProgram extends LightningElement {
       filter: (record, shown) => sectionOf(shown || savedWho(record)) === key
     });
     const sections = [
-      section("all", WHOLE_CAMP, { ids: [], words: every }, []),
+      // "Every Edah", never "Whole camp" (coordinator's wording for Greg, 2026-11-12).
+      section("all", `Every ${t.s("Division")}`, { ids: [], words: every }, []),
       ...divisions.map((d) =>
         section(d.Id, d.Name, { ids: [d.Id], words: every }, [d.Id])
       )
@@ -483,6 +491,19 @@ export default class ShoreshProgram extends LightningElement {
       this.entry.recurringActivities,
       FIELD.RecurringActivity
     );
+  }
+
+  /** Each recurring row's groups not at camp then, for its Who: "Every Bunk but Bunk 1". */
+  get recurringMissing() {
+    const missing = {};
+    (this.entry.recurringActivities || []).forEach((item) => {
+      missing[item.Id] = missingGroups(
+        this.entry,
+        item,
+        FIELD.RecurringActivity
+      );
+    });
+    return missing;
   }
 
   get divisionColumns() {

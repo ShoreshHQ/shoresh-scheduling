@@ -15,9 +15,9 @@ public with sharing class OutsideOwned {
   /** True while a bringing-in saves campers and their bunks. */
   public static Boolean bringingIn = false;
 
-  public static final String NAME_REFUSAL = 'Names come from the camp\'s sign-up list or other system. Change it there and bring it in again.';
+  public static final String NAME_REFUSAL = 'Names come from the camp\'s sign-up list or other system. Change it there and import it again.';
   // "Bunks come from ...", in the camp's own word for groups.
-  private static final String GROUP_REFUSAL = ' come from the camp\'s sign-up list or other system. Change it there and bring it in again.';
+  private static final String GROUP_REFUSAL = ' come from the camp\'s sign-up list or other system. Change it there and import it again.';
   public static final String NO_SYSTEM = 'Say which system this outside ID comes from.';
   public static final String ID_TAKEN = 'Another camper in this season has this outside ID from this system.';
 

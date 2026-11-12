@@ -89,7 +89,8 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   // bunk, twice in a day, overlapping...): some have no counter of their own.
   const dotted = !measure && checked.flags ? checked.flags.size : 0;
   if (under > 0) {
-    lines.push(`${under} under`);
+    // One word with the counter's lines ("3 short · 2 Bunks"; Greg's pick, 2026-11-12).
+    lines.push(`${under} short`);
   }
   if (over > 0) {
     lines.push(`${over} over`);

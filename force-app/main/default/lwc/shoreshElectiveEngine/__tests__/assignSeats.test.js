@@ -340,7 +340,7 @@ describe("a linked choice with a period this run can't give it", () => {
         timeIds: ["t3", "t9"],
         camperIds: ["c0"],
         message:
-          "“Drama all week”: Wed 12:30 and Fri 12:30 can’t be given in this run; its other " +
+          "“Drama all week”: Wed 12:30 and Fri 12:30 can’t be given in these seats; its other " +
           "time blocks were kept together."
       }
     ]);
@@ -407,7 +407,7 @@ describe("a linked choice with a period this run can't give it", () => {
       camperIds: []
     });
     expect(out.findings[0].message).toMatch(
-      /^“Drama all week”: t8 and t9 can’t be given in this run; nobody was placed in it\.$/
+      /^“Drama all week”: t8 and t9 can’t be given in these seats; nobody was placed in it\.$/
     );
     expect(out.seats.some((x) => x.linkedChoiceId)).toBe(false);
   });

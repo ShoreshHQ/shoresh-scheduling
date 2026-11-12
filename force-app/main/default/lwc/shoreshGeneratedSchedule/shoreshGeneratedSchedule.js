@@ -969,7 +969,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         // Said when it ends, not only when it starts (the bar's progress changes silently).
         const { filled, total } = this.checked.cells;
         this.announce(
-          [this.runDoneText(action, option), `Filled ${filled} of ${total}.`]
+          // Placed, never "Filled": the counter's word (Greg's pick, 2026-11-12).
+          [this.runDoneText(action, option), `${filled} of ${total} placed.`]
             .filter(Boolean)
             .join(" ")
         );
@@ -1826,7 +1827,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       }
       if (result.refused === SETUP_CHANGED) {
         const fresh = await this.loadSetupChanges();
-        const again = "Setup changed again, so nothing was updated.";
+        const again =
+          "Something changed while you looked, so nothing was updated.";
         // The list shows what it would change now, in place.
         this.setupAsk =
           fresh && fresh.changes.length
@@ -1848,7 +1850,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       const done =
         keys.length === 1
           ? "Updated to match setup."
-          : `Updated ${keys.length} changes to match setup.`;
+          : `Made ${keys.length} changes to match setup.`;
       if (!(await this.showUpdated(ticket))) {
         // Updated, but the week can't be read just now: said, and read again once this is over.
         this.setupAsk = null;
@@ -2199,7 +2201,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
 
   get publishedName() {
     return this.publishState && this.publishState.changedSince
-      ? "Published, changed since"
+      ? // Greg's pick (2026-11-12): "Changed since" and what changed.
+        "Published · Changed since: cells edited"
       : "Published";
   }
 

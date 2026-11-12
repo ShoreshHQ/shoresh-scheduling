@@ -572,8 +572,9 @@ private class ManualBuildTest {
       // Each is reminded of, in the words "Update to match setup" uses.
       List<SetupMatch.Dot> dots = SetupMatchController.getSetupChanges(draftId)
         .dots;
+      // Each names the thing and the change (coordinator's wording for Greg, 2026-11-12).
       Assert.areEqual(
-        'Flagpole is set up here now',
+        'Flagpole goes here',
         SetupReminders.at(
           dots,
           mon,
@@ -581,7 +582,7 @@ private class ManualBuildTest {
         )
       );
       Assert.areEqual(
-        'Flagpole is set up here now',
+        'Flagpole moved to Period 1',
         SetupReminders.at(
           dots,
           mon,
@@ -589,7 +590,7 @@ private class ManualBuildTest {
         )
       );
       Assert.areEqual(
-        'Not set up here now',
+        'Flagpole moved to Period 1',
         SetupReminders.at(
           dots,
           mon,

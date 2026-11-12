@@ -51,9 +51,10 @@ global with sharing class AgentReadSetupChanges implements AgentWeeks.Action {
     for (SetupMatch.Change change : preview.changes) {
       said.add(AgentUpdateToMatch.said(change));
     }
-    return 'Setup changed since ' +
+    // The screen's words (Greg's pick, 2026-11-12): "Changed since" and what changed.
+    return 'Changed since ' +
       onScreen +
-      ' started. "Update to match setup" can make these changes, each by its key: ' +
+      ' started: setup. "Update to match setup" can make these changes, each by its key: ' +
       String.join(said, ' ') +
       ' To make some or all, send their keys with update_to_match_setup and seen "' +
       AgentUpdateToMatch.seenOf(preview.revisions) +

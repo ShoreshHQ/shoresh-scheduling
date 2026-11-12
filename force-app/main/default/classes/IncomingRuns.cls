@@ -183,18 +183,18 @@ public with sharing class IncomingRuns {
     }
     // A key keeps the next step (API-6.4); a person's AI hears the problem (API-1.105).
     return AgentRefusal.withFix(
-      'No choices brought in for ' +
+      'No choices imported for ' +
         setName +
         ' in ' +
         weekName +
         ' yet, so Shoresh has nowhere to keep these.',
-      'A person brings them in once on the ' +
+      'A person imports them once on the ' +
         batch.labels.electiveSeatsTitle() +
         ' screen (choose ' +
         setName +
         ' and ' +
         weekName +
-        ', then Bring in choices); after that, send these again.'
+        ', then Import choices); after that, send these again.'
     );
   }
 

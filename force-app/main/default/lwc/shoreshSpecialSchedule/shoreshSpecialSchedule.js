@@ -576,11 +576,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   importSaid(fileName, outcome, noTimes, places, pageCount, skipped = []) {
     const t = this.t;
     const lines = [
-      `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} filled.`
+      `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} placed.`
     ];
     if (outcome.replaced && outcome.replaced.length) {
       lines.push(
-        `Replaced by the file, brought in when ${this.name} started: ${listed(outcome.replaced)}.`
+        `Replaced by the file, copied when ${this.name} started: ${listed(outcome.replaced)}.`
       );
     }
     lines.push(...this.frameSaid(outcome.frame, " by the file"));

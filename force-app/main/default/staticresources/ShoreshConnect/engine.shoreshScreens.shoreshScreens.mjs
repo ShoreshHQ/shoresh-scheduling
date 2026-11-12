@@ -138,7 +138,7 @@ const MARKS = {
   done: { symbol: "✓", label: "Done" },
   // A schedule whose week can be updated to match setup: the foot's dot, beside its entry too,
   // where it is seen without scrolling (coordinator call on the UI pass, 2026-11-10).
-  changed: { symbol: "", label: "Setup changed" }
+  changed: { symbol: "", label: "Changed since: setup" }
 };
 
 /** Why a screen can't open now, read with it ("Coming", "Needs a Season"), or null. */

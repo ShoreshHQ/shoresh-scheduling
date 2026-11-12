@@ -57,9 +57,11 @@ describe("seats without a linked-choice conflict", () => {
       camps += 1;
       h = fnv(JSON.stringify(assignSeats(input)), h);
     }
+    // The hash covers the findings' words too: Greg's picked words (2026-11-12, "these seats",
+    // the camp's Elective word, "assign again") changed it from a7c2317e; the seats did not.
     expect({ camps, hash: h.toString(16) }).toEqual({
       camps: 89,
-      hash: "a7c2317e"
+      hash: "81f0a5af"
     });
   }, 60000);
 });

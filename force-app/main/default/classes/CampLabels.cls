@@ -25,7 +25,9 @@ public with sharing class CampLabels {
     'Conflict',
     'Shortfall',
     'Lock',
-    'Team'
+    'Team',
+    // Word walk W2: every screen says the camp's Elective word instead.
+    'Offering'
   };
   // This camp's own words, by model term.
   private final Map<String, CampLabel__c> custom = new Map<String, CampLabel__c>();

@@ -45,7 +45,8 @@ export function electivesScreen(t) {
   return {
     key: "electives",
     kind: "Offering",
-    term: "Offering",
+    // Its rows in the camp's Elective word: never "offering" on screen (Greg, 2026-11-12).
+    term: "Elective",
     // Each row is in an elective set (scope.js resolveSets).
     scope: "set",
     columns: [
@@ -115,8 +116,8 @@ export function electivesScreen(t) {
       },
       {
         key: "proposed",
-        heading: "Proposed",
-        words: ["proposed", "not confirmed"],
+        heading: "Guessed",
+        words: ["guessed", "proposed", "not confirmed"],
         type: "yesNo",
         // A list without this column proposes what it adds.
         newValue: true,

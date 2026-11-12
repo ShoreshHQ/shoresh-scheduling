@@ -105,6 +105,11 @@ private class AgentCampSetupTest {
         String.valueOf(read[1]).contains('Conflict:'),
         String.valueOf(read[1])
       );
+      // Word walk W2: no screen says "Offering", so the AI isn't offered it either.
+      Assert.isFalse(
+        String.valueOf(read[1]).contains('Offering:'),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(0, afterStale);
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));

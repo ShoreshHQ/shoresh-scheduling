@@ -1,7 +1,7 @@
 /**
  * The elective downloads (electives slice E10; repo ADR 0018 choices 51 to 54; plan §7): Rosters
  * (printed one page per offering, Greg's decision 53.4, option A; and as a file), Camper
- * schedules, the Full report and Campers (to edit and bring back). Made in the browser from a
+ * schedules, the Full report and Campers (to edit and import again). Made in the browser from a
  * final run as ElectiveDownloads.forRun reads it (ElectiveSeatsController.runDownload): the same
  * reading as the seats screen (readRun, buildBoard), the names copied onto the seats at Finalize,
  * and the bunks' week from the version kept then, so a final run's files never change.
@@ -435,7 +435,7 @@ function exceptionRows(d) {
   });
   if (d.view.scheduleChanged) {
     body.push([
-      "Out of date",
+      "Changed since",
       "",
       "",
       "Schedule changed since it was finalized"
@@ -475,10 +475,10 @@ export function summaryRows(d) {
     .filter(Boolean)
     .join(" · ");
   const rows = [
-    ["Run", view.run.name],
+    [t.p("Seats"), view.run.name],
     [
       "Status",
-      view.scheduleChanged ? "Final · Out of date" : `Final · ${finalWhen}`
+      view.scheduleChanged ? "Final · Changed since" : `Final · ${finalWhen}`
     ],
     [t.s("ElectiveSet"), d.setName],
     [t.s("Week"), d.weekName],
@@ -497,7 +497,7 @@ export function summaryRows(d) {
     );
   if (oneOf) rows.push(["One of their choices", oneOf]);
   if (notChosen) rows.push(["Not one they chose", notChosen]);
-  rows.push(["In one offering more than once", repeats]);
+  rows.push([`In one ${t.sIn("Elective")} more than once`, repeats]);
   return rows;
 }
 
@@ -522,7 +522,7 @@ export function fullReportSheets(d) {
   ];
 }
 
-// ---------- Campers: to edit and bring back ----------
+// ---------- Campers: to edit and import again ----------
 
 /** A column heading Bring in choices reads as `use`: the camp's word if it does, else `plain`. */
 function headingFor(word, use, plain) {

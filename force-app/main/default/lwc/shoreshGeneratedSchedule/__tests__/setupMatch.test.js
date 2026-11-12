@@ -130,7 +130,7 @@ const FLAGPOLE_NOW = {
       place: "Bunk 2 · Monday · Period 2",
       before: "Open",
       after: "Flagpole",
-      reason: "Flagpole is set up here now"
+      reason: "Flagpole goes here"
     }
   ]
 };
@@ -139,7 +139,7 @@ const PREVIEW = {
   changes: [SWIM_GONE, FLAGPOLE_NOW],
   dots: [
     { key: key(BUNK_1, PERIOD_1), words: "Deleted from setup" },
-    { key: key(BUNK_2, PERIOD_2), words: "Flagpole is set up here now" }
+    { key: key(BUNK_2, PERIOD_2), words: "Flagpole goes here" }
   ],
   closedActivityIds: [],
   problem: null
@@ -242,7 +242,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expectCleanGrid(element);
     expect(getSetupChanges).toHaveBeenCalledWith({ scheduleId: SCHEDULE });
     expect(whyFor(element, "0-1")).toContain("Deleted from setup");
-    expect(whyFor(element, "1-2")).toContain("Flagpole is set up here now");
+    expect(whyFor(element, "1-2")).toContain("Flagpole goes here");
     // The lock stays drawn: the director's choice is still the director's.
     expect(cell(element, "0-1").querySelector(".cell-lock")).not.toBeNull();
   });
@@ -314,7 +314,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     );
     expect(rowsIn(element)).toEqual([
       "Bunk 1 · Monday · Period 1 | Swim → Open | Deleted from setup",
-      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
+      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"
     ]);
     expect(q(element, '[data-action="Rebuild"]').disabled).toBe(true);
     expect(q(element, '[data-action="StartOver"]').disabled).toBe(true);
@@ -344,7 +344,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(getInputs).toHaveBeenCalledTimes(2);
     expect(whyFor(element, "0-1")).toBeNull();
     expect(rowsIn(element)).toEqual([
-      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
+      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"
     ]);
     expect(inDialog(element, '[data-id="announce"]').textContent.trim()).toBe(
       "Updated to match setup."
@@ -456,10 +456,10 @@ describe("Setup changed on the Generated Schedule screen", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(inDialog(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again, so nothing was updated."
+      "Something changed while you looked, so nothing was updated."
     );
     expect(rowsIn(element)).toEqual([
-      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
+      "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"
     ]);
     expect(getInputs).toHaveBeenCalledTimes(1);
   });

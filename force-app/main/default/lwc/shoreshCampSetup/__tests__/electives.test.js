@@ -316,8 +316,9 @@ describe("c-shoresh-camp-setup: Electives", () => {
     expect(bareRecord(chugim.newRowDefaults)).toEqual({
       ElectiveSet__c: "es1"
     });
+    // Never "offering" on screen (Greg's pick, 2026-11-12): the camp's Elective word.
     expect(chugim.columns.map((c) => c.label)).toEqual([
-      "Offering",
+      "Elective",
       "Seats",
       "Minimum",
       "Who",
@@ -414,14 +415,19 @@ describe("c-shoresh-camp-setup: Electives", () => {
     expect(activity.options.length).toBe(9);
   });
 
-  it("a row is named by its activity; a proposed one is dashed with Confirm; blank seats are marked", async () => {
+  it("a row is named by its activity; a guessed one is dashed with Looks right, read out as Guessed; blank seats are marked", async () => {
     const element = await render();
     const chugim = section(element, "es1");
     expect(chugim.nameFor(nsRecord({ Activity__c: "a7" }))).toBe("Pottery");
     expect(chugim.rowClasses).toEqual({ o6: "row_proposed" });
     expect(bareRecord(chugim.endActions)).toEqual({
       o6: [
-        { key: "confirm", label: "Confirm", changes: { Proposed__c: false } }
+        {
+          key: "confirm",
+          label: "Looks right",
+          title: "Woodworking: Guessed. Looks right",
+          changes: { Proposed__c: false }
+        }
       ]
     });
     const bechirot = section(element, "es2");

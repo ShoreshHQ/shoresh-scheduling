@@ -39,6 +39,14 @@ global with sharing class AgentElectivesToClear {
     }
   }
 
+  /** "2 sets of seats, 1 of them final"; "1 set of seats, final" (or draft). */
+  private static String seatSets(Integer runs, Integer finals) {
+    if (runs == 1) {
+      return '1 set of seats, ' + (finals == 1 ? 'final' : 'draft');
+    }
+    return runs + ' sets of seats, ' + finals + ' of them final';
+  }
+
   /** The picture, in lines. */
   public static String said(ElectiveClear.Picture picture) {
     List<String> lines = new List<String>{
@@ -61,10 +69,7 @@ global with sharing class AgentElectivesToClear {
           ' choices, ' +
           week.seats +
           ' seats, ' +
-          week.runs +
-          ' runs (' +
-          week.finals +
-          ' final)' +
+          seatSets(week.runs, week.finals) +
           (week.working.isEmpty()
             ? ''
             : '; still being worked on: ' + String.join(week.working, ', '))
@@ -73,7 +78,7 @@ global with sharing class AgentElectivesToClear {
     lines.add(
       'Stays for next summer: elective sets ' +
         String.join(picture.sets, ', ') +
-        '; offerings ' +
+        '; electives ' +
         String.join(picture.offerings, ', ') +
         (picture.linked.isEmpty()
           ? ''

@@ -53,9 +53,8 @@ global with sharing class AgentBringInChoices implements AgentWeeks.Action {
       // The screen's own words for each (shoreshChoicesImport save and runCheck).
       throw new ShoreshException(
         (save
-          ? 'Nothing was brought in. '
-          : 'Couldn\'t count what this sheet brings in. ') +
-        ScreenErrors.words(e)
+          ? 'Nothing was imported. '
+          : 'Couldn\'t count what this sheet imports. ') + ScreenErrors.words(e)
       );
     }
   }

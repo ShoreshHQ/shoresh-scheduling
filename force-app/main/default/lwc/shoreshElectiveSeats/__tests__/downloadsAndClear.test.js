@@ -161,7 +161,7 @@ describe("downloads come once seats are final", () => {
       "Print rosters",
       "Camper schedules",
       "Full report",
-      "Campers, to edit and bring back",
+      "Campers, to edit and import again",
       "Clear at season end…"
     ]);
     await expect(element).toBeAccessible();
@@ -296,7 +296,7 @@ describe("end-of-season Clear", () => {
       stamp: "abc"
     });
     expect(text($(element, '[data-id="status"]'))).toBe(
-      "Cleared: 2 runs, 4 campers."
+      "Cleared these seats and 4 campers."
     );
     // Back on the seats screen, read again: this week has nothing now.
     expect($(element, '[data-id="clear-heading"]')).toBeNull();

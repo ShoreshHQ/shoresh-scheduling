@@ -109,7 +109,7 @@ describe("the Electives list", () => {
 
   it("downloads every offering by set and activity, seats as the screen says them", () => {
     expect(listRows("electives", setup(), terms)).toEqual([
-      ["Elective set", "Activity", "Seats", "Minimum", "Proposed"],
+      ["Elective set", "Activity", "Seats", "Minimum", "Guessed"],
       ["Bechirot", "Drama", 0, "", "No"],
       ["Bechirot", "Kayaking", "", "", "No"],
       ["Chugim", "Archery", 12, "", "No"],
@@ -241,7 +241,7 @@ describe("the Electives list", () => {
 
   it("matches an offering by its set and activity, and shows each difference for Keep or Change", () => {
     const p = read([
-      ["Elective set", "Activity", "Seats", "Minimum", "Proposed"],
+      ["Elective set", "Activity", "Seats", "Minimum", "Guessed"],
       ["Chugim", "archery", "15", "", "No"],
       ["Chugim", "Pottery", "No limit", "4", "No"]
     ]);
@@ -260,7 +260,7 @@ describe("the Electives list", () => {
     const plan = listPlan(
       read(
         [
-          ["Elective set", "Activity", "Seats", "Minimum", "Proposed"],
+          ["Elective set", "Activity", "Seats", "Minimum", "Guessed"],
           ["Chugim", "archery", "15", "", "No"],
           ["Chugim", "Pottery", "No limit", "4", "No"]
         ],

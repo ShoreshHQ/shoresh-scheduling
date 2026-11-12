@@ -63,10 +63,12 @@ global with sharing class AgentElectiveSeatsNow {
       run.weekName +
       ': ' +
       (run.isFinal
-        ? 'finalized; start a new version (start_new_elective_version) to change them'
+        ? 'Final; Change ' +
+          seatWords +
+          ' (start_new_elective_version) to change them'
         : seatWords +
           (view.assigned ? ' assigned' : ' not assigned yet') +
-          ', not finalized') +
+          ', Draft') +
       '. seen: ' +
       AgentElectives.seenText(run.id, view.revision)
     };

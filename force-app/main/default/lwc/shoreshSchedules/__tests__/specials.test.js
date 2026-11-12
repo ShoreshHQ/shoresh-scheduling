@@ -182,7 +182,7 @@ describe("c-shoresh-schedules: special days and events", () => {
     expect(events.textContent).toContain("Carnival");
     expect(events.textContent).toContain("Special event");
     const open = q(element, '[data-event="evt1"]');
-    expect(open.textContent.trim()).toBe("Open Carnival");
+    expect(open.textContent.trim()).toBe("View Carnival");
     open.click();
     await flush();
     const grid = q(element, '[data-id="event-grid"]');

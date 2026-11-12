@@ -105,7 +105,7 @@ function plainCells(columns, valueOf, targets, quiet = []) {
     text: textOf(c, valueOf(c), targets),
     className: quiet.includes(c.heading) ? "cell cell_quiet" : "cell",
     // Said after the value: what it starts with, not what the file gave.
-    after: quiet.includes(c.heading) ? ", starting value" : ""
+    after: quiet.includes(c.heading) ? ", Guessed" : ""
   }));
 }
 

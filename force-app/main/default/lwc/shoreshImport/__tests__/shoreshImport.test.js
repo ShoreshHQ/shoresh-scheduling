@@ -10,6 +10,7 @@ import getImported from "@salesforce/apex/ImportController.getImported";
 import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
 import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
+import { comingIn } from "../summary";
 import { nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
@@ -419,7 +420,7 @@ describe("c-shoresh-import", () => {
     );
     await flush();
     expect(tile("ElectiveSet").textContent).toContain("1");
-    expect(tile("Offering").textContent).toContain("3");
+    expect(tile("Elective").textContent).toContain("3");
     expect(tile("LinkedChoice").textContent).toContain("3");
 
     await answer(element, `elective|${name}`, "not");
@@ -1003,13 +1004,13 @@ describe("c-shoresh-import", () => {
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
       const similar = $(element, `[data-card="${music}"]`);
       expect(similar.querySelector(".tag").textContent).toBe(
-        "Remembered from your answer on Jul 3"
+        "Answered as before · Jul 3"
       );
       expect(similar.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
       await answer(element, music, "b");
       expect($(element, `[data-card="${music}"]`).textContent).not.toContain(
-        "Remembered"
+        "Answered as before"
       );
       expect(add(element).disabled).toBe(false);
       expect(add(element).textContent.trim()).toBe("Add");
@@ -1296,11 +1297,11 @@ describe("c-shoresh-import", () => {
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
       expect(pool.querySelector(".tag").textContent).toBe(
-        "Remembered from a former user's answer on Oct 26"
+        "Answered as before · a former user, Oct 26"
       );
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);
-      expect(artRoom.textContent).not.toContain("Remembered");
+      expect(artRoom.textContent).not.toContain("Answered as before");
       // Headed in the camp's word, with what it was named with in plain text: no help icon.
       const places = $(element, '[data-id="places"]');
       expect(places.querySelector("h3").textContent.trim()).toBe("Locations");
@@ -1481,7 +1482,7 @@ describe("c-shoresh-import", () => {
         "Imported from maple-grove-2026-all-camp.xlsx"
       );
       expect(version.textContent).toContain("Week 1 (Main)");
-      expect(version.textContent).toContain("Open it on Saved versions");
+      expect(version.textContent).toContain("View it on Saved versions");
       // Last year's schedule drawn small beside its words, hidden from screen readers.
       const mini = version.querySelector(".mini");
       expect(mini.getAttribute("aria-hidden")).toBe("true");
@@ -1527,5 +1528,24 @@ describe("c-shoresh-import: a narrow window", () => {
   it("a tile grows with its words, never spilling", () => {
     expect(rule(".tile")).toMatch(/min-height: var\(--shoresh-tile-h\);/);
     expect(rule(".tile")).not.toMatch(/[^-]height:/);
+  });
+});
+
+describe("the tiles in a camp's words", () => {
+  it("a camp's Elective word followed by its sets: the two tiles never read the same", () => {
+    const chugim = buildTerms([
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+    ]);
+    const tiles = comingIn(
+      {
+        electiveSets: [{ name: "Chugim A" }],
+        offerings: [{ name: "Archery" }, { name: "Drama" }]
+      },
+      chugim
+    );
+    expect(tiles.map((x) => [x.label, x.spoken])).toEqual([
+      ["Chug set", "1 Chug set"],
+      ["Chugim", "2 Chugim"]
+    ]);
   });
 });
