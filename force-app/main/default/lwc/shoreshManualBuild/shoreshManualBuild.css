@@ -47,7 +47,7 @@
 
 /* A refused move: a quiet line under the rail. */
 .notice {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
 }

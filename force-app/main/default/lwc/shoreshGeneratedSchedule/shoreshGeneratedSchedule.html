@@ -52,6 +52,9 @@
               <div class="progress-fill" style={progressStyle}></div>
             </div>
             <span class="busy-text">{busyText}</span>
+            <!-- What the build is doing now, in camp words. Not a live region: it changes a few
+                 times a second; a screen reader hears it every few seconds (announce). -->
+            <span class="busy-now" data-id="busy-now">{busyLine}</span>
             <template lwc:if={canStopBuild}>
               <button
                 type="button"
@@ -63,9 +66,6 @@
               </button>
             </template>
           </div>
-          <!-- What the build is doing now, in camp words. Not a live region: it changes a few
-               times a second; a screen reader hears it every few seconds (announce). -->
-          <p class="busy-now" data-id="busy-now">{busyLine}</p>
         </div>
       </template>
 
