@@ -1047,59 +1047,41 @@ private class SetupMatchTest {
         SetupMatchTestData.keysOf(preview),
         preview
       );
+      Integer daysAfterUpdate = [
+        SELECT COUNT()
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :draftId
+      ];
+      // The version it kept restores whole: its lost days come back, shown again, never refused.
+      ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
+        draftId,
+        [
+          SELECT Id
+          FROM Schedule__c
+          WHERE
+            Program__c = :ids.get('Main')
+            AND Status__c = 'Version'
+            AND Name = :SetupMatch.BEFORE_UPDATE
+          WITH USER_MODE
+          LIMIT 1
+        ]
+        .Id,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      SetupMatch.Preview again = SetupMatchController.getSetupChanges(draftId);
       Test.stopTest();
       Assert.isNull(done.refused);
       Assert.isTrue(done.kept, 'The week as it was is kept first');
-      Assert.areEqual(
-        2,
-        [SELECT COUNT() FROM ScheduleDay__c WHERE Schedule__c = :draftId]
-      );
+      Assert.areEqual(2, daysAfterUpdate);
       Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
-    }
-  }
-
-  // WEEK-6.6
-  @IsTest
-  static void aShortenedWeeksBeforeUpdateVersionRestoresWithItsLostDaysShown() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetupMatchTestData.camp();
-      Id draftId = started(ids);
-      SetupMatchTestData.saveDeferred(
-        new Week__c(Id = ids.get('Week 1'), EndDate__c = MONDAY.addDays(1))
-      );
-      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
-        draftId
-      );
-      makeChanges(draftId, SetupMatchTestData.keysOf(preview), preview);
-      Id beforeUpdate = [
-        SELECT Id
-        FROM Schedule__c
-        WHERE
-          Program__c = :ids.get('Main')
-          AND Status__c = 'Version'
-          AND Name = :SetupMatch.BEFORE_UPDATE
-        WITH USER_MODE
-        LIMIT 1
-      ]
-      .Id;
-      String seen = ScheduleDays.stamp(ScheduleDays.read(draftId));
-      Test.startTest();
-      ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
-        draftId,
-        beforeUpdate,
-        seen
-      );
-      SetupMatch.Preview after = SetupMatchController.getSetupChanges(draftId);
-      Test.stopTest();
       Assert.isFalse(restored.changedSince);
-      // The week as it was, its lost days too, and they are shown again, never dropped unseen.
       Assert.areEqual(
         5,
         [SELECT COUNT() FROM ScheduleDay__c WHERE Schedule__c = :draftId]
       );
       Assert.areEqual(
         'Not a day of Main now',
-        SetupMatchTestData.dotsOf(after)
+        SetupMatchTestData.dotsOf(again)
           .get(
             String.valueOf(MONDAY.addDays(2)) +
               '|' +
