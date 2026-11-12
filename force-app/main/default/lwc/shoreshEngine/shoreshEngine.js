@@ -1,4 +1,4 @@
-import { buildTerms } from "c/shoreshTerms";
+import { article, buildTerms } from "c/shoreshTerms";
 import { blankSetupNote, floorNote, reasonFor } from "./words";
 import { checkWeek, dayWord } from "./checks";
 import {
@@ -224,7 +224,7 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     return {
       ok: false,
       error: replaced.length
-        ? `Every day this ${t.sIn("Week")} is a ${t.sIn("SpecialDay")}, so there is nothing to generate.`
+        ? `Every day this ${t.sIn("Week")} is ${article(t.sIn("SpecialDay"))}, so there is nothing to generate.`
         : `This ${t.sIn("Week")} has no days to build.`
     };
   }

@@ -12,7 +12,13 @@ import { loadStyle } from "lightning/platformResourceLoader";
 import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { failed } from "c/shoreshErrors";
-import { buildTerms, shortDate } from "c/shoreshTerms";
+import {
+  article,
+  buildTerms,
+  countOf,
+  electiveSeatsTitle,
+  shortDate
+} from "c/shoreshTerms";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
 import {
   buildBoard,
@@ -292,7 +298,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.view = view;
     } catch (e) {
       this.error = failed(
-        `Couldn't open these ${this.t.sIn("Elective")} seats.`,
+        `Couldn't open these ${this.t.sIn("Elective")} ${this.t.pIn("Seats")}.`,
         e
       );
     }
@@ -334,9 +340,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
       )
       .reverse();
   }
-  /** "Elective seats", or the camp's "Chug seats" (wiki decision 66). */
+  /** "Elective seats", or the camp's "Chug spots" (wiki decision 66, word walk W1). */
   get screenTitle() {
-    return `${this.t.s("Elective")} seats`;
+    return electiveSeatsTitle(this.t);
   }
   get setWord() {
     return this.t.s("ElectiveSet");
@@ -542,7 +548,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     if (!this.view || !this.view.scheduleChanged) return null;
     return this.isFinal
       ? "Schedule changed since it was finalized"
-      : "Schedule changed since seats were assigned";
+      : `Schedule changed since ${this.t.pIn("Seats")} were assigned`;
   }
   get runRows() {
     return this.runsHere.map((r) => ({
@@ -564,9 +570,14 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   // ---------- the main button and Assign again ----------
 
+  /** The roster pop when no one is left without one: "Everyone has a spot." */
+  get everyoneSeated() {
+    return `Everyone has ${article(this.t.sIn("Seats"))}.`;
+  }
+
   /** Before Finalize: Assign seats, then Finalize. A final run's main button is Download. */
   get primaryLabel() {
-    return this.isAssigned ? "Finalize" : "Assign seats";
+    return this.isAssigned ? "Finalize" : `Assign ${this.t.pIn("Seats")}`;
   }
   get primaryDisabled() {
     return this.busy;
@@ -608,17 +619,17 @@ export default class ShoreshElectiveSeats extends LightningElement {
     this.busy = true;
     this.error = null;
     this.errorAction = null;
-    this.status = "Assigning seats…";
+    this.status = `Assigning ${this.t.pIn("Seats")}…`;
     try {
       const view = await assignSeats({
         request: JSON.stringify(planSeats(this.view, this.t))
       });
       this.view = view;
       const board = buildBoard(readRun(view), this.t);
-      this.status = `Seats assigned: ${board.counter.placed} of ${board.counter.total} placed.`;
+      this.status = `${this.t.p("Seats")} assigned: ${board.counter.placed} of ${board.counter.total} placed.`;
       await this.refreshRuns();
     } catch (e) {
-      this.error = failed("Seats weren't assigned.", e);
+      this.error = failed(`${this.t.p("Seats")} weren't assigned.`, e);
       this.status = "";
     } finally {
       this.focusAfter = focusAfter;
@@ -753,9 +764,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       people,
       empty: people.length === 0,
       free:
-        cell.free == null
-          ? ""
-          : `${cell.free} ${cell.free === 1 ? "seat" : "seats"} free`,
+        cell.free == null ? "" : `${countOf(this.t, cell.free, "Seats")} free`,
       day: cell.column.time.day,
       blockId: cell.column.time.blockId
     };
@@ -883,7 +892,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.status = said;
       done = true;
     } catch (e) {
-      this.error = failed("That seat wasn't changed.", e);
+      this.error = failed(`That ${this.t.sIn("Seats")} wasn't changed.`, e);
     } finally {
       this.focusAfter = done
         ? focusAfter
@@ -965,7 +974,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
             : "camper-cell",
           text: cell.attends && !cell.unplaced ? cell.name : "",
           words: cell.words ? ` · ${cell.words}` : "",
-          unplacedName: `${row.camper.name}: no seat`
+          unplacedName: `${row.camper.name}: no ${this.t.sIn("Seats")}`
         }))
       }))
     }));
@@ -1192,7 +1201,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     const rows = [
       ["campers", this.t.p("Camper"), ICONS.person, view.totals.campers],
       ["choices", "Choices", ICONS.choices, view.totals.choices],
-      ["seats", this.t.s("Seats"), ICONS.seats, view.totals.seats],
+      ["seats", this.t.p("Seats"), ICONS.seats, view.totals.seats],
       ["runs", "Runs", ICONS.runs, view.totals.runs]
     ];
     return rows.map(([key, label, icon, total]) => ({

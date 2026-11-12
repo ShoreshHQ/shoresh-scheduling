@@ -13,7 +13,7 @@
  * ImportController.saveWorkbook.
  */
 import { CHILDREN, FIELD, localName } from "c/shoreshSchema";
-import { buildTerms } from "c/shoreshTerms";
+import { article, buildTerms } from "c/shoreshTerms";
 import {
   LEAVE_OUT,
   WEEKDAYS,
@@ -988,7 +988,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       problems: [
         ...unknown.map(
           (c) =>
-            `"${c.heading}" isn't a ${t.sIn("Week")} of the worksheet that can be read`
+            `"${c.heading}" isn't ${article(t.sIn("Week"))} of the worksheet that can be read`
         ),
         ...twins.map(
           (list) =>

@@ -178,8 +178,7 @@ public with sharing class SpecialSetUp {
 
   /** "a special day", "an event": the camp's word with its article. */
   private String article(String term) {
-    String word = labels.singularInSentence(term);
-    return ('aeiou'.contains(word.left(1).toLowerCase()) ? 'an ' : 'a ') + word;
+    return labels.withArticle(term);
   }
 
   private static String listed(List<String> parts) {

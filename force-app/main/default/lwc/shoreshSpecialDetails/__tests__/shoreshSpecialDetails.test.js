@@ -109,19 +109,20 @@ describe("c-shoresh-special-details", () => {
   });
 
   describe("words worked out for the list", () => {
-    it("the days an item is on, by the week's place in the season", () => {
+    it("the days an item is on, by the week's name and the day (word walk W1)", () => {
       const brief = SETUP.special.briefs[2];
-      expect(placedOnText(brief, WEEKS, { one: "Wk" })).toBe(
-        "Wk 2 Tue, Wk 3 Tue"
-      );
-      // A camp with its own word for weeks.
-      expect(placedOnText(brief, WEEKS, { one: "Session" })).toBe(
-        "Session 2 Tue, Session 3 Tue"
-      );
-      expect(placedOnText(SETUP.special.briefs[1], WEEKS, {})).toBe("");
+      expect(placedOnText(brief, WEEKS)).toBe("Week 2 · Tue, Week 5 · Tue");
+      // A camp with its own name for weeks: the week's own name, never "Wk".
+      expect(
+        placedOnText(brief, [
+          { Id: "w2", Name: "Session 2" },
+          { Id: "w5", Name: "Session 5" }
+        ])
+      ).toBe("Session 2 · Tue, Session 5 · Tue");
+      expect(placedOnText(SETUP.special.briefs[1], WEEKS)).toBe("");
       // A week gone since is left out, never shown as a wrong number.
       expect(
-        placedOnText({ days: [{ weekId: "gone", day: "Monday" }] }, WEEKS, {})
+        placedOnText({ days: [{ weekId: "gone", day: "Monday" }] }, WEEKS)
       ).toBe("");
     });
 
@@ -193,7 +194,7 @@ describe("c-shoresh-special-details", () => {
     expect(heading.textContent).toBe("Color War details");
     expect(element.shadowRoot.activeElement).toBe(heading);
     expect(text(element, "where")).toBe("Whole camp");
-    expect(text(element, "placed-on")).toBe("Wk 3 Thu");
+    expect(text(element, "placed-on")).toBe("Week 5 · Thu");
     expect(text(element, "notes")).toBe("Teams announced at breakfast");
     const periods = [
       ...element.shadowRoot.querySelectorAll('[data-id="period"]')
@@ -234,7 +235,7 @@ describe("c-shoresh-special-details", () => {
     element.open("se1");
     await flush();
     expect(text(element, "where")).toBe("Main field");
-    expect(text(element, "placed-on")).toBe("Wk 2 Tue, Wk 3 Tue");
+    expect(text(element, "placed-on")).toBe("Week 2 · Tue, Week 5 · Tue");
     expect(text(element, "event-schedule")).toBe("None yet");
     expect(element.shadowRoot.querySelector('[data-id="periods"]')).toBeNull();
     element.open("se2");

@@ -396,7 +396,7 @@ function fromProblems(kind, list, t, labels) {
       return {
         ...card,
         small: (first.set || screenName).toUpperCase(),
-        off: "choose seats",
+        off: `choose ${t.pIn("Seats")}`,
         picture: toMissing(names)
       };
     default:
@@ -574,12 +574,12 @@ function seatCards(table, t, labels) {
       name: one ? first.name : labels.electiveSeats,
       small: one ? t.p("Elective").toUpperCase() : null,
       off: one
-        ? counted(missing, "seat short", "seats short")
+        ? counted(missing, `${t.sIn("Seats")} short`, `${t.pIn("Seats")} short`)
         : "under minimum",
       label: short
         .map(
           (s) =>
-            `${s.name} is ${counted(s.minimum - s.fewest, "seat", "seats")} short of its minimum.`
+            `${s.name} is ${counted(s.minimum - s.fewest, t.sIn("Seats"), t.pIn("Seats"))} short of its minimum.`
         )
         .join(" "),
       picture: one ? shortSeats(first) : shortRows(short),

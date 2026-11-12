@@ -115,7 +115,7 @@ describe("findings", () => {
         kind: "NO_CAMPERS",
         timeId: "t1",
         message:
-          "No camper is eligible for this period — check that the Edot on the sheet match " +
+          "No camper is eligible for this time block — check that the Edot on the sheet match " +
           "the camp’s Edah names."
       }
     ]);
@@ -262,7 +262,7 @@ describe("a double period linked for every choice (slice E9)", () => {
         camperIds: ["c1"],
         message:
           "“Pottery again” shares “Pottery” seats with “Pottery” in t1, so 1 camper who asked " +
-          "for “Pottery again” got a seat each period instead."
+          "for “Pottery again” got a seat each time block instead."
       }
     ]);
     // The kept set is placed as a set; the other camper still gets a seat each period.
@@ -341,7 +341,7 @@ describe("a linked choice with a period this run can't give it", () => {
         camperIds: ["c0"],
         message:
           "“Drama all week”: Wed 12:30 and Fri 12:30 can’t be given in this run; its other " +
-          "periods were kept together."
+          "time blocks were kept together."
       }
     ]);
     expect(

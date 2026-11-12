@@ -150,18 +150,21 @@
 
       <div class="pair field">
         <div class="pair-part">
-          <lightning-input
-            type="number"
-            data-field="length"
-            label={labels.length}
-            value={length}
-            min="1"
-            step="1"
-            required
-            onchange={handleRule}
-            onfocusout={handleRuleLeave}
-            onkeydown={handleRuleKey}
-          ></lightning-input>
+          <span class="number-with-unit">
+            <lightning-input
+              type="number"
+              data-field="length"
+              label={labels.length}
+              value={length}
+              min="1"
+              step="1"
+              required
+              onchange={handleRule}
+              onfocusout={handleRuleLeave}
+              onkeydown={handleRuleKey}
+            ></lightning-input>
+            <span class="number-unit" data-id="length-unit">{lengthUnit}</span>
+          </span>
           <template lwc:if={fieldErrors.length}>
             <div
               class="slds-form-element__help slds-text-color_error"

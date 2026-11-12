@@ -378,7 +378,7 @@ function blockText(b) {
 
 function timesAWeek(a, t) {
   const range = a.min === a.max ? `${a.max}` : `${a.min}–${a.max}`;
-  const parts = [`${range} a ${t.sIn("Week")}`];
+  const parts = [`${range} ${article(t.sIn("Week"))}`];
   if (a.length > 1) {
     parts.push(`${a.length} ${t.pIn("TimeBlock")} long`);
   }
@@ -544,7 +544,7 @@ const UNPLACED_WHY = {
   differsByWeek: (t) =>
     `it differs from ${t.sIn("Week")} to ${t.sIn("Week")}, and one ${t.sIn("SpecialDay")} has the same schedule every ${t.sIn("Week")}`,
   specialDayTaken: (t) =>
-    `that day already has a ${t.sIn("SpecialDay")}, which is kept`,
+    `that day already has ${article(t.sIn("SpecialDay"))}, which is kept`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
   noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
   twoAtOnce: () => "something else is already in that cell",
@@ -740,7 +740,7 @@ export function importNotes(proposal, t) {
     set.unlinked.forEach((u) =>
       notes.push({
         key: `unlinked|${set.name}|${u.program}|${u.day}`,
-        text: `${set.name} on ${u.day}: different ${t.pIn("Group")} hold it across different ${t.pIn("TimeBlock")}, so Shoresh can't link them. Each period is chosen separately.`
+        text: `${set.name} on ${u.day}: different ${t.pIn("Group")} hold it across different ${t.pIn("TimeBlock")}, so Shoresh can't link them. Each ${t.sIn("TimeBlock")} is chosen separately.`
       })
     );
   }
@@ -752,7 +752,7 @@ export function importNotes(proposal, t) {
         : `its ${filled.length} ${t.pIn("Week")} are`;
     notes.push({
       key: "fillWeeks",
-      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so ${count} added from its dates, keeping last year's schedule as a ${t.sIn("Version")}.`
+      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so ${count} added from its dates, keeping last year's schedule as ${article(t.sIn("Version"))}.`
     });
   } else if (proposal.noWeeks && proposal.usable.length) {
     notes.push({

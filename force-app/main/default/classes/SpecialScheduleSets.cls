@@ -22,7 +22,7 @@ public with sharing class SpecialScheduleSets {
       return SlotEvents.none();
     }
     if (owner.isEvent()) {
-      // No article built from a camp word (design guide): the camp's plurals.
+      // The camp's plurals; an article before a camp word would fit it (CampLabels.withArticle).
       throw new ShoreshException(
         AgentRefusal.withFix(
           owner.name +

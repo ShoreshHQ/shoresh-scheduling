@@ -7,6 +7,7 @@ import changeFrame from "@salesforce/apex/SpecialScheduleController.changeFrame"
 import addActivity from "@salesforce/apex/SpecialScheduleController.addActivity";
 import importPlan from "@salesforce/apex/SpecialScheduleController.importPlan";
 import { failed, reasonOf } from "c/shoreshErrors";
+import { article } from "c/shoreshTerms";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
 import { scheduleSheets } from "c/shoreshScheduleExport";
@@ -276,7 +277,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const day = this.view.schedule.days[0];
     const needs = [];
     if (!day.blocks.length) {
-      needs.push(`a ${this.t.sIn("TimeBlock")}`);
+      needs.push(`${article(this.t.sIn("TimeBlock"))}`);
     }
     if (!day.groups.length) {
       needs.push("a station");
@@ -580,7 +581,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
     if (outcome.notGroups.length) {
       lines.push(
-        `Left out, not a ${t.sIn("Group")} here: ${listed(outcome.notGroups)}.`
+        `Left out, not ${article(t.sIn("Group"))} here: ${listed(outcome.notGroups)}.`
       );
     }
     if (noTimes.length) {

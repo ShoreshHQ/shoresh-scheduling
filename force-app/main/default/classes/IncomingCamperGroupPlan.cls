@@ -87,8 +87,8 @@ public with sharing class IncomingCamperGroupPlan {
                     groupWord +
                     ' with their choices.',
                   'A person brings choices in once on the ' +
-                    batch.labels.singular('Elective') +
-                    ' seats screen (Bring in choices); then send their elective choices, then this again.'
+                    batch.labels.electiveSeatsTitle() +
+                    ' screen (Bring in choices); then send their elective choices, then this again.'
                 )
               : 'There are no electives in "' +
                 record.week.left(80) +

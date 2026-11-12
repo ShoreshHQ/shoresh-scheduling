@@ -72,6 +72,36 @@ private class CampLabelsTest {
     );
   }
 
+  @IsTest
+  static void articlesAndTheSeatsTitleFollowTheCampsWords() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new List<CampLabel__c>{
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Division',
+          Singular__c = 'Edah',
+          Plural__c = 'Edot'
+        ),
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Seats',
+          Singular__c = 'Spot',
+          Plural__c = 'Spots'
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    CampLabels labels = CampLabels.forCamp(camp.Id);
+    Assert.areEqual('an Edah', labels.withArticle('Division'));
+    Assert.areEqual('a time block', labels.withArticle('TimeBlock'));
+    Assert.areEqual('Elective spots', labels.electiveSeatsTitle());
+    Assert.areEqual(
+      'Elective seats',
+      CampLabels.modelTermsOnly().electiveSeatsTitle()
+    );
+  }
+
   // CORE-1.35
   @IsTest
   static void oneEnglishPluralRuleForTheStandardWords() {

@@ -194,7 +194,7 @@ export function linkedOf(run) {
       key: `shared|${aside.id}`,
       ids: [linkedIdOf(aside.id)],
       name: nameOfCopy(aside.id),
-      text: `Shares ${time ? timeWordsOf(time) : "a period"} with "${nameOfCopy(aside.keptId)}", which was kept as a set`,
+      text: `Shares ${time ? timeWordsOf(time) : "a time"} with "${nameOfCopy(aside.keptId)}", which was kept as a set`,
       shared: true
     });
   });
@@ -218,7 +218,7 @@ function missingName(run, period) {
 /** "at Thursday 12:30 for Seniors": a period by its weekday and its block's start or name. */
 function missingWhere(run, period, division) {
   const block = run.times.find((t) => t.blockId === period.blockId);
-  const when = block ? block.startTime || block.blockName : "that period";
+  const when = block ? block.startTime || block.blockName : "that time";
   return `at ${spokenWeekday(period.weekday)} ${when}${division ? ` for ${division}` : ""}`;
 }
 

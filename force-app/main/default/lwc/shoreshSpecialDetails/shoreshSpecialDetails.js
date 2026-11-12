@@ -67,21 +67,20 @@ export function briefOf(setup, itemId) {
 }
 
 /**
- * The days an item is on, in the camp's words for weeks, numbered by the week's place in the
- * season ("Wk 5 Thu, Wk 6 Tue"; a camp with its own word, "Session 5 Thu"); "" when on none.
+ * The days an item is on, by each week's name and the day ("Week 5 · Thu, Week 6 · Tue"; a
+ * season of numbered days, "Week 1 · Day 5"), never "Wk" (word walk W1); "" when on none.
  */
-export function placedOnText(brief, weeks, weekWords) {
-  return placedDays(brief, weeks, weekWords)
+export function placedOnText(brief, weeks) {
+  return placedDays(brief, weeks)
     .map((placed) => placed.text)
     .join(", ");
 }
 
 /**
- * Each day an item is on, as placedOnText names it ("Wk 5 Thu"), with its week and weekday:
+ * Each day an item is on, as placedOnText names it ("Week 5 · Thu"), with its week and weekday:
  * { weekId, weekName, day, text }. Days of a week no longer in the season are left out.
  */
-export function placedDays(brief, weeks, weekWords) {
-  const one = (weekWords && weekWords.one) || "Wk";
+export function placedDays(brief, weeks) {
   return (brief.days || [])
     .map((onDay) => {
       const at = (weeks || []).findIndex((w) => w.Id === onDay.weekId);
@@ -91,7 +90,7 @@ export function placedDays(brief, weeks, weekWords) {
             weekId: onDay.weekId,
             weekName: weeks[at].Name,
             day: onDay.day,
-            text: `${one} ${at + 1} ${numberedWeekday(onDay.day) || SHORT_DAYS[onDay.day] || onDay.day}`
+            text: `${weeks[at].Name} · ${numberedWeekday(onDay.day) || SHORT_DAYS[onDay.day] || onDay.day}`
           };
     })
     .filter((placed) => placed);
@@ -274,11 +273,8 @@ export default class ShoreshSpecialDetails extends LightningElement {
 
   get placedOn() {
     return (
-      placedOnText(
-        this.brief,
-        (this._setup && this._setup.weeks) || [],
-        this.weekWords
-      ) || "Not placed"
+      placedOnText(this.brief, (this._setup && this._setup.weeks) || []) ||
+      "Not placed"
     );
   }
 
@@ -291,7 +287,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
     if (this.isEvent) {
       return [];
     }
-    return placedDays(this.brief, this.weeks, this.weekWords).map((placed) => ({
+    return placedDays(this.brief, this.weeks).map((placed) => ({
       ...placed,
       key: `${placed.weekId}|${placed.day}`,
       offLabel: `Take ${this.name} off ${spokenWeekday(placed.day)} of ${placed.weekName}`

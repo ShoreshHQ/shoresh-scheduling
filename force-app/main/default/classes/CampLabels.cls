@@ -110,6 +110,23 @@ public with sharing class CampLabels {
     return isCampWord(term) ? plural(term) : plural(term).toLowerCase();
   }
 
+  /**
+   * The term inside a sentence with its article, as the screens' article(): "a time block",
+   * "an Edah" (word walk W1: never a fixed "a" before a camp word).
+   */
+  public String withArticle(String term) {
+    String word = singularInSentence(term);
+    return ('aeiou'.contains(word.left(1).toLowerCase()) ? 'an ' : 'a ') + word;
+  }
+
+  /**
+   * The Elective seats screen's name, as the screens' electiveSeatsTitle: "Elective seats", or
+   * the camp's "Chug spots" (word walk W1).
+   */
+  public String electiveSeatsTitle() {
+    return singular('Elective') + ' ' + plural('Seats').toLowerCase();
+  }
+
   /** The camp typed this word, or it follows one the camp typed. */
   private Boolean isCampWord(String term) {
     return custom.containsKey(term) || followed(term) != null;

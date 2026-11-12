@@ -3,6 +3,7 @@ import previewCopy from "@salesforce/apex/SeasonSetupController.previewCopy";
 import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { suggestedCopyName, suggestedCopyStart } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
+import { electiveSeatsTitle } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import { numberedDay } from "c/shoreshDayNames";
 import { dayLabel } from "c/shoreshScheduleViews";
@@ -99,7 +100,6 @@ export default class ShoreshCopySeason extends LightningElement {
       t.p("Group"),
       t.p("TimeBlock"),
       t.p("Location"),
-      "Camp words",
       t.p("Activity"),
       t.p("FixedActivity"),
       t.p("RecurringActivity"),
@@ -118,7 +118,7 @@ export default class ShoreshCopySeason extends LightningElement {
       t.p("Version"),
       t.p("SpecialDay"),
       t.p("SpecialEvent"),
-      `${t.s("Elective")} seats`,
+      electiveSeatsTitle(t),
       `${t.s("Camper")} choices`
     ].map((label) => ({ key: label, label }));
   }

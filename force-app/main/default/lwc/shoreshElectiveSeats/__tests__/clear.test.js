@@ -89,7 +89,7 @@ describe("the picture", () => {
     ).toEqual([
       ["Elective sets", 2, ["Bechirot", "Chugim"], false],
       ["Offerings", 5, ["Archery", "Drama", "Pottery", "Ropes"], true],
-      ["Linked", 1, ["Pottery double"], false]
+      ["Linked choices", 1, ["Pottery double"], false]
     ]);
   });
 

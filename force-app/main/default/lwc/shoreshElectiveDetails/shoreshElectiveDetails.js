@@ -257,6 +257,11 @@ export default class ShoreshElectiveDetails extends LightningElement {
     return this.term("p", "LinkedChoice", "Linked choices");
   }
 
+  /** The linked choice's times, in the camp's word (word walk W1): "Time blocks", "Peulot". */
+  get timeBlocksLabel() {
+    return this.term("p", "TimeBlock", "Time blocks");
+  }
+
   get addLabel() {
     return this.term("s", "LinkedChoice", "Linked choice");
   }
@@ -413,7 +418,8 @@ export default class ShoreshElectiveDetails extends LightningElement {
               placeMap: places,
               placesRead: this.placesRead,
               setName: this.setName,
-              allDivisions
+              allDivisions,
+              terms: this.terms
             });
           }
           cell.lookName = cell.look ? `${words}: ${cell.look}` : null;
@@ -437,7 +443,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
         ((this._setup && this._setup.guesses) || []).some(
           (g) => g.recordId === choice.id && g.field === "periods"
         )
-          ? `Periods for ${choice.name}: guessed from your file`
+          ? `${this.timeBlocksLabel} for ${choice.name}: guessed from your file`
           : null,
       nameLook: sameNameLook(choice, shown, {
         terms: this.terms,

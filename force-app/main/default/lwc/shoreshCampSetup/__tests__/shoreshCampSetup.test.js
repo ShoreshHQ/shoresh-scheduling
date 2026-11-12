@@ -927,7 +927,7 @@ describe("c-shoresh-camp-setup", () => {
       );
       const often = table.columns.find((c) => c.type === "often");
       expect(often.scale).toBe(7);
-      expect(often.label).toBe("How often");
+      expect(often.label).toBe("Times per week");
       expect(bareName(often.maxField)).toBe("TimesPerWeekMax__c");
       expect(bareName(often.noMaxField)).toBe("NoWeeklyMax__c");
       const who = table.columns.find((c) => c.fieldName === "whoCanDoIt");
@@ -4560,7 +4560,7 @@ describe("c-shoresh-camp-setup", () => {
         [nsName("TimesPerWeekMin__c")]: {
           field: "often",
           words: "Guessed from your file",
-          name: "How often for Archery: guessed from your file"
+          name: "Times per week for Archery: guessed from your file"
         },
         whoCanDoIt: {
           field: "who",
@@ -4777,13 +4777,13 @@ describe("c-shoresh-camp-setup", () => {
       ]);
       expect(readonly(days, "schedule")).toEqual(["2 time blocks", "None", ""]);
       expect(readonly(days, "placedOn")).toEqual([
-        "Wk 2 Thu",
+        "Week 2 · Thu",
         "Not placed",
         ""
       ]);
       expect(readonly(events, "schedule")).toEqual(["None", "None", ""]);
       expect(readonly(events, "placedOn")).toEqual([
-        "Wk 1 Tue, Wk 2 Tue",
+        "Week 1 · Tue, Week 2 · Tue",
         "Not placed",
         ""
       ]);

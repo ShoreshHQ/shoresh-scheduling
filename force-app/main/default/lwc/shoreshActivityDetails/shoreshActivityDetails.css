@@ -120,6 +120,19 @@
   min-width: 0;
 }
 
+/* A number with its unit beside it: "1 time block". */
+.number-with-unit {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--shoresh-s2);
+}
+
+.number-unit {
+  padding-bottom: var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+  white-space: nowrap;
+}
+
 .pair-tick {
   align-self: flex-end;
   padding-bottom: var(--shoresh-s2);

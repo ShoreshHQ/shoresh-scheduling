@@ -17,7 +17,11 @@ public with sharing class ElectiveLinkedSeats {
   // camper|linked choice -> the division of the times sent.
   private Map<String, Id> divisionOf = new Map<String, Id>();
 
+  // The run, for the camp's words in a refusal.
+  private ElectiveRunState state;
+
   public ElectiveLinkedSeats(ElectiveRunState runState) {
+    state = runState;
     byId = new Map<Id, LinkedChoice__c>(runState.linkedChoices);
     live = runState.live;
   }
@@ -95,12 +99,18 @@ public with sharing class ElectiveLinkedSeats {
 
   private static String periodKey(String weekday, String blockId) {
     // A special day's own time block ("b2") is in no linked choice (ADR 0018 choice 63).
-    return weekday + '|' + (GridItems.isId(blockId) ? String.valueOf(Id.valueOf(blockId)) : blockId);
+    return weekday +
+      '|' +
+      (GridItems.isId(blockId) ? String.valueOf(Id.valueOf(blockId)) : blockId);
   }
 
-  private static ShoreshException refused() {
+  private ShoreshException refused() {
+    CampLabels labels = state.labels();
     return new ShoreshException(
-      'A seat sent as part of a linked choice doesn\'t match it. Reload the page and assign again.'
+      labels.withArticle('Seats').capitalize() +
+        ' sent as part of ' +
+        labels.withArticle('LinkedChoice') +
+        ' doesn\'t match it. Reload the page and assign again.'
     );
   }
 }

@@ -82,7 +82,7 @@ private class SpecialDatesTest {
       Id colorWar = c.specialDay('Color War');
 
       Assert.areEqual(
-        'Tuesday of "Week 2" already has the special day "Field Day". Take it off first, or choose another day.',
+        'Week 2 · Tuesday already has the special day "Field Day". Take it off first, or choose another day.',
         c.refusalOf(colorWar, 'Week 2', 'Tuesday')
       );
       // Another day of the same week is free.
@@ -134,7 +134,7 @@ private class SpecialDatesTest {
       );
 
       Assert.areEqual(
-        'This special event is already on Monday of "Week 1".',
+        'This special event is already on Week 1 · Monday.',
         c.refusalOf(carnival, 'Week 1', 'Monday')
       );
     }
@@ -252,11 +252,11 @@ private class SpecialDatesTest {
       );
       Assert.isFalse(refused.isSuccess());
       Assert.areEqual(
-        'This Theme Day can\'t be deleted yet: it is on Tuesday of "Week 2" and Thursday of "Week 5". First take it off those days, then delete it.',
+        'This Theme Day can\'t be deleted yet: it is on Week 2 · Tuesday and Week 5 · Thursday. First take it off those days, then delete it.',
         refused.getErrors()[0].getMessage()
       );
       Assert.areEqual(
-        'This special event can\'t be deleted yet: it is on Monday of "Week 1". First take it off that day, then delete it.',
+        'This special event can\'t be deleted yet: it is on Week 1 · Monday. First take it off that day, then delete it.',
         Database.delete(carnival, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );

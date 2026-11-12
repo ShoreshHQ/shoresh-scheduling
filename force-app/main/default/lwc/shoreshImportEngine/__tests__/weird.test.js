@@ -339,9 +339,11 @@ describe("INGEST-2.18: two activities in one cell", () => {
   it('INGEST-2.18: "Swim/Art" asks half the period each, or does the group split', () => {
     const p = read([day("Monday", "Swim/Art"), day("Tuesday", "Swim")]);
     const card = open(p).find((c) => c.id === "list|Swim/Art");
-    expect(card.title).toBe("Half the period each, or does the group split?");
+    expect(card.title).toBe(
+      "Half the time block each, or does the group split?"
+    );
     expect(card.options.map((o) => o.label)).toEqual([
-      "Half the period each",
+      "Half the time block each",
       "The group splits",
       "Leave it out for now"
     ]);

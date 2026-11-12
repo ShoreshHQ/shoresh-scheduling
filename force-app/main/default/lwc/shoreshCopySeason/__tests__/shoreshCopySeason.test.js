@@ -136,11 +136,11 @@ describe("c-shoresh-copy-season", () => {
       "Groups",
       "Time blocks",
       "Locations",
-      "Camp words",
       "Activities",
       "Fixed activities",
       "Recurring activities",
-      "Elective sets"
+      // CORE-1.34: the set follows the camp's Elective word (Chug / Chugim).
+      "Chugim"
     ]);
     expect(texts(element, '[data-id="stays-behind"] h3')).toEqual([
       "Stays in Summer 2026"

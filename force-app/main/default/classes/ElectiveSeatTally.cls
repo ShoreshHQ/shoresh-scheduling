@@ -71,7 +71,9 @@ public with sharing class ElectiveSeatTally {
         throw new ShoreshException(
           '"' +
             offering.Activity__r.Name +
-            '" has more campers than seats on ' +
+            '" has more campers than ' +
+            state.labels().pluralInSentence('Seats') +
+            ' on ' +
             periods.get(key).words() +
             '. Assign again.'
         );

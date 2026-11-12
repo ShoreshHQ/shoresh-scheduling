@@ -270,6 +270,11 @@ export default class ShoreshActivityDetails extends LightningElement {
   get length() {
     return this.rules[ACTIVITY.Length];
   }
+  /** The length's unit beside its box: "1 time block", "2 Peula times" (word walk W1). */
+  get lengthUnit() {
+    const t = this.terms;
+    return Number(this.length) === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock");
+  }
   get groupsAtOnce() {
     return this.rules[ACTIVITY.GroupsAtOnce];
   }
@@ -365,7 +370,7 @@ export default class ShoreshActivityDetails extends LightningElement {
       length: t.s("Length"),
       groupsAtOnce: t.s("GroupsAtOnce"),
       noGroupLimit: "No limit",
-      noWeeklyMax: "No weekly maximum",
+      noWeeklyMax: `No maximum ${t.sIn("TimesPerWeek")}`,
       priority: "Priority",
       outdoor: "Outdoors",
       rainPlan: t.s("RainPlan"),

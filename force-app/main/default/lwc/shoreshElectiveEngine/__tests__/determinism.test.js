@@ -27,7 +27,7 @@ function fingerprint(out) {
 const PINNED = {
   byRank: { 1: 735, 2: 176, 3: 49, 4: 20, 5: 8, locked: 2, none: 10 },
   kinds: { BELOW_MINIMUM: 20, UNSUPPORTED_LINKED_CHOICE: 1 },
-  fingerprint: "6cd5e547"
+  fingerprint: "ad43d3f5"
 };
 
 /**

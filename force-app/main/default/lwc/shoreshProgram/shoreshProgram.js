@@ -192,7 +192,11 @@ export default class ShoreshProgram extends LightningElement {
         type: "number",
         min: 1,
         required: true,
-        more: true
+        more: true,
+        // Counted in time blocks (word walk W1): "1 Peula time".
+        unitFor: (value) => {
+          return Number(value) === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock");
+        }
       },
       {
         fieldName: fields.Location,

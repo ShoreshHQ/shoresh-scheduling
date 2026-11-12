@@ -147,8 +147,8 @@ public with sharing class SpecialDates {
   }
 
   /**
-   * 'This special day can't be deleted yet: it is on Tuesday of "Week 2" and Thursday of
-   * "Week 5". First take it off those days, then delete it.'
+   * 'This special day can't be deleted yet: it is on Week 2 · Tuesday and Week 5 · Thursday.
+   * First take it off those days, then delete it.'
    */
   private static String refusal(
     CampLabels labels,
@@ -178,9 +178,9 @@ public with sharing class SpecialDates {
       );
   }
 
-  /** 'Tuesday of "Week 2"'. */
+  /** "Week 2 · Tuesday", "Week 1 · Day 5": the week by its name, then the day (word walk W1). */
   public static String onDay(String day, String weekName) {
-    return DayWords.sayWeekday(day) + ' of "' + weekName + '"';
+    return weekName + ' · ' + DayWords.sayWeekday(day);
   }
 
   private static Placement placementOf(SpecialDate__c row) {

@@ -171,7 +171,7 @@ public with sharing class SpecialDateTriggerHandler {
             ? onDay +
               ' already has ' +
               (String.isBlank(other)
-                ? 'a ' + labels.singularInSentence('SpecialDay')
+                ? labels.withArticle('SpecialDay')
                 : 'the ' +
                   labels.singularInSentence('SpecialDay') +
                   ' "' +

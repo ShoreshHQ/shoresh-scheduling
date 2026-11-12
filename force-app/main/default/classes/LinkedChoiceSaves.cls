@@ -65,7 +65,7 @@ public with sharing class LinkedChoiceSaves {
     }
     for (Period each : LinkedChoiceRows.periodsOf(edit.periodsOn)) {
       if (!WEEKDAYS.contains(each.weekday) || each.blockId == null) {
-        throw new ShoreshException('That period could not be sent. Try again.');
+        throw new ShoreshException('That time could not be sent. Try again.');
       }
     }
   }

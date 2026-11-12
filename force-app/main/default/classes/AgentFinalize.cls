@@ -89,7 +89,9 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
     throw new ShoreshException(
       finalOnly
         ? electiveSet.Name + ' in ' + week.Name + ' is already finalized.'
-        : 'Not finalized. No seats are assigned yet.'
+        : 'Not finalized. No ' +
+          IncomingSeason.labelsOf(season.Id).pluralInSentence('Seats') +
+          ' are assigned yet.'
     );
   }
 

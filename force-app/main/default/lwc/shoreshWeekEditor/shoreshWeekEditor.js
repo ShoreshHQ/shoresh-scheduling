@@ -734,12 +734,12 @@ export default class ShoreshWeekEditor extends LightningElement {
     return `${this.weekName} has no days ${this.programName} runs.`;
   }
 
-  /** Daily, Group and Activity: rail items, the one shown raised (the rail's one selected look). */
+  /** Daily, then the camp's Group and Activity words: rail items, the one shown raised (the rail's one selected look). */
   get viewButtons() {
     return [
       ["day", "Daily"],
-      ["group", "Group"],
-      ["activity", "Activity"]
+      ["group", this.t.s("Group")],
+      ["activity", this.t.s("Activity")]
     ].map(([key, label]) => ({
       key,
       label,
@@ -1788,7 +1788,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       options.push({
         key: "add",
         kind: "add",
-        // No article built from a camp word (design guide): "to activities", not "as an activity".
+        // Plurals here: "to activities". An article before a camp word goes through article() (word walk W1).
         label: `Add "${name}" to ${this.t.pIn("Activity")}`,
         name
       });

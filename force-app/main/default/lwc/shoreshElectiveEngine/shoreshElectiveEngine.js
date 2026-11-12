@@ -1,4 +1,4 @@
-import { buildTerms } from "c/shoreshTerms";
+import { article, buildTerms } from "c/shoreshTerms";
 import { hasOrderingEvidence } from "./rankKind";
 import { minCostAssign } from "./minCostAssign";
 
@@ -87,7 +87,7 @@ export function assignSeats({
       kind: "NO_SEATS_SET",
       activityId: b.activityId,
       timeIds: b.timeIds,
-      message: `Choose how many ${t.sIn("Seats")} “${b.name}” has.`
+      message: `Choose how many ${t.pIn("Seats")} “${b.name}” has.`
     });
   }
 
@@ -287,8 +287,7 @@ export function assignSeats({
       findings.push({
         kind: "NO_OFFERINGS",
         timeId,
-        message:
-          "Nothing is offered in this period, so nobody was placed in it."
+        message: `Nothing is offered in this ${t.sIn("TimeBlock")}, so nobody was placed in it.`
       });
       continue;
     }
@@ -297,7 +296,7 @@ export function assignSeats({
         kind: "NO_CAMPERS",
         timeId,
         message:
-          "No camper is eligible for this period — check that the " +
+          `No ${t.sIn("Camper")} is eligible for this ${t.sIn("TimeBlock")} — check that the ` +
           `${t.pIn("Division")} on the sheet match the camp’s ${t.sIn("Division")} names.`
       });
       continue;
@@ -429,8 +428,8 @@ export function assignSeats({
         shortfall: s.shortfall,
         message:
           `“${nameOf(here[j])}” has ${s.enrolled} of the ${s.minimum} campers it ` +
-          "needs to run, but it holds a seat that was set by hand, so it was kept as it is. " +
-          "Lower its minimum, or move that seat, and run this again."
+          `needs to run, but it holds ${article(t.sIn("Seats"))} that was set by hand, so it was kept as it is. ` +
+          `Lower its minimum, or move that ${t.sIn("Seats")}, and run this again.`
       });
     }
 
@@ -508,13 +507,13 @@ export function assignSeats({
               camperIds: unplaced.sort(compareText),
               message:
                 `${unplaced.length} camper(s) had nowhere left to go after an offering did not run — ` +
-                "they had no other choice in this period with room in it."
+                `they had no other choice in this ${t.sIn("TimeBlock")} with room in it.`
             }
           : {
               kind: "NO_CAPACITY",
               timeId,
               camperIds: unplaced.sort(compareText),
-              message: `${unplaced.length} camper(s) could not be placed — every offering in this period is full.`
+              message: `${unplaced.length} camper(s) could not be placed — every offering in this ${t.sIn("TimeBlock")} is full.`
             }
       );
     }
@@ -609,7 +608,7 @@ export function assignSeats({
         message:
           `“${name}”: ${periodsWords(left)} can’t be given in this run; ` +
           (members.length
-            ? "its other periods were kept together."
+            ? `its other ${t.pIn("TimeBlock")} were kept together.`
             : "nobody was placed in it.")
       });
     }
@@ -628,12 +627,12 @@ export function assignSeats({
         activityId: aside.activityId,
         camperIds: asked,
         message:
-          `“${name}” shares “${activityName(aside.activityId)}” ${t.sIn("Seats")} with ` +
+          `“${name}” shares “${activityName(aside.activityId)}” ${t.pIn("Seats")} with ` +
           `“${kept}” in ${periodWords(aside.timeId)}, so ` +
           (asked.length === 0
             ? `“${name}” wasn’t kept as a set.`
             : `${asked.length} ${asked.length === 1 ? "camper who asked for" : "campers who asked for"} ` +
-              `“${name}” got a seat each period instead.`)
+              `“${name}” got ${article(t.sIn("Seats"))} each ${t.sIn("TimeBlock")} instead.`)
       });
     }
 
@@ -681,7 +680,7 @@ export function assignSeats({
         id,
         attendsSome,
         `${attendsSome.length} camper(s) asked for “${nameOfLinked(id)}” but do not attend ` +
-          "every period it covers. They were placed one period at a time instead of together."
+          `every ${t.sIn("TimeBlock")} it covers. They were placed one ${t.sIn("TimeBlock")} at a time instead of together.`
       );
       const held = wanted.filter(
         (c) => !absent.includes(c) && ts.some((x) => holdsSeatAt(c, x))
@@ -689,9 +688,9 @@ export function assignSeats({
       exclude(
         id,
         held,
-        `${held.length} camper(s) asked for “${nameOfLinked(id)}” but already have a ` +
-          "seat set by hand in one of the periods it covers. The seat set by hand was kept, so the " +
-          "set could not be given to them as a set; they were placed one period at a time instead."
+        `${held.length} camper(s) asked for “${nameOfLinked(id)}” but already have ` +
+          `${article(t.sIn("Seats"))} set by hand in one of the ${t.pIn("TimeBlock")} it covers. The ${t.sIn("Seats")} set by hand was kept, so the ` +
+          `set could not be given to them as a set; they were placed one ${t.sIn("TimeBlock")} at a time instead.`
       );
     }
 

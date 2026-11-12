@@ -54,6 +54,9 @@ global with sharing class AgentElectiveSeatsNow {
     for (ElectiveSeats.GroupInfo each : view.groups) {
       groups.put(each.id, each.name);
     }
+    // The camp's word for a seat, as the screen says it (word walk W1).
+    String seatWords = run.labels().pluralInSentence('Seats');
+    ElectiveOverSeats.use(run.labels());
     List<String> lines = new List<String>{
       run.setName +
       ' in ' +
@@ -61,13 +64,14 @@ global with sharing class AgentElectiveSeatsNow {
       ': ' +
       (run.isFinal
         ? 'finalized; start a new version (start_new_elective_version) to change them'
-        : (view.assigned ? 'seats assigned' : 'seats not assigned yet') +
+        : seatWords +
+          (view.assigned ? ' assigned' : ' not assigned yet') +
           ', not finalized') +
       '. seen: ' +
       AgentElectives.seenText(run.id, view.revision)
     };
     if (view.scheduleChanged) {
-      lines.add('Schedule changed since seats were assigned.');
+      lines.add('Schedule changed since ' + seatWords + ' were assigned.');
     }
     lines.add('Times:');
     for (ElectivePeriod period : view.times) {
@@ -78,7 +82,9 @@ global with sharing class AgentElectiveSeatsNow {
     Map<Id, List<String>> seats = AgentElectives.seatsOf(view, offerings);
     lines.add('Campers:');
     for (ElectiveSeats.CamperInfo camper : view.campers) {
-      lines.add(camperLine(camper, seats.get(camper.id), groups));
+      lines.add(
+        camperLine(camper, seats.get(camper.id), groups, 'no ' + seatWords)
+      );
     }
     return String.join(lines, '\n');
   }
@@ -108,13 +114,14 @@ global with sharing class AgentElectiveSeatsNow {
   private static String camperLine(
     ElectiveSeats.CamperInfo camper,
     List<String> has,
-    Map<Id, String> groups
+    Map<Id, String> groups,
+    String noSeats
   ) {
     return '- ' +
       camper.name +
       (String.isBlank(camper.camperNumber) ? '' : ' #' + camper.camperNumber) +
       (camper.groupId == null ? '' : ', ' + groups.get(camper.groupId)) +
       ': ' +
-      (has == null ? 'no seats' : String.join(has, '; '));
+      (has == null ? noSeats : String.join(has, '; '));
   }
 }

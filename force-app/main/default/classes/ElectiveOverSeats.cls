@@ -6,6 +6,14 @@
  * unsaid.
  */
 public with sharing class ElectiveOverSeats {
+  // The camp's words these lines are said in (use()): "over its spots" (word walk W1).
+  private static CampLabels words = CampLabels.modelTermsOnly();
+
+  /** The camp's words for the lines said after this, as DayWords.use does for days. */
+  public static void use(CampLabels labels) {
+    words = labels;
+  }
+
   public static List<String> of(ElectiveSeats.RunView view) {
     Map<String, Integer> counts = countsOf(view);
     List<String> lines = new List<String>();
@@ -62,7 +70,9 @@ public with sharing class ElectiveOverSeats {
     return offering.proposed != true &&
       offering.noLimit != true &&
       !limited(offering)
-      ? 'Choose how many seats "' +
+      ? 'Choose how many ' +
+        words.pluralInSentence('Seats') +
+        ' "' +
         offering.name +
         '" has: none are set, so it is seated with no limit.'
       : null;
@@ -147,7 +157,9 @@ public with sharing class ElectiveOverSeats {
   ) {
     return count > offering.seats
       ? offering.name +
-        ' is over its seats on ' +
+        ' is over its ' +
+        words.pluralInSentence('Seats') +
+        ' on ' +
         period.words() +
         ': ' +
         count +

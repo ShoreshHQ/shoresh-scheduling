@@ -32,7 +32,7 @@ public with sharing class ElectiveSeatChange {
       // Unlocked, a hand move is Assign's again (ElectiveSeatChecks.kept).
       seat.ByHand__c = seat.ByHand__c == true && request.locked;
     } else {
-      throw new ShoreshException(nothingToChange(seat, request));
+      throw new ShoreshException(nothingToChange(state, seat, request));
     }
     Savepoint before = Database.setSavepoint();
     try {
@@ -47,13 +47,16 @@ public with sharing class ElectiveSeatChange {
 
   /** Why nothing changed: the camper already holds that offering then, or the seat is gone. */
   private static String nothingToChange(
+    ElectiveRunState state,
     Assignment__c seat,
     ChangeRequest request
   ) {
     return seat != null &&
       seat.Offering__c == request.offeringId
       ? alreadyIn(request.camperId, request.offeringId)
-      : 'That seat is no longer there. Reload the page.';
+      : 'That ' +
+        state.labels().singularInSentence('Seats') +
+        ' is no longer there. Reload the page.';
   }
 
   /** "Ivy is already in Art then; nothing changed.": a move to the seat a camper holds. */

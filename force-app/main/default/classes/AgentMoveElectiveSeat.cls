@@ -65,10 +65,14 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       throw new ShoreshException(
         words.endsWith('; nothing changed.')
           ? words
-          : 'That seat wasn\'t changed. ' + words
+          : 'That ' +
+            run.labels().singularInSentence('Seats') +
+            ' wasn\'t changed. ' +
+            words
       );
     }
     // The screen's own words for it, and the offering over its seats then, as the screen shows it.
+    ElectiveOverSeats.use(run.labels());
     String over = ElectiveOverSeats.atCampersTime(after, camper, period);
     String unset = ElectiveOverSeats.noSeatsSet(offering);
     return 'Moved ' +

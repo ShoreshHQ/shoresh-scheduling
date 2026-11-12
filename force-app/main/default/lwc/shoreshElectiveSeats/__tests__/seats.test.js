@@ -132,7 +132,7 @@ describe("choices", () => {
     });
     expect(timeOfChoice(run, camper, { d: "Friday" })).toEqual({
       timeKey: null,
-      unmatched: "Day or period missing: Friday (no period)."
+      unmatched: "Day or time block missing: Friday (no time block)."
     });
   });
 

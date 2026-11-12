@@ -34,14 +34,16 @@ public with sharing class ElectiveSeatChecks {
       : state.live.periodOf(groupId, seat.day, seat.blockId);
     if (at == null) {
       throw new ShoreshException(
-        'A seat is at a time when that camper has no ' +
+        state.labels().withArticle('Seats').capitalize() +
+          ' is at a time when that camper has no ' +
           state.run.ElectiveSet__r.Name +
           ' on the schedule. Reload the page.'
       );
     }
     if (!at.offeringIds.contains(seat.offeringId)) {
       throw new ShoreshException(
-        'A seat is in something not offered then. Reload the page.'
+        state.labels().withArticle('Seats').capitalize() +
+        ' is in something not offered then. Reload the page.'
       );
     }
     return at;
@@ -73,13 +75,16 @@ public with sharing class ElectiveSeatChecks {
     ElectiveSeatSaves.SeatIn seat,
     ElectivePeriod at
   ) {
-    return atBlock(new Assignment__c(
-      ElectiveRun__c = state.run.Id,
-      Camper__c = seat.camperId,
-      Group__c = state.groupOf(seat.camperId),
-      Date__c = at.day,
-      Offering__c = seat.offeringId,
-      LinkedChoice__c = seat.linkedChoiceId
-    ), at.blockId);
+    return atBlock(
+      new Assignment__c(
+        ElectiveRun__c = state.run.Id,
+        Camper__c = seat.camperId,
+        Group__c = state.groupOf(seat.camperId),
+        Date__c = at.day,
+        Offering__c = seat.offeringId,
+        LinkedChoice__c = seat.linkedChoiceId
+      ),
+      at.blockId
+    );
   }
 }
