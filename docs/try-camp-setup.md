@@ -168,8 +168,8 @@ it or press **Escape**.
 3. Point at Soccer's row: a trash can and a **›** appear at its end. Click the **›** (_Soccer
    details_). Soccer's details open in a panel on the right of the table, with Soccer's row
    marked and the cursor on the panel's heading, _Soccer_. Tick **Outdoors**: it is saved at
-   once (**✓ Saved** beside the heading). A yellow **Needs attention** box at the top of the
-   screen says _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) In the panel,
+   once (**✓ Saved** beside the heading). A **Needs a look** row at the top of the
+   screen, with a small bronze dot, says _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) In the panel,
    set **Rain plan** to _Gym games_; it goes away. (Soccer's own name is not offered as its
    rain plan.) The **Rain plan** list offers only indoor activities: Soccer, being outdoors,
    is never offered as anyone's rain plan. Try it: open Gym games' details (its **›**), tick
@@ -178,7 +178,7 @@ it or press **Escape**.
    plan or None: _"Soccer": The rain plan has to be indoors. Pick an indoor one, or choose
    None._ Untick **Outdoors** on Gym games again. The panel's **×** (_Close Soccer details_)
    closes it and puts the cursor back on Soccer's **›**.
-4. In Gym games' details, set **Groups at once** to 5 and press **Enter**. Needs attention now
+4. In Gym games' details, set **Groups at once** to 5 and press **Enter**. Needs a look now
    says the Gym fits 3, so scheduling will use 3. Put it back to 1. (**Length** and
    **Priority** sit beside each other in the same panel, saved the same way.) Set Gym games'
    **Priority** to _High_: its row moves up into a new **High priority** section above **Low
@@ -232,7 +232,7 @@ activities and from each other. Clashes are refused, never just shown.
    Period 1, and press **Enter**. It runs every week. Its length (1) and location (none) are
    in its details: the **›** at the end of the row opens them under it, saved with the row.
    Add a second one, _Lunch break_ in Lunch.
-2. A **Needs attention** column appears while a row needs it: on Lunch break it says _Bunk 2 is morning only and is left out._
+2. A **Needs a look** column appears while a row needs it: on Lunch break it says _Bunk 2 is morning only and is left out._
    Bunk 2 is not at camp in the afternoon, so Lunch break leaves it out rather than refusing.
 3. On **Roots**, the wide **Fixed activities** card now counts 2 and names them. Click it to
    come back.
@@ -266,7 +266,7 @@ activities and from each other. Clashes are refused, never just shown.
    out, so it covers everyone, and click **Done**: refused, _"Bunk 1 swim" and "Bunk 2 art"
    would both have Bunk 1 in Period 2 on Monday in Week 1 …_. Click in its name and press
    **Escape** to put it back.
-10. **Needs attention:** the Pool is closed in Week 2 (step 3 of the last section), so the box
+10. **Needs a look:** the Pool is closed in Week 2 (step 3 of the last section), so the box
     at the top says _Bunk 1 swim: "Pool" is not open in Week 2, but this runs then._ Untick
     **Week 2** on Bunk 1 swim; it goes away.
 11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
@@ -279,7 +279,7 @@ Two more things to know:
   counts as a clash. Ticking that week back on is checked like any other change.
 - If you add, move, or delete a time block in the middle of an activity that takes more than
   one block, it then covers different blocks. Shoresh doesn't refuse that, but it tells you
-  under Needs attention and on the row, with two fixes that say exactly what you'll get. You
+  under Needs a look and on the row, with two fixes that say exactly what you'll get. You
   try this on next summer's copy in section 12.
 
 Does this work the way you think in practice? Note anything that feels awkward.
@@ -313,8 +313,8 @@ Does this work the way you think in practice? Note anything that feels awkward.
 2. **A time block added inside an activity.** Still on _Summer 2027_, delete **Bunk 1 swim**
    too (Recurring activities), so Period 2 is free. On **Fixed activities**, open Flagpole's
    details (its **›**), set **Length** to 2 and press **Enter**: it covers Period 1 and Period 2. Now on **Time
-   blocks** add _Snack_ 9:45–10:00 AM, Morning. Back on **Fixed activities**, Needs attention
-   and Flagpole's Needs attention column say _Time blocks changed since it was saved: it covered Period 1 –
+   blocks** add _Snack_ 9:45–10:00 AM, Morning. Back on **Fixed activities**, Needs a look
+   and Flagpole's Needs a look column say _Time blocks changed since it was saved: it covered Period 1 –
    Period 2 and now covers Period 1 – Snack._ Two fixes are offered: **Keep Period 1 – Snack**
    and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and press **Enter**: the note stays.
    Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
@@ -408,9 +408,9 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
    several files at once.)
 4. One page now shows what Shoresh found. Nothing is added yet. The file's name is at the top,
    and on the right **Start again** and a green button, _1 question left_, greyed out.
-   - **Check these first 1**: one row per question, each with a small dark corner at its top
-     right until it is answered. _Are “Music” and “Musik” the same activity?_ (Musik is a
-     planted typo.) Click **Same: call it “Music”**: it stays, raised, and the corner goes.
+   - **Needs a look 1**: one row per question, each with a small bronze dot at its top
+     right until it is answered; the count drops as you answer. _Are “Music” and “Musik” the same activity?_ (Musik is a
+     planted typo.) Click **Same: call it “Music”**: it stays, raised, and the dot goes.
      Clicking another answer in the row changes it. Point at an answer to see what it means.
      Library time is not asked: all of Juniors have it at Period 4 on Wednesday, so it comes
      in as a recurring activity (docs/import/classification.md, rule 2).
@@ -421,7 +421,7 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
      each new bunk**: each bunk with its unit from the file (_Juniors_ or _Seniors_). Shoresh
      chose these itself, so they are not questions, but any can be changed here. (When a file
      does not say a bunk's unit and the program already has units, nothing is chosen: the
-     bunk's dropdown is then a question in **Check these first**.)
+     bunk's dropdown is then a question in **Needs a look**.)
    - **Elective sets** (or your camp's word for them): _Chugim_, _Read as electives: Tuesday,
      Period 6, every bunk. No choices in the file: add them later._ **Electives** is pressed;
      **Not electives** beside it would set Chugim up as what its cells show instead. Shoresh
@@ -555,11 +555,11 @@ in the _Import test_ season, in this order).
    these days**; _Explorers_ then shows under **Also adding**,
    with its days. Click **Add 3**.
 3. **Bunks** (`maple-grove-bunks.csv`): _Bunk 3 · Unit: Juniors → Seniors_ (Keep or Change;
-   Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Review here**
+   Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Needs a look**
    ("sometimes" isn't an availability).
 4. **Time blocks** (`maple-grove-time-blocks.csv`): _Period 2 · Start: 9:50 AM → 9:55 AM_.
    _“Late pickup” at 6:00–6:30: morning or evening?_ (answer **Evening**). _Swim time_ is
-   under **Review here** (_End is before Start_).
+   under **Needs a look** (_End is before Start_).
 5. **Fixed activities** (`maple-grove-fixed.csv`): _Lunch_ gets a location, _Dining hall_,
    under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
    Start and End and click **Use these times**.
