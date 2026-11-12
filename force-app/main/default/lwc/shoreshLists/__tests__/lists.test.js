@@ -1351,6 +1351,6 @@ describe("the last guard before saving", () => {
     const swim = p.rows.find((r) => r.name === "Swim");
     swim.values.rainPlan = "Ghost";
     swim.targets = { rainPlan: { key: "Activity:Ghost", name: "Ghost" } };
-    expect(waitingFor(p, terms, {})).toEqual(["Review here: Swim"]);
+    expect(waitingFor(p, terms, {})).toEqual(["Needs a look: Swim"]);
   });
 });

@@ -1142,9 +1142,8 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get questionsHeading() {
-    return this.openCount
-      ? `Questions for you (${this.openCount})`
-      : "Questions for you";
+    // One phrase for what needs a look, its count what is left (CORE-6.12).
+    return this.openCount ? `Needs a look (${this.openCount})` : "Needs a look";
   }
 
   /** Cancel while choosing or reviewing (nothing is saved); Close once saved. */

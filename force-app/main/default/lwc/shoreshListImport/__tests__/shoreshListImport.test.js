@@ -310,8 +310,11 @@ describe("c-shoresh-list-import", () => {
     expect(marked.map((b) => b.dataset.key)).toEqual([`${id}::different`]);
     // Still a question: nothing answered until it is pressed.
     expect(card.querySelector(".card-done")).toBeNull();
+    // CORE-6.12: one phrase, its count what is left.
+    expect($(element, ".import-head").textContent).toBe("Needs a look (1)");
     marked[0].click();
     await flush();
+    expect($(element, ".import-head").textContent).toBe("Needs a look");
     saveOf(element).click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
@@ -739,7 +742,7 @@ describe("laid into the screen's own table (decision 56)", () => {
         ]
       },
       { label: "Inters", count: "1", rows: [["Aspen", "changed"]] },
-      { label: "Review here", count: "0", rows: [["Bunk 12", "unreadable"]] }
+      { label: "Needs a look", count: "1", rows: [["Bunk 12", "unreadable"]] }
     ]);
     // The section's count is read with its name.
     expect(
@@ -958,7 +961,7 @@ describe("the Special events list (SPECIAL-2.3)", () => {
           ["Talent Show", "new"]
         ]
       },
-      { label: "Review here", rows: [["Overnight", "unreadable"]] }
+      { label: "Needs a look", rows: [["Overnight", "unreadable"]] }
     ]);
     // A difference is Keep or Change; a new row has Leave out.
     const carnival = $(element, '[data-row="Carnival"]');
@@ -1141,6 +1144,7 @@ describe("Import worksheet (Roots)", () => {
       "Activities",
       "Fixed activities",
       "Recurring activities",
+      // The sheet W2 renamed (Greg's pick, 2026-11-12: never "Runs in").
       "Which weeks"
     ]);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
@@ -1163,7 +1167,7 @@ describe("Import worksheet (Roots)", () => {
     );
     const weeks = $(element, '[data-section="section-weeks"]');
     expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
-    // A plain rename is not a problem: no "Review here" part for it.
+    // A plain rename is not a problem: no "Needs a look" part for it.
     expect(
       [...weeks.querySelectorAll(".part")].map((part) => [
         part.dataset.partLabel,

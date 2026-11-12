@@ -152,7 +152,7 @@
   box-shadow: var(--shoresh-raise);
 }
 
-/* A part's own heading ("Questions for you", "Also adding"): the title style. */
+/* A part's own heading ("Needs a look", "Also adding"): the title style. */
 .import-head {
   margin: 0;
   padding: 0 var(--shoresh-space-control-x);
