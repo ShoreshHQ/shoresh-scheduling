@@ -726,6 +726,30 @@ describe("laid into the screen's own table (decision 56)", () => {
     }));
   }
 
+  it("CORE-6.12: a question it can't place in a section is asked once, under the one Needs a look", async () => {
+    // Birch is in Juniors; a file naming "Brich" in a division the camp doesn't have is a
+    // question (the same bunk?), and its row has no section to sit in.
+    const element = await openWith(
+      ["Activity,Length", "Archry,1", ",1"].join("\n"),
+      { screenKey: "activities", setup: SETUP }
+    );
+    // One Needs a look, its count the one open question; the row is not drawn again below.
+    const heads = [
+      ...$$(element, ".import-head").map((h) => h.textContent),
+      ...table(element).map((part) => part.label)
+    ];
+    expect(heads.filter((h) => h.startsWith("Needs a look"))).toEqual([
+      "Needs a look (1)"
+    ]);
+    expect($$(element, "[data-card]")).toHaveLength(1);
+    expect(rowsOf(element, "asked")).toEqual([]);
+    // The row it can't read is plain information: not imported, with no count.
+    expect(table(element)).toEqual([
+      { label: "Low", count: "1", rows: [["Archery", "same"]] },
+      { label: "Not imported", count: "", rows: [["Row 3", "unreadable"]] }
+    ]);
+  });
+
   it("the bunks set up and the file's rows, in their units: new dashed, a change crossed out, a row it can't use marked", async () => {
     const element = await openWith(FILE, {
       screenKey: "groups",
@@ -742,7 +766,7 @@ describe("laid into the screen's own table (decision 56)", () => {
         ]
       },
       { label: "Inters", count: "1", rows: [["Aspen", "changed"]] },
-      { label: "Needs a look", count: "1", rows: [["Bunk 12", "unreadable"]] }
+      { label: "Not imported", count: "", rows: [["Bunk 12", "unreadable"]] }
     ]);
     // The section's count is read with its name.
     expect(
@@ -961,7 +985,7 @@ describe("the Special events list (SPECIAL-2.3)", () => {
           ["Talent Show", "new"]
         ]
       },
-      { label: "Needs a look", rows: [["Overnight", "unreadable"]] }
+      { label: "Not imported", rows: [["Overnight", "unreadable"]] }
     ]);
     // A difference is Keep or Change; a new row has Leave out.
     const carnival = $(element, '[data-row="Carnival"]');
@@ -1167,7 +1191,7 @@ describe("Import worksheet (Roots)", () => {
     );
     const weeks = $(element, '[data-section="section-weeks"]');
     expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
-    // A plain rename is not a problem: no "Needs a look" part for it.
+    // A plain rename is not a problem: no "Not imported" part for it.
     expect(
       [...weeks.querySelectorAll(".part")].map((part) => [
         part.dataset.partLabel,

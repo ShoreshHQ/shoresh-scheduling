@@ -555,11 +555,11 @@ in the _Import test_ season, in this order).
    these days**; _Explorers_ then shows under **Also adding**,
    with its days. Click **Add 3**.
 3. **Bunks** (`maple-grove-bunks.csv`): _Bunk 3 · Unit: Juniors → Seniors_ (Keep or Change;
-   Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Needs a look**
+   Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Not imported**
    ("sometimes" isn't an availability).
 4. **Time blocks** (`maple-grove-time-blocks.csv`): _Period 2 · Start: 9:50 AM → 9:55 AM_.
    _“Late pickup” at 6:00–6:30: morning or evening?_ (answer **Evening**). _Swim time_ is
-   under **Needs a look** (_End is before Start_).
+   under **Not imported** (_End is before Start_).
 5. **Fixed activities** (`maple-grove-fixed.csv`): _Lunch_ gets a location, _Dining hall_,
    under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
    Start and End and click **Use these times**.

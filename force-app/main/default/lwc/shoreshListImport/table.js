@@ -33,9 +33,9 @@ const ROW_CLASS = {
 
 // The rows that will be in the table once saved: the section's count.
 const COUNTED = new Set(["same", "changed", "new"]);
-// Rows that won't be saved where they say: one phrase for them (word walk W3, CORE-6.12).
-const LOOK = "Needs a look";
-const LOOKING = new Set(["asked", "unreadable"]);
+// Rows with no section of their own that won't be saved: a plain heading that says so, with no
+// count. Not Needs a look: that is the questions above, the one heading with a count (CORE-6.12).
+const NOT_IMPORTED = "Not imported";
 
 function textOf(column, value, targets) {
   const text = cellText(column, value, targets);
@@ -311,11 +311,12 @@ export function importTable(p, { setup, showSame = true, leaveOut = true }) {
       const placed = home !== null && (usable || sections.has(keyOf(home)));
       if (placed) {
         into(home, drawn);
-      } else {
+      } else if (drawn.kind !== "asked") {
+        // A question with no section to sit in is its question above, once (CORE-6.12).
         later.push(drawn);
       }
     });
-  later.forEach((row) => into(LOOK, row));
+  later.forEach((row) => into(NOT_IMPORTED, row));
   const list = order.map((label, i) => {
     const sectionRows = sections.get(keyOf(label)).map((row) => finish(row));
     // New rows after the ones set up, then what needs a look, as the screen adds them.
@@ -329,9 +330,8 @@ export function importTable(p, { setup, showSame = true, leaveOut = true }) {
       leftOut: 3
     };
     sectionRows.sort((a, b) => rank[a.kind] - rank[b.kind]);
-    // Needs a look counts what is still to look at; no count at 0 (CORE-6.12, CORE-6.13).
-    const counts = label === LOOK ? LOOKING : COUNTED;
-    const count = sectionRows.filter((r) => counts.has(r.kind)).length;
+    // What will be in the table once saved; no count at 0 (CORE-6.13).
+    const count = sectionRows.filter((r) => COUNTED.has(r.kind)).length;
     return {
       key: `table-${i}-${label}`,
       label,
