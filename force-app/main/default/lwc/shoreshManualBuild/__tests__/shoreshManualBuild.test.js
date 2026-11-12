@@ -947,6 +947,33 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="week"]').value).toBe("w2");
   });
 
+  // WEEK-6.3: a reload back on the program and week this screen was on.
+  it("a reload opens it back on its program and week", async () => {
+    const twoPrograms = {
+      ...READY,
+      programs: [
+        ...READY.programs,
+        { ...READY.programs[0], program: { Id: "p2", Name: "Teens" } }
+      ],
+      weeks: [
+        { Id: "w1", Name: "Week 1" },
+        { Id: "w2", Name: "Week 2" }
+      ]
+    };
+    getDraft.mockResolvedValue(draft());
+    const element = await render(twoPrograms);
+    getDraft.mockClear();
+    expect(element.openPlace({ programId: "p2", weekId: "w2" })).toBe(true);
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    expect(getDraft).toHaveBeenCalledWith({ programId: "p2", weekId: "w2" });
+    // A program that is gone: the week still opens, on the program shown.
+    getDraft.mockClear();
+    expect(element.openPlace({ programId: "gone", weekId: "w1" })).toBe(true);
+    await flush();
+    expect(getDraft).toHaveBeenCalledWith({ programId: "p2", weekId: "w1" });
+  });
+
   it("while a start is on its way, the doorway leaves the week shown and the page hears the picker waits", async () => {
     getDraft.mockResolvedValue(null);
     const started = later();
@@ -966,10 +993,13 @@ describe("c-shoresh-manual-build", () => {
     });
     document.body.appendChild(element);
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    expect(told[told.length - 1]).toMatchObject({
+      weekId: "w1",
+      locked: false
+    });
     q(element, '[data-id="start-week"]').click();
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: true });
+    expect(told[told.length - 1]).toMatchObject({ weekId: "w1", locked: true });
     getDraft.mockClear();
     expect(element.openWeek("w2")).toBe(false);
     // The week shown is still the one to open: nothing waits for it.
@@ -979,7 +1009,10 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="week"]').value).toBe("w1");
     started.answer(draft());
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    expect(told[told.length - 1]).toMatchObject({
+      weekId: "w1",
+      locked: false
+    });
     // Told once per change, not at every redraw.
     expect(told).toHaveLength(3);
   });

@@ -13,7 +13,9 @@ module.exports = {
     ...(jestConfig.setupFilesAfterEnv || []),
     "<rootDir>/jest/sa11y-setup.js",
     // Room for every component's selectors in jsdom's selector cache (see the file).
-    "<rootDir>/jest/selector-cache.js"
+    "<rootDir>/jest/selector-cache.js",
+    // An empty session storage for each test (see the file).
+    "<rootDir>/jest/session-storage.js"
   ],
   // CI's shared runners run these tests four to seven times slower than a Mac, more while
   // several runs share them: Generated Schedule's builds (up to about 3 s here) and, before

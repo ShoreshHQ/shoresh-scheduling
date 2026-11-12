@@ -365,6 +365,30 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   }
 
   /**
+   * A reload back where this screen was (Greg 2026-11-12; WEEK-6.3): its program, when still the
+   * season's, and its week, as openWeek. True when that is what is shown.
+   */
+  @api
+  openPlace({ programId, weekId }) {
+    const program = this.programOptions.some((o) => o.value === programId)
+      ? programId
+      : this.programId;
+    if (program !== this.programId) {
+      if (this.pickerDisabled) {
+        return false;
+      }
+      const sameWeek = weekId === this.weekId;
+      this.programId = program;
+      // The week opens with it; a week that isn't there any more: the program on its week shown.
+      if (sameWeek || !this.openWeek(weekId)) {
+        this.load();
+      }
+      return true;
+    }
+    return this.openWeek(weekId);
+  }
+
+  /**
    * Reads the chosen week: the Generated draft if there is one, else the blank week it would
    * start from. again: the same week read again (after a save or a conflict, or coming back to
    * the window), keeping the view; otherwise a week shown fresh. True once the week read is
@@ -1746,18 +1770,24 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   /**
    * Tells the page the week shown and whether the week picker waits on work under way, when
    * either changes: the Schedules doorway holds its other weeks for this screen meanwhile, as
-   * the picker does (openWeek). Fires: weekstate { weekId, locked }.
+   * the picker does (openWeek). Fires: weekstate { weekId, programId, locked }.
    */
   tellWeekState() {
     const weekId = this.weekId || null;
+    const programId = this.programId || null;
     const locked = !!this.pickerDisabled;
     const told = this.weekStateTold;
-    if (told && told.weekId === weekId && told.locked === locked) {
+    if (
+      told &&
+      told.weekId === weekId &&
+      told.programId === programId &&
+      told.locked === locked
+    ) {
       return;
     }
-    this.weekStateTold = { weekId, locked };
+    this.weekStateTold = { weekId, programId, locked };
     this.dispatchEvent(
-      new CustomEvent("weekstate", { detail: { weekId, locked } })
+      new CustomEvent("weekstate", { detail: { weekId, programId, locked } })
     );
   }
 

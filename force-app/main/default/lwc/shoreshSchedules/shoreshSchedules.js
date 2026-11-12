@@ -672,7 +672,26 @@ export default class ShoreshSchedules extends LightningElement {
     this.endPrint();
   }
 
+  /**
+   * Tells the page the program, week and version shown when one changes, so a reload comes back
+   * to them (Greg 2026-11-12). Fires: weekstate { programId, weekId, scheduleId }.
+   */
+  tellWeekState() {
+    const place = {
+      programId: this.programId || null,
+      weekId: this.weekId || null,
+      scheduleId: this.opened ? this.opened.schedule.id : null
+    };
+    const told = JSON.stringify(place);
+    if (told === this.weekStateTold) {
+      return;
+    }
+    this.weekStateTold = told;
+    this.dispatchEvent(new CustomEvent("weekstate", { detail: place }));
+  }
+
   renderedCallback() {
+    this.tellWeekState();
     if (
       this.printPending &&
       this.template.querySelector("c-shoresh-schedule-print")

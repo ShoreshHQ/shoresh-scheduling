@@ -5118,3 +5118,142 @@ describe("a group in no division", () => {
     expect(openSchedule).not.toHaveBeenCalledWith({ scheduleId: "v-newer" });
   });
 });
+
+// WEEK-6.3 (Greg 2026-11-12): a page reload stays where you were, never back to Roots.
+describe("a reload stays where you were", () => {
+  const OTHER = { Id: "c2", Name: "Camp Cedar" };
+  const CEDAR = { ...SEASON, Id: "s2", Camp__c: "c2" };
+  const PLACE = {
+    campId: "c2",
+    seasonId: "s2",
+    screen: "schedules",
+    programId: "p1",
+    weekId: "w2",
+    scheduleId: "v-published"
+  };
+
+  beforeEach(() => {
+    getCamps.mockResolvedValue(nsRecord([CAMP, OTHER]));
+    getSeasons.mockResolvedValue(nsRecord([CEDAR]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          season: CEDAR,
+          weeks: [
+            { Id: "w1", Name: "Week 1" },
+            { Id: "w2", Name: "Week 2" }
+          ]
+        })
+      )
+    );
+    getVersions.mockResolvedValue([{ id: "v-newer" }, { id: "v-published" }]);
+    openSchedule.mockClear();
+    openSchedule.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    getVersions.mockResolvedValue([]);
+    openSchedule.mockClear();
+  });
+
+  async function open(address) {
+    const element = createElement("c-shoresh-camp-setup", {
+      is: ShoreshCampSetup
+    });
+    document.body.appendChild(element);
+    if (address) {
+      pageAddress(address);
+    }
+    await flush();
+    await flush();
+    await flush();
+    return element;
+  }
+
+  // WEEK-6.3
+  it("comes back to the camp, season, screen, program, week and version this tab was on", async () => {
+    window.sessionStorage.setItem("shoresh.place", JSON.stringify(PLACE));
+    const element = await open();
+    expect(getSeasons).toHaveBeenCalledWith({ campId: "c2" });
+    expect(shownScreens(element)).toEqual(["schedules"]);
+    expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w2" });
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "v-published" });
+    expect(openSchedule).not.toHaveBeenCalledWith({ scheduleId: "v-newer" });
+  });
+
+  // WEEK-6.3
+  it("a link not followed yet wins over where the tab was", async () => {
+    window.sessionStorage.setItem(
+      "shoresh.place",
+      JSON.stringify({ ...PLACE, screen: "groups" })
+    );
+    const element = await open({
+      c__preview: "schedules",
+      c__camp: "c2",
+      c__season: "s2",
+      c__program: "p1",
+      c__week: "w2",
+      c__schedule: "v-published"
+    });
+    expect(shownScreens(element)).toEqual(["schedules"]);
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "v-published" });
+  });
+
+  // WEEK-6.3
+  it("a link this tab already followed isn't followed again: the reload stays where the tab went since", async () => {
+    const address = {
+      c__preview: "schedules",
+      c__camp: "c2",
+      c__season: "s2",
+      c__program: "p1",
+      c__week: "w1",
+      c__schedule: "v-newer"
+    };
+    const first = await open(address);
+    expect(shownScreens(first)).toEqual(["schedules"]);
+    first.shadowRoot
+      .querySelector("c-shoresh-menu")
+      .dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "groups" } })
+      );
+    await flush();
+    document.body.removeChild(first);
+    const again = await open(address);
+    expect(shownScreens(again)).toEqual(["groups"]);
+  });
+
+  // WEEK-6.3
+  it("a remembered season that is gone opens the camp as usual, and the tab is kept again after", async () => {
+    window.sessionStorage.setItem(
+      "shoresh.place",
+      JSON.stringify({ ...PLACE, seasonId: "gone" })
+    );
+    const element = await open();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    expect(
+      JSON.parse(window.sessionStorage.getItem("shoresh.place"))
+    ).toMatchObject({ seasonId: "s2", screen: "roots" });
+  });
+
+  // WEEK-6.3
+  it("keeps the screen this tab is on for a reload, and a new tab starts on Roots", async () => {
+    window.sessionStorage.clear();
+    try {
+      const element = await render();
+      await flush();
+      expect(shownScreens(element)).toEqual(["roots"]);
+      const kept = () =>
+        JSON.parse(window.sessionStorage.getItem("shoresh.place"));
+      expect(kept()).toMatchObject({ campId: CAMP.Id, screen: "roots" });
+      element.shadowRoot
+        .querySelector("c-shoresh-menu")
+        .dispatchEvent(
+          new CustomEvent("navigate", { detail: { screen: "groups" } })
+        );
+      await flush();
+      expect(kept()).toMatchObject({ campId: CAMP.Id, screen: "groups" });
+    } finally {
+      window.sessionStorage.clear();
+    }
+  });
+});

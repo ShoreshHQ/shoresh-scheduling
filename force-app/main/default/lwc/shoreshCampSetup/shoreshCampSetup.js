@@ -62,6 +62,7 @@ import {
 } from "c/shoreshElectiveDetails";
 import { CHILDREN, childRows, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 import { RootsTravel } from "c/shoreshRootsTravel";
+import { rememberedPlace, rememberPlace } from "c/shoreshPlace";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
@@ -196,6 +197,16 @@ function outsideQuestions(open) {
   }
 }
 
+/** The page address's own fields (c__…), as one string to tell one link from another. */
+function linkOf(state) {
+  return JSON.stringify(
+    Object.keys(state)
+      .filter((key) => key.startsWith("c__"))
+      .sort()
+      .map((key) => [key, state[key]])
+  );
+}
+
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
   campId;
@@ -268,6 +279,15 @@ export default class ShoreshCampSetup extends LightningElement {
   // The week each schedule screen shows, and whether its week picker waits on work under way:
   // screen -> { weekId, locked }. The Schedules doorway holds that screen's other weeks meanwhile.
   weekStates = {};
+  // Where this tab was before a reload, until the season is on screen again (shoreshPlace), and
+  // the week its schedule screen goes back to once drawn.
+  placeToRestore = null;
+  weekToRestore = null;
+  placeKept = null;
+  // The page address that names somewhere (c__preview and its fields), and whether it is still to
+  // be followed: not when this tab followed it before a reload.
+  addressLink = null;
+  linkToOpen = false;
   // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
   importing = {};
   // A screen growing out of a Roots card, or shrinking home into it (repo ADR 0020):
@@ -310,6 +330,17 @@ export default class ShoreshCampSetup extends LightningElement {
   wiredPageReference(reference) {
     const state = (reference && reference.state) || {};
     this.preview = previewScreen(state.c__preview);
+    // The address stays in the browser after it is followed: a reload of it goes back where this
+    // tab was since, not to the link again (Greg 2026-11-12; WEEK-6.3).
+    const named = !!(this.preview || state.c__camp || state.c__season);
+    this.addressLink = named ? linkOf(state) : null;
+    const place = rememberedPlace();
+    this.linkToOpen = named && !(place && place.link === this.addressLink);
+    if (!this.linkToOpen) {
+      this.previewOpened = !!this.preview;
+      return;
+    }
+    this.placeToRestore = null;
     this.schedulesOpening =
       this.preview === "schedules" && state.c__week
         ? {
@@ -358,6 +389,22 @@ export default class ShoreshCampSetup extends LightningElement {
     loadStyle(this, TABLE).catch(() => {});
     // Inter and the one mono (ADR 0015); without them every word shows in the system font.
     loadStyle(this, `${FONTS}/fonts.css`).catch(() => {});
+    // A reload comes back where the director was (Greg 2026-11-12), unless the address asks for
+    // somewhere (wiredPageReference).
+    const place = rememberedPlace();
+    if (place && !this.campId && !this.linkToOpen) {
+      this.campId = place.campId;
+      this.seasonId = place.seasonId;
+      this.placeToRestore = place;
+      // Schedules takes its week and version as it reads the season, as from a link (API-1.28).
+      if (place.screen === "schedules" && place.weekId) {
+        this.schedulesOpening = {
+          programId: place.programId,
+          weekId: place.weekId,
+          scheduleId: place.scheduleId
+        };
+      }
+    }
     this.loadCamps();
   }
 
@@ -368,6 +415,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.camps = await getCamps();
       if (this.camps.length === 0) {
         this.mode = "noCamp";
+        this.placeToRestore = null;
         return;
       }
       const keep = selectCampId || this.campId;
@@ -376,6 +424,7 @@ export default class ShoreshCampSetup extends LightningElement {
         : this.camps[0].Id;
       await this.loadCamp();
     } catch (e) {
+      this.placeToRestore = null;
       this.showError(e, "Couldn't open the camp setup. Nothing was changed.");
     }
   }
@@ -395,6 +444,67 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.loadSeason();
     this.openPreview();
+    this.restorePlace();
+  }
+
+  /**
+   * After a reload, the screen this tab was on, and on a schedule screen its program, week and
+   * version; never when the address asked for somewhere, or the season is another.
+   */
+  restorePlace() {
+    const place = this.placeToRestore;
+    this.placeToRestore = null;
+    if (!place || this.mode !== "screens" || !this.setup) {
+      return;
+    }
+    const here =
+      !this.linkToOpen &&
+      place.seasonId === this.seasonId &&
+      SCREENS.includes(place.screen);
+    if (!here) {
+      return;
+    }
+    this.weekToRestore = place.weekId ? place : null;
+    this.openScreen(place.screen);
+  }
+
+  /** The restored schedule screen on its week, once drawn (renderedCallback). */
+  restoreWeek() {
+    const place = this.weekToRestore;
+    if (!place) {
+      return;
+    }
+    this.weekToRestore = null;
+    const screen = this.template.querySelector(
+      `[data-setup-state="${place.screen}"]`
+    );
+    if (screen && typeof screen.openPlace === "function") {
+      screen.openPlace({ programId: place.programId, weekId: place.weekId });
+    }
+  }
+
+  /** Keeps where this tab is, for a reload (shoreshPlace); not before a reload is restored. */
+  keepPlace() {
+    if (this.mode !== "screens" || !this.setup || this.placeToRestore) {
+      return;
+    }
+    const screen = this.currentScreen;
+    const week = this.weekStates[screen] || {};
+    const place = {
+      campId: this.campId,
+      seasonId: this.seasonId,
+      screen,
+      programId: week.programId || null,
+      weekId: week.weekId || null,
+      scheduleId: week.scheduleId || null,
+      // The address this tab has followed, so a reload doesn't follow it again.
+      link: this.addressLink || null
+    };
+    const kept = JSON.stringify(place);
+    if (kept !== this.placeKept) {
+      this.placeKept = kept;
+      rememberPlace(place);
+    }
   }
 
   async loadSeason() {
@@ -460,6 +570,8 @@ export default class ShoreshCampSetup extends LightningElement {
       this.focusScreenHeading(screen);
     }
     this.focusWeekOnDoorway();
+    this.restoreWeek();
+    this.keepPlace();
   }
 
   /** Once the doorway shows (its journey over), the cursor on the week asked for. */
@@ -942,7 +1054,8 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   /** Manual Build and Generated Schedule each say the week shown and whether its picker waits. */
   handleWeekState(event) {
-    const screen = event.currentTarget.dataset.setupState;
+    const data = event.currentTarget.dataset;
+    const screen = data.place || data.setupState;
     this.weekStates = { ...this.weekStates, [screen]: event.detail };
   }
   get shownSetupState() {
