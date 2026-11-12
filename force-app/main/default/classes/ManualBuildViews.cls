@@ -161,9 +161,9 @@ public with sharing class ManualBuildViews {
   /** What a draft's view is built from: read once per request. */
   private class Read {
     private Id scheduleId;
-    // Id, Season__c and Season__r.Camp__c.
+    // As ProgramReads.programOf reads it (its days too, for where setup puts its set times).
     private Program__c program;
-    // Id, StartDate__c and EndDate__c.
+    // Id, Name, StartDate__c and EndDate__c.
     private Week__c week;
     private List<Group__c> groups;
     private List<TimeBlock__c> blocks;
@@ -183,6 +183,7 @@ public with sharing class ManualBuildViews {
     read.program = schedule.Program__r;
     read.week = new Week__c(
       Id = schedule.Week__c,
+      Name = schedule.Week__r.Name,
       StartDate__c = schedule.Week__r.StartDate__c,
       EndDate__c = schedule.Week__r.EndDate__c
     );
@@ -218,8 +219,20 @@ public with sharing class ManualBuildViews {
       SELECT
         Program__c,
         Program__r.Id,
+        Program__r.Name,
         Program__r.Season__c,
+        Program__r.Season__r.Id,
+        Program__r.Season__r.Camp__c,
+        Program__r.Season__r.NumberedDays__c,
+        Program__r.Monday__c,
+        Program__r.Tuesday__c,
+        Program__r.Wednesday__c,
+        Program__r.Thursday__c,
+        Program__r.Friday__c,
+        Program__r.Saturday__c,
+        Program__r.Sunday__c,
         Week__c,
+        Week__r.Name,
         Week__r.StartDate__c,
         Week__r.EndDate__c
       FROM Schedule__c
@@ -263,11 +276,7 @@ public with sharing class ManualBuildViews {
     view.specials = read.weekHasSpecialDays
       ? WeekSpecials.ofWeek(read.week, read.groups)
       : WeekSpecials.read(read.week, read.groups);
-    view.setUpCells.addAll(
-      read.setup != null
-        ? ManualSetUpCells.of(read.setup)
-        : ManualSetUpCells.of(read.program.Id, read.week.Id)
-    );
+    view.setUpCells.addAll(setUpCellsOf(read));
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
     // Beside the days as Publish would put them out (SchedulePublish), so a rename since the
@@ -283,6 +292,31 @@ public with sharing class ManualBuildViews {
       names
     );
     return view;
+  }
+
+  /**
+   * Where setup puts each fixed and recurring activity this week (ManualSetUpCells), on what the
+   * view has read: only the fixed and recurring activities are read again. As Start a blank
+   * week, none until the season has activities (BlankWeek.checkActivities).
+   */
+  private static List<ManualSetUpCells.Cell> setUpCellsOf(Read read) {
+    if (read.setup != null) {
+      return ManualSetUpCells.of(read.setup);
+    }
+    if (read.activities.isEmpty()) {
+      return new List<ManualSetUpCells.Cell>();
+    }
+    Set<Id> away = new Set<Id>();
+    for (WeekException__c mark : read.exceptions) {
+      away.add(mark.Group__c);
+    }
+    List<Group__c> atCamp = new List<Group__c>();
+    for (Group__c grp : read.groups) {
+      if (!away.contains(grp.Id)) {
+        atCamp.add(grp);
+      }
+    }
+    return ManualSetUpCells.of(read.program, read.week, read.blocks, atCamp);
   }
 
   /** Setup's names now, from what the view has read (ManualBuildNamesNow). */

@@ -49,10 +49,24 @@ public with sharing class BlankWeek {
 
   /** The same, on setup Generated Schedule has already read. */
   public static Week build(GeneratedSetup setup) {
+    return build(setup.program, setup.week, setup.blocks, setup.atCamp());
+  }
+
+  /**
+   * The same, on setup a screen has already read (ManualBuildViews): program as
+   * ProgramReads.programOf reads it, week with its Name and dates, the program's time blocks
+   * and its groups at camp that week. Only the fixed and recurring activities are read.
+   */
+  public static Week build(
+    Program__c program,
+    Week__c week,
+    List<TimeBlock__c> blocks,
+    List<Group__c> atCamp
+  ) {
     BlankWeek blank = new BlankWeek();
-    blank.blocks = checkedBlocks(setup.program, setup.blocks);
-    blank.groups = checkedGroups(setup.program, setup.week, setup.atCamp());
-    return blank.weekFor(setup.program, setup.week);
+    blank.blocks = checkedBlocks(program, blocks);
+    blank.groups = checkedGroups(program, week, atCamp);
+    return blank.weekFor(program, week);
   }
 
   private Week weekFor(Program__c program, Week__c week) {

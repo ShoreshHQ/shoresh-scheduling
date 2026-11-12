@@ -17,10 +17,18 @@ public with sharing class ManualSetUpCells {
     public String name;
   }
 
-  /** The program's week, read from setup now. */
-  public static List<Cell> of(Id programId, Id weekId) {
+  /**
+   * The program's week, on setup a screen has already read (BlankWeek.build): only the fixed and
+   * recurring activities are read here.
+   */
+  public static List<Cell> of(
+    Program__c program,
+    Week__c week,
+    List<TimeBlock__c> blocks,
+    List<Group__c> atCamp
+  ) {
     try {
-      return of(BlankWeek.build(programId, weekId));
+      return of(BlankWeek.build(program, week, blocks, atCamp));
     } catch (ShoreshException notReady) {
       return new List<Cell>();
     }
