@@ -520,6 +520,29 @@ describe("c-shoresh-week-editor: special days and events", () => {
       )[1];
     expect(rule(".messages")).toMatch(/min-height: 32px;/);
     expect(rule(".notice")).toMatch(/margin: 0;/);
+    // The hosts' own lines on the row (the status slot) have no margin either.
+    const lwc = require("path").join(__dirname, "..", "..");
+    [
+      "shoreshManualBuild/shoreshManualBuild.css",
+      "shoreshScheduleScreen/shoreshScheduleScreen.css"
+    ].forEach((file) => {
+      const host = require("fs").readFileSync(
+        require("path").join(lwc, file),
+        "utf8"
+      );
+      expect(host.match(/\n\.notice \{([^}]*)\}/)[1]).toMatch(/margin: 0;/);
+    });
+    // Generate's progress is one line: what it is doing sits in the bar's row.
+    const generated = require("fs").readFileSync(
+      require("path").join(
+        lwc,
+        "shoreshGeneratedSchedule/shoreshGeneratedSchedule.html"
+      ),
+      "utf8"
+    );
+    const at = (text) => generated.indexOf(text);
+    expect(at('data-id="busy-now"')).toBeGreaterThan(at('class="busy-row"'));
+    expect(at('data-id="busy-now"')).toBeLessThan(at('data-id="stop-build"'));
   });
 
   it("lets the offer go once a noted special day is set up and replaces its day", async () => {
