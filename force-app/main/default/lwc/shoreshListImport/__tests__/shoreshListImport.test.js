@@ -348,8 +348,8 @@ describe("c-shoresh-list-import", () => {
     await flush();
     expect($$(element, ".list-heading").map((h) => h.textContent)).toEqual([
       "“Activity”",
-      "“Notes”Remembered from a former user's answer on Aug 14",
-      "“Colour”Remembered from Dana's answer on Jul 3"
+      "“Notes”Answered as before · a former user, Aug 14",
+      "“Colour”Answered as before · Dana, Jul 3"
     ]);
   });
 

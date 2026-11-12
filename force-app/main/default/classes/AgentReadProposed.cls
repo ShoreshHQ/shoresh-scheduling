@@ -42,12 +42,12 @@ global with sharing class AgentReadProposed implements AgentWeeks.Action {
     if (said.isEmpty()) {
       return 'Nothing in "' +
         season.Name +
-        '" is proposed: every offering is confirmed.';
+        '" is guessed: every elective looks right.';
     }
-    return 'Proposed in "' +
+    return 'Guessed in "' +
       season.Name +
-      '" and not confirmed yet (Camp Setup shows each with a Confirm; no camper gets a seat in it until it is confirmed): ' +
+      '" and not marked Looks right yet (Camp Setup shows each with Looks right; no camper gets a seat in it until then): ' +
       String.join(said, '; ') +
-      '. To confirm one, use confirm_proposed_offering with seen "proposed".';
+      '. To say one looks right, use confirm_proposed_offering with seen "proposed".';
   }
 }

@@ -88,9 +88,11 @@
               onchange={handleSet}
             ></c-shoresh-rail-picker>
             <template lwc:if={asksSchedule}>
+              <!-- Its name shown too, not only read out (Greg's pick, 2026-11-12). -->
+              <span class="rail-word" aria-hidden="true">Schedule</span>
               <c-shoresh-rail-picker
                 data-id="schedule"
-                label="Assign against"
+                label="Schedule"
                 value={scheduleId}
                 options={scheduleOptions}
                 disabled={busy}
@@ -175,7 +177,7 @@
                 >
                   <path d="M8 11V3M5 6l3-3 3 3M3 13h10"></path>
                 </svg>
-                <span>Bring in choices</span>
+                <span>Import choices</span>
               </button>
             </template>
           </template>
@@ -216,8 +218,16 @@
                   aria-checked={row.checked}
                   data-value={row.value}
                 >
+                  <!-- Final is a check mark: the padlock means a locked seat here. -->
                   <template lwc:if={row.locked}>
-                    <c-shoresh-lock></c-shoresh-lock>
+                    <svg
+                      class="shoresh-glyph final-mark"
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                      data-id="final-mark"
+                    >
+                      <path d="M3 8.5 6.5 12 13 4.5"></path>
+                    </svg>
                   </template>
                   <span>{row.label}</span>
                   <span class="aside shoresh-num">{row.aside}</span>
@@ -239,10 +249,10 @@
                   >
                     <path d="M8 3v10M3 8h10"></path>
                   </svg>
-                  <span>Start a new version</span>
+                  <span>{changeSeatsLabel}</span>
                 </button>
               </template>
-              <!-- Committed: the downloads wait for Finalize, and say so; Clear is here too. -->
+              <!-- Draft: the downloads wait for Finalize, and say so; Clear is here too. -->
               <template lwc:if={isCommitted}>
                 <div class="shoresh-pop-divider" role="separator"></div>
                 <div
@@ -444,7 +454,13 @@
                             </template>
                             <template lwc:if={cell.isRuns}>
                               <template lwc:if={cell.final}>
-                                <c-shoresh-lock></c-shoresh-lock>
+                                <svg
+                                  class="shoresh-glyph final-mark"
+                                  viewBox="0 0 16 16"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M3 8.5 6.5 12 13 4.5"></path>
+                                </svg>
                               </template>
                               <span>{cell.state}</span>
                             </template>

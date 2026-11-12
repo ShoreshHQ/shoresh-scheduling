@@ -4,11 +4,11 @@
          way out and the one main action. design-research/electives-r1/import.html -->
     <div class="rail" data-id="rail">
       <h2 class="slds-assistive-text" tabindex="-1" data-heading>
-        Bring in choices
+        Import choices
       </h2>
       <div class="side side_left">
         <span class="shoresh-item shoresh-item_value" aria-hidden="true"
-          >Bring in choices</span
+          >Import choices</span
         >
         <template lwc:if={isCards}>
           <span class="shoresh-item file-name" data-id="file-name"
@@ -37,7 +37,7 @@
           <template lwc:if={asksSchedule}>
             <c-shoresh-rail-picker
               data-id="schedule"
-              label="Assign against"
+              label="Schedule"
               value={scheduleId}
               options={scheduleOptions}
               disabled={isReading}
@@ -425,14 +425,14 @@
         </template>
       </template>
 
-      <!-- 3 of 3: the count, and Bring in -->
+      <!-- 3 of 3: the count, and Import -->
       <template lwc:if={isStep3}>
         <h3 class="slds-assistive-text" tabindex="-1" data-card="3">
           What comes in
         </h3>
         <template lwc:if={refused}>
           <div class="refusal" data-id="refusal">
-            <p class="refusal-title">This sheet can't be brought in yet</p>
+            <p class="refusal-title">This sheet can't be imported yet</p>
             <template for:each={refusalLines} for:item="line">
               <p key={line.key} class="line line_look">
                 {line.text}

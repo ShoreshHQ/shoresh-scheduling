@@ -435,7 +435,7 @@ function exceptionRows(d) {
   });
   if (d.view.scheduleChanged) {
     body.push([
-      "Out of date",
+      "Changed since",
       "",
       "",
       "Schedule changed since it was finalized"
@@ -475,10 +475,10 @@ export function summaryRows(d) {
     .filter(Boolean)
     .join(" · ");
   const rows = [
-    ["Run", view.run.name],
+    [t.p("Seats"), view.run.name],
     [
       "Status",
-      view.scheduleChanged ? "Final · Out of date" : `Final · ${finalWhen}`
+      view.scheduleChanged ? "Final · Changed since" : `Final · ${finalWhen}`
     ],
     [t.s("ElectiveSet"), d.setName],
     [t.s("Week"), d.weekName],
@@ -497,7 +497,7 @@ export function summaryRows(d) {
     );
   if (oneOf) rows.push(["One of their choices", oneOf]);
   if (notChosen) rows.push(["Not one they chose", notChosen]);
-  rows.push(["In one offering more than once", repeats]);
+  rows.push([`In one ${t.sIn("Elective")} more than once`, repeats]);
   return rows;
 }
 

@@ -229,7 +229,7 @@ describe("the full report", () => {
 
   it("counts seats by how they were chosen, never an unordered choice as a rank", () => {
     const summary = new Map(summaryRows(reading()));
-    expect(summary.get("Run")).toBe("Chugim · Week 1");
+    expect(summary.get("Seats")).toBe("Chugim · Week 1");
     expect(summary.get("Status")).toBe("Final · Oct 14 · Greg");
     expect(summary.get("Source file")).toBe("chugim.xlsx");
     expect(summary.get("Placed")).toBe("3 of 4");
@@ -239,16 +239,16 @@ describe("the full report", () => {
     expect(summary.get("Not one they chose")).toBe(1);
     expect(summary.get("Couldn't be placed")).toBe(1);
     // Maya is in Archery twice.
-    expect(summary.get("In one offering more than once")).toBe(1);
+    expect(summary.get("In one elective more than once")).toBe(1);
   });
 
-  it("an out-of-date final run says so", () => {
+  it("final seats whose schedule changed say Changed since (Greg's pick, 2026-11-12)", () => {
     const d = reading(
       finalDownload({ view: finalView({ scheduleChanged: true }) })
     );
-    expect(new Map(summaryRows(d)).get("Status")).toBe("Final · Out of date");
+    expect(new Map(summaryRows(d)).get("Status")).toBe("Final · Changed since");
     expect(fullReportSheets(d)[2].rows.map((r) => r[0])).toContain(
-      "Out of date"
+      "Changed since"
     );
   });
 });

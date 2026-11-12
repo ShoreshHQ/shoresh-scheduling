@@ -1003,13 +1003,13 @@ describe("c-shoresh-import", () => {
       expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
       const similar = $(element, `[data-card="${music}"]`);
       expect(similar.querySelector(".tag").textContent).toBe(
-        "Remembered from your answer on Jul 3"
+        "Answered as before · Jul 3"
       );
       expect(similar.querySelector(".corner")).toBeNull();
       // Changed by pressing another choice in the row: no longer the remembered one.
       await answer(element, music, "b");
       expect($(element, `[data-card="${music}"]`).textContent).not.toContain(
-        "Remembered"
+        "Answered as before"
       );
       expect(add(element).disabled).toBe(false);
       expect(add(element).textContent.trim()).toBe("Add");
@@ -1296,11 +1296,11 @@ describe("c-shoresh-import", () => {
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
       expect(pool.querySelector(".tag").textContent).toBe(
-        "Remembered from a former user's answer on Oct 26"
+        "Answered as before · a former user, Oct 26"
       );
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);
-      expect(artRoom.textContent).not.toContain("Remembered");
+      expect(artRoom.textContent).not.toContain("Answered as before");
       // Headed in the camp's word, with what it was named with in plain text: no help icon.
       const places = $(element, '[data-id="places"]');
       expect(places.querySelector("h3").textContent.trim()).toBe("Locations");

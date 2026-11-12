@@ -296,7 +296,7 @@ describe("end-of-season Clear", () => {
       stamp: "abc"
     });
     expect(text($(element, '[data-id="status"]'))).toBe(
-      "Cleared: 2 runs, 4 campers."
+      "Cleared these seats and 4 campers."
     );
     // Back on the seats screen, read again: this week has nothing now.
     expect($(element, '[data-id="clear-heading"]')).toBeNull();

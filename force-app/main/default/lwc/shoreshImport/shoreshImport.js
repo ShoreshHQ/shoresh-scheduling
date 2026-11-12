@@ -506,7 +506,7 @@ export default class ShoreshImport extends LightningElement {
       open: !chosen,
       className: chosen ? "row shoresh-raised" : "row row_look shoresh-raised",
       fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-      memoryNote: this.rememberedNotes[card.id] || "Remembered",
+      memoryNote: this.rememberedNotes[card.id] || "Answered as before",
       autoText: this.autoNote(card),
       suggested: !!suggested,
       suggestedText: suggested ? suggestion.text : "",
@@ -802,7 +802,7 @@ export default class ShoreshImport extends LightningElement {
           ...p,
           usedByText: p.usedBy.join(", "),
           fromMemory: p.ticked && this.remembered[p.id] === "add",
-          memoryNote: this.rememberedNotes[p.id] || "Remembered"
+          memoryNote: this.rememberedNotes[p.id] || "Answered as before"
         }))
       : [];
   }

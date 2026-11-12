@@ -429,7 +429,7 @@ export function assignSeats({
         message:
           `“${nameOf(here[j])}” has ${s.enrolled} of the ${s.minimum} campers it ` +
           `needs to run, but it holds ${article(t.sIn("Seats"))} that was set by hand, so it was kept as it is. ` +
-          `Lower its minimum, or move that ${t.sIn("Seats")}, and run this again.`
+          `Lower its minimum, or move that ${t.sIn("Seats")}, and assign again.`
       });
     }
 
@@ -506,14 +506,14 @@ export function assignSeats({
               timeId,
               camperIds: unplaced.sort(compareText),
               message:
-                `${unplaced.length} camper(s) had nowhere left to go after an offering did not run — ` +
+                `${unplaced.length} camper(s) had nowhere left to go after ${article(t.sIn("Elective"))} did not run — ` +
                 `they had no other choice in this ${t.sIn("TimeBlock")} with room in it.`
             }
           : {
               kind: "NO_CAPACITY",
               timeId,
               camperIds: unplaced.sort(compareText),
-              message: `${unplaced.length} camper(s) could not be placed — every offering in this ${t.sIn("TimeBlock")} is full.`
+              message: `${unplaced.length} camper(s) could not be placed — every ${t.sIn("Elective")} in this ${t.sIn("TimeBlock")} is full.`
             }
       );
     }
@@ -606,7 +606,7 @@ export function assignSeats({
         timeIds: left,
         camperIds: members.length ? askedFor(id) : [],
         message:
-          `“${name}”: ${periodsWords(left)} can’t be given in this run; ` +
+          `“${name}”: ${periodsWords(left)} can’t be given in these ${t.pIn("Seats")}; ` +
           (members.length
             ? `its other ${t.pIn("TimeBlock")} were kept together.`
             : "nobody was placed in it.")

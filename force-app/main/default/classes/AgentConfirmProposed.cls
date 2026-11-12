@@ -51,9 +51,9 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     if (!now.Proposed__c) {
       throw new AgentWeeks.ConflictException(
         named +
-          ' isn\'t proposed now: someone confirmed it since.' +
+          ' isn\'t guessed now: someone said it looks right since.' +
           NOTHING +
-          ' read_proposed_offerings says what is proposed.'
+          ' read_proposed_offerings says what is guessed.'
       );
     }
     RowSaves.Result result;
@@ -118,7 +118,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
           activity.left(80) +
           '".' +
           NOTHING +
-          ' read_proposed_offerings says what is proposed.'
+          ' read_proposed_offerings says what is guessed.'
       );
     }
     if (matched.size() > 1) {

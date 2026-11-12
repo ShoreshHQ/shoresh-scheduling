@@ -62,7 +62,7 @@ global with sharing class AgentElectivesToClear {
           week.seats +
           ' seats, ' +
           week.runs +
-          ' runs (' +
+          ' draft or final (' +
           week.finals +
           ' final)' +
           (week.working.isEmpty()
@@ -73,7 +73,7 @@ global with sharing class AgentElectivesToClear {
     lines.add(
       'Stays for next summer: elective sets ' +
         String.join(picture.sets, ', ') +
-        '; offerings ' +
+        '; electives ' +
         String.join(picture.offerings, ', ') +
         (picture.linked.isEmpty()
           ? ''

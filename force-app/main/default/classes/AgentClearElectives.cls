@@ -36,7 +36,7 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
           ' in "' +
           season.Name +
           '"') +
-      ', for good: the runs with their choices and seats go, and every camper no remaining run uses. It can\'t be undone. As it is now:\n' +
+      ', for good: each week\'s seats, draft or final, with their choices go, and every camper no remaining week uses. It can\'t be undone. As it is now:\n' +
       AgentElectivesToClear.said(now);
   }
 
@@ -62,11 +62,12 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
       );
     }
     // The screen's own words for it.
-    return 'Cleared: ' +
-      result.runs +
-      (result.runs == 1 ? ' run, ' : ' runs, ') +
-      result.campers +
-      (result.campers == 1 ? ' camper.' : ' campers.');
+    return 'Cleared these seats' +
+      (result.campers == 0
+        ? '.'
+        : ' and ' +
+          result.campers +
+          (result.campers == 1 ? ' camper.' : ' campers.'));
   }
 
   /** The season and week asked for, held while still as seen; the picture now. */

@@ -278,7 +278,7 @@ describe("what keeps a linked choice from being placed as a set", () => {
     ).toEqual([
       [
         ["missing|Wednesday|b1|d1"],
-        "“Drama both days”: Wed 12:30 can’t be given in this run; its other time blocks were kept together."
+        "“Drama both days”: Wed 12:30 can’t be given in these seats; its other time blocks were kept together."
       ]
     ]);
     // Maya gets Drama on Monday and Tuesday as the set (engine care PR 8: never refused).

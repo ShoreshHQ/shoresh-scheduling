@@ -235,7 +235,7 @@ private class IncomingCamperElectiveChoiceTest {
         new List<Map<String, Object>>{ record('Archery', 'Swim'), unknown }
       );
       Assert.areEqual(
-        'problem: No choices brought in for Chugim in Week 1 yet, so Shoresh has nowhere to keep these. A person brings them in once on the Elective seats screen (choose Chugim and Week 1, then Bring in choices); after that, send these again.',
+        'problem: No choices imported for Chugim in Week 1 yet, so Shoresh has nowhere to keep these. A person imports them once on the Elective seats screen (choose Chugim and Week 1, then Import choices); after that, send these again.',
         IncomingTestData.said(answer, 1)
       );
       Assert.areEqual(

@@ -332,19 +332,17 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-line="offered-a3"]').textContent).toContain(
       "Pottery isn't offered in Chugim"
     );
-    expect($(element, '[data-id="primary"]').textContent.trim()).toBe(
-      "Bring in"
-    );
+    expect($(element, '[data-id="primary"]').textContent.trim()).toBe("Import");
     await expect(element).toBeAccessible();
 
     await click(element, '[data-id="primary"]');
     expect(bringInChoices).toHaveBeenCalledTimes(1);
     expect(JSON.parse(bringInChoices.mock.calls[0][0].request)).toEqual(sent);
     expect($(element, '[data-id="done"]').textContent).toBe(
-      'Brought in 3 campers to "Chugim · Week 1".'
+      'Imported 3 campers to "Chugim · Week 1".'
     );
     expect($(element, '[data-id="status"]').textContent).toContain(
-      "Brought in 3 campers"
+      "Imported 3 campers"
     );
     expect(choicesSetup).toHaveBeenCalledTimes(2);
   });
@@ -370,7 +368,7 @@ describe("c-shoresh-choices-import", () => {
       row.querySelector('[data-answer="leave"]').getAttribute("aria-pressed")
     ).toBe("true");
     expect(row.querySelector('[data-id="remembered"]').textContent).toBe(
-      "Remembered from a former user's answer on Jul 3"
+      "Answered as before · a former user, Jul 3"
     );
     await click(element, '[data-settle="potterywheel"] [data-answer="add"]');
     await click(element, '[data-id="primary"]');
@@ -473,7 +471,7 @@ describe("c-shoresh-choices-import", () => {
     expect(apart.textContent).toContain("No camper number. Willow and Oak.");
     await click(element, '[data-id="primary"]');
     expect($(element, '[data-id="refusal"]').textContent).toContain(
-      "This sheet can't be brought in yet"
+      "This sheet can't be imported yet"
     );
     expect($(element, '[data-id="primary"]')).toBeNull();
     expect(checkChoices).not.toHaveBeenCalled();
@@ -507,7 +505,7 @@ describe("c-shoresh-choices-import", () => {
       $(element, '[data-id="choose"]')
     );
     expect($(element, '[data-id="status"]').textContent).toContain(
-      "Nothing was brought in."
+      "Nothing was imported."
     );
     expect(bringInChoices).not.toHaveBeenCalled();
   });
@@ -559,7 +557,7 @@ describe("c-shoresh-choices-import", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
-      "That file is too large to import (over 10 MB). Nothing was brought in."
+      "That file is too large to import (over 10 MB). Nothing was imported."
     );
     expect(big.text).not.toHaveBeenCalled();
     expect(big.arrayBuffer).not.toHaveBeenCalled();
@@ -574,7 +572,7 @@ describe("c-shoresh-choices-import", () => {
     bringInChoices.mockRejectedValue({
       body: {
         message:
-          "Someone else brought in choices for this run since you started."
+          "Someone else imported choices for these seats since you started."
       }
     });
     const element = await render();
@@ -586,10 +584,10 @@ describe("c-shoresh-choices-import", () => {
     await click(element, '[data-id="primary"]');
     await click(element, '[data-id="primary"]');
     expect($(element, '[data-id="error"]').textContent).toContain(
-      "Nothing was brought in."
+      "Nothing was imported."
     );
     expect($(element, '[data-id="error"]').textContent).toContain(
-      "Someone else brought in choices"
+      "Someone else imported choices"
     );
     expect($(element, '[data-id="step"]').textContent).toBe("3 of 3");
     // Nothing changed in the season, so the page isn't asked to read it again.

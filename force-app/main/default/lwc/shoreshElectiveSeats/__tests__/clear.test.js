@@ -47,7 +47,7 @@ describe("the picture", () => {
     // A run still being worked on is drawn so, and named.
     expect(view.columns[1].runs).toMatchObject({
       final: false,
-      state: "Committed"
+      state: "Draft"
     });
     expect(view.working).toEqual(["Chugim · Week 2"]);
     expect(view.nothing).toBe(false);
@@ -77,7 +77,7 @@ describe("the picture", () => {
     expect(view.working).toEqual([]);
   });
 
-  it("what stays: sets, offerings and linked choices, a few named", () => {
+  it("what stays: sets, electives (never 'offerings') and linked choices, a few named", () => {
     const view = clearBoard(PICTURE, null, t);
     expect(
       view.stays.map((s) => [
@@ -88,7 +88,7 @@ describe("the picture", () => {
       ])
     ).toEqual([
       ["Elective sets", 2, ["Bechirot", "Chugim"], false],
-      ["Offerings", 5, ["Archery", "Drama", "Pottery", "Ropes"], true],
+      ["Electives", 5, ["Archery", "Drama", "Pottery", "Ropes"], true],
       ["Linked choices", 1, ["Pottery double"], false]
     ]);
   });

@@ -174,7 +174,7 @@ describe("who, when, groups and search", () => {
   it("matches a line's what, how, when or mark", () => {
     const r = {
       title: "Lunch is a fixed activity",
-      how: "From Dana's answer in an import",
+      how: "Answered as before · Dana",
       when: "Jul 3",
       flag: "Updated"
     };

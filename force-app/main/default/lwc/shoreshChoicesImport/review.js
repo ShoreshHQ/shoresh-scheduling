@@ -476,7 +476,7 @@ export function notReadRows(reading, groups, t) {
         key: `note-${i}`,
         name: note.name,
         where: `Row ${note.row}`,
-        why: "Comment not kept: not brought in"
+        why: "Comment not kept: not imported"
       });
     });
   return rows;
@@ -706,7 +706,7 @@ export function countLines({ request, check, set, t, activities }) {
   if (check.runId) {
     lines.push({
       key: "run",
-      text: `Brought into "${check.runName}" again`
+      text: `Imported into "${check.runName}" again`
     });
   }
   const nameAt = (i) => request.campers[i].name;
@@ -733,7 +733,7 @@ export function countLines({ request, check, set, t, activities }) {
   if (check.notOnSheet) {
     lines.push({
       key: "notOnSheet",
-      text: `${camperWords(check.notOnSheet)} in this run ${check.notOnSheet === 1 ? "isn't" : "aren't"} on this sheet: their choices stay`
+      text: `${camperWords(check.notOnSheet)} in "${check.runName}" ${check.notOnSheet === 1 ? "isn't" : "aren't"} on this sheet: their choices stay`
     });
   }
   const offered = new Set((set && set.activityIds) || []);

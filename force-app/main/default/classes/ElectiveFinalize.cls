@@ -192,7 +192,9 @@ public with sharing class ElectiveFinalize {
     ElectiveRunState state = ElectiveRunState.held(runId);
     if (!state.isFinal()) {
       throw new ShoreshException(
-        'Only a final run starts a new version. Reload the page.'
+        '"' +
+          state.run.Name +
+          '" isn\'t final, so there is nothing to change back. Reload the page.'
       );
     }
     refuseSecondVersion(state.run);
@@ -235,9 +237,7 @@ public with sharing class ElectiveFinalize {
     ];
     if (!working.isEmpty()) {
       throw new ShoreshException(
-        'A new version of "' +
-          run.Name +
-          '" is already being worked on. Choose Committed in the run\'s menu.'
+        '"' + run.Name + '" is already being changed. Choose Draft in its menu.'
       );
     }
   }

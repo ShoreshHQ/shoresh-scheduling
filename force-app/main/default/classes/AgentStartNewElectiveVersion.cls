@@ -30,19 +30,21 @@ global with sharing class AgentStartNewElectiveVersion implements AgentWeeks.Act
         run.setName +
           ' in ' +
           run.weekName +
-          ' already has a version being worked on, so no new one was started. Read it with read_elective_seats_now.'
+          ' already has a draft being changed, so nothing was reopened. Read it with read_elective_seats_now.'
       );
     }
     AgentElectives.holdAsSeen(run, seen);
     try {
-      // The screen's own Start a new version.
+      // The screen's own Change seats.
       ElectiveSeatsController.startNewVersion(run.id);
     } catch (Exception e) {
       throw new ShoreshException(
-        'No new version was started. ' + ScreenErrors.words(e)
+        run.labels().plural('Seats') + ' not reopened. ' + ScreenErrors.words(e)
       );
     }
     // The screen's own words for it.
-    return 'A new version started, with the choices, locks and moves made by hand.';
+    return 'A new draft of these ' +
+      run.labels().pluralInSentence('Seats') +
+      ', with the choices, locks and moves made by hand.';
   }
 }

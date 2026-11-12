@@ -130,7 +130,7 @@ private class AgentProposedTest {
       Test.stopTest();
       Assert.areEqual(200, none[0], String.valueOf(none[1]));
       Assert.isTrue(
-        ((String) none[1]).contains('every offering is confirmed'),
+        ((String) none[1]).contains('every elective looks right'),
         String.valueOf(none[1])
       );
       Assert.areEqual(400, unknown[0], String.valueOf(unknown[1]));

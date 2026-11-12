@@ -160,14 +160,14 @@ describe("c-shoresh-learned: one running list", () => {
     expect(lines(element)).toEqual([
       [
         "Swim is an activity",
-        "From a former user's answer in an import",
+        "Answered as before · a former user",
         "Jul 12",
         null
       ],
       ["Riflery: Activity deleted", "Deleted by you", "Jul 10", null],
       [
         "Carpool is a fixed activity",
-        "From Dana's answer in an import",
+        "Answered as before · Dana",
         "Jul 3",
         null
       ]
@@ -352,12 +352,7 @@ describe("c-shoresh-learned: one running list", () => {
     });
     expect(lines(element)).toEqual([
       ["Lunch is a fixed activity", "Changed by you", "Oct 26", null],
-      [
-        "Lunch is an activity",
-        "From Dana's answer in an import",
-        "Jul 3",
-        "Updated"
-      ]
+      ["Lunch is an activity", "Answered as before · Dana", "Jul 3", "Updated"]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe("Updated.");
     expect(element.shadowRoot.activeElement.dataset.id).toBe("undo");
@@ -386,12 +381,7 @@ describe("c-shoresh-learned: one running list", () => {
     expect(lines(element)).toEqual([
       ["Lunch is an activity", "Undone by you", "Oct 26", null],
       ["Lunch is a fixed activity", "Changed by you", "Oct 26", "Undone"],
-      [
-        "Lunch is an activity",
-        "From Dana's answer in an import",
-        "Jul 3",
-        "Updated"
-      ]
+      ["Lunch is an activity", "Answered as before · Dana", "Jul 3", "Updated"]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe(
       "Changed back."

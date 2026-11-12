@@ -117,7 +117,7 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
       };
       if (!outcome.replaced.isEmpty()) {
         lines.add(
-          'Replaced by the file, brought in when ' +
+          'Replaced by the file, copied when ' +
             found.owner.name +
             ' started: ' +
             String.join(outcome.replaced, ', ') +

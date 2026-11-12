@@ -620,7 +620,7 @@ export default class ShoreshListImport extends LightningElement {
       } else if (h.how === "clash") {
         note = "Not sure";
       } else if (remembered) {
-        note = this.rememberedNotes[h.key] || "Remembered";
+        note = this.rememberedNotes[h.key] || "Answered as before";
       }
       const attention = h.how === "unknown" || h.how === "clash";
       return {
@@ -665,7 +665,7 @@ export default class ShoreshListImport extends LightningElement {
         answered: !!chosen,
         answerLabel: chosen ? chosen.label : "",
         fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-        memoryNote: this.rememberedNotes[card.id] || "Remembered",
+        memoryNote: this.rememberedNotes[card.id] || "Answered as before",
         suggestedText: suggestions[card.id] ? suggestions[card.id].text : "",
         // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
         draftDays: this.draftDays(card.id),

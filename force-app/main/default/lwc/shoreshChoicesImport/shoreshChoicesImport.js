@@ -153,7 +153,7 @@ export default class ShoreshChoicesImport extends LightningElement {
       }
       this.pickSchedule();
     } catch (e) {
-      this.error = failed("Couldn't open Bring in choices.", e);
+      this.error = failed("Couldn't open Import choices.", e);
     }
   }
 
@@ -185,7 +185,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   get scheduleOptions() {
     return scheduleOptions(this._setup, this.weekId);
   }
-  /** "Assign against:" is asked only when the week has more than one (desktop D2.7). */
+  /** "Schedule:" is asked only when the week has more than one (desktop D2.7). */
   get asksSchedule() {
     return this.scheduleOptions.length > 1;
   }
@@ -273,7 +273,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   async readFile(chosen) {
     if (!chosen || !this.canChooseFile) return;
     if (!isReadable(chosen.name, FILE_TYPES.choices)) {
-      this.error = `${chosen.name}: Shoresh reads Excel (.xlsx, .xls), CSV, TSV and text (.txt) files. Nothing was brought in.`;
+      this.error = `${chosen.name}: Shoresh reads Excel (.xlsx, .xls), CSV, TSV and text (.txt) files. Nothing was imported.`;
       return;
     }
     this.error = null;
@@ -294,7 +294,7 @@ export default class ShoreshChoicesImport extends LightningElement {
       if (reading.campers.length === 0 && reading.cantTellApart.length === 0) {
         this.phase = "pick";
         this.status = "";
-        this.error = `${chosen.name}: no campers with choices found. Nothing was brought in.`;
+        this.error = `${chosen.name}: no campers with choices found. Nothing was imported.`;
         return;
       }
       this.fingerprint = await this.fingerprintOf(
@@ -330,7 +330,7 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.phase = "pick";
       this.status = "";
       this.error =
-        refusedFile(e, "Nothing was brought in.") ||
+        refusedFile(e, "Nothing was imported.") ||
         failed("That file could not be read.", e);
     }
   }
@@ -424,7 +424,7 @@ export default class ShoreshChoicesImport extends LightningElement {
             : "row row_look shoresh-raised",
         unsettled: !answer || !!answer.started,
         remembered: !!(answer && answer.remembered),
-        rememberedNote: (answer && answer.note) || "Remembered",
+        rememberedNote: (answer && answer.note) || "Answered as before",
         proposal,
         proposalLabel: proposal ? `Same as ${proposal.name}` : null,
         proposalPressed: proposal ? pressed("same", proposal.id) : "false",
@@ -582,7 +582,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   get primaryLabel() {
     if (this.step === 1) return "That's right";
     if (this.step === 2) return "Next";
-    return "Bring in";
+    return "Import";
   }
   get showsPrimary() {
     if (!this.isCards) return false;
@@ -608,7 +608,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   }
   handleCancel() {
     this.startOver();
-    this.status = "Nothing was brought in.";
+    this.status = "Nothing was imported.";
     this.focusAfter = '[data-id="choose"]';
   }
   handleAnother() {
@@ -650,11 +650,11 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.check = await checkChoices({ request: JSON.stringify(request) });
       this.phase = "card";
       this.status = this.check.isFinal
-        ? "This run is final."
-        : "Ready to bring in.";
+        ? `These ${this.t.pIn("Seats")} are final.`
+        : "Ready to import.";
     } catch (e) {
       this.phase = "card";
-      this.error = failed("Couldn't count what this sheet brings in.", e);
+      this.error = failed("Couldn't count what this sheet imports.", e);
     }
   }
 
@@ -662,7 +662,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     const request = this.request;
     if (!request || this.refused || this.isFinal) return;
     this.phase = "saving";
-    this.status = "Bringing in";
+    this.status = "Importing";
     try {
       this.done = await bringInChoices({ request: JSON.stringify(request) });
       this.phase = "done";
@@ -674,11 +674,11 @@ export default class ShoreshChoicesImport extends LightningElement {
       await this.loadSituation();
     } catch (e) {
       this.phase = "card";
-      this.error = failed("Nothing was brought in.", e);
+      this.error = failed("Nothing was imported.", e);
     }
   }
 
-  /** Brought in: the next step is the seats, "Elective seats →" (the guide's arrow means next). */
+  /** Imported: the next step is the seats, "Elective seats →" (the guide's arrow means next). */
   get toSeatsLabel() {
     return `${electiveSeatsTitle(this.t)} →`;
   }
@@ -699,7 +699,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   get doneText() {
     if (!this.done) return "";
     const n = this.done.campers;
-    return `Brought in ${n} ${n === 1 ? this.t.sIn("Camper") : this.t.pIn("Camper")} to "${this.done.runName}".`;
+    return `Imported ${n} ${n === 1 ? this.t.sIn("Camper") : this.t.pIn("Camper")} to "${this.done.runName}".`;
   }
   get doneLines() {
     if (!this.done) return [];

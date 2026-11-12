@@ -258,7 +258,7 @@ public with sharing class ElectiveRunState {
             '" is final, so its ' +
               labels().pluralInSentence('Seats') +
               ' can\'t change.',
-            'Start a new version first.'
+            'Choose Change ' + labels().pluralInSentence('Seats') + ' first.'
           )
       );
     }
