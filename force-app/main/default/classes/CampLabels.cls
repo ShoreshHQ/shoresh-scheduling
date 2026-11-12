@@ -84,21 +84,21 @@ public with sharing class CampLabels {
 
   /** The term at the start of a sentence or as a heading: "Group", or the camp's "Bunk". */
   public String singular(String term) {
-    CampLabel__c label = custom.get(term);
-    if (label != null) {
-      return label.Singular__c;
-    }
-    List<String> follows = followed(term);
-    return follows != null ? follows[0] : MODEL_TERMS.get(term)[0];
+    return words(term)[0];
   }
 
   public String plural(String term) {
+    return words(term)[1];
+  }
+
+  /** [singular, plural]: the camp's own, else the ones it follows (CORE-1.34), else standard. */
+  private List<String> words(String term) {
     CampLabel__c label = custom.get(term);
     if (label != null) {
-      return label.Plural__c;
+      return new List<String>{ label.Singular__c, label.Plural__c };
     }
     List<String> follows = followed(term);
-    return follows != null ? follows[1] : MODEL_TERMS.get(term)[1];
+    return follows != null ? follows : MODEL_TERMS.get(term);
   }
 
   /** The term inside a sentence: model terms in lower case, camp labels exactly as the camp typed them. */
@@ -115,8 +115,7 @@ public with sharing class CampLabels {
    * "an Edah" (word walk W1: never a fixed "a" before a camp word).
    */
   public String withArticle(String term) {
-    String word = singularInSentence(term);
-    return ('aeiou'.contains(word.left(1).toLowerCase()) ? 'an ' : 'a ') + word;
+    return CampWordRules.withArticle(singularInSentence(term));
   }
 
   /**
@@ -132,28 +131,9 @@ public with sharing class CampLabels {
     return custom.containsKey(term) || followed(term) != null;
   }
 
-  /**
-   * CORE-1.34: a word the camp left standard that follows a word it set: Elective set is the
-   * camp's Elective words ("Chug" / "Chugim"); Groups that fit and Groups at once are its Group
-   * plural ("Bunks that fit"). Null when the camp set this word itself, or the word it follows
-   * is standard.
-   */
+  /** CORE-1.34: the words a standard word follows from one the camp set (CampWordRules). */
   private List<String> followed(String term) {
-    if (custom.containsKey(term)) {
-      return null;
-    }
-    if (term == 'ElectiveSet' && custom.containsKey('Elective')) {
-      CampLabel__c elective = custom.get('Elective');
-      return new List<String>{ elective.Singular__c, elective.Plural__c };
-    }
-    Boolean ofGroups = term == 'GroupsThatFit' || term == 'GroupsAtOnce';
-    if (ofGroups && custom.containsKey('Group')) {
-      String word =
-        custom.get('Group').Plural__c +
-        (term == 'GroupsThatFit' ? ' that fit' : ' at once');
-      return new List<String>{ word, word };
-    }
-    return null;
+    return CampWordRules.followed(custom, term);
   }
 
   /** Every model term with this camp's label, for the screens and the label editor. */
@@ -173,76 +153,22 @@ public with sharing class CampLabels {
     return result;
   }
 
-  /**
-   * Why this person cannot change a camp's labels, or null when they can. Anyone with the
-   * Shoresh Scheduler permission set can (Greg, 2026-10-15), unless an admin has narrowed
-   * access to camp records. Short, in the desktop's words ("Only an admin can ...", e.g.
-   * TiersScreen.jsx); no Salesforce machinery named.
-   */
+  /** Why this person cannot change a camp's labels, or null when they can (CampLabelSaves). */
   public static String whyCannotEdit(Id campId) {
-    Schema.DescribeSObjectResult labels = Schema.sObjectType.CampLabel__c;
-    if (
-      !labels.isCreateable() ||
-      !labels.isUpdateable() ||
-      !labels.isDeletable()
-    ) {
-      return 'Only an admin can change camp words.';
-    }
-    List<UserRecordAccess> access = [
-      SELECT RecordId, HasEditAccess
-      FROM UserRecordAccess
-      WHERE UserId = :UserInfo.getUserId() AND RecordId = :campId
-      WITH SYSTEM_MODE
-    ];
-    if (access.isEmpty() || !access[0].HasEditAccess) {
-      return 'You can\'t edit this camp, so its words are view only.';
-    }
-    return null;
+    return CampLabelSaves.whyCannotEdit(campId);
   }
 
-  /**
-   * Saves a camp's words from the label editor, all or none. A term with both words blank,
-   * or with exactly the model term's words, goes back to the model term.
-   */
+  /** Saves a camp's words from the label editor, all or none (CampLabelSaves). */
   public static void save(Id campId, List<TermLabel> rows) {
-    CampLabelIds.refuseOthers(campId, rows);
-    List<CampLabel__c> toSave = new List<CampLabel__c>();
-    List<Id> toDelete = new List<Id>();
-    for (TermLabel row : rows) {
-      CampLabel__c label = row.toRecord(campId);
-      if (label != null) {
-        toSave.add(label);
-      } else if (row.labelId != null) {
-        toDelete.add(row.labelId);
-      }
-    }
-    Savepoint beforeSave = Database.setSavepoint();
-    try {
-      Database.delete(toDelete, true, AccessLevel.USER_MODE);
-      UserModeWrites.save(toSave);
-    } catch (DmlException e) {
-      Database.rollback(beforeSave);
-      throw e;
-    }
+    CampLabelSaves.save(campId, rows);
   }
 
-  /**
-   * The English plural of a standard word, the one rule the screens use too (shoreshTerms
-   * guessPlural): "ies" after a consonant and y, "es" after s, x, z, ch and sh, else "s".
-   */
+  /** The English plural of a standard word, the screens' one rule (CampWordRules.pluralOf). */
   @TestVisible
   private static String pluralOf(String singular) {
-    if (SAME_IN_PLURAL.contains(singular)) {
-      return singular;
-    }
-    String lower = singular.toLowerCase();
-    if (lower.endsWith('y') && !Pattern.matches('.*[aeiou]y', lower)) {
-      return singular.removeEnd('y') + 'ies';
-    }
-    if (Pattern.matches('.*(s|x|z|ch|sh)', lower)) {
-      return singular + 'es';
-    }
-    return singular + 's';
+    return SAME_IN_PLURAL.contains(singular)
+      ? singular
+      : CampWordRules.pluralOf(singular);
   }
 
   // Properties, not plain fields: Salesforce only fills in properties when a screen sends
@@ -269,14 +195,13 @@ public with sharing class CampLabels {
     }
 
     /** The record to save, or null when this term should show the model term. */
-    CampLabel__c toRecord(Id campId) {
+    public CampLabel__c toRecord(Id campId) {
       String one = cleaned(singular);
       String many = cleaned(plural);
-      if (
-        one + many == '' ||
-        (one + '/' + many ==
-        modelSingular + '/' + modelPlural)
-      ) {
+      Boolean standard =
+        one + '/' + many == modelSingular + '/' + modelPlural &&
+        !CampWordRules.FOLLOWERS.contains(term);
+      if (one + many == '' || standard) {
         return null;
       }
       if (one == '' || many == '') {

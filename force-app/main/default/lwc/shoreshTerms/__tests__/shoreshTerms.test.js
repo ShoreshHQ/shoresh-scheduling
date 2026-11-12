@@ -157,6 +157,12 @@ describe("small words", () => {
   it("says a or an, starts with a capital, and shortens a day", () => {
     expect(article("activity")).toBe("an activity");
     expect(article("group")).toBe("a group");
+    // By sound: a camp's own word too.
+    expect(article("hour")).toBe("an hour");
+    expect(article("Unit")).toBe("a Unit");
+    expect(article("Umbrella")).toBe("an Umbrella");
+    expect(article("Edah")).toBe("an Edah");
+    expect(article("Yom")).toBe("a Yom");
     expect(capital("swim")).toBe("Swim");
     expect(SHORT_DAYS.Wednesday).toBe("Wed");
   });

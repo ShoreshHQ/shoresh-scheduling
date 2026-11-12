@@ -117,9 +117,13 @@ export const SHORT_DAYS = Object.freeze({
   Sunday: "Sun"
 });
 
-/** "a word" or "an word". */
+/** "a time block", "an Edah", "an hour", "a Unit": the article a word takes by its sound. */
 export function article(word) {
-  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+  const vowelSound =
+    /^(hour|honest|hono|heir)/i.test(word) ||
+    (/^[aeiou]/i.test(word) &&
+      !/^(uni|use|usu|uti|ure|one|once|eu|ewe)/i.test(word));
+  return `${vowelSound ? "an" : "a"} ${word}`;
 }
 
 export function capital(text) {

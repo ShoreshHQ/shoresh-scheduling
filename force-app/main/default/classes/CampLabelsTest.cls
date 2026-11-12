@@ -70,6 +70,27 @@ private class CampLabelsTest {
       'elective set',
       CampLabels.modelTermsOnly().singularInSentence('ElectiveSet')
     );
+    // Typing the standard word back keeps it: the camp's own choice beats the word it follows.
+    CampLabels.TermLabel typed = new CampLabels.TermLabel();
+    typed.term = 'ElectiveSet';
+    typed.modelSingular = 'Elective set';
+    typed.modelPlural = 'Elective sets';
+    typed.singular = 'Elective set';
+    typed.plural = 'Elective sets';
+    Assert.isNotNull(
+      typed.toRecord(camp.Id),
+      'A follower\'s standard word is saved'
+    );
+    CampLabels.TermLabel plain = new CampLabels.TermLabel();
+    plain.term = 'Division';
+    plain.modelSingular = 'Division';
+    plain.modelPlural = 'Divisions';
+    plain.singular = 'Division';
+    plain.plural = 'Divisions';
+    Assert.isNull(
+      plain.toRecord(camp.Id),
+      'Any other standard word is no record'
+    );
   }
 
   @IsTest
@@ -95,6 +116,11 @@ private class CampLabelsTest {
     CampLabels labels = CampLabels.forCamp(camp.Id);
     Assert.areEqual('an Edah', labels.withArticle('Division'));
     Assert.areEqual('a time block', labels.withArticle('TimeBlock'));
+    // By sound, as the screens' article().
+    Assert.areEqual('an hour', CampWordRules.withArticle('hour'));
+    Assert.areEqual('a Unit', CampWordRules.withArticle('Unit'));
+    Assert.areEqual('an Umbrella', CampWordRules.withArticle('Umbrella'));
+    Assert.areEqual('a Yom', CampWordRules.withArticle('Yom'));
     Assert.areEqual('Elective spots', labels.electiveSeatsTitle());
     Assert.areEqual(
       'Elective seats',

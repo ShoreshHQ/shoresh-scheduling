@@ -134,6 +134,12 @@ export default class ShoreshCampLabels extends LightningElement {
             term: row.term,
             // The server always names the standard words; the term itself only stands in.
             modelSingular: row.modelSingular || standardWord(row.term),
+            // An empty box shows the word the screens use: the standard one, or the camp word
+            // it follows (CORE-1.34: "Chug" for Elective set once Elective is "Chug").
+            shown:
+              (!row.isCustom && row.singular) ||
+              row.modelSingular ||
+              standardWord(row.term),
             modelPlural: row.modelPlural || "",
             labelId: row.labelId,
             singular,

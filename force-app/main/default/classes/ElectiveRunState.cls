@@ -72,7 +72,7 @@ public with sharing class ElectiveRunState {
   }
 
   /** The camp's words for this run's messages ("spots"), read on first use (word walk W1). */
-  public CampLabels labels() {
+  private CampLabels labels() {
     if (words == null) {
       words = CampLabels.forCamp(run.Season__r.Camp__c);
     }

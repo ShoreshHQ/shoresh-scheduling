@@ -83,7 +83,13 @@ global with sharing class AgentElectiveSeatsNow {
     lines.add('Campers:');
     for (ElectiveSeats.CamperInfo camper : view.campers) {
       lines.add(
-        camperLine(camper, seats.get(camper.id), groups, 'no ' + seatWords)
+        camperLine(
+          camper,
+          seats.containsKey(camper.id)
+            ? seats.get(camper.id)
+            : new List<String>{ 'no ' + seatWords },
+          groups
+        )
       );
     }
     return String.join(lines, '\n');
@@ -114,14 +120,13 @@ global with sharing class AgentElectiveSeatsNow {
   private static String camperLine(
     ElectiveSeats.CamperInfo camper,
     List<String> has,
-    Map<Id, String> groups,
-    String noSeats
+    Map<Id, String> groups
   ) {
     return '- ' +
       camper.name +
       (String.isBlank(camper.camperNumber) ? '' : ' #' + camper.camperNumber) +
       (camper.groupId == null ? '' : ', ' + groups.get(camper.groupId)) +
       ': ' +
-      (has == null ? noSeats : String.join(has, '; '));
+      String.join(has, '; ');
   }
 }

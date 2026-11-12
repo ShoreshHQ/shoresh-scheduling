@@ -172,6 +172,33 @@ describe("c-shoresh-camp-labels", () => {
     expect(input(element, "Version", "singular")).not.toBeNull();
   });
 
+  // CORE-1.34
+  it("an empty box shows the word the screens use: the camp word a word follows", async () => {
+    getLabels.mockResolvedValue([
+      ...LABELS,
+      {
+        term: "GroupsThatFit",
+        modelSingular: "Groups that fit",
+        modelPlural: "Groups that fit",
+        singular: "Bunks that fit",
+        plural: "Bunks that fit",
+        isCustom: false
+      }
+    ]);
+    campWordsBlockedReason.mockResolvedValue(null);
+    const element = createElement("c-shoresh-camp-labels", {
+      is: ShoreshCampLabels
+    });
+    element.campId = "camp1";
+    element.campName = "Camp Willow";
+    document.body.appendChild(element);
+    await flush();
+    expect(input(element, "GroupsThatFit", "singular").placeholder).toBe(
+      "Bunks that fit"
+    );
+    expect(input(element, "GroupsThatFit", "singular").value).toBe("");
+  });
+
   it("guesses the plural beside the camp's word, and keeps a plural typed over the guess", async () => {
     const element = await render();
     // Bunks is what the guess gives: shown as the guess, so it follows the word.
