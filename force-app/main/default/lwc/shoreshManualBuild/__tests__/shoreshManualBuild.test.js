@@ -966,10 +966,10 @@ describe("c-shoresh-manual-build", () => {
     });
     document.body.appendChild(element);
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    expect(told[told.length - 1]).toMatchObject({ weekId: "w1", locked: false });
     q(element, '[data-id="start-week"]').click();
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: true });
+    expect(told[told.length - 1]).toMatchObject({ weekId: "w1", locked: true });
     getDraft.mockClear();
     expect(element.openWeek("w2")).toBe(false);
     // The week shown is still the one to open: nothing waits for it.
@@ -979,7 +979,7 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="week"]').value).toBe("w1");
     started.answer(draft());
     await flush();
-    expect(told[told.length - 1]).toEqual({ weekId: "w1", locked: false });
+    expect(told[told.length - 1]).toMatchObject({ weekId: "w1", locked: false });
     // Told once per change, not at every redraw.
     expect(told).toHaveLength(3);
   });

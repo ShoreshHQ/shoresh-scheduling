@@ -350,16 +350,21 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
    * week shown stays, and the picker says which it is. True when that week is the one shown.
    */
   @api
-  openWeek(weekId) {
+  openWeek(weekId, programId) {
     if (!this.weekOptions.some((o) => o.value === weekId)) {
       return false;
     }
-    if (weekId === this.weekId) {
+    // A reload back on the program it was on (Greg 2026-11-12), when it is still the season's.
+    const program = this.programOptions.some((o) => o.value === programId)
+      ? programId
+      : this.programId;
+    if (weekId === this.weekId && program === this.programId) {
       return true;
     }
     if (this.pickersLocked) {
       return false;
     }
+    this.programId = program;
     this.weekId = weekId;
     this.load();
     return true;
@@ -1174,18 +1179,24 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   /**
    * Tells the page the week shown and whether the week picker waits on work under way, when
    * either changes: the Schedules doorway holds its other weeks for this screen meanwhile, as
-   * the picker does (openWeek). Fires: weekstate { weekId, locked }.
+   * the picker does (openWeek). Fires: weekstate { weekId, programId, locked }.
    */
   tellWeekState() {
     const weekId = this.weekId || null;
+    const programId = this.programId || null;
     const locked = !!this.pickersLocked;
     const told = this.weekStateTold;
-    if (told && told.weekId === weekId && told.locked === locked) {
+    if (
+      told &&
+      told.weekId === weekId &&
+      told.programId === programId &&
+      told.locked === locked
+    ) {
       return;
     }
-    this.weekStateTold = { weekId, locked };
+    this.weekStateTold = { weekId, programId, locked };
     this.dispatchEvent(
-      new CustomEvent("weekstate", { detail: { weekId, locked } })
+      new CustomEvent("weekstate", { detail: { weekId, programId, locked } })
     );
   }
 
