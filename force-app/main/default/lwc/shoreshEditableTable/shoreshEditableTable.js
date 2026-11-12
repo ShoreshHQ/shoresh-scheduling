@@ -575,6 +575,10 @@ export default class ShoreshEditableTable extends LightningElement {
       given === undefined || given === null || given === ""
         ? this.visibleDrafts.length
         : given;
+    // An empty section shows no count: its "No … yet" says it (CORE-6.13, word walk W3).
+    if (count === 0 || count === "0") {
+      return "";
+    }
     const words = this.countWords;
     return words && words.length === 2 && typeof count === "number"
       ? `${count} ${count === 1 ? words[0] : words[1]}`

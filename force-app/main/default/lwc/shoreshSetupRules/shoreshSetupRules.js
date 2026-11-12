@@ -32,8 +32,25 @@ export function setupProblems(setup, terms) {
     ...specialDayProblems(setup, terms),
     ...electiveProblems(setup, terms)
   ];
-  return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
+  return problems.map((problem, i) => ({
+    key: `p${i}`,
+    ...problem,
+    ...(SAID_EMPTY.has(problem.kind) ? { markedInPlace: true } : {})
+  }));
 }
+
+/**
+ * "No … yet": the screen's own empty list already says it, so its Needs a look leaves it out
+ * (word walk W3: never said twice); Roots and the menu still show it.
+ */
+const SAID_EMPTY = new Set([
+  "noWeeks",
+  "noPrograms",
+  "noTimeBlocks",
+  "noDivisions",
+  "noGroups",
+  "noActivities"
+]);
 
 function weekProblems(setup, terms) {
   const problems = [];

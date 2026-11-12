@@ -2673,6 +2673,21 @@ describe("c-shoresh-editable-table", () => {
       );
     });
 
+    it('CORE-6.13: an empty section shows no count (no "Main track 0")', async () => {
+      const element = renderSection({
+        heading: "Seniors",
+        filterField: "Division__c",
+        filterValue: "d9",
+        rows: GROUPS,
+        countWords: ["Bunk", "Bunks"]
+      });
+      await flush();
+      expect(q(element, '[data-id="section-count"]')).toBeNull();
+      expect(q(element, '[data-id="section-head"]').textContent).not.toMatch(
+        /0/
+      );
+    });
+
     it("without a heading the table's title is read out, not shown", async () => {
       const element = renderSection();
       await flush();

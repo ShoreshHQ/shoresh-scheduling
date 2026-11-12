@@ -758,7 +758,7 @@ describe("c-shoresh-program", () => {
       const fixed = table(element);
       expect(fixed.dataset.id).toBe("fixed-activities");
       // Who is left out, and changed time blocks: headed as what needs a look, not "Notes".
-      expect(fixed.notesHeading).toBe("Needs attention");
+      expect(fixed.notesHeading).toBe("Needs a look");
       expect(bareName(fixed.objectApiName)).toBe("FixedActivity__c");
       expect(fixed.columns.map((c) => bareName(c.fieldName))).toEqual([
         "Name",
@@ -865,7 +865,7 @@ describe("c-shoresh-program", () => {
       });
     });
 
-    it("shows Needs attention only while a row needs a look", async () => {
+    it("shows Needs a look only while a row needs a look", async () => {
       const element = await render("fixedActivities", {
         ...SET_TIME,
         divisions: [

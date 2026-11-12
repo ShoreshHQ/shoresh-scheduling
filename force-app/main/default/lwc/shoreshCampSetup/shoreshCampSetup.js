@@ -1132,14 +1132,14 @@ export default class ShoreshCampSetup extends LightningElement {
   get seasonOptions() {
     return this.seasons.map((s) => ({ label: s.Name, value: s.Id }));
   }
-  /** What needs attention, on screens that can be opened (a coming screen's wait with it). */
+  /** What needs a look, on screens that can be opened (a coming screen's wait with it). */
   get problems() {
     return setupProblems(this.setup, this.terms).filter((problem) =>
       canOpen(problem.screen, true, this.preview)
     );
   }
   /**
-   * What needs attention on the screen shown (Roots lists everything in its own way); what the
+   * What needs a look on the screen shown (Roots lists everything in its own way); what the
    * screen marks in its own rows (markedInPlace) is not listed again above them.
    */
   get screenProblems() {
@@ -1151,7 +1151,7 @@ export default class ShoreshCampSetup extends LightningElement {
       .map((problem) => ({ ...problem, actions: problem.actions || [] }));
   }
 
-  /** A fix offered on an attention item (a changed fixed or recurring activity): saves it. */
+  /** A fix offered on a needs-a-look item (a changed fixed or recurring activity): saves it. */
   async handleProblemAction(event) {
     const { problem, action } = event.currentTarget.dataset;
     const found = this.problems.find((p) => p.key === problem);
@@ -2417,7 +2417,7 @@ export default class ShoreshCampSetup extends LightningElement {
       deleteSeason: `Delete ${t.sIn("Season")}`,
       createSeason: `Create ${t.sIn("Season")}`,
       newSeasonTitle: `Start a new ${t.sIn("Season")}`,
-      problems: "Needs attention",
+      problems: "Needs a look",
       addWeek: `Add ${t.s("Week")}`,
       noWeeks: `No ${t.pIn("Week")} yet`,
       overlapsWeek: `Overlaps another ${t.sIn("Week")}`,

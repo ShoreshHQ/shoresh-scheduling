@@ -301,7 +301,7 @@ export default class ShoreshProgram extends LightningElement {
     return this.sectioned ? this.entry.program.Name : WHOLE_CAMP;
   }
 
-  /** "Needs attention" only while a row needs it: the rule is quiet, the exception stands out. */
+  /** "Needs a look" only while a row needs it: the rule is quiet, the exception stands out. */
   get fixedNotesHeading() {
     return Object.values(this.fixedNotes).some((note) => note)
       ? this.labels.leftOut
@@ -717,7 +717,7 @@ export default class ShoreshProgram extends LightningElement {
       countRecurring: [t.sIn("RecurringActivity"), t.pIn("RecurringActivity")],
       // What needs a look on a row: who is left out, a time block that changed (desktop: "Needs
       // attention"), not general notes.
-      leftOut: "Needs attention",
+      leftOut: "Needs a look",
       weeksColumn: t.p("Week"),
       // What moving a group to another division changes.
       moving: "What changes"
