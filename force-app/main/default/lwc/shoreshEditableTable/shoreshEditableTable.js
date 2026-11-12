@@ -16,6 +16,7 @@ const WHO_FIELDS = {
 };
 const OFF = FIELD.WeekException;
 const WEEK = FIELD.Week;
+const TIME = FIELD.TimeBlock;
 /**
  * Whether focus went to something of the same row (key; the row, or its who picker or details),
  * through any component's own inside: a picklist's options sit inside the picklist, where
@@ -31,6 +32,15 @@ function insideOf(key, node) {
     at = at.parentNode || at.host || null;
   }
   return false;
+}
+
+/** A time as minutes after midnight: Salesforce's milliseconds, or "13:30" as typed; else null. */
+function minuteOf(value) {
+  if (typeof value === "number") {
+    return Math.round(value / 60000);
+  }
+  const m = /^(\d{1,2}):(\d{2})/.exec(value || "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
 // The blank last row's key.
@@ -1105,14 +1115,28 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!this.overlapLabel) {
       return keys;
     }
-    // Only weeks are told apart by their dates.
-    const start = (d) => d.values[WEEK.StartDate];
-    const end = (d) => d.values[WEEK.EndDate];
-    const dated = this.flaggedRows.filter((d) => start(d) && end(d));
+    // Weeks by their dates (a shared day overlaps); time blocks by their times, one ending as
+    // the next starts not overlapping (word walk W6: Lunch 12:00–12:45 and 12:30–1:15 weren't
+    // marked).
+    const timed = this.flaggedRows.some(
+      (d) => minuteOf(d.values[TIME.StartTime]) !== null
+    );
+    const startField = timed ? TIME.StartTime : WEEK.StartDate;
+    const endField = timed ? TIME.EndTime : WEEK.EndDate;
+    const read = timed ? minuteOf : (value) => value;
+    const start = (d) => read(d.values[startField]);
+    const end = (d) => read(d.values[endField]);
+    const meets = (a, b) => {
+      if (timed) {
+        return start(a) < end(b) && start(b) < end(a);
+      }
+      return start(a) <= end(b) && start(b) <= end(a);
+    };
+    const dated = this.flaggedRows.filter(
+      (d) => start(d) !== null && start(d) !== undefined && end(d)
+    );
     dated.forEach((a) => {
-      if (
-        dated.some((b) => b !== a && start(a) <= end(b) && start(b) <= end(a))
-      ) {
+      if (dated.some((b) => b !== a && meets(a, b))) {
         keys.add(a.key);
       }
     });

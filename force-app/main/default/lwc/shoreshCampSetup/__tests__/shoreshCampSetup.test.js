@@ -3163,7 +3163,7 @@ describe("c-shoresh-camp-setup", () => {
     saveRow.mockReset();
   });
 
-  it("flags same names on the season's location types, locations, and activities only", async () => {
+  it("flags same names on the season's location types, locations, activities and weeks", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
@@ -3173,7 +3173,8 @@ describe("c-shoresh-camp-setup", () => {
     expect(flagged("location-types")).toBe(true);
     expect(flagged("locations")).toBe(true);
     expect(flagged("activities")).toBe(true);
-    expect(flagged("weeks")).toBeFalsy();
+    // Word walk W6: two weeks called "Shavua A" are marked, as two locations are.
+    expect(flagged("weeks")).toBe(true);
   });
 
   /** A table's row save as the table sends it, with its callbacks watched. */

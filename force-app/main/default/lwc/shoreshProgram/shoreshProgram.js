@@ -696,6 +696,7 @@ export default class ShoreshProgram extends LightningElement {
     return {
       timeBlocks: `${t.p("TimeBlock")} in ${program}`,
       addTimeBlock: `Add ${t.s("TimeBlock")}`,
+      overlapsTimeBlock: `Overlaps another ${t.sIn("TimeBlock")}`,
       noTimeBlocks: `No ${t.pIn("TimeBlock")} yet`,
       divisions: `${t.p("Division")} in ${program}`,
       addDivision: `Add ${t.s("Division")}`,

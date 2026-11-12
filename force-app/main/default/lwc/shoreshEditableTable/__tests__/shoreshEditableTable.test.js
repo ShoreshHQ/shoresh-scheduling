@@ -3154,6 +3154,59 @@ describe("c-shoresh-editable-table", () => {
     );
   });
 
+  // Word walk W6: overlapping time blocks are marked, as overlapping weeks are.
+  describe("overlapping time blocks", () => {
+    it("tags each time block whose times overlap another's; one ending as the next starts doesn't", async () => {
+      const element = render({
+        title: "Time blocks",
+        objectApiName: "TimeBlock__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          { fieldName: "StartTime__c", label: "Start", type: "time" },
+          { fieldName: "EndTime__c", label: "End", type: "time" }
+        ],
+        rows: [
+          // 12:00–12:45, 12:30–1:15, 1:15–2:00
+          {
+            Id: "t1",
+            Name: "Lunch",
+            StartTime__c: 43200000,
+            EndTime__c: 45900000
+          },
+          {
+            Id: "t2",
+            Name: "Peula 3",
+            StartTime__c: 45000000,
+            EndTime__c: 47700000
+          },
+          {
+            Id: "t3",
+            Name: "Peula 4",
+            StartTime__c: 47700000,
+            EndTime__c: 50400000
+          }
+        ],
+        overlapLabel: "Overlaps another time block"
+      });
+      await flush();
+      const tags = () =>
+        rows(element).map((tr) => {
+          const tag = tr.querySelector('[data-id="overlaps"]');
+          return tag ? tag.label : null;
+        });
+      expect(tags()).toEqual([
+        "Overlaps another time block",
+        "Overlaps another time block",
+        null,
+        null
+      ]);
+      // Typed times count as saved ones do.
+      change(field(element, 1, "StartTime__c"), "12:45");
+      await flush();
+      expect(tags()).toEqual([null, null, null, null]);
+    });
+  });
+
   describe("overlapping weeks", () => {
     const WEEK_COLUMNS = [
       { fieldName: "Name", label: "Name", type: "text", required: true },
