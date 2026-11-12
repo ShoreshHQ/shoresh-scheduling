@@ -83,7 +83,7 @@ describe("card 1: how the sheet was read", () => {
         )
       )
     );
-    expect(shapeOf(perPeriod)).toBe("One per period");
+    expect(shapeOf(perPeriod)).toBe("One per time block");
     const both = readChoices(
       csvFile(
         "b.csv",

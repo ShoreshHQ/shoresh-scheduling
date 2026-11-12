@@ -166,6 +166,11 @@
                 <label>Special event</label>
             </value>
             <value>
+                <fullName>Station</fullName>
+                <default>false</default>
+                <label>Station</label>
+            </value>
+            <value>
                 <fullName>Team</fullName>
                 <default>false</default>
                 <label>Team</label>
@@ -193,7 +198,7 @@
             <value>
                 <fullName>Seats</fullName>
                 <default>false</default>
-                <label>Seats</label>
+                <label>Seat</label>
             </value>
             <value>
                 <fullName>MinimumToRun</fullName>

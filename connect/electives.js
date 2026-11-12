@@ -32,15 +32,17 @@ async function assignElectiveSeats(
   const got = await readRun();
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
+  const m = await load();
   if (
     `${body.view.run.id}:${body.view.revision}` !== String(input.seen).trim()
   ) {
-    // Someone changed the seats since the agent read them: nothing was changed (409).
+    // Someone changed the seats since the agent read them: nothing was changed (409), in the
+    // camp's Seat word (word walk W1).
+    const seats = m.buildTerms(body.labels).pIn("Seats");
     return changedSince(
-      "Someone changed the seats since you read them, so nothing was changed. Read them again with read_elective_seats_now."
+      `Someone changed the ${seats} since you read them, so nothing was changed. Read them again with read_elective_seats_now.`
     );
   }
-  const m = await load();
   m.setDayNaming(body.dayNaming);
   const t = m.buildTerms(body.labels);
   const request = m.planSeats(body.view, t);
@@ -61,7 +63,7 @@ async function assignElectiveSeats(
   return {
     ok: true,
     status: 200,
-    text: `Seats assigned: ${board.counter.placed} of ${board.counter.total} placed.`
+    text: `${t.p("Seats")} assigned: ${board.counter.placed} of ${board.counter.total} placed.`
   };
 }
 

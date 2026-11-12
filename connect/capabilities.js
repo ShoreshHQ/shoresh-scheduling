@@ -1859,7 +1859,7 @@ const CAPABILITIES = [
     api: "read_special_days",
     method: "GET",
     description:
-      'Read the season\'s special days and special events, as the Special events screen lists them, and the week days each special day is on (like Tuesday of "Week 1"). A special day replaces its day for the whole camp; a week day not named has none, and reads "none". Read it right before put_special_day_on_day or take_special_day_off_day and send what that day has as seen.',
+      'Read the season\'s special days and special events, as the Special events screen lists them, and the week days each special day is on (like Week 1 · Tuesday). A special day replaces its day for the whole camp; a week day not named has none, and reads "none". Read it right before put_special_day_on_day or take_special_day_off_day and send what that day has as seen.',
     about:
       "The special days and events now, and where they are. They hold no findings or problems.",
     inputSchema: {

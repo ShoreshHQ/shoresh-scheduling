@@ -83,7 +83,13 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     heldAsSeen();
     Map<String, Assignment__c> now = new Map<String, Assignment__c>();
     for (Assignment__c seat : [
-      SELECT Camper__c, Date__c, TimeBlock__c, SpecialBlock__c, Offering__c, Locked__c
+      SELECT
+        Camper__c,
+        Date__c,
+        TimeBlock__c,
+        SpecialBlock__c,
+        Offering__c,
+        Locked__c
       FROM Assignment__c
       WHERE ElectiveRun__c = :held.id
       WITH USER_MODE
@@ -98,6 +104,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       );
     }
     Change change = new Change();
+    change.words = held.labels();
     for (ElectiveSeatSaves.SeatIn seat : sent()) {
       change.add(
         now.remove(
@@ -109,7 +116,9 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     for (Assignment__c left : now.values()) {
       change.leftOut(left);
     }
-    return 'This assigns seats in ' +
+    return 'This assigns ' +
+      held.labels().pluralInSentence('Seats') +
+      ' in ' +
       held.setName +
       ' in ' +
       held.weekName +
@@ -125,6 +134,8 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     Integer takenOut = 0;
     Integer same = 0;
     Integer locked = 0;
+    // The camp's words: "3 spots placed".
+    CampLabels words = CampLabels.modelTermsOnly();
 
     /** A seat sent, and the seat there now at that camper, day and time (null for none). */
     void add(Assignment__c there, ElectiveSeatSaves.SeatIn seat) {
@@ -153,22 +164,30 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       List<String> changed = changes();
       List<String> kept = stays();
       return (changed.isEmpty()
-          ? 'no seat changes'
+          ? 'no ' + words.singularInSentence('Seats') + ' changes'
           : String.join(changed, ', ')) +
         (kept.isEmpty() ? '' : '; ' + String.join(kept, ', and ')) +
         '.';
     }
 
+    private String counted(Integer count) {
+      return count +
+        ' ' +
+        (count == 1
+          ? words.singularInSentence('Seats')
+          : words.pluralInSentence('Seats'));
+    }
+
     private List<String> changes() {
       List<String> parts = new List<String>();
       if (placed > 0) {
-        parts.add(seats(placed) + ' placed from the campers\' choices');
+        parts.add(counted(placed) + ' placed from the campers\' choices');
       }
       if (moved > 0) {
-        parts.add(seats(moved) + ' moved to another elective');
+        parts.add(counted(moved) + ' moved to another elective');
       }
       if (takenOut > 0) {
-        parts.add(seats(takenOut) + ' taken out');
+        parts.add(counted(takenOut) + ' taken out');
       }
       return parts;
     }
@@ -177,14 +196,16 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       List<String> parts = new List<String>();
       if (same > 0) {
         parts.add(
-          seats(same) + (same == 1 ? ' stays as it is' : ' stay as they are')
+          counted(same) + (same == 1 ? ' stays as it is' : ' stay as they are')
         );
       }
       if (locked > 0) {
         parts.add(
           'the ' +
             locked +
-            (locked == 1 ? ' locked seat stays' : ' locked seats stay')
+            (locked == 1
+              ? ' locked ' + words.singularInSentence('Seats') + ' stays'
+              : ' locked ' + words.pluralInSentence('Seats') + ' stay')
         );
       }
       return parts;
@@ -208,10 +229,17 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       ElectiveSeatsController.assignSeats(JSON.serialize(request));
     } catch (Exception e) {
       throw new ShoreshException(
-        'Seats weren\'t assigned. ' + ScreenErrors.words(e)
+        held.labels().plural('Seats') +
+          ' weren\'t assigned. ' +
+          ScreenErrors.words(e)
       );
     }
-    return 'Seats assigned in ' + held.setName + ' in ' + held.weekName + '.';
+    return held.labels().plural('Seats') +
+      ' assigned in ' +
+      held.setName +
+      ' in ' +
+      held.weekName +
+      '.';
   }
 
   /** The run asked for, held while still as seen, with the seats sent. */
@@ -241,9 +269,5 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     return new ShoreshException(
       'Those seats could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
     );
-  }
-
-  private static String seats(Integer count) {
-    return count + (count == 1 ? ' seat' : ' seats');
   }
 }

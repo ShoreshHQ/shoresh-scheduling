@@ -4,7 +4,7 @@ import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabel
 import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
 import { failed } from "c/shoreshErrors";
 import { leftField } from "c/shoreshSavedMark";
-import { guessPlural } from "c/shoreshTerms";
+import { guessPlural, UNSHOWN_TERMS } from "c/shoreshTerms";
 
 const NOT_SAVED = "Camp words not saved. Your changes are still here.";
 
@@ -17,7 +17,6 @@ const SECTIONS = [
     terms: [
       "Season",
       "Week",
-      "WeekException",
       "Program",
       "Division",
       "Group",
@@ -25,8 +24,7 @@ const SECTIONS = [
       "TimeBlock",
       "Location",
       "LocationType",
-      "Camper",
-      "Scheduler"
+      "Camper"
     ]
   },
   {
@@ -42,7 +40,7 @@ const SECTIONS = [
       "RecurringActivity",
       "SpecialDay",
       "SpecialEvent",
-      "Team",
+      "Station",
       "Trip",
       "RainyDay",
       "RainPlan"
@@ -57,9 +55,7 @@ const SECTIONS = [
       "Offering",
       "Seats",
       "MinimumToRun",
-      "Preference",
-      "LinkedChoice",
-      "Assignment"
+      "LinkedChoice"
     ]
   },
   { key: "schedules", title: "Schedules", terms: [] }
@@ -119,28 +115,37 @@ export default class ShoreshCampLabels extends LightningElement {
       ]);
       this.blockedReason = blockedReason;
       this.loaded = true;
-      this.rows = labels.map((row) => {
-        const singular = row.isCustom ? row.singular || "" : "";
-        // A saved plural the guess would give is shown as the guess, so it follows the word.
-        const guessed = guessPlural(
-          singular,
-          row.modelSingular,
-          row.modelPlural
-        );
-        const plural =
-          row.isCustom && row.plural && row.plural !== guessed
-            ? row.plural
-            : "";
-        return {
-          term: row.term,
-          // The server always names the standard words; the term itself only stands in.
-          modelSingular: row.modelSingular || standardWord(row.term),
-          modelPlural: row.modelPlural || "",
-          labelId: row.labelId,
-          singular,
-          plural
-        };
-      });
+      const unshown = new Set(UNSHOWN_TERMS);
+      this.rows = labels
+        .filter((row) => !unshown.has(row.term))
+        .map((row) => {
+          const singular = row.isCustom ? row.singular || "" : "";
+          // A saved plural the guess would give is shown as the guess, so it follows the word.
+          const guessed = guessPlural(
+            singular,
+            row.modelSingular,
+            row.modelPlural
+          );
+          const plural =
+            row.isCustom && row.plural && row.plural !== guessed
+              ? row.plural
+              : "";
+          return {
+            term: row.term,
+            // The server always names the standard words; the term itself only stands in.
+            modelSingular: row.modelSingular || standardWord(row.term),
+            // An empty box shows the word the screens use: the standard one, or the camp word
+            // it follows (CORE-1.34: "Chug" for Elective set once Elective is "Chug").
+            shown:
+              (!row.isCustom && row.singular) ||
+              row.modelSingular ||
+              standardWord(row.term),
+            modelPlural: row.modelPlural || "",
+            labelId: row.labelId,
+            singular,
+            plural
+          };
+        });
     } catch (e) {
       this.error = failed(
         "Couldn't open the camp words. Nothing was changed.",
@@ -168,11 +173,11 @@ export default class ShoreshCampLabels extends LightningElement {
     const bySection = new Map(SECTIONS.map((section) => [section.key, []]));
     this.rows.forEach((row) => {
       const own = !!row.singular.trim();
-      const guess = guessPlural(
-        row.singular,
-        row.modelSingular,
-        row.modelPlural
-      );
+      // Every word's plural can be seen and set (word walk W1): the standard plural until the
+      // camp types its own word, then the guess from it.
+      const guess = own
+        ? guessPlural(row.singular, row.modelSingular, row.modelPlural)
+        : row.modelPlural;
       const section = SECTION_OF.get(row.term) || LAST;
       bySection.get(section.key).push({
         ...row,
@@ -182,7 +187,10 @@ export default class ShoreshCampLabels extends LightningElement {
         pluralClass: row.plural.trim()
           ? "plural-box plural-box_typed"
           : "plural-box",
-        pluralLabel: `${row.modelSingular}, more than one`,
+        pluralLabel:
+          row.modelPlural && row.modelPlural !== row.modelSingular
+            ? row.modelPlural
+            : `${row.modelSingular}, more than one`,
         singularError: errorFor(row, "singular"),
         pluralError: errorFor(row, "plural")
       });
@@ -243,7 +251,9 @@ export default class ShoreshCampLabels extends LightningElement {
   /** Every word as the server takes it: a plural not typed is the guess; the standard word is blank. */
   sent() {
     return this.rows.map((row) => {
-      const singular = row.singular.trim();
+      // A plural typed beside the standard word keeps the standard word with it.
+      const plural = row.plural.trim();
+      const singular = row.singular.trim() || (plural ? row.modelSingular : "");
       return {
         term: row.term,
         modelSingular: row.modelSingular,
@@ -251,8 +261,7 @@ export default class ShoreshCampLabels extends LightningElement {
         labelId: row.labelId,
         singular,
         plural: singular
-          ? row.plural.trim() ||
-            guessPlural(singular, row.modelSingular, row.modelPlural)
+          ? plural || guessPlural(singular, row.modelSingular, row.modelPlural)
           : ""
       };
     });

@@ -385,7 +385,7 @@ describe("double periods", () => {
     const set = setNamed(p, LIST_SET);
     expect(set.linked).toEqual([]);
     expect(importNotes(p, terms).map((n) => n.text)).toContain(
-      `${LIST_SET} on Thursday: different groups hold it across different time blocks, so Shoresh can't link them. Each period is chosen separately.`
+      `${LIST_SET} on Thursday: different groups hold it across different time blocks, so Shoresh can't link them. Each time block is chosen separately.`
     );
   });
 

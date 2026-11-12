@@ -94,8 +94,8 @@ describe("the engine's notes kept with the week", () => {
       ["2026-06-29|g2|t3", "Filling it would leave Bunk 1 short of Swim"]
     ]);
     expect(why.notes).toEqual([
-      "Arts: Groups at once is blank, so it counts as 1",
-      "Pool: Groups that fit is blank, so it counts as 1",
+      "Arts: Bunks at once is blank, so it counts as 1",
+      "Pool: Bunks that fit is blank, so it counts as 1",
       'This Session has 10 cells filled; the imported Session ("Last summer") has 12.'
     ]);
     // Renamed in setup since: the new name.

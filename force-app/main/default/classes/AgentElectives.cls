@@ -12,6 +12,19 @@ public with sharing class AgentElectives {
     public String weekName;
     // True for a finalized run (read, or a new version started from it), never changed.
     public Boolean isFinal = false;
+    public Id seasonId;
+    // The camp's words, read on first use.
+    private CampLabels words;
+
+    /** The camp's words for this run's answers ("spots"), read once (word walk W1). */
+    public CampLabels labels() {
+      if (words == null) {
+        words = seasonId == null
+          ? CampLabels.modelTermsOnly()
+          : IncomingSeason.labelsOf(seasonId);
+      }
+      return words;
+    }
   }
 
   /** The Committed run for the set and week asked for; refused when final or not there. */
@@ -71,7 +84,9 @@ public with sharing class AgentElectives {
       return new ShoreshException(
         finalRun != null
           ? place +
-            ' is finalized, so its seats can\'t change. Starting a new version (start_new_elective_version) is the director\'s choice.'
+            ' is finalized, so its ' +
+            run.labels().pluralInSentence('Seats') +
+            ' can\'t change. Starting a new version (start_new_elective_version) is the director\'s choice.'
           : 'No campers\' choices for ' + place + ' yet.'
       );
     }
@@ -90,6 +105,7 @@ public with sharing class AgentElectives {
     Found found = new Found();
     found.run.setName = electiveSet.Name;
     found.run.weekName = week.Name;
+    found.run.seasonId = season.Id;
     for (
       ElectiveSeats.RunInfo each : ElectiveSeatsController.seatsSetup(season.Id)
         .runs
@@ -158,7 +174,9 @@ public with sharing class AgentElectives {
 
   private static AgentWeeks.ConflictException changedSince(Run run) {
     return new AgentWeeks.ConflictException(
-      'Someone changed the seats in ' +
+      'Someone changed the ' +
+        run.labels().pluralInSentence('Seats') +
+        ' in ' +
         run.setName +
         ' in ' +
         run.weekName +

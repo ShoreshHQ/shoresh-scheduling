@@ -9,7 +9,9 @@ private class CampLabelsTest {
     Assert.areEqual('time block', labels.singularInSentence('TimeBlock'));
     Assert.areEqual('activities', labels.pluralInSentence('Activity'));
     Assert.areEqual('Rainy days', labels.plural('RainyDay'));
+    Assert.areEqual('Seat', labels.singular('Seats'));
     Assert.areEqual('Seats', labels.plural('Seats'));
+    Assert.areEqual('Stations', labels.plural('Station'));
     // Electives are a camp word too (wiki decision 66).
     Assert.areEqual('Elective', labels.singular('Elective'));
     Assert.areEqual('Electives', labels.plural('Elective'));
@@ -36,6 +38,108 @@ private class CampLabelsTest {
       'A camp label keeps its own capitals'
     );
     Assert.areEqual('Division', labels.singular('Division'));
+  }
+
+  // CORE-1.34
+  @IsTest
+  static void wordsLeftStandardFollowTheCampsWordTheyBelongTo() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new List<CampLabel__c>{
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Elective',
+          Singular__c = 'Chug',
+          Plural__c = 'Chugim'
+        ),
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Group',
+          Singular__c = 'Bunk',
+          Plural__c = 'Bunks'
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    CampLabels labels = CampLabels.forCamp(camp.Id);
+    Assert.areEqual('Chug', labels.singular('ElectiveSet'));
+    Assert.areEqual('Chugim', labels.pluralInSentence('ElectiveSet'));
+    Assert.areEqual('Bunks that fit', labels.singular('GroupsThatFit'));
+    Assert.areEqual('Bunks at once', labels.pluralInSentence('GroupsAtOnce'));
+    Assert.areEqual(
+      'elective set',
+      CampLabels.modelTermsOnly().singularInSentence('ElectiveSet')
+    );
+    // Typing the standard word back keeps it: the camp's own choice beats the word it follows.
+    // Saving the list as read changes nothing.
+    CampLabels.save(camp.Id, labels.all());
+    Assert.areEqual(
+      2,
+      [
+        SELECT COUNT()
+        FROM CampLabel__c
+        WHERE Camp__c = :camp.Id
+        WITH SYSTEM_MODE
+      ]
+    );
+    CampLabels.TermLabel typed = new CampLabels.TermLabel();
+    typed.term = 'ElectiveSet';
+    typed.modelSingular = 'Elective set';
+    typed.modelPlural = 'Elective sets';
+    typed.singular = 'Elective set';
+    typed.plural = 'Elective sets';
+    CampLabels.save(camp.Id, new List<CampLabels.TermLabel>{ typed });
+    Assert.areEqual(
+      'Elective set',
+      CampLabels.forCamp(camp.Id).singular('ElectiveSet')
+    );
+  }
+
+  @IsTest
+  static void articlesAndTheSeatsTitleFollowTheCampsWords() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new List<CampLabel__c>{
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Division',
+          Singular__c = 'Edah',
+          Plural__c = 'Edot'
+        ),
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Seats',
+          Singular__c = 'Spot',
+          Plural__c = 'Spots'
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    CampLabels labels = CampLabels.forCamp(camp.Id);
+    Assert.areEqual('an Edah', labels.withArticle('Division'));
+    Assert.areEqual('a time block', labels.withArticle('TimeBlock'));
+    // By sound, as the screens' article().
+    Assert.areEqual('an hour', CampWordRules.withArticle('hour'));
+    Assert.areEqual('a Unit', CampWordRules.withArticle('Unit'));
+    Assert.areEqual('an Umbrella', CampWordRules.withArticle('Umbrella'));
+    Assert.areEqual('a Yom', CampWordRules.withArticle('Yom'));
+    Assert.areEqual('Elective spots', labels.electiveSeatsTitle());
+    Assert.areEqual(
+      'Elective seats',
+      CampLabels.modelTermsOnly().electiveSeatsTitle()
+    );
+  }
+
+  // CORE-1.35
+  @IsTest
+  static void oneEnglishPluralRuleForTheStandardWords() {
+    Assert.areEqual('Activities', CampLabels.pluralOf('Activity'));
+    Assert.areEqual('Rainy days', CampLabels.pluralOf('Rainy day'));
+    Assert.areEqual('Lunches', CampLabels.pluralOf('Lunch'));
+    Assert.areEqual('Classes', CampLabels.pluralOf('Class'));
+    Assert.areEqual('Boxes', CampLabels.pluralOf('Box'));
+    Assert.areEqual('Seats', CampLabels.pluralOf('Seat'));
+    Assert.areEqual('Times per week', CampLabels.pluralOf('Times per week'));
   }
 
   @IsTest
@@ -79,6 +183,10 @@ private class CampLabelsTest {
         Assert.areEqual(bunk.Id, row.labelId);
         Assert.areEqual('Bunk', row.singular);
         Assert.areEqual('Group', row.modelSingular);
+      } else if (row.term == 'GroupsThatFit' || row.term == 'GroupsAtOnce') {
+        // CORE-1.34: they follow the camp's Group plural.
+        Assert.isFalse(row.isCustom);
+        Assert.isTrue(row.singular.startsWith('Bunks '), row.singular);
       } else {
         Assert.isFalse(row.isCustom);
         Assert.areEqual(row.modelSingular, row.singular);

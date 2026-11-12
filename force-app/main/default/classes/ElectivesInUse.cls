@@ -167,7 +167,12 @@ public with sharing class ElectivesInUse {
       return;
     }
     CampLabels labels = found.labels(campId);
-    found.parts.add('it is a period of ' + InUse.quoted(choices));
+    found.parts.add(
+      'it is ' +
+        labels.withArticle('TimeBlock') +
+        ' of ' +
+        InUse.quoted(choices)
+    );
     found.fixes.add(
       'take it out of ' + thatOrThose(labels, 'LinkedChoice', choices.size())
     );

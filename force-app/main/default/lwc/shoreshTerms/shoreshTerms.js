@@ -1,3 +1,37 @@
+// Keys whose standard word is not the key split into words, and those the same in the plural,
+// as the server's picklist and CampLabels have them.
+const STANDARD = { Seats: "Seat" };
+const SAME_IN_PLURAL = new Set([
+  "Availability",
+  "GroupsAtOnce",
+  "GroupsThatFit",
+  "MinimumToRun",
+  "TimesPerWeek"
+]);
+
+/** "TimeBlock" -> "Time block"; "Seats" -> "Seat". */
+function standardWord(term) {
+  if (STANDARD[term]) {
+    return STANDARD[term];
+  }
+  const words = String(term || "").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return words.charAt(0) + words.slice(1).toLowerCase();
+}
+
+/**
+ * The one English plural rule (CORE-1.35), as CampLabels.pluralOf: "ies" after a consonant and y,
+ * "es" after s, x, z, ch and sh, else "s".
+ */
+function pluralOf(text) {
+  if (/[^aeiou]y$/i.test(text)) {
+    return `${text.slice(0, -1)}ies`;
+  }
+  if (/(s|x|z|ch|sh)$/i.test(text)) {
+    return `${text}es`;
+  }
+  return `${text}s`;
+}
+
 /**
  * The camp's own words for model terms (decision 0006), for every Shoresh screen.
  * Built from the TermLabel list the server sends (CampLabels.all()).
@@ -8,26 +42,45 @@
  */
 export function buildTerms(labels) {
   const byTerm = new Map((labels || []).map((row) => [row.term, row]));
+  const own = (term) => {
+    const row = byTerm.get(term);
+    return row && row.isCustom ? row : null;
+  };
+  // CORE-1.34: a word the camp left standard follows the camp's word it belongs to.
+  const followed = (term) => {
+    if (own(term)) {
+      return null;
+    }
+    if (term === "ElectiveSet" && own("Elective")) {
+      const elective = own("Elective");
+      return { singular: elective.singular, plural: elective.plural };
+    }
+    if ((term === "GroupsThatFit" || term === "GroupsAtOnce") && own("Group")) {
+      const words = `${own("Group").plural} ${term === "GroupsThatFit" ? "that fit" : "at once"}`;
+      return { singular: words, plural: words };
+    }
+    return null;
+  };
   const word = (term, plural) => {
+    const follows = followed(term);
+    if (follows) {
+      return plural ? follows.plural : follows.singular;
+    }
     const row = byTerm.get(term);
     if (!row) {
       // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
-      const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
-      const readable = words.charAt(0) + words.slice(1).toLowerCase();
+      const readable = standardWord(term);
       if (!plural) {
         return readable;
       }
       // As the server makes plurals: "Activity" -> "Activities", "Day" -> "Days".
-      return /[^a]y$/.test(readable)
-        ? `${readable.slice(0, -1)}ies`
-        : `${readable}s`;
+      return SAME_IN_PLURAL.has(term) ? readable : pluralOf(readable);
     }
     return plural ? row.plural : row.singular;
   };
   const inSentence = (term, plural) => {
-    const row = byTerm.get(term);
     const text = word(term, plural);
-    return row && row.isCustom ? text : text.toLowerCase();
+    return own(term) || followed(term) ? text : text.toLowerCase();
   };
   return {
     s: (term) => word(term, false),
@@ -36,6 +89,23 @@ export function buildTerms(labels) {
     pIn: (term) => inSentence(term, true)
   };
 }
+
+/**
+ * Camp words no screen shows (word walk W1): left off Camp words, its worksheet and the AI's
+ * read_camp_words (CampLabels.UNSHOWN). Their saved words stay.
+ */
+export const UNSHOWN_TERMS = Object.freeze([
+  "Scheduler",
+  "WeekException",
+  "Preference",
+  "Assignment",
+  "DraftSchedule",
+  "Placement",
+  "Conflict",
+  "Shortfall",
+  "Lock",
+  "Team"
+]);
 
 export const SHORT_DAYS = Object.freeze({
   Monday: "Mon",
@@ -47,9 +117,13 @@ export const SHORT_DAYS = Object.freeze({
   Sunday: "Sun"
 });
 
-/** "a word" or "an word". */
+/** "a time block", "an Edah", "an hour", "a Unit": the article a word takes by its sound. */
 export function article(word) {
-  return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+  const vowelSound =
+    /^(hour|honest|hono|heir)/i.test(word) ||
+    (/^[aeiou]/i.test(word) &&
+      !/^(uni|use|usu|uti|ure|one|once|eu|ewe)/i.test(word));
+  return `${vowelSound ? "an" : "a"} ${word}`;
 }
 
 export function capital(text) {
@@ -102,11 +176,18 @@ export function guessPlural(word, standardSingular, standardPlural) {
     // The standard word is the same in the plural, so the camp's word is too.
     return text;
   }
-  if (/[^aeiou]y$/i.test(text)) {
-    return `${text.slice(0, -1)}ies`;
-  }
-  if (/(s|x|z|ch|sh)$/i.test(text)) {
-    return `${text}es`;
-  }
-  return `${text}s`;
+  return pluralOf(text);
+}
+
+/**
+ * The elective seats screen's name: "Elective seats", or the camp's "Chug spots" (word walk W1),
+ * the camp's Seat word in its plural, small after the Elective word.
+ */
+export function electiveSeatsTitle(t) {
+  return `${t.s("Elective")} ${t.p("Seats").toLowerCase()}`;
+}
+
+/** A count with its unit, in the camp's words: "1 spot", "3 spots", "2 Edot". */
+export function countOf(t, n, term) {
+  return `${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`;
 }

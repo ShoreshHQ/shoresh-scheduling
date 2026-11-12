@@ -2536,8 +2536,8 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       expect(words(element)).toEqual([
         ["Every week", false],
-        ["Off Wk 3", true],
-        ["Off Wks 1–2, 4", true],
+        ["Off Week 3", true],
+        ["Off Weeks 1–2, 4", true],
         ["No weeks", true],
         // The blank row runs in every week until a week is unticked.
         ["Every week", false]
@@ -2552,7 +2552,7 @@ describe("c-shoresh-editable-table", () => {
       expect(words(element).map(([text]) => text)).toEqual([
         "Every session",
         "Closed Session 3",
-        "Closed Wks 1–2, 4",
+        "Closed Weeks 1–2, 4",
         "No weeks",
         "Every session"
       ]);
@@ -2584,7 +2584,7 @@ describe("c-shoresh-editable-table", () => {
       allValid(element);
       change(rows(element)[0].querySelector('input[data-week="w2"]'), false);
       await flush();
-      expect(words(element)[0]).toEqual(["Off Wk 2", true]);
+      expect(words(element)[0]).toEqual(["Off Week 2", true]);
     });
 
     it("a section's heading names it with its count; the column names show only when asked", async () => {
@@ -2658,6 +2658,20 @@ describe("c-shoresh-editable-table", () => {
       });
       await flush();
       expect(q(element, '[data-id="section-count"]').textContent).toBe("4");
+    });
+
+    it("says its count with its unit when given one (word walk W1)", async () => {
+      const element = renderSection({
+        heading: "Juniors",
+        filterField: "Division__c",
+        filterValue: "d1",
+        rows: GROUPS,
+        countWords: ["Bunk", "Bunks"]
+      });
+      await flush();
+      expect(q(element, '[data-id="section-count"]').textContent).toMatch(
+        /^\d+ Bunks?$/
+      );
     });
 
     it("without a heading the table's title is read out, not shown", async () => {
@@ -3147,7 +3161,8 @@ describe("c-shoresh-editable-table", () => {
     const OFTEN = {
       fieldName: nsName("TimesPerWeekMin__c"),
       type: "often",
-      label: "How often",
+      label: "Times per week",
+      unit: "a week",
       minLabel: "Times per week: at least",
       maxLabel: "Times per week: at most",
       maxField: nsName("TimesPerWeekMax__c"),
@@ -3222,7 +3237,12 @@ describe("c-shoresh-editable-table", () => {
         [...element.shadowRoot.querySelectorAll('[data-id="often-bars"]')].map(
           (b) => b.getAttribute("aria-label")
         )
-      ).toEqual(["How often: 2–3", "How often: 5", "How often: 1 or more"]);
+        // A count carries its unit (word walk W1).
+      ).toEqual([
+        "Times per week: 2–3 a week",
+        "Times per week: 5 a week",
+        "Times per week: 1 or more a week"
+      ]);
       // A count past the scale stretches it rather than being cut off.
       element.rows = nsRecord([
         { ...ACTS[0], TimesPerWeekMin__c: 9, TimesPerWeekMax__c: 9 }

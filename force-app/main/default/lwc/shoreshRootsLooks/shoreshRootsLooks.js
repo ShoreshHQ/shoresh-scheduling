@@ -1,6 +1,6 @@
 import { FIELD } from "c/shoreshSchema";
 import { screenLabels } from "c/shoreshScreens";
-import { pieces, shortDate, shorten } from "c/shoreshRootsFaces";
+import { dayLetters, pieces, shortDate, shorten } from "c/shoreshRootsFaces";
 
 /**
  * Roots' hand: what needs a look in this camp, as cards (repo ADR 0020 choice 10; wiki decisions
@@ -30,7 +30,6 @@ export const HH = 62;
 
 const { rect, txt, path, tile, well, dashed, flag } = pieces;
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const DAY_LETTERS = ["M", "T", "W", "T", "F"];
 const SECTION_OF = {
   weeks: "camp",
   programs: "camp",
@@ -123,7 +122,7 @@ function emptyTiles(cols, rows, w, h) {
 /** A week with no schedule: its days, every cell an outline (the mock-up's week 4). */
 function emptyWeek() {
   const out = [];
-  DAY_LETTERS.forEach((d, i) => {
+  dayLetters().forEach((d, i) => {
     const x = i * 34.4;
     out.push(txt(x + 15, 10, d, "g-m", "middle"));
     for (let r = 0; r < 4; r++) {
@@ -146,7 +145,7 @@ function emptyEvent() {
 function offDay(day) {
   const at = Math.max(0, DAYS.indexOf(day));
   const out = [];
-  DAY_LETTERS.forEach((d, i) => {
+  dayLetters().forEach((d, i) => {
     const x = i * 34.4;
     out.push(txt(x + 15, 26, d, "g-m", "middle"));
     out.push(i === at ? dashed(x, 32, 30, 28, 4, "s700") : well(x, 32, 30, 28));
@@ -396,7 +395,7 @@ function fromProblems(kind, list, t, labels) {
       return {
         ...card,
         small: (first.set || screenName).toUpperCase(),
-        off: "choose seats",
+        off: `choose ${t.pIn("Seats")}`,
         picture: toMissing(names)
       };
     default:
@@ -574,12 +573,12 @@ function seatCards(table, t, labels) {
       name: one ? first.name : labels.electiveSeats,
       small: one ? t.p("Elective").toUpperCase() : null,
       off: one
-        ? counted(missing, "seat short", "seats short")
+        ? counted(missing, `${t.sIn("Seats")} short`, `${t.pIn("Seats")} short`)
         : "under minimum",
       label: short
         .map(
           (s) =>
-            `${s.name} is ${counted(s.minimum - s.fewest, "seat", "seats")} short of its minimum.`
+            `${s.name} is ${counted(s.minimum - s.fewest, t.sIn("Seats"), t.pIn("Seats"))} short of its minimum.`
         )
         .join(" "),
       picture: one ? shortSeats(first) : shortRows(short),

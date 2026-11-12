@@ -34,7 +34,7 @@ import {
   holdsNoDivision,
   realDivisionsOf
 } from "c/shoreshImportEngine";
-import { buildTerms } from "c/shoreshTerms";
+import { article, buildTerms } from "c/shoreshTerms";
 import { eventWords } from "c/shoreshLists";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
@@ -1617,7 +1617,8 @@ export default class ShoreshCampSetup extends LightningElement {
       {
         fieldName: ACTIVITY.TimesPerWeekMin,
         type: "often",
-        label: "How often",
+        label: t.s("TimesPerWeek"),
+        unit: article(t.sIn("Week")),
         minLabel: `${t.s("TimesPerWeek")}: at least`,
         min: 0,
         required: true,
@@ -1678,7 +1679,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
     const fromFile = "Guessed from your file";
     const columns = {
-      often: { column: ACTIVITY.TimesPerWeekMin, label: "How often" },
+      often: { column: ACTIVITY.TimesPerWeekMin, label: t.s("TimesPerWeek") },
       who: { column: "whoCanDoIt", label: "Who" },
       fits: { column: LOCATION.GroupsThatFit, label: t.s("GroupsThatFit") }
     };
@@ -1895,9 +1896,7 @@ export default class ShoreshCampSetup extends LightningElement {
         width: 11,
         textFor: (saved) => {
           if (!saved.Id) return "";
-          return (
-            placedOnText(brief(saved), weeks, this.weekWords) || "Not placed"
-          );
+          return placedOnText(brief(saved), weeks) || "Not placed";
         },
         exceptionFor: (saved) => !!saved.Id && brief(saved).days.length > 0
       },
@@ -2144,7 +2143,7 @@ export default class ShoreshCampSetup extends LightningElement {
       },
       {
         fieldName: OFFER.Seats,
-        label: t.s("Seats"),
+        label: t.p("Seats"),
         type: "seats",
         noLimitField: OFFER.NoSeatLimit,
         noLimitLabel: "No limit",
@@ -2190,7 +2189,7 @@ export default class ShoreshCampSetup extends LightningElement {
       },
       {
         fieldName: "linked",
-        label: "Linked",
+        label: t.p("LinkedChoice"),
         type: "readonly",
         width: 10,
         textFor: (saved) => {
@@ -2246,7 +2245,7 @@ export default class ShoreshCampSetup extends LightningElement {
         [OFFER.Seats]: {
           field: "seats",
           words,
-          name: `${t.s("Seats")} for ${activity}: ${words}`,
+          name: `${t.p("Seats")} for ${activity}: ${words}`,
           wordsOnly: true
         }
       };
@@ -2363,21 +2362,20 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
-   * The weeks in words, in the camp's word for a week: "Every week", "Off Wk 3" (a camp that
-   * calls them sessions: "Every session", "Off Session 3").
+   * The weeks in words, in the camp's word for a week: "Every week", "Off Week 3" (a camp that
+   * calls them sessions: "Every session", "Off Session 3"), never "Wk" (word walk W1).
    */
   get weekWords() {
     return this.memo("weekWords", [this.terms], () => this.readWeekWords());
   }
   readWeekWords() {
     const t = this.terms;
-    const standard = t.s("Week") === "Week";
     return {
       every: `Every ${t.sIn("Week")}`,
       none: `No ${t.pIn("Week")}`,
       off: "Off",
-      one: standard ? "Wk" : t.s("Week"),
-      many: standard ? "Wks" : t.p("Week")
+      one: t.s("Week"),
+      many: t.p("Week")
     };
   }
   /** A place is closed, not off (docs/design/setup/locations.html). */
@@ -2424,6 +2422,9 @@ export default class ShoreshCampSetup extends LightningElement {
       addLocationType: `Add ${t.s("LocationType")}`,
       noLocationTypes: `No ${t.pIn("LocationType")} yet`,
       addLocation: `Add ${t.s("Location")}`,
+      // A section's count with its unit (word walk W1): "3 locations".
+      countLocations: [t.sIn("Location"), t.pIn("Location")],
+      countActivities: [t.sIn("Activity"), t.pIn("Activity")],
       noLocations: `No ${t.pIn("Location")} yet`,
       sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,

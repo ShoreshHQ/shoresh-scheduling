@@ -1421,7 +1421,7 @@ describe("c-shoresh-generated-schedule", () => {
     const element = await render(inputs);
     await generate(element);
     expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
-      "Swim: Groups at once is blank, so it counts as 1"
+      "Swim: Bunks at once is blank, so it counts as 1"
     ]);
   });
 
@@ -1466,7 +1466,7 @@ describe("c-shoresh-generated-schedule", () => {
     const open = checks(element).measure.open.map((l) => l.text);
     const notes = checks(element).measure.notes.map((l) => l.text);
     expect(open).toContain("Bunk 1 · Monday · Period 3: No activity fits here");
-    expect(notes).toEqual(["Hike: Groups at once is blank, so it counts as 1"]);
+    expect(notes).toEqual(["Hike: Bunks at once is blank, so it counts as 1"]);
     // Kept as codes and Ids, never sentences.
     const kept = sent().engineNotes;
     expect(typeof kept).toBe("string");
@@ -1617,7 +1617,7 @@ describe("c-shoresh-generated-schedule", () => {
     await generate(element);
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
-    ).toEqual(["Daily", "Group", "Activity"]);
+    ).toEqual(["Daily", "Bunk", "Activity"]);
     // The quiet line under the grid names the hatch (a bunk away part of the day).
     expect(
       q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
@@ -1921,12 +1921,18 @@ describe("c-shoresh-generated-schedule", () => {
       q(element, '[data-id="generate"]').click();
       await flush();
       // The page hears the picker waits, so the doorway holds this screen's other weeks.
-      expect(told[told.length - 1]).toMatchObject({ weekId: WEEK, locked: true });
+      expect(told[told.length - 1]).toMatchObject({
+        weekId: WEEK,
+        locked: true
+      });
       expect(element.openWeek(WEEK_2)).toBe(false);
       expect(q(element, '[data-id="week"]').value).toBe(WEEK);
       await settle(element);
       expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
-      expect(told[told.length - 1]).toMatchObject({ weekId: WEEK, locked: false });
+      expect(told[told.length - 1]).toMatchObject({
+        weekId: WEEK,
+        locked: false
+      });
     });
   });
 

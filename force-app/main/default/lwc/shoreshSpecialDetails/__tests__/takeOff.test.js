@@ -98,8 +98,8 @@ describe("c-shoresh-special-details: take off a day", () => {
     const element = await render();
     const days = all(element, "placed-day");
     expect(days.map((d) => d.querySelector("span").textContent)).toEqual([
-      "Wk 1 Fri",
-      "Wk 2 Tue"
+      "Week 1 · Fri",
+      "Week 2 · Tue"
     ]);
     expect(
       all(element, "take-off").map((b) => b.getAttribute("aria-label"))
@@ -112,7 +112,7 @@ describe("c-shoresh-special-details: take off a day", () => {
   it("offers no Take off for an event (its days follow the grid)", async () => {
     const element = await render("se1");
     expect(all(element, "take-off")).toEqual([]);
-    expect(q(element, "placed-on").textContent.trim()).toBe("Wk 1 Wed");
+    expect(q(element, "placed-on").textContent.trim()).toBe("Week 1 · Wed");
   });
 
   it("takes it off, says what comes back, and puts the cursor on Put back", async () => {

@@ -71,7 +71,11 @@ global with sharing class AgentReadSeasonCopy implements AgentWeeks.Action {
       labels.pluralInSentence('Location') +
       ', ' +
       labels.pluralInSentence('Activity') +
-      ' and the rest); its schedules, versions, special days and events, elective seats and campers\' choices stay in "' +
+      ' and the rest); its schedules, versions, special days and events, ' +
+      labels.singularInSentence('Elective') +
+      ' ' +
+      labels.pluralInSentence('Seats') +
+      ' and campers\' choices stay in "' +
       season.Name +
       '". To copy, send these dates back as seen with copy_season.';
   }

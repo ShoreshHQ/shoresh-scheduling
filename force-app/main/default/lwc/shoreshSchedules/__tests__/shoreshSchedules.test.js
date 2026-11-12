@@ -167,7 +167,7 @@ describe("c-shoresh-schedules", () => {
       [...rail.querySelectorAll(".side_left .view-button")].map((b) =>
         b.textContent.trim()
       )
-    ).toEqual(["Daily", "Group", "Activity"]);
+    ).toEqual(["Daily", "Bunk", "Activity"]);
     expect(rail.querySelector('.mid [data-id="day-pills"]')).not.toBeNull();
     const right = rail.querySelector(".side_right");
     expect(
@@ -304,7 +304,7 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, "c-shoresh-versions").openId).toBe("s2");
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
-    ).toEqual(["Daily", "Group", "Activity"]);
+    ).toEqual(["Daily", "Bunk", "Activity"]);
     // The chosen view is raised and said.
     expect(
       qa(element, ".view-button").map((b) => [

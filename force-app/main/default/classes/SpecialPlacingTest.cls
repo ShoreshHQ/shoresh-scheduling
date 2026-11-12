@@ -74,19 +74,16 @@ private class SpecialPlacingTest {
         used <= 20,
         'Queries to put a special day on a day: ' + used
       );
-      Assert.areEqual('"Field Day" is on Tuesday of "Week 1".', first.said);
+      Assert.areEqual('"Field Day" is on Week 1 · Tuesday.', first.said);
       Assert.areEqual(
-        'Tuesday of "Week 1" already has the special day "Field Day". Use this one instead? "Field Day" stays saved.',
+        'Week 1 · Tuesday already has the special day "Field Day". Use this one instead? "Field Day" stays saved.',
         asked.asks
       );
       Assert.areEqual('Field Day', asked.replaces);
       Assert.isNull(asked.said);
       Assert.areEqual(1, afterAsking.size(), 'Nothing changed by asking');
       Assert.areEqual('Field Day', afterAsking[0].SpecialDay__r.Name);
-      Assert.areEqual(
-        '"Visiting Day" is on Tuesday of "Week 1".',
-        replaced.said
-      );
+      Assert.areEqual('"Visiting Day" is on Week 1 · Tuesday.', replaced.said);
       List<SpecialDate__c> now = daysOf(week);
       Assert.areEqual(1, now.size());
       Assert.areEqual('Visiting Day', now[0].SpecialDay__r.Name);
@@ -101,7 +98,7 @@ private class SpecialPlacingTest {
         ]
       );
       Assert.areEqual(
-        '"Visiting Day" is already on Tuesday of "Week 1".',
+        '"Visiting Day" is already on Week 1 · Tuesday.',
         again.said
       );
     }
@@ -143,7 +140,7 @@ private class SpecialPlacingTest {
 
       Assert.isTrue(used <= 10, 'Queries to take a special day off: ' + used);
       Assert.areEqual(
-        'Tuesday of "Week 1" has its regular schedule again. "Field Day" stays saved.',
+        'Week 1 · Tuesday has its regular schedule again. "Field Day" stays saved.',
         off.said
       );
       Assert.areEqual(0, daysOf(week).size(), 'Off that day');
@@ -185,7 +182,7 @@ private class SpecialPlacingTest {
           .days.size(),
         'Nothing replaces Tuesday now'
       );
-      Assert.areEqual('"Field Day" is not on Tuesday of "Week 1".', again.said);
+      Assert.areEqual('"Field Day" is not on Week 1 · Tuesday.', again.said);
     }
   }
 
@@ -217,7 +214,7 @@ private class SpecialPlacingTest {
       }
       Test.stopTest();
 
-      Assert.areEqual('"Field Day" is not on Tuesday of "Week 1".', off.said);
+      Assert.areEqual('"Field Day" is not on Week 1 · Tuesday.', off.said);
       List<SpecialDate__c> now = daysOf(week);
       Assert.areEqual(1, now.size());
       Assert.areEqual('Visiting Day', now[0].SpecialDay__r.Name);

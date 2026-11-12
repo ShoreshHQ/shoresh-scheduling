@@ -103,7 +103,7 @@ describe("camper schedules: each camper's week", () => {
       "Starts",
       "Activity",
       "Elective set",
-      "Blocks"
+      "Length"
     ]);
     const maya = rows.filter((r) => r[0] === "Maya Fernwood");
     expect(maya).toEqual([
@@ -262,7 +262,7 @@ describe("campers: to edit and bring back", () => {
       "Division",
       "Bunk",
       "Day",
-      "Period",
+      "Time block",
       "Rank",
       "Activity"
     ]);

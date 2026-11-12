@@ -66,11 +66,13 @@ public with sharing class ElectiveSeatSaves {
       );
       if (!seen.add(key)) {
         throw new ShoreshException(
-          'Two seats were sent for one camper at one time. Assign again.'
+          'Two ' +
+            state.labels().pluralInSentence('Seats') +
+            ' were sent for one camper at one time. Assign again.'
         );
       }
       if (locked.containsKey(key)) {
-        refuseLockChanged(locked.get(key), seat.offeringId);
+        refuseLockChanged(state, locked.get(key), seat.offeringId);
         continue;
       }
       ElectivePeriod at = ElectiveSeatChecks.offeredAt(state, seat);
@@ -132,7 +134,7 @@ public with sharing class ElectiveSeatSaves {
       }
     }
     List<Assignment__c> deletes = unlocked.values();
-    refuseTooMany(inserts.size() + updates.size() + deletes.size() + 1);
+    refuseTooMany(state, inserts.size() + updates.size() + deletes.size() + 1);
     Savepoint before = Database.setSavepoint();
     try {
       Database.delete(deletes, true, AccessLevel.USER_MODE);
@@ -158,10 +160,12 @@ public with sharing class ElectiveSeatSaves {
       held.ByHand__c == true;
   }
 
-  private static void refuseTooMany(Integer rows) {
+  private static void refuseTooMany(ElectiveRunState state, Integer rows) {
     if (rows > rowBound) {
       throw new ShoreshException(
-        'Too many seats change to save at once (' +
+        'Too many ' +
+          state.labels().pluralInSentence('Seats') +
+          ' change to save at once (' +
           rows +
           '; the most is ' +
           rowBound +
@@ -175,15 +179,23 @@ public with sharing class ElectiveSeatSaves {
       throw new ShoreshException(
         'A day of the schedule could not be read (' +
           String.join(state.live.unreadable, '; ') +
-          '), so no seats were assigned.'
+          '), so no ' +
+          state.labels().pluralInSentence('Seats') +
+          ' were assigned.'
       );
     }
   }
 
-  private static void refuseLockChanged(Assignment__c held, Id offeringId) {
+  private static void refuseLockChanged(
+    ElectiveRunState state,
+    Assignment__c held,
+    Id offeringId
+  ) {
     if (held.Offering__c != offeringId) {
       throw new ShoreshException(
-        'A locked seat was changed. Reload the page and assign again.'
+        'A locked ' +
+          state.labels().singularInSentence('Seats') +
+          ' was changed. Reload the page and assign again.'
       );
     }
   }

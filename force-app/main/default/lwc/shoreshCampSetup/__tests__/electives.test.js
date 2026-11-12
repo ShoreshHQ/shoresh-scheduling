@@ -322,7 +322,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
       "Minimum",
       "Who",
       "Where",
-      "Linked"
+      "Linked choices"
     ]);
     // The sections line up: the same widths, column by column.
     expect(section(element, "es2").columns.map((c) => c.width)).toEqual(

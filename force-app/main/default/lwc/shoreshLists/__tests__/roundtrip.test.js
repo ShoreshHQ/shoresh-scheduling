@@ -3,6 +3,7 @@
 // programs share are written so they can't be mistaken.
 import * as XLSX from "xlsx";
 import { buildTerms } from "c/shoreshTerms";
+import { setDayNaming } from "c/shoreshDayNames";
 import { workbookFile } from "c/shoreshImportEngine";
 import { listName, splitList } from "../cells";
 import {
@@ -76,6 +77,22 @@ describe("round trip", () => {
       "Runs in"
     ]);
     LIST_SCREENS.forEach((screenKey) => expectNoChanges(screenKey, file));
+  });
+
+  // WEEK-2.6
+  it("a numbered-days season writes Day 1, Day 2 and reads them back unchanged (word walk W1)", () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const rows = listRows("programs", camp(), terms);
+      expect(rows.slice(1).some((r) => /^Day \d/.test(String(r[1])))).toBe(
+        true
+      );
+      expect(JSON.stringify(rows)).not.toMatch(/Monday|Tuesday/);
+      const file = roundTrip(campWorkbookSheets(camp(), terms));
+      LIST_SCREENS.forEach((screenKey) => expectNoChanges(screenKey, file));
+    } finally {
+      setDayNaming(null);
+    }
   });
 
   it("names two programs share are written with what tells them apart", () => {
@@ -565,7 +582,7 @@ const DOWNLOADS = {
     ["Teens", "Period 1", "10:00 AM", "10:50 AM", "Morning"]
   ],
   locations: [
-    ["Location", "Location type", "Groups that fit", "Notes"],
+    ["Location", "Location type", "Bunks that fit", "Notes"],
     ["Pool", "Waterfront", 2, "'=Shallow end"],
     ["Gym", "", 1, ""]
   ],
@@ -579,7 +596,7 @@ const DOWNLOADS = {
       "Priority",
       "Outdoors",
       "Rain plan",
-      "Groups at once",
+      "Bunks at once",
       "Same Unit only",
       "Early in the week",
       "Who can do it",

@@ -7,6 +7,7 @@ import changeFrame from "@salesforce/apex/SpecialScheduleController.changeFrame"
 import addActivity from "@salesforce/apex/SpecialScheduleController.addActivity";
 import importPlan from "@salesforce/apex/SpecialScheduleController.importPlan";
 import { failed, reasonOf } from "c/shoreshErrors";
+import { article } from "c/shoreshTerms";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
 import { scheduleSheets } from "c/shoreshScheduleExport";
@@ -276,10 +277,10 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const day = this.view.schedule.days[0];
     const needs = [];
     if (!day.blocks.length) {
-      needs.push(`a ${this.t.sIn("TimeBlock")}`);
+      needs.push(`${article(this.t.sIn("TimeBlock"))}`);
     }
     if (!day.groups.length) {
-      needs.push("a station");
+      needs.push(article(this.t.sIn("Station")));
     }
     return `Add ${needs.join(" and ")} to start, or import this schedule from a file.`;
   }
@@ -511,7 +512,15 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   /** "the time blocks", or for an event "the time blocks and stations", in the camp's words. */
   get frameWords() {
     const blocks = `the ${this.t.pIn("TimeBlock")}`;
-    return this.isEvent ? `${blocks} and stations` : blocks;
+    return this.isEvent ? `${blocks} and ${this.t.pIn("Station")}` : blocks;
+  }
+
+  /** An event's columns, in the camp's word (word walk W1): "Stations". */
+  get stationsWord() {
+    return this.t ? this.t.p("Station") : "Stations";
+  }
+  get addStationLabel() {
+    return `+ ${this.t ? this.t.s("Station") : "Station"}`;
   }
 
   /** Each change an import makes to the frame, a line each; by: " by the file" once made. */
@@ -580,7 +589,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
     if (outcome.notGroups.length) {
       lines.push(
-        `Left out, not a ${t.sIn("Group")} here: ${listed(outcome.notGroups)}.`
+        `Left out, not ${article(t.sIn("Group"))} here: ${listed(outcome.notGroups)}.`
       );
     }
     if (noTimes.length) {
@@ -673,7 +682,9 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       return "";
     }
     if (this.form.kind === "station") {
-      return this.form.targetId ? `Rename ${this.form.was}` : "New station";
+      return this.form.targetId
+        ? `Rename ${this.form.was}`
+        : `New ${this.t.sIn("Station")}`;
     }
     return this.form.targetId
       ? `Change ${this.form.was}`
@@ -773,7 +784,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       },
       form.targetId
         ? `${name || form.was} saved`
-        : `${name || (block ? `New ${this.t.sIn("TimeBlock")}` : "New station")} added`
+        : `${name || (block ? `New ${this.t.sIn("TimeBlock")}` : `New ${this.t.sIn("Station")}`)} added`
     );
     if (saved) {
       this.form = null;

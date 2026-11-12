@@ -410,7 +410,8 @@ describe("c-shoresh-list-import", () => {
     await flush();
     const save = saveOf(element);
     expect(save.disabled).toBe(false);
-    expect(textOf(save)).toBe("Add 2");
+    // Each count names its kind (word walk W1).
+    expect(textOf(save)).toBe("Add 1 activity and 1 location");
     save.click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
@@ -563,7 +564,9 @@ describe("c-shoresh-list-import", () => {
       "Teens · program · Monday, Friday",
       "Break · time block · 10:00 AM–10:30 AM"
     ]);
-    expect(textOf(saveOf(element))).toBe("Add 3");
+    expect(textOf(saveOf(element))).toBe(
+      "Add 1 fixed activity, 1 program and 1 time block"
+    );
   });
 
   it("keeps the cursor on the way: heading, next question, Save, Saved, then back to the button", async () => {
@@ -788,7 +791,7 @@ describe("laid into the screen's own table (decision 56)", () => {
       });
       choice("Change", $(element, '[data-row="Aspen"]')).click();
       await flush();
-      expect(textOf(saveOf(element))).toBe("Add 1, change 1");
+      expect(textOf(saveOf(element))).toBe("Add 1 group, change 1 group");
       const leave = () => $(element, '[data-row="Fern"] button[data-leave]');
       expect(leave().getAttribute("aria-label")).toBe("Leave out Fern");
       expect(leave().getAttribute("aria-pressed")).toBe("false");
@@ -798,7 +801,7 @@ describe("laid into the screen's own table (decision 56)", () => {
       expect(rowsOf(element, "skipped")).toEqual(["Fern"]);
       expect(leave().getAttribute("aria-pressed")).toBe("true");
       expect(focused.pop()).toBe(leave());
-      expect(textOf(saveOf(element))).toBe("Change 1");
+      expect(textOf(saveOf(element))).toBe("Change 1 group");
       leave().click();
       await flush();
       expect(rowsOf(element, "new")).toEqual(["Fern"]);
@@ -1184,7 +1187,7 @@ describe("Import worksheet (Roots)", () => {
     expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("true");
     expect(choice("Keep", weeks).getAttribute("aria-pressed")).toBe("false");
     const save = saveOf(element);
-    expect(textOf(save)).toBe("Change 1");
+    expect(textOf(save)).toBe("Change 1 week");
     saveWorkbook.mockResolvedValue({
       importId: "i1",
       added: { CampLabel: 1, WeekException: 2 },
@@ -1244,7 +1247,7 @@ describe("Import worksheet (Roots)", () => {
     // Leaving the place out here would not hold: the Activities sheet would add it back.
     expect($$(element, "button[data-leave]")).toEqual([]);
     expect($(element, '[data-id="also-add"]')).toBeNull();
-    expect(textOf(saveOf(element))).toBe("Add 2");
+    expect(textOf(saveOf(element))).toBe("Add 1 location and 1 activity");
   });
 
   describe("the Electives list (plan §6.2)", () => {

@@ -65,7 +65,10 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
         found.owner.name +
         '". It can\'t be undone here.'
       : 'This removes ' +
-        (asked == 'remove_station' ? 'the station' : 'the time block') +
+        'the ' +
+        found.labels.singularInSentence(
+          asked == 'remove_station' ? 'Station' : 'TimeBlock'
+        ) +
         ' "' +
         target +
         '" from "' +

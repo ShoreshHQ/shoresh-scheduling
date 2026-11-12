@@ -581,7 +581,7 @@ describe("c-shoresh-elective-details", () => {
     const first = choiceAt(element, 0);
     const looks = [...first.querySelectorAll('[data-id="period-look"]')];
     expect(looks.map((l) => l.label)).toEqual([
-      'Also in "Pottery double", so neither is placed as a set; their periods are filled one at a time'
+      'Also in "Pottery double", so neither is placed as a set; their time blocks are filled one at a time'
     ]);
     // Two of one name: a sheet can't tell them apart.
     expect(first.querySelector('[data-id="name-look"]').label).toBe(
@@ -595,7 +595,7 @@ describe("c-shoresh-elective-details", () => {
     expect(
       [...other.querySelectorAll('[data-id="period-look"]')].map((l) => l.label)
     ).toEqual([
-      'Also in "Pottery double", so neither is placed as a set; their periods are filled one at a time',
+      'Also in "Pottery double", so neither is placed as a set; their time blocks are filled one at a time',
       "Chugim isn't here on any schedule now"
     ]);
     await expect(element).toBeAccessible();
@@ -697,7 +697,7 @@ describe("c-shoresh-elective-details", () => {
       )
     };
     expect(notesForAgent(renamed, { name: "Other" })).toContain(
-      'Tuesday Period 3: Also in "Pottery double", so neither is placed as a set; their periods are filled one at a time.'
+      'Tuesday Period 3: Also in "Pottery double", so neither is placed as a set; their time blocks are filled one at a time.'
     );
     expect(
       linkedChoicesForAgent({ ...read, places: { complete: false, cells: [] } })
@@ -828,7 +828,7 @@ describe("c-shoresh-elective-details", () => {
       '[data-id="periods-guess"]'
     );
     expect(mark.name).toBe(
-      "Periods for Pottery double: guessed from your file"
+      "Time blocks for Pottery double: guessed from your file"
     );
     expect(mark.label).toBe("Guessed from your file");
     const confirms = jest.fn();

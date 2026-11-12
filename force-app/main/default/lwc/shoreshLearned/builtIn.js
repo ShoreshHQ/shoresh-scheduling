@@ -5,7 +5,7 @@
  * (classification.md rule n is INGEST-3.n, names-and-divisions.md rule n is INGEST-2.n), shown
  * in the group its questions belong to. Read-only: they are how Shoresh reads, not answers.
  */
-import { article } from "c/shoreshTerms";
+import { article, capital } from "c/shoreshTerms";
 import { CAMP_WORDS } from "c/shoreshPatterns";
 
 /** The rules in the order the import applies them, each { id, rule, group, title }. */
@@ -47,12 +47,12 @@ export function builtInRows(t) {
     [
       "INGEST-3.8",
       "split",
-      `A ${division} whose ${groups} always move together: one ${group}`
+      `${capital(article(division))} whose ${groups} always move together: one ${group}`
     ],
     [
       "INGEST-2.1",
       "split",
-      `A ${group} with no ${division} beside ones with: its own ${division}`
+      `${capital(article(group))} with no ${division} beside ones with: its own ${division}`
     ]
   ];
   // Common camp names (INGEST-3.10, MEMO-7.8): a suggestion only when the import asks.

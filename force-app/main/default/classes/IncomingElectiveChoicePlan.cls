@@ -86,7 +86,8 @@ public with sharing class IncomingElectiveChoicePlan {
       return runs.noRun(batch, record.elective, record.week);
     }
     if (run.Status__c == ChoicesImport.FINAL_STATUS) {
-      return 'Seats for ' +
+      return batch.labels.plural('Seats') +
+        ' for ' +
         run.Name +
         ' are final, so choices were not changed.';
     }

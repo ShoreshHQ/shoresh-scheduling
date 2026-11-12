@@ -278,7 +278,7 @@ describe("what keeps a linked choice from being placed as a set", () => {
     ).toEqual([
       [
         ["missing|Wednesday|b1|d1"],
-        "“Drama both days”: Wed 12:30 can’t be given in this run; its other periods were kept together."
+        "“Drama both days”: Wed 12:30 can’t be given in this run; its other time blocks were kept together."
       ]
     ]);
     // Maya gets Drama on Monday and Tuesday as the set (engine care PR 8: never refused).
@@ -370,7 +370,7 @@ describe("what keeps a linked choice from being placed as a set", () => {
     // The full report gives the period it shares in its Time column, as other problems do.
     const shared = board.columnByKey.get(board.problems.split[0].timeKey);
     expect(
-      reported(view, "Given their linked choice one period at a time").map(
+      reported(view, "Given their linked choice one time block at a time").map(
         (r) => r[2]
       )
     ).toEqual([shared.words]);
@@ -558,21 +558,21 @@ describe("a camper who asked for a linked choice but can't have it as a set", ()
     expect(needsLook(board)).toBe(true);
     const section = problemSections(board, t).find((s) => s.key === "split");
     expect(section.head).toBe(
-      "2 given their linked choice one period at a time"
+      "2 given their linked choice one time block at a time"
     );
     expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
       [
         "Maya Fernwood",
-        'Asked for "Drama both days" but has a locked seat in one of its periods'
+        'Asked for "Drama both days" but has a locked seat in one of its time blocks'
       ],
       [
         "Eli Marblecrest",
-        'Asked for "Drama both days" but doesn\'t attend every period it covers'
+        'Asked for "Drama both days" but doesn\'t attend every time block it covers'
       ]
     ]);
     // Absent or locked: no shared period, so no time.
     expect(
-      reported(view, "Given their linked choice one period at a time").map(
+      reported(view, "Given their linked choice one time block at a time").map(
         (r) => [r[1], r[2], r[3]]
       )
     ).toEqual(section.rows.map((r) => [r.text, "", r.aside]));

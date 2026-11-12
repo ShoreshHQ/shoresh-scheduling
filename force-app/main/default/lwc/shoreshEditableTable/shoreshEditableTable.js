@@ -23,8 +23,8 @@ const WEEK_WORDS = {
   every: "Every week",
   none: "No weeks",
   off: "Off",
-  one: "Wk",
-  many: "Wks"
+  one: "Week",
+  many: "Weeks"
 };
 // Each kind of column's width (rem); the name and words columns share what is left.
 const WIDTHS = {
@@ -99,7 +99,7 @@ const SHARED_MIN = 12;
  *   under the row when its chevron opens them, and is saved with the row. type "readonly": words
  *   worked out from the saved row (textFor(saved)), never edited or sent.
  * weekWords: { every, none, off, one, many } - the weeks in words ("Every week", "No weeks",
- *   "Off Wk 3", "Off Wks 6–7"); a place says "Closed".
+ *   "Off Week 3", "Off Weeks 6–7"); a place says "Closed".
  * Step 3b (ADR 0015 choice 12) adds three kinds of column. type "often" (fieldName: at least,
  *   maxField: at most, noMaxField, minLabel, maxLabel, scale): bars at rest, scaled to scale (the
  *   camp's highest weekly count), the two numbers in their place on hover or edit. type "days"
@@ -159,6 +159,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api objectApiName;
   /** The add button's name, and the blank row's name placeholder ("Add Bunk"). */
   @api addLabel = "Add";
+  // The section count's unit, [one, many] ("bunk", "bunks"): "3 bunks", never a bare 3 (word walk W1).
+  @api countWords;
   @api emptyMessage = "Nothing here yet.";
   @api busy = false;
   @api weeksHeading;
@@ -566,9 +568,14 @@ export default class ShoreshEditableTable extends LightningElement {
   /** The heading's count: how many rows the section shows, unless headingCount says. */
   get shownCount() {
     const given = this.headingCount;
-    return given === undefined || given === null || given === ""
-      ? this.visibleDrafts.length
-      : given;
+    const count =
+      given === undefined || given === null || given === ""
+        ? this.visibleDrafts.length
+        : given;
+    const words = this.countWords;
+    return words && words.length === 2 && typeof count === "number"
+      ? `${count} ${count === 1 ? words[0] : words[1]}`
+      : count;
   }
 
   /** Each column's width in rem, or null for the name and words columns (they share the rest). */
@@ -1239,6 +1246,8 @@ export default class ShoreshEditableTable extends LightningElement {
         overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
         overlapLabel: this.overlapLabel,
         isNumber: col.type === "number",
+        // A number's unit beside it (col.unitFor(value)): "1 time block" (word walk W1).
+        unit: col.unitFor ? col.unitFor(draft.values[col.fieldName]) : "",
         min: col.min,
         isDate: col.type === "date",
         isTime: col.type === "time",
@@ -1406,8 +1415,8 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   /**
-   * The weeks as the exception, in words: "Every week" (the rule, quiet), "Off Wk 3" or
-   * "Off Wks 1, 6–7" (the weeks it is off, by their place in the season), "No weeks".
+   * The weeks as the exception, in words: "Every week" (the rule, quiet), "Off Week 3" or
+   * "Off Weeks 1, 6–7" (the weeks it is off, by their place in the season), "No weeks".
    */
   weeksInWords(cells) {
     const words = this._weekWords;
@@ -1462,6 +1471,10 @@ export default class ShoreshEditableTable extends LightningElement {
       words = `${least} or more`;
     } else if (!isBlank(min) && most > least) {
       words = `${least}–${most}`;
+    }
+    // A count carries its unit (word walk W1): "2–3 a week".
+    if (words && col.unit) {
+      words = `${words} ${col.unit}`;
     }
     return {
       key: `${draft.key}-${col.fieldName}`,

@@ -192,7 +192,11 @@ export default class ShoreshProgram extends LightningElement {
         type: "number",
         min: 1,
         required: true,
-        more: true
+        more: true,
+        // Counted in time blocks (word walk W1): "1 Peula time".
+        unitFor: (value) => {
+          return Number(value) === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock");
+        }
       },
       {
         fieldName: fields.Location,
@@ -684,6 +688,12 @@ export default class ShoreshProgram extends LightningElement {
       addRecurring: `Add ${t.s("RecurringActivity")}`,
       noRecurring: `No ${t.pIn("RecurringActivity")} yet`,
       toTimeBlocks: `${t.p("TimeBlock")} →`,
+      // Each section's count with its unit (word walk W1): "3 bunks".
+      countTimeBlocks: [t.sIn("TimeBlock"), t.pIn("TimeBlock")],
+      countDivisions: [t.sIn("Division"), t.pIn("Division")],
+      countGroups: [t.sIn("Group"), t.pIn("Group")],
+      countFixed: [t.sIn("FixedActivity"), t.pIn("FixedActivity")],
+      countRecurring: [t.sIn("RecurringActivity"), t.pIn("RecurringActivity")],
       // What needs a look on a row: who is left out, a time block that changed (desktop: "Needs
       // attention"), not general notes.
       leftOut: "Needs attention",

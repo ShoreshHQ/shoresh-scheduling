@@ -56,8 +56,7 @@ public with sharing class ElectiveFinalize {
    * the camp's word for electives (wiki decision 66): "Chugim finalized: ...".
    */
   private static Id keepSchedule(ElectiveRunState state) {
-    String electives = CampLabels.forCamp(state.run.Season__r.Camp__c)
-      .plural('Elective');
+    String electives = state.labels().plural('Elective');
     Id versionId = ManualVersions.keepAutomatically(
       scheduleOf(state.run),
       (electives + ' finalized: ' + state.run.Name).left(80),
@@ -77,13 +76,20 @@ public with sharing class ElectiveFinalize {
   private static void refuseUnready(ElectiveRunState state) {
     if (state.seats.isEmpty()) {
       throw new ShoreshException(
-        AgentRefusal.say('Assign seats first.', 'No seats are assigned yet.')
+        AgentRefusal.say(
+          'Assign ' + state.labels().pluralInSentence('Seats') + ' first.',
+          'No ' +
+            state.labels().pluralInSentence('Seats') +
+            ' are assigned yet.'
+        )
       );
     }
     if (state.live.fingerprint() != state.run.TimesFingerprint__c) {
       throw new ShoreshException(
         AgentRefusal.withFix(
-          'Schedule changed since seats were assigned.',
+          'Schedule changed since ' +
+            state.labels().pluralInSentence('Seats') +
+            ' were assigned.',
           'Assign again first.'
         )
       );
@@ -115,7 +121,7 @@ public with sharing class ElectiveFinalize {
     Assignment__c seat,
     ElectivePeriod at
   ) {
-    CampLabels labels = CampLabels.forCamp(state.run.Season__r.Camp__c);
+    CampLabels labels = state.labels();
     Preference__c pref = state.byCamper.get(seat.Camper__c);
     Offering__c offering = state.offeringsById.get(seat.Offering__c);
     String camper = pref == null ? 'A camper' : pref.Camper__r.Name;
@@ -125,7 +131,9 @@ public with sharing class ElectiveFinalize {
     DayWords.use(state.run.Season__c);
     String day = DayWords.say(seat.Date__c);
     return camper +
-      '\'s seat in ' +
+      '\'s ' +
+      labels.singularInSentence('Seats') +
+      ' in ' +
       activity +
       ' (' +
       (at == null ? day : at.words()) +

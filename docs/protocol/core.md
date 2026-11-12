@@ -14,6 +14,13 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 
 - **CORE-1.0** Every term MAY carry the camp's own word, which MUST then be used on every screen
   and message. Anyone with Shoresh access MAY change camp words.
+- **CORE-1.34** A word the camp left standard MUST follow the camp's word it belongs to: Elective
+  set reads as the camp's Elective words ("Chug" / "Chugim"), Groups that fit and Groups at once as
+  the camp's Group plural ("Bunks that fit"), until the camp sets that word itself (word walk W1).
+- **CORE-1.35** Every camp word MUST have a singular and a plural the camp can see and set
+  (Seat / Seats, Station / Stations), and one plural rule MUST guess them everywhere: "ies" after
+  a consonant and y, "es" after s, x, z, ch and sh, else "s" (word walk W1). A count MUST use the
+  plural ("3 spots").
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |

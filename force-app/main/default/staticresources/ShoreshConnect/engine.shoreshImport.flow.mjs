@@ -36,15 +36,17 @@ export function leaveable(card) {
 }
 
 /**
- * What the main button says (INGEST-5.5): "Add 61"; with questions open, how many wait for later
- * ("Add 58, 3 for later"); while one must be answered first, how many are left.
+ * What the main button says (INGEST-5.5): "Add" (the tiles beside it count each kind; one bare
+ * number over several kinds says nothing, word walk W1); with questions open, how many wait for
+ * later ("Add, 3 questions for later"); while one must be answered first, how many are left.
  */
 export function saveLabel(open, mustAnswer, adding) {
+  const questions = `${open} ${open === 1 ? "question" : "questions"}`;
   if (mustAnswer > 0) {
-    return `${open} ${open === 1 ? "question" : "questions"} left`;
+    return `${questions} left`;
   }
-  const base = adding > 0 ? `Add ${adding}` : "Use this setup";
-  return open > 0 ? `${base}, ${open} for later` : base;
+  const base = adding > 0 ? "Add" : "Use this setup";
+  return open > 0 ? `${base}, ${questions} for later` : base;
 }
 
 export function proposalWith(input, answers) {

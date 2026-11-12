@@ -117,7 +117,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      once a week, low priority, one group at a time). A name the season already has gives that
      activity instead. Add needs a Manual Build draft and locks its season, so two people adding
      the same new name at once, from any week or program of the season, get one activity. Electives, special events, and special days are not offered: they are not
-     set up in Salesforce yet. The wording avoids an article built from a camp word (design guide).
+     set up in Salesforce yet. An article before a camp word fits that word (`article()`, word walk W1).
 7. **Multi-block activities fill their length** (Greg #7). From the slot's first block, an
    activity runs for its length over Open slots. It stops at a filled slot, a block where the
    group isn't at camp, or the end of the day. Replacing or clearing part of a multi-block

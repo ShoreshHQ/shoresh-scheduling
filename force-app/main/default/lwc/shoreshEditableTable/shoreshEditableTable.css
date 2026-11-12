@@ -628,6 +628,19 @@
   flex-grow: 1;
 }
 
+/* A number with its unit beside it: "1 time block". */
+.number-with-unit {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--shoresh-s2);
+}
+
+.number-unit {
+  padding-bottom: var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+  white-space: nowrap;
+}
+
 /* Someone else changed the row: each field the question is about, one under another. */
 .conflict-rows {
   display: flex;

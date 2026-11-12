@@ -187,14 +187,14 @@ function uniqueName(title, used) {
 export function camperScheduleRows(d) {
   const { t, run } = d;
   const header = [
-    "Camper",
+    t.s("Camper"),
     t.s("Group"),
     "Day",
     t.s("TimeBlock"),
     "Starts",
-    "Activity",
+    t.s("Activity"),
     t.s("ElectiveSet"),
-    "Blocks"
+    t.s("Length")
   ];
   const seatAt = new Map();
   (d.view.seats || []).forEach((seat) => {
@@ -288,11 +288,11 @@ function rosterRows(d) {
   const header = [
     "Day",
     t.s("TimeBlock"),
-    "Activity",
-    "Camper",
+    t.s("Activity"),
+    t.s("Camper"),
     t.s("Group"),
     "Count",
-    t.s("Seats")
+    t.p("Seats")
   ];
   const body = [];
   d.board.offeringRows.forEach((row) => {
@@ -334,7 +334,7 @@ function rosterRows(d) {
 function exceptionRows(d) {
   const { t, board, run } = d;
   const p = board.problems;
-  const header = ["Problem", "Camper", "Time", "Detail"];
+  const header = ["Problem", t.s("Camper"), "Time", "Detail"];
   const body = [];
   p.unplaced.forEach((u) =>
     body.push(["Couldn't be placed", u.camper.name, u.column.words, ""])
@@ -357,7 +357,7 @@ function exceptionRows(d) {
   );
   p.overSeats.forEach((x) =>
     body.push([
-      `Over ${t.pIn("Seats")}`,
+      `Over its ${t.pIn("Seats")}`,
       "",
       x.column.words,
       `${x.offering.name}: ${x.count} of ${x.seats}`
@@ -384,7 +384,7 @@ function exceptionRows(d) {
   );
   p.split.forEach((s) =>
     body.push([
-      `Given their ${t.sIn("LinkedChoice")} one period at a time`,
+      `Given their ${t.sIn("LinkedChoice")} one ${t.sIn("TimeBlock")} at a time`,
       s.camper.name,
       // The period it shares with a linked choice kept as a set; none when absent or locked.
       (board.columnByKey.get(s.timeKey) || {}).words || "",
@@ -558,9 +558,10 @@ export function campersRows(d, activityNames = new Map()) {
     headingFor(t.s("Division"), "division", "Division"),
     headingFor(t.s("Group"), "bunk", "Bunk"),
     "Day",
-    "Period",
+    // The camp's words where Import choices reads them back (headingFor), else the plain ones.
+    headingFor(t.s("TimeBlock"), "periodValue", "Period"),
     "Rank",
-    "Activity"
+    headingFor(t.s("Activity"), "choiceValue", "Activity")
   ];
   const body = [];
   [...run.campers]

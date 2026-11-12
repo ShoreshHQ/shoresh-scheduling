@@ -74,7 +74,7 @@ export function clearBoard(picture, weekId, t) {
       },
       seats: {
         count: week.seats,
-        words: `${week.name}, ${t.sIn("Seats")}: ${week.seats}, ${goneWord}`
+        words: `${week.name}, ${t.pIn("Seats")}: ${week.seats}, ${goneWord}`
       },
       runs: {
         count: week.runs,
@@ -91,7 +91,7 @@ export function clearBoard(picture, weekId, t) {
   const stays = [
     ["sets", t.p("ElectiveSet"), (picture && picture.sets) || []],
     ["offerings", t.p("Offering"), (picture && picture.offerings) || []],
-    ["linked", "Linked", (picture && picture.linked) || []]
+    ["linked", t.p("LinkedChoice"), (picture && picture.linked) || []]
   ].map(([key, label, names]) => ({
     key,
     label,

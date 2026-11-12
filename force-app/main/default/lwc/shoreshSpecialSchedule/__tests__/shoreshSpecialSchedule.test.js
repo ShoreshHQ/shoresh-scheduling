@@ -260,7 +260,11 @@ describe("c-shoresh-special-schedule", () => {
     await flush();
     const saved = dayPlan(["3,1", ",1"]).schedule;
     saved.days[0].items.push(ref("es1", "Chugim", "E"));
-    saveCells.mockResolvedValue({ conflicts: [], revision: "2", schedule: saved });
+    saveCells.mockResolvedValue({
+      conflicts: [],
+      revision: "2",
+      schedule: saved
+    });
     const input = await typeInto(element, "0-0", "chu");
     expect(optionLabels(element)[0]).toBe("Chugim (2)");
     await press(input, "Enter");

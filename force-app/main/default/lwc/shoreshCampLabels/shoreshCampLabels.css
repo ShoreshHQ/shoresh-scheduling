@@ -137,7 +137,8 @@
   outline: none;
 }
 
-.word-box {
+.word-box,
+.plural-box {
   background: var(--shoresh-color-primary-250);
   box-shadow: var(--shoresh-well-in);
 }
@@ -152,23 +153,8 @@
   opacity: 1;
 }
 
-/* The plural reads as words beside the box; a box only under the pointer or the cursor. */
-.plural-box {
-  background: transparent;
-}
-
-.plural-box::placeholder {
-  color: var(--shoresh-text-1);
-}
-
 .plural-box_typed {
   font-weight: 500;
-}
-
-.row:hover .plural-box,
-.plural-box:focus {
-  background: var(--shoresh-color-primary-250);
-  box-shadow: var(--shoresh-well-in);
 }
 
 .word-box:focus-visible,
@@ -189,7 +175,7 @@
 /* High contrast: the boxes keep an edge where backgrounds are painted over. */
 @media (forced-colors: active) {
   .word-box,
-  .plural-box:focus {
+  .plural-box {
     border: 1px solid CanvasText;
   }
 }

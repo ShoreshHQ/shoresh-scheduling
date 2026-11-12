@@ -13,7 +13,7 @@
  * ImportController.saveWorkbook.
  */
 import { CHILDREN, FIELD, localName } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import {
   LEAVE_OUT,
   WEEKDAYS,
@@ -104,9 +104,12 @@ export function findSheets(file, t) {
   };
   sheets.forEach((sheet) => {
     const h = filled(cells(sheet).headings).map(foldName);
+    // "Shoresh word" / "Camp word", as the screen names them; "Standard" / "Your word" too, the
+    // screen's old names, should a sheet have been made with them.
     if (
-      h[0] === foldName("Shoresh word") &&
-      h.includes(foldName("Camp word"))
+      (h[0] === foldName("Shoresh word") &&
+        h.includes(foldName("Camp word"))) ||
+      (h[0] === foldName("Standard") && h.includes(foldName("Your word")))
     ) {
       if (!found.campWords) take("campWords", sheet);
     } else if (
@@ -985,7 +988,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       problems: [
         ...unknown.map(
           (c) =>
-            `"${c.heading}" isn't a ${t.sIn("Week")} of the worksheet that can be read`
+            `"${c.heading}" isn't ${article(t.sIn("Week"))} of the worksheet that can be read`
         ),
         ...twins.map(
           (list) =>
@@ -1133,13 +1136,27 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
 // ---------------------------------------------------------------------------------------------
 // The whole workbook.
 
+const EXTRA_TERMS = {
+  campWords: "CampLabel",
+  weeks: "Week",
+  runsIn: "WeekException"
+};
+
 function extraSection(key, label, part) {
   part.rows.forEach((r) => {
     if (r.problems.length) {
       r.status = "unreadable";
     }
   });
-  return { key, label, extra: true, rows: part.rows, lists: part.lists || [] };
+  return {
+    key,
+    label,
+    // What its rows are, for the save button's counts (saveCounts).
+    term: EXTRA_TERMS[key],
+    extra: true,
+    rows: part.rows,
+    lists: part.lists || []
+  };
 }
 
 /**

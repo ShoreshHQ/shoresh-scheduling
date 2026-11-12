@@ -153,7 +153,7 @@ public with sharing class ActivityTriggerHandler {
     return outdoors;
   }
 
-  /** The desktop's words, in the camp's: never an article built from a camp word. */
+  /** The desktop's words, in the camp's; an article before a camp word fits it (CampLabels.withArticle). */
   public static String outdoorRainPlan(CampLabels labels) {
     return 'The ' +
       labels.singularInSentence('RainPlan') +

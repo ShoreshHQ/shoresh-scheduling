@@ -183,7 +183,7 @@ private class WeekSpecialsTest {
       );
       Assert.isFalse(refused.isSuccess());
       Assert.isTrue(
-        refused.getErrors()[0].getMessage().contains('Monday of "Week 1"'),
+        refused.getErrors()[0].getMessage().contains('Week 1 · Monday'),
         refused.getErrors()[0].getMessage()
       );
 

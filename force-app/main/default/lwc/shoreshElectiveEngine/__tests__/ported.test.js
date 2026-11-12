@@ -1035,7 +1035,7 @@ describe("buildElectiveAssignments", () => {
     // silence this one too.
     expect(
       out.findings.find((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE").message
-    ).toMatch(/do not attend every period it covers/);
+    ).toMatch(/do not attend every time block it covers/);
     // c1 falls through to tier 2 and is still placed where they do attend.
     expect(
       out.assignments

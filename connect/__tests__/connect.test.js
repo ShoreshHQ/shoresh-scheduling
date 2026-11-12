@@ -2909,7 +2909,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(answered.done.text).toContain(
       "Last year's schedule: Week 1 (Main), kept as a version"
     );
-    expect(answered.done.text).toMatch(/Ready to save: Add \d+\./);
+    expect(answered.done.text).toMatch(/Ready to save: Add\./);
     const saved = await send(empty, { answers, save: true, seen: "s1" });
     const plan = JSON.parse(JSON.parse(saved.sent[1].stdin).plan);
     expect(plan.open).toEqual([]);
@@ -3057,7 +3057,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(review.sent[0].args[3]).toBe(
       "/services/apexrest/v1/import_last_year?season=Summer+2026"
     );
-    expect(review.done.text).toMatch(/Ready to save: Add \d+\./);
+    expect(review.done.text).toMatch(/Ready to save: Add\./);
     expect(review.done.text).toContain('seen: "s1"');
     const stale = await send({
       season: "Summer 2026",

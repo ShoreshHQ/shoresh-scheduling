@@ -1011,9 +1011,6 @@ export default class ShoreshImport extends LightningElement {
   get addedTiles() {
     return countTiles(this.result && this.result.added, this.terms);
   }
-  get addedTotal() {
-    return total(this.addedTiles);
-  }
   get changedTiles() {
     return countTiles(this.result && this.result.changed, this.terms);
   }
@@ -1146,7 +1143,10 @@ export default class ShoreshImport extends LightningElement {
     this.undoing = true;
     try {
       const result = await undoImport({ importId: this.result.importId });
-      this.undone = undoMessage(result);
+      this.undone = undoMessage(
+        result,
+        this.addedTiles.map((tile) => tile.spoken)
+      );
       // Undo is gone from the rail: the cursor goes to Done.
       this.focusNext = { selector: '[data-id="continue"]' };
       this.dispatchEvent(new CustomEvent("imported"));

@@ -387,7 +387,7 @@ function divisionCard(ask, t) {
       { value: NO_DIVISION, label: `No ${t.sIn("Division")}` },
       { value: LEAVE_OUT, label: `Leave it out for now` }
     ],
-    placeholder: `Choose a ${t.sIn("Division")}`
+    placeholder: `Choose ${article(t.sIn("Division"))}`
   };
 }
 
@@ -618,7 +618,7 @@ function ownDaysCard(ask, t) {
       {
         value: "program",
         label: `A second ${t.sIn("Program")}`,
-        description: `Those days' ${t.pIn("Group")} are set up in a ${t.sIn("Program")} of their own.`
+        description: `Those days' ${t.pIn("Group")} are set up in ${article(t.sIn("Program"))} of their own.`
       },
       leaveOut("Those days are not added this time.")
     ]
@@ -784,14 +784,14 @@ function twoActivitiesCard(ask, t) {
     id: ask.id,
     stage: "review",
     lane: "hold",
-    title: `Half the period each, or does the ${t.sIn("Group")} split?`,
+    title: `Half the ${t.sIn("TimeBlock")} each, or does the ${t.sIn("Group")} split?`,
     subject: ask.name,
     subtitle: `${quoted(ask.name)}: ${ask.group}, ${ask.day}.`,
     learn: { shape: "two" },
     options: [
       {
         value: ONE_ACTIVITY,
-        label: "Half the period each",
+        label: `Half the ${t.sIn("TimeBlock")} each`,
         description: `${a}, then ${b}: comes in as one ${t.sIn("Activity")}, ${quoted(ask.name)}.`
       },
       {

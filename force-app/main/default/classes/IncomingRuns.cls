@@ -189,8 +189,8 @@ public with sharing class IncomingRuns {
         weekName +
         ' yet, so Shoresh has nowhere to keep these.',
       'A person brings them in once on the ' +
-        batch.labels.singular('Elective') +
-        ' seats screen (choose ' +
+        batch.labels.electiveSeatsTitle() +
+        ' screen (choose ' +
         setName +
         ' and ' +
         weekName +

@@ -61,7 +61,10 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
       );
     } catch (Exception e) {
       throw new ShoreshException(
-        'That seat wasn\'t changed. ' + ScreenErrors.words(e)
+        'That ' +
+          run.labels().singularInSentence('Seats') +
+          ' wasn\'t changed. ' +
+          ScreenErrors.words(e)
       );
     }
     // The screen's own words for it.

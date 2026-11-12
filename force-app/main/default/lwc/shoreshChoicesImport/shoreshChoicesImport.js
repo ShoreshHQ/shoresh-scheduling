@@ -14,7 +14,7 @@ import {
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
 import { failed } from "c/shoreshErrors";
-import { buildTerms } from "c/shoreshTerms";
+import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
 import {
   allSettled,
   buildRequest,
@@ -381,7 +381,7 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   /** Card 1 */
   get shape() {
-    return this.reading ? shapeOf(this.reading) : "";
+    return this.reading ? shapeOf(this.reading, this.t) : "";
   }
   get preview() {
     return this.reading ? sheetPreview(this.file, this.reading, this.t) : null;
@@ -680,7 +680,7 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   /** Brought in: the next step is the seats, "Elective seats →" (the guide's arrow means next). */
   get toSeatsLabel() {
-    return `${this.t.s("Elective")} seats →`;
+    return `${electiveSeatsTitle(this.t)} →`;
   }
   handleToSeats() {
     this.dispatchEvent(

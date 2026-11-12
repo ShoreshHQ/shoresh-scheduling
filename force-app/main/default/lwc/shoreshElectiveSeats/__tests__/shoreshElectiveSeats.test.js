@@ -325,7 +325,8 @@ describe("the start", () => {
     });
     expect(text($(element, "[data-heading]"))).toBe("Chug seats");
     expect($(element, '[data-id="no-sets"]').title).toBe(
-      "No elective sets yet. Make one on Chugim first."
+      // CORE-1.34: the set follows the camp's Elective word.
+      "No Chugim yet. Make one on Chugim first."
     );
     document.body.removeChild(element);
     seatsSetup.mockRejectedValue({ body: { message: "Gone." } });

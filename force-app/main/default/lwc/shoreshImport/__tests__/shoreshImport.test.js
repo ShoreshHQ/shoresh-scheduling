@@ -332,7 +332,9 @@ describe("c-shoresh-import", () => {
 
     // INGEST-5.5: Add can keep an open question for later, and says so.
     expect(add(element).disabled).toBe(false);
-    expect(add(element).textContent.trim()).toMatch(/^Add \d+, 1 for later$/);
+    expect(add(element).textContent.trim()).toMatch(
+      /^Add, 1 question for later$/
+    );
     await answer(element, similarId(element), "a");
     // Answered: the choice is pressed and raised, and the row loses its mark.
     const similar = $(element, `[data-card="${similarId(element)}"]`);
@@ -352,12 +354,9 @@ describe("c-shoresh-import", () => {
     expect(tiles.find((x) => x.dataset.tile === "Group").textContent).toContain(
       "Groups"
     );
-    const sum = tiles.reduce(
-      (n, x) => n + Number(x.querySelector("b").textContent),
-      0
-    );
     expect(add(element).disabled).toBe(false);
-    expect(add(element).textContent.trim()).toBe(`Add ${sum}`);
+    // The tiles count each kind; one bare number over all of them says nothing (word walk W1).
+    expect(add(element).textContent.trim()).toBe("Add");
 
     const imported = jest.fn();
     element.addEventListener("imported", imported);
@@ -372,8 +371,8 @@ describe("c-shoresh-import", () => {
 
     // Done: what was added as counts, Undo and Done on the rail.
     const added = $(element, '[data-id="added"]');
-    expect(added.querySelector("h3").textContent).toContain("Added");
-    expect(added.querySelector("h3").textContent).toContain("26");
+    // No bare total over several kinds: the tiles count each (word walk W1).
+    expect(added.querySelector("h3").textContent.trim()).toBe("Added");
     expect(
       added.querySelector('[data-tile="Group"] .slds-assistive-text')
         .textContent
@@ -609,14 +608,11 @@ describe("c-shoresh-import", () => {
       );
     });
 
-    it("INGEST-5.5: Add says how many come in and how many wait: Add N, M for later", async () => {
+    it("INGEST-5.5: Add says how many questions wait; the tiles count what comes in (word walk W1)", async () => {
       const element = await render();
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
-      const total = $$(element, "[data-tile]").reduce(
-        (sum, tile) => sum + Number(tile.querySelector("b").textContent),
-        0
-      );
-      expect(add(element).textContent.trim()).toBe(`Add ${total}, 1 for later`);
+      expect($$(element, "[data-tile]").length).toBeGreaterThan(0);
+      expect(add(element).textContent.trim()).toBe("Add, 1 question for later");
     });
 
     it("INGEST-5.5 and 5.7: after Add, questions that did not fit and updates left as they were are said", async () => {
@@ -918,7 +914,7 @@ describe("c-shoresh-import", () => {
     const row = choice.closest("[data-card]");
     expect(row.querySelector(".corner")).not.toBeNull();
     expect(add(element).disabled).toBe(false);
-    expect(add(element).textContent.trim()).toMatch(/, 1 for later$/);
+    expect(add(element).textContent.trim()).toMatch(/, 1 question for later$/);
     // Bunk 1's unit is open: Bunk 1 does not come in.
     expect($(element, 'button[data-tile="Group"]')).toBeNull();
   });
@@ -962,7 +958,7 @@ describe("c-shoresh-import", () => {
       { division: { Id: "d1", Name: "Juniors" }, groups: [] },
       { division: { Id: "d2", Name: "Seniors" }, groups: [] }
     ]);
-    expect(waiting).toMatch(/1 for later/);
+    expect(waiting).toMatch(/1 question for later/);
     expect(waiting).not.toMatch(/added from its dates/);
     expect(waiting).not.toMatch(/Kept as a version/);
   });
@@ -1016,7 +1012,7 @@ describe("c-shoresh-import", () => {
         "Remembered"
       );
       expect(add(element).disabled).toBe(false);
-      expect(add(element).textContent.trim()).toMatch(/^Add \d+$/);
+      expect(add(element).textContent.trim()).toBe("Add");
     });
 
     // MEMO-6.5, MEMO-6.6, MEMO-3.2
@@ -1494,7 +1490,7 @@ describe("c-shoresh-import", () => {
       await flush();
       expect(undoImport).toHaveBeenCalledWith({ importId: "im1" });
       expect($(element, '[data-id="undone"]').textContent).toBe(
-        "Import undone. Removed 30 things it added."
+        "Import undone. Removed what it added."
       );
       expect($(element, 'button[data-id="undo"]')).toBeNull();
     });

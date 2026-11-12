@@ -59,7 +59,7 @@ describe("seats without a linked-choice conflict", () => {
     }
     expect({ camps, hash: h.toString(16) }).toEqual({
       camps: 89,
-      hash: "30c3a1b6"
+      hash: "a7c2317e"
     });
   }, 60000);
 });

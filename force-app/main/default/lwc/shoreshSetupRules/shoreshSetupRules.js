@@ -157,7 +157,7 @@ function electiveProblems(setup, terms) {
     if (!offering[OFFER.NoSeatLimit] && (blank || Number(seats) === 0)) {
       add(
         "offeringNoSeats",
-        `choose how many ${terms.sIn("Seats")} "${name}" has.`
+        `choose how many ${terms.pIn("Seats")} "${name}" has.`
       );
     }
   });

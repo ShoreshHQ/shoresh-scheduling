@@ -302,8 +302,8 @@ export default class ShoreshSchedules extends LightningElement {
   get viewButtons() {
     return [
       ["day", "Daily"],
-      ["group", "Group"],
-      ["activity", "Activity"]
+      ["group", this.t.s("Group")],
+      ["activity", this.t.s("Activity")]
     ].map(([key, label]) => ({
       key,
       label,

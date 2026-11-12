@@ -30,6 +30,8 @@ public with sharing class ElectiveRunState {
   public List<Preference__c> preferences = new List<Preference__c>();
   public Map<Id, Preference__c> byCamper = new Map<Id, Preference__c>();
   public List<Assignment__c> seats = new List<Assignment__c>();
+  // The camp's words, read once and only when a message needs them.
+  private CampLabels words;
 
   /** The run as it is now, or refused when it is not there. */
   public ElectiveRunState(Id runId) {
@@ -67,6 +69,14 @@ public with sharing class ElectiveRunState {
       throw notThere();
     }
     return new ElectiveRunState(runId);
+  }
+
+  /** The camp's words for this run's messages ("spots"), read on first use (word walk W1). */
+  public CampLabels labels() {
+    if (words == null) {
+      words = CampLabels.forCamp(run.Season__r.Camp__c);
+    }
+    return words;
   }
 
   public Boolean isFinal() {
@@ -113,7 +123,7 @@ public with sharing class ElectiveRunState {
     return found[0];
   }
 
-  public static ShoreshException notThere() {
+  private static ShoreshException notThere() {
     return new ShoreshException(
       // Word-free: with the run gone, Shoresh no longer knows whose camp words to use.
       'This run is no longer there. Reload the page.'
@@ -245,14 +255,18 @@ public with sharing class ElectiveRunState {
         '"' +
           run.Name +
           AgentRefusal.withFix(
-            '" is final, so its seats can\'t change.',
+            '" is final, so its ' +
+              labels().pluralInSentence('Seats') +
+              ' can\'t change.',
             'Start a new version first.'
           )
       );
     }
     if (!SeenSaves.revision(run.Revision__c, seenRevision)) {
       throw new ShoreshException(
-        'Someone else changed these seats since you opened them. Reload the page to see them.'
+        'Someone else changed these ' +
+          labels().pluralInSentence('Seats') +
+          ' since you opened them. Reload the page to see them.'
       );
     }
   }

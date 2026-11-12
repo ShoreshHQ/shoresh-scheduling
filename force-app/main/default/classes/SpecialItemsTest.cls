@@ -159,7 +159,7 @@ private class SpecialItemsTest {
       String refusal = SetTimeTestData.deleteRefusal(fieldDay);
       Assert.isTrue(
         refusal.contains(
-          'This special day can\'t be deleted yet: it is on Tuesday of "Week 2". First take it off that day, then delete it.'
+          'This special day can\'t be deleted yet: it is on Week 2 · Tuesday. First take it off that day, then delete it.'
         ),
         refusal
       );

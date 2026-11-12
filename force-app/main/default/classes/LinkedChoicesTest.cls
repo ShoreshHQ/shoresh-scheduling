@@ -223,7 +223,7 @@ private class LinkedChoicesTest {
       funday.name = 'Drama';
       funday.periodsOn.add(menu.period('Funday', 'Period 1'));
       Assert.areEqual(
-        'That period could not be sent. Try again.',
+        'That time could not be sent. Try again.',
         refusalOf(funday)
       );
 

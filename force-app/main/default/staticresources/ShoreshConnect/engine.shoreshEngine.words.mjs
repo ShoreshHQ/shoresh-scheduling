@@ -1,4 +1,4 @@
-import { buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import {
   BUDGET,
   BUSY,
@@ -72,12 +72,12 @@ export function reasonFor(
       // Without both names (a group or activity gone from setup), the plain sentence.
       return groupName && activityName
         ? `Filling it would leave ${groupName} short of ${activityName}`
-        : `Filling it would leave a ${t.sIn("Group")} short of a weekly minimum`;
+        : `Filling it would leave ${article(t.sIn("Group"))} short of a weekly minimum`;
     case TRADE:
       // Left Open on purpose so another group gets its weekly minimum (a last resort).
       return groupName && activityName
         ? `Open, so ${groupName} gets ${activityName}`
-        : `Open, so a ${t.sIn("Group")} gets a weekly minimum`;
+        : `Open, so ${article(t.sIn("Group"))} gets a weekly minimum`;
     case BUDGET:
       return "Shoresh couldn't finish checking every way to fill this";
     case NONE_FOR:

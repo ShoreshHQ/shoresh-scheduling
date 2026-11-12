@@ -114,14 +114,15 @@ describe("c-shoresh-camp-labels", () => {
     expect(input(element, "Division", "singular").className).not.toContain(
       "word-box_own"
     );
-    // A standard word has no plural beside it.
-    expect(input(element, "Division", "plural")).toBeNull();
+    // Every word's plural is a box the camp can see and set: the standard plural in it.
+    expect(input(element, "Division", "plural").value).toBe("");
+    expect(input(element, "Division", "plural").placeholder).toBe("Divisions");
     // Each box is named for screen readers.
     expect(input(element, "Group", "singular").getAttribute("aria-label")).toBe(
       "Group"
     );
     expect(input(element, "Group", "plural").getAttribute("aria-label")).toBe(
-      "Group, more than one"
+      "Groups"
     );
     // The rail: how many words are the camp's own.
     expect(
@@ -130,6 +131,72 @@ describe("c-shoresh-camp-labels", () => {
     expect(
       element.shadowRoot.querySelector("[data-heading]").textContent.trim()
     ).toBe("Camp words");
+  });
+
+  // CORE-1.35
+  it("a plural typed beside a standard word is saved with the standard word (word walk W1)", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    await type(element, "Division", "plural", "Divisionim");
+    leave(element, "Division", "plural");
+    await flush();
+    expect(
+      saveCampLabels.mock.calls[0][0].labels.find((r) => r.term === "Division")
+    ).toMatchObject({ singular: "Division", plural: "Divisionim" });
+  });
+
+  it("names its columns Shoresh word / Camp word, and leaves out words no screen shows (word walk W1)", async () => {
+    getLabels.mockResolvedValue([
+      ...LABELS,
+      {
+        term: "Conflict",
+        modelSingular: "Conflict",
+        modelPlural: "Conflicts",
+        singular: "Conflict",
+        plural: "Conflicts",
+        isCustom: false,
+        labelId: null
+      }
+    ]);
+    campWordsBlockedReason.mockResolvedValue(null);
+    const element = createElement("c-shoresh-camp-labels", {
+      is: ShoreshCampLabels
+    });
+    element.campId = "camp1";
+    document.body.appendChild(element);
+    await flush();
+    expect(element.shadowRoot.querySelector(".words-head").textContent).toBe(
+      "Shoresh wordCamp word"
+    );
+    expect(input(element, "Conflict", "singular")).toBeNull();
+    expect(input(element, "Version", "singular")).not.toBeNull();
+  });
+
+  // CORE-1.34
+  it("an empty box shows the word the screens use: the camp word a word follows", async () => {
+    getLabels.mockResolvedValue([
+      ...LABELS,
+      {
+        term: "GroupsThatFit",
+        modelSingular: "Groups that fit",
+        modelPlural: "Groups that fit",
+        singular: "Bunks that fit",
+        plural: "Bunks that fit",
+        isCustom: false
+      }
+    ]);
+    campWordsBlockedReason.mockResolvedValue(null);
+    const element = createElement("c-shoresh-camp-labels", {
+      is: ShoreshCampLabels
+    });
+    element.campId = "camp1";
+    element.campName = "Camp Willow";
+    document.body.appendChild(element);
+    await flush();
+    expect(input(element, "GroupsThatFit", "singular").placeholder).toBe(
+      "Bunks that fit"
+    );
+    expect(input(element, "GroupsThatFit", "singular").value).toBe("");
   });
 
   it("guesses the plural beside the camp's word, and keeps a plural typed over the guess", async () => {
@@ -323,7 +390,10 @@ describe("c-shoresh-camp-labels", () => {
     saveCampLabels.mockResolvedValue();
     const element = await render();
     await type(element, "ElectiveSet", "singular", "");
-    expect(input(element, "ElectiveSet", "plural")).toBeNull();
+    expect(input(element, "ElectiveSet", "plural").value).toBe("");
+    expect(input(element, "ElectiveSet", "plural").placeholder).toBe(
+      "Elective sets"
+    );
     leave(element, "ElectiveSet", "singular");
     await flush();
     expect(

@@ -226,17 +226,8 @@ function questionLines(cards, suggestions, remembered) {
 
 /** "Add 3, change 2": what saving does, as the screen's Save button says it. */
 function saveLabel(proposals, t, setup, m) {
-  const rows = (status) =>
-    proposals.flatMap((x) => (x.rows || []).filter((r) => r.status === status));
-  const added =
-    rows("new").filter((r) => !r.withItem).length +
-    proposals
-      .flatMap((x) => alsoAddLines(x, t, setup, m))
-      .filter((line) => !/not added:/.test(line)).length;
-  const changed = rows("changed").filter((r) =>
-    r.differences.some((d) => d.answer === m.CHANGE)
-  ).length;
-  return m.saveListLabel(added, changed);
+  const { added, changed } = m.saveCounts(proposals);
+  return m.saveListLabel(added, changed, t);
 }
 
 // What a camp workbook saves that has no camp word of its own, in the camp's words.
@@ -374,7 +365,9 @@ async function importFile(capability, given, { read, send, answer, load }) {
 
   if (!input.save) {
     const proposals = workbook
-      ? proposal.sections.map((s) => (s.extra ? { rows: s.rows } : s.proposal))
+      ? proposal.sections.map((s) =>
+          s.extra ? { rows: s.rows, term: s.term } : s.proposal
+        )
       : [proposal];
     const parts = [
       `Review of ${file.name} for ${screenName} in "${body.season}", as the screen shows it. Nothing is saved yet.`

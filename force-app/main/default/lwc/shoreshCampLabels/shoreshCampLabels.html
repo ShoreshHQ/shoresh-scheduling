@@ -28,7 +28,7 @@
     <template lwc:if={loaded}>
       <!-- The column names, for the eye: every box is named on its own. -->
       <div class="words-head" aria-hidden="true">
-        <span>Standard</span><span>Your word</span><span></span>
+        <span>Shoresh word</span><span>Camp word</span><span></span>
       </div>
       <template for:each={sections} for:item="section">
         <section
@@ -52,7 +52,7 @@
                     type="text"
                     class={row.singularClass}
                     aria-label={row.modelSingular}
-                    placeholder={row.modelSingular}
+                    placeholder={row.shown}
                     value={row.singular}
                     maxlength="80"
                     data-term={row.term}
@@ -73,32 +73,30 @@
                   </template>
                 </span>
                 <span class="field">
-                  <template lwc:if={row.own}>
-                    <!-- The plural, guessed: words at rest, a box under the pointer or the
-                         cursor, typed over where the guess is wrong. -->
-                    <input
-                      type="text"
-                      class={row.pluralClass}
-                      aria-label={row.pluralLabel}
-                      placeholder={row.guess}
-                      value={row.plural}
-                      maxlength="80"
-                      data-term={row.term}
-                      data-field="plural"
-                      oninput={handleChange}
-                      onfocusout={handleLeave}
-                      onkeydown={handleKey}
-                      disabled={readOnly}
-                    />
-                    <template lwc:if={row.pluralError}>
-                      <span
-                        class="field-error"
-                        role="alert"
-                        data-error={row.term}
-                        data-field-error="plural"
-                        >{row.pluralError}</span
-                      >
-                    </template>
+                  <!-- The plural, a box at rest like the word's: the standard plural or the
+                       guess from the camp's word, typed over where it is wrong. -->
+                  <input
+                    type="text"
+                    class={row.pluralClass}
+                    aria-label={row.pluralLabel}
+                    placeholder={row.guess}
+                    value={row.plural}
+                    maxlength="80"
+                    data-term={row.term}
+                    data-field="plural"
+                    oninput={handleChange}
+                    onfocusout={handleLeave}
+                    onkeydown={handleKey}
+                    disabled={readOnly}
+                  />
+                  <template lwc:if={row.pluralError}>
+                    <span
+                      class="field-error"
+                      role="alert"
+                      data-error={row.term}
+                      data-field-error="plural"
+                      >{row.pluralError}</span
+                    >
                   </template>
                 </span>
               </li>

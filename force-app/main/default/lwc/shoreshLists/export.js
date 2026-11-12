@@ -9,6 +9,7 @@
  * JavaScript: the screen turns the sheets into a file with SheetJS.
  */
 import { refusal } from "c/shoreshErrors";
+import { UNSHOWN_TERMS } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import { shownDivisionName } from "c/shoreshImportEngine";
 import { screenLabels } from "c/shoreshScreens";
@@ -67,7 +68,8 @@ function campWordRows(setup) {
   return [
     ["Shoresh word", "Camp word", "Camp word (more than one)"],
     ...(setup.labels || [])
-      .filter((label) => label.isCustom)
+      // Words no screen shows stay off the sheet, as on Camp words (word walk W1).
+      .filter((label) => label.isCustom && !UNSHOWN_TERMS.includes(label.term))
       .map((label) => [label.modelSingular, label.singular, label.plural])
   ].map(safe);
 }

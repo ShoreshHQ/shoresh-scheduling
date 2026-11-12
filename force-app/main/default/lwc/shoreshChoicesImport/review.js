@@ -8,7 +8,7 @@
  * them apart, everything not read is listed); the cards are Greg's approved mock-ups
  * (design-research/electives-r1, import-read and import-names; decisions 48 and 53).
  */
-import { SHORT_DAYS } from "c/shoreshTerms";
+import { SHORT_DAYS, buildTerms } from "c/shoreshTerms";
 import { foldName, holdsNoDivision } from "c/shoreshImportEngine";
 import { CHOICE_KINDS, sheetLayout } from "c/shoreshChoicesReader";
 import { FIELD } from "c/shoreshSchema";
@@ -61,7 +61,7 @@ const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
 // ---------- card 1: how the sheet was read ----------
 
 /** How the choices are laid out, as found: never asked (ADR 0017 §2). */
-export function shapeOf(reading) {
+export function shapeOf(reading, t = buildTerms([])) {
   let perPeriod = false;
   let ranked = false;
   let unordered = false;
@@ -73,7 +73,7 @@ export function shapeOf(reading) {
     }
   }
   if (perPeriod && (ranked || unordered)) return "Both";
-  if (perPeriod) return "One per period";
+  if (perPeriod) return `One per ${t.sIn("TimeBlock")}`;
   if (ranked) return "One ranked list";
   if (unordered) return "One list, in no order";
   return "No choices";
@@ -106,7 +106,7 @@ function tagOf(read, t) {
     case "dayValue":
       return { label: "Day", kind: "read" };
     case "periodValue":
-      return { label: "Period", kind: "read" };
+      return { label: t.s("TimeBlock"), kind: "read" };
     default: {
       const when = whenOf(read);
       const rank =

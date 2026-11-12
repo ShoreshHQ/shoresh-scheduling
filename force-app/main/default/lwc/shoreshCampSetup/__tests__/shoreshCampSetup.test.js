@@ -927,7 +927,7 @@ describe("c-shoresh-camp-setup", () => {
       );
       const often = table.columns.find((c) => c.type === "often");
       expect(often.scale).toBe(7);
-      expect(often.label).toBe("How often");
+      expect(often.label).toBe("Times per week");
       expect(bareName(often.maxField)).toBe("TimesPerWeekMax__c");
       expect(bareName(often.noMaxField)).toBe("NoWeeklyMax__c");
       const who = table.columns.find((c) => c.fieldName === "whoCanDoIt");
@@ -1066,7 +1066,8 @@ describe("c-shoresh-camp-setup", () => {
         expect([low.showsRow("a1"), low.showsRow("a2")]).toEqual([false, true]);
         expect(
           high.shadowRoot.querySelector(".section-count").textContent.trim()
-        ).toBe("1");
+          // A count carries its unit (word walk W1).
+        ).toBe("1 activity");
         // Each blank row starts in its section's priority; the rest are the usual defaults.
         expect(bareRecord(high.newRowDefaults)).toEqual(
           expect.objectContaining({ Priority__c: "High", Length__c: 1 })
@@ -4560,7 +4561,7 @@ describe("c-shoresh-camp-setup", () => {
         [nsName("TimesPerWeekMin__c")]: {
           field: "often",
           words: "Guessed from your file",
-          name: "How often for Archery: guessed from your file"
+          name: "Times per week for Archery: guessed from your file"
         },
         whoCanDoIt: {
           field: "who",
@@ -4777,13 +4778,13 @@ describe("c-shoresh-camp-setup", () => {
       ]);
       expect(readonly(days, "schedule")).toEqual(["2 time blocks", "None", ""]);
       expect(readonly(days, "placedOn")).toEqual([
-        "Wk 2 Thu",
+        "Week 2 · Thu",
         "Not placed",
         ""
       ]);
       expect(readonly(events, "schedule")).toEqual(["None", "None", ""]);
       expect(readonly(events, "placedOn")).toEqual([
-        "Wk 1 Tue, Wk 2 Tue",
+        "Week 1 · Tue, Week 2 · Tue",
         "Not placed",
         ""
       ]);

@@ -97,7 +97,7 @@ private class AgentSpecialDaysTest {
       Assert.areEqual(200, read[0], said);
       Assert.isTrue(
         said.contains(
-          '"Field Day": on Tuesday of "Week 1"; "Visiting Day": not on a day.'
+          '"Field Day": on Week 1 · Tuesday; "Visiting Day": not on a day.'
         ),
         said
       );
@@ -163,20 +163,20 @@ private class AgentSpecialDaysTest {
 
       Assert.areEqual(200, put[0], String.valueOf(put[1]));
       Assert.areEqual(
-        '"Field Day" is on Tuesday of "Week 1". take_special_day_off_day takes it off again; the day\'s own schedule was kept.',
+        '"Field Day" is on Week 1 · Tuesday. take_special_day_off_day takes it off again; the day\'s own schedule was kept.',
         put[1]
       );
       Assert.isTrue(used < 30, 'A put used ' + used + ' queries');
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(
-        'Someone else changed Tuesday of "Week 1" since you read it: it has "Field Day" now. Nothing was changed. Read it again with read_special_days.',
+        'Someone else changed Week 1 · Tuesday since you read it: it has "Field Day" now. Nothing was changed. Read it again with read_special_days.',
         stale[1]
       );
       Assert.areEqual(200, asked[0], String.valueOf(asked[1]));
       Assert.isTrue(
         String.valueOf(asked[1])
           .startsWith(
-            'Tuesday of "Week 1" already has the special day "Field Day". Use this one instead?'
+            'Week 1 · Tuesday already has the special day "Field Day". Use this one instead?'
           ),
         String.valueOf(asked[1])
       );
@@ -187,19 +187,16 @@ private class AgentSpecialDaysTest {
       Assert.areEqual(new List<String>{ 'Field Day' }, afterAsking);
       Assert.areEqual(200, replaced[0], String.valueOf(replaced[1]));
       Assert.areEqual(
-        '"Visiting Day" is on Tuesday of "Week 1". "Field Day" stays saved: put_special_day_on_day with it puts it back on that day.',
+        '"Visiting Day" is on Week 1 · Tuesday. "Field Day" stays saved: put_special_day_on_day with it puts it back on that day.',
         replaced[1]
       );
       Assert.areEqual(409, wrongCase[0], String.valueOf(wrongCase[1]));
       Assert.areEqual(200, takenOff[0], String.valueOf(takenOff[1]));
       Assert.areEqual(
-        'Tuesday of "Week 1" has its regular schedule again. "Visiting Day" stays saved. put_special_day_on_day puts it back.',
+        'Week 1 · Tuesday has its regular schedule again. "Visiting Day" stays saved. put_special_day_on_day puts it back.',
         takenOff[1]
       );
-      Assert.areEqual(
-        '"Field Day" is not on Tuesday of "Week 1".',
-        notThere[1]
-      );
+      Assert.areEqual('"Field Day" is not on Week 1 · Tuesday.', notThere[1]);
       Assert.areEqual(new List<String>(), onTuesday(week));
     }
   }
@@ -253,13 +250,13 @@ private class AgentSpecialDaysTest {
       Assert.areEqual(new List<String>{ 'Field Day' }, afterReplace);
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(
-        'Someone else changed Tuesday of "Week 1" since you read it: it has "Field Day" now. Nothing was changed. Read it again with read_special_days.',
+        'Someone else changed Week 1 · Tuesday since you read it: it has "Field Day" now. Nothing was changed. Read it again with read_special_days.',
         stale[1]
       );
       Assert.areEqual(new List<String>{ 'Field Day' }, afterStale);
       Assert.areEqual(200, takenOff[0], String.valueOf(takenOff[1]));
       Assert.areEqual(
-        'Tuesday of "Week 1" has its regular schedule again. "Field Day" stays saved. put_special_day_on_day puts it back.',
+        'Week 1 · Tuesday has its regular schedule again. "Field Day" stays saved. put_special_day_on_day puts it back.',
         takenOff[1]
       );
       Assert.areEqual(new List<String>(), onTuesday(week));

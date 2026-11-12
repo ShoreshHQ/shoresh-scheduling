@@ -5,6 +5,7 @@
  * (Greg, 2026-10-17: add it and ask for what it needs).
  */
 import { FIELD } from "c/shoreshSchema";
+import { article } from "c/shoreshTerms";
 import {
   LEAVE_OUT,
   WEEKDAYS,
@@ -323,7 +324,9 @@ export function resolveKinds(read, screen, t) {
         delete r.values.where;
         r.blanks.add("where");
       } else {
-        r.problems.push(`Where: a ${t.sIn("SpecialDay")} is the whole camp`);
+        r.problems.push(
+          `Where: ${article(t.sIn("SpecialDay"))} is the whole camp`
+        );
       }
     });
 }

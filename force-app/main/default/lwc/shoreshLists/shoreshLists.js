@@ -14,6 +14,7 @@ export {
   shownValue,
   changeAllCounts,
   changeAllLabel,
+  saveCounts,
   saveListLabel,
   waitingFor,
   listPlan

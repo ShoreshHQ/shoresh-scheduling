@@ -600,18 +600,25 @@
                             ></lightning-combobox>
                           </template>
                           <template lwc:elseif={cell.isNumber}>
-                            <lightning-input
-                              type="number"
-                              label={cell.label}
-                              value={cell.value}
-                              required={cell.required}
-                              min={cell.min}
-                              step="1"
-                              data-row-key={row.key}
-                              data-field={cell.fieldName}
-                              disabled={cell.disabled}
-                              onchange={handleChange}
-                            ></lightning-input>
+                            <span class="number-with-unit">
+                              <lightning-input
+                                type="number"
+                                label={cell.label}
+                                value={cell.value}
+                                required={cell.required}
+                                min={cell.min}
+                                step="1"
+                                data-row-key={row.key}
+                                data-field={cell.fieldName}
+                                disabled={cell.disabled}
+                                onchange={handleChange}
+                              ></lightning-input>
+                              <template lwc:if={cell.unit}>
+                                <span class="number-unit" data-id="number-unit"
+                                  >{cell.unit}</span
+                                >
+                              </template>
+                            </span>
                           </template>
                           <template lwc:elseif={cell.isCheckbox}>
                             <lightning-input
