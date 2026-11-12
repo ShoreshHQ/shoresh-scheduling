@@ -4265,6 +4265,61 @@ describe("c-shoresh-camp-setup", () => {
       expect(toasts).toEqual([]);
     });
 
+    // Live bug: "Same division" on an activity for everyone was refused as "Who can do it wasn't
+    // saved". Only the rule goes, with what was seen in it; who is null (Lightning hands Apex
+    // that null as an empty list, and ActivitiesController reads it as who left out).
+    it("Same division alone: only that rule and what was seen go; saved, and Close asks nothing", async () => {
+      saveActivityDetails.mockResolvedValue({ id: "a1" });
+      const element = await renderWith(
+        setupWith({
+          activities: [
+            { Id: "a1", Name: "Archery", SameDivisionOnly__c: false }
+          ]
+        })
+      );
+      await openScreen(element, "activities");
+      const details = q(element, "c-shoresh-activity-details");
+      await details.open("a1");
+      await flush();
+      const together = details.shadowRoot.querySelector(
+        '[data-field="sameDivision"]'
+      );
+      together.value = "same";
+      together.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "same" } })
+      );
+      await flush();
+      await flush();
+      expect(sentTo(saveActivityDetails)).toEqual([
+        {
+          rules: {
+            sobjectType: "Activity__c",
+            Id: "a1",
+            SameDivisionOnly__c: true
+          },
+          whoCanDoIt: null,
+          ticket: {
+            seen: {
+              sobjectType: "Activity__c",
+              Id: "a1",
+              Name: "Archery",
+              SameDivisionOnly__c: false
+            },
+            seenWho: null
+          }
+        }
+      ]);
+      expect(q(element, '[data-id="error"]')?.textContent || "").not.toContain(
+        "wasn't saved"
+      );
+      details.shadowRoot.querySelector('[data-id="close"]').click();
+      await flush();
+      await flush();
+      expect(openQuestion(element)).toBeFalsy();
+      expect(details.openActivityId).toBeNull();
+      saveActivityDetails.mockReset();
+    });
+
     it("camp words saved: words read again, no toast, and the director stays on the screen they went to", async () => {
       const element = await renderWith();
       const toasts = [];

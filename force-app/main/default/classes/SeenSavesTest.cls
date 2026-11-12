@@ -169,6 +169,7 @@ private class SeenSavesTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id swim = GeneratedTestData.ids.get('Swim');
+      Id bunk = [SELECT Id FROM Group__c WITH USER_MODE LIMIT 1].Id;
       Test.startTest();
       List<String> refused = new List<String>();
       for (Integer i = 0; i < 2; i++) {
@@ -177,7 +178,7 @@ private class SeenSavesTest {
             i == 0
               ? new Activity__c(Id = swim, Notes__c = 'x')
               : new Activity__c(Id = swim),
-            i == 0 ? null : new List<Id>(),
+            i == 0 ? null : new List<Id>{ bunk },
             SeenSaves.ticket(new Activity__c(Id = swim), null)
           );
         } catch (AuraHandledException e) {
@@ -192,6 +193,49 @@ private class SeenSavesTest {
           'Who can do it wasn\'t saved: reload the page and change it again.'
         },
         refused
+      );
+    }
+  }
+
+  // Live bug: a rule alone ("Same division") was refused as "Who can do it wasn't saved", because
+  // Lightning hands the screen's null who as an empty list. Without what was seen in who, an
+  // empty list is who left out: the rule saves and who can do it stays as it is.
+  @IsTest
+  static void aRuleAloneSavesWhenLightningSendsWhoAsAnEmptyList() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id swim = GeneratedTestData.ids.get('Swim');
+      update as user new Activity__c(Id = swim, SameDivisionOnly__c = false);
+      // Swim is for some groups only, so wiping who can do it would show.
+      insert as user new ActivityEligibility__c(
+        Activity__c = swim,
+        Group__c = GeneratedTestData.ids.get('Group C')
+      );
+      List<Id> whoBefore = RowSeen.whoNow(new Activity__c(Id = swim));
+      Test.startTest();
+      RowSaves.Result result = ActivitiesController.saveActivityDetails(
+        new Activity__c(Id = swim, SameDivisionOnly__c = true),
+        new List<Id>(),
+        SeenSaves.ticket(
+          new Activity__c(Id = swim, SameDivisionOnly__c = false),
+          null
+        )
+      );
+      Test.stopTest();
+      Assert.isTrue(result.saved());
+      Assert.isTrue(
+        [
+          SELECT SameDivisionOnly__c
+          FROM Activity__c
+          WHERE Id = :swim
+          WITH USER_MODE
+        ]
+        .SameDivisionOnly__c
+      );
+      Assert.areEqual(
+        whoBefore,
+        RowSeen.whoNow(new Activity__c(Id = swim)),
+        'Who can do it stays as it is'
       );
     }
   }
