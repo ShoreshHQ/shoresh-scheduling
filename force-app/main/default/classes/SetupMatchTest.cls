@@ -1017,6 +1017,47 @@ private class SetupMatchTest {
     }
   }
 
+  // WEEK-6.6
+  @IsTest
+  static void aShortenedWeeksLostDaysAreShownThenTakenOffWithTheWeekKeptFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      // Week 1 now ends on Tuesday: Wednesday and Thursday are no longer days of it.
+      SetupMatchTestData.saveDeferred(
+        new Week__c(Id = ids.get('Week 1'), EndDate__c = MONDAY.addDays(1))
+      );
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Assert.areEqual(
+        'Not a day of Main now',
+        SetupMatchTestData.dotsOf(preview)
+          .get(
+            String.valueOf(MONDAY.addDays(2)) +
+              '|' +
+              String.valueOf(ids.get('Group A')) +
+              '|' +
+              String.valueOf(ids.get('Period 2'))
+          )
+      );
+      SetupMatch.Updated done = makeChanges(
+        draftId,
+        SetupMatchTestData.keysOf(preview),
+        preview
+      );
+      Test.stopTest();
+      Assert.isNull(done.refused);
+      Assert.isTrue(done.kept, 'The week as it was is kept first');
+      Assert.areEqual(
+        2,
+        [SELECT COUNT() FROM ScheduleDay__c WHERE Schedule__c = :draftId]
+      );
+      Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
+    }
+  }
+
   @IsTest
   static void aWeekThatCantBeLaidOutFromSetupSaysWhyAndUpdatesNothing() {
     System.runAs(ShoreshTestData.scheduler()) {

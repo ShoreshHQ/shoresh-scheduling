@@ -220,7 +220,7 @@ public with sharing class ManualVersions {
       save.rain = day.rain;
       saves.add(save);
     }
-    ScheduleDaySaves.write(versionId, saves);
+    ScheduleDaySaves.writeAsItWas(versionId, saves);
   }
 
   /** A new version of the draft's week (no days yet), for a reason (AgentWeeks too). */
