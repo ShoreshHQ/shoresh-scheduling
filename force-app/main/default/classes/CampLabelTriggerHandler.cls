@@ -1,6 +1,8 @@
 /** Camp labels: fills the hidden key (camp + model term) so a camp has one label per term. */
 public with sharing class CampLabelTriggerHandler {
   public static void beforeSave(List<CampLabel__c> labels) {
+    // Camp words read earlier in this request are out of date now.
+    CampLabels.forget();
     Set<Id> campIds = new Set<Id>();
     for (CampLabel__c label : labels) {
       label.Key__c = label.Camp__c + '|' + label.ModelTerm__c;

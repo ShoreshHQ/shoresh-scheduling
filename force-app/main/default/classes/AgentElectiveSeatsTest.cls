@@ -160,12 +160,6 @@ private class AgentElectiveSeatsTest {
       lockedCamper();
       Decimal seen = AgentElectivesTestData.revision();
       Map<String, Object> body = everyoneInDramaAsSeen();
-      Map<String, Object> none = body.clone();
-      none.put('seats', new List<Object>());
-      String noneConfirm = AgentAskFirstTestCalls.confirmFor(
-        new AgentAssignElectiveSeats(),
-        none
-      );
       String confirm = AgentAskFirstTestCalls.confirmFor(
         new AgentAssignElectiveSeats(),
         body
@@ -173,14 +167,6 @@ private class AgentElectiveSeatsTest {
       String preview = said();
       Decimal afterPreview = AgentElectivesTestData.revision();
       Test.startTest();
-      Map<String, Object> wrong = body.clone();
-      wrong.put(AgentAskFirst.FIELD, noneConfirm);
-      List<Object> refused = AgentElectivesTestData.send(
-        'assign_elective_seats',
-        'POST',
-        wrong
-      );
-      Decimal afterRefused = AgentElectivesTestData.revision();
       Map<String, Object> yes = body.clone();
       yes.put(AgentAskFirst.FIELD, confirm);
       List<Object> done = AgentElectivesTestData.send(
@@ -197,10 +183,39 @@ private class AgentElectiveSeatsTest {
         preview.substringBefore(' Show the person')
       );
       Assert.areEqual(seen, afterPreview, 'nothing done on the preview');
-      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
-      Assert.areEqual(seen, afterRefused, 'nothing done on another confirm');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.isTrue(AgentElectivesTestData.revision() > seen, 'assigned');
+    }
+  }
+
+  // API-1.106 (its own test, so each request has its own query limits)
+  @IsTest
+  static void anotherAssignsConfirmIsRefusedWithNothingDone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      lockedCamper();
+      Decimal seen = AgentElectivesTestData.revision();
+      Map<String, Object> body = everyoneInDramaAsSeen();
+      Map<String, Object> none = body.clone();
+      none.put('seats', new List<Object>());
+      String noneConfirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentAssignElectiveSeats(),
+        none
+      );
+      Test.startTest();
+      Map<String, Object> wrong = body.clone();
+      wrong.put(AgentAskFirst.FIELD, noneConfirm);
+      List<Object> refused = AgentElectivesTestData.send(
+        'assign_elective_seats',
+        'POST',
+        wrong
+      );
+      Test.stopTest();
+      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(
+        seen,
+        AgentElectivesTestData.revision(),
+        'nothing done on another confirm'
+      );
     }
   }
 

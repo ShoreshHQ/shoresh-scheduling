@@ -72,7 +72,7 @@ public with sharing class ElectiveRunState {
   }
 
   /** The camp's words for this run's messages ("spots"), read on first use (word walk W1). */
-  private CampLabels labels() {
+  public CampLabels labels() {
     if (words == null) {
       words = CampLabels.forCamp(run.Season__r.Camp__c);
     }
@@ -123,7 +123,7 @@ public with sharing class ElectiveRunState {
     return found[0];
   }
 
-  public static ShoreshException notThere() {
+  private static ShoreshException notThere() {
     return new ShoreshException(
       // Word-free: with the run gone, Shoresh no longer knows whose camp words to use.
       'This run is no longer there. Reload the page.'

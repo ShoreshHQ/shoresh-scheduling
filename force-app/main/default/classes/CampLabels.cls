@@ -31,6 +31,8 @@ public with sharing class CampLabels {
   private final Map<String, CampLabel__c> custom = new Map<String, CampLabel__c>();
   // Model term (picklist API name) => [singular, plural], in glossary order.
   private static final Map<String, List<String>> MODEL_TERMS = new Map<String, List<String>>();
+  // Each camp's words read in this request, by camp (forCamps; forget).
+  private static final Map<Id, CampLabels> READ = new Map<Id, CampLabels>();
 
   static {
     for (
@@ -54,7 +56,34 @@ public with sharing class CampLabels {
     return forCamps(new Set<Id>{ campId }).get(campId);
   }
 
+  /**
+   * Each camp's words, read once per request (a request asks for them from many places);
+   * saving or changing any camp word forgets them (forget).
+   */
   public static Map<Id, CampLabels> forCamps(Set<Id> campIds) {
+    Map<Id, CampLabels> result = new Map<Id, CampLabels>();
+    Set<Id> toRead = new Set<Id>();
+    for (Id campId : campIds) {
+      if (READ.containsKey(campId)) {
+        result.put(campId, READ.get(campId));
+      } else {
+        toRead.add(campId);
+      }
+    }
+    if (!toRead.isEmpty()) {
+      Map<Id, CampLabels> read = readCamps(toRead);
+      READ.putAll(read);
+      result.putAll(read);
+    }
+    return result;
+  }
+
+  /** The camps' words are read again on next use: one was saved or changed. */
+  public static void forget() {
+    READ.clear();
+  }
+
+  private static Map<Id, CampLabels> readCamps(Set<Id> campIds) {
     Map<Id, List<CampLabel__c>> byCamp = new Map<Id, List<CampLabel__c>>();
     for (Id campId : campIds) {
       byCamp.put(campId, new List<CampLabel__c>());
@@ -124,6 +153,11 @@ public with sharing class CampLabels {
    */
   public String electiveSeatsTitle() {
     return singular('Elective') + ' ' + plural('Seats').toLowerCase();
+  }
+
+  /** CORE-1.34: this word has no record of its own and follows a word the camp set. */
+  public Boolean follows(String term) {
+    return followed(term) != null;
   }
 
   /** The camp typed this word, or it follows one the camp typed. */
@@ -198,9 +232,7 @@ public with sharing class CampLabels {
     public CampLabel__c toRecord(Id campId) {
       String one = cleaned(singular);
       String many = cleaned(plural);
-      Boolean standard =
-        one + '/' + many == modelSingular + '/' + modelPlural &&
-        !CampWordRules.FOLLOWERS.contains(term);
+      Boolean standard = one + '/' + many == modelSingular + '/' + modelPlural;
       if (one + many == '' || standard) {
         return null;
       }

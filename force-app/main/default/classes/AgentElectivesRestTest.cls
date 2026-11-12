@@ -6,6 +6,34 @@
  */
 @IsTest
 private class AgentElectivesRestTest {
+  // API-1.69 (its own test, so each request has its own query limits)
+  @IsTest
+  static void aLockFromSeatsSeenBeforeAChangeIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      AgentElectivesTestData.assigned();
+      Map<String, Object> stale = new Map<String, Object>{
+        'camper' => 'Synthetic Camper 1',
+        'day' => 'Monday',
+        'time' => 'Period 1',
+        'locked' => true
+      };
+      stale.put(
+        'seen',
+        AgentElectivesTestData.seen(AgentElectivesTestData.revision() - 1)
+      );
+      Test.startTest();
+      List<Object> refused = AgentElectivesTestData.send(
+        'lock_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(stale)
+      );
+      Test.stopTest();
+      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
+      Assert.isFalse(AgentElectivesTestData.seats()[0].Locked__c, 'not locked');
+    }
+  }
+
   // API-1.69
   @IsTest
   static void aLockIsTheScreensPadlockWithTheSeatsSeen() {
@@ -19,16 +47,6 @@ private class AgentElectivesRestTest {
         'locked' => true
       };
       Test.startTest();
-      Map<String, Object> stale = lock.clone();
-      stale.put(
-        'seen',
-        AgentElectivesTestData.seen(AgentElectivesTestData.revision() - 1)
-      );
-      List<Object> refused = AgentElectivesTestData.send(
-        'lock_elective_seat',
-        'POST',
-        AgentElectivesTestData.asked(stale)
-      );
       Map<String, Object> current = lock.clone();
       current.put(
         'seen',
@@ -52,7 +70,6 @@ private class AgentElectivesRestTest {
         AgentElectivesTestData.asked(unlock)
       );
       Test.stopTest();
-      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(200, locked[0], String.valueOf(locked[1]));
       Assert.areEqual('Locked Synthetic Camper 1.', locked[1]);
       Assert.isTrue(wasLocked, 'locked');

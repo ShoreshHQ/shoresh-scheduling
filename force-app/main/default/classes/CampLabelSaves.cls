@@ -38,8 +38,9 @@ public with sharing class CampLabelSaves {
     CampLabelIds.refuseOthers(campId, rows);
     List<CampLabel__c> toSave = new List<CampLabel__c>();
     List<Id> toDelete = new List<Id>();
+    CampLabels now = CampLabels.forCamp(campId);
     for (CampLabels.TermLabel row : rows) {
-      CampLabel__c label = row.toRecord(campId);
+      CampLabel__c label = recordOf(row, campId, now);
       if (label != null) {
         toSave.add(label);
       } else if (row.labelId != null) {
@@ -50,9 +51,38 @@ public with sharing class CampLabelSaves {
     try {
       Database.delete(toDelete, true, AccessLevel.USER_MODE);
       UserModeWrites.save(toSave);
+      CampLabels.forget();
     } catch (DmlException e) {
       Database.rollback(beforeSave);
       throw e;
     }
+  }
+
+  /**
+   * CORE-1.34: a word that follows a camp word (Elective set once Elective is "Chug") stays
+   * following while it is left as shown or blank; its standard word typed in is the camp's
+   * choice and is kept as its own. Every other word: TermLabel.toRecord.
+   */
+  private static CampLabel__c recordOf(
+    CampLabels.TermLabel row,
+    Id campId,
+    CampLabels now
+  ) {
+    if (row.labelId != null || !now.follows(row.term)) {
+      return row.toRecord(campId);
+    }
+    String typed = String.isBlank(row.singular) ? '' : row.singular.trim();
+    if (typed != row.modelSingular) {
+      return typed == '' ||
+        typed == now.singular(row.term)
+        ? null
+        : row.toRecord(campId);
+    }
+    return new CampLabel__c(
+      Camp__c = campId,
+      ModelTerm__c = row.term,
+      Singular__c = row.modelSingular,
+      Plural__c = row.modelPlural
+    );
   }
 }

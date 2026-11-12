@@ -71,25 +71,27 @@ private class CampLabelsTest {
       CampLabels.modelTermsOnly().singularInSentence('ElectiveSet')
     );
     // Typing the standard word back keeps it: the camp's own choice beats the word it follows.
+    // Saving the list as read changes nothing.
+    CampLabels.save(camp.Id, labels.all());
+    Assert.areEqual(
+      2,
+      [
+        SELECT COUNT()
+        FROM CampLabel__c
+        WHERE Camp__c = :camp.Id
+        WITH SYSTEM_MODE
+      ]
+    );
     CampLabels.TermLabel typed = new CampLabels.TermLabel();
     typed.term = 'ElectiveSet';
     typed.modelSingular = 'Elective set';
     typed.modelPlural = 'Elective sets';
     typed.singular = 'Elective set';
     typed.plural = 'Elective sets';
-    Assert.isNotNull(
-      typed.toRecord(camp.Id),
-      'A follower\'s standard word is saved'
-    );
-    CampLabels.TermLabel plain = new CampLabels.TermLabel();
-    plain.term = 'Division';
-    plain.modelSingular = 'Division';
-    plain.modelPlural = 'Divisions';
-    plain.singular = 'Division';
-    plain.plural = 'Divisions';
-    Assert.isNull(
-      plain.toRecord(camp.Id),
-      'Any other standard word is no record'
+    CampLabels.save(camp.Id, new List<CampLabels.TermLabel>{ typed });
+    Assert.areEqual(
+      'Elective set',
+      CampLabels.forCamp(camp.Id).singular('ElectiveSet')
     );
   }
 

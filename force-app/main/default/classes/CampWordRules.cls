@@ -3,13 +3,6 @@
  * for every standard word, and the words that follow one the camp set (CORE-1.34, CORE-1.35).
  */
 public with sharing class CampWordRules {
-  // The words that follow another one the camp set (CORE-1.34). Typing one's standard word keeps
-  // it: the camp's choice, saved, beats the word it would follow.
-  public static final Set<String> FOLLOWERS = new Set<String>{
-    'ElectiveSet',
-    'GroupsThatFit',
-    'GroupsAtOnce'
-  };
   /**
    * The English plural, the one rule the screens use too (shoreshTerms guessPlural): "ies"
    * after a consonant and y, "es" after s, x, z, ch and sh, else "s".
