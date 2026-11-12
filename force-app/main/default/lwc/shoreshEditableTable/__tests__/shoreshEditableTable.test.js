@@ -1546,6 +1546,28 @@ describe("c-shoresh-editable-table", () => {
       );
     });
 
+    // Word walk W6: a picklist's options sit inside the picklist; choosing one isn't leaving.
+    it("focus going into a picklist's own options isn't leaving the blank row", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      // An option inside a component of the blank row, behind that component's shadow root.
+      const picklist = document.createElement("div");
+      picklist.dataset.row = "add";
+      const option = document.createElement("div");
+      picklist.attachShadow({ mode: "open" }).appendChild(option);
+      leave(element, 2, option);
+      await flush();
+      expect(sent.length).toBe(0);
+      leave(element, 2);
+      await flush();
+      expect(sent.map((d) => d.record.Name)).toEqual(["Swim"]);
+    });
+
     it("while the blank row is being added, its ticks and who wait too", async () => {
       const element = render({
         objectApiName: "RecurringActivity__c",

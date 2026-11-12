@@ -16,6 +16,23 @@ const WHO_FIELDS = {
 };
 const OFF = FIELD.WeekException;
 const WEEK = FIELD.Week;
+/**
+ * Whether focus went to something of the same row (key; the row, or its who picker or details),
+ * through any component's own inside: a picklist's options sit inside the picklist, where
+ * closest() can't see the row (word walk W6: choosing a Spot in the blank row added the activity
+ * before the Spot was taken).
+ */
+function insideOf(key, node) {
+  let at = node;
+  while (at) {
+    if (at.dataset && at.dataset.row === key) {
+      return true;
+    }
+    at = at.parentNode || at.host || null;
+  }
+  return false;
+}
+
 // The blank last row's key.
 const ADD = "add";
 // The weeks in words, as the mock-up writes them (docs/design/setup/groups.html).
@@ -1846,10 +1863,7 @@ export default class ShoreshEditableTable extends LightningElement {
   /** Leaving a row (for anywhere outside it and its who picker) saves it. */
   handleRowLeave(event) {
     const key = event.currentTarget.dataset.row;
-    const to = event.relatedTarget;
-    const within =
-      to && typeof to.closest === "function" ? to.closest("[data-row]") : null;
-    if (within && within.dataset.row === key) {
+    if (insideOf(key, event.relatedTarget)) {
       return;
     }
     this.commit(key, false);
