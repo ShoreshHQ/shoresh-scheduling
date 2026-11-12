@@ -161,10 +161,7 @@ describe("c/shoreshTokens", () => {
       "--slds-g-color-on-error-1",
       "--slds-g-color-on-error-2",
       "--slds-g-color-border-error-1",
-      "--slds-g-color-border-error-2",
-      "--lwc-colorTextError",
-      "--lwc-colorBorderError",
-      "--lwc-colorBackgroundDestructive"
+      "--slds-g-color-border-error-2"
     ].forEach((hook) => expect(colour(hook)).toMatch(/^#(b44e48|a3443e)$/));
     // An error banner's words read on its faint brick.
     expect(

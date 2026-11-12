@@ -172,13 +172,6 @@
   --slds-g-color-on-error-2: var(--shoresh-danger-text);
   --slds-g-color-border-error-1: var(--shoresh-danger);
   --slds-g-color-border-error-2: var(--shoresh-danger-text);
-  /* The same in orgs still on SLDS 1's theme. */
-  --lwc-colorTextError: var(--shoresh-danger-text);
-  --lwc-colorBorderError: var(--shoresh-danger);
-  --lwc-colorTextDestructive: var(--shoresh-danger-text);
-  --lwc-colorBackgroundDestructive: var(--shoresh-danger);
-  --lwc-colorBackgroundDestructiveHover: var(--shoresh-danger-text);
-  --lwc-colorBorderDestructive: var(--shoresh-danger);
 
   /* ---------- earlier colours (wiki shoresh-design-guide.md), kept until each screen is restyled ---------- */
   /*
