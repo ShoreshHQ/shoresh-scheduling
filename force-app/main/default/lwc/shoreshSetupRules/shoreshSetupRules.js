@@ -439,6 +439,16 @@ export function setTimeNote(entry, item, fields) {
 }
 
 /**
+ * The groups an activity covers that are not at camp for any of its time blocks, by name: what
+ * its Who reads after "but" ("Every Bunk but Bunk 1"; Greg's pick on the word walk, 2026-11-12).
+ */
+export function missingGroups(entry, item, fields) {
+  return whoIsThere(entry, item, fields)
+    .groups.filter((g) => g.blocks === 0)
+    .map((g) => g.group.Name);
+}
+
+/**
  * CORE-3.8: a fixed activity's early day (CORE-3.7) that cannot happen as saved is shown on its
  * row, never quietly ignored: the program does not run that day, or there are fewer time blocks
  * before it than it starts earlier by. Empty when there is nothing to say.

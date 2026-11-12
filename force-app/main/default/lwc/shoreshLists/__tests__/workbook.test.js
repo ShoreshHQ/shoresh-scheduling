@@ -62,7 +62,7 @@ describe("the camp's own workbook", () => {
     expect(found).toEqual({
       campWords: "Camp words",
       weeks: "Weeks",
-      runsIn: "Runs in",
+      runsIn: "Which weeks",
       lists: {
         programs: "Programs",
         divisions: "Units",
@@ -249,13 +249,13 @@ function edited(s, edit) {
 }
 
 describe("a camp's workbook, edited", () => {
-  it("a week renamed is a Keep or Change; its new name heads Runs in too", () => {
+  it("a week renamed is a Keep or Change; its new name heads Which weeks too", () => {
     const s = camp();
     const p = propose(
       s,
       edited(s, (sheets) => {
         sheets.Weeks[1][0] = "Opening week";
-        sheets["Runs in"][0][4] = "Opening week";
+        sheets["Which weeks"][0][4] = "Opening week";
       })
     );
     const weeks = p.sections.find((x) => x.key === "weeks");
@@ -269,7 +269,7 @@ describe("a camp's workbook, edited", () => {
     function workbook(x) {
       return edited(x, (sheets) => {
         sheets.Weeks[1][0] = "Opening week";
-        sheets["Runs in"][0][4] = "Opening week";
+        sheets["Which weeks"][0][4] = "Opening week";
       });
     }
     const done = propose(s, workbook(s), answers);
@@ -278,12 +278,12 @@ describe("a camp's workbook, edited", () => {
     ]);
   });
 
-  it("a tick changed on Runs in is a Keep or Change, both ways", () => {
+  it("a tick changed on Which weeks is a Keep or Change, both ways", () => {
     const s = camp();
     const p = propose(
       s,
       edited(s, (sheets) => {
-        const rows = sheets["Runs in"];
+        const rows = sheets["Which weeks"];
         const games = rows.find((r) => r[3] === "Board games");
         games[5] = "Yes";
         const swim = rows.find((r) => r[3] === "Swim");
@@ -293,10 +293,10 @@ describe("a camp's workbook, edited", () => {
     const runsIn = p.sections.find((x) => x.key === "runsIn");
     const changed = runsIn.rows.filter((r) => r.status === "changed");
     expect(changed.map((r) => [r.name, r.differences[0].text])).toEqual([
-      ["Swim", "Runs in: Week 1: Yes → No"],
-      ["Board games", "Runs in: Week 2: No → Yes"]
+      ["Swim", "Which weeks: Week 1: Yes → No"],
+      ["Board games", "Which weeks: Week 2: No → Yes"]
     ]);
-    expect(workbookWaiting(p, {})).toEqual(["Runs in: Keep or Change"]);
+    expect(workbookWaiting(p, {})).toEqual(["Which weeks: Keep or Change"]);
     const answers = {};
     changed.forEach((r) => {
       answers[r.differences[0].id] = "change";
@@ -305,7 +305,7 @@ describe("a camp's workbook, edited", () => {
       propose(
         s,
         edited(s, (sheets) => {
-          const rows = sheets["Runs in"];
+          const rows = sheets["Which weeks"];
           rows.find((r) => r[3] === "Board games")[5] = "Yes";
           rows.find((r) => r[3] === "Swim")[4] = "No";
         }),
@@ -384,14 +384,14 @@ describe("a camp's workbook, edited", () => {
     ]);
   });
 
-  it("a Runs in row naming nothing, or a week not in the workbook, can't be read", () => {
+  it("a Which weeks row naming nothing, or a week not in the workbook, can't be read", () => {
     const s = camp();
     const p = propose(
       s,
       edited(s, (sheets) => {
-        sheets["Runs in"].push(["Activity", "", "", "Kayak", "Yes", "Yes"]);
-        sheets["Runs in"][0].push("Week 9");
-        sheets["Runs in"].slice(1).forEach((r) => r.push("Yes"));
+        sheets["Which weeks"].push(["Activity", "", "", "Kayak", "Yes", "Yes"]);
+        sheets["Which weeks"][0].push("Week 9");
+        sheets["Which weeks"].slice(1).forEach((r) => r.push("Yes"));
       })
     );
     const rows = p.sections.find((x) => x.key === "runsIn").rows;
@@ -447,7 +447,7 @@ describe("a workbook from another season", () => {
     return { p: propose(s, workbook, answers), answers };
   }
 
-  it("pairs weeks by order, shows the pairing, and Runs in follows it", () => {
+  it("pairs weeks by order, shows the pairing, and Which weeks follows it", () => {
     const from = camp();
     const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
     const s = nextYear(3);
@@ -529,8 +529,8 @@ describe("a workbook from another season", () => {
       s,
       edited(s, (sheets) => {
         sheets.Weeks.push(["Week 9", "2027-08-23", "2027-08-27"]);
-        sheets["Runs in"][0].push("Week 9");
-        sheets["Runs in"].slice(1).forEach((r) => r.push("No"));
+        sheets["Which weeks"][0].push("Week 9");
+        sheets["Which weeks"].slice(1).forEach((r) => r.push("No"));
       })
     );
     const weeks = p.sections.find((x) => x.key === "weeks").rows;
@@ -599,12 +599,12 @@ describe("own review of PR D", () => {
     }
   });
 
-  it("M1: one item on two Runs in rows: the same ticks are one row; different ticks are both said", () => {
+  it("M1: one item on two Which weeks rows: the same ticks are one row; different ticks are both said", () => {
     const s = camp();
     const p = propose(
       s,
       edited(s, (sheets) => {
-        const rows = sheets["Runs in"];
+        const rows = sheets["Which weeks"];
         const games = rows.find((r) => r[3] === "Board games");
         rows.push([...games]);
         const swim = rows.find((r) => r[3] === "Swim");
@@ -689,12 +689,12 @@ describe("independent review of PR D", () => {
       ["Week 2", "unchanged", []]
     ]);
   });
-  it("two Runs in columns for one week: neither is read, both are said", () => {
+  it("two Which weeks columns for one week: neither is read, both are said", () => {
     const s = camp();
     const p = propose(
       s,
       edited(s, (sheets) => {
-        const rows = sheets["Runs in"];
+        const rows = sheets["Which weeks"];
         rows[0].push("Week 1 (2027-06-28)");
         rows.slice(1).forEach((r) => r.push(r[4] === "Yes" ? "No" : "Yes"));
       })
@@ -750,7 +750,7 @@ describe("coordinator's review of PR D", () => {
     ]);
     expect(plan.records.filter((r) => r.kind === "Week")).toEqual([]);
     expect(linksResolve(plan)).toEqual([]);
-    // Runs in ticks follow the pairing onto the weeks filled in.
+    // Which weeks ticks follow the pairing onto the weeks filled in.
     const weeksOff = plan.records
       .filter((r) => r.kind === "WeekException")
       .map((r) => r.refs.Week__c);
@@ -765,7 +765,7 @@ describe("coordinator's review of PR D", () => {
     const sheets = campWorkbookSheets(from, buildTerms(from.labels));
     const weeksSheet = sheets.find((x) => x.name === "Weeks");
     weeksSheet.rows[1][0] = "Opening week";
-    sheets.find((x) => x.name === "Runs in").rows[0][4] = "Opening week";
+    sheets.find((x) => x.name === "Which weeks").rows[0][4] = "Opening week";
     const s = emptySeason();
     const first = propose(s, file(sheets));
     const row = first.weeks.rows[0];

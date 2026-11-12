@@ -248,11 +248,11 @@ describe("c-shoresh-special-details", () => {
     await flush();
     expect(text(element, "where")).toBe("Main field");
     expect(text(element, "placed-on")).toBe("Week 2 · Tue, Week 5 · Tue");
-    expect(text(element, "event-schedule")).toBe("None yet");
+    expect(text(element, "event-schedule")).toBe("No schedule yet");
     expect(element.shadowRoot.querySelector('[data-id="periods"]')).toBeNull();
     element.open("se2");
     await flush();
-    expect(text(element, "where")).toBe("None");
+    expect(text(element, "where")).toBe("—");
     expect(text(element, "event-schedule")).toBe("Can't be read");
     await expect(element).toBeAccessible();
   });

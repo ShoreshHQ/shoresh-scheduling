@@ -4776,13 +4776,21 @@ describe("c-shoresh-camp-setup", () => {
         "Whole camp",
         "Whole camp"
       ]);
-      expect(readonly(days, "schedule")).toEqual(["2 time blocks", "None", ""]);
+      expect(readonly(days, "schedule")).toEqual([
+        "2 time blocks",
+        "No schedule yet",
+        ""
+      ]);
       expect(readonly(days, "placedOn")).toEqual([
         "Week 2 · Thu",
         "Not placed",
         ""
       ]);
-      expect(readonly(events, "schedule")).toEqual(["None", "None", ""]);
+      expect(readonly(events, "schedule")).toEqual([
+        "No schedule yet",
+        "No schedule yet",
+        ""
+      ]);
       expect(readonly(events, "placedOn")).toEqual([
         "Week 1 · Tue, Week 2 · Tue",
         "Not placed",
@@ -4791,7 +4799,7 @@ describe("c-shoresh-camp-setup", () => {
       const event = events.columns.find((c) => c.label === "Where");
       expect(event.type).toBe("picklist");
       expect(event.options).toEqual([
-        { label: "None", value: "" },
+        { label: "—", value: "" },
         { label: "Main field", value: "l1" }
       ]);
       // axe looks at this screen once, with an item's details open (below): a second whole-page

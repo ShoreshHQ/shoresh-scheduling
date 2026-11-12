@@ -1898,11 +1898,11 @@ describe("c-shoresh-editable-table", () => {
       expect(ticks(element, 0)).toEqual([true, true, true]);
       expect(ticks(element, 1)).toEqual([true, true, false]);
       expect(tick(element, 1, 2).getAttribute("aria-label")).toBe(
-        "Bunk 2 runs in Week 3"
+        "Bunk 2 · Week 3"
       );
       expect(ticks(element, 2)).toEqual([true, true, true]);
       expect(tick(element, 2, 0).getAttribute("aria-label")).toBe(
-        "Add Bunk runs in Week 1"
+        "Add Bunk · Week 1"
       );
     });
 
@@ -2521,7 +2521,6 @@ describe("c-shoresh-editable-table", () => {
         weeks: WEEKS,
         weekExceptions: EXCEPTIONS,
         weeksHeading: "Weeks",
-        weekPhrase: "runs in",
         newRowDefaults: { Division__c: "d1" },
         ...props
       });
@@ -3606,6 +3605,19 @@ describe("c-shoresh-editable-table", () => {
           ["Every Bunk", false],
           ["Bunk 1 (Juniors)", true],
           ["Every Bunk", false]
+        ]);
+      });
+
+      // "Every Bunk but Bunk 1" (Greg's pick on the word walk, 2026-11-12): never "Every Bunk"
+      // beside a note that one is left out.
+      it("covering the section names who isn't there then, after but", async () => {
+        const element = juniors({ whoMissing: { r1: ["Bunk 1"] } });
+        await flush();
+        const who = [...element.shadowRoot.querySelectorAll('[data-id="who"]')];
+        expect(who.map((w) => w.textContent.trim())).toEqual([
+          "Every Bunk but Bunk 1",
+          "Bunk 1 (Juniors)",
+          "Every Bunk"
         ]);
       });
 

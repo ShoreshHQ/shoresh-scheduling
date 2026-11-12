@@ -48,6 +48,8 @@ import {
 import { leftField } from "c/shoreshSavedMark";
 import {
   briefOf,
+  NO_PLACE,
+  NO_SCHEDULE,
   placedOnText,
   scheduleText,
   seededLines,
@@ -1860,7 +1862,8 @@ export default class ShoreshCampSetup extends LightningElement {
           type: "picklist",
           width: 11,
           options: [
-            { label: "None", value: "" },
+            // No place: a dash; "None" read two ways (coordinator's wording, 2026-11-12).
+            { label: NO_PLACE, value: "" },
             ...((setup && setup.locations) || []).map((l) => ({
               label: l.Name,
               value: l.Id
@@ -1885,7 +1888,7 @@ export default class ShoreshCampSetup extends LightningElement {
         // The blank row has nothing to show yet.
         textFor: (saved) => {
           if (!saved.Id) return "";
-          return scheduleText(brief(saved), isEvent, t) || "None";
+          return scheduleText(brief(saved), isEvent, t) || NO_SCHEDULE;
         },
         exceptionFor: (saved) => !!saved.Id && brief(saved).planned
       },

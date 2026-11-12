@@ -1123,9 +1123,9 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       .sort()
       .join(",")}`;
     entry.differences.push(
-      difference(id, "Runs in", "", ticks.join(", "), answers)
+      difference(id, "Which weeks", "", ticks.join(", "), answers)
     );
-    entry.differences[0].text = `Runs in: ${ticks.join(", ")}`;
+    entry.differences[0].text = `Which weeks: ${ticks.join(", ")}`;
     if (answers[id] === CHANGE) {
       result.records.push(...records);
     }
@@ -1229,7 +1229,7 @@ export function workbookProposal(input) {
     answers
   );
   if (sheetsFound.runsIn) {
-    sections.push(extraSection("runsIn", "Runs in", runsIn));
+    sections.push(extraSection("runsIn", "Which weeks", runsIn));
   }
   return {
     sections,

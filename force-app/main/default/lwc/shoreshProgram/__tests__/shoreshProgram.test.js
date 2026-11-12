@@ -878,6 +878,31 @@ describe("c-shoresh-program", () => {
       expect(table(element).notesHeading).toBeUndefined();
     });
 
+    // Greg's picks on the word walk (2026-11-12): "Runs on", and a Who that names who isn't there.
+    it("a recurring activity's days are headed Runs on; covering everyone names who isn't there then", async () => {
+      const element = await render("recurringActivities", {
+        ...SET_TIME,
+        recurringActivities: [
+          ...SET_TIME.recurringActivities,
+          {
+            Id: "r2",
+            Name: "Rest",
+            TimeBlock__c: "t1",
+            Length__c: 1,
+            LastTimeBlock__c: "t1",
+            Monday__c: true,
+            Coverages__r: []
+          }
+        ]
+      });
+      const recurring = element.shadowRoot.querySelector(
+        'c-shoresh-editable-table[data-id="recurring-activities"]'
+      );
+      expect(recurring.columns.map((c) => c.label)).toContain("Runs on");
+      expect(recurring.columns.map((c) => c.label)).not.toContain("Days");
+      expect(recurring.whoMissing).toEqual({ r1: [], r2: ["Bunk 2"] });
+    });
+
     it("with several programs, the fixed section is headed by the program", async () => {
       const element = await render("fixedActivities", SET_TIME);
       element.sectioned = true;
@@ -917,7 +942,7 @@ describe("c-shoresh-program", () => {
         const element = await render("recurringActivities", TWO);
         const tables = sections(element);
         expect(tables.map((t) => t.heading)).toEqual([
-          "Whole camp",
+          "Every Unit",
           "Juniors",
           "Seniors"
         ]);
@@ -959,7 +984,7 @@ describe("c-shoresh-program", () => {
         });
         const tables = sections(element);
         expect(tables.map((t) => t.heading)).toEqual([
-          "Whole camp",
+          "Every Unit",
           "Juniors",
           "Seniors",
           "More than one Unit"
@@ -973,7 +998,7 @@ describe("c-shoresh-program", () => {
         element.sectioned = true;
         await flush();
         expect(sections(element).map((t) => t.heading)).toEqual([
-          "Main · Whole camp",
+          "Main · Every Unit",
           "Main · Juniors",
           "Main · Seniors"
         ]);
