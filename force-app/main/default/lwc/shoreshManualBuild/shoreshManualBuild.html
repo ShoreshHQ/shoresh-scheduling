@@ -220,10 +220,10 @@
             data-id="start-week"
           ></lightning-button>
           <template lwc:if={hasWeekSources}>
-            <!-- The outline chevron every other menu uses, not the filled triangle. -->
+            <!-- The outline chevron every other menu uses, not the filled triangle. Its label is its
+                 name: an alternative text too would say it twice. -->
             <lightning-button-menu
               label={startFromLabel}
-              alternative-text={startFromLabel}
               icon-name="utility:chevrondown"
               disabled={starting}
               onselect={handleStartFrom}

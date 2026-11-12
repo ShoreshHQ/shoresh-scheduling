@@ -562,6 +562,9 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     const menu = q(element, '[data-id="start-from"]');
     // The outline chevron, as every other menu (UI pass, 2026-11-10: it had the filled triangle).
     expect(menu.iconName).toBe("utility:chevrondown");
+    // Named once, by its label: no alternative text saying it again (word walk 2026-11-12).
+    expect(menu.label).toBe("Start from another week");
+    expect(menu.alternativeText).toBeFalsy();
     // The week's published schedule now, and the one it replaced (a version).
     expect(
       [...menu.querySelectorAll("lightning-menu-item")].map((i) => i.label)

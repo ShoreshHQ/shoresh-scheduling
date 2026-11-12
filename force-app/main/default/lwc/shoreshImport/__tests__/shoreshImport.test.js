@@ -168,9 +168,10 @@ describe("c-shoresh-import", () => {
       "Import last year"
     );
     expect(add(element)).toBeNull();
-    // The hidden file input is named, and Choose files is its only tab stop.
+    // The hidden file input is hidden from screen readers too, so "Choose files" is said once
+    // (word walk 2026-11-12), and Choose files is its only tab stop.
     const input = $(element, 'input[data-id="files"]');
-    expect(input.getAttribute("aria-label")).toBe("Choose files");
+    expect(input.getAttribute("aria-hidden")).toBe("true");
     expect(input.getAttribute("tabindex")).toBe("-1");
     expect($(element, 'button[data-id="choose"]').textContent.trim()).toBe(
       "Choose files"

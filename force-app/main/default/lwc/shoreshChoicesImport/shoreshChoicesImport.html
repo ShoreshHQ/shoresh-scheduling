@@ -183,12 +183,13 @@
               >
                 Choose a file
               </button>
-              <!-- Opened by "Choose a file": named, and out of the tab order. -->
+              <!-- Opened by "Choose a file": out of the tab order, and hidden from screen readers,
+                   which would read "Choose a file" twice (word walk 2026-11-12). -->
               <input
                 class="slds-assistive-text"
                 type="file"
                 tabindex="-1"
-                aria-label="Choose a file"
+                aria-hidden="true"
                 accept={fileTypes}
                 data-id="file"
                 onchange={handleFileInput}

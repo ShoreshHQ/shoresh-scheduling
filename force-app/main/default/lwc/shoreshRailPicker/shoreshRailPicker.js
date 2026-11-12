@@ -9,6 +9,18 @@ import { LightningElement, api } from "lwc";
  * camp's word, read out as the group's name), value, options ([{ label, value }]), disabled;
  * fires change { value } when another is chosen. arrows: the arrows and the raised look.
  */
+// Shoresh's own words for what a rail picks, said lower case mid-sentence (a camp's word is not).
+const STANDARD = new Set([
+  "Week",
+  "Day",
+  "Group",
+  "Activity",
+  "Program",
+  "Division",
+  "Schedule",
+  "Season"
+]);
+
 export default class ShoreshRailPicker extends LightningElement {
   @api label;
   @api value;
@@ -31,9 +43,17 @@ export default class ShoreshRailPicker extends LightningElement {
   get shownLabel() {
     return this.shown ? this.shown.label : this.label;
   }
-  /** "Week 3, Week": the choice first (the words shown), then what it is a choice of. */
+  /**
+   * "Week 3": the choice shown. What it is a choice of is the group's own name, so it is not said
+   * twice ("Week 3, Week", word walk 2026-11-12).
+   */
   get buttonName() {
-    return this.shown ? `${this.shown.label}, ${this.label}` : this.label;
+    return this.shown ? this.shown.label : this.label;
+  }
+  /** The label in a sentence: a standard word lower case ("Previous week"), a camp's as written. */
+  get labelInSentence() {
+    const label = String(this.label || "");
+    return STANDARD.has(label) ? label.toLowerCase() : label;
   }
   get rows() {
     return this.list.map((o) => ({
@@ -57,10 +77,14 @@ export default class ShoreshRailPicker extends LightningElement {
     return this.disabled || !this.next;
   }
   get previousLabel() {
-    return this.previous ? `Previous: ${this.previous.label}` : "Previous";
+    return this.previous
+      ? `Previous: ${this.previous.label}`
+      : `Previous ${this.labelInSentence}`.trim();
   }
   get nextLabel() {
-    return this.next ? `Next: ${this.next.label}` : "Next";
+    return this.next
+      ? `Next: ${this.next.label}`
+      : `Next ${this.labelInSentence}`.trim();
   }
 
   choose(value) {

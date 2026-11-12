@@ -534,6 +534,10 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, 'input[data-id="file"]').accept).toBe(
       ".xlsx,.xlsm,.xls,.csv,.tsv,.txt"
     );
+    // Only the button is "Choose a file" to a screen reader (word walk 2026-11-12).
+    expect(
+      $(element, 'input[data-id="file"]').getAttribute("aria-hidden")
+    ).toBe("true");
     // The same sheet, tab-separated: the packed cell keeps its commas.
     const tabbed = SHEET.split("\n")
       .map((line) =>

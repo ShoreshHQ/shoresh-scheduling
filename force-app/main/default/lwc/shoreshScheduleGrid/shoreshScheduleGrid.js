@@ -146,6 +146,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
   get columns() {
     return ((this.grid && this.grid.columns) || []).map((column, i) => ({
       ...column,
+      // Said as one name, as the row heads are: "Monday, Jun 29" (two spans read "Monday ,").
+      spoken: `${column.label}${column.sub ? `, ${column.sub}` : ""}${column.note ? ` ${column.note}` : ""}`,
+      labelHidden: column.sub || column.note ? "true" : null,
       colIndex: i + 2,
       labelClass: column.note ? "head-name head-name_gone" : "head-name",
       style: `grid-row: 1 / span 1; grid-column: ${i + 2} / span 1;`

@@ -994,7 +994,7 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(unpublishButton(published).textContent.trim()).toBe("Unpublish");
     // In Publish's own menu, right after it: a split "Publish ▾" with no words of its own, so
     // the rail doesn't grow when the week is published (UX pass 2026-11-10); it is named
-    // "Published" for a screen reader.
+    // "Published: options" for a screen reader, never the main button's own name.
     const menu = q(published, '[data-id="published-menu"]');
     expect(unpublishButton(published).parentElement).toBe(menu);
     expect(menu.previousElementSibling).toBe(
@@ -1002,7 +1002,7 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     );
     expect(menu.label).toBe("");
     expect(menu.primary).toBe(true);
-    expect(menu.alternativeText).toBe("Published");
+    expect(menu.alternativeText).toBe("Published: options");
     // The button's own word says the week is out: "Published", "Publish" before.
     expect(q(published, '[data-id="publish"]').textContent.trim()).toBe(
       "Published"

@@ -415,6 +415,20 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     );
   });
 
+  it("says a day's column as one name, with no space before its comma", () => {
+    const element = renderLook({
+      ...LOOK,
+      columns: [{ key: "mon", label: "Monday", sub: "Jun 29" }]
+    });
+    const head = element.shadowRoot.querySelector('[data-column="mon"]');
+    expect(head.querySelector(".slds-assistive-text").textContent).toBe(
+      "Monday, Jun 29"
+    );
+    expect(head.querySelector(".head-name").getAttribute("aria-hidden")).toBe(
+      "true"
+    );
+  });
+
   it("draws a row every bunk spends on the same fixed activity as one slim cell with the lock", () => {
     // Read-only (a published week, a view): an editable grid draws each bunk's cell, below.
     const element = renderLook(LOOK, false);

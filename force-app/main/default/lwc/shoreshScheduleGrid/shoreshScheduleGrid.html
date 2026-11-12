@@ -43,12 +43,11 @@
               style={column.style}
               data-column={column.key}
             >
-              <span class={column.labelClass}>{column.label}</span>
-              <template lwc:if={column.sub}>
-                <span class="slds-assistive-text">, {column.sub}</span>
-              </template>
-              <template lwc:if={column.note}>
-                <span class="slds-assistive-text"> {column.note}</span>
+              <span class={column.labelClass} aria-hidden={column.labelHidden}
+                >{column.label}</span
+              >
+              <template lwc:if={column.labelHidden}>
+                <span class="slds-assistive-text">{column.spoken}</span>
               </template>
             </div>
           </template>
