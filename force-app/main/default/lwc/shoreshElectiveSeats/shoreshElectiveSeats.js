@@ -11,7 +11,7 @@ import clearElectives from "@salesforce/apex/ElectiveSeatsController.clearElecti
 import { loadStyle } from "lightning/platformResourceLoader";
 import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
-import { failed } from "c/shoreshErrors";
+import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
 import {
   article,
   buildTerms,
@@ -63,8 +63,6 @@ const ICONS = {
   sheet: "M2.5 2.5h11v11h-11ZM2.5 6.5h11M6.5 6.5v7",
   edit: "M10.5 3 13 5.5 6 12.5H3.5V10Z",
   trash: "M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5",
-  download:
-    "M8 2.5v8M5 7.5l3 3 3-3M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2",
   choices: "M3 4h10M3 8h7M3 12h4",
   seats: "M3 3h4v4H3ZM9 3h4v4H9ZM3 9h4v4H3ZM9 9h4v4H9Z",
   runs: "M4 2.5h5.5L12 5v8.5H4ZM6 8h4M6 10.5h4",
@@ -115,7 +113,16 @@ export default class ShoreshElectiveSeats extends LightningElement {
   openCell = null;
   openComment = null;
   busy = false;
-  error = null;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   // The refusal's action in place ("Schedule changed. Assign again first." offers Assign again).
   errorAction = null;
   status = "";
@@ -142,6 +149,24 @@ export default class ShoreshElectiveSeats extends LightningElement {
   focusHeading() {
     const heading = this.template.querySelector("[data-heading]");
     if (heading) heading.focus();
+  }
+
+  /**
+   * The screen was left (CampSetup): its line ("Cleared these Seats…") and floating refusal were
+   * about that visit, so they go. A run still under way says its own result when it ends.
+   */
+  @api
+  leave() {
+    this.error = null;
+    this.errorAction = null;
+    if (!this.busy) {
+      this.status = "";
+    }
+  }
+
+  /** The floating refusal is put away (the next change takes it away too; word walk W4). */
+  handleCloseError() {
+    closeRefusal(this, () => this.template.querySelector("[data-heading]"));
   }
 
   /**
@@ -1023,9 +1048,6 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   // ---------- Download (a final run's main button) ----------
 
-  get downloadIcon() {
-    return ICONS.download;
-  }
   get trashIcon() {
     return ICONS.trash;
   }

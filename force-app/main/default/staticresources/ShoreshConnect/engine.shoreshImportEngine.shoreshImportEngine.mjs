@@ -209,6 +209,7 @@ export {
   foundLists,
   importNotes,
   unplacedLines,
+  undoImportQuestion,
   undoMessage
 } from "./engine.shoreshImportEngine.plan.mjs";
 export { versionName } from "./engine.shoreshImportEngine.version.mjs";

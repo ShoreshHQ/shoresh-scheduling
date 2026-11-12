@@ -949,6 +949,36 @@ describe("Versions on the Generated Schedule screen", () => {
       );
     });
 
+    // Word walk W4: a new message replaces the old one on the message row.
+    it("Start over after an Undo shows only its own line, not the Undone line beside it", async () => {
+      const element = await render(week({ locked: true }));
+      await startOver(element);
+      restoreVersion.mockResolvedValue(true);
+      getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
+      undoButton(element).click();
+      await until(() => !versions(element).busy);
+      expect(notice(element)).toBe("Undone: Started Week 1 over.");
+      await startOver(element);
+      expect(startedLine(element).textContent).toContain("Started Week 1 over");
+      expect(notice(element)).toBeNull();
+    });
+
+    // Word walk W4: status lines clear when the screen changes.
+    it("leaving the screen empties its message row", async () => {
+      const element = await render(week({ locked: true }));
+      await startOver(element);
+      restoreVersion.mockResolvedValue(true);
+      getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
+      undoButton(element).click();
+      await until(() => !versions(element).busy);
+      await startOver(element);
+      expect(startedLine(element)).not.toBeNull();
+      element.leave();
+      await flush();
+      expect(startedLine(element)).toBeNull();
+      expect(notice(element)).toBeNull();
+    });
+
     it("Undo refused because someone else saved since changes nothing and offers Reload", async () => {
       const element = await render(week());
       await startOver(element);

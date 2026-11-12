@@ -45,7 +45,7 @@
           </button>
           <button
             type="button"
-            class="shoresh-item shoresh-item_primary"
+            class="shoresh-item shoresh-item_danger"
             onclick={handleClearGo}
             disabled={clearDisabled}
             data-id="clear-go"
@@ -252,26 +252,10 @@
                   <span>{changeSeatsLabel}</span>
                 </button>
               </template>
-              <!-- Draft: the downloads wait for Finalize, and say so; Clear is here too. -->
+              <!-- Draft: Download shows once seats are Final (word walk W4: no "after
+                   Finalize" row); Clear is here. -->
               <template lwc:if={isCommitted}>
                 <div class="shoresh-pop-divider" role="separator"></div>
-                <div
-                  class="shoresh-pop-row download-wait"
-                  role="menuitem"
-                  aria-disabled="true"
-                  aria-label="Download, after Finalize"
-                  data-id="download-wait"
-                >
-                  <svg
-                    class="shoresh-glyph"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  >
-                    <path d={downloadIcon}></path>
-                  </svg>
-                  <span>Download</span>
-                  <span class="aside">after Finalize</span>
-                </div>
                 <button
                   type="button"
                   class="shoresh-pop-row"
@@ -508,8 +492,9 @@
       <div class="below">
         <div class="work">
           <template lwc:if={error}>
-            <div class="message" role="alert" data-id="error">
-              <span>{error}</span>
+            <!-- Floats at the foot of the window, never moving the grid (word walk W4). -->
+            <div class="shoresh-refusal_float" role="alert">
+              <span class="shoresh-refusal" data-id="error">{error}</span>
               <template lwc:if={errorAction}>
                 <button
                   type="button"
@@ -521,6 +506,14 @@
                   Assign again
                 </button>
               </template>
+              <lightning-button-icon
+                icon-name="utility:close"
+                variant="bare"
+                size="small"
+                alternative-text="Close"
+                data-id="error-close"
+                onclick={handleCloseError}
+              ></lightning-button-icon>
             </div>
           </template>
 

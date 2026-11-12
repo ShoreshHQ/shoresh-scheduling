@@ -2,7 +2,7 @@ import { createElement } from "lwc";
 import ShoreshCampSetup from "c/shoreshCampSetup";
 import { FIELD as SCHEMA_FIELD } from "c/shoreshSchema";
 import { numberedDay, setDayNaming } from "c/shoreshDayNames";
-import LightningConfirm from "lightning/confirm";
+import { answerAsk, openQuestion } from "shoresh-jest/ask";
 import { loadStyle } from "lightning/platformResourceLoader";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
@@ -145,11 +145,6 @@ jest.mock("@salesforce/apex/SeasonSetupController.previewCopy", () => apex(), {
 jest.mock("@salesforce/apex/SeasonSetupController.copySeason", () => apex(), {
   virtual: true
 });
-jest.mock(
-  "lightning/confirm",
-  () => ({ __esModule: true, default: { open: jest.fn() } }),
-  { virtual: true }
-);
 
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -1683,10 +1678,11 @@ describe("c-shoresh-camp-setup", () => {
       getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
       const element = await render();
       await openScreen(element, "programs");
-      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
       deletePreview.mockResolvedValueOnce({
-        label: "Delete",
-        message: 'Delete "Teen Travel"? Anything inside it is deleted too.'
+        label: "Delete Teen Travel?",
+        confirmLabel: "Delete Teen Travel",
+        message: "Delete Teen Travel? Anything inside it is deleted too.",
+        lines: ["Anything inside it is deleted too."]
       });
       deleteRecord.mockResolvedValueOnce();
       const onDeleted = jest.fn();
@@ -1696,9 +1692,14 @@ describe("c-shoresh-camp-setup", () => {
         })
       );
       await flush();
-      expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
-        'Delete "Teen Travel"? Anything inside it is deleted too.'
-      );
+      // Word walk W4: the button names the action, in the one red; never "OK".
+      expect(await answerAsk(element, true)).toEqual({
+        heading: "Delete Teen Travel?",
+        lines: ["Anything inside it is deleted too."],
+        confirmLabel: "Delete Teen Travel",
+        tone: "danger"
+      });
+      await flush();
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "p2" });
       expect(onDeleted).toHaveBeenCalled();
     });
@@ -1730,17 +1731,19 @@ describe("c-shoresh-camp-setup", () => {
     const element = await render();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
 
-    LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
     weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
     await flush();
+    await answerAsk(element, false);
+    await flush();
     expect(deleteRecord).not.toHaveBeenCalled();
 
-    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
     weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
+    await flush();
+    await answerAsk(element, true);
     await flush();
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "w1" });
   });
@@ -1760,16 +1763,18 @@ describe("c-shoresh-camp-setup", () => {
 
     // Cancelled: nothing to say.
     const cancelled = jest.fn();
-    LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
     ask(cancelled);
+    await flush();
+    await answerAsk(element, false);
     await flush();
     expect(cancelled).not.toHaveBeenCalled();
 
     // Refused: nothing was deleted.
     const refused = jest.fn();
-    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
     deleteRecord.mockRejectedValueOnce({ body: { message: "Locked." } });
     ask(refused);
+    await flush();
+    await answerAsk(element, true);
     await flush();
     expect(refused).not.toHaveBeenCalled();
 
@@ -1778,9 +1783,10 @@ describe("c-shoresh-camp-setup", () => {
     const deleted = jest.fn(() =>
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1)
     );
-    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
     deleteRecord.mockResolvedValueOnce();
     ask(deleted);
+    await flush();
+    await answerAsk(element, true);
     await flush();
     expect(deleted).toHaveBeenCalledTimes(1);
   });
@@ -1789,7 +1795,6 @@ describe("c-shoresh-camp-setup", () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    LightningConfirm.open.mockResolvedValue(nsRecord(true));
     deleteRecord.mockResolvedValue();
     const element = await render();
     const sources = [
@@ -1808,6 +1813,8 @@ describe("c-shoresh-camp-setup", () => {
         })
       );
       await flush();
+      await answerAsk(element, true);
+      await flush();
       expect(onDeleted).toHaveBeenCalledTimes(1);
     }, Promise.resolve());
   });
@@ -1824,13 +1831,10 @@ describe("c-shoresh-camp-setup", () => {
       'c-shoresh-editable-table[data-id="activities"]'
     );
     deletePreview.mockResolvedValueOnce({
-      label: 'Delete "Bunk 3"?',
-      message: "Bunk 3 is in 2 schedules. Delete anyway?"
-    });
-    let busyWhenAsked;
-    LightningConfirm.open.mockImplementationOnce(() => {
-      busyWhenAsked = activities.busy;
-      return Promise.resolve(true);
+      label: "Delete Bunk 3 (Juniors)?",
+      confirmLabel: "Delete Bunk 3 (Juniors)",
+      message: "Bunk 3 is in 2 schedules. Delete anyway?",
+      lines: ["Bunk 3 is in 2 schedules. Delete anyway?"]
     });
     activities.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "g3", name: "Bunk 3" } })
@@ -1838,12 +1842,15 @@ describe("c-shoresh-camp-setup", () => {
     await flush();
     await flush();
     expect(deletePreview).toHaveBeenCalledWith({ recordId: "g3" });
-    expect(LightningConfirm.open.mock.calls[0][0]).toEqual({
-      label: 'Delete "Bunk 3"?',
-      message: "Bunk 3 is in 2 schedules. Delete anyway?",
-      variant: "header",
-      theme: "warning"
+    const busyWhenAsked = activities.busy;
+    // Word walk W4: the button names the action and the bunk's division, never "OK".
+    expect(await answerAsk(element, true)).toEqual({
+      heading: "Delete Bunk 3 (Juniors)?",
+      lines: ["Bunk 3 is in 2 schedules. Delete anyway?"],
+      confirmLabel: "Delete Bunk 3 (Juniors)",
+      tone: "danger"
     });
+    await flush();
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "g3" });
     // The question opens without making the page busy: Cancel gives focus back to the row.
     expect(busyWhenAsked).toBe(false);
@@ -1863,10 +1870,11 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     await flush();
-    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(openQuestion(element)).toBeNull();
     expect(deleteRecord).not.toHaveBeenCalled();
-    expect(element.shadowRoot.textContent).toContain(
-      '"Gym" not deleted. Nothing was removed. This can\'t be deleted yet: "Gym games" happens here.'
+    // Floating at the window's foot, so it names what wasn't deleted, then why.
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      '"Gym" not deleted. This can\'t be deleted yet: "Gym games" happens here.'
     );
     // A question that can't be read is never skipped: nothing is deleted.
     deletePreview.mockRejectedValueOnce({ body: { message: "Locked." } });
@@ -1875,10 +1883,10 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     await flush();
-    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(openQuestion(element)).toBeNull();
     expect(deleteRecord).not.toHaveBeenCalled();
-    expect(element.shadowRoot.textContent).toContain(
-      '"Week 1" not deleted. Nothing was removed. Locked.'
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      '"Week 1" not deleted. Locked.'
     );
   });
 
@@ -2005,8 +2013,9 @@ describe("c-shoresh-camp-setup", () => {
       button(element, "Delete season").click();
       await flush();
       expect(deletePreview).toHaveBeenCalledWith({ recordId: "s1" });
-      expect(LightningConfirm.open).not.toHaveBeenCalled();
       const ask = q(element, "c-shoresh-ask");
+      // Word walk W4: deleting is the one red.
+      expect(ask.tone).toBe("danger");
       expect(ask.heading).toBe("Delete Summer 2026?");
       expect(ask.lines).toEqual(["1 Week", "1 Program"]);
       expect(ask.confirmLabel).toBe("Delete season");
@@ -2167,10 +2176,14 @@ describe("c-shoresh-camp-setup", () => {
       leaveSeason(element, "end");
       await flush();
       const why = q(element, '[data-error="season-end"]');
-      expect(why.textContent).toContain(
-        "Season not saved. Your changes are still here."
+      // W4: one clause naming what failed.
+      expect(why.textContent.trim()).toBe(
+        "The last day can't be before the first day."
       );
-      expect(why.textContent).toContain("can't be before the first day");
+      // A field Salesforce refuses names itself: "First day: needed.", never "Complete this field."
+      const start = q(element, '[data-form="season"][data-field="start"]');
+      expect(start.messageWhenValueMissing).toBe("First day: needed.");
+      expect(start.messageWhenBadInput).toBe("First day: not a date.");
       expect(why.getAttribute("role")).toBe("alert");
       // Not at the top of the page: it is next to the field it is about.
       expect(q(element, '[data-id="error"]')).toBeNull();
@@ -2246,13 +2259,13 @@ describe("c-shoresh-camp-setup", () => {
     it("moving the season later works whichever date is changed first", async () => {
       const element = await renderSeason();
       saveRecords.mockRejectedValueOnce({
-        body: { message: "The end date must be on or after the start date." }
+        body: { message: "Last day is before First day." }
       });
       typeSeason(element, "start", "2026-08-17");
       leaveSeason(element, "start");
       await flush();
       expect(q(element, '[data-error="season-start"]').textContent).toContain(
-        "on or after the start date"
+        "Last day is before First day."
       );
 
       typeSeason(element, "end", "2026-09-04");
@@ -2473,6 +2486,36 @@ describe("c-shoresh-camp-setup", () => {
       await openScreen(element, "manualBuild");
       expect(weekPicker(element, "c-shoresh-manual-build").value).toBe("w2");
       expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
+    // Word walk W4: a schedule screen's status lines clear when the screen changes.
+    it("leaving a schedule screen tells it, so its message row empties", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
+      const element = await render();
+      await openScreen(element, "generatedSchedule");
+      const leave = jest.spyOn(
+        q(element, "c-shoresh-generated-schedule"),
+        "leave"
+      );
+      await openScreen(element, "manualBuild");
+      expect(leave).toHaveBeenCalledTimes(1);
+    });
+
+    // Word walk W4 review: a setup screen is hidden, not removed; its floating refusal goes too.
+    it("leaving a setup screen tells its import, so an old refusal doesn't come back", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(twoWeeks()));
+      const element = await render();
+      await openScreen(element, "programs");
+      const leave = jest.spyOn(
+        q(element, '[data-id="programs-list-import"]'),
+        "leave"
+      );
+      await openScreen(element, "weeks");
+      expect(leave).toHaveBeenCalledTimes(1);
     });
 
     it("a week's Generated Schedule opens that screen on that week, the cursor on its heading", async () => {
@@ -2983,10 +3026,11 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, "c-shoresh-choices-import").opening).toEqual(where);
   });
 
-  it("a new message at the top is brought into view", async () => {
+  // Word walk W4 (Greg 2026-11-12: a message never moves the screen): a refusal with no row of
+  // its own floats over the screen, never scrolls it, and can be put away.
+  it("a refusal floats over the screen without scrolling it, and Close puts it away", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const scrolled = [];
     const original = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = function record() {
@@ -3001,8 +3045,19 @@ describe("c-shoresh-camp-setup", () => {
       await openScreen(element, "weeks");
       q(element, '[data-id="fill-weeks"]').click();
       await flush();
-      expect(q(element, '[data-id="error"]')).not.toBeNull();
-      expect(scrolled).toEqual(["error"]);
+      const line = q(element, '[data-id="error"]');
+      // Nothing beside it names what failed, so it does: the subject, then why.
+      expect(line.textContent).toBe("Weeks not added. No dates.");
+      expect(line.parentElement.className).toBe("shoresh-refusal_float");
+      expect(scrolled).toEqual([]);
+      q(element, '[data-id="error-close"]').focus();
+      q(element, '[data-id="error-close"]').click();
+      await flush();
+      expect(q(element, '[data-id="error"]')).toBeNull();
+      // The cursor isn't dropped at the top of the page: it goes to the screen's heading.
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-screen="weeks"] [data-heading]')
+      );
     } finally {
       HTMLElement.prototype.scrollIntoView = original;
     }
@@ -3086,8 +3141,8 @@ describe("c-shoresh-camp-setup", () => {
       body: { message: "You do not have access to Shoresh." }
     });
     const element = await render();
-    expect(q(element, '[data-id="error"]').textContent).toContain(
-      "You do not have access"
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      "Couldn't open the camp setup. You do not have access to Shoresh."
     );
   });
 
@@ -3374,11 +3429,12 @@ describe("c-shoresh-camp-setup", () => {
       })
     );
     await flush();
-    LightningConfirm.open.mockResolvedValueOnce(true);
     deleteRecord.mockResolvedValueOnce();
     weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w9", name: "Week 9" } })
     );
+    await flush();
+    await answerAsk(element, true);
     await flush();
     const newest = setupWith({
       weeks: [
@@ -3452,9 +3508,9 @@ describe("c-shoresh-camp-setup", () => {
       { row: 0, targets: ["d1"] }
     ]);
     expect(calls).toEqual(["failure", "done"]);
-    // What didn't save and that nothing typed was lost, then why (desktop error shape).
+    // Floating, so it names what didn't save, then why (desktop error shape).
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
-      `Recurring activities not saved. Your changes are still here. ${refusal}`
+      `Recurring activities not saved. ${refusal}`
     );
   });
 
@@ -3579,12 +3635,17 @@ describe("c-shoresh-camp-setup", () => {
         body: { message: "Shoresh couldn't tell why. Try again." }
       });
       const element = await render();
-      const answer = hookOf(element)({ recordId: "g3", weekId: "w1" });
+      const answer = hookOf(element)({
+        recordId: "g3",
+        name: "Bunk 3",
+        weekId: "w1",
+        weekName: "Week 1"
+      });
       await flush();
       await expect(answer).resolves.toBe(false);
       expect(q(element, "c-shoresh-ask")).toBeNull();
       expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
-        "Not turned off. The week is ticked again. Shoresh couldn't tell why. Try again."
+        '"Bunk 3" not turned off for Week 1. Shoresh couldn\'t tell why. Try again.'
       );
     });
 
@@ -3614,7 +3675,6 @@ describe("c-shoresh-camp-setup", () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValueOnce(nsRecord(setupWith()));
-    LightningConfirm.open.mockResolvedValue(nsRecord(true));
     deleteRecord.mockResolvedValue();
     undoImport.mockResolvedValue({ removed: 1, restored: 0, kept: [] });
     const element = await render();
@@ -3625,6 +3685,8 @@ describe("c-shoresh-camp-setup", () => {
       new CustomEvent("delete", { detail: { recordId: "l1", name: "Pool" } })
     );
     await flush();
+    await answerAsk(element, true);
+    await flush();
     expect(deleteRecord).toHaveBeenCalled();
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
     q(element, "c-shoresh-roots").dispatchEvent(
@@ -3632,6 +3694,8 @@ describe("c-shoresh-camp-setup", () => {
         detail: { importId: "i1", files: "camp.xlsx" }
       })
     );
+    await flush();
+    await answerAsk(element, true);
     await flush();
     expect(undoImport).toHaveBeenCalled();
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
@@ -3659,7 +3723,6 @@ describe("c-shoresh-camp-setup", () => {
         })
       )
     );
-    LightningConfirm.open.mockResolvedValue(nsRecord(true));
     undoImport.mockResolvedValue({ removed: 1, restored: 0, kept: [] });
     const element = await render();
     const line = q(element, '[data-id="outside-undo"]');
@@ -3670,9 +3733,11 @@ describe("c-shoresh-camp-setup", () => {
     );
     q(element, 'lightning-button[data-id="undo-outside"]').click();
     await flush();
-    expect(LightningConfirm.open.mock.calls.at(-1)[0].label).toBe(
-      "Undo the import of Campers from CampMinder?"
-    );
+    // Word walk W4: the button names the action ("Undo import"), never "OK".
+    const asked = await answerAsk(element, true);
+    expect(asked.heading).toBe("Undo import of Campers from CampMinder?");
+    expect(asked.confirmLabel).toBe("Undo import");
+    await flush();
     expect(undoImport).toHaveBeenCalledWith({ importId: "i2" });
   });
 
@@ -3847,7 +3912,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(getSeasonSetup).toHaveBeenCalledTimes(1);
       const question = q(element, "c-shoresh-same-location");
       // What didn't happen, then why.
-      expect(question.error).toBe(`Nothing was merged into "Pool". ${refusal}`);
+      expect(question.error).toBe(refusal);
       expect(bareRecord(question.places).map((p) => p.name)).toEqual([
         "pool ",
         "Pool"
@@ -3926,13 +3991,6 @@ describe("c-shoresh-camp-setup", () => {
         new CustomEvent("close")
       );
       await flush();
-      let answer;
-      LightningConfirm.open.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            answer = resolve;
-          })
-      );
       const locations = q(
         element,
         'c-shoresh-editable-table[data-id="locations"]'
@@ -3946,15 +4004,15 @@ describe("c-shoresh-camp-setup", () => {
         new CustomEvent("delete", { detail: { recordId: "l3", name: "Gym" } })
       );
       await flush();
-      expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
-      answer(false);
+      expect(deletePreview).toHaveBeenCalledTimes(1);
+      await answerAsk(element, false);
       await flush();
-      LightningConfirm.open.mockResolvedValueOnce(false);
       locations.dispatchEvent(
         new CustomEvent("delete", { detail: { recordId: "l3", name: "Gym" } })
       );
       await flush();
-      expect(LightningConfirm.open).toHaveBeenCalledTimes(2);
+      expect(deletePreview).toHaveBeenCalledTimes(2);
+      expect(openQuestion(element)).not.toBeNull();
     });
 
     it("speaks of locations in the camp's own word", async () => {
@@ -4168,9 +4226,7 @@ describe("c-shoresh-camp-setup", () => {
         [null, ["g1"]]
       ]);
       expect(first.onSaved).toHaveBeenCalled();
-      expect(second.onFailure).toHaveBeenCalledWith(
-        "Activity details not saved. Your changes are still here. No."
-      );
+      expect(second.onFailure).toHaveBeenCalledWith("No.");
       expect(toasts).toEqual([]);
     });
 
@@ -4219,7 +4275,7 @@ describe("c-shoresh-camp-setup", () => {
       const words = q(element, "c-shoresh-camp-labels");
       const refused = new CustomEvent("failed", {
         detail: {
-          message: "Camp words not saved. Your changes are still here. No."
+          message: "No."
         }
       });
       words.dispatchEvent(refused);
@@ -4235,15 +4291,13 @@ describe("c-shoresh-camp-setup", () => {
       words.dispatchEvent(
         new CustomEvent("failed", {
           detail: {
-            message: "Camp words not saved. Your changes are still here. No."
+            message: "No."
           }
         })
       );
       await flush();
       expect(shownScreens(element)).toEqual(["activities"]);
-      expect(q(element, '[data-id="error"]').textContent).toContain(
-        "Camp words not saved. Your changes are still here. No."
-      );
+      expect(q(element, '[data-id="error"]').textContent).toContain("No.");
     });
 
     it("a form field refused after the director went on to the next screen: said at the top too", async () => {
@@ -4278,8 +4332,7 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       refuse({ body: { message: "Pick the day for the early-week count." } });
       await flush();
-      const message =
-        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      const message = "Pick the day for the early-week count.";
       expect(onFailure).toHaveBeenCalledWith(message);
       expect(shownScreens(element)).toEqual(["fixedActivities"]);
       expect(q(element, '[data-id="error"]').textContent).toContain(message);
@@ -4313,8 +4366,7 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       refuse({ body: { message: "Pick the day for the early-week count." } });
       await flush();
-      const message =
-        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      const message = "Pick the day for the early-week count.";
       expect(onFailure).toHaveBeenCalledWith(message);
       expect(shownScreens(element)).toEqual(["activities"]);
       expect(q(element, '[data-id="error"]').textContent).toContain(message);
@@ -4658,9 +4710,7 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       await flush();
       expect(onDone).not.toHaveBeenCalled();
-      expect(element.shadowRoot.textContent).toContain(
-        "Not marked as looked at. Nothing was changed."
-      );
+      expect(element.shadowRoot.textContent).toContain("Not found.");
     });
   });
   // ADR 0014 choice 11 (design-research special-r1 special-events.html, decision 47).
@@ -4920,8 +4970,7 @@ describe("c-shoresh-camp-setup", () => {
       const note = q(element, '[data-id="seeded-note"]');
       expect(note.getAttribute("role")).toBe("status");
       expect(note.textContent).toBe(
-        '"Visiting Day" starts from Main\'s 7 time blocks, with Lunch and Rest hour copied. ' +
-          "Not copied, since they don't run every day: Swim. " +
+        "Not copied, since they don't run every day: Swim. " +
           "Not copied, since the time was already taken: Flag · Bunk 3."
       );
     });
@@ -5084,7 +5133,6 @@ describe("c-shoresh-camp-setup", () => {
 
     it("a row's delete asks, then deletes it and reads the season again", async () => {
       const element = await renderSpecial();
-      LightningConfirm.open.mockResolvedValue(true);
       deleteRecord.mockResolvedValue();
       const onDeleted = jest.fn();
       list(element, "days").dispatchEvent(
@@ -5093,6 +5141,8 @@ describe("c-shoresh-camp-setup", () => {
         })
       );
       await flush();
+      await flush();
+      await answerAsk(element, true);
       await flush();
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "sd2" });
       expect(onDeleted).toHaveBeenCalled();

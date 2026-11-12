@@ -1,5 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshAsk from "c/shoreshAsk";
+import fs from "fs";
+import path from "path";
 
 const flush = () => Promise.resolve();
 
@@ -110,6 +112,24 @@ describe("c-shoresh-ask", () => {
     expect(behind).not.toHaveBeenCalled();
   });
 
+  // W4 (Greg 2026-11-12): the one red, --danger, only for what deletes.
+  it("a button that deletes is the one red; any other is the main button", async () => {
+    const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
+    Object.assign(element, {
+      heading: "Delete Shavua 1?",
+      lines: [],
+      confirmLabel: "Delete Shavua 1",
+      tone: "danger"
+    });
+    document.body.appendChild(element);
+    await Promise.resolve();
+    const yes = element.shadowRoot.querySelector('[data-id="yes"]');
+    expect(yes.className).toBe("slds-button ask-danger");
+    element.tone = undefined;
+    await Promise.resolve();
+    expect(yes.className).toBe("slds-button slds-button_brand");
+  });
+
   it("a caller that names no button still gets a verb, never OK", async () => {
     const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
     element.heading = "Delete Summer 2026?";
@@ -117,5 +137,28 @@ describe("c-shoresh-ask", () => {
     document.body.appendChild(element);
     await flush();
     expect(q(element, '[data-id="yes"]').textContent.trim()).toBe("Go ahead");
+  });
+
+  // Word walk W4: every question is this one, its button naming the action; Salesforce's
+  // LightningConfirm (an "OK" button on an amber header) is used nowhere.
+  it("no screen asks with Salesforce's OK dialog", () => {
+    const lwc = path.join(__dirname, "../..");
+    const found = [];
+    fs.readdirSync(lwc).forEach((bundle) => {
+      const dir = path.join(lwc, bundle);
+      if (!fs.statSync(dir).isDirectory()) return;
+      fs.readdirSync(dir)
+        .filter((file) => file.endsWith(".js"))
+        .forEach((file) => {
+          if (
+            fs
+              .readFileSync(path.join(dir, file), "utf8")
+              .includes("lightning/confirm")
+          ) {
+            found.push(`${bundle}/${file}`);
+          }
+        });
+    });
+    expect(found).toEqual([]);
   });
 });

@@ -38,6 +38,7 @@
           label={labels.name}
           value={newName}
           required
+          message-when-value-missing={labels.nameMissing}
           onchange={handleName}
         ></lightning-input>
       </div>
@@ -48,6 +49,8 @@
           label={labels.start}
           value={newStart}
           required
+          message-when-value-missing={labels.startMissing}
+          message-when-bad-input={labels.startBad}
           onchange={handleStart}
         ></lightning-input>
         <template lwc:if={weekdayNote}>
@@ -64,13 +67,7 @@
       </div>
     </div>
     <template lwc:if={error}>
-      <div
-        class="slds-notify slds-notify_alert slds-alert_error"
-        role="alert"
-        data-id="error"
-      >
-        {error}
-      </div>
+      <p class="shoresh-refusal" role="alert" data-id="error">{error}</p>
     </template>
     <template lwc:if={hasPreviewWeeks}>
       <!-- Last season's weeks, faint, over the new ones: each column is one week. -->

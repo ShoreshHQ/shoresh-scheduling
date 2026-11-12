@@ -509,6 +509,31 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(updatable()).toBe(false);
   });
 
+  // An informational line is said beside a Start over's Undo, never instead of it (W4 review).
+  it("'matches setup' after a Start over keeps its Undo", async () => {
+    const element = await render();
+    saveWeekOnServer.mockImplementation(
+      keeping({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2",
+        versionId: "a0S000000000031AAA",
+        locks: []
+      })
+    );
+    // Still differs once started over; matches by the time Update reads it fresh.
+    getSetupChanges.mockResolvedValueOnce(PREVIEW);
+    q(element, '[data-action="StartOver"]').click();
+    await flush();
+    await flush();
+    expect(q(element, '[data-id="start-over-undo"]')).not.toBeNull();
+    getSetupChanges.mockResolvedValue(NOTHING);
+    await openUpdate(element);
+    await flush();
+    expect(notice(element)).toContain("matches setup.");
+    expect(q(element, '[data-id="start-over-undo"]')).not.toBeNull();
+  });
+
   it("reads them again after a hand edit saves while the week differs from setup, and not when it matches", async () => {
     const element = await render();
     const editor = q(element, "c-shoresh-week-editor");

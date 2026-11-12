@@ -78,7 +78,7 @@ private class ProgramAndWeekRulesTest {
       );
       Assert.isFalse(backwardsWeek.isSuccess());
       Assert.areEqual(
-        'The end date must be on or after the start date.',
+        'End date is before Start date.',
         backwardsWeek.getErrors()[0].getMessage()
       );
       // One day is a week: it ends the day it starts.
@@ -103,7 +103,7 @@ private class ProgramAndWeekRulesTest {
       );
       Assert.isFalse(backwardsSeason.isSuccess());
       Assert.areEqual(
-        'The end date must be on or after the start date.',
+        'Last day is before First day.',
         backwardsSeason.getErrors()[0].getMessage()
       );
     }

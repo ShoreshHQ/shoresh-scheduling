@@ -35,28 +35,28 @@ function startedOver(loaded, { option }) {
 /** Why an option can't be brought back: the screen's Option rows, 1 up to the option it's on. */
 function optionRefusal(option, loaded, week) {
   if (option === undefined) {
-    return "No option was named. Nothing was changed.";
+    return "No option was named.";
   }
   const asked = Number(option);
   return Number.isInteger(asked) && asked >= 1 && asked <= loaded.option
     ? null
-    : `Option ${option} hasn't been tried for ${week}, which is on Option ${loaded.option}. Nothing was changed.`;
+    : `Option ${option} hasn't been tried for ${week}, which is on Option ${loaded.option}.`;
 }
 
 /** Why the Build menu can't do this for the week as read (the screen offers no such button). */
 function refusal(loaded, { action, option, week }, terms, setup) {
   if (!loaded.scheduleId) {
-    return `${week} hasn't been built yet. Nothing was changed.`;
+    return `${week} hasn't been built yet.`;
   }
   if (loaded.input.days.length === 0) {
-    return `${week} has no days its program runs. Nothing was changed.`;
+    return `${week} has no days its program runs.`;
   }
   if (action === BRING_BACK) {
     return optionRefusal(option, loaded, week);
   }
   return action === ACTION.FILL_OPEN &&
     counterWeek(loaded, { terms, setup }).checked.openCells.length === 0
-    ? `${week} has no open cells to fill. Nothing was changed.`
+    ? `${week} has no open cells to fill.`
     : null;
 }
 
@@ -91,7 +91,7 @@ export function menuForAgent(read, { action, week, option }) {
   if (action === BRING_BACK && Number(option) === loaded.option) {
     return {
       ok: true,
-      unchanged: `${week} is already on Option ${loaded.option}. Nothing was changed.`
+      unchanged: `${week} is already on Option ${loaded.option}.`
     };
   }
   const how = { ...howOf(action, option, loaded), terms, setup };

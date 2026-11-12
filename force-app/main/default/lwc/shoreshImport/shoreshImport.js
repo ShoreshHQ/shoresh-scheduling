@@ -6,7 +6,6 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import getImported from "@salesforce/apex/ImportController.getImported";
 import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
-import LightningConfirm from "lightning/confirm";
 import {
   BRING_BACK,
   LAYOUTS,
@@ -17,13 +16,14 @@ import {
   isReadable,
   questionCards,
   readAsGroups,
+  undoImportQuestion,
   undoMessage,
   unplacedLines,
   readImportFile,
   refusedFile,
   nextKeyOf
 } from "c/shoreshImportEngine";
-import { failed } from "c/shoreshErrors";
+import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
@@ -60,7 +60,16 @@ export default class ShoreshImport extends LightningElement {
   answers = {};
   layouts = {};
   proposal;
-  error;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   result;
   undone;
   undoing = false;
@@ -103,6 +112,17 @@ export default class ShoreshImport extends LightningElement {
     if (heading) {
       heading.focus();
     }
+  }
+
+  /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
+  @api
+  leave() {
+    this.error = null;
+  }
+
+  /** The floating refusal is put away (the next change takes it away too; word walk W4). */
+  handleCloseError() {
+    closeRefusal(this, () => this.template.querySelector("[data-heading]"));
   }
 
   renderedCallback() {
@@ -1004,10 +1024,7 @@ export default class ShoreshImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = failed(
-        "Nothing was saved, and your answers are still here.",
-        e
-      );
+      this.error = failed("Nothing was saved.", e);
     }
   }
 
@@ -1135,13 +1152,9 @@ export default class ShoreshImport extends LightningElement {
   }
 
   async handleUndo() {
-    const ok = await LightningConfirm.open({
-      label: `Undo the import of ${this.fileNames}?`,
-      message:
-        "What this import added is removed, and what it changed goes back to how it was. Anything you have edited since the import stays as it is.",
-      variant: "header",
-      theme: "warning"
-    });
+    const files =
+      this.files.length > 1 ? `${this.files.length} files` : this.fileNames;
+    const ok = await this.askFirst(undoImportQuestion(files));
     if (!ok || this.undoing) {
       return;
     }
@@ -1159,6 +1172,37 @@ export default class ShoreshImport extends LightningElement {
       this.error = failed("That import could not be undone.", e);
     } finally {
       this.undoing = false;
+    }
+  }
+
+  // The question open (c-shoresh-ask): { heading, lines, confirmLabel, tone }, or null.
+  ask = null;
+  askFocus = null;
+  answerAsk = null;
+
+  /**
+   * Shows a question (c-shoresh-ask) and waits for the answer: true for yes. Focus goes back to
+   * where it was when it closes (WCAG 2.4.3).
+   */
+  askFirst(question) {
+    this.askFocus = this.template.activeElement;
+    this.ask = question;
+    return new Promise((resolve) => {
+      this.answerAsk = resolve;
+    });
+  }
+
+  handleAskAnswer(event) {
+    const resolve = this.answerAsk;
+    const back = this.askFocus;
+    this.ask = null;
+    this.answerAsk = null;
+    this.askFocus = null;
+    if (back && typeof back.focus === "function") {
+      back.focus();
+    }
+    if (resolve) {
+      resolve(event.detail.yes);
     }
   }
 }

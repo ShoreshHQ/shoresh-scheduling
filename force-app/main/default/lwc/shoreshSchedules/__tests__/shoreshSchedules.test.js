@@ -465,6 +465,22 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, "c-shoresh-versions").label).toBe("Before my changes");
   });
 
+  // Word walk W4: a refusal floats over the screen, never moving it, and Close puts it away.
+  it("a refusal floats over the grid and Close puts it away", async () => {
+    getVersions.mockResolvedValueOnce(VERSIONS);
+    const element = await render();
+    getVersions.mockRejectedValueOnce({ body: { message: "Lost access." } });
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    const line = q(element, '[data-id="schedules-error"]');
+    expect(line.parentElement.className).toBe("shoresh-refusal_float");
+    q(element, '[data-id="schedules-error-close"]').click();
+    await flush();
+    expect(q(element, '[data-id="schedules-error"]')).toBeNull();
+  });
+
   it("a failed load shows no stale list, and choosing the week again retries", async () => {
     getVersions.mockResolvedValueOnce(VERSIONS);
     const element = await render();

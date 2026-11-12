@@ -41,11 +41,16 @@ public with sharing class SetupDelete {
     /** Why it can't be deleted yet, in the camp's words; null when nothing is in the way. */
     @AuraEnabled
     public String refusal;
+    /** The question's heading: "Delete Bunk 2 (Juniors)?" (word walk W4). */
     @AuraEnabled
     public String label = 'Delete';
+    /** Its button, naming the action: "Delete Bunk 2 (Juniors)", never "OK". */
+    @AuraEnabled
+    public String confirmLabel;
+    /** The whole question in one line, as the AI asks it. */
     @AuraEnabled
     public String message;
-    /** A season's: each kind that goes with it ("4 Weeks"), for the question's lines. */
+    /** What really happens, one line each: a season's kinds ("4 Weeks"), or what goes or stays. */
     @AuraEnabled
     public List<String> lines;
     /** How many schedules a bunk or activity is in; none counted for anything else. */
@@ -66,7 +71,9 @@ public with sharing class SetupDelete {
     if (kind == Season__c.SObjectType) {
       return season(recordId, result);
     }
-    String name = nameOf(recordId);
+    String name = SetupDeleteWords.shown(recordId, nameOf(recordId));
+    result.label = 'Delete ' + name + '?';
+    result.confirmLabel = 'Delete ' + name;
     if (kind == Group__c.SObjectType || kind == Activity__c.SObjectType) {
       // A count that couldn't be made is said so, never left out quietly.
       try {
@@ -76,17 +83,19 @@ public with sharing class SetupDelete {
       }
       String used = usedIn(name, result.uses);
       if (used != null) {
-        result.label = 'Delete "' + name + '"?';
         result.message = used;
+        result.lines = new List<String>{ used };
         return result;
       }
     }
-    result.message =
-      'Delete "' +
-      name +
-      '"? Anything inside it is deleted too.' +
+    String happens = (SetupDeleteWords.inside(recordId) +
       SetupDeleteContents.savedSchedules(recordId) +
-      SetupDeleteContents.specialDaysTakenOff(recordId);
+      SetupDeleteContents.specialDaysTakenOff(recordId))
+      .trim();
+    result.message = (result.label + ' ' + happens).trim();
+    result.lines = happens == ''
+      ? new List<String>()
+      : new List<String>{ happens };
     return result;
   }
 
@@ -140,6 +149,7 @@ public with sharing class SetupDelete {
     }
     result.lines = SeasonContents.of(seasonId);
     result.label = 'Delete ' + name + '?';
+    result.confirmLabel = 'Delete ' + name;
     result.message = result.label + ' ' + String.join(result.lines, ', ') + '.';
     return result;
   }
@@ -158,14 +168,25 @@ public with sharing class SetupDelete {
       CampLabels labels = CampLabels.forCamp(
         row.ElectiveSet__r.Season__r.Camp__c
       );
+      result.label =
+        'Take ' +
+        row.Activity__r.Name +
+        ' off ' +
+        row.ElectiveSet__r.Name +
+        '?';
+      result.confirmLabel = 'Take ' + row.Activity__r.Name + ' off';
+      String kept =
+        'The ' +
+        labels.singularInSentence('Activity') +
+        ' is kept.';
+      result.lines = new List<String>{ kept };
       result.message =
         'Take "' +
         row.Activity__r.Name +
         '" off "' +
         row.ElectiveSet__r.Name +
-        '"? The ' +
-        labels.singularInSentence('Activity') +
-        ' is kept.';
+        '"? ' +
+        kept;
     }
     return found(result);
   }
@@ -179,6 +200,15 @@ public with sharing class SetupDelete {
       WITH USER_MODE
     ]) {
       String activity = row.Offering__r?.Activity__r?.Name;
+      result.label = 'Delete ' + row.Name + '?';
+      result.confirmLabel = 'Delete ' + row.Name;
+      result.lines = activity == null
+        ? new List<String>()
+        : new List<String>{
+            'A sheet that names it then counts as ' +
+            activity +
+            '.'
+          };
       result.message =
         'Delete "' +
         row.Name +

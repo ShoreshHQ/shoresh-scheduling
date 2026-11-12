@@ -486,8 +486,9 @@ private class ElectivesDataTest {
         'This can\'t be deleted yet: it is offered in "Chugim". First take it off that elective set, then delete it.',
         activity
       );
+      // Word walk W4: seats, never "runs".
       Assert.areEqual(
-        'This can\'t be deleted yet: it has elective runs: "Chugim · Week 1". First delete that run, then delete it.',
+        'This can\'t be deleted yet: it has seats in "Chugim · Week 1". First clear them, then delete it.',
         week
       );
       Assert.isTrue(bunk.contains('"Chugim · Week 1"'), bunk);
@@ -504,7 +505,7 @@ private class ElectivesDataTest {
   }
 
   @IsTest
-  static void aSetWithRunsIsRefusedNamingThem() {
+  static void aSetWithSeatsIsRefusedNamingItsWeeks() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp().withRun();
       Database.DeleteResult result = Database.delete(
@@ -514,7 +515,7 @@ private class ElectivesDataTest {
       );
       Assert.isFalse(result.isSuccess());
       Assert.areEqual(
-        'This elective set can\'t be deleted yet: it has elective runs: "Chugim · Week 1". First delete that run, then delete it.',
+        'Chugim has seats in Week 1. Clear them first.',
         result.getErrors()[0].getMessage()
       );
       Assert.areEqual(1, [SELECT COUNT() FROM LinkedChoice__c WITH USER_MODE]);
@@ -522,16 +523,24 @@ private class ElectivesDataTest {
   }
 
   @IsTest
-  static void refusalsNameRunsInTheCampsWordForElectives() {
+  static void refusalsSaySeatsInTheCampsWords() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp().withRun();
       Database.insert(
-        new CampLabel__c(
-          Camp__c = camp.season.Camp__c,
-          ModelTerm__c = 'Elective',
-          Singular__c = 'Chug',
-          Plural__c = 'Chugim'
-        ),
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = camp.season.Camp__c,
+            ModelTerm__c = 'Elective',
+            Singular__c = 'Chug',
+            Plural__c = 'Chugim'
+          ),
+          new CampLabel__c(
+            Camp__c = camp.season.Camp__c,
+            ModelTerm__c = 'Seats',
+            Singular__c = 'Spot',
+            Plural__c = 'Spots'
+          )
+        },
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
@@ -546,12 +555,12 @@ private class ElectivesDataTest {
       Test.stopTest();
 
       Assert.areEqual(
-        'This can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
+        'This can\'t be deleted yet: it has Spots in "Chugim · Week 1". First clear them, then delete it.',
         week
       );
       Assert.areEqual(
-        // CORE-1.34: the set follows the camp's Elective word.
-        'This Chug can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
+        // Word walk W4: in the camp's Seats word, naming the weeks.
+        'Chugim has Spots in Week 1. Clear them first.',
         setResult.getErrors()[0].getMessage()
       );
       Assert.isTrue(used <= 12, 'Queries for one refusal: ' + used);

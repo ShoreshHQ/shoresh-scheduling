@@ -354,9 +354,8 @@ function activityProblems(setup, terms) {
       add(
         "tooManyAtOnce",
         activity,
-        `Allows ${atOnce} ${terms.pIn("Group")} at once, ` +
-          `but "${location.Name}" fits ${fits}. Scheduling uses ` +
-          `${fits}; change whichever number is wrong.`,
+        // Word walk W4: the two numbers, no instruction ("Scheduling uses 1; change …").
+        `${atOnce} ${terms.pIn("Group")} at once, ${location.Name} fits ${fits}.`,
         { atOnce, fits }
       );
     }

@@ -265,7 +265,9 @@ describe("c-shoresh-manual-build: rainy day", () => {
     expect(saveSlots).not.toHaveBeenCalled();
     const error = q(element, '[data-id="build-error"]').textContent;
     expect(error).toContain("The rainy day could not be applied.");
-    expect(error).toContain("Nothing was changed.");
+    expect(error).toBe(
+      "The rainy day could not be applied. The name is too long."
+    );
   });
 
   it("only full cells: still one step, with the marks and Undo", async () => {

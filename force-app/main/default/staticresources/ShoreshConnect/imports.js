@@ -236,6 +236,13 @@ const OWN_WORDS = {
   WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
 };
 
+/** "Lunch, Rest and Flag". */
+function listed(names) {
+  return names.length > 1
+    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+    : names.join("");
+}
+
 /** The screen's summary once saved: "Added 3 activities", "Changed 1 location", and what a new special day left out. */
 function savedWords(result, t, m) {
   const lines = [];
@@ -258,9 +265,16 @@ function savedWords(result, t, m) {
   const said = lines.length ? `${lines.join(", ")}.` : "Saved.";
   // SPECIAL-2.6: what new special days left out of the regular day, as the screen's summary says.
   const seed = result.seeded;
-  const leftOut =
-    seed && seed.program ? m.seededLines(seed, "", t).slice(1) : [];
-  return [said, ...leftOut].join(" ");
+  if (!(seed && seed.program)) {
+    return said;
+  }
+  // The screen shows what a new special day started from on its schedule; the AI can't see it,
+  // so it hears it.
+  const blocks = `${seed.timeBlocks} ${seed.timeBlocks === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
+  const brought = seed.broughtIn || [];
+  const copied = brought.length ? `, with ${listed(brought)} copied` : "";
+  const startsFrom = `Each new ${t.sIn("SpecialDay")} starts from ${seed.program}'s ${blocks}${copied}.`;
+  return [said, startsFrom, ...m.seededLines(seed, "", t)].join(" ");
 }
 
 /** The command line gives every field as text: save as "true", answers as JSON. */

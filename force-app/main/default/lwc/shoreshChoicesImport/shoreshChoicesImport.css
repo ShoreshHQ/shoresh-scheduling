@@ -65,11 +65,6 @@
   min-width: 0;
 }
 
-.message {
-  color: var(--shoresh-text-1);
-  font-weight: 500;
-}
-
 .quiet {
   color: var(--shoresh-text-2);
 }

@@ -80,6 +80,10 @@ export default class ShoreshCopySeason extends LightningElement {
       titleName: `Copy ${t.sIn("Season")} ${this.season.Name}`,
       name: `New ${t.sIn("Season")}`,
       start: "First day",
+      // A field's refusal names the field (word walk W4).
+      nameMissing: `New ${t.sIn("Season")}: needed.`,
+      startMissing: "First day: needed.",
+      startBad: "First day: not a date.",
       weeks: `${t.p("Week")} in ${this.season.Name} and in the new ${t.sIn("Season")}`,
       // The button names the result.
       copy: this.trimmedName
@@ -201,10 +205,7 @@ export default class ShoreshCopySeason extends LightningElement {
       }
     } catch (e) {
       if (asked === this.newStart) {
-        this.error = failed(
-          "Couldn't work out the copy. Nothing was changed.",
-          e
-        );
+        this.error = failed("Couldn't work out the copy.", e);
       }
     }
   }
@@ -220,10 +221,7 @@ export default class ShoreshCopySeason extends LightningElement {
       });
       this.dispatchEvent(new CustomEvent("copied", { detail: { seasonId } }));
     } catch (e) {
-      this.error = failed(
-        `${this.terms.s("Season")} not copied. Nothing was saved.`,
-        e
-      );
+      this.error = failed(`${this.terms.s("Season")} not copied.`, e);
     } finally {
       this.busy = false;
     }

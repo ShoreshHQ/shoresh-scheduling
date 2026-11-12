@@ -350,9 +350,15 @@ private class ElectivesScreenTest {
       String offering = deleteRefusal(menu.archery.Id);
       String electiveSet = deleteRefusal(menu.chugim.Id);
       Test.stopTest();
-      String expected = 'This can\'t be deleted yet: it has elective runs: "Chugim · Week 1". First delete that run, then delete it.';
-      Assert.areEqual(expected, offering);
-      Assert.areEqual(expected, electiveSet);
+      // Word walk W4: seats, never "runs"; a set names its weeks.
+      Assert.areEqual(
+        'This can\'t be deleted yet: it has seats in "Chugim · Week 1". First clear them, then delete it.',
+        offering
+      );
+      Assert.areEqual(
+        'Chugim has seats in Week 1. Clear them first.',
+        electiveSet
+      );
       Assert.areEqual(2, [SELECT COUNT() FROM Offering__c WITH SYSTEM_MODE]);
       Assert.areEqual(
         1,

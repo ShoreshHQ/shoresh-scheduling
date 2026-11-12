@@ -216,7 +216,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
       q(element, '[data-id="take-off-special"]').click();
       await flush();
       expect(errors.mock.calls[0][0].detail.message).toMatch(
-        /^Visiting Day wasn't taken off Day 2\. Nothing was changed\./
+        /^Visiting Day wasn't taken off Day 2\./
       );
     } finally {
       setDayNaming(null);
@@ -279,7 +279,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     q(element, '[data-id="take-off-special"]').click();
     await flush();
     expect(errors.mock.calls[0][0].detail.message).toMatch(
-      /^Visiting Day wasn't taken off Tuesday\. Nothing was changed\./
+      /^Visiting Day wasn't taken off Tuesday\./
     );
     expect(q(element, '[data-id="special-line"]')).not.toBeNull();
   });

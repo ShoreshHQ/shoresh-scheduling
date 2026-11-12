@@ -269,20 +269,23 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   get addBlockLabel() {
     return `+ ${this.blockWord}`;
   }
-  /** Why the grid isn't there yet, and what to do: shown where the grid goes. */
+  /**
+   * What the grid still lacks, as state where the grid goes: "No periods or stations yet" (word
+   * walk W4: an empty state that names, never instructs; + Period and Import are beside it).
+   */
   get emptyMessage() {
     if (!this.view || this.canFill || this.problem) {
       return null;
     }
     const day = this.view.schedule.days[0];
-    const needs = [];
+    const lacks = [];
     if (!day.blocks.length) {
-      needs.push(`${article(this.t.sIn("TimeBlock"))}`);
+      lacks.push(this.t.pIn("TimeBlock"));
     }
     if (!day.groups.length) {
-      needs.push(article(this.t.sIn("Station")));
+      lacks.push(this.t.pIn("Station"));
     }
-    return `Add ${needs.join(" and ")} to start, or import this schedule from a file.`;
+    return `No ${lacks.join(" or ")} yet`;
   }
   get controlsDisabled() {
     return this.busy || this.editorBusy || !this.view || !!this.problem;
@@ -579,9 +582,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} placed.`
     ];
     if (outcome.replaced && outcome.replaced.length) {
-      lines.push(
-        `Replaced by the file, copied when ${this.name} started: ${listed(outcome.replaced)}.`
-      );
+      lines.push(`Replaced by the file: ${listed(outcome.replaced)}.`);
     }
     lines.push(...this.frameSaid(outcome.frame, " by the file"));
     if (outcome.added.length) {
@@ -604,8 +605,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
         `Places written in ${places} ${places === 1 ? "cell were" : "cells were"} not kept.`
       );
     }
+    // Word walk W4: said as what was left out, never "Only the first schedule … was read."
     if (pageCount > 1) {
-      lines.push("Only the first schedule in the file was read.");
+      lines.push(
+        `Left out: the file's other ${pageCount - 1 === 1 ? "page" : `${pageCount - 1} pages`}.`
+      );
     }
     return lines;
   }

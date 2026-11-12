@@ -344,6 +344,18 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       : `No ${t.pIn("Program")} yet. Add one on the ${t.p("Program")} screen first.`;
   }
   /**
+   * The screen was left (CampSetup): its message row was about that visit, so it is empty when
+   * the screen is opened again (word walk W4).
+   */
+  @api
+  leave() {
+    this.startedOver = null;
+    if (this.weekEditor) {
+      this.weekEditor.clearMessages();
+    }
+  }
+
+  /**
    * Opens this screen on a week of the season, as choosing it in the week picker does (the
    * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
    * week shown stays, and the picker says which it is. True when that week is the one shown.
@@ -473,10 +485,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       return true;
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = failed(
-          `${this.weekName} couldn't be opened. Nothing was changed.`,
-          e
-        );
+        this.error = failed(`${this.weekName} couldn't be opened.`, e);
         this.errorFromRead = true;
         if (fresh) {
           this.loadedFor = null;
@@ -939,7 +948,11 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         // Beside the week as saved: a Rebuild that changed nothing is not "changed since".
         this.publishState = saved.published;
         this.triedUpTo = Math.max(this.triedUpTo, option);
-        // Start over and Rebuild offer Undo: the version they kept first, brought back.
+        // Start over and Rebuild offer Undo: the version they kept first, brought back. It is
+        // the message row's one line: an older line ("Published Week 1.") goes (W4).
+        if (UNDOABLE.has(action) && this.weekEditor) {
+          this.weekEditor.clearMessages();
+        }
         this.startedOver =
           UNDOABLE.has(action) && saved.versionId
             ? {
@@ -1004,15 +1017,15 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     const week = this.weekName;
     switch (action) {
       case ACTION.GENERATE:
-        return `${week} wasn't generated. Nothing was saved.`;
+        return `${week} wasn't generated.`;
       case ACTION.TRY_ANOTHER:
-        return `Option ${option} wasn't saved. Nothing was changed.`;
+        return `Option ${option} wasn't saved.`;
       case ACTION.FILL_OPEN:
-        return "The open cells weren't filled. Nothing was changed.";
+        return "The open cells weren't filled.";
       case ACTION.START_OVER:
-        return `${week} wasn't started over. Nothing was changed.`;
+        return `${week} wasn't started over.`;
       default:
-        return `${week} wasn't rebuilt. Nothing was changed.`;
+        return `${week} wasn't rebuilt.`;
     }
   }
 
@@ -1854,7 +1867,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       if (!(await this.showUpdated(ticket))) {
         // Updated, but the week can't be read just now: said, and read again once this is over.
         this.setupAsk = null;
-        this.say(done);
+        this.sayDone(done);
         return;
       }
       const fresh = await this.loadSetupChanges();
@@ -1866,7 +1879,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
           ? this.setupAskWith(null, done, kept, true)
           : null;
       if (!this.setupAsk) {
-        this.say(done);
+        this.sayDone(done);
       }
     } catch (e) {
       this.setupAsk = null;
@@ -1984,13 +1997,25 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     return !page || page === document.body;
   }
 
-  /** Said on the editor's quiet line and read out, as on Manual Build. */
+  /**
+   * Said on the editor's quiet line and read out, as on Manual Build. A short line ("Week 1
+   * matches setup.", "One moment: …") leaves a Rebuild's or Start over's Undo where it is.
+   */
   say(text) {
     if (this.weekEditor) {
       this.weekEditor.say(text);
     } else {
       this.announce(text);
     }
+  }
+
+  /**
+   * Said after a new action that changed the week or published it: it replaces the line there
+   * (W4), so "Rebuilt Week 1 · Undo" goes once "Published Week 1." is said.
+   */
+  sayDone(text) {
+    this.startedOver = null;
+    this.say(text);
   }
 
   /**
@@ -2088,11 +2113,14 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.publishState = { ...result.published, changedSince: false };
     // A published schedule it replaced is a version now: Versions lists it straight away.
     this.loadVersions();
-    this.say(
-      result.unchanged
-        ? `${this.weekName} is already published as it is.`
-        : `Published ${this.weekName}.`
-    );
+    const published = result.unchanged
+      ? `${this.weekName} is already published as it is.`
+      : `Published ${this.weekName}.`;
+    if (result.unchanged) {
+      this.say(published);
+    } else {
+      this.sayDone(published);
+    }
   }
 
   /**
@@ -2149,7 +2177,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.publishState = null;
     // The copy is a version now, marked Published: Versions lists it straight away.
     this.loadVersions();
-    this.say(`Unpublished ${this.weekName}.`);
+    this.sayDone(`Unpublished ${this.weekName}.`);
   }
 
   /**
@@ -2318,8 +2346,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
     const ticket = this.loadTicket;
     let what = undo
-      ? `${name} wasn't undone. Nothing was changed.`
-      : `${name || "That version"} wasn't restored. Nothing was changed.`;
+      ? `${name} wasn't undone.`
+      : `${name || "That version"} wasn't restored.`;
     await this.versionsAction(
       () => what,
       async () => {
@@ -2383,7 +2411,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   /** The week a Restore made, as read: a whole new week (Undo starts over), on screen now. */
   showRestored({ id, said }, week) {
     this.resetChecks();
-    // Undo starts over: its steps were made on the week it replaced.
+    // Undo starts over: its steps were made on the week it replaced. So does a Rebuild's Undo.
+    this.startedOver = null;
     this.showInEditor("rebuilt");
     this.loadSetupChanges();
     this.restored = { id, revision: week.revision };

@@ -191,6 +191,15 @@ describe("c/shoreshTokens", () => {
       "--slds-g-color-border-error-1",
       "--slds-g-color-border-error-2"
     ].forEach((hook) => expect(colour(hook)).toMatch(/^#(b44e48|a3443e)$/));
+    // An empty required field's fill is the faint brick, its edge the brick: no pink (W4).
+    [
+      "--slds-g-color-error-base-90",
+      "--slds-g-color-error-base-80",
+      "--slds-g-color-error-base-95"
+    ].forEach((hook) => expect(colour(hook)).toBe("#faf0ef"));
+    ["--slds-g-color-error-base-70", "--slds-g-color-error-base-60"].forEach(
+      (hook) => expect(colour(hook)).toBe("#b44e48")
+    );
     // An error banner's words read on its faint brick.
     expect(
       contrast(

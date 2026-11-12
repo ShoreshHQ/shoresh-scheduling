@@ -5,7 +5,7 @@ import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
-import { failed } from "c/shoreshErrors";
+import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
@@ -71,7 +71,16 @@ export default class ShoreshSchedules extends LightningElement {
   pending = 0;
   // From choosing a week until its newest version is open (or it has none).
   loading = false;
-  error;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   loadedFor;
   // Each open asks the server once; only the latest answer is shown.
   openTicket = 0;
@@ -215,7 +224,7 @@ export default class ShoreshSchedules extends LightningElement {
       if (key === this.loadedFor) {
         this.versions = versions || [];
       }
-    }, "Couldn't open the saved schedules. Nothing was changed.");
+    }, "Couldn't open the saved schedules.");
     if (!loaded && key === this.loadedFor) {
       // Choosing the same week again tries again.
       this.loadedFor = null;
@@ -255,7 +264,7 @@ export default class ShoreshSchedules extends LightningElement {
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
       this.eventId = null;
-    }, "Couldn't open that schedule. Nothing was changed.");
+    }, "Couldn't open that schedule.");
   }
 
   async handleRename(event) {
@@ -741,11 +750,24 @@ export default class ShoreshSchedules extends LightningElement {
     return this.pending > 0;
   }
 
+  /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
+  @api
+  leave() {
+    this.error = null;
+  }
+
+  /** The floating refusal is put away (the next change takes it away too). */
+  handleCloseError() {
+    closeRefusal(this, () =>
+      this.template.querySelector("lightning-combobox, button:not([disabled])")
+    );
+  }
+
   /**
    * Runs a server call; if it fails, says what didn't happen (what), then why. Returns whether
    * it worked.
    */
-  async run(work, what = "That didn't go through. Nothing was changed.") {
+  async run(work, what = "That didn't go through.") {
     this.pending += 1;
     this.error = null;
     try {

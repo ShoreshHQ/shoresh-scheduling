@@ -306,8 +306,9 @@ export default class ShoreshElectiveDetails extends LightningElement {
     return this.placesRead && !this.places.complete;
   }
 
+  /** Said to screen readers on the unavailable + button; sighted users see it unavailable. */
   get nowhereText() {
-    return `Place ${this.setName || "this set"} on a schedule first`;
+    return `${this.setName || "This set"} isn't on a schedule yet`;
   }
 
   get incompleteText() {
@@ -334,8 +335,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
     return !this.canAdd;
   }
 
+  // Word walk W4: a set on no schedule shows as an unavailable + button, with no instruction
+  // ("Place Chugim on a schedule first").
   get hasNote() {
-    return this.sitsNowhere || this.placesIncomplete;
+    return this.placesIncomplete;
   }
 
   /** Each linked choice of the offering (and the one being made), as the template draws it. */

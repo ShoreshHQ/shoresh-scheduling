@@ -651,7 +651,6 @@ function weekCard(ask, t) {
       ? `Which ${t.sIn("Week")} is ${ask.label} of the files?`
       : `Which ${t.sIn("Week")} is last year's schedule?`,
     subject: `Last year's schedule${ask.label ? ` (${ask.label})` : ""} as a version`,
-    subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Saved versions.`,
     options: [
       ...ask.options.map((name, i) => {
         const start = shortDate((ask.starts || [])[i]);
@@ -707,8 +706,6 @@ function electiveDetail(set) {
         6
       )}.`
     );
-  } else if (set.isNew) {
-    parts.push("No choices in the file: add them later.");
   }
   set.linked
     .filter((c, i, all) => all.findIndex((x) => x.day === c.day) === i)

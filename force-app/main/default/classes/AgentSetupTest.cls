@@ -403,7 +403,7 @@ private class AgentSetupTest {
       Assert.areEqual(200, program[0], String.valueOf(program[1]));
       Assert.areEqual(screen, program[1]);
       Assert.areEqual(
-        'Delete "Teens"? Anything inside it is deleted too. That includes its Manual Build.',
+        'Delete Teens? Anything inside it is deleted too. That includes its Manual Build.',
         program[1]
       );
       Assert.areEqual(400, refused[0]);

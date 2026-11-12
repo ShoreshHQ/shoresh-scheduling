@@ -490,10 +490,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
       });
     } catch (e) {
       this.placing = { ...asked, working: false };
-      this.placedSaid = failed(
-        `${this.name} wasn't put on a day. Nothing was changed.`,
-        e
-      );
+      this.placedSaid = failed(`${this.name} wasn't put on a day.`, e);
     }
   }
 
@@ -536,7 +533,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
       });
     } catch (e) {
       this.placedSaid = failed(
-        `${this.name} wasn't taken off ${spokenWeekday(placed.day)} of ${placed.weekName}. Nothing was changed.`,
+        `${this.name} wasn't taken off ${spokenWeekday(placed.day)} of ${placed.weekName}.`,
         e
       );
     } finally {

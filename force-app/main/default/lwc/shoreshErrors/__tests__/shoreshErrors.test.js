@@ -1,6 +1,9 @@
 import {
+  closeRefusal,
   errorMessage,
+  floatRefusal,
   failed,
+  refusedBecause,
   reasonOf,
   refusal,
   SUPPORT_EMAIL
@@ -109,15 +112,17 @@ describe("reasonOf", () => {
   });
 });
 
+// Word walk W4: one clause naming what failed, never "Not saved. Nothing was saved. Your
+// changes are still here."
 describe("failed", () => {
-  it("says what didn't happen and whether anything was lost, then why (desktop shape)", () => {
+  it("says what didn't happen in its first sentence, then why", () => {
     expect(
       failed(
         "Bunks not saved. Your changes are still here.",
         ours('"Bunk 3": That name is already used. Pick another.')
       )
     ).toBe(
-      'Bunks not saved. Your changes are still here. "Bunk 3": That name is already used. Pick another.'
+      'Bunks not saved. "Bunk 3": That name is already used. Pick another.'
     );
   });
 
@@ -128,6 +133,21 @@ describe("failed", () => {
     expect(failed("Week 1 couldn't be opened.", null)).toBe(
       "Week 1 couldn't be opened. Try again."
     );
+    // A name in quotes may hold a full stop.
+    expect(
+      failed('"Week 1." not deleted. Nothing was removed.', uncaught)
+    ).toBe('"Week 1." not deleted. Try again.');
+  });
+
+  it("a change made but not shown yet keeps saying it was done", () => {
+    expect(
+      failed(
+        "Done, but the screen couldn't show it yet. Reload the page.",
+        ours("That is no longer there.")
+      )
+    ).toBe(
+      "Done, but the screen couldn't show it yet. Reload the page. That is no longer there."
+    );
   });
 
   it("a fallback passed along from errorMessage isn't said twice", () => {
@@ -137,11 +157,96 @@ describe("failed", () => {
   });
 });
 
+describe("refusedBecause", () => {
+  it("Shoresh's own reason is said alone, where its place names what failed", () => {
+    expect(
+      refusedBecause(
+        "Bunks not saved.",
+        ours('"Bunk 3": That name is already used. Pick another.')
+      )
+    ).toBe('"Bunk 3": That name is already used. Pick another.');
+  });
+
+  it("otherwise says what didn't happen, as failed() does", () => {
+    expect(refusedBecause("Bunks not saved.", uncaught)).toBe(
+      "Bunks not saved. Try again."
+    );
+    expect(
+      refusedBecause(
+        "Done, but the screen couldn't show it yet. Reload the page.",
+        ours("No.")
+      )
+    ).toBe("Done, but the screen couldn't show it yet. Reload the page. No.");
+  });
+});
+
 describe("errorMessage", () => {
   it("with no subject to put in front, the fallback says nothing happened", () => {
     expect(errorMessage(uncaught)).toBe("That didn't work. Try again.");
     expect(errorMessage(ours("That option can't be built."))).toBe(
       "That option can't be built."
     );
+  });
+});
+
+// Word walk W4 review: one floating refusal at a time, and Close never loses the cursor.
+describe("the floating refusal", () => {
+  /** A screen with a floating refusal, as the components keep one. */
+  function screen() {
+    return {
+      shown: null,
+      get error() {
+        return this.shown;
+      },
+      set error(message) {
+        floatRefusal(this, message, this.shown);
+        this.shown = message || null;
+      }
+    };
+  }
+  function button(id) {
+    const el = document.createElement("button");
+    el.dataset.id = id;
+    document.body.appendChild(el);
+    return el;
+  }
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+  });
+
+  it("a newer one puts the older away, so two never sit on top of each other", () => {
+    const page = screen();
+    const importScreen = screen();
+    page.error = "Weeks not added. No dates.";
+    importScreen.error = "Nothing was saved. Locked.";
+    expect(page.error).toBeNull();
+    expect(importScreen.error).toBe("Nothing was saved. Locked.");
+    page.error = "Couldn't open the camp setup. Try again.";
+    expect(importScreen.error).toBeNull();
+  });
+
+  it("Close goes back to the control that caused it", () => {
+    const save = button("save");
+    const owner = screen();
+    save.focus();
+    owner.error = "Nothing was saved. Locked.";
+    button("error-close").focus();
+    closeRefusal(owner, () => button("heading"));
+    expect(owner.error).toBeNull();
+    expect(document.activeElement).toBe(save);
+  });
+
+  it("Close goes to the heading when that control is gone", () => {
+    const save = button("save");
+    const owner = screen();
+    save.focus();
+    owner.error = "Nothing was saved. Locked.";
+    button("error-close").focus();
+    save.remove();
+    const heading = button("heading");
+    closeRefusal(owner, () => heading);
+    expect(document.activeElement).toBe(heading);
   });
 });

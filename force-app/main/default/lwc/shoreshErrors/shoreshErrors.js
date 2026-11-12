@@ -136,12 +136,111 @@ export function errorMessage(error) {
   return why === TRY_AGAIN ? NOTHING_HAPPENED : why;
 }
 
+// A subject that says the change was made (the screen only couldn't show it) is always kept.
+const DONE = /^Done\b/;
+
+/** The first sentence of a subject: "Bunks not saved." out of "Bunks not saved. Nothing …". */
+function firstSentence(what) {
+  const masked = what.replace(QUOTED, (quoted) => "x".repeat(quoted.length));
+  const end = masked.search(/[.!?](\s|$)/);
+  return end < 0 ? what : what.slice(0, end + 1);
+}
+
 /**
- * What didn't happen, then why: failed("Bunks not saved. Your changes are still here.", e) ->
- * 'Bunks not saved. Your changes are still here. "Bunk 3": That name is already used. Pick
- * another.', or, when the server's text isn't ours, '... Your changes are still here. Try
- * again.'
+ * What didn't happen, in one sentence, then why (word walk W4: never "Not saved. Nothing was
+ * saved. Your changes are still here."): failed("Bunk 1 · Monday wasn't saved.", e) ->
+ * "Bunk 1 · Monday wasn't saved. Bunk 1 isn't at camp then.", or "… Try again." when the
+ * server's text isn't ours. Only the subject's first sentence is said.
  */
 export function failed(what, error) {
-  return `${what} ${reasonOf(error)}`;
+  const subject = String(what || "");
+  const why = reasonOf(error);
+  return `${DONE.test(subject) ? subject : firstSentence(subject)} ${why}`;
+}
+
+/**
+ * The why alone, where the place it is shown already names what failed (a field, a table row,
+ * a delete refused): Shoresh's own reason ('"Bunk 3": That name is already used. Pick
+ * another.'), or, when the server's text isn't ours, failed()'s "Bunks not saved. Try again."
+ */
+export function refusedBecause(what, error) {
+  const subject = String(what || "");
+  const why = reasonOf(error);
+  if (DONE.test(subject) || why === TRY_AGAIN || why === TOO_BIG) {
+    return failed(subject, error);
+  }
+  return why;
+}
+
+// ---------- the floating refusal (word walk W4) ----------
+
+// The one component whose refusal floats at the window's foot now: a newer one puts it away, so
+// two never sit on top of each other.
+let floating = null;
+// Where the cursor was when each refusal first showed: Close takes it back there.
+const cameFrom = new WeakMap();
+
+/** The element with focus, looking inside components (their shadow roots). */
+function focusedNow() {
+  let el = document.activeElement;
+  while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+    el = el.shadowRoot.activeElement;
+  }
+  return el;
+}
+
+/** A place the cursor can't usefully go back to: nowhere, or a refusal's own Close. */
+function nowhere(el) {
+  return (
+    !el ||
+    el === document.body ||
+    (el.dataset && el.dataset.id === "error-close")
+  );
+}
+
+/**
+ * Called from a component's `error` setter with the message being shown (or null): the newest
+ * floating refusal on the page replaces any other component's, and where the cursor was when it
+ * first showed is kept for Close. `showing` is the message on screen before this one.
+ */
+export function floatRefusal(owner, message, showing) {
+  if (!message) {
+    if (floating === owner) {
+      floating = null;
+    }
+    return;
+  }
+  if (!showing) {
+    const from = focusedNow();
+    if (nowhere(from)) {
+      cameFrom.delete(owner);
+    } else {
+      cameFrom.set(owner, from);
+    }
+  }
+  const older = floating;
+  floating = owner;
+  if (older && older !== owner) {
+    older.error = null;
+  }
+}
+
+/**
+ * Close on a floating refusal: it goes, and the cursor goes back to the control that caused it,
+ * or, when that is gone or can't take it, to `fallback()` (the screen's heading), never to the
+ * top of the page (WCAG 2.4.3).
+ */
+export function closeRefusal(owner, fallback) {
+  const from = cameFrom.get(owner);
+  cameFrom.delete(owner);
+  owner.error = null;
+  if (from && from.isConnected && typeof from.focus === "function") {
+    from.focus();
+  }
+  if (!from || nowhere(focusedNow())) {
+    const target = fallback ? fallback() : null;
+    if (target && typeof target.focus === "function") {
+      target.focus();
+    }
+  }
 }

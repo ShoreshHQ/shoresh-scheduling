@@ -874,13 +874,16 @@ describe("c-shoresh-elective-details", () => {
     expect(all(element, '[data-id="period-look"]')).toEqual([]);
   });
 
-  it("a set placed nowhere yet says so, and nothing can be added", async () => {
+  // Word walk W4: no instruction; the + button shows it, and says why to screen readers.
+  it("a set placed nowhere yet: nothing can be added, and no sentence says what to do", async () => {
     linkedChoicePlaces.mockResolvedValue({ complete: true, cells: [] });
     const element = await opened("o2");
-    expect(q(element, '[data-id="note"]').textContent).toBe(
-      "Place Chugim on a schedule first"
+    expect(q(element, '[data-id="note"]')).toBeNull();
+    const add = q(element, '[data-id="add-linked-choice"]');
+    expect(add.disabled).toBe(true);
+    expect(add.querySelector(".slds-assistive-text").textContent).toBe(
+      ": Chugim isn't on a schedule yet"
     );
-    expect(q(element, '[data-id="add-linked-choice"]').disabled).toBe(true);
   });
 
   it("says when not every schedule could be read", async () => {

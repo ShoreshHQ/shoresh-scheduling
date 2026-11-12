@@ -296,7 +296,8 @@ describe("c-shoresh-special-schedule", () => {
   it("an event with nothing yet says what to add; + Period adds one with its times", async () => {
     const { element } = await render(emptyEvent());
     expect(q(element, '[data-id="empty"]').title).toBe(
-      "Add a Period and a station to start, or import this schedule from a file."
+      // Word walk W4: names what is missing, never instructs.
+      "No Periods or stations yet"
     );
     expect(grid(element)).toBeNull();
     const withBlock = emptyEvent();
@@ -333,9 +334,7 @@ describe("c-shoresh-special-schedule", () => {
     });
     expect(q(element, '[data-id="frame-form"]')).toBeNull();
     expect(q(element, '[data-id="announce"]').textContent).toBe("Relays added");
-    expect(q(element, '[data-id="empty"]').title).toBe(
-      "Add a station to start, or import this schedule from a file."
-    );
+    expect(q(element, '[data-id="empty"]').title).toBe("No stations yet");
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="add-block"]')
     );
@@ -391,6 +390,8 @@ describe("c-shoresh-special-schedule", () => {
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
       "Color War already has entries. Clear it first if you want to replace it with an import, or add to it by hand."
     );
+    // Word walk W4: on the message row, so the grid never moves.
+    expect(q(element, '[data-id="error"]').getAttribute("slot")).toBe("status");
     q(element, '[data-id="download"]').click();
     await flush();
     const [, sheets, fileName] = downloadWorkbook.mock.calls[0];
@@ -517,7 +518,7 @@ describe("c-shoresh-special-schedule", () => {
     // Every change to the frame is named where what it replaced is.
     expect(lines).toEqual([
       "Imported Color War.csv: 1 cell placed.",
-      "Replaced by the file, copied when Color War started: Lunch.",
+      "Replaced by the file: Lunch.",
       "Periods renamed by the file: Opening to 9:00 AM – 9:45 AM.",
       "Periods removed by the file: Lunch."
     ]);

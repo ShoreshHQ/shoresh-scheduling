@@ -345,6 +345,17 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     return !this.loading && !this.draft && this.stillNeeded.length > 0;
   }
   /**
+   * The screen was left (CampSetup): its message row was about that visit, so it is empty when
+   * the screen is opened again (word walk W4).
+   */
+  @api
+  leave() {
+    if (this.weekEditor) {
+      this.weekEditor.clearMessages();
+    }
+  }
+
+  /**
    * Opens this screen on a week of the season, as choosing it in the week picker does (the
    * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
    * week shown stays, and the picker says which it is. True when that week is the one shown.
@@ -458,10 +469,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = failed(
-          `${this.weekName} couldn't be opened. Nothing was changed.`,
-          e
-        );
+        this.error = failed(`${this.weekName} couldn't be opened.`, e);
         this.loadedFor = again ? key : null;
       }
     } finally {
@@ -589,10 +597,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       return draft;
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = failed(
-          `${this.weekName} not started. Nothing was saved.`,
-          e
-        );
+        this.error = failed(`${this.weekName} not started.`, e);
       }
       return null;
     } finally {
@@ -760,7 +765,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     this.loadTicket += 1;
     const ticket = this.loadTicket;
     this.restoreRefused = false;
-    const what = `${version ? version.name : "That version"} wasn't restored. Nothing was changed.`;
+    const what = `${version ? version.name : "That version"} wasn't restored.`;
     await this.versionsAction(what, async () => {
       const draft = await restoreVersion({
         scheduleId: this.schedule.schedule.id,

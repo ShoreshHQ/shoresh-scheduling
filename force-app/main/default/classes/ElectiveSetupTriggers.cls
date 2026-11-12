@@ -72,23 +72,23 @@ public with sharing class ElectiveSetupTriggers {
   }
 
   /**
-   * A set a run uses is refused, naming the runs (as the desktop refuses a week with runs).
+   * A set with seats is refused, naming their weeks (as the desktop refuses a week with runs).
    * Otherwise its linked choices and their Coverage rows are cleared first: they point at the
    * set's offerings through restrict-delete lookups, which would block the set's own delete.
    */
   public static void setsDeleting(Map<Id, ElectiveSet__c> oldSets) {
-    Map<Id, List<String>> runsBySet = new Map<Id, List<String>>();
+    Map<Id, List<ElectiveRun__c>> runsBySet = new Map<Id, List<ElectiveRun__c>>();
     for (ElectiveRun__c run : [
-      SELECT Name, ElectiveSet__c
+      SELECT Name, ElectiveSet__c, ElectiveSet__r.Name, Week__r.Name
       FROM ElectiveRun__c
       WHERE ElectiveSet__c IN :oldSets.keySet()
       WITH SYSTEM_MODE
-      ORDER BY Name, Id
+      ORDER BY Week__r.StartDate__c, Name, Id
     ]) {
       if (!runsBySet.containsKey(run.ElectiveSet__c)) {
-        runsBySet.put(run.ElectiveSet__c, new List<String>());
+        runsBySet.put(run.ElectiveSet__c, new List<ElectiveRun__c>());
       }
-      runsBySet.get(run.ElectiveSet__c).add(run.Name);
+      runsBySet.get(run.ElectiveSet__c).add(run);
     }
     Set<Id> seasonIds = new Set<Id>();
     for (ElectiveSet__c item : oldSets.values()) {
@@ -99,25 +99,14 @@ public with sharing class ElectiveSetupTriggers {
     );
     Set<Id> deletable = new Set<Id>();
     for (ElectiveSet__c item : oldSets.values()) {
-      List<String> runs = runsBySet.get(item.Id);
+      List<ElectiveRun__c> runs = runsBySet.get(item.Id);
       if (runs == null) {
         deletable.add(item.Id);
         continue;
       }
-      CampLabels labels = labelsBySeason.get(item.Season__c);
+      // Word walk W4: "Chugim has seats in Week 1 and Week 2. Clear them first."
       item.addError(
-        'This ' +
-          labels.singularInSentence('ElectiveSet') +
-          ' can\'t be deleted yet: it has ' +
-          labels.singularInSentence('Elective') +
-          ' runs: ' +
-          InUse.quoted(runs) +
-          AgentRefusal.withFix(
-            '.',
-            'First delete ' +
-              (runs.size() == 1 ? 'that run' : 'those runs') +
-              ', then delete it.'
-          )
+        SetupDeleteWords.setHasSeats(runs, labelsBySeason.get(item.Season__c))
       );
     }
     if (deletable.isEmpty()) {

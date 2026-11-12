@@ -2,11 +2,16 @@ import { LightningElement, api } from "lwc";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
 import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
-import { failed } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  refusedBecause
+} from "c/shoreshErrors";
 import { leftField } from "c/shoreshSavedMark";
 import { guessPlural, UNSHOWN_TERMS } from "c/shoreshTerms";
 
-const NOT_SAVED = "Camp words not saved. Your changes are still here.";
+const NOT_SAVED = "Camp words not saved.";
 
 // The words in sections, as the menu groups the screens (camp-words-b): each standard word's
 // term, in the server's glossary order inside its section. A term not listed goes in the last.
@@ -86,7 +91,16 @@ export default class ShoreshCampLabels extends LightningElement {
   // Each term: { term, modelSingular, modelPlural, labelId, singular (the camp's word, "" for the
   // standard one), plural (typed, "" for the guess) }.
   rows = [];
-  error;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   blockedReason;
   loaded = false;
   // Something typed and not sent yet.
@@ -140,10 +154,7 @@ export default class ShoreshCampLabels extends LightningElement {
           };
         });
     } catch (e) {
-      this.error = failed(
-        "Couldn't open the camp words. Nothing was changed.",
-        e
-      );
+      this.error = failed("Couldn't open the camp words.", e);
     }
   }
 
@@ -193,6 +204,17 @@ export default class ShoreshCampLabels extends LightningElement {
       title: section.title,
       rows: bySection.get(section.key)
     })).filter((section) => section.rows.length > 0);
+  }
+
+  /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
+  @api
+  leave() {
+    this.error = null;
+  }
+
+  /** The floating refusal is put away (the next change takes it away too). */
+  handleCloseError() {
+    closeRefusal(this, () => this.template.querySelector("[data-heading]"));
   }
 
   @api
@@ -309,7 +331,7 @@ export default class ShoreshCampLabels extends LightningElement {
       } catch (e) {
         // Still to save: the next box left sends it again.
         this.dirty = true;
-        const message = failed(NOT_SAVED, e);
+        const message = refusedBecause(NOT_SAVED, e);
         this.fieldError = { term, field, message };
         // The setup page says it at the top too if this screen is no longer showing.
         this.dispatchEvent(new CustomEvent("failed", { detail: { message } }));

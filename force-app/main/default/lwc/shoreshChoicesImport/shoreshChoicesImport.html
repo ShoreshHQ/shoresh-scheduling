@@ -131,7 +131,18 @@
 
     <div class="card">
       <template lwc:if={error}>
-        <div class="message" role="alert" data-id="error">{error}</div>
+        <!-- Floats at the foot of the window, never moving the screen (word walk W4). -->
+        <div class="shoresh-refusal_float" role="alert">
+          <p class="shoresh-refusal" data-id="error">{error}</p>
+          <lightning-button-icon
+            icon-name="utility:close"
+            variant="bare"
+            size="small"
+            alternative-text="Close"
+            data-id="error-close"
+            onclick={handleCloseError}
+          ></lightning-button-icon>
+        </div>
       </template>
 
       <!-- The start: the file, for the set and week on the rail -->

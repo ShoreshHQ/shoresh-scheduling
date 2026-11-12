@@ -8,7 +8,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import getImported from "@salesforce/apex/ImportController.getImported";
 import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
-import LightningConfirm from "lightning/confirm";
+import { answerAsk } from "shoresh-jest/ask";
 import { buildTerms } from "c/shoreshTerms";
 import { comingIn } from "../summary";
 import { nsRecord } from "shoresh-jest/namespace";
@@ -189,6 +189,13 @@ describe("c-shoresh-import", () => {
     expect($(element, '[data-id="error"]').textContent).toBe(
       "schedule.pdf: Shoresh reads Excel (.xlsx, .xls), CSV and TSV files. Nothing was imported."
     );
+    // Word walk W4: it floats over the page, never moving it, and Close puts it away.
+    expect($(element, '[data-id="error"]').parentElement.className).toBe(
+      "shoresh-refusal_float"
+    );
+    $(element, '[data-id="error-close"]').click();
+    await flush();
+    expect($(element, '[data-id="error"]')).toBeNull();
   });
 
   // INGEST-1.4
@@ -322,9 +329,8 @@ describe("c-shoresh-import", () => {
     expect(chugim.textContent).toContain(
       "Read as electives: Tuesday, Period 6, every group."
     );
-    expect(chugim.textContent).toContain(
-      "No choices in the file: add them later."
-    );
+    // Word walk W4: no instruction ("add them later").
+    expect(chugim.textContent).not.toContain("add them later");
     expect(
       chugim.querySelector('button[aria-pressed="true"]').textContent.trim()
     ).toBe("Electives");
@@ -862,7 +868,7 @@ describe("c-shoresh-import", () => {
     await flush();
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
-      "Nothing was saved, and your answers are still here. Two things at Lunch for Bunk 1."
+      "Nothing was saved. Two things at Lunch for Bunk 1."
     );
     expect(add(element)).not.toBeNull();
   });
@@ -1468,7 +1474,6 @@ describe("c-shoresh-import", () => {
         keptEdited: [],
         keptInUse: []
       });
-      LightningConfirm.open = jest.fn().mockResolvedValue(true);
       const element = await renderWith(WITH_WEEK);
       await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
       add(element).click();
@@ -1490,11 +1495,25 @@ describe("c-shoresh-import", () => {
       expect(mini.querySelectorAll(".mini-cell").length).toBeGreaterThan(0);
       $(element, 'button[data-id="undo"]').click();
       await flush();
+      // Word walk W4: the question names the action, never "OK".
+      const asked = await answerAsk(element, true);
+      expect(asked.heading).toBe(
+        "Undo import of maple-grove-2026-all-camp.xlsx?"
+      );
+      expect(asked.confirmLabel).toBe("Undo import");
+      await flush();
       expect(undoImport).toHaveBeenCalledWith({ importId: "im1" });
       expect($(element, '[data-id="undone"]').textContent).toBe(
         "Import undone. Removed what it added."
       );
       expect($(element, 'button[data-id="undo"]')).toBeNull();
+      // The cursor isn't left on the Undo that is gone: it is on Done (WCAG 2.4.3).
+      expect(element.shadowRoot.activeElement).toBe(
+        $(element, 'button[data-id="continue"]')
+      );
+      // Word walk W4: what it had added is gone from the page too.
+      expect($(element, '[data-id="added"]')).toBeNull();
+      expect($(element, '[data-id="version"]')).toBeNull();
     });
   });
 });

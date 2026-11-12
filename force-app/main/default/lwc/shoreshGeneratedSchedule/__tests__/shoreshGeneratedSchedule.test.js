@@ -439,18 +439,18 @@ describe("c-shoresh-generated-schedule", () => {
       );
       expect(menu(inputs, { action: "BringBack", option: 2 })).toEqual({
         ok: true,
-        unchanged: "Week 1 is already on Option 2. Nothing was changed."
+        unchanged: "Week 1 is already on Option 2."
       });
       for (const option of [0, 3, 1.5, "x"]) {
         expect(menu(inputs, { action: "BringBack", option })).toEqual({
           ok: false,
-          error: `Option ${option} hasn't been tried for Week 1, which is on Option 2. Nothing was changed.`
+          error: `Option ${option} hasn't been tried for Week 1, which is on Option 2.`
         });
       }
       // Without a number it is refused, never Try another.
       expect(menu(inputs, { action: "BringBack" })).toEqual({
         ok: false,
-        error: "No option was named. Nothing was changed."
+        error: "No option was named."
       });
     });
 
@@ -476,7 +476,7 @@ describe("c-shoresh-generated-schedule", () => {
       expect(action(fullScreen, "FillOpen").disabled).toBe(true);
       expect(menu(full, { action: "FillOpen" })).toEqual({
         ok: false,
-        error: "Week 1 has no open cells to fill. Nothing was changed."
+        error: "Week 1 has no open cells to fill."
       });
     });
 
@@ -506,11 +506,11 @@ describe("c-shoresh-generated-schedule", () => {
       ]) {
         expect(menu(inputs, { action: asked })).toEqual({
           ok: false,
-          error: "Week 1 hasn't been built yet. Nothing was changed."
+          error: "Week 1 hasn't been built yet."
         });
         expect(menu(noDays, { action: asked, option: 1 })).toEqual({
           ok: false,
-          error: "Week 1 has no days its program runs. Nothing was changed."
+          error: "Week 1 has no days its program runs."
         });
       }
     });
@@ -1201,7 +1201,7 @@ describe("c-shoresh-generated-schedule", () => {
     await settle(element);
     // What didn't happen first, then Shoresh's own reason.
     expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
-      "Option 2 wasn't saved. Nothing was changed. Flagpole stays where it is set up."
+      "Option 2 wasn't saved. Flagpole stays where it is set up."
     );
     expect(cells(element).map((c) => c.textContent)).toEqual(before);
     expect(optionShown(element)).toBe("1");
@@ -1220,7 +1220,7 @@ describe("c-shoresh-generated-schedule", () => {
     action(element, "Rebuild").click();
     await settle(element);
     expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
-      "Week 1 wasn't rebuilt. Nothing was changed. Try again."
+      "Week 1 wasn't rebuilt. Try again."
     );
     console.error.mockRestore();
   });
@@ -1238,7 +1238,7 @@ describe("c-shoresh-generated-schedule", () => {
     document.body.appendChild(element);
     await flush();
     expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
-      "Week 1 couldn't be opened. Nothing was changed. Try again."
+      "Week 1 couldn't be opened. Try again."
     );
     console.error.mockRestore();
   });

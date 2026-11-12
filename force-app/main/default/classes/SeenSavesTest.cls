@@ -186,9 +186,10 @@ private class SeenSavesTest {
       }
       Test.stopTest();
       Assert.areEqual(
+        // Word walk W4: the refusal names the field.
         new List<String>{
-          'These screens can\'t save that.',
-          'These screens can\'t save that.'
+          'Notes wasn\'t saved: reload the page and change it again.',
+          'Who can do it wasn\'t saved: reload the page and change it again.'
         },
         refused
       );

@@ -402,7 +402,10 @@ describe("what the save sends", () => {
       "Special day, Friday, 6 groups",
       "Trip, Thursday, 3 groups"
     ]);
-    expect(importNotes(p, terms).map((n) => n.key)).toContain("rules");
+    // What isn't imported is said, in one factual line (word walk W4: no explainer beyond it).
+    expect(importNotes(p, terms).find((n) => n.key === "rules").text).toBe(
+      "Outdoors, rain plans and priority aren't imported: a schedule file doesn't have them."
+    );
   });
 });
 

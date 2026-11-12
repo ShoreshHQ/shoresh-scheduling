@@ -197,7 +197,7 @@ private class ScreenErrorsTest {
         new List<SObject>{
           new Week__c(
             Id = week.Id,
-            Name = 'The end',
+            Name = 'End date',
             EndDate__c = week.StartDate__c.addDays(-1)
           )
         }
@@ -205,7 +205,7 @@ private class ScreenErrorsTest {
       Assert.fail('Backwards dates are refused');
     } catch (UserModeWrites.SaveException e) {
       Assert.areEqual(
-        '"The end": The end date must be on or after the start date.',
+        '"End date": End date is before Start date.',
         ScreenErrors.of(e).getMessage()
       );
     }

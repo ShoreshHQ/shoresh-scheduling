@@ -373,6 +373,17 @@ private class SetTimeSetupTest {
       );
       Assert.areEqual(1, count('FixedActivity__c'));
       Assert.areEqual(1, count('Group__c WHERE Name = \'Group C\''));
+      // Word walk W4: only the screen they are on.
+      Database.delete(
+        [SELECT Id FROM FixedActivity__c WITH SYSTEM_MODE],
+        true,
+        AccessLevel.SYSTEM_MODE
+      );
+      Assert.areEqual(
+        'This can\'t be deleted yet: "Swim" is set in it. Delete it on the ' +
+        'Recurring activities screen first, then delete this.',
+        SetTimeTestData.deleteRefusal(ids.get('Main'))
+      );
     }
   }
 

@@ -227,6 +227,19 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(q(element, '[data-id="tool-notice"]')).toBeNull();
   });
 
+  // Word walk W4: status lines clear when the screen changes.
+  it("leaving the screen empties its message row; Undo stays in Edit", async () => {
+    const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="tool-notice"]')).not.toBeNull();
+    element.leave();
+    await flush();
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+    expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+  });
+
   it("what was left out is said with the save, for screen readers", async () => {
     const element = await render(start(["1,2,", "1,,3"], ["1,3,", "1,,"]));
     await choose(element, "copy-day", "1");

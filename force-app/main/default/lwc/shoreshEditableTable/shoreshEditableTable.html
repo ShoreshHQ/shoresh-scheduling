@@ -123,6 +123,7 @@
                           value={cell.value}
                           placeholder={cell.placeholder}
                           required={cell.required}
+                          message-when-value-missing={cell.missingText}
                           data-row-key={row.key}
                           data-field={cell.fieldName}
                           disabled={cell.disabled}
@@ -183,8 +184,11 @@
                             variant="label-hidden"
                             value={cell.value}
                             required={cell.required}
+                            message-when-value-missing={cell.missingText}
                             min={cell.min}
+                            message-when-range-underflow={cell.tooLowText}
                             step="1"
+                            message-when-step-mismatch={cell.wholeText}
                             data-row-key={row.key}
                             data-field={cell.fieldName}
                             disabled={cell.disabled}
@@ -197,7 +201,9 @@
                             variant="label-hidden"
                             value={cell.maxValue}
                             min={cell.min}
+                            message-when-range-underflow={cell.tooLowText}
                             step="1"
+                            message-when-step-mismatch={cell.wholeText}
                             data-row-key={row.key}
                             data-field={cell.maxField}
                             disabled={cell.disabled}
@@ -254,7 +260,9 @@
                             variant="label-hidden"
                             value={cell.value}
                             min={cell.min}
+                            message-when-range-underflow={cell.tooLowText}
                             step="1"
+                            message-when-step-mismatch={cell.wholeText}
                             data-row-key={row.key}
                             data-field={cell.fieldName}
                             disabled={cell.disabled}
@@ -284,8 +292,11 @@
                         value={cell.value}
                         placeholder={cell.placeholder}
                         required={cell.required}
+                        message-when-value-missing={cell.missingText}
                         min={cell.min}
+                        message-when-range-underflow={cell.tooLowText}
                         step="1"
+                        message-when-step-mismatch={cell.wholeText}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
                         disabled={cell.disabled}
@@ -296,10 +307,12 @@
                       <lightning-input
                         class="shoresh-date"
                         type="date"
+                        message-when-bad-input={cell.badText}
                         label={cell.label}
                         variant="label-hidden"
                         value={cell.value}
                         required={cell.required}
+                        message-when-value-missing={cell.missingText}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
                         disabled={cell.disabled}
@@ -309,10 +322,12 @@
                     <template lwc:elseif={cell.isTime}>
                       <lightning-input
                         type="time"
+                        message-when-bad-input={cell.badText}
                         label={cell.label}
                         variant="label-hidden"
                         value={cell.value}
                         required={cell.required}
+                        message-when-value-missing={cell.missingText}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
                         disabled={cell.disabled}
@@ -359,6 +374,7 @@
                         add-to={cell.addTo}
                         taken={cell.taken}
                         required={cell.required}
+                        message-when-value-missing={cell.missingText}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
                         disabled={cell.disabled}
@@ -374,6 +390,7 @@
                         placeholder={cell.pickPlaceholder}
                         options={cell.options}
                         required={cell.required}
+                        message-when-value-missing={cell.missingText}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
                         disabled={cell.disabled}
@@ -594,6 +611,7 @@
                               value={cell.value}
                               options={cell.options}
                               required={cell.required}
+                              message-when-value-missing={cell.missingText}
                               data-row-key={row.key}
                               data-field={cell.fieldName}
                               disabled={cell.disabled}
@@ -607,8 +625,11 @@
                                 label={cell.label}
                                 value={cell.value}
                                 required={cell.required}
+                                message-when-value-missing={cell.missingText}
                                 min={cell.min}
+                                message-when-range-underflow={cell.tooLowText}
                                 step="1"
+                                message-when-step-mismatch={cell.wholeText}
                                 data-row-key={row.key}
                                 data-field={cell.fieldName}
                                 disabled={cell.disabled}
@@ -638,6 +659,7 @@
                               label={cell.label}
                               value={cell.value}
                               required={cell.required}
+                              message-when-value-missing={cell.missingText}
                               data-row-key={row.key}
                               data-field={cell.fieldName}
                               disabled={cell.disabled}

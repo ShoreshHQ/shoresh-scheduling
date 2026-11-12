@@ -1,0 +1,16 @@
+@import "c/shoreshTokens";
+
+/* A button that deletes: the one red (design guide §3, --danger), words in the page's light. */
+.ask-danger {
+  padding: 0 var(--shoresh-s3);
+  color: var(--shoresh-surface-grid);
+  background: var(--shoresh-danger);
+  border: 1px solid var(--shoresh-danger);
+}
+
+.ask-danger:hover,
+.ask-danger:focus {
+  color: var(--shoresh-surface-grid);
+  background: var(--shoresh-danger-text);
+  border-color: var(--shoresh-danger-text);
+}

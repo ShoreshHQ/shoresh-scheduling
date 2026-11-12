@@ -4,7 +4,7 @@ import saveList from "@salesforce/apex/ImportController.saveList";
 import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
-import LightningConfirm from "lightning/confirm";
+import { answerAsk } from "shoresh-jest/ask";
 import { buildTerms } from "c/shoreshTerms";
 import { bareRecord, nsRecord } from "shoresh-jest/namespace";
 
@@ -426,7 +426,6 @@ describe("c-shoresh-list-import", () => {
     expect($(element, '[data-id="summary"]').textContent).toContain(
       "Added 1 activity"
     );
-    LightningConfirm.open = jest.fn().mockResolvedValue(true);
     undoImport.mockResolvedValue({
       removed: 2,
       restored: 0,
@@ -436,15 +435,24 @@ describe("c-shoresh-list-import", () => {
     });
     $(element, 'button[data-id="undo"]').click();
     await flush();
-    expect(LightningConfirm.open).toHaveBeenCalledWith(
-      expect.objectContaining({
-        label: "Undo activities.csv?",
-        // What goes, named (break-and-rebuild N7): never a bare count.
-        message: "Remove 1 activity and 1 location · put back 1 activity"
-      })
-    );
+    // Word walk W4: the question names the action ("Undo import"), never "OK".
+    expect(await answerAsk(element, true)).toEqual({
+      heading: "Undo import of activities.csv?",
+      // What goes, named (break-and-rebuild N7): never a bare count.
+      lines: ["Remove 1 activity and 1 location · put back 1 activity"],
+      confirmLabel: "Undo import",
+      tone: undefined
+    });
+    await flush();
     expect(undoImport).toHaveBeenCalledWith({ importId: "imp1" });
     expect($(element, '[data-id="undone"]')).not.toBeNull();
+    // Word walk W4: the old "Saved · Added …" line goes with what it said.
+    expect($(element, '[data-id="summary"]')).toBeNull();
+    // Undo is gone from the rail: the cursor is on Close beside it, never lost (WCAG 2.4.3).
+    expect($(element, 'button[data-id="undo"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, 'button[data-id="done"]')
+    );
   });
 
   it("says why nothing was saved when the server refuses", async () => {
@@ -457,6 +465,48 @@ describe("c-shoresh-list-import", () => {
     expect($(element, '[data-id="error"]').textContent).toBe(
       "Nothing was saved. Canoeing: Must be 1 or more."
     );
+  });
+
+  // Word walk W4 review: Close puts the cursor back on what was refused, never at the page's top.
+  it("Close on a refusal puts the cursor back on the button that caused it", async () => {
+    saveList.mockRejectedValue({
+      body: { message: "Canoeing: Must be 1 or more." }
+    });
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    const save = saveOf(element);
+    save.focus();
+    save.click();
+    await flush();
+    $(element, '[data-id="error-close"]').focus();
+    $(element, '[data-id="error-close"]').click();
+    await flush();
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(save);
+  });
+
+  it("Close on a refusal with nothing to go back to puts the cursor on the heading", async () => {
+    saveList.mockRejectedValue({ body: { message: "Locked." } });
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    document.activeElement.blur();
+    saveOf(element).click();
+    await flush();
+    $(element, '[data-id="error-close"]').focus();
+    $(element, '[data-id="error-close"]').click();
+    await flush();
+    expect($(element, '[data-id="error"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe($(element, "[data-heading]"));
+  });
+
+  // Word walk W4 review: the page hides a screen it leaves; the refusal goes with the visit.
+  it("leaving the screen puts its refusal away", async () => {
+    saveList.mockRejectedValue({ body: { message: "Locked." } });
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]')).not.toBeNull();
+    element.leave();
+    await flush();
+    expect($(element, '[data-id="error"]')).toBeNull();
   });
 
   it("a rain plan to add can be unticked: the row is saved without it", async () => {
@@ -1350,7 +1400,7 @@ describe("Import worksheet (Roots)", () => {
       );
       const note = $(element, '[data-id="choices-file"]');
       expect(note.textContent).toContain(
-        "activities.csv: that file is camper choices, not electives. Nothing was saved."
+        "activities.csv: that file is camper choices, not electives."
       );
       expect($(element, 'tr[data-kind="new"]')).toBeNull();
       const button = $(element, 'lightning-button[data-id="bring-in-choices"]');
@@ -1389,7 +1439,7 @@ describe("Import worksheet (Roots)", () => {
       $(element, '[data-id="list-import"]').dispatchEvent(event);
       await flush();
       expect($(element, '[data-id="choices-file"]').textContent).toContain(
-        "Pasted cells: those are camper choices, not electives. Nothing was saved."
+        "Pasted cells: those are camper choices, not electives."
       );
       expect(saveList).not.toHaveBeenCalled();
     });

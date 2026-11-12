@@ -136,13 +136,12 @@ afterEach(() => {
 });
 
 describe("downloads come once seats are final", () => {
-  it("a committed run says Download waits for Finalize, and offers Clear", async () => {
+  // Word walk W4: no "Download after Finalize" row; Download shows once seats are Final.
+  it("a draft run shows no Download, and offers Clear", async () => {
     const element = await render(assignedView());
     expect(pop(element, "download")).toBeNull();
     const state = pop(element, "state");
-    const wait = state.querySelector('[data-id="download-wait"]');
-    expect(wait.getAttribute("aria-label")).toBe("Download, after Finalize");
-    expect(wait.getAttribute("aria-disabled")).toBe("true");
+    expect(state.querySelector('[data-id="download-wait"]')).toBeNull();
     expect(text(state.querySelector('[data-id="clear-open"]'))).toBe(
       "Clear at season end…"
     );
@@ -208,7 +207,7 @@ describe("downloads come once seats are final", () => {
       body: { message: "Downloads come once seats are final. Finalize first." }
     });
     await choose(element, "download", "rosters");
-    expect(text($(element, '[data-id="error"] span'))).toBe(
+    expect(text($(element, '[data-id="error"]'))).toBe(
       "Nothing was downloaded. Downloads come once seats are final. Finalize first."
     );
     expect(downloadWorkbook).not.toHaveBeenCalled();
@@ -286,6 +285,10 @@ describe("end-of-season Clear", () => {
     await flush();
     expect(going(element, "seats")).toEqual(["true", "false", ""]);
     expect(text($(element, 'tr[data-row="campers"] .clear-stay'))).toBe("40");
+    // Word walk W4: Clear can't be undone, so it is the one red, never the main green.
+    expect($(element, '[data-id="clear-go"]').className).toBe(
+      "shoresh-item shoresh-item_danger"
+    );
     clearElectives.mockResolvedValue({ runs: 2, campers: 4, picture: PICTURE });
     seatsSetup.mockResolvedValue({ runs: [] });
     $(element, '[data-id="clear-go"]').click();
@@ -302,6 +305,10 @@ describe("end-of-season Clear", () => {
     expect($(element, '[data-id="clear-heading"]')).toBeNull();
     expect(seatsSetup).toHaveBeenCalledTimes(2);
     expect($(element, '[data-id="no-run"]')).not.toBeNull();
+    // Word walk W4 review: the line was about that visit; leaving the screen empties it.
+    element.leave();
+    await flush();
+    expect(text($(element, '[data-id="status"]'))).toBe("");
   });
 
   it("refused, it says why and draws the season again as it now is", async () => {

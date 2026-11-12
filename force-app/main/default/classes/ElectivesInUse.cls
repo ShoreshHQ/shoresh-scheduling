@@ -36,17 +36,18 @@ public with sharing class ElectivesInUse {
     }
     List<ElectiveRun__c> runs = runsUsing(recordId, kind);
     if (!runs.isEmpty()) {
+      // Word walk W4: seats, never "runs" (Greg's pick: "run" only in "Minimum to run").
       CampLabels labels = found.labels(runs[0].Season__r.Camp__c);
-      List<String> names = namesOf(runs);
+      if (kind == ElectiveSet__c.SObjectType) {
+        return SetupDeleteWords.setHasSeats(runs, labels);
+      }
       found.parts.add(
         'it has ' +
-          labels.singularInSentence('Elective') +
-          ' runs: ' +
-          InUse.quoted(names)
+          labels.pluralInSentence('Seats') +
+          ' in ' +
+          InUse.quoted(namesOf(runs))
       );
-      found.fixes.add(
-        'delete ' + (names.size() == 1 ? 'that run' : 'those runs')
-      );
+      found.fixes.add('clear them');
     }
     if (found.parts.isEmpty()) {
       return null;
@@ -228,11 +229,11 @@ public with sharing class ElectivesInUse {
     }
     if (kind == ElectiveSet__c.SObjectType) {
       return [
-        SELECT Name, Season__r.Camp__c
+        SELECT Name, Season__r.Camp__c, Week__r.Name, ElectiveSet__r.Name
         FROM ElectiveRun__c
         WHERE ElectiveSet__c = :recordId
         WITH USER_MODE
-        ORDER BY Name, Id
+        ORDER BY Week__r.StartDate__c, Name, Id
         LIMIT :MAX_ROWS
       ];
     }

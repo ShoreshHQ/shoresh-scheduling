@@ -1,5 +1,4 @@
 import { LightningElement, api } from "lwc";
-import LightningConfirm from "lightning/confirm";
 import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
 import { holdsNoDivision } from "c/shoreshImportEngine";
 import { leftField } from "c/shoreshSavedMark";
@@ -359,6 +358,21 @@ export default class ShoreshActivityDetails extends LightningElement {
     return this.errors[ACTIVITY.Notes];
   }
 
+  /** Each number field's refusal names the field and its limit (word walk W4). */
+  get limits() {
+    const labels = this.labels;
+    const words = (label) => ({
+      low: `${label}: at least 1.`,
+      whole: `${label}: a whole number.`,
+      missing: `${label}: needed.`
+    });
+    return {
+      earlyCount: words(labels.earlyCount),
+      length: words(labels.length),
+      groupsAtOnce: words(labels.groupsAtOnce)
+    };
+  }
+
   get labels() {
     const t = this.terms;
     const name = this.activity ? this.activity.Name : "";
@@ -454,11 +468,10 @@ export default class ShoreshActivityDetails extends LightningElement {
       return true;
     }
     // Only a refused change is still unsaved here: leaving a field saves it.
-    return LightningConfirm.open({
-      label: "Unsaved changes",
-      message: `Discard your unsaved changes to "${this.activity.Name}"?`,
-      variant: "header",
-      theme: "warning"
+    return this.askFirst({
+      heading: `Discard changes to ${this.activity.Name}?`,
+      lines: [],
+      confirmLabel: "Discard"
     });
   }
 
@@ -853,6 +866,37 @@ export default class ShoreshActivityDetails extends LightningElement {
   closeConflict(field) {
     this.conflict = null;
     this.focusFieldNext = inputOf(field);
+  }
+
+  // The question open (c-shoresh-ask): { heading, lines, confirmLabel, tone }, or null.
+  ask = null;
+  askFocus = null;
+  answerAsk = null;
+
+  /**
+   * Shows a question (c-shoresh-ask) and waits for the answer: true for yes. Focus goes back to
+   * where it was when it closes (WCAG 2.4.3).
+   */
+  askFirst(question) {
+    this.askFocus = this.template.activeElement;
+    this.ask = question;
+    return new Promise((resolve) => {
+      this.answerAsk = resolve;
+    });
+  }
+
+  handleAskAnswer(event) {
+    const resolve = this.answerAsk;
+    const back = this.askFocus;
+    this.ask = null;
+    this.answerAsk = null;
+    this.askFocus = null;
+    if (back && typeof back.focus === "function") {
+      back.focus();
+    }
+    if (resolve) {
+      resolve(event.detail.yes);
+    }
   }
 }
 

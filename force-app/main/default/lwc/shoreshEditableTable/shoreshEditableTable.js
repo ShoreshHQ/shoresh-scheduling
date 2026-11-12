@@ -1147,7 +1147,25 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get addDisabled() {
-    return this.busy || this.addRow.adding || !this.complete(this.addRow);
+    return (
+      this.busy ||
+      this.addRow.adding ||
+      !this.complete(this.addRow) ||
+      this.noDayTicked(this.addRow)
+    );
+  }
+
+  /**
+   * A days column that needs a day (col.needsADay) with none ticked: the blank row's Add waits
+   * for one, rather than refusing with "Tick at least one day." (word walk W4).
+   */
+  noDayTicked(draft) {
+    return this.columns.some(
+      (col) =>
+        col.type === "days" &&
+        col.needsADay &&
+        !col.days.some((day) => !!draft.values[day.fieldName])
+    );
   }
 
   tableRow(draft, { offWeeks, sameNames, overlaps, matches }) {
@@ -1256,6 +1274,13 @@ export default class ShoreshEditableTable extends LightningElement {
         // A number's unit beside it (col.unitFor(value)): "1 time block" (word walk W1).
         unit: col.unitFor ? col.unitFor(draft.values[col.fieldName]) : "",
         min: col.min,
+        // A field's refusal names the field and its limit, never Salesforce's "Complete this
+        // field." or "The number is too low." (word walk W4).
+        missingText: `${col.label}: needed.`,
+        tooLowText:
+          col.min == null ? undefined : `${col.label}: at least ${col.min}.`,
+        wholeText: `${col.label}: a whole number.`,
+        badText: `${col.label}: not a ${col.type === "time" ? "time" : "date"}.`,
         isDate: col.type === "date",
         isTime: col.type === "time",
         isCheckbox: col.type === "checkbox",
