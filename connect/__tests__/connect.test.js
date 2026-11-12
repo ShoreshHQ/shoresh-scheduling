@@ -669,7 +669,12 @@ describe("Shoresh for AI tools and the command line", () => {
             placed: "174 of 174 placed",
             over: { count: 1, lines: [{ line: "Art: 1 group over" }] },
             to_look_at: [
-              { line: "Bunk 6 · Wednesday · Period 5: Over its weekly limit" }
+              { line: "Bunk 6 · Wednesday · Period 5: Over its weekly limit." }
+            ],
+            notes: [
+              {
+                line: "Nothing in setup needed a change, so everything was kept as it was."
+              }
             ]
           }),
           nameDaysFor: () => {}
@@ -682,7 +687,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "GET"
     ]);
     expect(withCounter.text).toBe(
-      "Built Week 1. 174 of 174 placed. To look at: Art: 1 group over; Bunk 6 · Wednesday · Period 5: Over its weekly limit."
+      "Built Week 1. 174 of 174 placed. To look at: Art: 1 group over; Bunk 6 · Wednesday · Period 5: Over its weekly limit. Notes: Nothing in setup needed a change, so everything was kept as it was."
     );
 
     // A counter that can't be worked out adds nothing: the week is saved and said as built.
