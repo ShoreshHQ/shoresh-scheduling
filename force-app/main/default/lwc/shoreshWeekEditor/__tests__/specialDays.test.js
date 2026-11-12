@@ -504,7 +504,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(setUpWith).toHaveBeenCalledWith({ kind: "T", name: "Zoo trip" });
   });
 
-  // Greg 2026-11-12: a message never moves the screen.
+  // WEEK-6.4 (Greg 2026-11-12): a message never moves the screen.
   it("keeps every message on the one message row, which is there with no message", async () => {
     const setUpWith = jest
       .fn()
@@ -528,6 +528,7 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(q(element, '[data-id="messages"]')).toBe(row);
   });
 
+  // WEEK-6.4
   it("holds the message row one line high, its lines with no margin of their own", () => {
     const css = require("fs").readFileSync(
       require("path").join(__dirname, "..", "shoreshWeekEditor.css"),
