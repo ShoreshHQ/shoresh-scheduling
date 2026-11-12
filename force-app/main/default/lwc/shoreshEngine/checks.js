@@ -541,11 +541,14 @@ export function countedCells(ctx, days) {
     day.groups.forEach((grp, g) => {
       slots(day, g).forEach((slot, b) => {
         const item = owner(slot);
-        // Where setup's own fixed and recurring cells are known (Manual Build), those are left
-        // out whatever they hold, so the total never moves as cells change (LOCK-4.10).
-        const setTime = ctx.setUpAt
-          ? !!ctx.setUpAt(day.dateValue, grp.id, day.blocks[b].id)
-          : holdsSetTime(item);
+        // A fixed or recurring activity is left out where the week has one, and, where setup's
+        // own cells are known (Manual Build), where setup puts one whatever the cell holds: typing
+        // over one or clearing it never moves the total (LOCK-4.10), and one setup has since
+        // moved (until Update to match setup) isn't counted as filled.
+        const setTime =
+          holdsSetTime(item) ||
+          (!!ctx.setUpAt &&
+            !!ctx.setUpAt(day.dateValue, grp.id, day.blocks[b].id));
         if (
           ctx.isAway(grp.id, day.blocks[b].id) ||
           setTime ||

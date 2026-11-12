@@ -51,6 +51,37 @@ describe("a clear puts back the fixed activity something was typed over", () => 
   });
 
   // LOCK-4.9
+  it("puts nothing back where setup has moved a fixed activity since: no second one, the move waits for Update to match setup", () => {
+    // The week has Flagpole in Period 1; setup now puts it in Period 2 (no Update to match setup
+    // yet), and Swim was typed into Bunk 1's Period 2.
+    const MOVED = {
+      "2026-06-29|g1|t2": "F:f1",
+      "2026-06-29|g2|t2": "F:f1"
+    };
+    const days = week(["1,2,", "1,,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: MOVED }).runs);
+    expect(rows[0]).toEqual([
+      ["F:f1", "", ""],
+      ["F:f1", "", ""]
+    ]);
+    // Swim typed over Bunk 1's Flagpole after the move: cleared, not put in Period 2.
+    const typedOver = week([",2,", "1,,"], ["1,,", "1,,"]);
+    const cleared = after(
+      typedOver,
+      clearEdit(typedOver, [0], { setUp: MOVED }).runs
+    );
+    expect(cleared[0][0]).toEqual(["", "", ""]);
+  });
+
+  // LOCK-4.9
+  it("puts back nothing setup added since that the week doesn't have yet", () => {
+    const ADDED = { "2026-06-29|g1|t3": "F:f9" };
+    const days = week(["1,,2", "1,,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: ADDED }).runs);
+    expect(rows[0][0]).toEqual(["F:f1", "", ""]);
+  });
+
+  // LOCK-4.9
   it("without setup's cells, a clear empties the cell as before", () => {
     const days = week(["2,3,", "1,,"], ["1,,", "1,,"]);
     expect(after(days, clearEdit(days, [0]).runs)[0][0]).toEqual(["", "", ""]);
