@@ -1141,7 +1141,7 @@ describe("Import worksheet (Roots)", () => {
       "Activities",
       "Fixed activities",
       "Recurring activities",
-      "Runs in"
+      "Which weeks"
     ]);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
       "Nothing to change"
