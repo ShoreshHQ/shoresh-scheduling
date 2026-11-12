@@ -275,7 +275,7 @@ describe("locks on the Generated Schedule screen", () => {
   });
 
   // Greg 2026-11-12: Rebuild keeps the week as a version first, so it asks nothing.
-  it("Rebuild with locks asks nothing: it goes at once, and the locks go with the week", async () => {
+  it("Rebuild with locks asks nothing: it goes at once", async () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
     saveWeekOnServer.mockImplementation(
       keeping({

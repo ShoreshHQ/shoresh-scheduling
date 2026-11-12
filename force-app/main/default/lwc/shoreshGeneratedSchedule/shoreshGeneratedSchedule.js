@@ -1058,7 +1058,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   /**
    * Start over's or Rebuild's Undo: the version it kept first is restored (its cells, locks and option), the
    * same way Restore does it, so someone else's newer save is never replaced unseen. Focus goes
-   * back to Start over (the line goes with the week it was about).
+   * back to the Build menu (the line goes with the week it was about).
    */
   handleUndoStartOver() {
     const started = this.startedOver;

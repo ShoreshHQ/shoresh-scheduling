@@ -868,9 +868,9 @@ doesn't change this one.
 9. **A setup change.** On **Activities**, open Swim and lower its most times a week by one. Back on
    Generated Schedule, **Rebuild**: Swim now runs fewer times. Put Swim back
    afterwards.
-10. **Start over.** Click it. The box says _Clears the N activity cells in Week 1. Fixed
-    activities and recurring activities stay._ and _Saved to Versions first._ Click **Start
-    over** (_Starting over…_ shows while it saves): every activity cell says **Open** again; Lunch, Morning meeting and Library time stay.
+10. **Start over.** Click it. Nothing is asked (_Starting over…_ shows while it saves): every
+    activity cell says **Open** again; Lunch, Morning meeting and Library time stay, and the
+    line above the grid says _Started Week 1 over · Undo_.
     **Open** now counts those cells.
 11. **Fill the open cells.** It is greyed out while nothing is Open. After step 10, click it: only
     the Open cells are filled; anything already in a cell stays where it is.
@@ -1027,8 +1027,8 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
    Schedule_, then when and by whom. Back on **Manual Build**, Week 1's line also reads
    _Published from Generated Schedule …_, ending _· changed since_: Manual Build's own Week 1
    (built by hand from section 19 on) differs from the one just published.
-4. Click **Rebuild** and confirm, then **Publish** (and **Publish** in the box, if it asks).
-   Click **Rebuild** again and confirm: nothing was locked or changed by hand since the last
+4. Click **Rebuild**, then **Publish** (and **Publish** in the box, if it asks).
+   Click **Rebuild** again: nothing was locked or changed by hand since the last
    build, so the same setup builds the same week, and the line still has no _· changed since_.
    (A lock or a hand edit made since a build can change how Rebuild builds the rest of the week;
    the line then rightly ends _· changed since_.)
