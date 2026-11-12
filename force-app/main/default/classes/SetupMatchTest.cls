@@ -1023,6 +1023,21 @@ private class SetupMatchTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
+      // Swim on Wednesday too: a day the week loses with something on it (an Open cell has no dot).
+      ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY.addDays(2),
+              ids.get('Group A'),
+              ids.get('Period 2')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Swim') }
+          )
+        }
+      );
       // Week 1 now ends on Tuesday: Wednesday and Thursday are no longer days of it.
       SetupMatchTestData.saveDeferred(
         new Week__c(Id = ids.get('Week 1'), EndDate__c = MONDAY.addDays(1))
@@ -1042,6 +1057,11 @@ private class SetupMatchTest {
               String.valueOf(ids.get('Period 2'))
           )
       );
+      Integer daysBefore = [
+        SELECT COUNT()
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :draftId
+      ];
       SetupMatch.Updated done = makeChanges(
         draftId,
         SetupMatchTestData.keysOf(preview),
@@ -1075,8 +1095,10 @@ private class SetupMatchTest {
       Assert.areEqual(2, daysAfterUpdate);
       Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
       Assert.isFalse(restored.changedSince);
+      // Main runs Monday to Thursday: all four days are back.
+      Assert.areEqual(4, daysBefore);
       Assert.areEqual(
-        5,
+        daysBefore,
         [SELECT COUNT() FROM ScheduleDay__c WHERE Schedule__c = :draftId]
       );
       Assert.areEqual(
