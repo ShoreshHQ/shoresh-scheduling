@@ -13,6 +13,7 @@
  * cell would give it).
  */
 import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
+import { spokenWeekday } from "c/shoreshDayNames";
 import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
 import {
@@ -361,10 +362,11 @@ export function cellText(column, value, targets) {
       return value.length
         ? whoNames(value, targets).map(listName).join(", ")
         : "Everyone";
+    // A numbered-days season writes "Day 3", as its screens say it, and reads it back (WEEK-2.6).
     case "early":
-      return `${value.count} by ${value.day}`;
+      return `${value.count} by ${spokenWeekday(value.day)}`;
     case "days":
-      return value.join(", ");
+      return value.map(spokenWeekday).join(", ");
     case "time": {
       // 12-hour with AM or PM, so it reads back the same.
       const hours = Math.floor(value / 60);

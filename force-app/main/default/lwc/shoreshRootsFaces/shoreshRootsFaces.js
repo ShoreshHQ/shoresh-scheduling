@@ -1,4 +1,5 @@
 import { FIELD } from "c/shoreshSchema";
+import { numberedWeekday } from "c/shoreshDayNames";
 import { holdsNoDivision, realDivisionsOf } from "c/shoreshImportEngine";
 
 /**
@@ -15,7 +16,18 @@ import { holdsNoDivision, realDivisionsOf } from "c/shoreshImportEngine";
 export const W = 220;
 export const H = 128;
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const DAY_LETTERS = ["M", "T", "W", "T", "F"];
+const LETTERS = ["M", "T", "W", "T", "F"];
+
+/**
+ * The week's days as the cards draw them: "M T W T F", or in a numbered-days season "1 2 3 4 5"
+ * (word walk W1: Roots says the days as the season does, shoreshDayNames).
+ */
+export function dayLetters() {
+  return DAYS.map((d, i) => {
+    const numbered = numberedWeekday(d);
+    return numbered ? numbered.replace(/^Day /, "") : LETTERS[i];
+  });
+}
 const MONTHS = "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(" ");
 
 // ---------- the melds: the menu's three sections, in its order (wiki decision 64h) ----------
@@ -576,7 +588,7 @@ const G = {
     const dw = (W - 4 * 4) / 5;
     const shapes = [];
     if (!list.length) {
-      DAY_LETTERS.forEach((d, i) =>
+      dayLetters().forEach((d, i) =>
         shapes.push(dashed(i * (dw + 4), 40, dw, 26))
       );
       return glimpse(shapes);
@@ -588,7 +600,7 @@ const G = {
         const x = i * (dw + 4);
         shapes.push(
           on
-            ? tile(x, y + 16, dw, lane - 26, DAY_LETTERS[i], { cls: "g-m" })
+            ? tile(x, y + 16, dw, lane - 26, dayLetters()[i], { cls: "g-m" })
             : dashed(x, y + 16, dw, lane - 26, 4, "s400")
         );
       });
@@ -789,13 +801,13 @@ const G = {
 
   recurringActivities(c) {
     const shapes = [];
-    DAY_LETTERS.forEach((d, i) =>
+    dayLetters().forEach((d, i) =>
       shapes.push(txt(i * 45 + 20, 22, d, "g-m", "middle"))
     );
     const rows = c.recurring.slice(0, 3);
     const rh = rows.length > 2 ? 26 : 36;
     if (!rows.length) {
-      DAY_LETTERS.forEach((d, i) => shapes.push(dashed(i * 45, 34, 41, 36)));
+      dayLetters().forEach((d, i) => shapes.push(dashed(i * 45, 34, 41, 36)));
       return glimpse(shapes);
     }
     if (rows.every((r) => nameWidth(r.name) * 11 <= 35)) {
@@ -1358,11 +1370,11 @@ const PIC = {
     const top = f + 8;
     const rows = c.recurring.slice(0, 2);
     const rh = (H - top - 6) / 2;
-    const shapes = DAY_LETTERS.map((d, i) =>
+    const shapes = dayLetters().map((d, i) =>
       ptx(i * 45 + 20, f, d, "g-pm", f, "middle")
     );
     if (!rows.length) {
-      DAY_LETTERS.forEach((d, i) => shapes.push(dashed(i * 45, top, 41, rh)));
+      dayLetters().forEach((d, i) => shapes.push(dashed(i * 45, top, 41, rh)));
     }
     rows.forEach((r, ri) => {
       r.days.forEach((on, i) => {

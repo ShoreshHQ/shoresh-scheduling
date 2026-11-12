@@ -1,5 +1,7 @@
+import { setDayNaming } from "c/shoreshDayNames";
 import {
   clockOf,
+  dayLetters,
   glimpseOf,
   nameWidth,
   namedColumns,
@@ -639,5 +641,15 @@ describe("a group in no division", () => {
       ["Juniors", ["Bunk 1"]],
       ["No division", ["Tent 1"]]
     ]);
+  });
+});
+
+describe("the days the cards draw (word walk W1)", () => {
+  afterEach(() => setDayNaming(null));
+
+  it("are weekday letters, or the season's numbered days", () => {
+    expect(dayLetters()).toEqual(["M", "T", "W", "T", "F"]);
+    setDayNaming({ numbered: true, firstDay: 1 });
+    expect(dayLetters()).toEqual(["1", "2", "3", "4", "5"]);
   });
 });
