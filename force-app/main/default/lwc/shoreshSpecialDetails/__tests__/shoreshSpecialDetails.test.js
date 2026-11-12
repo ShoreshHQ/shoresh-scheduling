@@ -171,9 +171,9 @@ describe("c-shoresh-special-details", () => {
         )
       ).toEqual([
         '"Field Day" starts from Main\'s 3 time blocks, with Lunch brought in.',
-        "Not brought in, since they don't run every day: Swim and Art.",
-        "Not brought in, since they don't run every week: Flag.",
-        "Not brought in, since they are in other time blocks: Campfire."
+        "Not copied, since they don't run every day: Swim and Art.",
+        "Not copied, since they don't run every week: Flag.",
+        "Not copied, since they are in other time blocks: Campfire."
       ]);
       expect(
         seededLines(

@@ -275,7 +275,7 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get choicesFileText() {
-    return `${this.choicesFile}: ${this.choicesFile === PASTED ? "those are" : "that file is"} camper choices, not offerings. Nothing was saved.`;
+    return `${this.choicesFile}: ${this.choicesFile === PASTED ? "those are" : "that file is"} camper choices, not ${this.terms.pIn("Elective")}. Nothing was saved.`;
   }
 
   /**

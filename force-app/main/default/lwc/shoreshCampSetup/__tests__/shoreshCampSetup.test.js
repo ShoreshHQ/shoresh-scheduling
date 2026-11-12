@@ -4888,9 +4888,9 @@ describe("c-shoresh-camp-setup", () => {
       const note = q(element, '[data-id="seeded-note"]');
       expect(note.getAttribute("role")).toBe("status");
       expect(note.textContent).toBe(
-        '"Visiting Day" starts from Main\'s 7 time blocks, with Lunch and Rest hour brought in. ' +
-          "Not brought in, since they don't run every day: Swim. " +
-          "Not brought in, since the time was already taken: Flag · Bunk 3."
+        '"Visiting Day" starts from Main\'s 7 time blocks, with Lunch and Rest hour copied. ' +
+          "Not copied, since they don't run every day: Swim. " +
+          "Not copied, since the time was already taken: Flag · Bunk 3."
       );
     });
 

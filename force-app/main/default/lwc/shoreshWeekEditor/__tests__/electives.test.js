@@ -154,8 +154,8 @@ describe("c-shoresh-week-editor: elective sets", () => {
       {
         id: SET_ID,
         name: "Chugim",
-        words: "3 offerings",
-        said: "Chugim, Elective set, 3 offerings"
+        words: "3 electives",
+        said: "Chugim, Elective set, 3 electives"
       }
     ]);
     const tiles = [
@@ -170,7 +170,7 @@ describe("c-shoresh-week-editor: elective sets", () => {
       "Chugim"
     );
     expect(tiles[0].querySelector(".tile-words").textContent).toBe(
-      "3 offerings"
+      "3 electives"
     );
   });
 

@@ -811,7 +811,7 @@ async function choiceModules(namespace) {
       "shoreshTerms.shoreshTerms",
       "shoreshSchema.shoreshSchema"
     ],
-    "can't bring in elective choices"
+    "can't import elective choices"
   );
   return Object.assign({}, ...modules);
 }

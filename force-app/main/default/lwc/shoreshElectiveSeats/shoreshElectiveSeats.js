@@ -375,7 +375,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get noRunText() {
     const set = this.sets.find((s) => s.Id === this.setId);
     const week = this.weeks.find((w) => w.Id === this.weekId);
-    return `No choices brought in for ${set ? set.Name : ""} in ${week ? week.Name : ""} yet.`;
+    return `No choices imported for ${set ? set.Name : ""} in ${week ? week.Name : ""} yet.`;
   }
 
   async handleSet(event) {

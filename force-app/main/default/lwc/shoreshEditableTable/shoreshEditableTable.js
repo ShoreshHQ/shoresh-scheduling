@@ -1317,8 +1317,8 @@ export default class ShoreshEditableTable extends LightningElement {
             key: `${draft.key}-end-${action.key}`,
             name: action.key,
             label: action.label,
-            // Named for its row, so a screen reader can tell the buttons apart.
-            title: `${action.label} ${name}`.trim()
+            // Named for its row, so a screen reader can tell the buttons apart; or the screen's.
+            title: action.title || `${action.label} ${name}`.trim()
           })),
       isNew: draft.isNew,
       rowClass: [

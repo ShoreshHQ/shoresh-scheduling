@@ -580,7 +580,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     ];
     if (outcome.replaced && outcome.replaced.length) {
       lines.push(
-        `Replaced by the file, brought in when ${this.name} started: ${listed(outcome.replaced)}.`
+        `Replaced by the file, copied when ${this.name} started: ${listed(outcome.replaced)}.`
       );
     }
     lines.push(...this.frameSaid(outcome.frame, " by the file"));

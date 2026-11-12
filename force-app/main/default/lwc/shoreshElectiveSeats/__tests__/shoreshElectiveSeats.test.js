@@ -273,7 +273,7 @@ describe("the start", () => {
   it("says when no choices are in yet, and when there is no elective set", async () => {
     let element = await render({ situation: { runs: [] } });
     expect($(element, '[data-id="no-run"]').title).toBe(
-      "No choices brought in for Chugim in Week 1 yet."
+      "No choices imported for Chugim in Week 1 yet."
     );
     expect($(element, '[data-id="primary"]')).toBeNull();
     document.body.removeChild(element);

@@ -2255,7 +2255,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     });
     expect(leftOut.text).toMatch(
-      /^Added 2 special days\. Not brought in, since they don't run every day: Swim\. Not brought in, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
+      /^Added 2 special days\. Not copied, since they don't run every day: Swim\. Not copied, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
     );
     const nothingLeftOut = await save({
       added: { SpecialDay: 2 },
@@ -2548,7 +2548,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(said.ok).toBe(true);
     expect(said.text).toContain(
-      "lunch is a fixed activity (From your answer in an import)"
+      "lunch is a fixed activity (Answered as before)"
     );
     expect(said.text).toContain(
       'answer_id a01, seen "fixed", can be changed to recurring'
@@ -2760,7 +2760,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(done).toMatchObject({
       ok: true,
-      text: 'Brought in 2 campers to "Chugim · Week 2": 2 new.'
+      text: 'Imported 2 campers to "Chugim · Week 2": 2 new.'
     });
     expect(JSON.parse(savedSeen[2].stdin).save).toBe(true);
 
@@ -2779,7 +2779,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(unbuilt).toMatchObject({
       ok: false,
-      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was brought in."
+      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was imported."
     });
     // A week with its Generated Schedule both drafted and published: the two are named apart,
     // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).

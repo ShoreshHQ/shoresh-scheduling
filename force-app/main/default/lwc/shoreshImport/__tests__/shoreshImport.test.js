@@ -419,7 +419,7 @@ describe("c-shoresh-import", () => {
     );
     await flush();
     expect(tile("ElectiveSet").textContent).toContain("1");
-    expect(tile("Offering").textContent).toContain("3");
+    expect(tile("Elective").textContent).toContain("3");
     expect(tile("LinkedChoice").textContent).toContain("3");
 
     await answer(element, `elective|${name}`, "not");

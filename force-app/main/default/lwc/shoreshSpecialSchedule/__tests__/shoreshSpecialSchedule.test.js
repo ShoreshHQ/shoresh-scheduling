@@ -517,7 +517,7 @@ describe("c-shoresh-special-schedule", () => {
     // Every change to the frame is named where what it replaced is.
     expect(lines).toEqual([
       "Imported Color War.csv: 1 cell filled.",
-      "Replaced by the file, brought in when Color War started: Lunch.",
+      "Replaced by the file, copied when Color War started: Lunch.",
       "Periods renamed by the file: Opening to 9:00 AM – 9:45 AM.",
       "Periods removed by the file: Lunch."
     ]);
