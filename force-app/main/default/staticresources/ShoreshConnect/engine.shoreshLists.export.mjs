@@ -9,7 +9,7 @@
  * JavaScript: the screen turns the sheets into a file with SheetJS.
  */
 import { refusal } from "./engine.shoreshErrors.shoreshErrors.mjs";
-import { UNSHOWN_TERMS } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { UNSHOWN_TERMS, fullDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { shownDivisionName } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { screenLabels } from "./engine.shoreshScreens.shoreshScreens.mjs";
@@ -79,8 +79,8 @@ function weekRows(setup, t) {
     [t.s("Week"), "Start", "End"],
     ...(setup.weeks || []).map((w) => [
       w.Name,
-      w[FIELD.Week.StartDate],
-      w[FIELD.Week.EndDate]
+      fullDate(w[FIELD.Week.StartDate]),
+      fullDate(w[FIELD.Week.EndDate])
     ])
   ].map(safe);
 }
@@ -96,7 +96,7 @@ function runsInRows(setup, t) {
   const heading = (w) => {
     const twice =
       named.filter((n) => n === String(w.Name).toLowerCase()).length > 1;
-    return twice ? `${w.Name} (${w[FIELD.Week.StartDate]})` : w.Name;
+    return twice ? `${w.Name} (${fullDate(w[FIELD.Week.StartDate])})` : w.Name;
   };
   const off = new Set(
     (setup.weekExceptions || []).map((x) => {
