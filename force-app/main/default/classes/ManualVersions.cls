@@ -99,7 +99,10 @@ public with sharing class ManualVersions {
         saves.add(save);
         restoredDays.add(day.day);
       }
-      ScheduleDaySaves.write(draftId, saves);
+      // The version's days come back as they were, a day its week has since lost included
+      // (a "Before update" of a shortened week, WEEK-6.6): it shows as no longer a day of the
+      // week, and Update to match setup takes it off again, never dropped unseen.
+      ScheduleDaySaves.writeAsItWas(draftId, saves);
       // A day the version doesn't have goes from the draft too: the draft is the version now.
       Database.delete(
         [

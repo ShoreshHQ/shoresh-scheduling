@@ -31,8 +31,9 @@ public with sharing class ScheduleDaySaves {
   }
 
   /**
-   * Days already saved, written again as they are into a new version (ManualVersions): a day its
-   * week has since lost (a shortened week) is kept too (WEEK-6.6).
+   * Days already saved, written again as they are (ManualVersions: into a new version, or a
+   * version's days restored into the week): a day its week has since lost (a shortened week) is
+   * kept too (WEEK-6.6). Each day's revision is still checked as write checks it.
    */
   public static void writeAsItWas(Id versionId, List<DaySave> saves) {
     keepingAsItWas = true;
