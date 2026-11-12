@@ -184,12 +184,17 @@
           ></lightning-spinner>
         </template>
         <template lwc:if={error}>
-          <div
-            class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
-            role="alert"
-            data-id="schedules-error"
-          >
-            {error}
+          <!-- Floats over the grid, never moving it (word walk W4). -->
+          <div class="shoresh-refusal_float" role="alert">
+            <p class="shoresh-refusal" data-id="schedules-error">{error}</p>
+            <lightning-button-icon
+              icon-name="utility:close"
+              variant="bare"
+              size="small"
+              alternative-text="Close"
+              data-id="schedules-error-close"
+              onclick={handleCloseError}
+            ></lightning-button-icon>
           </div>
         </template>
 

@@ -6,5 +6,5 @@
     <errorConditionFormula>EndDate__c &lt; StartDate__c</errorConditionFormula>
     <errorDisplayField>EndDate__c</errorDisplayField>
     <errorMessage
-  >The end date must be on or after the start date.</errorMessage>
+  >Last day is before First day.</errorMessage>
 </ValidationRule>

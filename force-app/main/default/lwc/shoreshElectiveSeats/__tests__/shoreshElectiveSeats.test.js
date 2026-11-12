@@ -775,7 +775,7 @@ describe("Finalize, Final, and a new version", () => {
     });
     $(element, '[data-id="primary"]').click();
     await flush();
-    expect(text($(element, '[data-id="error"] span'))).toBe(
+    expect(text($(element, '[data-id="error"]'))).toBe(
       "Not finalized. Schedule changed. Assign again first."
     );
     expect(text($(element, '[data-id="error-action"]'))).toBe("Assign again");

@@ -80,25 +80,18 @@
           onchange={handleFile}
         />
       </div>
+      <!-- On the message row (word walk W4): a refusal never moves the grid. -->
+      <template lwc:if={error}>
+        <p slot="status" class="shoresh-refusal" role="alert" data-id="error">
+          {error}
+        </p>
+      </template>
+      <template lwc:if={problem}>
+        <p slot="status" class="notice" role="alert" data-id="problem">
+          {problem}
+        </p>
+      </template>
       <div slot="outcome">
-        <template lwc:if={error}>
-          <div
-            class="slds-notify slds-notify_alert slds-alert_error message"
-            role="alert"
-            data-id="error"
-          >
-            {error}
-          </div>
-        </template>
-        <template lwc:if={problem}>
-          <div
-            class="slds-notify slds-notify_alert slds-alert_warning message"
-            role="alert"
-            data-id="problem"
-          >
-            {problem}
-          </div>
-        </template>
         <template lwc:if={hasImportLines}>
           <ul class="import-lines" data-id="import-lines">
             <template for:each={importLines} for:item="line">

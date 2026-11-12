@@ -727,7 +727,7 @@ private class ElectiveSeatsTest {
         refusal = e.getMessage();
       }
       Assert.isTrue(
-        refusal.contains('it has elective runs: "Chugim · Week 1"'),
+        refusal.contains('it has seats in "Chugim · Week 1"'),
         refusal
       );
       // API-1.134: an AI's Delete asks nothing and is refused the same, with nothing deleted.

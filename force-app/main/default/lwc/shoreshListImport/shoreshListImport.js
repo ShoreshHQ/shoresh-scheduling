@@ -1,6 +1,5 @@
 import { LightningElement, api } from "lwc";
 import { loadScript } from "lightning/platformResourceLoader";
-import LightningConfirm from "lightning/confirm";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveList from "@salesforce/apex/ImportController.saveList";
 import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
@@ -12,6 +11,7 @@ import {
   clockText,
   FILE_TYPES,
   isReadable,
+  undoImportQuestion,
   undoMessage,
   MONDAY_TO_FRIDAY,
   WEEKDAYS,
@@ -43,7 +43,7 @@ import {
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { readChoices } from "c/shoreshChoicesReader";
-import { failed, reasonOf } from "c/shoreshErrors";
+import { closeRefusal, failed, floatRefusal, reasonOf } from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
@@ -112,7 +112,16 @@ export default class ShoreshListImport extends LightningElement {
   // The camp's remembered answers as read before this import's answers: the patterns' source.
   savedRows = [];
   proposal;
-  error;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   result;
   undone;
   undoing = false;
@@ -128,6 +137,19 @@ export default class ShoreshListImport extends LightningElement {
   columnsToggled = {};
   // What the page was last told (listopen), so it is told once per change.
   told = "closed";
+
+  /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
+  @api
+  leave() {
+    this.error = null;
+  }
+
+  /** The floating refusal is put away (the next change takes it away too; word walk W4). */
+  handleCloseError() {
+    closeRefusal(this, () =>
+      this.template.querySelector('[data-heading], [data-id="open"]')
+    );
+  }
 
   renderedCallback() {
     this.tellPage();
@@ -275,7 +297,7 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get choicesFileText() {
-    return `${this.choicesFile}: ${this.choicesFile === PASTED ? "those are" : "that file is"} camper choices, not ${this.terms.pIn("Elective")}. Nothing was saved.`;
+    return `${this.choicesFile}: ${this.choicesFile === PASTED ? "those are" : "that file is"} camper choices, not ${this.terms.pIn("Elective")}.`;
   }
 
   /**
@@ -1071,23 +1093,20 @@ export default class ShoreshListImport extends LightningElement {
     add(this.result && this.result.added, "Added");
     add(this.result && this.result.changed, "Changed");
     // SPECIAL-2.6: what the special days added left out of the regular day, as a special day
-    // added in its blank row says it (its first line, whose time blocks, is on its row).
+    // added in its blank row says it.
     const seed = this.result && this.result.seeded;
     if (seed && seed.program) {
-      seededLines(seed, "", t)
-        .slice(1)
-        .forEach((text, i) => lines.push({ key: `seeded-${i}`, text }));
+      seededLines(seed, "", t).forEach((text, i) =>
+        lines.push({ key: `seeded-${i}`, text })
+      );
     }
     return lines;
   }
 
   async handleUndo() {
-    const ok = await LightningConfirm.open({
-      label: `Undo ${this.fileName}?`,
-      message: this.undoCounts,
-      variant: "header",
-      theme: "warning"
-    });
+    const ok = await this.askFirst(
+      undoImportQuestion(this.fileName, [this.undoCounts])
+    );
     if (!ok || this.undoing) {
       return;
     }
@@ -1101,6 +1120,8 @@ export default class ShoreshListImport extends LightningElement {
           .filter((term) => added[term])
           .map((term) => this.counted(added[term], term))
       );
+      // Undo is gone from the rail: the cursor goes to Close, beside where it was.
+      this.focusNext = { selector: '[data-id="done"]' };
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.error = failed("That import could not be undone.", e);
@@ -1156,5 +1177,36 @@ export default class ShoreshListImport extends LightningElement {
 
   get canUndo() {
     return !!(this.result && this.result.importId) && !this.undone;
+  }
+
+  // The question open (c-shoresh-ask): { heading, lines, confirmLabel, tone }, or null.
+  ask = null;
+  askFocus = null;
+  answerAsk = null;
+
+  /**
+   * Shows a question (c-shoresh-ask) and waits for the answer: true for yes. Focus goes back to
+   * where it was when it closes (WCAG 2.4.3).
+   */
+  askFirst(question) {
+    this.askFocus = this.template.activeElement;
+    this.ask = question;
+    return new Promise((resolve) => {
+      this.answerAsk = resolve;
+    });
+  }
+
+  handleAskAnswer(event) {
+    const resolve = this.answerAsk;
+    const back = this.askFocus;
+    this.ask = null;
+    this.answerAsk = null;
+    this.askFocus = null;
+    if (back && typeof back.focus === "function") {
+      back.focus();
+    }
+    if (resolve) {
+      resolve(event.detail.yes);
+    }
   }
 }

@@ -456,9 +456,6 @@ describe("c-shoresh-camp-labels", () => {
     const why = element.shadowRoot.querySelector(
       '[data-error="Division"][data-field-error="singular"]'
     );
-    expect(why.textContent).toContain(
-      "Camp words not saved. Your changes are still here."
-    );
     expect(why.textContent).toContain("both a singular and a plural word");
     expect(why.getAttribute("role")).toBe("alert");
     expect(saved).not.toHaveBeenCalled();

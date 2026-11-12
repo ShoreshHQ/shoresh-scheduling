@@ -2,14 +2,8 @@ import { setDayNaming } from "c/shoreshDayNames";
 import { createElement } from "lwc";
 import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
-import LightningConfirm from "lightning/confirm";
+import { answerAsk, openQuestion } from "shoresh-jest/ask";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
-
-jest.mock(
-  "lightning/confirm",
-  () => ({ __esModule: true, default: { open: jest.fn() } }),
-  { virtual: true }
-);
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -235,6 +229,18 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-field="earlyCount"]').value).toBe(2);
     expect(q(element, '[data-field="earlyDay"]').value).toBe("Wednesday");
     expect(q(element, '[data-field="notes"]').value).toBe("Life jackets");
+  });
+
+  // Word walk W4: a field's refusal names the field and its limit, never "The number is too low."
+  it("each number's refusal names the field and its limit", async () => {
+    const element = await render();
+    const early = q(element, '[data-field="earlyCount"]');
+    expect(early.messageWhenRangeUnderflow).toBe(`${early.label}: at least 1.`);
+    expect(early.messageWhenStepMismatch).toBe(
+      `${early.label}: a whole number.`
+    );
+    const length = q(element, '[data-field="length"]');
+    expect(length.messageWhenValueMissing).toBe(`${length.label}: needed.`);
   });
 
   it("a tick or a dropdown saves at once; only that rule is sent, and who can do it is left out", async () => {
@@ -520,23 +526,32 @@ describe("c-shoresh-activity-details", () => {
     await flush();
     handler.mock.calls[0][0].detail.onFailure("Not saved.");
     await flush();
-    LightningConfirm.open.mockResolvedValue(false);
-    expect(await element.open("a2")).toBe(false);
+    // Word walk W4: the question names the action ("Discard"), never "OK".
+    const leaving = element.open("a2");
     await flush();
-    expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
-    expect(LightningConfirm.open.mock.calls[0][0].message).toBe(
-      'Discard your unsaved changes to "Archery"?'
-    );
+    const asked = await answerAsk(element, false);
+    expect(await leaving).toBe(false);
+    await flush();
+    expect(asked).toEqual({
+      heading: "Discard changes to Archery?",
+      lines: [],
+      confirmLabel: "Discard",
+      tone: undefined
+    });
     expect(element.openActivityId).toBe("a1");
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
     // Close asks too.
     q(element, '[data-id="close"]').click();
     await flush();
-    expect(LightningConfirm.open).toHaveBeenCalledTimes(2);
+    expect(openQuestion(element)).not.toBeNull();
+    await answerAsk(element, false);
+    await flush();
     expect(element.openActivityId).toBe("a1");
 
-    LightningConfirm.open.mockResolvedValue(true);
-    expect(await element.open("a2")).toBe(true);
+    const again = element.open("a2");
+    await flush();
+    await answerAsk(element, true);
+    expect(await again).toBe(true);
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
     expect(q(element, '[data-error="who"]')).toBeNull();
@@ -557,7 +572,7 @@ describe("c-shoresh-activity-details", () => {
     detail.onSaved({ id: "a1", changed: [] });
     await leaving;
     await flush();
-    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(openQuestion(element)).toBeNull();
     expect(detail.shown()).toBe(false);
     // The refusal is said at the top by the page, not next to another activity's field.
     detail.onFailure("Not saved.");
@@ -569,7 +584,7 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     await element.open("a2");
     await flush();
-    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(openQuestion(element)).toBeNull();
   });
 
   describe("the panel beside the table (step 3b, activities.html)", () => {
@@ -839,7 +854,7 @@ describe("c-shoresh-activity-details", () => {
         });
         await flush();
         await element.open("a2");
-        expect(LightningConfirm.open).not.toHaveBeenCalled();
+        expect(openQuestion(element)).toBeNull();
       });
 
       it("a tick or a rain plan is named as the director reads it", async () => {
@@ -899,7 +914,7 @@ describe("c-shoresh-activity-details", () => {
         expect(dialog(element)).not.toBeNull();
         expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe("4");
         expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("3");
-        expect(LightningConfirm.open).not.toHaveBeenCalled();
+        expect(openQuestion(element)).toBeNull();
         // Answered, the close works as ever.
         q(element, '[data-id="keep-theirs"]').click();
         await flush();
@@ -930,7 +945,7 @@ describe("c-shoresh-activity-details", () => {
         again.onSaved(nsRecord({ id: "a1", changed: [] }));
         expect(await next).toBe(true);
         expect(element.openActivityId).toBe("a2");
-        expect(LightningConfirm.open).not.toHaveBeenCalled();
+        expect(openQuestion(element)).toBeNull();
       });
 
       it("closing before a save that goes through closes once it is saved", async () => {
@@ -961,7 +976,7 @@ describe("c-shoresh-activity-details", () => {
         save.onFailure("Not saved.");
         await flush();
         // The refusal leaves the typing unsaved: leaving asks, as for any refused change.
-        expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
+        expect(openQuestion(element)).not.toBeNull();
       });
 
       it("a save waiting behind another of the same field compares with what that one saved", async () => {

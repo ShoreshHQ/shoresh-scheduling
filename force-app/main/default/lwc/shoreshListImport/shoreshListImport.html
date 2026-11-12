@@ -118,7 +118,18 @@
       </div>
 
       <template lwc:if={error}>
-        <div class="import-error" role="alert" data-id="error">{error}</div>
+        <!-- Floats at the foot of the window, never moving the screen (word walk W4). -->
+        <div class="shoresh-refusal_float" role="alert">
+          <p class="shoresh-refusal" data-id="error">{error}</p>
+          <lightning-button-icon
+            icon-name="utility:close"
+            variant="bare"
+            size="small"
+            alternative-text="Close"
+            data-id="error-close"
+            onclick={handleCloseError}
+          ></lightning-button-icon>
+        </div>
       </template>
 
       <template lwc:if={isPick}>
@@ -555,17 +566,20 @@
       <!-- Saved: what was added and changed; the page's own table shows them where they live. -->
       <template lwc:if={isDone}>
         <div class="import-saved">
-          <p class="import-saved-head" tabindex="-1" data-id="saved">Saved</p>
-          <ul class="import-summary" data-id="summary">
-            <template for:each={summaryLines} for:item="line">
-              <li key={line.key}>{line.text}</li>
-            </template>
-            <template for:each={droppedPlans} for:item="line">
-              <li key={line.key}>{line.text}</li>
-            </template>
-          </ul>
+          <!-- Undone: the old "Saved" line goes, so only what is true now shows (W4). -->
           <template lwc:if={undone}>
             <p class="import-quiet" data-id="undone">{undone}</p>
+          </template>
+          <template lwc:else>
+            <p class="import-saved-head" tabindex="-1" data-id="saved">Saved</p>
+            <ul class="import-summary" data-id="summary">
+              <template for:each={summaryLines} for:item="line">
+                <li key={line.key}>{line.text}</li>
+              </template>
+              <template for:each={droppedPlans} for:item="line">
+                <li key={line.key}>{line.text}</li>
+              </template>
+            </ul>
           </template>
         </div>
       </template>
@@ -627,5 +641,15 @@
         ></lightning-button>
       </template>
     </lightning-button-group>
+  </template>
+  <!-- A question before an action, its button naming the action (word walk W4: never "OK"). -->
+  <template lwc:if={ask}>
+    <c-shoresh-ask
+      heading={ask.heading}
+      lines={ask.lines}
+      confirm-label={ask.confirmLabel}
+      tone={ask.tone}
+      onanswer={handleAskAnswer}
+    ></c-shoresh-ask>
   </template>
 </template>

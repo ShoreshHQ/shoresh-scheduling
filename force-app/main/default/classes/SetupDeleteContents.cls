@@ -146,7 +146,7 @@ public with sharing class SetupDeleteContents {
   }
 
   /** "A", "A and B", "A, B and C". */
-  private static String andList(List<String> parts) {
+  public static String andList(List<String> parts) {
     if (parts.size() <= 1) {
       return String.join(parts, '');
     }

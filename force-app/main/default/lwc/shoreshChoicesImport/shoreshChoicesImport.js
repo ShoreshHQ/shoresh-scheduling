@@ -13,7 +13,7 @@ import {
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
-import { failed } from "c/shoreshErrors";
+import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
 import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
 import {
   allSettled,
@@ -95,7 +95,16 @@ export default class ShoreshChoicesImport extends LightningElement {
   // pick | reading | card | checking | saving | done
   phase = "pick";
   step = 1;
-  error = null;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   status = "";
   dragging = false;
   situation = null;
@@ -120,6 +129,17 @@ export default class ShoreshChoicesImport extends LightningElement {
   focusHeading() {
     const heading = this.template.querySelector("[data-heading]");
     if (heading) heading.focus();
+  }
+
+  /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
+  @api
+  leave() {
+    this.error = null;
+  }
+
+  /** The floating refusal is put away (the next change takes it away too; word walk W4). */
+  handleCloseError() {
+    closeRefusal(this, () => this.template.querySelector("[data-heading]"));
   }
 
   renderedCallback() {

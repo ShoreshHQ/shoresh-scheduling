@@ -2255,13 +2255,15 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     });
     expect(leftOut.text).toMatch(
-      /^Added 2 special days\. Not copied, since they don't run every day: Swim\. Not copied, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
+      /^Added 2 special days\. Each new special day starts from Main's 4 time blocks, with Lunch copied\. Not copied, since they don't run every day: Swim\. Not copied, since they are in other time blocks: Rest and Flag\. To undo this import, use undo_import/
     );
     const nothingLeftOut = await save({
       added: { SpecialDay: 2 },
       seeded: { program: "Main", timeBlocks: 4 }
     });
-    expect(nothingLeftOut.text).toMatch(/^Added 2 special days\. To undo/);
+    expect(nothingLeftOut.text).toMatch(
+      /^Added 2 special days\. Each new special day starts from Main's 4 time blocks\. To undo/
+    );
     const noRegularDay = await save({
       added: { SpecialDay: 2 },
       seeded: { timeBlocks: 0 }

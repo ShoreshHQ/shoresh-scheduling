@@ -857,6 +857,35 @@ describe("c-shoresh-editable-table", () => {
       ]);
     });
 
+    // Word walk W4: a field's refusal names the field and its limit, never "The number is too
+    // low." or "Complete this field."
+    it("a field's refusal names the field and its limit", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            fieldName: "GroupsThatFit__c",
+            label: "Bunks that fit",
+            type: "number",
+            min: 1
+          }
+        ],
+        rows: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 2 }]
+      });
+      await flush();
+      const fits = field(element, 0, "GroupsThatFit__c");
+      expect(fits.messageWhenRangeUnderflow).toBe(
+        "Bunks that fit: at least 1."
+      );
+      expect(fits.messageWhenStepMismatch).toBe(
+        "Bunks that fit: a whole number."
+      );
+      expect(field(element, 0, "Name").messageWhenValueMissing).toBe(
+        "Name: needed."
+      );
+    });
+
     it("a picklist of records can leave out the row's own record", async () => {
       const element = render({
         objectApiName: "Activity__c",
@@ -3436,6 +3465,26 @@ describe("c-shoresh-editable-table", () => {
       expect(blank.querySelector("input").getAttribute("aria-label")).toBe(
         "Add Recurring activity: Monday"
       );
+    });
+
+    // Word walk W4: Add waits for a day, never "Tick at least one day."
+    it("days that need one: the blank row's Add waits until a day is ticked", async () => {
+      const element = renderDays();
+      element.columns = [
+        { fieldName: "Name", label: "Name", type: "text", required: true },
+        { ...DAYS, needsADay: true }
+      ];
+      await flush();
+      change(field(element, 4, "Name"), "Flag");
+      await flush();
+      expect(addButton(element).disabled).toBe(true);
+      const tick = element.shadowRoot
+        .querySelectorAll('[data-id="day-strip"]')[4]
+        .querySelector("input");
+      tick.checked = true;
+      tick.dispatchEvent(new CustomEvent("change"));
+      await flush();
+      expect(addButton(element).disabled).toBe(false);
     });
 
     it("a choice not made reads as its None, or quietly as the column's name, never Select an Option", async () => {

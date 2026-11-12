@@ -1,7 +1,6 @@
 import { LightningElement, wire } from "lwc";
 import { CurrentPageReference } from "lightning/navigation";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
-import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
 import DATE_BOX from "@salesforce/resourceUrl/ShoreshDateBox";
 import TABLE from "@salesforce/resourceUrl/ShoreshTable";
@@ -30,6 +29,7 @@ import {
   firstDayOf,
   nameDaysFor,
   programDays,
+  undoImportQuestion,
   undoMessage,
   holdsNoDivision,
   realDivisionsOf
@@ -37,7 +37,12 @@ import {
 import { article, buildTerms } from "c/shoreshTerms";
 import { eventWords } from "c/shoreshLists";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
-import { failed } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  refusedBecause
+} from "c/shoreshErrors";
 import {
   canOpen,
   menuSections,
@@ -153,6 +158,18 @@ const WEEK_SCREENS = {
   electiveSeats: "c-shoresh-elective-seats"
 };
 
+// What a screen holds that says something about the visit (leaveScreen).
+const LEAVING = [
+  "c-shoresh-generated-schedule",
+  "c-shoresh-manual-build",
+  "c-shoresh-elective-seats",
+  "c-shoresh-list-import",
+  "c-shoresh-import",
+  "c-shoresh-camp-labels",
+  "c-shoresh-choices-import",
+  "c-shoresh-schedules"
+];
+
 /** A card from Roots' hand (repo ADR 0020 choice 10), not one of its melds'. */
 const isHandCard = (key) => typeof key === "string" && key.startsWith("hand:");
 
@@ -219,7 +236,16 @@ export default class ShoreshCampSetup extends LightningElement {
   mode = "loading"; // loading | noCamp | screens | newSeason | copy
   screen = "roots";
   busy = false;
-  error;
+  // The floating refusal at the window's foot: one at a time on the page, and Close puts the
+  // cursor back where it was (shoreshErrors floatRefusal).
+  floatingError = null;
+  get error() {
+    return this.floatingError;
+  }
+  set error(message) {
+    floatRefusal(this, message, this.floatingError);
+    this.floatingError = message || null;
+  }
   // A question before saving (c-shoresh-ask): { heading, lines, confirmLabel }.
   ask;
 
@@ -239,8 +265,8 @@ export default class ShoreshCampSetup extends LightningElement {
   // Something else that takes the cursor at the next render (a selector), such as the button
   // that opened New season once it is cancelled.
   focusAfter = null;
-  // The top message last brought into view.
-  errorShown = null;
+  // The screen shown at the last draw (leaveScreen).
+  shownScreen = null;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
@@ -314,10 +340,12 @@ export default class ShoreshCampSetup extends LightningElement {
    * Promise<boolean>. The desktop's "Turn off … for Week 3?" when it is placed that week; false
    * puts the tick back and saves nothing.
    */
-  beforeWeekOff = ({ recordId, weekId }) =>
+  beforeWeekOff = ({ recordId, name, weekId, weekName }) =>
     this.turnOffAnyway(
       [{ target: recordId, week: weekId }],
-      "Not turned off. The week is ticked again."
+      name && weekName
+        ? `"${name}" not turned off for ${weekName}.`
+        : "Not turned off."
     );
 
   /**
@@ -427,7 +455,7 @@ export default class ShoreshCampSetup extends LightningElement {
       await this.loadCamp();
     } catch (e) {
       this.placeToRestore = null;
-      this.showError(e, "Couldn't open the camp setup. Nothing was changed.");
+      this.showError(e, "Couldn't open the camp setup.");
     }
   }
 
@@ -557,7 +585,7 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   renderedCallback() {
-    this.showNewError();
+    this.leaveScreen();
     this.startTravel();
     if (this.focusAfter) {
       const target = this.template.querySelector(this.focusAfter);
@@ -608,19 +636,14 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
-  /**
-   * A new message at the top is brought into view: a save refused while the director is far
-   * down a long table would otherwise go unseen (screen readers hear it: role=alert).
-   */
-  showNewError() {
-    if (this.error === this.errorShown) {
-      return;
-    }
-    this.errorShown = this.error;
-    const box = this.error && this.template.querySelector('[data-id="error"]');
-    if (box && typeof box.scrollIntoView === "function") {
-      box.scrollIntoView({ block: "nearest" });
-    }
+  /** The floating refusal is put away (it goes by itself with the next change too). */
+  handleCloseError() {
+    closeRefusal(this, () => {
+      if (this.mode === "screens") {
+        this.focusScreenHeading(this.screen);
+      }
+      return null;
+    });
   }
 
   // ---------- what the template shows ----------
@@ -682,6 +705,28 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     return menuSections(this.terms, !!this.setup, marks, this.preview);
   }
+  /**
+   * A screen just left (it stays on the page, hidden): its message row and floating refusal were
+   * about that visit, so they go (word walk W4: status lines clear when the screen changes).
+   */
+  leaveScreen() {
+    const now = this.currentScreen;
+    const left = this.shownScreen;
+    this.shownScreen = now;
+    if (!left || left === now) {
+      return;
+    }
+    this.template
+      .querySelectorAll(
+        LEAVING.map((tag) => `[data-screen="${left}"] ${tag}`).join(", ")
+      )
+      .forEach((screen) => {
+        if (typeof screen.leave === "function") {
+          screen.leave();
+        }
+      });
+  }
+
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;
   }
@@ -1352,6 +1397,7 @@ export default class ShoreshCampSetup extends LightningElement {
         fieldName: "days",
         label: "Runs on",
         type: "days",
+        needsADay: true,
         strip: true,
         width: 15,
         days: campWeek(this.setup).map((day) => ({
@@ -1724,7 +1770,7 @@ export default class ShoreshCampSetup extends LightningElement {
       if (onDone) {
         onDone();
       }
-    }, "Not marked as looked at. Nothing was changed.");
+    }, "Not marked as looked at.");
   }
 
   /** Division and group names by Id, across the season's programs (for who can do it). */
@@ -2294,6 +2340,8 @@ export default class ShoreshCampSetup extends LightningElement {
         fieldName: "days",
         label: "Days",
         type: "days",
+        // Add waits for a day (word walk W4: never "Tick at least one day.").
+        needsADay: true,
         width: 9,
         days: campWeek(this.setup).map((day) => ({
           fieldName: SET[day],
@@ -2412,6 +2460,12 @@ export default class ShoreshCampSetup extends LightningElement {
       seasonActions: `${t.s("Season")} actions`,
       copySeason: `Copy this ${t.sIn("Season")}`,
       seasonName: `${t.s("Season")} name`,
+      // A field's refusal names the field (word walk W4), never "Complete this field."
+      seasonNameMissing: `${t.s("Season")} name: needed.`,
+      firstDayMissing: "First day: needed.",
+      lastDayMissing: "Last day: needed.",
+      firstDayBad: "First day: not a date.",
+      lastDayBad: "Last day: not a date.",
       editSeason: `Edit ${(this.setup && this.setup.season.Name) || t.sIn("Season")}`,
       seasonDetails: `${t.s("Season")} details`,
       deleteSeason: `Delete ${t.sIn("Season")}`,
@@ -2471,7 +2525,7 @@ export default class ShoreshCampSetup extends LightningElement {
       });
       this.changedOnServer = true;
       await this.loadCamps(campId);
-    }, "Camp not created. Nothing was saved.");
+    }, "Camp not created.");
   }
 
   async handleCampChange(event) {
@@ -2598,7 +2652,7 @@ export default class ShoreshCampSetup extends LightningElement {
     const current = () => this.seasonForm.Id === seasonId;
     this.saveForm({
       records: [record],
-      what: `${this.terms.s("Season")} not saved. Your changes are still here.`,
+      what: `${this.terms.s("Season")} not saved.`,
       onSaved: () => {
         if (!current()) {
           return;
@@ -2666,7 +2720,7 @@ export default class ShoreshCampSetup extends LightningElement {
           [field]: value
         }
       ],
-      what: `${this.terms.s("Season")} not saved. Your changes are still here.`,
+      what: `${this.terms.s("Season")} not saved.`,
       onSaved: () => {
         if (current()) {
           showError(null);
@@ -2710,7 +2764,7 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async askAndDeleteSeason(seasonId, name) {
-    const notDeleted = `"${name}" not deleted. Nothing was removed.`;
+    const notDeleted = `"${name}" not deleted.`;
     // The server's question (SetupDelete), as the AI asks it: what goes with the season, or why
     // it can't be deleted.
     let preview;
@@ -2731,7 +2785,8 @@ export default class ShoreshCampSetup extends LightningElement {
     const ok = await this.askFirst({
       heading: preview.label,
       lines: preview.lines,
-      confirmLabel: this.labels.deleteSeason
+      confirmLabel: this.labels.deleteSeason,
+      tone: "danger"
     });
     if (!ok) {
       return;
@@ -2793,7 +2848,7 @@ export default class ShoreshCampSetup extends LightningElement {
         this.screen = "roots";
         await this.loadCamp(seasonId);
       },
-      `${this.terms.s("Season")} not created. Nothing was saved.`
+      `${this.terms.s("Season")} not created.`
     );
   }
 
@@ -2864,13 +2919,7 @@ export default class ShoreshCampSetup extends LightningElement {
   /** Roots' Undo last import, confirmed first (desktop wording). */
   async handleUndoImport(event) {
     const { importId, files } = event.detail;
-    const ok = await LightningConfirm.open({
-      label: `Undo the import of ${files || "the last file"}?`,
-      message:
-        "What this import added is removed, and what it changed goes back to how it was. Anything you have edited since the import stays as it is.",
-      variant: "header",
-      theme: "warning"
-    });
+    const ok = await this.askFirst(undoImportQuestion(files));
     if (!ok) {
       return;
     }
@@ -2887,7 +2936,7 @@ export default class ShoreshCampSetup extends LightningElement {
         return;
       }
       await this.loadSeason();
-    }, "That import could not be undone. Nothing was changed.");
+    }, "That import could not be undone.");
   }
 
   handleImportClosed() {
@@ -2909,7 +2958,7 @@ export default class ShoreshCampSetup extends LightningElement {
         this.changedOnServer = true;
         await this.loadSeason();
       },
-      `${this.terms.p("Week")} not added. Nothing was saved.`
+      `${this.terms.p("Week")} not added.`
     );
   }
 
@@ -2955,7 +3004,7 @@ export default class ShoreshCampSetup extends LightningElement {
               whoCanDoIt: whoCanDoIt || null,
               ticket: seen()
             }),
-      what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
+      what: `${this.terms.s("Activity")} details not saved.`,
       onSaved,
       onFailure,
       sameRecord: shown
@@ -3024,10 +3073,10 @@ export default class ShoreshCampSetup extends LightningElement {
           if (saved) {
             this.showError(e, this.refreshFailed);
           } else if (onFailure) {
-            const message = failed(what, e);
-            onFailure(message);
+            onFailure(refusedBecause(what, e));
             if (!stillShown()) {
-              this.error = message;
+              // The row is gone, so the floating message names what failed.
+              this.error = failed(what, e);
             }
           } else {
             this.showError(e, what);
@@ -3237,7 +3286,7 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async askAndDelete({ recordId, name, onDeleted }) {
-    const notDeleted = `"${name}" not deleted. Nothing was removed.`;
+    const notDeleted = `"${name}" not deleted.`;
     // The server's question (SetupDelete), as the AI asks it: what goes with the record, or why
     // it can't be deleted yet.
     let preview;
@@ -3252,12 +3301,13 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
-    // gives it back there.
-    const ok = await LightningConfirm.open({
-      label: preview.label,
-      message: preview.message,
-      variant: "header",
-      theme: "warning"
+    // gives it back there. The question names the action ("Delete Bunk 2 (Juniors)") and says
+    // what really happens (word walk W4).
+    const ok = await this.askFirst({
+      heading: preview.label,
+      lines: preview.lines || [preview.message],
+      confirmLabel: preview.confirmLabel || `Delete ${name}`,
+      tone: "danger"
     });
     if (!ok) {
       return;
@@ -3413,16 +3463,16 @@ export default class ShoreshCampSetup extends LightningElement {
         this.showError(e, this.refreshFailed);
         return;
       }
-      const why = failed(`Nothing was merged into "${kept.name}".`, e);
+      const notMerged = `Nothing was merged into "${kept.name}".`;
       // The refusal says more than a failed reload would.
       await this.loadSeason().catch(() => null);
       const places = this.placesFor(asked);
       if (places.length >= 2) {
         this.sameLocation = places;
-        this.sameLocationError = why;
+        this.sameLocationError = refusedBecause(notMerged, e);
       } else {
         this.sameLocation = null;
-        this.error = why;
+        this.error = failed(notMerged, e);
         this.locationsTable(keepId).focusRowOf(keepId);
       }
     } finally {
@@ -3478,12 +3528,12 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** Loading a camp or season. */
   get openFailed() {
-    return "Couldn't open this. Nothing was changed.";
+    return "Couldn't open this.";
   }
 
   /**
    * A save that didn't go through: what it was (the rows' kind in the camp's words, or the
-   * screen's name), and that what was typed is kept (ADR 0001 §9).
+   * screen's name), said only when the reason isn't Shoresh's own (W4); what was typed is kept (ADR 0001 §9).
    */
   notSaved(records) {
     const type = records && records.length ? records[0].sobjectType : null;
@@ -3491,9 +3541,11 @@ export default class ShoreshCampSetup extends LightningElement {
     const what = kind
       ? this.terms.p(kind)
       : screenLabels(this.terms)[this.screen] || "Your changes";
-    return `${what} not saved. Your changes are still here.`;
+    return `${what} not saved.`;
   }
 
+  // The floating message at the window's foot: nothing beside it names what failed, so it says
+  // what didn't happen, then why (refusedBecause is for in-row messages only).
   showError(e, what = this.openFailed) {
     this.error = failed(what, e);
     if (this.mode === "loading") {

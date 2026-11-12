@@ -6,6 +6,9 @@
  * left out (null), who can do it stays as it is.
  */
 public with sharing class ActivityDetails {
+  // A rule sent without what was seen in it (word walk W4: the refusal names the field).
+  private static final String NOT_SAVED_HERE = ' wasn\'t saved: reload the page and change it again.';
+  private static final String EARLY = 'Early in the week';
   // The only activity fields this save may change.
   private static final Set<Schema.SObjectField> RULE_FIELDS = new Set<Schema.SObjectField>{
     Activity__c.SameDivisionOnly__c,
@@ -60,7 +63,10 @@ public with sharing class ActivityDetails {
     return result;
   }
 
-  /** Each rule sent, and who when sent, needs what was seen in it: never read in its place. */
+  /**
+   * Each rule sent, and who when sent, needs what was seen in it: never read in its place. The
+   * refusal names the field, in the panel's words (word walk W4).
+   */
   private static void refuseUnseen(
     Activity__c changes,
     List<Id> whoCanDoIt,
@@ -71,12 +77,24 @@ public with sharing class ActivityDetails {
       : ticket.seen.getPopulatedFieldsAsMap().keySet();
     for (String name : changes.getPopulatedFieldsAsMap().keySet()) {
       if (name != 'Id' && !seenFields.contains(name)) {
-        throw new ShoreshException('These screens can\'t save that.');
+        throw new ShoreshException(fieldWords(changes, name) + NOT_SAVED_HERE);
       }
     }
     if (whoCanDoIt != null && ticket?.seenWho == null) {
-      throw new ShoreshException('These screens can\'t save that.');
+      throw new ShoreshException('Who can do it' + NOT_SAVED_HERE);
     }
+  }
+
+  /** A rule field as the details panel names it ("Bunks together", "Early in the week"). */
+  private static String fieldWords(Activity__c changes, String name) {
+    Map<Schema.SObjectField, String> words = new Map<Schema.SObjectField, String>{
+      Activity__c.SameDivisionOnly__c => labelsFor(changes.Id).plural('Group') +
+      ' together',
+      Activity__c.Notes__c => 'Notes',
+      Activity__c.EarlyWeekCount__c => EARLY,
+      Activity__c.EarlyWeekByDay__c => EARLY
+    };
+    return words.get(ShoreshSchema.field(Activity__c.SObjectType, name));
   }
 
   /**

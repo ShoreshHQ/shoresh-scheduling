@@ -117,11 +117,7 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
       };
       if (!outcome.replaced.isEmpty()) {
         lines.add(
-          'Replaced by the file, copied when ' +
-            found.owner.name +
-            ' started: ' +
-            String.join(outcome.replaced, ', ') +
-            '.'
+          'Replaced by the file: ' + String.join(outcome.replaced, ', ') + '.'
         );
       }
       lines.addAll(frameSaid(outcome.frame, ' by the file'));
@@ -176,8 +172,14 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
             ' not kept.'
         );
       }
-      if (numberOf(body.get('page_count')) > 1) {
-        lines.add('Only the first schedule in the file was read.');
+      // Word walk W4: said as what was left out, as the screen says it.
+      Integer otherPages = numberOf(body.get('page_count')) - 1;
+      if (otherPages > 0) {
+        lines.add(
+          'Left out: the file\'s other ' +
+            (otherPages == 1 ? 'page' : otherPages + ' pages') +
+            '.'
+        );
       }
       return lines;
     }

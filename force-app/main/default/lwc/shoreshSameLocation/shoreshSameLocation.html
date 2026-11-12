@@ -47,6 +47,9 @@
           min="1"
           step="1"
           required
+          message-when-range-underflow={fitsWords.low}
+          message-when-step-mismatch={fitsWords.whole}
+          message-when-value-missing={fitsWords.missing}
           onchange={handleFits}
         ></lightning-input>
       </div>

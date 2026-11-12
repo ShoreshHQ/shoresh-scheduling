@@ -63,8 +63,11 @@
   display: none;
 }
 
-.message {
-  margin-bottom: var(--shoresh-s3);
+/* A line on the message row, as on Manual Build. */
+.notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--shoresh-text-2);
 }
 
 .import-lines {

@@ -165,6 +165,12 @@
   --slds-g-color-error-base-50: var(--shoresh-danger);
   --slds-g-color-error-base-95: var(--shoresh-danger-tint);
   --slds-g-color-error-base-30: var(--shoresh-danger-text);
+  /* An empty required field's fill and edge: the faint brick and the brick, never Salesforce's
+     pink (word walk W4). */
+  --slds-g-color-error-base-90: var(--shoresh-danger-tint);
+  --slds-g-color-error-base-80: var(--shoresh-danger-tint);
+  --slds-g-color-error-base-70: var(--shoresh-danger);
+  --slds-g-color-error-base-60: var(--shoresh-danger);
   /* An error banner: words on a faint brick (5.4:1), and a field's or delete's edge. */
   --slds-g-color-error-container-1: var(--shoresh-danger-tint);
   --slds-g-color-error-container-2: var(--shoresh-danger-tint);
@@ -345,6 +351,22 @@
   box-shadow: var(--shoresh-focus-ring);
 }
 
+/* What can't be undone (Clear): the one red, --danger, never the main colour (word walk W4). */
+.shoresh-item_danger {
+  padding: 0 var(--shoresh-s4);
+  background: var(--shoresh-danger);
+  color: var(--shoresh-surface-grid);
+  font-weight: 500;
+}
+
+.shoresh-item_danger:hover:not(:disabled) {
+  background: var(--shoresh-danger-text);
+}
+
+.shoresh-item_danger:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
 /* A number set as a value inside a resting item ("29 of 35 placed"). */
 .shoresh-item b,
 .shoresh-pop-row b {
@@ -490,4 +512,33 @@ button.shoresh-pop-row:disabled {
   margin: var(--shoresh-s1) calc(-1 * var(--shoresh-s1));
   border: 0;
   background: var(--shoresh-rule);
+}
+
+/* A refusal (word walk W4): what failed, in one clause, as a quiet line in the brick's words,
+   in its row or on the message row; never a banner, never pink. */
+.shoresh-refusal {
+  margin: 0;
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-danger-text);
+}
+
+/* A refusal with no row of its own to stand in: it floats at the foot of the window, over the
+   screen, so it never moves anything (Greg 2026-11-12: a message never moves the screen). */
+.shoresh-refusal_float {
+  position: fixed;
+  z-index: 9000;
+  bottom: var(--shoresh-space-page-margin);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: var(--shoresh-s3);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(640px, calc(100vw - 32px));
+  padding: var(--shoresh-s2) var(--shoresh-s3);
+  background: var(--shoresh-surface-grid);
+  border: 1px solid var(--shoresh-danger);
+  border-radius: var(--shoresh-radius);
+  box-shadow: var(--shoresh-raise);
 }

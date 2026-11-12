@@ -138,6 +138,8 @@ describe("the imported version", () => {
       c.id.startsWith("week|")
     );
     expect(card.title).toBe("Which week is last year's schedule?");
+    // Word walk W4: no sentence explaining where the version goes.
+    expect(card.subtitle).toBeUndefined();
     expect(card.options.map((o) => o.value)).toEqual([
       "Week 1",
       "Week 2",
@@ -173,6 +175,10 @@ describe("the imported version", () => {
     const p = propose(samples("all-camp"), existingSetup(), answers);
     expect(p.versions).toEqual([]);
     expect(p.noWeeks).toBe(true);
+    // What isn't kept, and what keeps it (W4 review: one line, nothing explained beyond it).
+    expect(importNotes(p, terms).find((n) => n.key === "noWeeks").text).toBe(
+      "Last year's schedule is not kept as a version: the season has no weeks yet. Add weeks on the Weeks screen first to keep it."
+    );
   });
 
   it("a season with dates but no weeks gets its weeks added, and asks only which one by start date", () => {
@@ -208,7 +214,10 @@ describe("the imported version", () => {
       { start: "2027-07-05", name: "Week 2", days: MON_FRI }
     ]);
     expect(plan.versions[0].weekKey).toBe("Week:2027-07-05");
-    expect(importNotes(chosen, terms).map((n) => n.key)).toContain("fillWeeks");
+    // Word walk W4: the weeks added show on the tiles; no sentence explains them.
+    expect(importNotes(chosen, terms).map((n) => n.key)).not.toContain(
+      "fillWeeks"
+    );
     expect(importNotes(chosen, terms).map((n) => n.key)).not.toContain(
       "noWeeks"
     );

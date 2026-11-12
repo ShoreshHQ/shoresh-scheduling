@@ -193,7 +193,7 @@ describe("c-shoresh-special-details: take off a day", () => {
     all(element, "take-off")[0].click();
     await flush();
     expect(q(element, "place-said").textContent).toMatch(
-      /^Visiting Day wasn't taken off Friday of Week 1\. Nothing was changed\./
+      /^Visiting Day wasn't taken off Friday of Week 1\./
     );
     expect(q(element, "put-back")).toBeNull();
     expect(all(element, "take-off")).toHaveLength(2);

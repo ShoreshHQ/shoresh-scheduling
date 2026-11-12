@@ -60,10 +60,18 @@ private class SetupDeleteTest {
         'The question stays well under 100: ' + queries
       );
       Assert.isNull(preview.refusal);
-      Assert.areEqual('Delete', preview.label);
+      // Word walk W4: the question names the action, and its lines say what really happens.
+      Assert.areEqual('Delete Teens?', preview.label);
+      Assert.areEqual('Delete Teens', preview.confirmLabel);
       Assert.areEqual(
-        'Delete "Teens"? Anything inside it is deleted too. That includes its Manual Build, its Generated Schedule and 2 saved versions.',
+        'Delete Teens? Anything inside it is deleted too. That includes its Manual Build, its Generated Schedule and 2 saved versions.',
         preview.message
+      );
+      Assert.areEqual(
+        new List<String>{
+          'Anything inside it is deleted too. That includes its Manual Build, its Generated Schedule and 2 saved versions.'
+        },
+        preview.lines
       );
     }
   }
@@ -88,7 +96,7 @@ private class SetupDeleteTest {
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Week 1'));
       Test.stopTest();
       Assert.areEqual(
-        'Delete "Week 1"? Anything inside it is deleted too. That includes its Manual Build and 2 saved versions. It takes "Field Day" off Tuesday and "Carnival" off Wednesday and Thursday.',
+        'Delete Week 1? Anything inside it is deleted too. That includes its Manual Build and 2 saved versions. It takes "Field Day" off Tuesday and "Carnival" off Wednesday and Thursday.',
         preview.message
       );
     }
@@ -127,12 +135,65 @@ private class SetupDeleteTest {
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Group B'));
       Test.stopTest();
-      Assert.areEqual('Delete', preview.label);
-      Assert.areEqual(
-        'Delete "Group B"? Anything inside it is deleted too.',
-        preview.message
-      );
+      // A bunk has nothing inside it: nothing more is said.
+      Assert.areEqual('Delete Group B?', preview.label);
+      Assert.areEqual('Delete Group B?', preview.message);
+      Assert.areEqual(new List<String>(), preview.lines);
       Assert.areEqual(0, preview.uses.schedules);
+    }
+  }
+
+  // Word walk W4: a name another bunk shares is named with its division ("Bunk 2 (Juniors)").
+  @IsTest
+  static void aBunkWhoseNameIsSharedIsNamedWithItsDivision() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Database.insert(
+        new Group__c(Division__c = ids.get('Seniors'), Name = 'Group B'),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      SetupDelete.Preview preview = SetupDelete.preview(ids.get('Group B'));
+      Test.stopTest();
+      Assert.areEqual('Delete Group B (Juniors)?', preview.label);
+      Assert.areEqual('Delete Group B (Juniors)', preview.confirmLabel);
+    }
+  }
+
+  // Word walk W4: deleting a location type keeps its locations, and the question says so.
+  @IsTest
+  static void aLocationTypesQuestionSaysItsLocationsStay() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      LocationType__c water = new LocationType__c(
+        Season__c = ids.get('Season'),
+        Name = 'Water'
+      );
+      Database.insert(water, AccessLevel.USER_MODE);
+      Database.insert(
+        new List<Location__c>{
+          new Location__c(
+            Season__c = ids.get('Season'),
+            Name = 'Pool',
+            GroupsThatFit__c = 1,
+            LocationType__c = water.Id
+          ),
+          new Location__c(
+            Season__c = ids.get('Season'),
+            Name = 'Lake',
+            GroupsThatFit__c = 1,
+            LocationType__c = water.Id
+          )
+        },
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      SetupDelete.Preview preview = SetupDelete.preview(water.Id);
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{ 'Its 2 locations stay, with no location type.' },
+        preview.lines
+      );
     }
   }
 

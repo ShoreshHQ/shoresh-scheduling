@@ -744,29 +744,39 @@ export function importNotes(proposal, t) {
       })
     );
   }
-  const filled = proposal.fillWeeks || [];
-  if (filled.length) {
-    const count =
-      filled.length === 1
-        ? `its one ${t.sIn("Week")} is`
-        : `its ${filled.length} ${t.pIn("Week")} are`;
-    notes.push({
-      key: "fillWeeks",
-      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so ${count} added from its dates, keeping last year's schedule as ${article(t.sIn("Version"))}.`
-    });
-  } else if (proposal.noWeeks && proposal.usable.length) {
+  // Word walk W4: no explainers ("…added from its dates"): the weeks show on the tiles. What
+  // isn't kept or imported is still said, in one factual line each, with what keeps it.
+  if (
+    !(proposal.fillWeeks || []).length &&
+    proposal.noWeeks &&
+    proposal.usable.length
+  ) {
     notes.push({
       key: "noWeeks",
-      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so last year's schedule is not kept as a version. Add ${t.pIn("Week")} on the ${t.p("Week")} screen first to keep it.`
+      text: `Last year's schedule is not kept as ${article(t.sIn("Version"))}: the ${t.sIn("Season")} has no ${t.pIn("Week")} yet. Add ${t.pIn("Week")} on the ${t.p("Week")} screen first to keep it.`
     });
   }
   if (proposal.activities.length) {
     notes.push({
       key: "rules",
-      text: `Outdoors, rain plans, and priority are not in a schedule file, so new ${t.pIn("Activity")} start without them. Set them on the ${t.p("Activity")} screen.`
+      text: "Outdoors, rain plans and priority aren't imported: a schedule file doesn't have them."
     });
   }
   return notes;
+}
+
+/**
+ * Undo an import, asked first (word walk W4): its button names the action, never "OK", and its
+ * line says what really happens. files: the import's file names, or a count ("7 files").
+ */
+export function undoImportQuestion(files, lines) {
+  return {
+    heading: `Undo import of ${files || "the last file"}?`,
+    lines: lines || [
+      "What it added is removed, and what it changed goes back. What you edited since stays."
+    ],
+    confirmLabel: "Undo import"
+  };
 }
 
 /**

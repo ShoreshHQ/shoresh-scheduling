@@ -82,7 +82,8 @@ describe("electives read from last year's file", () => {
       preselected: "elective",
       answer: "elective",
       subtitle: "Read as electives: Tuesday, Period 3, every group.",
-      detail: "No choices in the file: add them later."
+      // Word walk W4: no instruction ("add them later").
+      detail: ""
     });
     expect(card.options.map((o) => o.label)).toEqual([
       "Electives",

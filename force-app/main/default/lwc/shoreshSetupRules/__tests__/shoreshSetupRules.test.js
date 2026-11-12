@@ -163,11 +163,7 @@ describe("setupProblems", () => {
     });
     expect(found(setup(true))).toEqual([]);
     expect(found(setup(false))).toEqual([
-      [
-        "activities",
-        "Swim",
-        'Allows 5 Bunks at once, but "Pool" fits 2. Scheduling uses 2; change whichever number is wrong.'
-      ]
+      ["activities", "Swim", "5 Bunks at once, Pool fits 2."]
     ]);
   });
 
@@ -257,11 +253,7 @@ describe("activity nudges", () => {
       ]
     };
     expect(found(setup)).toEqual([
-      [
-        "activities",
-        "Art",
-        'Allows 3 Bunks at once, but "Art room" fits 2. Scheduling uses 2; change whichever number is wrong.'
-      ]
+      ["activities", "Art", "3 Bunks at once, Art room fits 2."]
     ]);
   });
 

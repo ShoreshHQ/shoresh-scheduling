@@ -121,33 +121,43 @@ public with sharing class SetTimeInUse {
       );
   }
 
+  /**
+   * A program's fixed and recurring activities, each name once, and only the screen they are on
+   * (word walk W4).
+   */
   private static String programReason(Id programId) {
+    List<FixedActivity__c> fixed = [
+      SELECT Name, Program__r.Season__r.Camp__c
+      FROM FixedActivity__c
+      WHERE Program__c = :programId
+      WITH USER_MODE
+      ORDER BY Name
+      LIMIT 21
+    ];
+    List<RecurringActivity__c> recurring = [
+      SELECT Name, Program__r.Season__r.Camp__c
+      FROM RecurringActivity__c
+      WHERE Program__c = :programId
+      WITH USER_MODE
+      ORDER BY Name
+      LIMIT 21
+    ];
     Found found = new Found();
-    found.add(
-      [
-        SELECT Name, Program__r.Season__r.Camp__c
-        FROM FixedActivity__c
-        WHERE Program__c = :programId
-        WITH USER_MODE
-        ORDER BY Name
-        LIMIT 21
-      ]
-    );
-    found.add(
-      [
-        SELECT Name, Program__r.Season__r.Camp__c
-        FROM RecurringActivity__c
-        WHERE Program__c = :programId
-        WITH USER_MODE
-        ORDER BY Name
-        LIMIT 21
-      ]
-    );
+    found.add(fixed);
+    found.add(recurring);
     if (found.names.isEmpty()) {
       return null;
     }
-    List<String> names = found.names;
+    List<String> names = new List<String>(new Set<String>(found.names));
+    names.sort();
     CampLabels labels = found.labels();
+    List<String> screens = new List<String>();
+    if (!fixed.isEmpty()) {
+      screens.add(labels.plural('FixedActivity'));
+    }
+    if (!recurring.isEmpty()) {
+      screens.add(labels.plural('RecurringActivity'));
+    }
     return 'This can\'t be deleted yet: ' +
       InUse.quoted(names) +
       oneOrMany(names, ' is', ' are') +
@@ -156,9 +166,7 @@ public with sharing class SetTimeInUse {
         'Delete ' +
           oneOrMany(names, 'it', 'them') +
           ' on the ' +
-          labels.plural('FixedActivity') +
-          ' or ' +
-          labels.plural('RecurringActivity') +
+          String.join(screens, ' or ') +
           ' screen first, then delete this.'
       );
   }

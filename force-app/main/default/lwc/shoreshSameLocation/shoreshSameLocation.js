@@ -74,6 +74,16 @@ export default class ShoreshSameLocation extends LightningElement {
     return this.terms.s("GroupsThatFit");
   }
 
+  /** The field's refusal names it and its limit (word walk W4). */
+  get fitsWords() {
+    const label = this.fitsLabel;
+    return {
+      low: `${label}: at least 1.`,
+      whole: `${label}: a whole number.`,
+      missing: `${label}: needed.`
+    };
+  }
+
   get mergeDisabled() {
     return this.busy ? "true" : "false";
   }

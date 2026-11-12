@@ -172,14 +172,14 @@
         ></lightning-spinner>
       </template>
       <template lwc:if={error}>
-        <div
+        <p
           slot="status"
-          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+          class="shoresh-refusal"
           role="alert"
           data-id="build-error"
         >
           {error}
-        </div>
+        </p>
       </template>
       <template lwc:if={leftOut}>
         <div class="not-placed" slot="outcome" role="status" data-id="left-out">

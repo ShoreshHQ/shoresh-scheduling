@@ -448,22 +448,15 @@ table {
 
 /* ---------- Download: the main button's menu ---------- */
 
-.download-row,
-.download-wait {
+.download-row {
   display: flex;
   align-items: center;
   gap: var(--shoresh-s2);
 }
 
-.download-row .aside,
-.download-wait .aside {
+.download-row .aside {
   margin-left: auto;
   padding-left: var(--shoresh-s4);
-}
-
-.download-wait {
-  color: var(--shoresh-text-2);
-  cursor: default;
 }
 
 /* ---------- End-of-season Clear (decision 59, clear-b) ---------- */

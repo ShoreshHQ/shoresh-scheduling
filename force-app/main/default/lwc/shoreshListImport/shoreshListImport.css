@@ -129,16 +129,6 @@
   padding-top: var(--shoresh-space-pad);
 }
 
-.import-error {
-  margin-top: var(--shoresh-space-in-group);
-  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
-  border-radius: var(--shoresh-radius);
-  box-shadow: inset 0 0 0 1px
-    var(--slds-g-color-error-base-40, var(--shoresh-color-text));
-  background: var(--shoresh-color-primary-50);
-  color: var(--slds-g-color-error-base-40, var(--shoresh-color-text));
-}
-
 .import-choices {
   position: relative;
   display: flex;

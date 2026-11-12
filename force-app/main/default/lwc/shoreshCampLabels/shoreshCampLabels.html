@@ -20,11 +20,17 @@
       <p class="note" role="status" data-id="read-only">{blockedReason}</p>
     </template>
     <template lwc:if={error}>
-      <div
-        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
-        role="alert"
-      >
-        {error}
+      <!-- Floats at the foot of the window, never moving the words (word walk W4). -->
+      <div class="shoresh-refusal_float" role="alert">
+        <p class="shoresh-refusal" data-id="error">{error}</p>
+        <lightning-button-icon
+          icon-name="utility:close"
+          variant="bare"
+          size="small"
+          alternative-text="Close"
+          data-id="error-close"
+          onclick={handleCloseError}
+        ></lightning-button-icon>
       </div>
     </template>
     <template lwc:if={loaded}>

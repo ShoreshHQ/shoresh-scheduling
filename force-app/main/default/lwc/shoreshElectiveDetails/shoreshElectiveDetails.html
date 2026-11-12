@@ -191,10 +191,7 @@
         </p>
       </template>
       <template lwc:if={hasNote}>
-        <p class="note" data-id="note">
-          <template lwc:if={sitsNowhere}>{nowhereText}</template>
-          <template lwc:else>{incompleteText}</template>
-        </p>
+        <p class="note" data-id="note">{incompleteText}</p>
       </template>
       <button
         type="button"
@@ -207,6 +204,9 @@
           <path d="M8 3.5v9M3.5 8h9"></path>
         </svg>
         <span>{addLabel}</span>
+        <template lwc:if={sitsNowhere}>
+          <span class="slds-assistive-text">: {nowhereText}</span>
+        </template>
       </button>
     </section>
   </template>

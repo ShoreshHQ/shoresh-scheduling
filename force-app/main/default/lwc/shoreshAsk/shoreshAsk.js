@@ -14,8 +14,17 @@ export default class ShoreshAsk extends LightningElement {
   @api lines = [];
   // Callers name what the button does; a verb, never "OK", if one forgets.
   @api confirmLabel = "Go ahead";
+  // "danger" for a button that deletes: the one red, the guide's --danger (W4). Anything else
+  // is the main button.
+  @api tone;
 
   focused = false;
+
+  get yesClass() {
+    return this.tone === "danger"
+      ? "slds-button ask-danger"
+      : "slds-button slds-button_brand";
+  }
 
   get lineItems() {
     return (this.lines || []).map((text, i) => ({ key: `l${i}`, text }));

@@ -586,6 +586,16 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.unrepeated = null;
   }
 
+  /**
+   * The message row empties (word walk W4): the host has a new line of its own to show there, or
+   * the screen was left. A tool's Undo line goes too; Undo itself stays in the toolbar.
+   */
+  @api
+  clearMessages() {
+    this.clearNotice();
+    this.toolNotice = null;
+  }
+
   // ---------- the week ----------
 
   get schedule() {
@@ -967,10 +977,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.focusPillAfterRender = { index };
     } catch (e) {
       this.reportError(
-        failed(
-          `${shown.name} wasn't taken off ${this.shownDayName}. Nothing was changed.`,
-          e
-        )
+        failed(`${shown.name} wasn't taken off ${this.shownDayName}.`, e)
       );
     } finally {
       this.takingOff = false;
@@ -1411,9 +1418,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       // The button goes with the offer: keyboard focus goes back where the director was.
       this.focusAfterSetUp = { key };
     } catch (e) {
-      this.reportError(
-        failed(`${offer.name} wasn't set up. Nothing was changed.`, e)
-      );
+      this.reportError(failed(`${offer.name} wasn't set up.`, e));
     } finally {
       this.settingUp = false;
     }
@@ -1925,9 +1930,7 @@ export default class ShoreshWeekEditor extends LightningElement {
           name: option.name
         });
       } catch (e) {
-        this.reportError(
-          failed(`"${option.name}" not added. Nothing was saved.`, e)
-        );
+        this.reportError(failed(`"${option.name}" not added.`, e));
         return;
       }
       // Its record joins the draft's, so the checks know it before the week is read again.
@@ -2810,9 +2813,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     try {
       await this.rainyWith(`Before rainy ${first.name}`);
     } catch (e) {
-      this.reportError(
-        `${failed("The rainy day could not be applied.", e)} Nothing was changed.`
-      );
+      this.reportError(failed("The rainy day could not be applied.", e));
       return;
     } finally {
       this.rainyWorking = false;

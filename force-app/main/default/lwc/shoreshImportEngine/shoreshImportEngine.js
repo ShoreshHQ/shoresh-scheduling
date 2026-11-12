@@ -209,6 +209,7 @@ export {
   foundLists,
   importNotes,
   unplacedLines,
+  undoImportQuestion,
   undoMessage
 } from "./plan";
 export { versionName } from "./version";

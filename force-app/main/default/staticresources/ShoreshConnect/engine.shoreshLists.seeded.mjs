@@ -10,9 +10,10 @@ function listed(names) {
 }
 
 /**
- * What a special day just added started from (SpecialDaySeed.Seed), in a few lines: whose time
- * blocks, what was brought in, and what was left out and why (desktop SpecialEventsScreen.jsx's
- * note after "Copy time blocks"). Nothing is left out quietly.
+ * What a special day just added left out of the regular day (SpecialDaySeed.Seed), and why
+ * (desktop SpecialEventsScreen.jsx's note after "Copy time blocks"). Nothing is left out
+ * quietly; what it started from shows on its schedule, so no sentence explains it (word walk
+ * W4: never '"Field Day" starts from Main's 7 time blocks').
  */
 export function seededLines(seed, name, t) {
   if (!seed) {
@@ -23,13 +24,7 @@ export function seededLines(seed, name, t) {
       `"${name}" has no ${t.pIn("TimeBlock")} yet: there were none to start from.`
     ];
   }
-  const blocks = `${seed.timeBlocks} ${seed.timeBlocks === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
-  const brought = seed.broughtIn || [];
-  const lines = [
-    `"${name}" starts from ${seed.program}'s ${blocks}${
-      brought.length ? `, with ${listed(brought)} copied` : ""
-    }.`
-  ];
+  const lines = [];
   const left = (names, why) => {
     if (names && names.length) {
       lines.push(`Not copied, since ${why}: ${listed(names)}.`);

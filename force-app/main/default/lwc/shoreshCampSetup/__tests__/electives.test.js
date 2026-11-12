@@ -7,7 +7,7 @@ import { createElement } from "lwc";
 import ShoreshCampSetup from "c/shoreshCampSetup";
 // The page address the component reads (its test adapter): emitted as the page would.
 import * as navigation from "lightning/navigation";
-import LightningConfirm from "lightning/confirm";
+import { answerAsk } from "shoresh-jest/ask";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
@@ -59,11 +59,6 @@ jest.mock(
 jest.mock(
   "@salesforce/apex/LinkedChoicesController.saveLinkedChoice",
   () => apex(),
-  { virtual: true }
-);
-jest.mock(
-  "lightning/confirm",
-  () => ({ __esModule: true, default: { open: jest.fn() } }),
   { virtual: true }
 );
 
@@ -564,10 +559,11 @@ describe("c-shoresh-camp-setup: Electives", () => {
     const element = await render();
     // The server's question (SetupDelete), asked as it comes.
     deletePreview.mockResolvedValue({
-      label: "Delete",
+      label: "Take Archery off Chugim?",
+      confirmLabel: "Take Archery off",
+      lines: ["The activity is kept."],
       message: 'Take "Archery" off "Chugim"? The activity is kept.'
     });
-    LightningConfirm.open.mockResolvedValue(true);
     deleteRecord.mockResolvedValue();
     const onDeleted = jest.fn();
     section(element, "es1").dispatchEvent(
@@ -576,10 +572,13 @@ describe("c-shoresh-camp-setup: Electives", () => {
       })
     );
     await flush();
-    expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
-      label: "Delete",
-      message: 'Take "Archery" off "Chugim"? The activity is kept.'
+    // Word walk W4: the button names the action, never "OK".
+    expect(await answerAsk(element, true)).toMatchObject({
+      heading: "Take Archery off Chugim?",
+      lines: ["The activity is kept."],
+      confirmLabel: "Take Archery off"
     });
+    await flush();
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "o1" });
     expect(onDeleted).toHaveBeenCalled();
   });
@@ -649,11 +648,12 @@ describe("c-shoresh-camp-setup: Electives", () => {
   it("deleting a linked choice asks first, saying what a sheet that names it then counts as", async () => {
     const element = await render();
     deletePreview.mockResolvedValue({
-      label: "Delete",
+      label: "Delete Pottery double?",
+      confirmLabel: "Delete Pottery double",
+      lines: ["A sheet that names it then counts as Pottery."],
       message:
         'Delete "Pottery double"? A sheet that names it then counts as Pottery.'
     });
-    LightningConfirm.open.mockResolvedValue(true);
     deleteRecord.mockResolvedValue();
     section(element, "es1").dispatchEvent(
       new CustomEvent("details", { detail: { recordId: "o4" } })
@@ -666,11 +666,11 @@ describe("c-shoresh-camp-setup: Electives", () => {
       })
     );
     await flush();
-    expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
-      label: "Delete",
-      message:
-        'Delete "Pottery double"? A sheet that names it then counts as Pottery.'
+    expect(await answerAsk(element, true)).toMatchObject({
+      heading: "Delete Pottery double?",
+      confirmLabel: "Delete Pottery double"
     });
+    await flush();
     expect(deletePreview).toHaveBeenCalledWith({ recordId: "lc1" });
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "lc1" });
     expect(onDeleted).toHaveBeenCalled();

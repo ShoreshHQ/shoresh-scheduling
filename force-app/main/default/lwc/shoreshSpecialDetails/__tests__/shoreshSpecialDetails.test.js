@@ -170,7 +170,7 @@ describe("c-shoresh-special-details", () => {
           plain
         )
       ).toEqual([
-        '"Field Day" starts from Main\'s 3 time blocks, with Lunch copied.',
+        // Word walk W4: what it started from shows on its schedule; no sentence explains it.
         "Not copied, since they don't run every day: Swim and Art.",
         "Not copied, since they don't run every week: Flag.",
         "Not copied, since they are in other time blocks: Campfire."
@@ -181,7 +181,7 @@ describe("c-shoresh-special-details", () => {
           "Field Day",
           plain
         )
-      ).toEqual(['"Field Day" starts from Main\'s 1 time block.']);
+      ).toEqual([]);
       expect(
         seededLines({ program: null, timeBlocks: 0 }, "Field Day", plain)
       ).toEqual([

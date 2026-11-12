@@ -93,6 +93,8 @@
               value={earlyCount}
               min="1"
               step="1"
+              message-when-range-underflow={limits.earlyCount.low}
+              message-when-step-mismatch={limits.earlyCount.whole}
               onchange={handleRule}
               onfocusout={handleRuleLeave}
               onkeydown={handleRuleKey}
@@ -158,6 +160,9 @@
               value={length}
               min="1"
               step="1"
+              message-when-range-underflow={limits.length.low}
+              message-when-step-mismatch={limits.length.whole}
+              message-when-value-missing={limits.length.missing}
               required
               onchange={handleRule}
               onfocusout={handleRuleLeave}
@@ -204,6 +209,8 @@
             value={groupsAtOnce}
             min="1"
             step="1"
+            message-when-range-underflow={limits.groupsAtOnce.low}
+            message-when-step-mismatch={limits.groupsAtOnce.whole}
             onchange={handleRule}
             onfocusout={handleRuleLeave}
             onkeydown={handleRuleKey}
@@ -348,5 +355,15 @@
       </section>
       <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
     </template>
+  </template>
+  <!-- A question before an action, its button naming the action (word walk W4: never "OK"). -->
+  <template lwc:if={ask}>
+    <c-shoresh-ask
+      heading={ask.heading}
+      lines={ask.lines}
+      confirm-label={ask.confirmLabel}
+      tone={ask.tone}
+      onanswer={handleAskAnswer}
+    ></c-shoresh-ask>
   </template>
 </template>

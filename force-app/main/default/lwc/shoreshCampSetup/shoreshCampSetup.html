@@ -6,13 +6,19 @@
       ></lightning-spinner>
     </template>
 
+    <!-- A refusal with no row of its own floats at the foot of the window, so it never moves
+         the screen (word walk W4; Greg 2026-11-12). -->
     <template lwc:if={error}>
-      <div
-        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium"
-        role="alert"
-        data-id="error"
-      >
-        {error}
+      <div class="shoresh-refusal_float" role="alert">
+        <p class="shoresh-refusal" data-id="error">{error}</p>
+        <lightning-button-icon
+          icon-name="utility:close"
+          variant="bare"
+          size="small"
+          alternative-text="Close"
+          data-id="error-close"
+          onclick={handleCloseError}
+        ></lightning-button-icon>
       </div>
     </template>
 
@@ -30,6 +36,7 @@
               label="Camp name"
               value={newCamp.Name}
               required
+              message-when-value-missing="Camp name: needed."
               onchange={handleNewCampName}
             ></lightning-input>
           </div>
@@ -170,6 +177,7 @@
                       label={labels.seasonName}
                       value={seasonForm.Name}
                       required
+                      message-when-value-missing={labels.seasonNameMissing}
                       onchange={handleSeasonField}
                       onfocusout={handleSeasonLeave}
                       onkeydown={handleSeasonKey}
@@ -193,6 +201,8 @@
                       label="First day"
                       value={seasonStart}
                       required
+                      message-when-value-missing={labels.firstDayMissing}
+                      message-when-bad-input={labels.firstDayBad}
                       onchange={handleSeasonField}
                       onfocusout={handleSeasonLeave}
                       onkeydown={handleSeasonKey}
@@ -216,6 +226,8 @@
                       label="Last day"
                       value={seasonEnd}
                       required
+                      message-when-value-missing={labels.lastDayMissing}
+                      message-when-bad-input={labels.lastDayBad}
                       onchange={handleSeasonField}
                       onfocusout={handleSeasonLeave}
                       onkeydown={handleSeasonKey}
@@ -312,6 +324,7 @@
                     label={labels.seasonName}
                     value={newSeason.Name}
                     required
+                    message-when-value-missing={labels.seasonNameMissing}
                     onchange={handleNewSeasonField}
                   ></lightning-input>
                 </div>
@@ -324,6 +337,8 @@
                     label="First day"
                     value={newSeasonStart}
                     required
+                    message-when-value-missing={labels.firstDayMissing}
+                    message-when-bad-input={labels.firstDayBad}
                     onchange={handleNewSeasonField}
                   ></lightning-input>
                 </div>
@@ -336,6 +351,8 @@
                     label="Last day"
                     value={newSeasonEnd}
                     required
+                    message-when-value-missing={labels.lastDayMissing}
+                    message-when-bad-input={labels.lastDayBad}
                     onchange={handleNewSeasonField}
                   ></lightning-input>
                 </div>
@@ -1555,6 +1572,7 @@
         heading={ask.heading}
         lines={ask.lines}
         confirm-label={ask.confirmLabel}
+        tone={ask.tone}
         onanswer={handleAnswer}
       ></c-shoresh-ask>
     </template>
