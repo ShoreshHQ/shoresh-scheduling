@@ -5,10 +5,13 @@
    other schedule screens is in c/shoreshScheduleScreen. */
 
 /* While the week is built: a thin bar that follows the build (design guide: a thin bar for a
-   blocking action), "Generating…" and Cancel beside it, and under it one quiet line saying
-   what the build is doing now. The line keeps its height, so the week below never jumps. */
+   blocking action), "Generating…", one quiet line saying what the build is doing now, and
+   Cancel, all on the editor's one-line message row, so the week below never jumps (Greg
+   2026-11-12: a message never moves the screen). */
 .busy {
-  margin: 0 0 12px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .busy-row {
@@ -18,8 +21,8 @@
 }
 
 .busy-now {
-  min-height: 20px;
-  margin: var(--shoresh-s1) 0 0;
+  flex: 2;
+  min-width: 0;
   font-size: var(--shoresh-font-size);
   line-height: 20px;
   color: var(--shoresh-text-2);
@@ -60,7 +63,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  /* The whole width of the editor's message row it sits on. */
+  flex: 1 1 100%;
+  margin: 0;
   padding: 8px 12px;
   border: 1px solid var(--shoresh-caution);
   border-radius: 8px;

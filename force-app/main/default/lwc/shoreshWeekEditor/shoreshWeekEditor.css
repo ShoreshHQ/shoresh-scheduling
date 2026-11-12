@@ -255,9 +255,21 @@
   font-weight: 600;
 }
 
+/* The message row under the rail (Greg 2026-11-12: a message never moves the screen): always
+   one line high, empty or not, so the grid under it stays put when a message comes or goes. Two
+   messages at once sit side by side. */
+.messages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--shoresh-s4, 16px);
+  min-height: 32px;
+  margin: 0 0 8px;
+}
+
 /* A refused move: a quiet line under the rail. */
 .notice {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
 }
