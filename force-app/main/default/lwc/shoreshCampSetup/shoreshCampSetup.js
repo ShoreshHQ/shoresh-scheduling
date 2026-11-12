@@ -2422,6 +2422,9 @@ export default class ShoreshCampSetup extends LightningElement {
       addLocationType: `Add ${t.s("LocationType")}`,
       noLocationTypes: `No ${t.pIn("LocationType")} yet`,
       addLocation: `Add ${t.s("Location")}`,
+      // A section's count with its unit (word walk W1): "3 locations".
+      countLocations: [t.sIn("Location"), t.pIn("Location")],
+      countActivities: [t.sIn("Activity"), t.pIn("Activity")],
       noLocations: `No ${t.pIn("Location")} yet`,
       sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,

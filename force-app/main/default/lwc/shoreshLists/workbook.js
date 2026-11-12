@@ -1136,13 +1136,27 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
 // ---------------------------------------------------------------------------------------------
 // The whole workbook.
 
+const EXTRA_TERMS = {
+  campWords: "CampLabel",
+  weeks: "Week",
+  runsIn: "WeekException"
+};
+
 function extraSection(key, label, part) {
   part.rows.forEach((r) => {
     if (r.problems.length) {
       r.status = "unreadable";
     }
   });
-  return { key, label, extra: true, rows: part.rows, lists: part.lists || [] };
+  return {
+    key,
+    label,
+    // What its rows are, for the save button's counts (saveCounts).
+    term: EXTRA_TERMS[key],
+    extra: true,
+    rows: part.rows,
+    lists: part.lists || []
+  };
 }
 
 /**

@@ -10,6 +10,7 @@
       columns={blockColumns}
       rows={entry.timeBlocks}
       add-label={labels.addTimeBlock}
+      count-words={labels.countTimeBlocks}
       empty-message={labels.noTimeBlocks}
       new-row-defaults={blockDefaults}
       busy={busy}
@@ -29,6 +30,7 @@
       columns={divisionColumns}
       rows={realDivisionRecords}
       add-label={labels.addDivision}
+      count-words={labels.countDivisions}
       empty-message={labels.noDivisions}
       new-row-defaults={divisionDefaults}
       busy={busy}
@@ -54,6 +56,7 @@
         columns={division.columns}
         rows={division.groups}
         add-label={labels.addGroup}
+        count-words={labels.countGroups}
         empty-message={labels.noGroups}
         new-row-defaults={division.defaults}
         draft-note={groupMoveNote}
@@ -86,6 +89,7 @@
         columns={fixedColumns}
         rows={entry.fixedActivities}
         add-label={labels.addFixed}
+        count-words={labels.countFixed}
         empty-message={labels.noFixed}
         new-row-defaults={fixedDefaults}
         weeks={weeks}
@@ -139,6 +143,7 @@
           columns={recurringColumns}
           rows={entry.recurringActivities}
           add-label={labels.addRecurring}
+          count-words={labels.countRecurring}
           empty-message={labels.noRecurring}
           new-row-defaults={recurringDefaults}
           weeks={weeks}

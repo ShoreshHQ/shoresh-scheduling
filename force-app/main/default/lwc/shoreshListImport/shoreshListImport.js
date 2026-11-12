@@ -31,6 +31,7 @@ import {
   listProposal,
   questionCards,
   rainAddKey,
+  saveCounts,
   saveListLabel,
   waitingFor,
   listRows,
@@ -524,7 +525,7 @@ export default class ShoreshListImport extends LightningElement {
     }
     return this.workbook
       ? this.proposal.sections.map((s) => {
-          return s.extra ? { rows: s.rows } : s.proposal;
+          return s.extra ? { rows: s.rows, term: s.term } : s.proposal;
         })
       : [this.proposal];
   }
@@ -1002,22 +1003,15 @@ export default class ShoreshListImport extends LightningElement {
   get hasWaiting() {
     return this.waiting.length > 0;
   }
-  /** The exit says what it does: "Add 3, change 2". */
+  /** The exit says what it does, each count with its kind: "Add 2 Edot and 1 Track, change 2 Bunks". */
   get saveLabel() {
     if (this.hasWaiting || !this.proposal || !this.proposals.length) {
       return "Save";
     }
-    // Everything saving adds, the ticked extras with it.
-    // Weeks an added item runs are counted with the item.
-    const added =
-      this.rowsWith("new").filter((r) => !r.withItem).length +
-      this.proposals
-        .flatMap((p) => this.alsoAddOf(p))
-        .filter((item) => item.checked).length;
-    const changed = this.rowsWith("changed").filter((r) =>
-      r.differences.some((d) => d.answer === CHANGE)
-    ).length;
-    return saveListLabel(added, changed);
+    // Everything saving adds, the ticked extras with it. Weeks an added item runs are counted
+    // with the item.
+    const { added, changed } = saveCounts(this.proposals);
+    return saveListLabel(added, changed, this.terms);
   }
 
   get saveDisabled() {
@@ -1099,8 +1093,13 @@ export default class ShoreshListImport extends LightningElement {
     }
     this.undoing = true;
     try {
+      const added = (this.result && this.result.added) || {};
       this.undone = undoMessage(
-        await undoImport({ importId: this.result.importId })
+        await undoImport({ importId: this.result.importId }),
+        Object.keys(added)
+          .sort()
+          .filter((term) => added[term])
+          .map((term) => this.counted(added[term], term))
       );
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {

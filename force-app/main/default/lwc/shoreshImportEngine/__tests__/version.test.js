@@ -408,6 +408,12 @@ describe("part 2 review", () => {
 });
 
 describe("what Undo says", () => {
+  it("names what it removed by kind, never a bare count of things (word walk W1)", () => {
+    expect(undoMessage({ removed: 3 }, ["2 Edot", "1 Track"])).toBe(
+      "Import undone. Removed 2 Edot and 1 Track it added."
+    );
+  });
+
   it("names what it kept, and what was deleted since and so not put back", () => {
     expect(
       undoMessage({
@@ -418,7 +424,7 @@ describe("what Undo says", () => {
         gone: ["Period 2"]
       })
     ).toBe(
-      "Import undone. Removed 3 things it added and put back 1 it changed. " +
+      "Import undone. Removed what it added and put back 1 it changed. " +
         "Kept, because they were changed since: Swim. " +
         "Kept, because something else still uses them: Juniors. " +
         "Not put back, because they were deleted since: Period 2."

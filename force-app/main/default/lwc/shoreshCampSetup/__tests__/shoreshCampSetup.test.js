@@ -1066,7 +1066,8 @@ describe("c-shoresh-camp-setup", () => {
         expect([low.showsRow("a1"), low.showsRow("a2")]).toEqual([false, true]);
         expect(
           high.shadowRoot.querySelector(".section-count").textContent.trim()
-        ).toBe("1");
+          // A count carries its unit (word walk W1).
+        ).toBe("1 activity");
         // Each blank row starts in its section's priority; the rest are the usual defaults.
         expect(bareRecord(high.newRowDefaults)).toEqual(
           expect.objectContaining({ Priority__c: "High", Length__c: 1 })

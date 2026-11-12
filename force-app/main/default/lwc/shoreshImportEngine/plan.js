@@ -769,10 +769,17 @@ export function importNotes(proposal, t) {
   return notes;
 }
 
-/** What Undo last import did, in one message (desktop wording, LastImportUndo.jsx). */
-export function undoMessage(result) {
+/**
+ * What Undo last import did, in one message (desktop wording, LastImportUndo.jsx). added: what
+ * the import added, each count with its kind ("2 Edot", "1 Track"), when the screen knows it;
+ * without it no bare count is said (word walk W1: never "Removed 31 things").
+ */
+export function undoMessage(result, added) {
+  const named = (added || []).filter(Boolean);
   const parts = [
-    `Import undone. Removed ${result.removed} ${result.removed === 1 ? "thing" : "things"} it added`
+    named.length
+      ? `Import undone. Removed ${named.length > 1 ? `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}` : named[0]} it added`
+      : "Import undone. Removed what it added"
   ];
   if (result.restored) {
     parts[0] += ` and put back ${result.restored} it changed`;

@@ -12,7 +12,7 @@ import { answeredDays } from "./scope";
 import { NONE } from "./cells";
 import { CHANGE, newValueOf } from "./proposal";
 import { cellText, listScreen } from "./screens";
-import { buildTerms } from "c/shoreshTerms";
+import { buildTerms, countOf } from "c/shoreshTerms";
 
 function quoted(name) {
   return `“${name}”`;
@@ -125,15 +125,88 @@ export function changeAllCounts(proposal) {
 }
 
 /** What saving a list does, as its Save button says it: "Add 3, change 2", or "Save". */
-export function saveListLabel(added, changed) {
+export function saveListLabel(added, changed, t) {
+  // Each count names its kind (word walk W1): "Add 2 Edot and 1 Track, change 2 Bunks".
+  const words = t || buildTerms([]);
+  const said = (counts) => {
+    if (typeof counts !== "object" || !counts) {
+      return counts;
+    }
+    const parts = Object.keys(counts)
+      .filter((term) => counts[term])
+      .map((term) => counted(words, counts[term], term));
+    return parts.length > 1
+      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+      : parts.join("");
+  };
   const parts = [];
-  if (added) {
-    parts.push(`Add ${added}`);
+  const adding = said(added);
+  const changing = said(changed);
+  if (adding) {
+    parts.push(`Add ${adding}`);
   }
-  if (changed) {
-    parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
+  if (changing) {
+    parts.push(`${parts.length ? "change" : "Change"} ${changing}`);
   }
   return parts.join(", ") || "Save";
+}
+
+// What a workbook saves that has no camp word of its own, in the camp's words.
+const OWN_WORDS = {
+  CampLabel: () => ["camp word", "camp words"],
+  WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
+};
+
+/** "2 Edot", "1 camp word": a count with its kind. */
+function counted(t, n, term) {
+  const own = OWN_WORDS[term] && OWN_WORDS[term](t);
+  return own ? `${n} ${own[n === 1 ? 0 : 1]}` : countOf(t, n, term);
+}
+
+// What each kind of thing a list adds with it is, by the proposal's alsoAdd key.
+const ALSO_ADD_TERMS = {
+  locationType: () => "LocationType",
+  location: () => "Location",
+  program: () => "Program",
+  division: () => "Division",
+  timeBlock: () => "TimeBlock",
+  who: (item) => item.kind,
+  electiveSet: () => "ElectiveSet",
+  offeredActivity: () => "Activity",
+  activity: () => "Activity"
+};
+
+/**
+ * What saving the lists adds and changes, kind by kind ({ term: count }), for saveListLabel: the
+ * new rows of each list, the things added with them (a rain plan left off is not), and the rows
+ * whose differences are changed. A program given more days counts as a change to it.
+ */
+export function saveCounts(proposals) {
+  const added = {};
+  const changed = {};
+  const count = (into, term) => {
+    if (term) into[term] = (into[term] || 0) + 1;
+  };
+  (proposals || []).forEach((p) => {
+    const term = p.term || (p.screen && p.screen.term);
+    (p.rows || []).forEach((r) => {
+      if (r.status === "new" && !r.withItem) count(added, term);
+      if (
+        r.status === "changed" &&
+        (r.differences || []).some((d) => d.answer === CHANGE)
+      ) {
+        count(changed, term);
+      }
+    });
+    const add = p.alsoAdd || {};
+    Object.keys(ALSO_ADD_TERMS).forEach((key) =>
+      (add[key] || [])
+        .filter((item) => !(key === "activity" && item.skipped))
+        .forEach((item) => count(added, ALSO_ADD_TERMS[key](item)))
+    );
+    (add.programDays || []).forEach(() => count(changed, "Program"));
+  });
+  return { added, changed };
 }
 
 /** The button's words: "Change all from this file: 12 changes, 3 of them clear a value". */

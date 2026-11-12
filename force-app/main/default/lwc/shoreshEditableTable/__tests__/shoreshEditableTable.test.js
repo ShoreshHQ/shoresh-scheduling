@@ -2660,6 +2660,20 @@ describe("c-shoresh-editable-table", () => {
       expect(q(element, '[data-id="section-count"]').textContent).toBe("4");
     });
 
+    it("says its count with its unit when given one (word walk W1)", async () => {
+      const element = renderSection({
+        heading: "Juniors",
+        filterField: "Division__c",
+        filterValue: "d1",
+        rows: GROUPS,
+        countWords: ["Bunk", "Bunks"]
+      });
+      await flush();
+      expect(q(element, '[data-id="section-count"]').textContent).toMatch(
+        /^\d+ Bunks?$/
+      );
+    });
+
     it("without a heading the table's title is read out, not shown", async () => {
       const element = renderSection();
       await flush();

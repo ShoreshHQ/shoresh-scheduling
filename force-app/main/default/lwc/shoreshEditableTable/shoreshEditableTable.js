@@ -159,6 +159,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api objectApiName;
   /** The add button's name, and the blank row's name placeholder ("Add Bunk"). */
   @api addLabel = "Add";
+  // The section count's unit, [one, many] ("bunk", "bunks"): "3 bunks", never a bare 3 (word walk W1).
+  @api countWords;
   @api emptyMessage = "Nothing here yet.";
   @api busy = false;
   @api weeksHeading;
@@ -566,9 +568,14 @@ export default class ShoreshEditableTable extends LightningElement {
   /** The heading's count: how many rows the section shows, unless headingCount says. */
   get shownCount() {
     const given = this.headingCount;
-    return given === undefined || given === null || given === ""
-      ? this.visibleDrafts.length
-      : given;
+    const count =
+      given === undefined || given === null || given === ""
+        ? this.visibleDrafts.length
+        : given;
+    const words = this.countWords;
+    return words && words.length === 2 && typeof count === "number"
+      ? `${count} ${count === 1 ? words[0] : words[1]}`
+      : count;
   }
 
   /** Each column's width in rem, or null for the name and words columns (they share the rest). */
