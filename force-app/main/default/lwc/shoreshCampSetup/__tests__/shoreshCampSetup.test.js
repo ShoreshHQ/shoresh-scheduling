@@ -5170,6 +5170,7 @@ describe("a reload stays where you were", () => {
     return element;
   }
 
+  // WEEK-6.3
   it("comes back to the camp, season, screen, program, week and version this tab was on", async () => {
     window.sessionStorage.setItem("shoresh.place", JSON.stringify(PLACE));
     const element = await open();
@@ -5180,6 +5181,7 @@ describe("a reload stays where you were", () => {
     expect(openSchedule).not.toHaveBeenCalledWith({ scheduleId: "v-newer" });
   });
 
+  // WEEK-6.3
   it("a link not followed yet wins over where the tab was", async () => {
     window.sessionStorage.setItem(
       "shoresh.place",
@@ -5197,6 +5199,7 @@ describe("a reload stays where you were", () => {
     expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "v-published" });
   });
 
+  // WEEK-6.3
   it("a link this tab already followed isn't followed again: the reload stays where the tab went since", async () => {
     const address = {
       c__preview: "schedules",
@@ -5219,6 +5222,7 @@ describe("a reload stays where you were", () => {
     expect(shownScreens(again)).toEqual(["groups"]);
   });
 
+  // WEEK-6.3
   it("a remembered season that is gone opens the camp as usual, and the tab is kept again after", async () => {
     window.sessionStorage.setItem(
       "shoresh.place",
@@ -5231,6 +5235,7 @@ describe("a reload stays where you were", () => {
     ).toMatchObject({ seasonId: "s2", screen: "roots" });
   });
 
+  // WEEK-6.3
   it("keeps the screen this tab is on for a reload, and a new tab starts on Roots", async () => {
     window.sessionStorage.clear();
     try {

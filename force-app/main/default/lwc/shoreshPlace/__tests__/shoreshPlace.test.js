@@ -11,6 +11,7 @@ describe("c/shoreshPlace", () => {
     });
   });
 
+  // WEEK-6.3
   it("works without storage: nothing kept, nothing thrown", () => {
     const spy = jest
       .spyOn(Storage.prototype, "getItem")
