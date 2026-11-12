@@ -398,27 +398,35 @@ describe("c-shoresh-menu", () => {
     ).toBe("true");
   });
 
-  it("shows the desktop's marks: ! (Needed) and ✓ (Done), read out as words", async () => {
+  it("shows the bronze needs-a-look dot and the desktop's ✓ (Done), read out as words", async () => {
     const element = await render(true, "roots", {
       groups: "needed",
-      weeks: "done"
+      weeks: "done",
+      manualBuild: "changed"
     });
     const item = (screen) =>
       element.shadowRoot.querySelector(`a[data-screen="${screen}"]`);
     const mark = (screen) => item(screen).querySelector("[data-mark]");
-    expect(mark("groups").textContent).toBe("!");
+    // Word walk W3: the desktop's "!" is the guide's bronze dot, no words beside it.
+    expect(mark("groups").textContent).toBe("");
+    expect(mark("groups").querySelector(".shoresh-look-mark")).not.toBeNull();
     expect(mark("groups").querySelector("svg")).toBeNull();
     expect(mark("groups").getAttribute("aria-hidden")).toBe("true");
-    expect(mark("groups").title).toBe("Needed");
+    expect(mark("groups").title).toBe("Needs a look");
     expect(mark("groups").className).toContain("menu-mark_needed");
+    // Changed since: the same bronze dot (no green), its words on hover.
+    expect(
+      mark("manualBuild").querySelector(".shoresh-look-mark")
+    ).not.toBeNull();
+    expect(mark("manualBuild").title).toBe("Changed since: setup");
     // Done is a check drawn as an icon (contrast for a mark, not text).
     expect(mark("weeks").querySelector("svg")).not.toBeNull();
     expect(mark("weeks").title).toBe("Done");
     // Screen readers hear the entry's name, then its mark in words.
-    expect(item("groups").textContent).toBe("Bunks!Needed");
+    expect(item("groups").textContent).toBe("BunksNeeds a look");
     expect(
       item("groups").querySelector(".slds-assistive-text").textContent
-    ).toBe("Needed");
+    ).toBe("Needs a look");
     expect(mark("locations")).toBeNull();
   });
 

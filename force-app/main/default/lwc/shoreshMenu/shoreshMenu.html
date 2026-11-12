@@ -108,7 +108,10 @@
                           focusable="false"
                         >
                           <path d="M3 8.5 6.5 12 13 4.5"></path></svg></template
-                      ><template lwc:else>{item.mark.symbol}</template></span
+                      ><template lwc:else
+                        ><span
+                          class="shoresh-look-mark"
+                        ></span></template></span
                     ><span class="slds-assistive-text"
                       >{item.mark.label}</span
                     ></template
@@ -124,8 +127,8 @@
       <div class="foot" data-id="setup-notice">
         <div class="shoresh-hairline bleed" role="presentation"></div>
         <p class="notice-what">
-          <span class="notice-dot" aria-hidden="true"></span>Changed since:
-          setup
+          <span class="shoresh-look-mark notice-dot" aria-hidden="true"></span
+          >Changed since: setup
         </p>
         <button
           type="button"

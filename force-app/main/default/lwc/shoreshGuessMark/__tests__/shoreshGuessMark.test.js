@@ -25,7 +25,7 @@ describe("c-shoresh-guess-mark", () => {
     }
   });
 
-  it("is the design system's needs-a-look corner, named for whose it is, closed at first", async () => {
+  it("is Guessed's own corner, named for whose it is, closed at first", async () => {
     const element = render();
     await flush();
     const mark = q(element, '[data-id="guess-mark"]');
@@ -34,7 +34,9 @@ describe("c-shoresh-guess-mark", () => {
       "How often for Swim: guessed from your file"
     );
     expect(mark.getAttribute("aria-expanded")).toBe("false");
-    expect(mark.querySelector(".shoresh-look-mark")).not.toBeNull();
+    // Guessed has its own mark, not the needs-a-look dot (word walk W3).
+    expect(mark.querySelector(".shoresh-guess-mark")).not.toBeNull();
+    expect(mark.querySelector(".shoresh-look-mark")).toBeNull();
     expect(q(element, '[data-id="guess-pop"]')).toBeNull();
     await expect(element).toBeAccessible();
   });
@@ -107,5 +109,16 @@ describe("c-shoresh-guess-mark", () => {
     );
     await flush();
     expect(q(element, '[data-id="guess-pop"]')).toBeNull();
+  });
+
+  it("a problem fixed in the cell (words only) is the bronze needs-a-look dot, not the corner", async () => {
+    const element = render({
+      wordsOnly: true,
+      label: "Seats not filled in yet"
+    });
+    await flush();
+    const mark = q(element, '[data-id="guess-mark"]');
+    expect(mark.querySelector(".shoresh-look-mark")).not.toBeNull();
+    expect(mark.querySelector(".shoresh-guess-mark")).toBeNull();
   });
 });

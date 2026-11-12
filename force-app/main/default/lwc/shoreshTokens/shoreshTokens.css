@@ -179,7 +179,8 @@
    * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
    * structural accent, never a status; success (done) is for small marks only, never text.
    * Manual Build, Generated and the setup screens still use these; each restyle PR moves its
-   * screen onto the colours above and the last one removes these.
+   * screen onto the colours above and the last one removes these, except bronze: it stays as the
+   * needs-a-look dot (.shoresh-look-mark below; design guide §3, word walk W3).
    */
   --shoresh-primary: #173b63;
   --shoresh-secondary: #2f6b58;
@@ -214,9 +215,21 @@
   margin: 0;
 }
 
-/* The needs-a-look mark: a small solid corner in the text colour, the same on a cell's corner
-   and beside a count. 8 by 8, so it reads as a mark, not as text. */
+/* The needs-a-look mark (design guide §3, word walk W3): the bronze dot, 6 px, the same on a
+   cell's corner, beside a count and on a menu entry. It carries no words; its words are on hover
+   or focus and in assistive text. One mark, one meaning: Guessed has its own mark below. */
 .shoresh-look-mark {
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+}
+
+/* Guessed (from an imported file, until Looks right): a small solid corner in the text colour,
+   a different shape from the dot, so the two never read alike without colour (WCAG 1.4.1). */
+.shoresh-guess-mark {
   display: inline-block;
   flex: none;
   width: 8px;
@@ -226,10 +239,11 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
-/* High contrast (forced colours) paints every background over, which would leave the mark
-   blank: there it is drawn in the system's text colour. */
+/* High contrast (forced colours) paints every background over, which would leave the marks
+   blank: there they are drawn in the system's text colour. */
 @media (forced-colors: active) {
-  .shoresh-look-mark {
+  .shoresh-look-mark,
+  .shoresh-guess-mark {
     forced-color-adjust: none;
     background: CanvasText;
   }

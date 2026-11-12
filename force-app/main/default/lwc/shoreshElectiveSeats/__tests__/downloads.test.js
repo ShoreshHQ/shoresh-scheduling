@@ -242,6 +242,22 @@ describe("the full report", () => {
     expect(summary.get("In one elective more than once")).toBe(1);
   });
 
+  it("leaves out a count of something to look at when it is 0 (word walk W3)", () => {
+    const d = reading();
+    const calm = {
+      ...d,
+      board: {
+        ...d.board,
+        seatAt: [],
+        problems: { ...d.board.problems, unplaced: [] }
+      }
+    };
+    const labels = summaryRows(calm).map((row) => row[0]);
+    expect(labels).not.toContain("Couldn't be placed");
+    expect(labels).not.toContain("In one elective more than once");
+    expect(labels).toContain("Placed");
+  });
+
   it("final seats whose schedule changed say Changed since (Greg's pick, 2026-11-12)", () => {
     const d = reading(
       finalDownload({ view: finalView({ scheduleChanged: true }) })

@@ -484,9 +484,12 @@ export function summaryRows(d) {
     [t.s("Week"), d.weekName],
     ["Source file", view.sourceFile || ""],
     [t.p("Camper"), board.counter.total],
-    ["Placed", `${board.counter.placed} of ${board.counter.total}`],
-    ["Couldn't be placed", board.problems.unplaced.length]
+    ["Placed", `${board.counter.placed} of ${board.counter.total}`]
   ];
+  // Rows that only count something to look at are left out at 0 (word walk W3).
+  if (board.problems.unplaced.length) {
+    rows.push(["Couldn't be placed", board.problems.unplaced.length]);
+  }
   [...byRank.keys()]
     .sort((a, b) => a - b)
     .forEach((rank) =>
@@ -497,7 +500,8 @@ export function summaryRows(d) {
     );
   if (oneOf) rows.push(["One of their choices", oneOf]);
   if (notChosen) rows.push(["Not one they chose", notChosen]);
-  rows.push([`In one ${t.sIn("Elective")} more than once`, repeats]);
+  if (repeats)
+    rows.push([`In one ${t.sIn("Elective")} more than once`, repeats]);
   return rows;
 }
 

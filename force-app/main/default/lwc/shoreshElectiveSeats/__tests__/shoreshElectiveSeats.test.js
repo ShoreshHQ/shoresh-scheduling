@@ -404,7 +404,8 @@ describe("By offering", () => {
       "Maya Fernwood"
     ]);
     expect($$(element, ".person-group").map(text)).toEqual(["Aspen", "Aspen"]);
-    expect(text($(element, '[data-id="free"]'))).toBe("0 seats free");
+    // Full: no "0 seats free" line (word walk W3: no zero asking for attention).
+    expect($(element, '[data-id="free"]')).toBeNull();
     // Ari's seat is locked: the padlock is pressed.
     const locks = $$(element, ".lock-button");
     expect(locks.map((b) => b.getAttribute("aria-pressed"))).toEqual([
@@ -613,6 +614,10 @@ describe("By camper", () => {
     const bea = [...rows[3].querySelectorAll("td")];
     expect(bea[1].querySelector(".empty-slot")).not.toBeNull();
     expect(bea[1].querySelector(".shoresh-look-mark")).not.toBeNull();
+    // The dot carries no words beside it; they are on hover (word walk W3).
+    expect(bea[1].querySelector(".shoresh-look-mark").title).toBe(
+      "No seat yet"
+    );
     expect(
       $(element, '[data-id="no-bunk"]').querySelector(".shoresh-look-mark")
     ).not.toBeNull();

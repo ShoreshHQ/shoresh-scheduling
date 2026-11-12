@@ -117,7 +117,7 @@
   border-radius: 0 var(--shoresh-radius) var(--shoresh-radius) 0;
 }
 
-/* A cell whose value an import guessed: the needs-a-look corner in its top right corner
+/* A cell whose value an import guessed: Guessed's corner in its top right corner
    (c/shoreshGuessMark, ADR 0006 §21). */
 .row > td.has-guess {
   position: relative;
@@ -471,8 +471,8 @@
   display: flex;
 }
 
-/* A worked-out cell with a problem (Programs: no time blocks): the needs-a-look corner in its
-   top right corner, as an import's guess sits (the cell is its containing block). */
+/* A worked-out cell with a problem (Programs: no time blocks): the bronze needs-a-look dot in
+   its top right corner, where an import's guess sits (the cell is its containing block). */
 .problem {
   position: absolute;
   top: 6px;
