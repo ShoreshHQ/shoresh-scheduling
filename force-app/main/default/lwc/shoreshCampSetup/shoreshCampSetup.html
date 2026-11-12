@@ -73,7 +73,8 @@
                    several. -->
               <div class="camp-line">
                 <template lwc:if={hasSeveralCamps}>
-                  <div class="head-pick shoresh-row">
+                  <!-- Its whole name on hover: the menu's width can cut it short (word walk W6). -->
+                  <div class="head-pick shoresh-row" title={campName}>
                     <lightning-combobox
                       class="shoresh-cell shoresh-name camp-pick"
                       data-id="camp-picker"
@@ -95,7 +96,7 @@
                    with New season and Copy this season. -->
               <div class="camp-line">
                 <template lwc:if={hasSeasons}>
-                  <div class="head-pick shoresh-row">
+                  <div class="head-pick shoresh-row" title={seasonName}>
                     <lightning-combobox
                       class="shoresh-cell season-pick"
                       data-id="season-picker"

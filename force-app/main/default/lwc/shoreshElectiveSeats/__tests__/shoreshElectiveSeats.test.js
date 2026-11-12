@@ -903,3 +903,19 @@ describe("c-shoresh-elective-seats: the names' column", () => {
     expect(css).toMatch(/\.offer-table \.corner\s*{\s*height: auto;/);
   });
 });
+
+// Word walk W6: the roster beside the board is wide enough for a name, its bunk and Move to….
+describe("the roster's room", () => {
+  it("is 88 units wide, a bunk's name never broken", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "..", "shoreshElectiveSeats.css"),
+      "utf8"
+    );
+    expect(css.match(/\n\.roster \{([^}]*)\}/)[1]).toMatch(
+      /width: calc\(var\(--shoresh-u\) \* 88\);/
+    );
+    expect(css.match(/\n\.person-group \{([^}]*)\}/)[1]).toMatch(
+      /white-space: nowrap;/
+    );
+  });
+});

@@ -3163,6 +3163,17 @@ describe("c-shoresh-camp-setup", () => {
     saveRow.mockReset();
   });
 
+  // Word walk W6: the menu's width may cut a season's name short; its whole name is on hover.
+  it("gives the season picker its whole name on hover", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
+    const element = await render();
+    expect(
+      q(element, '[data-id="season-picker"]').parentNode.getAttribute("title")
+    ).toBe(SEASON.Name);
+  });
+
   // Word walk W6: Locations sits in the same narrow frame as the other short lists.
   it("draws Locations in the narrow frame, as Weeks and Time blocks", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
