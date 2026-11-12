@@ -345,6 +345,8 @@ private class PublishedChangesTest {
     Assert.areEqual(4, changes.count);
     Assert.areEqual(2, changes.lines.size());
     Assert.areEqual(2, changes.moreLines);
+    // Word walk W6: what is listed and what is more add up to the count.
+    Assert.areEqual(2, changes.moreCount);
   }
 
   @IsTest

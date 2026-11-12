@@ -124,6 +124,12 @@
   overflow-x: auto;
 }
 
+/* No grid yet (a week not built): nothing to scroll, so a menu opened there (Versions) shows
+   whole rather than cut off at the zone's foot (word walk W6). */
+.below_plain {
+  overflow: visible;
+}
+
 .work,
 .drawer-zone {
   box-sizing: border-box;

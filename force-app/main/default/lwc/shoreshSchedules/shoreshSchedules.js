@@ -750,6 +750,21 @@ export default class ShoreshSchedules extends LightningElement {
     return this.pending > 0;
   }
 
+  /**
+   * The screen opened again from the menu (CampSetup): the week's versions read again, so ones
+   * kept, renamed or deleted on another screen meanwhile show (word walk W6), the one open staying
+   * open while it is still there.
+   */
+  @api
+  readAgain() {
+    if (!this.canChoose || this.busy) {
+      return;
+    }
+    this.versionToOpen = this.openId;
+    this.loadedFor = null;
+    this.loadVersions();
+  }
+
   /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
   @api
   leave() {

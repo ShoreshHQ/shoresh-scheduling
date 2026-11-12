@@ -127,17 +127,7 @@ public with sharing class SetTimeMessages {
         return 'Untick ' + clash.day + '.';
       }
       when SAME_GROUP {
-        // Fixed activities have no days or who to change.
-        Boolean bothFixed =
-          clash.item.term == 'FixedActivity' &&
-          clash.other.term == 'FixedActivity';
-        return 'Change the ' +
-          t.singularInSentence('TimeBlock') +
-          ', ' +
-          t.singularInSentence('Length') +
-          (bothFixed ? ', or ' : ', days, who it covers, or ') +
-          t.pluralInSentence('Week') +
-          ' of one of them.';
+        return sameGroupFix();
       }
       when else {
         return 'Choose another ' +
@@ -149,6 +139,46 @@ public with sharing class SetTimeMessages {
           '.';
       }
     }
+  }
+
+  /**
+   * Fixed activities have no days or who to change. A fixed and a recurring activity: each one's
+   * own fields, the recurring one named with its kind so its screen can be found (word walk W6:
+   * an imported whole-day "Field day" refused every fixed activity on its day).
+   */
+  private String sameGroupFix() {
+    Boolean itemFixed = clash.item.term == 'FixedActivity';
+    Boolean otherFixed = clash.other.term == 'FixedActivity';
+    String fixedFields =
+      t.singularInSentence('TimeBlock') +
+      ', ' +
+      t.singularInSentence('Length') +
+      ', or ' +
+      t.pluralInSentence('Week');
+    if (itemFixed == otherFixed) {
+      return 'Change the ' +
+        (itemFixed
+          ? fixedFields
+          : t.singularInSentence('TimeBlock') +
+            ', ' +
+            t.singularInSentence('Length') +
+            ', days, who it covers, or ' +
+            t.pluralInSentence('Week')) +
+        ' of one of them.';
+    }
+    SetTimePlan.Item fixedOne = itemFixed ? clash.item : clash.other;
+    SetTimePlan.Item recurringOne = itemFixed ? clash.other : clash.item;
+    return 'Change the ' +
+      fixedFields +
+      ' of ' +
+      quoted(fixedOne.name) +
+      ', or the days, who it covers, or ' +
+      t.pluralInSentence('Week') +
+      ' of ' +
+      quoted(recurringOne.name) +
+      ' (' +
+      t.withArticle('RecurringActivity') +
+      ').';
   }
 
   private String groups(Integer count) {

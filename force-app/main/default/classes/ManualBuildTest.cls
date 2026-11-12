@@ -125,6 +125,76 @@ private class ManualBuildTest {
     }
   }
 
+  // LOCK-4.10
+  @IsTest
+  static void aDraftSaysWhereSetupPutsItsFixedActivities() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Test.startTest();
+      ManualBuildViews.DraftView started = start(ids, 'Week 1');
+      ManualBuildViews.DraftView opened = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      Map<String, String> setUp = new Map<String, String>();
+      for (ManualSetUpCells.Cell cell : opened.setUpCells) {
+        setUp.put(cell.key, cell.slot);
+      }
+      String monday = String.valueOf(MONDAY);
+      Assert.areEqual(
+        'F:' + ids.get('Flagpole'),
+        setUp.get(monday + '|' + ids.get('Group A') + '|' + ids.get('Period 1'))
+      );
+      Assert.areEqual(
+        'R:' + ids.get('Rest'),
+        setUp.get(monday + '|' + ids.get('Group C') + '|' + ids.get('Lunch'))
+      );
+      Assert.isFalse(
+        setUp.containsKey(
+          monday + '|' + ids.get('Group A') + '|' + ids.get('Lunch')
+        ),
+        'Nothing is set up there'
+      );
+      // A start and an open say the same.
+      Assert.areEqual(started.setUpCells.size(), opened.setUpCells.size());
+    }
+  }
+
+  // Where setup puts its fixed activities is worked out on what the open has read (LOCK-4.10).
+  @IsTest
+  static void openingADraftReadsItsSetupOnce() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Id draftId = start(ids, 'Week 1').schedule.schedule.id;
+      Test.startTest();
+      // A start's way: setup read once (with what open reads for itself), then the draft on it.
+      Integer before = Limits.getQueries();
+      GeneratedSetup setup = new GeneratedSetup(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      setup.activityRecords();
+      ManualBuildViews.DraftView started = ManualBuildViews.openWith(
+        draftId,
+        setup
+      );
+      Integer withSetup = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      ManualBuildViews.DraftView opened = ManualBuildViews.open(draftId);
+      Integer onItsOwn = Limits.getQueries() - before;
+      Test.stopTest();
+      // Opening on its own reads program, week, time blocks and groups once, never again for
+      // setup's fixed and recurring cells: no more than a start's setup and open.
+      Assert.isTrue(
+        onItsOwn <= withSetup,
+        'Open used ' + onItsOwn + ' queries; with setup read ' + withSetup
+      );
+      Assert.isTrue(onItsOwn < 100, onItsOwn + ' queries');
+      Assert.areEqual(started.setUpCells.size(), opened.setUpCells.size());
+      Assert.isFalse(opened.setUpCells.isEmpty());
+    }
+  }
+
   @IsTest
   static void aGroupAwayThatWeekIsLeftOut() {
     Map<String, Id> ids = camp();

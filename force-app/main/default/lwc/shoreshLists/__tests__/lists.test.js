@@ -170,6 +170,41 @@ describe("columns", () => {
     );
   });
 
+  // Word walk W6: a file in Shoresh's words still reads once the camp has renamed one.
+  it("matches Shoresh's own headings after the camp renames them, and the How often word alone", () => {
+    const renamed = buildTerms([
+      {
+        term: "TimesPerWeek",
+        singular: "Weekly count",
+        plural: "Weekly count",
+        isCustom: true
+      }
+    ]);
+    const byText = (rows) =>
+      Object.fromEntries(
+        read("activities", rows, {}, renamed).mapping.headings.map((h) => [
+          h.text,
+          h.column
+        ])
+      );
+    expect(
+      byText([
+        ["Activity", "Times per week: at least", "Times per week: at most"],
+        ["Archery", "2", "3"]
+      ])
+    ).toEqual({
+      Activity: "name",
+      "Times per week: at least": "min",
+      "Times per week: at most": "max"
+    });
+    expect(
+      byText([
+        ["Activity", "Times per week"],
+        ["Archery", "2"]
+      ])
+    ).toEqual({ Activity: "name", "Times per week": "min" });
+  });
+
   it("an unknown column can be pointed at a column, and the choice is remembered", () => {
     const rows = [
       ["Activity", "Colour"],
@@ -382,9 +417,7 @@ describe("matching what is set up", () => {
     ];
     const p = read("activities", rows);
     const [max, priority] = rowNamed(p, "Music").differences;
-    expect(waitingFor(p, terms, {})).toEqual([
-      "2 differences to Keep or Change"
-    ]);
+    expect(waitingFor(p, terms, {})).toEqual(["2 differences to answer"]);
     const answers = { [max.id]: CHANGE, [priority.id]: KEEP };
     const done = read("activities", rows, answers);
     expect(waitingFor(done, terms, answers)).toEqual([]);
@@ -1043,7 +1076,7 @@ describe("PR 19 review", () => {
     ];
     const p = read("activities", rows);
     expect(changeAllLabel(changeAllCounts(p))).toBe(
-      "Change all from this file: 4 changes, 1 of them clears a value"
+      "Use the file's for all: 4 changes, 1 of them clears a value"
     );
     const location = rowNamed(p, "Archery").differences.find(
       (d) => d.column === "location"
@@ -1052,7 +1085,7 @@ describe("PR 19 review", () => {
     const kept = read("activities", rows, answers);
     const counts = changeAllCounts(kept);
     expect(counts.ids).not.toContain(location.id);
-    expect(changeAllLabel(counts)).toBe("Change the other 3");
+    expect(changeAllLabel(counts)).toBe("Use the file's for the other 3");
   });
 
   it("5a. two items set up with one name: asked which, never picked by order", () => {

@@ -611,12 +611,14 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       }
     ]);
     const element = await render(null);
+    // On the person's Salesforce clock where the camp has none (Jest's user: Los Angeles).
     const when = (iso) =>
       new Date(iso).toLocaleString(undefined, {
         month: "short",
         day: "numeric",
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
+        timeZone: "America/Los_Angeles"
       });
     const labels = [
       ...q(element, '[data-id="start-from"]').querySelectorAll(

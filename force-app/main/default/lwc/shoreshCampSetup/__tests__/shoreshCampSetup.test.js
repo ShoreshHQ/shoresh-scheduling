@@ -3163,7 +3163,33 @@ describe("c-shoresh-camp-setup", () => {
     saveRow.mockReset();
   });
 
-  it("flags same names on the season's location types, locations, and activities only", async () => {
+  // Word walk W6: the menu's width may cut a season's name short; its whole name is on hover.
+  it("gives the season picker its whole name on hover", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
+    const element = await render();
+    expect(
+      q(element, '[data-id="season-picker"]').parentNode.getAttribute("title")
+    ).toBe(SEASON.Name);
+  });
+
+  // Word walk W6: Locations sits in the same narrow frame as the other short lists.
+  it("draws Locations in the narrow frame, as Weeks and Time blocks", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
+    const element = await render();
+    const narrow = (screen) =>
+      q(element, `[data-screen="${screen}"] .setup-list`).classList.contains(
+        "list_narrow"
+      );
+    expect(narrow("weeks")).toBe(true);
+    expect(narrow("timeBlocks")).toBe(true);
+    expect(narrow("locations")).toBe(true);
+  });
+
+  it("flags same names on the season's location types, locations, activities and weeks", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
@@ -3173,7 +3199,8 @@ describe("c-shoresh-camp-setup", () => {
     expect(flagged("location-types")).toBe(true);
     expect(flagged("locations")).toBe(true);
     expect(flagged("activities")).toBe(true);
-    expect(flagged("weeks")).toBeFalsy();
+    // Word walk W6: two weeks called "Shavua A" are marked, as two locations are.
+    expect(flagged("weeks")).toBe(true);
   });
 
   /** A table's row save as the table sends it, with its callbacks watched. */
@@ -5318,6 +5345,41 @@ describe("a reload stays where you were", () => {
     ).toMatchObject({ seasonId: "s2", screen: "roots" });
   });
 
+  // WEEK-6.5
+  it("a menu click made while the reload is still bringing the tab back wins over it", async () => {
+    window.sessionStorage.setItem(
+      "shoresh.place",
+      JSON.stringify({ ...PLACE, screen: "groups", weekId: null })
+    );
+    let readSeason;
+    getSeasonSetup.mockReturnValueOnce(
+      new Promise((resolve) => {
+        readSeason = resolve;
+      })
+    );
+    const element = await open();
+    element.shadowRoot
+      .querySelector("c-shoresh-menu")
+      .dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "campWords" } })
+      );
+    await flush();
+    readSeason(
+      nsRecord(
+        setupWith({
+          season: CEDAR,
+          weeks: [{ Id: "w1", Name: "Week 1" }]
+        })
+      )
+    );
+    await flush();
+    await flush();
+    expect(shownScreens(element)).toEqual(["campWords"]);
+    expect(
+      JSON.parse(window.sessionStorage.getItem("shoresh.place"))
+    ).toMatchObject({ seasonId: "s2", screen: "campWords" });
+  });
+
   // WEEK-6.3
   it("keeps the screen this tab is on for a reload, and a new tab starts on Roots", async () => {
     window.sessionStorage.clear();
@@ -5338,5 +5400,31 @@ describe("a reload stays where you were", () => {
     } finally {
       window.sessionStorage.clear();
     }
+  });
+
+  // Word walk W6: what another screen did shows without a reload.
+  describe("a screen opened again reads what other screens changed", () => {
+    it("Elective seats and Bring in choices read the season again; Saved versions its versions", async () => {
+      const element = await render();
+      await flush();
+      const menu = element.shadowRoot.querySelector("c-shoresh-menu");
+      const go = async (screen) => {
+        menu.dispatchEvent(new CustomEvent("navigate", { detail: { screen } }));
+        await flush();
+      };
+      const seasonReads = getSeasonSetup.mock.calls.length;
+      await go("electiveSeats");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 1);
+      await go("bringInChoices");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 2);
+      // The screen already shown isn't read again by choosing it.
+      await go("bringInChoices");
+      expect(getSeasonSetup.mock.calls.length).toBe(seasonReads + 2);
+      await go("schedules");
+      const versionReads = getVersions.mock.calls.length;
+      await go("roots");
+      await go("schedules");
+      expect(getVersions.mock.calls.length).toBe(versionReads + 1);
+    });
   });
 });

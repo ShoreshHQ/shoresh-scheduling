@@ -18,6 +18,7 @@ import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
+import undoBuild from "@salesforce/apex/GeneratedUndoController.undoBuild";
 import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
@@ -74,6 +75,9 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
+jest.mock("@salesforce/apex/GeneratedUndoController.undoBuild", () => apex(), {
+  virtual: true
+});
 jest.mock(
   "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew",
   () => apex(),
@@ -362,6 +366,11 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(list).not.toBeNull();
     expect(q(element, '[data-id="start"]').contains(list)).toBe(true);
     expect(list.restore).toBe(true);
+    // Word walk W6: with no grid the zone doesn't clip the list open in it.
+    const below = q(element, "c-shoresh-week-editor").shadowRoot.querySelector(
+      '[data-id="below"]'
+    );
+    expect(below.className).toContain("below_plain");
     await openList(element);
     // Restore and rename; nothing to save as a version, and no week to delete one from.
     const [mine] = rows(element);
@@ -916,11 +925,11 @@ describe("Versions on the Generated Schedule screen", () => {
         "Undo Rebuilt Week 1"
       );
       expect(element.shadowRoot.activeElement).toBe(undoButton(element));
-      restoreVersion.mockResolvedValue(true);
+      undoBuild.mockResolvedValue(true);
       getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
       undoButton(element).click();
       await until(() => !versions(element).busy);
-      expect(restoreVersion).toHaveBeenCalledWith({
+      expect(undoBuild).toHaveBeenCalledWith({
         scheduleId: SCHEDULE,
         versionId: KEPT,
         seenRevisions: STARTED_AT
@@ -931,11 +940,11 @@ describe("Versions on the Generated Schedule screen", () => {
     it("Undo brings back the version Start over kept, locks and all, and says so", async () => {
       const element = await render(week({ locked: true }));
       await startOver(element);
-      restoreVersion.mockResolvedValue(true);
+      undoBuild.mockResolvedValue(true);
       getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
       undoButton(element).click();
       await until(() => !versions(element).busy);
-      expect(restoreVersion).toHaveBeenCalledWith({
+      expect(undoBuild).toHaveBeenCalledWith({
         scheduleId: SCHEDULE,
         versionId: KEPT,
         seenRevisions: STARTED_AT
@@ -953,7 +962,7 @@ describe("Versions on the Generated Schedule screen", () => {
     it("Start over after an Undo shows only its own line, not the Undone line beside it", async () => {
       const element = await render(week({ locked: true }));
       await startOver(element);
-      restoreVersion.mockResolvedValue(true);
+      undoBuild.mockResolvedValue(true);
       getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
       undoButton(element).click();
       await until(() => !versions(element).busy);
@@ -967,7 +976,7 @@ describe("Versions on the Generated Schedule screen", () => {
     it("leaving the screen empties its message row", async () => {
       const element = await render(week({ locked: true }));
       await startOver(element);
-      restoreVersion.mockResolvedValue(true);
+      undoBuild.mockResolvedValue(true);
       getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
       undoButton(element).click();
       await until(() => !versions(element).busy);
@@ -982,7 +991,7 @@ describe("Versions on the Generated Schedule screen", () => {
     it("Undo refused because someone else saved since changes nothing and offers Reload", async () => {
       const element = await render(week());
       await startOver(element);
-      restoreVersion.mockResolvedValue(false);
+      undoBuild.mockResolvedValue(false);
       undoButton(element).click();
       await flush();
       expect(q(element, '[data-id="restore-refused"]')).not.toBeNull();

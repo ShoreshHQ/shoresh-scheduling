@@ -1546,6 +1546,28 @@ describe("c-shoresh-editable-table", () => {
       );
     });
 
+    // Word walk W6: a picklist's options sit inside the picklist; choosing one isn't leaving.
+    it("focus going into a picklist's own options isn't leaving the blank row", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      // An option inside a component of the blank row, behind that component's shadow root.
+      const picklist = document.createElement("div");
+      picklist.dataset.row = "add";
+      const option = document.createElement("div");
+      picklist.attachShadow({ mode: "open" }).appendChild(option);
+      leave(element, 2, option);
+      await flush();
+      expect(sent.length).toBe(0);
+      leave(element, 2);
+      await flush();
+      expect(sent.map((d) => d.record.Name)).toEqual(["Swim"]);
+    });
+
     it("while the blank row is being added, its ticks and who wait too", async () => {
       const element = render({
         objectApiName: "RecurringActivity__c",
@@ -1577,7 +1599,7 @@ describe("c-shoresh-editable-table", () => {
         rows(element)[0]
           .querySelector('[data-id="who-toggle"]')
           .getAttribute("aria-label")
-      ).toBe("Change: Who, Swim");
+      ).toBe("Edit: Who, Swim");
     });
 
     it("a refused add puts the cursor back where it was: the field, or the Add button", async () => {
@@ -3130,6 +3152,78 @@ describe("c-shoresh-editable-table", () => {
     dates.forEach((input) =>
       expect(input.classList.contains("shoresh-date")).toBe(true)
     );
+  });
+
+  // Word walk W6: a row's note as the needs-a-look dot by its name, no column coming and going.
+  it("with notesAsDot, a row's note is a dot beside its name and there is no notes column", async () => {
+    const element = render({
+      columns: COLUMNS,
+      rows: ROWS,
+      rowNotes: { a2: "Bunk 1 is morning only and is left out." },
+      notesAsDot: true
+    });
+    await flush();
+    expect(element.shadowRoot.querySelector('[data-id="note"]')).toBeNull();
+    const dots = [
+      ...element.shadowRoot.querySelectorAll('[data-id="look-note"]')
+    ];
+    expect(dots.map((d) => d.label)).toEqual([
+      "Bunk 1 is morning only and is left out."
+    ]);
+    expect(rows(element)[1].contains(dots[0])).toBe(true);
+  });
+
+  // Word walk W6: overlapping time blocks are marked, as overlapping weeks are.
+  describe("overlapping time blocks", () => {
+    it("tags each time block whose times overlap another's; one ending as the next starts doesn't", async () => {
+      const element = render({
+        title: "Time blocks",
+        objectApiName: "TimeBlock__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          { fieldName: "StartTime__c", label: "Start", type: "time" },
+          { fieldName: "EndTime__c", label: "End", type: "time" }
+        ],
+        rows: [
+          // 12:00–12:45, 12:30–1:15, 1:15–2:00
+          {
+            Id: "t1",
+            Name: "Lunch",
+            StartTime__c: 43200000,
+            EndTime__c: 45900000
+          },
+          {
+            Id: "t2",
+            Name: "Peula 3",
+            StartTime__c: 45000000,
+            EndTime__c: 47700000
+          },
+          {
+            Id: "t3",
+            Name: "Peula 4",
+            StartTime__c: 47700000,
+            EndTime__c: 50400000
+          }
+        ],
+        overlapLabel: "Overlaps another time block"
+      });
+      await flush();
+      const tags = () =>
+        rows(element).map((tr) => {
+          const tag = tr.querySelector('[data-id="overlaps"]');
+          return tag ? tag.label : null;
+        });
+      expect(tags()).toEqual([
+        "Overlaps another time block",
+        "Overlaps another time block",
+        null,
+        null
+      ]);
+      // Typed times count as saved ones do.
+      change(field(element, 1, "StartTime__c"), "12:45");
+      await flush();
+      expect(tags()).toEqual([null, null, null, null]);
+    });
   });
 
   describe("overlapping weeks", () => {

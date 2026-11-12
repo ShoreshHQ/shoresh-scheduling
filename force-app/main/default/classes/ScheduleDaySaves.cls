@@ -5,6 +5,8 @@
  * of them or none. Runs in user mode.
  */
 public with sharing class ScheduleDaySaves {
+  // While a version is written from days already saved (writeAsItWas).
+  private static Boolean keepingAsItWas = false;
   public static final String CHANGED_SINCE = 'Someone else changed this schedule since you opened it. Open it again to see their changes, then make yours.';
 
   /** One day to save. expectedRevision: the revision it was opened at, or null for a new day. */
@@ -26,6 +28,20 @@ public with sharing class ScheduleDaySaves {
   /** Saves the days, all or none. Refuses a day saved by someone else since it was opened. */
   public static void write(Id scheduleId, List<DaySave> saves) {
     writeAll(new Map<Id, List<DaySave>>{ scheduleId => saves });
+  }
+
+  /**
+   * Days already saved, written again as they are (ManualVersions: into a new version, or a
+   * version's days restored into the week): a day its week has since lost (a shortened week) is
+   * kept too (WEEK-6.6). Each day's revision is still checked as write checks it.
+   */
+  public static void writeAsItWas(Id versionId, List<DaySave> saves) {
+    keepingAsItWas = true;
+    try {
+      write(versionId, saves);
+    } finally {
+      keepingAsItWas = false;
+    }
   }
 
   /**
@@ -52,10 +68,12 @@ public with sharing class ScheduleDaySaves {
     Set<Date> days = new Set<Date>();
     for (Id scheduleId : savesBySchedule.keySet()) {
       days.addAll(
-        ScheduleDayReads.checkedDays(
-          schedules.get(scheduleId),
-          savesBySchedule.get(scheduleId)
-        )
+        keepingAsItWas
+          ? ScheduleDayReads.keptDays(savesBySchedule.get(scheduleId))
+          : ScheduleDayReads.checkedDays(
+              schedules.get(scheduleId),
+              savesBySchedule.get(scheduleId)
+            )
       );
     }
     Map<Id, Map<Date, List<ScheduleDay__c>>> existing = ScheduleDayReads.existingParts(

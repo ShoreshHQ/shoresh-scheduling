@@ -7929,12 +7929,7 @@ Object.freeze({
   Week: Object.freeze({
     Season: FIELD.Week.Season.replace(/__c$/, "__r")
   })
-});/*
- * The weeks of a season with no weeks yet, as "Fill in weeks" makes them: shared by the camp
- * workbook import (c/shoreshLists) and Import last year.
- */
-FIELD.Season;
-FIELD.Week;// Keys whose standard word is not the key split into words, and those the same in the plural,
+});// Keys whose standard word is not the key split into words, and those the same in the plural,
 // as the server's picklist and CampLabels have them.
 const STANDARD = {
   Seats: "Seat"
@@ -8027,6 +8022,11 @@ function buildTerms(labels) {
     pIn: term => inSentence(term, true)
   };
 }/*
+ * The weeks of a season with no weeks yet, as "Fill in weeks" makes them: shared by the camp
+ * workbook import (c/shoreshLists) and Import last year.
+ */
+FIELD.Season;
+FIELD.Week;/*
  * Last year's week as a version (Greg, 2026-10-16): for each program and week in the files, a
  * schedule named "Imported from <file name>", one grid per day in the compact grid format v1
  * (repo docs/adr/0005), saved with the setup and never changed by later edits.
@@ -8082,6 +8082,9 @@ FIELD.SpecialEvent;/*
  * record: location, locationType, activity); fromRecord (the value a saved record has, as a
  * cell would give it).
  */
+
+// Shoresh's own words, which a file's headings may use whatever the camp calls things.
+buildTerms([]);
 
 // Each screen's fields, as the package names them (c/shoreshSchema).
 FIELD.Location;

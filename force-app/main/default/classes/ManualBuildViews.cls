@@ -5,6 +5,9 @@
  * week, and the week's published schedule. Worked out from today's setup. Runs in user mode.
  */
 public with sharing class ManualBuildViews {
+  // One answer the screen reads in one call: each field is a separate thing the week's screen
+  // shows or checks, so it is kept whole rather than split to stay under PMD's field count.
+  @SuppressWarnings('PMD.TooManyFields')
   public class DraftView {
     @AuraEnabled
     public ScheduleViews.ScheduleView schedule;
@@ -53,6 +56,9 @@ public with sharing class ManualBuildViews {
     // The week's days a special day replaces (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
+    // Where setup puts each fixed and recurring activity this week (ManualSetUpCells).
+    @AuraEnabled
+    public List<ManualSetUpCells.Cell> setUpCells = new List<ManualSetUpCells.Cell>();
   }
 
   public class ActivityOption {
@@ -155,9 +161,9 @@ public with sharing class ManualBuildViews {
   /** What a draft's view is built from: read once per request. */
   private class Read {
     private Id scheduleId;
-    // Id, Season__c and Season__r.Camp__c.
+    // As ProgramReads.programOf reads it (its days too, for where setup puts its set times).
     private Program__c program;
-    // Id, StartDate__c and EndDate__c.
+    // Id, Name, StartDate__c and EndDate__c.
     private Week__c week;
     private List<Group__c> groups;
     private List<TimeBlock__c> blocks;
@@ -165,6 +171,8 @@ public with sharing class ManualBuildViews {
     private List<Activity__c> activities;
     // The week was read with its special days (GeneratedSetup): none to read again.
     private Boolean weekHasSpecialDays = false;
+    // The setup a start has read, or null when the draft is opened on its own.
+    private GeneratedSetup setup;
   }
 
   /** The draft opened for Manual Build. */
@@ -175,6 +183,7 @@ public with sharing class ManualBuildViews {
     read.program = schedule.Program__r;
     read.week = new Week__c(
       Id = schedule.Week__c,
+      Name = schedule.Week__r.Name,
       StartDate__c = schedule.Week__r.StartDate__c,
       EndDate__c = schedule.Week__r.EndDate__c
     );
@@ -201,6 +210,7 @@ public with sharing class ManualBuildViews {
     read.exceptions = setup.exceptions;
     read.activities = setup.activityRecords();
     read.weekHasSpecialDays = true;
+    read.setup = setup;
     return viewOf(read);
   }
 
@@ -209,8 +219,20 @@ public with sharing class ManualBuildViews {
       SELECT
         Program__c,
         Program__r.Id,
+        Program__r.Name,
         Program__r.Season__c,
+        Program__r.Season__r.Id,
+        Program__r.Season__r.Camp__c,
+        Program__r.Season__r.NumberedDays__c,
+        Program__r.Monday__c,
+        Program__r.Tuesday__c,
+        Program__r.Wednesday__c,
+        Program__r.Thursday__c,
+        Program__r.Friday__c,
+        Program__r.Saturday__c,
+        Program__r.Sunday__c,
         Week__c,
+        Week__r.Name,
         Week__r.StartDate__c,
         Week__r.EndDate__c
       FROM Schedule__c
@@ -232,20 +254,7 @@ public with sharing class ManualBuildViews {
       read.program.Season__c
     );
     view.groupRecords = read.groups;
-    view.fixedActivityRecords = [
-      SELECT Id, Name, Location__c
-      FROM FixedActivity__c
-      WHERE Program__c = :read.program.Id
-      WITH USER_MODE
-      ORDER BY Id
-    ];
-    view.recurringActivityRecords = [
-      SELECT Id, Name, Location__c
-      FROM RecurringActivity__c
-      WHERE Program__c = :read.program.Id
-      WITH USER_MODE
-      ORDER BY Id
-    ];
+    readSetTimes(view, read);
     ManualBuildNamesNow names = namesNow(view, read);
     if (view.schedule != null) {
       names.applyTo(view.schedule);
@@ -269,6 +278,53 @@ public with sharing class ManualBuildViews {
       names
     );
     return view;
+  }
+
+  /**
+   * The program's fixed and recurring activities, and where setup puts them this week
+   * (ManualSetUpCells), worked out on them and what the view has read: nothing read again. Read
+   * as they are named for a user who can't read all that placing them needs (SetTimeAccess), and
+   * none placed until the season has activities, as Start a blank week (BlankWeek.checkActivities).
+   */
+  private static void readSetTimes(DraftView view, Read read) {
+    if (!SetTimeAccess.canRead()) {
+      view.fixedActivityRecords = [
+        SELECT Id, Name, Location__c
+        FROM FixedActivity__c
+        WHERE Program__c = :read.program.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ];
+      view.recurringActivityRecords = [
+        SELECT Id, Name, Location__c
+        FROM RecurringActivity__c
+        WHERE Program__c = :read.program.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ];
+      return;
+    }
+    view.fixedActivityRecords = ManualSetUpCells.fixedOf(read.program.Id);
+    view.recurringActivityRecords = ManualSetUpCells.recurringOf(
+      read.program.Id
+    );
+    if (read.activities.isEmpty()) {
+      return;
+    }
+    GeneratedSetup setup = read.setup;
+    if (setup == null) {
+      setup = new GeneratedSetup(read.program, read.week);
+      setup.blocks = read.blocks;
+      setup.groups = read.groups;
+      setup.exceptions = read.exceptions;
+    }
+    view.setUpCells.addAll(
+      ManualSetUpCells.of(
+        setup,
+        view.fixedActivityRecords,
+        view.recurringActivityRecords
+      )
+    );
   }
 
   /** Setup's names now, from what the view has read (ManualBuildNamesNow). */

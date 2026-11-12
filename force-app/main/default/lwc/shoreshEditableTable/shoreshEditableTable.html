@@ -150,6 +150,14 @@
                             {cell.mergeLabel}
                           </button>
                         </template>
+                        <template lwc:if={cell.lookNote}>
+                          <c-shoresh-dot
+                            class="flag"
+                            data-id="look-note"
+                            label={cell.lookNote}
+                            focusable
+                          ></c-shoresh-dot>
+                        </template>
                         <template lwc:if={cell.overlaps}>
                           <c-shoresh-dot
                             class="flag"

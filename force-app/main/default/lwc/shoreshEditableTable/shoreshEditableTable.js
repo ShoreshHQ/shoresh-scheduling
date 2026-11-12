@@ -16,6 +16,33 @@ const WHO_FIELDS = {
 };
 const OFF = FIELD.WeekException;
 const WEEK = FIELD.Week;
+const TIME = FIELD.TimeBlock;
+/**
+ * Whether focus went to something of the same row (key; the row, or its who picker or details),
+ * through any component's own inside: a picklist's options sit inside the picklist, where
+ * closest() can't see the row (word walk W6: choosing a Spot in the blank row added the activity
+ * before the Spot was taken).
+ */
+function insideOf(key, node) {
+  let at = node;
+  while (at) {
+    if (at.dataset && at.dataset.row === key) {
+      return true;
+    }
+    at = at.parentNode || at.host || null;
+  }
+  return false;
+}
+
+/** A time as minutes after midnight: Salesforce's milliseconds, or "13:30" as typed; else null. */
+function minuteOf(value) {
+  if (typeof value === "number") {
+    return Math.round(value / 60000);
+  }
+  const m = /^(\d{1,2}):(\d{2})/.exec(value || "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
 // The blank last row's key.
 const ADD = "add";
 // The weeks in words, as the mock-up writes them (docs/design/setup/groups.html).
@@ -168,6 +195,10 @@ export default class ShoreshEditableTable extends LightningElement {
 
   @api notesHeading;
   @api rowNotes = {};
+  // The row's note as the bronze needs-a-look dot beside its name, its words on hover and read
+  // out, rather than a column that comes and goes (word walk W6: Recurring's columns shifted
+  // and its blank row was cut to "Add Repeat peu…").
+  @api notesAsDot = false;
   @api flagSameNames = false;
   // Weeks: the tag for a row whose dates overlap another row's (StartDate__c to EndDate__c).
   @api overlapLabel;
@@ -659,6 +690,9 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get hasNotes() {
+    if (this.notesAsDot) {
+      return false;
+    }
     return (
       !!this.notesHeading ||
       this.visibleDrafts.some((d) => !!this.draftNotes.get(d.key))
@@ -1088,14 +1122,28 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!this.overlapLabel) {
       return keys;
     }
-    // Only weeks are told apart by their dates.
-    const start = (d) => d.values[WEEK.StartDate];
-    const end = (d) => d.values[WEEK.EndDate];
-    const dated = this.flaggedRows.filter((d) => start(d) && end(d));
+    // Weeks by their dates (a shared day overlaps); time blocks by their times, one ending as
+    // the next starts not overlapping (word walk W6: Lunch 12:00–12:45 and 12:30–1:15 weren't
+    // marked).
+    const timed = this.flaggedRows.some(
+      (d) => minuteOf(d.values[TIME.StartTime]) !== null
+    );
+    const startField = timed ? TIME.StartTime : WEEK.StartDate;
+    const endField = timed ? TIME.EndTime : WEEK.EndDate;
+    const read = timed ? minuteOf : (value) => value;
+    const start = (d) => read(d.values[startField]);
+    const end = (d) => read(d.values[endField]);
+    const meets = (a, b) => {
+      if (timed) {
+        return start(a) < end(b) && start(b) < end(a);
+      }
+      return start(a) <= end(b) && start(b) <= end(a);
+    };
+    const dated = this.flaggedRows.filter(
+      (d) => start(d) !== null && start(d) !== undefined && end(d)
+    );
     dated.forEach((a) => {
-      if (
-        dated.some((b) => b !== a && start(a) <= end(b) && start(b) <= end(a))
-      ) {
+      if (dated.some((b) => b !== a && meets(a, b))) {
         keys.add(a.key);
       }
     });
@@ -1269,6 +1317,12 @@ export default class ShoreshEditableTable extends LightningElement {
         // Named for its row, so a screen reader can tell the buttons apart.
         mergeName: `${this.mergeLabel} ${this.nameOf(draft.original)}`.trim(),
         overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
+        lookNote:
+          this.notesAsDot && col.fieldName === "Name" && !draft.isNew
+            ? this.draftNotes.get(draft.key) ||
+              (this.rowNotes || {})[draft.original.Id] ||
+              ""
+            : "",
         overlapLabel: this.overlapLabel,
         isNumber: col.type === "number",
         // A number's unit beside it (col.unitFor(value)): "1 time block" (word walk W1).
@@ -1296,9 +1350,9 @@ export default class ShoreshEditableTable extends LightningElement {
           col.type === "who" && !this.whoIsRule(draft)
             ? "who exception"
             : "who",
-        whoButton: draft.whoOpen ? "Done" : "Change",
+        whoButton: draft.whoOpen ? "Done" : "Edit",
         // Named for its row, so a screen reader can tell the buttons apart.
-        whoName: `${draft.whoOpen ? "Done" : "Change"}: ${col.label}, ${
+        whoName: `${draft.whoOpen ? "Done" : "Edit"}: ${col.label}, ${
           name || this.addLabel
         }`,
         value: this.shownChoice(col, draft, value),
@@ -1846,10 +1900,7 @@ export default class ShoreshEditableTable extends LightningElement {
   /** Leaving a row (for anywhere outside it and its who picker) saves it. */
   handleRowLeave(event) {
     const key = event.currentTarget.dataset.row;
-    const to = event.relatedTarget;
-    const within =
-      to && typeof to.closest === "function" ? to.closest("[data-row]") : null;
-    if (within && within.dataset.row === key) {
+    if (insideOf(key, event.relatedTarget)) {
       return;
     }
     this.commit(key, false);

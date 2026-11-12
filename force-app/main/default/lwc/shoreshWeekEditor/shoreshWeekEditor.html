@@ -210,7 +210,7 @@
     <!-- The grid's zone and the drawer's under it (docs/design/manual-build.html; ADR 0008
          part 8): on the same columns and as wide as each other, so each tile sits under its
          column; with many bunks they scroll sideways together. -->
-    <div class="below">
+    <div class={belowClass} data-id="below">
       <div class="work" style={sheetStyle}>
         <!-- The message row (Greg 2026-11-12: a message never moves the screen): always there,
              one line high, so a message coming or going leaves the grid where it is. -->

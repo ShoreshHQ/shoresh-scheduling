@@ -16,6 +16,7 @@ import {
   editRun,
   identity,
   isMovable,
+  isSetTime,
   owner,
   placement
 } from "./slotEdits";
@@ -204,6 +205,17 @@ export function placeStep(ctx, slot, next, length) {
   if (next !== OPEN && placed < (length || 1)) {
     // Not enough room for its whole length: placed as far as it goes, and said so.
     label += ` (${placed} of ${length})`;
+  }
+  // A fixed or recurring activity typed over is said, never replaced silently (LOCK-4.9).
+  const covered = [
+    ...new Set(
+      run.before
+        .map((s) => owner(s))
+        .filter((s) => s !== OPEN && s !== next && isSetTime(s))
+    )
+  ];
+  if (next !== OPEN && covered.length) {
+    label += ` in place of ${covered.map((s) => ctx.nameOf(s, day)).join(" and ")}`;
   }
   return { runs, label };
 }
@@ -660,7 +672,12 @@ export function withoutReplaced(ctx, tool) {
  * leaves locked cells (Generated) as they are, and lists them: a Lock beats what is pasted.
  */
 export function toolStep(ctx, asked) {
-  const { tool, replacedNote } = withoutReplaced(ctx, asked);
+  const { tool: found, replacedNote } = withoutReplaced(ctx, asked);
+  // A clear puts back what setup has where something was typed over it (LOCK-4.9).
+  const tool =
+    found && found.kind === "clear" && ctx.setUp
+      ? { ...found, setUp: ctx.setUp }
+      : found;
   if (!tool) {
     return { nothing: replacedNote || toolNothing(asked, null) };
   }

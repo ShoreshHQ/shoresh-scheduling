@@ -466,11 +466,12 @@ export function notReadRows(reading, groups, t) {
           ? `No ${t.sIn("Group")}`
           : problem === "ambiguous"
             ? `More than one ${t.sIn("Group")} "${camper.bunk}"`
-            : `No ${t.sIn("Group")} "${camper.bunk}"`
+            : `${camper.bunk} isn't one of your ${t.pIn("Group")}: not imported`
     });
   });
+  const out = leftOut(reading, groups);
   (reading.notKept || [])
-    .filter((note) => !note.camper)
+    .filter((note) => !note.camper || out.has(note.camper))
     .forEach((note, i) => {
       rows.push({
         key: `note-${i}`,
@@ -576,10 +577,22 @@ export function commentsOf(reading) {
   return result;
 }
 
+/** The campers not imported because the sheet names a bunk Shoresh doesn't have, by key. */
+function leftOut(reading, groups) {
+  return new Set(
+    groups
+      ? (reading.campers || [])
+          .filter((camper) => bunkOf(camper, groups).problem === "unknown")
+          .map((camper) => camper.key)
+      : []
+  );
+}
+
 /** Comments kept with their camper, to show: [{ key, name, text }]. */
-export function keptCommentRows(reading) {
+export function keptCommentRows(reading, groups = null) {
+  const out = leftOut(reading, groups);
   return (reading.notKept || [])
-    .filter((note) => note.camper)
+    .filter((note) => note.camper && !out.has(note.camper))
     .map((note, i) => ({ key: `kept-${i}`, name: note.name, text: note.text }));
 }
 
@@ -642,6 +655,9 @@ export function buildRequest({
   const comments = commentsOf(reading);
   const campers = [];
   for (const camper of reading.campers) {
+    // A camper whose bunk Shoresh doesn't have isn't imported, counted or seated (word walk
+    // W6): the review lists them, "Bunk 9 isn't one of your bunks: not imported". Never guessed.
+    if (bunkOf(camper, groups).problem === "unknown") continue;
     const choices = [];
     for (const c of camper.choices) {
       const settled = settledChoice(c, known, answers, linked);

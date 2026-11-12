@@ -73,7 +73,8 @@
                    several. -->
               <div class="camp-line">
                 <template lwc:if={hasSeveralCamps}>
-                  <div class="head-pick shoresh-row">
+                  <!-- Its whole name on hover: the menu's width can cut it short (word walk W6). -->
+                  <div class="head-pick shoresh-row" title={campName}>
                     <lightning-combobox
                       class="shoresh-cell shoresh-name camp-pick"
                       data-id="camp-picker"
@@ -95,7 +96,7 @@
                    with New season and Copy this season. -->
               <div class="camp-line">
                 <template lwc:if={hasSeasons}>
-                  <div class="head-pick shoresh-row">
+                  <div class="head-pick shoresh-row" title={seasonName}>
                     <lightning-combobox
                       class="shoresh-cell season-pick"
                       data-id="season-picker"
@@ -554,6 +555,7 @@
                     add-label={labels.addWeek}
                     empty-message={labels.noWeeks}
                     new-row-defaults={weekDefaults}
+                    flag-same-names
                     overlap-label={labels.overlapsWeek}
                     busy={busy}
                     onsave={handleSaveRecords}
@@ -916,7 +918,7 @@
                   ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
-                <div class="setup-list">
+                <div class="setup-list list_narrow" data-id="locations-list">
                   <template for:each={locationSections} for:item="section">
                     <c-shoresh-editable-table
                       key={section.key}

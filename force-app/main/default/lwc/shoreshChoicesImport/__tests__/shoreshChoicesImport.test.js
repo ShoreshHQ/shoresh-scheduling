@@ -313,14 +313,15 @@ describe("c-shoresh-choices-import", () => {
     expect(check.textContent).toContain("Read as choices in no order");
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
     expect($(element, '[data-section="not-read"]').textContent).toContain(
-      'No Bunk "Pine"'
+      "Pine isn't one of your Bunks: not imported"
     );
     expect($(element, '[data-section="kept"]').textContent).toContain(
       "Prefers mornings"
     );
     await expect(element).toBeAccessible();
 
-    // 3 of 3
+    // 3 of 3. Ruby Pebblestone's Pine isn't one of the bunks: she isn't sent (word walk W6).
+    checkChoices.mockResolvedValueOnce({ ...CHECK, added: 2 });
     await click(element, '[data-id="primary"]');
     expect(checkChoices).toHaveBeenCalledTimes(1);
     const sent = JSON.parse(checkChoices.mock.calls[0][0].request);
@@ -335,8 +336,7 @@ describe("c-shoresh-choices-import", () => {
     });
     expect(sent.campers.map((c) => [c.name, c.groupId, c.comment])).toEqual([
       ["Maya Fernwood", "g1", null],
-      ["Eli Marblecrest", "g1", "Prefers mornings"],
-      ["Ruby Pebblestone", null, null]
+      ["Eli Marblecrest", "g1", "Prefers mornings"]
     ]);
     expect(sent.campers[1].choices[0]).toEqual({
       n: "Pottery Wheel",
@@ -345,7 +345,7 @@ describe("c-shoresh-choices-import", () => {
       k: "ranked"
     });
     expect($(element, '[data-line="count"]').textContent).toContain(
-      "3 campers: 3 new"
+      "2 campers: 2 new"
     );
     expect($(element, '[data-line="offered-a3"]').textContent).toContain(
       "Pottery isn't offered in Chugim"

@@ -31,6 +31,63 @@ function after(days, runs) {
 
 const why = (list) => list.map((o) => [o.slot, o.why]);
 
+// LOCK-4.9
+describe("a clear puts back the fixed activity something was typed over", () => {
+  // Setup puts Flagpole in Period 1 for both bunks on Monday.
+  const SET_UP = {
+    "2026-06-29|g1|t1": "F:f1",
+    "2026-06-29|g2|t1": "F:f1"
+  };
+
+  // LOCK-4.9
+  it("Clear day puts Flagpole back where Swim was typed over it, and leaves a cell emptied by hand empty", () => {
+    // Bunk 1: Swim typed over Flagpole; Bunk 2: Flagpole cleared by hand.
+    const days = week(["2,3,", ",4,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: SET_UP }).runs);
+    expect(rows[0]).toEqual([
+      ["F:f1", "", ""],
+      ["", "", ""]
+    ]);
+  });
+
+  // LOCK-4.9
+  it("puts nothing back where setup has moved a fixed activity since: no second one, the move waits for Update to match setup", () => {
+    // The week has Flagpole in Period 1; setup now puts it in Period 2 (no Update to match setup
+    // yet), and Swim was typed into Bunk 1's Period 2.
+    const MOVED = {
+      "2026-06-29|g1|t2": "F:f1",
+      "2026-06-29|g2|t2": "F:f1"
+    };
+    const days = week(["1,2,", "1,,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: MOVED }).runs);
+    expect(rows[0]).toEqual([
+      ["F:f1", "", ""],
+      ["F:f1", "", ""]
+    ]);
+    // Swim typed over Bunk 1's Flagpole after the move: cleared, not put in Period 2.
+    const typedOver = week([",2,", "1,,"], ["1,,", "1,,"]);
+    const cleared = after(
+      typedOver,
+      clearEdit(typedOver, [0], { setUp: MOVED }).runs
+    );
+    expect(cleared[0][0]).toEqual(["", "", ""]);
+  });
+
+  // LOCK-4.9
+  it("puts back nothing setup added since that the week doesn't have yet", () => {
+    const ADDED = { "2026-06-29|g1|t3": "F:f9" };
+    const days = week(["1,,2", "1,,"], ["1,,", "1,,"]);
+    const rows = after(days, clearEdit(days, [0], { setUp: ADDED }).runs);
+    expect(rows[0][0]).toEqual(["F:f1", "", ""]);
+  });
+
+  // LOCK-4.9
+  it("without setup's cells, a clear empties the cell as before", () => {
+    const days = week(["2,3,", "1,,"], ["1,,", "1,,"]);
+    expect(after(days, clearEdit(days, [0]).runs)[0][0]).toEqual(["", "", ""]);
+  });
+});
+
 describe("Clear day and Clear week", () => {
   it("clears the day's activities for every bunk, and says what stays and why", () => {
     const days = week(["1,2,4", "1,4,5"], ["1,2,", "1,,"]);

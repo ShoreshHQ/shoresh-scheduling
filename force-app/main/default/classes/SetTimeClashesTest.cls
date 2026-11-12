@@ -77,7 +77,8 @@ private class SetTimeClashesTest {
       );
       Assert.areEqual(
         '"Flagpole" and "Swim" would both have Group C in Period 1 on Monday in Week 1. ' +
-        'Change the time block, length, days, who it covers, or weeks of one of them.',
+        // Word walk W6: each one's own fields, the recurring one named with its kind.
+        'Change the time block, length, or weeks of "Flagpole", or the days, who it covers, or weeks of "Swim" (a recurring activity).',
         message
       );
       Assert.areEqual(0, count('RecurringActivity__c'));

@@ -123,4 +123,16 @@ describe("c-shoresh-guess-mark", () => {
     expect(mark.querySelector(".shoresh-look-mark")).not.toBeNull();
     expect(mark.querySelector(".shoresh-guess-mark")).toBeNull();
   });
+
+  // Word walk W6: the open line sits under the cell, never over the value it asks about.
+  it("opens its line under the cell, not across it", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "..", "shoreshGuessMark.css"),
+      "utf8"
+    );
+    const pop = css.match(/\n\.pop \{([^}]*)\}/)[1];
+    expect(pop).toMatch(/top: 100%;/);
+    expect(pop).toMatch(/right: 0;/);
+    expect(css).not.toMatch(/right: 100%/);
+  });
 });

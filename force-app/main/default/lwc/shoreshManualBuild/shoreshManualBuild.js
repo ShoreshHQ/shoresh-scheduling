@@ -876,7 +876,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         counts: null,
         measure: this.measure,
         weekName: this.weekName,
-        t: this.t
+        t: this.t,
+        origin: "Manual"
       });
       if (question.kind === "same") {
         this.publishState = { ...preview.published, changedSince: false };

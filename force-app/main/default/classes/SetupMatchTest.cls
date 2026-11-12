@@ -1017,6 +1017,104 @@ private class SetupMatchTest {
     }
   }
 
+  // WEEK-6.6
+  @IsTest
+  static void aShortenedWeeksLostDaysAreShownThenTakenOffWithTheWeekKeptFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      // Swim on Wednesday too: a day the week loses with something on it (an Open cell has no dot).
+      ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY.addDays(2),
+              ids.get('Group A'),
+              ids.get('Period 2')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Swim') }
+          )
+        }
+      );
+      // Week 1 now ends on Tuesday: Wednesday and Thursday are no longer days of it.
+      SetupMatchTestData.saveDeferred(
+        new Week__c(Id = ids.get('Week 1'), EndDate__c = MONDAY.addDays(1))
+      );
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Assert.areEqual(
+        'Not a day of Main now',
+        SetupMatchTestData.dotsOf(preview)
+          .get(
+            String.valueOf(MONDAY.addDays(2)) +
+              '|' +
+              String.valueOf(ids.get('Group A')) +
+              '|' +
+              String.valueOf(ids.get('Period 2'))
+          )
+      );
+      Integer daysBefore = [
+        SELECT COUNT()
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :draftId
+      ];
+      SetupMatch.Updated done = makeChanges(
+        draftId,
+        SetupMatchTestData.keysOf(preview),
+        preview
+      );
+      Integer daysAfterUpdate = [
+        SELECT COUNT()
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :draftId
+      ];
+      // The version it kept restores whole: its lost days come back, shown again, never refused.
+      ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
+        draftId,
+        [
+          SELECT Id
+          FROM Schedule__c
+          WHERE
+            Program__c = :ids.get('Main')
+            AND Status__c = 'Version'
+            AND Name = :SetupMatch.BEFORE_UPDATE
+          WITH USER_MODE
+          LIMIT 1
+        ]
+        .Id,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      SetupMatch.Preview again = SetupMatchController.getSetupChanges(draftId);
+      Test.stopTest();
+      Assert.isNull(done.refused);
+      Assert.isTrue(done.kept, 'The week as it was is kept first');
+      Assert.areEqual(2, daysAfterUpdate);
+      Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
+      Assert.isFalse(restored.changedSince);
+      // Main runs Monday to Thursday: all four days are back.
+      Assert.areEqual(4, daysBefore);
+      Assert.areEqual(
+        daysBefore,
+        [SELECT COUNT() FROM ScheduleDay__c WHERE Schedule__c = :draftId]
+      );
+      Assert.areEqual(
+        'Not a day of Main now',
+        SetupMatchTestData.dotsOf(again)
+          .get(
+            String.valueOf(MONDAY.addDays(2)) +
+              '|' +
+              String.valueOf(ids.get('Group A')) +
+              '|' +
+              String.valueOf(ids.get('Period 2'))
+          )
+      );
+    }
+  }
+
   @IsTest
   static void aWeekThatCantBeLaidOutFromSetupSaysWhyAndUpdatesNothing() {
     System.runAs(ShoreshTestData.scheduler()) {

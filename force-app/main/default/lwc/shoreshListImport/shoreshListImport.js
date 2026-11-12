@@ -1100,6 +1100,15 @@ export default class ShoreshListImport extends LightningElement {
         lines.push({ key: `seeded-${i}`, text })
       );
     }
+    // A row that needed a look and couldn't be read isn't saved: said, never dropped without a
+    // word (word walk W6: Evening track, "whenever"). The worksheet shows its own Not imported.
+    const unread = (this.workbook ? [] : this.proposals)
+      .flatMap((p) => p.rows || [])
+      .filter((row) => row.status === "unreadable")
+      .map((row) => row.name || `Row ${row.rowNumber}`);
+    if (unread.length) {
+      lines.push({ key: "unread", text: `Not imported: ${unread.join(", ")}` });
+    }
     return lines;
   }
 

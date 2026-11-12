@@ -284,6 +284,41 @@ describe("c/shoreshPublish", () => {
     );
   });
 
+  // Word walk W6: Manual Build's schedule is the one published; Generated replaces it.
+  it("asks to replace another screen's published schedule, not to publish again", () => {
+    const fromManual = {
+      ...AGAIN,
+      published: { ...AGAIN.published, origin: "Manual" }
+    };
+    const ask = (origin) =>
+      publishQuestion({
+        preview: fromManual,
+        checked: CLEAN,
+        weekName: "Week 1",
+        t,
+        origin
+      }).heading;
+    expect(ask("Generated")).toBe(
+      "Replace Week 1's published schedule (from Manual Build)?"
+    );
+    expect(ask("Manual")).toBe("Publish Week 1 again?");
+  });
+
+  // Word walk W6: the lines listed and "more" add up to the count said.
+  it("counts what the lines not listed cover, so the numbers add up", () => {
+    const question = publishQuestion({
+      preview: { ...AGAIN, changeCount: 172, moreLines: 135, moreCount: 171 },
+      checked: CLEAN,
+      weekName: "Week 1",
+      t
+    });
+    expect(question.lines).toEqual([
+      "This replaces the published schedule. 172 cells change:",
+      "Bunk 1 · Monday · Period 2: Swim → Soccer",
+      "…and 171 more."
+    ]);
+  });
+
   it("says one more line when just one isn't listed", () => {
     const question = publishQuestion({
       preview: { ...AGAIN, changeCount: 2, moreLines: 1 },

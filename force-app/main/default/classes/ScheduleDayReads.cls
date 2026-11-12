@@ -18,6 +18,21 @@ public with sharing class ScheduleDayReads {
     return days;
   }
 
+  /**
+   * The days a copy of days already saved names, each once, wherever they fall: a version keeps a
+   * week as it was, a day its week has since lost included (WEEK-6.6), so Update to match setup
+   * can still keep one before it takes that day off.
+   */
+  public static Set<Date> keptDays(List<ScheduleDaySaves.DaySave> saves) {
+    Set<Date> days = new Set<Date>();
+    for (ScheduleDaySaves.DaySave daySave : saves) {
+      if (daySave.day == null || !days.add(daySave.day)) {
+        throw new ShoreshException('A save named the same day twice.');
+      }
+    }
+    return days;
+  }
+
   public static Map<Id, Map<Date, List<ScheduleDay__c>>> existingParts(
     Set<Id> scheduleIds,
     Set<Date> days

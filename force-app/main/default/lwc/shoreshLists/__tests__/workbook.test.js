@@ -177,7 +177,9 @@ describe("rebuilding a camp in a fresh season", () => {
       ["Group", "changed"],
       ["Division", "changed"]
     ]);
-    expect(workbookWaiting(p, {})).toEqual(["Camp words: Keep or Change"]);
+    expect(workbookWaiting(p, {})).toEqual([
+      "Camp words: differences to answer"
+    ]);
     const answers = {};
     p.sections
       .find((x) => x.key === "campWords")
@@ -296,7 +298,9 @@ describe("a camp's workbook, edited", () => {
       ["Swim", "Which weeks: Week 1: Yes → No"],
       ["Board games", "Which weeks: Week 2: No → Yes"]
     ]);
-    expect(workbookWaiting(p, {})).toEqual(["Which weeks: Keep or Change"]);
+    expect(workbookWaiting(p, {})).toEqual([
+      "Which weeks: differences to answer"
+    ]);
     const answers = {};
     changed.forEach((r) => {
       answers[r.differences[0].id] = "change";

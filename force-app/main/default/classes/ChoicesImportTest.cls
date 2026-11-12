@@ -221,6 +221,50 @@ private class ChoicesImportTest {
     Assert.isFalse(first.containsKey('d'), 'No blank keys stored');
   }
 
+  // Word walk W6: the second schedule's run is named by its schedule, not its program.
+  @IsTest
+  static void aRunOnTheWeeksOtherScheduleIsNamedByThatSchedule() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      ChoicesImport.Request first = camp.request();
+      first.campers.add(
+        inGroup(
+          withChoices(
+            camper(2, 'Maya Fernwood', '1001'),
+            archeryThenDrama(camp)
+          ),
+          camp.ids.get('Group A')
+        )
+      );
+      ChoicesImportController.bringInChoices(JSON.serialize(first));
+      Schedule__c generated = new Schedule__c(
+        Program__c = camp.ids.get('Main'),
+        Week__c = camp.ids.get('Week 1'),
+        Name = 'Generated Schedule',
+        Status__c = 'Draft',
+        Origin__c = GeneratedDrafts.GENERATED
+      );
+      Database.insert(generated, AccessLevel.SYSTEM_MODE);
+      ChoicesImport.Request second = camp.request();
+      second.scheduleId = generated.Id;
+      second.campers.add(
+        inGroup(
+          withChoices(
+            camper(2, 'Maya Fernwood', '1001'),
+            archeryThenDrama(camp)
+          ),
+          camp.ids.get('Group A')
+        )
+      );
+      Test.startTest();
+      ChoicesImport.Done done = ChoicesImportController.bringInChoices(
+        JSON.serialize(second)
+      );
+      Test.stopTest();
+      Assert.areEqual('Chugim · Week 1 · Generated Schedule', done.runName);
+    }
+  }
+
   @IsTest
   static void theStartListsSetsRunsAndRememberedAnswers() {
     System.runAs(ShoreshTestData.scheduler()) {

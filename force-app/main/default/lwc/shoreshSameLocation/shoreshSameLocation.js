@@ -12,6 +12,8 @@ import { LightningElement, api } from "lwc";
  * the camp's word; busy: a merge is being made; error: why the last Merge was refused.
  * Fires merge { keepId, otherIds, groupsThatFit } and close.
  */
+const ORDINALS = ["first", "second", "third", "fourth", "fifth"];
+
 export default class ShoreshSameLocation extends LightningElement {
   @api terms;
   @api title = "Same location?";
@@ -60,13 +62,24 @@ export default class ShoreshSameLocation extends LightningElement {
     const t = this.terms;
     const fits = this.fitsLabel;
     const activities = (n) => (n === 1 ? t.sIn("Activity") : t.pIn("Activity"));
-    return this._places.map((place) => {
+    const labels = this._places.map((place) => {
       const fit = place.fits || place.fits === 0 ? place.fits : "—";
-      return {
-        value: place.id,
-        label: `${place.name} · ${fits}: ${fit} · ${place.activities} ${activities(place.activities)} here`
-      };
+      const kind = place.kind ? ` (${place.kind})` : "";
+      return `${place.name}${kind} · ${fits}: ${fit} · ${place.activities} ${activities(place.activities)} here`;
     });
+    // Two choices never read the same (word walk W6): one still like another says which it is.
+    return this._places.map((place, i) => ({
+      value: place.id,
+      label:
+        labels.indexOf(labels[i]) === labels.lastIndexOf(labels[i])
+          ? labels[i]
+          : `${labels[i]} · ${ORDINALS[i] || `number ${i + 1}`} in the list`
+    }));
+  }
+
+  /** "Which location to keep", in the camp's word. */
+  get keepLabel() {
+    return `Which ${this.terms.sIn("Location")} to keep`;
   }
 
   /** One word for the idea: the camp's "Groups that fit", in the list and on the number. */

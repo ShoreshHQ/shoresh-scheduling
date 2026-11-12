@@ -16,6 +16,12 @@ public with sharing class ChoicesImportPlace {
   public String finalRunName;
   // This set's runs this week on other schedules (another program's grid).
   private Integer otherRuns = 0;
+  private static final Map<String, String> SCHEDULE_WORDS = new Map<String, String>{
+    GeneratedDrafts.GENERATED => 'Generated Schedule',
+    ManualDrafts.MANUAL => 'Manual Build'
+  };
+  // Of otherRuns: those on this program's other schedule (then the schedule is named).
+  private Integer otherHere = 0;
 
   public ChoicesImportPlace(ChoicesImport.Request given) {
     request = given;
@@ -67,7 +73,7 @@ public with sharing class ChoicesImportPlace {
       WITH USER_MODE
     ];
     List<Schedule__c> schedules = [
-      SELECT Id, Program__c, Program__r.Name
+      SELECT Id, Name, Program__c, Program__r.Name, Origin__c
       FROM Schedule__c
       WHERE
         Id = :request.scheduleId
@@ -94,7 +100,13 @@ public with sharing class ChoicesImportPlace {
   /** The committed run for this set, week and schedule, if any; a final one alone refuses. */
   private void readRuns() {
     for (ElectiveRun__c each : [
-      SELECT Id, Name, Status__c, Revision__c, Schedule__c
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Revision__c,
+        Schedule__c,
+        Schedule__r.Program__c
       FROM ElectiveRun__c
       WHERE
         ElectiveSet__c = :request.electiveSetId
@@ -104,6 +116,7 @@ public with sharing class ChoicesImportPlace {
     ]) {
       if (each.Schedule__c != request.scheduleId) {
         otherRuns++;
+        otherHere += each.Schedule__r.Program__c == schedule.Program__c ? 1 : 0;
       } else if (each.Status__c == ChoicesImport.FINAL_STATUS) {
         finalRunName = each.Name;
       } else {
@@ -159,11 +172,19 @@ public with sharing class ChoicesImportPlace {
     }
   }
 
-  /** "Chugim · Week 3"; with another program's run of the same set and week, its program too. */
+  /**
+   * "Chugim · Week 3"; with another run of the same set and week, which schedule it is on: its
+   * program when that run is another program's, and "Generated Schedule" or "Manual Build" when it
+   * is this program's other schedule (word walk W6: not only "Main").
+   */
   private String runName() {
     String name = electiveSet.Name + ' · ' + week.Name;
-    if (otherRuns > 0) {
+    if (otherRuns > otherHere) {
       name += ' · ' + schedule.Program__r.Name;
+    }
+    if (otherHere > 0) {
+      // "Generated Schedule", "Manual Build", or a kept schedule's own name (last year's).
+      name += ' · ' + (SCHEDULE_WORDS.get(schedule.Origin__c) ?? schedule.Name);
     }
     return name.left(80);
   }

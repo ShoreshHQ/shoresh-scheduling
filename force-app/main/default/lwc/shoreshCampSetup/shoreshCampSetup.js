@@ -815,6 +815,10 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup, this.preview)) {
       return;
     }
+    // The person's own click wins over a reload still bringing the tab back (WEEK-6.5): the
+    // screen and week it was on are not opened over it later.
+    this.placeToRestore = null;
+    this.weekToRestore = null;
     // A special day's schedule saved, then left through the menu rather than its own back: the
     // season is read again, as that back does, so the days it replaces show what was saved.
     if (this.specialScheduleChanged && screen !== "specialEvents") {
@@ -843,6 +847,7 @@ export default class ShoreshCampSetup extends LightningElement {
       screen === "electiveSeats" && weekId && !target
         ? { weekId, setId, scheduleId, runId }
         : null;
+    this.readAgainFor(screen);
     const fromCard = event.detail.fromCard;
     // A week on the Schedules doorway (a hand card's week not built yet): the cursor goes to it.
     this.weekToFocus = screen === "scheduleWeeks" ? weekId || null : null;
@@ -867,6 +872,26 @@ export default class ShoreshCampSetup extends LightningElement {
     this.openScreen(screen);
     this.openSpecialItem(event.detail.specialItemId, event.detail.detailsOnly);
     this.resumeImport(event.detail.resumeImport);
+  }
+
+  /**
+   * What a screen shows from other screens' work, read again as it opens (word walk W6: a week
+   * started on Manual Build or generated a second time, versions kept, renamed or deleted there,
+   * showed only after a reload): the season's schedules for Bring in choices and Elective seats,
+   * and the week's versions for Saved versions. Not for the screen already shown.
+   */
+  readAgainFor(screen) {
+    if (screen === this.currentScreen || !this.setup) {
+      return;
+    }
+    if (screen === "bringInChoices" || screen === "electiveSeats") {
+      this.loadSeason().catch(() => {});
+    } else if (screen === "schedules") {
+      const saved = this.template.querySelector("c-shoresh-schedules");
+      if (saved && typeof saved.readAgain === "function") {
+        saved.readAgain();
+      }
+    }
   }
 
   /**
@@ -3335,12 +3360,18 @@ export default class ShoreshCampSetup extends LightningElement {
   placesFor(recordIds) {
     const locations = (this.setup && this.setup.locations) || [];
     const activities = (this.setup && this.setup.activities) || [];
+    const types = (this.setup && this.setup.locationTypes) || [];
     return recordIds
       .map((id) => locations.find((l) => l.Id === id))
       .filter((location) => location)
       .map((location) => ({
         id: location.Id,
         name: location.Name,
+        // Its kind, so two places of one name read apart (word walk W6).
+        kind: (
+          types.find((type) => type.Id === location[LOCATION.LocationType]) ||
+          {}
+        ).Name,
         fits: location[LOCATION.GroupsThatFit],
         activities: activities.filter(
           (a) => a[ACTIVITY.Location] === location.Id

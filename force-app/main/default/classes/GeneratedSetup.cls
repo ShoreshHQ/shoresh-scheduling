@@ -42,6 +42,16 @@ public with sharing class GeneratedSetup {
     ];
   }
 
+  /**
+   * The same, on what a screen has already read (Manual Build's open): program as
+   * ProgramReads.programOf reads it, week with its Name and dates; the caller sets blocks, groups
+   * and exceptions. Reads nothing.
+   */
+  public GeneratedSetup(Program__c program, Week__c week) {
+    this.program = program;
+    this.week = week;
+  }
+
   /** The season's activities as setup reads them (SeasonSetupReader), read when first needed. */
   public List<Activity__c> activityRecords() {
     if (activitiesRead == null) {

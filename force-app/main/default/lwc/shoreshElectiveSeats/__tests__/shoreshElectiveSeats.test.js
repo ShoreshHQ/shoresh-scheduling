@@ -270,6 +270,29 @@ describe("the start", () => {
     expect(picker.value).toBe("s1");
   });
 
+  // Word walk W6: Week 1's choices may be on its other schedule, so the one shown is named.
+  it("with two schedules, says which one has no choices yet", async () => {
+    const element = await render({
+      situation: { runs: [] },
+      setup: {
+        ...SETUP,
+        schedules: [
+          ...SETUP.schedules,
+          {
+            Id: "s2",
+            Program__c: "p1",
+            Week__c: "w1",
+            Status__c: "Draft",
+            Origin__c: "Generated"
+          }
+        ]
+      }
+    });
+    expect($(element, '[data-id="no-run"]').title).toBe(
+      "No choices imported for Chugim on Week 1's Manual Build yet."
+    );
+  });
+
   it("says when no choices are in yet, and when there is no elective set", async () => {
     let element = await render({ situation: { runs: [] } });
     expect($(element, '[data-id="no-run"]').title).toBe(
@@ -878,5 +901,21 @@ describe("c-shoresh-elective-seats: the names' column", () => {
     );
     // The heading row's empty corner left a ~70 px band above the times: it isn't a seat's height.
     expect(css).toMatch(/\.offer-table \.corner\s*{\s*height: auto;/);
+  });
+});
+
+// Word walk W6: the roster beside the board is wide enough for a name, its bunk and Move to….
+describe("the roster's room", () => {
+  it("is 88 units wide, a bunk's name never broken", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "..", "shoreshElectiveSeats.css"),
+      "utf8"
+    );
+    expect(css.match(/\n\.roster \{([^}]*)\}/)[1]).toMatch(
+      /width: calc\(var\(--shoresh-u\) \* 88\);/
+    );
+    expect(css.match(/\n\.person-group \{([^}]*)\}/)[1]).toMatch(
+      /white-space: nowrap;/
+    );
   });
 });

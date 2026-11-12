@@ -308,12 +308,6 @@ export default class ShoreshProgram extends LightningElement {
       : undefined;
   }
 
-  get recurringNotesHeading() {
-    return Object.values(this.recurringNotes).some((note) => note)
-      ? this.labels.leftOut
-      : undefined;
-  }
-
   /**
    * Recurring activities in sections (docs/design/setup/fixed.html): the whole camp's, then one
    * per division, then those covering more than one division (only while there are any). An
@@ -696,6 +690,7 @@ export default class ShoreshProgram extends LightningElement {
     return {
       timeBlocks: `${t.p("TimeBlock")} in ${program}`,
       addTimeBlock: `Add ${t.s("TimeBlock")}`,
+      overlapsTimeBlock: `Overlaps another ${t.sIn("TimeBlock")}`,
       noTimeBlocks: `No ${t.pIn("TimeBlock")} yet`,
       divisions: `${t.p("Division")} in ${program}`,
       addDivision: `Add ${t.s("Division")}`,

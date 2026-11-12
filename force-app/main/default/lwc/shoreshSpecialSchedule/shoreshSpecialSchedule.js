@@ -626,10 +626,27 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       return [];
     }
     const off = this.controlsDisabled;
+    // Word walk W6: an overlap or a second name is marked, never accepted without a word.
+    const minutes = (time) => {
+      const m = /^(\d{1,2}):(\d{2})/.exec(time || "");
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+    const overlaps = (a) =>
+      day.blocks.some(
+        (b) =>
+          b !== a &&
+          minutes(a.startTime) !== null &&
+          minutes(b.startTime) !== null &&
+          minutes(a.startTime) < minutes(b.endTime) &&
+          minutes(b.startTime) < minutes(a.endTime)
+      );
+    const overlapLabel = `Overlaps another ${this.t ? this.t.sIn("TimeBlock") : "time block"}`;
     return day.blocks.map((block, index) => ({
       key: block.id,
       id: block.id,
       name: block.name,
+      overlaps: overlaps(block),
+      overlapLabel,
       when: `${shortClock(block.startTime)}–${shortClock(block.endTime)}`,
       changeLabel: `Change ${block.name}`,
       earlierLabel: `Move ${block.name} earlier`,
@@ -646,10 +663,16 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       return [];
     }
     const off = this.controlsDisabled;
+    const fold = (name) => (name || "").trim().toLowerCase();
+    const sameName = (grp) =>
+      day.groups.some(
+        (other) => other !== grp && fold(other.name) === fold(grp.name)
+      );
     return day.groups.map((grp, index) => ({
       key: grp.id,
       id: grp.id,
       name: grp.name,
+      sameName: sameName(grp),
       renameLabel: `Rename ${grp.name}`,
       leftLabel: `Move ${grp.name} left`,
       rightLabel: `Move ${grp.name} right`,

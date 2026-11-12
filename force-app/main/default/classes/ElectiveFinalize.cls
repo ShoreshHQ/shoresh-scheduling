@@ -23,6 +23,13 @@ public with sharing class ElectiveFinalize {
     ElectiveRunState state = ElectiveRunState.held(runId);
     state.refuseUnlessCurrent(revision);
     refuseUnready(state);
+    // ELECT-5.7: an offering over its seats is shown while the seats are a draft, and refused here.
+    List<String> over = new ElectiveOverAtFinalize(state).find();
+    if (!over.isEmpty()) {
+      throw new ShoreshException(
+        AgentRefusal.withFix(over[0], 'Move a camper, then finalize.')
+      );
+    }
     List<String> clashes = new ElectivePlaceClashes(state).find();
     if (!clashes.isEmpty()) {
       throw new ShoreshException(

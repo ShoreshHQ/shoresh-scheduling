@@ -157,10 +157,8 @@ public with sharing class SetupMatch {
       return result;
     }
     // Setup is read under the draft's lock, so what is made is what setup says now.
-    Plan plan = planFor(
-      new GeneratedSetup(draft.Program__c, draft.Week__c),
-      current
-    );
+    GeneratedSetup setup = new GeneratedSetup(draft.Program__c, draft.Week__c);
+    Plan plan = planFor(setup, current);
     if (plan.preview.problem != null) {
       throw new ShoreshException(plan.preview.problem);
     }
@@ -180,14 +178,20 @@ public with sharing class SetupMatch {
     }
     plan.versionKept = ask.versionKept == true;
     result.kept = write(draft, plan);
-    result.view = viewOf(draft);
+    result.view = viewOf(draft, setup);
     return result;
   }
 
-  /** Manual Build's draft as it is now; none for Generated Schedule's, which reads its week again. */
-  private static ManualBuildViews.DraftView viewOf(Schedule__c draft) {
+  /**
+   * Manual Build's draft as it is now, on the setup this update read (nothing read again); none
+   * for Generated Schedule's, which reads its week again.
+   */
+  private static ManualBuildViews.DraftView viewOf(
+    Schedule__c draft,
+    GeneratedSetup setup
+  ) {
     return draft.Origin__c == ManualDrafts.MANUAL
-      ? ManualBuildViews.open(draft.Id)
+      ? ManualBuildViews.openWith(draft.Id, setup)
       : null;
   }
 

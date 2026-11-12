@@ -364,9 +364,11 @@ table {
 
 /* ---------- the roster beside ---------- */
 
+/* Wide enough for a camper's name, their bunk and Move to… on one line (word walk W6: at 64
+   units names and "Bunk 1" broke onto two lines). */
 .roster {
   flex: none;
-  width: calc(var(--shoresh-u) * 64);
+  width: calc(var(--shoresh-u) * 88);
   padding: var(--shoresh-space-pad);
   border-left: 1px solid var(--shoresh-rule);
   overflow-y: auto;
@@ -418,6 +420,7 @@ table {
 
 .person-group {
   color: var(--shoresh-text-2);
+  white-space: nowrap;
 }
 
 .lock-button {

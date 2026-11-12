@@ -49,16 +49,31 @@ public with sharing class BlankWeek {
 
   /** The same, on setup Generated Schedule has already read. */
   public static Week build(GeneratedSetup setup) {
+    return new BlankWeek().weekOf(setup);
+  }
+
+  /**
+   * The same, with the season's set-time plan already made (SetTimePlanReader.planOf, on what
+   * Manual Build's open has read): reads nothing.
+   */
+  public static Week build(GeneratedSetup setup, SetTimePlan plan) {
     BlankWeek blank = new BlankWeek();
-    blank.blocks = checkedBlocks(setup.program, setup.blocks);
-    blank.groups = checkedGroups(setup.program, setup.week, setup.atCamp());
-    return blank.weekFor(setup.program, setup.week);
+    blank.items = runningIn(plan, setup.program.Id, setup.week.Id);
+    return blank.weekOf(setup);
+  }
+
+  private Week weekOf(GeneratedSetup setup) {
+    blocks = checkedBlocks(setup.program, setup.blocks);
+    groups = checkedGroups(setup.program, setup.week, setup.atCamp());
+    return weekFor(setup.program, setup.week);
   }
 
   private Week weekFor(Program__c program, Week__c week) {
     // A first Generate says this week's days before any schedule is read.
     DayWords.use(program.Season__r);
-    items = setTimeItems(program, week.Id);
+    if (items == null) {
+      items = setTimeItems(program, week.Id);
+    }
     Week result = new Week();
     for (Date day : runDays(program, week)) {
       BlankDay filled = filled(weekdayOf(day));
@@ -193,8 +208,20 @@ public with sharing class BlankWeek {
           '. Ask a Salesforce admin.'
       );
     }
-    SetTimePlan plan = SetTimePlanReader.read(new Set<Id>{ program.Season__c })
-      .get(program.Season__c);
+    return runningIn(
+      SetTimePlanReader.read(new Set<Id>{ program.Season__c })
+        .get(program.Season__c),
+      program.Id,
+      weekId
+    );
+  }
+
+  /** The plan's set-time items of the program that run in the week, at a time block. */
+  private static List<SetTimePlan.Item> runningIn(
+    SetTimePlan plan,
+    Id programId,
+    Id weekId
+  ) {
     List<SetTimePlan.Item> result = new List<SetTimePlan.Item>();
     for (
       SetTimePlan.Item item : plan == null
@@ -202,7 +229,7 @@ public with sharing class BlankWeek {
         : plan.items
     ) {
       if (
-        item.program.program.Id == program.Id &&
+        item.program.program.Id == programId &&
         item.weekIds.contains(weekId) &&
         item.start != null
       ) {

@@ -13,6 +13,10 @@ public with sharing class ManualVersions {
   public static final String SAVED_BY_HAND = 'SavedByHand';
   public static final String AUTO_SAVED = 'AutoSaved';
   public static final String BEFORE_RESTORE = 'Before Restore';
+  // The week kept first when Undo brings back what a build kept (GeneratedUndoController).
+  public static final String BEFORE_UNDO = 'Before Undo';
+  // What restoreInto names the week it keeps first (GeneratedUndoController sets it for Undo).
+  public static String keptAs = BEFORE_RESTORE;
 
   /** Save version: the draft as it is now, kept under a name. Returns the version's Id. */
   public static Id save(Id draftId, String name) {
@@ -73,7 +77,7 @@ public with sharing class ManualVersions {
     try {
       Id kept = null;
       if (!current.isEmpty()) {
-        kept = newVersion(draft, BEFORE_RESTORE, AUTO_SAVED);
+        kept = newVersion(draft, keptAs, AUTO_SAVED);
         writeDays(kept, readable(current));
       }
       Map<Date, Integer> revisions = new Map<Date, Integer>();
@@ -95,7 +99,10 @@ public with sharing class ManualVersions {
         saves.add(save);
         restoredDays.add(day.day);
       }
-      ScheduleDaySaves.write(draftId, saves);
+      // The version's days come back as they were, a day its week has since lost included
+      // (a "Before update" of a shortened week, WEEK-6.6): it shows as no longer a day of the
+      // week, and Update to match setup takes it off again, never dropped unseen.
+      ScheduleDaySaves.writeAsItWas(draftId, saves);
       // A day the version doesn't have goes from the draft too: the draft is the version now.
       Database.delete(
         [
@@ -220,7 +227,7 @@ public with sharing class ManualVersions {
       save.rain = day.rain;
       saves.add(save);
     }
-    ScheduleDaySaves.write(versionId, saves);
+    ScheduleDaySaves.writeAsItWas(versionId, saves);
   }
 
   /** A new version of the draft's week (no days yet), for a reason (AgentWeeks too). */

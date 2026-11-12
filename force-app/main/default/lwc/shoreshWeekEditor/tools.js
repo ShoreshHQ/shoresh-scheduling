@@ -110,14 +110,81 @@ function clearPlacements(row, placements) {
 }
 
 /**
+ * The fixed and recurring activities the week's own cells place: { inWeek: those it has on some
+ * day, movedOn: for each day index, those it has there in a cell where setup doesn't put them
+ * now (setup moved them since, and Update to match setup hasn't). Setup's cells are trusted to
+ * say where the week had one only for an activity the week has, and only on a day setup hasn't
+ * moved it, so a clear never adds a second one nor brings in a setup change (LOCK-4.9).
+ */
+function weekSetTime(days, setUp) {
+  const inWeek = new Set();
+  const movedOn = new Map();
+  days.forEach((day, d) => {
+    const moved = new Set();
+    if (day && !day.problem) {
+      day.groups.forEach((grp, g) => {
+        slots(day, g).forEach((slot, b) => {
+          const item = owner(slot);
+          if (!isSetTime(item)) {
+            return;
+          }
+          inWeek.add(item);
+          if (owner(setUp[cellKey(day, g, b)] || OPEN) !== item) {
+            moved.add(item);
+          }
+        });
+      });
+    }
+    movedOn.set(d, moved);
+  });
+  return { inWeek, movedOn };
+}
+
+/**
+ * A fixed or recurring activity setup puts where this clear just emptied cells (something had
+ * been typed over it), put back whole (LOCK-4.9): a clear never leaves its cells empty. A cell
+ * the person had already emptied by hand stays as they left it. setUpAt(b): what setup puts in
+ * block b ("F:<Id>", "^F:<Id>"), or nothing, already narrowed to where the week had it
+ * (weekSetTime); cleared: the blocks this clear emptied.
+ */
+function putBackSetTime(row, setUpAt, cleared) {
+  row.forEach((slot, b) => {
+    const head = setUpAt(b);
+    if (!head || head.startsWith(CARRIES_ON) || slot !== OPEN) {
+      return;
+    }
+    let length = 1;
+    while (
+      b + length < row.length &&
+      setUpAt(b + length) === CARRIES_ON + head
+    ) {
+      length += 1;
+    }
+    const cells = [...Array(length).keys()].map((i) => b + i);
+    if (
+      cells.some((c) => cleared.has(c)) &&
+      cells.every((c) => row[c] === OPEN)
+    ) {
+      cells.forEach((c, i) => {
+        row[c] = i === 0 ? head : CARRIES_ON + head;
+      });
+    }
+  });
+}
+
+/**
  * Clears the activities of the given days (indexes), for every group, or for one group (its Id)
- * when `groupId` is given. Returns { runs, stayed: [{ day, group, block, slot, why }], skipped }.
+ * when `groupId` is given; setUp ({ "date|groupId|blockId": slot }, Manual Build's setUpCells)
+ * puts back a fixed or recurring activity something was typed over, where the week itself had it
+ * (weekSetTime: a setup move or addition waits for Update to match setup). Returns { runs, stayed:
+ * [{ day, group, block, slot, why }], skipped }.
  */
 export function clearEdit(days, dayIndexes, options = {}) {
-  const { groupId, isAway = never, skip = never } = options;
+  const { groupId, isAway = never, skip = never, setUp = null } = options;
   const rows = new Rows(days);
   const stayed = [];
   const skipped = new Set();
+  const own = setUp ? weekSetTime(days, setUp) : null;
   dayIndexes.forEach((d) => {
     const day = days[d];
     if (!day || day.problem) {
@@ -135,6 +202,23 @@ export function clearEdit(days, dayIndexes, options = {}) {
         (b) => skip(d, g, b)
       );
       clearPlacements(row, sorted.clear);
+      if (setUp) {
+        const cleared = new Set(
+          sorted.clear.flatMap((p) =>
+            [...Array(p.length).keys()].map((i) => p.first + i)
+          )
+        );
+        const trusted = (slot) =>
+          own.inWeek.has(owner(slot)) && !own.movedOn.get(d).has(owner(slot));
+        putBackSetTime(
+          row,
+          (b) => {
+            const slot = skip(d, g, b) ? null : setUp[cellKey(day, g, b)];
+            return slot && trusted(slot) ? slot : null;
+          },
+          cleared
+        );
+      }
       sorted.stayed.forEach((s) =>
         stayed.push({
           day: d,
@@ -514,7 +598,8 @@ export function toolRuns(tool, week, options = {}) {
       ...clearEdit(week, dayIndexes, {
         groupId: tool.groupId,
         isAway: away,
-        skip: skipAt
+        skip: skipAt,
+        setUp: tool.setUp
       }),
       week
     };

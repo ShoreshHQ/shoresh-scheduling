@@ -59,6 +59,9 @@ public with sharing class SchedulePublish {
     public Integer changeCount = 0;
     @AuraEnabled
     public Integer moreLines = 0;
+    // Of changeCount: what the lines not listed cover, so what is listed and this add up.
+    @AuraEnabled
+    public Integer moreCount = 0;
     // Of changeCount: the bunks and time blocks renamed, and the time blocks at new times (the
     // rest are cells).
     @AuraEnabled
@@ -161,6 +164,7 @@ public with sharing class SchedulePublish {
     result.changes = changes.lines;
     result.changeCount = changes.count;
     result.moreLines = changes.moreLines;
+    result.moreCount = changes.moreCount;
     result.renameCount = changes.renames;
     result.retimeCount = changes.retimes;
     result.specialDayCount = changes.specialDays;

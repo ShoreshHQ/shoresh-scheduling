@@ -28,8 +28,10 @@ public with sharing class PublishedChanges {
     // Of count: the days whose rainy-day marks change with their cells the same or not (a
     // raindrop gone or come back, ADR 0019 choice 9), one each.
     public Integer rainDays = 0;
-    // The lines past mostLines, not listed ("…and N more.").
+    // The lines past mostLines, not listed.
     public Integer moreLines = 0;
+    // Of count: what those lines cover ("…and N more.", so the lines and N add up to count).
+    public Integer moreCount = 0;
     // The days a special day replaces (on either side), whose own cells are out of sight and not
     // compared (SpecialChanges says what changes there).
     public Set<Date> hidden = new Set<Date>();
@@ -59,6 +61,7 @@ public with sharing class PublishedChanges {
         lines.add(line);
       } else {
         moreLines++;
+        moreCount += cells;
       }
     }
   }

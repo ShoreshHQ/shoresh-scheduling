@@ -509,7 +509,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     return this.checkList.length > 0;
   }
   get keptList() {
-    return this.reading ? keptCommentRows(this.reading) : [];
+    return this.reading ? keptCommentRows(this.reading, this.groups) : [];
   }
   get hasKept() {
     return this.keptList.length > 0;
