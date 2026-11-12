@@ -63,7 +63,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  /* The whole width of the editor's message row it sits on. */
+  flex: 1 1 100%;
+  margin: 0;
   padding: 8px 12px;
   border: 1px solid var(--shoresh-caution);
   border-radius: 8px;
