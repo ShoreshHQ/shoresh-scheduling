@@ -16,6 +16,7 @@ public with sharing class SetupMatchDots {
   private Date day;
   private SetupMatchCells before;
   private SetupMatchCells after;
+  private SetupMatchMoves moves;
 
   public SetupMatchDots(
     SetupMatchRules rules,
@@ -35,6 +36,7 @@ public with sharing class SetupMatchDots {
   ) {
     this.before = before;
     this.after = after;
+    moves = new SetupMatchMoves(before, after);
     for (String first : before.placements) {
       List<String> placement = before.cellsOf.get(first);
       String why = whyFor(first, placement);
@@ -69,20 +71,20 @@ public with sharing class SetupMatchDots {
 
   /**
    * A fixed or recurring activity setup now puts in an Open cell, named with its change: "Morning
-   * meeting moved to Period 2" when the group had it elsewhere that day, else "Lunch goes here"
-   * (coordinator's wording for Greg, 2026-11-12).
+   * meeting moved to Period 2" when it moved here from elsewhere in the group's day (every cell
+   * of its placement says so), else "Lunch goes here" (coordinator's wording for Greg, 2026-11-12).
    */
   private String arrived(String cell, String there) {
     String name = names.nameOf(SlotIds.owner(there));
-    String was = firstWith(SetupMatchCells.groupOf(cell), there, before);
-    return was == null ? rules.setUpHere(name) : movedTo(name, cell);
+    String now = moves.movedInto(cell);
+    return now == null ? rules.setUpHere(name) : movedTo(name, now);
   }
 
   /** A placement setup no longer has here: where it went that day, or that it is gone. */
-  private String left(String cell, String owner) {
+  private String left(String first, String owner) {
     String name = names.nameOf(SlotIds.owner(owner));
-    String now = firstWith(SetupMatchCells.groupOf(cell), owner, after);
-    return now == null || now.equals(cell)
+    String now = moves.movedTo(first);
+    return now == null || now.equals(first)
       ? name + ' is no longer set up here'
       : movedTo(name, now);
   }
@@ -91,23 +93,6 @@ public with sharing class SetupMatchDots {
   private String movedTo(String name, String cell) {
     String blockId = SetupMatchCells.blockOf(cell);
     return name + ' moved to ' + names.range(blockId, blockId);
-  }
-
-  /** The first cell of the group's placement holding this identity, or null. */
-  private static String firstWith(
-    String groupId,
-    String identity,
-    SetupMatchCells cells
-  ) {
-    for (String first : cells.placements) {
-      if (
-        SetupMatchCells.groupOf(first).equals(groupId) &&
-        cells.at(first).equals(identity)
-      ) {
-        return first;
-      }
-    }
-    return null;
   }
 
   /** Whether the day now holds the placement exactly where it is. */

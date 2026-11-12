@@ -9,7 +9,7 @@
  * only those no other week has (the rest stay, drawn solid beside them); the whole season's are
  * every camper, so each row's head carries the total that goes. Pure: from ElectiveClear.Picture.
  */
-import { shortDate } from "c/shoreshTerms";
+import { setsBesideElectives, shortDate } from "c/shoreshTerms";
 
 // Decoration only: the seat dots and the 1-2-3 marks are drawn, not counted.
 const SEAT_DOTS = 12;
@@ -90,7 +90,11 @@ export function clearBoard(picture, weekId, t) {
   // The whole season: every camper goes, those in no run too.
   if (!weekId) totals.campers = (picture && picture.campers) || 0;
   const stays = [
-    ["sets", t.p("ElectiveSet"), (picture && picture.sets) || []],
+    [
+      "sets",
+      setsBesideElectives(t, true) || t.p("ElectiveSet"),
+      (picture && picture.sets) || []
+    ],
     ["offerings", t.p("Elective"), (picture && picture.offerings) || []],
     ["linked", t.p("LinkedChoice"), (picture && picture.linked) || []]
   ].map(([key, label, names]) => ({

@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshWeekChecks from "c/shoreshWeekChecks";
+import { counterWords } from "../lines";
 import { measureWeek } from "c/shoreshEngine";
 import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
 import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
@@ -746,6 +747,17 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(text(q(element, '[data-id="priority-low"]'))).toBe(
       "Every activity's minimum met39"
     );
+  });
+
+  // The AI reads the counter in the same words as the screen: the camp's Activity word.
+  it("the counter read by the AI says every minimum met in the camp's word", () => {
+    const words = counterWords(
+      { ...MEASURE, priorities: [{ priority: "low", met: 39, total: 39 }] },
+      [],
+      undefined,
+      "Chug"
+    );
+    expect(words.priorities).toEqual(["Every Chug's minimum met 39"]);
   });
 
   // "Spread across the week 54 of 54 on c" was cut at the dropdown's edge (UI pass, 2026-11-10):

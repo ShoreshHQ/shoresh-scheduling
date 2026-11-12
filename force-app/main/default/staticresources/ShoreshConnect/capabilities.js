@@ -2310,7 +2310,7 @@ const CAPABILITIES = [
     method: "GET",
     makesFile: "electives",
     description:
-      "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per elective, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and bring back). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
+      "Make one of a finalized week's elective files exactly as the Elective seats screen's Download menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else): rosters, print_rosters (a page per elective, saved as a page that opens the browser's Print; Save as PDF there makes a PDF), camper_schedules, full_report, or campers (to edit and import again). It is the newest finalized version of the week's electives; before Finalize there is nothing to download. The answer is the file's name and where it was saved: tell the person.",
     about:
       "The file was made on this computer exactly as the Elective seats screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
     inputSchema: {

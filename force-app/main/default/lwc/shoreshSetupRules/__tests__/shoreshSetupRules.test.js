@@ -426,7 +426,7 @@ describe("fixed and recurring activities", () => {
         "Swim",
         '"Pool" is not open in Week 2, but this runs then.'
       ],
-      ["fixedActivities", "Flag", "Runs in no Sessions."],
+      ["fixedActivities", "Flag", "In no Session."],
       [
         "recurringActivities",
         "Juniors lunch",
@@ -615,7 +615,7 @@ describe("fixed and recurring activities", () => {
           "recurringActivities",
           "Time blocks changed since it was saved: it covered Period 2 – Period 3 and now covers Period 2 – Snack."
         ],
-        ["recurringActivities", "Runs in no Sessions."]
+        ["recurringActivities", "In no Session."]
       ]);
       expect(nudges[0].actions.map((a) => a.record)).toEqual(
         nsRecord([

@@ -457,11 +457,11 @@ async function counterAfter(fields, at, checks) {
     const got = await at.read("week_checks", query);
     if (!got || got.status !== 200) return "";
     const m = await checks();
-    const { measure, accepted, groupWords } = counterOf(
+    const { measure, accepted, groupWords, activity } = counterOf(
       m,
       JSON.parse(got.body)
     );
-    const words = m.counterWords(measure, accepted, groupWords);
+    const words = m.counterWords(measure, accepted, groupWords, activity);
     // A line's own full stop goes, so the list ends with one ("…kept as it was..").
     const said = (rows) => rows.map((l) => l.line.replace(/\.$/, ""));
     const look = said([
@@ -500,9 +500,9 @@ async function weekChecks(capability, input, at, checks, edits) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = await checks();
-  const { measure, accepted, groupWords } = counterOf(m, body);
+  const { measure, accepted, groupWords, activity } = counterOf(m, body);
   if (capability.name === "read_week_checks") {
-    const words = m.counterWords(measure, accepted, groupWords);
+    const words = m.counterWords(measure, accepted, groupWords, activity);
     // A Generated Schedule week as read (its revision): its edits, locks and unlocks hand it
     // back. Its locked cells, as the screen shows each with its lock.
     const seen = body.inputs && body.inputs.revision;
@@ -561,7 +561,7 @@ async function readDraft(capability, input, at, checks, edits) {
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const m = { ...(await checks()), ...(await edits()) };
-  const { measure, accepted, groupWords } = counterOf(m, body);
+  const { measure, accepted, groupWords, activity } = counterOf(m, body);
   const seen = body.inputs && body.inputs.revision;
   let draft;
   try {
@@ -578,7 +578,7 @@ async function readDraft(capability, input, at, checks, edits) {
     ...(body.season ? { season: body.season } : {}),
     week: input.week,
     schedule: body.draft ? "Manual Build" : "Generated Schedule",
-    checks: m.counterWords(measure, accepted, groupWords),
+    checks: m.counterWords(measure, accepted, groupWords, activity),
     ...(seen ? { seen } : {}),
     ...draft
   };
@@ -599,10 +599,12 @@ function counterOf(m, body) {
   m.nameDaysFor(body.setup);
   const terms = m.buildTerms(body.labels);
   // An under or over row's unit in the camp's word, as the counter says it ("2 Bunks short").
-  const groupWords =
-    terms && typeof terms.sIn === "function"
-      ? { one: terms.sIn("Group"), many: terms.pIn("Group") }
-      : undefined;
+  const named = terms && typeof terms.sIn === "function";
+  const groupWords = named
+    ? { one: terms.sIn("Group"), many: terms.pIn("Group") }
+    : undefined;
+  // The priorities rows in the camp's Activity word, as the counter says them.
+  const activity = named ? terms.sIn("Activity") : undefined;
   const dots = (body.setup_changes && body.setup_changes.dots) || [];
   const setupDots = new Map(dots.map((dot) => [dot.key, dot.words]));
   if (body.draft) {
@@ -614,7 +616,8 @@ function counterOf(m, body) {
         setupDots
       }),
       accepted: m.readKept(body.accepted),
-      groupWords
+      groupWords,
+      activity
     };
   }
   const loaded = m.loadedOf(body.inputs || {});
@@ -629,7 +632,12 @@ function counterOf(m, body) {
     setupDots,
     planName: null
   });
-  return { measure, accepted: m.readKept(body.accepted), groupWords };
+  return {
+    measure,
+    accepted: m.readKept(body.accepted),
+    groupWords,
+    activity
+  };
 }
 
 /**

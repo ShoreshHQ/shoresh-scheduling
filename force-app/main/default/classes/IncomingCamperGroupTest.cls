@@ -108,7 +108,7 @@ private class IncomingCamperGroupTest {
         AccessLevel.USER_MODE
       );
       Assert.areEqual(
-        'Bunks come from the camp\'s sign-up list or other system. Change it there and bring it in again.',
+        'Bunks come from the camp\'s sign-up list or other system. Change it there and import it again.',
         byHand.getErrors()[0].getMessage()
       );
     }

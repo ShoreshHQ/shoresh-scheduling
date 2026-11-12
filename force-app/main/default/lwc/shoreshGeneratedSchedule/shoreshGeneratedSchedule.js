@@ -1827,7 +1827,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       }
       if (result.refused === SETUP_CHANGED) {
         const fresh = await this.loadSetupChanges();
-        const again = "Setup changed again, so nothing was updated.";
+        const again =
+          "Something changed while you looked, so nothing was updated.";
         // The list shows what it would change now, in place.
         this.setupAsk =
           fresh && fresh.changes.length

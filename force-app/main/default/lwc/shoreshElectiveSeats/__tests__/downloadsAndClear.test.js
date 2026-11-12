@@ -161,7 +161,7 @@ describe("downloads come once seats are final", () => {
       "Print rosters",
       "Camper schedules",
       "Full report",
-      "Campers, to edit and bring back",
+      "Campers, to edit and import again",
       "Clear at season end…"
     ]);
     await expect(element).toBeAccessible();

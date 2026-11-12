@@ -93,6 +93,24 @@ describe("the picture", () => {
     ]);
   });
 
+  it("a camp's Elective word followed by its sets: the two rows never read the same", () => {
+    const chugim = buildTerms([
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true },
+      {
+        term: "ElectiveSet",
+        singular: "Elective set",
+        plural: "Elective sets",
+        isCustom: false
+      }
+    ]);
+    const view = clearBoard(PICTURE, null, chugim);
+    expect(view.stays.map((s) => s.label).slice(0, 2)).toEqual([
+      "Chug sets",
+      "Chugim"
+    ]);
+    expect(view.stays[0].words).toBe("Chug sets: 2, stay");
+  });
+
   it("a week with nothing has nothing to clear", () => {
     expect(clearBoard(PICTURE, "w3", t).nothing).toBe(true);
   });

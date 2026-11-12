@@ -4,6 +4,8 @@
  * opening into its names, and the small picture of last year's schedule.
  */
 
+import { setsBesideElectives } from "./engine.shoreshTerms.shoreshTerms.mjs";
+
 // The kinds in the order the tiles show them (the mock-up's order, then the rest).
 const KINDS = [
   ["groups", "Group"],
@@ -25,11 +27,13 @@ const ORDER = [...KINDS.map(([, term]) => term), "Week"];
 /** One tile: the number, and the kind in the camp's words (one or many). */
 function tile(term, names, t) {
   const n = names.length;
+  // A camp's Elective word followed by its sets would read twice the same: "Chug sets".
+  const sets = term === "ElectiveSet" && setsBesideElectives(t, n !== 1);
   return {
     key: term,
     count: n,
-    label: n === 1 ? t.s(term) : t.p(term),
-    spoken: `${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`,
+    label: sets || (n === 1 ? t.s(term) : t.p(term)),
+    spoken: `${n} ${sets || (n === 1 ? t.sIn(term) : t.pIn(term))}`,
     names
   };
 }

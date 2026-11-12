@@ -10,6 +10,7 @@ import getImported from "@salesforce/apex/ImportController.getImported";
 import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
 import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
+import { comingIn } from "../summary";
 import { nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
@@ -1527,5 +1528,24 @@ describe("c-shoresh-import: a narrow window", () => {
   it("a tile grows with its words, never spilling", () => {
     expect(rule(".tile")).toMatch(/min-height: var\(--shoresh-tile-h\);/);
     expect(rule(".tile")).not.toMatch(/[^-]height:/);
+  });
+});
+
+describe("the tiles in a camp's words", () => {
+  it("a camp's Elective word followed by its sets: the two tiles never read the same", () => {
+    const chugim = buildTerms([
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+    ]);
+    const tiles = comingIn(
+      {
+        electiveSets: [{ name: "Chugim A" }],
+        offerings: [{ name: "Archery" }, { name: "Drama" }]
+      },
+      chugim
+    );
+    expect(tiles.map((x) => [x.label, x.spoken])).toEqual([
+      ["Chug set", "1 Chug set"],
+      ["Chugim", "2 Chugim"]
+    ]);
   });
 });

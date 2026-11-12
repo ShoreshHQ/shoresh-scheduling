@@ -631,7 +631,7 @@ function setTimeProblems(setup, terms) {
           marks.filter((m) => m[field] === item.Id).map((m) => m[OFF.Week])
         );
         if (weeks.length > 0 && off.size >= weeks.length) {
-          add("runsNoWeek", `Runs in no ${terms.pIn("Week")}.`);
+          add("runsNoWeek", `In no ${terms.sIn("Week")}.`);
         }
         const { groups, span } = whoIsThere(entry, item, itemFields);
         if (

@@ -156,6 +156,15 @@ describe("c-shoresh-camp-labels", () => {
         plural: "Conflicts",
         isCustom: false,
         labelId: null
+      },
+      {
+        term: "Offering",
+        modelSingular: "Offering",
+        modelPlural: "Offerings",
+        singular: "Offering",
+        plural: "Offerings",
+        isCustom: false,
+        labelId: null
       }
     ]);
     campWordsBlockedReason.mockResolvedValue(null);
@@ -169,6 +178,8 @@ describe("c-shoresh-camp-labels", () => {
       "Shoresh wordCamp word"
     );
     expect(input(element, "Conflict", "singular")).toBeNull();
+    // Word walk W2: no screen says "Offering" (the camp's Elective word instead).
+    expect(input(element, "Offering", "singular")).toBeNull();
     expect(input(element, "Version", "singular")).not.toBeNull();
   });
 

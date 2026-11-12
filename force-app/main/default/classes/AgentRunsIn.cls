@@ -82,13 +82,11 @@ public with sharing class AgentRunsIn {
     List<String> said = new List<String>();
     if (weeks != null) {
       AgentRunsInWeeks.tick(weeks, found, put.extras);
+      // "weeks Week 1, Week 3", or "now in no weeks" (never "weeks no weeks").
       said.add(
-        'weeks ' +
-        listed(
-          weeks,
-          asked.get(RUNS_IN),
-          'no ' + found.labels.pluralInSentence('Week')
-        )
+        weeks.isEmpty()
+          ? 'now in no ' + found.labels.pluralInSentence('Week')
+          : 'weeks ' + listed(weeks, asked.get(RUNS_IN), '')
       );
     }
     if (who != null) {

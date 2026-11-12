@@ -540,7 +540,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     inDialog(element, '[data-key="k1"]').click();
     await flush();
     expect(inDialog(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again, so nothing was updated."
+      "Something changed while you looked, so nothing was updated."
     );
     expect(rowsIn(element)).toHaveLength(1);
   });
@@ -743,7 +743,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(dialog(element)).toBeNull();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again, so nothing was updated. Week 1 matches setup now."
+      "Something changed while you looked, so nothing was updated. Week 1 matches setup now."
     );
   });
 

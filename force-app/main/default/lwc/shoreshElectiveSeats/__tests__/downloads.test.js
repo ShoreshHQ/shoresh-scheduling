@@ -253,7 +253,7 @@ describe("the full report", () => {
   });
 });
 
-describe("campers: to edit and bring back", () => {
+describe("campers: to edit and import again", () => {
   it("is laid out as Bring in choices reads it: a row per choice, no rank for no order", () => {
     const rows = campersRows(reading());
     expect(rows[0]).toEqual([

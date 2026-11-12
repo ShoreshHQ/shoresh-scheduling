@@ -756,10 +756,15 @@ describe("Finalize, Final, and a new version", () => {
       view: assignedView({ scheduleChanged: true })
     });
     // Greg's picks (2026-11-12): Changed since, and what changed is the menu's first line.
+    // A draft always says Draft.
+    const state = $(element, 'c-shoresh-rail-pop[data-id="state"]');
     expect(
       popButton(element, "state").textContent.replace(/\s+/g, " ").trim()
-    ).toBe("Changed since");
-    expect($(element, 'c-shoresh-rail-pop[data-id="state"]').mark).toBe(true);
+    ).toBe("Draft · Changed since");
+    expect(state.mark).toBe(true);
+    expect(text(state.querySelector('[data-id="state-note"]'))).toBe(
+      "Schedule changed since seats were assigned"
+    );
     finalizeRun.mockRejectedValue({
       body: { message: "Schedule changed. Assign again first." }
     });

@@ -230,6 +230,11 @@ private class AgentElectivesRestTest {
         ((String) read[1]).contains('seen: ' + stamp),
         String.valueOf(read[1])
       );
+      // Said as a person says it: never "1 draft or final (1 final)".
+      Assert.isTrue(
+        ((String) read[1]).contains(' seats, 1 set of seats, final'),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(1, runsAfterRefused, 'nothing cleared when refused');

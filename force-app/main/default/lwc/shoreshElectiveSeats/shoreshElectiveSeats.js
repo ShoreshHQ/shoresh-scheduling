@@ -43,6 +43,7 @@ const MEMO = new WeakMap();
 const COMMITTED = "Committed";
 // What people see for a run being worked on (stored as Committed): Greg's pick, 2026-11-12.
 const DRAFT = "Draft";
+const CHANGED = "Changed since";
 const FINAL = "Final";
 const ROSTER_HEADING = '[data-id="roster-heading"]';
 const PRIMARY = '[data-id="primary"]';
@@ -530,13 +531,14 @@ export default class ShoreshElectiveSeats extends LightningElement {
   /**
    * "Draft", "Final · Oct 14 · Greg", or "Changed since" (said on the seats' own screen; what
    * changed is the menu's first line). Greg's picks, 2026-11-12: Draft, never "Committed"; one
-   * "Changed since" for something that changed after.
+   * "Changed since" for something that changed after. A draft always says Draft: "Draft ·
+   * Changed since".
    */
   get stateLabel() {
     if (!this.view) return "";
-    if (this.view.scheduleChanged) return "Changed since";
-    if (this.isFinal) return `Final · ${this.finalWhen}`;
-    return DRAFT;
+    const changed = this.view.scheduleChanged;
+    if (this.isFinal) return changed ? CHANGED : `Final · ${this.finalWhen}`;
+    return changed ? `${DRAFT} · ${CHANGED}` : DRAFT;
   }
   get stateMark() {
     return !!this.view && this.view.scheduleChanged;
@@ -1026,7 +1028,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       ["print", "Print rosters", ICONS.print, ""],
       ["schedules", "Camper schedules", ICONS.person, ""],
       ["report", "Full report", ICONS.sheet, ""],
-      ["campers", this.t.p("Camper"), ICONS.edit, "to edit and bring back"]
+      ["campers", this.t.p("Camper"), ICONS.edit, "to edit and import again"]
     ].map(([value, label, icon, aside]) => ({
       value,
       label,

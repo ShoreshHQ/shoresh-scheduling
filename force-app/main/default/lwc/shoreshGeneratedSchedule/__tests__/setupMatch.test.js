@@ -456,7 +456,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(inDialog(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again, so nothing was updated."
+      "Something changed while you looked, so nothing was updated."
     );
     expect(rowsIn(element)).toEqual([
       "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole goes here"

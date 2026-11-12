@@ -148,9 +148,9 @@ export function wordsOf(line) {
  * What the counter shows, in its own words, as one object an agent reads (API-1.30): the
  * counter's "29 of 35 placed", whether it needs a look, its dropdown's rows in order, and the
  * lines still shown, each with whether it has an Accept. Sections the dropdown leaves out are
- * left out.
+ * left out. activity: the camp's Activity word, as in a sentence, as the counter says it.
  */
-export function counterWords(m, accepted, groupWords) {
+export function counterWords(m, accepted, groupWords, activity) {
   const lines = checkLines(m, accepted, groupWords);
   const listed = (rows) =>
     rows.map((line) => ({ line: wordsOf(line), can_accept: acceptable(line) }));
@@ -165,7 +165,7 @@ export function counterWords(m, accepted, groupWords) {
     placed: `${m.placed} of ${m.total} placed`,
     needs_a_look: shown,
     still_needed: m.stillNeeded,
-    priorities: priorityRowsOf(m).map((row) => row.words)
+    priorities: priorityRowsOf(m, activity).map((row) => row.words)
   };
   const spread = spreadOf(m);
   if (spread) {
