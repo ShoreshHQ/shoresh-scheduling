@@ -49,7 +49,7 @@ describe("c/shoreshPublish", () => {
     ]);
   });
 
-  it("with the Why list: N of M placed, then its rows counted once, and no counter beside them", () => {
+  it("with the Why list: N of M placed, then the counter's own counts, and no counter beside them", () => {
     const row = { text: "x" };
     expect(
       problemLines(
@@ -65,13 +65,14 @@ describe("c/shoreshPublish", () => {
         undefined,
         {
           open: [row],
-          under: { rows: [row, row] },
-          over: { rows: [] },
+          // Two activities short, 5 sessions in all: the counter says "5 under".
+          under: { count: 5, rows: [row, row] },
+          over: { count: 0, rows: [] },
           look: [row],
           notes: [row]
         }
       )
-    ).toEqual(["7 of 10 placed", "To look at: 5"]);
+    ).toEqual(["7 of 10 placed", "5 under", "1 to look at", "1 note"]);
   });
 
   it("says one in the singular", () => {

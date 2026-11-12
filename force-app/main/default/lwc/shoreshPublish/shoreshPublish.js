@@ -65,8 +65,8 @@ function changeWords(preview, t) {
  * What is still to do: "N of M placed" while cells are still Open, then what the Why list shows; without
  * the list, the counters instead (each line only when it is above 0). counts: what the counters count now
  * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
- * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it: every row in it
- * is counted ("To look at: 5"), accepted or not. Without it, the placements the check flags are
+ * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it, counted as its
+ * headings count, accepted or not ("5 under", "2 over", "4 to look at", "1 note"). Without it, the placements the check flags are
  * ("2 activities need a look."). t: the camp's words (c/shoreshTerms).
  */
 export function problemLines(checked, counts, t = buildTerms([]), measure) {
@@ -78,18 +78,27 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   if (total > filled) {
     lines.push(`${filled} of ${total} placed`);
   }
-  const rows = measure
-    ? (measure.open || []).length +
-      measure.under.rows.length +
-      measure.over.rows.length +
-      measure.look.length +
-      (measure.notes || []).length
-    : 0;
+  // As the counter says them beside the button ("5 under", "2 over", "4 to look at", "1 note"),
+  // with its own numbers: under and over count sessions, as its headings do (UX pass finding
+  // 15). Open cells are the "N of M placed" line above.
+  const under = measure ? measure.under.count : 0;
+  const over = measure ? measure.over.count : 0;
+  const look = measure ? measure.look.length : 0;
+  const notes = measure ? (measure.notes || []).length : 0;
   // Without the list: every placement the check flags (over its weekly limit, not set up for a
   // bunk, twice in a day, overlapping...): some have no counter of their own.
   const dotted = !measure && checked.flags ? checked.flags.size : 0;
-  if (rows > 0) {
-    lines.push(`To look at: ${rows}`);
+  if (under > 0) {
+    lines.push(`${under} under`);
+  }
+  if (over > 0) {
+    lines.push(`${over} over`);
+  }
+  if (look > 0) {
+    lines.push(`${look} to look at`);
+  }
+  if (notes > 0) {
+    lines.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
   }
   if (dotted > 0) {
     lines.push(

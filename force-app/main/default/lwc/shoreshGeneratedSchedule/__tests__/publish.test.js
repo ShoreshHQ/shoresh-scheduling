@@ -303,8 +303,8 @@ describe("Publish on the Generated Schedule screen", () => {
     const element = await render(cleanWeek({ maxSwim: 0 }));
     previewPublish.mockResolvedValue(preview());
     await clickPublish(element);
-    // Swim's over row and its session past the limit: two rows in the Why list.
-    expect(ask(element).lines).toEqual(["To look at: 2"]);
+    // Swim's over row and its session past the limit, in the counter's words.
+    expect(ask(element).lines).toEqual(["1 over", "1 to look at"]);
     publish.mockResolvedValue({ published: PUBLISHED });
     await answer(ask(element), true);
     expect(publish).toHaveBeenCalledTimes(1);
