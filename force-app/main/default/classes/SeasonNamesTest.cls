@@ -53,6 +53,44 @@ private class SeasonNamesTest {
     }
   }
 
+  // WEEK-1.8
+  @IsTest
+  static void aSeasonNameTakenInTheCampIsRefused() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Camp__c other = ShoreshTestData.camp('Camp Cedar');
+    User scheduler = ShoreshTestData.scheduler();
+    System.runAs(scheduler) {
+      Id first = SeasonSetupController.saveRecords(
+        new List<SObject>{ newSeason(camp.Id, 'Summer 2026') }
+      )[0];
+      Test.startTest();
+      String refusal;
+      try {
+        SeasonSetupController.saveRecords(
+          new List<SObject>{ newSeason(camp.Id, ' summer 2026 ') }
+        );
+      } catch (AuraHandledException e) {
+        refusal = e.getMessage();
+      }
+      // Another camp may use the name; a season may keep its own.
+      SeasonSetupController.saveRecords(
+        new List<SObject>{ newSeason(other.Id, 'Summer 2026') }
+      );
+      SeasonSetupController.saveRecords(
+        new List<SObject>{ new Season__c(Id = first, Name = 'SUMMER 2026') }
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        'There is already a season called "summer 2026".',
+        refusal
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Season__c WHERE Camp__c = :camp.Id]
+      );
+    }
+  }
+
   private static Season__c newSeason(Id campId, String name) {
     return new Season__c(
       Name = name,
