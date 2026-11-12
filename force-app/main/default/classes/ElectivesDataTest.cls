@@ -491,7 +491,7 @@ private class ElectivesDataTest {
         week
       );
       Assert.isTrue(bunk.contains('"Chugim · Week 1"'), bunk);
-      Assert.isTrue(block.contains('a period of "Archery double"'), block);
+      Assert.isTrue(block.contains('a time block of "Archery double"'), block);
       Assert.isTrue(block.contains('"Chugim · Week 1"'), block);
       Assert.isTrue(division.contains('named by "Archery double"'), division);
       Assert.isTrue(used <= 12, 'Queries for one refusal: ' + used);
