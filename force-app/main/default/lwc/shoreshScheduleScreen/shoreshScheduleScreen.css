@@ -80,7 +80,7 @@
 /* A quiet line under the rail with its Undo ("Started Week 1 over · Undo"), as the week
    editor's "Cleared Week 1 · Undo". */
 .notice {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
 }

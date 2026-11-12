@@ -504,6 +504,43 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(setUpWith).toHaveBeenCalledWith({ kind: "T", name: "Zoo trip" });
   });
 
+  // Greg 2026-11-12: a message never moves the screen.
+  it("keeps every message on the one message row, which is there with no message", async () => {
+    const setUpWith = jest
+      .fn()
+      .mockResolvedValue('"Color War" is set up as a special event.');
+    const noted = { kind: "S", id: "", name: "Color War", gone: false };
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith
+    });
+    const row = q(element, '[data-id="messages"]');
+    expect(row).not.toBeNull();
+    expect(row.children.length).toBe(1); // only the host's status slot
+    const editGrid = q(element, '[data-id="edit-grid"]');
+    expect(row.compareDocumentPosition(editGrid)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    expect(q(element, '[data-id="set-up-offer"]').parentNode).toBe(row);
+    q(element, '[data-id="set-up"]').click();
+    await flush();
+    expect(q(element, '[data-id="notice"]').parentNode).toBe(row);
+    expect(q(element, '[data-id="messages"]')).toBe(row);
+  });
+
+  it("holds the message row one line high, its lines with no margin of their own", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "..", "shoreshWeekEditor.css"),
+      "utf8"
+    );
+    const rule = (selector) =>
+      css.match(
+        new RegExp(`\\n${selector.replace(".", "\\.")} \\{([^}]*)\\}`)
+      )[1];
+    expect(rule(".messages")).toMatch(/min-height: 32px;/);
+    expect(rule(".notice")).toMatch(/margin: 0;/);
+  });
+
   it("lets the offer go once a noted special day is set up and replaces its day", async () => {
     const noted = { kind: "D", id: "", name: "Visiting Day", gone: false };
     const mondayVisit = {

@@ -212,41 +212,45 @@
          column; with many bunks they scroll sideways together. -->
     <div class="below">
       <div class="work" style={sheetStyle}>
-        <template lwc:if={toolNoticeText}>
-          <p class="notice" data-id="tool-notice">
-            <span>{toolNoticeText} ·</span>
-            <button
-              type="button"
-              class="slds-button tool-undo"
-              data-id="tool-undo"
-              aria-label={toolUndoLabel}
-              onclick={handleToolUndo}
-            >
-              Undo
-            </button>
-          </p>
-        </template>
-        <template lwc:if={notice}>
-          <p class="notice" data-id="notice">{notice}</p>
-        </template>
-        <!-- A cell noted from a file as a special event or day: one click sets it up. -->
-        <template lwc:if={setUpOffer}>
-          <p class="notice" data-id="set-up-offer">
-            <span>{setUpOffer.text} ·</span>
-            <button
-              type="button"
-              class="slds-button tool-undo"
-              data-id="set-up"
-              aria-label={setUpOffer.label}
-              aria-disabled={settingUp}
-              onmousedown={handleKeepFocus}
-              onclick={handleSetUp}
-            >
-              Set it up
-            </button>
-          </p>
-        </template>
-        <slot name="status"></slot>
+        <!-- The message row (Greg 2026-11-12: a message never moves the screen): always there,
+             one line high, so a message coming or going leaves the grid where it is. -->
+        <div class="messages" data-id="messages">
+          <template lwc:if={toolNoticeText}>
+            <p class="notice" data-id="tool-notice">
+              <span>{toolNoticeText} ·</span>
+              <button
+                type="button"
+                class="slds-button tool-undo"
+                data-id="tool-undo"
+                aria-label={toolUndoLabel}
+                onclick={handleToolUndo}
+              >
+                Undo
+              </button>
+            </p>
+          </template>
+          <template lwc:if={notice}>
+            <p class="notice" data-id="notice">{notice}</p>
+          </template>
+          <!-- A cell noted from a file as a special event or day: one click sets it up. -->
+          <template lwc:if={setUpOffer}>
+            <p class="notice" data-id="set-up-offer">
+              <span>{setUpOffer.text} ·</span>
+              <button
+                type="button"
+                class="slds-button tool-undo"
+                data-id="set-up"
+                aria-label={setUpOffer.label}
+                aria-disabled={settingUp}
+                onmousedown={handleKeepFocus}
+                onclick={handleSetUp}
+              >
+                Set it up
+              </button>
+            </p>
+          </template>
+          <slot name="status"></slot>
+        </div>
 
         <div class="slds-assistive-text" aria-live="polite" data-id="announce">
           {announcement}
