@@ -711,11 +711,10 @@ describe("c-shoresh-camp-setup: Electives", () => {
       'c-shoresh-editable-table[data-id="elective-sets"]'
     );
     expect(sets.emptyMessage).toBe("No elective sets yet");
+    // CORE-6.13: no "0 elective sets" beside "No elective sets yet".
     expect(
       q(element, '[data-screen="electives"] [data-id="count"]')
-        .textContent.replace(/\s+/g, " ")
-        .trim()
-    ).toBe("0 elective sets");
+    ).toBeNull();
   });
 
   it("the rail has Import a list and Download this list for the offerings (plan §6.2)", async () => {
