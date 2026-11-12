@@ -5,6 +5,10 @@
  */
 public with sharing class PlanPartTriggerHandler {
   public static void beforeSave(List<PlanPart__c> parts) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (parts == null) {
+      return;
+    }
     Set<Id> ownerIds = new Set<Id>();
     Set<Id> seasonIds = new Set<Id>();
     for (PlanPart__c part : parts) {

@@ -3,6 +3,7 @@ trigger ElectiveSetTrigger on ElectiveSet__c(
   before update,
   before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   ElectiveSetupTriggers.handleSets(
     Trigger.operationType,
     Trigger.new,

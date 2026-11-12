@@ -4,6 +4,10 @@
  */
 public with sharing class LocationTypeTriggerHandler {
   public static void beforeSave(List<LocationType__c> types) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (types == null) {
+      return;
+    }
     Set<Id> seasonIds = new Set<Id>();
     Set<Id> savingIds = new Set<Id>();
     for (LocationType__c type : types) {

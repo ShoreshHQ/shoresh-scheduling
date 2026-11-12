@@ -5,6 +5,7 @@ trigger ScheduleTrigger on Schedule__c(
   after delete,
   after undelete
 ) {
+  ArchivedSeasons.refuseChanges();
   ScheduleTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

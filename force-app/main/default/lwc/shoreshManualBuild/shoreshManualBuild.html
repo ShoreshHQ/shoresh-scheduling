@@ -2,6 +2,7 @@
   <div class="schedules" data-id="manual-build">
     <c-shoresh-week-editor
       data-id="week-editor"
+      read-only={readOnly}
       set-up-with={setUpWith}
       take-off-with={takeOffWith}
       onopenspecial={handleOpenSpecial}
@@ -65,7 +66,7 @@
           data-id="counter"
         ></c-shoresh-week-checks>
       </template>
-      <template lwc:if={draft}>
+      <template lwc:if={showVersions}>
         <c-shoresh-versions
           slot="end"
           restore

@@ -142,7 +142,7 @@ private class DeleteProtectionTest {
 
     Assert.isFalse(result.isSuccess());
     Assert.areEqual(
-      '"Summer 2026" has Final schedules, which are kept as history, so this season can\'t be deleted. Mark it Finished instead.',
+      '"Summer 2026" has Final schedules, which are kept as history, so this season can\'t be deleted. Archive it instead.',
       result.getErrors()[0].getMessage()
     );
     Assert.areEqual(

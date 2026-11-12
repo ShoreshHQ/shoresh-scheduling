@@ -462,6 +462,12 @@
   display: none;
 }
 
+/* Read only (an archived season): the weeks stay in words; there is no strip to show. */
+.row_read:hover .weeks-text,
+.row_read:focus-within .weeks-text {
+  display: inline;
+}
+
 /* Days as a strip (Programs' "Runs on"): the ticks always, never the words. */
 .days_strip .days-text {
   display: none;

@@ -25,6 +25,10 @@ public with sharing class OutsideOwned {
     List<Camper__c> campers,
     Map<Id, Camper__c> before
   ) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (campers == null) {
+      return;
+    }
     refuseRenames(campers, before);
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
@@ -107,6 +111,10 @@ public with sharing class OutsideOwned {
     List<Preference__c> rows,
     Map<Id, Preference__c> before
   ) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (rows == null) {
+      return;
+    }
     if (before == null || bringingIn) {
       return;
     }

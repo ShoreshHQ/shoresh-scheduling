@@ -3,6 +3,7 @@ trigger OfferingTrigger on Offering__c(
   before update,
   before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   ElectiveSetupTriggers.handleOfferings(
     Trigger.operationType,
     Trigger.new,

@@ -3960,3 +3960,71 @@ function seeded(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+// WEEK-1.10 (ADR 0029): an archived season's tables are read, not changed, and look it.
+describe("read only (an archived season)", () => {
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+  });
+
+  const DAYS = {
+    fieldName: "Days__c",
+    label: "Days",
+    type: "days",
+    every: "Every day",
+    none: "No days",
+    days: ["Monday", "Tuesday"].map((day) => ({
+      fieldName: nsName(`${day}__c`),
+      label: day
+    }))
+  };
+
+  it("WEEK-1.10: shows every value as words, with no blank row, boxes, ticks, Delete or guesses", async () => {
+    const element = render({
+      readOnly: true,
+      columns: [...COLUMNS, DAYS],
+      rows: ROWS.map((row) => ({
+        ...row,
+        Monday__c: true,
+        Tuesday__c: false
+      })),
+      weeks: [{ Id: "w1", Name: "Week 1" }],
+      weeksHeading: "Runs in",
+      guesses: { a1: { Name: "Guessed from your file" } },
+      rowActions: { a1: [{ key: "fix", label: "Fix", changes: {} }] },
+      notesHeading: "Notes"
+    });
+    await flush();
+    const root = element.shadowRoot;
+    expect(rows(element)).toHaveLength(2);
+    expect(root.querySelector('[data-id="add"]')).toBeNull();
+    expect(
+      root.querySelectorAll(
+        "lightning-input, lightning-combobox, c-shoresh-name-pick, input, c-shoresh-guess-mark"
+      )
+    ).toHaveLength(0);
+    expect(root.querySelector('[data-id="delete"]')).toBeNull();
+    expect(root.querySelector('[data-id="row-action"]')).toBeNull();
+    expect(root.querySelector('[data-id="week-strip"]')).toBeNull();
+    const first = [
+      ...rows(element)[0].querySelectorAll('[data-id="readonly"]')
+    ].map((cell) => cell.textContent.trim());
+    expect(first).toEqual(["Period 1", "9:00 AM", "No", "Morning", "Mon"]);
+    expect(
+      rows(element)[1].querySelector('[data-id="weeks-text"]').textContent
+    ).toBeTruthy();
+    await expect(element).toBeAccessible();
+  });
+
+  it("WEEK-1.10: the same table not read only still takes changes", async () => {
+    const element = render({ columns: COLUMNS, rows: ROWS });
+    await flush();
+    expect(rows(element)).toHaveLength(3);
+    expect(element.shadowRoot.querySelector('[data-id="add"]')).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelectorAll('[data-id="delete"]')
+    ).toHaveLength(2);
+  });
+});

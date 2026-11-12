@@ -15,6 +15,8 @@ import putWeeksBack from "@salesforce/apex/SeasonSetupController.putWeeksBack";
 import setUpNamed from "@salesforce/apex/SpecialPlacingController.setUpNamed";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
+import archiveSeason from "@salesforce/apex/SeasonArchive.archive";
+import bringBackSeason from "@salesforce/apex/SeasonArchive.bringBack";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
@@ -463,10 +465,12 @@ export default class ShoreshCampSetup extends LightningElement {
     this.termLabels = await getLabels({ campId: this.campId });
     this.seasons = await getSeasons({ campId: this.campId });
     const keep = selectSeasonId || this.seasonId;
+    // WEEK-1.11: the season shown stays, archived or not; the one chosen for you never is archived.
+    const live = this.seasons.find((s) => !s[SEASON.Archived]);
     this.seasonId = this.seasons.some((s) => s.Id === keep)
       ? keep
-      : this.seasons.length
-        ? this.seasons[0].Id
+      : live
+        ? live.Id
         : null;
     this.mode = this.seasonId ? "screens" : "newSeason";
     if (this.mode === "newSeason") {
@@ -695,8 +699,9 @@ export default class ShoreshCampSetup extends LightningElement {
   get menu() {
     const marks = { ...menuMarks(this.setup) };
     // Generated Schedule and Manual Build carry the setup-changed dot while their week can be
-    // updated to match setup, so it is seen without scrolling to the menu's foot.
-    if (this.setup) {
+    // updated to match setup, so it is seen without scrolling to the menu's foot. An archived
+    // season's week isn't updated (WEEK-1.10).
+    if (this.setup && this.editable) {
       for (const screen of ["generatedSchedule", "manualBuild"]) {
         if (this.setupStates[screen] && this.setupStates[screen].changed) {
           marks[screen] = "changed";
@@ -1136,7 +1141,7 @@ export default class ShoreshCampSetup extends LightningElement {
     return (this.currentScreen && this.setupStates[this.currentScreen]) || {};
   }
   get menuSetupChanged() {
-    return !!this.shownSetupState.changed;
+    return this.editable && !!this.shownSetupState.changed;
   }
   get menuSetupBusy() {
     return !!this.shownSetupState.busy;
@@ -1185,7 +1190,39 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.camps.length > 1;
   }
   get hasSeasons() {
-    return this.seasons.length > 0;
+    return this.seasonOptions.length > 0;
+  }
+  /** WEEK-1.10: the season shown is archived (read-only, brought back from Season actions). */
+  get isArchived() {
+    const season = this.seasons.find((s) => s.Id === this.seasonId);
+    return !!(season && season[SEASON.Archived]);
+  }
+  /**
+   * WEEK-1.10 (ADR 0029): an archived season's screens are read-only, and look it. Every screen of
+   * the season is told (read-only), so it shows its views and downloads but no edit controls; the
+   * saves' own refusal (ArchivedSeasons) stays the safety net.
+   */
+  get readOnly() {
+    return this.isArchived;
+  }
+  get editable() {
+    return !this.isArchived;
+  }
+  /** The pencil opens the season's own form, which an archived season doesn't take. */
+  get canEditSeason() {
+    return !!this.setup && !this.isArchived;
+  }
+  /** WEEK-1.11: archived seasons, opened from Season actions rather than the picker. */
+  get archivedSeasons() {
+    return this.seasons
+      .filter((s) => s[SEASON.Archived])
+      .map((s) => ({ id: s.Id, name: s.Name, value: `open:${s.Id}` }));
+  }
+  get hasArchivedSeasons() {
+    return this.archivedSeasons.length > 0;
+  }
+  get bringBackLabel() {
+    return `Bring back ${this.seasonName}`;
   }
   get campName() {
     const camp = this.camps.find((c) => c.Id === this.campId);
@@ -1199,8 +1236,11 @@ export default class ShoreshCampSetup extends LightningElement {
   get campOptions() {
     return this.camps.map((c) => ({ label: c.Name, value: c.Id }));
   }
+  /** WEEK-1.11: the picker lists the seasons not archived, and the one shown. */
   get seasonOptions() {
-    return this.seasons.map((s) => ({ label: s.Name, value: s.Id }));
+    return this.seasons
+      .filter((s) => !s[SEASON.Archived] || s.Id === this.seasonId)
+      .map((s) => ({ label: s.Name, value: s.Id }));
   }
   /** What needs a look, on screens that can be opened (a coming screen's wait with it). */
   get problems() {
@@ -1218,7 +1258,11 @@ export default class ShoreshCampSetup extends LightningElement {
         (problem) =>
           problem.screen === this.currentScreen && !problem.markedInPlace
       )
-      .map((problem) => ({ ...problem, actions: problem.actions || [] }));
+      .map((problem) => ({
+        ...problem,
+        // A fix saves; an archived season takes none (WEEK-1.10).
+        actions: this.readOnly ? [] : problem.actions || []
+      }));
   }
 
   /** A fix offered on a needs-a-look item (a changed fixed or recurring activity): saves it. */
@@ -1238,8 +1282,15 @@ export default class ShoreshCampSetup extends LightningElement {
   get hasNoWeeks() {
     return this.setup && this.setup.weeks.length === 0;
   }
+  get offersFillWeeks() {
+    return this.hasNoWeeks && this.editable;
+  }
+  /** Bringing in choices saves them: not in an archived season (WEEK-1.10). */
+  get offersBringInChoices() {
+    return this.showsBringInChoices && this.editable;
+  }
   get showSeasonForm() {
-    return this.seasonOpen && !!this.setup && this.mode === "screens";
+    return this.seasonOpen && this.canEditSeason && this.mode === "screens";
   }
   get seasonOpenText() {
     return this.showSeasonForm ? "true" : "false";
@@ -2803,6 +2854,10 @@ export default class ShoreshCampSetup extends LightningElement {
     if (this.seasonId !== seasonId) {
       return;
     }
+    if (preview.refusal && preview.archivable) {
+      await this.offerArchive(seasonId, name, preview.refusal);
+      return;
+    }
     if (preview.refusal) {
       this.showError({ body: { message: preview.refusal } }, notDeleted);
       return;
@@ -2827,15 +2882,59 @@ export default class ShoreshCampSetup extends LightningElement {
     }, notDeleted);
   }
 
-  /** The camp row's small menu (step 3b): New season, or Copy this season. */
+  /**
+   * WEEK-1.9: a season with published history isn't deleted; the refusal is the question, and
+   * its button archives the season instead. Archived, the camp opens on another season.
+   */
+  async offerArchive(seasonId, name, refusal) {
+    const ok = await this.askFirst({
+      heading: refusal,
+      lines: [],
+      confirmLabel: `Archive ${name}`
+    });
+    if (!ok) {
+      return;
+    }
+    await this.run(async () => {
+      await archiveSeason({ seasonId });
+      this.changedOnServer = true;
+      this.toast(`Archived "${name}".`);
+      this.seasonId = null;
+      this.seasonOpen = false;
+      this.screen = "roots";
+      await this.loadCamp();
+    }, `"${name}" not archived.`);
+  }
+
+  /** WEEK-1.12: the archived season shown comes back, and stays open. */
+  async bringBack() {
+    const name = this.seasonName;
+    const seasonId = this.seasonId;
+    await this.run(async () => {
+      await bringBackSeason({ seasonId });
+      this.changedOnServer = true;
+      this.toast(`Brought back "${name}".`);
+      await this.loadCamp(seasonId);
+    }, `"${name}" not brought back.`);
+  }
+
+  /**
+   * The camp row's small menu (step 3b): New season, Copy this season, Bring back the archived
+   * season shown, or open an archived season (WEEK-1.11).
+   */
   handleSeasonMenu(event) {
     if (this.busy) {
       return;
     }
-    if (event.detail.value === "new") {
+    const value = event.detail.value;
+    if (value === "new") {
       this.handleStartNewSeason();
-    } else if (event.detail.value === "copy" && this.setup) {
+    } else if (value === "copy" && this.setup) {
       this.handleStartCopy();
+    } else if (value === "bringBack") {
+      this.bringBack();
+    } else if (value.startsWith("open:")) {
+      this.handleSeasonChange({ detail: { value: value.slice(5) } });
     }
   }
 
@@ -2917,6 +3016,10 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** In Settings, each outside system's last batch that stands (API-2.6). */
   get lastFromOutside() {
+    // An archived season changes nothing, so it offers no Undo (ADR 0029 choice 9).
+    if (this.readOnly) {
+      return [];
+    }
     return ((this.setup && this.setup.lastFromOutside) || []).map((last) => ({
       id: last.Id,
       files: last[FIELD.Import.Files],

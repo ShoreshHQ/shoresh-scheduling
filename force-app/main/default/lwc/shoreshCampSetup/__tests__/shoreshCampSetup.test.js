@@ -13,6 +13,8 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
+import archiveSeason from "@salesforce/apex/SeasonArchive.archive";
+import bringBackSeason from "@salesforce/apex/SeasonArchive.bringBack";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
@@ -101,6 +103,12 @@ jest.mock("@salesforce/apex/SeasonSetupController.saveRecords", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/SeasonArchive.archive", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/SeasonArchive.bringBack", () => apex(), {
   virtual: true
 });
 jest.mock(
@@ -5426,5 +5434,178 @@ describe("a reload stays where you were", () => {
       await go("schedules");
       expect(getVersions.mock.calls.length).toBe(versionReads + 1);
     });
+  });
+});
+
+// WEEK-1.9 to WEEK-1.12 (Greg 2026-11-12, design guide §3): a season that was ever published is
+// archived, never deleted; archived, it is out of the picker, opened from Season actions, read
+// only, and brought back.
+describe("an archived season", () => {
+  const OLD = { ...SEASON, Id: "s0", Name: "Summer 2025", Archived__c: true };
+  const LIVE = { ...SEASON, Archived__c: false };
+
+  beforeEach(() => {
+    getLabels.mockResolvedValue(nsRecord(LABELS));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    archiveSeason.mockResolvedValue();
+    bringBackSeason.mockResolvedValue();
+  });
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
+
+  const menuRows = (element) =>
+    [
+      ...element.shadowRoot.querySelectorAll(
+        '[data-id="season-menu"] [role="menuitem"]'
+      )
+    ].map((r) => r.textContent.trim());
+
+  // WEEK-1.9
+  it("WEEK-1.9: Delete season refused for published history offers Archive in its place", async () => {
+    getSeasons.mockResolvedValue(nsRecord([LIVE]));
+    deletePreview.mockResolvedValue({
+      refusal:
+        '"Summer 2026" has published schedules, which are kept as history, so this season can\'t be deleted. Archive it instead.',
+      archivable: true
+    });
+    const element = await render();
+    q(element, '[data-id="edit-season"]').click();
+    await flush();
+    button(element, "Delete season").click();
+    await flush();
+    const ask = q(element, "c-shoresh-ask");
+    expect(ask.heading).toContain("Archive it instead.");
+    expect(ask.heading).not.toContain("Finished");
+    expect(ask.confirmLabel).toBe("Archive Summer 2026");
+    getSeasons.mockResolvedValue(nsRecord([{ ...LIVE, Archived__c: true }]));
+    ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+    await flush();
+    await flush();
+    expect(archiveSeason).toHaveBeenCalledWith({ seasonId: "s1" });
+    expect(deleteRecord).not.toHaveBeenCalled();
+  });
+
+  // WEEK-1.9
+  it("WEEK-1.9: Cancel on the offer archives nothing", async () => {
+    getSeasons.mockResolvedValue(nsRecord([LIVE]));
+    deletePreview.mockResolvedValue({
+      refusal: "Kept as history.",
+      archivable: true
+    });
+    const element = await render();
+    q(element, '[data-id="edit-season"]').click();
+    await flush();
+    button(element, "Delete season").click();
+    await flush();
+    q(element, "c-shoresh-ask").dispatchEvent(
+      new CustomEvent("answer", { detail: { yes: false } })
+    );
+    await flush();
+    expect(archiveSeason).not.toHaveBeenCalled();
+  });
+
+  // WEEK-1.11
+  it("WEEK-1.11: is out of the picker, never opened on by itself, and listed under Archived in Season actions", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
+    const element = await render();
+    const picker = q(element, '[data-id="season-picker"]');
+    expect(picker.value).toBe("s1");
+    expect(picker.options.map((o) => o.label)).toEqual(["Summer 2026"]);
+    expect(menuRows(element)).toEqual([
+      "New season",
+      "Copy this season",
+      "Summer 2025"
+    ]);
+    expect(
+      q(element, '[data-id="archived-seasons"]').getAttribute("aria-label")
+    ).toBe("Archived");
+  });
+
+  // WEEK-1.11
+  it("WEEK-1.11: a camp whose only season is archived opens on no season", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD]));
+    const element = await render();
+    expect(q(element, '[data-id="season-picker"]')).toBeNull();
+    expect(element.shadowRoot.textContent).toContain("Start a new season");
+  });
+
+  // WEEK-1.10, WEEK-1.11
+  it("WEEK-1.10: opened from Season actions, it shows read-only: marked, with no pencil", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
+    const element = await render();
+    await seasonAction(element, "Summer 2025");
+    await flush();
+    expect(getSeasonSetup).toHaveBeenLastCalledWith(
+      expect.objectContaining({ seasonId: "s0" })
+    );
+    expect(q(element, '[data-id="season-picker"]').value).toBe("s0");
+    expect(q(element, '[data-id="archived-mark"]')).not.toBeNull();
+    expect(q(element, '[data-id="edit-season"]')).toBeNull();
+    expect(menuRows(element)).toContain("Copy this season");
+    expect(menuRows(element)).toContain("Bring back Summer 2025");
+    await expect(element).toBeAccessible();
+  });
+
+  // WEEK-1.10 (ADR 0029: read-only must look read-only)
+  it("WEEK-1.10: every screen of an archived season is told it is read-only, and no import or fill is offered", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(setupWith({ season: OLD, weeks: [] }))
+    );
+    const element = await render();
+    await seasonAction(element, "Summer 2025");
+    await flush();
+    const screens = [
+      ...element.shadowRoot.querySelectorAll(
+        "c-shoresh-editable-table, c-shoresh-program, c-shoresh-generated-schedule, c-shoresh-manual-build, c-shoresh-schedules, c-shoresh-roots, c-shoresh-activity-details, c-shoresh-special-details, c-shoresh-special-schedule, c-shoresh-elective-details"
+      )
+    ];
+    expect(screens.length).toBeGreaterThan(5);
+    screens.forEach((screen) => expect(screen.readOnly).toBe(true));
+    expect(
+      element.shadowRoot.querySelectorAll("c-shoresh-list-import")
+    ).toHaveLength(0);
+    expect(q(element, "c-shoresh-import")).toBeNull();
+    expect(q(element, '[data-id="fill-weeks"]')).toBeNull();
+  });
+
+  // WEEK-1.10, WEEK-1.12
+  it("WEEK-1.10: a season not archived is changed as ever: its screens take changes", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ weeks: [] })));
+    const element = await render();
+    const tables = [
+      ...element.shadowRoot.querySelectorAll(
+        "c-shoresh-editable-table, c-shoresh-generated-schedule, c-shoresh-manual-build"
+      )
+    ];
+    expect(tables.length).toBeGreaterThan(0);
+    tables.forEach((screen) => expect(screen.readOnly).toBe(false));
+    expect(
+      element.shadowRoot.querySelectorAll("c-shoresh-list-import").length
+    ).toBeGreaterThan(0);
+    expect(q(element, '[data-id="fill-weeks"]')).not.toBeNull();
+  });
+
+  // WEEK-1.12
+  it("WEEK-1.12: Bring back makes it a season like any other, still open", async () => {
+    getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
+    const element = await render();
+    await seasonAction(element, "Summer 2025");
+    getSeasons.mockResolvedValue(
+      nsRecord([{ ...OLD, Archived__c: false }, LIVE])
+    );
+    await seasonAction(element, "Bring back Summer 2025");
+    await flush();
+    expect(bringBackSeason).toHaveBeenCalledWith({ seasonId: "s0" });
+    expect(q(element, '[data-id="season-picker"]').value).toBe("s0");
+    expect(q(element, '[data-id="archived-mark"]')).toBeNull();
+    expect(q(element, '[data-id="edit-season"]')).not.toBeNull();
   });
 });

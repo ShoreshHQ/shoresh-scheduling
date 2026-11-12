@@ -1,6 +1,7 @@
 <template>
   <template lwc:if={isTimeBlocks}>
     <c-shoresh-editable-table
+      read-only={readOnly}
       data-id="time-blocks"
       title={labels.timeBlocks}
       heading={sectionHeading}
@@ -22,6 +23,7 @@
 
   <template lwc:if={isDivisions}>
     <c-shoresh-editable-table
+      read-only={readOnly}
       data-id="divisions"
       title={labels.divisions}
       heading={sectionHeading}
@@ -43,6 +45,7 @@
   <template lwc:if={isGroups}>
     <template for:each={divisions} for:item="division">
       <c-shoresh-editable-table
+        read-only={readOnly}
         key={division.id}
         data-id="groups"
         title={division.title}
@@ -80,6 +83,7 @@
     <template lwc:if={hasTimeBlocks}>
       <!-- The whole camp's fixed activities: one section (docs/design/setup/fixed.html). -->
       <c-shoresh-editable-table
+        read-only={readOnly}
         data-id="fixed-activities"
         title={labels.fixed}
         heading={fixedHeading}
@@ -128,6 +132,7 @@
            own table over every row (rowFilter), so names and order are the program's. -->
       <template for:each={recurringSections} for:item="section">
         <c-shoresh-editable-table
+          read-only={readOnly}
           key={section.key}
           data-id="recurring-activities"
           data-section={section.key}

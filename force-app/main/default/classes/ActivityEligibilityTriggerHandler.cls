@@ -1,6 +1,13 @@
 /** Who can do an activity: the division or group must belong to the activity's season. */
 public with sharing class ActivityEligibilityTriggerHandler {
   public static void beforeSave(List<ActivityEligibility__c> rows) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (rows != null) {
+      checkSeasons(rows);
+    }
+  }
+
+  private static void checkSeasons(List<ActivityEligibility__c> rows) {
     Set<Id> activityIds = new Set<Id>();
     for (ActivityEligibility__c row : rows) {
       activityIds.add(row.Activity__c);

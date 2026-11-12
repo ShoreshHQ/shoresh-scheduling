@@ -116,6 +116,11 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   LightningElement
 ) {
   @api terms;
+  /**
+   * An archived season's week (WEEK-1.10): shown and looked at, never built, edited, saved as a
+   * version or published. Its editor is read-only too.
+   */
+  @api readOnly = false;
 
   _setup;
   programId;
@@ -585,8 +590,12 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   get isGenerated() {
     return !!(this.loaded && this.loaded.scheduleId);
   }
+  get editable() {
+    return !this.readOnly;
+  }
   get showStart() {
     return (
+      this.editable &&
       this.canChoose &&
       !!this.loaded &&
       !this.isGenerated &&
@@ -605,6 +614,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
    */
   get showStillNeeded() {
     return (
+      this.editable &&
       this.canChoose &&
       !!this.loaded &&
       !this.loading &&
@@ -1058,7 +1068,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   /** "Started Week 1 over", while Undo would take it back: the week is still as it left it. */
   get startedOverText() {
     const started = this.startedOver;
-    return started &&
+    return this.editable &&
+      started &&
       this.loaded &&
       this.loaded.revision === started.revision &&
       !this.busy &&

@@ -125,6 +125,13 @@
   flex: none;
 }
 
+/* WEEK-1.10: an archived season's mark (a closed box) where its pencil would be, in the
+   secondary words: it is looked at, not edited. */
+.season-archived {
+  margin: 0 var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+}
+
 /* A bare tool (ADR 0015 choice 12): the rail's item, in the secondary words at rest, the
    highlight under the pointer and with keyboard focus. No other hue. */
 .shoresh-item_tool:hover:not(:disabled),

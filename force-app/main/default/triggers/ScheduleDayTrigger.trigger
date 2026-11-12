@@ -6,6 +6,7 @@ trigger ScheduleDayTrigger on ScheduleDay__c(
   after update,
   after delete
 ) {
+  ArchivedSeasons.refuseChanges();
   ScheduleDayTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

@@ -22,7 +22,14 @@ global with sharing class AgentDeleteSeason implements AgentWeeks.Action, AgentA
     AgentAskFirst.stateIs(found.id);
     SetupDelete.Preview asked = SetupDelete.preview(found.id);
     if (asked.refusal != null) {
-      throw notDeleted(asked.refusal);
+      // WEEK-1.9: as the screen offers Archive in the refusal's place, the AI hears it can be
+      // archived (a choice for the person, not a way around the refusal: API-1.105).
+      throw notDeleted(
+        asked.refusal +
+        (asked.archivable
+          ? ' It can be archived instead (archive_season).'
+          : '')
+      );
     }
     return asked.message;
   }

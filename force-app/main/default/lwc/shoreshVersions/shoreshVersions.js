@@ -45,6 +45,9 @@ export default class ShoreshVersions extends LightningElement {
   @api noDraft = false;
   @api announceWith;
   @api applyLabel;
+  // An archived season (WEEK-1.10): versions are opened and looked at, never renamed, saved,
+  // deleted or applied to other weeks.
+  @api readOnly = false;
 
   isOpen = false;
   renamingId;
@@ -171,7 +174,8 @@ export default class ShoreshVersions extends LightningElement {
         meta: showSaved ? `${meta} · ` : meta,
         showSaved,
         // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
-        deletable: this.restore && !this.noDraft && canDelete(version),
+        deletable:
+          this.restore && !this.noDraft && !this.readOnly && canDelete(version),
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "Delete",
@@ -194,7 +198,13 @@ export default class ShoreshVersions extends LightningElement {
     return this.restore && this.busy;
   }
   get canSave() {
-    return this.restore && !this.noDraft;
+    return this.restore && !this.noDraft && !this.readOnly;
+  }
+  get editable() {
+    return !this.readOnly;
+  }
+  get showsApply() {
+    return !!this.applyLabel && !this.readOnly;
   }
   get versionWord() {
     return this.terms ? this.terms.sIn("Version") : "version";

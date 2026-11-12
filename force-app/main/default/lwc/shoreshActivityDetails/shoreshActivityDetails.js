@@ -92,6 +92,8 @@ const SAME = "same";
 export default class ShoreshActivityDetails extends LightningElement {
   @api terms;
   @api busy = false;
+  /** An archived season (WEEK-1.10): the fields show their values and take no changes. */
+  @api readOnly = false;
 
   activityId;
   draft;

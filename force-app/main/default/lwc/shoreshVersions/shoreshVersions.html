@@ -67,16 +67,18 @@
                 <template lwc:if={row.onScreen}>
                   <span class="on-screen">on screen now</span>
                 </template>
-                <button
-                  type="button"
-                  class="link link_quiet"
-                  data-id={row.id}
-                  data-action="rename"
-                  aria-label={row.renameName}
-                  onclick={handleStartRename}
-                >
-                  Rename
-                </button>
+                <template lwc:if={editable}>
+                  <button
+                    type="button"
+                    class="link link_quiet"
+                    data-id={row.id}
+                    data-action="rename"
+                    aria-label={row.renameName}
+                    onclick={handleStartRename}
+                  >
+                    Rename
+                  </button>
+                </template>
                 <template lwc:if={row.deletable}>
                   <button
                     type="button"
@@ -106,7 +108,7 @@
             </div>
           </template>
         </div>
-        <template lwc:if={applyLabel}>
+        <template lwc:if={showsApply}>
           <div class="panel-foot">
             <button
               type="button"

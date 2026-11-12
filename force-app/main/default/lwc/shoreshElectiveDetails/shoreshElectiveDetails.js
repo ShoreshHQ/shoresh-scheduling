@@ -92,6 +92,8 @@ export function withPending(choice, edits) {
  */
 export default class ShoreshElectiveDetails extends LightningElement {
   @api terms;
+  /** An archived season (WEEK-1.10): its linked choices shown, none added, changed or deleted. */
+  @api readOnly = false;
 
   offeringId = null;
   _setup;
@@ -331,6 +333,10 @@ export default class ShoreshElectiveDetails extends LightningElement {
     return this.placesRead && this.places.cells.length > 0 && !this.draft;
   }
 
+  get editable() {
+    return !this.readOnly;
+  }
+
   get addDisabled() {
     return !this.canAdd;
   }
@@ -338,7 +344,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
   // Word walk W4: a set on no schedule shows as an unavailable + button, with no instruction
   // ("Place Chugim on a schedule first").
   get hasNote() {
-    return this.placesIncomplete;
+    return !this.readOnly && this.placesIncomplete;
   }
 
   /** Each linked choice of the offering (and the one being made), as the template draws it. */
@@ -410,7 +416,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
             shown: sits || ticked || this.pressed.has(`${key}|${k}`),
             ticked,
             pressed: ticked ? "true" : "false",
-            disabled: !!sending,
+            disabled: !!sending || this.readOnly,
             className: ticked ? "period period_on" : "period",
             label: words,
             look: null
@@ -443,6 +449,7 @@ export default class ShoreshElectiveDetails extends LightningElement {
       // Its periods read from a double period in last year's file (slice E9): marked for a look.
       periodsGuess:
         !isDraft &&
+        !this.readOnly &&
         ((this._setup && this._setup.guesses) || []).some(
           (g) => g.recordId === choice.id && g.field === "periods"
         )
@@ -468,7 +475,8 @@ export default class ShoreshElectiveDetails extends LightningElement {
           : `Only these ${this.term("pIn", "Division", "divisions")}`,
       divisionOptions: this.divisionOptionsFor(named, names),
       divisionValue: named,
-      disabled: !!sending,
+      disabled: !!sending || this.readOnly,
+      editable: !this.readOnly,
       deleteText: isDraft ? "Cancel" : "Delete",
       deleteLabel: isDraft
         ? `Don't add this ${this.term("sIn", "LinkedChoice", "linked choice")}`

@@ -69,17 +69,20 @@ global with sharing class AgentSeasons {
     }
     List<Object> seasons = new List<Object>();
     for (Season__c season : seen) {
-      seasons.add(
-        new Map<String, Object>{
-          'season' => season.Name,
-          'camp' => season.Camp__r.Name,
-          'start_date' => season.StartDate__c,
-          'end_date' => season.EndDate__c,
-          'short_week' => shortWeekOf(season),
-          'weeks' => weeks.get(season.Id),
-          'programs' => programs.get(season.Id)
-        }
-      );
+      Map<String, Object> said = new Map<String, Object>{
+        'season' => season.Name,
+        'camp' => season.Camp__r.Name,
+        'start_date' => season.StartDate__c,
+        'end_date' => season.EndDate__c,
+        'short_week' => shortWeekOf(season),
+        'weeks' => weeks.get(season.Id),
+        'programs' => programs.get(season.Id)
+      };
+      // WEEK-1.11: an archived season is listed, marked, and read-only.
+      if (season.Archived__c) {
+        said.put('archived', true);
+      }
+      seasons.add(said);
     }
     String opensOn;
     try {

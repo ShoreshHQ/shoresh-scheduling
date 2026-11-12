@@ -318,7 +318,7 @@ private class SetupDeleteTest {
   // API-1.141: a season with published history is refused before its question (the screen's
   // preview), in the camp's words, with what to do instead; nothing is asked about or deleted.
   @IsTest
-  static void aSeasonWithPublishedHistoryIsRefusedWithMarkItFinished() {
+  static void aSeasonWithPublishedHistoryIsRefusedOfferingArchive() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       String name = [
@@ -335,7 +335,7 @@ private class SetupDeleteTest {
       Assert.areEqual(
         '"' +
           name +
-          '" has published schedules, which are kept as history, so this season can\'t be deleted. Mark it Finished instead.',
+          '" has published schedules, which are kept as history, so this season can\'t be deleted. Archive it instead.',
         preview.refusal
       );
       Assert.isNull(preview.message);

@@ -87,7 +87,8 @@ public with sharing class OutgoingRows {
         Camp__r.Name,
         StartDate__c,
         EndDate__c,
-        ShrinkShortWeek__c
+        ShrinkShortWeek__c,
+        Archived__c
       FROM Season__c
       WHERE Id IN :ids
       WITH SYSTEM_MODE
@@ -109,8 +110,11 @@ public with sharing class OutgoingRows {
     }
     List<String> names = new List<String>();
     for (Season__c season : seen) {
+      // WEEK-1.11: an archived season is still named, said as archived.
       names.add(
-        season.Name + (camps.size() > 1 ? ' (' + season.Camp__r.Name + ')' : '')
+        season.Name +
+          (camps.size() > 1 ? ' (' + season.Camp__r.Name + ')' : '') +
+          (season.Archived__c ? ' (archived)' : '')
       );
     }
     return names.isEmpty()

@@ -9,6 +9,12 @@ if (camps.isEmpty()) {
 }
 Set<Id> campIds = new Map<Id, Camp__c>(camps).keySet();
 Set<Id> s = new Map<Id, Season__c>([SELECT Id FROM Season__c WHERE Camp__c IN :campIds]).keySet();
+// An archived season refuses every change (ADR 0029): bring it back first, as Bring back does.
+List<Season__c> archived = [SELECT Id FROM Season__c WHERE Id IN :s AND Archived__c = true];
+for (Season__c season : archived) {
+  season.Archived__c = false;
+}
+update archived;
 delete [SELECT Id FROM Assignment__c WHERE ElectiveRun__r.Season__c IN :s];
 delete [SELECT Id FROM Preference__c WHERE ElectiveRun__r.Season__c IN :s];
 delete [SELECT Id FROM ElectiveRun__c WHERE Season__c IN :s];

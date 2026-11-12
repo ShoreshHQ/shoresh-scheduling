@@ -1585,7 +1585,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         history.kind === "refused" &&
           /Nothing was removed/.test(history.text) &&
           /kept as history/.test(history.text) &&
-          !/Mark it Finished/.test(history.text) &&
+          /archived instead \(archive_season\)/.test(history.text) &&
+          !/Archive it instead/.test(history.text) &&
           count("Season__c", `Name = '${season}'`) === 1,
         `${published.text} ${history.text}`
       );

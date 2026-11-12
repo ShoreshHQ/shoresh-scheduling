@@ -1,9 +1,10 @@
 trigger LocationTrigger on Location__c(
-  before delete,
   before insert,
   before update,
+  before delete,
   after update
 ) {
+  ArchivedSeasons.refuseChanges();
   LocationTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

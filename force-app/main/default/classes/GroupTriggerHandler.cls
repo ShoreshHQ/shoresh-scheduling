@@ -8,6 +8,10 @@ public with sharing class GroupTriggerHandler {
     List<Group__c> groups,
     Map<Id, Group__c> before
   ) {
+    // A new group before it is saved: only an archived season is checked here (ArchivedSeasons).
+    if (operation == System.TriggerOperation.BEFORE_INSERT) {
+      return;
+    }
     if (operation == System.TriggerOperation.BEFORE_DELETE) {
       // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
       WeekExceptions.goWith(before.keySet());

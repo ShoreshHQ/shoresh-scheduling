@@ -54,6 +54,8 @@ const RUNS_ON = "Runs on";
 export default class ShoreshProgram extends LightningElement {
   @api terms;
   @api busy = false;
+  /** An archived season (WEEK-1.10): its tables are read, not changed. */
+  @api readOnly = false;
   @api show = "timeBlocks";
   /** The season's weeks and week exceptions, for the groups' "Runs in" ticks. */
   @api weeks = [];

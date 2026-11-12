@@ -53,6 +53,12 @@ public with sharing class SetupDelete {
     /** What really happens, one line each: a season's kinds ("4 Weeks"), or what goes or stays. */
     @AuraEnabled
     public List<String> lines;
+    /**
+     * A season refused for its published history may be archived instead (WEEK-1.9): its Delete
+     * offers Archive in the refusal's place.
+     */
+    @AuraEnabled
+    public Boolean archivable = false;
     /** How many schedules a bunk or activity is in; none counted for anything else. */
     public ScheduleUses.Count uses = new ScheduleUses.Count();
   }
@@ -60,7 +66,9 @@ public with sharing class SetupDelete {
   public static Preview preview(Id recordId) {
     requireDeletable(recordId);
     Preview result = new Preview();
-    result.refusal = InUse.reason(recordId);
+    // WEEK-1.10: nothing in an archived season is deleted, so that is said first.
+    result.refusal = ArchivedSeasons.refusalFor(recordId) ??
+      InUse.reason(recordId);
     Schema.SObjectType kind = recordId.getSObjectType();
     if (kind == Offering__c.SObjectType) {
       return offering(recordId, result);
@@ -106,7 +114,8 @@ public with sharing class SetupDelete {
    */
   public static void remove(Id recordId) {
     requireDeletable(recordId);
-    String inUse = InUse.reason(recordId);
+    String inUse = ArchivedSeasons.refusalFor(recordId) ??
+      InUse.reason(recordId);
     if (inUse != null) {
       throw ScreenErrors.of(inUse);
     }
@@ -143,8 +152,13 @@ public with sharing class SetupDelete {
   /** A season: the question, what goes with it, and published history refusing it. */
   private static Preview season(Id seasonId, Preview result) {
     String name = nameOf(seasonId);
+    if (result.refusal != null) {
+      // Archived (WEEK-1.10): not offered Archive again.
+      return result;
+    }
     result.refusal = PublishedHistory.refusalForSeason(seasonId, name);
     if (result.refusal != null) {
+      result.archivable = true;
       return result;
     }
     result.lines = SeasonContents.of(seasonId);

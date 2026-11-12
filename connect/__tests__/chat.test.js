@@ -53,8 +53,10 @@ describe("Shoresh in an AI chat", () => {
     expect(seen).toEqual([`${V1}seasons`]);
     expect(listed.ok).toBe(true);
     expect(byName("list_seasons").description).toMatch(/opens_on/);
-    // The one exception: deleting a season never goes to the one the screens open on (API-1.141).
-    for (const c of CAPABILITIES.filter((x) => x.name !== "delete_season")) {
+    // The exceptions: deleting, archiving or bringing back a season never goes to the one the
+    // screens open on (API-1.141, API-1.145).
+    const named = ["delete_season", "archive_season", "bring_back_season"];
+    for (const c of CAPABILITIES.filter((x) => !named.includes(x.name))) {
       expect([c.name, c.inputSchema.required ?? []]).not.toEqual([
         c.name,
         expect.arrayContaining(["season"])

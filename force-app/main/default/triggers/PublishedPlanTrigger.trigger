@@ -3,6 +3,7 @@ trigger PublishedPlanTrigger on PublishedPlan__c(
   before update,
   before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   PublishedGuard.checkCarried(
     Trigger.operationType == System.TriggerOperation.BEFORE_DELETE
       ? Trigger.old

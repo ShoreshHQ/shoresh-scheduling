@@ -254,7 +254,7 @@
               </template>
               <!-- Draft: Download shows once seats are Final (word walk W4: no "after
                    Finalize" row); Clear is here. -->
-              <template lwc:if={isCommitted}>
+              <template lwc:if={changeable}>
                 <div class="shoresh-pop-divider" role="separator"></div>
                 <button
                   type="button"
@@ -308,23 +308,25 @@
                     </template>
                   </button>
                 </template>
-                <div class="shoresh-pop-divider" role="separator"></div>
-                <button
-                  type="button"
-                  class="shoresh-pop-row download-row"
-                  role="menuitem"
-                  data-value="clear"
-                  data-id="clear-open"
-                >
-                  <svg
-                    class="shoresh-glyph"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
+                <template lwc:if={editable}>
+                  <div class="shoresh-pop-divider" role="separator"></div>
+                  <button
+                    type="button"
+                    class="shoresh-pop-row download-row"
+                    role="menuitem"
+                    data-value="clear"
+                    data-id="clear-open"
                   >
-                    <path d={trashIcon}></path>
-                  </svg>
-                  <span>Clear at season end…</span>
-                </button>
+                    <svg
+                      class="shoresh-glyph"
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                    >
+                      <path d={trashIcon}></path>
+                    </svg>
+                    <span>Clear at season end…</span>
+                  </button>
+                </template>
               </c-shoresh-rail-pop>
             </template>
             <template lwc:elseif={showsPrimary}>
@@ -541,16 +543,18 @@
               <p key={stray.key} class="notice" data-id="stray">
                 <span class="shoresh-look-mark" aria-hidden="true"></span>
                 <span>{stray.text}</span>
-                <button
-                  type="button"
-                  class="shoresh-item"
-                  aria-label={stray.label}
-                  data-seat={stray.seatId}
-                  disabled={busy}
-                  onclick={handleUnlockStray}
-                >
-                  Unlock
-                </button>
+                <template lwc:if={editable}>
+                  <button
+                    type="button"
+                    class="shoresh-item"
+                    aria-label={stray.label}
+                    data-seat={stray.seatId}
+                    disabled={busy}
+                    onclick={handleUnlockStray}
+                  >
+                    Unlock
+                  </button>
+                </template>
               </p>
             </template>
 
@@ -808,7 +812,7 @@
                   ondragstart={handleDragStart}
                 >
                   <span class="person-name">{person.name}</span>
-                  <template lwc:if={isCommitted}>
+                  <template lwc:if={changeable}>
                     <button
                       type="button"
                       class="lock-button"

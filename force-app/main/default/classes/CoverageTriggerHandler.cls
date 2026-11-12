@@ -14,6 +14,10 @@ public with sharing class CoverageTriggerHandler {
     List<Coverage__c> rows,
     List<Coverage__c> oldRows
   ) {
+    // A delete before it happens: only an archived season is checked here (ArchivedSeasons).
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      return;
+    }
     if (
       operation == System.TriggerOperation.BEFORE_INSERT ||
       operation == System.TriggerOperation.BEFORE_UPDATE

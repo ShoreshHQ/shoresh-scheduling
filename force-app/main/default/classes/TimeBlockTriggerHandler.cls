@@ -13,6 +13,10 @@ public with sharing class TimeBlockTriggerHandler {
     List<TimeBlock__c> blocks,
     Map<Id, TimeBlock__c> before
   ) {
+    // A delete before it happens: only an archived season is checked here (ArchivedSeasons).
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      return;
+    }
     if (
       operation == System.TriggerOperation.BEFORE_INSERT ||
       operation == System.TriggerOperation.BEFORE_UPDATE

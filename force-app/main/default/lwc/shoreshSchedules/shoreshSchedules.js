@@ -51,6 +51,8 @@ const ALL_ACTIVITIES = "all";
  */
 export default class ShoreshSchedules extends LightningElement {
   @api terms;
+  /** An archived season (WEEK-1.10): its versions are looked at and downloaded, not renamed. */
+  @api readOnly = false;
 
   _setup;
   programId;

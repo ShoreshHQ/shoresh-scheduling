@@ -1,5 +1,7 @@
 /**
- * Deleting a season. Refuses a season with published history. Otherwise clears the rows inside
+ * Changing and deleting a season. An archived season takes no change but being brought back, and
+ * is not deleted (WEEK-1.10); which seasons are archived is read again after any season is saved
+ * (ArchivedSeasons). Deleting refuses a season with published history. Otherwise clears the rows inside
  * the season that point at the season's own records through restrict-delete lookups (week
  * exceptions, elective runs, who recurring activities and linked choices cover, linked choices
  * and elective sets, fixed and recurring activities, activities and who can do them, schedules,
@@ -8,16 +10,53 @@
  * after before-delete triggers run, so clearing them here lets the season go.
  */
 public with sharing class SeasonTriggerHandler {
+  public static void handle(
+    System.TriggerOperation operation,
+    List<Season__c> seasons,
+    Map<Id, Season__c> before
+  ) {
+    if (operation == System.TriggerOperation.BEFORE_UPDATE) {
+      refuseArchivedChanges(seasons, before);
+    } else if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      beforeDelete(before);
+    } else {
+      // Made, changed, deleted or restored: which seasons are archived is read again.
+      ArchivedSeasons.forget();
+    }
+  }
+
+  /**
+   * WEEK-1.10: an archived season takes no change but being brought back (Archived__c unticked),
+   * which may come with nothing else.
+   */
+  private static void refuseArchivedChanges(
+    List<Season__c> seasons,
+    Map<Id, Season__c> before
+  ) {
+    for (Season__c season : seasons) {
+      if (before.get(season.Id).Archived__c && season.Archived__c) {
+        season.addError(ArchivedSeasons.refusal(before.get(season.Id).Name));
+      }
+    }
+  }
+
   public static void beforeDelete(Map<Id, Season__c> oldSeasons) {
-    Map<Id, Id> campIdBySeasonId = new Map<Id, Id>();
+    // WEEK-1.10: an archived season is read-only, so it is not deleted either.
+    List<Season__c> live = new List<Season__c>();
     for (Season__c season : oldSeasons.values()) {
+      if (season.Archived__c) {
+        season.addError(ArchivedSeasons.refusal(season.Name));
+      } else {
+        live.add(season);
+      }
+    }
+    Map<Id, Id> campIdBySeasonId = new Map<Id, Id>();
+    for (Season__c season : live) {
       campIdBySeasonId.put(season.Id, season.Camp__c);
     }
-    PublishedHistory.refuseDeletes(
-      oldSeasons.values(),
-      'Season',
-      campIdBySeasonId
-    );
+    if (!live.isEmpty()) {
+      PublishedHistory.refuseDeletes(live, 'Season', campIdBySeasonId);
+    }
 
     Set<Id> deletable = new Set<Id>();
     for (Season__c season : oldSeasons.values()) {

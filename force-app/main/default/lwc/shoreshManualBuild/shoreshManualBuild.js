@@ -57,6 +57,11 @@ function savedWhen(source) {
  */
 export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   @api terms;
+  /**
+   * An archived season's week (WEEK-1.10): shown and looked at, never built, edited, saved as a
+   * version or published. Its editor is read-only too.
+   */
+  @api readOnly = false;
 
   _setup;
   programId;
@@ -342,7 +347,12 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   // ---------- choosing a program and week ----------
 
   get showStillNeeded() {
-    return !this.loading && !this.draft && this.stillNeeded.length > 0;
+    return (
+      this.editable &&
+      !this.loading &&
+      !this.draft &&
+      this.stillNeeded.length > 0
+    );
   }
   /**
    * The screen was left (CampSetup): its message row was about that visit, so it is empty when
@@ -556,8 +566,12 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     return lines.length ? lines : null;
   }
 
+  get editable() {
+    return !this.readOnly;
+  }
   get showStart() {
     return (
+      this.editable &&
       this.canChoose &&
       !this.loading &&
       !this.draft &&
@@ -831,7 +845,11 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   // ---------- Publish (Greg, Manual Build round 1 #1, round 2 #4; ADR 0008 part 5) ----------
 
   get canPublish() {
-    return !!this.draft && !this.hasNoDays;
+    return this.editable && !!this.draft && !this.hasNoDays;
+  }
+  /** Versions are saved and restored here: not in an archived season (WEEK-1.10). */
+  get showVersions() {
+    return this.editable && !!this.draft;
   }
   /**
    * Publish and Unpublish wait while an edit saves or a Restore runs (it would publish a week in

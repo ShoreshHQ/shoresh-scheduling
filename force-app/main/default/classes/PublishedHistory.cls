@@ -40,9 +40,14 @@ public with sharing class PublishedHistory {
     }
   }
 
+  /** Whether this season, program or week ever had a published schedule (kept as history). */
+  public static Boolean wasPublished(Id recordId) {
+    return !finder.withPublishedHistory(new Set<Id>{ recordId }).isEmpty();
+  }
+
   /** Why this season can't be deleted, in the camp's words, or null: its Delete asks with this. */
   public static String refusalForSeason(Id seasonId, String name) {
-    if (finder.withPublishedHistory(new Set<Id>{ seasonId }).isEmpty()) {
+    if (!wasPublished(seasonId)) {
       return null;
     }
     Id campId = [
@@ -66,7 +71,7 @@ public with sharing class PublishedHistory {
       labels.singularInSentence(term) +
       ' can\'t be deleted.';
     return term == 'Season'
-      ? AgentRefusal.withFix(text, 'Mark it Finished instead.')
+      ? AgentRefusal.withFix(text, 'Archive it instead.')
       : text;
   }
 

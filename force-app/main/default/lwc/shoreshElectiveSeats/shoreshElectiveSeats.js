@@ -90,6 +90,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
   // Where the screen starts when Roots' hand opened it ({ weekId, setId, scheduleId, runId }),
   // before the latest run.
   @api opening;
+  /**
+   * An archived season (WEEK-1.10): seats are looked at and downloaded; nothing imported,
+   * assigned, moved, locked, finalized or cleared.
+   */
+  @api readOnly = false;
 
   _setup;
   @api
@@ -482,6 +487,13 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get isCommitted() {
     return !!this.view && this.view.run.status === COMMITTED;
   }
+  get editable() {
+    return !this.readOnly;
+  }
+  /** A draft's seats can be changed here: never in an archived season. */
+  get changeable() {
+    return this.isCommitted && this.editable;
+  }
   get isAssigned() {
     return !!this.view && this.view.assigned;
   }
@@ -511,7 +523,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return `${set ? set.Name : ""} isn't on ${week ? week.Name : ""}'s ${schedule ? schedule.label : "schedule"} yet.`;
   }
   get showsPrimary() {
-    return !this.hasNoTimes;
+    return this.editable && !this.hasNoTimes;
   }
   get showsCounter() {
     return !this.hasNoTimes && (this.isAssigned || this.isFinal);
@@ -613,7 +625,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
   /** Change seats: from final seats, while no draft is being worked on. */
   get offersNewVersion() {
-    return this.isFinal && !this.runsHere.some((r) => r.status === COMMITTED);
+    return (
+      this.editable &&
+      this.isFinal &&
+      !this.runsHere.some((r) => r.status === COMMITTED)
+    );
   }
 
   // ---------- the main button and Assign again ----------
@@ -631,10 +647,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return this.busy;
   }
   get showsAssignAgain() {
-    return this.isCommitted && this.isAssigned && !this.hasNoTimes;
+    return this.changeable && this.isAssigned && !this.hasNoTimes;
   }
   get showsBringIn() {
-    return !this.isFinal;
+    return this.editable && !this.isFinal;
   }
 
   async handlePrimary() {
@@ -808,8 +824,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
         lockName: `${placed.seat.locked ? "Unlock" : "Lock"} ${placed.camper.name}`,
         moveName: `Move ${placed.camper.name} to…`,
         targets,
-        canMove: this.isCommitted && targets.length > 0,
-        draggable: String(this.isCommitted && targets.length > 0)
+        canMove: this.changeable && targets.length > 0,
+        draggable: String(this.changeable && targets.length > 0)
       }))
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "en"));
     return {

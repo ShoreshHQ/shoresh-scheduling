@@ -177,6 +177,18 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AgentArchiveSeason</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AgentBringBackSeason</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>SeasonArchive</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AgentLinkedChoiceRefs</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -1111,6 +1123,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RecurringActivity__c.Wednesday__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Season__c.Archived__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
