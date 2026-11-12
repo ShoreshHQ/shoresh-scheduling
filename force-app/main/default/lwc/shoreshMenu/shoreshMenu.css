@@ -275,8 +275,9 @@ ul {
   color: var(--shoresh-color-highlight);
 }
 
-/* Needs a look and Changed since: the bronze dot (.shoresh-look-mark), no words beside it (they
-   are on hover and read out; word walk W3). */
+/* Needs a look is the bronze dot (.shoresh-look-mark), Changed since the hollow bronze ring
+   (.shoresh-changed-mark): no words beside either (they are on hover and read out; word walk W3,
+   CORE-6.14). */
 
 /* The foot section (What Shoresh has learned, desktop Sidebar.jsx's footer link): at the bottom,
    a hairline above it. The setup notice, when there is one, sits right under it. */

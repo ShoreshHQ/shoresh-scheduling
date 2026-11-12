@@ -1,6 +1,6 @@
 /*
  * Shoresh's design system: colours, surfaces, spacing, type, the one raised treatment, the
- * hairline and the needs-a-look mark. Import with @import "c/shoreshTokens"; then use the
+ * hairline and the marks (needs a look, changed since, guessed). Import with @import "c/shoreshTokens"; then use the
  * variables and classes. The visual spec is docs/design/ (round 13 mock-up and its spacing
  * specs); the choices are docs/adr/0015-design-system.md.
  */
@@ -185,6 +185,10 @@
   --shoresh-primary: #173b63;
   --shoresh-secondary: #2f6b58;
   --shoresh-caution: #b8833a;
+  /* The bronze a mark is drawn in (the needs-a-look dot, the changed-since ring): the same hue,
+     one step deeper, so a mark reads at 3:1 or better on every surface and on the bronze tint
+     (WCAG 1.4.11). Bronze itself stays for borders. */
+  --shoresh-caution-mark: #a87835;
   --shoresh-success: #4c8a63;
   --shoresh-caution-tint: #f6efe4;
   --shoresh-text: #1e2a34;
@@ -224,7 +228,20 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--shoresh-caution);
+  background: var(--shoresh-caution-mark);
+}
+
+/* Changed since (something changed after it was finished): a hollow ring in the mark bronze, the
+   dot's size, so it never reads as needs a look, with or without colour (CORE-6.14). */
+.shoresh-changed-mark {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--shoresh-caution-mark);
+  background: transparent;
 }
 
 /* Guessed (from an imported file, until Looks right): a small solid corner in the text colour,
@@ -246,6 +263,11 @@
   .shoresh-guess-mark {
     forced-color-adjust: none;
     background: CanvasText;
+  }
+
+  .shoresh-changed-mark {
+    forced-color-adjust: none;
+    border-color: CanvasText;
   }
 }
 

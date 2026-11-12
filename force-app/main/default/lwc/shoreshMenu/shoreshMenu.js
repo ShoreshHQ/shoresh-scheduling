@@ -52,7 +52,9 @@ export default class ShoreshMenu extends LightningElement {
           markClass: item.mark ? `menu-mark menu-mark_${item.mark.kind}` : null,
           // The ✓ is drawn as an icon: green on white passes the 3:1 a mark needs, not the
           // 4.5:1 text would (WCAG 1.4.11).
-          markIsDone: !!item.mark && item.mark.kind === "done"
+          markIsDone: !!item.mark && item.mark.kind === "done",
+          // Changed since has its own mark, the hollow ring: one mark, one meaning (CORE-6.14).
+          markIsChanged: !!item.mark && item.mark.kind === "changed"
         };
       })
     }));

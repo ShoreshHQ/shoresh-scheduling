@@ -170,5 +170,7 @@ These never bend for Shoresh.
   seats free", "Chugim (0)", a report row of 0): the line or number is left out. A zero a person
   typed (a minimum of 0) is a value and stays (design guide §2; word walk W3).
 - **CORE-6.14** One mark, one meaning: the bronze dot means needs a look, everywhere (a menu
-  entry, a row, a cell); Guessed has its own mark, the corner. A mark carries no words beside it;
-  its words are on hover or focus and in assistive text (design guide §3; word walk W3).
+  entry, a row, a cell); Guessed has its own mark, the corner; Changed since has its own mark, a
+  hollow bronze ring. A mark carries no words beside it; its words are on hover or focus and in
+  assistive text (design guide §3; word walk W3). Marks are drawn in the mark bronze, which reads
+  at 3:1 or better on every surface (WCAG 1.4.11).
