@@ -111,7 +111,7 @@ describe("c-shoresh-guess-mark", () => {
     expect(q(element, '[data-id="guess-pop"]')).toBeNull();
   });
 
-  it("a problem fixed in the cell (words only) is the bronze needs-a-look dot, not the corner", async () => {
+  it("CORE-6.14: a problem fixed in the cell (words only) is the bronze needs-a-look dot, not the corner", async () => {
     const element = render({
       wordsOnly: true,
       label: "Seats not filled in yet"

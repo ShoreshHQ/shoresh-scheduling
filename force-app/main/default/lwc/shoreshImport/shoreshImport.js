@@ -43,7 +43,7 @@ import {
 /**
  * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
  * (design-research/screens-r1 import-pick, import-review-a, import-done; wiki decision 56): drop
- * the files; then one page, what needs an answer first ("Check these first"), what comes in as
+ * the files; then one page, what needs an answer first ("Needs a look"), what comes in as
  * quiet counts, last year's schedule, and what is not set up yet; the main button says what
  * happens ("Add 61"); then the same page says what was added, with Undo. The files are read
  * here, in the browser; nothing is saved until Add.
@@ -546,7 +546,7 @@ export default class ShoreshImport extends LightningElement {
   }
 
   /**
-   * Check these first: every question, one raised row each, marked until it is answered. A
+   * Needs a look: every question, one raised row each, marked until it is answered. A
    * program or division Shoresh could choose itself (preselected) is not a question: it is
    * listed under its own heading below, where it can still be changed.
    */
@@ -658,8 +658,13 @@ export default class ShoreshImport extends LightningElement {
   get hasQuestions() {
     return this.questionRows.length > 0;
   }
+  /**
+   * Needs a look's count: the questions still open, so it drops as answers come in, and no
+   * zero once all are answered (CORE-6.12).
+   */
   get questionCount() {
-    return this.questionRows.length;
+    const left = this.questionRows.filter((c) => c.open).length;
+    return left ? String(left) : "";
   }
   get openCount() {
     return this.cards.filter((c) => !c.answered).length;

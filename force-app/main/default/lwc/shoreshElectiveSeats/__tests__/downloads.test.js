@@ -242,7 +242,7 @@ describe("the full report", () => {
     expect(summary.get("In one elective more than once")).toBe(1);
   });
 
-  it("leaves out a count of something to look at when it is 0 (word walk W3)", () => {
+  it("CORE-6.13: leaves out a count of something to look at when it is 0", () => {
     const d = reading();
     const calm = {
       ...d,

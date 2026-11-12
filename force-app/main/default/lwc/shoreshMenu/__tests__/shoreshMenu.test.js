@@ -398,7 +398,7 @@ describe("c-shoresh-menu", () => {
     ).toBe("true");
   });
 
-  it("shows the bronze needs-a-look dot and the desktop's ✓ (Done), read out as words", async () => {
+  it("CORE-6.14: shows the bronze needs-a-look dot and the desktop's ✓ (Done), read out as words", async () => {
     const element = await render(true, "roots", {
       groups: "needed",
       weeks: "done",
