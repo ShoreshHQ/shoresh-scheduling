@@ -41,12 +41,8 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
     // Locked as the screen's save locks it.
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
-    // The cell's item as noted, as the screen sends it: a special day may be a noted trip, which
-    // is set up as one (SPECIAL-1.5).
-    ScheduleGrid.Item noted = notedItem(days, kind, name);
-    if (noted == null && kind == 'D') {
-      noted = notedItem(days, 'T', name);
-    }
+    // The cell's item as noted, as the screen sends it.
+    ScheduleGrid.Item noted = notedOf(days, kind, name);
     if (noted == null) {
       throw new AgentWeeks.ConflictException(
         'Nothing in this week is noted as "' +
@@ -71,6 +67,16 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
     AgentWeeks.changed(versionId, week.draft.Id);
     return done.said +
       ' undo_last_agent_change brings the week\'s cells back; what was made stays in setup, and a special day put on a day stays there (take_special_day_off_day takes it off).';
+  }
+
+  /** The noted cell's item; a special day may be a noted trip, set up as one (SPECIAL-1.5). */
+  private static ScheduleGrid.Item notedOf(
+    List<ScheduleDays.DayGrid> days,
+    String kind,
+    String name
+  ) {
+    ScheduleGrid.Item noted = notedItem(days, kind, name);
+    return noted == null && kind == 'D' ? notedItem(days, 'T', name) : noted;
   }
 
   /** The noted cell's item of that kind and name, read as NotedItems reads it; null when none. */
