@@ -120,7 +120,8 @@ describe("round trip", () => {
       ["Group", "Bunk", "Bunks"],
       ["Division", "Unit", "Units"]
     ]);
-    expect(sheets.Weeks[1]).toEqual(["Week 1", "2027-06-28", "2027-07-02"]);
+    // Dates as a director writes them (word walk 2026-11-12), read back by the import.
+    expect(sheets.Weeks[1]).toEqual(["Week 1", "Jun 28, 2027", "Jul 2, 2027"]);
     expect(sheets["Which weeks"][0]).toEqual([
       "Kind",
       "Program",
@@ -542,8 +543,8 @@ describe("PR C own review: what the probes found", () => {
       (x) => x.name === "Which weeks"
     ).rows[0];
     expect(runsIn.slice(4)).toEqual([
-      "Week 1 (2027-06-28)",
-      "Week 1 (2027-07-05)"
+      "Week 1 (Jun 28, 2027)",
+      "Week 1 (Jul 5, 2027)"
     ]);
   });
 
@@ -665,8 +666,8 @@ const WORKBOOK_WEEKS = [
     name: "Weeks",
     rows: [
       ["Week", "Start", "End"],
-      ["Week 1", "2027-06-28", "2027-07-02"],
-      ["Week 2", "2027-07-05", "2027-07-09"]
+      ["Week 1", "Jun 28, 2027", "Jul 2, 2027"],
+      ["Week 2", "Jul 5, 2027", "Jul 9, 2027"]
     ]
   },
   {

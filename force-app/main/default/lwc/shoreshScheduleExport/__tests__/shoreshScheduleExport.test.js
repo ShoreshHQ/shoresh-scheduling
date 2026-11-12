@@ -56,19 +56,20 @@ describe("c-shoresh-schedule-export", () => {
       expect(days).not.toContain("Wednesday");
     });
 
-    it("lists each bunk's week, naming the kind of anything that is not an activity", () => {
+    // Word walk 2026-11-12: names only, no "[Fixed activity]" or "[Trip]" tag.
+    it("lists each bunk's week, by name only", () => {
       expect(sheet(sheetsOf(), "All Bunks").rows).toEqual([
         ["Bunk", "Day", "Time block", "Activity"],
         ["Bunk 1", "Monday", P1, "Swim"],
         ["Bunk 1", "Monday", P2, "Swim"],
-        ["Bunk 1", "Monday", LUNCH, "[Fixed activity] Lunch"],
+        ["Bunk 1", "Monday", LUNCH, "Lunch"],
         ["Bunk 1", "Tuesday", P2, "Swim"],
-        ["Bunk 1", "Tuesday", LUNCH, "[Fixed activity] Lunch"],
-        ["Bunk 2", "Monday", P1, "[Chug] Chugim"],
+        ["Bunk 1", "Tuesday", LUNCH, "Lunch"],
+        ["Bunk 2", "Monday", P1, "Chugim"],
         ["Bunk 2", "Monday", P2, "Pottery (removed)"],
-        ["Bunk 2", "Monday", LUNCH, "[Fixed activity] Lunch"],
+        ["Bunk 2", "Monday", LUNCH, "Lunch"],
         ["Bunk 2", "Tuesday", P1, "Swim"],
-        ["Bunk 2", "Tuesday", LUNCH, "[Fixed activity] Lunch"]
+        ["Bunk 2", "Tuesday", LUNCH, "Lunch"]
       ]);
     });
 
@@ -187,7 +188,8 @@ describe("c-shoresh-schedule-export", () => {
         monday.rows[0].cells.map((c) => [c.text, c.rowspan, c.note])
       ).toEqual([
         ["Swim", 2, null],
-        ["Chugim", 1, "not set up yet"]
+        // Nothing setup-related on paper (word walk 2026-11-12).
+        ["Chugim", 1, null]
       ]);
       expect(monday.rows[1].cells.map((c) => c.text)).toEqual(["Pottery"]);
       expect(monday.rows[1].cells[0].note).toBe("(removed)");
