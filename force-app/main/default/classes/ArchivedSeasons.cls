@@ -57,11 +57,18 @@ public with sharing class ArchivedSeasons {
    * (on a change, before or after it) is refused.
    */
   public static void refuseChanges() {
+    refuse(
+      Trigger.isDelete ? Trigger.old : Trigger.new,
+      Trigger.isUpdate ? Trigger.old : null
+    );
+  }
+
+  /** Refuses each row (or its value before a change, olds) inside an archived season. */
+  @TestVisible
+  private static void refuse(List<SObject> rows, List<SObject> olds) {
     if (archived().isEmpty()) {
       return;
     }
-    List<SObject> rows = Trigger.isDelete ? Trigger.old : Trigger.new;
-    List<SObject> olds = Trigger.isUpdate ? Trigger.old : null;
     Map<Id, Id> parents = seasonsOfParents(rows, olds);
     for (Integer i = 0; i < rows.size(); i++) {
       Id season = seasonOf(rows[i], parents);
@@ -98,9 +105,22 @@ public with sharing class ArchivedSeasons {
     );
   }
 
-  /** A season was made, changed or deleted: which are archived is read again when next asked. */
-  public static void forget() {
-    archived = null;
+  /**
+   * Seasons were made, changed, deleted or restored (before: their values before, or null). Which
+   * are archived is read again when next asked only if one of them is or was archived; any other
+   * season save keeps what was read, so a request that makes a season reads nothing more.
+   */
+  public static void seasonsSaved(
+    List<Season__c> seasons,
+    Map<Id, Season__c> before
+  ) {
+    for (Season__c season : seasons) {
+      Season__c was = before?.get(season.Id);
+      if (season.Archived__c || was?.Archived__c == true) {
+        archived = null;
+        return;
+      }
+    }
   }
 
   private static Map<Id, String> archived() {

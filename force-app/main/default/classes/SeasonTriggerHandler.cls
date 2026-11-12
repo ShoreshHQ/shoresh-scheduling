@@ -1,8 +1,8 @@
 /**
  * Changing and deleting a season. An archived season takes no change but being brought back, and
- * is not deleted (WEEK-1.10); which seasons are archived is read again after any season is saved
- * (ArchivedSeasons). Deleting refuses a season with published history. Otherwise clears the rows inside
- * the season that point at the season's own records through restrict-delete lookups (week
+ * is not deleted (WEEK-1.10); which seasons are archived is read again after a season is archived,
+ * brought back, or made, deleted or restored archived (ArchivedSeasons). Deleting refuses a season
+ * with published history. Otherwise clears the rows inside the season that point at the season's own records through restrict-delete lookups (week
  * exceptions, elective runs, who recurring activities and linked choices cover, linked choices
  * and elective sets, fixed and recurring activities, activities and who can do them, schedules,
  * special dates and plans, special events), which
@@ -20,8 +20,8 @@ public with sharing class SeasonTriggerHandler {
     } else if (operation == System.TriggerOperation.BEFORE_DELETE) {
       beforeDelete(before);
     } else {
-      // Made, changed, deleted or restored: which seasons are archived is read again.
-      ArchivedSeasons.forget();
+      // Made, changed, deleted or restored: read again if archived (ArchivedSeasons).
+      ArchivedSeasons.seasonsSaved(seasons ?? before.values(), before);
     }
   }
 

@@ -203,6 +203,34 @@ private class ArchivedSeasonsTest {
     }
   }
 
+  // WEEK-1.10: with no season archived the guard reads nothing more, even after a season is made.
+  @IsTest
+  static void withNothingArchivedTheGuardUsesNoQueries() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c program = ShoreshTestData.program(season.Id, 'Main');
+      Division__c division = ShoreshTestData.division(program.Id, 'Juniors');
+      Test.startTest();
+      Assert.isFalse(ArchivedSeasons.isArchived(season.Id));
+      ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Integer before = Limits.getQueries();
+      List<Group__c> groups = new List<Group__c>{
+        new Group__c(Division__c = division.Id, Name = 'Group A')
+      };
+      List<Week__c> weeks = new List<Week__c>{
+        new Week__c(Season__c = season.Id, Name = 'Week 9')
+      };
+      ArchivedSeasons.refuse(groups, null);
+      ArchivedSeasons.refuse(weeks, weeks);
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.areEqual(0, used, 'The guard used queries with nothing archived');
+      Assert.isFalse(groups[0].hasErrors());
+      Assert.isFalse(weeks[0].hasErrors());
+    }
+  }
+
   // WEEK-1.11: the picker's list says which seasons are archived; an AI's list marks them, and the
   // season the screens open on is never an archived one.
   @IsTest
