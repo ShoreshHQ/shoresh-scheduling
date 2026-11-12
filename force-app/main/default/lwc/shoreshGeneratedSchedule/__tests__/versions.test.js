@@ -366,6 +366,11 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(list).not.toBeNull();
     expect(q(element, '[data-id="start"]').contains(list)).toBe(true);
     expect(list.restore).toBe(true);
+    // Word walk W6: with no grid the zone doesn't clip the list open in it.
+    const below = q(element, "c-shoresh-week-editor").shadowRoot.querySelector(
+      '[data-id="below"]'
+    );
+    expect(below.className).toContain("below_plain");
     await openList(element);
     // Restore and rename; nothing to save as a version, and no week to delete one from.
     const [mine] = rows(element);

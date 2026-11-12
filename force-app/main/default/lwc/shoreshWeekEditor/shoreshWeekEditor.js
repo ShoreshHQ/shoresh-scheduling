@@ -1579,6 +1579,11 @@ export default class ShoreshWeekEditor extends LightningElement {
     return slotName(this.editCtx, slot, block);
   }
 
+  /** The grid's zone: it scrolls sideways under a grid; with no week yet it doesn't clip. */
+  get belowClass() {
+    return this.draft ? "below" : "below below_plain";
+  }
+
   /** What the shared hand edits (handEdits.js) work with: this week and its words. */
   get editCtx() {
     return {
