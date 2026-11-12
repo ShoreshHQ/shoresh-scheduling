@@ -19,6 +19,9 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
+import followProgramDays from "@salesforce/apex/SeasonSetupController.followProgramDays";
+import putWeeksBack from "@salesforce/apex/SeasonSetupController.putWeeksBack";
+import setUpNamed from "@salesforce/apex/SpecialPlacingController.setUpNamed";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
@@ -64,6 +67,19 @@ jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
 jest.mock("@salesforce/apex/ElectiveSeatsController.openRun", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.followProgramDays",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock("@salesforce/apex/SeasonSetupController.putWeeksBack", () => apex(), {
+  virtual: true
+});
+jest.mock(
+  "@salesforce/apex/SpecialPlacingController.setUpNamed",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
   virtual: true
 });
@@ -1883,6 +1899,10 @@ describe("c-shoresh-camp-setup", () => {
       q(element, '[data-id="edit-season"]').click();
       await flush();
       const choice = q(element, '[data-id="day-naming"]');
+      // One under the other, never buttons side by side: those were cut off in the narrow
+      // column (UX pass 2026-11-10).
+      expect(choice.type).not.toBe("button");
+      expect(q(element, '[data-id="short-week"]').type).not.toBe("button");
       expect(choice.options.map((o) => o.label)).toEqual([
         "Mon Tue Wed",
         "Day 1 Day 2 Day 3"
@@ -4001,6 +4021,59 @@ describe("c-shoresh-camp-setup", () => {
       saveRow.mockReset();
     });
 
+    // WEEK-2.7
+    it("a program's days saved: the weeks follow them, Programs says so, and Undo puts them back", async () => {
+      const moved = [
+        {
+          weekId: "w1",
+          name: "Week 1",
+          startDate: "2026-06-29",
+          endDate: "2026-07-04",
+          wasStart: "2026-06-29",
+          wasEnd: "2026-07-03"
+        }
+      ];
+      followProgramDays.mockResolvedValue({
+        said: "Week 1 now runs Monday to Saturday.",
+        moved
+      });
+      saveRow.mockResolvedValue(nsRecord({ id: "p1", changed: [] }));
+      const element = await renderWith();
+      // A name alone moves no week.
+      q(element, 'c-shoresh-editable-table[data-id="programs"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord(
+            rowSave({
+              record: { sobjectType: "Program__c", Id: "p1", Name: "A" }
+            }).detail
+          )
+        })
+      );
+      await flush();
+      expect(followProgramDays).not.toHaveBeenCalled();
+      q(element, 'c-shoresh-editable-table[data-id="programs"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord(
+            rowSave({
+              record: { sobjectType: "Program__c", Id: "p1", Saturday__c: true }
+            }).detail
+          )
+        })
+      );
+      await flush();
+      await flush();
+      expect(followProgramDays).toHaveBeenCalledWith({ seasonId: SEASON.Id });
+      const line = q(element, '[data-id="weeks-followed"]');
+      expect(line.textContent).toContain("Week 1 now runs Monday to Saturday.");
+      q(element, '[data-id="weeks-back"]').click();
+      await flush();
+      expect(JSON.parse(putWeeksBack.mock.calls[0][0].moved)).toEqual(moved);
+      expect(q(element, '[data-id="weeks-followed"]').textContent.trim()).toBe(
+        ""
+      );
+      saveRow.mockReset();
+    });
+
     it("an activity's details open from its row's Details, and Close goes back to that button", async () => {
       const element = await renderWith(
         setupWith({
@@ -4894,6 +4967,85 @@ describe("c-shoresh-camp-setup", () => {
       expect(details.shadowRoot.activeElement).toBe(
         details.shadowRoot.querySelector('[data-id="open-schedule"]')
       );
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    });
+
+    // SPECIAL-1.4
+    it("Roots' card for a day last year's schedule named sets it up by name, then opens it", async () => {
+      const element = await renderSpecial();
+      await openScreen(element, "roots");
+      setUpNamed.mockResolvedValue({ itemId: "sd1", said: "set up" });
+      const reads = getSeasonSetup.mock.calls.length;
+      q(element, "c-shoresh-roots").dispatchEvent(
+        new CustomEvent("navigate", {
+          detail: {
+            screen: "specialEvents",
+            setUpNoted: { kind: "D", name: "Field day" },
+            fromCard: "hand:noted|D|Field day"
+          }
+        })
+      );
+      await flush();
+      await flush();
+      expect(setUpNamed).toHaveBeenCalledWith({
+        seasonId: SEASON.Id,
+        kind: "D",
+        name: "Field day"
+      });
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+      expect(shownScreens(element)).toContain("specialEvents");
+      // On no day yet: its details open (to put it on one), not its schedule.
+      await flush();
+      expect(q(element, "c-shoresh-special-details").openItemId).toBe("sd1");
+      expect(q(element, "c-shoresh-special-schedule")).toBeNull();
+    });
+
+    // UX pass 2026-11-10: Relay race typed into Field day, then Manual Build chosen in the menu,
+    // showed Field day's Thursday without it until the page was reloaded.
+    it("a schedule saved, then left through the menu, reads the season again for the days it replaces", async () => {
+      const element = await renderSpecial();
+      openPlan.mockResolvedValue({
+        itemId: "se1",
+        kind: "SpecialEvent",
+        name: "Carnival",
+        revision: null,
+        schedule: {
+          schedule: { id: "se1", name: "Carnival" },
+          days: [
+            {
+              dateValue: "2000-01-03",
+              blocks: [],
+              groups: [],
+              items: [],
+              rows: [],
+              locks: []
+            }
+          ]
+        },
+        activities: []
+      });
+      list(element, "events")
+        .shadowRoot.querySelector('[data-id="details"][data-row-key="row-se1"]')
+        .click();
+      await flush();
+      q(element, "c-shoresh-special-details")
+        .shadowRoot.querySelector('[data-id="open-schedule"]')
+        .click();
+      await flush();
+      const reads = getSeasonSetup.mock.calls.length;
+      q(element, "c-shoresh-special-schedule").dispatchEvent(
+        new CustomEvent("changed")
+      );
+      q(element, "c-shoresh-menu").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "groups" } })
+      );
+      await flush();
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+      // Read once: another screen chosen after that reads nothing more.
+      q(element, "c-shoresh-menu").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "weeks" } })
+      );
+      await flush();
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
     });
 

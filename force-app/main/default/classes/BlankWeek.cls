@@ -34,7 +34,10 @@ public with sharing class BlankWeek {
     Program__c program = ProgramReads.programOf(programId);
     Week__c week = ProgramReads.weekOf(weekId, program);
     BlankWeek blank = new BlankWeek();
-    blank.blocks = checkedBlocks(program, ProgramReads.blocksOf(program.Id));
+    blank.blocks = checkedBlocks(
+      program,
+      ElectiveSetTimes.blocksOf(program.Id)
+    );
     checkActivities(program);
     blank.groups = checkedGroups(
       program,
@@ -165,6 +168,9 @@ public with sharing class BlankWeek {
         day.place(item, weekday);
       }
     }
+    // Then each elective set at its time (repo ADR 0027): a fixed or recurring activity there
+    // keeps its slot.
+    ElectiveSetTimes.placeAll(day, blocks, weekday);
     return day;
   }
 

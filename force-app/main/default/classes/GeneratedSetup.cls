@@ -21,7 +21,8 @@ public with sharing class GeneratedSetup {
     DayWords.use(program.Season__r);
     // With its special days (ADR 0014 slice 4), in the same query.
     week = ProgramReads.weekWithSpecialDays(weekId, program);
-    blocks = ProgramReads.blocksOf(program.Id);
+    // With the elective sets at each (repo ADR 0027), for a fresh week, in the same query.
+    blocks = ElectiveSetTimes.blocksOf(program.Id);
     groups = ProgramReads.groupsOf(program.Id);
     exceptions = [
       SELECT

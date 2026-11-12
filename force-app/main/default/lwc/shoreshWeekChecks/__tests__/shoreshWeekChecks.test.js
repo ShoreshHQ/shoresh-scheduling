@@ -128,14 +128,14 @@ describe("c-shoresh-week-checks: the counter", () => {
     // Swim: two a week for two bunks; Bunk 1 has one, Bunk 2 none: 1 of 4, 3 under.
     expect(text(q(element, '[data-id="under"]'))).toBe("3under");
     const under = qa(element, 'ul[aria-labelledby] button[data-activity="a1"]');
-    expect(under.map(text)).toEqual(["Swim1of 4"]);
-    expect(under[0].getAttribute("aria-label")).toBe("Swim: 1 of 4");
+    expect(under.map(text)).toEqual(["Swim3 short · 2 groups"]);
+    expect(under[0].getAttribute("aria-label")).toBe("Swim: 3 short · 2 groups");
     // Soccer: one a week at most, Bunk 1 has two: 2 of 1, 1 over, with the corner.
     expect(text(q(element, '[data-id="over"]'))).toBe("1over");
     const over = q(element, 'button[data-activity="a2"]');
-    expect(text(over)).toBe("Soccer2of 1");
+    expect(text(over)).toBe("Soccer1 over · 1 group");
     expect(over.querySelector(".shoresh-look-mark")).not.toBeNull();
-    expect(over.getAttribute("aria-label")).toBe("Soccer: 2 of 1, over");
+    expect(over.getAttribute("aria-label")).toBe("Soccer: 1 over · 1 group");
     expect(text(q(element, '[data-id="look"]'))).toBe("1to look at");
     expect(qa(element, ".look-row").map(text)).toEqual([
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
@@ -163,6 +163,9 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(text(q(element, '[data-id="under"]'))).toBe("0under");
     expect(text(q(element, '[data-id="over"]'))).toBe("0over");
     expect(q(element, '[data-id="look"]')).toBeNull();
+    // Every cell filled: no "0 still needed" line (UX pass 2026-11-10; design guide, a zero that
+    // asks for attention is left out). Under and over keep the desktop's grey 0 (ADR 0008).
+    expect(q(element, '[data-id="still-needed"]')).toBeNull();
   });
 
   it("without goals or limits there is no under or over", async () => {
@@ -274,8 +277,8 @@ describe("c-shoresh-week-checks: the counter", () => {
         measure: measureWeek(SPREAD, ACTIVITIES, DAYS)
       });
       expect(accepts(element)).toEqual([
-        "Accept: Swim, 1 of 4",
-        "Accept: Soccer, 2 of 1, over",
+        "Accept: Swim, 3 short · 2 groups",
+        "Accept: Soccer, 1 over · 1 group",
         "Accept: Swim · Bunk 2: 1 more needed by Wednesday"
       ]);
       await expect(element).toBeAccessible();
@@ -294,7 +297,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         goal: 4
       });
       expect(q(element, '[data-id="accept-said"]').textContent).toBe(
-        "Accepted: Swim, 1 of 4."
+        "Accepted: Swim, 3 short · 2 groups."
       );
       expect(word(element).getAttribute("aria-expanded")).toBe("true");
       expect(element.shadowRoot.activeElement).toBe(
@@ -371,7 +374,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       // Worse: 1 of 4. It comes back, no longer accepted.
       element.measure = swimSoccer(["g1"], []);
       await flush();
-      expect(text(swimRow(element))).toBe("Swim1of 4");
+      expect(text(swimRow(element))).toBe("Swim3 short · 2 groups");
       // Back to 2 of 4, what was accepted: tucked away again, as on the desktop.
       element.measure = swimSoccer(["g1", "g2"], []);
       await flush();
@@ -383,7 +386,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       const element = await open({
         measure: swimSoccer([], ["g1", "g1", "g2", "g2"])
       });
-      expect(text(soccerRow(element))).toBe("Soccer4of 2");
+      expect(text(soccerRow(element))).toBe("Soccer2 over · 2 groups");
       q(element, '.accept[data-key^="over|a2|"]').click();
       await flush();
       expect(soccerRow(element)).toBeNull();
@@ -394,7 +397,8 @@ describe("c-shoresh-week-checks: the counter", () => {
       // Worse: 5 of 2.
       element.measure = swimSoccer([], ["g1", "g1", "g1", "g2", "g2"]);
       await flush();
-      expect(text(soccerRow(element))).toBe("Soccer5of 2");
+      // Back, and its words say it is worse: 3 over now, in the same two bunks.
+      expect(text(soccerRow(element))).toBe("Soccer3 over · 2 groups");
     });
 
     it("CORE-6.8: an accepted early-week goal comes back when more is missing by its day", async () => {
@@ -448,7 +452,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         measure: swimSoccer(["g1"], []),
         scheduleId: "s1"
       });
-      expect(text(swimRow(worse))).toBe("Swim1of 4");
+      expect(text(swimRow(worse))).toBe("Swim3 short · 2 groups");
       document.body.removeChild(worse);
       const better = await open({
         measure: swimSoccer(["g1", "g2", "g2"], []),
@@ -547,7 +551,7 @@ describe("c-shoresh-week-checks: the counter", () => {
       // On screen, in the dropdown, not only for screen readers.
       const problem = q(element, '[data-id="accept-problem"]');
       expect(problem.textContent.trim()).toBe(
-        "Couldn't keep this Accept with the week: Swim, 2 of 4."
+        "Couldn't keep this Accept with the week: Swim, 2 short · 2 groups."
       );
       expect(problem.getAttribute("role")).toBe("alert");
       expect(problem.classList.contains("slds-text-color_error")).toBe(true);
@@ -596,8 +600,8 @@ describe("c-shoresh-week-checks: the counter", () => {
       expect(text(q(element, '[data-id="notes"]'))).toBe("Notes");
       expect(qa(element, "[data-line]").map(text)).toEqual([
         "Bunk 2 · Monday · Period 3: No activity fits here",
-        "Swim1of 4",
-        "Soccer2of 1",
+        "Swim3 short · 2 groups",
+        "Soccer1 over · 1 group",
         "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
         // A note's row for focus is its Accept.
         "Accept"
@@ -658,7 +662,7 @@ describe("c-shoresh-week-checks: the counter", () => {
         );
       qa(element, ".accept")
         .find(
-          (b) => b.getAttribute("aria-label") === "Accept: Soccer, 2 of 1, over"
+          (b) => b.getAttribute("aria-label") === "Accept: Soccer, 1 over · 1 group"
         )
         .click();
       await flush();

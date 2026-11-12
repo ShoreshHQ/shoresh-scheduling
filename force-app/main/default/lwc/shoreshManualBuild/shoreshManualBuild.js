@@ -1029,6 +1029,17 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   }
 
   /** The rail's Published: and whether the week changed since (its corner says it to the eye). */
+  /**
+   * The main button's word: "Published" once the week is out as it is, "Publish" before and
+   * again once it has changed since (UX pass 2026-11-10: the word stays on the button, so the bar
+   * never grows when a week is published).
+   */
+  get publishLabel() {
+    return this.publishState && !this.publishState.changedSince
+      ? "Published"
+      : "Publish";
+  }
+
   get publishedName() {
     return this.publishState && this.publishState.changedSince
       ? "Published, changed since"

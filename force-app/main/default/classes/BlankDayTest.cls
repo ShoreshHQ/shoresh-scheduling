@@ -81,6 +81,69 @@ private class BlankDayTest {
     }
   }
 
+  // ELECT-7.1
+  @IsTest
+  static void anElectiveSetGoesInAtItsTimeAsOneSetCellAroundWhatIsThere() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      SetTimePlan.ProgramPlan plan = new SetTimePlan.ProgramPlan(
+        new Program__c(Id = ids.get('Main'), Name = 'Main', Monday__c = true)
+      );
+      TimeBlock__c period1 = new TimeBlock__c(
+        Id = ids.get('Period 1'),
+        Name = 'Period 1',
+        PartOfDay__c = 'Morning'
+      );
+      plan.addBlock(period1);
+      Group__c groupA = new Group__c(
+        Id = ids.get('Group A'),
+        Name = 'Group A',
+        Availability__c = 'AllDay'
+      );
+      Group__c groupB = new Group__c(
+        Id = ids.get('Group B'),
+        Name = 'Group B',
+        Availability__c = 'AllDay'
+      );
+      Group__c afternoons = new Group__c(
+        Id = ids.get('Group C'),
+        Name = 'Group C',
+        Availability__c = 'AfternoonOnly'
+      );
+      plan.groups.add(groupB);
+      BlankDay day = new BlankDay(
+        new List<TimeBlock__c>{ period1 },
+        new List<Group__c>{ groupA, groupB, afternoons }
+      );
+      SetTimePlan.Item rest = item(
+        plan,
+        new RecurringActivity__c(Name = 'Rest')
+      );
+      day.place(rest);
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        // Never saved: placing reads only its Id and name.
+        Id = Id.valueOf(
+          ElectiveSet__c.SObjectType.getDescribe(
+              SObjectDescribeOptions.DEFERRED
+            )
+            .getKeyPrefix() + '000000000001'
+        ),
+        Name = 'Chugim'
+      );
+
+      ElectiveSetTimes.placeSet(day, chugim, period1);
+
+      // Group A takes the set; Group B's Rest keeps its slot and the set's is named; Group C
+      // isn't at camp in the morning.
+      Assert.areEqual('E', day.grid.items[1].kind);
+      Assert.areEqual(String.valueOf(chugim.Id), day.grid.items[1].id);
+      Assert.areEqual('2', day.grid.rows[0][0]);
+      Assert.areEqual('1', day.grid.rows[1][0]);
+      Assert.areEqual('', day.grid.rows[2][0]);
+      Assert.areEqual(new List<String>{ 'Chugim · Group B' }, day.notPlaced);
+    }
+  }
+
   @IsTest
   static void anAfternoonOnlyGroupGetsThePartOfASetTimeItIsThereFor() {
     System.runAs(ShoreshTestData.scheduler()) {

@@ -25,11 +25,35 @@ public with sharing class ImportElectiveWrites {
     List<ImportPlan.Entry> entries = added('electiveSets');
     List<SObject> rows = new List<SObject>();
     for (ImportPlan.Entry entry : entries) {
-      rows.add(
-        new ElectiveSet__c(Season__c = plan.seasonId, Name = entry.text('name'))
+      ElectiveSet__c electiveSet = new ElectiveSet__c(
+        Season__c = plan.seasonId,
+        Name = entry.text('name')
       );
+      withTime(electiveSet, entry);
+      rows.add(electiveSet);
     }
     writer.write('ElectiveSet', entries, rows);
+  }
+
+  /**
+   * The set's time as the file shows it (repo ADR 0027; ELECT-7.2): its time block (one the import
+   * adds, by key, or one the camp has) and its days. No time when the file shows none.
+   */
+  private void withTime(ElectiveSet__c electiveSet, ImportPlan.Entry entry) {
+    String blockKey = entry.text('blockKey');
+    if (String.isBlank(blockKey)) {
+      return;
+    }
+    electiveSet.TimeBlock__c = writer.keys.of(blockKey);
+    for (Object day : entry.objects('days')) {
+      Schema.SObjectField field = SetTimePlan.dayField(
+        ElectiveSet__c.SObjectType,
+        String.valueOf(day)
+      );
+      if (field != null) {
+        electiveSet.put(field, true);
+      }
+    }
   }
 
   private void saveOfferings() {

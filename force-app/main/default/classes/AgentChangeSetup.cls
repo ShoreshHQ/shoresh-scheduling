@@ -60,7 +60,39 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
       found.name +
       '": ' +
       String.join(put.said, ', ') +
-      '.';
+      '.' +
+      weeksFollow(record);
+  }
+
+  /**
+   * A program's days changed: the weeks follow them, as on the Programs screen, and the answer
+   * says so (WEEK-2.7, ADR 0028); nothing more when no week moved.
+   */
+  private static String weeksFollow(SObject record) {
+    if (record.getSObjectType() != Program__c.SObjectType) {
+      return '';
+    }
+    Boolean daysChanged = false;
+    for (String day : SetTimePlan.WEEKDAYS) {
+      Schema.SObjectField field = SetTimePlan.dayField(
+        Program__c.SObjectType,
+        day
+      );
+      daysChanged |= record.isSet(field);
+    }
+    if (!daysChanged) {
+      return '';
+    }
+    Program__c program = [
+      SELECT Season__c
+      FROM Program__c
+      WHERE Id = :record.Id
+      WITH USER_MODE
+    ];
+    SeasonWeeksFollow.Followed followed = SeasonWeeksFollow.followProgramDays(
+      program.Season__c
+    );
+    return followed.said == null ? '' : ' ' + followed.said;
   }
 
   /** Nothing to change is refused naming the fields it has. */

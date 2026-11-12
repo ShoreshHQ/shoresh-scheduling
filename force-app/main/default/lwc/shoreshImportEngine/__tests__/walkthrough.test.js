@@ -151,8 +151,15 @@ describe("Import last year, as the walkthrough tells it", () => {
     expect(firstPlan.groups).toHaveLength(6);
     expect(firstPlan.activities).toHaveLength(7);
     expect(firstPlan.fixedActivities).toHaveLength(1);
+    // Chugim keeps the time the files show it at (ELECT-7.2): Tuesday, Period 6 (2:00).
     expect(firstPlan.electiveSets).toEqual([
-      { key: "ES|Chugim", id: null, name: "Chugim" }
+      {
+        key: "ES|Chugim",
+        id: null,
+        name: "Chugim",
+        days: ["Tuesday"],
+        blockKey: "B|P0|840-885"
+      }
     ]);
     expect(firstPlan.recurringActivities.map((r) => r.name)).toEqual([
       "Library time",

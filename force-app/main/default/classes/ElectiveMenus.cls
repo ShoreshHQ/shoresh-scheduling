@@ -21,8 +21,19 @@ public with sharing class ElectiveMenus {
     if (!canRead()) {
       return result;
     }
+    // With its time (repo ADR 0027), shown and edited on the Electives screen.
     result.sets = [
-      SELECT Id, Name
+      SELECT
+        Id,
+        Name,
+        TimeBlock__c,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        Saturday__c,
+        Sunday__c
       FROM ElectiveSet__c
       WHERE Season__c = :seasonId
       WITH USER_MODE

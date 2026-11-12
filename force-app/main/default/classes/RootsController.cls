@@ -5,7 +5,9 @@ public with sharing class RootsController {
   @AuraEnabled
   public static RootsTable.Table getTable(Id seasonId) {
     try {
-      return RootsTable.read(seasonId);
+      RootsTable.Table table = RootsTable.read(seasonId);
+      table.noted = RootsNoted.read(seasonId);
+      return table;
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }

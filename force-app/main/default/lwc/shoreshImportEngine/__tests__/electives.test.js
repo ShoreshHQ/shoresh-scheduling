@@ -131,6 +131,12 @@ describe("electives read from last year's file", () => {
     const p = propose();
     const plan = planFor(p, existingSetup(), "s");
     expect(plan.electiveSets.map((s) => s.name)).toEqual(["Chugim", LIST_SET]);
+    // ELECT-7.2: Chugim, one block on Tuesdays, keeps that time; the double period does not.
+    expect(plan.electiveSets[0]).toMatchObject({
+      days: ["Tuesday"],
+      blockKey: "B|P0|780-825"
+    });
+    expect(plan.electiveSets[1].blockKey).toBeUndefined();
     expect(plan.offerings).toEqual([
       {
         key: `O|ES|${LIST_SET}|Fishing`,
