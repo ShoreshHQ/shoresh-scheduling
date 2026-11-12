@@ -152,10 +152,26 @@
   --slds-s-link-color: var(--shoresh-color-highlight);
   --slds-s-link-color-hover: var(--shoresh-color-highlight-press);
   --slds-s-link-color-active: var(--shoresh-color-highlight-press);
-  /* Field errors stay Salesforce's red, at its SLDS 2 value: it reads at 5.9:1 on the shelf, where
-     SLDS 1's #ea001e reads 4.09:1. Both themes' hooks, so every org shows the same red. */
-  --slds-g-color-error-base-40: #b60554;
-  --slds-g-color-error-1: #b60554;
+  /* The one red (Greg 2026-11-12: no pink buttons): the design guide's --danger, muted brick, for
+     destructive actions and errors only, kept rare. Its deeper step is for words, which read at
+     4.5:1 or better on every surface; the brick itself is for edges. Salesforce's error hooks
+     take it in both themes, so a field error, a delete and an error banner are this red, never
+     Salesforce's pink. */
+  --shoresh-danger: #b44e48;
+  --shoresh-danger-text: #a3443e;
+  --shoresh-danger-tint: #faf0ef;
+  --slds-g-color-error-base-40: var(--shoresh-danger-text);
+  --slds-g-color-error-1: var(--shoresh-danger-text);
+  --slds-g-color-error-base-50: var(--shoresh-danger);
+  --slds-g-color-error-base-95: var(--shoresh-danger-tint);
+  --slds-g-color-error-base-30: var(--shoresh-danger-text);
+  /* An error banner: words on a faint brick (5.4:1), and a field's or delete's edge. */
+  --slds-g-color-error-container-1: var(--shoresh-danger-tint);
+  --slds-g-color-error-container-2: var(--shoresh-danger-tint);
+  --slds-g-color-on-error-1: var(--shoresh-danger-text);
+  --slds-g-color-on-error-2: var(--shoresh-danger-text);
+  --slds-g-color-border-error-1: var(--shoresh-danger);
+  --slds-g-color-border-error-2: var(--shoresh-danger-text);
 
   /* ---------- earlier colours (wiki shoresh-design-guide.md), kept until each screen is restyled ---------- */
   /*

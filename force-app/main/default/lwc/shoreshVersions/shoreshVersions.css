@@ -113,7 +113,7 @@
 /* "Delete?": the second click deletes, so it looks like it (desktop VersionsDropdown). Salesforce's
    red for a refusal (ADR 0015 §7). */
 .link_danger {
-  color: var(--slds-g-color-error-1, #b60554);
+  color: var(--shoresh-danger-text);
   background: var(--shoresh-surface-grid);
 }
 

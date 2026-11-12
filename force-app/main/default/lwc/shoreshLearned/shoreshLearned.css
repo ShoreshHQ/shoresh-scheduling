@@ -91,7 +91,7 @@
 }
 
 .load-error {
-  color: var(--slds-g-color-error-1, #b60554);
+  color: var(--shoresh-danger-text);
 }
 
 .rows {
@@ -155,14 +155,10 @@
   margin-left: 0;
 }
 
-/* Row actions are quiet words in the highlight; Forget in the error colour (desktop). */
+/* Row actions are quiet words in the highlight, Forget too: it has Undo (Greg 2026-11-12: no pink). */
 .link {
   color: var(--shoresh-color-highlight);
   font-weight: 500;
-}
-
-.link_forget {
-  color: var(--slds-g-color-error-1, #b60554);
 }
 
 .editor {
@@ -180,7 +176,7 @@
   align-items: center;
   gap: var(--shoresh-s1);
   margin: 0;
-  color: var(--slds-g-color-error-1, #b60554);
+  color: var(--shoresh-danger-text);
 }
 
 /* A line a later one replaced, and what Shoresh already knew: quieter, still there. */

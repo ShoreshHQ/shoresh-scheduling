@@ -150,6 +150,54 @@ describe("c/shoreshTokens", () => {
     );
   });
 
+  // Greg 2026-11-12: no pink buttons. The one red is the design guide's --danger, kept rare.
+  it("has one red, the guide's muted brick, and Salesforce's error hooks take it", () => {
+    expect(tokens["--shoresh-danger"]).toBe("#b44e48");
+    [
+      "--slds-g-color-error-base-40",
+      "--slds-g-color-error-1",
+      "--slds-g-color-error-base-50",
+      "--slds-g-color-error-base-30",
+      "--slds-g-color-on-error-1",
+      "--slds-g-color-on-error-2",
+      "--slds-g-color-border-error-1",
+      "--slds-g-color-border-error-2"
+    ].forEach((hook) => expect(colour(hook)).toMatch(/^#(b44e48|a3443e)$/));
+    // An error banner's words read on its faint brick.
+    expect(
+      contrast(
+        colour("--slds-g-color-on-error-1"),
+        colour("--slds-g-color-error-container-1")
+      )
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("no screen shows Salesforce's pink, or a red button for what isn't destructive", () => {
+    const lwc = path.join(__dirname, "../..");
+    const pink = [];
+    fs.readdirSync(lwc).forEach((bundle) => {
+      const dir = path.join(lwc, bundle);
+      if (!fs.statSync(dir).isDirectory()) return;
+      fs.readdirSync(dir)
+        .filter((file) => /\.(css|html|js)$/.test(file))
+        .forEach((file) => {
+          const text = fs.readFileSync(path.join(dir, file), "utf8");
+          if (/#b60554|slds-button_(text-)?destructive\b/i.test(text)) {
+            pink.push(`${bundle}/${file}`);
+          }
+          // A red button only for what deletes (Delete season), never for anything else.
+          (text.match(/variant="destructive[^"]*"[^>]*/g) || []).forEach(
+            (tag) => {
+              if (!/deleteSeason|handleDelete/.test(tag)) {
+                pink.push(`${bundle}/${file}: ${tag.slice(0, 60)}`);
+              }
+            }
+          );
+        });
+    });
+    expect(pink).toEqual([]);
+  });
+
   it("Salesforce's buttons take the highlight (SLDS styling hooks)", () => {
     expect(tokens["--slds-c-button-brand-color-background"]).toBe(
       "var(--shoresh-color-highlight)"
