@@ -174,10 +174,11 @@ export function counterWords(m, accepted, groupWords, activity) {
   if (lines.open.length) {
     out.open = listed(lines.open);
   }
-  if (m.hasGoals || m.under.count > 0) {
+  // As the counter: no section at 0 (CORE-6.13).
+  if (m.under.count > 0) {
     out.under = { count: m.under.count, lines: listed(lines.under) };
   }
-  if (m.hasLimits || m.over.count > 0) {
+  if (m.over.count > 0) {
     out.over = { count: m.over.count, lines: listed(lines.over) };
   }
   if (lines.look.length) {

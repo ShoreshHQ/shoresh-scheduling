@@ -146,7 +146,7 @@ describe("c-shoresh-week-checks: the counter", () => {
     await expect(element).toBeAccessible();
   });
 
-  it("under and over show their 0 when the camp has goals and limits; nothing to look at shows nothing", async () => {
+  it("CORE-6.13: with goals and limits met, no 0 short or 0 over; nothing to look at shows nothing", async () => {
     const element = render({
       measure: measureWeek(
         {
@@ -163,11 +163,12 @@ describe("c-shoresh-week-checks: the counter", () => {
       )
     });
     await flush();
-    expect(text(q(element, '[data-id="under"]'))).toBe("0short");
-    expect(text(q(element, '[data-id="over"]'))).toBe("0over");
+    // CORE-6.13: no "0 short" or "0 over" (word walk W3: the desktop's grey 0 is gone).
+    expect(q(element, '[data-id="under"]')).toBeNull();
+    expect(q(element, '[data-id="over"]')).toBeNull();
     expect(q(element, '[data-id="look"]')).toBeNull();
     // Every cell filled: no "0 still needed" line (UX pass 2026-11-10; design guide, a zero that
-    // asks for attention is left out). Under and over keep the desktop's grey 0 (ADR 0008).
+    // asks for attention is left out).
     expect(q(element, '[data-id="still-needed"]')).toBeNull();
   });
 
