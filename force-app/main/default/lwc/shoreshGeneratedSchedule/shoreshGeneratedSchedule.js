@@ -8,6 +8,7 @@ import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepGeneratedWeek";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
+import undoBuild from "@salesforce/apex/GeneratedUndoController.undoBuild";
 import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
@@ -2354,8 +2355,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       () => what,
       async () => {
         // A week not generated yet: the version becomes its Generated Schedule (decision 9).
+        // Undo keeps the week first as "Before Undo", Restore as "Before Restore" (word walk W6).
+        const back = undo ? undoBuild : restoreVersion;
         const done = loaded.scheduleId
-          ? await restoreVersion({
+          ? await back({
               scheduleId: loaded.scheduleId,
               versionId: id,
               seenRevisions: loaded.revision

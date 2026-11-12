@@ -194,6 +194,36 @@ private class GeneratedVersionsTest {
     }
   }
 
+  // Word walk W6: Undo of Start over or Rebuild keeps the week as "Before Undo".
+  @IsTest
+  static void undoKeepsTheWeekFirstNamedBeforeUndo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      Id mine = GeneratedScheduleController.saveVersion(draftId, 'Mine');
+      tryAnother(3, 'Soccer');
+      Boolean undone = GeneratedUndoController.undoBuild(
+        draftId,
+        mine,
+        revisionNow(draftId)
+      );
+      Test.stopTest();
+      Assert.isTrue(undone);
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE
+            Name = :ManualVersions.BEFORE_UNDO
+            AND SourceSchedule__c = :draftId
+        ]
+      );
+      Assert.isTrue(beforeRestore().isEmpty(), 'Not "Before Restore"');
+    }
+  }
+
   @IsTest
   static void restoreIsRefusedWhenTheWeekWasSavedSince() {
     System.runAs(ShoreshTestData.scheduler()) {
