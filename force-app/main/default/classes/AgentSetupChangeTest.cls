@@ -43,6 +43,38 @@ private class AgentSetupChangeTest {
     };
   }
 
+  // WEEK-2.7
+  @IsTest
+  static void aProgramsNewDayMovesTheWeeksAndTheAnswerSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> saturday = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'program',
+          'name' => 'Main',
+          'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
+          'seen' => new Map<String, Object>{ 'saturday' => 'no' }
+        }
+      );
+      Test.stopTest();
+      String said = String.valueOf(saturday[1]);
+      Assert.areEqual(200, saturday[0], said);
+      Assert.isTrue(said.contains('now run Monday to Saturday.'), said);
+      Assert.areEqual(
+        Date.newInstance(2026, 7, 4),
+        [
+          SELECT EndDate__c
+          FROM Week__c
+          WHERE Id = :GeneratedTestData.ids.get('Week 1')
+          WITH SYSTEM_MODE
+        ]
+        .EndDate__c
+      );
+    }
+  }
+
   // API-1.49
   @IsTest
   static void changingFieldsIsTheSetupTablesRowSave() {

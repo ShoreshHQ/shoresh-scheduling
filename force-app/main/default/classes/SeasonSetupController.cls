@@ -116,6 +116,31 @@ public with sharing class SeasonSetupController {
     }
   }
 
+  /** A program's days changed: the weeks follow them (repo ADR 0028; WEEK-2.7). */
+  @AuraEnabled
+  public static SeasonWeeksFollow.Followed followProgramDays(Id seasonId) {
+    try {
+      return SeasonWeeksFollow.followProgramDays(seasonId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Undo of followProgramDays: the weeks back on their dates (moved: its answer's moved). */
+  @AuraEnabled
+  public static void putWeeksBack(String moved) {
+    try {
+      SeasonWeeksFollow.putBack(
+        (List<SeasonWeeksFollow.Moved>) JSON.deserialize(
+          moved,
+          List<SeasonWeeksFollow.Moved>.class
+        )
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   @AuraEnabled
   public static SeasonCopier.Preview previewCopy(
     Id seasonId,

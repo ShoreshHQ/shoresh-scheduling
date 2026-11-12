@@ -11,6 +11,8 @@ import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
+import followProgramDays from "@salesforce/apex/SeasonSetupController.followProgramDays";
+import putWeeksBack from "@salesforce/apex/SeasonSetupController.putWeeksBack";
 import setUpNamed from "@salesforce/apex/SpecialPlacingController.setUpNamed";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview";
@@ -238,6 +240,8 @@ export default class ShoreshCampSetup extends LightningElement {
   // anything inside it was saved since it opened.
   specialScheduleFor = null;
   specialScheduleChanged = false;
+  // The weeks just followed a program's new days: { said, moved } for Programs' line and Undo.
+  weeksFollowed = null;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
   // The offering whose linked choices are open beside the Electives list, or null.
@@ -2925,6 +2929,50 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.rowSaves;
   }
 
+  /**
+   * A program's days saved (Saturday added): the weeks follow them, as the director means, and
+   * Programs says so with Undo (repo ADR 0028; WEEK-2.7). Nothing to say when no week moved.
+   */
+  async weeksFollowDays(record) {
+    const days = WEEKDAYS.map((day) => FIELD.Program[day]);
+    const isProgram =
+      record && record.sobjectType === OBJECT.Program && !!record.Id;
+    if (!isProgram || !days.some((field) => field in record)) {
+      return;
+    }
+    // The program is saved by now: trouble here is said on its own, and the season still reads.
+    try {
+      const followed = await followProgramDays({ seasonId: this.seasonId });
+      this.weeksFollowed =
+        followed && followed.said
+          ? { said: followed.said, moved: followed.moved || [] }
+          : null;
+    } catch (e) {
+      this.weeksFollowed = null;
+      this.showError(
+        e,
+        `The ${this.terms.pIn("Week")} didn't follow the new days.`
+      );
+    }
+  }
+
+  get weeksFollowedCanUndo() {
+    return !!this.weeksFollowed && this.weeksFollowed.moved.length > 0;
+  }
+
+  /** Undo: the weeks back on the dates they had. */
+  async handleWeeksBack() {
+    const moved = this.weeksFollowed ? this.weeksFollowed.moved : [];
+    this.weeksFollowed = null;
+    await this.run(
+      async () => {
+        await putWeeksBack({ moved: JSON.stringify(moved) });
+        await this.loadSeason();
+      },
+      `The ${this.terms.pIn("Week")} weren't put back.`
+    );
+  }
+
   async saveOneRow(detail) {
     const { record, seen, extras, seenWho, onSaved, onFailure, onDone } =
       detail;
@@ -2956,6 +3004,7 @@ export default class ShoreshCampSetup extends LightningElement {
         ((result.changed && result.changed.length > 0) || !!result.theirWho);
       if (!asked) {
         this.railSaved(screen, true);
+        await this.weeksFollowDays(record);
       }
       await this.loadSeason();
     } catch (e) {
