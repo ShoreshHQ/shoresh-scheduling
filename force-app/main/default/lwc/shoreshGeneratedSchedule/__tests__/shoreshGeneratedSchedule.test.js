@@ -1049,7 +1049,7 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
-  // Greg 2026-11-12: Rebuild never loses the schedule it replaces, so it asks nothing.
+  // GEN-10.12 (Greg 2026-11-12): Rebuild never loses the schedule it replaces, so it asks nothing.
   it("Rebuild goes at once, with no question, and builds the same option again", async () => {
     const element = await render();
     await generate(element);

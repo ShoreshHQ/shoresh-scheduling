@@ -896,7 +896,7 @@ describe("Versions on the Generated Schedule screen", () => {
       );
     });
 
-    // Greg 2026-11-12: Rebuild keeps the schedule it replaces as a version, with Undo.
+    // GEN-10.12 (Greg 2026-11-12): Rebuild keeps the schedule it replaces as a version, with Undo.
     it("Rebuild goes at once and offers Undo, which brings back the schedule it kept", async () => {
       const element = await render(week({ locked: true }));
       saveWeekOnServer.mockImplementationOnce(
