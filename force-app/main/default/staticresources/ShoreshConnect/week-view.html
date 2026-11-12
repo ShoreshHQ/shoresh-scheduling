@@ -8954,7 +8954,37 @@ tmpl.stylesheetToken = "lwc-7kqfl4e16df";
 if (_implicitStylesheets$2) {
   tmpl.stylesheets.push.apply(tmpl.stylesheets, _implicitStylesheets$2);
 }
-freezeTemplate(tmpl);/**
+freezeTemplate(tmpl);// Keys whose standard word is not the key split into words, and those the same in the plural,
+// as the server's picklist and CampLabels have them.
+const STANDARD = {
+  Seats: "Seat"
+};
+const SAME_IN_PLURAL = new Set(["Availability", "GroupsAtOnce", "GroupsThatFit", "MinimumToRun", "TimesPerWeek"]);
+
+/** "TimeBlock" -> "Time block"; "Seats" -> "Seat". */
+function standardWord(term) {
+  if (STANDARD[term]) {
+    return STANDARD[term];
+  }
+  const words = String(term || "").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return words.charAt(0) + words.slice(1).toLowerCase();
+}
+
+/**
+ * The one English plural rule (CORE-1.35), as CampLabels.pluralOf: "ies" after a consonant and y,
+ * "es" after s, x, z, ch and sh, else "s".
+ */
+function pluralOf(text) {
+  if (/[^aeiou]y$/i.test(text)) {
+    return `${text.slice(0, -1)}ies`;
+  }
+  if (/(s|x|z|ch|sh)$/i.test(text)) {
+    return `${text}es`;
+  }
+  return `${text}s`;
+}
+
+/**
  * The camp's own words for model terms (decision 0006), for every Shoresh screen.
  * Built from the TermLabel list the server sends (CampLabels.all()).
  *
@@ -8964,24 +8994,51 @@ freezeTemplate(tmpl);/**
  */
 function buildTerms(labels) {
   const byTerm = new Map((labels || []).map(row => [row.term, row]));
+  const own = term => {
+    const row = byTerm.get(term);
+    return row && row.isCustom ? row : null;
+  };
+  // CORE-1.34: a word the camp left standard follows the camp's word it belongs to.
+  const followed = term => {
+    if (own(term)) {
+      return null;
+    }
+    if (term === "ElectiveSet" && own("Elective")) {
+      const elective = own("Elective");
+      return {
+        singular: elective.singular,
+        plural: elective.plural
+      };
+    }
+    if ((term === "GroupsThatFit" || term === "GroupsAtOnce") && own("Group")) {
+      const words = `${own("Group").plural} ${term === "GroupsThatFit" ? "that fit" : "at once"}`;
+      return {
+        singular: words,
+        plural: words
+      };
+    }
+    return null;
+  };
   const word = (term, plural) => {
+    const follows = followed(term);
+    if (follows) {
+      return plural ? follows.plural : follows.singular;
+    }
     const row = byTerm.get(term);
     if (!row) {
       // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
-      const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
-      const readable = words.charAt(0) + words.slice(1).toLowerCase();
+      const readable = standardWord(term);
       if (!plural) {
         return readable;
       }
       // As the server makes plurals: "Activity" -> "Activities", "Day" -> "Days".
-      return /[^a]y$/.test(readable) ? `${readable.slice(0, -1)}ies` : `${readable}s`;
+      return SAME_IN_PLURAL.has(term) ? readable : pluralOf(readable);
     }
     return plural ? row.plural : row.singular;
   };
   const inSentence = (term, plural) => {
-    const row = byTerm.get(term);
     const text = word(term, plural);
-    return row && row.isCustom ? text : text.toLowerCase();
+    return own(term) || followed(term) ? text : text.toLowerCase();
   };
   return {
     s: term => word(term, false),

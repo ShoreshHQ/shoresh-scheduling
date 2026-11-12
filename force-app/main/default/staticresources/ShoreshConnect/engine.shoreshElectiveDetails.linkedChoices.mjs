@@ -117,7 +117,7 @@ export function placeMapOf(places) {
  * it is said. Two offerings' linked choices may share a period (slice E9: a double period links
  * every choice across it): each takes its own offering's seats there.
  */
-export function sharedWith(choice, k, others, present) {
+export function sharedWith(choice, k, others, present, terms = buildTerms([])) {
   const mine = new Set(
     divisionsCovered(choice.appliesTo, [...choice.divisionIds], present)
   );
@@ -130,7 +130,7 @@ export function sharedWith(choice, k, others, present) {
       )
   );
   return clash
-    ? `Also in "${clash.name}", so neither is placed as a set; their periods are filled one at a time`
+    ? `Also in "${clash.name}", so neither is placed as a set; their ${terms.pIn("TimeBlock")} are filled one at a time`
     : null;
 }
 
@@ -138,7 +138,7 @@ export function sharedWith(choice, k, others, present) {
 export function periodLook(
   choice,
   k,
-  { shown, placeMap, placesRead = true, setName, allDivisions }
+  { shown, placeMap, placesRead = true, setName, allDivisions, terms }
 ) {
   if (placesRead && !placeMap.has(k)) {
     return `${setName} isn't here on any schedule now`;
@@ -148,7 +148,8 @@ export function periodLook(
         choice,
         k,
         shown.filter((c) => c.id !== choice.id && c.periods.size > 1),
-        placeMap.get(k) || allDivisions
+        placeMap.get(k) || allDivisions,
+        terms
       )
     : null;
 }
@@ -260,7 +261,9 @@ function choiceForAgent(choice, shown, context) {
   );
   const notes = [
     sameNameLook(choice, shown, look),
-    guessed ? `Periods for ${choice.name}: guessed from your file` : null
+    guessed
+      ? `${look.terms.p("TimeBlock")} for ${choice.name}: guessed from your file`
+      : null
   ].filter(Boolean);
   return {
     name: choice.name,

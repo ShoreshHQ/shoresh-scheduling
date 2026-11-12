@@ -72,8 +72,16 @@ export function electivesScreen(t) {
       },
       {
         key: "seats",
-        heading: "Seats",
-        words: ["capacity", "spaces", "spots", "places", "max campers"],
+        heading: t.p("Seats"),
+        // "Seats", the standard word, still reads when the camp has its own (word walk W1).
+        words: [
+          "seats",
+          "capacity",
+          "spaces",
+          "spots",
+          "places",
+          "max campers"
+        ],
         type: "wholeOrNone",
         none: "No limit",
         min: 0,

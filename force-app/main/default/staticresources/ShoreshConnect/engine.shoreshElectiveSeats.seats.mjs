@@ -15,6 +15,7 @@ import {
   UNORDERED_SET
 } from "./engine.shoreshElectiveEngine.shoreshElectiveEngine.mjs";
 import { foldName } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { weekdayName } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 // For the connector, which assigns seats with this module (WEEK-1.7).
 export { setDayNaming } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
@@ -153,12 +154,12 @@ function periodAliases(text) {
  * One whose day or period this schedule doesn't have is also used for the whole week, and said:
  * { timeKey: null, unmatched: "No session at Tuesday Period 9 on this schedule." }.
  */
-export function timeOfChoice(run, camper, choice) {
+export function timeOfChoice(run, camper, choice, terms = buildTerms([])) {
   if (!choice.d && !choice.p) return { timeKey: null };
   if (!choice.d || !choice.p) {
     return {
       timeKey: null,
-      unmatched: `Day or period missing: ${choice.d || "(no day)"} ${choice.p || "(no period)"}.`
+      unmatched: `Day or ${terms.sIn("TimeBlock")} missing: ${choice.d || "(no day)"} ${choice.p || `(no ${terms.sIn("TimeBlock")})`}.`
     };
   }
   const day = foldName(choice.d);
@@ -186,14 +187,14 @@ export function timeOfChoice(run, camper, choice) {
  * among equals (rank 1, never an order: desktop owner ruling 2026-09-29); a choice "left out" was
  * never saved.
  */
-export function choicesOf(run, linked = linkedOf(run)) {
+export function choicesOf(run, linked = linkedOf(run), t = buildTerms([])) {
   const choices = [];
   const unmatched = [];
   const uncovered = [];
   const saidUncovered = new Set();
   run.campers.forEach((camper) => {
     parseChoices(camper.choices).forEach((c) => {
-      const where = timeOfChoice(run, camper, c);
+      const where = timeOfChoice(run, camper, c, t);
       if (where.unmatched) {
         unmatched.push({ camperId: camper.id, text: where.unmatched });
       }
@@ -268,7 +269,7 @@ function ordinal(n) {
  */
 export function engineInput(run, terms) {
   const linked = linkedOf(run);
-  const { choices, unmatched } = choicesOf(run, linked);
+  const { choices, unmatched } = choicesOf(run, linked, terms || undefined);
   const offerings = [];
   run.times.forEach((t) => {
     (t.offeringIds || []).forEach((id) => {
@@ -413,11 +414,11 @@ export function droppedOf(view) {
 
 // ---------- the board: both views, the counter and the problems ----------
 
-function seatWords(offering) {
+function seatWords(offering, t) {
   if (offering.noLimit) return "No limit";
-  if (seatsUnset(offering)) return "Choose seats";
+  if (seatsUnset(offering)) return `Choose ${t.pIn("Seats")}`;
   const n = Number(offering.seats);
-  return `${n} seat${n === 1 ? "" : "s"}`;
+  return `${n} ${n === 1 ? t.sIn("Seats") : t.pIn("Seats")}`;
 }
 
 /**
@@ -448,7 +449,7 @@ function dotsFor(count, seats) {
 export function buildBoard(run, t) {
   const view = run.view;
   const linked = linkedOf(run);
-  const { choices, unmatched, uncovered } = choicesOf(run, linked);
+  const { choices, unmatched, uncovered } = choicesOf(run, linked, t);
   const { locks, stray } = locksOf(run);
   const strayIds = new Set(stray.map((s) => s.id));
   const dropped = droppedOf(view);
@@ -538,7 +539,7 @@ export function buildBoard(run, t) {
   const offeringRows = run.offerings
     .filter((o) => !o.proposed)
     .map((offering) => {
-      const subs = [seatWords(offering)];
+      const subs = [seatWords(offering, t)];
       if (offering.minimum != null) subs.push(`at least ${offering.minimum}`);
       return {
         key: offering.id,
@@ -594,6 +595,7 @@ export function buildBoard(run, t) {
   });
 
   return {
+    t,
     columns,
     columnByKey,
     offeringRows,
@@ -785,7 +787,7 @@ export function problemSections(board, t) {
   // UNSUPPORTED_LINKED_CHOICE for campers, in its words).
   add(
     "split",
-    `${p.split.length} given their ${t.sIn("LinkedChoice")} one period at a time`,
+    `${p.split.length} given their ${t.sIn("LinkedChoice")} one ${t.sIn("TimeBlock")} at a time`,
     p.split.map((s) => ({
       key: `p|${s.camperId}|${s.linkedChoiceId}|${s.reason}`,
       text: s.camper.name,
@@ -797,7 +799,7 @@ export function problemSections(board, t) {
   // BUNDLE_TIER_NOT_COVERED, "treated as ordinary").
   add(
     "uncovered",
-    `${p.uncovered.length} asked for a ${t.sIn("LinkedChoice")} not for their ${t.sIn("Division")}`,
+    `${p.uncovered.length} asked for ${article(t.sIn("LinkedChoice"))} not for their ${t.sIn("Division")}`,
     p.uncovered.map((u) => ({
       key: `c|${u.camper.id}|${u.linkedChoiceId}`,
       text: u.camper.name,
@@ -811,7 +813,7 @@ export function problemSections(board, t) {
     p.noOfferings.map((c) => ({
       key: `n|${c.key}`,
       text: c.label,
-      aside: "Nothing is offered in this period, so nobody was placed in it.",
+      aside: `Nothing is offered in this ${t.sIn("TimeBlock")}, so nobody was placed in it.`,
       target: null
     }))
   );
@@ -882,14 +884,15 @@ export function uncoveredWords(u) {
 
 /** Why a camper was given their linked choice one period at a time. */
 export function splitWords(s, board) {
+  const t = board.t || buildTerms([]);
   if (s.reason === "absent") {
-    return `Asked for "${s.name}" but doesn't attend every period it covers`;
+    return `Asked for "${s.name}" but doesn't attend every ${t.sIn("TimeBlock")} it covers`;
   }
   if (s.reason === "locked") {
-    return `Asked for "${s.name}" but has a locked seat in one of its periods`;
+    return `Asked for "${s.name}" but has a locked ${t.sIn("Seats")} in one of its ${t.pIn("TimeBlock")}`;
   }
   const column = board.columnByKey.get(s.timeKey);
-  return `Asked for "${s.name}", which shares ${column ? column.label : "a period"} with "${s.keptName}", kept as a set`;
+  return `Asked for "${s.name}", which shares ${column ? column.label : article(t.sIn("TimeBlock"))} with "${s.keptName}", kept as a set`;
 }
 
 /** Whether anything in the problems needs a look (the counter's corner). */

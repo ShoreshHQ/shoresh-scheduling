@@ -13,6 +13,7 @@
  * title as a plain label (Sidebar.jsx, the pinned section); its nearest door is App.jsx's neutral
  * "schedule" entry, which picks neither route and offers both. The other titles stay plain.
  */
+import { article, electiveSeatsTitle } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
 // Built in a later slice: listed, not reachable from the menu yet. None just now: Electives and
 // Elective seats opened with slice E11 (decision 44; repo ADR 0018 choice 59).
@@ -46,9 +47,9 @@ export function screenLabels(t) {
     fixedActivities: t.p("FixedActivity"),
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
-    // The camp's word for electives too (wiki decision 66): "Chugim", "Chug seats".
+    // The camp's word for electives too (wiki decision 66): "Chugim", "Chug spots".
     electives: t.p("Elective"),
-    electiveSeats: `${t.s("Elective")} seats`,
+    electiveSeats: electiveSeatsTitle(t),
     manualBuild: "Manual Build",
     generatedSchedule: "Generated Schedule",
     schedules: "Saved versions",
@@ -147,7 +148,7 @@ function whyClosed(screen, t, hasSeason, preview) {
   }
   return COMING.has(screen) && preview !== screen
     ? "Coming"
-    : `Needs a ${t.sIn("Season")}`;
+    : `Needs ${article(t.sIn("Season"))}`;
 }
 
 /**
