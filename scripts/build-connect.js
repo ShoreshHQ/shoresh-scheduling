@@ -152,6 +152,12 @@ function engineFiles() {
           return `const ${name} = schemaName(${JSON.stringify(field)});`;
         }
       )
+      // The person's Salesforce settings (their time zone): none in Node, so a screen's
+      // module falls back as it does without them (c/shoreshCampClock: this computer's clock).
+      .replace(
+        /^import (\w+) from "@salesforce\/i18n\/[^"]+";$/gm,
+        (all, name) => `const ${name} = undefined;`
+      )
       .replace(
         /^import (\w+) from "@salesforce\/apex\/([^"]+)";$/gm,
         (all, name, method) =>
@@ -231,8 +237,12 @@ async function compiled(input) {
       {
         name: "salesforce",
         resolveId: (id) =>
-          /^@salesforce\/(schema|apex)\//.test(id) ? `\0${id}` : null,
+          /^@salesforce\/(schema|apex|i18n)\//.test(id) ? `\0${id}` : null,
         load(id) {
+          // The person's Salesforce settings: none on a plain page (as engineFiles).
+          if (id.startsWith("\0@salesforce/i18n/")) {
+            return "export default undefined;";
+          }
           const [, kind, name] =
             /^\0@salesforce\/(schema|apex)\/(.+)$/.exec(id) || [];
           if (!kind) return null;

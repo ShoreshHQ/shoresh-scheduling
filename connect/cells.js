@@ -189,7 +189,9 @@ function contextOf(m, body) {
     isLocked: (slot) => m.isLockedAt(week, locks, slot),
     liveLocks: locks,
     events,
-    replaced: m.replacedDays(draft)
+    replaced: m.replacedDays(draft),
+    // Generated Schedule's tools never clear: nothing of setup's to put back.
+    setUp: null
   };
 }
 

@@ -213,8 +213,8 @@ export function saveCounts(proposals) {
 export function changeAllLabel(counts) {
   const { changes, clears, answered } = counts;
   const what = answered
-    ? `Change the other ${changes}`
-    : `Change all from this file: ${changes} ${changes === 1 ? "change" : "changes"}`;
+    ? `Use the file's for the other ${changes}`
+    : `Use the file's for all: ${changes} ${changes === 1 ? "change" : "changes"}`;
   if (!clears) {
     return what;
   }
@@ -335,7 +335,7 @@ export function waitingFor(proposal, t, answers) {
     .filter((d) => !d.answer).length;
   if (undecided) {
     waiting.push(
-      `${undecided} ${undecided === 1 ? "difference" : "differences"} to Keep or Change`
+      `${undecided} ${undecided === 1 ? "difference" : "differences"} to answer`
     );
   }
   waiting.push(...conflicts(proposal));

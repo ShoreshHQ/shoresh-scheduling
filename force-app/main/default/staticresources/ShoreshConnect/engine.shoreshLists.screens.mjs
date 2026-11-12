@@ -13,6 +13,7 @@
  * cell would give it).
  */
 import { CHILDREN, childRows, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { NONE, listName } from "./engine.shoreshLists.cells.mjs";
 import { whoNames } from "./engine.shoreshLists.who.mjs";
@@ -26,6 +27,9 @@ import {
 } from "./engine.shoreshLists.programScreens.mjs";
 import { electivesScreen } from "./engine.shoreshLists.electivesScreen.mjs";
 import { specialEventsScreen } from "./engine.shoreshLists.specialScreen.mjs";
+
+// Shoresh's own words, which a file's headings may use whatever the camp calls things.
+const SHOWN = buildTerms([]);
 
 // Each screen's fields, as the package names them (c/shoreshSchema).
 const LOCATION = FIELD.Location;
@@ -141,6 +145,10 @@ function activitiesScreen(t) {
         key: "min",
         heading: `${t.s("TimesPerWeek")}: at least`,
         words: [
+          // The How often word alone ("Times per week", or the camp's own): a single number,
+          // read as the least, as How often starts with it (word walk W6).
+          t.s("TimesPerWeek"),
+          SHOWN.s("TimesPerWeek"),
           "times a week: at least",
           "at least",
           "min",
@@ -336,10 +344,18 @@ const SCREEN_ONLY = {
 
 /** One screen's list layout, in the camp's words. */
 export function listScreen(key, t) {
-  const screen = (BUILDERS[key] || WORKBOOK_ONLY[key] || SCREEN_ONLY[key])(t);
-  // The heading itself always counts, in the camp's words and Shoresh's.
+  const build = BUILDERS[key] || WORKBOOK_ONLY[key] || SCREEN_ONLY[key];
+  const screen = build(t);
+  // The heading itself always counts, in the camp's words and Shoresh's: a file headed in
+  // Shoresh's words still reads after the camp renames one (word walk W6).
+  const standard = new Map(build(SHOWN).columns.map((c) => [c.key, c.heading]));
   screen.columns.forEach((column) => {
-    column.words = [column.heading, ...column.words];
+    const shown = standard.get(column.key);
+    column.words = [
+      column.heading,
+      ...(shown && shown !== column.heading ? [shown] : []),
+      ...column.words
+    ];
   });
   return screen;
 }
