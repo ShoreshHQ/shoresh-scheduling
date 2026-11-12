@@ -80,6 +80,11 @@ function filledIn(day, { blockIndex = null, groupIndex = null }) {
 export default class ShoreshSpecialSchedule extends LightningElement {
   @api terms;
   @api setup;
+  /**
+   * An archived season (WEEK-1.10): the schedule is looked at and downloaded; nothing imported,
+   * placed, added or changed.
+   */
+  @api readOnly = false;
 
   _itemId;
   // SpecialScheduleController.openPlan's PlanView, kept up to date with each save.
@@ -286,6 +291,9 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       lacks.push(this.t.pIn("Station"));
     }
     return `No ${lacks.join(" or ")} yet`;
+  }
+  get editable() {
+    return !this.readOnly;
   }
   get controlsDisabled() {
     return this.busy || this.editorBusy || !this.view || !!this.problem;

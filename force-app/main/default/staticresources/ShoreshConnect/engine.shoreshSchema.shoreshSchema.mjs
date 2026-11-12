@@ -254,6 +254,7 @@ const scheduleStatus = schemaName("Schedule__c.Status__c");
 const scheduleVersionReason = schemaName("Schedule__c.VersionReason__c");
 const scheduleWeek = schemaName("Schedule__c.Week__c");
 const seasonObject = schemaName("Season__c");
+const seasonArchived = schemaName("Season__c.Archived__c");
 const seasonCamp = schemaName("Season__c.Camp__c");
 const seasonCopiedFrom = schemaName("Season__c.CopiedFrom__c");
 const seasonEndDate = schemaName("Season__c.EndDate__c");
@@ -641,6 +642,7 @@ export const FIELD = Object.freeze({
     Week: scheduleWeek.fieldApiName
   }),
   Season: Object.freeze({
+    Archived: seasonArchived.fieldApiName,
     Camp: seasonCamp.fieldApiName,
     CopiedFrom: seasonCopiedFrom.fieldApiName,
     EndDate: seasonEndDate.fieldApiName,

@@ -450,30 +450,34 @@
                     <span class={row.weeksTextClass} data-id="weeks-text"
                       >{row.weeksText}</span
                     >
-                    <span
-                      class="strip"
-                      role="group"
-                      aria-label={row.weeksName}
-                      data-id="week-strip"
-                    >
-                      <template for:each={row.weekCells} for:item="cell">
-                        <label key={cell.key} class="chip">
-                          <input
-                            type="checkbox"
-                            class="chip-box"
-                            aria-label={cell.label}
-                            checked={cell.checked}
-                            data-row-key={row.key}
-                            data-week={cell.weekId}
-                            disabled={row.locked}
-                            onchange={handleTick}
-                          />
-                          <span class="chip-face shoresh-num" aria-hidden="true"
-                            >{cell.number}</span
-                          >
-                        </label>
-                      </template>
-                    </span>
+                    <template lwc:if={row.editable}>
+                      <span
+                        class="strip"
+                        role="group"
+                        aria-label={row.weeksName}
+                        data-id="week-strip"
+                      >
+                        <template for:each={row.weekCells} for:item="cell">
+                          <label key={cell.key} class="chip">
+                            <input
+                              type="checkbox"
+                              class="chip-box"
+                              aria-label={cell.label}
+                              checked={cell.checked}
+                              data-row-key={row.key}
+                              data-week={cell.weekId}
+                              disabled={row.locked}
+                              onchange={handleTick}
+                            />
+                            <span
+                              class="chip-face shoresh-num"
+                              aria-hidden="true"
+                              >{cell.number}</span
+                            >
+                          </label>
+                        </template>
+                      </span>
+                    </template>
                   </td>
                 </template>
                 <template lwc:if={hasNotes}>
@@ -531,26 +535,28 @@
                       </button>
                     </template>
                     <span class="tools">
-                      <button
-                        type="button"
-                        class="shoresh-item shoresh-item_icon shoresh-item_tool more"
-                        aria-label={row.deleteLabel}
-                        title={row.deleteLabel}
-                        data-id="delete"
-                        data-row-key={row.key}
-                        onclick={handleDelete}
-                        disabled={busy}
-                      >
-                        <svg
-                          class="shoresh-glyph"
-                          viewBox="0 0 16 16"
-                          aria-hidden="true"
+                      <template lwc:if={row.editable}>
+                        <button
+                          type="button"
+                          class="shoresh-item shoresh-item_icon shoresh-item_tool more"
+                          aria-label={row.deleteLabel}
+                          title={row.deleteLabel}
+                          data-id="delete"
+                          data-row-key={row.key}
+                          onclick={handleDelete}
+                          disabled={busy}
                         >
-                          <path
-                            d="M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.5 8.5h6l.5-8.5 M7 7v4 M9 7v4"
-                          ></path>
-                        </svg>
-                      </button>
+                          <svg
+                            class="shoresh-glyph"
+                            viewBox="0 0 16 16"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.5 8.5h6l.5-8.5 M7 7v4 M9 7v4"
+                            ></path>
+                          </svg>
+                        </button>
+                      </template>
                       <template lwc:if={row.hasMore}>
                         <button
                           type="button"
@@ -612,7 +618,23 @@
                     <div class="more-fields" data-id="more-fields">
                       <template for:each={row.moreCells} for:item="cell">
                         <div key={cell.key} class={cell.className}>
-                          <template lwc:if={cell.isPicklist}>
+                          <template lwc:if={cell.isReadonly}>
+                            <div
+                              class="slds-form-element slds-form-element_readonly"
+                              data-id="readonly"
+                              data-column={cell.fieldName}
+                            >
+                              <span class="slds-form-element__label"
+                                >{cell.label}</span
+                              >
+                              <div class="slds-form-element__control">
+                                <div class="slds-form-element__static">
+                                  {cell.fixedText}
+                                </div>
+                              </div>
+                            </div>
+                          </template>
+                          <template lwc:elseif={cell.isPicklist}>
                             <lightning-combobox
                               label={cell.label}
                               value={cell.value}

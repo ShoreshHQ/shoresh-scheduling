@@ -5,7 +5,7 @@
 public with sharing class SeasonToOpen {
   /**
    * The season Shoresh's screens open on (Camp Setup: the first camp by name, then its season
-   * with the latest start), or refused naming the seasons when that isn't one season: that camp
+   * with the latest start that isn't archived), or refused naming the seasons when that isn't one season: that camp
    * has none, or two of its seasons start the same day (API-1.24).
    */
   public static Season__c find() {
@@ -13,7 +13,8 @@ public with sharing class SeasonToOpen {
     Id camp = firstCamp(seen);
     List<Season__c> its = new List<Season__c>();
     for (Season__c season : seen) {
-      if (season.Camp__c == camp) {
+      // WEEK-1.11: an archived season is never the one opened on.
+      if (season.Camp__c == camp && !season.Archived__c) {
         its.add(season);
       }
     }

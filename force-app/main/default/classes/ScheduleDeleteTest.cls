@@ -133,7 +133,9 @@ private class ScheduleDeleteTest {
       AccessLevel.SYSTEM_MODE
     );
     Assert.isFalse(season.isSuccess());
-    Assert.isTrue(season.getErrors()[0].getMessage().contains('Finished'));
+    Assert.isTrue(
+      season.getErrors()[0].getMessage().contains('Archive it instead.')
+    );
   }
 
   @IsTest

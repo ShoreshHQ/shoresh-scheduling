@@ -220,6 +220,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   // A special day's own schedule takes the season's elective sets as a week does (SPECIAL-1.3);
   // an event's, whose columns are stations, doesn't.
   @api takesElectives = false;
+  /**
+   * An archived season's week (WEEK-1.10): read, not changed. No Edit menu, no host tools (Build),
+   * no drawer of tiles and no typing or dragging in the grid; the views stay.
+   */
+  @api readOnly = false;
   // Sets up what a cell noted from a file names (ADR 0014 slice 4): ({ kind, name }) => Promise
   // of the words to say. Left out, no "Set it up" is offered.
   @api setUpWith;
@@ -392,7 +397,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   get showTools() {
-    return this.tools !== false;
+    return this.tools !== false && this.editable;
+  }
+  get editable() {
+    return !this.readOnly;
   }
 
   // ---------- what the host is told ----------
@@ -1362,6 +1370,9 @@ export default class ShoreshWeekEditor extends LightningElement {
    * a file ("not set up yet"), when the host can make it.
    */
   get setUpOffer() {
+    if (this.readOnly) {
+      return null;
+    }
     // A day a special day replaces shows its own schedule: the week's hidden cells under it,
     // noted ones too, have nothing to offer (once set up, the day is replaced at once).
     if (
@@ -2565,6 +2576,9 @@ export default class ShoreshWeekEditor extends LightningElement {
    * boxes keep their own, so it never acts while the key comes from one.
    */
   handleKeyDown(event) {
+    if (this.readOnly) {
+      return;
+    }
     // Every element the key passed through that this editor can see; never while the typing box
     // or the "keep theirs or use yours" question is open. In Salesforce the path stops at another
     // component's edge, so the activity list's Filter and the Versions name boxes keep their
@@ -2588,6 +2602,9 @@ export default class ShoreshWeekEditor extends LightningElement {
    * page, hidden. Anything focused elsewhere on the page keeps its own keys.
    */
   handlePageKeyDown(event) {
+    if (this.readOnly) {
+      return;
+    }
     const target = event.target;
     const nothingFocused =
       !target ||
@@ -3188,6 +3205,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** The drawer under the grid, in Daily and Group View with a grid to place on. */
   get showPalette() {
     return (
+      this.editable &&
       !this.isActivity &&
       !!this.editGrid &&
       !this.planName &&

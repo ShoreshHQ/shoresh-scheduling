@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Archived__c</fullName>
+    <description
+  >The season is archived: kept whole, read-only, and left out of the season picker until it is brought back (WEEK-1.10 to WEEK-1.13; ADR 0029).</description>
+    <defaultValue>false</defaultValue>
+    <label>Archived</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

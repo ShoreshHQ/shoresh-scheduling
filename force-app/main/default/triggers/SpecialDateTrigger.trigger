@@ -3,5 +3,6 @@ trigger SpecialDateTrigger on SpecialDate__c(
   before update,
   before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   SpecialDateTriggerHandler.beforeChange(Trigger.new);
 }

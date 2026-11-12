@@ -14,6 +14,10 @@ public with sharing class WeekExceptionTriggerHandler {
     List<WeekException__c> rows,
     List<WeekException__c> oldRows
   ) {
+    // A delete before it happens: only an archived season is checked here (ArchivedSeasons).
+    if (operation == System.TriggerOperation.BEFORE_DELETE) {
+      return;
+    }
     if (operation == System.TriggerOperation.AFTER_DELETE) {
       SetTimeTriggers.weekExceptionsRemoved(oldRows);
     } else if (operation == System.TriggerOperation.AFTER_UPDATE) {

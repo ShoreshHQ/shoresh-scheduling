@@ -55,6 +55,7 @@
               label={choice.nameLabel}
               value={choice.name}
               placeholder={choice.namePlaceholder}
+              read-only={readOnly}
               disabled={choice.disabled}
               max-length="80"
               onchange={handleNameInput}
@@ -167,19 +168,21 @@
               ></lightning-checkbox-group>
             </div>
           </template>
-          <div class="choice-foot">
-            <button
-              type="button"
-              class="choice-delete"
-              data-id="delete-linked-choice"
-              data-choice={choice.key}
-              aria-label={choice.deleteLabel}
-              title={choice.deleteLabel}
-              onclick={handleDelete}
-            >
-              {choice.deleteText}
-            </button>
-          </div>
+          <template lwc:if={choice.editable}>
+            <div class="choice-foot">
+              <button
+                type="button"
+                class="choice-delete"
+                data-id="delete-linked-choice"
+                data-choice={choice.key}
+                aria-label={choice.deleteLabel}
+                title={choice.deleteLabel}
+                onclick={handleDelete}
+              >
+                {choice.deleteText}
+              </button>
+            </div>
+          </template>
         </div>
       </template>
       <span class="slds-assistive-text" role="status" data-id="status"
@@ -193,21 +196,23 @@
       <template lwc:if={hasNote}>
         <p class="note" data-id="note">{incompleteText}</p>
       </template>
-      <button
-        type="button"
-        class="add-choice"
-        data-id="add-linked-choice"
-        disabled={addDisabled}
-        onclick={handleAdd}
-      >
-        <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M8 3.5v9M3.5 8h9"></path>
-        </svg>
-        <span>{addLabel}</span>
-        <template lwc:if={sitsNowhere}>
-          <span class="slds-assistive-text">: {nowhereText}</span>
-        </template>
-      </button>
+      <template lwc:if={editable}>
+        <button
+          type="button"
+          class="add-choice"
+          data-id="add-linked-choice"
+          disabled={addDisabled}
+          onclick={handleAdd}
+        >
+          <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 3.5v9M3.5 8h9"></path>
+          </svg>
+          <span>{addLabel}</span>
+          <template lwc:if={sitsNowhere}>
+            <span class="slds-assistive-text">: {nowhereText}</span>
+          </template>
+        </button>
+      </template>
     </section>
   </template>
 </template>

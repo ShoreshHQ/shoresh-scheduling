@@ -258,6 +258,12 @@ export default class ShoreshEditableTable extends LightningElement {
   @api headingCount;
   /** Changes offered at a row's end: record Id -> [{ key, label, changes }] (see above). */
   @api endActions;
+  /**
+   * The rows to read, not change (an archived season, WEEK-1.10): every cell shows its value as
+   * words, with no blank row, no boxes, ticks, Delete, merge, fixes or guesses to confirm. A row's
+   * details still open.
+   */
+  @api readOnly = false;
 
   drafts = [];
   addRow = this.blankRow();
@@ -1179,7 +1185,7 @@ export default class ShoreshEditableTable extends LightningElement {
           : this.emptyMessage
       });
     }
-    return [...rows, this.tableRow(this.addRow, shared)];
+    return this.readOnly ? rows : [...rows, this.tableRow(this.addRow, shared)];
   }
 
   /** The desktop's words while the blank row is being added. */
@@ -1386,26 +1392,34 @@ export default class ShoreshEditableTable extends LightningElement {
       moreKey: `${draft.key}-more`,
       moreName: `${name} details`.trim(),
       moreGlyphClass: moreOpen ? "shoresh-glyph turned" : "shoresh-glyph",
-      moreCells: moreOpen ? this.moreColumns.map(cell) : [],
+      moreCells: moreOpen
+        ? this.moreColumns.map((col) => this.shownAs(cell(col), col, draft))
+        : [],
       note: draft.isNew
         ? ""
         : this.draftNotes.get(draft.key) || notes[draft.original.Id] || "",
-      actions: draft.isNew
-        ? []
-        : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({
-            ...action,
-            key: `${draft.key}-${action.key}`,
-            name: action.key
-          })),
-      endActions: draft.isNew
-        ? []
-        : ((this.endActions || {})[draft.original.Id] || []).map((action) => ({
-            key: `${draft.key}-end-${action.key}`,
-            name: action.key,
-            label: action.label,
-            // Named for its row, so a screen reader can tell the buttons apart; or the screen's.
-            title: action.title || `${action.label} ${name}`.trim()
-          })),
+      actions:
+        draft.isNew || this.readOnly
+          ? []
+          : ((this.rowActions || {})[draft.original.Id] || []).map(
+              (action) => ({
+                ...action,
+                key: `${draft.key}-${action.key}`,
+                name: action.key
+              })
+            ),
+      endActions:
+        draft.isNew || this.readOnly
+          ? []
+          : ((this.endActions || {})[draft.original.Id] || []).map(
+              (action) => ({
+                key: `${draft.key}-end-${action.key}`,
+                name: action.key,
+                label: action.label,
+                // Named for its row, so a screen reader can tell the buttons apart; or the screen's.
+                title: action.title || `${action.label} ${name}`.trim()
+              })
+            ),
       isNew: draft.isNew,
       rowClass: [
         "row shoresh-row",
@@ -1416,7 +1430,8 @@ export default class ShoreshEditableTable extends LightningElement {
         moreOpen ? "row_open" : "",
         // Its details are open beside the table: the 2 px selection line (activities.html).
         selected ? "row_selected" : "",
-        draft.asking ? "row_asking" : ""
+        draft.asking ? "row_asking" : "",
+        this.readOnly ? "row_read" : ""
       ]
         .filter((c) => c)
         .join(" "),
@@ -1424,9 +1439,8 @@ export default class ShoreshEditableTable extends LightningElement {
       // The blank row is locked while it is being added, so nothing typed is lost or added twice.
       locked: draft.isNew && !!draft.adding,
       deleteLabel: `Delete ${name}`.trim(),
-      cells: this.mainColumns.map((col) =>
-        this.withGuess(cell(col), col, draft)
-      ),
+      cells: this.mainColumns.map((col) => this.shownAs(cell(col), col, draft)),
+      editable: !this.readOnly,
       weekCells,
       weeksText: weeks.text,
       weeksTextClass: weeks.exception ? "weeks-text exception" : "weeks-text",
@@ -1436,6 +1450,13 @@ export default class ShoreshEditableTable extends LightningElement {
 
   isTextColumn(col) {
     return col.type === "text" || !col.type;
+  }
+
+  /** A cell as the table shows it: with its guess, or, read only, as words. */
+  shownAs(built, col, draft) {
+    return this.readOnly
+      ? readOnlyCell(built, col, draft)
+      : this.withGuess(built, col, draft);
   }
 
   /** A saved row's cell whose value an import guessed: it carries the corner mark. */
@@ -1579,6 +1600,7 @@ export default class ShoreshEditableTable extends LightningElement {
       oftenClass: draft.isNew ? "often often_open" : "often",
       bars,
       oftenName: `${col.label}: ${words}`.trim(),
+      oftenText: words,
       value: min,
       maxValue: max,
       maxField: col.maxField,
@@ -2335,6 +2357,43 @@ export function timeText(value) {
   const minutes = Math.floor((value % 3600000) / 60000);
   const seconds = Math.floor((value % 60000) / 1000);
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(value % 1000, 3)}`;
+}
+
+/**
+ * A cell read, not changed (readOnly): its value in words, as a worked-out column shows its own
+ * (isReadonly). A blank is left blank; a checkbox says Yes or No.
+ */
+function readOnlyCell(built, col, draft) {
+  if (built.isReadonly || built.isFixed) {
+    return built;
+  }
+  const value = draft.values[col.fieldName];
+  let text;
+  if (built.isOften) {
+    text = built.oftenText;
+  } else if (built.isDays) {
+    text = built.daysText;
+  } else if (built.isSeats) {
+    text = built.seatsText;
+  } else if (built.isWho) {
+    text = built.whoSummary;
+  } else {
+    text =
+      isBlank(value) && col.type !== "checkbox" ? "" : shownValue(col, value);
+    if (text && built.unit) {
+      text = `${text} ${built.unit}`;
+    }
+  }
+  return {
+    key: built.key,
+    fieldName: built.fieldName,
+    className: built.className,
+    label: col.label,
+    isReadonly: true,
+    fixedClass: "fixed",
+    fixedText: text || "",
+    problem: null
+  };
 }
 
 /** A value as the director reads it: a choice's name, Yes or No, a clock time. */

@@ -142,6 +142,8 @@ export function scheduleText(brief, isEvent, t) {
 export default class ShoreshSpecialDetails extends LightningElement {
   @api terms;
   @api weekWords;
+  /** An archived season (WEEK-1.10): what it is and where, with no Put on or Take off. */
+  @api readOnly = false;
 
   itemId = null;
   _setup;
@@ -299,7 +301,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
   }
 
   get hasDaysToTakeOff() {
-    return this.daysToTakeOff.length > 0;
+    return !this.readOnly && this.daysToTakeOff.length > 0;
   }
 
   get notes() {
@@ -357,7 +359,7 @@ export default class ShoreshSpecialDetails extends LightningElement {
   }
 
   get canPlace() {
-    return this.isSpecialDay && this.weeks.length > 0;
+    return !this.readOnly && this.isSpecialDay && this.weeks.length > 0;
   }
 
   get weekOptions() {

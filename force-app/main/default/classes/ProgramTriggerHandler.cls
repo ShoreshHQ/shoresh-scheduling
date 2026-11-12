@@ -13,6 +13,13 @@ public with sharing class ProgramTriggerHandler {
     List<Program__c> programs,
     Map<Id, Program__c> before
   ) {
+    // Before a save: only an archived season is checked here (ArchivedSeasons).
+    if (
+      operation == System.TriggerOperation.BEFORE_INSERT ||
+      operation == System.TriggerOperation.BEFORE_UPDATE
+    ) {
+      return;
+    }
     if (operation == System.TriggerOperation.BEFORE_DELETE) {
       beforeDelete(before);
       DeletedDrafts.beforeDelete(before.keySet());

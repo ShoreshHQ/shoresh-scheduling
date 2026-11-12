@@ -1,11 +1,13 @@
 trigger GroupTrigger on Group__c(
-  before delete,
+  before insert,
   before update,
+  before delete,
   after insert,
   after update,
   after delete,
   after undelete
 ) {
+  ArchivedSeasons.refuseChanges();
   GroupTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

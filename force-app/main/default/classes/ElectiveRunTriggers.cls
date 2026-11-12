@@ -16,6 +16,10 @@ public with sharing class ElectiveRunTriggers {
   // ---------------------------------------------------------------- campers
 
   public static void campersSaving(List<Camper__c> campers) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (campers == null) {
+      return;
+    }
     Set<Id> seasonIds = new Set<Id>();
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
@@ -90,6 +94,10 @@ public with sharing class ElectiveRunTriggers {
 
   /** The set, week and schedules a run names are in its season, and its schedule is of its week. */
   public static void runsSaving(List<ElectiveRun__c> runs) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (runs == null) {
+      return;
+    }
     Set<Id> ids = new Set<Id>();
     Set<Id> seasonIds = new Set<Id>();
     for (ElectiveRun__c run : runs) {
@@ -197,12 +205,20 @@ public with sharing class ElectiveRunTriggers {
   // ---------------------------------------------------------------- choices and seats
 
   public static void preferencesSaving(List<Preference__c> rows) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (rows == null) {
+      return;
+    }
     for (Preference__c row : rows) {
       row.Key__c = row.ElectiveRun__c + '|' + row.Camper__c;
     }
   }
 
   public static void assignmentsSaving(List<Assignment__c> rows) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (rows == null) {
+      return;
+    }
     for (Assignment__c row : rows) {
       row.Key__c =
         row.ElectiveRun__c +

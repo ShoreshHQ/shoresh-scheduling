@@ -88,6 +88,8 @@ export default class ShoreshRoots extends LightningElement {
   /** The season setup from SeasonSetupController. */
   @api setup;
   @api terms;
+  /** An archived season (WEEK-1.10): its worksheet downloads, but nothing is imported. */
+  @api readOnly = false;
   /** From shoreshSetupRules.setupProblems: [{ key, screen, kind, name, why, of }]. */
   @api
   get problems() {
@@ -425,6 +427,18 @@ export default class ShoreshRoots extends LightningElement {
    * thing to do (desktop SeedScreen.jsx); once it has data the import recedes to a quiet
    * "Re-import last year", still reachable (desktop navSections.js ADMIN_MENU_ITEMS).
    */
+  get editable() {
+    return !this.readOnly;
+  }
+  get offersImport() {
+    return this.editable && this.campIsEmpty;
+  }
+  get offersReimport() {
+    return this.editable && this.campHasData;
+  }
+  get offersUndoImport() {
+    return this.editable && !!this.lastImport;
+  }
   get campHasData() {
     return ["divisions", "groups", "timeBlocks"].some(
       (key) => this.rowsFor(key).length > 0

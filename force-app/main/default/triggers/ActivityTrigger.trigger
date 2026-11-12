@@ -1,8 +1,9 @@
 trigger ActivityTrigger on Activity__c(
-  before delete,
   before insert,
-  before update
+  before update,
+  before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   ActivityTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

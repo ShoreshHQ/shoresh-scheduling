@@ -82,7 +82,7 @@
       <!-- The camp's workbook: secondary actions in a bar along the bottom (decision 28C). -->
       <div class="shoresh-hairline" role="presentation"></div>
       <div class="tools" data-id="tools">
-        <template lwc:if={campIsEmpty}>
+        <template lwc:if={offersImport}>
           <lightning-button
             data-id="import"
             data-screen="import"
@@ -98,14 +98,16 @@
           disabled={downloading}
           onclick={handleDownloadWorkbook}
         ></lightning-button>
-        <c-shoresh-list-import
-          data-id="workbook-import"
-          workbook
-          setup={setup}
-          terms={terms}
-          onimported={handleImported}
-        ></c-shoresh-list-import>
-        <template lwc:if={campHasData}>
+        <template lwc:if={editable}>
+          <c-shoresh-list-import
+            data-id="workbook-import"
+            workbook
+            setup={setup}
+            terms={terms}
+            onimported={handleImported}
+          ></c-shoresh-list-import>
+        </template>
+        <template lwc:if={offersReimport}>
           <lightning-button
             data-id="import"
             data-screen="import"
@@ -114,7 +116,7 @@
             onclick={handleOpen}
           ></lightning-button>
         </template>
-        <template lwc:if={lastImport}>
+        <template lwc:if={offersUndoImport}>
           <!-- As the desktop's LastImportUndo: the words on the left, Undo on their right; one
                quiet row beside the buttons (the file cut short with an ellipsis rather than the
                bar growing), so table, hand and bar share a laptop's window. What Undo does is

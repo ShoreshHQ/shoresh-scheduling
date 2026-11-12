@@ -48,6 +48,7 @@
           value={rainPlan}
           options={rainPlanOptions}
           onchange={handleRule}
+          read-only={readOnly}
         ></lightning-combobox>
         <template lwc:if={fieldErrors.rainPlan}>
           <div
@@ -69,6 +70,7 @@
           options={togetherOptions}
           value={together}
           onchange={handleRule}
+          disabled={readOnly}
         ></lightning-radio-group>
         <template lwc:if={sameDivisionError}>
           <div
@@ -98,6 +100,7 @@
               onchange={handleRule}
               onfocusout={handleRuleLeave}
               onkeydown={handleRuleKey}
+              read-only={readOnly}
             ></lightning-input>
             <template lwc:if={earlyCountError}>
               <div
@@ -116,6 +119,7 @@
               value={earlyDay}
               options={dayOptions}
               onchange={handleRule}
+              read-only={readOnly}
             ></lightning-combobox>
             <template lwc:if={earlyDayError}>
               <div
@@ -138,6 +142,7 @@
           options={targetOptions}
           value={whoCanDoIt}
           onchange={handleWhoChange}
+          disabled={readOnly}
         ></lightning-checkbox-group>
         <template lwc:if={whoError}>
           <div
@@ -167,6 +172,7 @@
               onchange={handleRule}
               onfocusout={handleRuleLeave}
               onkeydown={handleRuleKey}
+              read-only={readOnly}
             ></lightning-input>
             <span class="number-unit" data-id="length-unit">{lengthUnit}</span>
           </span>
@@ -187,6 +193,7 @@
             value={priority}
             options={priorityOptions}
             onchange={handleRule}
+            read-only={readOnly}
           ></lightning-combobox>
           <template lwc:if={fieldErrors.priority}>
             <div
@@ -214,6 +221,7 @@
             onchange={handleRule}
             onfocusout={handleRuleLeave}
             onkeydown={handleRuleKey}
+            read-only={readOnly}
           ></lightning-input>
           <template lwc:if={fieldErrors.groupsAtOnce}>
             <div
@@ -232,6 +240,7 @@
             label={labels.noGroupLimit}
             checked={noGroupLimit}
             onchange={handleRule}
+            disabled={readOnly}
           ></lightning-input>
           <template lwc:if={fieldErrors.noGroupLimit}>
             <div
@@ -252,6 +261,7 @@
           label={labels.outdoor}
           checked={outdoor}
           onchange={handleRule}
+          disabled={readOnly}
         ></lightning-input>
         <template lwc:if={fieldErrors.outdoor}>
           <div
@@ -268,6 +278,7 @@
           label={labels.noWeeklyMax}
           checked={noWeeklyMax}
           onchange={handleRule}
+          disabled={readOnly}
         ></lightning-input>
         <template lwc:if={fieldErrors.noWeeklyMax}>
           <div
@@ -288,6 +299,7 @@
           value={notes}
           onchange={handleRule}
           onfocusout={handleRuleLeave}
+          read-only={readOnly}
         ></lightning-textarea>
         <template lwc:if={notesError}>
           <div

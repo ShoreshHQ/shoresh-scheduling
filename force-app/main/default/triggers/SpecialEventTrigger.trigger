@@ -3,6 +3,7 @@ trigger SpecialEventTrigger on SpecialEvent__c(
   before update,
   before delete
 ) {
+  ArchivedSeasons.refuseChanges();
   SpecialItemTriggerHandler.handle(
     Trigger.operationType,
     Trigger.new,

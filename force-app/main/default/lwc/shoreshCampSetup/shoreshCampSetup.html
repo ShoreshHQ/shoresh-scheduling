@@ -107,7 +107,21 @@
                       onchange={handleSeasonChange}
                     ></lightning-combobox>
                   </div>
-                  <template lwc:if={setup}>
+                  <template lwc:if={isArchived}>
+                    <svg
+                      class="shoresh-glyph season-archived"
+                      data-id="archived-mark"
+                      viewBox="0 0 16 16"
+                      role="img"
+                      aria-label="Archived"
+                    >
+                      <title>Archived</title>
+                      <path
+                        d="M2.5 3.5h11v3h-11z M3.5 6.5v6h9v-6 M6.5 9h3"
+                      ></path>
+                    </svg>
+                  </template>
+                  <template lwc:if={canEditSeason}>
                     <button
                       type="button"
                       class="shoresh-item shoresh-item_icon shoresh-item_tool season-edit"
@@ -162,6 +176,42 @@
                     >
                       {labels.copySeason}
                     </button>
+                  </template>
+                  <template lwc:if={isArchived}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="shoresh-pop-row"
+                      data-value="bringBack"
+                      data-id="bring-back-season"
+                      disabled={busy}
+                    >
+                      {bringBackLabel}
+                    </button>
+                  </template>
+                  <template lwc:if={hasArchivedSeasons}>
+                    <div class="shoresh-pop-divider" role="separator"></div>
+                    <div
+                      role="group"
+                      aria-label="Archived"
+                      data-id="archived-seasons"
+                    >
+                      <div class="shoresh-pop-head" role="presentation">
+                        Archived
+                      </div>
+                      <template for:each={archivedSeasons} for:item="archived">
+                        <button
+                          key={archived.id}
+                          type="button"
+                          role="menuitem"
+                          class="shoresh-pop-row"
+                          data-value={archived.value}
+                          disabled={busy}
+                        >
+                          {archived.name}
+                        </button>
+                      </template>
+                    </div>
                   </template>
                 </c-shoresh-rail-pop>
               </div>
@@ -501,6 +551,7 @@
               <!-- Roots -->
               <div class={shown.roots} data-screen="roots">
                 <c-shoresh-roots
+                  read-only={readOnly}
                   setup={setup}
                   terms={terms}
                   problems={problems}
@@ -535,7 +586,7 @@
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
-                  <template lwc:if={hasNoWeeks}>
+                  <template lwc:if={offersFillWeeks}>
                     <lightning-button
                       class="fill-weeks"
                       data-id="fill-weeks"
@@ -546,6 +597,7 @@
                     ></lightning-button>
                   </template>
                   <c-shoresh-editable-table
+                    read-only={readOnly}
                     data-id="weeks"
                     title={labels.screens.weeks}
                     show-columns
@@ -594,21 +646,24 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="programs-list-import"
-                    variant="rail"
-                    screen-key="programs"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="programs-list-import"
+                      variant="rail"
+                      screen-key="programs"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
                   <c-shoresh-editable-table
+                    read-only={readOnly}
                     data-id="programs"
                     title={labels.screens.programs}
                     show-columns
@@ -675,22 +730,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="divisions-list-import"
-                    variant="rail"
-                    screen-key="divisions"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="divisions-list-import"
+                      variant="rail"
+                      screen-key="divisions"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
                   <template for:each={programs} for:item="item">
                     <c-shoresh-program
+                      read-only={readOnly}
                       key={item.key}
                       before-week-off={beforeWeekOff}
                       show="divisions"
@@ -743,22 +801,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="groups-list-import"
-                    variant="rail"
-                    screen-key="groups"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="groups-list-import"
+                      variant="rail"
+                      screen-key="groups"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
                   <template for:each={programs} for:item="item">
                     <c-shoresh-program
+                      read-only={readOnly}
                       key={item.key}
                       before-week-off={beforeWeekOff}
                       show="groups"
@@ -817,22 +878,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="timeBlocks-list-import"
-                    variant="rail"
-                    screen-key="timeBlocks"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="timeBlocks-list-import"
+                      variant="rail"
+                      screen-key="timeBlocks"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
                   <template for:each={programs} for:item="item">
                     <c-shoresh-program
+                      read-only={readOnly}
                       key={item.key}
                       before-week-off={beforeWeekOff}
                       show="timeBlocks"
@@ -905,22 +969,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="locations-list-import"
-                    variant="rail"
-                    screen-key="locations"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="locations-list-import"
+                      variant="rail"
+                      screen-key="locations"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow" data-id="locations-list">
                   <template for:each={locationSections} for:item="section">
                     <c-shoresh-editable-table
+                      read-only={readOnly}
                       key={section.key}
                       data-id="locations"
                       data-type={section.value}
@@ -964,6 +1031,7 @@
                   </template>
                   <!-- The camp's own types, the sections above: named, added and deleted here. -->
                   <c-shoresh-editable-table
+                    read-only={readOnly}
                     class="types"
                     data-id="location-types"
                     heading={labels.locationTypes}
@@ -1013,17 +1081,19 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="activities-list-import"
-                    variant="rail"
-                    screen-key="activities"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="activities-list-import"
+                      variant="rail"
+                      screen-key="activities"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">
@@ -1031,6 +1101,7 @@
                     <!-- One section per priority, High then Low (activitySections). -->
                     <template for:each={activitySections} for:item="section">
                       <c-shoresh-editable-table
+                        read-only={readOnly}
                         key={section.key}
                         data-id="activities"
                         data-priority={section.value}
@@ -1075,6 +1146,7 @@
                     </template>
                   </div>
                   <c-shoresh-activity-details
+                    read-only={readOnly}
                     class="setup-side"
                     setup={setup}
                     terms={terms}
@@ -1104,22 +1176,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="fixedActivities-list-import"
-                    variant="rail"
-                    screen-key="fixedActivities"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="fixedActivities-list-import"
+                      variant="rail"
+                      screen-key="fixedActivities"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list">
                   <template for:each={programs} for:item="item">
                     <c-shoresh-program
+                      read-only={readOnly}
                       key={item.key}
                       before-week-off={beforeWeekOff}
                       data-id="fixed-activities"
@@ -1179,22 +1254,25 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="recurringActivities-list-import"
-                    variant="rail"
-                    screen-key="recurringActivities"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="recurringActivities-list-import"
+                      variant="rail"
+                      screen-key="recurringActivities"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list">
                   <template for:each={programs} for:item="item">
                     <c-shoresh-program
+                      read-only={readOnly}
                       key={item.key}
                       before-week-off={beforeWeekOff}
                       data-id="recurring-activities"
@@ -1239,6 +1317,7 @@
                      stays as it was underneath, so going back finds it. -->
                 <template lwc:if={specialScheduleFor}>
                   <c-shoresh-special-schedule
+                    read-only={readOnly}
                     item-id={specialScheduleFor}
                     terms={terms}
                     setup={setup}
@@ -1271,22 +1350,28 @@
                       data-id="rail-saved"
                       silent
                     ></c-shoresh-saved-mark>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="specialEvents-list-import"
-                      variant="rail"
-                      screen-key="specialEvents"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
+                    <template lwc:if={editable}>
+                      <span
+                        class="shoresh-rail-line"
+                        role="presentation"
+                      ></span>
+                      <c-shoresh-list-import
+                        class="rail-import"
+                        data-id="specialEvents-list-import"
+                        variant="rail"
+                        screen-key="specialEvents"
+                        setup={setup}
+                        terms={terms}
+                        onimported={handleImported}
+                        onlistopen={handleListOpen}
+                      ></c-shoresh-list-import>
+                    </template>
                   </div>
                   <div class="shoresh-hairline" role="presentation"></div>
                   <div class="setup-split">
                     <div class="setup-list setup-main">
                       <c-shoresh-editable-table
+                        read-only={readOnly}
                         data-id="special-days"
                         heading={labels.specialDays}
                         show-columns
@@ -1315,6 +1400,7 @@
                         {seededNote}
                       </p>
                       <c-shoresh-editable-table
+                        read-only={readOnly}
                         data-id="special-events"
                         heading={labels.specialEvents}
                         title={labels.specialEvents}
@@ -1345,6 +1431,7 @@
                       </template>
                     </div>
                     <c-shoresh-special-details
+                      read-only={readOnly}
                       class="setup-side"
                       setup={setup}
                       terms={terms}
@@ -1381,24 +1468,27 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <span class="shoresh-rail-line" role="presentation"></span>
-                  <c-shoresh-list-import
-                    class="rail-import"
-                    data-id="electives-list-import"
-                    variant="rail"
-                    screen-key="electives"
-                    setup={setup}
-                    terms={terms}
-                    onimported={handleImported}
-                    onlistopen={handleListOpen}
-                    onbringinchoices={handleBringInChoices}
-                  ></c-shoresh-list-import>
+                  <template lwc:if={editable}>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="electives-list-import"
+                      variant="rail"
+                      screen-key="electives"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                      onbringinchoices={handleBringInChoices}
+                    ></c-shoresh-list-import>
+                  </template>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">
                   <div class="setup-list setup-main">
                     <template for:each={electiveSections} for:item="section">
                       <c-shoresh-editable-table
+                        read-only={readOnly}
                         key={section.key}
                         data-id="offerings"
                         data-set={section.setId}
@@ -1428,6 +1518,7 @@
                     </template>
                     <!-- The sets, the sections above: named, added and deleted here. -->
                     <c-shoresh-editable-table
+                      read-only={readOnly}
                       class="types"
                       data-id="elective-sets"
                       heading={labels.electiveSets}
@@ -1445,6 +1536,7 @@
                     ></c-shoresh-editable-table>
                   </div>
                   <c-shoresh-elective-details
+                    read-only={readOnly}
                     class="setup-side"
                     setup={setup}
                     terms={terms}
@@ -1467,6 +1559,7 @@
                   {labels.screens.generatedSchedule}
                 </h2>
                 <c-shoresh-generated-schedule
+                  read-only={readOnly}
                   setup={setup}
                   terms={terms}
                   onnavigate={handleNavigate}
@@ -1486,6 +1579,7 @@
                   {labels.screens.manualBuild}
                 </h2>
                 <c-shoresh-manual-build
+                  read-only={readOnly}
                   setup={setup}
                   terms={terms}
                   onnavigate={handleNavigate}
@@ -1516,6 +1610,7 @@
               <div class={shown.electiveSeats} data-screen="electiveSeats">
                 <template lwc:if={showsElectiveSeats}>
                   <c-shoresh-elective-seats
+                    read-only={readOnly}
                     setup={setup}
                     terms={terms}
                     opening={seatsOpening}
@@ -1532,6 +1627,7 @@
                   {labels.screens.schedules}
                 </h2>
                 <c-shoresh-schedules
+                  read-only={readOnly}
                   opening={schedulesOpening}
                   setup={setup}
                   terms={terms}
@@ -1544,7 +1640,7 @@
               <!-- Bring in choices (electives slice E6): not in the menu until electives are
                    finished (decision 44); opened from the page's address (ADR 0017). -->
               <div class={shown.bringInChoices} data-screen="bringInChoices">
-                <template lwc:if={showsBringInChoices}>
+                <template lwc:if={offersBringInChoices}>
                   <c-shoresh-choices-import
                     setup={setup}
                     terms={terms}
@@ -1557,12 +1653,14 @@
 
               <!-- Import last year, opened from Roots -->
               <div class={shown.import} data-screen="import">
-                <c-shoresh-import
-                  setup={setup}
-                  terms={terms}
-                  onimported={handleImported}
-                  onclose={handleImportClosed}
-                ></c-shoresh-import>
+                <template lwc:if={editable}>
+                  <c-shoresh-import
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onclose={handleImportClosed}
+                  ></c-shoresh-import>
+                </template>
               </div>
             </template>
           </div>

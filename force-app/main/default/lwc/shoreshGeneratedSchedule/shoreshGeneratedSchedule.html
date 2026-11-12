@@ -4,6 +4,7 @@
          its rail before the week is generated too, so they never move when it is drawn. -->
     <c-shoresh-week-editor
       data-id="week-editor"
+      read-only={readOnly}
       set-up-with={setUpWith}
       take-off-with={takeOffWith}
       onopenspecial={handleOpenSpecial}
@@ -340,79 +341,81 @@
           onshowactivity={handleShowActivity}
           data-id="counter"
         ></c-shoresh-week-checks>
-        <c-shoresh-versions
-          slot="end"
-          restore
-          versions={versions}
-          open-id={restoredId}
-          terms={terms}
-          busy={versionsBusy}
-          announce-with={announceText}
-          apply-label={applyLabel}
-          onapply={handleApply}
-          onopen={handleRestore}
-          onrename={handleRenameVersion}
-          ondelete={handleDeleteVersion}
-          onsave={handleSaveVersion}
-          data-id="versions"
-        ></c-shoresh-versions>
-        <div class="publish" slot="end" data-id="publish-area">
-          <button
-            type="button"
-            class="shoresh-item shoresh-item_primary"
-            data-id="publish"
-            disabled={publishDisabled}
-            onclick={handlePublish}
-          >
-            {publishLabel}
-          </button>
-          <!-- Published: when, and Unpublish, in the Publish button's own menu (a split
-               "Publish ▾"), the corner when the week changed since: the bar never grows when
-               a week is published (UX pass 2026-11-10: the grid jumped under the cursor). -->
-          <template lwc:if={publishState}>
-            <c-shoresh-rail-pop
-              label=""
-              primary
-              mark={publishState.changedSince}
-              alternative-text={publishedName}
-              align="right"
-              data-id="published-menu"
+        <template lwc:if={editable}>
+          <c-shoresh-versions
+            slot="end"
+            restore
+            versions={versions}
+            open-id={restoredId}
+            terms={terms}
+            busy={versionsBusy}
+            announce-with={announceText}
+            apply-label={applyLabel}
+            onapply={handleApply}
+            onopen={handleRestore}
+            onrename={handleRenameVersion}
+            ondelete={handleDeleteVersion}
+            onsave={handleSaveVersion}
+            data-id="versions"
+          ></c-shoresh-versions>
+          <div class="publish" slot="end" data-id="publish-area">
+            <button
+              type="button"
+              class="shoresh-item shoresh-item_primary"
+              data-id="publish"
+              disabled={publishDisabled}
+              onclick={handlePublish}
             >
-              <p class="shoresh-pop-row published" data-id="published">
-                <span
-                  >{publishedWord}<lightning-formatted-date-time
-                    value={publishState.publishedAt}
-                    month="short"
-                    day="numeric"
-                    hour="numeric"
-                    minute="2-digit"
-                    time-zone={campTimeZone}
-                  ></lightning-formatted-date-time
-                  >{publishedBy}</span
-                >
-                <template lwc:if={publishState.changedSince}>
-                  <c-shoresh-dot
-                    class="changed-since"
-                    label="Changed since"
-                    focusable
-                    data-id="changed-since"
-                  ></c-shoresh-dot>
-                </template>
-              </p>
-              <div class="shoresh-pop-divider" role="presentation"></div>
-              <button
-                type="button"
-                class="shoresh-pop-row"
-                data-pop-row
-                data-id="unpublish"
-                disabled={publishDisabled}
-                onclick={handleUnpublish}
+              {publishLabel}
+            </button>
+            <!-- Published: when, and Unpublish, in the Publish button's own menu (a split
+                 "Publish ▾"), the corner when the week changed since: the bar never grows when
+                 a week is published (UX pass 2026-11-10: the grid jumped under the cursor). -->
+            <template lwc:if={publishState}>
+              <c-shoresh-rail-pop
+                label=""
+                primary
+                mark={publishState.changedSince}
+                alternative-text={publishedName}
+                align="right"
+                data-id="published-menu"
               >
-                Unpublish
-              </button>
-            </c-shoresh-rail-pop>
-          </template>
-        </div>
+                <p class="shoresh-pop-row published" data-id="published">
+                  <span
+                    >{publishedWord}<lightning-formatted-date-time
+                      value={publishState.publishedAt}
+                      month="short"
+                      day="numeric"
+                      hour="numeric"
+                      minute="2-digit"
+                      time-zone={campTimeZone}
+                    ></lightning-formatted-date-time
+                    >{publishedBy}</span
+                  >
+                  <template lwc:if={publishState.changedSince}>
+                    <c-shoresh-dot
+                      class="changed-since"
+                      label="Changed since"
+                      focusable
+                      data-id="changed-since"
+                    ></c-shoresh-dot>
+                  </template>
+                </p>
+                <div class="shoresh-pop-divider" role="presentation"></div>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  data-pop-row
+                  data-id="unpublish"
+                  disabled={publishDisabled}
+                  onclick={handleUnpublish}
+                >
+                  Unpublish
+                </button>
+              </c-shoresh-rail-pop>
+            </template>
+          </div>
+        </template>
       </template>
     </c-shoresh-week-editor>
 

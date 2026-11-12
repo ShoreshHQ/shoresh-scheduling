@@ -22,7 +22,7 @@ public with sharing class SeasonSetupController {
   public static List<Season__c> getSeasons(Id campId) {
     try {
       return [
-        SELECT Id, Name, StartDate__c, EndDate__c, Status__c
+        SELECT Id, Name, StartDate__c, EndDate__c, Status__c, Archived__c
         FROM Season__c
         WHERE Camp__c = :campId
         WITH USER_MODE

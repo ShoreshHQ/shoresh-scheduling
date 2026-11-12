@@ -82,6 +82,10 @@ public with sharing class LinkedChoiceTriggers {
 
   /** A linked choice's period must be a time block of the same season. */
   public static void linkedChoiceTimesSaving(List<LinkedChoiceTime__c> times) {
+    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
+    if (times == null) {
+      return;
+    }
     Set<Id> choiceIds = new Set<Id>();
     Set<Id> blockIds = new Set<Id>();
     for (LinkedChoiceTime__c row : times) {

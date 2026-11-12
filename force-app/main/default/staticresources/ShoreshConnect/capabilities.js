@@ -554,7 +554,7 @@ const CAPABILITIES = [
     api: "seasons",
     method: "GET",
     description:
-      "List the seasons the person can see in Shoresh, each with its camp, dates, short_week choice (keep or lower), weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season.",
+      "List the seasons the person can see in Shoresh, each with its camp, dates, short_week choice (keep or lower), weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season. A season marked archived (true) is kept read-only: it can be read and copied, and changes to it are refused until bring_back_season brings it back; it is never the one opens_on names.",
     about:
       "The seasons this person can see in Shoresh, with their weeks and programs. These are the only names that exist.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
@@ -613,7 +613,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has any schedule that was ever published, kept as history, even if it has since been unpublished or replaced.",
+      "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has any schedule that was ever published, kept as history, even if it has since been unpublished or replaced: such a season can be archived instead (archive_season), if the person wants that. An archived season is refused too.",
     inputSchema: {
       type: "object",
       properties: {
@@ -621,6 +621,46 @@ const CAPABILITIES = [
           type: "string",
           description:
             "The season's name, exactly as list_seasons gives it. Always say it."
+        }
+      },
+      required: ["season"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "archive_season",
+    api: "archive_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Archive a season, as Camp Setup's Archive does where Delete season is refused for published history: everything in it is kept, read-only, and it leaves the season picker. Only a season that was ever published can be archived, as on the screen; one never published is refused, and can be deleted instead (delete_season) if the person wants that. The season must be named. bring_back_season undoes it. It is done as you, with your own access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: {
+          type: "string",
+          description:
+            "The season's name, exactly as list_seasons gives it. Always say it."
+        }
+      },
+      required: ["season"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "bring_back_season",
+    api: "bring_back_season",
+    method: "POST",
+    sendsFields: true,
+    description:
+      "Bring an archived season back, as Camp Setup's Bring back does: it can be changed again and is in the season picker again. The season must be named. It is done as you, with your own access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        season: {
+          type: "string",
+          description:
+            "The archived season's name, exactly as list_seasons gives it. Always say it."
         }
       },
       required: ["season"],

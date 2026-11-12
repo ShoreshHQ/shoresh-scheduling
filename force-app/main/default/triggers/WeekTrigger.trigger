@@ -5,5 +5,6 @@ trigger WeekTrigger on Week__c(
   after insert,
   after undelete
 ) {
+  ArchivedSeasons.refuseChanges();
   WeekTriggerHandler.handle(Trigger.operationType, Trigger.new, Trigger.oldMap);
 }
