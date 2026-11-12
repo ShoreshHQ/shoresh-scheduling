@@ -136,7 +136,7 @@
             disabled={controlsDisabled}
             onclick={handleAddStation}
           >
-            + Station
+            {addStationLabel}
           </button>
         </template>
         <template lwc:if={hasBlocks}>
@@ -163,7 +163,7 @@
             data-id="edit-stations"
             onclick={handleToggleStations}
           >
-            <span>Stations</span>
+            <span>{stationsWord}</span>
             <svg class="shoresh-chevron" viewBox="0 0 12 12" aria-hidden="true">
               <path d="M3 4.5 6 7.5l3-3"></path>
             </svg>

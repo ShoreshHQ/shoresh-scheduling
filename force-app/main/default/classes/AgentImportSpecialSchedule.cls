@@ -184,7 +184,9 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
 
     String frameWords() {
       String blocks = 'the ' + found.labels.pluralInSentence('TimeBlock');
-      return found.owner.isEvent() ? blocks + ' and stations' : blocks;
+      return found.owner.isEvent()
+        ? blocks + ' and ' + found.labels.pluralInSentence('Station')
+        : blocks;
     }
 
     List<String> frameSaid(

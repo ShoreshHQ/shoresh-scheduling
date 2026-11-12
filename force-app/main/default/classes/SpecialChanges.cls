@@ -79,7 +79,7 @@ public with sharing class SpecialChanges {
     }
     if (!groupsText(before.grid).equals(groupsText(after.grid))) {
       String columns = after.kind == ScheduleSpecials.EVENT
-        ? 'stations'
+        ? words().pluralInSentence('Station')
         : words().pluralInSentence('Group');
       note(after.kind, prefix + ': ' + columns + ' changed');
     }

@@ -136,6 +136,18 @@ describe("c-shoresh-special-details", () => {
       expect(
         scheduleText({ planned: true, periods: [], rows: 4 }, true, plain)
       ).toBe("4 stations");
+      // Station is a camp word (word walk W1).
+      const camp = buildTerms([
+        {
+          term: "Station",
+          singular: "Tachana",
+          plural: "Tachanot",
+          isCustom: true
+        }
+      ]);
+      expect(
+        scheduleText({ planned: true, periods: [], rows: 4 }, true, camp)
+      ).toBe("4 Tachanot");
       expect(scheduleText(SETUP.special.briefs[1], false, plain)).toBe("");
       expect(scheduleText(SETUP.special.briefs[3], true, plain)).toBe(
         "Can't be read"

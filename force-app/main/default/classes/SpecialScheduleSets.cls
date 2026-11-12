@@ -26,7 +26,9 @@ public with sharing class SpecialScheduleSets {
       throw new ShoreshException(
         AgentRefusal.withFix(
           owner.name +
-            '\'s columns are stations, not ' +
+            '\'s columns are ' +
+            labels.pluralInSentence('Station') +
+            ', not ' +
             labels.pluralInSentence('Group') +
             ', so it can\'t hold ' +
             labels.pluralInSentence('ElectiveSet') +

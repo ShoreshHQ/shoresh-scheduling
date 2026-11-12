@@ -1,4 +1,4 @@
-import { SHORT_DAYS } from "c/shoreshTerms";
+import { SHORT_DAYS, countOf } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
 import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
@@ -108,7 +108,7 @@ export function scheduleText(brief, isEvent, t) {
     return "Can't be read";
   }
   if (isEvent) {
-    return `${brief.rows} ${brief.rows === 1 ? "station" : "stations"}`;
+    return countOf(t, brief.rows, "Station");
   }
   const n = brief.periods.length;
   return `${n} ${n === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
