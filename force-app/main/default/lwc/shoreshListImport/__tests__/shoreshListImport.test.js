@@ -405,6 +405,22 @@ describe("c-shoresh-list-import", () => {
     );
   });
 
+  // Word walk W6: a row that can't be read is said after Save, never dropped without a word.
+  it("says which rows weren't imported because they couldn't be read", async () => {
+    const element = await openWith(
+      ["Activity,Location,Length", "Canoeing,Gym,1", "Drama,Gym,lots"].join(
+        "\n"
+      )
+    );
+    const save = saveOf(element);
+    expect(save.disabled).toBe(false);
+    save.click();
+    await flush();
+    expect($(element, '[data-id="summary"]').textContent).toContain(
+      "Not imported: Drama"
+    );
+  });
+
   it("INGEST-5.10: saves the list once every difference is answered, then its Undo names what it removes and puts back", async () => {
     const element = await openWith(
       ["Activity,Location,Notes", "Archery,Gym,", "Canoeing,Lake,"].join("\n")

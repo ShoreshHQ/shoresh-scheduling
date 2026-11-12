@@ -170,6 +170,41 @@ describe("columns", () => {
     );
   });
 
+  // Word walk W6: a file in Shoresh's words still reads once the camp has renamed one.
+  it("matches Shoresh's own headings after the camp renames them, and the How often word alone", () => {
+    const renamed = buildTerms([
+      {
+        term: "TimesPerWeek",
+        singular: "Weekly count",
+        plural: "Weekly count",
+        isCustom: true
+      }
+    ]);
+    const byText = (rows) =>
+      Object.fromEntries(
+        read("activities", rows, {}, renamed).mapping.headings.map((h) => [
+          h.text,
+          h.column
+        ])
+      );
+    expect(
+      byText([
+        ["Activity", "Times per week: at least", "Times per week: at most"],
+        ["Archery", "2", "3"]
+      ])
+    ).toEqual({
+      Activity: "name",
+      "Times per week: at least": "min",
+      "Times per week: at most": "max"
+    });
+    expect(
+      byText([
+        ["Activity", "Times per week"],
+        ["Archery", "2"]
+      ])
+    ).toEqual({ Activity: "name", "Times per week": "min" });
+  });
+
   it("an unknown column can be pointed at a column, and the choice is remembered", () => {
     const rows = [
       ["Activity", "Colour"],
