@@ -134,6 +134,10 @@ describe("c-shoresh-versions", () => {
     const handler = jest.fn((event) => event.detail.onDone(true));
     element.addEventListener("rename", handler);
     await openList(element);
+    // Capitals like Restore and Open beside them (word walk 2026-11-12).
+    expect(
+      q(element, '[data-id="s2"][data-action="rename"]').textContent.trim()
+    ).toBe("Rename");
     q(element, '[data-id="s2"][data-action="rename"]').click();
     await flush();
     const input = q(element, '[data-id="rename-input"]');
@@ -443,7 +447,8 @@ describe("c-shoresh-versions", () => {
       );
       del.dispatchEvent(new CustomEvent("blur"));
       await flush();
-      expect(del.textContent.trim()).toBe("delete");
+      // Capitals like Restore and Open beside it (word walk 2026-11-12).
+      expect(del.textContent.trim()).toBe("Delete");
       del.click();
       await flush();
       expect(handler).not.toHaveBeenCalled();

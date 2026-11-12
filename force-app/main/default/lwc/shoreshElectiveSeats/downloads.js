@@ -474,15 +474,13 @@ export function summaryRows(d) {
   ]
     .filter(Boolean)
     .join(" · ");
+  // Plain labels (word walk 2026-11-12): what a director calls each line, no field names.
   const rows = [
     [t.p("Seats"), view.run.name],
-    [
-      "Status",
-      view.scheduleChanged ? "Final · Changed since" : `Final · ${finalWhen}`
-    ],
+    ["Final", view.scheduleChanged ? "Changed since" : finalWhen],
     [t.s("ElectiveSet"), d.setName],
     [t.s("Week"), d.weekName],
-    ["Source file", view.sourceFile || ""],
+    ...(view.sourceFile ? [["Choices from", view.sourceFile]] : []),
     [t.p("Camper"), board.counter.total],
     ["Placed", `${board.counter.placed} of ${board.counter.total}`]
   ];
@@ -518,7 +516,8 @@ export function fullReportSheets(d) {
       widths: [12, 14, 22, 24, 12, 8, 8]
     },
     {
-      name: "Exceptions",
+      // Word walk 2026-11-12: "Problems", never the accounting word "Exceptions".
+      name: "Problems",
       rows: guard(exceptionRows(d)),
       widths: [30, 24, 22, 40]
     },

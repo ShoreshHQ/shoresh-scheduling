@@ -13,6 +13,10 @@ public with sharing class ElectiveClearReading {
   // Each week's campers (by the runs of that week), and each run's week.
   private Map<Id, Set<Id>> campersByWeek = new Map<Id, Set<Id>>();
   private Map<Id, Id> weekOfRun = new Map<Id, Id>();
+  // Each run's set, and the choices counted for each camper of a set's week: the same sheet
+  // imported against two schedules of a week is one camper's choices, counted once.
+  private Map<Id, Id> setOfRun = new Map<Id, Id>();
+  private Map<String, Integer> countedChoices = new Map<String, Integer>();
 
   public ElectiveClearReading(Id seasonId) {
     this.seasonId = seasonId;
@@ -55,7 +59,14 @@ public with sharing class ElectiveClearReading {
 
   private void readRuns() {
     runs = [
-      SELECT Id, Name, Week__c, Status__c, Revision__c, FinalizedAt__c
+      SELECT
+        Id,
+        Name,
+        Week__c,
+        ElectiveSet__c,
+        Status__c,
+        Revision__c,
+        FinalizedAt__c
       FROM ElectiveRun__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
@@ -63,6 +74,7 @@ public with sharing class ElectiveClearReading {
     ];
     for (ElectiveRun__c run : runs) {
       weekOfRun.put(run.Id, run.Week__c);
+      setOfRun.put(run.Id, run.ElectiveSet__c);
       ElectiveClear.WeekCounts week = weeks.get(run.Week__c);
       week.runs++;
       if (run.Status__c == ElectiveClear.COMMITTED) {
@@ -91,7 +103,10 @@ public with sharing class ElectiveClearReading {
     picture.campers = campers.size();
   }
 
-  /** Each week's campers and how many choices they made (one per activity named). */
+  /**
+   * Each week's campers and how many choices they made (one per activity named), each camper's
+   * choices for a set once however many of the week's schedules they were imported against.
+   */
   private void readChoices() {
     for (Preference__c pref : [
       SELECT ElectiveRun__c, Camper__c, Choices__c
@@ -102,9 +117,7 @@ public with sharing class ElectiveClearReading {
     ]) {
       Id weekId = weekOfRun.get(pref.ElectiveRun__c);
       ElectiveClear.WeekCounts week = weeks.get(weekId);
-      week.choices += String.isBlank(pref.Choices__c)
-        ? 0
-        : pref.Choices__c.countMatches('"a":');
+      countChoices(week, pref);
       if (campersByWeek.get(weekId).add(pref.Camper__c)) {
         week.campers++;
         if (week.camperName == null) {
@@ -114,6 +127,26 @@ public with sharing class ElectiveClearReading {
     }
     for (ElectiveClear.WeekCounts week : picture.weeks) {
       week.campersOnlyHere = onlyIn(week.weekId).size();
+    }
+  }
+
+  /** Adds a camper's choices to their week, past what another run of that set there counted. */
+  private void countChoices(ElectiveClear.WeekCounts week, Preference__c pref) {
+    Integer made = String.isBlank(pref.Choices__c)
+      ? 0
+      : pref.Choices__c.countMatches('"a":');
+    String key =
+      week.weekId +
+      '|' +
+      setOfRun.get(pref.ElectiveRun__c) +
+      '|' +
+      pref.Camper__c;
+    Integer before = countedChoices.containsKey(key)
+      ? countedChoices.get(key)
+      : 0;
+    if (made > before) {
+      week.choices += made - before;
+      countedChoices.put(key, made);
     }
   }
 

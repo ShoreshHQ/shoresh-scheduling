@@ -174,7 +174,7 @@ export default class ShoreshVersions extends LightningElement {
         deletable: this.restore && !this.noDraft && canDelete(version),
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
-        deleteLabel: confirming ? "Delete?" : "delete",
+        deleteLabel: confirming ? "Delete?" : "Delete",
         deleteClass: confirming ? "link link_danger" : "link link_quiet",
         deleteName: confirming
           ? `Delete ${version.name}? Press again to delete.`
