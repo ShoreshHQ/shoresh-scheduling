@@ -3,8 +3,7 @@
  * "Where electives happen"): its elective times (ElectivePeriod), worked out from the schedule's
  * days each time they are needed, never stored. One time per day, time block and division, as the
  * desktop's deriveOccurrences.js makes them: the bunks of one division (or all those in No
- * division, Greg 2026-11-11) holding the set in one
- * block share its seats. Also the fingerprint of where it sits (ElectiveRun__c.TimesFingerprint__c),
+ * division, Greg 2026-11-11) holding the set in one block share its seats. Also the fingerprint of where it sits (ElectiveRun__c.TimesFingerprint__c),
  * so a change to the schedule after seats were assigned is noticed, and which of the set's
  * offerings each time offers.
  *
