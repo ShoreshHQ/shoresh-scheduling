@@ -5550,7 +5550,7 @@ describe("an archived season", () => {
     expect(menuRows(element)).toContain("Copy this season");
     expect(menuRows(element)).toContain("Bring back Summer 2025");
     await expect(element).toBeAccessible();
-  });
+  }, 60000); // axe over the whole page: 4 s on a quiet Mac, past 20 s on CI
 
   // WEEK-1.10 (ADR 0029: read-only must look read-only)
   it("WEEK-1.10: every screen of an archived season is told it is read-only, and no import or fill is offered", async () => {
