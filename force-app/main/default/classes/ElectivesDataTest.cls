@@ -459,7 +459,7 @@ private class ElectivesDataTest {
         Week__c = camp.ids.get('Week 2')
       );
       Assert.areEqual(
-        'This schedule is not for the run\'s week.',
+        'This schedule is not for these seats\' week.',
         Database.update(run, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
       );

@@ -792,7 +792,7 @@ async function loadOfferings(namespace) {
   const [module] = await loadModules(
     namespace,
     ["shoreshElectiveDetails.offerings"],
-    "can't read or change offerings"
+    "can't read or change electives"
   );
   return module;
 }

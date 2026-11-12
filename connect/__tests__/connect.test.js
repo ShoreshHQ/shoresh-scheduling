@@ -2010,7 +2010,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(body.seats.length).toBeGreaterThan(0);
     expect(done.done.ok).toBe(true);
-    expect(done.done.text).toMatch(/^Seats assigned: \d+ of \d+ placed\.$/);
+    expect(done.done.text).toMatch(/^\d+ of \d+ placed\.$/);
 
     // Read at another revision: refused before anything is sent.
     const stale = await assign("r1:0");

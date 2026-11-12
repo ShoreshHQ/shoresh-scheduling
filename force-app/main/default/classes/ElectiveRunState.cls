@@ -126,7 +126,7 @@ public with sharing class ElectiveRunState {
   private static ShoreshException notThere() {
     return new ShoreshException(
       // Word-free: with the run gone, Shoresh no longer knows whose camp words to use.
-      'This run is no longer there. Reload the page.'
+      'These seats are no longer there. Reload the page.'
     );
   }
 
@@ -276,7 +276,7 @@ public with sharing class ElectiveRunState {
     Preference__c pref = byCamper.get(camperId);
     if (pref == null) {
       throw new ShoreshException(
-        'That camper is not in this run. Reload the page.'
+        'That camper is not in these seats. Reload the page.'
       );
     }
     return pref.Group__c;

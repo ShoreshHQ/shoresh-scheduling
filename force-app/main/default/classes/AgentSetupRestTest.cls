@@ -563,7 +563,7 @@ private class AgentSetupRestTest {
       );
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
       Assert.areEqual(
-        'Changed the group "Group A": runs in Week 1, week 3, Week 4, Week 5, Week 6.',
+        'Changed the group "Group A": weeks Week 1, week 3, Week 4, Week 5, Week 6.',
         changed[1]
       );
       List<WeekException__c> marks = [

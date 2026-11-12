@@ -83,7 +83,7 @@ public with sharing class AgentRunsIn {
     if (weeks != null) {
       AgentRunsInWeeks.tick(weeks, found, put.extras);
       said.add(
-        'runs in ' +
+        'weeks ' +
         listed(
           weeks,
           asked.get(RUNS_IN),

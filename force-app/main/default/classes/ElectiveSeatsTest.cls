@@ -865,7 +865,10 @@ private class ElectiveSeatsTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.areEqual('This run is no longer there. Reload the page.', message);
+      Assert.areEqual(
+        'These seats are no longer there. Reload the page.',
+        message
+      );
       Assert.isTrue(used <= 3, 'Queries for one refusal: ' + used);
     }
   }
