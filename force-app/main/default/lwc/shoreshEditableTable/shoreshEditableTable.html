@@ -78,7 +78,7 @@
                 class={col.className}
                 data-id={col.dataId}
               >
-                <span class="head-text" title={col.label}>{col.label}</span>
+                <span class="head-text">{col.label}</span>
               </th>
             </template>
           </tr>
@@ -407,7 +407,6 @@
                         class={cell.fixedClass}
                         data-id="readonly"
                         data-column={cell.fieldName}
-                        title={cell.fixedText}
                         >{cell.fixedText}</span
                       >
                       <template lwc:if={cell.problem}>

@@ -593,13 +593,23 @@ describe("By camper", () => {
     ).toBe("true");
     expect(
       $$(element, ".section-head").map((h) => [
-        text(h.querySelector("span")),
+        text(h.querySelector('span[aria-hidden="true"]')),
         text(h.querySelector(".section-count"))
       ])
     ).toEqual([
       ["Aspen", "2"],
       ["Willow", "1"],
       ["No Bunk", "1"]
+    ]);
+    // Read as one name with its unit, never "Aspen2" (word walk 2026-11-12).
+    expect(
+      $$(element, ".section-head").map((h) =>
+        text(h.querySelector(".slds-assistive-text"))
+      )
+    ).toEqual([
+      "Aspen, 2 campers",
+      "Willow, 1 camper",
+      "No Bunk, 1 camper, needs a look"
     ]);
     const rows = $$(element, ".camper-row");
     expect(text(rows[0].querySelector(".camper-name"))).toBe("Ari Brookfield");
@@ -620,7 +630,8 @@ describe("By camper", () => {
     );
     expect(
       $(element, '[data-id="no-bunk"]').querySelector(".shoresh-look-mark")
-    ).not.toBeNull();
+        .title
+    ).toBe("Needs a look");
     await expect(element).toBeAccessible();
   });
 

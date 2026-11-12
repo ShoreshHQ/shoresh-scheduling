@@ -663,13 +663,19 @@
                         tabindex="-1"
                         data-id={section.dataId}
                       >
-                        <span>{section.name}</span>
-                        <span class="section-count shoresh-num"
+                        <span class="slds-assistive-text"
+                          >{section.spoken}</span
+                        >
+                        <span aria-hidden="true">{section.name}</span>
+                        <span
+                          class="section-count shoresh-num"
+                          aria-hidden="true"
                           >{section.count}</span
                         >
                         <template lwc:if={section.noBunk}>
                           <span
                             class="shoresh-look-mark"
+                            title="Needs a look"
                             aria-hidden="true"
                           ></span>
                         </template>
