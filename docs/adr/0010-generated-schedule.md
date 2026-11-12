@@ -1497,3 +1497,19 @@ G4:
 - Grid format version 2: the `"l"` list and `GridFormatVersion__c` 2 (every reader must keep
   reading versions 1 and 2).
 - `GeneratedWeek.LockChange` actions `Lock` and `Unlock` (sent by the screen, not stored).
+
+## Amendment: Rebuild asks nothing (Greg, 2026-11-12)
+
+Greg's UX pass answer (wiki design guide §3): Rebuild generates a new schedule and never
+rebuilds the saved one. The schedule on screen is kept as a version first (as it always was), so
+nothing is lost, and the _Rebuild this schedule?_ question goes. Rebuild now acts at once, as
+Start over does since §55, and offers the same Undo on the line above the grid (_Rebuilt Week 1 ·
+Undo_), which restores the version it kept first, locks and option with it. Restore in Versions
+also brings it back. How the new schedule is built is unchanged (engine protocol section 10,
+Greg 2026-10-27: it keeps what setup still allows).
+
+This supersedes: the G3 choice "the confirm (Rebuild only since 2026-10-20, §55)", the rows
+"Confirm shown for Rebuild only" and "Rebuild is quiet, red on hover" (no red button is left on
+this screen), "the confirms say _Locked cells stay as they are._ (Rebuild)", and "Rebuild keeps
+its confirm (the desktop's `ConfirmRegenModal`)". The desktop asks; Shoresh doesn't, by Greg's
+decision.

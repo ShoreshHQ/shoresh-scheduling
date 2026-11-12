@@ -861,13 +861,12 @@ doesn't change this one.
    and **Option** shows 2. Click **Try another** again: option 3. Now open **Option** and pick
    1: the very first week comes back, exactly as it was (the same week, option and setup always
    give the same schedule).
-8. **Rebuild.** Click it. A box asks _Rebuild this schedule?_, _Builds Week 1 again from your
-   setup._ and _Saved to Versions first._ **Cancel** has the focus; press Escape or click it and
-   nothing changes. Click **Rebuild** again, then **Rebuild it**: the week is built again with
-   the same option. With no setup change since, it is the same week. (Locks come in the next
-   part, and with them a line saying locked cells stay.)
+8. **Rebuild.** Click it. Nothing is asked: the week as it was is saved to **Versions** first,
+   then built again with the same option, and the line above the grid says _Rebuilt Week 1 ·
+   Undo_. With no setup change since, it is the same week. **Undo** brings back the week as it
+   was before the Rebuild.
 9. **A setup change.** On **Activities**, open Swim and lower its most times a week by one. Back on
-   Generated Schedule, **Rebuild** → **Rebuild it**: Swim now runs fewer times. Put Swim back
+   Generated Schedule, **Rebuild**: Swim now runs fewer times. Put Swim back
    afterwards.
 10. **Start over.** Click it. The box says _Clears the N activity cells in Week 1. Fixed
     activities and recurring activities stay._ and _Saved to Versions first._ Click **Start
@@ -877,14 +876,13 @@ doesn't change this one.
     the Open cells are filled; anything already in a cell stays where it is.
 12. **Someone else saved first.** Open the Shoresh tab in a second browser window, on Generated
     Schedule, Week 1, and put the two windows side by side.
-    1. In the **first** window, click **Rebuild**. Leave its box (_Rebuild this schedule?_)
-       open.
-    2. In the **second** window, click **Try another**. It saves.
-    3. Back in the first window, click **Rebuild it**. A bronze-bordered box says _Someone else
-       changed this schedule since you opened it._ with a **Reload** button, and nothing of
-       yours was saved. (While its box is open the first window doesn't read the week again,
-       which is why this shows the clash; without a box open, coming back to a window reads the
-       week first, so the buttons work on what the other window saved.)
+    1. In the **first** window, click **Rebuild** (on a big week, so it is still showing
+       _Generating…_ for a few seconds).
+    2. While it builds, click **Try another** in the **second** window. It saves.
+    3. When the first window's build ends, a bronze-bordered box says _Someone else changed
+       this schedule since you opened it._ with a **Reload** button, and nothing of yours was
+       saved. (Coming back to a window reads the week first when nothing is under way, so the
+       buttons work on what the other window saved.)
     4. Click **Reload**: the week shows as the second window saved it, with **Option** on its
        option.
 13. **Lock.** In Daily View, Monday, press Tab until a cell of the grid has the focus, then use
@@ -895,7 +893,7 @@ doesn't change this one.
     again: it now offers _Unlock Bunk 1 · Monday · Period 2_.
 14. **Lock a day or a bunk.** Choose _Lock Monday_: every Monday cell holding an activity gets the
     lock (Open cells and Lunch don't). In Group View the menu offers the bunk shown (_Lock Bunk
-    2_). **Rebuild** now says _Locked cells stay as they are._; **Start over** says _Clears the N
+    2_). **Rebuild** keeps locked cells as they are; **Start over** says _Clears the N
     activity cells and every lock in Week 1._ The legend under the grid shows the lock.
 15. **Keep a cell empty.** Reach an Open cell (after Start over, any) and choose _Lock …_ on it:
     it no longer says _Open_ (it shows only its lock: kept empty on purpose), it stays empty
@@ -907,7 +905,7 @@ doesn't change this one.
     may fill it again). **Undo** takes your change and its lock back; **Redo** makes both
     again. A Lock you set yourself stays: clear a cell with Delete, choose _Lock …_ on it from
     the **Lock** menu (it shows only its lock), then click **Undo**: the activity comes back and
-    the lock stays. **Redo** empties it again, still locked. Click **Rebuild** → **Rebuild it**:
+    the lock stays. **Redo** empties it again, still locked. Click **Rebuild**:
     your changed cells stay, the rest is built again. After a build, **Undo** starts over
     (greyed out).
 17. **A locked cell.** Double-click a locked cell, or reach it and press Enter: nothing opens and
