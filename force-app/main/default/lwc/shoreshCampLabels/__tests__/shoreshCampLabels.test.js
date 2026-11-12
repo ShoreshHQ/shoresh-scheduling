@@ -134,6 +134,25 @@ describe("c-shoresh-camp-labels", () => {
   });
 
   // CORE-1.35
+  it('CORE-6.13: no "0 changed" while every word is standard', async () => {
+    getLabels.mockResolvedValue(
+      LABELS.map((row) => ({
+        ...row,
+        singular: "",
+        plural: "",
+        isCustom: false
+      }))
+    );
+    campWordsBlockedReason.mockResolvedValue(null);
+    const element = createElement("c-shoresh-camp-labels", {
+      is: ShoreshCampLabels
+    });
+    element.campId = "camp1";
+    document.body.appendChild(element);
+    await flush();
+    expect(element.shadowRoot.querySelector('[data-id="count"]')).toBeNull();
+  });
+
   it("a plural typed beside a standard word is saved with the standard word (word walk W1)", async () => {
     saveCampLabels.mockResolvedValue();
     const element = await render();
