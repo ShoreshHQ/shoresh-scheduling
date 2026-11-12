@@ -137,8 +137,9 @@ export function nextScreen(screen, t, hasSeason) {
 const MARKS = {
   needed: { symbol: "", label: "Needs a look" },
   done: { symbol: "✓", label: "Done" },
-  // A schedule whose week can be updated to match setup: the foot's dot, beside its entry too,
-  // where it is seen without scrolling (coordinator call on the UI pass, 2026-11-10).
+  // A schedule whose week can be updated to match setup: the foot's mark, beside its entry too,
+  // where it is seen without scrolling (coordinator call on the UI pass, 2026-11-10). Its mark is
+  // the hollow ring, not the needs-a-look dot (one mark, one meaning, CORE-6.14).
   changed: { symbol: "", label: "Changed since: setup" }
 };
 
