@@ -350,24 +350,43 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
    * week shown stays, and the picker says which it is. True when that week is the one shown.
    */
   @api
-  openWeek(weekId, programId) {
+  openWeek(weekId) {
     if (!this.weekOptions.some((o) => o.value === weekId)) {
       return false;
     }
-    // A reload back on the program it was on (Greg 2026-11-12), when it is still the season's.
-    const program = this.programOptions.some((o) => o.value === programId)
-      ? programId
-      : this.programId;
-    if (weekId === this.weekId && program === this.programId) {
+    if (weekId === this.weekId) {
       return true;
     }
     if (this.pickersLocked) {
       return false;
     }
-    this.programId = program;
     this.weekId = weekId;
     this.load();
     return true;
+  }
+
+  /**
+   * A reload back where this screen was (Greg 2026-11-12; WEEK-6.3): its program, when still the
+   * season's, and its week, as openWeek. True when that is what is shown.
+   */
+  @api
+  openPlace({ programId, weekId }) {
+    const program = this.programOptions.some((o) => o.value === programId)
+      ? programId
+      : this.programId;
+    if (program !== this.programId) {
+      if (this.pickersLocked) {
+        return false;
+      }
+      const sameWeek = weekId === this.weekId;
+      this.programId = program;
+      // The week opens with it; a week that isn't there any more: the program on its week shown.
+      if (sameWeek || !this.openWeek(weekId)) {
+        this.load();
+      }
+      return true;
+    }
+    return this.openWeek(weekId);
   }
 
   /** Opens the chosen week's draft, or finds there is none yet. */

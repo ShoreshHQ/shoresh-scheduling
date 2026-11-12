@@ -197,6 +197,16 @@ function outsideQuestions(open) {
   }
 }
 
+/** The page address's own fields (c__…), as one string to tell one link from another. */
+function linkOf(state) {
+  return JSON.stringify(
+    Object.keys(state)
+      .filter((key) => key.startsWith("c__"))
+      .sort()
+      .map((key) => [key, state[key]])
+  );
+}
+
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
   campId;
@@ -274,6 +284,10 @@ export default class ShoreshCampSetup extends LightningElement {
   placeToRestore = null;
   weekToRestore = null;
   placeKept = null;
+  // The page address that names somewhere (c__preview and its fields), and whether it is still to
+  // be followed: not when this tab followed it before a reload.
+  addressLink = null;
+  linkToOpen = false;
   // Import a list open on a screen's rail: { [screen]: "open" | "review" } (handleListOpen).
   importing = {};
   // A screen growing out of a Roots card, or shrinking home into it (repo ADR 0020):
@@ -316,6 +330,17 @@ export default class ShoreshCampSetup extends LightningElement {
   wiredPageReference(reference) {
     const state = (reference && reference.state) || {};
     this.preview = previewScreen(state.c__preview);
+    // The address stays in the browser after it is followed: a reload of it goes back where this
+    // tab was since, not to the link again (Greg 2026-11-12; WEEK-6.3).
+    const named = !!(this.preview || state.c__camp || state.c__season);
+    this.addressLink = named ? linkOf(state) : null;
+    const place = rememberedPlace();
+    this.linkToOpen = named && !(place && place.link === this.addressLink);
+    if (!this.linkToOpen) {
+      this.previewOpened = !!this.preview;
+      return;
+    }
+    this.placeToRestore = null;
     this.schedulesOpening =
       this.preview === "schedules" && state.c__week
         ? {
@@ -367,7 +392,7 @@ export default class ShoreshCampSetup extends LightningElement {
     // A reload comes back where the director was (Greg 2026-11-12), unless the address asks for
     // somewhere (wiredPageReference).
     const place = rememberedPlace();
-    if (place && !this.campId && !this.preview) {
+    if (place && !this.campId && !this.linkToOpen) {
       this.campId = place.campId;
       this.seasonId = place.seasonId;
       this.placeToRestore = place;
@@ -390,6 +415,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.camps = await getCamps();
       if (this.camps.length === 0) {
         this.mode = "noCamp";
+        this.placeToRestore = null;
         return;
       }
       const keep = selectCampId || this.campId;
@@ -398,6 +424,7 @@ export default class ShoreshCampSetup extends LightningElement {
         : this.camps[0].Id;
       await this.loadCamp();
     } catch (e) {
+      this.placeToRestore = null;
       this.showError(e, "Couldn't open the camp setup. Nothing was changed.");
     }
   }
@@ -426,12 +453,12 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   restorePlace() {
     const place = this.placeToRestore;
+    this.placeToRestore = null;
     if (!place || this.mode !== "screens" || !this.setup) {
       return;
     }
-    this.placeToRestore = null;
     const here =
-      !this.preview &&
+      !this.linkToOpen &&
       place.seasonId === this.seasonId &&
       SCREENS.includes(place.screen);
     if (!here) {
@@ -451,8 +478,8 @@ export default class ShoreshCampSetup extends LightningElement {
     const screen = this.template.querySelector(
       `[data-setup-state="${place.screen}"]`
     );
-    if (screen && typeof screen.openWeek === "function") {
-      screen.openWeek(place.weekId, place.programId);
+    if (screen && typeof screen.openPlace === "function") {
+      screen.openPlace({ programId: place.programId, weekId: place.weekId });
     }
   }
 
@@ -469,7 +496,9 @@ export default class ShoreshCampSetup extends LightningElement {
       screen,
       programId: week.programId || null,
       weekId: week.weekId || null,
-      scheduleId: week.scheduleId || null
+      scheduleId: week.scheduleId || null,
+      // The address this tab has followed, so a reload doesn't follow it again.
+      link: this.addressLink || null
     };
     const kept = JSON.stringify(place);
     if (kept !== this.placeKept) {
