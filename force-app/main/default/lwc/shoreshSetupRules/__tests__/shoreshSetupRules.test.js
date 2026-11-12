@@ -83,6 +83,25 @@ describe("setupProblems", () => {
     expect(setupProblems(null, terms)).toEqual([]);
   });
 
+  it("an empty list's No … yet is said in place, not again in the screen's Needs a look (word walk W3)", () => {
+    const setup = {
+      season,
+      weeks: [],
+      programs: [
+        {
+          program: { Name: "Main" },
+          timeBlocks: [],
+          divisions: [{ division: { Name: "Juniors" }, groups: [] }]
+        }
+      ]
+    };
+    const problems = setupProblems(setup, terms);
+    expect(problems.length).toBeGreaterThan(0);
+    problems
+      .filter((p) => /yet\.$/.test(p.why))
+      .forEach((p) => expect(p.markedInPlace).toBe(true));
+  });
+
   it("says what is missing, in the camp words, and which screen fixes it", () => {
     const setup = {
       season,
