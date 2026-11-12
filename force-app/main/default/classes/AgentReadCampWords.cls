@@ -26,6 +26,10 @@ global with sharing class AgentReadCampWords implements AgentWeeks.Action {
     );
     List<String> said = new List<String>();
     for (CampLabels.TermLabel row : CampLabels.forCamp(season.Camp__c).all()) {
+      // Words no screen shows are left out, as on the Camp words screen (word walk W1).
+      if (CampLabels.UNSHOWN.contains(row.term)) {
+        continue;
+      }
       said.add(row.modelSingular + ': ' + AgentChangeCampWords.shown(row));
     }
     String blocked = SeasonSetupController.campWordsBlockedReason(

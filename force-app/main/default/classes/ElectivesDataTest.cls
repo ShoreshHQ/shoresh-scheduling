@@ -550,7 +550,8 @@ private class ElectivesDataTest {
         week
       );
       Assert.areEqual(
-        'This elective set can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
+        // CORE-1.34: the set follows the camp's Elective word.
+        'This Chug can\'t be deleted yet: it has Chug runs: "Chugim · Week 1". First delete that run, then delete it.',
         setResult.getErrors()[0].getMessage()
       );
       Assert.isTrue(used <= 12, 'Queries for one refusal: ' + used);

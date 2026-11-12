@@ -96,6 +96,15 @@ private class AgentCampSetupTest {
         String.valueOf(read[1]).contains('; Group: Group / Groups;'),
         String.valueOf(read[1])
       );
+      // Word walk W1: Seat / Seats; words no screen shows are left out.
+      Assert.isTrue(
+        String.valueOf(read[1]).contains('; Seat: Seat / Seats;'),
+        String.valueOf(read[1])
+      );
+      Assert.isFalse(
+        String.valueOf(read[1]).contains('Conflict:'),
+        String.valueOf(read[1])
+      );
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(0, afterStale);
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));

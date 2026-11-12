@@ -78,6 +78,42 @@ describe("the camp's own workbook", () => {
     });
   });
 
+  it("finds the camp words under the screen's old column names too (word walk W1)", () => {
+    const s = camp();
+    const renamed = (sheet) => ({
+      ...sheet,
+      rows: [["Standard", "Your word", ""], ...sheet.rows.slice(1)]
+    });
+    const sheets = campWorkbookSheets(s, buildTerms(s.labels)).map((sheet) => {
+      return sheet.name === "Camp words" ? renamed(sheet) : sheet;
+    });
+    expect(findSheets(file(sheets), buildTerms(s.labels)).campWords).toBe(
+      "Camp words"
+    );
+  });
+
+  it("leaves words no screen shows off the Camp words sheet (word walk W1)", () => {
+    const s = camp();
+    s.labels = [
+      ...s.labels,
+      {
+        term: "Conflict",
+        modelSingular: "Conflict",
+        singular: "Clash",
+        plural: "Clashes",
+        isCustom: true
+      }
+    ];
+    const words = campWorkbookSheets(s, buildTerms(s.labels)).find(
+      (sheet) => sheet.name === "Camp words"
+    );
+    expect(words.rows.map((r) => r[0])).toEqual([
+      "Shoresh word",
+      "Group",
+      "Division"
+    ]);
+  });
+
   it("reads back with nothing to do", () => {
     const s = camp();
     const p = propose(s, file(campWorkbookSheets(s, buildTerms(s.labels))));

@@ -9,8 +9,23 @@ public with sharing class CampLabels {
     'Groups at once',
     'Groups that fit',
     'Minimum to run',
-    'Seats',
     'Times per week'
+  };
+  /**
+   * Words no screen shows (word walk W1): left off Camp words, its worksheet and the AI's
+   * read_camp_words. Their picklist values stay, so singular('Conflict') still answers.
+   */
+  public static final Set<String> UNSHOWN = new Set<String>{
+    'Scheduler',
+    'WeekException',
+    'Preference',
+    'Assignment',
+    'DraftSchedule',
+    'Placement',
+    'Conflict',
+    'Shortfall',
+    'Lock',
+    'Team'
   };
   // This camp's own words, by model term.
   private final Map<String, CampLabel__c> custom = new Map<String, CampLabel__c>();
@@ -70,23 +85,58 @@ public with sharing class CampLabels {
   /** The term at the start of a sentence or as a heading: "Group", or the camp's "Bunk". */
   public String singular(String term) {
     CampLabel__c label = custom.get(term);
-    return label != null ? label.Singular__c : MODEL_TERMS.get(term)[0];
+    if (label != null) {
+      return label.Singular__c;
+    }
+    List<String> follows = followed(term);
+    return follows != null ? follows[0] : MODEL_TERMS.get(term)[0];
   }
 
   public String plural(String term) {
     CampLabel__c label = custom.get(term);
-    return label != null ? label.Plural__c : MODEL_TERMS.get(term)[1];
+    if (label != null) {
+      return label.Plural__c;
+    }
+    List<String> follows = followed(term);
+    return follows != null ? follows[1] : MODEL_TERMS.get(term)[1];
   }
 
   /** The term inside a sentence: model terms in lower case, camp labels exactly as the camp typed them. */
   public String singularInSentence(String term) {
-    return custom.containsKey(term)
-      ? singular(term)
-      : singular(term).toLowerCase();
+    return isCampWord(term) ? singular(term) : singular(term).toLowerCase();
   }
 
   public String pluralInSentence(String term) {
-    return custom.containsKey(term) ? plural(term) : plural(term).toLowerCase();
+    return isCampWord(term) ? plural(term) : plural(term).toLowerCase();
+  }
+
+  /** The camp typed this word, or it follows one the camp typed. */
+  private Boolean isCampWord(String term) {
+    return custom.containsKey(term) || followed(term) != null;
+  }
+
+  /**
+   * CORE-1.34: a word the camp left standard that follows a word it set: Elective set is the
+   * camp's Elective words ("Chug" / "Chugim"); Groups that fit and Groups at once are its Group
+   * plural ("Bunks that fit"). Null when the camp set this word itself, or the word it follows
+   * is standard.
+   */
+  private List<String> followed(String term) {
+    if (custom.containsKey(term)) {
+      return null;
+    }
+    if (term == 'ElectiveSet' && custom.containsKey('Elective')) {
+      CampLabel__c elective = custom.get('Elective');
+      return new List<String>{ elective.Singular__c, elective.Plural__c };
+    }
+    Boolean ofGroups = term == 'GroupsThatFit' || term == 'GroupsAtOnce';
+    if (ofGroups && custom.containsKey('Group')) {
+      String word =
+        custom.get('Group').Plural__c +
+        (term == 'GroupsThatFit' ? ' that fit' : ' at once');
+      return new List<String>{ word, word };
+    }
+    return null;
   }
 
   /** Every model term with this camp's label, for the screens and the label editor. */
@@ -159,12 +209,21 @@ public with sharing class CampLabels {
     }
   }
 
+  /**
+   * The English plural of a standard word, the one rule the screens use too (shoreshTerms
+   * guessPlural): "ies" after a consonant and y, "es" after s, x, z, ch and sh, else "s".
+   */
+  @TestVisible
   private static String pluralOf(String singular) {
     if (SAME_IN_PLURAL.contains(singular)) {
       return singular;
     }
-    if (singular.endsWith('y') && !singular.endsWith('ay')) {
+    String lower = singular.toLowerCase();
+    if (lower.endsWith('y') && !Pattern.matches('.*[aeiou]y', lower)) {
       return singular.removeEnd('y') + 'ies';
+    }
+    if (Pattern.matches('.*(s|x|z|ch|sh)', lower)) {
+      return singular + 'es';
     }
     return singular + 's';
   }

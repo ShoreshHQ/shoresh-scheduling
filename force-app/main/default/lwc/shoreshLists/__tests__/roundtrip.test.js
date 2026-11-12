@@ -565,7 +565,7 @@ const DOWNLOADS = {
     ["Teens", "Period 1", "10:00 AM", "10:50 AM", "Morning"]
   ],
   locations: [
-    ["Location", "Location type", "Groups that fit", "Notes"],
+    ["Location", "Location type", "Bunks that fit", "Notes"],
     ["Pool", "Waterfront", 2, "'=Shallow end"],
     ["Gym", "", 1, ""]
   ],
@@ -579,7 +579,7 @@ const DOWNLOADS = {
       "Priority",
       "Outdoors",
       "Rain plan",
-      "Groups at once",
+      "Bunks at once",
       "Same Unit only",
       "Early in the week",
       "Who can do it",

@@ -104,9 +104,12 @@ export function findSheets(file, t) {
   };
   sheets.forEach((sheet) => {
     const h = filled(cells(sheet).headings).map(foldName);
+    // "Shoresh word" / "Camp word", as the screen names them; "Standard" / "Your word" too, the
+    // screen's old names, should a sheet have been made with them.
     if (
-      h[0] === foldName("Shoresh word") &&
-      h.includes(foldName("Camp word"))
+      (h[0] === foldName("Shoresh word") &&
+        h.includes(foldName("Camp word"))) ||
+      (h[0] === foldName("Standard") && h.includes(foldName("Your word")))
     ) {
       if (!found.campWords) take("campWords", sheet);
     } else if (
