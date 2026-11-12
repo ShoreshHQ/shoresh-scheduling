@@ -2691,7 +2691,7 @@ describe("Shoresh for AI tools and the command line", () => {
       choices
     });
     expect(review.ok).toBe(true);
-    expect(review.text).toContain("2 campers: 2 new, 0 already here");
+    expect(review.text).toContain("2 campers: 2 new\n"); // no "0 already here" (CORE-6.13)
 
     // A name Shoresh doesn't have: the review says what the screen starts it at, for the AI to
     // offer the person (UX pass 2026-11-10: the screen starts every name at an answer).

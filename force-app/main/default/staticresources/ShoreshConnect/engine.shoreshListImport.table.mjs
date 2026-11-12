@@ -33,6 +33,9 @@ const ROW_CLASS = {
 
 // The rows that will be in the table once saved: the section's count.
 const COUNTED = new Set(["same", "changed", "new"]);
+// Rows that won't be saved where they say: one phrase for them (word walk W3, CORE-6.12).
+const LOOK = "Needs a look";
+const LOOKING = new Set(["asked", "unreadable"]);
 
 function textOf(column, value, targets) {
   const text = cellText(column, value, targets);
@@ -312,7 +315,7 @@ export function importTable(p, { setup, showSame = true, leaveOut = true }) {
         later.push(drawn);
       }
     });
-  later.forEach((row) => into("Review here", row));
+  later.forEach((row) => into(LOOK, row));
   const list = order.map((label, i) => {
     const sectionRows = sections.get(keyOf(label)).map((row) => finish(row));
     // New rows after the ones set up, then what needs a look, as the screen adds them.
@@ -326,14 +329,16 @@ export function importTable(p, { setup, showSame = true, leaveOut = true }) {
       leftOut: 3
     };
     sectionRows.sort((a, b) => rank[a.kind] - rank[b.kind]);
-    const count = sectionRows.filter((r) => COUNTED.has(r.kind)).length;
+    // Needs a look counts what is still to look at; no count at 0 (CORE-6.12, CORE-6.13).
+    const counts = label === LOOK ? LOOKING : COUNTED;
+    const count = sectionRows.filter((r) => counts.has(r.kind)).length;
     return {
       key: `table-${i}-${label}`,
       label,
       hasLabel: !!label,
-      count,
+      count: count ? String(count) : "",
       // "Juniors, 4" for screen readers; "Juniors 4" to the eye.
-      countSaid: `${label}, ${count}`,
+      countSaid: count ? `${label}, ${count}` : label,
       showHead: i === 0,
       headClass: i === 0 ? "head" : "head head_hidden",
       rows: sectionRows

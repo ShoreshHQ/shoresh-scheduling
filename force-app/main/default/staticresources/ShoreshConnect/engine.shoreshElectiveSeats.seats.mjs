@@ -651,6 +651,8 @@ function offeringCell(column, offering, byCell, dropped, problems) {
     of: limited ? `of ${seats}` : "",
     dots: dotsFor(count, seats),
     look: over || below,
+    over,
+    below,
     free: limited ? Math.max(0, seats - count) : null
   };
 }
