@@ -73,7 +73,7 @@ export function usablePlacements(reading, timetables, groups) {
  * Electives (electives.js) are "E" here too, so nothing else decides them; an elective word that is
  * not one after all (the camp has it, or "Not electives") goes the usual way.
  */
-function notedNames(usable, timetables, terms, electiveTexts) {
+function notedNames(usable, timetables, terms, electiveTexts, asSpecial) {
   const kinds = new Map();
   const specialDays = new Map();
   for (const p of usable) {
@@ -87,11 +87,12 @@ function notedNames(usable, timetables, terms, electiveTexts) {
     const cells = usable.filter(
       (p) => p.timetable === t.index && !kinds.has(p.text)
     );
-    for (const name of specialDayNames(
-      cells,
-      t.groups.length,
-      t.blocks.length
-    )) {
+    const special = specialDayNames(cells, t.groups.length, t.blocks.length);
+    // INGEST-3.11: a name answered "special day" is one, on the days the file has it.
+    cells
+      .filter((p) => asSpecial && asSpecial.has(p.text))
+      .forEach((p) => special.add(p.text));
+    for (const name of special) {
       kinds.set(name, "D");
       cells
         .filter((p) => p.text === name)
