@@ -96,6 +96,13 @@ behaviour unchanged):
 - **CORE-3.8** An early day that cannot happen as saved (the program does not run that day, or
   fewer time blocks come before it than it starts earlier by) MUST be shown on its row, never
   ignored quietly; a re-import's question about it MUST name the early day.
+- **CORE-3.9** A fixed activity saved by hand over a recurring activity (the same group, day and
+  week) MUST be asked about where it is saved, naming both, as the import asks (INGEST-3.11), not
+  refused at Save (Greg 2026-11-13). "<recurring>, not at <time block>" MUST keep the recurring
+  activity at its other time blocks, with the same days, location, who it covers and weeks, and
+  save the fixed activity in the same save; Cancel MUST save nothing. A recurring activity only
+  in the fixed activity's time blocks can't go around it: that save is refused, saying what to
+  change.
 
 ## Layer 4: Limits
 

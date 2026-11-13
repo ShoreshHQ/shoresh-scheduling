@@ -108,6 +108,15 @@
         onsave={handleChildSave}
         ondelete={handleChildDelete}
       ></c-shoresh-editable-table>
+      <template lwc:if={fixedAsk}>
+        <c-shoresh-ask
+          data-id="fixed-over"
+          heading={fixedAsk.heading}
+          lines={fixedAsk.lines}
+          confirm-label={fixedAsk.confirmLabel}
+          onanswer={handleFixedAnswer}
+        ></c-shoresh-ask>
+      </template>
     </template>
     <template lwc:else>
       <div class="slds-m-bottom_medium" data-id="needs-blocks">

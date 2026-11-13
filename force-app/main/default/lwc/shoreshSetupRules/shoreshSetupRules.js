@@ -437,6 +437,27 @@ function whoIsThere(entry, item, fields) {
 }
 
 /**
+ * Whether a group the item covers is at camp in a time block (CORE-3.9): a fixed activity over a
+ * recurring one meets it only where one is, as the save's clash check counts.
+ */
+export function coversSomeoneAt(entry, item, fields, block) {
+  const named = new Set(
+    childRows(item, CHILDREN.RecurringActivity.Coverages).map(
+      (row) => row[COVERS.Division] || row[COVERS.Group]
+    )
+  );
+  return (entry.divisions || []).some((d) =>
+    (d.groups || []).some((grp) => {
+      if (named.size && !named.has(grp.Id) && !named.has(d.division.Id)) {
+        return false;
+      }
+      const away = (AVAILABILITY[grp[GROUP.Availability]] || {}).away;
+      return !away || block[BLOCK.PartOfDay] !== away;
+    })
+  );
+}
+
+/**
  * The note on a fixed or recurring activity's row: which groups are left out because they are not
  * at camp then (Greg, 2026-10-16: left out and shown, not refused). Empty when nobody is.
  */

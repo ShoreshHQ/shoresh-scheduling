@@ -1079,4 +1079,165 @@ describe("c-shoresh-program", () => {
       expect(handler.mock.calls[0][0].detail).toEqual({ screen: "timeBlocks" });
     });
   });
+
+  describe("CORE-3.9: a fixed activity saved over a recurring one", () => {
+    const blocks = ["Period 1", "Lunch", "Period 3"].map((Name, i) => ({
+      Id: `t${i + 1}`,
+      Name,
+      StartTime__c: 32400000 + i * 3600000,
+      EndTime__c: 35100000 + i * 3600000,
+      PartOfDay__c: "Morning"
+    }));
+    const fieldDay = {
+      Id: "r1",
+      Name: "Field day",
+      TimeBlock__c: "t1",
+      Length__c: 3,
+      Monday__c: true,
+      Tuesday__c: false,
+      Wednesday__c: false,
+      Thursday__c: false
+    };
+    const entryWith = (recurring) => ({
+      ...ENTRY,
+      timeBlocks: blocks,
+      fixedActivities: [],
+      recurringActivities: recurring
+    });
+    const lunch = nsRecord({
+      Name: "Lunch",
+      Program__c: "p1",
+      TimeBlock__c: "t2",
+      Length__c: 1
+    });
+
+    async function saveLunch(element, extras = {}) {
+      const saves = [];
+      element.addEventListener("save", (e) => saves.push(e.detail));
+      const detail = {
+        record: lunch,
+        extras,
+        onFailure: jest.fn(),
+        onDone: jest.fn()
+      };
+      element.shadowRoot
+        .querySelector("c-shoresh-editable-table")
+        .dispatchEvent(new CustomEvent("save", { detail }));
+      await flush();
+      return { saves, detail };
+    }
+
+    const ask = (element) =>
+      element.shadowRoot.querySelector('c-shoresh-ask[data-id="fixed-over"]');
+
+    it("CORE-3.9: asks where it is saved, naming both, and saves nothing yet", async () => {
+      const element = await render("fixedActivities", entryWith([fieldDay]));
+      const { saves } = await saveLunch(element);
+      expect(saves).toEqual([]);
+      expect(ask(element).heading).toBe(
+        "What is “Field day” at Lunch on Monday, where “Lunch” is?"
+      );
+      expect(ask(element).lines).toEqual([
+        "“Field day” keeps its other time blocks every day it runs; “Lunch” keeps Lunch."
+      ]);
+      expect(ask(element).confirmLabel).toBe("“Field day”, not at Lunch");
+    });
+
+    it("CORE-3.9: the answer saves it with the recurring activity's other time blocks", async () => {
+      const element = await render("fixedActivities", entryWith([fieldDay]));
+      const { saves } = await saveLunch(element);
+      ask(element).dispatchEvent(
+        new CustomEvent("answer", { detail: { yes: true } })
+      );
+      await flush();
+      expect(ask(element)).toBeNull();
+      expect(saves).toHaveLength(1);
+      expect(saves[0].record).toBe(lunch);
+      // With Field day as the screen saw it, so the save refuses if it changed since.
+      const seen = {
+        seenName: "Field day",
+        seenTimeBlock: "t1",
+        seenLength: 3
+      };
+      expect(saves[0].extras.around).toEqual([
+        { target: "r1", timeBlock: "t1", length: 1, ...seen },
+        { target: "r1", timeBlock: "t3", length: 1, ...seen }
+      ]);
+    });
+
+    it("CORE-3.9: Cancel saves nothing and leaves the row as typed", async () => {
+      const element = await render("fixedActivities", entryWith([fieldDay]));
+      const { saves, detail } = await saveLunch(element);
+      ask(element).dispatchEvent(
+        new CustomEvent("answer", { detail: { yes: false } })
+      );
+      await flush();
+      expect(saves).toEqual([]);
+      expect(detail.onFailure).toHaveBeenCalled();
+      expect(detail.onDone).toHaveBeenCalled();
+    });
+
+    it("CORE-3.9 counter-case: one only at Lunch can't go around, so the save goes up and is refused there", async () => {
+      const element = await render(
+        "fixedActivities",
+        entryWith([{ ...fieldDay, TimeBlock__c: "t2", Length__c: 1 }])
+      );
+      const { saves } = await saveLunch(element);
+      expect(ask(element)).toBeNull();
+      expect(saves).toHaveLength(1);
+    });
+
+    it("CORE-3.9 counter-case: no question when they never meet: another week, or a day the program doesn't run", async () => {
+      const offWeek = await render("fixedActivities", entryWith([fieldDay]));
+      offWeek.weekExceptions = nsRecord([
+        { Id: "x2", Week__c: "w1", RecurringActivity__c: "r1" }
+      ]);
+      await flush();
+      expect((await saveLunch(offWeek)).saves).toHaveLength(1);
+      const friday = await render(
+        "fixedActivities",
+        entryWith([{ ...fieldDay, Monday__c: false, Friday__c: true }])
+      );
+      expect((await saveLunch(friday)).saves).toHaveLength(1);
+    });
+
+    it("CORE-3.9 counter-case: no question when no group it covers is there, as the save's check counts", async () => {
+      const noGroups = await render("fixedActivities", {
+        ...entryWith([fieldDay]),
+        divisions: []
+      });
+      expect((await saveLunch(noGroups)).saves).toHaveLength(1);
+      expect(ask(noGroups)).toBeNull();
+    });
+
+    it("CORE-3.9: a week ticked back on that meets it asks too", async () => {
+      const element = await render("fixedActivities", {
+        ...entryWith([fieldDay]),
+        fixedActivities: [
+          { Id: "f1", Name: "Lunch", TimeBlock__c: "t2", Length__c: 1 }
+        ]
+      });
+      element.weekExceptions = nsRecord([
+        { Id: "x3", Week__c: "w1", FixedActivity__c: "f1" }
+      ]);
+      await flush();
+      const saves = [];
+      element.addEventListener("save", (e) => saves.push(e.detail));
+      element.shadowRoot
+        .querySelector("c-shoresh-editable-table")
+        .dispatchEvent(
+          new CustomEvent("save", {
+            detail: {
+              record: { Id: "f1" },
+              extras: { weeksBackOn: ["x3"] },
+              onFailure: jest.fn(),
+              onDone: jest.fn()
+            }
+          })
+        );
+      await flush();
+      expect(saves).toEqual([]);
+      expect(ask(element)).not.toBeNull();
+    });
+  });
 });

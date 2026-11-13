@@ -203,7 +203,7 @@ export function isCsv(name) {
   return /\.(csv|tsv|txt)$/i.test(String(name || ""));
 }
 
-export { questionCards } from "./questions";
+export { questionCards, dayList, nameList } from "./questions";
 export {
   planFor,
   foundLists,

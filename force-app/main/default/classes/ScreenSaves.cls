@@ -169,6 +169,9 @@ public with sharing class ScreenSaves {
     /** DIV-1.1: the program of a group added by hand with no division (NoDivisions). */
     @AuraEnabled
     public Id noDivisionProgram { get; set; }
+    /** CORE-3.9: the recurring activities a fixed activity saved over keep these time blocks. */
+    @AuraEnabled
+    public List<SetTimeAround.Piece> around { get; set; }
   }
 
   /** The rows, then their week ticks, then who each covers: one SetupWrite. */
@@ -182,6 +185,7 @@ public with sharing class ScreenSaves {
     }
 
     public void write() {
+      SetTimeAround.split(rows, given.around);
       NoDivisions.holdNew(rows, given.noDivisionProgram);
       RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
       SetTimeWho.save(rows, given.who);
