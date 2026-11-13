@@ -754,7 +754,12 @@ export default class ShoreshChoicesImport extends LightningElement {
     return `No ${this.t.pIn("ElectiveSet")} yet`;
   }
   get noScheduleText() {
-    return noScheduleLine(this._setup, this.weekId, this.t);
+    return noScheduleLine(
+      this._setup,
+      this.weekId,
+      this.t,
+      this._opening && this._opening.scheduleId
+    );
   }
   get statusText() {
     return this.status;

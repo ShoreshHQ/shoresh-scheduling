@@ -270,6 +270,39 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="drop"]')).toBeNull();
   });
 
+  // ELECT-2.5: opened on one program's schedule, another program's saved version of the week
+  // doesn't send the director to restore one: this program's week has none.
+  it("with two programs, only the opened program's saved version is offered to restore", async () => {
+    choicesSetup.mockResolvedValue(SITUATION);
+    const element = createElement("c-shoresh-choices-import", {
+      is: ShoreshChoicesImport
+    });
+    element.terms = buildTerms([]);
+    element.setup = nsRecord({
+      ...SETUP,
+      programs: [
+        ...SETUP.programs,
+        { program: { Id: "p2", Name: "Teens" }, timeBlocks: [], divisions: [] }
+      ],
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "v2",
+          Program__c: "p2",
+          Week__c: "w2",
+          Status__c: "Version",
+          Origin__c: "Manual"
+        }
+      ]
+    });
+    element.opening = { setId: "e1", weekId: "w2", scheduleId: "c1" };
+    document.body.appendChild(element);
+    await flush();
+    expect($(element, '[data-id="no-schedule"]').title).toBe(
+      "Build Week 2 first."
+    );
+  });
+
   it("card 1 draws the sheet with its reading and reads two campers back; card 2 settles names; card 3 counts and brings in", async () => {
     const element = await render();
     await choose(element, "chugim-week1.csv", SHEET);
