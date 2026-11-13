@@ -8042,6 +8042,14 @@ FIELD.Week;/*
  * has); the server puts in the Ids once everything is saved.
  */
 FIELD.Week;/*
+ * The weeks a list's item is on (INGEST-1.8): one column, in the words its screen's Weeks column
+ * shows ("Every week", "Off Week 3", "Off Weeks 1, 6–7", "No weeks"; a location is "Closed"),
+ * each week by its place in the season, as the screen numbers them (c/shoreshEditableTable
+ * weeksInWords). A cell's value is { off: [places, from 1], of: how many weeks }: read here, its
+ * places checked against the season's weeks in the proposal (checkWeeks), and saved as the weeks
+ * off a camp workbook's "Which weeks" sheet saves (WeekException records, plan.js weekRecords).
+ */
+FIELD.WeekException;/*
  * The Electives screen's list (plan §6.2, slice E4): the offerings of every elective set, one
  * row each. An offering is named by its activity and belongs to one set, so the list is scoped
  * by set as a program's lists are by program (scope.js resolveSets): the set column can be left
