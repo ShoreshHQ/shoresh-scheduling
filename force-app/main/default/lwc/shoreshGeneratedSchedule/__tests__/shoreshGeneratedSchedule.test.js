@@ -516,7 +516,7 @@ describe("c-shoresh-generated-schedule", () => {
     });
   });
 
-  // GEN-10.11, GEN-10.6
+  // GEN-10.11, GEN-10.14
   describe("10.11: the next Rebuild reads the notes the server kept, as a reload and an agent do", () => {
     const ids = { programId: PROGRAM, weekId: WEEK };
 
@@ -1426,22 +1426,21 @@ describe("c-shoresh-generated-schedule", () => {
     ]);
   });
 
-  // Greg 2026-10-27 (protocol section 10): Rebuild keeps the week and changes only what setup
-  // forces, saying so in the Why list; Try another stays a fresh build (above).
-  // GEN-10.7
-  it("Rebuild keeps the week as it is when setup hasn't changed, and says so in the Why list", async () => {
+  // GEN-10.13, GEN-10.14 (Greg 2026-11-12): Rebuild builds fresh, as Generate builds the week on
+  // its option, so with nothing changed it saves the same week, and says nothing about keeping.
+  it("Rebuild builds the week as Generate did on its option, with no line about what it kept", async () => {
     const inputs = camp(SMALL);
     const element = await render(inputs);
     await generate(element);
     const first = sent(0).days.map((d) => d.rows);
+    const notes = checks(element).measure.notes.map((l) => l.text);
     saveWeekOnServer.mockImplementationOnce(keeping(savedAnswer(2)));
     action(element, "Rebuild").click();
     await settle(element);
     expect(sent(1).action).toBe("Rebuild");
+    expect(sent(1).option).toBe(sent(0).option);
     expect(sent(1).days.map((d) => d.rows)).toEqual(first);
-    expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
-      "Nothing in setup needed a change, so everything was kept as it was."
-    ]);
+    expect(checks(element).measure.notes.map((l) => l.text)).toEqual(notes);
   });
 
   // GEN-9.7

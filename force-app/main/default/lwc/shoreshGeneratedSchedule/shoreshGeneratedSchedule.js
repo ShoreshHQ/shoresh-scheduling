@@ -73,10 +73,10 @@ const SAY_MS = 5000;
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
  * by the engine (c/shoreshEngine) in the browser and saved whole (c/shoreshGeneratedWeek, ADR
  * 0010). A week not generated yet offers "Generate a schedule". Then:
- *   Rebuild updates the week to setup as it is now, at once: the week is kept as a version first,
- *     with an Undo that brings it back, so nothing is lost and nothing is asked (Greg 2026-11-12):
- *     every cell setup still allows stays, and only what a setup change forces is emptied and
- *     filled again, each change said in the Why list (Greg 2026-10-27, protocol section 10);
+ *   Rebuild builds the week fresh on setup as it is now, at once, the same as Generate on its
+ *     option, keeping only locks and hand-placed cells (protocol 10.13, Greg 2026-11-12): the week
+ *     is kept as a version first, with an Undo that brings it back, so nothing is lost and nothing
+ *     is asked (10.12);
  *   Try another builds the next option, and Option brings back any option tried;
  *   Fill the open cells fills only the cells left Open;
  *   Start over clears every activity at once (a version is kept first), with an Undo that brings
@@ -706,9 +706,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       return false;
     }
     let kept = notesWithout(notes, editedKeys(edits, this.loaded.input.days));
-    // The floor note's and the Rebuild's counts are the build's: any hand edit makes them stale.
-    if (kept.floor || kept.keep) {
-      kept = { ...kept, floor: null, keep: null };
+    // The floor note's counts are the build's: any hand edit makes them stale.
+    if (kept.floor) {
+      kept = { ...kept, floor: null };
     }
     if (kept === notes) {
       return false;

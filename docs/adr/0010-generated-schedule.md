@@ -1505,11 +1505,26 @@ rebuilds the saved one. The schedule on screen is kept as a version first (as it
 nothing is lost, and the _Rebuild this schedule?_ question goes. Rebuild now acts at once, as
 Start over does since §55, and offers the same Undo on the line above the grid (_Rebuilt Week 1 ·
 Undo_), which restores the version it kept first, locks and option with it. Restore in Versions
-also brings it back. How the new schedule is built is unchanged (engine protocol section 10,
-Greg 2026-10-27: it keeps what setup still allows).
+also brings it back. How the new schedule is built: the amendment below.
 
 This supersedes: the G3 choice "the confirm (Rebuild only since 2026-10-20, §55)", the rows
 "Confirm shown for Rebuild only" and "Rebuild is quiet, red on hover" (no red button is left on
 this screen), "the confirms say _Locked cells stay as they are._ (Rebuild)", and "Rebuild keeps
 its confirm (the desktop's `ConfirmRegenModal`)". The desktop asks; Shoresh doesn't, by Greg's
 decision.
+
+## Amendment: Rebuild builds fresh (Greg, 2026-11-12)
+
+Greg's answer (wiki design guide §3): Rebuild "generates a new one per se", the same as Generate
+on that week. The new schedule is built in full on the week's option, keeping only the
+director's own locks and hand-placed cells (a hand edit locks its cell); a generated cell is
+never carried over just because setup still allows it. The current schedule stays as a saved
+version first, with Undo (the amendment above). The screen's Rebuild and an agent's
+`build_week` share c/shoreshGeneratedWeek build.js, so both build this way (engine protocol
+10.13, 10.14).
+
+This supersedes engine protocol rules 10.1–10.10 (Greg 2026-10-27, "Rebuild keeps the week"):
+`MODE.KEEP` and `weekKeep.js` are removed, and with them the Why list's lines on what a Rebuild
+kept, emptied or moved ("Kept everything else as it was.") and the notes behind them
+(`notes.keep`, `notes.mins`). Update to match setup (SetupMatch) never used them and is
+unchanged.
