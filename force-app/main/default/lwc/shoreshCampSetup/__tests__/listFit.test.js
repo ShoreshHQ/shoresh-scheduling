@@ -14,6 +14,9 @@ describe("a setup list scrolls sideways only while too wide", () => {
       observe(el) {
         observed.push(el);
       }
+      unobserve(el) {
+        observed = observed.filter((x) => x !== el);
+      }
       disconnect() {}
     };
   });
@@ -54,6 +57,38 @@ describe("a setup list scrolls sideways only while too wide", () => {
     Object.defineProperty(el, "scrollWidth", { value: 800 });
     callback([{ target: table }]);
     expect(el.classList.contains("too-wide")).toBe(false);
+  });
+
+  it("not while the cursor is in it: an open calendar is no width; measured when it leaves", async () => {
+    const { root, el } = list(800, 800);
+    const input = document.createElement("input");
+    el.appendChild(input);
+    document.body.appendChild(root);
+    const fit = new ListFit();
+    fit.watch(root);
+    input.focus();
+    // A calendar open under the cursor makes the list read wider than it is.
+    Object.defineProperty(el, "scrollWidth", { value: 1100 });
+    fit.watch(root);
+    expect(el.classList.contains("too-wide")).toBe(false);
+    // A longer value typed in did widen it: measured once the cursor leaves.
+    input.blur();
+    await Promise.resolve();
+    expect(el.classList.contains("too-wide")).toBe(true);
+    root.remove();
+  });
+
+  it("each part is watched once, and what a redraw took away is let go", () => {
+    const { root, el, table } = list(800, 800);
+    document.body.appendChild(root);
+    const fit = new ListFit();
+    fit.watch(root);
+    fit.watch(root);
+    expect(observed).toEqual([el, table]);
+    table.remove();
+    fit.watch(root);
+    expect(observed).toEqual([el]);
+    root.remove();
   });
 
   it("without ResizeObserver it still decides once, as drawn", () => {
